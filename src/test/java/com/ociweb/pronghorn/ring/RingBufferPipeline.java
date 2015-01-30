@@ -155,7 +155,7 @@ public class RingBufferPipeline {
 		          while (--messageCount>=0) {
 		        	  
 		              //write the record
-		        	  RingBuffer.addValue(outputRing, 0);
+		        	  RingBuffer.addMsgIdx(outputRing, 0);
 	                  addByteArray(testArray, 0, testArray.length, outputRing);
 	                  
 				 	  if (0==(batchMask&messageCount)) {
@@ -170,7 +170,7 @@ public class RingBufferPipeline {
 		          }
 	
 		          //send negative length as poison pill to exit all runnables  
-		          RingBuffer.addValue(outputRing, -1);
+		          RingBuffer.addMsgIdx(outputRing, -1);
 		      	  addNullByteArray(outputRing);
 		      	  publishWrites(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
 		      	  System.out.println("finished writing:"+testMessages);
@@ -191,7 +191,7 @@ public class RingBufferPipeline {
 				@Override
 				public void run() {
 					try {			
-						RingWalker.setReleaseBatchSize(inputRing, 8);
+			//			RingWalker.setReleaseBatchSize(inputRing, 8);
 						RingWalker.setPublishBatchSize(outputRing, 64);
 						
 						int msgId = 0;
@@ -260,13 +260,13 @@ public class RingBufferPipeline {
 						
 						if (len<0) {
 							releaseReadLock(inputRing); 
-							RingBuffer.addValue(outputRing, -1);
+							RingBuffer.addMsgIdx(outputRing, -1);
 							addNullByteArray(outputRing);
 							publishWrites(outputRing);
 							return;
 						}
 	
-						RingBuffer.addValue(outputRing, 0);
+						RingBuffer.addMsgIdx(outputRing, 0);
 						RingBuffer.addByteArrayWithMask(outputRing, mask, len, data, offset);						
 						outputTarget+=msgSize;
 						
@@ -297,7 +297,7 @@ public class RingBufferPipeline {
 	            @Override
 	            public void run() {      
 	            	try{
-						RingWalker.setReleaseBatchSize(inputRing, 32);
+			//			RingWalker.setReleaseBatchSize(inputRing, 32);
 						
 						int msgId = 0;
 						do {

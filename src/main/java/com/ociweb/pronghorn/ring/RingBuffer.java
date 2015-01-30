@@ -538,6 +538,12 @@ public final class RingBuffer {
     public static void addValue(RingBuffer rb, int value) {
 		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
 	}
+ 
+    //must be called by low-level API when starting a new message
+    public static void addMsgIdx(RingBuffer rb, int value) {
+    	 rb.bytesHeadPos.lazySet(rb.byteWorkingHeadPos.value);    	
+		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
+	}
     
    
     //we are only allowed 12% of the time or so for doing this write.
@@ -693,18 +699,11 @@ public final class RingBuffer {
     	if (ring.consumerData.nextWorkingHead>ring.workingHeadPos.value) {
     		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
     	}
-    	    
-//    	//TODO: AAAAA, removing this in favor of relative positions.
-//    	//prevent long running arrays from rolling over in second byte ring
-//    	ring.byteWorkingHeadPos.value = ring.byteMask & ring.byteWorkingHeadPos.value;
-//    	ring.byteWorkingTailPos.value = ring.byteMask & ring.byteWorkingTailPos.value;
-//    	if (ring.byteWorkingHeadPos.value < ring.byteWorkingTailPos.value ) {
-//    		ring.byteWorkingHeadPos.value += (ring.byteMask + 1);
-//    	}
 
+    	//publish this first so the bulk splitter will pick up all the values
+    	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
     	//publish writes
     	ring.headPos.lazySet(ring.workingHeadPos.value);
-    	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
     }
     
     public static void abandonWrites(RingBuffer ring) {    
@@ -731,6 +730,7 @@ public final class RingBuffer {
     }
     
     public static long spinBlockOnTail(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
+    	
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
     		if (isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
@@ -754,6 +754,9 @@ public final class RingBuffer {
     }
     
     public static long spinBlockOnHead(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
+    	
+    	//we are blocking before we can read
+    	
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
     		if (isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {

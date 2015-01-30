@@ -67,11 +67,15 @@ public class RingWalker {
     }
 
     public static void setReleaseBatchSize(RingBuffer rb, int size) {
+    	if (true) {
+    		size = 0;
+    	}
     	rb.consumerData.batchReleaseCountDownInit = size;
     	rb.consumerData.batchReleaseCountDown = size;    	
     }
     
     public static void setPublishBatchSize(RingBuffer rb, int size) {
+
     	rb.consumerData.batchPublishCountDownInit = size;
     	rb.consumerData.batchPublishCountDown = size;    	
     }
@@ -147,7 +151,7 @@ public class RingWalker {
     public static boolean tryReadFragment(RingBuffer ringBuffer) { 
 		if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBuffer.consumerData.nextCursor)) {    		
 	    	return prepReadMessage(ringBuffer, ringBuffer.consumerData);			   
-        } else {        	
+        } else {   
 			return prepReadFragment(ringBuffer, ringBuffer.consumerData);
         }
     }
@@ -305,6 +309,7 @@ public class RingWalker {
 		//
 		//from the last known fragment move up the working tail position to this new fragment location
 		ringBuffer.workingTailPos.value = tmpNextWokingTail;//TODO: AAAAA, determine how to make this 1
+	//	ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value);
 		
 		//
 		//batched release of the old positions back to the producer
@@ -410,34 +415,6 @@ public class RingWalker {
 			
 		return hasRoom;
 	}
-
-
-	private static void prepWriteFragment(RingBuffer ring, int cursorPosition,	FieldReferenceOffsetManager from, int fragSize) {
-		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
-		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {			
-			
-			//ring.consumerData.nextWorkingHead = ring.workingHeadPos.value; //TODO: test if this is needed or not?
-			
-			//Start new stack of fragments because this is a new message
-			ring.consumerData.activeWriteFragmentStack[0] = ring.consumerData.nextWorkingHead;
-			ring.buffer[ring.mask &(int)(ring.consumerData.nextWorkingHead + from.templateOffset)] = cursorPosition;
-			ring.workingHeadPos.value++;//add one so readers using this can assume the template id is written
-		 } else {
-			//this fragment does not start a new message but its start position must be recorded for usage later
-			ring.consumerData.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=ring.consumerData.nextWorkingHead;
-		 }
-		ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + fragSize;
-	}
-
-	public static void blockingFlush(RingBuffer ring) {
-		
-		FieldReferenceOffsetManager from = RingBuffer.from(ring);
-		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
-		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
-		RingWriter.writeInt(ring, from.templateOffset, -1);
-		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + 1 ;
-		RingBuffer.publishWrites(ring);
-	}
 	
 	/*
 	 * blocks until there is enough room for the requested fragment on the output ring.
@@ -454,6 +431,41 @@ public class RingWalker {
 		prepWriteFragment(ring, cursorPosition, from, fragSize);
 	}
 	
+
+	private static void prepWriteFragment(RingBuffer ring, int cursorPosition,	FieldReferenceOffsetManager from, int fragSize) {
+		
+		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
+		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {			
+
+			//each time some bytes were written in the previous fragment this value was incremented.		
+			//now it becomes the base value for all byte writes
+			//similar to publish except for bytes
+			ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);			
+						
+			//Start new stack of fragments because this is a new message
+			ring.consumerData.activeWriteFragmentStack[0] = ring.consumerData.nextWorkingHead;
+			ring.buffer[ring.mask &(int)(ring.consumerData.nextWorkingHead + from.templateOffset)] = cursorPosition;
+			ring.workingHeadPos.value++;//add one so readers using this can assume the template id is written
+			
+		 } else {
+			//this fragment does not start a new message but its start position must be recorded for usage later
+			ring.consumerData.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=ring.consumerData.nextWorkingHead;
+		 }
+		ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + fragSize;
+	}
+
+	public static void blockingFlush(RingBuffer ring) {
+		
+		FieldReferenceOffsetManager from = RingBuffer.from(ring);
+		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
+		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
+		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
+		ring.buffer[ring.mask &((int)ring.consumerData.nextWorkingHead +  from.templateOffset)] = -1;		
+		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + 1 ;
+		RingBuffer.publishWrites(ring);
+	}
+	
+
 	
 	public static void publishWrites(RingBuffer outputRing) {
 		RingWalker ringBufferConsumer = outputRing.consumerData;

@@ -111,9 +111,12 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         int pos = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         int len = RingReader.readDataLength(ring, loc);
 
+      //TODO: AA, this points to something missing in readASCII that should have moved this pointer??
+        ring.byteWorkingTailPos.value+=len;
+        		
         if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
             return readASCIIConst(ring,len,target,POS_CONST_MASK & pos);
-        } else {
+        } else {        	
             return readASCIIRing(ring,len,target,RingBuffer.restorePosition(ring,pos));
         }
     }
@@ -238,6 +241,10 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         long tmp = ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
+        
+        //TODO: AAA, added another one how many more are missing?
+        ring.byteWorkingTailPos.value+=len;
+        
         if (pos < 0) {
             try {
                 readASCIIConst(ring,len,target, targetOffset, POS_CONST_MASK & pos);

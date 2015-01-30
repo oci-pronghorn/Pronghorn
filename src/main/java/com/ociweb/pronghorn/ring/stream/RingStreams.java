@@ -63,7 +63,7 @@ public class RingStreams {
         	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
         	int len = takeRingByteLen(inputRing);
         				
-        	if (len<0) { //exit logic
+        	if (/*msgId<0 ||*/ len<0) { //exit logic
         		releaseReadLock(inputRing);
           		return;
         	} else {                    	
@@ -189,7 +189,7 @@ public class RingStreams {
 				if (size>0) {
 					//block until there is a slot to write into
 					tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
-					RingBuffer.addValue(outputRing, 0);
+					RingBuffer.addMsgIdx(outputRing, 0);
 					RingBuffer.validateVarLength(outputRing, size);
 					RingBuffer.addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), position, size);
 					outputRing.byteWorkingHeadPos.value = position + size;
@@ -229,7 +229,8 @@ public class RingStreams {
 
 			    int fragmentLength = (int)Math.min(blockSize, stop-position);
 		 
-			    RingBuffer.addValue(output, 0);
+			    RingBuffer.addMsgIdx(output, 0);
+			    
 		    	RingBuffer.addByteArray(data, position, fragmentLength, output);
 		    	RingBuffer.publishWrites(output);
 		        
@@ -241,7 +242,7 @@ public class RingStreams {
 	public static void writeEOF(RingBuffer ring) {
 		int fill = 1 + ring.mask - FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		spinBlockOnTail(tailPosition(ring), headPosition(ring)-fill, ring);
-		RingBuffer.addValue(ring, -1); //end of file, message
+		RingBuffer.addMsgIdx(ring, -1); //end of file, message
 		RingBuffer.addNullByteArray(ring);
 		RingBuffer.publishWrites(ring);		
 	}

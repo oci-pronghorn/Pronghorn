@@ -481,6 +481,8 @@ public class TemplateLoaderTest {
                     if (RingWalker.tryReadFragment(queue)) {
                         if (RingWalker.isNewMessage(queue.consumerData)) {
                             msgs.incrementAndGet();
+                            //this is very similar to low level api so we must do this
+                           // queue.bytesHeadPos.lazySet(queue.byteWorkingHeadPos.value);    	
                         }
                         try{   
                             FASTDynamicWriter.write(dynamicWriter);

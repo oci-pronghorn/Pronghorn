@@ -1298,7 +1298,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
         //the base position from RingBuffer already accounts for the templateId there is no need to add 
         //it to the field position and yet we do ???
-        
+     //   ringBuffer.bytesHeadPos.lazySet(ringBuffer.byteWorkingHeadPos.value);
         //add 1 for template id 
    //TODO: AAAAA, not sure this is needed    	
         fieldPos++;          	

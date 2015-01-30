@@ -16,8 +16,8 @@ public class AppendableUTF8Ring implements Appendable {
 	private long outputTarget;
 	private long tailPosCache;
 	
-	private int countDownInit = 0;
-	private int countDown;
+//	private int countDownInit = 0;
+//	private int countDown;
 	private final static int step = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 	
 	public AppendableUTF8Ring(RingBuffer ringBuffer) {
@@ -30,8 +30,8 @@ public class AppendableUTF8Ring implements Appendable {
 		outputTarget = step-messagesPerRing;//this value is negative		
 		tailPosCache = tailPosition(ringBuffer);
 		
-		countDownInit = messagesPerRing>>2;
-		countDown = countDownInit;
+//		countDownInit = messagesPerRing>>2;
+//		countDown = countDownInit;
 		
 	}
 	
@@ -46,10 +46,10 @@ public class AppendableUTF8Ring implements Appendable {
 		ringBuffer.byteWorkingHeadPos.value = p+byteLength;
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, ringBuffer.bytesHeadPos.get(), p, byteLength);
 		
-		if ((--countDown)<=0) {
+//		if ((--countDown)<=0) {
 			RingBuffer.publishWrites(ringBuffer);
-			countDown = countDownInit;
-		}
+//			countDown = countDownInit;
+//		}
 		return this;
 	}
 
@@ -65,10 +65,10 @@ public class AppendableUTF8Ring implements Appendable {
 		ringBuffer.byteWorkingHeadPos.value = p+byteLength;
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos,  ringBuffer.bytesHeadPos.get(), p, byteLength);
 		
-		if ((--countDown)<=0) {
+//		if ((--countDown)<=0) {
 			RingBuffer.publishWrites(ringBuffer);
-			countDown = countDownInit;
-		}
+//			countDown = countDownInit;
+//		}
 		return this;
 	}
 
@@ -85,10 +85,10 @@ public class AppendableUTF8Ring implements Appendable {
 		ringBuffer.byteWorkingHeadPos.value = p+byteLength;
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, ringBuffer.bytesHeadPos.get(), p, byteLength);
 		
-		if ((--countDown)<=0) {
+//		if ((--countDown)<=0) {
 			RingBuffer.publishWrites(ringBuffer);
-			countDown = countDownInit;
-		}
+//			countDown = countDownInit;
+//		}
 		return this;
 	}
 	
