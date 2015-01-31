@@ -61,9 +61,10 @@ public final class RingBuffer {
     public final int maxByteSize;
     public final byte[] byteBuffer;
     public final int byteMask;
+    
     public final PaddedInt byteWorkingHeadPos = new PaddedInt();
     public final PaddedInt byteWorkingTailPos = new PaddedInt();
-    
+        
     public final PaddedAtomicInteger bytesHeadPos = new PaddedAtomicInteger();
     public final PaddedAtomicInteger bytesTailPos = new PaddedAtomicInteger();
     
@@ -204,6 +205,126 @@ public final class RingBuffer {
         RingWalker.reset(consumerData, toPos);
     }
 
+	public static void copyBytesFromToRing(byte[] source, int sourceloc, int sourceMask, byte[] target, int targetloc, int targetMask, int length) {
+		copyBytesFromToRingMasked(source, sourceloc & sourceMask, (sourceloc + length) & sourceMask, target, targetloc & targetMask, (targetloc + length) & targetMask,	length);
+	}
+
+	public static void copyIntsFromToRing(int[] source, int sourceloc, int sourceMask, int[] target, int targetloc, int targetMask, int length) {
+		copyIntsFromToRingMasked(source, sourceloc & sourceMask, (sourceloc + length) & sourceMask, target, targetloc & targetMask, (targetloc + length) & targetMask, length);
+	}
+
+	
+	private static void copyBytesFromToRingMasked(byte[] source,
+			final int rStart, final int rStop, byte[] target, final int tStart,
+			final int tStop, int length) {
+		if (tStop >= tStart) {
+			doubleMaskTargetDoesNotWrap(source, rStart, rStop, target, tStart, length);    			
+		} else {
+			doubleMaskTargetWraps(source, rStart, rStop, target, tStart, tStop,	length);
+		}
+	}
+
+
+	private static void copyIntsFromToRingMasked(int[] source,
+			final int rStart, final int rStop, int[] target, final int tStart,
+			final int tStop, int length) {
+		if (tStop >= tStart) {
+			doubleMaskTargetDoesNotWrap(source, rStart, rStop, target, tStart, length);    			
+		} else {
+			doubleMaskTargetWraps(source, rStart, rStop, target, tStart, tStop,	length);
+		}
+	}
+
+	private static void doubleMaskTargetDoesNotWrap(byte[] source,
+			final int rStart, final int rStop, byte[] target, final int tStart,
+			int length) {
+		if (rStop >= rStart) {
+			//the source and target do not wrap
+			System.arraycopy(source, rStart, target, tStart, length);
+		} else {
+			//the source is wrapping but not the target
+			System.arraycopy(source, rStart, target, tStart, length-rStop);
+			System.arraycopy(source, 0, target, tStart + length - rStop, rStop);
+		}
+	}
+
+	private static void doubleMaskTargetDoesNotWrap(int[] source,
+			final int rStart, final int rStop, int[] target, final int tStart,
+			int length) {
+		if (rStop >= rStart) {
+			//the source and target do not wrap
+			System.arraycopy(source, rStart, target, tStart, length);
+		} else {
+			//the source is wrapping but not the target
+			System.arraycopy(source, rStart, target, tStart, length-rStop);
+			System.arraycopy(source, 0, target, tStart + length - rStop, rStop);
+		}
+	}
+	
+	private static void doubleMaskTargetWraps(byte[] source, final int rStart,
+			final int rStop, byte[] target, final int tStart, final int tStop,
+			int length) {
+		if (rStop >= rStart) {
+//				//the source does not wrap but the target does
+//				// done as two copies
+		    System.arraycopy(source, rStart, target, tStart, length-tStop);
+		    System.arraycopy(source, rStart + length - tStop, target, 0, tStop);
+		} else {
+		    if (length>0) {
+				//both the target and the source wrap
+		    	doubleMaskDoubleWrap(source, target, length, tStart, rStart, length-tStop, length-rStop);
+			}
+		}
+	}
+	
+	private static void doubleMaskTargetWraps(int[] source, final int rStart,
+			final int rStop, int[] target, final int tStart, final int tStop,
+			int length) {
+		if (rStop >= rStart) {
+//				//the source does not wrap but the target does
+//				// done as two copies
+		    System.arraycopy(source, rStart, target, tStart, length-tStop);
+		    System.arraycopy(source, rStart + length - tStop, target, 0, tStop);
+		} else {
+		    if (length>0) {
+				//both the target and the source wrap
+		    	doubleMaskDoubleWrap(source, target, length, tStart, rStart, length-tStop, length-rStop);
+			}
+		}
+	}
+
+	private static void doubleMaskDoubleWrap(byte[] source, byte[] target,
+			int length, final int tStart, final int rStart, int targFirstLen,
+			int srcFirstLen) {
+		if (srcFirstLen<targFirstLen) {
+			//split on src first
+			System.arraycopy(source, rStart, target, tStart, srcFirstLen);
+			System.arraycopy(source, 0, target, tStart+srcFirstLen, targFirstLen - srcFirstLen);
+			System.arraycopy(source, targFirstLen - srcFirstLen, target, 0, length - targFirstLen);    			    	
+		} else {
+			//split on targ first
+			System.arraycopy(source, rStart, target, tStart, targFirstLen);
+			System.arraycopy(source, rStart + targFirstLen, target, 0, srcFirstLen - targFirstLen); 
+			System.arraycopy(source, 0, target, srcFirstLen - targFirstLen, length - srcFirstLen);
+		}
+	}
+	
+	private static void doubleMaskDoubleWrap(int[] source, int[] target,
+			int length, final int tStart, final int rStart, int targFirstLen,
+			int srcFirstLen) {
+		if (srcFirstLen<targFirstLen) {
+			//split on src first
+			System.arraycopy(source, rStart, target, tStart, srcFirstLen);
+			System.arraycopy(source, 0, target, tStart+srcFirstLen, targFirstLen - srcFirstLen);
+			System.arraycopy(source, targFirstLen - srcFirstLen, target, 0, length - targFirstLen);    			    	
+		} else {
+			//split on targ first
+			System.arraycopy(source, rStart, target, tStart, targFirstLen);
+			System.arraycopy(source, rStart + targFirstLen, target, 0, srcFirstLen - targFirstLen); 
+			System.arraycopy(source, 0, target, srcFirstLen - targFirstLen, length - srcFirstLen);
+		}
+	}
+
 	public static int leftConvertIntToASCII(RingBuffer rb, int value, int idx) {
 		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
 		//this will leave a gap but that is not a problem.
@@ -338,6 +459,7 @@ public final class RingBuffer {
 
 	public static int addASCIIToBytes(CharSequence source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
 		final int p = rbRingBuffer.byteWorkingHeadPos.value;
+		//TODO: revisit this not sure this conditional is required
 	    if (sourceLen > 0) {
 	    	int targetMask = rbRingBuffer.byteMask;
 	    	int proposedEnd = p + sourceLen;
@@ -523,15 +645,17 @@ public final class RingBuffer {
 
 	public static void appendPartialBytesArray(byte[] source, int sourceIdx, int sourceLen,
 			                                   byte[] target, final int targetBytePos, int targetMask) {
-		int tStop = (targetBytePos + sourceLen) & targetMask;
-		int tStart = targetBytePos & targetMask;
+		appendPartialBytesArray2(source, sourceIdx, sourceLen, target, (targetBytePos + sourceLen) & targetMask, targetBytePos & targetMask);
+	}
+
+	private static void appendPartialBytesArray2(byte[] source, int sourceIdx,
+			int sourceLen, byte[] target, int tStop, int tStart) {
 		if (tStop >= tStart) {
 		    System.arraycopy(source, sourceIdx, target, tStart, sourceLen);
 		} else {
 			// done as two copies
-		    int firstLen = (1+ targetMask) - tStart;
-		    System.arraycopy(source, sourceIdx, target, tStart, firstLen);
-		    System.arraycopy(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
+		    System.arraycopy(source, sourceIdx, target, tStart, sourceLen - tStop);
+		    System.arraycopy(source, sourceIdx + sourceLen - tStop, target, 0, tStop);
 		}
 	}
     

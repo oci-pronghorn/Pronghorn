@@ -111,7 +111,6 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         int pos = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         int len = RingReader.readDataLength(ring, loc);
 
-      //TODO: AA, this points to something missing in readASCII that should have moved this pointer??
         ring.byteWorkingTailPos.value+=len;
         		
         if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
@@ -127,6 +126,8 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         int pos = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         int len = RingReader.readDataLength(ring, loc);
 
+        ring.byteWorkingTailPos.value+=len;
+        
         if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
             return readUTF8Const(ring,len,target,POS_CONST_MASK & pos);
         } else {
@@ -169,6 +170,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		
         int pos = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         int bytesLength = RingReader.readDataLength(ring, loc);
+        
+        ring.byteWorkingTailPos.value+=bytesLength;
+        
         if (pos < 0) {
             return readUTF8Const(ring,bytesLength,target, targetOffset, POS_CONST_MASK & pos);
         } else {
@@ -242,7 +246,6 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
         
-        //TODO: AAA, added another one how many more are missing?
         ring.byteWorkingTailPos.value+=len;
         
         if (pos < 0) {
@@ -431,6 +434,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         long tmp = ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
+        
+        ring.byteWorkingTailPos.value+=len;
+        
         if (pos < 0) {
             return readBytesConst(ring,len,target,POS_CONST_MASK & pos);
         } else {
@@ -462,6 +468,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 
         int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
+        
+        ring.byteWorkingTailPos.value+=len;
+        
         if (pos < 0) {
             readBytesConst(ring,len,target,targetOffset,POS_CONST_MASK & pos);
         } else {
@@ -491,10 +500,13 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         long tmp = ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
+        
+        ring.byteWorkingTailPos.value+=len;
+        
         if (pos < 0) {
             readBytesConst(ring,len,target, targetOffset,targetMask, POS_CONST_MASK & pos);
         } else {
-            readBytesRing(ring.byteBuffer, RingBuffer.restorePosition(ring,pos), ring.byteMask, target, targetOffset, targetMask,	len);
+            RingBuffer.copyBytesFromToRing(ring.byteBuffer, RingBuffer.restorePosition(ring,pos), ring.byteMask, target, targetOffset, targetMask,	len);
         }
         return len;
     }
@@ -521,50 +533,6 @@ public class RingReader {//TODO: B, build another static reader that does auto c
                 target[targetMask & targetloc++]=buffer[pos++];
             };
     }
-
-    private static void readBytesRing(byte[] source, int sourceloc, int sourceMask, byte[] target, int targetloc, int targetMask, int length) {
-    	final int tStop = (targetloc + length) & targetMask;
-		final int tStart = targetloc & targetMask;
-		final int rStop = (sourceloc + length) & sourceMask;
-		final int rStart = sourceloc & sourceMask;
-		if (tStop >= tStart) {
-			if (rStop >= rStart) {
-				//the source and target do not wrap
-				System.arraycopy(source, rStart, target, tStart, length);
-			} else {
-				//the source is wrapping but not the target
-				int srcFirstLen = (1 + sourceMask) - rStart;
-				System.arraycopy(source, rStart, target, tStart, srcFirstLen);
-				System.arraycopy(source, 0, target, tStart+srcFirstLen, length-srcFirstLen);
-			}    			
-		} else {
-			if (rStop >= rStart) {
-				//the source does not wrap but the target does
-				// done as two copies
-			    int targFirstLen = (1 + targetMask) - tStart;
-			    System.arraycopy(source, rStart, target, tStart, targFirstLen);
-			    System.arraycopy(source, rStart + targFirstLen, target, 0, length - targFirstLen);
-			} else {
-		        if (length>0) {
-					//both the target and the source wrap
-					int srcFirstLen = (1 + sourceMask) - rStart;
-				    int targFirstLen = (1 + targetMask) - tStart;
-				    if (srcFirstLen<targFirstLen) {
-				    	//split on src first
-				    	System.arraycopy(source, rStart, target, tStart, srcFirstLen);
-				    	System.arraycopy(source, 0, target, tStart+srcFirstLen, targFirstLen - srcFirstLen);
-				    	System.arraycopy(source, targFirstLen - srcFirstLen, target, 0, length - targFirstLen);    			    	
-				    } else {
-				    	//split on targ first
-				    	System.arraycopy(source, rStart, target, tStart, targFirstLen);
-				    	System.arraycopy(source, rStart + targFirstLen, target, 0, srcFirstLen - targFirstLen); 
-				    	System.arraycopy(source, 0, target, srcFirstLen - targFirstLen, length - srcFirstLen);
-				    }
-		        }
-			}
-		}
-	}
-
 
     public static boolean isNewMessage(RingBuffer rb) {
 		return RingWalker.isNewMessage(rb.consumerData);
