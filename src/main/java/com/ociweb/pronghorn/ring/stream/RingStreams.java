@@ -63,7 +63,7 @@ public class RingStreams {
         	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
         	int len = takeRingByteLen(inputRing);
         				
-        	if (/*msgId<0 ||*/ len<0) { //exit logic
+        	if (msgId<0) { //exit logic
         		releaseReadLock(inputRing);
           		return;
         	} else {                    	
