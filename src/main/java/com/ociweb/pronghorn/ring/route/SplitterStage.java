@@ -75,6 +75,7 @@ public class SplitterStage implements Runnable {
 		int byteHeadPos;
         long headPos;
 		
+        //TODO AAA, publush to a single atomic long and read it here.
         //get the new head position
         byteHeadPos = ss.source.bytesHeadPos.get();
 		headPos = ss.source.headPos.get();		
@@ -88,10 +89,11 @@ public class SplitterStage implements Runnable {
 		int pMask = ss.source.mask;
 		long tempTail = ss.source.tailPos.get();
 		int primaryTailPos = pMask & (int)tempTail;				
-		int totalPrimaryCopy = (int)(headPos-tempTail);
+		int totalPrimaryCopy = (int)(((int)headPos)-((int)tempTail));
 		if (totalPrimaryCopy<=0) {
 			return true;
 		}
+		long absHeadPos = ss.source.workingTailPos.value+totalPrimaryCopy;
 		
 		
 		int bMask = ss.source.byteMask;		
@@ -99,16 +101,17 @@ public class SplitterStage implements Runnable {
 		int byteTailPos = bMask & tempByteTail;
 		int totalBytesCopy =  (int)(byteHeadPos - tempByteTail);
 		
+		
 		//now do the copies
-		while(doingCopy(ss, byteTailPos, primaryTailPos, headPos, totalPrimaryCopy, totalBytesCopy)) {
+		while(doingCopy(ss, byteTailPos, primaryTailPos, absHeadPos, totalPrimaryCopy, totalBytesCopy)) {
 			Thread.yield();
 		}
 		
 		//now move pointer forward
 		ss.source.byteWorkingTailPos.value = byteHeadPos;
 		ss.source.bytesTailPos.set(byteHeadPos);
-		ss.source.workingTailPos.value = headPos;
-		ss.source.tailPos.set(headPos);
+		ss.source.workingTailPos.value =absHeadPos;
+		ss.source.tailPos.set(absHeadPos);
 		
 		return true;
 	}
@@ -117,8 +120,8 @@ public class SplitterStage implements Runnable {
 	//and true will be returned instead of false.
 	private static boolean doingCopy(SplitterStage ss, 
 			                   int byteTailPos, int primaryTailPos, 
-			                   long absHeadPos, int totalPrimaryCopy, 
-			                   int totalBytesCopy) {
+			                   long absHeadPos, 
+			                   int totalPrimaryCopy, int totalBytesCopy) {
 		
 						
 		boolean moreToCopy = false;
@@ -147,12 +150,14 @@ public class SplitterStage implements Runnable {
 					
 				} else {
 					//no room try again later
+					//System.err.println("skipped waiting");
 					moreToCopy = true;
 				}
 			}
 			//else this one was already done.
 		}
 		
+	//	System.err.println("done");
 		return moreToCopy;
 	}
 	

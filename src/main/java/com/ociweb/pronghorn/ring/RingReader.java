@@ -111,8 +111,6 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         int pos = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         int len = RingReader.readDataLength(ring, loc);
 
-        ring.byteWorkingTailPos.value+=len;
-        		
         if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
             return readASCIIConst(ring,len,target,POS_CONST_MASK & pos);
         } else {        	
@@ -125,8 +123,6 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		
         int pos = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         int len = RingReader.readDataLength(ring, loc);
-
-        ring.byteWorkingTailPos.value+=len;
         
         if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
             return readUTF8Const(ring,len,target,POS_CONST_MASK & pos);
@@ -171,7 +167,6 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         int pos = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         int bytesLength = RingReader.readDataLength(ring, loc);
         
-        ring.byteWorkingTailPos.value+=bytesLength;
         
         if (pos < 0) {
             return readUTF8Const(ring,bytesLength,target, targetOffset, POS_CONST_MASK & pos);
@@ -246,7 +241,6 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
         
-        ring.byteWorkingTailPos.value+=len;
         
         if (pos < 0) {
             try {
@@ -434,9 +428,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         long tmp = ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
-        
-        ring.byteWorkingTailPos.value+=len;
-        
+                
         if (pos < 0) {
             return readBytesConst(ring,len,target,POS_CONST_MASK & pos);
         } else {
@@ -468,9 +460,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 
         int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
-        
-        ring.byteWorkingTailPos.value+=len;
-        
+                
         if (pos < 0) {
             readBytesConst(ring,len,target,targetOffset,POS_CONST_MASK & pos);
         } else {
@@ -500,9 +490,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         long tmp = ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
-        
-        ring.byteWorkingTailPos.value+=len;
-        
+                
         if (pos < 0) {
             readBytesConst(ring,len,target, targetOffset,targetMask, POS_CONST_MASK & pos);
         } else {

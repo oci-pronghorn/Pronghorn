@@ -134,6 +134,7 @@ public final class FASTReaderReactor {
     }
 
     public static int pump(FASTReaderReactor reactor) {
+
             return reactor.decoder.decode(reactor.reader);
     }
     

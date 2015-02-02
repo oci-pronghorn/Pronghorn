@@ -33,7 +33,7 @@ public final class TypeMask {
     public final static int ByteArray = 0x0E;              // 01110
     public final static int ByteArrayOptional = 0x0F;      // 01111
 
-    public final static int Group = 0x10;                  // 10000 //TOOD: May want to use 10001 for optional group.
+    public final static int Group = 0x10;                  // 10000 
     
     public final static int TemplateRef = 0x12;            // 10010
     // 1
@@ -53,10 +53,11 @@ public final class TypeMask {
     public final static int[] ringBufferFieldVarLen = new int[] {   0, 0, 0, 0, 
 															        0, 0, 0, 0, 
 															        1, 1, 1, 1, 
-															        0, 0, 1, 1,  //Decimal only counts exponent part
+															        0, 0, 1, 1,  
 															        0, 0, 0, 0,
 															        0, 0, 0, 0, 0};
 
+    
     public final static String[] xmlTypeName = new String[] { "uInt32", "uInt32", "int32", "int32", "uInt64", "uInt64", "int64", "int64",
         "string", "string", "string", "string", "decimal", "decimal", "byteVector", "byteVector",
         "group", "Reserved1", "Reserved2", "Reserved3", "length", "Reserved5",

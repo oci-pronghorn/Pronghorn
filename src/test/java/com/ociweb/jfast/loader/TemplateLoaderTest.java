@@ -172,7 +172,7 @@ public class TemplateLoaderTest {
 
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
                 if (RingWalker.tryReadFragment(rb)) {
-	
+	                	
 	                frags++;
 	                if (RingWalker.isNewMessage(rb.consumerData)) {
 	                    final int msgIdx = RingWalker.getMsgIdx(rb.consumerData);

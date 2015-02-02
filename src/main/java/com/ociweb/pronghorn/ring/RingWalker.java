@@ -1,6 +1,5 @@
 package com.ociweb.pronghorn.ring;
 
-import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 
 import java.util.Arrays;
@@ -16,10 +15,11 @@ public class RingWalker {
     private long waitingNextStop;
     private long bnmHeadPosCache;
     public int cursor;
+    
         
     public long nextWorkingTail; //NOTE: assumes that ring tail also starts at zero
     public long nextWorkingHead;;
-    
+
     private int[] seqStack;
     private int seqStackHead;
     public long tailCache;
@@ -37,7 +37,7 @@ public class RingWalker {
 	private int batchReleaseCountDownInit = 0;
 	private int batchPublishCountDown = 0;
 	private int batchPublishCountDownInit = 0;
-	private int nextCursor = -1;
+	int nextCursor = -1;
     
 	
 	public RingWalker(int mask, FieldReferenceOffsetManager from) {
@@ -140,12 +140,7 @@ public class RingWalker {
     }
 
 
-    public int fragmentSteps(RingBuffer fastRingBuffer) {
-	    return from.fragScriptSize[cursor];
-	}
-
-    //New re-design of try read fragment. Incomplete and in progress
-    //TODO: move the preamble to after the ID, possibly add ID to the front of all fragments
+    //TODO: may want to move preamble to after the ID, it may be easier to reason about.
     
     //this impl only works for simple case where every message is one fragment. 
     public static boolean tryReadFragment(RingBuffer ringBuffer) { 
@@ -206,50 +201,77 @@ public class RingWalker {
 	private static void prepReadFragment(RingBuffer ringBuffer,
 			final RingWalker ringBufferConsumer, final int scriptFragSize,
 			long tmpNextWokingTail, final long target) {
-		
-		//TODO: AAA still testing, needed so the release happens as frequently as the publish in an attempt to fix the relative string locations.
-		if ((--ringBufferConsumer.batchReleaseCountDown<=0)) {	
-			RingBuffer.releaseReadLock(ringBuffer);
-			ringBufferConsumer.batchReleaseCountDown = ringBufferConsumer.batchReleaseCountDownInit;
-		}
-		
+
 		//from the last known fragment move up the working tail position to this new fragment location
 		ringBuffer.workingTailPos.value = tmpNextWokingTail;
 		//save the index into these fragments so the reader will be able to find them.
 		ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] =tmpNextWokingTail;
 
+		//TODO: AAA still testing, needed so the release happens as frequently as the publish in an attempt to fix the relative string locations.
+		if ((--ringBufferConsumer.batchReleaseCountDown<=0)) {	
+			RingBuffer.releaseReadLock(ringBuffer);
+			ringBufferConsumer.batchReleaseCountDown = ringBufferConsumer.batchReleaseCountDownInit;
+		}
+
 		// the group and group length will match the pattern 10?00
-		// so we will mask with                             11011 
-		// and this must equal                              10000
-		// if it does not then we have one of the other fields
+		// so we will mask with                              11011 
+		// and this must equal                               10000
+		// if it does not then we have one of the other fields  group len 10100  and group is 10000
 				
-        if ( (ringBufferConsumer.from.tokens[(ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1] &  ( 0x1B <<TokenBuilder.SHIFT_TYPE)) != ( 0x10<<TokenBuilder.SHIFT_TYPE ) ) {
-        	 ringBufferConsumer.nextWorkingTail = target;//save the size of this new fragment we are about to read 
-        } else {
-             prepReadSequence(ringBuffer, ringBufferConsumer, target, ringBufferConsumer.from.tokens[ringBufferConsumer.cursor + scriptFragSize -1]);
-        }		    
-		 	
+		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1;
+		prepReadFragment2(ringBuffer, ringBufferConsumer, tmpNextWokingTail, target, lastScriptPos, ringBufferConsumer.from.tokens[lastScriptPos]);	
+        
+//		int sum = 0;
+////		int j = ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor];
+////		while (--j>=0) {
+////			
+////							
+////			sum +=ringBufferConsumer.from.tokens[j+ ringBufferConsumer.cursor];
+////			
+////			
+////		}
+//		sum +=ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
+//		if (sum!=0) {
+//		//	System.err.println("error");
+//		}
+////		 
+////		if (ringBufferConsumer.from.hasVarLengthFields) {
+////			//the last field of this fragment will contain the total length for all var length fields
+////			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
+////		}		
+
 	}
 
 
-	private static void prepReadSequence(RingBuffer ringBuffer,
-			final RingWalker ringBufferConsumer,
-			final long target, int endingToken) {
-		//only in this block for groups and group length
-		 if ( (endingToken &  ( 0x04 <<TokenBuilder.SHIFT_TYPE)) != 0 ) {
-			 //TypeMask.GroupLength
-		     beginNewSequence(ringBuffer, ringBufferConsumer, target-1);
-		     ringBufferConsumer.nextWorkingTail = target;//save the size of this new fragment we are about to read 
+	private static void prepReadFragment2(RingBuffer ringBuffer,
+			final RingWalker ringBufferConsumer, long tmpNextWokingTail,
+			final long target, int lastScriptPos, int lastTokenOfFragment) {
+		//                                                                                                                         11011    must not equal               10000
+        if ( (lastTokenOfFragment &  ( 0x1B <<TokenBuilder.SHIFT_TYPE)) != ( 0x10<<TokenBuilder.SHIFT_TYPE ) ) {
+        	 ringBufferConsumer.nextWorkingTail = target;//save the size of this new fragment we are about to read 
+        } else {
+        	 openOrCloseSequenceWhileInsideFragment(ringBuffer,	ringBufferConsumer, tmpNextWokingTail, target, lastScriptPos, lastTokenOfFragment);
+        	 ringBufferConsumer.nextWorkingTail = target;
+        }
+	}
+
+
+	private static void openOrCloseSequenceWhileInsideFragment(
+			RingBuffer ringBuffer, final RingWalker ringBufferConsumer,
+			long tmpNextWokingTail, final long target, int lastScriptPos,
+			int lastTokenOfFragment) {
+		//this is a group or groupLength that has appeared while inside a fragment that does not start a message
+
+		 //this single bit on indicates that this starts a sequence length  00100
+		 if ( (lastTokenOfFragment &  ( 0x04 <<TokenBuilder.SHIFT_TYPE)) != 0 ) {
+			 //this is a groupLength Sequence that starts inside of a fragment 
+			 beginNewSequence(ringBufferConsumer, ringBuffer.buffer[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
 		 } else if (//if this is a closing sequence group.
-					 (endingToken & ( (OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close) <<TokenBuilder.SHIFT_OPER)) == ((OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close)<<TokenBuilder.SHIFT_OPER)          
+					 (lastTokenOfFragment & ( (OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close) <<TokenBuilder.SHIFT_OPER)) == ((OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close)<<TokenBuilder.SHIFT_OPER)          
 		            ) {
 		                continueSequence(ringBufferConsumer);
-		                ringBufferConsumer.nextWorkingTail = target;//save the size of this new fragment we are about to read 
-			        }  else {		
-			        	//this was not a sequence so the next point is found by a simple addition of the fragSize
-			        	ringBufferConsumer.nextWorkingTail = target;//save the size of this new fragment we are about to read 
-
 			        }
+		 
 	}
 
 
@@ -286,9 +308,7 @@ public class RingWalker {
 	}
 
 
-	private static void beginNewSequence(RingBuffer ringBuffer,	final RingWalker ringBufferConsumer, long pos) {
-		int seqLength = ringBuffer.buffer[ringBuffer.mask & (int)(pos)];
-		
+	private static void beginNewSequence(final RingWalker ringBufferConsumer, int seqLength) {
 		if (seqLength > 0) {
 			//System.err.println("started stack with:"+seqLength);
 			ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead]=seqLength;
@@ -308,9 +328,12 @@ public class RingWalker {
 		
 		//
 		//from the last known fragment move up the working tail position to this new fragment location
-		ringBuffer.workingTailPos.value = tmpNextWokingTail;//TODO: AAAAA, determine how to make this 1
-	//	ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value);
+		ringBuffer.workingTailPos.value = tmpNextWokingTail;
+		//TODO: AAAAA,  make same change here as we have on writer so this value is ready to be set upon release.
+		//              this will not be compatible with using the low level API that will be forced to do something else.
 		
+		ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value);
+				
 		//
 		//batched release of the old positions back to the producer
 		//could be done every time but batching reduces contention
@@ -341,9 +364,32 @@ public class RingWalker {
 			ringBufferConsumer.nextWorkingTail = tmpNextWokingTail + fragDataSize[ringBufferConsumer.msgIdx];//save the size of this new fragment we are about to read  		    		
 			ringBufferConsumer.cursor = ringBufferConsumer.msgIdx;  
 			
-			if (TypeMask.GroupLength == ((ringBufferConsumer.from.tokens[(ringBufferConsumer.nextCursor = ringBufferConsumer.msgIdx + ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.msgIdx]) -1] >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) {
-				beginNewSequence(ringBuffer, ringBufferConsumer, ringBufferConsumer.nextWorkingTail-1);
+			int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.msgIdx + ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.msgIdx]) -1;
+			if (TypeMask.GroupLength == ((ringBufferConsumer.from.tokens[lastScriptPos] >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) {
+				//Can not assume end of message any more.
+				beginNewSequence(ringBufferConsumer, ringBuffer.buffer[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
 			} 
+			
+			//CODE THIS AS A WALKER FIRST AND THEN CHECK THE PEROFMRNACE IMPACT BEFORE CHAING THE MESSAGE FORMAT
+//			
+//			int sum = 0;
+////			int j = ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor];
+////			while (--j>=0) {
+////				
+////								
+////				sum +=ringBufferConsumer.from.tokens[j+ ringBufferConsumer.cursor];
+////				
+////				
+////			}
+//			sum +=ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
+//			if (sum!=0) {
+//				//System.err.println("error");
+//			}
+////			
+////			if (ringBufferConsumer.from.hasVarLengthFields) {
+////				//the last field of this fragment will contain the total length for all var length fields
+////				ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
+////			}			
 			
 		} else {
 			//rare so we can afford some extra checking at this point 
@@ -358,8 +404,6 @@ public class RingWalker {
 			//this is commonly used as the end of file marker    		
 			ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+1;
 		}
-		
-		
 	}
     
  
@@ -445,13 +489,18 @@ public class RingWalker {
 			//Start new stack of fragments because this is a new message
 			ring.consumerData.activeWriteFragmentStack[0] = ring.consumerData.nextWorkingHead;
 			ring.buffer[ring.mask &(int)(ring.consumerData.nextWorkingHead + from.templateOffset)] = cursorPosition;
-			ring.workingHeadPos.value++;//add one so readers using this can assume the template id is written
-			
+
 		 } else {
 			//this fragment does not start a new message but its start position must be recorded for usage later
 			ring.consumerData.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=ring.consumerData.nextWorkingHead;
 		 }
 		ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + fragSize;
+		
+        
+    	//TODO: AAA, caution!!, when using the tryWrite form the working position is pre set and must not be incremented!!
+    	//               perhaps an assert high bit could be used to detect this situation'
+    			
+		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
 	}
 
 	public static void blockingFlush(RingBuffer ring) {

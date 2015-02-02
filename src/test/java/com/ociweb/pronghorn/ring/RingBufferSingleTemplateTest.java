@@ -10,7 +10,8 @@ import org.junit.Test;
 public class RingBufferSingleTemplateTest {
 
 	final FieldReferenceOffsetManager FROM = FieldReferenceOffsetManager.RAW_BYTES;
-	final int FRAG_LOC = 0;
+	final int FRAG_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
+	final int FRAG_FIELD = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD;
 	
     @Test
     public void simpleBytesWriteRead() {
@@ -51,15 +52,16 @@ public class RingBufferSingleTemplateTest {
         	if (j == 0) {
         		return;//done
         	}
-        
+
         	if (RingWalker.tryWriteFragment(ring,FRAG_LOC)) { //returns true if there is room to write this fragment
      		
         		int arraySize = (--j*blockSize)/testSize;
         		byte[] arrayData = buildTestData(arraySize);
         		        		
+        		RingWriter.writeBytes(ring, FRAG_FIELD, arrayData);
+        		
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
-        		//now we write the data for the message
-        		RingBuffer.addByteArray(arrayData, 0, arrayData.length, ring); //data for each field is written in order
+        		//now we write the data for the message        		
         		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
         		
         	} else {

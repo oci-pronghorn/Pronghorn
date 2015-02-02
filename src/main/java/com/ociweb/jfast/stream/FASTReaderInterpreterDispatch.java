@@ -121,14 +121,19 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         final RingBuffer rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
            
      
-        //one for the templateId that will be needed.
-        int fragmentSize = 1 + RingBuffer.from(rbRingBuffer).fragDataSize[activeScriptCursor]+RingBuffer.from(rbRingBuffer).templateOffset; //plus roomm for next message
-        
+        FieldReferenceOffsetManager from = RingBuffer.from(rbRingBuffer);
+		int fragmentSize = from.fragDataSize[activeScriptCursor]+from.templateOffset; //plus roomm for next message        
         //Waiting for tail position to change! can cache the value, must make same change in compiled code.
         long neededTailStop = rbRingBuffer.workingHeadPos.value   - rbRingBuffer.maxSize + fragmentSize;
         if (rbRingBuffer.consumerData.tailCache < neededTailStop && ((rbRingBuffer.consumerData.tailCache=rbRingBuffer.tailPos.longValue()) < neededTailStop) ) {
               return 0; //no space to read data and start new message so read nothing
         }
+        
+        
+        if (rbRingBuffer.workingHeadPos.value<rbRingBuffer.headPos.get()) {
+        	throw new UnsupportedOperationException();
+        }
+
         
         int token = fullScript[activeScriptCursor];
         do {

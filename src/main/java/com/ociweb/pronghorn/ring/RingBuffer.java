@@ -57,7 +57,7 @@ public final class RingBuffer {
 
     public final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos
     public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos
-    
+
     public final int maxByteSize;
     public final byte[] byteBuffer;
     public final int byteMask;
@@ -817,13 +817,9 @@ public final class RingBuffer {
     }
     
     public static void publishWrites(RingBuffer ring) {
-    	
-    	//for the low level API workingHeadPos is fine as is but when using the high level API it needs to be moved.
-    	//if desired this conditional could be removed by having high/low level publish methods
-    	if (ring.consumerData.nextWorkingHead>ring.workingHeadPos.value) {
-    		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
-    	}
 
+    	assert(ring.consumerData.nextWorkingHead<=ring.headPos.get() || ring.workingHeadPos.value<=ring.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
+    	    	
     	//publish this first so the bulk splitter will pick up all the values
     	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
     	//publish writes

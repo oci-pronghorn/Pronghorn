@@ -117,6 +117,7 @@ public class FieldReferenceOffsetManager {
             maximumFragmentStackDepth = 0;
             maxVarFieldPerUnit = .5f;
             hasSimpleMessagesOnly = false; //unknown case so set false.
+            
         } else {
         	tokens = scriptTokens;
         	messageStarts = computeMessageStarts(); 
@@ -130,6 +131,7 @@ public class FieldReferenceOffsetManager {
             //walk all the depths to find the deepest point.
             int m = 0; 
             int i = fragDepth.length;
+            
             while (--i>=0) {
             	m = Math.max(m, fragDepth[i]+1); //plus 1 because these are offsets and I want count
             }
@@ -161,16 +163,25 @@ public class FieldReferenceOffsetManager {
         int i = 0;      
         int fragmentStartIdx=0;
         int depth = 0; //used for base jub location when using high level API.
+        int sumOfVarLengthFields = 0;
         
         boolean nextTokenOpensFragment = true;// false; //must capture simple case when we do not have wrapping group?
         
         //must count these to ensure that var field writes stay small enough to never cause a problem in the byte ring.
         int varLenFieldCount = 0;
+        int varLenFieldLast = 0;
         float varLenMaxDensity = 0; //max varLength fields per int on outer ring buffer than can ever happen
         
+        //
+        //in order to provide the byte length data for readers we must add a following int
+        //for all fragments in order to capture the count of bytes that belong to this fragment
+        //however this should not be added if there is only 1 var length field and it is the last one
+        //this is because that is the value that will already appear in that slot.
+        //
+        
+        
         while (i<scriptLength) {          
-    //    	System.err.println("loading script at "+i);
-        	
+           	
             //now past the end of the template so 
             //close it because this index starts a new one
             //first position is always part of a new template
@@ -203,7 +214,13 @@ public class FieldReferenceOffsetManager {
                 }
                 
                 //NOTE: need performance test after rounding up the fragment size to the next nearest cache line. 
-                //fragDataSize[fragmentStartIdx] 
+                int size = fragDataSize[fragmentStartIdx];
+              //  fragDataSize[fragmentStartIdx]= ((size+127)>>7)<<7;
+                
+                if (1==varLenFieldCount && 1==varLenFieldLast) {
+                	System.err.println("need to optimize this one, all others should be incremented by 1");
+                }
+                
                 
                 fragmentStartIdx = i;    
                 
@@ -211,6 +228,9 @@ public class FieldReferenceOffsetManager {
                 //TODO: B, if optional group it will also need to be zero like seq
                 
                 fragDepth[fragmentStartIdx]= depth;//stack depth for reader and writer
+                
+                
+                
                 
                 //must be a group open only for a new message 
                 if ((!isSeq && isGroupOpen) || (0==fragmentStartIdx)) { 
@@ -229,28 +249,36 @@ public class FieldReferenceOffsetManager {
                 
                 
                 varLenFieldCount = 0;//reset to zero so we can count the number of var fields for this next fragment
-                
+                varLenFieldLast = 0;
                 
                 nextTokenOpensFragment = false;
             }
             
+            int token = scriptTokens[i];
+            int tokenType = TokenBuilder.extractType(token);
+
             if (isGroupClosed) {
                 depth--;
                 nextTokenOpensFragment = true;
+            } else {
+            	//do not count group closed against our search for if the last field is variable
+            	varLenFieldCount += (varLenFieldLast=TypeMask.ringBufferFieldVarLen[tokenType]);
             }
             if (isSeqLength) {
                 nextTokenOpensFragment = true;
             }
             
-            int token = scriptTokens[i];
             
             fragDataSize[i]=fragDataSize[fragmentStartIdx]; //keep the individual offsets per field
             fragDepth[i] = fragDepth[fragmentStartIdx];
             
-            int tokenType = TokenBuilder.extractType(token);
+            
+            sumOfVarLengthFields += TypeMask.ringBufferFieldVarLen[TokenBuilder.extractType(tokenType)];
+            
+            
 			int fSize = TypeMask.ringBufferFieldSize[tokenType];
 
-			varLenFieldCount += TypeMask.ringBufferFieldVarLen[tokenType];
+			
             
             fragDataSize[fragmentStartIdx] += fSize;
             fragScriptSize[fragmentStartIdx]++;
