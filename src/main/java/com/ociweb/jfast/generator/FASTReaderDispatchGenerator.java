@@ -89,8 +89,13 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadSequenceClose(int backvalue, int topCursorPos, FASTDecoder dispatch) {
-        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, backvalue, topCursorPos);
+    protected void genReadTotalMessageBytesUsed(int[] rbB, int rbMask, PaddedLong rbPos, int bytesConsumed) {    	
+    	GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
+    }
+    
+    @Override
+    protected void genReadSequenceClose(int topCursorPos, FASTDecoder dispatch) {
+        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, topCursorPos);
     }
     
     @Override

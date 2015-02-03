@@ -130,16 +130,14 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
     
-    protected void genWriteBytesUsedCount(int[] rbB, int rbMask, PaddedLong rbPos, int value) {
-    	
-    	//RingBuffer.addValue(rbB,rbMask,rbPos, value);
-    	
+    protected void genReadTotalMessageBytesUsed(int[] rbB, int rbMask, PaddedLong rbPos, int bytesConsumed) {    	
+    	RingBuffer.addValue(rbB,rbMask,rbPos, bytesConsumed);    	
     }
     
     // each sequence will need to repeat the pmap but we only need to push
     // and pop the stack when the sequence is first encountered.
     // if count is zero we can pop it off but not until then.
-    protected void genReadSequenceClose(int backvalue, int topCursorPos, FASTDecoder dispatch) {
+    protected void genReadSequenceClose(int topCursorPos, FASTDecoder dispatch) {
     	
         if (dispatch.sequenceCountStackHead >= 0) {        
             if (--dispatch.sequenceCountStack[dispatch.sequenceCountStackHead] < 1) {

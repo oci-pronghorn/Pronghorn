@@ -173,7 +173,9 @@ public abstract class BaseStreamingTest {
 			//close group 
 		    int idx = TokenBuilder.MAX_INSTANCE & groupToken;
 		    
-			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, RingBuffers.get( fr.ringBuffers, 0));
+			RingBuffer ringBuffer = RingBuffers.get( fr.ringBuffers, 0);			
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, ringBuffer, 
+					                                   FieldReferenceOffsetManager.USE_VAR_COUNT && 1==ringBuffer.consumerData.from.addByteCountToFragment[0] );
 			
 			g = fieldsPerGroup;
 			if (f>0 || i>0) {

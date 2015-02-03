@@ -206,6 +206,8 @@ public class RingWalker {
 		ringBuffer.workingTailPos.value = tmpNextWokingTail;
 		//save the index into these fragments so the reader will be able to find them.
 		ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] =tmpNextWokingTail;
+		
+		
 
 		//TODO: AAA still testing, needed so the release happens as frequently as the publish in an attempt to fix the relative string locations.
 		if ((--ringBufferConsumer.batchReleaseCountDown<=0)) {	
@@ -234,11 +236,11 @@ public class RingWalker {
 //		if (sum!=0) {
 //		//	System.err.println("error");
 //		}
-////		 
-////		if (ringBufferConsumer.from.hasVarLengthFields) {
-////			//the last field of this fragment will contain the total length for all var length fields
-////			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
-////		}		
+		 
+//		if (ringBufferConsumer.from.hasVarLengthFields) {
+//			//the last field of this fragment will contain the total length for all var length fields
+//			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
+//		}		
 
 	}
 
@@ -496,11 +498,18 @@ public class RingWalker {
 		 }
 		ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + fragSize;
 		
-        
-    	//TODO: AAA, caution!!, when using the tryWrite form the working position is pre set and must not be incremented!!
-    	//               perhaps an assert high bit could be used to detect this situation'
-    			
+        //this value is pre-set so flush and begin new message will pick up the right value
+		//if this gets incremented the error will be detected if asserts are on.
 		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
+		
+		//TODO: AAA, we can store this boolean in the ring so next publish can mak use of it?
+		//           the low level API can also set this so on flush it happens automatically?
+		//           publish MUST be called for every fragment, but it may not always do the full publish
+		
+		boolean doAddBytesCount = (1==from.addByteCountToFragment[cursorPosition]);
+		
+		
+		
 	}
 
 	public static void blockingFlush(RingBuffer ring) {
@@ -520,6 +529,14 @@ public class RingWalker {
 		RingWalker ringBufferConsumer = outputRing.consumerData;
 		outputRing.workingHeadPos.value = ringBufferConsumer.nextWorkingHead;
     	
+		if (outputRing.writeTrailingCountOfBytesConsumed) {
+			
+			long pos = outputRing.workingHeadPos.value;
+			
+			
+			RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, pos); //do not inc
+		}
+		
 		assert(outputRing.consumerData.nextWorkingHead<=outputRing.headPos.get() || outputRing.workingHeadPos.value<=outputRing.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
     	
 		if ((--ringBufferConsumer.batchPublishCountDown<=0)) {

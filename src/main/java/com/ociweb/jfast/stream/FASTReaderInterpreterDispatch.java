@@ -120,8 +120,10 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
        
         final RingBuffer rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
            
-     
         FieldReferenceOffsetManager from = RingBuffer.from(rbRingBuffer);
+     
+        boolean recordBytesUsed = (1==from.addByteCountToFragment[activeScriptCursor]);
+        		
 		int fragmentSize = from.fragDataSize[activeScriptCursor]+from.templateOffset; //plus roomm for next message        
         //Waiting for tail position to change! can cache the value, must make same change in compiled code.
         long neededTailStop = rbRingBuffer.workingHeadPos.value   - rbRingBuffer.maxSize + fragmentSize;
@@ -135,7 +137,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
 
         
-        int token = fullScript[activeScriptCursor];
+        
+        
+        int token;
         do {
             token = fullScript[activeScriptCursor];
   
@@ -211,7 +215,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                             } else {
                                 //Close group
                                 int idx = TokenBuilder.MAX_INSTANCE & token;
-                                closeGroup(token,idx, reader, rbRingBuffer);
+                                closeGroup(token,idx, reader, rbRingBuffer, recordBytesUsed);
                                 break;
                             }                            
                             
@@ -262,8 +266,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             
         } while (true);
         
-        genWriteBytesUsedCount(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value - rbRingBuffer.bytesHeadPos.get() );
-
+        if (recordBytesUsed) {
+        	genReadTotalMessageBytesUsed(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value - rbRingBuffer.bytesHeadPos.get() );
+        }
         genReadGroupCloseMessage(reader, this); 
                 
         
@@ -1439,7 +1444,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
-    public void closeGroup(int token, int backvalue, PrimitiveReader reader, RingBuffer rbRingBuffer) {
+    public void closeGroup(int token, int backvalue, PrimitiveReader reader, RingBuffer rbRingBuffer, boolean recordBytesUsed) {
 
         assert (token < 0);
         assert (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
@@ -1451,8 +1456,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         	//only do for fragments that do not end in length aleady
         	//this is fragment specific so how do we know?  The token could tell us?
         	//this behavior is fixed per fragment so the code gen will be right.
+        	//rbRingBuffer.consumerData.from
         	
-        	genWriteBytesUsedCount(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value - rbRingBuffer.bytesHeadPos.get() );
+        	if (recordBytesUsed) {
+        		genReadTotalMessageBytesUsed(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value - rbRingBuffer.bytesHeadPos.get() );
+        	}
         	
             genReadGroupClose(reader);
             
@@ -1461,10 +1469,10 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         //token driven logic so nothing will need to be generated for this false case
         if (0!=(token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))) {
             int topCursorPos = activeScriptCursor-backvalue;//constant for compiled code
-            
-            genWriteBytesUsedCount(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value - rbRingBuffer.bytesHeadPos.get() );
-            
-            genReadSequenceClose(backvalue, topCursorPos, this);
+            if (recordBytesUsed) {
+            	genReadTotalMessageBytesUsed(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value - rbRingBuffer.bytesHeadPos.get() );
+            }
+            genReadSequenceClose(topCursorPos, this);
         }         
     }
 

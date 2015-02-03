@@ -122,8 +122,9 @@ public class GeneratorUtils {
         	int cursorPos = IntWriteOnceOrderedSet.getItem(doneScripts,i++);
         	
             String methodCallArgs = doneScriptsParas.get(m++)
+                            		.replace("rbRingBuffer","rb") //NOTE: Must be first because rb is used by following replacements
+            						.replace("bytesConsumed", "rb.byteWorkingHeadPos.value - rb.bytesHeadPos.get()")
                                     .replace("dispatch","this")
-                                    .replace("rbRingBuffer","rb")
                                     .replace("byteBuffer", "rb.byteBuffer")
                                     .replace("byteMask", "rb.byteMask")                                    
                                     .replace("rbB","rb.buffer")

@@ -244,7 +244,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
 		    int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, ringBuffer);
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, ringBuffer, FieldReferenceOffsetManager.USE_VAR_COUNT && 1==ringBuffer.consumerData.from.addByteCountToFragment[0]);
 		}
 			
 		long duration = System.nanoTime() - start;

@@ -24,6 +24,7 @@ import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 import com.ociweb.jfast.stream.StreamingLongTest;
 import com.ociweb.jfast.stream.TestHelper;
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
@@ -347,7 +348,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				result |= j;//doing more nothing.
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken,idx, reader, ringBuffer);
+			staticReader.closeGroup(groupToken,idx, reader, ringBuffer, 1==ringBuffer.consumerData.from.addByteCountToFragment[0]);
 		}
 		return result;
 	}
@@ -388,7 +389,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				result |= TestHelper.readLong(token, reader, ringBuffer, staticReader);
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, ringBuffer);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, ringBuffer, FieldReferenceOffsetManager.USE_VAR_COUNT && 1==ringBuffer.consumerData.from.addByteCountToFragment[0]);
 		}
 		return result;
 	}

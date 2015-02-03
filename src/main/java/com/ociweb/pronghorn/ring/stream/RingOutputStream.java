@@ -22,21 +22,22 @@ public class RingOutputStream extends OutputStream {
 	}
 	
 	@Override
-	public void write(int b) throws IOException {
+	public void write(int b) {
 		oneByte[0] = (byte)(0xFF&b);
 		RingStreams.writeBytesToRing(oneByte, 0, 1, ring, blockSize);
 	}
 
 	@Override
-	public void write(byte[] b) throws IOException {
+	public void write(byte[] b) {
 		RingStreams.writeBytesToRing(b, 0, b.length, ring, blockSize);
 	}
 
 	@Override
-	public void write(byte[] b, int off, int len) throws IOException {
+	public void write(byte[] b, int off, int len) {
 		RingStreams.writeBytesToRing(b, off, len, ring, blockSize);
 	}
 
+	
 	@Override
 	public void close() throws IOException {
 		RingStreams.writeEOF(ring);

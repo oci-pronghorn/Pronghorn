@@ -233,6 +233,9 @@ public class RingBufferPipeline {
 							
 							 RingWalker.blockWriteFragment(outputRing, MESSAGE_LOC);
 							 RingWriter.writeBytes(outputRing, FIELD_LOC, testArray, 0, testArray.length);
+							 
+							//No need to write extra byte because this has 1 text field and it is last.		
+							 
 							 RingWalker.publishWrites(outputRing);
 
 						 }
@@ -263,6 +266,8 @@ public class RingBufferPipeline {
 			          long tailPosCache = spinBlockOnTail(tailPosition(outputRing), head, outputRing);                        
 			          while (--messageCount>=0) {
 			        	  
+			        	  
+			        	  
 			              //write the record
 			        	  RingBuffer.addMsgIdx(outputRing, 0);
 		                  addByteArray(testArray, 0, testArray.length, outputRing);
@@ -270,7 +275,10 @@ public class RingBufferPipeline {
 					 	  if (0==(batchMask&messageCount)) {
 							 publishWrites(outputRing);
 					 	  }
-		                  head +=messageSize;
+		                  head += messageSize;
+		                  
+		                  //No need to write extra byte because this has 1 text field and it is last.		                  
+		                  
 		                  //wait for room to fit one message
 		                  //waiting on the tailPosition to move the others are constant for this scope.
 		                  //workingHeadPositoin is same or greater than headPosition
@@ -427,6 +435,7 @@ public class RingBufferPipeline {
 						int msgId = 0;
 						do {
 							
+							//try also releases previously read fragments
 							if (RingWalker.tryReadFragment(inputRing)) {
 														
 								
@@ -464,10 +473,12 @@ public class RingBufferPipeline {
 							} else {
 								Thread.yield();//do something meaningful while we wait for new data
 							}
-							releaseReadLock(inputRing);
+							
 							//exit the loop logic is not defined by the ring but instead is defined by data/usage, in this case we use a null byte array aka (-1 length)
 						} while (msgId!=-1);
-	            		
+						
+	            		//final release of all outstanding messages
+						releaseReadLock(inputRing);
 				      	
 	            	} catch (Throwable t) {
 	            		RingBuffer.shutDown(inputRing);
@@ -509,7 +520,10 @@ public class RingBufferPipeline {
 							} 
 							lastPos = pos;
 							
-	                    	
+	               //TODO: AAAAA must increment the next byte position before reading the next record.
+					
+							
+							
 	    					byte[] data = byteBackingArray(meta, inputRing);
 	    					int mask = byteMask(inputRing);
 	   					
@@ -562,6 +576,9 @@ public class RingBufferPipeline {
                         long head = RingReader.readLong(inputRing, RingBufferMonitorStage.TEMPLATE_HEAD_LOC);
                         long tail = RingReader.readLong(inputRing, RingBufferMonitorStage.TEMPLATE_TAIL_LOC);
                         int tmpId = RingReader.readInt(inputRing, RingBufferMonitorStage.TEMPLATE_MSG_LOC);
+                        
+                        
+                    //TODO: AAA there is no text field used here so the last value will always be zero and we need to pull it.    
                         
                         inputRing.workingTailPos.value+=monitorMessageSize;
                                  

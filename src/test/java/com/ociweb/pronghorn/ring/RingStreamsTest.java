@@ -195,14 +195,7 @@ public class RingStreamsTest {
 
 			int i = 0;
 			while (i < datLen) {
-				try {
-					ringOutputStream.write(testData[i++]);
-				} catch (IOException e) {
-					
-					e.printStackTrace();
-					fail();
-					
-				}
+				ringOutputStream.write(testData[i++]);
 			}
 			try {
 				ringOutputStream.close();

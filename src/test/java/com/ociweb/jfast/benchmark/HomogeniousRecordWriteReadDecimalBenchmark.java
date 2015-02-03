@@ -269,7 +269,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
             
             //ringBuffers.
             
-            staticReader.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx, reader, rbRingBuffer);
+            staticReader.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx, reader, rbRingBuffer, 1==rbRingBuffer.consumerData.from.addByteCountToFragment[0]);
         }
         return result;
     }
@@ -340,7 +340,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                 result |= j;
             }
             int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-            staticReader.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx, reader, rbRingBuffer);
+            staticReader.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx, reader, rbRingBuffer, FieldReferenceOffsetManager.USE_VAR_COUNT && 1==rbRingBuffer.consumerData.from.addByteCountToFragment[0]);
         }
         return result;
     }

@@ -35,7 +35,7 @@ public class RingInputStream extends InputStream {
 	}
 		
 	@Override
-	public int read() throws IOException {
+	public int read() {
 		//this array does not escape the scope of this method so it will
 		//probably be removed by the runtime compiler and directly use stack space
 		
@@ -50,7 +50,7 @@ public class RingInputStream extends InputStream {
 	}
 
 	@Override
-	public int read(byte[] b) throws IOException {
+	public int read(byte[] b) {
 		//favor true as the most frequent branch and keep the happy path first
 		//this helps branch prediction and pre-fetch
 		int result;
@@ -66,7 +66,7 @@ public class RingInputStream extends InputStream {
 	}
 
 	@Override
-	public int read(byte[] targetData, int targetOffset, int targetLength) throws IOException {
+	public int read(byte[] targetData, int targetOffset, int targetLength) {
 		//favor true as the most frequent branch and keep the happy path first
 		//this helps branch prediction and pre-fetch
 		int result;
@@ -81,8 +81,7 @@ public class RingInputStream extends InputStream {
 		return result;
 	}
 
-	private int blockForNewContent(byte[] targetData, int targetOffset,
-			int targetLength) {
+	private int blockForNewContent(byte[] targetData, int targetOffset, int targetLength) {
 		int returnLength = 0;
 		long target = tailPosition(ring);
 		long headPosCache = headPosition(ring);
@@ -134,8 +133,7 @@ public class RingInputStream extends InputStream {
 		}
 	}
 
-	private int sendRemainingContent(byte[] targetData, int targetOffset,
-			int targetLength) {
+	private int sendRemainingContent(byte[] targetData, int targetOffset, int targetLength) {
 		//send the rest of the data that we could not last time 
 		//we assume that ending remaining content happens more frequently than the continuation
 		if (remainingSourceLength<=targetLength) {
@@ -145,8 +143,7 @@ public class RingInputStream extends InputStream {
 		}
 	}
 
-	private int continueRemainingContent(byte[] targetData, int targetOffset,
-			int targetLength) {
+	private int continueRemainingContent(byte[] targetData, int targetOffset, int targetLength) {
 		//only part of the block can be sent so save some for later
 		
 		copyData(targetData, targetOffset, targetLength, byteBackingArray(remainingSourceMeta, ring), remainingSourceOffset);
@@ -167,8 +164,7 @@ public class RingInputStream extends InputStream {
 		return len;
 	}
 
-	private void copyData(byte[] targetData, int targetOffset, int sourceLength,
-			byte[] sourceData, int sourceOffset) {
+	private void copyData(byte[] targetData, int targetOffset, int sourceLength, byte[] sourceData, int sourceOffset) {
 
 		if ((sourceOffset&sourceByteMask) > ((sourceOffset+sourceLength-1) & sourceByteMask)) {
 			//rolled over the end of the buffer

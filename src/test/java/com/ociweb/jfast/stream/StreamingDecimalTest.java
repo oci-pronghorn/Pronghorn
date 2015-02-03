@@ -230,7 +230,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
         if (((fieldsPerGroup * fields) % fieldsPerGroup) == 0) {
             int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-            fr.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER),idx, reader, rb);
+            fr.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER),idx, reader, rb, FieldReferenceOffsetManager.USE_VAR_COUNT &&  1==rb.consumerData.from.addByteCountToFragment[0]);
         }
 
         long duration = System.nanoTime() - start;

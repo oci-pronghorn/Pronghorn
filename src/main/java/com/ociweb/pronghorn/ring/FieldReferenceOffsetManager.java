@@ -22,7 +22,13 @@ public class FieldReferenceOffsetManager {
     public int[] fragScriptSize;
     public int[] tokens;
     public int[] messageStarts;
+    
+    //NOTE: these two arrays could be combined with a mask to simplify this in the future.
     public int[] fragDepth;
+    public int[] addByteCountToFragment;//TODO: put value in here to be indexed later when needed. low and high level will use it?
+      //FAST decode looks it up at front of fragment and writes extra total filed
+      //low level api will require message id to look up of trailing message is needed
+      //high level api ??? how is this done?
     
     public final String[] fieldNameScript;
     public final long[] fieldIdScript;
@@ -62,7 +68,8 @@ public class FieldReferenceOffsetManager {
     public static final int RW_FIELD_OFF_BITS = (32-(STACK_OFF_BITS+TokenBuilder.BITS_TYPE));
     public final static int RW_STACK_OFF_MASK = (1<<STACK_OFF_BITS)-1;
     public final static int RW_STACK_OFF_SHIFT = 32-STACK_OFF_BITS;
-    public final static int RW_FIELD_OFF_MASK = (1<<RW_FIELD_OFF_BITS)-1; 
+    public final static int RW_FIELD_OFF_MASK = (1<<RW_FIELD_OFF_BITS)-1;
+	public static final boolean USE_VAR_COUNT = false;//once this works inline it everywhere.
     
 	
     /**
@@ -113,6 +120,7 @@ public class FieldReferenceOffsetManager {
             fragDataSize = null;
             fragScriptSize = null;
             fragDepth = null;
+            addByteCountToFragment = null;
             
             maximumFragmentStackDepth = 0;
             maxVarFieldPerUnit = .5f;
@@ -125,6 +133,7 @@ public class FieldReferenceOffsetManager {
             fragDataSize  = new int[scriptTokens.length]; //size of fragments and offsets to fields, first field of each fragment need not use this!
             fragScriptSize = new int[scriptTokens.length];
             fragDepth = new int[scriptTokens.length];
+            addByteCountToFragment = new int[scriptTokens.length];//full of zeros by default
             
             maxVarFieldPerUnit = buildFragScript(scriptTokens, preableBytes);
             
@@ -217,21 +226,19 @@ public class FieldReferenceOffsetManager {
                 //to know about the full size and append the right fields of the right size
                 int size = fragDataSize[fragmentStartIdx];
                 
-                if (1==varLenFieldCount && 1==varLenFieldLast) {
-                	System.err.println("need to optimize this one, all others should be incremented by 1");
-                } else {
-          //      	fragDataSize[fragmentStartIdx] = size+1;
+                if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+                	if (1!=varLenFieldCount || 1!=varLenFieldLast) {
+                		fragDataSize[fragmentStartIdx] = size+1;
+                		addByteCountToFragment[fragmentStartIdx] = 1; //in all other cases its zero.
+                	}
                 }
-                
-                
                 fragmentStartIdx = i;    
                 
                 boolean isSeq = (0 != (scriptTokens[i] & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)));
                 //TODO: B, if optional group it will also need to be zero like seq
                 
                 fragDepth[fragmentStartIdx]= depth;//stack depth for reader and writer
-                
-                
+                                
                 
                 
                 //must be a group open only for a new message 

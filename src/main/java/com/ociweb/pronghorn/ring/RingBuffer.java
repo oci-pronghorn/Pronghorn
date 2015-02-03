@@ -84,6 +84,7 @@ public final class RingBuffer {
     public final byte bBits;
     
     private final AtomicBoolean shutDown = new AtomicBoolean(false);//TODO: A, create unit test examples for using this.
+	boolean writeTrailingCountOfBytesConsumed;
     
     
     public RingBuffer(RingBufferConfig config) {
@@ -665,6 +666,9 @@ public final class RingBuffer {
  
     //must be called by low-level API when starting a new message
     public static void addMsgIdx(RingBuffer rb, int value) {
+    	
+    	 assert(rb.consumerData.nextWorkingHead<=rb.headPos.get() || rb.workingHeadPos.value<=rb.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
+    	   
     	 rb.bytesHeadPos.lazySet(rb.byteWorkingHeadPos.value);    	
 		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
 	}
@@ -817,7 +821,11 @@ public final class RingBuffer {
     }
     
     public static void publishWrites(RingBuffer ring) {
-
+    	
+    	if (ring.writeTrailingCountOfBytesConsumed) {
+			writeTrailingCountOfBytesConsumed(ring, ring.workingHeadPos.value++); //increment because this is the low-level API calling
+		} //MUST be before the assert.
+    	
     	assert(ring.consumerData.nextWorkingHead<=ring.headPos.get() || ring.workingHeadPos.value<=ring.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
     	    	
     	//publish this first so the bulk splitter will pick up all the values
@@ -905,6 +913,11 @@ public final class RingBuffer {
 
 	public static FieldReferenceOffsetManager from(RingBuffer ring) {
 		return ring.consumerData.from;
+	}
+
+	public static void writeTrailingCountOfBytesConsumed(RingBuffer ring, long pos) {
+		ring.buffer[ring.mask & (int)pos] = ring.byteWorkingHeadPos.value - ring.bytesHeadPos.get();			
+		ring.writeTrailingCountOfBytesConsumed = false;
 	}
 	
 }
