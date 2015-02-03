@@ -519,6 +519,9 @@ public class RingWalker {
 	public static void publishWrites(RingBuffer outputRing) {
 		RingWalker ringBufferConsumer = outputRing.consumerData;
 		outputRing.workingHeadPos.value = ringBufferConsumer.nextWorkingHead;
+    	
+		assert(outputRing.consumerData.nextWorkingHead<=outputRing.headPos.get() || outputRing.workingHeadPos.value<=outputRing.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
+    	
 		if ((--ringBufferConsumer.batchPublishCountDown<=0)) {
 			RingBuffer.publishWrites(outputRing);
 			ringBufferConsumer.batchPublishCountDown = ringBufferConsumer.batchPublishCountDownInit;

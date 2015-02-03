@@ -213,12 +213,14 @@ public class FieldReferenceOffsetManager {
                 	}                	
                 }
                 
-                //NOTE: need performance test after rounding up the fragment size to the next nearest cache line. 
+                //NOTE: this size can not be changed up without reason, any place the low level API is used it will need
+                //to know about the full size and append the right fields of the right size
                 int size = fragDataSize[fragmentStartIdx];
-              //  fragDataSize[fragmentStartIdx]= ((size+127)>>7)<<7;
                 
                 if (1==varLenFieldCount && 1==varLenFieldLast) {
                 	System.err.println("need to optimize this one, all others should be incremented by 1");
+                } else {
+          //      	fragDataSize[fragmentStartIdx] = size+1;
                 }
                 
                 

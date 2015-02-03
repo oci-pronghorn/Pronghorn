@@ -375,9 +375,12 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		int result = 0;
 		int pmapSize = 0;
 		int groupToken = groupTokenNoMap;
+		
+		RingBuffer rbRingBuffer = RingBuffers.get(staticReader.ringBuffers,0);
+		
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
-			writer.reset(writer); //clear any values found in writer
+			PrimitiveWriter.reset(writer); //clear any values found in writer
 			dictionaryFactory.reset(staticWriter.rIntDictionary);
             dictionaryFactory.reset(staticWriter.rLongDictionary);
             dictionaryFactory.reset(staticWriter.byteHeap); //reset message to clear out old values;
@@ -405,7 +408,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				result |= j;//doing more nothing.
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken,idx, reader);
+			staticReader.closeGroup(groupToken,idx, reader, rbRingBuffer);
 		}
 		return result;
 	}
@@ -472,7 +475,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				result |= readText(token, reader, staticReader);
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, rbRingBufferLocal);
 		}
 		return result;
 	}
@@ -487,18 +490,18 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
                                                             // the work.
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                 // ascii
-                decoder.readTextASCII(token, reader, RingBuffers.get(decoder.ringBuffers,0));
+                decoder.readTextASCII(token, reader, rbRingBuffer);
             } else {
                 // utf8
-                decoder.readTextUTF8(token, reader, RingBuffers.get(decoder.ringBuffers,0));
+                decoder.readTextUTF8(token, reader, rbRingBuffer);
             }
         } else {
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                 // ascii optional
-                decoder.readTextASCIIOptional(token, reader, RingBuffers.get(decoder.ringBuffers,0));
+                decoder.readTextASCIIOptional(token, reader, rbRingBuffer);
             } else {
                 // utf8 optional
-                decoder.readTextUTF8Optional(token, reader, RingBuffers.get(decoder.ringBuffers,0));
+                decoder.readTextUTF8Optional(token, reader, rbRingBuffer);
             }
         }
         

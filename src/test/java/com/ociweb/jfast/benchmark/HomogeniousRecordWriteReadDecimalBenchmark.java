@@ -234,6 +234,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
         int result = 0;
         int groupToken = groupTokenNoMap;
         int pmapSize = 0;
+        RingBuffer rbRingBuffer = RingBuffers.get(staticReader.ringBuffers,0);
         for (int i = 0; i < reps; i++) {
             output.reset(); // reset output to start of byte buffer
             PrimitiveWriter.reset(writer); // clear any values found in writer
@@ -265,7 +266,10 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                 result |= j;// doing more nothing.
             }
             int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-            staticReader.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx, reader);
+            
+            //ringBuffers.
+            
+            staticReader.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx, reader, rbRingBuffer);
         }
         return result;
     }
@@ -326,15 +330,17 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
             // staticReader.reset(); //reset message to clear the previous
             // values
 
+            RingBuffer rbRingBuffer = RingBuffers.get(staticReader.ringBuffers,0);
+            
             staticReader.openGroup(groupToken, pmapSize, reader);
             j = intTestData.length;
             while (--j >= 0) {
                 
-                staticReader.dispatchReadByTokenForDecimal(reader,token,token, RingBuffers.get(staticReader.ringBuffers,0));
+				staticReader.dispatchReadByTokenForDecimal(reader,token,token, rbRingBuffer);
                 result |= j;
             }
             int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-            staticReader.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx, reader);
+            staticReader.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx, reader, rbRingBuffer);
         }
         return result;
     }

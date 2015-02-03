@@ -92,7 +92,8 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			.createFASTWriterInterpreterDispatch(new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null, 64,4, 100, new ClientConfig(8 ,7) ));
 	
 	static final TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null, 64,maxGroupCount * 10, -1,  new ClientConfig(8 ,7));
-	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)testCatalog.clientConfig().getPrimaryRingBits(),(byte)testCatalog.clientConfig().getTextRingBits(),testCatalog.ringByteConstants(), testCatalog.getFROM())));
+	private static final RingBuffer RB = new RingBuffer((byte)testCatalog.clientConfig().getPrimaryRingBits(),(byte)testCatalog.clientConfig().getTextRingBits(),testCatalog.ringByteConstants(), testCatalog.getFROM());
+	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog, RingBuffers.buildNoFanRingBuffers(RB));
 	
 	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group, 0, 0);
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_PMap, 0);
@@ -338,13 +339,15 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			
 			FASTDecoder.reset(dictionaryFactory, staticReader); //reset message to clear the previous values
 			
+			RingBuffer ringBuffer = RingBuffers.get(staticReader.ringBuffers,0);
+			
 			staticReader.openGroup(groupToken, pmapSize, reader);
 			j = longTestData.length;
 			while (--j>=0) {
 				result |= j;//doing more nothing.
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken,idx, reader);
+			staticReader.closeGroup(groupToken,idx, reader, ringBuffer);
 		}
 		return result;
 	}
@@ -378,13 +381,14 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//staticReader.reset(); //reset message to clear the previous values
 			
+			RingBuffer ringBuffer = RingBuffers.get(staticReader.ringBuffers,0);
 			staticReader.openGroup(groupToken, pmapSize, reader);
 			j = longTestData.length;
 			while (--j>=0) {
-				result |= TestHelper.readLong(token, reader, RingBuffers.get(staticReader.ringBuffers,0), staticReader);
+				result |= TestHelper.readLong(token, reader, ringBuffer, staticReader);
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, ringBuffer);
 		}
 		return result;
 	}

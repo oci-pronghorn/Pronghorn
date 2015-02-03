@@ -19,8 +19,8 @@ public class RingBufferPipeline {
 	private static final String testString = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@@";
 	//using length of 61 because it is prime and will wrap at odd places
 	private final byte[] testArray = testString.getBytes();//, this is a reasonable test message.".getBytes();
-	private final int testMessages = 10000000;
-	private final int stages = 4;
+	private final int testMessages = 10000000; //TODO: AA, must bump this out one more after the byte var rel pos logic is fixed.
+	private final int stages = 3;
 	private final byte primaryBits   = 17;
 	private final byte secondaryBits = 22;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
     
@@ -79,14 +79,18 @@ public class RingBufferPipeline {
 	private void pipelineTest(boolean highLevelAPI, boolean useTaps, boolean monitor) {
 			 
 		 int stagesBetweenSourceAndSink = stages -2;
-		 int splits = 1;
+		 final int splits = 4;
 		 
-		 //                          monitor dumpers           taps are all daemon 
-		 int daemonThreads = (monitor ? (stages-1) : 0) + (useTaps ? stagesBetweenSourceAndSink : 0);
-		 int schcheduledThreads = 1;
+		 int daemonThreads = (useTaps ? stagesBetweenSourceAndSink : 0);
+		 int schcheduledThreads = 2;
+		
 		 int normalThreads =    2/* source and sink*/   + (useTaps ? splits-1 : stagesBetweenSourceAndSink);
 		 int totalThreads = daemonThreads+schcheduledThreads+normalThreads;
 		 
+		 if (totalThreads > Runtime.getRuntime().availableProcessors()) {
+			 System.err.println("test skipped on this hardware, needs "+totalThreads+" cores.");
+			 return;
+		 }
 		 
 		 
 		 //build all 3 executors
@@ -117,12 +121,11 @@ public class RingBufferPipeline {
 			 if (monitor) {
 				 monitorRings[j] = new RingBuffer((byte)16,(byte)2,null,montorFROM);
 				 monitorStages[j] = new RingBufferMonitorStage(rings[j], monitorRings[j]);	
-				 scheduledService.scheduleAtFixedRate(monitorStages[j], j, 40, TimeUnit.MILLISECONDS);			 
-				 daemonService.submit(dumpMonitor(monitorRings[j]));
+				 scheduledService.scheduleAtFixedRate(monitorStages[j], j, 40, TimeUnit.MILLISECONDS);	
+				 scheduledService.scheduleAtFixedRate(dumpMonitor(monitorRings[j]), j, 40, TimeUnit.MILLISECONDS);	
 			 }
 		 }
-		 
-		 
+		 		 
 		 
 		 //start the timer		 
 		 long start = System.currentTimeMillis();
@@ -134,24 +137,19 @@ public class RingBufferPipeline {
 		 int i = stagesBetweenSourceAndSink;
 		 while (--i>=0) {
 			 if (useTaps) {
-				 
-				 if (useTaps) {
-					 if (splits>1) {
-						 RingBuffer[] splitsBuffers = new RingBuffer[splits]; 
-						 int k = splits;
-						 while (--k>0) {
-							 splitsBuffers[k] = new RingBuffer(primaryBits, secondaryBits);
-							 ///
-							 normalService.submit(dumpStage(splitsBuffers[k], highLevelAPI));
-						 }
-						 splitsBuffers[0] = rings[j];
-						 daemonService.submit(new SplitterStage(rings[j++], splitsBuffers));//rings[j]));
-					 } else {
-						 daemonService.submit(new SplitterStage(rings[j++], rings[j]));
+				 					 
+				 RingBuffer[] splitsBuffers = new RingBuffer[splits];
+				 splitsBuffers[0] = rings[j+1];//must jump ahead because we are setting this early
+				 if (splits>1) {
+					 int k = splits;
+					 while (--k>0) {
+						 splitsBuffers[k] = new RingBuffer(primaryBits, secondaryBits);
+						 ///
+						 normalService.submit(dumpStage(splitsBuffers[k], highLevelAPI));
 					 }
-				 } else {
-					 daemonService.submit(new SplitterStage(rings[j++], rings[j]));
-				 }
+				 } 
+				 daemonService.submit(new SplitterStage(rings[j++], splitsBuffers));
+				 
 			 } else {			 
 				 normalService.submit(copyStage(rings[j++], rings[j], highLevelAPI));		
 			 }
@@ -159,7 +157,7 @@ public class RingBufferPipeline {
 		 }
 		 normalService.submit(dumpStage(rings[j], highLevelAPI));
 		 
-		 System.out.println("########################################################## Testing "+ (highLevelAPI?"HIGH level ":"LOW level ")+(useTaps? "using taps ":"")+(monitor?"monitored":"")+" totalThreads:"+totalThreads);
+		 System.out.println("########################################################## Testing "+ (highLevelAPI?"HIGH level ":"LOW level ")+(useTaps? "using "+splits+" taps ":"")+(monitor?"monitored":"")+" totalThreads:"+totalThreads);
 		 
 		 
 		 
@@ -168,7 +166,7 @@ public class RingBufferPipeline {
 		// System.err.println("waiting for finish");
 		 //blocks until all the submitted runnables have stopped
 		 try {
-			normalService.awaitTermination(10, TimeUnit.MINUTES);
+			normalService.awaitTermination(40, TimeUnit.SECONDS);
 		 } catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		 }
@@ -448,7 +446,7 @@ public class RingBufferPipeline {
 									//test that pos moves as expected
 									int pos = RingReader.readBytesPosition(inputRing, FIELD_ID);
 									if (lastPos>=0) {
-										assertEquals((lastPos+len)&inputRing.byteMask,pos&inputRing.byteMask);
+										assertEquals((lastPos+len)&inputRing.byteMask, pos&inputRing.byteMask);
 									} 
 									lastPos = pos;
 									

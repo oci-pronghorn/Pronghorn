@@ -125,11 +125,22 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         LocalHeap.copy(source,target,byteHeap);
     }
     
+    protected void genReadGroupPMapOpen(int nonTemplatePMapSize, PrimitiveReader reader) {
+    	PrimitiveReader.openPMap(nonTemplatePMapSize, reader);
+    }
+    
+    
+    protected void genWriteBytesUsedCount(int[] rbB, int rbMask, PaddedLong rbPos, int value) {
+    	
+    	//RingBuffer.addValue(rbB,rbMask,rbPos, value);
+    	
+    }
+    
     // each sequence will need to repeat the pmap but we only need to push
     // and pop the stack when the sequence is first encountered.
     // if count is zero we can pop it off but not until then.
     protected void genReadSequenceClose(int backvalue, int topCursorPos, FASTDecoder dispatch) {
-       
+    	
         if (dispatch.sequenceCountStackHead >= 0) {        
             if (--dispatch.sequenceCountStack[dispatch.sequenceCountStackHead] < 1) {
                 // this group is a sequence so pop it off the stack.
@@ -141,16 +152,13 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             }
         }
     }
-    
-    protected void genReadGroupPMapOpen(int nonTemplatePMapSize, PrimitiveReader reader) {
-        PrimitiveReader.openPMap(nonTemplatePMapSize, reader);
-    }
 
     protected void genReadGroupClose(PrimitiveReader reader) {
         PrimitiveReader.closePMap(reader);
     }
     
     protected void genReadGroupCloseMessage(PrimitiveReader reader, FASTDecoder dispatch) {
+    	
         if (dispatch.sequenceCountStackHead<0) { 
             dispatch.activeScriptCursor = -1;
             PrimitiveReader.closePMap(reader);

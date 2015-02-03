@@ -201,6 +201,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		
 		fr.openGroup(groupToken, maxMPapBytes, reader);
 		
+		RingBuffer ringBuffer = RingBuffers.get(fr.ringBuffers,0);
 		while (--i>=0) {
 			int f = fields;
 			
@@ -210,12 +211,12 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 														
 				if (((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER)==OperatorMask.Field_Constant) {
 					if (sendNulls && (i&MASK)==0 && TokenBuilder.isOptional(token)) {
-			     		int value = TestHelper.readInt(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0), fr);
+						int value = TestHelper.readInt(tokenLookup[f], reader, ringBuffer, fr);
 						if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
 							assertEquals(TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
 						}
 					} else { 
-						int value = TestHelper.readInt(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0), fr);
+						int value = TestHelper.readInt(tokenLookup[f], reader, ringBuffer, fr);
 						if (testConst!=value) {
 							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
 							assertEquals(testConst, value);
@@ -225,12 +226,12 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				} else {	
 				
 					if (sendNulls && (f&MASK)==0 && TokenBuilder.isOptional(token)) {
-			     		int value = TestHelper.readInt(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0), fr);
+			     		int value = TestHelper.readInt(tokenLookup[f], reader, ringBuffer, fr);
 						if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
 							assertEquals(TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
 						}
 					} else { 
-						int value = TestHelper.readInt(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0), fr);
+						int value = TestHelper.readInt(tokenLookup[f], reader, ringBuffer, fr);
 						if (testData[f]!=value) {
 							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
 							assertEquals(testData[f], value);
@@ -243,7 +244,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
 		    int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, ringBuffer);
 		}
 			
 		long duration = System.nanoTime() - start;

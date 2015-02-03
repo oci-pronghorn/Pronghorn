@@ -585,6 +585,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	
 	protected int staticWriteReadOverheadGroup(int reps, int token, int groupToken, int pmapSize) {
 		int result = 0;
+		RingBuffer ringBuffer = RingBuffers.get(staticReader.ringBuffers,staticReader.activeScriptCursor);
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
 			PrimitiveWriter.reset(writer); //clear any values found in writer
@@ -615,7 +616,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 				result |= j;//pr.readIntegerUnsigned();////j;//doing more nothing.
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, ringBuffer);
 		}
 		return result;
 	}
@@ -652,12 +653,13 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			//staticReader.reset(); //reset message to clear the previous values
 			
 			staticReader.openGroup(groupToken, pmapSize, reader);
+			RingBuffer ringBuffer = RingBuffers.get(staticReader.ringBuffers,staticReader.activeScriptCursor);
 			j = intTestData.length;
 			while (--j>=0) {
-				result |= TestHelper.readInt(token, reader, RingBuffers.get(staticReader.ringBuffers,staticReader.activeScriptCursor), staticReader);
+				result |= TestHelper.readInt(token, reader, ringBuffer, staticReader);
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader,ringBuffer);
 		}
 		return result;
 	}

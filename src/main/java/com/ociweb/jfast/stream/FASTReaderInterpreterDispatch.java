@@ -211,7 +211,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                             } else {
                                 //Close group
                                 int idx = TokenBuilder.MAX_INSTANCE & token;
-                                closeGroup(token,idx, reader);
+                                closeGroup(token,idx, reader, rbRingBuffer);
                                 break;
                             }                            
                             
@@ -262,8 +262,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             
         } while (true);
         
+        genWriteBytesUsedCount(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value - rbRingBuffer.bytesHeadPos.get() );
+
         genReadGroupCloseMessage(reader, this); 
                 
+        
         //Must do last because this will let the other threads begin to use this data
         RingBuffer.publishWrites(rbRingBuffer); //TODO: X, may be able to improve performance by doing this occasionally 
         return 1;//read one fragment 
@@ -1436,19 +1439,31 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
-    public void closeGroup(int token, int backvalue, PrimitiveReader reader) {
+    public void closeGroup(int token, int backvalue, PrimitiveReader reader, RingBuffer rbRingBuffer) {
 
         assert (token < 0);
         assert (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
 
+        //TODO: B, this logic seems wrong could both happen?
+        
         if (0 != (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
+        	
+        	//only do for fragments that do not end in length aleady
+        	//this is fragment specific so how do we know?  The token could tell us?
+        	//this behavior is fixed per fragment so the code gen will be right.
+        	
+        	genWriteBytesUsedCount(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value - rbRingBuffer.bytesHeadPos.get() );
+        	
             genReadGroupClose(reader);
             
         }
-
+        
         //token driven logic so nothing will need to be generated for this false case
         if (0!=(token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))) {
             int topCursorPos = activeScriptCursor-backvalue;//constant for compiled code
+            
+            genWriteBytesUsedCount(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value - rbRingBuffer.bytesHeadPos.get() );
+            
             genReadSequenceClose(backvalue, topCursorPos, this);
         }         
     }
