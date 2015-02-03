@@ -80,7 +80,7 @@ public class RingBufferMonitorStage implements Runnable {
 			RingWalker.publishWrites(notifyRingBuffer);			
 			
 		} catch (Throwable t) {
-			RingBuffer.shutDown(notifyRingBuffer);
+			RingBuffer.shutdown(notifyRingBuffer);
 		}
 	}
 

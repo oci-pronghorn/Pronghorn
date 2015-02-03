@@ -87,10 +87,10 @@ public class RingBufferPipeline {
 		 int normalThreads =    2/* source and sink*/   + (useTaps ? splits-1 : stagesBetweenSourceAndSink);
 		 int totalThreads = daemonThreads+schcheduledThreads+normalThreads;
 		 
-		 if (totalThreads > Runtime.getRuntime().availableProcessors()) {
-			 System.err.println("test skipped on this hardware, needs "+totalThreads+" cores.");
-			 return;
-		 }
+//		 if (totalThreads > Runtime.getRuntime().availableProcessors()) {
+//			 System.err.println("test skipped on this hardware, needs "+totalThreads+" cores.");
+//			 return;
+//		 }
 		 
 		 
 		 //build all 3 executors
@@ -121,8 +121,8 @@ public class RingBufferPipeline {
 			 if (monitor) {
 				 monitorRings[j] = new RingBuffer((byte)16,(byte)2,null,montorFROM);
 				 monitorStages[j] = new RingBufferMonitorStage(rings[j], monitorRings[j]);	
-				 scheduledService.scheduleAtFixedRate(monitorStages[j], j, 40, TimeUnit.MILLISECONDS);	
-				 scheduledService.scheduleAtFixedRate(dumpMonitor(monitorRings[j]), j, 40, TimeUnit.MILLISECONDS);	
+				 scheduledService.scheduleAtFixedRate(monitorStages[j], j*5, 40, TimeUnit.MILLISECONDS);	
+				 scheduledService.scheduleAtFixedRate(dumpMonitor(monitorRings[j]), j*10, 40, TimeUnit.MILLISECONDS);	
 			 }
 		 }
 		 		 
@@ -149,7 +149,7 @@ public class RingBufferPipeline {
 					 }
 				 } 
 				 daemonService.submit(new SplitterStage(rings[j++], splitsBuffers));
-			// scheduledService.scheduleAtFixedRate(new SplitterStage(rings[j++], splitsBuffers), 0, 20, TimeUnit.MILLISECONDS);
+			     //scheduledService.scheduleAtFixedRate(new SplitterStage(rings[j++], splitsBuffers), 1, 5, TimeUnit.MICROSECONDS);
 				 
 			 } else {			 
 				 normalService.submit(copyStage(rings[j++], rings[j], highLevelAPI));		
@@ -178,12 +178,12 @@ public class RingBufferPipeline {
 		 
 		 int t = rings.length;
 		 while (--t>=0) {
-			 assertFalse("Unexpected error in thread, see console output",RingBuffer.isShutDown(rings[t]));
+			 assertFalse("Unexpected error in thread, see console output",RingBuffer.isShutdown(rings[t]));
 		 }
 		 if (monitor) {
 			 t = monitorRings.length;
 			 while (--t>=0) {
-				 assertFalse("Unexpected error in thread, see console output",RingBuffer.isShutDown(monitorRings[t]));
+				 assertFalse("Unexpected error in thread, see console output",RingBuffer.isShutdown(monitorRings[t]));
 			 }
 		 }
 		 
@@ -246,7 +246,7 @@ public class RingBufferPipeline {
 							 System.out.println("finished writing:"+testMessages);
 						 }
 					} catch (Throwable t) {
-						RingBuffer.shutDown(outputRing);
+						RingBuffer.shutdown(outputRing);
 						t.printStackTrace();
 					}
 				}
@@ -296,7 +296,7 @@ public class RingBufferPipeline {
 							 System.out.println("finished writing:"+testMessages);
 						 }
 					} catch (Throwable t) {
-						RingBuffer.shutDown(outputRing);
+						RingBuffer.shutdown(outputRing);
 						t.printStackTrace();
 					}
 				}
@@ -348,8 +348,8 @@ public class RingBufferPipeline {
 						
 
 					} catch (Throwable t) {
-						RingBuffer.shutDown(inputRing);
-						RingBuffer.shutDown(outputRing);
+						RingBuffer.shutdown(inputRing);
+						RingBuffer.shutdown(outputRing);
 						t.printStackTrace();
 					}
 				}
@@ -411,8 +411,8 @@ public class RingBufferPipeline {
 		                    
 		                }  
 					} catch (Throwable t) {
-						RingBuffer.shutDown(inputRing);
-						RingBuffer.shutDown(outputRing);
+						RingBuffer.shutdown(inputRing);
+						RingBuffer.shutdown(outputRing);
 						t.printStackTrace();
 					}
 				}
@@ -482,7 +482,7 @@ public class RingBufferPipeline {
 						releaseReadLock(inputRing);
 				      	
 	            	} catch (Throwable t) {
-	            		RingBuffer.shutDown(inputRing);
+	            		RingBuffer.shutdown(inputRing);
 	            		t.printStackTrace();
 	            	}
 	            }                
@@ -543,7 +543,7 @@ public class RingBufferPipeline {
 	                        
 	                    }   
 	            	} catch (Throwable t) {
-	            		RingBuffer.shutDown(inputRing);
+	            		RingBuffer.shutdown(inputRing);
 	            		t.printStackTrace();
 	            	}
 	            }                

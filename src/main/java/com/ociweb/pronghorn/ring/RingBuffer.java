@@ -620,11 +620,11 @@ public final class RingBuffer {
 
     }
     
-    public static boolean isShutDown(RingBuffer ring) {
+    public static boolean isShutdown(RingBuffer ring) {
     	return ring.shutDown.get();
     }
     
-    public static void shutDown(RingBuffer ring) {
+    public static void shutdown(RingBuffer ring) {
     	ring.shutDown.set(true);
     }    
 
@@ -849,7 +849,7 @@ public final class RingBuffer {
     	long targetValue = ringBuffer.headPos.longValue();
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield(); //needed for now but re-evaluate performance impact
-    		if (isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
+    		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
     			throw new RingBufferException("Unexpected shutdown");
     		}
 		    lastCheckedValue = ringBuffer.tailPos.longValue();
@@ -861,7 +861,7 @@ public final class RingBuffer {
     	
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
-    		if (isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
+    		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
     			throw new RingBufferException("Unexpected shutdown");
     		}
 		    lastCheckedValue = ringBuffer.tailPos.longValue();
@@ -873,7 +873,7 @@ public final class RingBuffer {
     	long targetValue = ringBuffer.tailPos.longValue();    	
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
-    		if (isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
+    		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
     			throw new RingBufferException("Unexpected shutdown");
     		}
 		    lastCheckedValue = ringBuffer.headPos.longValue();
@@ -887,7 +887,7 @@ public final class RingBuffer {
     	
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
-    		if (isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
+    		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
     			throw new RingBufferException("Unexpected shutdown");
     		}
 		    lastCheckedValue = ringBuffer.headPos.longValue();

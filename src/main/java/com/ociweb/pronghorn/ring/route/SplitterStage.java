@@ -64,15 +64,16 @@ public class SplitterStage implements Runnable {
 			throw new UnsupportedOperationException("This stage can only be run with daemon threads");
 		}
 		
-		try{
+		try{			
 			while (processAvailData(this)) {
-					Thread.yield();
+				Thread.sleep(0,500);
+					//Thread.yield();
 			}
 		} catch (Throwable t) {
-			RingBuffer.shutDown(source);
+			RingBuffer.shutdown(source);
 			int i = targets.length;
 			while(--i>=0) {
-				RingBuffer.shutDown(targets[i]);
+				RingBuffer.shutdown(targets[i]);
 			}
 			
 		}
