@@ -197,12 +197,7 @@ public class RingStreamsTest {
 			while (i < datLen) {
 				ringOutputStream.write(testData[i++]);
 			}
-			try {
-				ringOutputStream.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-				fail();
-			}
+			ringOutputStream.close();
 						
 			//Now read the data off the target ring to confirm it matches
 			ByteArrayOutputStream baost = new ByteArrayOutputStream();

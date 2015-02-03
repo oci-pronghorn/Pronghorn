@@ -149,6 +149,7 @@ public class RingBufferPipeline {
 					 }
 				 } 
 				 daemonService.submit(new SplitterStage(rings[j++], splitsBuffers));
+			// scheduledService.scheduleAtFixedRate(new SplitterStage(rings[j++], splitsBuffers), 0, 20, TimeUnit.MILLISECONDS);
 				 
 			 } else {			 
 				 normalService.submit(copyStage(rings[j++], rings[j], highLevelAPI));		

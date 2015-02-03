@@ -1,6 +1,5 @@
 package com.ociweb.pronghorn.ring.stream;
 
-import java.io.IOException;
 import java.io.OutputStream;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
@@ -36,10 +35,9 @@ public class RingOutputStream extends OutputStream {
 	public void write(byte[] b, int off, int len) {
 		RingStreams.writeBytesToRing(b, off, len, ring, blockSize);
 	}
-
 	
 	@Override
-	public void close() throws IOException {
+	public void close() {
 		RingStreams.writeEOF(ring);
 	}
 }
