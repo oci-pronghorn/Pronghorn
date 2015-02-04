@@ -222,25 +222,10 @@ public class RingWalker {
 				
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1;
 		prepReadFragment2(ringBuffer, ringBufferConsumer, tmpNextWokingTail, target, lastScriptPos, ringBufferConsumer.from.tokens[lastScriptPos]);	
-        
-//		int sum = 0;
-////		int j = ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor];
-////		while (--j>=0) {
-////			
-////							
-////			sum +=ringBufferConsumer.from.tokens[j+ ringBufferConsumer.cursor];
-////			
-////			
-////		}
-//		sum +=ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
-//		if (sum!=0) {
-//		//	System.err.println("error");
-//		}
-		 
-//		if (ringBufferConsumer.from.hasVarLengthFields) {
-//			//the last field of this fragment will contain the total length for all var length fields
-//			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
-//		}		
+        		
+		if (1 == ringBuffer.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[ringBufferConsumer.cursor]) {
+			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
+		};	
 
 	}
 
@@ -248,7 +233,7 @@ public class RingWalker {
 	private static void prepReadFragment2(RingBuffer ringBuffer,
 			final RingWalker ringBufferConsumer, long tmpNextWokingTail,
 			final long target, int lastScriptPos, int lastTokenOfFragment) {
-		//                                                                                                                         11011    must not equal               10000
+		//                                   11011    must not equal               10000
         if ( (lastTokenOfFragment &  ( 0x1B <<TokenBuilder.SHIFT_TYPE)) != ( 0x10<<TokenBuilder.SHIFT_TYPE ) ) {
         	 ringBufferConsumer.nextWorkingTail = target;//save the size of this new fragment we are about to read 
         } else {
@@ -331,10 +316,9 @@ public class RingWalker {
 		//
 		//from the last known fragment move up the working tail position to this new fragment location
 		ringBuffer.workingTailPos.value = tmpNextWokingTail;
-		//TODO: AAAAA,  make same change here as we have on writer so this value is ready to be set upon release.
-		//              this will not be compatible with using the low level API that will be forced to do something else.
 		
 		ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value);
+			
 				
 		//
 		//batched release of the old positions back to the producer
@@ -371,27 +355,14 @@ public class RingWalker {
 				//Can not assume end of message any more.
 				beginNewSequence(ringBufferConsumer, ringBuffer.buffer[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
 			} 
+						
+			if (1 == ringBuffer.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[ringBufferConsumer.msgIdx]) {
+				ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
+	     	};
 			
-			//CODE THIS AS A WALKER FIRST AND THEN CHECK THE PEROFMRNACE IMPACT BEFORE CHAING THE MESSAGE FORMAT
-//			
-//			int sum = 0;
-////			int j = ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor];
-////			while (--j>=0) {
-////				
-////								
-////				sum +=ringBufferConsumer.from.tokens[j+ ringBufferConsumer.cursor];
-////				
-////				
-////			}
-//			sum +=ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
-//			if (sum!=0) {
-//				//System.err.println("error");
-//			}
-////			
-////			if (ringBufferConsumer.from.hasVarLengthFields) {
-////				//the last field of this fragment will contain the total length for all var length fields
-////				ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
-////			}			
+			//Should always add this value?
+		//	System.err.println( ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)]+"  "+ringBuffer.byteWorkingTailPos.value+" "+ringBuffer.bytesTailPos.get());
+			
 			
 		} else {
 			//rare so we can afford some extra checking at this point 
@@ -442,12 +413,14 @@ public class RingWalker {
 	 * 
 	 */
 	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
-		
-		FieldReferenceOffsetManager from = RingBuffer.from(ring);
-		int fragSize = from.fragDataSize[cursorPosition];
+		int fragSize = RingBuffer.from(ring).fragDataSize[cursorPosition];
 		long target = ring.consumerData.nextWorkingHead - (ring.maxSize - fragSize);
+		return tryWriteFragment1(ring, cursorPosition, RingBuffer.from(ring), fragSize, target, ring.consumerData.cachedTailPosition >=  target);
+	}
 
-		boolean hasRoom = ring.consumerData.cachedTailPosition >=  target;
+
+	private static boolean tryWriteFragment1(RingBuffer ring, int cursorPosition, FieldReferenceOffsetManager from, int fragSize,
+											long target, boolean hasRoom) {
 		//try again and update the cache with the newest value
 		if (hasRoom) {
 			prepWriteFragment(ring, cursorPosition, from, fragSize);
@@ -473,7 +446,7 @@ public class RingWalker {
 		RingWalker consumerData = ring.consumerData;
 		int fragSize = from.fragDataSize[cursorPosition];
 		consumerData.cachedTailPosition = spinBlockOnTail(consumerData.cachedTailPosition, consumerData.nextWorkingHead - (ring.maxSize - fragSize), ring);
-		//TODO: what is the next working head set to??
+
 		prepWriteFragment(ring, cursorPosition, from, fragSize);
 	}
 	
@@ -502,13 +475,10 @@ public class RingWalker {
 		//if this gets incremented the error will be detected if asserts are on.
 		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
 		
-		//TODO: AAA, we can store this boolean in the ring so next publish can mak use of it?
-		//           the low level API can also set this so on flush it happens automatically?
-		//           publish MUST be called for every fragment, but it may not always do the full publish
+		//when publish is called this new byte will be appended due to this request
+		ring.writeTrailingCountOfBytesConsumed = (1==from.fragNeedsAppendedCountOfBytesConsumed[cursorPosition]);
 		
-		boolean doAddBytesCount = (1==from.addByteCountToFragment[cursorPosition]);
-		
-		
+//		System.err.println("write byte count "+ring.writeTrailingCountOfBytesConsumed );
 		
 	}
 
@@ -521,6 +491,7 @@ public class RingWalker {
 		ring.buffer[ring.mask &((int)ring.consumerData.nextWorkingHead +  from.templateOffset)] = -1;		
 		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + 1 ;
 		RingBuffer.publishWrites(ring);
+		
 	}
 	
 
@@ -530,11 +501,7 @@ public class RingWalker {
 		outputRing.workingHeadPos.value = ringBufferConsumer.nextWorkingHead;
     	
 		if (outputRing.writeTrailingCountOfBytesConsumed) {
-			
-			long pos = outputRing.workingHeadPos.value;
-			
-			
-			RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, pos); //do not inc
+			RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, outputRing.workingHeadPos.value); //do not inc
 		}
 		
 		assert(outputRing.consumerData.nextWorkingHead<=outputRing.headPos.get() || outputRing.workingHeadPos.value<=outputRing.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";

@@ -593,7 +593,9 @@ public final class RingBuffer {
 	}
 
 	public static void addByteArrayWithMask(final RingBuffer outputRing, int mask, int len, byte[] data, int offset) {
-		if ((offset&mask) <= ((offset+len-1) & mask)) {
+		int len1 = 1+mask-(offset&mask);
+		
+		if (len1>=len) {
 			
 			//simple add bytes
 			addByteArray(data, offset&mask, len, outputRing);
@@ -601,9 +603,8 @@ public final class RingBuffer {
 		} else {						
 			
 			//rolled over the end of the buffer
-			int len1 = 1+mask-(offset&mask);
 			appendPartialBytesArray(data, offset&mask, len1, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);        
-			appendPartialBytesArray(data, 0, len-len1, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);        
+			appendPartialBytesArray(data, 0, len-len1,       outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value+len1, outputRing.byteMask);        
 			
 			addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), outputRing.byteWorkingHeadPos.value, len);
 			outputRing.byteWorkingHeadPos.value = outputRing.byteWorkingHeadPos.value + len;
@@ -665,12 +666,15 @@ public final class RingBuffer {
 	}
  
     //must be called by low-level API when starting a new message
-    public static void addMsgIdx(RingBuffer rb, int value) {
+    public static void addMsgIdx(RingBuffer rb, int msgIdx) {
     	
     	 assert(rb.consumerData.nextWorkingHead<=rb.headPos.get() || rb.workingHeadPos.value<=rb.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
     	   
     	 rb.bytesHeadPos.lazySet(rb.byteWorkingHeadPos.value);    	
-		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
+		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, msgIdx);		
+		 
+		 //when publish is called this new byte will be appended due to this request
+		 rb.writeTrailingCountOfBytesConsumed = msgIdx>=0 && (1==rb.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
 	}
     
    
@@ -714,11 +718,13 @@ public final class RingBuffer {
 	}
 
     public static int bytePosition(int meta, RingBuffer ring, int len) {
-    	    	    	
-    	//NOTE: must move this working position for the relative text positions until it gets managed by high level API.
-        if (len>=0) {
-        	ring.byteWorkingTailPos.value += len;
-        }
+    	    	
+    	if (!FieldReferenceOffsetManager.USE_VAR_COUNT) {
+	    	//NOTE: must move this working position for the relative text positions until it gets managed by high level API.
+	        if (len>=0) {
+	        	ring.byteWorkingTailPos.value += len;
+	        }
+    	}
         return restorePosition(ring, meta & 0x7FFFFFFF);
     }   
 	

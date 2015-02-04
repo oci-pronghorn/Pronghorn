@@ -300,12 +300,13 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     
     public static boolean eqASCII(RingBuffer ring, int loc, CharSequence seq) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		
-        int len = RingReader.readDataLength(ring, loc);
+	
+		long idx = ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
+        int len = ring.buffer[ring.mask & (int)(idx + 1)];
         if (len!=seq.length()) {
             return false;
         }
-        int pos = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
+		int pos = ring.buffer[ring.mask & (int)idx];
         if (pos < 0) {
             return eqASCIIConst(ring,len,seq,POS_CONST_MASK & pos);
         } else {
@@ -510,8 +511,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		
 		RingBuffer.setBytePosAndLen(outputRing.buffer, outputRing.mask, 
 				outputRing.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc), p, length, outputRing.bytesHeadPos.get()); 
+	
+		outputRing.byteWorkingHeadPos.value = p + length;	
 		
-		outputRing.byteWorkingHeadPos.value = p + length;
 		return length;
 	}
     

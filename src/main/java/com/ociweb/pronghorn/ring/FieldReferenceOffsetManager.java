@@ -7,6 +7,7 @@ import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class FieldReferenceOffsetManager {
+	public static final boolean USE_VAR_COUNT = false;//once this works inline it everywhere.
 	
 	private static final String NAME_BYTE_ARRAY = "ByteArray";
 	private static final String NAME_CHUNKED_STREAM = "Chunked Stream";
@@ -25,7 +26,7 @@ public class FieldReferenceOffsetManager {
     
     //NOTE: these two arrays could be combined with a mask to simplify this in the future.
     public int[] fragDepth;
-    public int[] addByteCountToFragment;//TODO: put value in here to be indexed later when needed. low and high level will use it?
+    public int[] fragNeedsAppendedCountOfBytesConsumed;//TODO: put value in here to be indexed later when needed. low and high level will use it?
       //FAST decode looks it up at front of fragment and writes extra total filed
       //low level api will require message id to look up of trailing message is needed
       //high level api ??? how is this done?
@@ -69,7 +70,6 @@ public class FieldReferenceOffsetManager {
     public final static int RW_STACK_OFF_MASK = (1<<STACK_OFF_BITS)-1;
     public final static int RW_STACK_OFF_SHIFT = 32-STACK_OFF_BITS;
     public final static int RW_FIELD_OFF_MASK = (1<<RW_FIELD_OFF_BITS)-1;
-	public static final boolean USE_VAR_COUNT = false;//once this works inline it everywhere.
     
 	
     /**
@@ -120,7 +120,7 @@ public class FieldReferenceOffsetManager {
             fragDataSize = null;
             fragScriptSize = null;
             fragDepth = null;
-            addByteCountToFragment = null;
+            fragNeedsAppendedCountOfBytesConsumed = null;
             
             maximumFragmentStackDepth = 0;
             maxVarFieldPerUnit = .5f;
@@ -133,7 +133,7 @@ public class FieldReferenceOffsetManager {
             fragDataSize  = new int[scriptTokens.length]; //size of fragments and offsets to fields, first field of each fragment need not use this!
             fragScriptSize = new int[scriptTokens.length];
             fragDepth = new int[scriptTokens.length];
-            addByteCountToFragment = new int[scriptTokens.length];//full of zeros by default
+            fragNeedsAppendedCountOfBytesConsumed = new int[scriptTokens.length];//full of zeros by default
             
             maxVarFieldPerUnit = buildFragScript(scriptTokens, preableBytes);
             
@@ -227,9 +227,9 @@ public class FieldReferenceOffsetManager {
                 int size = fragDataSize[fragmentStartIdx];
                 
                 if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-                	if (1!=varLenFieldCount || 1!=varLenFieldLast) {
+                	if (1!=varLenFieldCount || 1!=varLenFieldLast) {                		
                 		fragDataSize[fragmentStartIdx] = size+1;
-                		addByteCountToFragment[fragmentStartIdx] = 1; //in all other cases its zero.
+                		fragNeedsAppendedCountOfBytesConsumed[fragmentStartIdx] = 1; //in all other cases its zero.
                 	}
                 }
                 fragmentStartIdx = i;    
@@ -256,9 +256,10 @@ public class FieldReferenceOffsetManager {
                 }
                 depth++;                
                 
-                
                 varLenFieldCount = 0;//reset to zero so we can count the number of var fields for this next fragment
                 varLenFieldLast = 0;
+                
+
                 
                 nextTokenOpensFragment = false;
             }
@@ -300,8 +301,15 @@ public class FieldReferenceOffsetManager {
             i++;
         }
         
+        if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+        	if (1!=varLenFieldCount || 1!=varLenFieldLast) {
+        		fragDataSize[fragmentStartIdx]++;
+        		fragNeedsAppendedCountOfBytesConsumed[fragmentStartIdx] = 1; //in all other cases its zero.
+        	}
+        }
         
         int lastFragTotalSize = fragDataSize[fragmentStartIdx];
+        
         maxFragmentSize = Math.max(maxFragmentSize, lastFragTotalSize);
         //must also add the very last fragment 
         if (varLenFieldCount>0) {

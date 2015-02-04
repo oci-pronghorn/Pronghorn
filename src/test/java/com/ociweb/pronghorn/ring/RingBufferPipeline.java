@@ -16,13 +16,14 @@ import com.ociweb.pronghorn.ring.route.SplitterStage;
 
 public class RingBufferPipeline {
 	
-	private static final String testString = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@@";
+	private static final String testString1 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@@";
+	private static final String testString = testString1+testString1;//+testString1;
 	//using length of 61 because it is prime and will wrap at odd places
 	private final byte[] testArray = testString.getBytes();//, this is a reasonable test message.".getBytes();
 	private final int testMessages = 10000000; //TODO: AA, must bump this out one more after the byte var rel pos logic is fixed.
 	private final int stages = 3;
 	private final byte primaryBits   = 17;
-	private final byte secondaryBits = 22;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
+	private final byte secondaryBits = 25;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
     
 	private final int msgSize = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 	
@@ -121,6 +122,8 @@ public class RingBufferPipeline {
 			 if (monitor) {
 				 monitorRings[j] = new RingBuffer((byte)16,(byte)2,null,montorFROM);
 				 monitorStages[j] = new RingBufferMonitorStage(rings[j], monitorRings[j]);	
+				 
+				 //this is a bit complex may be better to move this inside on thread?
 				 scheduledService.scheduleAtFixedRate(monitorStages[j], j*5, 40, TimeUnit.MILLISECONDS);	
 				 scheduledService.scheduleAtFixedRate(dumpMonitor(monitorRings[j]), j*10, 40, TimeUnit.MILLISECONDS);	
 			 }
@@ -266,9 +269,7 @@ public class RingBufferPipeline {
 			          long head = headPosition(outputRing) - fill;
 			          long tailPosCache = spinBlockOnTail(tailPosition(outputRing), head, outputRing);                        
 			          while (--messageCount>=0) {
-			        	  
-			        	  
-			        	  
+			        	  			        	  
 			              //write the record
 			        	  RingBuffer.addMsgIdx(outputRing, 0);
 		                  addByteArray(testArray, 0, testArray.length, outputRing);
@@ -317,26 +318,42 @@ public class RingBufferPipeline {
 				public void run() {
 					try {			
 			//			RingWalker.setReleaseBatchSize(inputRing, 8);
-						RingWalker.setPublishBatchSize(outputRing, 64);
+			//			RingWalker.setPublishBatchSize(outputRing, 64);
 						
 						int msgId = 0;
 						do {
-							if (RingWalker.tryReadFragment(inputRing)) {
+							if (RingWalker.tryReadFragment(inputRing)) { 
 								assert(RingWalker.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
 								msgId = RingWalker.getMsgIdx(inputRing);
-																
+								
+								
 								//wait until the target ring has room for this message
-								if (0==msgId && RingWalker.tryWriteFragment(outputRing, MSG_ID)) {
-																		
+								if (0==msgId) {
+//									String fromString = RingReader.readASCII(inputRing, FIELD_ID, new StringBuilder()).toString();
+//									if (!fromString.equals(testString)) {
+//										System.err.println(fromString);
+//										System.err.println(testString);
+//										
+//										System.exit(-1);
+//									}
+									
+									RingWalker.blockWriteFragment(outputRing,MSG_ID);
 									//copy this message from one ring to the next
 									//NOTE: in the normal world I would expect the data to be modified before getting moved.
-									RingReader.copyBytes(inputRing, outputRing, FIELD_ID);							
+									int len = RingReader.copyBytes(inputRing, outputRing, FIELD_ID);							
+									
+									//fromString = RingReader.readASCII(inputRing, FIELD_ID, new StringBuilder()).toString();
+								//	RingWriter.writeASCII(outputRing, FIELD_ID, fromString);
+									
+									
 
 									RingWalker.publishWrites(outputRing);
 										
-								} else {
-									Thread.yield();//do something meaningful while we wait for space to write our new data
-								}
+									if (!FieldReferenceOffsetManager.USE_VAR_COUNT) {
+										//using the low level seems like this is required
+										inputRing.byteWorkingTailPos.value+=len;
+									}
+								} 
 							} else {
 								Thread.yield();//do something meaningful while we wait for new data
 							}
@@ -370,7 +387,7 @@ public class RingBufferPipeline {
 		                //two per message, and we only want half the buffer to be full
 		                long tailPosition = tailPosition(outputRing);
 		                long outputTarget = tailPosition + msgSize-(1<<primaryBits);//this value is negative TODO: this target will be a problem for var lenght messages!!
-		                
+		               
 						long tailPosCache = spinBlockOnTail(tailPosition, outputTarget, outputRing);
 		                int mask = byteMask(outputRing); // data often loops around end of array so this mask is required
 		                while (true) {
@@ -379,10 +396,17 @@ public class RingBufferPipeline {
 		                    int msgId = RingBuffer.takeValue(inputRing);	
 		                	int meta = takeRingByteMetaData(inputRing);
 		                	int len = takeRingByteLen(inputRing);
-		                	
 		                	byte[] data = byteBackingArray(meta, inputRing);
 		                	int offset = bytePosition(meta, inputRing, len);
-		
+		                			
+		                    //TODO: AAAAA must increment the next byte position before reading the next record.
+							if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+									//using the low level seems like this is required
+								if (len>=0) {
+									inputRing.byteWorkingTailPos.value+=len;
+								}
+							}
+									
 		                	tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, outputRing);
 		                	 //write the record
 		
@@ -396,14 +420,15 @@ public class RingBufferPipeline {
 							}
 		
 							RingBuffer.addMsgIdx(outputRing, 0);
-							RingBuffer.addByteArrayWithMask(outputRing, mask, len, data, offset);						
+							RingBuffer.addByteArrayWithMask(outputRing, mask, len, data, offset);	
+							
 							outputTarget+=msgSize;
 							
-							 if (0==(batchMask& --msgCount)) {
+							// if (0==(batchMask& --msgCount)) {
 								//publish the new messages to the next ring buffer in batches
 								 publishWrites(outputRing);
 								 releaseReadLock(inputRing);
-							 }
+							// }
 	  	                	
 		                	//block until one more byteVector is ready.
 		                	inputTarget += msgSize;
@@ -443,8 +468,7 @@ public class RingBufferPipeline {
 								assert(RingWalker.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
 								msgId = RingWalker.getMsgIdx(inputRing);
 								
-								if (msgId>=0) {
-																		
+								if (msgId>=0) {																	
 									
 									//check the data
 									int len = RingReader.readBytesLength(inputRing, FIELD_ID);
@@ -459,16 +483,19 @@ public class RingBufferPipeline {
 										assertEquals((lastPos+len)&inputRing.byteMask, pos&inputRing.byteMask);
 									} 
 									lastPos = pos;
-									
-									
+																		
 									byte[] dat = RingReader.readBytesBackingArray(inputRing, FIELD_ID);
 									
-									//this also has side effect of moving the byte pointer.
-								//	assertTrue("\nexpected:\n"+testString+"\nfound:\n"+RingReader.readASCII(inputRing, FIELD_ID, new StringBuilder()).toString(),
-								//			    RingReader.eqASCII(inputRing, FIELD_ID, testString));
-								
-									//This is very wrong, why a I responsible for this here?
-									inputRing.byteWorkingTailPos.value += len;
+									//This block causes a dramatic slow down of the work!!
+									if (!RingReader.eqASCII(inputRing, FIELD_ID, testString)) {
+										fail("\nexpected:\n"+testString+"\nfound:\n"+RingReader.readASCII(inputRing, FIELD_ID, new StringBuilder()).toString() );
+									}
+									
+				                    //TODO: AAAAA must increment the next byte position before reading the next record.
+									if (!FieldReferenceOffsetManager.USE_VAR_COUNT) {
+											//using the low level seems like this is required
+											inputRing.byteWorkingTailPos.value+=len;
+									}
 
 								}
 							} else {
@@ -516,18 +543,30 @@ public class RingBufferPipeline {
 	                    	assertEquals(testArray.length,len);
 	                    	
 	                    	int pos = bytePosition(meta, inputRing, len);//has side effect of moving the byte pointer!!
+	                    	
+//		                    //TODO: AAAAA must increment the next byte position before reading the next record.
+//							if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+//									//using the low level seems like this is required
+//									inputRing.byteWorkingTailPos.value+=len;
+//							}
+	                    	
+	                    	
 							if (lastPos>=0) {
 								assertEquals((lastPos+len)&inputRing.byteMask,pos&inputRing.byteMask);
 							} 
 							lastPos = pos;
-							
-	               //TODO: AAAAA must increment the next byte position before reading the next record.
-					
-							
-							
+								
 	    					byte[] data = byteBackingArray(meta, inputRing);
 	    					int mask = byteMask(inputRing);
 	   					
+	    					
+	    					//This block causes a dramatic slow down of the work!!
+	    					int i = len;
+	    					while (--i>=0) {
+	    						if (testArray[i]!=data[(pos+i)&mask]) {
+	    							fail("String does not match at index "+i+" of "+len);
+	    						}
+	    					}
 	    					
 	                    	//doing nothing with the data
 	   						releaseReadLock(inputRing);
@@ -564,7 +603,8 @@ public class RingBufferPipeline {
         		    long target = monitorMessageSize;
                     long headPosCache = spinBlockOnHead(headPosition(inputRing), target, inputRing);	
                     long messageCount = 0;
-                    while (true) {
+               //     while (true) 
+                    {
                         //read the message
                         int msgId = RingBuffer.readValue(0, inputRing.buffer,inputRing.mask,inputRing.workingTailPos.value); 
                         

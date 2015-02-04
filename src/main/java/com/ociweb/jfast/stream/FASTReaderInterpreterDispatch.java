@@ -122,7 +122,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
            
         FieldReferenceOffsetManager from = RingBuffer.from(rbRingBuffer);
      
-        boolean recordBytesUsed = (1==from.addByteCountToFragment[activeScriptCursor]);
+        boolean recordBytesUsed = (1==from.fragNeedsAppendedCountOfBytesConsumed[activeScriptCursor]);
         		
 		int fragmentSize = from.fragDataSize[activeScriptCursor]+from.templateOffset; //plus roomm for next message        
         //Waiting for tail position to change! can cache the value, must make same change in compiled code.

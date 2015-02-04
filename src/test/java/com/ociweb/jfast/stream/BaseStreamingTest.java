@@ -175,7 +175,7 @@ public abstract class BaseStreamingTest {
 		    
 			RingBuffer ringBuffer = RingBuffers.get( fr.ringBuffers, 0);			
 			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, ringBuffer, 
-					                                   FieldReferenceOffsetManager.USE_VAR_COUNT && 1==ringBuffer.consumerData.from.addByteCountToFragment[0] );
+					                                   FieldReferenceOffsetManager.USE_VAR_COUNT && 1==ringBuffer.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[0] );
 			
 			g = fieldsPerGroup;
 			if (f>0 || i>0) {
