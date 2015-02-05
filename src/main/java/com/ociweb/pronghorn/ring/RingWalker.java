@@ -144,6 +144,11 @@ public class RingWalker {
     
     //this impl only works for simple case where every message is one fragment. 
     public static boolean tryReadFragment(RingBuffer ringBuffer) { 
+		if (null==ringBuffer.buffer) {
+			ringBuffer.init();//hack test
+		}
+		
+		
 		if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBuffer.consumerData.nextCursor)) {    		
 	    	return prepReadMessage(ringBuffer, ringBuffer.consumerData);			   
         } else {   
@@ -222,10 +227,11 @@ public class RingWalker {
 				
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1;
 		prepReadFragment2(ringBuffer, ringBufferConsumer, tmpNextWokingTail, target, lastScriptPos, ringBufferConsumer.from.tokens[lastScriptPos]);	
-        		
-		if (1 == ringBuffer.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[ringBufferConsumer.cursor]) {
+	
+		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+			//always increment this tail position by the count of bytes used by this fragment
 			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
-		};	
+		}
 
 	}
 
@@ -355,14 +361,11 @@ public class RingWalker {
 				//Can not assume end of message any more.
 				beginNewSequence(ringBufferConsumer, ringBuffer.buffer[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
 			} 
-						
-			if (1 == ringBuffer.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[ringBufferConsumer.msgIdx]) {
-				ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
-	     	};
-			
-			//Should always add this value?
-		//	System.err.println( ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)]+"  "+ringBuffer.byteWorkingTailPos.value+" "+ringBuffer.bytesTailPos.get());
-			
+					
+			if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+			//always increment this tail position by the count of bytes used by this fragment
+			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
+			}
 			
 		} else {
 			//rare so we can afford some extra checking at this point 

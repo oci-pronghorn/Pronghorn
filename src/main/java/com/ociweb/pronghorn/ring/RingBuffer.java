@@ -50,7 +50,7 @@ public final class RingBuffer {
     
     
     public final int maxSize;
-    public final int[] buffer;
+    public int[] buffer;
     public final int mask;
     public final PaddedLong workingHeadPos = new PaddedLong();
     public final PaddedLong workingTailPos = new PaddedLong();
@@ -59,7 +59,7 @@ public final class RingBuffer {
     public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos
 
     public final int maxByteSize;
-    public final byte[] byteBuffer;
+    public byte[] byteBuffer;
     public final int byteMask;
     
     public final PaddedInt byteWorkingHeadPos = new PaddedInt();
@@ -70,7 +70,7 @@ public final class RingBuffer {
     
     //defined externally and never changes
     final byte[] constByteBuffer;
-    private final byte[][] bufferLookup;
+    private byte[][] bufferLookup;
     
     public final int maxAvgVarLen; 
     private int varLenMovingAverage = 0;//this is an exponential moving average
@@ -78,14 +78,14 @@ public final class RingBuffer {
     // end of moveNextFields
 
     static final int JUMP_MASK = 0xFFFFF;
-    public final RingWalker consumerData;
+    public RingWalker consumerData;
     
     public final byte pBits;
     public final byte bBits;
     
     private final AtomicBoolean shutDown = new AtomicBoolean(false);//TODO: A, create unit test examples for using this.
 	boolean writeTrailingCountOfBytesConsumed;
-    
+	FieldReferenceOffsetManager from;
     
     public RingBuffer(RingBufferConfig config) {
     	this(config.primaryBits, config.byteBits, config.byteConst, config.from);
@@ -124,18 +124,18 @@ public final class RingBuffer {
         this.maxSize = 1 << primaryBits;
         this.mask = maxSize - 1;
         
-        this.buffer = new int[maxSize];    
+        this.from = from;
   
         //single text and byte buffers because this is where the variable length data will go.
 
         this.maxByteSize =  1 << byteBits;
         this.byteMask = maxByteSize - 1;
-        this.byteBuffer = new byte[maxByteSize];
-
-        this.constByteBuffer = byteConstants;
-        this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};
-                
+        
+        init(); //TODO: Test NUMA by removing this method, only do after the rest of the testing works. 
+   
         this.consumerData = new RingWalker(mask, from);
+        this.constByteBuffer = byteConstants;
+
         
         if (0 == from.maxVarFieldPerUnit || 0==primaryBits) { //zero bits is for the dummy mock case
         	maxAvgVarLen = 0; //no fragments had any variable length fields so we never allow any
@@ -153,8 +153,12 @@ public final class RingBuffer {
         	//two together are below the threshold rather than each alone
         	maxAvgVarLen = maxByteSize/maxVarCount;
         }
-        
-             
+    }
+    
+    public void init() {
+        this.byteBuffer = new byte[maxByteSize];
+        this.buffer = new int[maxSize]; 
+        this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};                
         
     }
     
@@ -823,6 +827,8 @@ public final class RingBuffer {
     
     public static void releaseReadLock(RingBuffer ring) {
     	ring.tailPos.lazySet(ring.workingTailPos.value);
+    	
+    	//TODO: AAAA, this should only be done at the end of a message
     	ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value);
     }
     
@@ -833,9 +839,12 @@ public final class RingBuffer {
 		} //MUST be before the assert.
     	
     	assert(ring.consumerData.nextWorkingHead<=ring.headPos.get() || ring.workingHeadPos.value<=ring.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
-    	    	
+    	
+    	//TODO: AAAA, this should only be done at the end of a message
     	//publish this first so the bulk splitter will pick up all the values
     	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
+    	
+    	
     	//publish writes
     	ring.headPos.lazySet(ring.workingHeadPos.value);
     }
@@ -865,7 +874,7 @@ public final class RingBuffer {
     
     public static long spinBlockOnTail(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
     	
-    	while ( lastCheckedValue < targetValue) {
+    	while (null==ringBuffer.buffer || lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
     		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
     			throw new RingBufferException("Unexpected shutdown");
@@ -890,7 +899,11 @@ public final class RingBuffer {
     public static long spinBlockOnHead(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
     	
     	//we are blocking before we can read
-    	
+		if (null==ringBuffer.buffer) {
+			ringBuffer.init();//hack test
+		}
+		
+		
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
     		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {

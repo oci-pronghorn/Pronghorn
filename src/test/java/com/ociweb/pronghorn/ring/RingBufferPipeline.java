@@ -79,6 +79,10 @@ public class RingBufferPipeline {
 
 	private void pipelineTest(boolean highLevelAPI, boolean useTaps, boolean monitor) {
 			 
+		 assertEquals("For "+FieldReferenceOffsetManager.RAW_BYTES.name+" expected no need to add field.",
+				      0,FieldReferenceOffsetManager.RAW_BYTES.fragNeedsAppendedCountOfBytesConsumed[0]);
+			
+		
 		 int stagesBetweenSourceAndSink = stages -2;
 		 final int splits = 4;
 		 
@@ -115,12 +119,14 @@ public class RingBufferPipeline {
 		 
 		 while (--j>=0)  {
 			 rings[j] = new RingBuffer(primaryBits, secondaryBits);
+			 assertEquals("For "+rings[j].consumerData.from.name+" expected no need to add field.",0,rings[j].consumerData.from.fragNeedsAppendedCountOfBytesConsumed[0]);
 			 
 			 //test by starting at different location in the ring to force roll over.
 			 rings[j].reset(rings[j].maxSize-13,rings[j].maxByteSize-101);
 	  		 
 			 if (monitor) {
 				 monitorRings[j] = new RingBuffer((byte)16,(byte)2,null,montorFROM);
+				 //assertTrue(mo)
 				 monitorStages[j] = new RingBufferMonitorStage(rings[j], monitorRings[j]);	
 				 
 				 //this is a bit complex may be better to move this inside on thread?
@@ -236,10 +242,7 @@ public class RingBufferPipeline {
 						 while (--messageCount>=0) {
 							
 							 RingWalker.blockWriteFragment(outputRing, MESSAGE_LOC);
-							 RingWriter.writeBytes(outputRing, FIELD_LOC, testArray, 0, testArray.length);
-							 
-							//No need to write extra byte because this has 1 text field and it is last.		
-							 
+							 RingWriter.writeBytes(outputRing, FIELD_LOC, testArray, 0, testArray.length);							 
 							 RingWalker.publishWrites(outputRing);
 
 						 }
@@ -267,16 +270,20 @@ public class RingBufferPipeline {
 			          int messageCount = testMessages;            
 			          //keep local copy of the last time the tail was checked to avoid contention.
 			          long head = headPosition(outputRing) - fill;
-			          long tailPosCache = spinBlockOnTail(tailPosition(outputRing), head, outputRing);                        
+			          long tailPosCache = tailPosition(outputRing);                        
 			          while (--messageCount>=0) {
+			        	  tailPosCache = spinBlockOnTail(tailPosCache, head, outputRing);
 			        	  			        	  
 			              //write the record
 			        	  RingBuffer.addMsgIdx(outputRing, 0);
 		                  addByteArray(testArray, 0, testArray.length, outputRing);
 		                  
-					 	  if (0==(batchMask&messageCount)) {
+		               //  System.err.println("  "+  outputRing.byteWorkingHeadPos.value+"  "+outputRing.writeTrailingCountOfBytesConsumed);
+		                  
+					 	//  if (0==(batchMask&messageCount)) {
 							 publishWrites(outputRing);
-					 	  }
+					 	 // }
+							 
 		                  head += messageSize;
 		                  
 		                  //No need to write extra byte because this has 1 text field and it is last.		                  
@@ -284,10 +291,11 @@ public class RingBufferPipeline {
 		                  //wait for room to fit one message
 		                  //waiting on the tailPosition to move the others are constant for this scope.
 		                  //workingHeadPositoin is same or greater than headPosition
-		                  tailPosCache = spinBlockOnTail(tailPosCache, head, outputRing);
 		          
 			          }
-		
+			          tailPosCache = spinBlockOnTail(tailPosCache, head, outputRing);
+			         // RingWalker.blockingFlush(outputRing);
+			          
 			          //send negative length as poison pill to exit all runnables  
 			          RingBuffer.addMsgIdx(outputRing, -1);
 			      	  addNullByteArray(outputRing);
@@ -297,8 +305,8 @@ public class RingBufferPipeline {
 							 System.out.println("finished writing:"+testMessages);
 						 }
 					} catch (Throwable t) {
-						RingBuffer.shutdown(outputRing);
 						t.printStackTrace();
+						RingBuffer.shutdown(outputRing);
 					}
 				}
 			};
@@ -397,18 +405,19 @@ public class RingBufferPipeline {
 		                	int meta = takeRingByteMetaData(inputRing);
 		                	int len = takeRingByteLen(inputRing);
 		                	byte[] data = byteBackingArray(meta, inputRing);
+		                	
+		                	
+	                    	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+	                    		//using the low level seems like this is required
+	                    		if (len>=0) {
+	                    			inputRing.byteWorkingTailPos.value+=len;
+	                    		}
+	                    	}
+	                    	
+		                	
 		                	int offset = bytePosition(meta, inputRing, len);
 		                			
-		                    //TODO: AAAAA must increment the next byte position before reading the next record.
-							if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-									//using the low level seems like this is required
-								if (len>=0) {
-									inputRing.byteWorkingTailPos.value+=len;
-								}
-							}
 									
-		                	tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, outputRing);
-		                	 //write the record
 		
 							
 							if (len<0) {
@@ -420,8 +429,14 @@ public class RingBufferPipeline {
 							}
 		
 							RingBuffer.addMsgIdx(outputRing, 0);
+						//	System.err.println(" pos :"+offset+" len :"+len);
 							RingBuffer.addByteArrayWithMask(outputRing, mask, len, data, offset);	
 							
+							
+							
+							
+							tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, outputRing);
+							//write the record
 							outputTarget+=msgSize;
 							
 							// if (0==(batchMask& --msgCount)) {
@@ -483,9 +498,7 @@ public class RingBufferPipeline {
 										assertEquals((lastPos+len)&inputRing.byteMask, pos&inputRing.byteMask);
 									} 
 									lastPos = pos;
-																		
-									byte[] dat = RingReader.readBytesBackingArray(inputRing, FIELD_ID);
-									
+																											
 									//This block causes a dramatic slow down of the work!!
 									if (!RingReader.eqASCII(inputRing, FIELD_ID, testString)) {
 										fail("\nexpected:\n"+testString+"\nfound:\n"+RingReader.readASCII(inputRing, FIELD_ID, new StringBuilder()).toString() );
@@ -542,13 +555,16 @@ public class RingBufferPipeline {
 	                    	int len = takeRingByteLen(inputRing);
 	                    	assertEquals(testArray.length,len);
 	                    	
+	                    	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+	                    		//using the low level seems like this is required
+	                    		if (len>=0) {
+	                    			inputRing.byteWorkingTailPos.value+=len;
+	                    		}
+	                    	}
+	                    	
 	                    	int pos = bytePosition(meta, inputRing, len);//has side effect of moving the byte pointer!!
 	                    	
 //		                    //TODO: AAAAA must increment the next byte position before reading the next record.
-//							if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-//									//using the low level seems like this is required
-//									inputRing.byteWorkingTailPos.value+=len;
-//							}
 	                    	
 	                    	
 							if (lastPos>=0) {

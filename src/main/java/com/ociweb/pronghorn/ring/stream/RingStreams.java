@@ -16,7 +16,6 @@ import java.io.OutputStream;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingWriter;
 
 public class RingStreams {
 	
@@ -42,7 +41,9 @@ public class RingStreams {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		
-		long target = step+tailPosition(inputRing);
+		//target is always 1 ahead of where we are then we step by step size, this lets us pick up the 
+		//EOF message which is only length 1
+		long target = step /*1*/+tailPosition(inputRing);
 				
 		//write to outputStream only when we have data on inputRing.
         long headPosCache = headPosition(inputRing);
@@ -68,6 +69,13 @@ public class RingStreams {
           		return;
         	} else {                    	
 				byte[] data = byteBackingArray(meta, inputRing);
+				
+            	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+            		//using the low level seems like this is required
+            		if (len>=0) {
+            			inputRing.byteWorkingTailPos.value+=len;
+            		}
+            	}
 				int off = bytePosition(meta,inputRing,len)&byteMask;        					
 				
 				int len1 = byteSize-off;
@@ -112,7 +120,8 @@ public class RingStreams {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		
-		long target = step+tailPosition(inputRing);
+		//only need to look for 1 value then step forward by steps this lets us pick up the EOM message without hanging.
+		long target = step/*1*/+tailPosition(inputRing);
 				
 		//write to outputStream only when we have data on inputRing.
         long headPosCache = headPosition(inputRing);
@@ -135,6 +144,13 @@ public class RingStreams {
         	} else {                    	
         		int byteMask = inputRing.byteMask;
 				byte[] data = byteBackingArray(meta, inputRing);
+				
+            	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+            		//using the low level seems like this is required
+            		if (len>=0) {
+            			inputRing.byteWorkingTailPos.value+=len;
+            		}
+            	}
 				int offset = bytePosition(meta,inputRing,len);        					
 	
 				int adjustedOffset = offset & byteMask;
@@ -240,10 +256,12 @@ public class RingStreams {
 	}
 
 	public static void writeEOF(RingBuffer ring) {
+		//RingWalker.blockingFlush(ring);
+		
 		int fill = 1 + ring.mask - FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		spinBlockOnTail(tailPosition(ring), headPosition(ring)-fill, ring);
 		RingBuffer.addMsgIdx(ring, -1); //end of file, message
-		RingBuffer.addNullByteArray(ring);
+		RingBuffer.addNullByteArray(ring); //TOOD: must remove
 		RingBuffer.publishWrites(ring);		
 	}
 
@@ -256,7 +274,8 @@ public class RingStreams {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		
-		long target = step+tailPosition(inputRing);
+		//only start by adding 1 so we can get EOM message without hang.
+		long target = step/*1*/+tailPosition(inputRing);
 				
 		//write to outputStream only when we have data on inputRing.
 	    long headPosCache = headPosition(inputRing);
@@ -281,6 +300,13 @@ public class RingStreams {
 	      		return;
 	    	} else {                    	
 				byte[] data = byteBackingArray(meta, inputRing);
+				
+            	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+            		//using the low level seems like this is required
+            		if (len>=0) {
+            			inputRing.byteWorkingTailPos.value+=len;
+            		}
+            	}
 				int offset = bytePosition(meta,inputRing,len);        					
 				
 				if ((offset&byteMask) > ((offset+len-1) & byteMask)) {

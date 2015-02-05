@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.ring;
 
+import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragment;
 import static com.ociweb.pronghorn.ring.RingWalker.isNewMessage; 
 import static org.junit.Assert.assertEquals;
@@ -34,18 +35,19 @@ public class RingBufferSingleTemplateDecimalTest {
     @Test
     public void simpleWriteRead() {
         	
-    	byte primaryRingSizeInBits = 9; //this ring is 2^7 eg 128
-    	byte byteRingSizeInBits = 16;
+    	byte primaryRingSizeInBits = 9; 
+    	byte byteRingSizeInBits = 17;
     	
 		RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
     	
         int messageSize = FROM.fragDataSize[FRAG_LOC];
         
         int varDataMax = (ring.byteMask/(ring.mask>>1))/messageSize;        
-        int testSize = (1<<primaryRingSizeInBits)/messageSize;
+        int testSize = ((1<<primaryRingSizeInBits)/messageSize)-1; //reduce by one so we have room for the ending EOM value
 
         writeTestValue(ring, varDataMax, testSize);
         
+        System.err.println("now read");
         //now read the data back        
         int FIELD_LOC = FieldReferenceOffsetManager.lookupFieldLocator(SINGLE_MESSAGE_NAMES[0], FRAG_LOC, FROM);
         
@@ -53,15 +55,19 @@ public class RingBufferSingleTemplateDecimalTest {
         int k = testSize;
         while (tryReadFragment(ring)) {
         	--k;
-        	testReadValue(ring, varDataMax, testSize, FIELD_LOC, k);
+        	assertTrue(isNewMessage(ring));
+			int messageIdx = RingWalker.messageIdx(ring);
+			if (messageIdx<0) {
+				break;
+			}
+			readTestValue(ring, varDataMax, testSize, FIELD_LOC, k, messageIdx);
 	        		 
         }    
     }
 
-	private void testReadValue(RingBuffer ring, int varDataMax, int testSize,
-			int FIELD_LOC, int k) {
-		assertTrue(isNewMessage(ring));
-		assertEquals(0, RingWalker.messageIdx(ring));
+	private void readTestValue(RingBuffer ring, int varDataMax, int testSize,
+			int FIELD_LOC, int k, int messageIdx) {
+		assertEquals(0, messageIdx);
 		
 		int expectedValue = ((varDataMax*(k))/testSize);		        	
 		
@@ -81,6 +87,9 @@ public class RingBufferSingleTemplateDecimalTest {
         while (true) {
         	
         	if (j == 0) {
+        	
+        		RingWalker.blockingFlush(ring);
+        		
         		return;//done
         	}
         
@@ -103,7 +112,7 @@ public class RingBufferSingleTemplateDecimalTest {
     @Test
     public void simpleWriteReadThreaded() {
     
-    	final byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
+    	final byte primaryRingSizeInBits = 8; //this ring is 2^7 eg 128
     	final byte byteRingSizeInBits = 16;
     	final RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
     	
@@ -135,7 +144,12 @@ public class RingBufferSingleTemplateDecimalTest {
 	        if (tryReadFragment(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
 	        	k--;//count down all the expected messages so we stop this test at the right time
 	        	
-	        	testReadValue(ring, varDataMax, testSize, FIELD_LOC, k);
+	        	assertTrue(isNewMessage(ring));
+				int messageIdx = RingWalker.messageIdx(ring);
+				if (messageIdx<0) {
+					break;
+				}
+				readTestValue(ring, varDataMax, testSize, FIELD_LOC, k, messageIdx);
 	        	
 	        } else {
 	        	//unable to read so at this point

@@ -2,10 +2,7 @@ package com.ociweb.pronghorn.ring;
 
 import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupFieldLocator;
 import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupTemplateLocator;
-import static com.ociweb.pronghorn.ring.RingWalker.isNewMessage;
-import static com.ociweb.pronghorn.ring.RingWalker.messageIdx;
-import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragment;
-import static com.ociweb.pronghorn.ring.RingWalker.tryWriteFragment;
+import static com.ociweb.pronghorn.ring.RingWalker.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -57,8 +54,8 @@ public class RingBufferMultiTemplateTest {
     @Test
     public void simpleBytesWriteRead() {
     
-    	byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
-    	byte byteRingSizeInBits = 16;
+    	byte primaryRingSizeInBits = 9; 
+    	byte byteRingSizeInBits = 18;
     	
 		RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
 		
@@ -79,11 +76,13 @@ public class RingBufferMultiTemplateTest {
         int k = testSize;
         while (tryReadFragment(ring)) {
         	if (isNewMessage(ring)) {
-        		
         		--k;
         		int expectedLength = (ring.maxAvgVarLen*k)/testSize;	
         		
         		int msgLoc = messageIdx(ring);
+        		if (msgLoc<0) {
+        			return;
+        		}
         		
         		//must cast for this test because the id can be 64 bits but we can only switch on 32 bit numbers
         		int templateId = (int)FROM.fieldIdScript[msgLoc];
@@ -147,6 +146,7 @@ public class RingBufferMultiTemplateTest {
         while (true) {
         	
         	if (j == 0) {
+        		RingWalker.blockingFlush(ring);
         		return;//done
         	}
         	

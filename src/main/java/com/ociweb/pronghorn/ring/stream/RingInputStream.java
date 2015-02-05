@@ -83,13 +83,14 @@ public class RingInputStream extends InputStream {
 
 	private int blockForNewContent(byte[] targetData, int targetOffset, int targetLength) {
 		int returnLength = 0;
-		long target = tailPosition(ring);
+		//only need to look for 1 value then step forward by steps this lets us pick up the EOM message without hanging.
+		long target = recordSize/*1*/+tailPosition(ring);
 		long headPosCache = headPosition(ring);
 				
 		do {
 			//block until we have something to read
-			target+=recordSize;
 		    headPosCache = spinBlockOnHead(headPosCache, target, ring);
+		    target+=recordSize;
 		    returnLength = sendNewContent(targetData, targetOffset, targetLength);
 		    
 		    
@@ -100,12 +101,17 @@ public class RingInputStream extends InputStream {
 	private int sendNewContent(byte[] targetData, int targetOffset,	int targetLength) {
 		
 		int msgId = RingBuffer.takeValue(ring);
-		int meta = takeRingByteMetaData(ring);//side effect, this moves the pointer and must happen before we call for length
-		int sourceLength = takeRingByteLen(ring);
 		
-		if (sourceLength>=0) { //exit EOF logic
+		if (msgId>=0) { //exit EOF logic
+			int meta = takeRingByteMetaData(ring);//side effect, this moves the pointer and must happen before we call for length
+			int sourceLength = takeRingByteLen(ring);
 			return beginNewContent(targetData, targetOffset, targetLength, meta, sourceLength);
-		} else {                    	
+		} else {   
+			
+			//TODO remove these two lines
+			int meta = takeRingByteMetaData(ring);//side effect, this moves the pointer and must happen before we call for length
+			int sourceLength = takeRingByteLen(ring);
+						
 			releaseReadLock(ring);
 			return -1;			
 		}

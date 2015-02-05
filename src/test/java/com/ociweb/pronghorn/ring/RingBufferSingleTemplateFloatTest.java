@@ -31,15 +31,15 @@ public class RingBufferSingleTemplateFloatTest {
     @Test
     public void simpleWriteRead() {
     
-    	byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
-    	byte byteRingSizeInBits = 16;
+    	byte primaryRingSizeInBits = 9; 
+    	byte byteRingSizeInBits = 18;
     	
 		RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
     	
         int messageSize = FROM.fragDataSize[FRAG_LOC];
         
         int varDataMax = (ring.byteMask/(ring.mask>>1))/messageSize;        
-        int testSize = (1<<primaryRingSizeInBits)/messageSize;
+        int testSize = ((1<<primaryRingSizeInBits)/messageSize)-1; //room for EOF
 
         writeTestValue(ring, varDataMax, testSize);
         
@@ -51,15 +51,19 @@ public class RingBufferSingleTemplateFloatTest {
         while (tryReadFragment(ring)) {
         	
         	--k;
-        	testReadValue(ring, varDataMax, testSize, FIELD_LOC, k);
+        	assertTrue(isNewMessage(ring));
+			int messageIdx = RingWalker.messageIdx(ring);
+			if (messageIdx<0) {
+				return;
+			}
+			testReadValue(ring, varDataMax, testSize, FIELD_LOC, k, messageIdx);
  
         }    
     }
 
 	private void testReadValue(RingBuffer ring, int varDataMax, int testSize,
-			int FIELD_LOC, int k) {
-		assertTrue(isNewMessage(ring));
-		assertEquals(0, RingWalker.messageIdx(ring));
+			int FIELD_LOC, int k, int messageIdx) {
+		assertEquals(0, messageIdx);
 		
 		
 		float expectedValue = 1f/(float)((varDataMax*(k))/testSize);		        	
@@ -75,8 +79,7 @@ public class RingBufferSingleTemplateFloatTest {
         while (true) {
         	        	
         	if (j == 0) {
-        		int content = RingBuffer.contentRemaining(ring);
-        		assertEquals(testSize*2,content);
+        		RingWalker.blockingFlush(ring);
         		return;//done
         	}
                	        	
@@ -132,7 +135,12 @@ public class RingBufferSingleTemplateFloatTest {
 	        if (tryReadFragment(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
 	        	k--;//count down all the expected messages so we stop this test at the right time
 
-	        	testReadValue(ring, varDataMax, testSize, FIELD_LOC, k);
+	        	assertTrue(isNewMessage(ring));
+				int messageIdx = RingWalker.messageIdx(ring);
+				if (messageIdx<0) {
+					return;
+				}
+				testReadValue(ring, varDataMax, testSize, FIELD_LOC, k, messageIdx);
 	        	
 	        } else {
 	        	//unable to read so at this point
