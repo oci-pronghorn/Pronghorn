@@ -671,6 +671,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         if (0 != (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
                 genWriteClosePMap(writer);
         } 
+        
     }
 
 
@@ -1300,7 +1301,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         //it to the field position and yet we do ???
      //   ringBuffer.bytesHeadPos.lazySet(ringBuffer.byteWorkingHeadPos.value);
         //add 1 for template id 
-   //TODO: AAAAA, not sure this is needed    	
+   //TODO: AAA, not sure this is needed    	
         fieldPos++;          	
                 
     }

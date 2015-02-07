@@ -123,7 +123,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 					    writeLong(fw, token, testData[f], writer); 
 					}
 				}	
-				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, maxMPapBytes, writer);				
+				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, maxMPapBytes, writer,rbRingBufferLocal);				
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {

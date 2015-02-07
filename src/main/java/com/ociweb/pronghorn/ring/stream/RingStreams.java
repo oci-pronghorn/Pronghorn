@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.ring.stream;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
+import static com.ociweb.pronghorn.ring.RingBuffer.releaseMessageReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
@@ -43,7 +43,7 @@ public class RingStreams {
 		
 		//target is always 1 ahead of where we are then we step by step size, this lets us pick up the 
 		//EOF message which is only length 1
-		long target = step /*1*/+tailPosition(inputRing);
+		long target = 1+tailPosition(inputRing);
 				
 		//write to outputStream only when we have data on inputRing.
         long headPosCache = headPosition(inputRing);
@@ -61,21 +61,25 @@ public class RingStreams {
         	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		           
         	
         	int msgId = RingBuffer.takeValue(inputRing);
-        	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
-        	int len = takeRingByteLen(inputRing);
+
         				
         	if (msgId<0) { //exit logic
-        		releaseReadLock(inputRing);
+            	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer. TODO: AAAA need to remvoe.
+            	int len = takeRingByteLen(inputRing);
+            	
+        		releaseMessageReadLock(inputRing);
           		return;
-        	} else {                    	
+        	} else {          
+            	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
+            	int len = takeRingByteLen(inputRing);
 				byte[] data = byteBackingArray(meta, inputRing);
 				
-            	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-            		//using the low level seems like this is required
-            		if (len>=0) {
-            			inputRing.byteWorkingTailPos.value+=len;
-            		}
-            	}
+//            	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+//            		//using the low level seems like this is required
+//            		if (len>=0) {
+//            			inputRing.byteWorkingTailPos.value+=len;
+//            		}
+//            	}
 				int off = bytePosition(meta,inputRing,len)&byteMask;        					
 				
 				int len1 = byteSize-off;
@@ -87,7 +91,7 @@ public class RingStreams {
 					outputStream.write(data, off, len1);
 					outputStream.write(data, 0, len-len1);
 				}
-        		releaseReadLock(inputRing);
+        		releaseMessageReadLock(inputRing);
         	}
         	
         	target += step;
@@ -121,7 +125,7 @@ public class RingStreams {
 		}
 		
 		//only need to look for 1 value then step forward by steps this lets us pick up the EOM message without hanging.
-		long target = step/*1*/+tailPosition(inputRing);
+		long target = 1+tailPosition(inputRing);
 				
 		//write to outputStream only when we have data on inputRing.
         long headPosCache = headPosition(inputRing);
@@ -135,22 +139,27 @@ public class RingStreams {
         	
         	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);
         	int msgId = RingBuffer.takeValue(inputRing);
-        	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
-        	int len = takeRingByteLen(inputRing);
         				
-        	if (len<0) { //exit logic
-        		releaseReadLock(inputRing);
+        	if (msgId<0) { //exit logic
+
+            	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer. //TODO: AAA, remove.
+            	int len = takeRingByteLen(inputRing);
+            	
+            	releaseMessageReadLock(inputRing);
           		return;
         	} else {                    	
+            	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
+            	int len = takeRingByteLen(inputRing);
+            	
         		int byteMask = inputRing.byteMask;
 				byte[] data = byteBackingArray(meta, inputRing);
 				
-            	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-            		//using the low level seems like this is required
-            		if (len>=0) {
-            			inputRing.byteWorkingTailPos.value+=len;
-            		}
-            	}
+//            	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+//            		//using the low level seems like this is required
+//            		if (len>=0) {
+//            			inputRing.byteWorkingTailPos.value+=len;
+//            		}
+//            	}
 				int offset = bytePosition(meta,inputRing,len);        					
 	
 				int adjustedOffset = offset & byteMask;
@@ -168,7 +177,7 @@ public class RingStreams {
 					}
 				}
 				
-        		releaseReadLock(inputRing);
+        		releaseMessageReadLock(inputRing);
         	}
         	
         	target += step;
@@ -275,7 +284,7 @@ public class RingStreams {
 		}
 		
 		//only start by adding 1 so we can get EOM message without hang.
-		long target = step/*1*/+tailPosition(inputRing);
+		long target = 1+tailPosition(inputRing);
 				
 		//write to outputStream only when we have data on inputRing.
 	    long headPosCache = headPosition(inputRing);
@@ -290,23 +299,28 @@ public class RingStreams {
 	    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		           
 	    	
 	    	int msg = RingBuffer.takeValue(inputRing);
-	    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
-	    	int len = takeRingByteLen(inputRing);
+
 	    	int byteMask = inputRing.byteMask;
 	    				
 	    	if (msg<0) { //exit logic
-	    		releaseReadLock(inputRing);
+		    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.  TODO: AAA, remove
+		    	int len = takeRingByteLen(inputRing);
+		    	
+	    		releaseMessageReadLock(inputRing);
 	    		visitor.close();
 	      		return;
 	    	} else {                    	
-				byte[] data = byteBackingArray(meta, inputRing);
+		    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
+		    	int len = takeRingByteLen(inputRing);
+		    	
+	    		byte[] data = byteBackingArray(meta, inputRing);
 				
-            	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-            		//using the low level seems like this is required
-            		if (len>=0) {
-            			inputRing.byteWorkingTailPos.value+=len;
-            		}
-            	}
+//            	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+//            		//using the low level seems like this is required
+//            		if (len>=0) {
+//            			inputRing.byteWorkingTailPos.value+=len;
+//            		}
+//            	}
 				int offset = bytePosition(meta,inputRing,len);        					
 				
 				if ((offset&byteMask) > ((offset+len-1) & byteMask)) {
@@ -317,7 +331,7 @@ public class RingStreams {
 					 //simple add bytes
 					 visitor.visit(data, offset&byteMask, len); 
 				}
-	    		releaseReadLock(inputRing);
+	    		releaseMessageReadLock(inputRing);
 	    	}
 	    	
 	    	target += step;

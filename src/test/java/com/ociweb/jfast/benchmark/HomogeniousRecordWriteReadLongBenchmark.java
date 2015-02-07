@@ -332,6 +332,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			while (--j>=0) {
 				result |= longTestData[j];//do nothing
 			}
+			RingBuffer ringBuffer = RingBuffers.get(staticReader.ringBuffers,0);
 			staticWriter.closeGroup(groupToken, writer);
 			staticWriter.flush(writer);
 
@@ -340,7 +341,6 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			
 			FASTDecoder.reset(dictionaryFactory, staticReader); //reset message to clear the previous values
 			
-			RingBuffer ringBuffer = RingBuffers.get(staticReader.ringBuffers,0);
 			
 			staticReader.openGroup(groupToken, pmapSize, reader);
 			j = longTestData.length;
@@ -373,6 +373,8 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			while (--j>=0) {
 			    StreamingLongTest.writeLong(staticWriter, token, longTestData[j], writer);
 			}
+			RingBuffer ringBuffer = RingBuffers.get(staticReader.ringBuffers,0);
+			
 			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);
 			staticWriter.flush(writer);
 
@@ -382,7 +384,6 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//staticReader.reset(); //reset message to clear the previous values
 			
-			RingBuffer ringBuffer = RingBuffers.get(staticReader.ringBuffers,0);
 			staticReader.openGroup(groupToken, pmapSize, reader);
 			j = longTestData.length;
 			while (--j>=0) {

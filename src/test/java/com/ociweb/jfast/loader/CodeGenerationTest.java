@@ -200,15 +200,23 @@ public class CodeGenerationTest {
                         assertEquals(msg, int1, int2);
                     }
                 }
-                long newValue1 = queue1.tailPos.get() + 1;
-                assert (newValue1 <=queue1.workingHeadPos.value);
-                queue1.workingTailPos.value = newValue1;
-				queue1.tailPos.lazySet(newValue1);
-                long newValue2 = queue2.tailPos.get() + 1;
-                assert (newValue2 <=queue2.workingHeadPos.value);
-                queue2.workingTailPos.value = newValue2;
-				queue2.tailPos.lazySet(newValue2);
-                i++;
+                queue1.workingTailPos.value++;
+                queue2.workingTailPos.value++;
+                
+                RingBuffer.releaseMessageReadLock(queue1);
+                RingBuffer.releaseMessageReadLock(queue2);
+                
+//                long newValue1 = queue1.tailPos.get() + 1;
+//                assert (newValue1 <=queue1.workingHeadPos.value);
+//                queue1.workingTailPos.value = newValue1;
+//				queue1.tailPos.lazySet(newValue1);
+//				
+//                long newValue2 = queue2.tailPos.get() + 1;
+//                assert (newValue2 <=queue2.workingHeadPos.value);
+//                queue2.workingTailPos.value = newValue2;
+//				queue2.tailPos.lazySet(newValue2);
+                
+				i++;
             }
         }
         assertEquals(primitiveReader1.totalRead(primitiveReader1), PrimitiveReader.totalRead(primitiveReader2));

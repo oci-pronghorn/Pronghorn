@@ -308,8 +308,9 @@ public class RingStreamsTest {
 					e.printStackTrace();
 					fail();
 				}		
+		
 				
-				assertTrue("len:"+testIdx, Arrays.equals(Arrays.copyOfRange(testData,0,testIdx), baost.toByteArray()));
+				assertTrue("expectedLen:"+testIdx+" found:"+baost.size(), Arrays.equals(Arrays.copyOfRange(testData,0,testIdx), baost.toByteArray()));
 			}
 			
 			

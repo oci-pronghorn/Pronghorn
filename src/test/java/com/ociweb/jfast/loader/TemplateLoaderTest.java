@@ -626,7 +626,7 @@ public class TemplateLoaderTest {
             //read from reader and puts messages on the queue
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
-            		//confirms full message to read on the queue
+            		//confirms full message to read on the queue            	
                     if (RingWalker.tryReadFragment(queue)) {
                         if (RingWalker.isNewMessage(queue.consumerData)) {
                             msgs.incrementAndGet();

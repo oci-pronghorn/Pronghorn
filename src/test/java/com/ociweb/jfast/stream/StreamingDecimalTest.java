@@ -176,7 +176,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         
                     }
                 }
-                g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, pmapSize, writer);
+                g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, pmapSize, writer, rbRingBufferLocal);
             }
         }
         if (((fieldsPerGroup * fields) % fieldsPerGroup) == 0) {

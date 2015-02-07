@@ -189,7 +189,7 @@ public abstract class BaseStreamingTest {
 	}
 
 	protected int groupManagementWrite(int fieldsPerGroup, FASTWriterInterpreterDispatch fw, int i, int g,
-			                             int groupOpenToken, int groupCloseToken, int f, int pmapSize, PrimitiveWriter writer) {
+			                             int groupOpenToken, int groupCloseToken, int f, int pmapSize, PrimitiveWriter writer, RingBuffer ring) {
 		if (--g<0) {
 			//close group
 			fw.closeGroup(groupOpenToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);

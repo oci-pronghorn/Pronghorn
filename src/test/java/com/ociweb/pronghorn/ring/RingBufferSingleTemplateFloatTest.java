@@ -87,7 +87,7 @@ public class RingBufferSingleTemplateFloatTest {
         		
         		int value = (--j*blockSize)/testSize;        		        		
         		RingWriter.writeFloatAsIntBits(ring, FIELD_LOC, 1f/(float)value);        		
-        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
+        		RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
         		        		
         	} else {
         		//Unable to write because there is no room so do something else while we are waiting.

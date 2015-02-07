@@ -84,7 +84,7 @@ public class SplitterStage implements Runnable {
 		int byteHeadPos;
         long headPos;
 		
-        //TODO AAA, publush to a single atomic long and read it here.
+        //TODO: A, publush to a single atomic long and read it here.
         //get the new head position
         byteHeadPos = ss.source.bytesHeadPos.get();
 		headPos = ss.source.headPos.get();		
@@ -112,7 +112,7 @@ public class SplitterStage implements Runnable {
 				
 		//now do the copies
 		doingCopy(ss, byteTailPos, primaryTailPos, totalPrimaryCopy, totalBytesCopy);
-		RingBuffer.releaseReadLock(ss.source);
+		RingBuffer.releaseMessageReadLock(ss.source);
 				
 		//now move pointer forward
 		ss.source.byteWorkingTailPos.value = byteHeadPos;
@@ -159,7 +159,8 @@ public class SplitterStage implements Runnable {
 								totalPrimaryCopy);
 						ringBuffer.workingHeadPos.value = headPos.addAndGet(totalPrimaryCopy);	
 
-						RingBuffer.publishWrites(ringBuffer);
+					    //minimum needed to publish writes, we are below the low level API at this point 
+     					ringBuffer.headPos.lazySet(ringBuffer.workingHeadPos.value);
 					} else {
 						moreToCopy = true;
 					}

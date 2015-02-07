@@ -89,7 +89,8 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			64,4, 100, new ClientConfig(8 ,7) ));
 	
 	static final TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null, 64,maxGroupCount * 10, -1, new ClientConfig(8 ,7));
-	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)testCatalog.clientConfig().getPrimaryRingBits(),(byte)testCatalog.clientConfig().getTextRingBits(),testCatalog.ringByteConstants(), testCatalog.getFROM())));
+	private static final RingBuffer RB = new RingBuffer((byte)testCatalog.clientConfig().getPrimaryRingBits(),(byte)testCatalog.clientConfig().getTextRingBits(),testCatalog.ringByteConstants(), testCatalog.getFROM());
+	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog, RingBuffers.buildNoFanRingBuffers(RB));
 	
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
 	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group,0,0);
@@ -640,6 +641,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			while (--j>=0) {
 			    StreamingIntegerTest.writeInteger(staticWriter, token, intTestData[j],writer);
 			}
+			RingBuffer ringBuffer = RingBuffers.get(staticReader.ringBuffers,staticReader.activeScriptCursor);
 			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);
 			staticWriter.flush(writer);
 			
@@ -653,7 +655,6 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			//staticReader.reset(); //reset message to clear the previous values
 			
 			staticReader.openGroup(groupToken, pmapSize, reader);
-			RingBuffer ringBuffer = RingBuffers.get(staticReader.ringBuffers,staticReader.activeScriptCursor);
 			j = intTestData.length;
 			while (--j>=0) {
 				result |= TestHelper.readInt(token, reader, ringBuffer, staticReader);
@@ -682,6 +683,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			while (--j>=0) {
 			    StreamingIntegerTest.writeInteger(staticWriter, token, intTestData[j], writer);
 			}
+			
 			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);
 			staticWriter.flush(writer);
 			

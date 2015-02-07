@@ -282,6 +282,8 @@ public class RingBufferPipeline {
 		                  
 					 	//  if (0==(batchMask&messageCount)) {
 							 publishWrites(outputRing);
+							 
+					//		 outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
 					 	 // }
 							 
 		                  head += messageSize;
@@ -367,8 +369,7 @@ public class RingBufferPipeline {
 							}
 							//exit the loop logic is not defined by the ring but instead is defined by data/usage, in this case we use a null byte array aka (-1 length)
 						} while (msgId!=-1);
-												
-						RingBuffer.releaseReadLock(inputRing); //release all slots back to producer (not strictly needed as we are exiting)						
+																	
 						RingWalker.blockingFlush(outputRing);
 						
 
@@ -407,13 +408,13 @@ public class RingBufferPipeline {
 		                	byte[] data = byteBackingArray(meta, inputRing);
 		                	
 		                	
-	                    	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-	                    		//using the low level seems like this is required
-	                    		if (len>=0) {
-	                    			inputRing.byteWorkingTailPos.value+=len;
-	                    		}
-	                    	}
-	                    	
+//	                    	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+//	                    		//using the low level seems like this is required
+//	                    		if (len>=0) {
+//	                    			inputRing.byteWorkingTailPos.value+=len;
+//	                    		}
+//	                    	}
+//	                    	
 		                	
 		                	int offset = bytePosition(meta, inputRing, len);
 		                			
@@ -421,7 +422,7 @@ public class RingBufferPipeline {
 		
 							
 							if (len<0) {
-								releaseReadLock(inputRing); 
+								releaseMessageReadLock(inputRing); 
 								RingBuffer.addMsgIdx(outputRing, -1);
 								addNullByteArray(outputRing);
 								publishWrites(outputRing);
@@ -442,7 +443,7 @@ public class RingBufferPipeline {
 							// if (0==(batchMask& --msgCount)) {
 								//publish the new messages to the next ring buffer in batches
 								 publishWrites(outputRing);
-								 releaseReadLock(inputRing);
+								 releaseMessageReadLock(inputRing);
 							// }
 	  	                	
 		                	//block until one more byteVector is ready.
@@ -504,7 +505,6 @@ public class RingBufferPipeline {
 										fail("\nexpected:\n"+testString+"\nfound:\n"+RingReader.readASCII(inputRing, FIELD_ID, new StringBuilder()).toString() );
 									}
 									
-				                    //TODO: AAAAA must increment the next byte position before reading the next record.
 									if (!FieldReferenceOffsetManager.USE_VAR_COUNT) {
 											//using the low level seems like this is required
 											inputRing.byteWorkingTailPos.value+=len;
@@ -518,8 +518,6 @@ public class RingBufferPipeline {
 							//exit the loop logic is not defined by the ring but instead is defined by data/usage, in this case we use a null byte array aka (-1 length)
 						} while (msgId!=-1);
 						
-	            		//final release of all outstanding messages
-						releaseReadLock(inputRing);
 				      	
 	            	} catch (Throwable t) {
 	            		RingBuffer.shutdown(inputRing);
@@ -537,11 +535,12 @@ public class RingBufferPipeline {
 	             	    int lastPos = -1;
 	             	   
 	                    //only enter this block when we know there are records to read
-	        		    long target = msgSize+tailPosition(inputRing);
-	                    long headPosCache = spinBlockOnHead(headPosition(inputRing), target, inputRing);	
+	        		    long target = 1+tailPosition(inputRing);
+	                    long headPosCache = headPosition(inputRing);
 	                    long messageCount = 0;
 	                    while (true) {
 	                        //read the message
+	                    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	  
 
 	                        int msgId = RingBuffer.takeValue(inputRing); 	
 	                        if (msgId<0) {                     	
@@ -554,18 +553,8 @@ public class RingBufferPipeline {
 	                    	int meta = takeRingByteMetaData(inputRing);
 	                    	int len = takeRingByteLen(inputRing);
 	                    	assertEquals(testArray.length,len);
-	                    	
-	                    	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-	                    		//using the low level seems like this is required
-	                    		if (len>=0) {
-	                    			inputRing.byteWorkingTailPos.value+=len;
-	                    		}
-	                    	}
-	                    	
+
 	                    	int pos = bytePosition(meta, inputRing, len);//has side effect of moving the byte pointer!!
-	                    	
-//		                    //TODO: AAAAA must increment the next byte position before reading the next record.
-	                    	
 	                    	
 							if (lastPos>=0) {
 								assertEquals((lastPos+len)&inputRing.byteMask,pos&inputRing.byteMask);
@@ -585,7 +574,7 @@ public class RingBufferPipeline {
 	    					}
 	    					
 	                    	//doing nothing with the data
-	   						releaseReadLock(inputRing);
+	   						releaseMessageReadLock(inputRing);
 	
 	                    	
 	                    	messageCount++;
@@ -594,8 +583,6 @@ public class RingBufferPipeline {
 	
 	                    	//block until one more byteVector is ready.
 	                    	target += msgSize;
-	                    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		
-	                        
 	                    }   
 	            	} catch (Throwable t) {
 	            		RingBuffer.shutdown(inputRing);
@@ -646,7 +633,7 @@ public class RingBufferPipeline {
                        // System.err.println(time+"  "+head+"  "+tail+"   "+tmpId);
     					
                     	//doing nothing with the data
-   						releaseReadLock(inputRing);
+   						releaseMessageReadLock(inputRing);
 
                     	
                     	messageCount++;

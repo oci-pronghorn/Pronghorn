@@ -13,7 +13,7 @@ public class RingWalker {
     private boolean isNewMessage;
     public boolean waiting;
     private long waitingNextStop;
-    private long bnmHeadPosCache;
+    long bnmHeadPosCache;
     public int cursor;
     
         
@@ -216,7 +216,7 @@ public class RingWalker {
 
 		//TODO: AAA still testing, needed so the release happens as frequently as the publish in an attempt to fix the relative string locations.
 		if ((--ringBufferConsumer.batchReleaseCountDown<=0)) {	
-			RingBuffer.releaseReadLock(ringBuffer);
+			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);//inlined from RingBuffer.ReleaseFragment, this one never adjusts bytes because we are in a fragment
 			ringBufferConsumer.batchReleaseCountDown = ringBufferConsumer.batchReleaseCountDownInit;
 		}
 
@@ -323,8 +323,8 @@ public class RingWalker {
 		//from the last known fragment move up the working tail position to this new fragment location
 		ringBuffer.workingTailPos.value = tmpNextWokingTail;
 		
+		//Must be done every time we read a new message.
 		ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value);
-			
 				
 		//
 		//batched release of the old positions back to the producer
@@ -333,7 +333,7 @@ public class RingWalker {
 		if ((--ringBufferConsumer.batchReleaseCountDown>0)) {	
 			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
 		} else {
-			RingBuffer.releaseReadLock(ringBuffer);
+			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); //inlined release however the byte adjust must happen on every message so its done earlier
 			ringBufferConsumer.batchReleaseCountDown = ringBufferConsumer.batchReleaseCountDownInit;
 			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
 		}
@@ -510,7 +510,7 @@ public class RingWalker {
 		assert(outputRing.consumerData.nextWorkingHead<=outputRing.headPos.get() || outputRing.workingHeadPos.value<=outputRing.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
     	
 		if ((--ringBufferConsumer.batchPublishCountDown<=0)) {
-			RingBuffer.publishWrites(outputRing);
+			RingBuffer.publishWrites(outputRing); //TODO: AAAAAAAAAAAAAAAAAAAA must not call for fragments?? fix
 			ringBufferConsumer.batchPublishCountDown = ringBufferConsumer.batchPublishCountDownInit;
 		}
 		 

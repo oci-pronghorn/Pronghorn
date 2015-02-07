@@ -180,7 +180,7 @@ public class RingBufferMultiTemplateTest {
 		        		RingWriter.writeInt(ring, SAMPLE_DATE_LOC ,9);
 		        		RingWriter.writeDecimal(ring,  SAMPLE_WEIGHT, 2, (long) 123456);
 		        				        		
-		        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
+		        		RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
 	        			Thread.yield();

@@ -500,6 +500,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         return len;
     }
     
+    
+    //TODO: AAA, add the both loc read/write fields
+    //TODO: AAA, add new method to copy the non variable types with arrayCopy
 	public static int copyBytes(final RingBuffer inputRing,	final RingBuffer outputRing, int loc) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to copy some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		

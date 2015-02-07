@@ -52,21 +52,26 @@ public final class RingBuffer {
     public final int maxSize;
     public int[] buffer;
     public final int mask;
-    public final PaddedLong workingHeadPos = new PaddedLong();
-    public final PaddedLong workingTailPos = new PaddedLong();
 
-    public final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos
+    //TODO: AAA, group these together and move into RingWalker
+    public final PaddedLong workingHeadPos = new PaddedLong();
     public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos
+
+    //TODO: AAA, group these together and move into RingWalker
+    public final PaddedLong workingTailPos = new PaddedLong();
+    public final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos
 
     public final int maxByteSize;
     public byte[] byteBuffer;
     public final int byteMask;
     
+    //TODO: AAA, group these together and move into RingWalker
     public final PaddedInt byteWorkingHeadPos = new PaddedInt();
-    public final PaddedInt byteWorkingTailPos = new PaddedInt();
-        
     public final PaddedAtomicInteger bytesHeadPos = new PaddedAtomicInteger();
+        
+    //TODO: AAA, group these together and move into RingWalker
     public final PaddedAtomicInteger bytesTailPos = new PaddedAtomicInteger();
+    public final PaddedInt byteWorkingTailPos = new PaddedInt();
     
     //defined externally and never changes
     final byte[] constByteBuffer;
@@ -84,7 +89,7 @@ public final class RingBuffer {
     public final byte bBits;
     
     private final AtomicBoolean shutDown = new AtomicBoolean(false);//TODO: A, create unit test examples for using this.
-	boolean writeTrailingCountOfBytesConsumed;
+	public boolean writeTrailingCountOfBytesConsumed;
 	FieldReferenceOffsetManager from;
     
     public RingBuffer(RingBufferConfig config) {
@@ -674,6 +679,8 @@ public final class RingBuffer {
     	
     	 assert(rb.consumerData.nextWorkingHead<=rb.headPos.get() || rb.workingHeadPos.value<=rb.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
     	   
+    	 
+    	 //TODO: AAA, setting this may not be needed instead just keep it for use while we are in 
     	 rb.bytesHeadPos.lazySet(rb.byteWorkingHeadPos.value);    	
 		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, msgIdx);		
 		 
@@ -723,12 +730,12 @@ public final class RingBuffer {
 
     public static int bytePosition(int meta, RingBuffer ring, int len) {
     	    	
-    	if (!FieldReferenceOffsetManager.USE_VAR_COUNT) {
-	    	//NOTE: must move this working position for the relative text positions until it gets managed by high level API.
+//    	if (!FieldReferenceOffsetManager.USE_VAR_COUNT) {
+//	    	//NOTE: must move this working position for the relative text positions until it gets managed by high level API.
 	        if (len>=0) {
 	        	ring.byteWorkingTailPos.value += len;
 	        }
-    	}
+//    	}
         return restorePosition(ring, meta & 0x7FFFFFFF);
     }   
 	
@@ -825,24 +832,42 @@ public final class RingBuffer {
     	return ring.workingTailPos.value;
     }
     
-    public static void releaseReadLock(RingBuffer ring) {
+    /**
+     * rarely used low level API for releasing fragments that do not end a message
+     * @param ring
+     */
+    public static void releaseFragmentReadLock(RingBuffer ring) {
+    	assert(ring.consumerData.cursor<=0 && !RingWalker.isNewMessage(ring.consumerData)) : "Unsupported mix of high and low level API.  ";
+    	ring.tailPos.lazySet(ring.workingTailPos.value);
+    }
+    /**
+     * Low level API release of message
+     * @param ring
+     */
+    public static void releaseMessageReadLock(RingBuffer ring) {
+    	assert(ring.consumerData.cursor<=0 && !RingWalker.isNewMessage(ring.consumerData)) : "Unsupported mix of high and low level API.  ";
     	ring.tailPos.lazySet(ring.workingTailPos.value);
     	
-    	//TODO: AAAA, this should only be done at the end of a message
-    	ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value);
+    	//only done because we assume this call from the low level api is marking the end of the message, TODO: AA, can we confirm this?
+    	ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value); 
     }
     
     public static void publishWrites(RingBuffer ring) {
     	
     	if (ring.writeTrailingCountOfBytesConsumed) {
 			writeTrailingCountOfBytesConsumed(ring, ring.workingHeadPos.value++); //increment because this is the low-level API calling
+			//this updated the head so it must repositioned
+		//	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
 		} //MUST be before the assert.
     	
     	assert(ring.consumerData.nextWorkingHead<=ring.headPos.get() || ring.workingHeadPos.value<=ring.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
     	
-    	//TODO: AAAA, this should only be done at the end of a message
+    	//TODO: AAAA, this should only be done at the end of a message but instead copy this position at top and keep it?
     	//publish this first so the bulk splitter will pick up all the values
-    	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
+    	//REMOVING THIS ALMOST WORKS EXCEPT THAT THE TAP FOR LOW LEVEL API IS BREAKING NOT SURE WHY THIS WOULD MAKE A DIFFERENCE. ALSO BREAKS ENCODE.
+    	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); //can be done on blockWrite tryWrite and setMsgId? yes alread done in those place.
+    	
+    	//needed for the low level something?
     	
     	
     	//publish writes
