@@ -20,10 +20,10 @@ public class RingBufferPipeline {
 	private static final String testString = testString1+testString1;//+testString1;
 	//using length of 61 because it is prime and will wrap at odd places
 	private final byte[] testArray = testString.getBytes();//, this is a reasonable test message.".getBytes();
-	private final int testMessages = 10000000; //TODO: AA, must bump this out one more after the byte var rel pos logic is fixed.
+	private final int testMessages = 40000;//100000;//10000000; //TODO: AA, must bump this out one more after the byte var rel pos logic is fixed.
 	private final int stages = 3;
-	private final byte primaryBits   = 17;
-	private final byte secondaryBits = 25;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
+	private final byte primaryBits   = 17; 
+	private final byte secondaryBits = 24;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
     
 	private final int msgSize = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 	
@@ -120,6 +120,7 @@ public class RingBufferPipeline {
 		 while (--j>=0)  {
 			 rings[j] = new RingBuffer(primaryBits, secondaryBits);
 			 assertEquals("For "+rings[j].consumerData.from.name+" expected no need to add field.",0,rings[j].consumerData.from.fragNeedsAppendedCountOfBytesConsumed[0]);
+		
 			 
 			 //test by starting at different location in the ring to force roll over.
 			 rings[j].reset(rings[j].maxSize-13,rings[j].maxByteSize-101);
@@ -176,7 +177,7 @@ public class RingBufferPipeline {
 		// System.err.println("waiting for finish");
 		 //blocks until all the submitted runnables have stopped
 		 try {
-			normalService.awaitTermination(40, TimeUnit.SECONDS);
+			normalService.awaitTermination(20, TimeUnit.SECONDS);
 		 } catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		 }
@@ -267,41 +268,47 @@ public class RingBufferPipeline {
 					  int messageSize = msgSize;
 				      int fill =  (1<<primaryBits)-messageSize;
 				      
+				      
 			          int messageCount = testMessages;            
 			          //keep local copy of the last time the tail was checked to avoid contention.
 			          long head = headPosition(outputRing) - fill;
 			          long tailPosCache = tailPosition(outputRing);                        
 			          while (--messageCount>=0) {
+			        	  
 			        	  tailPosCache = spinBlockOnTail(tailPosCache, head, outputRing);
 			        	  			        	  
 			              //write the record
 			        	  RingBuffer.addMsgIdx(outputRing, 0);
-		                  addByteArray(testArray, 0, testArray.length, outputRing);
 		                  
-		               //  System.err.println("  "+  outputRing.byteWorkingHeadPos.value+"  "+outputRing.writeTrailingCountOfBytesConsumed);
+			        	  addByteArray(testArray, 0, testArray.length, outputRing);
 		                  
-					 	//  if (0==(batchMask&messageCount)) {
-							 publishWrites(outputRing);
+		               //TODO: AAAAAAA why is this needed here, THIS IS FIXING SMOE CASE ON THE ROLLOVER THAT IS FAILING. IN THE SPLITTER?
+			        	  //need something to fix the example file read/write   
+		//		        	  outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
+
+			        	 
+			        	  
+			        	  //WE have published teh next working head to read from but the OLD bytes position.
+							 publishWrite(outputRing);
+
+							 
 							 
 					//		 outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
 					 	 // }
 							 
-		                  head += messageSize;
-		                  
-		                  //No need to write extra byte because this has 1 text field and it is last.		                  
-		                  
-		                  //wait for room to fit one message
-		                  //waiting on the tailPosition to move the others are constant for this scope.
-		                  //workingHeadPositoin is same or greater than headPosition
-		          
+		                  head += messageSize;		          
 			          }
+			          
 			          tailPosCache = spinBlockOnTail(tailPosCache, head, outputRing);
 			         // RingWalker.blockingFlush(outputRing);
 			          
 			          //send negative length as poison pill to exit all runnables  
 			          RingBuffer.addMsgIdx(outputRing, -1);
 			      	  addNullByteArray(outputRing);
-			      	  publishWrites(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
+			      	  
+			 //     	  outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value);
+			      	  publishWrite(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
+			      	
 						 boolean debug = false;
 						 if (debug) {		 
 							 System.out.println("finished writing:"+testMessages);
@@ -425,7 +432,7 @@ public class RingBufferPipeline {
 								releaseMessageReadLock(inputRing); 
 								RingBuffer.addMsgIdx(outputRing, -1);
 								addNullByteArray(outputRing);
-								publishWrites(outputRing);
+								publishWrite(outputRing);
 								return;
 							}
 		
@@ -442,7 +449,7 @@ public class RingBufferPipeline {
 							
 							// if (0==(batchMask& --msgCount)) {
 								//publish the new messages to the next ring buffer in batches
-								 publishWrites(outputRing);
+								 publishWrite(outputRing);
 								 releaseMessageReadLock(inputRing);
 							// }
 	  	                	

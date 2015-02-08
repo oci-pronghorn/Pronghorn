@@ -93,10 +93,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
     protected void genWriteTemplateId(FASTDecoder dispatch) {
-        {
-        RingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);  
-        RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, dispatch.msgIdx);
-        }
+        RingBuffer.addMsgIdx(RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor), dispatch.msgIdx);
     }
 
     protected void genWritePreambleB(FASTDecoder dispatch) {

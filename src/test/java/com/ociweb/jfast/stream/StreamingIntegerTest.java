@@ -164,7 +164,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
         //temp solution as the ring buffer is introduce into all the APIs
         RingBuffer.dump(rbRingBufferLocal);
         RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,value);
-        RingBuffer.publishWrites(rbRingBufferLocal);
+        RingBuffer.publishWrite(rbRingBufferLocal);
         int rbPos = 0;
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
@@ -244,7 +244,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
 		    int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, ringBuffer, FieldReferenceOffsetManager.USE_VAR_COUNT && 1==ringBuffer.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[0]);
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
 		}
 			
 		long duration = System.nanoTime() - start;

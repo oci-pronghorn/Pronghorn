@@ -174,9 +174,13 @@ public abstract class BaseStreamingTest {
 		    int idx = TokenBuilder.MAX_INSTANCE & groupToken;
 		    
 			RingBuffer ringBuffer = RingBuffers.get( fr.ringBuffers, 0);			
-			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, ringBuffer, 
-					                                   FieldReferenceOffsetManager.USE_VAR_COUNT && 1==ringBuffer.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[0] );
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
 			
+	    	if (ringBuffer.writeTrailingCountOfBytesConsumed) {
+				RingBuffer.writeTrailingCountOfBytesConsumed(ringBuffer, ringBuffer.workingHeadPos.value++); //increment because this is the low-level API calling
+				//this updated the head so it must repositioned
+			} //MUST be before the assert.
+	    	
 			g = fieldsPerGroup;
 			if (f>0 || i>0) {
 	
@@ -475,7 +479,7 @@ public abstract class BaseStreamingTest {
                 RingBuffer.dump(rbRingBufferLocal);
                 RingBuffer.addValue(rbRingBufferLocal.buffer, rbRingBufferLocal.mask, rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
                 RingBuffer ringBuffer = rbRingBufferLocal;
-                RingBuffer.publishWrites(ringBuffer);
+                RingBuffer.publishWrite(ringBuffer);
                 int rbPos = 0;
     
                 // hack until all the classes no longer need this method.
@@ -539,7 +543,7 @@ public abstract class BaseStreamingTest {
                     RingBuffer.dump(rbRingBufferLocal);
                     RingBuffer.addValue(rbRingBufferLocal.buffer, rbRingBufferLocal.mask, rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
                     RingBuffer ringBuffer = rbRingBufferLocal;
-                    RingBuffer.publishWrites(ringBuffer);
+                    RingBuffer.publishWrite(ringBuffer);
                     int rbPos = 0;
                  
                     // hack until all the classes no longer need this method.

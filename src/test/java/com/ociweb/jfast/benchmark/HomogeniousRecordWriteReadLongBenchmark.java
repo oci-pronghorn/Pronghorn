@@ -348,7 +348,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				result |= j;//doing more nothing.
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken,idx, reader, ringBuffer, 1==ringBuffer.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[0]);
+			staticReader.closeGroup(groupToken,idx, reader);
 		}
 		return result;
 	}
@@ -390,7 +390,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				result |= TestHelper.readLong(token, reader, ringBuffer, staticReader);
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, ringBuffer, FieldReferenceOffsetManager.USE_VAR_COUNT && 1==ringBuffer.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[0]);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
 		}
 		return result;
 	}

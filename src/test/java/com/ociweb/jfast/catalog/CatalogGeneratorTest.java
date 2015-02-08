@@ -402,8 +402,7 @@ public class CatalogGeneratorTest {
 //    	System.err.println("field Count:"+fieldCount);
 //    	FieldReferenceOffsetManager.printScript("timeEncoding", ringBuffer.consumerData.from);
 //    	System.err.println(Arrays.toString(ringBuffer.consumerData.from.fragScriptSize));
-    	
-    	
+    	    	
     	int i = testRecordCount;
         int d;
         switch(fieldType) {
@@ -411,12 +410,12 @@ public class CatalogGeneratorTest {
             case TypeMask.IntegerUnsignedOptional:
             case TypeMask.IntegerSigned:
             case TypeMask.IntegerSignedOptional:
-                { 
+                {                 	
                     long start = System.nanoTime();
                     
                     d = ReaderWriterPrimitiveTest.unsignedIntData.length;
                     while (--i>=0) {
-                        RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, testMessageIdx);
+                        RingBuffer.addMsgIdx(ringBuffer, testMessageIdx);
                         
                         int j = fieldCount;
                         while (--j>=0) {
@@ -427,9 +426,12 @@ public class CatalogGeneratorTest {
                             }
                             
                         }
-                        RingBuffer.publishWrites(ringBuffer);
+                        RingBuffer.publishWrite(ringBuffer);
                         
                         if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
+                        	
+                        	RingWalker.getMsgIdx(ringBuffer);
+                        	
                             FASTDynamicWriter.write(dynamicWriter);
                         }
                     }
@@ -446,7 +448,8 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                   
                     while (--i>=0) {
-                        RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, testMessageIdx);
+                    	RingBuffer.addMsgIdx(ringBuffer, testMessageIdx);
+                    	 
                         int j = fieldCount;
                         while (--j>=0) {
                             RingBuffer.addLongValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
@@ -454,7 +457,7 @@ public class CatalogGeneratorTest {
                                 d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                             }
                         }
-                        RingBuffer.publishWrites(ringBuffer);
+                        RingBuffer.publishWrite(ringBuffer);
                         if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
                             FASTDynamicWriter.write(dynamicWriter);
                         }
@@ -471,7 +474,7 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.unsignedLongData.length;
           
                     while (--i>=0) {
-                        RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, testMessageIdx);
+                        RingBuffer.addMsgIdx(ringBuffer, testMessageIdx);
                         int j = fieldCount;
                         while (--j>=0) {
                             RingBuffer.addValues(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, exponent, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
@@ -479,7 +482,7 @@ public class CatalogGeneratorTest {
                                 d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                             }
                         }
-                        RingBuffer.publishWrites(ringBuffer);
+                        RingBuffer.publishWrite(ringBuffer);
                         if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
                             FASTDynamicWriter.write(dynamicWriter);
                         }
@@ -498,7 +501,7 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.stringData.length;
       
                     while (--i>=0) {
-                        RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, testMessageIdx);
+                        RingBuffer.addMsgIdx(ringBuffer, testMessageIdx);
                         int j = fieldCount;
                         while (--j>=0) {
                             //TODO: B, this test is not using UTF8 encoding for the UTF8 type mask!!!! this is only ASCII enoding always.
@@ -508,7 +511,7 @@ public class CatalogGeneratorTest {
                                 d = ReaderWriterPrimitiveTest.stringData.length;
                             }
                         }
-                        RingBuffer.publishWrites(ringBuffer);
+                        RingBuffer.publishWrite(ringBuffer);
                         if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
                             FASTDynamicWriter.write(dynamicWriter);
                         }

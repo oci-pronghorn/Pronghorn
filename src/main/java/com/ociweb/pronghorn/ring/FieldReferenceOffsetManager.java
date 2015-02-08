@@ -326,7 +326,7 @@ public class FieldReferenceOffsetManager {
 		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
 			//if last is 1 and count is 1 then don't else do
 			
-			if (1!=varLenFieldCount || 1!=varLenFieldLast) {                		
+			if (1!=varLenFieldCount || 1!=varLenFieldLast) {     
 				fragDataSize[fragmentStartIdx]++;
 				fragNeedsAppendedCountOfBytesConsumed[fragmentStartIdx] = 1; //in all other cases its zero.
 			}

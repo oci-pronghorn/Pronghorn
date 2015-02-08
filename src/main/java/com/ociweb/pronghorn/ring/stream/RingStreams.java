@@ -218,7 +218,7 @@ public class RingStreams {
 					RingBuffer.validateVarLength(outputRing, size);
 					RingBuffer.addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), position, size);
 					outputRing.byteWorkingHeadPos.value = position + size;
-					RingBuffer.publishWrites(outputRing);
+					RingBuffer.publishWrite(outputRing);
 					position += size;
 				} else {
 					Thread.yield();
@@ -257,7 +257,7 @@ public class RingStreams {
 			    RingBuffer.addMsgIdx(output, 0);
 			    
 		    	RingBuffer.addByteArray(data, position, fragmentLength, output);
-		    	RingBuffer.publishWrites(output);
+		    	RingBuffer.publishWrite(output);
 		        
 		    	position+=fragmentLength;
 			 
@@ -271,7 +271,7 @@ public class RingStreams {
 		spinBlockOnTail(tailPosition(ring), headPosition(ring)-fill, ring);
 		RingBuffer.addMsgIdx(ring, -1); //end of file, message
 		RingBuffer.addNullByteArray(ring); //TOOD: must remove
-		RingBuffer.publishWrites(ring);		
+		RingBuffer.publishWrite(ring);		
 	}
 
 	public static void visitBytes(RingBuffer inputRing, ByteVisitor visitor) {

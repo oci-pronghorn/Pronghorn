@@ -105,8 +105,8 @@ public class TokenBuilder {
             throw new UnsupportedOperationException("bad token");
         }
 
-        if (TypeMask.Group==type || TypeMask.Dictionary==type) {
-        	return TypeMask.methodTypeName[type] + TypeMask.methodTypeSuffix[type] + "/" + OperatorMask.toString(type, opp) + "/" + count;
+        if (TypeMask.Group==type || TypeMask.Dictionary==type) {        	
+        	return TypeMask.methodTypeName[type] + TypeMask.methodTypeSuffix[type] + "/" + OperatorMask.toString(type, opp) + "/" + count;        	
         } else {
         	return TypeMask.methodTypeName[type] + TypeMask.methodTypeSuffix[type] + "/" + OperatorMask.methodOperatorName[opp] + "/" + count;
         }

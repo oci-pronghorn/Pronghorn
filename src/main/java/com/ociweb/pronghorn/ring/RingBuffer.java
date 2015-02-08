@@ -189,8 +189,10 @@ public final class RingBuffer {
         workingTailPos.value = 0;
         tailPos.set(0);
         headPos.set(0); 
+        
         byteWorkingHeadPos.value = 0;
         bytesHeadPos.set(0);
+        
         byteWorkingTailPos.value = 0;
         bytesTailPos.set(0);
         
@@ -207,8 +209,10 @@ public final class RingBuffer {
         workingTailPos.value = toPos;
         tailPos.set(toPos);
         headPos.set(toPos); 
+        
         byteWorkingHeadPos.value = bPos;
         bytesHeadPos.set(bPos);
+        
         byteWorkingTailPos.value = bPos;
         bytesTailPos.set(bPos);
         
@@ -227,7 +231,8 @@ public final class RingBuffer {
 	private static void copyBytesFromToRingMasked(byte[] source,
 			final int rStart, final int rStop, byte[] target, final int tStart,
 			final int tStop, int length) {
-		if (tStop >= tStart) {
+		if (tStop > tStart) {
+			//do not accept the equals case because this can not work with data the same length as as the buffer
 			doubleMaskTargetDoesNotWrap(source, rStart, rStop, target, tStart, length);    			
 		} else {
 			doubleMaskTargetWraps(source, rStart, rStop, target, tStart, tStop,	length);
@@ -238,7 +243,7 @@ public final class RingBuffer {
 	private static void copyIntsFromToRingMasked(int[] source,
 			final int rStart, final int rStop, int[] target, final int tStart,
 			final int tStop, int length) {
-		if (tStop >= tStart) {
+		if (tStop > tStart) {
 			doubleMaskTargetDoesNotWrap(source, rStart, rStop, target, tStart, length);    			
 		} else {
 			doubleMaskTargetWraps(source, rStart, rStop, target, tStart, tStop,	length);
@@ -274,7 +279,7 @@ public final class RingBuffer {
 	private static void doubleMaskTargetWraps(byte[] source, final int rStart,
 			final int rStop, byte[] target, final int tStart, final int tStop,
 			int length) {
-		if (rStop >= rStart) {
+		if (rStop > rStart) {
 //				//the source does not wrap but the target does
 //				// done as two copies
 		    System.arraycopy(source, rStart, target, tStart, length-tStop);
@@ -290,7 +295,7 @@ public final class RingBuffer {
 	private static void doubleMaskTargetWraps(int[] source, final int rStart,
 			final int rStop, int[] target, final int tStart, final int tStop,
 			int length) {
-		if (rStop >= rStart) {
+		if (rStop > rStart) {
 //				//the source does not wrap but the target does
 //				// done as two copies
 		    System.arraycopy(source, rStart, target, tStart, length-tStop);
@@ -677,15 +682,19 @@ public final class RingBuffer {
     //must be called by low-level API when starting a new message
     public static void addMsgIdx(RingBuffer rb, int msgIdx) {
     	
+     	//this MUST be done here at the START of a message so all its internal fragments work with the same base position
+    	 rb.bytesHeadPos.lazySet(rb.byteWorkingHeadPos.value); 
+    	
     	 assert(rb.consumerData.nextWorkingHead<=rb.headPos.get() || rb.workingHeadPos.value<=rb.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
-    	   
-    	 
-    	 //TODO: AAA, setting this may not be needed instead just keep it for use while we are in 
-    	 rb.bytesHeadPos.lazySet(rb.byteWorkingHeadPos.value);    	
+   	
 		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, msgIdx);		
 		 
-		 //when publish is called this new byte will be appended due to this request
-		 rb.writeTrailingCountOfBytesConsumed = msgIdx>=0 && (1==rb.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
+		 //when publish is called this new byte will be appended due to this request NOTE: when writing fragments with low level API this must be done by hand!!
+		 beginFragmentWrite(rb, msgIdx);
+	}
+
+	public static void beginFragmentWrite(RingBuffer rb, int scriptPos) {
+		rb.writeTrailingCountOfBytesConsumed = scriptPos>=0 && (1==rb.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[scriptPos]);
 	}
     
    
@@ -852,26 +861,24 @@ public final class RingBuffer {
     	ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value); 
     }
     
-    public static void publishWrites(RingBuffer ring) {
+    
+    
+    /**
+     * Low level API for publish 
+     * @param ring
+     */
+    public static void publishWrite(RingBuffer ring) {
     	
+    	//happens at the end of every fragment
     	if (ring.writeTrailingCountOfBytesConsumed) {
 			writeTrailingCountOfBytesConsumed(ring, ring.workingHeadPos.value++); //increment because this is the low-level API calling
 			//this updated the head so it must repositioned
-		//	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
 		} //MUST be before the assert.
     	
     	assert(ring.consumerData.nextWorkingHead<=ring.headPos.get() || ring.workingHeadPos.value<=ring.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
-    	
-    	//TODO: AAAA, this should only be done at the end of a message but instead copy this position at top and keep it?
-    	//publish this first so the bulk splitter will pick up all the values
-    	//REMOVING THIS ALMOST WORKS EXCEPT THAT THE TAP FOR LOW LEVEL API IS BREAKING NOT SURE WHY THIS WOULD MAKE A DIFFERENCE. ALSO BREAKS ENCODE.
-    	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); //can be done on blockWrite tryWrite and setMsgId? yes alread done in those place.
-    	
-    	//needed for the low level something?
-    	
-    	
-    	//publish writes
-    	ring.headPos.lazySet(ring.workingHeadPos.value);
+
+    	//publish writes TODO: AAAA, can do this less often to support batching.
+    	ring.headPos.lazySet(ring.workingHeadPos.value);  	
     }
     
     public static void abandonWrites(RingBuffer ring) {    

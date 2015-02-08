@@ -164,7 +164,7 @@ public class RingBufferMultiTemplateTest {
 		        		RingWriter.writeInt(ring, BOX_COUNT_LOC, 42);
 		        		RingWriter.writeBytes(ring, BOX_OWNER_LOC, source);
 		        				        				        		
-		        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
+		        		RingBuffer.publishWrite(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
 	            		Thread.yield();
@@ -193,7 +193,7 @@ public class RingBufferMultiTemplateTest {
 	        			
 	        			RingWriter.writeBytes(ring, REST_VERSION, ASCII_VERSION);
 	        			
-		        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
+		        		RingBuffer.publishWrite(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
 	        			Thread.yield();

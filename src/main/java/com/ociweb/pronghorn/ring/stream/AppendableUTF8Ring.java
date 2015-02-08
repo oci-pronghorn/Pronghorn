@@ -39,7 +39,7 @@ public class AppendableUTF8Ring implements Appendable {
 	public Appendable append(CharSequence csq) throws IOException {
 		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
         outputTarget+=step;
-        RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, 0);
+        RingBuffer.addMsgIdx(ringBuffer, 0);
 		RingBuffer.validateVarLength(ringBuffer, csq.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
 		final int p = ringBuffer.byteWorkingHeadPos.value;	    
 		int byteLength = RingBuffer.copyUTF8ToByte(csq, 0, ringBuffer.byteBuffer, ringBuffer.byteMask, p, csq.length());
@@ -47,7 +47,7 @@ public class AppendableUTF8Ring implements Appendable {
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, ringBuffer.bytesHeadPos.get(), p, byteLength);
 		
 //		if ((--countDown)<=0) {
-			RingBuffer.publishWrites(ringBuffer);
+			RingBuffer.publishWrite(ringBuffer);
 //			countDown = countDownInit;
 //		}
 		return this;
@@ -58,7 +58,7 @@ public class AppendableUTF8Ring implements Appendable {
 			throws IOException {
 		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
         outputTarget+=step;
-        RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, 0);
+        RingBuffer.addMsgIdx(ringBuffer, 0);
 		RingBuffer.validateVarLength(ringBuffer, csq.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
 		final int p = ringBuffer.byteWorkingHeadPos.value;	    
 		int byteLength = RingBuffer.copyUTF8ToByte(csq, start, ringBuffer.byteBuffer, ringBuffer.byteMask, p, end-start);
@@ -66,7 +66,7 @@ public class AppendableUTF8Ring implements Appendable {
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos,  ringBuffer.bytesHeadPos.get(), p, byteLength);
 		
 //		if ((--countDown)<=0) {
-			RingBuffer.publishWrites(ringBuffer);
+			RingBuffer.publishWrite(ringBuffer);
 //			countDown = countDownInit;
 //		}
 		return this;
@@ -77,7 +77,7 @@ public class AppendableUTF8Ring implements Appendable {
 		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
         outputTarget+=step;
 		temp[0]=c; //TODO: C, This should be optimized however callers should prefer to use the other two methods.
-		RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, 0);
+	    RingBuffer.addMsgIdx(ringBuffer, 0);
 		RingBuffer.validateVarLength(ringBuffer, temp.length<<3);
 		int sourceLen = temp.length; //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
 		final int p = ringBuffer.byteWorkingHeadPos.value;
@@ -86,7 +86,7 @@ public class AppendableUTF8Ring implements Appendable {
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, ringBuffer.bytesHeadPos.get(), p, byteLength);
 		
 //		if ((--countDown)<=0) {
-			RingBuffer.publishWrites(ringBuffer);
+			RingBuffer.publishWrite(ringBuffer);
 //			countDown = countDownInit;
 //		}
 		return this;

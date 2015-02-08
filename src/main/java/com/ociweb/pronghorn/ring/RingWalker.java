@@ -146,12 +146,11 @@ public class RingWalker {
     public static boolean tryReadFragment(RingBuffer ringBuffer) { 
 		if (null==ringBuffer.buffer) {
 			ringBuffer.init();//hack test
-		}
-		
+		}		
 		
 		if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBuffer.consumerData.nextCursor)) {    		
-	    	return prepReadMessage(ringBuffer, ringBuffer.consumerData);			   
-        } else {   
+			return prepReadMessage(ringBuffer, ringBuffer.consumerData);			   
+        } else {  
 			return prepReadFragment(ringBuffer, ringBuffer.consumerData);
         }
     }
@@ -175,6 +174,10 @@ public class RingWalker {
 				prepReadFragment(ringBuffer, ringBufferConsumer, ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor], ringBufferConsumer.nextWorkingTail, target);
 			} else {
 				ringBufferConsumer.isNewMessage = false; 
+				
+				assert (ringBufferConsumer.bnmHeadPosCache<=ringBufferConsumer.nextWorkingTail) : 
+					  "Partial fragment published!  expected "+(target-ringBufferConsumer.nextWorkingTail)+" but found "+(ringBufferConsumer.bnmHeadPosCache-ringBufferConsumer.nextWorkingTail);
+;
 				return false;
 			}
 		}
@@ -352,7 +355,7 @@ public class RingWalker {
 		if (ringBufferConsumer.msgIdx >= 0 && ringBufferConsumer.msgIdx < fragDataSize.length) {
 			//assert that we can read the fragment size. if not we get a partial fragment failure.
 			assert(ringBuffer.headPos.get() >= (ringBufferConsumer.nextWorkingTail + fragDataSize[ringBufferConsumer.msgIdx])) : "Partial fragment detected at "+ringBuffer.headPos.get()+" needs "+fragDataSize[ringBufferConsumer.msgIdx]+" for msgIdx:"+ringBufferConsumer.msgIdx;
-			    		
+
 			ringBufferConsumer.nextWorkingTail = tmpNextWokingTail + fragDataSize[ringBufferConsumer.msgIdx];//save the size of this new fragment we are about to read  		    		
 			ringBufferConsumer.cursor = ringBufferConsumer.msgIdx;  
 			
@@ -458,11 +461,18 @@ public class RingWalker {
 		
 		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
 		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {			
-
+	
 			//each time some bytes were written in the previous fragment this value was incremented.		
 			//now it becomes the base value for all byte writes
 			//similar to publish except for bytes
-			ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);			
+			
+			//must be done BEFORE the headPos set and AFTER the field value sets
+			//because the publish is optional for the high level API we must set the bytes pos 
+			//must be done here so all fragments use the same base position for byte arrays
+			ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);	
+			
+			//should be part of the publish but publish is called for EVERY fragment
+			
 						
 			//Start new stack of fragments because this is a new message
 			ring.consumerData.activeWriteFragmentStack[0] = ring.consumerData.nextWorkingHead;
@@ -493,12 +503,10 @@ public class RingWalker {
 		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
 		ring.buffer[ring.mask &((int)ring.consumerData.nextWorkingHead +  from.templateOffset)] = -1;		
 		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + 1 ;
-		RingBuffer.publishWrites(ring);
+		RingBuffer.publishWrite(ring);
 		
 	}
-	
-
-	
+		
 	public static void publishWrites(RingBuffer outputRing) {
 		RingWalker ringBufferConsumer = outputRing.consumerData;
 		outputRing.workingHeadPos.value = ringBufferConsumer.nextWorkingHead;
@@ -509,8 +517,15 @@ public class RingWalker {
 		
 		assert(outputRing.consumerData.nextWorkingHead<=outputRing.headPos.get() || outputRing.workingHeadPos.value<=outputRing.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
     	
-		if ((--ringBufferConsumer.batchPublishCountDown<=0)) {
-			RingBuffer.publishWrites(outputRing); //TODO: AAAAAAAAAAAAAAAAAAAA must not call for fragments?? fix
+		//must write trailing count to fragment
+		if (outputRing.writeTrailingCountOfBytesConsumed) {
+			RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, outputRing.workingHeadPos.value++); //increment because this is the low-level API calling
+			//this updated the head so it must repositioned
+		} //MUST be before the assert.
+
+		if ((--ringBufferConsumer.batchPublishCountDown<=0)) {			
+			//publish writes
+			outputRing.headPos.lazySet(outputRing.workingHeadPos.value);			
 			ringBufferConsumer.batchPublishCountDown = ringBufferConsumer.batchPublishCountDownInit;
 		}
 		 

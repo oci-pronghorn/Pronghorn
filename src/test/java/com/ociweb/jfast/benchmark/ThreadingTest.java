@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.jfast.catalog.loader.ClientConfig;
@@ -44,7 +45,7 @@ import com.ociweb.jfast.stream.FASTReaderReactor;
 public class ThreadingTest {
 
 	
-	@Test
+	@Ignore //Still in work needs to assert all the right stuff.
 	public void builtInTest() {
 		//this example uses the preamble feature
         //large value for bandwidth, small for latency
@@ -70,7 +71,7 @@ public class ThreadingTest {
           
           FASTClassLoader.deleteFiles();
    
-          FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
+          FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
        //  FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes); 
          
          System.out.println("Using: "+readerDispatch.getClass().getSimpleName());
@@ -144,6 +145,11 @@ public class ThreadingTest {
                       if (RingWalker.tryReadFragment(rb)) {
                           
                           if (RingWalker.isNewMessage(rb.consumerData)) {
+                        	  
+                        	  if (RingWalker.getMsgIdx(rb)<0) {
+                        		  break;
+                        	  }
+                        	  
                               msgs.incrementAndGet();
                               
                               //processMessage(temp, rb); 
@@ -200,6 +206,9 @@ public class ThreadingTest {
 
                         if (RingWalker.tryReadFragment(rb)) { 
                                 assert(RingWalker.isNewMessage(rb.consumerData)) : "";
+                                if (RingWalker.getMsgIdx(rb)<0 ){
+                                	break;
+                                }
                                 totalMessages++;
                                 processMessage(temp, rb, reactor);  
                         } 
@@ -216,6 +225,10 @@ public class ThreadingTest {
                     //is alive is done writing but we need to empty out
                     while (RingWalker.tryReadFragment(rb)) { 
                         if (RingWalker.isNewMessage(rb.consumerData)) {
+                        	if (RingWalker.getMsgIdx(rb)<0) {
+                        		break;
+                        	}
+                        	
                             totalMessages++;
                         }
                     }

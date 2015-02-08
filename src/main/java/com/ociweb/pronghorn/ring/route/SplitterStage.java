@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.util.PaddedAtomicInteger;
 
 /**
@@ -98,26 +99,28 @@ public class SplitterStage implements Runnable {
 		int pMask = ss.source.mask;
 		long tempTail = ss.source.tailPos.get();
 		int primaryTailPos = pMask & (int)tempTail;				
-		int totalPrimaryCopy = (int)(((int)headPos)-((int)tempTail));
-		if (totalPrimaryCopy<=0) {
+		int totalPrimaryCopy = (int)(headPos - tempTail);
+		if (totalPrimaryCopy <= 0) {
+			assert(totalPrimaryCopy==0);
 			return true;
 		}
-		long absHeadPos = ss.source.workingTailPos.value+totalPrimaryCopy;
-	
+		long absHeadPos = ss.source.workingTailPos.value + totalPrimaryCopy;
 		
+		
+			
 		int bMask = ss.source.byteMask;		
 		int tempByteTail = ss.source.bytesTailPos.get();
 		int byteTailPos = bMask & tempByteTail;
-		int totalBytesCopy =  (int)(byteHeadPos - tempByteTail);
+		int totalBytesCopy =  bMask&(int)(1 + bMask + byteHeadPos - tempByteTail);
 				
 		//now do the copies
 		doingCopy(ss, byteTailPos, primaryTailPos, totalPrimaryCopy, totalBytesCopy);
-		RingBuffer.releaseMessageReadLock(ss.source);
-				
+								
 		//now move pointer forward
 		ss.source.byteWorkingTailPos.value = byteHeadPos;
 		ss.source.bytesTailPos.set(byteHeadPos);
-		ss.source.workingTailPos.value =absHeadPos;
+		
+		ss.source.workingTailPos.value = absHeadPos;
 		ss.source.tailPos.set(absHeadPos);
 		
 		return true;
@@ -130,7 +133,18 @@ public class SplitterStage implements Runnable {
 			                   int totalPrimaryCopy, 
 			                   int totalBytesCopy) {
 		
-						
+		boolean willRollover = (primaryTailPos+totalPrimaryCopy)>ss.source.mask;
+		System.err.println("copy "+totalPrimaryCopy+" from "+  (ss.source.mask & ss.source.tailPos.get())+" vs "+primaryTailPos+"  rollover "+willRollover);				
+		//failure when the source rolls over.
+		
+//		if (willRollover) { //this test proves that its not a run ahead problem but instead is an offset error
+//			try {
+//				Thread.sleep(3000);
+//			} catch (InterruptedException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//		}
 		
 		boolean moreToCopy;
 		do {
@@ -141,26 +155,11 @@ public class SplitterStage implements Runnable {
 				if ((totalPrimaryCopy + ss.targetHeadPos[i]) > ss.targets[i].workingHeadPos.value) {
 					RingBuffer ringBuffer = ss.targets[i];
 										
-					//the tail must be larger than this position for there to be room to rite
+					//the tail must be larger than this position for there to be room to write
 					long tail =  totalPrimaryCopy + ringBuffer.workingHeadPos.value - ringBuffer.maxSize;
 					
 					if (ringBuffer.tailPos.get()>=tail ) {
-						//copy the bytes
-						PaddedAtomicInteger bytesHeadPos = ringBuffer.bytesHeadPos;
-						RingBuffer.copyBytesFromToRing(ss.source.byteBuffer, byteTailPos, ss.source.byteMask, 
-								ringBuffer.byteBuffer, bytesHeadPos.get(), ringBuffer.byteMask, 
-								totalBytesCopy);
-						ringBuffer.byteWorkingHeadPos.value = bytesHeadPos.addAndGet(totalBytesCopy);
-						
-						//copy the primary data
-						AtomicLong headPos = ringBuffer.headPos;
-						RingBuffer.copyIntsFromToRing(ss.source.buffer, primaryTailPos, ss.source.mask, 
-								ringBuffer.buffer, (int)headPos.get(), ringBuffer.mask, 
-								totalPrimaryCopy);
-						ringBuffer.workingHeadPos.value = headPos.addAndGet(totalPrimaryCopy);	
-
-					    //minimum needed to publish writes, we are below the low level API at this point 
-     					ringBuffer.headPos.lazySet(ringBuffer.workingHeadPos.value);
+						blockCopy(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);
 					} else {
 						moreToCopy = true;
 					}
@@ -176,6 +175,24 @@ public class SplitterStage implements Runnable {
 			ss.targetHeadPos[i] += totalPrimaryCopy;
 		}
 		
+	}
+
+	private static void blockCopy(SplitterStage ss, int byteTailPos,
+								int totalBytesCopy, int primaryTailPos, int totalPrimaryCopy,
+								RingBuffer ringBuffer) {
+		
+		//copy the bytes
+		RingBuffer.copyBytesFromToRing(ss.source.byteBuffer,                   byteTailPos, ss.source.byteMask, 
+									  ringBuffer.byteBuffer, ringBuffer.bytesHeadPos.get(), ringBuffer.byteMask, 
+									  totalBytesCopy);
+		ringBuffer.byteWorkingHeadPos.value = ringBuffer.bytesHeadPos.addAndGet(totalBytesCopy);
+								
+		//copy the primary data
+		RingBuffer.copyIntsFromToRing(ss.source.buffer,                primaryTailPos, ss.source.mask, 
+									 ringBuffer.buffer, (int)ringBuffer.headPos.get(), ringBuffer.mask, 
+									 totalPrimaryCopy);
+		ringBuffer.workingHeadPos.value = ringBuffer.headPos.addAndGet(totalPrimaryCopy);	
+
 	}
 	
 	

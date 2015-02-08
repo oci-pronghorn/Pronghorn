@@ -132,7 +132,7 @@ public class TemplateLoaderTest {
         
         FASTClassLoader.deleteFiles();
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
     //    FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
 
@@ -197,49 +197,8 @@ public class TemplateLoaderTest {
 	                    bufferIdx += 1;// point to first field
 	                    assertTrue("found " + msgIdx, 36 == msgIdx || 3 == msgIdx || 0 == msgIdx);
 	
-	                    int i = msgIdx;
-	                    // System.err.println("new templateId "+templateId);
-	                    while (true) {
-	                        int token = fullScript[i++];
-	                        // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
-	
-	                        if (isText(token)) {
-	                            
-	                        	
-	                        //	assert((bufferIdx&0x1E<<RingReader.OFF_BITS)==0x8<<RingReader.OFF_BITS || (bufferIdx&0x1E<<RingReader.OFF_BITS)==0x5<<RingReader.OFF_BITS || (bufferIdx&0x1E<<RingReader.OFF_BITS)==0xE<<RingReader.OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((bufferIdx>>RingReader.OFF_BITS)&TokenBuilder.MASK_TYPE);
-							//	int readDataLength = queue.buffer[queue.mask & (int)(queue.consumerData.activeReadFragmentStack[RingReader.STACK_OFF_MASK&(bufferIdx>>RingReader.STACK_OFF_SHIFT)] + (RingReader.OFF_MASK&bufferIdx) + 1)];
-								
-								int readDataLength = RingBuffer.readInt(queue.buffer, queue.mask, queue.workingTailPos.value+bufferIdx+1);
-								totalBytesOut.addAndGet(4 * readDataLength);
-	                        }
-	
-	                        // find the next index after this token.
-	                        int fSize = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
-	                        bufferIdx += fSize;
-	
-	                        if (i==fullScript.length) {
-	                        	break;
-	                        }
-	                        if (TypeMask.GroupLength == TokenBuilder.extractType(token)) {
-	                        	break;
-	                        }
-	                        if (TypeMask.Group == TokenBuilder.extractType(token) && 
-	                        	0!=(OperatorMask.Group_Bit_Close & TokenBuilder.extractOper(token))	) {
-	                        	break;
-	                        }
-	                        
-	                    }
-	                    totalBytesOut.addAndGet(4 * bufferIdx);
-	                    totalRingInts.addAndGet(bufferIdx);
-	
-	                    // must dump values in buffer or we will hang when reading.
-	                    // only dump at end of template not end of sequence.
-	                    // the removePosition must remain at the beginning until
-	                    // message is complete.
-	                    
-	                    //NOTE: MUST NOT DUMP IN THE MIDDLE OF THIS LOOP OR THE PROCESSING GETS OFF TRACK
-	                    //FASTRingBuffer.dump(queue);
-	                //    rb.tailPos.lazySet(rb.workingTailPos.value);
+	                    accumTotals(queue, fullScript, totalBytesOut, totalRingInts, msgIdx, bufferIdx);
+
 	                }
                 } else {
                 	fail("No data?");
@@ -341,6 +300,45 @@ public class TemplateLoaderTest {
 
         
     }
+
+	private void accumTotals(RingBuffer queue, final int[] fullScript,
+			final AtomicLong totalBytesOut, final AtomicLong totalRingInts,
+			final int msgIdx, int bufferIdx) {
+		int i = msgIdx;
+		// System.err.println("new templateId "+templateId);
+		while (true) {
+		    int token = fullScript[i++];
+		    // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
+
+		    if (isText(token)) {
+		        
+		    	
+		    //	assert((bufferIdx&0x1E<<RingReader.OFF_BITS)==0x8<<RingReader.OFF_BITS || (bufferIdx&0x1E<<RingReader.OFF_BITS)==0x5<<RingReader.OFF_BITS || (bufferIdx&0x1E<<RingReader.OFF_BITS)==0xE<<RingReader.OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((bufferIdx>>RingReader.OFF_BITS)&TokenBuilder.MASK_TYPE);
+			//	int readDataLength = queue.buffer[queue.mask & (int)(queue.consumerData.activeReadFragmentStack[RingReader.STACK_OFF_MASK&(bufferIdx>>RingReader.STACK_OFF_SHIFT)] + (RingReader.OFF_MASK&bufferIdx) + 1)];
+				
+				int readDataLength = RingBuffer.readInt(queue.buffer, queue.mask, queue.workingTailPos.value+bufferIdx+1);
+				totalBytesOut.addAndGet(4 * readDataLength);
+		    }
+
+		    // find the next index after this token.
+		    int fSize = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
+		    bufferIdx += fSize;
+
+		    if (i==fullScript.length) {
+		    	break;
+		    }
+		    if (TypeMask.GroupLength == TokenBuilder.extractType(token)) {
+		    	break;
+		    }
+		    if (TypeMask.Group == TokenBuilder.extractType(token) && 
+		    	0!=(OperatorMask.Group_Bit_Close & TokenBuilder.extractOper(token))	) {
+		    	break;
+		    }
+		    
+		}
+		totalBytesOut.addAndGet(4 * bufferIdx);
+		totalRingInts.addAndGet(bufferIdx);
+	}
     
     
     @Test
@@ -380,6 +378,9 @@ public class TemplateLoaderTest {
             if (RingWalker.tryReadFragment(rb)) {	
 	            if (RingWalker.isNewMessage(rb.consumerData)) {
 	                int templateId = RingWalker.getMsgIdx(rb.consumerData);
+	                if (templateId<0) {
+	                	break;
+	                }
 	                msgs.incrementAndGet();
 	            }
             }
@@ -629,8 +630,12 @@ public class TemplateLoaderTest {
             		//confirms full message to read on the queue            	
                     if (RingWalker.tryReadFragment(queue)) {
                         if (RingWalker.isNewMessage(queue.consumerData)) {
+                        	if (RingWalker.getMsgIdx(queue)<0) {
+                        		break;
+                        	}
                             msgs.incrementAndGet();
                         }
+                        
                         try{   
                         	//write message found on the queue to the output writer
                             FASTDynamicWriter.write(dynamicWriter);

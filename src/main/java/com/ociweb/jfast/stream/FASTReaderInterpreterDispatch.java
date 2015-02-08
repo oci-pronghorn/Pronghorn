@@ -104,40 +104,40 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             }
         }
         genWriteTemplateId(this);
+        //set this again because the code generation path may not have set it if it were skipped.
+        RingBuffer rb = RingBuffers.get(ringBuffers,activeScriptCursor);
+        rb.writeTrailingCountOfBytesConsumed = msgIdx>=0 && (1==rb.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
     }
     
     //TODO: MUST only call when we know there is room for the biggest known fragment, must avoid additional checks.
     // -1 end of file, 0 no data, 1 loaded
     public int decode(PrimitiveReader reader) {
 
+    	final RingBuffer rbRingBuffer;
         if (activeScriptCursor<0) {
             if (PrimitiveReader.isEOF(reader)) { 
                // System.err.println("EOF");
                 return -1; //no more data stop
             }  
             beginMessage(reader); 
+            rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
+        } else {
+        	rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
+        	//this is not the beginning of a fragment but we still need to mark the need to add the trailing bytes.
+        	RingBuffer.beginFragmentWrite(rbRingBuffer, activeScriptCursor);        	
         }
-       
-        final RingBuffer rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
+              
            
-        FieldReferenceOffsetManager from = RingBuffer.from(rbRingBuffer);
-     
-        boolean recordBytesUsed = (1==from.fragNeedsAppendedCountOfBytesConsumed[activeScriptCursor]);
-        		
-		int fragmentSize = from.fragDataSize[activeScriptCursor]+from.templateOffset; //plus roomm for next message        
+        FieldReferenceOffsetManager from = RingBuffer.from(rbRingBuffer);		
+        int fragDataSize = from.fragDataSize[activeScriptCursor];   
+        
         //Waiting for tail position to change! can cache the value, must make same change in compiled code.
-        long neededTailStop = rbRingBuffer.workingHeadPos.value   - rbRingBuffer.maxSize + fragmentSize;
+        long neededTailStop = rbRingBuffer.workingHeadPos.value   - rbRingBuffer.maxSize + fragDataSize;
         if (rbRingBuffer.consumerData.tailCache < neededTailStop && ((rbRingBuffer.consumerData.tailCache=rbRingBuffer.tailPos.longValue()) < neededTailStop) ) {
               return 0; //no space to read data and start new message so read nothing
         }
         
-        
-        if (rbRingBuffer.workingHeadPos.value<rbRingBuffer.headPos.get()) {
-        	throw new UnsupportedOperationException();
-        }
-
-        
-        
+        assert(rbRingBuffer.workingHeadPos.value>=rbRingBuffer.headPos.get());
         
         int token;
         do {
@@ -215,7 +215,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                             } else {
                                 //Close group
                                 int idx = TokenBuilder.MAX_INSTANCE & token;
-                                closeGroup(token,idx, reader, rbRingBuffer, recordBytesUsed);
+                                closeGroup(token,idx, reader);                               
                                 break;
                             }                            
                             
@@ -266,14 +266,22 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             
         } while (true);
         
-        if (recordBytesUsed) {
+        if (rbRingBuffer.writeTrailingCountOfBytesConsumed) {
+        	
         	genReadTotalMessageBytesUsed(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value - rbRingBuffer.bytesHeadPos.get() );
+        	//this stopping logic is only needed for the interpreter, the generated version has this call injected at the right poing.
+        	rbRingBuffer.writeTrailingCountOfBytesConsumed = false;
+        } 
+        genReadGroupCloseMessage(reader, this); //active script cursor is set to end of messge by this call
+
+        //this conditional is for the code generator so it need not check
+        if (rbRingBuffer.workingHeadPos.value != rbRingBuffer.headPos.get()) {
+	        assert (fragDataSize == ((int)(rbRingBuffer.workingHeadPos.value-rbRingBuffer.headPos.get()))) : "expected to write "+fragDataSize+" but wrote "+((int)(rbRingBuffer.workingHeadPos.value-rbRingBuffer.headPos.get()));
+	        
+			//publish writes TODO: AAAA, can do this less often to support batching. (very light weight publish)
+			rbRingBuffer.headPos.lazySet(rbRingBuffer.workingHeadPos.value);
         }
-        genReadGroupCloseMessage(reader, this); 
-                
         
-        //Must do last because this will let the other threads begin to use this data
-        RingBuffer.publishWrites(rbRingBuffer); //TODO: X, may be able to improve performance by doing this occasionally 
         return 1;//read one fragment 
     }
 
@@ -1444,7 +1452,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
-    public void closeGroup(int token, int backvalue, PrimitiveReader reader, RingBuffer rbRingBuffer, boolean recordBytesUsed) {
+    public void closeGroup(int token, int backvalue, PrimitiveReader reader) {
 
         assert (token < 0);
         assert (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
@@ -1452,26 +1460,13 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         //TODO: B, this logic seems wrong could both happen?
         
         if (0 != (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
-        	
-        	//only do for fragments that do not end in length aleady
-        	//this is fragment specific so how do we know?  The token could tell us?
-        	//this behavior is fixed per fragment so the code gen will be right.
-        	//rbRingBuffer.consumerData.from
-        	
-        	if (recordBytesUsed) {
-        		genReadTotalMessageBytesUsed(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value - rbRingBuffer.bytesHeadPos.get() );
-        	}
-        	
             genReadGroupClose(reader);
             
-        }
+        } 
         
         //token driven logic so nothing will need to be generated for this false case
         if (0!=(token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))) {
             int topCursorPos = activeScriptCursor-backvalue;//constant for compiled code
-            if (recordBytesUsed) {
-            	genReadTotalMessageBytesUsed(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value - rbRingBuffer.bytesHeadPos.get() );
-            }
             genReadSequenceClose(topCursorPos, this);
         }         
     }

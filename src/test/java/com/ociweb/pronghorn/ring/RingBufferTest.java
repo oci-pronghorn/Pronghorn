@@ -7,7 +7,7 @@ import static com.ociweb.pronghorn.ring.RingBuffer.byteMask;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.dump;
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.publishWrites;
+import static com.ociweb.pronghorn.ring.RingBuffer.publishWrite;
 import static com.ociweb.pronghorn.ring.RingBuffer.releaseMessageReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
@@ -58,7 +58,7 @@ public class RingBufferTest {
         addByteArray(testArray, 0, testArray.length, ring);             
         
         //unblock for reading
-        publishWrites(ring);
+        publishWrite(ring);
                 
         //read one integer back and confirm it matches
         assertEquals(testInt, takeValue(ring)); 
@@ -203,7 +203,7 @@ public class RingBufferTest {
                 }
                 
                 if (0==(messageCount&chunkMask) ) {
-                    publishWrites(ring);
+                    publishWrite(ring);
                     //wait for room to fit one message
                     //waiting on the tailPosition to move the others are constant for this scope.
                     //workingHeadPositoin is same or greater than headPosition
@@ -333,7 +333,7 @@ public class RingBufferTest {
                 	addByteArray(testArray, 0, testArray.length, ring);
                 }
                 if (0==(messageCount&chunkMask) ) {
-                    publishWrites(ring);
+                    publishWrite(ring);
                     //wait for room to fit one message
                     //waiting on the tailPosition to move the others are constant for this scope.
                     //workingHeadPositoin is same or greater than headPosition

@@ -91,7 +91,7 @@ public class RingBufferSingleTemplateUTF8Test {
     
         			}
         		}
-        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
+        		RingBuffer.publishWrite(ring); //must always publish the writes if message or fragment
         		
         	} else {
         		//Unable to write because there is no room so do something else while we are waiting.

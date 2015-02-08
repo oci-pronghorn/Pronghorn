@@ -408,7 +408,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				result |= j;//doing more nothing.
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken,idx, reader, rbRingBuffer, 1==rbRingBuffer.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[0]);
+			staticReader.closeGroup(groupToken,idx, reader);
 		}
 		return result;
 	}
@@ -435,7 +435,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
                 RingBuffer.dump(rbRingBufferLocal);
                 byte[] data = BaseStreamingTest.byteMe(textTestData[j]);
                 RingBuffer.addByteArray(data, 0, data.length, rbRingBufferLocal);
-                RingBuffer.publishWrites(rbRingBufferLocal);
+                RingBuffer.publishWrite(rbRingBufferLocal);
 			    
 				assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
                 assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
@@ -475,7 +475,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				result |= readText(token, reader, staticReader);
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader, rbRingBufferLocal, 1==rbRingBufferLocal.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[0]);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
 		}
 		return result;
 	}
