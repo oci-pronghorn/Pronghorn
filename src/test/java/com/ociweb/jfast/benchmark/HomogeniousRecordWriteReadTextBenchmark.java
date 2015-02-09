@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.google.caliper.Benchmark;
@@ -291,7 +292,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 	
 	////
 	
-	@Test
+	@Ignore
 	public void testThis() {
 		assertTrue(0==timeStaticTextASCIIDelta(20));
 	}

@@ -216,7 +216,7 @@ public class RingStreams {
 					tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
 					RingBuffer.addMsgIdx(outputRing, 0);
 					RingBuffer.validateVarLength(outputRing, size);
-					RingBuffer.addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), position, size);
+					RingBuffer.addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, RingBuffer.bytesBase(outputRing), position, size);
 					outputRing.byteWorkingHeadPos.value = position + size;
 					RingBuffer.publishWrite(outputRing);
 					position += size;

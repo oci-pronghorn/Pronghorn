@@ -44,7 +44,7 @@ public class AppendableASCIIRing implements Appendable {
 		RingBuffer.validateVarLength(ringBuffer, csq.length());
 		int sourceLen = csq.length();
 		final int p = RingBuffer.addASCIIToBytes(csq, 0, sourceLen, ringBuffer); 
-		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos,  ringBuffer.bytesHeadPos.get(), p, sourceLen);
+		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos,  RingBuffer.bytesBase(ringBuffer), p, sourceLen);
 		
 		if ((--countDown)<=0) {
 			RingBuffer.publishWrite(ringBuffer);
@@ -62,7 +62,7 @@ public class AppendableASCIIRing implements Appendable {
 		int length = end-start;
 		RingBuffer.validateVarLength(ringBuffer, csq.length());
 		final int p = RingBuffer.addASCIIToBytes(csq, start, length, ringBuffer); 
-		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, ringBuffer.bytesHeadPos.get(), p, length);
+		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, RingBuffer.bytesBase(ringBuffer), p, length);
 		
 		if ((--countDown)<=0) {
 			RingBuffer.publishWrite(ringBuffer);
@@ -80,7 +80,7 @@ public class AppendableASCIIRing implements Appendable {
 		RingBuffer.validateVarLength(ringBuffer,temp.length);
 		int sourceLen = temp.length;
 		final int p = RingBuffer.addASCIIToBytes(temp, 0, sourceLen,	ringBuffer); 
-		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, ringBuffer.bytesHeadPos.get(), p, sourceLen);
+		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, RingBuffer.bytesBase(ringBuffer), p, sourceLen);
 		
 		if ((--countDown)<=0) {
 			RingBuffer.publishWrite(ringBuffer);

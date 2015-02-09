@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.ring;
 
+import static org.junit.Assert.assertTrue;
+
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -65,10 +67,16 @@ public final class RingBuffer {
     public byte[] byteBuffer;
     public final int byteMask;
     
+    //New interface for unified access to next head position.
+    //public final AtomicLong publishedHead = new PaddedAtomicLong(); // top 32 is primary, low 32 is byte 
+    
     //TODO: AAA, group these together and move into RingWalker
     public final PaddedInt byteWorkingHeadPos = new PaddedInt();
-    public final PaddedAtomicInteger bytesHeadPos = new PaddedAtomicInteger();
-        
+    public final PaddedAtomicInteger bytesHeadPos = new PaddedAtomicInteger(); //Base value for byte array writes, may get renamed( and may not need to be atomic)
+    public int bytesBase = 0;    
+    
+    
+    
     //TODO: AAA, group these together and move into RingWalker
     public final PaddedAtomicInteger bytesTailPos = new PaddedAtomicInteger();
     public final PaddedInt byteWorkingTailPos = new PaddedInt();
@@ -108,6 +116,14 @@ public final class RingBuffer {
     	}    	
     }
     
+    
+    public static int bytesBase(RingBuffer rb) {
+    	return rb.bytesBase;
+    }
+    
+    public static void markBytesBase(RingBuffer rb) {
+    	rb.bytesBase = rb.byteWorkingHeadPos.value;
+    }
     
     /**
      * Construct ring buffer with re-usable constants and fragment structures
@@ -189,7 +205,7 @@ public final class RingBuffer {
         workingTailPos.value = 0;
         tailPos.set(0);
         headPos.set(0); 
-        
+        bytesBase = 0;
         byteWorkingHeadPos.value = 0;
         bytesHeadPos.set(0);
         
@@ -213,6 +229,7 @@ public final class RingBuffer {
         byteWorkingHeadPos.value = bPos;
         bytesHeadPos.set(bPos);
         
+        bytesBase = bPos;
         byteWorkingTailPos.value = bPos;
         bytesTailPos.set(bPos);
         
@@ -620,7 +637,7 @@ public final class RingBuffer {
 			appendPartialBytesArray(data, offset&mask, len1, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);        
 			appendPartialBytesArray(data, 0, len-len1,       outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value+len1, outputRing.byteMask);        
 			
-			addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), outputRing.byteWorkingHeadPos.value, len);
+			addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, RingBuffer.bytesBase(outputRing), outputRing.byteWorkingHeadPos.value, len);
 			outputRing.byteWorkingHeadPos.value = outputRing.byteWorkingHeadPos.value + len;
 		}
 	}
@@ -649,13 +666,13 @@ public final class RingBuffer {
     	validateVarLength(rbRingBuffer, sourceLen);
     	
     	appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask);   
-        addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.bytesHeadPos.get(), rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
+        addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, RingBuffer.bytesBase(rbRingBuffer), rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
         rbRingBuffer.byteWorkingHeadPos.value = rbRingBuffer.byteWorkingHeadPos.value + sourceLen;		
 		
     }
     
     public static void addNullByteArray(RingBuffer rbRingBuffer) {
-        addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.bytesHeadPos.get(), rbRingBuffer.byteWorkingHeadPos.value, -1);
+        addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, RingBuffer.bytesBase(rbRingBuffer), rbRingBuffer.byteWorkingHeadPos.value, -1);
     }
     
 
@@ -679,11 +696,13 @@ public final class RingBuffer {
 		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
 	}
  
+    
+    
     //must be called by low-level API when starting a new message
     public static void addMsgIdx(RingBuffer rb, int msgIdx) {
     	
      	//this MUST be done here at the START of a message so all its internal fragments work with the same base position
-    	 rb.bytesHeadPos.lazySet(rb.byteWorkingHeadPos.value); 
+     	 markBytesBase(rb);
     	
     	 assert(rb.consumerData.nextWorkingHead<=rb.headPos.get() || rb.workingHeadPos.value<=rb.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
    	
@@ -719,12 +738,12 @@ public final class RingBuffer {
 
     //TODO: AAA, add tail step size for the high level API fixed offsets. (abs position in the ring buffer? not len)
     
-	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat, int bytesHeadPos) {
+	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat, int baseBytePos) {
 	   	//negative position is written as is because the internal array does not have any offset (but it could some day)
     	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
     	int tmp = positionDat;
     	if (positionDat>=0) {
-    		tmp = (int)(positionDat-bytesHeadPos);
+    		tmp = (int)(positionDat-baseBytePos);
     		assert(tmp>=0);
     	}
     	
@@ -745,7 +764,9 @@ public final class RingBuffer {
 	        	ring.byteWorkingTailPos.value += len;
 	        }
 //    	}
-        return restorePosition(ring, meta & 0x7FFFFFFF);
+        int pos = restorePosition(ring, meta & 0x7FFFFFFF);
+        assert(ring.bytesHeadPos.get() >= (pos+len)) : "expected to be at byte pos "+(pos+len)+" but we are only at "+ring.bytesHeadPos.get();
+        return pos;
     }   
 	
     public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2, int value3) {
@@ -876,8 +897,9 @@ public final class RingBuffer {
 		} //MUST be before the assert.
     	
     	assert(ring.consumerData.nextWorkingHead<=ring.headPos.get() || ring.workingHeadPos.value<=ring.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
-
+    	
     	//publish writes TODO: AAAA, can do this less often to support batching.
+    	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); 
     	ring.headPos.lazySet(ring.workingHeadPos.value);  	
     }
     

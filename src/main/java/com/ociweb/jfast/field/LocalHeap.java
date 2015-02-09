@@ -779,7 +779,7 @@ public class LocalHeap {
 			rbRingBuffer.byteWorkingHeadPos.value = p + len;
 	    }      
 	    
-	    RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, rbRingBuffer.bytesHeadPos.get(), p, sourceLen);
+	    RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, RingBuffer.bytesBase(rbRingBuffer), p, sourceLen);
 	}
 
 	public static void reset(int idx, LocalHeap heap) {

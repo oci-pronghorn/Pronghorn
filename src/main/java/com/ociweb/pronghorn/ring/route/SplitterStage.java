@@ -92,36 +92,36 @@ public class SplitterStage implements Runnable {
 		while(byteHeadPos != ss.source.bytesHeadPos.get() || headPos != ss.source.headPos.get()  ) {
 			byteHeadPos = ss.source.bytesHeadPos.get();
 			headPos = ss.source.headPos.get();
-		}		
-				
-		//get the start and stop locations for the copy
+		}	
 		
+		
+		//we have established the point that we can read up to, this value is changed by the writer on the other side
+						
+		//get the start and stop locations for the copy
+		//now find the point to start reading from, this is moved forward with each new read.		
 		int pMask = ss.source.mask;
 		long tempTail = ss.source.tailPos.get();
 		int primaryTailPos = pMask & (int)tempTail;				
-		int totalPrimaryCopy = (int)(headPos - tempTail);
+		long totalPrimaryCopy = (headPos - tempTail);
 		if (totalPrimaryCopy <= 0) {
 			assert(totalPrimaryCopy==0);
 			return true;
 		}
-		long absHeadPos = ss.source.workingTailPos.value + totalPrimaryCopy;
-		
-		
 			
 		int bMask = ss.source.byteMask;		
 		int tempByteTail = ss.source.bytesTailPos.get();
 		int byteTailPos = bMask & tempByteTail;
-		int totalBytesCopy =  bMask&(int)(1 + bMask + byteHeadPos - tempByteTail);
-				
-		//now do the copies
-		doingCopy(ss, byteTailPos, primaryTailPos, totalPrimaryCopy, totalBytesCopy);
-								
-		//now move pointer forward
-		ss.source.byteWorkingTailPos.value = byteHeadPos;
-		ss.source.bytesTailPos.set(byteHeadPos);
+		int totalBytesCopy =      (bMask & byteHeadPos) - byteTailPos; 
+		if (totalBytesCopy < 0) {
+			totalBytesCopy += (bMask+1);
+		}
 		
-		ss.source.workingTailPos.value = absHeadPos;
-		ss.source.tailPos.set(absHeadPos);
+		//now do the copies
+		doingCopy(ss, byteTailPos, primaryTailPos, (int)totalPrimaryCopy, totalBytesCopy);
+								
+		//release tail so data can be written
+		ss.source.bytesTailPos.lazySet(ss.source.byteWorkingTailPos.value = tempByteTail + totalBytesCopy);		
+		ss.source.tailPos.lazySet(ss.source.workingTailPos.value = tempTail + totalPrimaryCopy);
 		
 		return true;
 	}
@@ -133,9 +133,7 @@ public class SplitterStage implements Runnable {
 			                   int totalPrimaryCopy, 
 			                   int totalBytesCopy) {
 		
-		boolean willRollover = (primaryTailPos+totalPrimaryCopy)>ss.source.mask;
-		System.err.println("copy "+totalPrimaryCopy+" from "+  (ss.source.mask & ss.source.tailPos.get())+" vs "+primaryTailPos+"  rollover "+willRollover);				
-		//failure when the source rolls over.
+
 		
 //		if (willRollover) { //this test proves that its not a run ahead problem but instead is an offset error
 //			try {
@@ -152,13 +150,18 @@ public class SplitterStage implements Runnable {
 			int i = ss.targets.length;
 			while (--i>=0) {			
 								
-				if ((totalPrimaryCopy + ss.targetHeadPos[i]) > ss.targets[i].workingHeadPos.value) {
+				//check to see if we already pushed to this output ring.
+				if ( (totalPrimaryCopy + ss.targetHeadPos[i]) > ss.targets[i].workingHeadPos.value) {
 					RingBuffer ringBuffer = ss.targets[i];
 										
 					//the tail must be larger than this position for there to be room to write
-					long tail =  totalPrimaryCopy + ringBuffer.workingHeadPos.value - ringBuffer.maxSize;
+					long tail =  totalPrimaryCopy + ringBuffer.headPos.get() - ringBuffer.maxSize;
 					
-					if (ringBuffer.tailPos.get()>=tail ) {
+					//this is not working to keep the two in sync
+				//	int byteTail = totalBytesCopy + ringBuffer.bytesHeadPos.get() - ringBuffer.maxByteSize;
+					
+					
+					if (ringBuffer.tailPos.get()>=tail /*&& ringBuffer.bytesTailPos.get()>=byteTail*/ ) {
 						blockCopy(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);
 					} else {
 						moreToCopy = true;

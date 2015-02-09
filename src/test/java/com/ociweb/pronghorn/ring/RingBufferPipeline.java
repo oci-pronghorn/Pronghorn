@@ -17,13 +17,13 @@ import com.ociweb.pronghorn.ring.route.SplitterStage;
 public class RingBufferPipeline {
 	
 	private static final String testString1 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@@";
-	private static final String testString = testString1+testString1;//+testString1;
+	private static final String testString = testString1;//+testString1;//+testString1;
 	//using length of 61 because it is prime and will wrap at odd places
 	private final byte[] testArray = testString.getBytes();//, this is a reasonable test message.".getBytes();
-	private final int testMessages = 40000;//100000;//10000000; //TODO: AA, must bump this out one more after the byte var rel pos logic is fixed.
+	private final int testMessages = 10000000; //TODO AAA, still another error can be found here. when the text clears 2billion
 	private final int stages = 3;
 	private final byte primaryBits   = 17; 
-	private final byte secondaryBits = 24;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
+	private final byte secondaryBits = 23;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
     
 	private final int msgSize = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 	
@@ -275,6 +275,7 @@ public class RingBufferPipeline {
 			          long tailPosCache = tailPosition(outputRing);                        
 			          while (--messageCount>=0) {
 			        	  
+			        	  //TODO: AAAAA, this wait is the problem because we should have published the new byte position before now.
 			        	  tailPosCache = spinBlockOnTail(tailPosCache, head, outputRing);
 			        	  			        	  
 			              //write the record
@@ -284,7 +285,7 @@ public class RingBufferPipeline {
 		                  
 		               //TODO: AAAAAAA why is this needed here, THIS IS FIXING SMOE CASE ON THE ROLLOVER THAT IS FAILING. IN THE SPLITTER?
 			        	  //need something to fix the example file read/write   
-		//		        	  outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
+				        //	  outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
 
 			        	 
 			        	  
@@ -547,7 +548,8 @@ public class RingBufferPipeline {
 	                    long messageCount = 0;
 	                    while (true) {
 	                        //read the message
-	                    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	  
+	                    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);
+	                    	//TODO: AAA can we confirm that the bytes data is loaded by looking at the last position in the fragment?
 
 	                        int msgId = RingBuffer.takeValue(inputRing); 	
 	                        if (msgId<0) {                     	
@@ -561,13 +563,17 @@ public class RingBufferPipeline {
 	                    	int len = takeRingByteLen(inputRing);
 	                    	assertEquals(testArray.length,len);
 
+	                    	//converting this to the position will cause the byte posistion to increment.
 	                    	int pos = bytePosition(meta, inputRing, len);//has side effect of moving the byte pointer!!
 	                    	
 							if (lastPos>=0) {
 								assertEquals((lastPos+len)&inputRing.byteMask,pos&inputRing.byteMask);
 							} 
 							lastPos = pos;
-								
+							
+							//confirm that the bytes needed are actually on the second ring
+							assertTrue("expected to be at byte pos "+(pos+len)+" but we are only at "+inputRing.bytesHeadPos.get(),inputRing.bytesHeadPos.get() >= (pos+len));
+														
 	    					byte[] data = byteBackingArray(meta, inputRing);
 	    					int mask = byteMask(inputRing);
 	   					
@@ -576,10 +582,12 @@ public class RingBufferPipeline {
 	    					int i = len;
 	    					while (--i>=0) {
 	    						if (testArray[i]!=data[(pos+i)&mask]) {
-	    							fail("String does not match at index "+i+" of "+len);
+	    							fail("String does not match at index "+i+" of "+len+"   tailPos:"+inputRing.tailPos.get()+" byteFailurePos:"+(pos+i)+" masked "+((pos+i)&mask));
+	    									
 	    						}
 	    					}
 	    					
+	    					//TODO: AAA, how can the byte pos get incremented right?
 	                    	//doing nothing with the data
 	   						releaseMessageReadLock(inputRing);
 	

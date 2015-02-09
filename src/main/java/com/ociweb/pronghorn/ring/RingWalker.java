@@ -464,16 +464,8 @@ public class RingWalker {
 	
 			//each time some bytes were written in the previous fragment this value was incremented.		
 			//now it becomes the base value for all byte writes
-			//similar to publish except for bytes
+			RingBuffer.markBytesBase(ring);
 			
-			//must be done BEFORE the headPos set and AFTER the field value sets
-			//because the publish is optional for the high level API we must set the bytes pos 
-			//must be done here so all fragments use the same base position for byte arrays
-			ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);	
-			
-			//should be part of the publish but publish is called for EVERY fragment
-			
-						
 			//Start new stack of fragments because this is a new message
 			ring.consumerData.activeWriteFragmentStack[0] = ring.consumerData.nextWorkingHead;
 			ring.buffer[ring.mask &(int)(ring.consumerData.nextWorkingHead + from.templateOffset)] = cursorPosition;
@@ -525,6 +517,7 @@ public class RingWalker {
 
 		if ((--ringBufferConsumer.batchPublishCountDown<=0)) {			
 			//publish writes
+			outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
 			outputRing.headPos.lazySet(outputRing.workingHeadPos.value);			
 			ringBufferConsumer.batchPublishCountDown = ringBufferConsumer.batchPublishCountDownInit;
 		}

@@ -427,7 +427,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadTextConstant(int constIdx, int constLen, int[] rbB, int rbMask, int bytesHeadPos, PaddedLong rbPos) {
+    protected void genReadTextConstant(int constIdx, int constLen, int[] rbB, int rbMask, int bytesBasePos, PaddedLong rbPos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, constIdx, constLen);
     }
     
@@ -457,8 +457,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadTextConstantOptional(int constInit, int constValue, int constInitLen, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, int bytesHeadPos, PaddedLong rbPos) {
-        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,constInit,constValue, constInitLen, bytesHeadPos, constValueLen);
+    protected void genReadTextConstantOptional(int constInit, int constValue, int constInitLen, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, int bytesBasePos, PaddedLong rbPos) {
+        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,constInit,constValue, constInitLen, bytesBasePos, constValueLen);
     }
     
     @Override
@@ -467,24 +467,24 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, byte[] byteBuffer, int byteMask, RingBuffer rbRingBuffer) {
+    protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, byte[] byteBuffer, int byteMask, RingBuffer rbRingBuffer, int bytesBasePos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,idx, defIdx, defLen);
     }
     
     //byte methods
     
     @Override
-    protected void genReadBytesConstant(int constIdx, int constLen, int[] rbB, int rbMask, int bytesHeadPos, PaddedLong rbPos) {
+    protected void genReadBytesConstant(int constIdx, int constLen, int[] rbB, int rbMask, int bytesBasePos, PaddedLong rbPos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, constIdx, constLen);
     }
     
     @Override
-    protected void genReadBytesConstantOptional(int constInit, int constInitLen, int constValue, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, int bytesHeadPosition, PaddedLong rbPos) {
+    protected void genReadBytesConstantOptional(int constInit, int constInitLen, int constValue, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, int bytesBasePos, PaddedLong rbPos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,constInit,constInitLen, constValue, constValueLen);
     }
     
     @Override
-    protected void genReadBytesDefault(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, RingBuffer rbRingBuffer) {
+    protected void genReadBytesDefault(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, RingBuffer rbRingBuffer, int bytesHeadPos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, idx,defIdx, defLen, optOff);
     }
     
@@ -514,7 +514,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadBytesNoneOptional(int idx, int[] rbB, int rbMask, LocalHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, RingBuffer rbRingBuffer) {
+    protected void genReadBytesNoneOptional(int idx, int[] rbB, int rbMask, LocalHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, RingBuffer rbRingBuffer, int bytesHeadPos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     

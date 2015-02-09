@@ -1547,8 +1547,8 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         }
     }
 
-    protected void genReadTextConstant(int constIdx, int constLen, int[] rbB, int rbMask, int bytesHeadPos, PaddedLong rbPos) {
-            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesHeadPos, constIdx, constLen);
+    protected void genReadTextConstant(int constIdx, int constLen, int[] rbB, int rbMask, int bytesBasePos, PaddedLong rbPos) {
+            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesBasePos, constIdx, constLen);
     }
 
     protected void genReadASCIIDelta(int target, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, RingBuffer rbRingBuffer) {
@@ -1611,45 +1611,45 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         }
     }
 
-    protected void genReadTextConstantOptional(int constInit, int constValue, int constInitLen, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, int bytesHeadPos, PaddedLong rbPos) {
+    protected void genReadTextConstantOptional(int constInit, int constValue, int constInitLen, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, int bytesBasePos, PaddedLong rbPos) {
         if (0 != PrimitiveReader.readPMapBit(reader) ) {
-            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesHeadPos, constInit, constInitLen);
+            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesBasePos, constInit, constInitLen);
         } else {
-            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesHeadPos, constValue, constValueLen);
+            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesBasePos, constValue, constValueLen);
         }
     }
     
-    protected void genReadASCIIDefault(int target, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, byte[] byteBuffer, int byteMask, RingBuffer rbRingBuffer) {
+    protected void genReadASCIIDefault(int target, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, byte[] byteBuffer, int byteMask, RingBuffer rbRingBuffer, int bytesBasePos) {
             if (0 == PrimitiveReader.readPMapBit(reader)) {
-                RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, rbRingBuffer.bytesHeadPos.get(), defIdx, defLen);
+                RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesBasePos, defIdx, defLen);
             } else {
                 int bytePos = rbRingBuffer.byteWorkingHeadPos.value;
                 int lenTemp = PrimitiveReader.readTextASCIIIntoRing(byteBuffer,
                                                                     bytePos, 
                                                                     byteMask,
                                                                     reader);
-                RingBuffer.addBytePosAndLen(rbB,rbMask,rbPos, rbRingBuffer.bytesHeadPos.get(), bytePos, lenTemp);
+                RingBuffer.addBytePosAndLen(rbB,rbMask,rbPos, bytesBasePos, bytePos, lenTemp);
                 rbRingBuffer.byteWorkingHeadPos.value = bytePos+lenTemp;                  
             }
     }    
     
-    protected void genReadBytesConstant(int constIdx, int constLen, int[] rbB, int rbMask, int bytesHeadPos, PaddedLong rbPos) {
-            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesHeadPos, constIdx, constLen);
+    protected void genReadBytesConstant(int constIdx, int constLen, int[] rbB, int rbMask, int bytesBasePos, PaddedLong rbPos) {
+            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesBasePos, constIdx, constLen);
     }
 
-    protected void genReadBytesConstantOptional(int constInit, int constInitLen, int constValue, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, int bytesHeadPosition, PaddedLong rbPos) {
+    protected void genReadBytesConstantOptional(int constInit, int constInitLen, int constValue, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, int bytesBasePos, PaddedLong rbPos) {
         
         if (0 == PrimitiveReader.readPMapBit(reader) ) {
-            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesHeadPosition, constValue, constValueLen);
+            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesBasePos, constValue, constValueLen);
         } else {
-            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesHeadPosition, constInit, constInitLen);
+            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesBasePos, constInit, constInitLen);
         }
     }
 
-    protected void genReadBytesDefault(int target, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, RingBuffer rbRingBuffer) {
+    protected void genReadBytesDefault(int target, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, RingBuffer rbRingBuffer, int bytesBasePos) {
         
         if (0 == PrimitiveReader.readPMapBit(reader)) {
-            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, rbRingBuffer.bytesHeadPos.get(), defIdx, defLen);
+            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesBasePos, defIdx, defLen);
         } else {
             int length = PrimitiveReader.readIntegerUnsigned(reader) - optOff;
             PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.allocate(target, length, byteHeap), length, reader);
@@ -1738,12 +1738,12 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
 
     
-    protected void genReadBytesNoneOptional(int target, int[] rbB, int rbMask, LocalHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, RingBuffer rbRingBuffer) {
+    protected void genReadBytesNoneOptional(int target, int[] rbB, int rbMask, LocalHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, RingBuffer rbRingBuffer, int bytesBasePos) {
         {
             int length = PrimitiveReader.readIntegerUnsigned(reader) - 1;
                 
             if (length<0) {
-                RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, rbRingBuffer.bytesHeadPos.get(), rbRingBuffer.byteWorkingHeadPos.value, length);
+                RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, bytesBasePos, rbRingBuffer.byteWorkingHeadPos.value, length);
                 return;
             }
             if (length>0) {        

@@ -132,7 +132,7 @@ public class TemplateLoaderTest {
         
         FASTClassLoader.deleteFiles();
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
     //    FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
 
