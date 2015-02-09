@@ -143,7 +143,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         do {
             token = fullScript[activeScriptCursor];
   
-            //System.err.println("reading:"+TokenBuilder.tokenToString(token)+" from "+reader.position);
+        //    System.err.println("reading:"+TokenBuilder.tokenToString(token)+" from "+(null==reader ? "N/A" : String.valueOf(reader.position)));
     
             // The trick here is to keep all the conditionals in this method and
             // do the work elsewhere.
@@ -268,7 +268,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         
         if (rbRingBuffer.writeTrailingCountOfBytesConsumed) {
         	
-        	genReadTotalMessageBytesUsed(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value - RingBuffer.bytesBase(rbRingBuffer) );
+        	genReadTotalMessageBytesUsed(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer );
         	//this stopping logic is only needed for the interpreter, the generated version has this call injected at the right poing.
         	rbRingBuffer.writeTrailingCountOfBytesConsumed = false;
         } 
@@ -279,9 +279,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 	        assert (fragDataSize == ((int)(rbRingBuffer.workingHeadPos.value-rbRingBuffer.headPos.get()))) : "expected to write "+fragDataSize+" but wrote "+((int)(rbRingBuffer.workingHeadPos.value-rbRingBuffer.headPos.get()));
 	        
 			//publish writes TODO: AAAA, can do this less often to support batching. (very light weight publish)
-	        rbRingBuffer.bytesHeadPos.lazySet(rbRingBuffer.byteWorkingHeadPos.value);
-			rbRingBuffer.headPos.lazySet(rbRingBuffer.workingHeadPos.value);
+	        RingBuffer.publishHeadPositions(rbRingBuffer);  
         }
+        assert(rbRingBuffer.byteWorkingHeadPos.value == rbRingBuffer.bytesHeadPos.get());
         
         return 1;//read one fragment 
     }

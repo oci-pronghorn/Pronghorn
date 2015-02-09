@@ -219,6 +219,7 @@ public class RingWalker {
 
 		//TODO: AAA still testing, needed so the release happens as frequently as the publish in an attempt to fix the relative string locations.
 		if ((--ringBufferConsumer.batchReleaseCountDown<=0)) {	
+		//	ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 
 			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);//inlined from RingBuffer.ReleaseFragment, this one never adjusts bytes because we are in a fragment
 			ringBufferConsumer.batchReleaseCountDown = ringBufferConsumer.batchReleaseCountDownInit;
 		}
@@ -234,6 +235,9 @@ public class RingWalker {
 		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
 			//always increment this tail position by the count of bytes used by this fragment
 			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
+			
+			assert(ringBuffer.byteWorkingTailPos.value <= ringBuffer.bytesHeadPos.get()) : "expected to have data up to "+ringBuffer.byteWorkingTailPos.value+" but we only have "+ringBuffer.bytesHeadPos.get();
+			
 		}
 
 	}
@@ -336,6 +340,8 @@ public class RingWalker {
 		if ((--ringBufferConsumer.batchReleaseCountDown>0)) {	
 			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
 		} else {
+			
+		//	ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 
 			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); //inlined release however the byte adjust must happen on every message so its done earlier
 			ringBufferConsumer.batchReleaseCountDown = ringBufferConsumer.batchReleaseCountDownInit;
 			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
@@ -366,8 +372,11 @@ public class RingWalker {
 			} 
 					
 			if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-			//always increment this tail position by the count of bytes used by this fragment
-			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
+				//always increment this tail position by the count of bytes used by this fragment
+				ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(ringBufferConsumer.nextWorkingTail-1)];
+				
+				assert(ringBuffer.byteWorkingTailPos.value <= ringBuffer.bytesHeadPos.get()) : "expected to have data up to "+ringBuffer.byteWorkingTailPos.value+" but we only have "+ringBuffer.bytesHeadPos.get();
+				
 			}
 			
 		} else {
@@ -517,8 +526,7 @@ public class RingWalker {
 
 		if ((--ringBufferConsumer.batchPublishCountDown<=0)) {			
 			//publish writes
-			outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
-			outputRing.headPos.lazySet(outputRing.workingHeadPos.value);			
+			RingBuffer.publishHeadPositions(outputRing);			
 			ringBufferConsumer.batchPublishCountDown = ringBufferConsumer.batchPublishCountDownInit;
 		}
 		 

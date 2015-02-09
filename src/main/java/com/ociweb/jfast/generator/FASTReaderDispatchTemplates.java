@@ -127,8 +127,8 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
     
-    protected void genReadTotalMessageBytesUsed(int[] rbB, int rbMask, PaddedLong rbPos, int bytesConsumed) {    	
-    	RingBuffer.addValue(rbB,rbMask,rbPos, bytesConsumed);    	
+    protected void genReadTotalMessageBytesUsed(int[] rbB, int rbMask, PaddedLong rbPos, RingBuffer rbRingBuffer) {    	
+    	RingBuffer.addValue(rbB,rbMask,rbPos, rbRingBuffer.byteWorkingHeadPos.value - RingBuffer.bytesBase(rbRingBuffer));    	
     }
     
     // each sequence will need to repeat the pmap but we only need to push
@@ -1543,7 +1543,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         {
             StaticGlue.readASCIITail(target, byteHeap, reader, PrimitiveReader.readIntegerUnsigned(reader));
             int len = LocalHeap.valueLength(target,byteHeap);
-            LocalHeap.addLocalHeapValue(target,len,rbMask,rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(target,len,byteHeap,rbRingBuffer);
         }
     }
 
@@ -1560,16 +1560,16 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 	            StaticGlue.readASCIIHead(target, trim, byteHeap, reader);
 	        }
 	        int len = LocalHeap.valueLength(target,byteHeap);
-	        LocalHeap.addLocalHeapValue(target,len,rbMask,rbB, rbPos, byteHeap, rbRingBuffer);
+	        LocalHeap.addLocalHeapValue(target,len,byteHeap,rbRingBuffer);
     	}
     }
 
     protected void genReadASCIICopy(int target, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, RingBuffer rbRingBuffer) {
-            LocalHeap.addLocalHeapValue(target,((0 == PrimitiveReader.readPMapBit(reader)) ? LocalHeap.valueLength(target,byteHeap) : StaticGlue.readASCIIToHeap(target, reader, byteHeap)),rbMask,rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(target,((0 == PrimitiveReader.readPMapBit(reader)) ? LocalHeap.valueLength(target,byteHeap) : StaticGlue.readASCIIToHeap(target, reader, byteHeap)),byteHeap,rbRingBuffer);
     }
     
     protected void genReadASCIICopyOptional(int target, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, RingBuffer rbRingBuffer) {
-            LocalHeap.addLocalHeapValue(target,((0 == PrimitiveReader.readPMapBit(reader)) ? LocalHeap.valueLength(target,byteHeap) : StaticGlue.readASCIIToHeap(target, reader, byteHeap)),rbMask,rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(target,((0 == PrimitiveReader.readPMapBit(reader)) ? LocalHeap.valueLength(target,byteHeap) : StaticGlue.readASCIIToHeap(target, reader, byteHeap)),byteHeap,rbRingBuffer);
     }
     
     protected void genReadASCIINone(int target, int[] rbB, int rbMask, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, RingBuffer rbRingBuffer) {
@@ -1582,7 +1582,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                 tmp=StaticGlue.readASCIIToHeapNone(target, val, byteHeap, reader);
             }
             
-            LocalHeap.addLocalHeapValue(target,tmp,rbMask,rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(target,tmp,byteHeap,rbRingBuffer);
         }
     }
 
@@ -1595,7 +1595,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                StaticGlue.readASCIITail(target, byteHeap, reader, tail-1);
             }
             int len = LocalHeap.valueLength(target,byteHeap);
-            LocalHeap.addLocalHeapValue(target,len,rbMask,rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(target,len,byteHeap,rbRingBuffer);
         }
     }
     
@@ -1607,7 +1607,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                              (optionalTrim > 0 ? StaticGlue.readASCIITail(target, byteHeap, reader, optionalTrim - 1) :
                                                  StaticGlue.readASCIIHead(target, optionalTrim, byteHeap, reader)));
             int len = LocalHeap.valueLength(tempId,byteHeap);
-            LocalHeap.addLocalHeapValue(tempId,len,rbMask,rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(tempId,len,byteHeap,rbRingBuffer);
         }
     }
 
@@ -1654,7 +1654,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             int length = PrimitiveReader.readIntegerUnsigned(reader) - optOff;
             PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.allocate(target, length, byteHeap), length, reader);
             int len = LocalHeap.valueLength(target,byteHeap);
-            LocalHeap.addLocalHeapValue(target, len, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(target, len, byteHeap, rbRingBuffer);
         }
     }
 
@@ -1665,7 +1665,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                 PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.allocate(target, length, byteHeap), length, reader);
             }
             int len = LocalHeap.valueLength(target,byteHeap);
-            LocalHeap.addLocalHeapValue(target, len, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(target, len, byteHeap, rbRingBuffer);
         }
     }
 
@@ -1686,7 +1686,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                 }
             }
             int len = LocalHeap.valueLength(target,byteHeap);
-            LocalHeap.addLocalHeapValue(target, len, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(target, len, byteHeap, rbRingBuffer);
         }
     }
 
@@ -1702,7 +1702,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                 PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.makeSpaceForAppend(target,trim,utfLength,byteHeap), utfLength, reader);
             }
             int len = LocalHeap.valueLength(target,byteHeap);
-            LocalHeap.addLocalHeapValue(target, len, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(target, len, byteHeap, rbRingBuffer);
         }
 
     }
@@ -1719,7 +1719,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                 PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.makeSpaceForPrepend(target,-trim,utfLength,byteHeap), utfLength, reader);
             }
             int len = LocalHeap.valueLength(target,byteHeap);
-            LocalHeap.addLocalHeapValue(target, len, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(target, len, byteHeap, rbRingBuffer);
         }
     }
     
@@ -1733,7 +1733,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             int targetOffset = LocalHeap.makeSpaceForAppend(target,trim,length,byteHeap);
             PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), targetOffset, length, reader);
             int len = LocalHeap.valueLength(target,byteHeap);
-            LocalHeap.addLocalHeapValue(target, len, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(target, len, byteHeap, rbRingBuffer);
         }
     }
 
@@ -1749,7 +1749,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             if (length>0) {        
             	PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.allocate(target, length, byteHeap), length, reader);
             }
-            LocalHeap.addLocalHeapValue(target, length, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(target, length, byteHeap, rbRingBuffer);
         }
     }
 
@@ -1758,7 +1758,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             int length = PrimitiveReader.readIntegerUnsigned(reader) - 0;
             PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.allocate(target, length, byteHeap), length, reader);
             int len = LocalHeap.valueLength(target,byteHeap);
-            LocalHeap.addLocalHeapValue(target, len, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
+            LocalHeap.addLocalHeapValue(target, len, byteHeap, rbRingBuffer);
         }
     }
 

@@ -876,10 +876,10 @@ public final class RingBuffer {
      */
     public static void releaseMessageReadLock(RingBuffer ring) {
     	assert(ring.consumerData.cursor<=0 && !RingWalker.isNewMessage(ring.consumerData)) : "Unsupported mix of high and low level API.  ";
-    	ring.tailPos.lazySet(ring.workingTailPos.value);
     	
     	//only done because we assume this call from the low level api is marking the end of the message, TODO: AA, can we confirm this?
     	ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value); 
+    	ring.tailPos.lazySet(ring.workingTailPos.value);
     }
     
     
@@ -899,9 +899,13 @@ public final class RingBuffer {
     	assert(ring.consumerData.nextWorkingHead<=ring.headPos.get() || ring.workingHeadPos.value<=ring.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
     	
     	//publish writes TODO: AAAA, can do this less often to support batching.
-    	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); 
-    	ring.headPos.lazySet(ring.workingHeadPos.value);  	
+    	publishHeadPositions(ring);  	
     }
+
+	public static void publishHeadPositions(RingBuffer ring) {
+		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); 
+    	ring.headPos.lazySet(ring.workingHeadPos.value);
+	}
     
     public static void abandonWrites(RingBuffer ring) {    
         //ignore the fact that any of this was written to the ring buffer

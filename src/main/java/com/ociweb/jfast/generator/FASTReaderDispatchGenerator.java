@@ -89,7 +89,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadTotalMessageBytesUsed(int[] rbB, int rbMask, PaddedLong rbPos, int bytesConsumed) {    	
+    protected void genReadTotalMessageBytesUsed(int[] rbB, int rbMask, PaddedLong rbPos, RingBuffer rbRingBuffer) {    	
     	GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
     }
     

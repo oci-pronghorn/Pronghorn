@@ -128,6 +128,9 @@ public class CodeGenerationTest {
     
     @Test
     public void testDecodeGenVsInterp30000() {
+        int rbPrimaryRingBits = 9;
+        int rbTextRingBits = 16;
+        
         FASTClassLoader.deleteFiles();
         // /////////
         // ensure the generated code does the same thing as the interpreted
@@ -144,7 +147,7 @@ public class CodeGenerationTest {
 
         FASTInputByteArray fastInput1 = new FASTInputByteArray(TemplateLoaderTest.buildInputArrayForTesting(sourceDataFile));
         final PrimitiveReader primitiveReader1 = new PrimitiveReader(2048, fastInput1, maxPMapCountInBytes);
-        FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
+        FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)rbPrimaryRingBits,(byte)rbTextRingBits,catalog.ringByteConstants(), catalog.getFROM())));
 
         
         RingBuffer queue1 = RingBuffers.get(readerDispatch1.ringBuffers,0);
@@ -154,7 +157,7 @@ public class CodeGenerationTest {
 
         FASTDecoder readerDispatch2 = null;
         try {
-            readerDispatch2 = DispatchLoader.loadGeneratedReaderDispatch(catBytes, FASTClassLoader.READER, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
+            readerDispatch2 = DispatchLoader.loadGeneratedReaderDispatch(catBytes, FASTClassLoader.READER, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)rbPrimaryRingBits,(byte)rbTextRingBits,catalog.ringByteConstants(), catalog.getFROM())));
         } catch (ReflectiveOperationException e) {
             e.printStackTrace();
             fail(e.getMessage());
@@ -162,10 +165,6 @@ public class CodeGenerationTest {
             fail(e.getMessage());
         }
         RingBuffer queue2 = RingBuffers.get(readerDispatch2.ringBuffers,0);
-
-        final int keep = 32;
-        final int mask = keep - 1;
-        final AtomicInteger idx = new AtomicInteger(0);
 
 
         FASTReaderReactor reactor1 = new FASTReaderReactor(readerDispatch1, primitiveReader1);
@@ -175,51 +174,38 @@ public class CodeGenerationTest {
         int errCount = 0;
         int i = 0;
         while (FASTReaderReactor.pump(reactor1) >= 0 && //continue if no room to read or read new message
-                FASTReaderReactor.pump(reactor2) >= 0) {
+               FASTReaderReactor.pump(reactor2) >= 0) {
 
             while (RingBuffer.contentRemaining(queue1)>0 && RingBuffer.contentRemaining(queue2)>0) {
-				int int1 = RingBuffer.readInt(queue1.buffer, queue1.mask, queue1.workingTailPos.value+1);
-                int int2 = RingBuffer.readInt(queue2.buffer, queue2.mask, queue2.workingTailPos.value+1);
+				int int1 = RingBuffer.readInt(queue1.buffer, queue1.mask, ++queue1.workingTailPos.value);
+                int int2 = RingBuffer.readInt(queue2.buffer, queue2.mask, ++queue2.workingTailPos.value);
 
+                //System.err.println(i+" "+int1+"  "+int2);
+                
                 if (int1 != int2) {
                     errCount++;
 
                     if (errCount > 1) {
 
-                        System.err.println("back up  " + RingBuffer.contentRemaining(queue1) + " fixed spots in ring buffer");
-
-                        int c = idx.get();
-
-                        System.err.println("From positions:"+queue1.workingTailPos+" & "+queue2.workingTailPos);
+                        System.err.println("back up  " + RingBuffer.contentRemaining(queue1) + " fixed spots in ring buffer. From positions:"+queue1.workingTailPos.value+" & "+queue2.workingTailPos.value);
                                            
-                        System.err.println("Intrp:" + Integer.toBinaryString(int1));
-                        System.err.println("Compl:" + Integer.toBinaryString(int2));
+                        System.err.println("Value from Intrp:" + Integer.toBinaryString(int1));
+                        System.err.println("Value from Compl:" + Integer.toBinaryString(int2));
 
                         String msg = "int " + i + " byte " + (i * 4) + "  ";
                         
                         assertEquals(msg, int1, int2);
                     }
                 }
-                queue1.workingTailPos.value++;
-                queue2.workingTailPos.value++;
                 
                 RingBuffer.releaseMessageReadLock(queue1);
                 RingBuffer.releaseMessageReadLock(queue2);
                 
-//                long newValue1 = queue1.tailPos.get() + 1;
-//                assert (newValue1 <=queue1.workingHeadPos.value);
-//                queue1.workingTailPos.value = newValue1;
-//				queue1.tailPos.lazySet(newValue1);
-//				
-//                long newValue2 = queue2.tailPos.get() + 1;
-//                assert (newValue2 <=queue2.workingHeadPos.value);
-//                queue2.workingTailPos.value = newValue2;
-//				queue2.tailPos.lazySet(newValue2);
                 
 				i++;
             }
         }
-        assertEquals(primitiveReader1.totalRead(primitiveReader1), PrimitiveReader.totalRead(primitiveReader2));
+        assertEquals(PrimitiveReader.totalRead(primitiveReader1), PrimitiveReader.totalRead(primitiveReader2));
 
     }
     

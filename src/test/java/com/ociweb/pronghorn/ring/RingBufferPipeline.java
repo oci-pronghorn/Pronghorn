@@ -282,21 +282,8 @@ public class RingBufferPipeline {
 			        	  RingBuffer.addMsgIdx(outputRing, 0);
 		                  
 			        	  addByteArray(testArray, 0, testArray.length, outputRing);
-		                  
-		               //TODO: AAAAAAA why is this needed here, THIS IS FIXING SMOE CASE ON THE ROLLOVER THAT IS FAILING. IN THE SPLITTER?
-			        	  //need something to fix the example file read/write   
-				        //	  outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
+						 publishWrite(outputRing);
 
-			        	 
-			        	  
-			        	  //WE have published teh next working head to read from but the OLD bytes position.
-							 publishWrite(outputRing);
-
-							 
-							 
-					//		 outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
-					 	 // }
-							 
 		                  head += messageSize;		          
 			          }
 			          
@@ -307,7 +294,6 @@ public class RingBufferPipeline {
 			          RingBuffer.addMsgIdx(outputRing, -1);
 			      	  addNullByteArray(outputRing);
 			      	  
-			 //     	  outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value);
 			      	  publishWrite(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
 			      	
 						 boolean debug = false;

@@ -124,8 +124,7 @@ public class GeneratorUtils {
             String methodCallArgs = doneScriptsParas.get(m++)
                             		.replace("rbRingBuffer","rb") //NOTE: Must be first because rb is used by following replacements
                             		.replace("bytesBasePos", "RingBuffer.bytesBase(rb)") //must be second
-            						.replace("bytesConsumed", "rb.byteWorkingHeadPos.value - rb.bytesHeadPos.get()")
-                                    .replace("dispatch","this")
+                            		.replace("dispatch","this")
                                     .replace("byteBuffer", "rb.byteBuffer")
                                     .replace("byteMask", "rb.byteMask")                                    
                                     .replace("rbB","rb.buffer")
@@ -229,7 +228,7 @@ public class GeneratorUtils {
         
         if (isReader) {
         	//TODO: AAAA, not sure this is right in all cases how do we know what ends a message and what does not
-            builder.append("    ").append(RingBuffer.class.getSimpleName()).append(".publishWrite(rb);\n");
+            builder.append("    ").append(RingBuffer.class.getSimpleName()).append(".publishHeadPositions(rb);\n");
             
             builder.append("    return 1;//read a fragment\n"); 
         } 

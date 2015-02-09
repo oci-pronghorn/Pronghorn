@@ -768,7 +768,7 @@ public class LocalHeap {
         return tat[offset + 1];
     }
 
-    public static void addLocalHeapValue(int heapId, int sourceLen, int rbMask, int[] rbB, RingBuffer.PaddedLong rbPos, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
+    public static void addLocalHeapValue(int heapId, int sourceLen, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
 	    final int p = rbRingBuffer.byteWorkingHeadPos.value;
 	    if (sourceLen > 0) {
 	        final int offset = heapId << 2;
@@ -779,7 +779,7 @@ public class LocalHeap {
 			rbRingBuffer.byteWorkingHeadPos.value = p + len;
 	    }      
 	    
-	    RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, RingBuffer.bytesBase(rbRingBuffer), p, sourceLen);
+	    RingBuffer.addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, RingBuffer.bytesBase(rbRingBuffer), p, sourceLen);
 	}
 
 	public static void reset(int idx, LocalHeap heap) {
