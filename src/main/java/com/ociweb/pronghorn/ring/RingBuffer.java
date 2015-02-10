@@ -868,6 +868,7 @@ public final class RingBuffer {
      */
     public static void releaseFragmentReadLock(RingBuffer ring) {
     	assert(ring.consumerData.cursor<=0 && !RingWalker.isNewMessage(ring.consumerData)) : "Unsupported mix of high and low level API.  ";
+    	ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value);
     	ring.tailPos.lazySet(ring.workingTailPos.value);
     }
     /**

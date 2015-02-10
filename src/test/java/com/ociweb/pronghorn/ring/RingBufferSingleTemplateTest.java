@@ -109,7 +109,7 @@ public class RingBufferSingleTemplateTest {
         int BYTE_LOC = FieldReferenceOffsetManager.lookupFieldLocator("ByteArray", FRAG_LOC, FROM);
         
         int k = testSize;
-        while (k>0) {
+        while (k>1) {
         	
         	//This is the example code that one would normally use.
         	

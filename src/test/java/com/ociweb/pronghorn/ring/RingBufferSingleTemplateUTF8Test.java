@@ -3,8 +3,7 @@ package com.ociweb.pronghorn.ring;
 import static com.ociweb.pronghorn.ring.RingWalker.isNewMessage;
 import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragment;
 import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragment;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.util.Arrays;
 
@@ -133,14 +132,15 @@ public class RingBufferSingleTemplateUTF8Test {
     	StringBuilder target = new StringBuilder();
     	char[] target2 = new char[varDataMax];
         
-        
+        int x = 0;
         int k = testSize;
-        while (k>0) {
+        while (k>1) {
         	
         	//This is the example code that one would normally use.
         	
         	//System.err.println("content "+ring.contentRemaining(ring));
 	        if (tryReadFragment(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
+	        	x=0;
 	        	k--;//count down all the expected messages so we stop this test at the right time
 	        	target.setLength(0);
 	        	assertTrue(isNewMessage(ring));//would use this method rarely to determine if fragment starts new message
@@ -163,6 +163,9 @@ public class RingBufferSingleTemplateUTF8Test {
 		        			   );	
 	        	}
 	        } else {
+	        	if (++x>1000000) {
+	        		fail("Unable to finish stuck on "+k+" down from "+testSize);
+	        	}
 	        	//unable to read so at this point
 	        	//we can do other work and try again soon
 	        	Thread.yield();

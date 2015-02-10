@@ -132,7 +132,7 @@ public class RingBufferSingleTemplateASCIITest {
         
         
         int k = testSize;
-        while (k>0) {
+        while (k>1) {
         	
         	//This is the example code that one would normally use.
         	
