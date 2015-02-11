@@ -60,7 +60,7 @@ public class RingStreams {
         	
         	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		           
         	
-        	int msgId = RingBuffer.takeValue(inputRing);
+        	int msgId = RingBuffer.takeMsgIdx(inputRing);
 
         				
         	if (msgId<0) { //exit logic
@@ -138,7 +138,7 @@ public class RingStreams {
         	//block until one more byteVector is ready.
         	
         	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);
-        	int msgId = RingBuffer.takeValue(inputRing);
+        	int msgId = RingBuffer.takeMsgIdx(inputRing);
         				
         	if (msgId<0) { //exit logic
 
@@ -216,7 +216,7 @@ public class RingStreams {
 					tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
 					RingBuffer.addMsgIdx(outputRing, 0);
 					RingBuffer.validateVarLength(outputRing, size);
-					RingBuffer.addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, RingBuffer.bytesBase(outputRing), position, size);
+					RingBuffer.addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, RingBuffer.bytesWriteBase(outputRing), position, size);
 					outputRing.byteWorkingHeadPos.value = position + size;
 					RingBuffer.publishWrite(outputRing);
 					position += size;
@@ -298,7 +298,7 @@ public class RingStreams {
 	    	
 	    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		           
 	    	
-	    	int msg = RingBuffer.takeValue(inputRing);
+	    	int msg = RingBuffer.takeMsgIdx(inputRing);
 
 	    	int byteMask = inputRing.byteMask;
 	    				

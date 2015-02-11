@@ -91,8 +91,7 @@ public class RingInputStream extends InputStream {
 			//block until we have something to read
 		    headPosCache = spinBlockOnHead(headPosCache, target, ring);
 		    target+=recordSize;
-		    returnLength = sendNewContent(targetData, targetOffset, targetLength);
-		    
+		    returnLength = sendNewContent(targetData, targetOffset, targetLength);		    
 		    
 		} while (returnLength==0); //Must block until at least 1 byte was read or -1 EOF detected
 		return returnLength;
@@ -100,7 +99,7 @@ public class RingInputStream extends InputStream {
 	
 	private int sendNewContent(byte[] targetData, int targetOffset,	int targetLength) {
 		
-		int msgId = RingBuffer.takeValue(ring);
+		int msgId = RingBuffer.takeMsgIdx(ring);
 		
 		if (msgId>=0) { //exit EOF logic
 			int meta = takeRingByteMetaData(ring);//side effect, this moves the pointer and must happen before we call for length

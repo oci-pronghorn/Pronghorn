@@ -1296,7 +1296,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             
             fieldPos += (preambleData.length+3)>>2;//must adjust this because it is meta data and when generating it will be used.
         };
-  	
+  	        
         fieldPos++;          	
                 
     }
@@ -1343,6 +1343,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         //loop over every cursor position and dispatch to do the right activity
         int stop = fullScript.length;       
         while (activeScriptCursor<stop) {
+
             if (dispatchWriteByToken(writer,rbRingBuffer)) {
                 break;//for stops for fragments in the middle of a message
             }          
@@ -1352,6 +1353,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             	0 != (TokenBuilder.extractOper(fullScript[activeScriptCursor])&OperatorMask.Group_Bit_Close) &&
             	0 == (TokenBuilder.extractOper(fullScript[activeScriptCursor])&OperatorMask.Group_Bit_Seq)) ) {
             	//System.err.println("would break but did not at "+activeScriptCursor+"  "+TokenBuilder.tokenToString(fullScript[activeScriptCursor]));
+            	            	
         		break;
             }
             

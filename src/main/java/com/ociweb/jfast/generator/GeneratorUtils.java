@@ -123,7 +123,7 @@ public class GeneratorUtils {
         	
             String methodCallArgs = doneScriptsParas.get(m++)
                             		.replace("rbRingBuffer","rb") //NOTE: Must be first because rb is used by following replacements
-                            		.replace("bytesBasePos", "RingBuffer.bytesBase(rb)") //must be second
+                            		.replace("bytesBasePos", "RingBuffer.bytesWriteBase(rb)") //must be second
                             		.replace("dispatch","this")
                                     .replace("byteBuffer", "rb.byteBuffer")
                                     .replace("byteMask", "rb.byteMask")                                    

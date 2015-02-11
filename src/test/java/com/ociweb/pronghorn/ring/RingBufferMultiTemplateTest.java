@@ -2,9 +2,11 @@ package com.ociweb.pronghorn.ring;
 
 import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupFieldLocator;
 import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupTemplateLocator;
+import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 import static com.ociweb.pronghorn.ring.RingWalker.*;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
+
+import java.util.Arrays;
 
 import org.junit.Test;
 
@@ -63,14 +65,15 @@ public class RingBufferMultiTemplateTest {
 		byte[] target = new byte[ring.maxAvgVarLen];
 		
 		
-		int LARGEST_MESSAGE_SIZE = FROM.fragDataSize[MSG_SAMPLE_LOC];     //TODO: must mask this? 
-        int testSize = (1<<primaryRingSizeInBits)/LARGEST_MESSAGE_SIZE;
+		int LARGEST_MESSAGE_SIZE = FROM.fragDataSize[MSG_SAMPLE_LOC];    
+        int testSize = ((1<<primaryRingSizeInBits)/LARGEST_MESSAGE_SIZE)-2;
         
-
-        populateRingBuffer(ring, ring.maxAvgVarLen, testSize);
-
-        
-       //System.err.println("depth:"+Arrays.toString(FROM.fragDepth));
+        boolean useHighLevel = true;
+        if (useHighLevel) {
+            populateRingBuffer(ring, ring.maxAvgVarLen, testSize);
+        } else {
+        	populateRingBufferLowLevel(ring, ring.maxAvgVarLen, testSize);
+        }
        
         //now read the data back
         int k = testSize;
@@ -163,8 +166,12 @@ public class RingBufferMultiTemplateTest {
 		        		
 		        		RingWriter.writeInt(ring, BOX_COUNT_LOC, 42);
 		        		RingWriter.writeBytes(ring, BOX_OWNER_LOC, source);
-		        				        				        		
-		        		RingBuffer.publishWrite(ring); //must always publish the writes if message or fragment
+		        		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+		        			
+		        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
+		        			
+		        		}		        		
+		        		RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
 	            		Thread.yield();
@@ -179,6 +186,11 @@ public class RingBufferMultiTemplateTest {
 		        		RingWriter.writeInt(ring, SAMPLE_MONTH_LOC ,12);
 		        		RingWriter.writeInt(ring, SAMPLE_DATE_LOC ,9);
 		        		RingWriter.writeDecimal(ring,  SAMPLE_WEIGHT, 2, (long) 123456);
+		        		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+		        			
+		        			assertTrue(ring.writeTrailingCountOfBytesConsumed);
+		        			
+		        		}
 		        				        		
 		        		RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
@@ -192,8 +204,12 @@ public class RingBufferMultiTemplateTest {
 	        			j--;
 	        			
 	        			RingWriter.writeBytes(ring, REST_VERSION, ASCII_VERSION);
-	        			
-		        		RingBuffer.publishWrite(ring); //must always publish the writes if message or fragment
+		        		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+		        			
+		        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
+		        			
+		        		}
+	        			RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
 	        			Thread.yield();
@@ -205,6 +221,71 @@ public class RingBufferMultiTemplateTest {
         }
 	}
 
+	private void populateRingBufferLowLevel(RingBuffer ring, int blockSize, int testSize) {
+		
+		int[] templateIds = new int[] {2,1,4};
+		int j = testSize;
+        while (true) {
+        	
+        	if (j == 0) {
+        		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
+        		RingBuffer.addMsgIdx(ring, -1);
+        		RingBuffer.publishWrite(ring);
+        		return;//done
+        	}
+        	
+        	//for this test we just round robin the message types.
+        	int selectedTemplateId  =  templateIds[j%templateIds.length];
+        	
+        	//System.err.println("write template:"+selectedTemplateId);
+        	
+        	switch(selectedTemplateId) {
+	        	case 2: //boxes
+	        		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 4), ring);
+	        		
+	        		j--;
+	        		RingBuffer.addMsgIdx(ring, MSG_BOXES_LOC);
+	        		byte[] source = buildMockData((j*blockSize)/testSize);
+	        		RingBuffer.addValue(ring, 42);
+	        		RingBuffer.addByteArray(source, 0, source.length, ring);
+	        		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+	        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
+	        		}
+	        		RingBuffer.publishWrite(ring);
+	        		break;
+	        	case 1: //samples
+	        		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 8), ring);
+	        		
+	        		j--;
+	        		RingBuffer.addMsgIdx(ring, MSG_SAMPLE_LOC);
+	        		RingBuffer.addValue(ring, 2014);
+	        		RingBuffer.addValue(ring, 12);
+	        		RingBuffer.addValue(ring, 9);
+	        		
+	        		RingBuffer.addValue(ring, 2);
+	        		RingBuffer.addLongValue(ring, 123456);
+	        		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+	        			assertTrue(ring.writeTrailingCountOfBytesConsumed);
+	        		}
+	        		RingBuffer.publishWrite(ring);
+	        		break;
+	        	case 4: //reset
+	        		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 3), ring);
+	        		
+	        		j--;
+	        		RingBuffer.addMsgIdx(ring, MSG_RESET_LOC);
+	        		RingBuffer.addByteArray(ASCII_VERSION, 0, ASCII_VERSION.length, ring);
+	        		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+	        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
+	        		}
+	        		RingBuffer.publishWrite(ring);
+
+	        		break;
+        	}        	
+        	
+        }
+	}
+	
 
 	private byte[] buildMockData(int size) {
 		byte[] result = new byte[size];

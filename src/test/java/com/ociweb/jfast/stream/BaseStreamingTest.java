@@ -180,6 +180,8 @@ public abstract class BaseStreamingTest {
 				RingBuffer.writeTrailingCountOfBytesConsumed(ringBuffer, ringBuffer.workingHeadPos.value++); //increment because this is the low-level API calling
 				//this updated the head so it must repositioned
 			} //MUST be before the assert.
+	    	//single length field still needs to move this value up, so this is always done
+	    	ringBuffer.bytesWriteLastConsumedBytePos = ringBuffer.byteWorkingHeadPos.value;
 	    	
 			g = fieldsPerGroup;
 			if (f>0 || i>0) {

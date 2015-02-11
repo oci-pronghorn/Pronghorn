@@ -127,9 +127,15 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
     
-    protected void genReadTotalMessageBytesUsed(int[] rbB, int rbMask, PaddedLong rbPos, RingBuffer rbRingBuffer) {    	
-    	RingBuffer.addValue(rbB,rbMask,rbPos, rbRingBuffer.byteWorkingHeadPos.value - RingBuffer.bytesBase(rbRingBuffer));    	
+    protected void genReadTotalMessageBytesUsed(PaddedLong rbPos, RingBuffer rbRingBuffer) {  
+    	RingBuffer.writeTrailingCountOfBytesConsumed(rbRingBuffer, rbPos.value++);
     }
+    
+    protected void genReadTotalMessageBytesResetUsed(RingBuffer rbRingBuffer) { 
+    	rbRingBuffer.bytesWriteLastConsumedBytePos = rbRingBuffer.byteWorkingHeadPos.value;
+    }
+    
+    
     
     // each sequence will need to repeat the pmap but we only need to push
     // and pop the stack when the sequence is first encountered.
@@ -153,7 +159,8 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
     protected void genReadGroupCloseMessage(PrimitiveReader reader, FASTDecoder dispatch) {
-    	
+
+    			
         if (dispatch.sequenceCountStackHead<0) { 
             dispatch.activeScriptCursor = -1;
             PrimitiveReader.closePMap(reader);

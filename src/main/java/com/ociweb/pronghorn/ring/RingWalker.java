@@ -31,7 +31,7 @@ public class RingWalker {
 	final long[] activeWriteFragmentStack; 
 
 	
-	private long cachedTailPosition = 0;
+	long cachedTailPosition = 0;
 	
 	private int batchReleaseCountDown = 0;
 	private int batchReleaseCountDownInit = 0;
@@ -144,6 +144,7 @@ public class RingWalker {
     
     //this impl only works for simple case where every message is one fragment. 
     public static boolean tryReadFragment(RingBuffer ringBuffer) { 
+
 		if (null==ringBuffer.buffer) {
 			ringBuffer.init();//hack test
 		}		
@@ -210,34 +211,36 @@ public class RingWalker {
 			final RingWalker ringBufferConsumer, final int scriptFragSize,
 			long tmpNextWokingTail, final long target) {
 
+		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+			
+			//always increment this tail position by the count of bytes used by this fragment
+			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];			
+			
+			//		System.err.println("read Y consumed "+ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)]+" from "+(ringBuffer.mask & (int)(tmpNextWokingTail-1)));
+			
+			
+//			System.err.println("YYYY "+RingBuffer.bytesReadBase(ringBuffer)+"   vs  "+ringBuffer.byteWorkingTailPos.value);
+//			System.err.println("value added was "+ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)]+" from "+(ringBuffer.mask & (int)(tmpNextWokingTail-1)));
+			
+			
+			
+		}
+
 		//from the last known fragment move up the working tail position to this new fragment location
 		ringBuffer.workingTailPos.value = tmpNextWokingTail;
 		//save the index into these fragments so the reader will be able to find them.
 		ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] =tmpNextWokingTail;
 		
+		assert(ringBuffer.byteWorkingTailPos.value <= ringBuffer.bytesHeadPos.get()) : "expected to have data up to "+ringBuffer.byteWorkingTailPos.value+" but we only have "+ringBuffer.bytesHeadPos.get();
 		
-
-//		//TODO: B still testing, not sure this should be automatic on fragment it happens already on messages
-//		if ((--ringBufferConsumer.batchReleaseCountDown<=0)) {	
-//			
-//			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 
-//		
-//			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);//inlined from RingBuffer.ReleaseFragment, this one never adjusts bytes because we are in a fragment
-//			ringBufferConsumer.batchReleaseCountDown = ringBufferConsumer.batchReleaseCountDownInit;
-//		}
-
-		// the group and group length will match the pattern 10?00
-		// so we will mask with                              11011 
-		// and this must equal                               10000
-		// if it does not then we have one of the other fields  group len 10100  and group is 10000
-		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-			//always increment this tail position by the count of bytes used by this fragment
-			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];
+		if ((--ringBufferConsumer.batchReleaseCountDown<=0)) {	
 			
-			assert(ringBuffer.byteWorkingTailPos.value <= ringBuffer.bytesHeadPos.get()) : "expected to have data up to "+ringBuffer.byteWorkingTailPos.value+" but we only have "+ringBuffer.bytesHeadPos.get();
-			
+			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); //		
+			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);//inlined from RingBuffer.ReleaseFragment, this one never adjusts bytes because we are in a fragment
+		
+			ringBufferConsumer.batchReleaseCountDown = ringBufferConsumer.batchReleaseCountDownInit;
 		}
-				
+
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1;
 		prepReadFragment2(ringBuffer, ringBufferConsumer, tmpNextWokingTail, target, lastScriptPos, ringBufferConsumer.from.tokens[lastScriptPos]);	
 	
@@ -328,9 +331,25 @@ public class RingWalker {
 		//for this simple case we always have a new message
 		ringBufferConsumer.isNewMessage = true; 
 		
-		//
+	
+		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
+
+			//always increment this tail position by the count of bytes used by this fragment
+			if (tmpNextWokingTail>0) { //first iteration it will not have a valid position
+				ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];	
+			}	
+			
+		}
+		assert(ringBuffer.byteWorkingTailPos.value <= ringBuffer.bytesHeadPos.get()) : "expected to have data up to "+ringBuffer.byteWorkingTailPos.value+" but we only have "+ringBuffer.bytesHeadPos.get();
+		
+//		//
 		//from the last known fragment move up the working tail position to this new fragment location
 		ringBuffer.workingTailPos.value = tmpNextWokingTail;
+		
+		//the byteWorkingTail now holds the new base
+		RingBuffer.markBytesReadBase(ringBuffer);
+	
+	
 		
 		
 		//
@@ -338,11 +357,13 @@ public class RingWalker {
 		//could be done every time but batching reduces contention
 		//this batching is only done per-message so the fragments can remain and be read
 		if ((--ringBufferConsumer.batchReleaseCountDown>0)) {	
+			
 			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
 		} else {
 			
 			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			
 			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); //inlined release however the byte adjust must happen on every message so its done earlier
+						
 			ringBufferConsumer.batchReleaseCountDown = ringBufferConsumer.batchReleaseCountDownInit;
 			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
 		}
@@ -350,11 +371,11 @@ public class RingWalker {
 	}
 
 
-	private static void prepReadMessage2(RingBuffer ringBuffer, RingWalker ringBufferConsumer, long tmpNextWokingTail) {
+	private static void prepReadMessage2(RingBuffer ringBuffer, RingWalker ringBufferConsumer, final long tmpNextWokingTail) {
 		//
 		//Start new stack of fragments because this is a new message
 		ringBufferConsumer.activeReadFragmentStack[0] = tmpNextWokingTail;
-		
+				 
 		ringBufferConsumer.msgIdx = ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)];
 		int[] fragDataSize = ringBufferConsumer.from.fragDataSize;
 
@@ -370,15 +391,6 @@ public class RingWalker {
 				//Can not assume end of message any more.
 				beginNewSequence(ringBufferConsumer, ringBuffer.buffer[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
 			} 
-					
-			if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-				//always increment this tail position by the count of bytes used by this fragment
-				ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];
-				
-				assert(ringBuffer.byteWorkingTailPos.value <= ringBuffer.bytesHeadPos.get()) : "expected to have data up to "+ringBuffer.byteWorkingTailPos.value+" but we only have "+ringBuffer.bytesHeadPos.get();
-				
-			}
-			
 		} else {
 			//rare so we can afford some extra checking at this point 
 			if (ringBufferConsumer.msgIdx > fragDataSize.length) {
@@ -474,7 +486,7 @@ public class RingWalker {
 	
 			//each time some bytes were written in the previous fragment this value was incremented.		
 			//now it becomes the base value for all byte writes
-			RingBuffer.markBytesBase(ring);
+			RingBuffer.markBytesWriteBase(ring);
 			
 			//Start new stack of fragments because this is a new message
 			ring.consumerData.activeWriteFragmentStack[0] = ring.consumerData.nextWorkingHead;
@@ -493,6 +505,7 @@ public class RingWalker {
 
 	public static void blockingFlush(RingBuffer ring) {
 		
+		assert(ring.consumerData.nextWorkingHead>0) : "Unsupported use of high level API with low level methods.";
 		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
 		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
 		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
@@ -506,6 +519,8 @@ public class RingWalker {
 		if (outputRing.writeTrailingCountOfBytesConsumed) {
 			RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, outputRing.consumerData.nextWorkingHead -1 ); 
 		}
+		//single length field still needs to move this value up, so this is always done
+		outputRing.bytesWriteLastConsumedBytePos = outputRing.byteWorkingHeadPos.value;
 		
 		if ((--outputRing.consumerData.batchPublishCountDown<=0)) {			
 			//publish writes			

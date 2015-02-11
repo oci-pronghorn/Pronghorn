@@ -73,9 +73,12 @@ public final class RingBuffer {
     //TODO: AAA, group these together and move into RingWalker
     public final PaddedInt byteWorkingHeadPos = new PaddedInt();
     public final PaddedAtomicInteger bytesHeadPos = new PaddedAtomicInteger(); //Base value for byte array writes, may get renamed( and may not need to be atomic)
-    public int bytesBase = 0;    
-    
-    
+   
+    public int bytesWriteLastConsumedBytePos = 0;
+    public int bytesWriteBase = 0;    
+    public int bytesReadBase = 0;    
+	
+        
     
     //TODO: AAA, group these together and move into RingWalker
     public final PaddedAtomicInteger bytesTailPos = new PaddedAtomicInteger();
@@ -117,12 +120,20 @@ public final class RingBuffer {
     }
     
     
-    public static int bytesBase(RingBuffer rb) {
-    	return rb.bytesBase;
+    public static int bytesWriteBase(RingBuffer rb) {
+    	return rb.bytesWriteBase;
     }
     
-    public static void markBytesBase(RingBuffer rb) {
-    	rb.bytesBase = rb.byteWorkingHeadPos.value;
+    public static void markBytesWriteBase(RingBuffer rb) {
+    	rb.bytesWriteBase = rb.byteWorkingHeadPos.value;
+    }
+    
+    public static int bytesReadBase(RingBuffer rb) {
+    	return rb.bytesReadBase;
+    }
+    
+    public static void markBytesReadBase(RingBuffer rb) {
+    	rb.bytesReadBase = rb.byteWorkingTailPos.value;
     }
     
     /**
@@ -205,13 +216,17 @@ public final class RingBuffer {
         workingTailPos.value = 0;
         tailPos.set(0);
         headPos.set(0); 
-        bytesBase = 0;
+        
+        bytesWriteBase = 0;
+        bytesReadBase = 0;
+        bytesWriteLastConsumedBytePos = 0;
+        
         byteWorkingHeadPos.value = 0;
         bytesHeadPos.set(0);
         
         byteWorkingTailPos.value = 0;
         bytesTailPos.set(0);
-        
+        writeTrailingCountOfBytesConsumed = false;
         RingWalker.reset(consumerData, 0);
     }
         
@@ -229,10 +244,13 @@ public final class RingBuffer {
         byteWorkingHeadPos.value = bPos;
         bytesHeadPos.set(bPos);
         
-        bytesBase = bPos;
+        bytesWriteBase = bPos;
+        bytesReadBase = bPos;
+        bytesWriteLastConsumedBytePos = bPos;
+        
         byteWorkingTailPos.value = bPos;
         bytesTailPos.set(bPos);
-        
+        writeTrailingCountOfBytesConsumed = false;
         RingWalker.reset(consumerData, toPos);
     }
 
@@ -637,7 +655,7 @@ public final class RingBuffer {
 			appendPartialBytesArray(data, offset&mask, len1, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);        
 			appendPartialBytesArray(data, 0, len-len1,       outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value+len1, outputRing.byteMask);        
 			
-			addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, RingBuffer.bytesBase(outputRing), outputRing.byteWorkingHeadPos.value, len);
+			addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, RingBuffer.bytesWriteBase(outputRing), outputRing.byteWorkingHeadPos.value, len);
 			outputRing.byteWorkingHeadPos.value = outputRing.byteWorkingHeadPos.value + len;
 		}
 	}
@@ -666,13 +684,13 @@ public final class RingBuffer {
     	validateVarLength(rbRingBuffer, sourceLen);
     	
     	appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask);   
-        addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, RingBuffer.bytesBase(rbRingBuffer), rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
+        addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, RingBuffer.bytesWriteBase(rbRingBuffer), rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
         rbRingBuffer.byteWorkingHeadPos.value = rbRingBuffer.byteWorkingHeadPos.value + sourceLen;		
 		
     }
     
     public static void addNullByteArray(RingBuffer rbRingBuffer) {
-        addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, RingBuffer.bytesBase(rbRingBuffer), rbRingBuffer.byteWorkingHeadPos.value, -1);
+        addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, RingBuffer.bytesWriteBase(rbRingBuffer), rbRingBuffer.byteWorkingHeadPos.value, -1);
     }
     
 
@@ -702,7 +720,7 @@ public final class RingBuffer {
     public static void addMsgIdx(RingBuffer rb, int msgIdx) {
     	
      	//this MUST be done here at the START of a message so all its internal fragments work with the same base position
-     	 markBytesBase(rb);
+     	 markBytesWriteBase(rb);
     	
     	 assert(rb.consumerData.nextWorkingHead<=rb.headPos.get() || rb.workingHeadPos.value<=rb.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
    	
@@ -753,19 +771,18 @@ public final class RingBuffer {
     
 	public static int restorePosition(RingBuffer ring, int pos) {
 		assert(pos>=0);
-		return pos+ring.bytesTailPos.get();
+		return pos+ RingBuffer.bytesReadBase(ring);
+		
 	}
 
     public static int bytePosition(int meta, RingBuffer ring, int len) {
-    	    	
-//    	if (!FieldReferenceOffsetManager.USE_VAR_COUNT) {
-//	    	//NOTE: must move this working position for the relative text positions until it gets managed by high level API.
-	        if (len>=0) {
-	        	ring.byteWorkingTailPos.value += len;
-	        }
-//    	}
-        int pos = restorePosition(ring, meta & 0x7FFFFFFF);
-        assert(ring.bytesHeadPos.get() >= (pos+len)) : "expected to be at byte pos "+(pos+len)+" but we are only at "+ring.bytesHeadPos.get();
+    	int pos = restorePosition(ring, meta & 0x7FFFFFFF);
+
+        if (len>=0) {
+        	ring.byteWorkingTailPos.value += len;
+        	assert(ring.bytesHeadPos.get() >= (pos+len)) : "expected to be at byte pos "+(pos+len)+" but we are only at "+ring.bytesHeadPos.get();
+        }
+
         return pos;
     }   
 	
@@ -792,6 +809,10 @@ public final class RingBuffer {
         buffer[rbMask & (int)pos++] = (int)(value2 & 0xFFFFFFFF);
 		return pos;
 	}   
+    
+    public static void addLongValue(RingBuffer rb, long value) {
+		 addLongValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
+	}
     
     public static void addLongValue(int[] buffer, int rbMask, PaddedLong headCache, long value) {
         
@@ -850,6 +871,12 @@ public final class RingBuffer {
     	return readValue(0, ring.buffer,ring.mask,ring.workingTailPos.value++);
     }
     
+    public static int takeMsgIdx(RingBuffer ring) {    	
+    	RingBuffer.markBytesReadBase(ring);
+    	return readValue(0, ring.buffer,ring.mask,ring.workingTailPos.value++);
+    }
+    
+    
     public static int contentRemaining(RingBuffer rb) {
         return (int)(rb.headPos.longValue() - rb.tailPos.longValue()); //must not go past add count because it is not release yet.
     }
@@ -895,7 +922,10 @@ public final class RingBuffer {
     	if (ring.writeTrailingCountOfBytesConsumed) {
 			writeTrailingCountOfBytesConsumed(ring, ring.workingHeadPos.value++); //increment because this is the low-level API calling
 			//this updated the head so it must repositioned
-		} //MUST be before the assert.
+		} 
+		//single length field still needs to move this value up, so this is always done
+		ring.bytesWriteLastConsumedBytePos = ring.byteWorkingHeadPos.value;
+		
     	
     	assert(ring.consumerData.nextWorkingHead<=ring.headPos.get() || ring.workingHeadPos.value<=ring.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
     	
@@ -994,7 +1024,8 @@ public final class RingBuffer {
 	}
 
 	public static void writeTrailingCountOfBytesConsumed(RingBuffer ring, long pos) {
-		ring.buffer[ring.mask & (int)pos] = ring.byteWorkingHeadPos.value - ring.bytesHeadPos.get();			
+				
+		ring.buffer[ring.mask & (int)pos] = ring.byteWorkingHeadPos.value - ring.bytesWriteLastConsumedBytePos;
 		ring.writeTrailingCountOfBytesConsumed = false;
 	}
 	

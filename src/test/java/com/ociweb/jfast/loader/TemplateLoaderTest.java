@@ -132,17 +132,15 @@ public class TemplateLoaderTest {
         
         FASTClassLoader.deleteFiles();
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
-    //    FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
-        
+        RingBuffer queue = new RingBuffer((byte)8,(byte)16,catalog.ringByteConstants(), catalog.getFROM());
+		RingBuffers buildNoFanRingBuffers = RingBuffers.buildNoFanRingBuffers(queue);
+		FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, buildNoFanRingBuffers); 
 
         Histogram stats = new Histogram(100000,13000000,1000000,100000000);    
         
         
         System.err.println("using: "+readerDispatch.getClass().getSimpleName());
-        System.gc();
-        
-        RingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);      
+          
 
         int warmup = 128;
         int count = 512;
@@ -162,7 +160,7 @@ public class TemplateLoaderTest {
 
         
         int iter = warmup;
-        while (--iter >= 0) {
+        while (--iter >= 0) { //TODO: AAAA, works on 1 pass but not a second, something is not cleared.
             msgs.set(0);
             frags = 0;
 
@@ -597,7 +595,7 @@ public class TemplateLoaderTest {
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
          //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes);
+         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriterDebug(catBytes);
 
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
@@ -621,7 +619,7 @@ public class TemplateLoaderTest {
             dictionaryFactory.reset(writerDispatch.rIntDictionary);
             dictionaryFactory.reset(writerDispatch.rLongDictionary);
             dictionaryFactory.reset(writerDispatch.byteHeap);
-            
+
             //read from reader and puts messages on the queue
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
@@ -635,8 +633,8 @@ public class TemplateLoaderTest {
                         }
                         
                         try{   
-                        	//write message found on the queue to the output writer
-                            FASTDynamicWriter.write(dynamicWriter);
+                        	//write message found on the queue to the output writer                        	
+                            FASTDynamicWriter.write(dynamicWriter); //TODO: AAAA removing this works so the write must be moving one of the pointers!!
                         } catch (FASTException e) {
                             System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(RingBuffer.from(queue).tokens[writerDispatch.getActiveScriptCursor()]));
                             throw e;

@@ -395,8 +395,7 @@ public class RingBufferPipeline {
 		                int mask = byteMask(outputRing); // data often loops around end of array so this mask is required
 		                while (true) {
 		                    //read the message
-		                    // 	System.out.println("reading:"+messageCount);
-		                    int msgId = RingBuffer.takeValue(inputRing);	
+		                    int msgId = RingBuffer.takeMsgIdx(inputRing);
 		                	int meta = takeRingByteMetaData(inputRing);
 		                	int len = takeRingByteLen(inputRing);
 		                	byte[] data = byteBackingArray(meta, inputRing);
@@ -503,6 +502,7 @@ public class RingBufferPipeline {
 											//using the low level seems like this is required
 											inputRing.byteWorkingTailPos.value+=len;
 									}
+									
 
 								}
 							} else {
@@ -535,9 +535,8 @@ public class RingBufferPipeline {
 	                    while (true) {
 	                        //read the message
 	                    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);
-	                    	//TODO: AAA can we confirm that the bytes data is loaded by looking at the last position in the fragment?
-
-	                        int msgId = RingBuffer.takeValue(inputRing); 	
+	                    	
+	                        int msgId = RingBuffer.takeMsgIdx(inputRing);
 	                        if (msgId<0) {                     	
 	                        	boolean debug = false;
 	                        	if (debug) {
