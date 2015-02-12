@@ -501,21 +501,50 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
     
     
-    //TODO: AAA, add the both loc read/write fields
-    //TODO: AAA, add new method to copy the non variable types with arrayCopy
-	public static int copyBytes(final RingBuffer inputRing,	final RingBuffer outputRing, int loc) {
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to copy some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		
-		//High level API example of reading bytes from one ring buffer into another array that wraps with a mask
-		int length = readBytes(inputRing, loc, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);
-		RingBuffer.validateVarLength(outputRing, length);							
-		
-		int p = outputRing.byteWorkingHeadPos.value;
-		
-		RingBuffer.setBytePosAndLen(outputRing.buffer, outputRing.mask, 
-				outputRing.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc), p, length, RingBuffer.bytesWriteBase(outputRing)); 
+    public static void copyInt(final RingBuffer sourceRing,	final RingBuffer targetRing, int sourceLOC, int targetLOC) {
+		assert((sourceLOC&0x1C<<OFF_BITS)==0) : "Expected to read some type of int but found "+TypeMask.toString((sourceLOC>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+		assert((targetLOC&0x1C<<RingWriter.OFF_BITS)==0) : "Expected to write some type of int but found "+TypeMask.toString((targetLOC>>RingWriter.OFF_BITS)&TokenBuilder.MASK_TYPE);
+        
+		targetRing.buffer[targetRing.mask &((int)targetRing.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(targetLOC>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&targetLOC))] =
+		     sourceRing.buffer[sourceRing.mask & (int)(sourceRing.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(sourceLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&sourceLOC))];
+    }
+    
+    public static void copyLong(final RingBuffer sourceRing, final RingBuffer targetRing, int sourceLOC, int targetLOC) {
+    	assert((sourceLOC&0x1C<<RingReader.OFF_BITS)==(0x4<<RingReader.OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((sourceLOC>>RingReader.OFF_BITS)&TokenBuilder.MASK_TYPE);
+    	assert((targetLOC&0x1C<<RingWriter.OFF_BITS)==(0x4<<RingWriter.OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((targetLOC>>RingWriter.OFF_BITS)&TokenBuilder.MASK_TYPE);
+		long srcIdx = sourceRing.consumerData.activeReadFragmentStack[RingReader.STACK_OFF_MASK&(sourceLOC>>RingReader.STACK_OFF_SHIFT)] +(RingReader.OFF_MASK&sourceLOC);   	
+		long targetIdx = (targetRing.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(targetLOC>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&targetLOC));	
+		targetRing.buffer[targetRing.mask & (int)targetIdx]     = sourceRing.buffer[sourceRing.mask & (int)srcIdx];
+		targetRing.buffer[targetRing.mask & (int)targetIdx+1] = sourceRing.buffer[sourceRing.mask & (int)srcIdx+1];
+    }
+    
+    public static void copyDecimal(final RingBuffer sourceRing, final RingBuffer targetRing, int sourceLOC, int targetLOC) {
+    	assert((sourceLOC&0x1E<<RingReader.OFF_BITS)==(0x0C<<RingReader.OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((sourceLOC>>RingReader.OFF_BITS)&TokenBuilder.MASK_TYPE);
+    	assert((targetLOC&0x1E<<RingWriter.OFF_BITS)==(0x0C<<RingWriter.OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((targetLOC>>RingWriter.OFF_BITS)&TokenBuilder.MASK_TYPE); 
+
+    	long srcIdx = sourceRing.consumerData.activeReadFragmentStack[RingReader.STACK_OFF_MASK&(sourceLOC>>RingReader.STACK_OFF_SHIFT)] +(RingReader.OFF_MASK&sourceLOC);   	
+		long targetIdx = (targetRing.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(targetLOC>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&targetLOC));	
 	
-		outputRing.byteWorkingHeadPos.value = p + length;	
+		targetRing.buffer[targetRing.mask & (int)targetIdx]     = sourceRing.buffer[sourceRing.mask & (int)srcIdx];
+		targetRing.buffer[targetRing.mask & (int)targetIdx+1] = sourceRing.buffer[sourceRing.mask & (int)srcIdx+1];
+		targetRing.buffer[targetRing.mask & (int)targetIdx+2] = sourceRing.buffer[sourceRing.mask & (int)srcIdx+2];
+		
+    }
+        
+	public static int copyBytes(final RingBuffer sourceRing,	final RingBuffer targetRing, int sourceLOC, int targetLOC) {
+		assert((sourceLOC&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (sourceLOC&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (sourceLOC&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((sourceLOC>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+		assert((targetLOC&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (targetLOC&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (targetLOC&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((targetLOC>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+				
+		//High level API example of reading bytes from one ring buffer into another array that wraps with a mask
+		int length = readBytes(sourceRing, sourceLOC, targetRing.byteBuffer, targetRing.byteWorkingHeadPos.value, targetRing.byteMask);
+		RingBuffer.validateVarLength(targetRing, length);							
+		
+		int p = targetRing.byteWorkingHeadPos.value;
+		
+		RingBuffer.setBytePosAndLen(targetRing.buffer, targetRing.mask, 
+				targetRing.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(targetLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&targetLOC), p, length, RingBuffer.bytesWriteBase(targetRing)); 
+	
+		targetRing.byteWorkingHeadPos.value = p + length;	
 		
 		return length;
 	}

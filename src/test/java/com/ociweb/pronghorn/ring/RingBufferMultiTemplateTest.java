@@ -46,8 +46,7 @@ public class RingBufferMultiTemplateTest {
 	public static FieldReferenceOffsetManager buildFROM() {
 		 
 		String source = "/template/smallExample.xml";
-		ClientConfig clientConfig = new ClientConfig();		
-		TemplateCatalogConfig catalog = new TemplateCatalogConfig(TemplateLoader.buildCatBytes(source, clientConfig ));
+		TemplateCatalogConfig catalog = new TemplateCatalogConfig(TemplateLoader.buildCatBytes(source, new ClientConfig()));
 		return catalog.getFROM();
 		
 	}
@@ -70,7 +69,7 @@ public class RingBufferMultiTemplateTest {
         
         boolean useHighLevel = true;
         if (useHighLevel) {
-            populateRingBuffer(ring, ring.maxAvgVarLen, testSize);
+            populateRingBufferHighLevel(ring, ring.maxAvgVarLen, testSize);
         } else {
         	populateRingBufferLowLevel(ring, ring.maxAvgVarLen, testSize);
         }
@@ -142,14 +141,14 @@ public class RingBufferMultiTemplateTest {
         }    
     }
 
-	private void populateRingBuffer(RingBuffer ring, int blockSize, int testSize) {
+	private void populateRingBufferHighLevel(RingBuffer ring, int blockSize, int testSize) {
 		
 		int[] templateIds = new int[] {2,1,4};
 		int j = testSize;
         while (true) {
         	
         	if (j == 0) {
-        		RingWalker.blockingFlush(ring);
+        		RingWalker.publishEOF(ring);
         		return;//done
         	}
         	
@@ -220,8 +219,7 @@ public class RingBufferMultiTemplateTest {
         	
         	if (j == 0) {
         		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
-        		RingBuffer.addMsgIdx(ring, -1);
-        		RingBuffer.publishWrite(ring);
+        		RingBuffer.publishEOF(ring);
         		return;//done
         	}
         	

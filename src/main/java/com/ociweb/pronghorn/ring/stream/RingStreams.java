@@ -42,8 +42,8 @@ public class RingStreams {
 		}
 		
 		//target is always 1 ahead of where we are then we step by step size, this lets us pick up the 
-		//EOF message which is only length 1
-		long target = 1+tailPosition(inputRing);
+		//EOF message which is only length 2
+		long target = 2+tailPosition(inputRing);
 				
 		//write to outputStream only when we have data on inputRing.
         long headPosCache = headPosition(inputRing);
@@ -64,8 +64,8 @@ public class RingStreams {
 
         				
         	if (msgId<0) { //exit logic
-            	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer. TODO: AAAA need to remvoe.
-            	int len = takeRingByteLen(inputRing);
+        		int bytesCount = RingBuffer.takeValue(inputRing);
+        		assert(0==bytesCount);
             	
         		releaseReadLock(inputRing);
           		return;
@@ -73,13 +73,7 @@ public class RingStreams {
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
             	int len = takeRingByteLen(inputRing);
 				byte[] data = byteBackingArray(meta, inputRing);
-				
-//            	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-//            		//using the low level seems like this is required
-//            		if (len>=0) {
-//            			inputRing.byteWorkingTailPos.value+=len;
-//            		}
-//            	}
+
 				int off = bytePosition(meta,inputRing,len)&byteMask;        					
 				
 				int len1 = byteSize-off;
@@ -114,9 +108,7 @@ public class RingStreams {
 	 * @throws IOException
 	 */
 	public static void writeToOutputStreams(RingBuffer inputRing, OutputStream... outputStreams) throws IOException {
-				
-		new Exception("LOOK MA, this code is used").printStackTrace();
-		
+						
 		long step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		
 		 //this blind byte copy only works for this simple message type, it is not appropriate for other complex types
@@ -124,8 +116,8 @@ public class RingStreams {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		
-		//only need to look for 1 value then step forward by steps this lets us pick up the EOM message without hanging.
-		long target = 1+tailPosition(inputRing);
+		//only need to look for 2 value then step forward by steps this lets us pick up the EOM message without hanging.
+		long target = 2+tailPosition(inputRing);
 				
 		//write to outputStream only when we have data on inputRing.
         long headPosCache = headPosition(inputRing);
@@ -141,9 +133,8 @@ public class RingStreams {
         	int msgId = RingBuffer.takeMsgIdx(inputRing);
         				
         	if (msgId<0) { //exit logic
-
-            	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer. //TODO: AAA, remove.
-            	int len = takeRingByteLen(inputRing);
+        		int bytesCount = RingBuffer.takeValue(inputRing);
+        		assert(0==bytesCount);
             	
             	releaseReadLock(inputRing);
           		return;
@@ -154,12 +145,6 @@ public class RingStreams {
         		int byteMask = inputRing.byteMask;
 				byte[] data = byteBackingArray(meta, inputRing);
 				
-//            	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-//            		//using the low level seems like this is required
-//            		if (len>=0) {
-//            			inputRing.byteWorkingTailPos.value+=len;
-//            		}
-//            	}
 				int offset = bytePosition(meta,inputRing,len);        					
 	
 				int adjustedOffset = offset & byteMask;
@@ -198,10 +183,12 @@ public class RingStreams {
 	 */
 	public static void readFromInputStream(InputStream inputStream, RingBuffer outputRing) throws IOException {
 		assert (RingBuffer.from(outputRing) == FieldReferenceOffsetManager.RAW_BYTES);
-		int fill =  1 + outputRing.mask - FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+		int step = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+		int fill =  1 + outputRing.mask - step;
 		int maxBlockSize = outputRing.maxAvgVarLen;
 		
-		long tailPosCache = spinBlockOnTail(tailPosition(outputRing), headPosition(outputRing)-fill, outputRing);    
+		long targetTailValue = headPosition(outputRing)-fill;
+		long tailPosCache = tailPosition(outputRing);
 		
 		byte[] buffer = outputRing.byteBuffer;
 		int byteMask = outputRing.byteMask;
@@ -213,7 +200,9 @@ public class RingStreams {
 			while ( (size=inputStream.read(buffer,position&byteMask,((position&byteMask) > ((position+maxBlockSize-1) & byteMask)) ? 1+byteMask-(position&byteMask) : maxBlockSize))>=0 ) {	
 				if (size>0) {
 					//block until there is a slot to write into
-					tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
+					tailPosCache = spinBlockOnTail(tailPosCache, targetTailValue, outputRing);
+					targetTailValue += step;
+					
 					RingBuffer.addMsgIdx(outputRing, 0);
 					RingBuffer.validateVarLength(outputRing, size);
 					RingBuffer.addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, RingBuffer.bytesWriteBase(outputRing), position, size);
@@ -265,13 +254,8 @@ public class RingStreams {
 	}
 
 	public static void writeEOF(RingBuffer ring) {
-		//RingWalker.blockingFlush(ring);
-		
-		int fill = 1 + ring.mask - FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
-		spinBlockOnTail(tailPosition(ring), headPosition(ring)-fill, ring);
-		RingBuffer.addMsgIdx(ring, -1); //end of file, message
-		RingBuffer.addNullByteArray(ring); //TOOD: must remove
-		RingBuffer.publishWrite(ring);		
+		spinBlockOnTail(tailPosition(ring), headPosition(ring)-(1 + ring.mask - 2), ring);
+		RingBuffer.publishEOF(ring);	
 	}
 
 	public static void visitBytes(RingBuffer inputRing, ByteVisitor visitor) {
@@ -283,8 +267,8 @@ public class RingStreams {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		
-		//only start by adding 1 so we can get EOM message without hang.
-		long target = 1+tailPosition(inputRing);
+		//only start by adding 2 so we can get EOM message without hang.
+		long target = 2+tailPosition(inputRing);
 				
 		//write to outputStream only when we have data on inputRing.
 	    long headPosCache = headPosition(inputRing);
@@ -303,8 +287,8 @@ public class RingStreams {
 	    	int byteMask = inputRing.byteMask;
 	    				
 	    	if (msg<0) { //exit logic
-		    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.  TODO: AAA, remove
-		    	int len = takeRingByteLen(inputRing);
+	    		int bytesCount = RingBuffer.takeValue(inputRing);
+		    	assert(0==bytesCount);
 		    	
 	    		releaseReadLock(inputRing);
 	    		visitor.close();
@@ -314,13 +298,7 @@ public class RingStreams {
 		    	int len = takeRingByteLen(inputRing);
 		    	
 	    		byte[] data = byteBackingArray(meta, inputRing);
-				
-//            	if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-//            		//using the low level seems like this is required
-//            		if (len>=0) {
-//            			inputRing.byteWorkingTailPos.value+=len;
-//            		}
-//            	}
+
 				int offset = bytePosition(meta,inputRing,len);        					
 				
 				if ((offset&byteMask) > ((offset+len-1) & byteMask)) {

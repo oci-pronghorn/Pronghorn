@@ -433,7 +433,7 @@ public class TemplateLoaderTest {
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, maxPMapCountInBytes);
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
         
        // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
       
@@ -596,7 +596,7 @@ public class TemplateLoaderTest {
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
          //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriterDebug(catBytes);
+         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes);
 
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 

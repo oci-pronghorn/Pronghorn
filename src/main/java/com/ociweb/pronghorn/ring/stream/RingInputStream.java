@@ -106,11 +106,8 @@ public class RingInputStream extends InputStream {
 			int sourceLength = takeRingByteLen(ring);
 			return beginNewContent(targetData, targetOffset, targetLength, meta, sourceLength);
 		} else {   
-			
-			//TODO: AAAA remove these two lines
-			int meta = takeRingByteMetaData(ring);//side effect, this moves the pointer and must happen before we call for length
-			int sourceLength = takeRingByteLen(ring);
-						
+			int bytesCount = RingBuffer.takeValue(ring);
+			assert(0==bytesCount);						
 			releaseReadLock(ring);
 			return -1;			
 		}

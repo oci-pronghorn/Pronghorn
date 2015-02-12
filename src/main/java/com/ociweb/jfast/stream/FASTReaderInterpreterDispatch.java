@@ -124,7 +124,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         } else {
         	rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
         	//this is not the beginning of a fragment but we still need to mark the need to add the trailing bytes.
-        	RingBuffer.beginFragmentWrite(rbRingBuffer, activeScriptCursor);        	
+        	rbRingBuffer.writeTrailingCountOfBytesConsumed = (1==rbRingBuffer.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[activeScriptCursor]);        	
         }
               
            

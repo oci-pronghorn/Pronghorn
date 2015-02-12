@@ -79,7 +79,7 @@ public class RingBufferSingleTemplateFloatTest {
         while (true) {
         	        	
         	if (j == 0) {
-        		RingWalker.blockingFlush(ring);
+        		RingWalker.publishEOF(ring);
         		return;//done
         	}
                	        	

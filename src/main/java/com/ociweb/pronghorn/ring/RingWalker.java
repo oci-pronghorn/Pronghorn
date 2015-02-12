@@ -176,7 +176,7 @@ public class RingWalker {
 				
 				assert (ringBufferConsumer.bnmHeadPosCache<=ringBufferConsumer.nextWorkingTail) : 
 					  "Partial fragment published!  expected "+(target-ringBufferConsumer.nextWorkingTail)+" but found "+(ringBufferConsumer.bnmHeadPosCache-ringBufferConsumer.nextWorkingTail);
-;
+
 				return false;
 			}
 		}
@@ -487,18 +487,22 @@ public class RingWalker {
 				
 	}
 
-	public static void blockingFlush(RingBuffer ring) {
+	public static void publishEOF(RingBuffer ring) {
 		
 		assert(ring.consumerData.nextWorkingHead>0) : "Unsupported use of high level API with low level methods.";
 		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
 		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
+		
+		assert(ring.tailPos.get()+ring.maxSize>=ring.headPos.get()+2) : "Must block first to ensure we have 2 spots for the EOF marker";
 		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
-		ring.buffer[ring.mask &((int)ring.consumerData.nextWorkingHead +  RingBuffer.from(ring).templateOffset)] = -1;		
-		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + 1 ;
-		RingBuffer.publishWrite(ring);
+		ring.buffer[ring.mask &((int)ring.consumerData.nextWorkingHead +  RingBuffer.from(ring).templateOffset)]    = -1;	
+		ring.buffer[ring.mask &((int)ring.consumerData.nextWorkingHead +1 +  RingBuffer.from(ring).templateOffset)] = 0;
+		
+		ring.headPos.lazySet(ring.workingHeadPos.value = ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + 2);			
 		
 	}
-		
+
+
 	public static void publishWrites(RingBuffer outputRing) {
 		if (outputRing.writeTrailingCountOfBytesConsumed) {
 			RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, outputRing.consumerData.nextWorkingHead -1 ); 
@@ -514,6 +518,34 @@ public class RingWalker {
 		}
 		 
 	}
+	
+	public static void copyMessage(RingBuffer inputRing, RingBuffer outputRing) {
+		FieldReferenceOffsetManager srcFrom = RingBuffer.from(inputRing);
+		assert(srcFrom == RingBuffer.from(outputRing));
+		
+		//copy this fragment
+		
+		//TODO: AAA, not sure how we want to batch this??
+		
+		
+		while (!FieldReferenceOffsetManager.isTemplateStart(srcFrom, inputRing.consumerData.nextCursor)) {
+			//spin til next fragment is ready
+			while (!prepReadFragment(inputRing, inputRing.consumerData)) {
+				Thread.yield();
+			}
+			
+			
+			
+		}
+		
+		//copy this fragment
+		
+		//TODO: AAA, not sure how we want to batch this??
+		
+		
+	}
+	
+	
 	
 
    

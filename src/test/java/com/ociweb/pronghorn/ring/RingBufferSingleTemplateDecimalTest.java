@@ -88,7 +88,7 @@ public class RingBufferSingleTemplateDecimalTest {
         	
         	if (j == 0) {
         	
-        		RingWalker.blockingFlush(ring);
+        		RingWalker.publishEOF(ring);
         		
         		return;//done
         	}

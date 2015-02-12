@@ -1,16 +1,16 @@
 package com.ociweb.pronghorn.ring;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
-import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.stream.RingInputStream;
 import com.ociweb.pronghorn.ring.stream.RingOutputStream;
 import com.ociweb.pronghorn.ring.stream.RingStreams;
@@ -74,11 +74,11 @@ public class RingStreamsTest {
 				
 		while (testIdx<testStop) {
 			
-			int temp = testIdx&lenMask;
-			ByteArrayInputStream inputStream = new ByteArrayInputStream(Arrays.copyOfRange(testData, 0, temp));
+			final int expectedLength = testIdx&lenMask;
+			ByteArrayInputStream inputStream = new ByteArrayInputStream(Arrays.copyOfRange(testData, 0, expectedLength));
 		
 			try {
-				RingStreams.readFromInputStream(inputStream, testRing);				
+				RingStreams.readFromInputStream(inputStream, testRing);		
 				RingStreams.writeEOF(testRing);
 				
 				ByteArrayOutputStream baost = new ByteArrayOutputStream();
@@ -91,7 +91,7 @@ public class RingStreamsTest {
 				
 				assertEquals(0, RingBuffer.contentRemaining(testRing));
 				
-				assertTrue("len:"+temp, Arrays.equals(Arrays.copyOfRange(testData,0,temp), baost.toByteArray()));
+				assertTrue("len:"+expectedLength+" vs "+baost.toByteArray().length, Arrays.equals(Arrays.copyOfRange(testData,0,expectedLength), baost.toByteArray()));
 								
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -237,17 +237,18 @@ public class RingStreamsTest {
 		
 		while (testIdx<testSize) {
 			
-	//		assertEquals(0, RingBuffer.contentRemaining(testRing));	
 			assertEquals(0, RingBuffer.contentRemaining(targetRing));	
 			
 
 			//Write data into the the ring buffer			
 			RingStreams.writeBytesToRing(testData, 0, testIdx, testRing, blockSize);
+			
 			RingStreams.writeEOF(testRing);
 						
 			//Here we are reading from one ring and writing to another ring going through an InputStream
 			try {
 				RingStreams.readFromInputStream(ringInputStream, targetRing);
+			
 				RingStreams.writeEOF(targetRing);
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -369,7 +370,7 @@ public class RingStreamsTest {
 					fail();
 				}		
 				
-				assertTrue("len:"+testIdx, Arrays.equals(Arrays.copyOfRange(testData,0,testIdx), baost.toByteArray()));
+				assertTrue("len:"+testIdx+" vs "+baost.toByteArray().length, Arrays.equals(Arrays.copyOfRange(testData,0,testIdx), baost.toByteArray()));
 			}
 			
 			

@@ -244,7 +244,7 @@ public class RingBufferPipeline {
 							 RingWalker.publishWrites(outputRing);
 
 						 }
-						 RingWalker.blockingFlush(outputRing);
+						 RingWalker.publishEOF(outputRing);
 
 					} catch (Throwable t) {
 						RingBuffer.shutdown(outputRing);
@@ -259,36 +259,33 @@ public class RingBufferPipeline {
 				public void run() {
 					try{
 									
-					  RingBuffer.setPublishBatchSize(outputRing, 255);
+					  RingBuffer.setPublishBatchSize(outputRing, 64);
 						
 					  int messageSize = msgSize;
 					  int messageCount = testMessages;            
-				      int fill =  outputRing.maxSize-messageSize;
-				      				      
-			          //keep local copy of the last time the tail was checked to avoid contention.
-			          long nextTailTarget = headPosition(outputRing) - fill;
+				      //keep local copy of the last time the tail was checked to avoid contention.
+			          long nextTailTarget = headPosition(outputRing) - (outputRing.maxSize-messageSize);
 			          long tailPosCache = tailPosition(outputRing);                        
 			          while (--messageCount>=0) {
 			        	  
+			        	  //block until we have room
 			        	  tailPosCache = spinBlockOnTail(tailPosCache, nextTailTarget, outputRing);
 			        	  nextTailTarget += messageSize;		          
 			        	  			        	  
 			              //write the record
 			        	  RingBuffer.addMsgIdx(outputRing, 0);
 		                  
+			        	  //write in order
 			        	  addByteArray(testArray, 0, testArray.length, outputRing);
+			        	  
 						  publishWrite(outputRing);
 						  
-					//	  Thread.sleep(0, 1000);
 
 			          }
 			          
 			          tailPosCache = spinBlockOnTail(tailPosCache, nextTailTarget, outputRing);
 
-			          //send negative length as poison pill to exit all runnables  
-			          RingBuffer.addMsgIdx(outputRing, -1);
-			          RingBuffer.setPublishBatchSize(outputRing, 0);//without this the publish can hang!
-			      	  publishWrite(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
+			          RingBuffer.publishEOF(outputRing);
 
 					} catch (Throwable t) {
 						t.printStackTrace();
@@ -326,7 +323,7 @@ public class RingBufferPipeline {
 									RingWalker.blockWriteFragment(outputRing,MSG_ID);
 									//copy this message from one ring to the next
 									//NOTE: in the normal world I would expect the data to be modified before getting moved.
-									RingReader.copyBytes(inputRing, outputRing, FIELD_ID);
+									RingReader.copyBytes(inputRing, outputRing, FIELD_ID, FIELD_ID);
 									RingWalker.publishWrites(outputRing);
 
 								} 
@@ -336,7 +333,7 @@ public class RingBufferPipeline {
 							//exit the loop logic is not defined by the ring but instead is defined by data/usage, in this case we use a null byte array aka (-1 length)
 						} while (msgId!=-1);
 																	
-						RingWalker.blockingFlush(outputRing);
+						RingWalker.publishEOF(outputRing);
 						
 
 					} catch (Throwable t) {
@@ -359,14 +356,14 @@ public class RingBufferPipeline {
 						RingBuffer.setPublishBatchSize(outputRing, 64);
 						
 		                //only enter this block when we know there are records to read
-		    		    long nextHeadTarget = tailPosition(inputRing) + msgSize;//(msgSize * (inputRing.maxSize/msgSize));
+		    		    long nextHeadTarget = tailPosition(inputRing) + msgSize;
 		    		    long headPosCache = headPosition(inputRing);
 		    		    
 		                //two per message, and we only want half the buffer to be full
 		                long tailPosCache = tailPosition(outputRing);
 		                
 					    //keep local copy of the last time the tail was checked to avoid contention.
-				        long nextTailTarget = headPosition(outputRing) - (outputRing.maxSize- msgSize);//((msgSize * (outputRing.maxSize/msgSize))));
+				        long nextTailTarget = headPosition(outputRing) - (outputRing.maxSize- msgSize);
 		                
 		                
 		                int mask = byteMask(outputRing); // data often loops around end of array so this mask is required
@@ -398,10 +395,9 @@ public class RingBufferPipeline {
 		                
 		                
 						tailPosCache = spinBlockOnTail(tailPosCache, nextTailTarget, outputRing);
-						RingBuffer.addMsgIdx(outputRing, -1);
-						addNullByteArray(outputRing);
-						RingBuffer.setPublishBatchSize(outputRing, 0);
-						publishWrite(outputRing);
+						
+						RingBuffer.publishEOF(outputRing);
+						
 						releaseReadLock(inputRing); 
 		                
 		                
@@ -499,7 +495,7 @@ public class RingBufferPipeline {
 	                    	
 	                        int msgId = RingBuffer.takeMsgIdx(inputRing);
 	                        if (msgId<0) {  
-	                        	System.err.println("done after "+messageCount+" messages");
+	                        	System.err.println("done after "+messageCount+" messages and "+total+" bytes ");
 	                        	return;
 	                        }
 	                    	int meta = takeRingByteMetaData(inputRing);

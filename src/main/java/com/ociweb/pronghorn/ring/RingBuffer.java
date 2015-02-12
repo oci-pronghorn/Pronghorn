@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.ring;
 
-import static org.junit.Assert.assertTrue;
-
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -271,6 +269,18 @@ public final class RingBuffer {
         writeTrailingCountOfBytesConsumed = false;
         RingWalker.reset(consumerData, toPos);
     }
+
+	public static void publishEOF(RingBuffer ring) {
+		
+		assert(ring.tailPos.get()+ring.maxSize>=ring.headPos.get()+2) : "Must block first to ensure we have 2 spots for the EOF marker";
+		
+		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
+		ring.buffer[ring.mask &((int)ring.workingHeadPos.value +  from(ring).templateOffset)]    = -1;	
+		ring.buffer[ring.mask &((int)ring.workingHeadPos.value +1 +  from(ring).templateOffset)] = 0;
+		
+		ring.headPos.lazySet(ring.workingHeadPos.value = ring.workingHeadPos.value + 2);
+		
+	}
 
 	public static void copyBytesFromToRing(byte[] source, int sourceloc, int sourceMask, byte[] target, int targetloc, int targetMask, int length) {
 		copyBytesFromToRingMasked(source, sourceloc & sourceMask, (sourceloc + length) & sourceMask, target, targetloc & targetMask, (targetloc + length) & targetMask,	length);
@@ -709,6 +719,8 @@ public final class RingBuffer {
     //must be called by low-level API when starting a new message
     public static void addMsgIdx(RingBuffer rb, int msgIdx) {
     	
+    	assert(msgIdx>=0) : "Call publishEOF() instead of this method";
+    	
      	//this MUST be done here at the START of a message so all its internal fragments work with the same base position
      	 markBytesWriteBase(rb);
     	
@@ -717,13 +729,9 @@ public final class RingBuffer {
 		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, msgIdx);		
 		 
 		 //when publish is called this new byte will be appended due to this request NOTE: when writing fragments with low level API this must be done by hand!!
-		 beginFragmentWrite(rb, msgIdx);
+		 rb.writeTrailingCountOfBytesConsumed = (1==rb.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
 	}
 
-	public static void beginFragmentWrite(RingBuffer rb, int scriptPos) {
-		rb.writeTrailingCountOfBytesConsumed = scriptPos>=0 && (1==rb.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[scriptPos]);
-	}
-    
    
     //we are only allowed 12% of the time or so for doing this write.
     //this pushes only ~5gbs but if we had 100% it would scale to 45gbs
