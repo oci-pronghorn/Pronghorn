@@ -160,13 +160,14 @@ public class TemplateLoaderTest {
 
         
         int iter = warmup;
-        while (--iter >= 0) { //TODO: AAAA, works on 1 pass but not a second, something is not cleared.
+        while (--iter >= 0) { 
             msgs.set(0);
             frags = 0;
 
             reactor = new FASTReaderReactor(readerDispatch,reader);
             RingBuffer rb = reactor.ringBuffers()[0];
             rb.reset();
+           // RingBuffer.setPublishBatchSize(rb, 30);
 
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
                 if (RingWalker.tryReadFragment(rb)) {
@@ -620,21 +621,25 @@ public class TemplateLoaderTest {
             dictionaryFactory.reset(writerDispatch.rLongDictionary);
             dictionaryFactory.reset(writerDispatch.byteHeap);
 
+            
             //read from reader and puts messages on the queue
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
+            	assert(queue.byteWorkingTailPos.value<=queue.bytesHeadPos.get());
+            	
             		//confirms full message to read on the queue            	
                     if (RingWalker.tryReadFragment(queue)) {
                         if (RingWalker.isNewMessage(queue.consumerData)) {
-                        	if (RingWalker.getMsgIdx(queue)<0) {
+                        	int msgIdx = RingWalker.getMsgIdx(queue);
+							if (msgIdx<0) {
                         		break;
                         	}
                             msgs.incrementAndGet();
                         }
-                        
+                        assert(queue.byteWorkingTailPos.value<=queue.bytesHeadPos.get());
                         try{   
-                        	//write message found on the queue to the output writer                        	
-                            FASTDynamicWriter.write(dynamicWriter); //TODO: AAAA removing this works so the write must be moving one of the pointers!!
+                        	//write message found on the queue to the output writer 
+                        	FASTDynamicWriter.write(dynamicWriter); 
                         } catch (FASTException e) {
                             System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(RingBuffer.from(queue).tokens[writerDispatch.getActiveScriptCursor()]));
                             throw e;
@@ -660,7 +665,7 @@ public class TemplateLoaderTest {
         }
 
         // Expected total read fields:2126101
-        assertEquals("test file bytes", totalTestBytes, wroteSize);
+        assertEquals("test file bytes at msg "+msgs.get(), totalTestBytes, wroteSize);
 
         //In the warm up we checked the writes for accuracy, here we are only going for speed
         //so the FASTOutput instance is changed to one that only writes.
@@ -683,11 +688,6 @@ public class TemplateLoaderTest {
             final ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(1); 
 
             //note this test is never something that represents a normal use case but it is good for testing the encoding only time.
-            //      
-            //TODO: X, allow decoding in parallel by n cores into n ring buffers but let each one use different techniques.  The first one done is the value used. Would support runtime optimizations.
-            
-            
-          
             
             //Pre-populate the ring buffer to only measure the write time.
             final AtomicBoolean isAlive = reactor.start(executor, reader);

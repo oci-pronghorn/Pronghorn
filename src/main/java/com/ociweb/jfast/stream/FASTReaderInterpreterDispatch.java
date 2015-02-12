@@ -266,15 +266,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             
         } while (true);
         
-    //    System.err.println("                                       write hack check must to up "+rbRingBuffer.byteWorkingHeadPos.value);
-        
         if (rbRingBuffer.writeTrailingCountOfBytesConsumed) {
-        	
-        	//we are double couting the bytes consumed by using the base write here !!!!
-  //TODO: AAAAA focus here      	
-        	
-  //      	System.err.println("write trail bytes consuemd of "+(rbRingBuffer.byteWorkingHeadPos.value - RingBuffer.bytesWriteBase(rbRingBuffer))+" written to "+rbRingBuffer.workingHeadPos.value);
-        	
+
         	genReadTotalMessageBytesUsed(rbRingBuffer.workingHeadPos, rbRingBuffer );
         	//this stopping logic is only needed for the interpreter, the generated version has this call injected at the right poing.
         	rbRingBuffer.writeTrailingCountOfBytesConsumed = false;
@@ -286,11 +279,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         //this conditional is for the code generator so it need not check
         if (rbRingBuffer.workingHeadPos.value != rbRingBuffer.headPos.get()) {
 	        assert (fragDataSize == ((int)(rbRingBuffer.workingHeadPos.value-rbRingBuffer.headPos.get()))) : "expected to write "+fragDataSize+" but wrote "+((int)(rbRingBuffer.workingHeadPos.value-rbRingBuffer.headPos.get()));
-	        	        
-	        //TODO: AAAAA, byteworkinghead should be accumulating but it goes back to zero!!!
-	        
-//	        System.err.println("write publish byte head "+rbRingBuffer.byteWorkingHeadPos.value);
-	        
+
 			//publish writes TODO: AAAA, can do this less often to support batching. (very light weight publish)
 	        RingBuffer.publishHeadPositions(rbRingBuffer);  
         }

@@ -21,7 +21,6 @@ import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
  * data is never used then the translation need not be done.  Some examples are the conversion of
  * bytes to chars via the ASCII and UTF-8 encodings.
  *  
- *  TODO: X, may want to back this class with ByteBuffer instead of array.
  *  
  * @author Nathan Tippy
  * 

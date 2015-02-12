@@ -66,7 +66,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 	            long templateId = (0 !=  PrimitiveReader.readPMapBit(reader)) ? PrimitiveReader.readLongUnsigned(reader) : -42;
 	            
 	            		
-		        //because this point does extra checks it often caputres errors long after they have happened. TODO: Need better debugging tools     
+		        //because this point does extra checks it often captures errors long after they have happened. May need better debugging tools if you end up here often     
 	            if (templateId<0) {
 	            	           	            	
 	            	System.err.println(templateId+"  "+dispatch.msgIdx+" "+Integer.toBinaryString(dispatch.msgIdx)+" start openPMap at pos "+startPos+"  error in feed at "+PrimitiveReader.totalRead(reader)); //expected to be 1 less

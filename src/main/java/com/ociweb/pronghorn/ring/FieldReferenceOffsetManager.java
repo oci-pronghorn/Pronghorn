@@ -7,7 +7,6 @@ import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class FieldReferenceOffsetManager {
-	public static final boolean USE_VAR_COUNT = false;//once this works inline it everywhere.
 	
 	private static final String NAME_BYTE_ARRAY = "ByteArray";
 	private static final String NAME_CHUNKED_STREAM = "Chunked Stream";
@@ -323,14 +322,12 @@ public class FieldReferenceOffsetManager {
 
 	private void accumVarLengthCounts(int fragmentStartIdx,
 			int varLenFieldCount, int varLenFieldLast) {
-		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-			//if last is 1 and count is 1 then don't else do
-			
+
+			//if last is 1 and count is 1 then don't else do			
 			if (1!=varLenFieldCount || 1!=varLenFieldLast) {     
 				fragDataSize[fragmentStartIdx]++;
 				fragNeedsAppendedCountOfBytesConsumed[fragmentStartIdx] = 1; //in all other cases its zero.
 			}
-		}
 	}
     
     

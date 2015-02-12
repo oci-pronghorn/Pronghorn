@@ -166,11 +166,8 @@ public class RingBufferMultiTemplateTest {
 		        		
 		        		RingWriter.writeInt(ring, BOX_COUNT_LOC, 42);
 		        		RingWriter.writeBytes(ring, BOX_OWNER_LOC, source);
-		        		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-		        			
-		        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
-		        			
-		        		}		        		
+	        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
+	        		
 		        		RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
@@ -186,11 +183,8 @@ public class RingBufferMultiTemplateTest {
 		        		RingWriter.writeInt(ring, SAMPLE_MONTH_LOC ,12);
 		        		RingWriter.writeInt(ring, SAMPLE_DATE_LOC ,9);
 		        		RingWriter.writeDecimal(ring,  SAMPLE_WEIGHT, 2, (long) 123456);
-		        		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-		        			
-		        			assertTrue(ring.writeTrailingCountOfBytesConsumed);
-		        			
-		        		}
+	        			assertTrue(ring.writeTrailingCountOfBytesConsumed);
+
 		        				        		
 		        		RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
@@ -204,11 +198,8 @@ public class RingBufferMultiTemplateTest {
 	        			j--;
 	        			
 	        			RingWriter.writeBytes(ring, REST_VERSION, ASCII_VERSION);
-		        		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-		        			
-		        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
-		        			
-		        		}
+	        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
+
 	        			RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
@@ -248,9 +239,7 @@ public class RingBufferMultiTemplateTest {
 	        		byte[] source = buildMockData((j*blockSize)/testSize);
 	        		RingBuffer.addValue(ring, 42);
 	        		RingBuffer.addByteArray(source, 0, source.length, ring);
-	        		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-	        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
-	        		}
+        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
 	        		RingBuffer.publishWrite(ring);
 	        		break;
 	        	case 1: //samples
@@ -264,9 +253,8 @@ public class RingBufferMultiTemplateTest {
 	        		
 	        		RingBuffer.addValue(ring, 2);
 	        		RingBuffer.addLongValue(ring, 123456);
-	        		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-	        			assertTrue(ring.writeTrailingCountOfBytesConsumed);
-	        		}
+	       			assertTrue(ring.writeTrailingCountOfBytesConsumed);
+
 	        		RingBuffer.publishWrite(ring);
 	        		break;
 	        	case 4: //reset
@@ -275,9 +263,8 @@ public class RingBufferMultiTemplateTest {
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_RESET_LOC);
 	        		RingBuffer.addByteArray(ASCII_VERSION, 0, ASCII_VERSION.length, ring);
-	        		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-	        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
-	        		}
+        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
+
 	        		RingBuffer.publishWrite(ring);
 
 	        		break;

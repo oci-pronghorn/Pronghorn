@@ -69,13 +69,11 @@ public class RingBufferMonitorStage implements Runnable {
 			
 			RingWalker.blockWriteFragment(notifyRingBuffer,TEMPLATE_LOC);
 			
-			long currentTimeMillis = System.currentTimeMillis();
-			
-			RingBuffer.addLongValue(notifyRingBuffer.buffer, notifyRingBuffer.mask, notifyRingBuffer.workingHeadPos, currentTimeMillis);
-			RingBuffer.addLongValue(notifyRingBuffer.buffer, notifyRingBuffer.mask, notifyRingBuffer.workingHeadPos, RingBuffer.headPosition(observedRingBuffer));
-			RingBuffer.addLongValue(notifyRingBuffer.buffer, notifyRingBuffer.mask, notifyRingBuffer.workingHeadPos, RingBuffer.tailPosition(observedRingBuffer));
-			RingBuffer.addValue(notifyRingBuffer.buffer, notifyRingBuffer.mask, notifyRingBuffer.workingHeadPos, RingWalker.getMsgIdx(observedRingBuffer));
-			RingBuffer.addValue(notifyRingBuffer.buffer, notifyRingBuffer.mask, notifyRingBuffer.workingHeadPos, observedRingBuffer.maxSize);
+			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TIME_LOC, System.currentTimeMillis());
+			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_HEAD_LOC, RingBuffer.headPosition(observedRingBuffer));
+			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TAIL_LOC, RingBuffer.headPosition(observedRingBuffer));
+			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_MSG_LOC, RingWalker.getMsgIdx(observedRingBuffer));			
+			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_SIZE_LOC, observedRingBuffer.maxSize);
 			
 			RingWalker.publishWrites(notifyRingBuffer);			
 			

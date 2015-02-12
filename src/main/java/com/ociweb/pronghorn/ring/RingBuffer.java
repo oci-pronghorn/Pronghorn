@@ -103,6 +103,24 @@ public final class RingBuffer {
 	public boolean writeTrailingCountOfBytesConsumed;
 	FieldReferenceOffsetManager from;
     
+	private int batchReleaseCountDown = 0;
+	private int batchReleaseCountDownInit = 0;
+	private int batchPublishCountDown = 0;
+	private int batchPublishCountDownInit = 0;
+	
+    public static void setReleaseBatchSize(RingBuffer rb, int size) {
+
+    	rb.batchReleaseCountDownInit = size;
+    	rb.batchReleaseCountDown = size;    	
+    }
+    
+    public static void setPublishBatchSize(RingBuffer rb, int size) {
+
+    	rb.batchPublishCountDownInit = size;
+    	rb.batchPublishCountDown = size;    	
+    }
+	
+	
     public RingBuffer(RingBufferConfig config) {
     	this(config.primaryBits, config.byteBits, config.byteConst, config.from);
     }
@@ -642,22 +660,10 @@ public final class RingBuffer {
 	}
 
 	public static void addByteArrayWithMask(final RingBuffer outputRing, int mask, int len, byte[] data, int offset) {
-		int len1 = 1+mask-(offset&mask);
-		
-		if (len1>=len) {
-			
-			//simple add bytes
-			addByteArray(data, offset&mask, len, outputRing);
-			 
-		} else {						
-			
-			//rolled over the end of the buffer
-			appendPartialBytesArray(data, offset&mask, len1, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);        
-			appendPartialBytesArray(data, 0, len-len1,       outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value+len1, outputRing.byteMask);        
-			
-			addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, RingBuffer.bytesWriteBase(outputRing), outputRing.byteWorkingHeadPos.value, len);
-			outputRing.byteWorkingHeadPos.value = outputRing.byteWorkingHeadPos.value + len;
-		}
+		validateVarLength(outputRing, len);
+		copyBytesFromToRing(data,offset,mask,outputRing.byteBuffer,outputRing.byteWorkingHeadPos.value,outputRing.byteMask, len);
+		addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, RingBuffer.bytesWriteBase(outputRing), outputRing.byteWorkingHeadPos.value, len);
+		outputRing.byteWorkingHeadPos.value = outputRing.byteWorkingHeadPos.value + len;
 	}
 
 	public static int peek(int[] buf, long pos, int mask) {
@@ -683,7 +689,7 @@ public final class RingBuffer {
     	assert(sourceLen>=0);
     	validateVarLength(rbRingBuffer, sourceLen);
     	
-    	appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask);   
+    	copyBytesFromToRing(source, sourceIdx, Integer.MAX_VALUE, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask, sourceLen);   
         addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, RingBuffer.bytesWriteBase(rbRingBuffer), rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
         rbRingBuffer.byteWorkingHeadPos.value = rbRingBuffer.byteWorkingHeadPos.value + sourceLen;		
 		
@@ -694,23 +700,7 @@ public final class RingBuffer {
     }
     
 
-	public static void appendPartialBytesArray(byte[] source, int sourceIdx, int sourceLen,
-			                                   byte[] target, final int targetBytePos, int targetMask) {
-		appendPartialBytesArray2(source, sourceIdx, sourceLen, target, (targetBytePos + sourceLen) & targetMask, targetBytePos & targetMask);
-	}
-
-	private static void appendPartialBytesArray2(byte[] source, int sourceIdx,
-			int sourceLen, byte[] target, int tStop, int tStart) {
-		if (tStop >= tStart) {
-		    System.arraycopy(source, sourceIdx, target, tStart, sourceLen);
-		} else {
-			// done as two copies
-		    System.arraycopy(source, sourceIdx, target, tStart, sourceLen - tStop);
-		    System.arraycopy(source, sourceIdx + sourceLen - tStop, target, 0, tStop);
-		}
-	}
-    
-    public static void addValue(RingBuffer rb, int value) {
+	public static void addValue(RingBuffer rb, int value) {
 		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
 	}
  
@@ -754,8 +744,6 @@ public final class RingBuffer {
         
     }
 
-    //TODO: AAA, add tail step size for the high level API fixed offsets. (abs position in the ring buffer? not len)
-    
 	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat, int baseBytePos) {
 	   	//negative position is written as is because the internal array does not have any offset (but it could some day)
     	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
@@ -785,7 +773,12 @@ public final class RingBuffer {
 
         return pos;
     }   
-	
+
+    public static int bytePositionGen(int meta, RingBuffer ring, int len) {
+    	return restorePosition(ring, meta & 0x7FFFFFFF);
+    }
+    
+    
     public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2, int value3) {
         
         long p = headCache.value; 
@@ -888,26 +881,21 @@ public final class RingBuffer {
     public static long getWorkingTailPosition(RingBuffer ring) {
     	return ring.workingTailPos.value;
     }
-    
+
     /**
-     * rarely used low level API for releasing fragments that do not end a message
+     * Low level API release
      * @param ring
      */
-    public static void releaseFragmentReadLock(RingBuffer ring) {
+    public static void releaseReadLock(RingBuffer ring) {
     	assert(ring.consumerData.cursor<=0 && !RingWalker.isNewMessage(ring.consumerData)) : "Unsupported mix of high and low level API.  ";
-    	ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value);
-    	ring.tailPos.lazySet(ring.workingTailPos.value);
-    }
-    /**
-     * Low level API release of message
-     * @param ring
-     */
-    public static void releaseMessageReadLock(RingBuffer ring) {
-    	assert(ring.consumerData.cursor<=0 && !RingWalker.isNewMessage(ring.consumerData)) : "Unsupported mix of high and low level API.  ";
+		if ((--ring.batchReleaseCountDown<=0)) {			
+
+			ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value); 
+			ring.tailPos.lazySet(ring.workingTailPos.value);
+			
+			ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
+		}
     	
-    	//only done because we assume this call from the low level api is marking the end of the message, TODO: AA, can we confirm this?
-    	ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value); 
-    	ring.tailPos.lazySet(ring.workingTailPos.value);
     }
     
     
@@ -929,13 +917,16 @@ public final class RingBuffer {
     	
     	assert(ring.consumerData.nextWorkingHead<=ring.headPos.get() || ring.workingHeadPos.value<=ring.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
     	
-    	//publish writes TODO: AAAA, can do this less often to support batching.
     	publishHeadPositions(ring);  	
     }
 
 	public static void publishHeadPositions(RingBuffer ring) {
-		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); 
-    	ring.headPos.lazySet(ring.workingHeadPos.value);
+		if ((--ring.batchPublishCountDown<=0)) {			
+			//publish writes			
+			ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); 
+			ring.headPos.lazySet(ring.workingHeadPos.value);			
+			ring.batchPublishCountDown = ring.batchPublishCountDownInit;
+		}
 	}
     
     public static void abandonWrites(RingBuffer ring) {    
@@ -987,16 +978,15 @@ public final class RingBuffer {
     
     public static long spinBlockOnHead(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
     	
-    	//we are blocking before we can read
-		if (null==ringBuffer.buffer) {
-			ringBuffer.init();//hack test
-		}
-		
 		
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
     		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
     			throw new RingBufferException("Unexpected shutdown");
+    		}
+    		//we are blocking before we can read
+    		if (null==ringBuffer.buffer) {
+    			ringBuffer.init();//hack test
     		}
 		    lastCheckedValue = ringBuffer.headPos.longValue();
 		}

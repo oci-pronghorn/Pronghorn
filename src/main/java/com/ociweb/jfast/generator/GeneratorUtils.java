@@ -227,7 +227,6 @@ public class GeneratorUtils {
         
         
         if (isReader) {
-        	//TODO: AAAA, not sure this is right in all cases how do we know what ends a message and what does not
             builder.append("    ").append(RingBuffer.class.getSimpleName()).append(".publishHeadPositions(rb);\n");
             
             builder.append("    return 1;//read a fragment\n"); 

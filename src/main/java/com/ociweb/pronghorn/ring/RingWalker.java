@@ -67,9 +67,7 @@ public class RingWalker {
     }
 
     public static void setReleaseBatchSize(RingBuffer rb, int size) {
-    	if (true) {
-    		size = 0;
-    	}
+
     	rb.consumerData.batchReleaseCountDownInit = size;
     	rb.consumerData.batchReleaseCountDown = size;    	
     }
@@ -211,20 +209,9 @@ public class RingWalker {
 			final RingWalker ringBufferConsumer, final int scriptFragSize,
 			long tmpNextWokingTail, final long target) {
 
-		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-			
-			//always increment this tail position by the count of bytes used by this fragment
-			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];			
-			
-			//		System.err.println("read Y consumed "+ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)]+" from "+(ringBuffer.mask & (int)(tmpNextWokingTail-1)));
-			
-			
-//			System.err.println("YYYY "+RingBuffer.bytesReadBase(ringBuffer)+"   vs  "+ringBuffer.byteWorkingTailPos.value);
-//			System.err.println("value added was "+ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)]+" from "+(ringBuffer.mask & (int)(tmpNextWokingTail-1)));
-			
-			
-			
-		}
+		//always increment this tail position by the count of bytes used by this fragment
+		ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];			
+
 
 		//from the last known fragment move up the working tail position to this new fragment location
 		ringBuffer.workingTailPos.value = tmpNextWokingTail;
@@ -331,15 +318,12 @@ public class RingWalker {
 		//for this simple case we always have a new message
 		ringBufferConsumer.isNewMessage = true; 
 		
-	
-		if (FieldReferenceOffsetManager.USE_VAR_COUNT) {
-
-			//always increment this tail position by the count of bytes used by this fragment
-			if (tmpNextWokingTail>0) { //first iteration it will not have a valid position
-				ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];	
-			}	
+		//always increment this tail position by the count of bytes used by this fragment
+		if (tmpNextWokingTail>0) { //first iteration it will not have a valid position
+			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];	
+		}	
 			
-		}
+
 		assert(ringBuffer.byteWorkingTailPos.value <= ringBuffer.bytesHeadPos.get()) : "expected to have data up to "+ringBuffer.byteWorkingTailPos.value+" but we only have "+ringBuffer.bytesHeadPos.get();
 		
 //		//
@@ -524,7 +508,8 @@ public class RingWalker {
 		
 		if ((--outputRing.consumerData.batchPublishCountDown<=0)) {			
 			//publish writes			
-			RingBuffer.publishHeadPositions(outputRing);			
+			outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
+			outputRing.headPos.lazySet(outputRing.workingHeadPos.value);			
 			outputRing.consumerData.batchPublishCountDown = outputRing.consumerData.batchPublishCountDownInit;
 		}
 		 

@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.ring.stream;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.releaseMessageReadLock;
+import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
 import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
@@ -111,7 +111,7 @@ public class RingInputStream extends InputStream {
 			int meta = takeRingByteMetaData(ring);//side effect, this moves the pointer and must happen before we call for length
 			int sourceLength = takeRingByteLen(ring);
 						
-			releaseMessageReadLock(ring);
+			releaseReadLock(ring);
 			return -1;			
 		}
 	}
@@ -123,7 +123,7 @@ public class RingInputStream extends InputStream {
 		if (sourceLength<=targetLength) {
 			//the entire block can be sent
 			copyData(targetData, targetOffset, sourceLength, sourceData, sourceOffset);
-			releaseMessageReadLock(ring);
+			releaseReadLock(ring);
 			return sourceLength;
 		} else {
 			//only part of the block can be sent so save some for later
@@ -164,7 +164,7 @@ public class RingInputStream extends InputStream {
 		//the entire remaining part of the block can be sent
 		int len = remainingSourceLength;
 		copyData(targetData, targetOffset, len, byteBackingArray(remainingSourceMeta, ring), remainingSourceOffset);
-		releaseMessageReadLock(ring);
+		releaseReadLock(ring);
 		remainingSourceLength = -1; //clear because we are now done with the remaining content
 		return len;
 	}

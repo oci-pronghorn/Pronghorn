@@ -58,8 +58,6 @@ public class MuxTest {
         
         //FASTInputByteBuffer input = buildInputForTestingByteBuffer(sourceDataFile);
         
-        
-        //TODO: D, put these into decoder
         int channels = 4;        
         FASTInput[] targetChannel = new FASTInput[channels];        
         WritableByteChannel[] writableChannel = new WritableByteChannel[channels];

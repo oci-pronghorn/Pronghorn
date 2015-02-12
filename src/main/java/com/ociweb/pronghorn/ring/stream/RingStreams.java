@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.ring.stream;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.releaseMessageReadLock;
+import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
@@ -67,7 +67,7 @@ public class RingStreams {
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer. TODO: AAAA need to remvoe.
             	int len = takeRingByteLen(inputRing);
             	
-        		releaseMessageReadLock(inputRing);
+        		releaseReadLock(inputRing);
           		return;
         	} else {          
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
@@ -91,7 +91,7 @@ public class RingStreams {
 					outputStream.write(data, off, len1);
 					outputStream.write(data, 0, len-len1);
 				}
-        		releaseMessageReadLock(inputRing);
+        		releaseReadLock(inputRing);
         	}
         	
         	target += step;
@@ -145,7 +145,7 @@ public class RingStreams {
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer. //TODO: AAA, remove.
             	int len = takeRingByteLen(inputRing);
             	
-            	releaseMessageReadLock(inputRing);
+            	releaseReadLock(inputRing);
           		return;
         	} else {                    	
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
@@ -177,7 +177,7 @@ public class RingStreams {
 					}
 				}
 				
-        		releaseMessageReadLock(inputRing);
+        		releaseReadLock(inputRing);
         	}
         	
         	target += step;
@@ -306,7 +306,7 @@ public class RingStreams {
 		    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.  TODO: AAA, remove
 		    	int len = takeRingByteLen(inputRing);
 		    	
-	    		releaseMessageReadLock(inputRing);
+	    		releaseReadLock(inputRing);
 	    		visitor.close();
 	      		return;
 	    	} else {                    	
@@ -331,7 +331,7 @@ public class RingStreams {
 					 //simple add bytes
 					 visitor.visit(data, offset&byteMask, len); 
 				}
-	    		releaseMessageReadLock(inputRing);
+	    		releaseReadLock(inputRing);
 	    	}
 	    	
 	    	target += step;
