@@ -404,7 +404,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     //Bytes
     
     public static int readBytesLength(RingBuffer ring, int loc) {
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS ||  //  11110   001011   TODO: revis these rules they dont pick up utf8 optionals? 01011 B
+			   (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || 
+			   (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
         return ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc) + 1)];// second int is always the length
     }

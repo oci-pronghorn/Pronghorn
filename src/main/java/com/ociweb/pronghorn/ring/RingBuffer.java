@@ -96,6 +96,7 @@ public final class RingBuffer {
     
     public final byte pBits;
     public final byte bBits;
+    public static final int EOF_SIZE = 2;
     
     private final AtomicBoolean shutDown = new AtomicBoolean(false);//TODO: A, create unit test examples for using this.
 	public boolean writeTrailingCountOfBytesConsumed;
@@ -752,8 +753,11 @@ public final class RingBuffer {
    	
 		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, msgIdx);		
 		 
-		 //when publish is called this new byte will be appended due to this request NOTE: when writing fragments with low level API this must be done by hand!!
-		 rb.writeTrailingCountOfBytesConsumed = (1==rb.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
+		 markMsgBytesConsumed(rb, msgIdx);
+	}
+
+	public static void markMsgBytesConsumed(RingBuffer rb, int msgIdx) {
+		rb.writeTrailingCountOfBytesConsumed = (1==rb.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
 	}
 
    

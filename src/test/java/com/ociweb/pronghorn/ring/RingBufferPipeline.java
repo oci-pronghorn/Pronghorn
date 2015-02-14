@@ -24,9 +24,9 @@ public class RingBufferPipeline {
 	private final int stages = 4;
 	private final int splits = 2;
 	
-	private final boolean deepTest = false;
+	private final boolean deepTest = false;//can be much faster if we change the threading model
 		 
-	private final byte primaryBits   = 8; //TODO: AAAAA bumping this up to 8 and we get an exception and we should have none.
+	private final byte primaryBits   = 7; 
 	private final byte secondaryBits = 15;
     
 	private final int msgSize = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
