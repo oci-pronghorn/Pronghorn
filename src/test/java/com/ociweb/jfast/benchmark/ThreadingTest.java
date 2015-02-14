@@ -35,6 +35,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.RingReader;
@@ -71,7 +72,9 @@ public class ThreadingTest {
           
           FASTClassLoader.deleteFiles();
    
-          FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
+          catalog.clientConfig();
+		catalog.clientConfig();
+		FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig((byte)15, (byte)7, catalog.ringByteConstants(), catalog.getFROM()))));
        //  FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes); 
          
          System.out.println("Using: "+readerDispatch.getClass().getSimpleName());

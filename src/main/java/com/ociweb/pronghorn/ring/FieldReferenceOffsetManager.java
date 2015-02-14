@@ -35,7 +35,8 @@ public class FieldReferenceOffsetManager {
     public final String[] dictionaryNameScript;
     public final int maximumFragmentStackDepth;  
     public final float maxVarFieldPerUnit;
-    private int maxFragmentSize;
+    private int maxFragmentDataSize;
+    private int minFragmentDataSize = Integer.MAX_VALUE;
     
     //TODO: B, set these upon construction if needed.
     //      for a given template/schema there is only 1 absent value that can be supported
@@ -122,7 +123,7 @@ public class FieldReferenceOffsetManager {
             fragNeedsAppendedCountOfBytesConsumed = new int[1];
             
             maximumFragmentStackDepth = 0;
-            maxVarFieldPerUnit = .5f;
+            maxVarFieldPerUnit = .5f;  //TODO: AAAAA optimize this value is waiting space now that we have the trailing integer on many fragments.
             hasSimpleMessagesOnly = false; //unknown case so set false.
             
         } else {
@@ -207,7 +208,8 @@ public class FieldReferenceOffsetManager {
                     System.err.println();
                 }
                 int lastFragTotalSize = fragDataSize[fragmentStartIdx];
-                maxFragmentSize = Math.max(maxFragmentSize, lastFragTotalSize);
+                maxFragmentDataSize = Math.max(maxFragmentDataSize, lastFragTotalSize);
+                minFragmentDataSize = Math.min(minFragmentDataSize, lastFragTotalSize);
        //         System.err.println("new fragmetn at "+i);
                 if (varLenFieldCount>0) {
                 	//Caution: do not modify this logic unless you take into account the fact that
@@ -297,7 +299,8 @@ public class FieldReferenceOffsetManager {
         
         int lastFragTotalSize = fragDataSize[fragmentStartIdx];
         
-        maxFragmentSize = Math.max(maxFragmentSize, lastFragTotalSize);
+        maxFragmentDataSize = Math.max(maxFragmentDataSize, lastFragTotalSize);
+        minFragmentDataSize = Math.min(minFragmentDataSize, lastFragTotalSize);
         //must also add the very last fragment 
         if (varLenFieldCount>0) {
         	//Caution: do not modify this logic unless you take into account the fact that
@@ -377,7 +380,19 @@ public class FieldReferenceOffsetManager {
 		
     }
     
-    public static int lookupTemplateLocator(String name, FieldReferenceOffsetManager from) {
+    public static int maxVarLenFieldsPerPrimaryRingSize(FieldReferenceOffsetManager from, int mx) {
+		int maxVarCount = (int)Math.ceil(mx*from.maxVarFieldPerUnit);
+		//we require at least 2 fields to ensure that the average approach works in all cases
+		if (maxVarCount < 2) {
+			// 2 = size * perUnit
+			int minSize = (int)Math.ceil(2f/from.maxVarFieldPerUnit);
+			int minBits = 32 - Integer.numberOfLeadingZeros(minSize - 1);
+			throw new UnsupportedOperationException("primary buffer is too small it must be at least "+minBits+" bits"); 
+		}
+		return maxVarCount;
+	}
+
+	public static int lookupTemplateLocator(String name, FieldReferenceOffsetManager from) {
     	int i = from.messageStarts.length;
     	while(--i>=0) {
     		if (name.equals(from.fieldNameScript[from.messageStarts[i]])) {
@@ -485,7 +500,11 @@ public class FieldReferenceOffsetManager {
 	}
 
 	public static int maxFragmentSize(FieldReferenceOffsetManager from) {
-		return from.maxFragmentSize;
+		return from.maxFragmentDataSize;
+	}
+	
+	public static int minFragmentSize(FieldReferenceOffsetManager from) {
+		return from.minFragmentDataSize;
 	}
 
 	//NOTE: we use a special mask because the 4th bit may be on or off depending on pmap usage

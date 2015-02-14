@@ -19,6 +19,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
@@ -84,7 +85,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
     
     static final TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null, 64,  maxGroupCount * 10, -1, new ClientConfig(8, 7));
     
-    static RingBuffers ringBuffers= RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)testCatalog.clientConfig().getPrimaryRingBits(),(byte)testCatalog.clientConfig().getTextRingBits(),testCatalog.ringByteConstants(), testCatalog.getFROM()));
+    static RingBuffers ringBuffers= RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig((byte)15, (byte)7, testCatalog.ringByteConstants(), testCatalog.getFROM())));
         
     static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog, ringBuffers);
 
@@ -273,7 +274,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
         }
         return result;
     }
-    RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.RAW_BYTES);
+    RingBuffer rbRingBufferLocal = new RingBuffer(new RingBufferConfig((byte)2, (byte)2, null, FieldReferenceOffsetManager.RAW_BYTES));
 
     protected long staticWriteReadDecimalGroup(int reps, int token, int groupToken, int pmapSize) {
         long result = 0;
@@ -302,7 +303,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                 RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,1);
                 RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (mantissa >>> 32));
                 RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (mantissa & 0xFFFFFFFF)); 
-                RingBuffer.publishWrite(rbRingBufferLocal);
+                RingBuffer.publishWrites(rbRingBufferLocal);
                 int rbPos = 0;
 
                 if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {

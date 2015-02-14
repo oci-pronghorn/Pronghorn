@@ -21,6 +21,7 @@ import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 import com.ociweb.jfast.stream.StreamingIntegerTest;
 import com.ociweb.jfast.stream.TestHelper;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
@@ -89,7 +90,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			64,4, 100, new ClientConfig(8 ,7) ));
 	
 	static final TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null, 64,maxGroupCount * 10, -1, new ClientConfig(8 ,7));
-	private static final RingBuffer RB = new RingBuffer((byte)testCatalog.clientConfig().getPrimaryRingBits(),(byte)testCatalog.clientConfig().getTextRingBits(),testCatalog.ringByteConstants(), testCatalog.getFROM());
+	private static final RingBuffer RB = new RingBuffer(new RingBufferConfig((byte)15, (byte)7, testCatalog.ringByteConstants(), testCatalog.getFROM()));
 	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog, RingBuffers.buildNoFanRingBuffers(RB));
 	
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);

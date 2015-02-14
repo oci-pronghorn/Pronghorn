@@ -16,6 +16,7 @@ import com.ociweb.jfast.loader.TemplateLoaderTest;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderReactor;
@@ -49,8 +50,10 @@ public class Complex30000Benchmark extends Benchmark {
             assertEquals(testData.length, readBytes);
 
             fastInput = new FASTInputByteArray(testData);
+			ClientConfig r = catalog.clientConfig();
+			ClientConfig r1 = catalog.clientConfig();
             
-            reactor = FAST.inputReactor(fastInput, catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
+            reactor = FAST.inputReactor(fastInput, catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig((byte)15, (byte)7, catalog.ringByteConstants(), catalog.getFROM()))));
                         
             queue = reactor.ringBuffers()[0];//RingBuffers.get(readerDispatch.ringBuffers,0);
 

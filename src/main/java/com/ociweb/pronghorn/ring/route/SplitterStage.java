@@ -20,6 +20,8 @@ public class SplitterStage implements Runnable {
 	private RingBuffer[] targets;
 	private long[] targetHeadPos;
 	
+	public int moreToCopy;
+	
 	public SplitterStage(RingBuffer source, RingBuffer ... targets) {
 		
 		this.source = source;
@@ -33,6 +35,10 @@ public class SplitterStage implements Runnable {
 		while(--i>=0) {
 			
 			targetHeadPos[i] = targets[i].headPos.get(); 
+			
+			//targets can not batch returns so this must be set
+			RingBuffer.setReleaseBatchSize(targets[i], 0);
+			RingWalker.setReleaseBatchSize(targets[i], 0);
 					
 			//confirm this target is large enough for the needed data.
 			FieldReferenceOffsetManager targetFrom = RingBuffer.from(targets[i]);
@@ -64,11 +70,13 @@ public class SplitterStage implements Runnable {
 		if (!Thread.currentThread().isDaemon()) {
 			throw new UnsupportedOperationException("This stage can only be run with daemon threads");
 		}
+		if (null==source.buffer) {
+			source.init();
+		}
 		
 		try{			
 			while (processAvailData(this)) {
-				//Thread.sleep(0,500);
-					Thread.yield();
+				Thread.yield();
 			}
 		} catch (Throwable t) {
 			RingBuffer.shutdown(source);
@@ -93,7 +101,7 @@ public class SplitterStage implements Runnable {
 			byteHeadPos = ss.source.bytesHeadPos.get();
 			headPos = ss.source.headPos.get();
 		}	
-		
+			
 		
 		//we have established the point that we can read up to, this value is changed by the writer on the other side
 						
@@ -116,11 +124,13 @@ public class SplitterStage implements Runnable {
 			totalBytesCopy += (bMask+1);
 		}
 		
+		//System.err.println("copy of "+totalPrimaryCopy+" and "+totalBytesCopy);
+		
 		//now do the copies
 		doingCopy(ss, byteTailPos, primaryTailPos, (int)totalPrimaryCopy, totalBytesCopy);
 								
 		//release tail so data can be written
-		ss.source.bytesTailPos.lazySet(ss.source.byteWorkingTailPos.value = tempByteTail + totalBytesCopy);		
+		ss.source.bytesTailPos.lazySet(ss.source.byteWorkingTailPos.value = 0xEFFFFFFF&(tempByteTail + totalBytesCopy));		
 		ss.source.tailPos.lazySet(ss.source.workingTailPos.value = tempTail + totalPrimaryCopy);
 		
 		return true;
@@ -143,32 +153,45 @@ public class SplitterStage implements Runnable {
 //			}
 //		}
 		
-		boolean moreToCopy;
 		do {
-			moreToCopy = false;
+			ss.moreToCopy = 0;
 			int i = ss.targets.length;
 			while (--i>=0) {			
+				RingBuffer ringBuffer = ss.targets[i];					
 								
 				//check to see if we already pushed to this output ring.
-				if ( (totalPrimaryCopy + ss.targetHeadPos[i]) > ss.targets[i].workingHeadPos.value) {
-					RingBuffer ringBuffer = ss.targets[i];
-										
+				long headCache = ringBuffer.workingHeadPos.value;
+				if ( (totalPrimaryCopy + ss.targetHeadPos[i]) > headCache) {		
+					
 					//the tail must be larger than this position for there to be room to write
-					long tail =  totalPrimaryCopy + ringBuffer.headPos.get() - ringBuffer.maxSize;
-					
-					//this is not working to keep the two in sync
-				//	int byteTail = totalBytesCopy + ringBuffer.bytesHeadPos.get() - ringBuffer.maxByteSize;
+					if (ringBuffer.tailPos.get()>=totalPrimaryCopy + headCache - ringBuffer.maxSize ) {
 					
 					
-					if (ringBuffer.tailPos.get()>=tail /*&& ringBuffer.bytesTailPos.get()>=byteTail*/ ) {
-						blockCopy(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);
+						int space;
+						int byteTail = ringBuffer.byteMask&ringBuffer.bytesTailPos.get();
+						int byteHead = ringBuffer.byteMask&ringBuffer.byteWorkingHeadPos.value;
+						if (byteTail>byteHead) {
+							space = ringBuffer.maxByteSize- (ringBuffer.maxByteSize+((byteHead-byteTail)));
+							
+						} else {
+							space = ringBuffer.maxByteSize- (byteHead-byteTail);
+						
+						}
+					
+						if (totalBytesCopy<=space ) {
+						
+							blockCopy(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);
+						} else {
+							ss.moreToCopy++;
+						}
 					} else {
-						moreToCopy = true;
+						ss.moreToCopy++;
 					}
+					
 				} // else this is already done.
 				
 			}
-		} while(moreToCopy);
+		} while(ss.moreToCopy>0);
 		
 		//reset for next time.
 		int i = ss.targets.length;
@@ -176,7 +199,10 @@ public class SplitterStage implements Runnable {
 			//mark this one as done.
 			ss.targetHeadPos[i] += totalPrimaryCopy;
 		}
-		
+	}
+	
+	public String toString() {
+		return "spliiter stage  moreToCopy:"+moreToCopy+" source content "+RingBuffer.contentRemaining(source);
 	}
 
 	private static void blockCopy(SplitterStage ss, int byteTailPos,
@@ -194,7 +220,10 @@ public class SplitterStage implements Runnable {
 									 ringBuffer.buffer, (int)ringBuffer.headPos.get(), ringBuffer.mask, 
 									 totalPrimaryCopy);
 		ringBuffer.workingHeadPos.value = ringBuffer.headPos.addAndGet(totalPrimaryCopy);	
-
+		
+		//HackTEST
+		ringBuffer.consumerData.bnmHeadPosCache = ringBuffer.workingHeadPos.value;
+		
 	}
 	
 	

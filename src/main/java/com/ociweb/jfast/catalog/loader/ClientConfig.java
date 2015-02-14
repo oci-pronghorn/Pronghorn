@@ -12,8 +12,8 @@ public class ClientConfig {
     private int bytesLengthMax = 4096;
     private int bytesGap = 64;
     
-    private int rbPrimaryRingBits = 8;
-    private int rbTextRingBits = 16;
+    private int rbPrimaryRingBits = 7;
+    private int rbTextRingBits = 15;
     
     private static final int NONE = -1;
     private int catalogId = NONE;
@@ -33,24 +33,7 @@ public class ClientConfig {
         
     }
     
-    
-    //TODO: B, must set extra spacers to be written between
-    //TODO: B, must set extra spacers to skip on read
-    //TODO: B, must store the ignore templates without having catalog.
-    
-    
-    //names, ids
-//    private byte[] ignoreFieldIds; //1 for skip or 0 for allow
-//    private final int[] bufferMaps;
-//    private int bufferMapCount;
-    
-//  (t1,t2,t3)(t4,t5)t6  this is a set of sets, how is it easist to define?
-    //maps for the grouping of maps.   (templateId,mapId) and maxMapId
-    //private 
     public ClientConfig() {
-//        bufferMaps = new int[templatIdsCount<<1];
-//        bufferMapCount = 1;
-//        ignoreFieldIds = new byte[scriptLength];
     }
 
     public ClientConfig(PrimitiveReader reader) {
@@ -64,26 +47,7 @@ public class ClientConfig {
         rbTextRingBits = PrimitiveReader.readIntegerUnsigned(reader);
         
         catalogId = PrimitiveReader.readIntegerSigned(reader);
-        
-//        //read the filter fields list
-//        int scriptLength = PrimitiveReader.readIntegerUnsigned(reader);
-//        ignoreFieldIds = new byte[scriptLength];
-//        PrimitiveReader.openPMap(scriptLength, reader);
-//        int i = scriptLength;
-//        while (--i>=0) {
-//            ignoreFieldIds[i]= (byte)PrimitiveReader.popPMapBit(reader);
-//        }
-//        PrimitiveReader.closePMap(reader);
-//        
-//        //read the bufferMaps
-//        bufferMapCount = PrimitiveReader.readIntegerUnsigned(reader);
-//        int bufferSize = PrimitiveReader.readIntegerUnsigned(reader);
-//        assert((bufferSize&1)==0);
-//        bufferMaps = new int[bufferSize];
-//        i = bufferSize;
-//        while (--i>=0) {
-//            bufferMaps[i]=PrimitiveReader.readIntegerUnsigned(reader);
-//        }  
+
     }
 
     public void save(PrimitiveWriter writer) {
@@ -97,25 +61,7 @@ public class ClientConfig {
         PrimitiveWriter.writeIntegerUnsigned(rbTextRingBits, writer);
         
         PrimitiveWriter.writeIntegerSigned(catalogId, writer);
-        
-        
-        
-//        //write filter fields list
-//        writer.writeIntegerUnsigned(ignoreFieldIds.length);
-//        writer.openPMap(ignoreFieldIds.length);
-//        int i = ignoreFieldIds.length;
-//        while (--i>=0) {
-//            PrimitiveWriter.writePMapBit(ignoreFieldIds[i], writer);
-//        }
-//        writer.closePMap();
-//        
-//        //write the bufferMaps
-//        writer.writeIntegerUnsigned(bufferMapCount);
-//        i = bufferMaps.length;
-//        writer.writeIntegerUnsigned(i);
-//        while (--i>=0) {
-//            writer.writeIntegerUnsigned(bufferMaps[i]);
-//        }        
+    
         
     }
     
@@ -133,21 +79,6 @@ public class ClientConfig {
     
     public int getBytesGap() {
         return this.bytesGap;
-    }
-
-    @Deprecated
-    public int getPrimaryRingBits() {
-    	//return 10;//
-    	//System.err.println("p:"+rbPrimaryRingBits); //22
-       return rbPrimaryRingBits; //must be big enought to hold full file?
-       //return 18;
-    }
-
-    @Deprecated
-    public int getTextRingBits() {
-        //return 20;//
-    	//System.err.println("s:"+rbTextRingBits);
-    	return rbTextRingBits;
     }
 
     public void setCatalogTemplateId(int id) {

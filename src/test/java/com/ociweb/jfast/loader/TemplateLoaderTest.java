@@ -45,6 +45,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 import com.ociweb.jfast.primitive.adapter.FASTOutputTotals;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.RingReader;
@@ -118,7 +119,7 @@ public class TemplateLoaderTest {
     @Test
     public void testDecodeComplex30000() {
         
-      Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
+   //   Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
         
         byte[] catBytes = buildRawCatalogData(new ClientConfig());
         final TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes); 
@@ -132,7 +133,7 @@ public class TemplateLoaderTest {
         
         FASTClassLoader.deleteFiles();
         
-        RingBuffer queue = new RingBuffer((byte)8,(byte)16,catalog.ringByteConstants(), catalog.getFROM());
+        RingBuffer queue = new RingBuffer(new RingBufferConfig((byte)7, (byte)15, catalog.ringByteConstants(), catalog.getFROM()));
 		RingBuffers buildNoFanRingBuffers = RingBuffers.buildNoFanRingBuffers(queue);
 		FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, buildNoFanRingBuffers); 
 
@@ -244,18 +245,14 @@ public class TemplateLoaderTest {
                 while (--few>=0) {
                     FASTReaderReactor.pump(reactor);
                 }               
-                while (FASTReaderReactor.pump(reactor)>=0) { //72-88
-                 //   FASTRingBuffer.dump(rb);
-                    //int tmp = Profile.version.get();
+                while (FASTReaderReactor.pump(reactor)>=0) { 
                     if (RingWalker.tryReadFragment(rb)) {
-                       // rb.tailPos.lazySet(rb.workingTailPos.value);
-                    }; //11
-                    //Profile.count += (Profile.version.get()-tmp);
+                       
+                    }; 
                 }
                 //the buffer has extra records in it so we must clean them out here.
                 while (RingWalker.tryReadFragment(rb)) {
                      
-                   // rb.tailPos.lazySet(rb.workingTailPos.value);
                 }
                 
                 duration = System.nanoTime() - start;
@@ -366,8 +363,9 @@ public class TemplateLoaderTest {
 
         FASTClassLoader.deleteFiles();
         final AtomicInteger msgs = new AtomicInteger();
+		ClientConfig r = catalog.clientConfig();
 
-        FASTReaderReactor reactor = FAST.inputReactor(fastInput, catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
+        FASTReaderReactor reactor = FAST.inputReactor(fastInput, catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig((byte)15, (byte)15, catalog.ringByteConstants(), catalog.getFROM())))); 
         
         assertEquals(1,reactor.ringBuffers().length);
         RingBuffer rb = reactor.ringBuffers()[0];
@@ -432,8 +430,9 @@ public class TemplateLoaderTest {
         // buildInputForTestingByteBuffer(sourceDataFile);
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, maxPMapCountInBytes);
+		ClientConfig r = catalog.clientConfig();
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig((byte)15, (byte)15, catalog.ringByteConstants(), catalog.getFROM())))); 
         
        // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
       
@@ -581,7 +580,7 @@ public class TemplateLoaderTest {
 
         PrimitiveReader reader = new PrimitiveReader(4096, fastInput, maxPMapCountInBytes);     
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));   
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig((byte)22, (byte)20, catalog.ringByteConstants(), catalog.getFROM()))));   
         FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
         
         

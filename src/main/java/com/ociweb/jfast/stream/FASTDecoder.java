@@ -1,10 +1,12 @@
 package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.field.LocalHeap;
+import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
@@ -34,8 +36,8 @@ public abstract class FASTDecoder{
    
         
     public FASTDecoder(TemplateCatalogConfig catalog) {
-        this(catalog, 
-             RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())) );
+		this(catalog, 
+             RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig((byte)15, (byte)7, catalog.ringByteConstants(), catalog.getFROM()))) );
         
     }
     

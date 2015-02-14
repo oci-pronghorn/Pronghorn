@@ -35,6 +35,6 @@ public class FASTOutputRingBuffer implements FASTOutput {
 			RingBuffer.addByteArray(dataTransfer.writer.buffer, PrimitiveWriter.nextOffset(dataTransfer.writer), size, ringBuffer);
 			size = PrimitiveWriter.nextBlockSize(dataTransfer.writer);		
 		}
-		RingBuffer.publishWrite(ringBuffer);		
+		RingBuffer.publishWrites(ringBuffer);		
 	}
 }

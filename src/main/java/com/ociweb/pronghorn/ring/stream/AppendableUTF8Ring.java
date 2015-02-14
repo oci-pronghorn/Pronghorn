@@ -47,7 +47,7 @@ public class AppendableUTF8Ring implements Appendable {
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, RingBuffer.bytesWriteBase(ringBuffer), p, byteLength);
 		
 //		if ((--countDown)<=0) {
-			RingBuffer.publishWrite(ringBuffer);
+			RingBuffer.publishWrites(ringBuffer);
 //			countDown = countDownInit;
 //		}
 		return this;
@@ -66,7 +66,7 @@ public class AppendableUTF8Ring implements Appendable {
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos,  RingBuffer.bytesWriteBase(ringBuffer), p, byteLength);
 		
 //		if ((--countDown)<=0) {
-			RingBuffer.publishWrite(ringBuffer);
+			RingBuffer.publishWrites(ringBuffer);
 //			countDown = countDownInit;
 //		}
 		return this;
@@ -86,7 +86,7 @@ public class AppendableUTF8Ring implements Appendable {
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, RingBuffer.bytesWriteBase(ringBuffer), p, byteLength);
 		
 //		if ((--countDown)<=0) {
-			RingBuffer.publishWrite(ringBuffer);
+			RingBuffer.publishWrites(ringBuffer);
 //			countDown = countDownInit;
 //		}
 		return this;

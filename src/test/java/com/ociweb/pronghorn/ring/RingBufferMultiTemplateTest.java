@@ -58,7 +58,7 @@ public class RingBufferMultiTemplateTest {
     	byte primaryRingSizeInBits = 9; 
     	byte byteRingSizeInBits = 18;
     	
-		RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
+		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
 		
 		//Setup the test data sizes derived from the templates used
 		byte[] target = new byte[ring.maxAvgVarLen];
@@ -238,7 +238,7 @@ public class RingBufferMultiTemplateTest {
 	        		RingBuffer.addValue(ring, 42);
 	        		RingBuffer.addByteArray(source, 0, source.length, ring);
         			assertFalse(ring.writeTrailingCountOfBytesConsumed);
-	        		RingBuffer.publishWrite(ring);
+	        		RingBuffer.publishWrites(ring);
 	        		break;
 	        	case 1: //samples
 	        		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 8), ring);
@@ -253,7 +253,7 @@ public class RingBufferMultiTemplateTest {
 	        		RingBuffer.addLongValue(ring, 123456);
 	       			assertTrue(ring.writeTrailingCountOfBytesConsumed);
 
-	        		RingBuffer.publishWrite(ring);
+	        		RingBuffer.publishWrites(ring);
 	        		break;
 	        	case 4: //reset
 	        		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 3), ring);
@@ -263,7 +263,7 @@ public class RingBufferMultiTemplateTest {
 	        		RingBuffer.addByteArray(ASCII_VERSION, 0, ASCII_VERSION.length, ring);
         			assertFalse(ring.writeTrailingCountOfBytesConsumed);
 
-	        		RingBuffer.publishWrite(ring);
+	        		RingBuffer.publishWrites(ring);
 
 	        		break;
         	}        	

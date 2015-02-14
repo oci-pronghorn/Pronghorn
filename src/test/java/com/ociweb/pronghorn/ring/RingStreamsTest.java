@@ -21,7 +21,7 @@ public class RingStreamsTest {
 	@Test
 	public void testWriteToOutputStream() {
 		
-		RingBuffer testRing = new RingBuffer((byte)4,(byte)13);
+		RingBuffer testRing = new RingBuffer(new RingBufferConfig((byte)4, (byte)13, null,  FieldReferenceOffsetManager.RAW_BYTES));
 		
 		StringBuilder builder = new StringBuilder();
 		
@@ -60,7 +60,7 @@ public class RingStreamsTest {
 		
 		int lenMask = (1<<(testBits-2))-1;
 		
-		RingBuffer testRing = new RingBuffer((byte)6,(byte)17);
+		RingBuffer testRing = new RingBuffer(new RingBufferConfig((byte)6, (byte)17, null,  FieldReferenceOffsetManager.RAW_BYTES));
 		
 		byte[] testData = new byte[testSize];
 		int j = testSize;
@@ -108,10 +108,10 @@ public class RingStreamsTest {
 	@Test
 	public void testRingToRingOutputStream() {
 		
-		RingBuffer testRing = new RingBuffer((byte)5,(byte)13);
+		RingBuffer testRing = new RingBuffer(new RingBufferConfig((byte)5, (byte)13, null,  FieldReferenceOffsetManager.RAW_BYTES));
 		int blockSize = testRing.maxAvgVarLen;
 		
-		RingBuffer targetRing = new RingBuffer((byte)5, (byte)13);
+		RingBuffer targetRing = new RingBuffer(new RingBufferConfig((byte)5, (byte)13, null,  FieldReferenceOffsetManager.RAW_BYTES));
 		RingOutputStream ringOutputStream = new RingOutputStream(targetRing);
 		
 		int testBits = 11;
@@ -168,7 +168,7 @@ public class RingStreamsTest {
 	public void testRingToRingOutputStreamByte() {
 		
 		
-		RingBuffer targetRing = new RingBuffer((byte)10, (byte)15);
+		RingBuffer targetRing = new RingBuffer(new RingBufferConfig((byte)10, (byte)15, null,  FieldReferenceOffsetManager.RAW_BYTES));
 		
 		targetRing.reset((1<<10)-3, 1<<14);			
 		
@@ -225,11 +225,11 @@ public class RingStreamsTest {
 	@Test
 	public void testRingToRingInputStream() {
 		
-		RingBuffer testRing = new RingBuffer((byte)5,(byte)13);
+		RingBuffer testRing = new RingBuffer(new RingBufferConfig((byte)5, (byte)13, null,  FieldReferenceOffsetManager.RAW_BYTES));
 		int blockSize = testRing.maxAvgVarLen;
 		RingInputStream ringInputStream = new RingInputStream(testRing);
 		
-		RingBuffer targetRing = new RingBuffer((byte)5, (byte)13);
+		RingBuffer targetRing = new RingBuffer(new RingBufferConfig((byte)5, (byte)13, null,  FieldReferenceOffsetManager.RAW_BYTES));
 		
 		int testSize = 3000;
 		byte[] testData = new byte[testSize];
@@ -278,7 +278,7 @@ public class RingStreamsTest {
 	@Test
 	public void testRingToRingInputStreamBytes() {
 		
-		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
+		RingBuffer testRing = new RingBuffer(new RingBufferConfig((byte)4, (byte)12, null,  FieldReferenceOffsetManager.RAW_BYTES));
 		int blockSize = testRing.maxAvgVarLen;
 		RingInputStream ringInputStream = new RingInputStream(testRing);
 		
@@ -326,7 +326,7 @@ public class RingStreamsTest {
 	@Test
 	public void testRingToRingInputStreamToggleMethods() {
 		
-		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
+		RingBuffer testRing = new RingBuffer(new RingBufferConfig((byte)4, (byte)12, null,  FieldReferenceOffsetManager.RAW_BYTES));
 		int blockSize = testRing.maxAvgVarLen;
 		RingInputStream ringInputStream = new RingInputStream(testRing);
 		

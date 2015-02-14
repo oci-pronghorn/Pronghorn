@@ -38,7 +38,7 @@ public class RingBufferSingleTemplateDecimalTest {
     	byte primaryRingSizeInBits = 9; 
     	byte byteRingSizeInBits = 17;
     	
-		RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
+		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
     	
         int messageSize = FROM.fragDataSize[FRAG_LOC];
         
@@ -114,7 +114,7 @@ public class RingBufferSingleTemplateDecimalTest {
     
     	final byte primaryRingSizeInBits = 8; //this ring is 2^7 eg 128
     	final byte byteRingSizeInBits = 16;
-    	final RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
+    	final RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
     	
         final int messageSize = FROM.fragDataSize[FRAG_LOC];
         

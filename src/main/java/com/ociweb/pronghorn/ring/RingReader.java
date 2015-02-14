@@ -544,7 +544,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		RingBuffer.setBytePosAndLen(targetRing.buffer, targetRing.mask, 
 				targetRing.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(targetLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&targetLOC), p, length, RingBuffer.bytesWriteBase(targetRing)); 
 	
-		targetRing.byteWorkingHeadPos.value = p + length;	
+		targetRing.byteWorkingHeadPos.value =  0xEFFFFFFF&(p + length);	
 		
 		return length;
 	}

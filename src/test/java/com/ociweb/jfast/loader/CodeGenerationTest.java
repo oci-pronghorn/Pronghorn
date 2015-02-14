@@ -33,6 +33,7 @@ import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.RingReader;
 
@@ -147,7 +148,7 @@ public class CodeGenerationTest {
 
         FASTInputByteArray fastInput1 = new FASTInputByteArray(TemplateLoaderTest.buildInputArrayForTesting(sourceDataFile));
         final PrimitiveReader primitiveReader1 = new PrimitiveReader(2048, fastInput1, maxPMapCountInBytes);
-        FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)rbPrimaryRingBits,(byte)rbTextRingBits,catalog.ringByteConstants(), catalog.getFROM())));
+        FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig((byte)rbPrimaryRingBits, (byte)rbTextRingBits, catalog.ringByteConstants(), catalog.getFROM()))));
 
         
         RingBuffer queue1 = RingBuffers.get(readerDispatch1.ringBuffers,0);
@@ -157,7 +158,7 @@ public class CodeGenerationTest {
 
         FASTDecoder readerDispatch2 = null;
         try {
-            readerDispatch2 = DispatchLoader.loadGeneratedReaderDispatch(catBytes, FASTClassLoader.READER, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)rbPrimaryRingBits,(byte)rbTextRingBits,catalog.ringByteConstants(), catalog.getFROM())));
+            readerDispatch2 = DispatchLoader.loadGeneratedReaderDispatch(catBytes, FASTClassLoader.READER, RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig((byte)rbPrimaryRingBits, (byte)rbTextRingBits, catalog.ringByteConstants(), catalog.getFROM()))));
         } catch (ReflectiveOperationException e) {
             e.printStackTrace();
             fail(e.getMessage());

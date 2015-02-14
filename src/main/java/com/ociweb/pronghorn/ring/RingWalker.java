@@ -13,7 +13,7 @@ public class RingWalker {
     private boolean isNewMessage;
     public boolean waiting;
     private long waitingNextStop;
-    long bnmHeadPosCache;
+    public long bnmHeadPosCache;
     public int cursor;
     
         
@@ -68,18 +68,22 @@ public class RingWalker {
 
     public static void setReleaseBatchSize(RingBuffer rb, int size) {
 
+    	RingBuffer.validateBatchSize(rb, size);
+		
     	rb.consumerData.batchReleaseCountDownInit = size;
     	rb.consumerData.batchReleaseCountDown = size;    	
     }
     
     public static void setPublishBatchSize(RingBuffer rb, int size) {
 
+    	RingBuffer.validateBatchSize(rb, size);
+    	
     	rb.consumerData.batchPublishCountDownInit = size;
     	rb.consumerData.batchPublishCountDown = size;    	
     }
-       
-  
-    public static int getMsgIdx(RingBuffer rb) {
+
+
+	public static int getMsgIdx(RingBuffer rb) {
 		return rb.consumerData.msgIdx;
 	}
     
@@ -189,11 +193,11 @@ public class RingWalker {
 		///
 		//check the ring buffer looking for new message	
 		//return false if we don't have enough data to read the first id and therefore the message
-		if (ringBufferConsumer.bnmHeadPosCache >= 1 + ringBufferConsumer.nextWorkingTail) { 
+		if (ringBufferConsumer.bnmHeadPosCache >= 2+ringBufferConsumer.nextWorkingTail) { 
 			prepReadMessage(ringBuffer, ringBufferConsumer, ringBufferConsumer.nextWorkingTail);
 		} else {
 			//only update the cache with this CAS call if we are still waiting for data
-			if ((ringBufferConsumer.bnmHeadPosCache = ringBuffer.headPos.get()) >= 1 + ringBufferConsumer.nextWorkingTail) {
+			if ((ringBufferConsumer.bnmHeadPosCache = ringBuffer.headPos.get()) >=  2+ringBufferConsumer.nextWorkingTail) {
 				prepReadMessage(ringBuffer, ringBufferConsumer, ringBufferConsumer.nextWorkingTail);
 			} else {
 				//rare slow case where we dont find any data
@@ -323,8 +327,8 @@ public class RingWalker {
 			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];	
 		}	
 			
-
-		assert(ringBuffer.byteWorkingTailPos.value <= ringBuffer.bytesHeadPos.get()) : "expected to have data up to "+ringBuffer.byteWorkingTailPos.value+" but we only have "+ringBuffer.bytesHeadPos.get();
+        //can't check because the bytes rollover now.
+		//assert(ringBuffer.byteWorkingTailPos.value <= ringBuffer.bytesHeadPos.get()) : "expected to have data up to "+ringBuffer.byteWorkingTailPos.value+" but we only have "+ringBuffer.bytesHeadPos.get();
 		
 //		//
 		//from the last known fragment move up the working tail position to this new fragment location
@@ -386,7 +390,7 @@ public class RingWalker {
 			}		
 			
 			//this is commonly used as the end of file marker    		
-			ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+1;
+			ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+2;//NOTE: 2 is the size of the EOF marker
 		}
 	}
     

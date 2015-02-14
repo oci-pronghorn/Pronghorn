@@ -17,6 +17,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
@@ -158,13 +159,13 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		return System.nanoTime() - start;
 	}
 
-	static RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.RAW_BYTES);
+	static RingBuffer rbRingBufferLocal = new RingBuffer(new RingBufferConfig((byte)2, (byte)2, null, FieldReferenceOffsetManager.RAW_BYTES));
 
     public static void writeInteger(FASTWriterInterpreterDispatch fw, int token, int value, PrimitiveWriter writer) {
         //temp solution as the ring buffer is introduce into all the APIs
         RingBuffer.dump(rbRingBufferLocal);
         RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,value);
-        RingBuffer.publishWrite(rbRingBufferLocal);
+        RingBuffer.publishWrites(rbRingBufferLocal);
         int rbPos = 0;
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
@@ -189,7 +190,9 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 			                      int operationIters, int[] tokenLookup, DictionaryFactory dcr) {
 		
 	    TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null, 64,maxGroupCount * 10, -1, new ClientConfig(8 ,7));
-		FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)testCatalog.clientConfig().getPrimaryRingBits(),(byte)testCatalog.clientConfig().getTextRingBits(),testCatalog.ringByteConstants(), testCatalog.getFROM())));
+		testCatalog.clientConfig();
+		testCatalog.clientConfig();
+		FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig((byte)15, (byte)7, testCatalog.ringByteConstants(), testCatalog.getFROM()))));
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {

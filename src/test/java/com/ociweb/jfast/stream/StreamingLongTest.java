@@ -16,6 +16,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
@@ -39,7 +40,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 
 	int bufferSize = 512;
 	
-	static RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.RAW_BYTES);
+	static RingBuffer rbRingBufferLocal = new RingBuffer(new RingBufferConfig((byte)2, (byte)2, null, FieldReferenceOffsetManager.RAW_BYTES));
 	
 	//NO PMAP
 	//NONE, DELTA, and CONSTANT(non-optional)
@@ -140,7 +141,7 @@ public class StreamingLongTest extends BaseStreamingTest {
         //  solution as the ring buffer is introduce into all the APIs
         RingBuffer.dump(rbRingBufferLocal);            
         RingBuffer.addLongValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,value); 
-        RingBuffer.publishWrite(rbRingBufferLocal);
+        RingBuffer.publishWrites(rbRingBufferLocal);
         int rbPos = 0;                    
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
@@ -174,7 +175,8 @@ public class StreamingLongTest extends BaseStreamingTest {
 			                      DictionaryFactory dcr) {
 	    
 	    TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null, 64,maxGroupCount * 10, -1,  new ClientConfig(8 ,7));
-		FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)testCatalog.clientConfig().getPrimaryRingBits(),(byte)testCatalog.clientConfig().getTextRingBits(),testCatalog.ringByteConstants(), testCatalog.getFROM())));
+		ClientConfig r = testCatalog.clientConfig();
+		FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig((byte)15, (byte)15, testCatalog.ringByteConstants(), testCatalog.getFROM()))));
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {

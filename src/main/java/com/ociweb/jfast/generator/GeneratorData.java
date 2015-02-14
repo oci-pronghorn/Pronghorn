@@ -12,6 +12,7 @@ import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.util.IntWriteOnceOrderedSet;
 import com.ociweb.pronghorn.ring.util.hash.MurmurHash;
 
@@ -89,7 +90,7 @@ public class GeneratorData {
         TemplateCatalogConfig template = new TemplateCatalogConfig(catBytes);
         this.from = template.getFROM();
         //must be zero size to make the mask also zero
-        this.mockRB = new RingBuffer((byte)0,(byte)0,null,this.from);
+        this.mockRB = new RingBuffer(new RingBufferConfig((byte)0, (byte)0, null, this.from));
         
     }
 

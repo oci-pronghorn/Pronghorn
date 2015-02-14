@@ -23,7 +23,7 @@ public class RingBufferSingleTemplateUTF8Test {
     @Ignore
     public void simpleBytesWriteRead() {//TODO: B, this unit test hangs, need to walk it slow and find the problem
         	
-		RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
+		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
     	        
         int varDataMax = ring.maxAvgVarLen >> 3; //fewer chars for UTF8        
         int testSize = (1<<byteRingSizeInBits)/ring.maxAvgVarLen; 
@@ -90,7 +90,7 @@ public class RingBufferSingleTemplateUTF8Test {
     
         			}
         		}
-        		RingBuffer.publishWrite(ring); //must always publish the writes if message or fragment
+        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
         		
         	} else {
         		//Unable to write because there is no room so do something else while we are waiting.
@@ -113,7 +113,7 @@ public class RingBufferSingleTemplateUTF8Test {
     public void simpleBytesWriteReadThreaded() {
     
 
-    	final RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
+    	final RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
     	        
         final int varDataMax = ring.maxAvgVarLen >> 3; //fewer chars for UTF8        
         final int testSize = (1<<byteRingSizeInBits)/ring.maxAvgVarLen; 

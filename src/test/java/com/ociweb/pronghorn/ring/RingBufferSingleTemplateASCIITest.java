@@ -21,7 +21,7 @@ public class RingBufferSingleTemplateASCIITest {
     	byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
     	byte byteRingSizeInBits = 16;
     	
-		RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
+		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
     	
         int messageSize = FROM.fragDataSize[FRAG_LOC];
         
@@ -85,7 +85,7 @@ public class RingBufferSingleTemplateASCIITest {
         				RingWriter.writeASCII(ring, FRAG_FIELD, testString.toCharArray(), 0, stringSize);
         			}
         		}
-        		RingBuffer.publishWrite(ring); //must always publish the writes if message or fragment
+        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
         		
         	} else {
         		//Unable to write because there is no room so do something else while we are waiting.
@@ -109,7 +109,7 @@ public class RingBufferSingleTemplateASCIITest {
     
     	final byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
     	final byte byteRingSizeInBits = 16;
-    	final RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
+    	final RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
     	
         final int messageSize = FROM.fragDataSize[FRAG_LOC];
         

@@ -25,6 +25,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTInputSourceChannel;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderReactor;
 
@@ -69,7 +70,7 @@ public class MuxTest {
         
         
         
-        RingBuffer decoderIdQueue = new RingBuffer((byte)20,(byte)22,null,FieldReferenceOffsetManager.RAW_BYTES);
+        RingBuffer decoderIdQueue = new RingBuffer(new RingBufferConfig((byte)20, (byte)22, null, FieldReferenceOffsetManager.RAW_BYTES));
         
         
         

@@ -20,6 +20,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
@@ -87,7 +88,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			.createFASTWriterInterpreterDispatch(new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null,
 			64,4, 100, new ClientConfig(8 ,7) ));
 	static final TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null, 64,maxGroupCount * 10, -1,  new ClientConfig(8 ,7));
-	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)testCatalog.clientConfig().getPrimaryRingBits(),(byte)testCatalog.clientConfig().getTextRingBits(),testCatalog.ringByteConstants(), testCatalog.getFROM())));
+	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig((byte)15, (byte)7, testCatalog.ringByteConstants(), testCatalog.getFROM()))));
 	
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
 	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group,0,0);
@@ -414,7 +415,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return result;
 	}
 	
-	static RingBuffer rbRingBufferLocal = new RingBuffer((byte)7,(byte)16,null, FieldReferenceOffsetManager.RAW_BYTES);
+	static RingBuffer rbRingBufferLocal = new RingBuffer(new RingBufferConfig((byte)7, (byte)16, null, FieldReferenceOffsetManager.RAW_BYTES));
 	
 	protected long staticWriteReadTextGroup(int reps, int token, int groupToken, int pmapSize) {
 		long result = 0;
@@ -436,7 +437,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
                 RingBuffer.dump(rbRingBufferLocal);
                 byte[] data = BaseStreamingTest.byteMe(textTestData[j]);
                 RingBuffer.addByteArray(data, 0, data.length, rbRingBufferLocal);
-                RingBuffer.publishWrite(rbRingBufferLocal);
+                RingBuffer.publishWrites(rbRingBufferLocal);
 			    
 				assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
                 assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));

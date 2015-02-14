@@ -107,34 +107,22 @@ public final class RingBuffer {
 	private int batchPublishCountDownInit = 0;
 	
     public static void setReleaseBatchSize(RingBuffer rb, int size) {
-
+    	
+    	validateBatchSize(rb, size);
+		
     	rb.batchReleaseCountDownInit = size;
     	rb.batchReleaseCountDown = size;    	
     }
     
     public static void setPublishBatchSize(RingBuffer rb, int size) {
-
+    	
+    	validateBatchSize(rb, size);
+		
     	rb.batchPublishCountDownInit = size;
     	rb.batchPublishCountDown = size;    	
     }
 	
-	
-    public RingBuffer(RingBufferConfig config) {
-    	this(config.primaryBits, config.byteBits, config.byteConst, config.from);
-    }
-    
-    /**
-     * Construct simple ring buffer without any assumed data structures
-     * @param primaryBits
-     * @param byteBits
-     */
-    public RingBuffer(byte primaryBits, byte byteBits) {
-    	this(primaryBits, byteBits, null,  FieldReferenceOffsetManager.RAW_BYTES);
-    	if ((primaryBits>>1)>byteBits) {
-    		throw new UnsupportedOperationException("The byteBits value must be at least "+(primaryBits>>1)+" and should be even bigger but it was set to "+byteBits+" alternatively primaryBits could be set to a value less than "+(byteBits<<1));
-    	}    	
-    }
-    
+
     
     public static int bytesWriteBase(RingBuffer rb) {
     	return rb.bytesWriteBase;
@@ -152,6 +140,32 @@ public final class RingBuffer {
     	rb.bytesReadBase = rb.byteWorkingTailPos.value;
     }
     
+    public String toString() {
+    	
+    	StringBuilder result = new StringBuilder();
+    	result.append(" tailPos ").append(tailPos.get());
+    	result.append(" wrkTailPos ").append(workingTailPos.value);
+    	result.append(" headPos ").append(headPos.get());
+    	result.append(" wrkHeadPos ").append(workingHeadPos.value);
+    	result.append(" size ").append(maxSize);
+    	result.append(" full ").append(headPos.get()-tailPos.get());
+    	result.append("  bytes tailPos ").append(bytesTailPos.get());
+    	result.append(" bytes wrkTailPos ").append(byteWorkingTailPos.value);    	
+    	result.append(" bytes headPos ").append(bytesHeadPos.get());
+    	result.append(" bytes wrkHeadPos ").append(byteWorkingHeadPos.value);   	
+    	
+    	
+    	
+    	
+    	return result.toString();
+    }
+    
+	
+    public RingBuffer(RingBufferConfig config) {
+    	this(config.primaryBits, config.byteBits, config.byteConst, config.from);
+    }
+    
+   
     /**
      * Construct ring buffer with re-usable constants and fragment structures
      * 
@@ -160,7 +174,8 @@ public final class RingBuffer {
      * @param byteConstants
      * @param from
      */
-    public RingBuffer(byte primaryBits, byte byteBits, byte[] byteConstants, FieldReferenceOffsetManager from) {
+    private RingBuffer(byte primaryBits, byte byteBits, byte[] byteConstants, FieldReferenceOffsetManager from) {
+
         //constant data will never change and is populated externally.
         
     	this.pBits = primaryBits;
@@ -189,21 +204,15 @@ public final class RingBuffer {
         	maxAvgVarLen = 0; //no fragments had any variable length fields so we never allow any
         } else {
         	//given outer ring buffer this is the maximum number of var fields that can exist at the same time.
-        	int maxVarCount = (int)Math.ceil(maxSize*from.maxVarFieldPerUnit);
-        	//we require at least 2 fields to ensure that the average approach works in all cases
-        	if (maxVarCount < 2) {
-        		// 2 = size * perUnit
-        		int minSize = (int)Math.ceil(2f/from.maxVarFieldPerUnit);
-        		int minBits = 32 - Integer.numberOfLeadingZeros(minSize - 1);
-        		throw new UnsupportedOperationException("primary buffer is too small it must be at least "+minBits+" bits"); 
-        	}
+        	int mx = maxSize;
+        	int maxVarCount = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, mx);
         	//to allow more almost 2x more flexibility in variable length bytes we track pairs of writes and ensure the 
         	//two together are below the threshold rather than each alone
         	maxAvgVarLen = maxByteSize/maxVarCount;
         }
     }
-    
-    public void init() {
+
+	public void init() {
         this.byteBuffer = new byte[maxByteSize];
         this.buffer = new int[maxSize]; 
         this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};                
@@ -269,6 +278,21 @@ public final class RingBuffer {
         writeTrailingCountOfBytesConsumed = false;
         RingWalker.reset(consumerData, toPos);
     }
+
+	public static void validateBatchSize(RingBuffer rb, int size) {
+		int mustFit = 2;
+		int maxBatch = computeMaxBatchSize(rb, mustFit);
+		if (size>maxBatch) {
+			throw new UnsupportedOperationException("For the configured ring buffer the batch size can be no larger than "+maxBatch);
+		}
+	}
+
+	public static int computeMaxBatchSize(RingBuffer rb, int mustFit) {
+		assert(mustFit>=1);
+		int maxBatchFromBytes = rb.maxAvgVarLen==0?Integer.MAX_VALUE:(rb.maxByteSize/rb.maxAvgVarLen)/mustFit;
+		int maxBatchFromPrimary = (rb.maxSize/FieldReferenceOffsetManager.maxFragmentSize(from(rb)))/mustFit;    	
+		return Math.min(maxBatchFromBytes, maxBatchFromPrimary);
+	}
 
 	public static void publishEOF(RingBuffer ring) {
 		
@@ -666,14 +690,14 @@ public final class RingBuffer {
 		} else {					    	
 			source.get(rb.byteBuffer, bytePos & rb.byteMask, length);
 		}
-		rb.byteWorkingHeadPos.value = bytePos + length;
+		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(bytePos + length);
 	}
 
 	public static void addByteArrayWithMask(final RingBuffer outputRing, int mask, int len, byte[] data, int offset) {
 		validateVarLength(outputRing, len);
 		copyBytesFromToRing(data,offset,mask,outputRing.byteBuffer,outputRing.byteWorkingHeadPos.value,outputRing.byteMask, len);
 		addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, RingBuffer.bytesWriteBase(outputRing), outputRing.byteWorkingHeadPos.value, len);
-		outputRing.byteWorkingHeadPos.value = outputRing.byteWorkingHeadPos.value + len;
+		outputRing.byteWorkingHeadPos.value =  0xEFFFFFFF&(outputRing.byteWorkingHeadPos.value + len);
 	}
 
 	public static int peek(int[] buf, long pos, int mask) {
@@ -701,7 +725,7 @@ public final class RingBuffer {
     	
     	copyBytesFromToRing(source, sourceIdx, Integer.MAX_VALUE, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask, sourceLen);   
         addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, RingBuffer.bytesWriteBase(rbRingBuffer), rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
-        rbRingBuffer.byteWorkingHeadPos.value = rbRingBuffer.byteWorkingHeadPos.value + sourceLen;		
+        rbRingBuffer.byteWorkingHeadPos.value = 0xEFFFFFFF&(rbRingBuffer.byteWorkingHeadPos.value + sourceLen);		
 		
     }
     
@@ -775,8 +799,8 @@ public final class RingBuffer {
     	int pos = restorePosition(ring, meta & 0x7FFFFFFF);
 
         if (len>=0) {
-        	ring.byteWorkingTailPos.value += len;
-        	assert(ring.bytesHeadPos.get() >= (pos+len)) : "expected to be at byte pos "+(pos+len)+" but we are only at "+ring.bytesHeadPos.get();
+        	ring.byteWorkingTailPos.value =  0xEFFFFFFF&(len+ring.byteWorkingTailPos.value);
+        //	assert(ring.bytesHeadPos.get() >= (pos+len)) : "expected to be at byte pos "+(pos+len)+" but we are only at "+ring.bytesHeadPos.get();
         }
 
         return pos;
@@ -912,7 +936,7 @@ public final class RingBuffer {
      * Low level API for publish 
      * @param ring
      */
-    public static void publishWrite(RingBuffer ring) {
+    public static void publishWrites(RingBuffer ring) {
     	
     	//happens at the end of every fragment
     	if (ring.writeTrailingCountOfBytesConsumed) {
@@ -979,6 +1003,10 @@ public final class RingBuffer {
     		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
     			throw new RingBufferException("Unexpected shutdown");
     		}
+    		//we are blocking before we can read
+    		if (null==ringBuffer.buffer) {
+    			ringBuffer.init();//hack test
+    		}
 		    lastCheckedValue = ringBuffer.headPos.longValue();
 		}
 		return lastCheckedValue;
@@ -986,7 +1014,7 @@ public final class RingBuffer {
     
     public static long spinBlockOnHead(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
     	
-		
+		assert(isLowLevelRead(ringBuffer));
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
     		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
@@ -1001,6 +1029,15 @@ public final class RingBuffer {
 		return lastCheckedValue;
     }
     
+	private static boolean isLowLevelRead(RingBuffer ringBuffer) {
+		//confirm that this thread is only using low level reading for this instance of the ring buffer
+		
+		//TODO: AAAAA, important feature to help developers 
+		//OR a bit mask together and hold it in the ring buffer as readAccessors /writeAccessors
+		
+		return true;
+	}
+
 	public static int byteMask(RingBuffer ring) {
 		return ring.byteMask;
 	}

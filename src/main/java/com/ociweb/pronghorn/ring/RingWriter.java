@@ -219,7 +219,7 @@ public class RingWriter {
 		
     	RingBuffer.validateVarLength(rb, length);
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), p, length, RingBuffer.bytesWriteBase(rb));
-        rb.byteWorkingHeadPos.value = p + length;        
+        rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(p + length);        
     }
     
     public static void writeBytes(RingBuffer rb, int loc, byte[] source, int offset, int length) {
@@ -228,7 +228,7 @@ public class RingWriter {
     	assert(length>=0);
 		RingBuffer.copyBytesFromToRing(source, offset, Integer.MAX_VALUE, rb.byteBuffer, rb.byteWorkingHeadPos.value, rb.byteMask, length);		
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), rb.byteWorkingHeadPos.value, length, RingBuffer.bytesWriteBase(rb));
-		rb.byteWorkingHeadPos.value = rb.byteWorkingHeadPos.value + length;	
+		rb.byteWorkingHeadPos.value =  0xEFFFFFFF&(rb.byteWorkingHeadPos.value + length);	
     }
         
     public static void writeBytes(RingBuffer rb, int loc, byte[] source) { // 01000
@@ -240,7 +240,7 @@ public class RingWriter {
         assert(sourceLen>=0);		
         RingBuffer.copyBytesFromToRing(source, 0, Integer.MAX_VALUE, rb.byteBuffer, rb.byteWorkingHeadPos.value, rb.byteMask, sourceLen);   	
         RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), rb.byteWorkingHeadPos.value, sourceLen, RingBuffer.bytesWriteBase(rb));
-		rb.byteWorkingHeadPos.value = rb.byteWorkingHeadPos.value + sourceLen;
+		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(rb.byteWorkingHeadPos.value + sourceLen);
     }
         
 	public static void writeBytes(RingBuffer rb, int loc, ByteBuffer source, int length) {		
@@ -258,7 +258,7 @@ public class RingWriter {
     	RingBuffer.validateVarLength(rb, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
         final int p = rb.byteWorkingHeadPos.value;	    
 		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, p, source.length());
-		rb.byteWorkingHeadPos.value = p+byteLength;
+		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(p+byteLength);
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength, RingBuffer.bytesWriteBase(rb));
     }
 
@@ -268,7 +268,7 @@ public class RingWriter {
     	RingBuffer.validateVarLength(rb, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
         final int p = rb.byteWorkingHeadPos.value;	    
 		int byteLength = RingBuffer.copyUTF8ToByte(source, offset, rb.byteBuffer, rb.byteMask, p, length);
-		rb.byteWorkingHeadPos.value = p+byteLength;
+		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(p+byteLength);
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength, RingBuffer.bytesWriteBase(rb));
     }
         
@@ -278,7 +278,7 @@ public class RingWriter {
     	RingBuffer.validateVarLength(rb, source.length<<3); //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
         final int p = rb.byteWorkingHeadPos.value;		
 		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, p, source.length);
-		rb.byteWorkingHeadPos.value = p+byteLength;       
+		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(p+byteLength);       
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength, RingBuffer.bytesWriteBase(rb));
     }
       
@@ -288,7 +288,7 @@ public class RingWriter {
     	RingBuffer.validateVarLength(rb, length<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
         final int p = rb.byteWorkingHeadPos.value;		
 		int byteLength = RingBuffer.copyUTF8ToByte(source, offset, rb.byteBuffer, rb.byteMask, p, length);
-		rb.byteWorkingHeadPos.value = p+byteLength;       
+		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(p+byteLength);       
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength, RingBuffer.bytesWriteBase(rb));
     }
 

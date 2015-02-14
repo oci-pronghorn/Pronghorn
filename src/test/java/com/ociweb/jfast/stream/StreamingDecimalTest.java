@@ -17,6 +17,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
@@ -79,7 +80,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         }
 
     }
-    RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.RAW_BYTES);
+    RingBuffer rbRingBufferLocal = new RingBuffer(new RingBufferConfig((byte)2, (byte)2, null, FieldReferenceOffsetManager.RAW_BYTES));
 
     @Override
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
@@ -124,7 +125,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,testExpConst);
                         RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (testValue >>> 32));
                         RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (testValue & 0xFFFFFFFF)); 
-                        RingBuffer.publishWrite(rbRingBufferLocal);
+                        RingBuffer.publishWrites(rbRingBufferLocal);
                         int rbPos = 0;
 
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
@@ -155,7 +156,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,1);
                         RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (mantissa >>> 32));
                         RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (mantissa & 0xFFFFFFFF)); 
-                        RingBuffer.publishWrite(rbRingBufferLocal);
+                        RingBuffer.publishWrites(rbRingBufferLocal);
                         int rbPos = 0;
 
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {                                
@@ -194,10 +195,9 @@ public class StreamingDecimalTest extends BaseStreamingTest {
             int[] tokenLookup, DictionaryFactory dcr) {
 
         TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null, 64, maxGroupCount * 10, -1, new ClientConfig(8 ,7));
-        RingBuffer rb = new RingBuffer((byte)testCatalog.clientConfig().getPrimaryRingBits(),(byte)testCatalog.clientConfig().getTextRingBits(),testCatalog.ringByteConstants(), testCatalog.getFROM());
+		RingBuffer rb = new RingBuffer(new RingBufferConfig((byte)15, (byte)7, testCatalog.ringByteConstants(), testCatalog.getFROM()));
 		fr = new FASTReaderInterpreterDispatch(testCatalog, RingBuffers.buildNoFanRingBuffers(rb));
         
-
         long start = System.nanoTime();
         if (operationIters < 3) {
             throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "

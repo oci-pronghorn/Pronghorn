@@ -37,7 +37,7 @@ public class RingBufferMonitorStage implements Runnable {
 	 * @param observedRingBuffer
 	 * @param notifyRingBuffer
 	 */
-	RingBufferMonitorStage(RingBuffer observedRingBuffer, RingBuffer notifyRingBuffer) {
+	public RingBufferMonitorStage(RingBuffer observedRingBuffer, RingBuffer notifyRingBuffer) {
 		this.observedRingBuffer = observedRingBuffer;
 		this.notifyRingBuffer = notifyRingBuffer;
 		

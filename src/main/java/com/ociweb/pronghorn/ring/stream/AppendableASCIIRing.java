@@ -47,7 +47,7 @@ public class AppendableASCIIRing implements Appendable {
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos,  RingBuffer.bytesWriteBase(ringBuffer), p, sourceLen);
 		
 		if ((--countDown)<=0) {
-			RingBuffer.publishWrite(ringBuffer);
+			RingBuffer.publishWrites(ringBuffer);
 			countDown = countDownInit;
 		}
 		return this;
@@ -65,7 +65,7 @@ public class AppendableASCIIRing implements Appendable {
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, RingBuffer.bytesWriteBase(ringBuffer), p, length);
 		
 		if ((--countDown)<=0) {
-			RingBuffer.publishWrite(ringBuffer);
+			RingBuffer.publishWrites(ringBuffer);
 			countDown = countDownInit;
 		}
 		return this;
@@ -83,7 +83,7 @@ public class AppendableASCIIRing implements Appendable {
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, RingBuffer.bytesWriteBase(ringBuffer), p, sourceLen);
 		
 		if ((--countDown)<=0) {
-			RingBuffer.publishWrite(ringBuffer);
+			RingBuffer.publishWrites(ringBuffer);
 			countDown = countDownInit;
 		}
 		return this;

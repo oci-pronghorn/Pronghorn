@@ -40,6 +40,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.RingWriter;
@@ -234,7 +235,9 @@ public class CatalogGeneratorTest {
         
         FASTClassLoader.deleteFiles();
         
-        RingBuffers ringBuffers= RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()));
+        catalog.clientConfig();
+		catalog.clientConfig();
+		RingBuffers ringBuffers= RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig((byte)15, (byte)7, catalog.ringByteConstants(), catalog.getFROM())));
                 
         //FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //compiles new encoder         
         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriterDebug(catBytes);
@@ -426,7 +429,7 @@ public class CatalogGeneratorTest {
                             }
                             
                         }
-                        RingBuffer.publishWrite(ringBuffer);
+                        RingBuffer.publishWrites(ringBuffer);
                         
                         if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
                         	
@@ -457,7 +460,7 @@ public class CatalogGeneratorTest {
                                 d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                             }
                         }
-                        RingBuffer.publishWrite(ringBuffer);
+                        RingBuffer.publishWrites(ringBuffer);
                         if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
                             FASTDynamicWriter.write(dynamicWriter);
                         }
@@ -482,7 +485,7 @@ public class CatalogGeneratorTest {
                                 d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                             }
                         }
-                        RingBuffer.publishWrite(ringBuffer);
+                        RingBuffer.publishWrites(ringBuffer);
                         if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
                             FASTDynamicWriter.write(dynamicWriter);
                         }
@@ -511,7 +514,7 @@ public class CatalogGeneratorTest {
                                 d = ReaderWriterPrimitiveTest.stringData.length;
                             }
                         }
-                        RingBuffer.publishWrite(ringBuffer);
+                        RingBuffer.publishWrites(ringBuffer);
                         if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
                             FASTDynamicWriter.write(dynamicWriter);
                         }

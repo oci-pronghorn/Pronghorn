@@ -12,6 +12,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
@@ -477,11 +478,11 @@ public abstract class BaseStreamingTest {
                 int idx = token & fw.intInstanceMask;
                 
                 //temp solution as the ring buffer is introduce into all the APIs
-                RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.RAW_BYTES);
+                RingBuffer rbRingBufferLocal = new RingBuffer(new RingBufferConfig((byte)2, (byte)2, null, FieldReferenceOffsetManager.RAW_BYTES));
                 RingBuffer.dump(rbRingBufferLocal);
                 RingBuffer.addValue(rbRingBufferLocal.buffer, rbRingBufferLocal.mask, rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
                 RingBuffer ringBuffer = rbRingBufferLocal;
-                RingBuffer.publishWrite(ringBuffer);
+                RingBuffer.publishWrites(ringBuffer);
                 int rbPos = 0;
     
                 // hack until all the classes no longer need this method.
@@ -541,11 +542,11 @@ public abstract class BaseStreamingTest {
                     int idx = token & fw.intInstanceMask;
                     
                     //temp solution as the ring buffer is introduce into all the APIs   
-                    RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.RAW_BYTES);
+                    RingBuffer rbRingBufferLocal = new RingBuffer(new RingBufferConfig((byte)2, (byte)2, null, FieldReferenceOffsetManager.RAW_BYTES));
                     RingBuffer.dump(rbRingBufferLocal);
                     RingBuffer.addValue(rbRingBufferLocal.buffer, rbRingBufferLocal.mask, rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
                     RingBuffer ringBuffer = rbRingBufferLocal;
-                    RingBuffer.publishWrite(ringBuffer);
+                    RingBuffer.publishWrites(ringBuffer);
                     int rbPos = 0;
                  
                     // hack until all the classes no longer need this method.

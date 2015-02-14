@@ -16,6 +16,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTableVisitor;
@@ -429,7 +430,7 @@ public class TemplateCatalogConfig {
     }
 
     public static RingBuffers buildRingBuffers(TemplateCatalogConfig catalog, byte primaryBits, byte secondaryBits) {
-		return RingBuffers.buildNoFanRingBuffers(new RingBuffer(primaryBits, secondaryBits, catalog.ringByteConstants(), catalog.getFROM()));
+		return RingBuffers.buildNoFanRingBuffers(new RingBuffer(new RingBufferConfig(primaryBits, secondaryBits, catalog.ringByteConstants(), catalog.getFROM())));
 	}
     
 	public static FieldReferenceOffsetManager createFieldReferenceOffsetManager(TemplateCatalogConfig config) {

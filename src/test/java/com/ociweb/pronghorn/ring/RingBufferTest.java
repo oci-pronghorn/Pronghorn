@@ -7,7 +7,7 @@ import static com.ociweb.pronghorn.ring.RingBuffer.byteMask;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.dump;
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.publishWrite;
+import static com.ociweb.pronghorn.ring.RingBuffer.publishWrites;
 import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
@@ -43,7 +43,7 @@ public class RingBufferTest {
     	byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
     	byte byteRingSizeInBits = 16;
     	
-        RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits);
+        RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
         
         byte[] testArray = new byte[]{(byte)1,(byte)2,(byte)3,(byte)4,(byte)5};
         int testInt = 7;
@@ -58,7 +58,7 @@ public class RingBufferTest {
         addByteArray(testArray, 0, testArray.length, ring);             
         
         //unblock for reading
-        publishWrite(ring);
+        publishWrites(ring);
                 
         //read one integer back and confirm it matches
         assertEquals(testInt, takeValue(ring)); 
@@ -148,7 +148,7 @@ public class RingBufferTest {
         	 
             long start = System.nanoTime();
             
-            final RingBuffer ring = new RingBuffer(primaryBits, charBits);
+            final RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryBits, charBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
             //creating an anonymous inner class that implements runnable so we can hand this
             //off to the execution service to be run on another thread while this thread does the writing.
             Runnable reader = new Runnable() {
@@ -203,7 +203,7 @@ public class RingBufferTest {
                 }
                 
                 if (0==(messageCount&chunkMask) ) {
-                    publishWrite(ring);
+                    publishWrites(ring);
                     //wait for room to fit one message
                     //waiting on the tailPosition to move the others are constant for this scope.
                     //workingHeadPositoin is same or greater than headPosition
@@ -284,7 +284,7 @@ public class RingBufferTest {
 
             long start = System.nanoTime();
             
-            final RingBuffer ring = new RingBuffer(primaryBits, charBits);
+            final RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryBits, charBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
             //creating an anonymous inner class that implements runnable so we can hand this
             //off to the execution service to be run on another thread while this thread does the writing.
             Runnable reader = new Runnable() {
@@ -333,7 +333,7 @@ public class RingBufferTest {
                 	addByteArray(testArray, 0, testArray.length, ring);
                 }
                 if (0==(messageCount&chunkMask) ) {
-                    publishWrite(ring);
+                    publishWrites(ring);
                     //wait for room to fit one message
                     //waiting on the tailPosition to move the others are constant for this scope.
                     //workingHeadPositoin is same or greater than headPosition
