@@ -154,10 +154,7 @@ public final class RingBuffer {
     	result.append(" bytes wrkTailPos ").append(byteWorkingTailPos.value);    	
     	result.append(" bytes headPos ").append(bytesHeadPos.get());
     	result.append(" bytes wrkHeadPos ").append(byteWorkingHeadPos.value);   	
-    	
-    	
-    	
-    	
+    	    	
     	return result.toString();
     }
     
@@ -279,6 +276,11 @@ public final class RingBuffer {
         writeTrailingCountOfBytesConsumed = false;
         RingWalker.reset(consumerData, toPos);
     }
+
+	public static int bytesOfContent(RingBuffer ringBuffer) {		
+		int dif = (ringBuffer.byteMask&ringBuffer.byteWorkingHeadPos.value) - (ringBuffer.byteMask&ringBuffer.bytesTailPos.get());
+		return ((dif>>31)<<ringBuffer.bBits)+dif;
+	}
 
 	public static void validateBatchSize(RingBuffer rb, int size) {
 		int mustFit = 2;
@@ -560,13 +562,12 @@ public final class RingBuffer {
 	    return (((long)sourcePos)<<32) | chr;
 	  }
 
-	public static int addASCIIToBytes(CharSequence source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
+	public static int addASCIIToBytes(CharSequence source, int sourceIdx, final int sourceLen, RingBuffer rbRingBuffer) {
 		final int p = rbRingBuffer.byteWorkingHeadPos.value;
 		//TODO: revisit this not sure this conditional is required
 	    if (sourceLen > 0) {
 	    	int targetMask = rbRingBuffer.byteMask;
-	    	int proposedEnd = p + sourceLen;
-			byte[] target = rbRingBuffer.byteBuffer;        	
+	    	byte[] target = rbRingBuffer.byteBuffer;        	
 			
 	        int tStart = p & targetMask;
 			if (tStart < ((p + sourceLen - 1) & targetMask)) {
@@ -577,17 +578,16 @@ public final class RingBuffer {
 			    RingBuffer.copyASCIIToByte(source, sourceIdx, target, tStart, firstLen);
 			    RingBuffer.copyASCIIToByte(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
 			}
-	        rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
+	        rbRingBuffer.byteWorkingHeadPos.value =  0xEFFFFFFF&(p + sourceLen);
 	    }
 		return p;
 	}
 
-    public static int addASCIIToBytes(char[] source, int sourceIdx,	int sourceLen, RingBuffer rbRingBuffer) {
+    public static int addASCIIToBytes(char[] source, int sourceIdx,	final int sourceLen, RingBuffer rbRingBuffer) {
 		final int p = rbRingBuffer.byteWorkingHeadPos.value;
 	    if (sourceLen > 0) {
 	    	int targetMask = rbRingBuffer.byteMask;
-	    	int proposedEnd = p + sourceLen;
-			byte[] target = rbRingBuffer.byteBuffer;        	
+	    	byte[] target = rbRingBuffer.byteBuffer;        	
 			
 	        int tStop = (p + sourceLen) & targetMask;
 			int tStart = p & targetMask;
@@ -599,7 +599,7 @@ public final class RingBuffer {
 			    copyASCIIToByte(source, sourceIdx, target, tStart, firstLen);
 			    copyASCIIToByte(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
 			}
-	        rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
+	        rbRingBuffer.byteWorkingHeadPos.value =  0xEFFFFFFF&(p + sourceLen);
 	    }
 		return p;
 	}

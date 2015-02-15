@@ -390,7 +390,7 @@ public class RingWalker {
 			}		
 			
 			//this is commonly used as the end of file marker    		
-			ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+2;//NOTE: 2 is the size of the EOF marker
+			ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+RingBuffer.EOF_SIZE;
 		}
 	}
     
@@ -523,28 +523,67 @@ public class RingWalker {
 		 
 	}
 	
-	public static void copyMessage(RingBuffer inputRing, RingBuffer outputRing) {
-		FieldReferenceOffsetManager srcFrom = RingBuffer.from(inputRing);
-		assert(srcFrom == RingBuffer.from(outputRing));
-		
-		//copy this fragment
-		
-		//TODO: AAA, not sure how we want to batch this??
-		
-		
-		while (!FieldReferenceOffsetManager.isTemplateStart(srcFrom, inputRing.consumerData.nextCursor)) {
-			//spin til next fragment is ready
-			while (!prepReadFragment(inputRing, inputRing.consumerData)) {
-				Thread.yield();
-			}
+	/**
+	 * Copies current message from input ring to output ring.  Once copied that message is no longer readable.
+	 * Message could be read before calling this copy using a low-level look ahead technique.
+	 * 
+	 * Returns false until the full message is copied.
+	 * 
+	 * Once called must continue to retry until true is returned or the message will be left in a partial state.
+	 * 
+	 * 
+	 * @param inputRing
+	 * @param outputRing
+	 * @return
+	 */
+	public static boolean tryMoveSingleMessage(RingBuffer inputRing, RingBuffer outputRing) {
+		assert(RingBuffer.from(inputRing) == RingBuffer.from(outputRing));
+		//NOTE: all the reading makes use of the high-level API to manage the fragment state, this call assumes tryRead was called once already.
 			
-			
-			
+		//we may re-enter this function to continue the copy
+		boolean copied = copyFragment(inputRing,outputRing);
+		while (copied && !FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(inputRing), inputRing.consumerData.nextCursor)) {			
+			//using short circut logic so copy does not happen unless the prep is successful
+			copied = prepReadFragment(inputRing, inputRing.consumerData) && copyFragment(inputRing,outputRing);			
+		}
+		return copied;
+	}
+
+
+	private static boolean copyFragment(RingBuffer inputRing, RingBuffer outputRing) {
+		long start = inputRing.workingTailPos.value;
+		long end = inputRing.consumerData.nextWorkingTail;
+		
+		int spaceNeeded = (int)(end-start);		
+		if (spaceNeeded >  outputRing.maxSize-RingBuffer.contentRemaining(outputRing)) {
+			return false;
 		}
 		
-		//copy this fragment
+		int bytesToCopy = inputRing.buffer[inputRing.mask&(int)(end-1)];
+		if (bytesToCopy > outputRing.maxByteSize-RingBuffer.bytesOfContent(outputRing)) {//TODO: B, this size count may not be right, may be too big ??
+			return false;
+		}
 		
-		//TODO: AAA, not sure how we want to batch this??
+		
+		RingBuffer.copyIntsFromToRing(inputRing.buffer, (int)start, inputRing.mask, 
+				                      outputRing.buffer, (int)outputRing.workingHeadPos.value, outputRing.mask, 
+				                      spaceNeeded);
+		outputRing.workingHeadPos.value+=spaceNeeded;
+		
+		RingBuffer.copyBytesFromToRing(inputRing.byteBuffer, inputRing.byteWorkingTailPos.value, inputRing.byteMask, 
+				                       outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask, 
+				                       bytesToCopy);
+		outputRing.byteWorkingHeadPos.value =  0xEFFFFFFF&(bytesToCopy+outputRing.byteWorkingHeadPos.value);
+		
+		
+		//release the input fragment, we are using working tail and next working tail so batch release should work on walker.
+		//prepReadFragment and tryReadFragment do the batched release, so it is not done here.
+		
+		//NOTE: writes are using low-level calls and we must publish them.
+		RingBuffer.publishHeadPositions(outputRing); //we use the working head pos so batching still works here.
+		
+		return true;
+		
 		
 		
 	}

@@ -279,8 +279,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         //this conditional is for the code generator so it need not check
         if (rbRingBuffer.workingHeadPos.value != rbRingBuffer.headPos.get()) {
 	        assert (fragDataSize == ((int)(rbRingBuffer.workingHeadPos.value-rbRingBuffer.headPos.get()))) : "expected to write "+fragDataSize+" but wrote "+((int)(rbRingBuffer.workingHeadPos.value-rbRingBuffer.headPos.get()));
-
-			//publish writes TODO: AAAA, can do this less often to support batching. (very light weight publish)
 	        RingBuffer.publishHeadPositions(rbRingBuffer);  
         }
         assert(rbRingBuffer.byteWorkingHeadPos.value == rbRingBuffer.bytesHeadPos.get());

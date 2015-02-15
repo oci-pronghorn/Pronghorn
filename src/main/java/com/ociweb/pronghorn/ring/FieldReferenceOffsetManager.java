@@ -123,7 +123,7 @@ public class FieldReferenceOffsetManager {
             fragNeedsAppendedCountOfBytesConsumed = new int[1];
             
             maximumFragmentStackDepth = 0;
-            maxVarFieldPerUnit = .5f;  //TODO: AAAAA optimize this value is waiting space now that we have the trailing integer on many fragments.
+            maxVarFieldPerUnit = .5f;  
             hasSimpleMessagesOnly = false; //unknown case so set false.
             
         } else {
@@ -207,6 +207,13 @@ public class FieldReferenceOffsetManager {
                 if (debug) {
                     System.err.println();
                 }
+                //only save this at the end of each fragment, not on the first pass.
+                if (i>fragmentStartIdx) {
+                	//NOTE: this size can not be changed up without reason, any place the low level API is used it will need
+                	//to know about the full size and append the right fields of the right size
+                	accumVarLengthCounts(fragmentStartIdx, varLenFieldCount, varLenFieldLast);
+                }
+                
                 int lastFragTotalSize = fragDataSize[fragmentStartIdx];
                 maxFragmentDataSize = Math.max(maxFragmentDataSize, lastFragTotalSize);
                 minFragmentDataSize = Math.min(minFragmentDataSize, lastFragTotalSize);
@@ -223,12 +230,6 @@ public class FieldReferenceOffsetManager {
                 	}                	
                 }
                 
-                //only save this at the end of each fragment, not on the first pass.
-                if (i>fragmentStartIdx) {
-                	//NOTE: this size can not be changed up without reason, any place the low level API is used it will need
-                	//to know about the full size and append the right fields of the right size
-                	accumVarLengthCounts(fragmentStartIdx, varLenFieldCount, varLenFieldLast);
-                }
                 fragmentStartIdx = i;    
                 
                 boolean isSeq = (0 != (scriptTokens[i] & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)));

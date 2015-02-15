@@ -12,21 +12,23 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.ociweb.pronghorn.ring.route.RoundRobinRouteStage;
 import com.ociweb.pronghorn.ring.route.SplitterStage;
 
 public class RingBufferPipeline {
 	
 	private static final String testString1 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@@";
-	private static final String testString = testString1+testString1+testString1+testString1;
+	private static final String testString = testString1+testString1+testString1+testString1+testString1+testString1+testString1+testString1;
 	//using length of 61 because it is prime and will wrap at odd places
 	private final byte[] testArray = testString.getBytes();//, this is a reasonable test message.".getBytes();
 	private final long testMessages = 10000000; 
 	private final int stages = 4;
 	private final int splits = 2;
+	private final boolean route = false;
 	
 	private final boolean deepTest = false;//can be much faster if we change the threading model
 		 
-	private final byte primaryBits   = 7; 
+	private final byte primaryBits   = 6; 
 	private final byte secondaryBits = 15;
     
 	private final int msgSize = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
@@ -156,10 +158,11 @@ public class RingBufferPipeline {
 						 normalService.submit(dumpStage(splitsBuffers[k], highLevelAPI));
 					 }
 				 } 
-				 SplitterStage splitterStage = new SplitterStage(rings[j++], splitsBuffers);
-				 daemonService.submit(splitterStage);
-			     //scheduledService.scheduleAtFixedRate(new SplitterStage(rings[j++], splitsBuffers), 1, 5, TimeUnit.MICROSECONDS);
-				 
+			     if (route) {
+			    	 daemonService.submit(new RoundRobinRouteStage(rings[j++], splitsBuffers));
+			     } else {
+			    	 daemonService.submit(new SplitterStage(rings[j++], splitsBuffers)); 
+			     }
 			 } else {			 
 				 normalService.submit(copyStage(rings[j++], rings[j], highLevelAPI));		
 			 }
@@ -515,15 +518,22 @@ public class RingBufferPipeline {
 	        		    long target = 1+tailPosition(inputRing);
 	                    long headPosCache = headPosition(inputRing);
 	                    long messageCount = 0;
+	                    long expectedMessageCount = route?testMessages/splits:testMessages;
 	                    while (true) {
+	                    	if (messageCount==expectedMessageCount) {
+	                    		//quit early there are no more message coming because this is how many were sent.
+	                    		//System.err.println("done after "+messageCount+" messages and "+total+" bytes ");
+	                           	return;
+	                    	}
+	                    	
 	                        //read the message
 	                    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);
 	                    	
 	                        int msgId = RingBuffer.takeMsgIdx(inputRing);
 	                        if (msgId<0) {  
-	                        	assertEquals(testMessages, messageCount);
-	                        	
 	                        	//System.err.println("done after "+messageCount+" messages and "+total+" bytes ");
+	                        	assertEquals(testMessages,route? messageCount*splits: messageCount);
+	                        	
 	                        	return;
 	                        }
 	                    	int meta = takeRingByteMetaData(inputRing);
@@ -600,7 +610,9 @@ public class RingBufferPipeline {
                         int tmpId = RingReader.readInt(inputRing, RingBufferMonitorStage.TEMPLATE_MSG_LOC);
                         
                         
-                    //TODO: AAA there is no text field used here so the last value will always be zero and we need to pull it.    
+                    //TODO: AAAAAA this is a mixed high low problem and must be converted to one side or the other
+                        //TODO: AAAAA need a monitor object that manages all this information so it does not cultter the businss logic
+                        //TODO: AAAAA need method on that object for building up the tree?
                         
                         inputRing.workingTailPos.value+=monitorMessageSize;
                                  

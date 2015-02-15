@@ -1,11 +1,8 @@
 package com.ociweb.pronghorn.ring.route;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingWalker;
-import com.ociweb.pronghorn.ring.util.PaddedAtomicInteger;
 
 /**
  * Given n ring buffers with the same FROM/Schema
@@ -123,9 +120,7 @@ public class SplitterStage implements Runnable {
 		if (totalBytesCopy < 0) {
 			totalBytesCopy += (bMask+1);
 		}
-		
-		//System.err.println("copy of "+totalPrimaryCopy+" and "+totalBytesCopy);
-		
+				
 		//now do the copies
 		doingCopy(ss, byteTailPos, primaryTailPos, (int)totalPrimaryCopy, totalBytesCopy);
 								
@@ -143,15 +138,6 @@ public class SplitterStage implements Runnable {
 			                   int totalPrimaryCopy, 
 			                   int totalBytesCopy) {
 		
-
-		
-//		if (willRollover) { //this test proves that its not a run ahead problem but instead is an offset error
-//			try {
-//				Thread.sleep(3000);
-//			} catch (InterruptedException e) {
-//				e.printStackTrace();
-//			}
-//		}
 		
 		do {
 			ss.moreToCopy = 0;
@@ -164,26 +150,9 @@ public class SplitterStage implements Runnable {
 				if ( (totalPrimaryCopy + ss.targetHeadPos[i]) > headCache) {		
 					
 					//the tail must be larger than this position for there to be room to write
-					if (ringBuffer.tailPos.get()>=totalPrimaryCopy + headCache - ringBuffer.maxSize ) {
-					
-					
-						int space;
-						int byteTail = ringBuffer.byteMask&ringBuffer.bytesTailPos.get();
-						int byteHead = ringBuffer.byteMask&ringBuffer.byteWorkingHeadPos.value;
-						if (byteTail>byteHead) {
-							space = ringBuffer.maxByteSize- (ringBuffer.maxByteSize+((byteHead-byteTail)));
-							
-						} else {
-							space = ringBuffer.maxByteSize- (byteHead-byteTail);
-						
-						}
-					
-						if (totalBytesCopy<=space ) {
-						
-							blockCopy(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);
-						} else {
-							ss.moreToCopy++;
-						}
+					if ((ringBuffer.tailPos.get() >= totalPrimaryCopy + headCache - ringBuffer.maxSize) && 
+						(totalBytesCopy <= (ringBuffer.maxByteSize- RingBuffer.bytesOfContent(ringBuffer)) ) ) {
+						blockCopy(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);
 					} else {
 						ss.moreToCopy++;
 					}
@@ -200,7 +169,7 @@ public class SplitterStage implements Runnable {
 			ss.targetHeadPos[i] += totalPrimaryCopy;
 		}
 	}
-	
+
 	public String toString() {
 		return "spliiter stage  moreToCopy:"+moreToCopy+" source content "+RingBuffer.contentRemaining(source);
 	}
