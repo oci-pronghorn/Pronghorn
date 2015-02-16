@@ -8,13 +8,13 @@ public class RoundRobinRouteStage implements Runnable {
 	RingBuffer inputRing;
 	RingBuffer[] outputRings;
 	int targetRing;
-	int totalRings;
+	int targetRingInit;
 	
 	public RoundRobinRouteStage(RingBuffer inputRing, RingBuffer ... outputRings) {
 		this.inputRing = inputRing;
 		this.outputRings = outputRings;
-		this.totalRings = outputRings.length;
-		this.targetRing = totalRings;
+		this.targetRingInit = outputRings.length-1;
+		this.targetRing = targetRingInit;
 	}
 
 	@Override
@@ -43,18 +43,14 @@ public class RoundRobinRouteStage implements Runnable {
 		
 		if (RingWalker.tryReadFragment(stage.inputRing)) {
 			
-			int msgId = RingWalker.messageIdx(stage.inputRing);
-			
-			//if the messageId is EOF then do we need to send it to both sides?
-			
-			
-			RingBuffer outputRing = stage.outputRings[--stage.targetRing];
-			if (0==stage.targetRing) {
-				stage.targetRing = stage.totalRings;
+			if (RingWalker.messageIdx(stage.inputRing)<0) {
+				return false;//exit with EOF
+			}			
+			RingBuffer ring = stage.outputRings[stage.targetRing];
+			while (!RingWalker.tryMoveSingleMessage(stage.inputRing, ring)) {
 			}
-			
-			while (!RingWalker.tryMoveSingleMessage(stage.inputRing, outputRing)) {
-				Thread.yield();
+			if (--stage.targetRing<0) {
+				stage.targetRing = stage.targetRingInit;
 			}
 		}	
 		return true;

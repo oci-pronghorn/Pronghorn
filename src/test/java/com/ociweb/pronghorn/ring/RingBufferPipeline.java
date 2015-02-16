@@ -17,15 +17,15 @@ import com.ociweb.pronghorn.ring.route.SplitterStage;
 
 public class RingBufferPipeline {
 	
+	private static final int TIMEOUT_SECONDS = 300;//60;
 	private static final String testString1 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@@";
 	private static final String testString = testString1+testString1+testString1+testString1+testString1+testString1+testString1+testString1;
 	//using length of 61 because it is prime and will wrap at odd places
 	private final byte[] testArray = testString.getBytes();//, this is a reasonable test message.".getBytes();
-	private final long testMessages = 10000000; 
+	private final long testMessages = 1000000; 
 	private final int stages = 4;
 	private final int splits = 2;
-	private final boolean route = false;
-	
+		
 	private final boolean deepTest = false;//can be much faster if we change the threading model
 		 
 	private final byte primaryBits   = 6; 
@@ -35,49 +35,74 @@ public class RingBufferPipeline {
 
 	
 	@Test
-	public void pipelineExampleHighLevelTaps() {			
-		pipelineTest(true, true, false);		
+	public void pipelineExampleHighLevelRoute() {			
+		pipelineTest(true, false, true, true);		
 	}
 	
 	@Test
-	public void pipelineExampleLowLevelTaps() {			
-		pipelineTest(false, true, false);		
+	public void pipelineExampleLowLevelRoute() {			
+		pipelineTest(false, false, true, true);		
 	}
+	
+	@Test
+	public void pipelineExampleHighLevelRouteWithMonitor() {			
+		pipelineTest(true, true, true, true);		
+	}
+	
+	@Test
+	public void pipelineExampleLowLevelRouteWithMonitor() {			
+		pipelineTest(false, true, true, true);		
+	}
+
+	
+	
+	@Test
+	public void pipelineExampleHighLevelSplits() {			
+		pipelineTest(true, false, true, false);		
+	}
+	
+	@Test
+	public void pipelineExampleLowLevelSplits() {			
+		pipelineTest(false, false, true, false);		
+	}
+	
+	@Test
+	public void pipelineExampleHighLevelSplitsWithMonitor() {			
+		pipelineTest(true, true, true, false);		
+	}
+	
+	@Test
+	public void pipelineExampleLowLevelSplitsWithMonitor() {			
+		pipelineTest(false, true, true, false);		
+	}
+
+	
 
 	@Test
 	public void pipelineExampleHighLevel() {		
-		 pipelineTest(true, false, false);	 		 
+		 pipelineTest(true, false, false, true);	 		 
 	}
 
 	@Test
 	public void pipelineExampleLowLevel() {			
-		 pipelineTest(false, false, false);
-	}
-	
-	@Test
-	public void pipelineExampleHighLevelTapsWithMonitor() {			
-		pipelineTest(true, true, true);		
-	}
-	
-	@Test
-	public void pipelineExampleLowLevelTapsWithMonitor() {			
-		pipelineTest(false, true, true);		
+		 pipelineTest(false, false, false, true);
 	}
 
 	@Test
 	public void pipelineExampleHighLevelWithMonitor() {		
-		 pipelineTest(true, false, true);	 		 
+		 pipelineTest(true, true, false, true);	 		 
 	}
 
 	@Test
 	public void pipelineExampleLowLevelWithMonitor() {			
-		 pipelineTest(false, false, true);	 		 
+		 pipelineTest(false, true, false, true);	 		 
 	}
 	
 		
 
-	private void pipelineTest(boolean highLevelAPI, boolean useTaps, boolean monitor) {
+	private void pipelineTest(boolean highLevelAPI, boolean monitor, boolean useTap, boolean useRouter) {
 		 System.out.println();
+		 	 
 		 
 		 assertEquals("For "+FieldReferenceOffsetManager.RAW_BYTES.name+" expected no need to add field.",
 				      0,FieldReferenceOffsetManager.RAW_BYTES.fragNeedsAppendedCountOfBytesConsumed[0]);
@@ -85,10 +110,10 @@ public class RingBufferPipeline {
 		
 		 int stagesBetweenSourceAndSink = stages -2;
 		 
-		 int daemonThreads = (useTaps ? stagesBetweenSourceAndSink : 0);
+		 int daemonThreads = (useTap ? stagesBetweenSourceAndSink : 0);
 		 int schcheduledThreads = 1;
 		
-		 int normalThreads =    2/* source and sink*/   + ((useTaps ? splits : 1)*stagesBetweenSourceAndSink); 
+		 int normalThreads =    2/* source and sink*/   + ((useTap ? splits : 1)*stagesBetweenSourceAndSink); 
 		 int totalThreads = daemonThreads+schcheduledThreads+normalThreads;
 		 
 //		 
@@ -146,8 +171,8 @@ public class RingBufferPipeline {
 		 normalService.submit(simpleFirstStage(rings[j], highLevelAPI));
 		 int i = stagesBetweenSourceAndSink;
 		 while (--i>=0) {
-			 if (useTaps) {
-				 					 
+			 if (useTap & 0==i) { //only do taps on first stage or this test could end up using many many threads.		 
+				 
 				 RingBuffer[] splitsBuffers = new RingBuffer[splits];
 				 splitsBuffers[0] = rings[j+1];//must jump ahead because we are setting this early
 				 if (splits>1) {
@@ -155,10 +180,18 @@ public class RingBufferPipeline {
 					 while (--k>0) {
 						 splitsBuffers[k] = new RingBuffer(new RingBufferConfig(primaryBits, secondaryBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
 						 ///
-						 normalService.submit(dumpStage(splitsBuffers[k], highLevelAPI));
+						 normalService.submit(dumpStage(splitsBuffers[k], highLevelAPI, useTap&useRouter));
 					 }
 				 } 
-			     if (route) {
+				 
+				 
+			     if (useRouter) {
+			    	 int r = splitsBuffers.length;
+			    	 while (--r>=0) {
+			    		 RingBuffer.setPublishBatchSize(splitsBuffers[r],8);
+			    		 
+			    	 }
+			    	 RingWalker.setReleaseBatchSize(rings[j], 8); 
 			    	 daemonService.submit(new RoundRobinRouteStage(rings[j++], splitsBuffers));
 			     } else {
 			    	 daemonService.submit(new SplitterStage(rings[j++], splitsBuffers)); 
@@ -168,9 +201,9 @@ public class RingBufferPipeline {
 			 }
 			 
 		 }
-		 normalService.submit(dumpStage(rings[j], highLevelAPI));
+		 normalService.submit(dumpStage(rings[j], highLevelAPI, useTap&useRouter));
 		 
-		 System.out.println("########################################################## Testing "+ (highLevelAPI?"HIGH level ":"LOW level ")+(useTaps? "using "+splits+" taps ":"")+(monitor?"monitored":"")+" totalThreads:"+totalThreads);
+		 System.out.println("########################################################## Testing "+ (highLevelAPI?"HIGH level ":"LOW level ")+(useTap? "using "+splits+(useRouter?" router ":" splitter "):"")+(monitor?"monitored":"")+" totalThreads:"+totalThreads);
 		 
 		 
 		 
@@ -180,7 +213,7 @@ public class RingBufferPipeline {
 		 //blocks until all the submitted runnables have stopped
 		 try {
 			 //this timeout is set very large to support slow machines that may also run this test.
-			boolean cleanExit = normalService.awaitTermination(60, TimeUnit.SECONDS);
+			boolean cleanExit = normalService.awaitTermination(TIMEOUT_SECONDS, TimeUnit.SECONDS);
 			if (!cleanExit) {
 				//dump the Queue data
 				int k=0;
@@ -440,7 +473,7 @@ public class RingBufferPipeline {
 		}
 	}
 	
-	private Runnable dumpStage(final RingBuffer inputRing, boolean highLevelAPI) {
+	private Runnable dumpStage(final RingBuffer inputRing, boolean highLevelAPI,final boolean useRoute) {
 
 		
 		if (highLevelAPI) {
@@ -452,13 +485,18 @@ public class RingBufferPipeline {
 	            @Override
 	            public void run() {      
 	            	try{
+	            		long expectedMessageCount = useRoute?testMessages/splits:testMessages;
 					//	RingWalker.setReleaseBatchSize(inputRing, 8);
 						
 	            		int msgCount=0;
 	            		int lastPos = -1;
 						int msgId = 0;
 						do {
-							
+	                    	if (msgCount==expectedMessageCount) {
+	                    		//quit early there are no more message coming because this is how many were sent.
+	                    		//System.err.println("done after "+messageCount+" messages and "+total+" bytes ");
+	                           	return;
+	                    	}
 							
 							//try also releases previously read fragments
 							if (RingWalker.tryReadFragment(inputRing)) {
@@ -518,7 +556,7 @@ public class RingBufferPipeline {
 	        		    long target = 1+tailPosition(inputRing);
 	                    long headPosCache = headPosition(inputRing);
 	                    long messageCount = 0;
-	                    long expectedMessageCount = route?testMessages/splits:testMessages;
+	                    long expectedMessageCount = useRoute?testMessages/splits:testMessages;
 	                    while (true) {
 	                    	if (messageCount==expectedMessageCount) {
 	                    		//quit early there are no more message coming because this is how many were sent.
@@ -532,7 +570,7 @@ public class RingBufferPipeline {
 	                        int msgId = RingBuffer.takeMsgIdx(inputRing);
 	                        if (msgId<0) {  
 	                        	//System.err.println("done after "+messageCount+" messages and "+total+" bytes ");
-	                        	assertEquals(testMessages,route? messageCount*splits: messageCount);
+	                        	assertEquals(testMessages,useRoute? messageCount*splits: messageCount);
 	                        	
 	                        	return;
 	                        }

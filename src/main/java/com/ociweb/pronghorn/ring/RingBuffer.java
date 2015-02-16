@@ -102,10 +102,10 @@ public final class RingBuffer {
 	public boolean writeTrailingCountOfBytesConsumed;
 	FieldReferenceOffsetManager from;
     
-	private int batchReleaseCountDown = 0;
-	private int batchReleaseCountDownInit = 0;
-	private int batchPublishCountDown = 0;
-	private int batchPublishCountDownInit = 0;
+	int batchReleaseCountDown = 0;
+	int batchReleaseCountDownInit = 0;
+	int batchPublishCountDown = 0;
+	int batchPublishCountDownInit = 0;
 	
     public static void setReleaseBatchSize(RingBuffer rb, int size) {
     	
@@ -277,6 +277,12 @@ public final class RingBuffer {
         RingWalker.reset(consumerData, toPos);
     }
 
+    /**
+     * All bytes even those not yet committed.
+     * 
+     * @param ringBuffer
+     * @return
+     */
 	public static int bytesOfContent(RingBuffer ringBuffer) {		
 		int dif = (ringBuffer.byteMask&ringBuffer.byteWorkingHeadPos.value) - (ringBuffer.byteMask&ringBuffer.bytesTailPos.get());
 		return ((dif>>31)<<ringBuffer.bBits)+dif;

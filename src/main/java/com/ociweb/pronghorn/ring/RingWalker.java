@@ -33,10 +33,6 @@ public class RingWalker {
 	
 	long cachedTailPosition = 0;
 	
-	private int batchReleaseCountDown = 0;
-	private int batchReleaseCountDownInit = 0;
-	private int batchPublishCountDown = 0;
-	private int batchPublishCountDownInit = 0;
 	int nextCursor = -1;
     
 	
@@ -67,19 +63,11 @@ public class RingWalker {
     }
 
     public static void setReleaseBatchSize(RingBuffer rb, int size) {
-
-    	RingBuffer.validateBatchSize(rb, size);
-		
-    	rb.consumerData.batchReleaseCountDownInit = size;
-    	rb.consumerData.batchReleaseCountDown = size;    	
+    	RingBuffer.setReleaseBatchSize(rb, size);  	
     }
     
     public static void setPublishBatchSize(RingBuffer rb, int size) {
-
-    	RingBuffer.validateBatchSize(rb, size);
-    	
-    	rb.consumerData.batchPublishCountDownInit = size;
-    	rb.consumerData.batchPublishCountDown = size;    	
+    	RingBuffer.setPublishBatchSize(rb, size);
     }
 
 
@@ -224,12 +212,12 @@ public class RingWalker {
 		
 		assert(ringBuffer.byteWorkingTailPos.value <= ringBuffer.bytesHeadPos.get()) : "expected to have data up to "+ringBuffer.byteWorkingTailPos.value+" but we only have "+ringBuffer.bytesHeadPos.get();
 		
-		if ((--ringBufferConsumer.batchReleaseCountDown<=0)) {	
+		if ((--ringBuffer.batchReleaseCountDown<=0)) {	
 			
 			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); //		
 			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);//inlined from RingBuffer.ReleaseFragment, this one never adjusts bytes because we are in a fragment
 		
-			ringBufferConsumer.batchReleaseCountDown = ringBufferConsumer.batchReleaseCountDownInit;
+			ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
 		}
 
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1;
@@ -344,7 +332,7 @@ public class RingWalker {
 		//batched release of the old positions back to the producer
 		//could be done every time but batching reduces contention
 		//this batching is only done per-message so the fragments can remain and be read
-		if ((--ringBufferConsumer.batchReleaseCountDown>0)) {	
+		if ((--ringBuffer.batchReleaseCountDown>0)) {	
 			
 			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
 		} else {
@@ -352,7 +340,7 @@ public class RingWalker {
 			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			
 			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); //inlined release however the byte adjust must happen on every message so its done earlier
 						
-			ringBufferConsumer.batchReleaseCountDown = ringBufferConsumer.batchReleaseCountDownInit;
+			ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
 			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
 		}
 
@@ -514,11 +502,11 @@ public class RingWalker {
 		//single length field still needs to move this value up, so this is always done
 		outputRing.bytesWriteLastConsumedBytePos = outputRing.byteWorkingHeadPos.value;
 		
-		if ((--outputRing.consumerData.batchPublishCountDown<=0)) {			
+		if ((--outputRing.batchPublishCountDown<=0)) {			
 			//publish writes			
 			outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
 			outputRing.headPos.lazySet(outputRing.workingHeadPos.value);			
-			outputRing.consumerData.batchPublishCountDown = outputRing.consumerData.batchPublishCountDownInit;
+			outputRing.batchPublishCountDown = outputRing.batchPublishCountDownInit;
 		}
 		 
 	}
@@ -541,29 +529,34 @@ public class RingWalker {
 		//NOTE: all the reading makes use of the high-level API to manage the fragment state, this call assumes tryRead was called once already.
 			
 		//we may re-enter this function to continue the copy
-		boolean copied = copyFragment(inputRing,outputRing);
-		while (copied && !FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(inputRing), inputRing.consumerData.nextCursor)) {			
+		RingWalker consumerData = inputRing.consumerData;
+		boolean copied = copyFragment0(inputRing, outputRing, inputRing.workingTailPos.value, consumerData.nextWorkingTail);
+		while (copied && !FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(inputRing), consumerData.nextCursor)) {			
 			//using short circut logic so copy does not happen unless the prep is successful
-			copied = prepReadFragment(inputRing, inputRing.consumerData) && copyFragment(inputRing,outputRing);			
+			copied = prepReadFragment(inputRing, consumerData) && copyFragment0(inputRing, outputRing, inputRing.workingTailPos.value, consumerData.nextWorkingTail);			
 		}
 		return copied;
 	}
 
+	private static boolean copyFragment0(RingBuffer inputRing, RingBuffer outputRing, long start, long end) {
+		return copyFragment1(inputRing, outputRing, start, (int)(end-start), inputRing.buffer[inputRing.mask&(int)(end-1)]);
+	}
 
-	private static boolean copyFragment(RingBuffer inputRing, RingBuffer outputRing) {
-		long start = inputRing.workingTailPos.value;
-		long end = inputRing.consumerData.nextWorkingTail;
-		
-		int spaceNeeded = (int)(end-start);		
-		if (spaceNeeded >  outputRing.maxSize-RingBuffer.contentRemaining(outputRing)) {
+
+	private static boolean copyFragment1(RingBuffer inputRing,
+			RingBuffer outputRing, long start, int spaceNeeded, int bytesToCopy) {
+		if ((spaceNeeded >  outputRing.maxSize-(int)(outputRing.workingHeadPos.value - outputRing.tailPos.longValue())) || 
+			(bytesToCopy > outputRing.maxByteSize-RingBuffer.bytesOfContent(outputRing))) {
 			return false;
 		}
 		
-		int bytesToCopy = inputRing.buffer[inputRing.mask&(int)(end-1)];
-		if (bytesToCopy > outputRing.maxByteSize-RingBuffer.bytesOfContent(outputRing)) {//TODO: B, this size count may not be right, may be too big ??
-			return false;
-		}
-		
+		copyFragment2(inputRing, outputRing, start, spaceNeeded, bytesToCopy);		
+		return true;
+	}
+
+
+	private static void copyFragment2(RingBuffer inputRing,
+			RingBuffer outputRing, long start, int spaceNeeded, int bytesToCopy) {
 		
 		RingBuffer.copyIntsFromToRing(inputRing.buffer, (int)start, inputRing.mask, 
 				                      outputRing.buffer, (int)outputRing.workingHeadPos.value, outputRing.mask, 
@@ -581,11 +574,6 @@ public class RingWalker {
 		
 		//NOTE: writes are using low-level calls and we must publish them.
 		RingBuffer.publishHeadPositions(outputRing); //we use the working head pos so batching still works here.
-		
-		return true;
-		
-		
-		
 	}
 	
 	
