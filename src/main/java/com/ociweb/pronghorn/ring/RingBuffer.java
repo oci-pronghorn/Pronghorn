@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.ring;
 
+import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
+
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -277,7 +279,23 @@ public final class RingBuffer {
         RingWalker.reset(consumerData, toPos);
     }
 
-    /**
+    public static void addLongAsASCII(RingBuffer outputRing, long value) {
+		validateVarLength(outputRing, 21);
+		int max = 21 + outputRing.byteWorkingHeadPos.value;
+		int len = leftConvertLongToASCII(outputRing, value, max);
+		addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), outputRing.byteWorkingHeadPos.value, len);
+		outputRing.byteWorkingHeadPos.value = 0xEFFFFFFF&(len + outputRing.byteWorkingHeadPos.value);
+	}
+
+	public static void addIntAsASCII(RingBuffer outputRing, int value) {
+		validateVarLength(outputRing, 12);
+		int max = 12 + outputRing.byteWorkingHeadPos.value;
+		int len = leftConvertIntToASCII(outputRing, value, max);
+		addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), outputRing.byteWorkingHeadPos.value, len);
+		outputRing.byteWorkingHeadPos.value = 0xEFFFFFFF&(len + outputRing.byteWorkingHeadPos.value);
+	}
+
+	/**
      * All bytes even those not yet committed.
      * 
      * @param ringBuffer
@@ -305,13 +323,13 @@ public final class RingBuffer {
 
 	public static void publishEOF(RingBuffer ring) {
 		
-		assert(ring.tailPos.get()+ring.maxSize>=ring.headPos.get()+2) : "Must block first to ensure we have 2 spots for the EOF marker";
+		assert(ring.tailPos.get()+ring.maxSize>=ring.headPos.get()+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 		
 		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
 		ring.buffer[ring.mask &((int)ring.workingHeadPos.value +  from(ring).templateOffset)]    = -1;	
 		ring.buffer[ring.mask &((int)ring.workingHeadPos.value +1 +  from(ring).templateOffset)] = 0;
 		
-		ring.headPos.lazySet(ring.workingHeadPos.value = ring.workingHeadPos.value + 2);
+		ring.headPos.lazySet(ring.workingHeadPos.value = ring.workingHeadPos.value + RingBuffer.EOF_SIZE);
 		
 	}
 
@@ -440,36 +458,58 @@ public final class RingBuffer {
 		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
 		//this will leave a gap but that is not a problem.
 		byte[] target = rb.byteBuffer;
-		int tmp = value;    	
-		while (tmp!=0) {
+		int tmp = Math.abs(value);    
+		int max = idx;
+		do {
 			//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
 			int t = tmp/10;
 			int r = tmp%10;
 			target[rb.byteMask&--idx] = (byte)('0'+r);
 			tmp = t;
-		}
+		} while (0!=tmp);
 		target[rb.byteMask& (idx-1)] = (byte)'-';
 		//to make it positive we jump over the sign.
 		idx -= (1&(value>>31));
-		return idx;
+		
+		//shift it down to the head
+		int length = max-idx;
+		if (idx!=rb.byteWorkingHeadPos.value) {
+			int s = 0;
+			while (s<length) {
+				target[rb.byteMask & (s+rb.byteWorkingHeadPos.value)] = target[rb.byteMask & (s+idx)];
+				s++;
+			}
+		}
+		return length;
 	}
 
 	public static int leftConvertLongToASCII(RingBuffer rb, long value,	int idx) {
 		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
 		//this will leave a gap but that is not a problem.
 		byte[] target = rb.byteBuffer;
-		long tmp = value;    	
-		while (tmp!=0) {
+		long tmp = Math.abs(value);   
+		int max = idx;
+		do {
 			//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
 			long t = tmp/10;
 			long r = tmp%10;
 			target[rb.byteMask&--idx] = (byte)('0'+r);
 			tmp = t;
-		}
+		} while (0!=tmp);
 		target[rb.byteMask& (idx-1)] = (byte)'-';
 		//to make it positive we jump over the sign.
 		idx -= (1&(value>>63));
-		return idx;
+		
+		int length = max-idx;
+		//shift it down to the head
+		if (idx!=rb.byteWorkingHeadPos.value) {
+			int s = 0;
+			while (s<length) {
+				target[rb.byteMask & (s+rb.byteWorkingHeadPos.value)] = target[rb.byteMask & (s+idx)];
+				s++;
+			}
+		}
+		return length;
 	}
 
 	public static int readInt(int[] buffer, int mask, long index) {
@@ -568,6 +608,10 @@ public final class RingBuffer {
 	    return (((long)sourcePos)<<32) | chr;
 	  }
 
+	public static int addASCIIToBytes(CharSequence source, RingBuffer rbRingBuffer) {
+		return addASCIIToBytes(source, 0, source.length(), rbRingBuffer);
+	}
+	  
 	public static int addASCIIToBytes(CharSequence source, int sourceIdx, final int sourceLen, RingBuffer rbRingBuffer) {
 		final int p = rbRingBuffer.byteWorkingHeadPos.value;
 		//TODO: revisit this not sure this conditional is required
@@ -576,13 +620,14 @@ public final class RingBuffer {
 	    	byte[] target = rbRingBuffer.byteBuffer;        	
 			
 	        int tStart = p & targetMask;
-			if (tStart < ((p + sourceLen - 1) & targetMask)) {
+	        int len1 = 1+targetMask - tStart;
+	        
+			if (len1>=sourceLen) {
 				RingBuffer.copyASCIIToByte(source, sourceIdx, target, tStart, sourceLen);
 			} else {
 			    // done as two copies
-			    int firstLen = 1+ targetMask - tStart;
-			    RingBuffer.copyASCIIToByte(source, sourceIdx, target, tStart, firstLen);
-			    RingBuffer.copyASCIIToByte(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
+			    RingBuffer.copyASCIIToByte(source, sourceIdx, target, tStart, len1);
+			    RingBuffer.copyASCIIToByte(source, sourceIdx + len1, target, 0, sourceLen - len1);
 			}
 	        rbRingBuffer.byteWorkingHeadPos.value =  0xEFFFFFFF&(p + sourceLen);
 	    }
@@ -594,16 +639,17 @@ public final class RingBuffer {
 	    if (sourceLen > 0) {
 	    	int targetMask = rbRingBuffer.byteMask;
 	    	byte[] target = rbRingBuffer.byteBuffer;        	
-			
-	        int tStop = (p + sourceLen) & targetMask;
-			int tStart = p & targetMask;
-			if (tStop > tStart) {
+				    	
+	        int tStart = p & targetMask;
+	        int len1 = 1+targetMask - tStart;
+	    	
+			if (len1>=sourceLen) {
 				copyASCIIToByte(source, sourceIdx, target, tStart, sourceLen);
 			} else {
 			    // done as two copies
 			    int firstLen = 1+ targetMask - tStart;
 			    copyASCIIToByte(source, sourceIdx, target, tStart, firstLen);
-			    copyASCIIToByte(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
+			    copyASCIIToByte(source, sourceIdx + len1, target, 0, sourceLen - len1);
 			}
 	        rbRingBuffer.byteWorkingHeadPos.value =  0xEFFFFFFF&(p + sourceLen);
 	    }
@@ -688,16 +734,16 @@ public final class RingBuffer {
 
 	public static void addByteBuffer(RingBuffer rb, ByteBuffer source, int length) {
 		validateVarLength(rb, length);
-		int bytePos = rb.byteWorkingHeadPos.value;    
-		int partialLength = 1 + rb.byteMask - (bytePos & rb.byteMask);    		
+		int idx = rb.byteWorkingHeadPos.value & rb.byteMask;
+		int partialLength = 1 + rb.byteMask - idx;    		
 		if (partialLength<length) {   		
 			//read from source and write into byteBuffer
-			source.get(rb.byteBuffer, bytePos & rb.byteMask, partialLength);
+			source.get(rb.byteBuffer, idx, partialLength);
 			source.get(rb.byteBuffer, 0, length - partialLength);					    		
 		} else {					    	
-			source.get(rb.byteBuffer, bytePos & rb.byteMask, length);
+			source.get(rb.byteBuffer, idx, length);
 		}
-		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(bytePos + length);
+		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(rb.byteWorkingHeadPos.value + length);
 	}
 
 	public static void addByteArrayWithMask(final RingBuffer outputRing, int mask, int len, byte[] data, int offset) {
@@ -978,6 +1024,18 @@ public final class RingBuffer {
     }
 
 
+    /**
+     * Blocks until there is enough room for this first fragment of the message and records the messageId.
+     * @param ring
+     * @param msgIdx
+     */
+	public static void blockWriteMessage(RingBuffer ring, int msgIdx) {
+		//before write make sure the tail is moved ahead so we have room to write
+		spinBlockOnTail(ring.tailPos.get(), ring.headPos.get()-(ring.maxSize-RingBuffer.from(ring).fragDataSize[msgIdx]), ring);
+		RingBuffer.addMsgIdx(ring, msgIdx);
+	}
+    
+    
     //All the spin lock methods share the same implementation. Unfortunately these can not call 
     //a common implementation because the extra method jump degrades the performance in tight loops
     //where these spin locks are commonly used.

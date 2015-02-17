@@ -140,17 +140,17 @@ public class RingWriter {
     public static void writeIntAsText(RingBuffer rb, int value) {
     	RingBuffer.validateVarLength(rb, 12);
     	int max = 12+rb.byteWorkingHeadPos.value;
-    	int idx = RingBuffer.leftConvertIntToASCII(rb, value, max);
-    	RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, RingBuffer.bytesWriteBase(rb), idx, max-idx);
-    	rb.byteWorkingHeadPos.value = max;    	
+    	int len = RingBuffer.leftConvertIntToASCII(rb, value, max);
+		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), rb.byteWorkingHeadPos.value, len);
+		rb.byteWorkingHeadPos.value = len + rb.byteWorkingHeadPos.value;   	
     }
     @Deprecated
     public static void writeLongAsText(RingBuffer rb, long value) {
     	RingBuffer.validateVarLength(rb, 21);
     	int max = 21+rb.byteWorkingHeadPos.value;
-    	int idx = RingBuffer.leftConvertLongToASCII(rb, value, max);
-    	RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, RingBuffer.bytesWriteBase(rb), idx, max-idx);
-    	rb.byteWorkingHeadPos.value = max;    	
+    	int len = RingBuffer.leftConvertLongToASCII(rb, value, max);
+		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), rb.byteWorkingHeadPos.value, len);
+		rb.byteWorkingHeadPos.value = len + rb.byteWorkingHeadPos.value; 	
     } //  */
 
     //////////////////////////////////
@@ -330,18 +330,18 @@ public class RingWriter {
     	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 
     	int max = 12+rb.byteWorkingHeadPos.value;
-    	int idx = RingBuffer.leftConvertIntToASCII(rb, value, max);    	
-    	finishWriteBytesAlreadyStarted(rb, loc, idx, max-idx);
-    	rb.byteWorkingHeadPos.value = max;    	
+    	int len = RingBuffer.leftConvertIntToASCII(rb, value, max);    	
+    	finishWriteBytesAlreadyStarted(rb, loc, rb.byteWorkingHeadPos.value, len);
+    	rb.byteWorkingHeadPos.value = len+rb.byteWorkingHeadPos.value;    	
 	}
 
     public static void writeLongAsText(RingBuffer rb, int loc, long value) { 
     	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
   
     	int max = 21+rb.byteWorkingHeadPos.value;
-    	int idx = RingBuffer.leftConvertLongToASCII(rb, value, max);
-    	finishWriteBytesAlreadyStarted(rb, loc, idx, max-idx);
-    	rb.byteWorkingHeadPos.value = max;    	
+    	int len = RingBuffer.leftConvertLongToASCII(rb, value, max);
+    	finishWriteBytesAlreadyStarted(rb, loc, rb.byteWorkingHeadPos.value, len);
+    	rb.byteWorkingHeadPos.value = len+rb.byteWorkingHeadPos.value;    	
 	}
 	
     

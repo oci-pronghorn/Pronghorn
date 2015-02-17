@@ -72,20 +72,20 @@ public class RingStreams {
         	} else {          
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
             	int len = takeRingByteLen(inputRing);
-				byte[] data = byteBackingArray(meta, inputRing);
-
-				int off = bytePosition(meta,inputRing,len)&byteMask;        					
-				
-				int len1 = byteSize-off;
-				if (len1>=len) {
-					//simple add bytes
-					outputStream.write(data, off, len); 
-				} else {						
-					//rolled over the end of the buffer
-					outputStream.write(data, off, len1);
-					outputStream.write(data, 0, len-len1);
-				}
-        		releaseReadLock(inputRing);
+            	if (len>0) {            	
+					byte[] data = byteBackingArray(meta, inputRing);
+					int off = bytePosition(meta,inputRing,len)&byteMask;
+					int len1 = byteSize-off;
+					if (len1>=len) {
+						//simple add bytes
+						outputStream.write(data, off, len); 
+					} else {						
+						//rolled over the end of the buffer
+						outputStream.write(data, off, len1);
+						outputStream.write(data, 0, len-len1);
+					}
+	        		releaseReadLock(inputRing);
+            	}
         	}
         	
         	target += step;
