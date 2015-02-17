@@ -419,10 +419,9 @@ public class FieldReferenceOffsetManager {
 		int x = framentStart;
         		
 		//upper bits is 4 bits of information
-		final int stackOff = from.fragDepth[framentStart]<<RW_STACK_OFF_SHIFT;
-        
+		final int stackOff = from.fragDepth[x]<<RW_STACK_OFF_SHIFT;
+
         while (true) {
-        	//System.err.println("looking at:"+fieldNameScript[x]);
             if (from.fieldNameScript[x].equalsIgnoreCase(target)) {
             	
             	int fieldType = TokenBuilder.extractType(from.tokens[x])<<RW_FIELD_OFF_BITS;
@@ -438,12 +437,13 @@ public class FieldReferenceOffsetManager {
                 
             }
             
-            int type = TokenBuilder.extractType(from.tokens[x]);
-            boolean isGroup = TypeMask.Group == type;    
-            boolean isGroupClosed = isGroup && (0 != (from.tokens[x] & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
-            boolean isSeqLength = TypeMask.GroupLength == type;
-            
-            if (isGroupClosed || isSeqLength) {
+            int token = from.tokens[x];
+            int type = TokenBuilder.extractType(token);
+            boolean isGroupClosed = TypeMask.Group == type &&
+            		                (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) &&
+            		                (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
+           
+            if (isGroupClosed) {
             	break;
             }
             
@@ -452,6 +452,7 @@ public class FieldReferenceOffsetManager {
         throw new UnsupportedOperationException("Unable to find field name: "+target+" in "+Arrays.toString(from.fieldNameScript));
 	}
 
+    
     
     /**
      * Helpful debugging method that writes the script in a human readable form out to the console.

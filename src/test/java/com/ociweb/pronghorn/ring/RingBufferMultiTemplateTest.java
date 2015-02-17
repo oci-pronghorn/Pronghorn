@@ -23,6 +23,7 @@ public class RingBufferMultiTemplateTest {
 	private final int MSG_BOXES_LOC = lookupTemplateLocator("Boxes",FROM);  
 	private final int MSG_SAMPLE_LOC = lookupTemplateLocator("Sample",FROM); 
 	private final int MSG_RESET_LOC = lookupTemplateLocator("Reset",FROM);  
+	private final int MSG_TRUCKS_LOC = lookupTemplateLocator("Trucks",FROM); 
 	
 	private final int BOX_COUNT_LOC = lookupFieldLocator("Count", MSG_BOXES_LOC, FROM);
 	private final int BOX_OWNER_LOC = lookupFieldLocator("Owner", MSG_BOXES_LOC, FROM);
@@ -34,11 +35,20 @@ public class RingBufferMultiTemplateTest {
     
 	private final int REST_VERSION = lookupFieldLocator("Version", MSG_RESET_LOC, FROM);
     
+	private final int SQUAD_NAME = lookupFieldLocator("Squad", MSG_TRUCKS_LOC, FROM);	
+	private final int SQUAD_NO_MEMBERS = lookupFieldLocator("NoMembers", MSG_TRUCKS_LOC, FROM);
+	
+	//This is the base position for the members
+	private final int SEQ_MEMBERS_LOC = lookupFieldLocator("Members", MSG_TRUCKS_LOC, FROM);		
+	private final int SQUAD_TRUCK_ID = lookupFieldLocator("TruckId", MSG_TRUCKS_LOC, FROM);
+	private final int TRUCK_CAPACITY = lookupFieldLocator("Capacity", MSG_TRUCKS_LOC, FROM);
+		
+	
     
 	@Test
 	public void startup() {
-		
-		assertEquals(3,FROM.messageStarts.length);
+		int messageTypeCount = 4;
+		assertEquals(messageTypeCount,FROM.messageStarts.length);
 		
 	}
 	
@@ -53,9 +63,21 @@ public class RingBufferMultiTemplateTest {
 	
 	
     @Test
-    public void simpleBytesWriteRead() {
-    
-    	byte primaryRingSizeInBits = 9; 
+    public void simpleBytesWriteReadLowLevel() {
+    	boolean useHighLevel = false;    	
+    	singleFragmentWriteRead(useHighLevel);    
+    }
+
+	
+    @Test
+    public void simpleBytesWriteReadHighLevel() {
+    	boolean useHighLevel = true;    	
+    	singleFragmentWriteRead(useHighLevel);    
+    }
+
+
+	private void singleFragmentWriteRead(boolean useHighLevel) {
+		byte primaryRingSizeInBits = 9; 
     	byte byteRingSizeInBits = 18;
     	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
@@ -67,7 +89,6 @@ public class RingBufferMultiTemplateTest {
 		int LARGEST_MESSAGE_SIZE = FROM.fragDataSize[MSG_SAMPLE_LOC];    
         int testSize = ((1<<primaryRingSizeInBits)/LARGEST_MESSAGE_SIZE)-2;
         
-        boolean useHighLevel = true;
         if (useHighLevel) {
             populateRingBufferHighLevel(ring, ring.maxAvgVarLen, testSize);
         } else {
@@ -138,8 +159,8 @@ public class RingBufferMultiTemplateTest {
         	} else {
         		fail("All fragments are messages for this test.");
         	}
-        }    
-    }
+        }
+	}
 
 	private void populateRingBufferHighLevel(RingBuffer ring, int blockSize, int testSize) {
 		
@@ -271,6 +292,29 @@ public class RingBufferMultiTemplateTest {
         }
 	}
 	
+	/*
+	 * Thoughts on writing message without knowing its type till the end:  TODO: AA, build unit test for this case and formalize.
+	 *     The low level API is used for writing the type after the fact in some cases like this.
+	 *     The high level could not be used because we block for the largest possible message not a specific one.
+	 *     We must set the base offset and store the location when starting the unknown message
+	 *     We do need to set the bytes consumed when finished.
+	 *     
+	 *     FOR START OF MESSAGE
+	                            RingBuffer.markBytesWriteBase(outputRing);
+						    	offestForMsgIdx = outputRing.workingHeadPos.value++; 
+						    		 
+						    		 		     
+           FOR END OF MESSAGE						    		 		     
+	   				            int msgIdx = extractNewSchema.messageIdx(messageTemplateIdHash);
+		           				RingBuffer.setValue(outputRing.buffer, outputRing.mask, offestForMsgIdx, msgIdx);
+		        				
+		        				//only need to set this because we waited until now to know what the message ID was
+		        				RingBuffer.markMsgBytesConsumed(outputRing, msgIdx);
+	 * 
+	 */
+	
+	
+	
 
 	private byte[] buildMockData(int size) {
 		byte[] result = new byte[size];
@@ -280,5 +324,57 @@ public class RingBufferMultiTemplateTest {
 		}
 		return result;
 	}
+	
+	/*
+		private final int SQUAD_NAME = lookupFieldLocator("Squad", MSG_TRUCKS_LOC, FROM);	
+		private final int SQUAD_NO_MEMBERS = lookupFieldLocator("NoMembers", MSG_TRUCKS_LOC, FROM);
+		
+		//This is the base position for the members
+		private final int SEQ_MEMBERS_LOC = lookupFieldLocator("Members", MSG_TRUCKS_LOC, FROM);		
+		private final int SQUAD_TRUCK_ID = lookupFieldLocator("TruckId", MSG_TRUCKS_LOC, FROM);
+		private final int TRUCK_CAPACITY = lookupFieldLocator("Capacity", MSG_TRUCKS_LOC, FROM);
+	 */
+	
+	private void populateRingBufferWithSequence(RingBuffer ring, int blockSize, int testSize) {
+		
+		int j = testSize;
+        while (true) {
+        	
+        	if (j == 0) {
+        		RingWalker.publishEOF(ring);
+        		return;//done
+        	}
+        	
+        	if (tryWriteFragment(ring, MSG_TRUCKS_LOC)) { //AUTO writes template id as needed
+        		j--;
+        		
+        		RingWriter.writeASCII(ring, SQUAD_NAME, "TheBobSquad");
+        		RingWriter.writeInt(ring, SQUAD_NO_MEMBERS, 2);
+        		
+        		
+//        		
+//        		byte[] source = buildMockData((j*blockSize)/testSize);
+//        		
+//        		RingWriter.writeInt(ring, BOX_COUNT_LOC, 42);
+//        		RingWriter.writeBytes(ring, BOX_OWNER_LOC, source);
+//    			assertFalse(ring.writeTrailingCountOfBytesConsumed);
+//    		
+//        		RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
+        		
+        		
+        		
+    		} else {
+        		//Unable to write because there is no room so do something else while we are waiting.
+        		Thread.yield();
+        		
+        	}       
+        	
+      	
+        	
+        }
+	}
+
+	
+	
 	
 }

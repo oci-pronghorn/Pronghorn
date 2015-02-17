@@ -456,7 +456,7 @@ public class RingWalker {
 
 	private static void prepWriteFragment(RingBuffer ring, int cursorPosition,	FieldReferenceOffsetManager from, int fragSize) {
 		
-		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
+		ring.workingHeadPos.value += fragSize;
 		
 		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {			
 	

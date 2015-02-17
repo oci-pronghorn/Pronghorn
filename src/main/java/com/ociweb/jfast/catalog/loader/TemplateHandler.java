@@ -277,7 +277,7 @@ public class TemplateHandler extends DefaultHandler {
             templateId = Long.parseLong(attributes.getValue("id"));
             
             if (!LongHashTable.setItem(templateToOffset, templateId, templateOffset)) {
-            	throw new SAXException("Duplicate template id: " + templateId);
+            	throw new SAXException("Error in XML file, Duplicate template id: " + templateId);
             }          
             
             if (templateId < 0) {
