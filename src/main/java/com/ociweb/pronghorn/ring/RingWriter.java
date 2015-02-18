@@ -31,134 +31,135 @@ public class RingWriter {
 
 	    
   
-    /*
-     * These deprecated methods will be deleted in Feb 2015.
-     * It is advisable to use eclipse and in-line them to any dependent projects
-     */
- 
-    @Deprecated
-    public static void writeInt(RingBuffer rb, int value) {
-        RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);        
-    }
-    @Deprecated
-    public static void writeLong(RingBuffer rb, long value) {
-        RingBuffer.addLongValue(rb.buffer, rb.mask, rb.workingHeadPos, value);    
-    }    
-    @Deprecated
-    public static void writeDecimal(RingBuffer rb, int exponent, long mantissa) {    	
-        RingBuffer.addValues(rb.buffer, rb.mask, rb.workingHeadPos, exponent, mantissa);   
-    }
-	@Deprecated
-	public static void writeFloatToIntBits(RingBuffer rb, float value) {
-		RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, Float.floatToIntBits(value));
-	}
-	@Deprecated
-	public static void writeDoubleToLongBits(RingBuffer rb, double value) {
-		RingBuffer.addLongValue(rb.buffer, rb.mask, rb.workingHeadPos, Double.doubleToLongBits(value));
-	}
-	@Deprecated
-	public static void writeBytes(RingBuffer rb, byte[] source, int offset, int length) {		
-	    RingBuffer.addByteArray(source, offset, length, rb);
-	}
-	@Deprecated
-	public static void writeBytes(RingBuffer rb, byte[] source) {
-		RingBuffer.addByteArray(source, 0, source.length, rb);
-	}	
-	@Deprecated
-	public static void writeBytes(RingBuffer rb, ByteBuffer source, int length) {
-		assert(length>=0);
-		int bytePos = rb.byteWorkingHeadPos.value;    		
-		RingBuffer.addByteBuffer(rb, source, length);
-		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, RingBuffer.bytesWriteBase(rb), bytePos, length);		
-	}    
-    @Deprecated
-    public static void finishWriteBytesAlreadyStarted(RingBuffer rb, int p, int length) {
-    	RingBuffer.validateVarLength(rb, length);
-        RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, length);
-        rb.byteWorkingHeadPos.value = p + length;
-    }
-    @Deprecated
-    public static void writeUTF8(RingBuffer rb, char[] source) {
-    	RingBuffer.validateVarLength(rb, source.length<<3);
-		int sourceLen = source.length; //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-        final int p = rb.byteWorkingHeadPos.value;
-		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, p, sourceLen);
-		rb.byteWorkingHeadPos.value = p+byteLength;
-		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, byteLength);
-    }    
-    @Deprecated
-    public static void writeUTF8(RingBuffer rb, char[] source, int offset, int length) {
-    	RingBuffer.validateVarLength(rb, length<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-        final int p = rb.byteWorkingHeadPos.value;
-		int byteLength = RingBuffer.copyUTF8ToByte(source, offset, rb.byteBuffer, rb.byteMask, p, length);		
-		rb.byteWorkingHeadPos.value = p+byteLength;    		
-		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, byteLength);
-    }        
-	@Deprecated
-    public static void writeUTF8(RingBuffer rb, CharSequence source) {
-    	RingBuffer.validateVarLength(rb, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-        final int p = rb.byteWorkingHeadPos.value;	    
-		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, p, source.length());
-		rb.byteWorkingHeadPos.value = p+byteLength;
-		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, byteLength);
-    }
-    @Deprecated
-    public static void writeUTF8(RingBuffer rb, CharSequence source, int offset, int length) {
-    	RingBuffer.validateVarLength(rb, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-        final int p = rb.byteWorkingHeadPos.value;	    
-		int byteLength = RingBuffer.copyUTF8ToByte(source, offset, rb.byteBuffer, rb.byteMask, p, length);
-		rb.byteWorkingHeadPos.value = p+byteLength;
-		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, byteLength);
-    }    
-    @Deprecated
-    public static void writeASCII(RingBuffer rb, char[] source) {
-    	RingBuffer.validateVarLength(rb,source.length);
-		int sourceLen = source.length;
-        final int p = RingBuffer.addASCIIToBytes(source, 0, sourceLen,	rb); 
-		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, sourceLen);
-    }    
-    @Deprecated
-    public static void writeASCII(RingBuffer rb, char[] source, int offset, int length) {
-    	RingBuffer.validateVarLength(rb, length);
-        final int p = RingBuffer.addASCIIToBytes(source, offset, length,	rb); 
-		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, RingBuffer.bytesWriteBase(rb), p, length);
-    }
-    @Deprecated
-    public static void writeASCII(RingBuffer rb, CharSequence source) {
-    	RingBuffer.validateVarLength(rb, source.length());
-		int sourceLen = source.length();
-    	final int p = RingBuffer.addASCIIToBytes(source, 0, sourceLen, rb); 
-		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, RingBuffer.bytesWriteBase(rb), p, sourceLen);
-    }    
-    @Deprecated
-    public static void writeASCII(RingBuffer rb, CharSequence source, int offset, int length) {
-    	RingBuffer.validateVarLength(rb, source.length());
-    	final int p = RingBuffer.addASCIIToBytes(source, offset, length, rb); 
-		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, RingBuffer.bytesWriteBase(rb), p, length);
-    }
-    @Deprecated
-    public static void writeIntAsText(RingBuffer rb, int value) {
-    	RingBuffer.validateVarLength(rb, 12);
-    	int max = 12+rb.byteWorkingHeadPos.value;
-    	int len = RingBuffer.leftConvertIntToASCII(rb, value, max);
-		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), rb.byteWorkingHeadPos.value, len);
-		rb.byteWorkingHeadPos.value = len + rb.byteWorkingHeadPos.value;   	
-    }
-    @Deprecated
-    public static void writeLongAsText(RingBuffer rb, long value) {
-    	RingBuffer.validateVarLength(rb, 21);
-    	int max = 21+rb.byteWorkingHeadPos.value;
-    	int len = RingBuffer.leftConvertLongToASCII(rb, value, max);
-		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), rb.byteWorkingHeadPos.value, len);
-		rb.byteWorkingHeadPos.value = len + rb.byteWorkingHeadPos.value; 	
-    } //  */
+//    /*
+//     * These deprecated methods will be deleted in Feb 2015.
+//     * It is advisable to use eclipse and in-line them to any dependent projects
+//     */
+// 
+//    @Deprecated
+//    public static void writeInt(RingBuffer rb, int value) {
+//        RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);        
+//    }
+//    @Deprecated
+//    public static void writeLong(RingBuffer rb, long value) {
+//        RingBuffer.addLongValue(rb.buffer, rb.mask, rb.workingHeadPos, value);    
+//    }    
+//    @Deprecated
+//    public static void writeDecimal(RingBuffer rb, int exponent, long mantissa) {    	
+//        RingBuffer.addValues(rb.buffer, rb.mask, rb.workingHeadPos, exponent, mantissa);   
+//    }
+//	@Deprecated
+//	public static void writeFloatToIntBits(RingBuffer rb, float value) {
+//		RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, Float.floatToIntBits(value));
+//	}
+//	@Deprecated
+//	public static void writeDoubleToLongBits(RingBuffer rb, double value) {
+//		RingBuffer.addLongValue(rb.buffer, rb.mask, rb.workingHeadPos, Double.doubleToLongBits(value));
+//	}
+//	@Deprecated
+//	public static void writeBytes(RingBuffer rb, byte[] source, int offset, int length) {		
+//	    RingBuffer.addByteArray(source, offset, length, rb);
+//	}
+//	@Deprecated
+//	public static void writeBytes(RingBuffer rb, byte[] source) {
+//		RingBuffer.addByteArray(source, 0, source.length, rb);
+//	}	
+//	@Deprecated
+//	public static void writeBytes(RingBuffer rb, ByteBuffer source, int length) {
+//		assert(length>=0);
+//		int bytePos = rb.byteWorkingHeadPos.value;    		
+//		RingBuffer.addByteBuffer(rb, source, length);
+//		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, RingBuffer.bytesWriteBase(rb), bytePos, length);		
+//	}    
+//    @Deprecated
+//    public static void finishWriteBytesAlreadyStarted(RingBuffer rb, int p, int length) {
+//    	RingBuffer.validateVarLength(rb, length);
+//        RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, length);
+//        rb.byteWorkingHeadPos.value = p + length;
+//    }
+//    @Deprecated
+//    public static void writeUTF8(RingBuffer rb, char[] source) {
+//    	RingBuffer.validateVarLength(rb, source.length<<3);
+//		int sourceLen = source.length; //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
+//        final int p = rb.byteWorkingHeadPos.value;
+//		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, p, sourceLen);
+//		rb.byteWorkingHeadPos.value = p+byteLength;
+//		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, byteLength);
+//    }    
+//    @Deprecated
+//    public static void writeUTF8(RingBuffer rb, char[] source, int offset, int length) {
+//    	RingBuffer.validateVarLength(rb, length<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
+//        final int p = rb.byteWorkingHeadPos.value;
+//		int byteLength = RingBuffer.copyUTF8ToByte(source, offset, rb.byteBuffer, rb.byteMask, p, length);		
+//		rb.byteWorkingHeadPos.value = p+byteLength;    		
+//		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, byteLength);
+//    }        
+//	@Deprecated
+//    public static void writeUTF8(RingBuffer rb, CharSequence source) {
+//    	RingBuffer.validateVarLength(rb, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
+//        final int p = rb.byteWorkingHeadPos.value;	    
+//		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, p, source.length());
+//		rb.byteWorkingHeadPos.value = p+byteLength;
+//		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, byteLength);
+//    }
+//    @Deprecated
+//    public static void writeUTF8(RingBuffer rb, CharSequence source, int offset, int length) {
+//    	RingBuffer.validateVarLength(rb, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
+//        final int p = rb.byteWorkingHeadPos.value;	    
+//		int byteLength = RingBuffer.copyUTF8ToByte(source, offset, rb.byteBuffer, rb.byteMask, p, length);
+//		rb.byteWorkingHeadPos.value = p+byteLength;
+//		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, byteLength);
+//    }    
+//    @Deprecated
+//    public static void writeASCII(RingBuffer rb, char[] source) {
+//    	RingBuffer.validateVarLength(rb,source.length);
+//		int sourceLen = source.length;
+//        final int p = RingBuffer.addASCIIToBytes(source, 0, sourceLen,	rb); 
+//		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, sourceLen);
+//    }    
+//    @Deprecated
+//    public static void writeASCII(RingBuffer rb, char[] source, int offset, int length) {
+//    	RingBuffer.validateVarLength(rb, length);
+//        final int p = RingBuffer.addASCIIToBytes(source, offset, length,	rb); 
+//		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, RingBuffer.bytesWriteBase(rb), p, length);
+//    }
+//    @Deprecated
+//    public static void writeASCII(RingBuffer rb, CharSequence source) {
+//    	RingBuffer.validateVarLength(rb, source.length());
+//		int sourceLen = source.length();
+//    	final int p = RingBuffer.addASCIIToBytes(source, 0, sourceLen, rb); 
+//		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, RingBuffer.bytesWriteBase(rb), p, sourceLen);
+//    }    
+//    @Deprecated
+//    public static void writeASCII(RingBuffer rb, CharSequence source, int offset, int length) {
+//    	RingBuffer.validateVarLength(rb, source.length());
+//    	final int p = RingBuffer.addASCIIToBytes(source, offset, length, rb); 
+//		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, RingBuffer.bytesWriteBase(rb), p, length);
+//    }
+//    @Deprecated
+//    public static void writeIntAsText(RingBuffer rb, int value) {
+//    	RingBuffer.validateVarLength(rb, 12);
+//    	int max = 12+rb.byteWorkingHeadPos.value;
+//    	int len = RingBuffer.leftConvertIntToASCII(rb, value, max);
+//		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), rb.byteWorkingHeadPos.value, len);
+//		rb.byteWorkingHeadPos.value = len + rb.byteWorkingHeadPos.value;   	
+//    }
+//    @Deprecated
+//    public static void writeLongAsText(RingBuffer rb, long value) {
+//    	RingBuffer.validateVarLength(rb, 21);
+//    	int max = 21+rb.byteWorkingHeadPos.value;
+//    	int len = RingBuffer.leftConvertLongToASCII(rb, value, max);
+//		RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), rb.byteWorkingHeadPos.value, len);
+//		rb.byteWorkingHeadPos.value = len + rb.byteWorkingHeadPos.value; 	
+//    } //  */
 
     //////////////////////////////////
     ///Code after this point is part of the new high level API
     ///////////////////////////////
     
     public static void writeInt(RingBuffer rb, int loc, int value) {
-    	assert((loc&0x1C<<OFF_BITS)==0) : "Expected to write some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+    	//allow for all types of int and for length
+    	assert((loc&0x1C<<OFF_BITS)==0 || (loc&0x1F<<OFF_BITS)==(0x14<<OFF_BITS)) : "Expected to write some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		rb.buffer[rb.mask &((int)rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))] = value;         
     }
     

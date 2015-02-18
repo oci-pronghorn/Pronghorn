@@ -244,9 +244,13 @@ public class FieldReferenceOffsetManager {
 					int preambleInts = (preableBytes+3)>>2;     
                     assert(0==depth) : "check for length without following body, could be checked earlier in XML";
                     fragDataSize[fragmentStartIdx] = preambleInts+spaceForTemplateId;  //these are the starts of messages
+                    
+                    //System.err.println("started with ints at :"+fragmentStartIdx);
+                    
                 } else {
                 	if (isGroupOpen) {
                 		fragDataSize[fragmentStartIdx] = 0; //these are the starts of fragments that are not message starts
+                		// System.err.println("started with zero at :"+fragmentStartIdx);
                 	} else {
                 		depth--;
                 		fragDataSize[fragmentStartIdx] = -1; //these are group closings
@@ -280,8 +284,9 @@ public class FieldReferenceOffsetManager {
             fragDataSize[i]=fragDataSize[fragmentStartIdx]; //keep the individual offsets per field
             fragDepth[i] = fragDepth[fragmentStartIdx];
             
+           // System.err.println("Token "+TokenBuilder.tokenToString(token));
             
-            sumOfVarLengthFields += TypeMask.ringBufferFieldVarLen[TokenBuilder.extractType(tokenType)];
+            sumOfVarLengthFields += TypeMask.ringBufferFieldVarLen[tokenType];
             
 			int fSize = TypeMask.ringBufferFieldSize[tokenType];
             
@@ -452,6 +457,29 @@ public class FieldReferenceOffsetManager {
         throw new UnsupportedOperationException("Unable to find field name: "+target+" in "+Arrays.toString(from.fieldNameScript));
 	}
 
+    
+    public static int lookupFragmentLocator(String target, int framentStart, FieldReferenceOffsetManager from) {
+		int x = framentStart;
+        		
+        while (true) {
+            if (from.fieldNameScript[x].equalsIgnoreCase(target)) {
+            	return x;
+            }
+            
+            int token = from.tokens[x];
+            int type = TokenBuilder.extractType(token);
+            boolean isGroupClosed = TypeMask.Group == type &&
+            		                (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) &&
+            		                (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
+           
+            if (isGroupClosed) {
+            	break;
+            }
+            
+            x++;
+        }
+        throw new UnsupportedOperationException("Unable to find fragment name: "+target+" in "+Arrays.toString(from.fieldNameScript));
+	}
     
     
     /**

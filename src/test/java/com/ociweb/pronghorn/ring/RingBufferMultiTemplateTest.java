@@ -1,12 +1,9 @@
 package com.ociweb.pronghorn.ring;
 
-import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupFieldLocator;
-import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupTemplateLocator;
+import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.*;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 import static com.ociweb.pronghorn.ring.RingWalker.*;
 import static org.junit.Assert.*;
-
-import java.util.Arrays;
 
 import org.junit.Test;
 
@@ -38,11 +35,9 @@ public class RingBufferMultiTemplateTest {
 	private final int SQUAD_NAME = lookupFieldLocator("Squad", MSG_TRUCKS_LOC, FROM);	
 	private final int SQUAD_NO_MEMBERS = lookupFieldLocator("NoMembers", MSG_TRUCKS_LOC, FROM);
 	
-	//This is the base position for the members
-	private final int SEQ_MEMBERS_LOC = lookupFieldLocator("Members", MSG_TRUCKS_LOC, FROM);		
-	private final int SQUAD_TRUCK_ID = lookupFieldLocator("TruckId", MSG_TRUCKS_LOC, FROM);
-	private final int TRUCK_CAPACITY = lookupFieldLocator("Capacity", MSG_TRUCKS_LOC, FROM);
-		
+	private final int MSG_TRUCK_SEQ_LOC = lookupFragmentLocator("Members", MSG_TRUCKS_LOC, FROM);
+	private final int SQUAD_TRUCK_ID = lookupFieldLocator("TruckId", MSG_TRUCK_SEQ_LOC, FROM);
+	private final int TRUCK_CAPACITY = lookupFieldLocator("Capacity", MSG_TRUCK_SEQ_LOC, FROM);
 	
     
 	@Test
@@ -325,44 +320,96 @@ public class RingBufferMultiTemplateTest {
 		return result;
 	}
 	
-	/*
-		private final int SQUAD_NAME = lookupFieldLocator("Squad", MSG_TRUCKS_LOC, FROM);	
-		private final int SQUAD_NO_MEMBERS = lookupFieldLocator("NoMembers", MSG_TRUCKS_LOC, FROM);
-		
-		//This is the base position for the members
-		private final int SEQ_MEMBERS_LOC = lookupFieldLocator("Members", MSG_TRUCKS_LOC, FROM);		
-		private final int SQUAD_TRUCK_ID = lookupFieldLocator("TruckId", MSG_TRUCKS_LOC, FROM);
-		private final int TRUCK_CAPACITY = lookupFieldLocator("Capacity", MSG_TRUCKS_LOC, FROM);
+	/**
+	 * Simple single threaded test of write and read sequence when we want to write the length of the sequence after each member.
 	 */
+	@Test
+	public void sequenceFragmentWriteRead() {
+		byte primaryRingSizeInBits = 9; 
+    	byte byteRingSizeInBits = 18;
+    
+    	
+		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+		
+		int testSize = 5;
+		
+		//in this method we write two sequence members but only record the count after writing the members
+		populateRingBufferWithSequence(ring, testSize);
+		
+		//Ring is full of messages, this loop runs until the ring is empty.
+        while (tryReadFragment(ring)) {
+        	assertTrue(isNewMessage(ring));
+
+        	int msgIdx = RingWalker.getMsgIdx(ring);
+        	if (msgIdx<0) {
+        		break;
+        	}
+			assertEquals(MSG_TRUCKS_LOC, msgIdx);
+
+			assertEquals("TheBobSquad", RingReader.readASCII(ring, SQUAD_NAME, new StringBuilder()).toString());
+			
+			int sequenceCount = RingReader.readInt(ring, SQUAD_NO_MEMBERS);
+			assertEquals(2,sequenceCount);
+        	
+					
+			//now we now that we have 2 fragments to read
+			tryReadFragment(ring);
+			assertEquals(10, RingReader.readLong(ring, SQUAD_TRUCK_ID));
+			assertEquals(2000, RingReader.readDecimalMantissa(ring, TRUCK_CAPACITY));
+			assertEquals(2, RingReader.readDecimalExponent(ring, TRUCK_CAPACITY));
+			assertEquals(20.00d, RingReader.readDouble(ring, TRUCK_CAPACITY),.001);
+        	
+			tryReadFragment(ring);
+			assertEquals(11, RingReader.readLong(ring, SQUAD_TRUCK_ID));
+			assertEquals(3000, RingReader.readDecimalMantissa(ring, TRUCK_CAPACITY));
+			assertEquals(2, RingReader.readDecimalExponent(ring, TRUCK_CAPACITY));
+			assertEquals(30.00d, RingReader.readDouble(ring, TRUCK_CAPACITY),.001);
+        	
+        }
+		
+	}
 	
-	private void populateRingBufferWithSequence(RingBuffer ring, int blockSize, int testSize) {
+	//TODO: AAAA, it would be nice to discover early that the ring buffer is too small for a sequence of size x, TBD
+	
+	private void populateRingBufferWithSequence(RingBuffer ring, int testSize) {
 		
 		int j = testSize;
         while (true) {
         	
-        	if (j == 0) {
+        	if (j==0) {
         		RingWalker.publishEOF(ring);
         		return;//done
         	}
         	
+        	
         	if (tryWriteFragment(ring, MSG_TRUCKS_LOC)) { //AUTO writes template id as needed
-        		j--;
+ 
+        		RingWriter.writeASCII(ring, SQUAD_NAME, "TheBobSquad");     		
         		
-        		RingWriter.writeASCII(ring, SQUAD_NAME, "TheBobSquad");
-        		RingWriter.writeInt(ring, SQUAD_NO_MEMBERS, 2);
+        		//WRITE THE FIRST MEMBER OF THE SEQ
+        		//block to ensure we have room for the next fragment, and ensure that bytes consumed gets recorded
+        		blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);//could use tryWrite here but it would make this example more complex
         		
+        		RingWriter.writeLong(ring, SQUAD_TRUCK_ID, 10);         
+        		RingWriter.writeDecimal(ring, TRUCK_CAPACITY, 2, 2000);
         		
-//        		
-//        		byte[] source = buildMockData((j*blockSize)/testSize);
-//        		
-//        		RingWriter.writeInt(ring, BOX_COUNT_LOC, 42);
-//        		RingWriter.writeBytes(ring, BOX_OWNER_LOC, source);
-//    			assertFalse(ring.writeTrailingCountOfBytesConsumed);
-//    		
-//        		RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
+        		//WRITE THE SECOND MEMBER OF THE SEQ
+        		//block to ensure we have room for the next fragment, and ensure that bytes consumed gets recorded
+        		blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);
         		
+        		RingWriter.writeLong(ring, SQUAD_TRUCK_ID, 11);
+        		RingWriter.writeDouble(ring, TRUCK_CAPACITY, 30d, 2); //alternate way of writing a decimal
         		
+        		//NOTE: because we are waiting until the end of the  sequence to write its length we have two rules
+        		//      1. Publish can not be called between these fragments because it will publish a zero for the count
+        		//      2. The RingBuffer must be large enough to hold all the fragments in the sequence.
+        		//      Neither one of these apply when the length can be set first.
         		
+        		RingWriter.writeInt(ring, SQUAD_NO_MEMBERS, 2); //NOTE: we are writing this field very late because we now know how many we wrote.
+        		
+        		RingWalker.publishWrites(ring);
+        		        		
+        		 j--;       		
     		} else {
         		//Unable to write because there is no room so do something else while we are waiting.
         		Thread.yield();

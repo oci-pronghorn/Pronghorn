@@ -455,8 +455,13 @@ public class RingWalker {
 	
 
 	private static void prepWriteFragment(RingBuffer ring, int cursorPosition,	FieldReferenceOffsetManager from, int fragSize) {
+		//NOTE: this is called by both blockWrite and tryWrite.  It must not call publish because we need to support
+		//      nested long sequences where we don't know the length until after they are all written.
 		
-		ring.workingHeadPos.value += fragSize;
+		//Must double check this here for nested sequences
+		if (ring.writeTrailingCountOfBytesConsumed) {
+			RingBuffer.writeTrailingCountOfBytesConsumed(ring, ring.consumerData.nextWorkingHead -1 ); 
+		}
 		
 		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {			
 	
@@ -465,13 +470,15 @@ public class RingWalker {
 			RingBuffer.markBytesWriteBase(ring);
 			
 			//Start new stack of fragments because this is a new message
-			ring.consumerData.activeWriteFragmentStack[0] = ring.consumerData.nextWorkingHead;
-			ring.buffer[ring.mask &(int)(ring.consumerData.nextWorkingHead + from.templateOffset)] = cursorPosition;
+			ring.consumerData.activeWriteFragmentStack[0] = ring.workingHeadPos.value;
+			ring.buffer[ring.mask &(int)(ring.workingHeadPos.value + from.templateOffset)] = cursorPosition;
 
 		 } else {
+			
 			//this fragment does not start a new message but its start position must be recorded for usage later
-			ring.consumerData.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=ring.consumerData.nextWorkingHead;
+			ring.consumerData.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=ring.workingHeadPos.value;
 		 }
+		ring.workingHeadPos.value += fragSize;
 		ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + fragSize;
 
 		//when publish is called this new byte will be appended due to this request
@@ -481,8 +488,7 @@ public class RingWalker {
 
 	public static void publishEOF(RingBuffer ring) {
 		
-		assert(ring.consumerData.nextWorkingHead>0) : "Unsupported use of high level API with low level methods.";
-		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
+		assert(ring.workingHeadPos.value<=ring.consumerData.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
 		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
 		
 		assert(ring.tailPos.get()+ring.maxSize>=ring.headPos.get()+2) : "Must block first to ensure we have 2 spots for the EOF marker";
@@ -496,6 +502,8 @@ public class RingWalker {
 
 
 	public static void publishWrites(RingBuffer outputRing) {
+		assert(outputRing.workingHeadPos.value<=outputRing.consumerData.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
+	
 		if (outputRing.writeTrailingCountOfBytesConsumed) {
 			RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, outputRing.consumerData.nextWorkingHead -1 ); 
 		}
