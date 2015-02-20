@@ -5,7 +5,6 @@ package com.ociweb.pronghorn.ring.token;
 
 public final class TypeMask {
 
-    // need 6 bits total for type mask
     // each group of "similar" types must stay together as a block.
 
     // 1

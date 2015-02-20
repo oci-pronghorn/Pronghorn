@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.ring;
 
-import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
-
 import java.util.Arrays;
 
 import com.ociweb.pronghorn.ring.token.OperatorMask;
@@ -9,10 +7,9 @@ import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class RingWalker {
-    private int msgIdx=-1;
-    private boolean isNewMessage;
+    int msgIdx=-1;
+    boolean isNewMessage;
     public boolean waiting;
-    private long waitingNextStop;
     public long bnmHeadPosCache;
     public int cursor;
     
@@ -36,7 +33,7 @@ public class RingWalker {
 	int nextCursor = -1;
     
 	
-	public RingWalker(int mask, FieldReferenceOffsetManager from) {
+	RingWalker(int mask, FieldReferenceOffsetManager from) {
 		this(-1, false, false, -1, -1, -1, 0, new int[from.maximumFragmentStackDepth], -1, -1, from, mask);
 	}
 	
@@ -50,7 +47,6 @@ public class RingWalker {
         this.msgIdx = messageId;
         this.isNewMessage = isNewMessage;
         this.waiting = waiting;
-        this.waitingNextStop = waitingNextStop;
         this.bnmHeadPosCache = bnmHeadPosCache;
         this.cursor = cursor;
         this.seqStack = seqStack;
@@ -62,92 +58,16 @@ public class RingWalker {
         
     }
 
-    public static void setReleaseBatchSize(RingBuffer rb, int size) {
-    	RingBuffer.setReleaseBatchSize(rb, size);  	
-    }
-    
-    public static void setPublishBatchSize(RingBuffer rb, int size) {
-    	RingBuffer.setPublishBatchSize(rb, size);
-    }
-
-
-	public static int getMsgIdx(RingBuffer rb) {
-		return rb.consumerData.msgIdx;
-	}
-    
-    public static int getMsgIdx(RingWalker rw) {
-		return rw.msgIdx;
-	}
-
-    public static void setMsgIdx(RingWalker rw, int idx) {
+    static void setMsgIdx(RingWalker rw, int idx) {
 		assert(idx<rw.from.fragDataSize.length) : "Corrupt stream, expected message idx < "+rw.from.fragDataSize.length+" however found "+idx;
 		assert(idx>-3);
-        rw.msgIdx = idx;
+		rw.msgIdx = idx;
 	}
-
-    public static boolean isNewMessage(RingWalker rw) {
-		return rw.isNewMessage;
-	}
-
-    public void setNewMessage(boolean isNewMessage) {
-        this.isNewMessage = isNewMessage;
-    }
-
-    public static long getWaitingNextStop(RingWalker ringWalker) {
-        return ringWalker.waitingNextStop;
-    }  
-
-    public static void setWaitingNextStop(RingWalker ringWalker, long waitingNextStop) {
-    	ringWalker.waitingNextStop = waitingNextStop;
-    }
-
-    public static long getBnmHeadPosCache(RingWalker ringWalker) {
-        return ringWalker.bnmHeadPosCache;
-    }
-
-    public static void setBnmHeadPosCache(RingWalker ringWalker, long bnmHeadPosCache) {
-        ringWalker.bnmHeadPosCache = bnmHeadPosCache;
-    }
-
-    public int[] getSeqStack() {
-        return seqStack;
-    }
-
-    public void setSeqStack(int[] seqStack) {
-        this.seqStack = seqStack;
-    }
-
-    public int getSeqStackHead() {
-        return seqStackHead;
-    }
-    
-    public int incSeqStackHead() {
-        return ++seqStackHead;
-    }
-
-    public void setSeqStackHead(int seqStackHead) {
-        this.seqStackHead = seqStackHead;
-    }
 
 
     //TODO: may want to move preamble to after the ID, it may be easier to reason about.
     
-    //this impl only works for simple case where every message is one fragment. 
-    public static boolean tryReadFragment(RingBuffer ringBuffer) { 
-
-		if (null==ringBuffer.buffer) {
-			ringBuffer.init();//hack test
-		}		
-		
-		if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBuffer.consumerData.nextCursor)) {    		
-			return prepReadMessage(ringBuffer, ringBuffer.consumerData);			   
-        } else {  
-			return prepReadFragment(ringBuffer, ringBuffer.consumerData);
-        }
-    }
-
-
-	private static boolean prepReadFragment(RingBuffer ringBuffer,
+    static boolean prepReadFragment(RingBuffer ringBuffer,
 			final RingWalker ringBufferConsumer) {
 		//this fragment does not start a message
 		ringBufferConsumer.isNewMessage = false;
@@ -176,7 +96,7 @@ public class RingWalker {
 	}
 
 
-	private static boolean prepReadMessage(RingBuffer ringBuffer, RingWalker ringBufferConsumer) {
+	static boolean prepReadMessage(RingBuffer ringBuffer, RingWalker ringBufferConsumer) {
 	
 		///
 		//check the ring buffer looking for new message	
@@ -383,46 +303,25 @@ public class RingWalker {
 	}
     
  
-	public static void reset(RingWalker consumerData, int ringPos) {
+	static void reset(RingWalker consumerData, int ringPos) {
         consumerData.waiting = (false);
-        RingWalker.setWaitingNextStop(consumerData,(long) -1);
-        RingWalker.setBnmHeadPosCache(consumerData,(long) -1);
+        consumerData.bnmHeadPosCache = (long) -1;
         consumerData.tailCache=-1;
         
         /////
         consumerData.cursor = (-1);
         consumerData.nextCursor = (-1);
-        consumerData.setSeqStackHead(-1);
+        consumerData.seqStackHead = -1;
         consumerData.nextWorkingHead=ringPos;
         consumerData.nextWorkingTail=ringPos;        
         
         RingWalker.setMsgIdx(consumerData,-1);
-        consumerData.setNewMessage(false);
+        consumerData.isNewMessage = false;
         
     }
 
-	public static boolean isNewMessage(RingBuffer ring) {
-		return isNewMessage(ring.consumerData);
-	}
-
-
-	public static int messageIdx(RingBuffer ring) {
-		return getMsgIdx(ring.consumerData);
-	}
-
-    /*
-	 * Return true if there is room for the desired fragment in the output buffer.
-	 * Places working head in place for the first field to be written (eg after the template Id, which is written by this method)
-	 * 
-	 */
-	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
-		int fragSize = RingBuffer.from(ring).fragDataSize[cursorPosition];
-		long target = ring.consumerData.nextWorkingHead - (ring.maxSize - fragSize);
-		return tryWriteFragment1(ring, cursorPosition, RingBuffer.from(ring), fragSize, target, ring.consumerData.cachedTailPosition >=  target);
-	}
-
-
-	private static boolean tryWriteFragment1(RingBuffer ring, int cursorPosition, FieldReferenceOffsetManager from, int fragSize,
+	
+	static boolean tryWriteFragment1(RingBuffer ring, int cursorPosition, FieldReferenceOffsetManager from, int fragSize,
 											long target, boolean hasRoom) {
 		//try again and update the cache with the newest value
 		if (hasRoom) {
@@ -438,23 +337,7 @@ public class RingWalker {
 		return hasRoom;
 	}
 	
-	/*
-	 * blocks until there is enough room for the requested fragment on the output ring.
-	 * if the fragment needs a template id it is written and the workingHeadPosition is set to the first field. 
-	 */
-	public static void blockWriteFragment(RingBuffer ring, int cursorPosition) {
-
-		FieldReferenceOffsetManager from = RingBuffer.from(ring);
-		
-		RingWalker consumerData = ring.consumerData;
-		int fragSize = from.fragDataSize[cursorPosition];
-		consumerData.cachedTailPosition = spinBlockOnTail(consumerData.cachedTailPosition, consumerData.nextWorkingHead - (ring.maxSize - fragSize), ring);
-
-		prepWriteFragment(ring, cursorPosition, from, fragSize);
-	}
-	
-
-	private static void prepWriteFragment(RingBuffer ring, int cursorPosition,	FieldReferenceOffsetManager from, int fragSize) {
+	static void prepWriteFragment(RingBuffer ring, int cursorPosition,	FieldReferenceOffsetManager from, int fragSize) {
 		//NOTE: this is called by both blockWrite and tryWrite.  It must not call publish because we need to support
 		//      nested long sequences where we don't know the length until after they are all written.
 		
@@ -486,67 +369,58 @@ public class RingWalker {
 				
 	}
 
+	
+	@Deprecated //use RingWriter
+	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
+	  		return RingWriter.tryWriteFragment(ring,cursorPosition);
+	}
+	  
+	@Deprecated //use RingWriter
+	public static void blockWriteFragment(RingBuffer ring, int cursorPosition) {
+	 		RingWriter.blockWriteFragment(ring,cursorPosition);
+	}
+	  
+	@Deprecated //use RingWriter
 	public static void publishEOF(RingBuffer ring) {
-		
-		assert(ring.workingHeadPos.value<=ring.consumerData.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
-		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
-		
-		assert(ring.tailPos.get()+ring.maxSize>=ring.headPos.get()+2) : "Must block first to ensure we have 2 spots for the EOF marker";
-		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
-		ring.buffer[ring.mask &((int)ring.consumerData.nextWorkingHead +  RingBuffer.from(ring).templateOffset)]    = -1;	
-		ring.buffer[ring.mask &((int)ring.consumerData.nextWorkingHead +1 +  RingBuffer.from(ring).templateOffset)] = 0;
-		
-		ring.headPos.lazySet(ring.workingHeadPos.value = ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + 2);			
-		
-	}
-
-
-	public static void publishWrites(RingBuffer outputRing) {
-		assert(outputRing.workingHeadPos.value<=outputRing.consumerData.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
-	
-		if (outputRing.writeTrailingCountOfBytesConsumed) {
-			RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, outputRing.consumerData.nextWorkingHead -1 ); 
-		}
-		//single length field still needs to move this value up, so this is always done
-		outputRing.bytesWriteLastConsumedBytePos = outputRing.byteWorkingHeadPos.value;
-		
-		if ((--outputRing.batchPublishCountDown<=0)) {			
-			//publish writes			
-			outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
-			outputRing.headPos.lazySet(outputRing.workingHeadPos.value);			
-			outputRing.batchPublishCountDown = outputRing.batchPublishCountDownInit;
-		}
-		 
+		RingWriter.publishEOF(ring);
 	}
 	
-	/**
-	 * Copies current message from input ring to output ring.  Once copied that message is no longer readable.
-	 * Message could be read before calling this copy using a low-level look ahead technique.
-	 * 
-	 * Returns false until the full message is copied.
-	 * 
-	 * Once called must continue to retry until true is returned or the message will be left in a partial state.
-	 * 
-	 * 
-	 * @param inputRing
-	 * @param outputRing
-	 * @return
-	 */
+	@Deprecated //use RingWriter
+	public static void publishWrites(RingBuffer ring) {
+		RingWriter.publishWrites(ring);
+	}
+	
+	@Deprecated //use RingReader
 	public static boolean tryMoveSingleMessage(RingBuffer inputRing, RingBuffer outputRing) {
-		assert(RingBuffer.from(inputRing) == RingBuffer.from(outputRing));
-		//NOTE: all the reading makes use of the high-level API to manage the fragment state, this call assumes tryRead was called once already.
-			
-		//we may re-enter this function to continue the copy
-		RingWalker consumerData = inputRing.consumerData;
-		boolean copied = copyFragment0(inputRing, outputRing, inputRing.workingTailPos.value, consumerData.nextWorkingTail);
-		while (copied && !FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(inputRing), consumerData.nextCursor)) {			
-			//using short circut logic so copy does not happen unless the prep is successful
-			copied = prepReadFragment(inputRing, consumerData) && copyFragment0(inputRing, outputRing, inputRing.workingTailPos.value, consumerData.nextWorkingTail);			
-		}
-		return copied;
+		return RingReader.tryMoveSingleMessage(inputRing,outputRing);
+	}
+	
+	@Deprecated //use RingReader
+	public static boolean isNewMessage(RingBuffer ring) {
+		return RingReader.isNewMessage(ring);
+	}
+	
+	@Deprecated //use RingReader
+	public static int getMsgIdx(RingBuffer rb) {
+		return RingReader.getMsgIdx(rb);
+	}
+    
+	@Deprecated //use RingReader
+    public static int getMsgIdx(RingWalker rw) {
+		return RingReader.getMsgIdx(rw);
 	}
 
-	private static boolean copyFragment0(RingBuffer inputRing, RingBuffer outputRing, long start, long end) {
+	@Deprecated //use RingReader
+    public static boolean isNewMessage(RingWalker rw) {
+		return RingReader.isNewMessage(rw);
+	}
+
+	@Deprecated //use RingReader
+	public static boolean tryReadFragment(RingBuffer ringBuffer) { 
+		return RingReader.tryReadFragment(ringBuffer);
+	}
+	
+	static boolean copyFragment0(RingBuffer inputRing, RingBuffer outputRing, long start, long end) {
 		return copyFragment1(inputRing, outputRing, start, (int)(end-start), inputRing.buffer[inputRing.mask&(int)(end-1)]);
 	}
 

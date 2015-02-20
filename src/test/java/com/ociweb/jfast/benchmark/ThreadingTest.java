@@ -37,7 +37,6 @@ import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
-import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.jfast.stream.FASTDecoder;
@@ -145,11 +144,11 @@ public class ThreadingTest {
                       
                       
                       
-                      if (RingWalker.tryReadFragment(rb)) {
+                      if (RingReader.tryReadFragment(rb)) {
                           
-                          if (RingWalker.isNewMessage(rb.consumerData)) {
+                          if (RingReader.isNewMessage(rb.consumerData)) {
                         	  
-                        	  if (RingWalker.getMsgIdx(rb)<0) {
+                        	  if (RingReader.getMsgIdx(rb)<0) {
                         		  break;
                         	  }
                         	  
@@ -207,9 +206,9 @@ public class ThreadingTest {
                     do {                        
                         //NOTE: the stats object shows that this is empty 75% of the time, eg needs more
 
-                        if (RingWalker.tryReadFragment(rb)) { 
-                                assert(RingWalker.isNewMessage(rb.consumerData)) : "";
-                                if (RingWalker.getMsgIdx(rb)<0 ){
+                        if (RingReader.tryReadFragment(rb)) { 
+                                assert(RingReader.isNewMessage(rb.consumerData)) : "";
+                                if (RingReader.getMsgIdx(rb)<0 ){
                                 	break;
                                 }
                                 totalMessages++;
@@ -226,9 +225,9 @@ public class ThreadingTest {
                     } while (totalMessages<30000 || isAlive.get());
                     
                     //is alive is done writing but we need to empty out
-                    while (RingWalker.tryReadFragment(rb)) { 
-                        if (RingWalker.isNewMessage(rb.consumerData)) {
-                        	if (RingWalker.getMsgIdx(rb)<0) {
+                    while (RingReader.tryReadFragment(rb)) { 
+                        if (RingReader.isNewMessage(rb.consumerData)) {
+                        	if (RingReader.getMsgIdx(rb)<0) {
                         		break;
                         	}
                         	
@@ -418,7 +417,7 @@ public class ThreadingTest {
         templateId = readInt(rb, IDX_TemplateId);
         preamble = readInt(rb, IDX_Preamble);
 
-        switch (RingWalker.getMsgIdx(rb.consumerData)) {
+        switch (RingReader.getMsgIdx(rb.consumerData)) {
             case 1:
                 
                 if (!eqASCII(rb, IDX1_AppVerId, "1.0")) {
@@ -440,7 +439,7 @@ public class ThreadingTest {
                 int seqCount = readInt(rb, IDX1_NoMDEntries);
                 // System.err.println(sendingTime+" "+tradeDate+" "+seqCount);
                 while (--seqCount >= 0) {
-                    while (!RingWalker.tryReadFragment(rb)) { // keep calling if we
+                    while (!RingReader.tryReadFragment(rb)) { // keep calling if we
                                                            // have no data?
                     };
                     
@@ -523,7 +522,7 @@ public class ThreadingTest {
                int seqCount2 = readInt(rb, 12);
                
                while (--seqCount2 >= 0) {
-                   while (!RingWalker.tryReadFragment(rb)) { // keep calling if we
+                   while (!RingReader.tryReadFragment(rb)) { // keep calling if we
                                                           // have no data?
                       
                        len = readDataLength(rb, 0);
@@ -552,7 +551,7 @@ public class ThreadingTest {
     
                 break;
             default:
-                System.err.println("Did not expect " + RingWalker.getMsgIdx(rb.consumerData));
+                System.err.println("Did not expect " + RingReader.getMsgIdx(rb.consumerData));
         }
     }
 

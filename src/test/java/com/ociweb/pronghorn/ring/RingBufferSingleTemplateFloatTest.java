@@ -1,7 +1,6 @@
 package com.ociweb.pronghorn.ring;
 
 import static com.ociweb.pronghorn.ring.RingWalker.*;
-import static com.ociweb.pronghorn.ring.RingWalker.isNewMessage; 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -48,11 +47,11 @@ public class RingBufferSingleTemplateFloatTest {
         
         
         int k = testSize;
-        while (tryReadFragment(ring)) {
+        while (RingReader.tryReadFragment(ring)) {
         	
         	--k;
-        	assertTrue(isNewMessage(ring));
-			int messageIdx = RingWalker.messageIdx(ring);
+        	assertTrue(RingReader.isNewMessage(ring));
+			int messageIdx = RingReader.getMsgIdx(ring);
 			if (messageIdx<0) {
 				return;
 			}
@@ -79,15 +78,15 @@ public class RingBufferSingleTemplateFloatTest {
         while (true) {
         	        	
         	if (j == 0) {
-        		RingWalker.publishEOF(ring);
+        		RingWriter.publishEOF(ring);
         		return;//done
         	}
                	        	
-        	if (RingWalker.tryWriteFragment(ring, FRAG_LOC)) { //returns true if there is room to write this fragment
+        	if (RingWriter.tryWriteFragment(ring, FRAG_LOC)) { //returns true if there is room to write this fragment
         		
         		int value = (--j*blockSize)/testSize;        		        		
         		RingWriter.writeFloatAsIntBits(ring, FIELD_LOC, 1f/(float)value);        		
-        		RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
+        		RingWriter.publishWrites(ring); //must always publish the writes if message or fragment
         		        		
         	} else {
         		//Unable to write because there is no room so do something else while we are waiting.
@@ -132,11 +131,11 @@ public class RingBufferSingleTemplateFloatTest {
         	//This is the example code that one would normally use.
         	
         	//System.err.println("content "+ring.contentRemaining(ring));
-	        if (tryReadFragment(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
+	        if (RingReader.tryReadFragment(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
 	        	k--;//count down all the expected messages so we stop this test at the right time
 
-	        	assertTrue(isNewMessage(ring));
-				int messageIdx = RingWalker.messageIdx(ring);
+	        	assertTrue(RingReader.isNewMessage(ring));
+				int messageIdx = RingReader.getMsgIdx(ring);
 				if (messageIdx<0) {
 					return;
 				}

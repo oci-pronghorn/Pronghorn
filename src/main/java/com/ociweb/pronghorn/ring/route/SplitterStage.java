@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.ring.route;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingWalker;
+import com.ociweb.pronghorn.ring.RingReader;
 
 /**
  * Given n ring buffers with the same FROM/Schema
@@ -35,7 +35,7 @@ public class SplitterStage implements Runnable {
 			
 			//targets can not batch returns so this must be set
 			RingBuffer.setReleaseBatchSize(targets[i], 0);
-			RingWalker.setReleaseBatchSize(targets[i], 0);
+			RingReader.setReleaseBatchSize(targets[i], 0);
 					
 			//confirm this target is large enough for the needed data.
 			FieldReferenceOffsetManager targetFrom = RingBuffer.from(targets[i]);

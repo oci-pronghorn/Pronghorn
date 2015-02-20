@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.ring;
 
+import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
+
 import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
@@ -343,6 +345,68 @@ public class RingWriter {
     	int len = RingBuffer.leftConvertLongToASCII(rb, value, max);
     	finishWriteBytesAlreadyStarted(rb, loc, rb.byteWorkingHeadPos.value, len);
     	rb.byteWorkingHeadPos.value = len+rb.byteWorkingHeadPos.value;    	
+	}
+
+	public static void publishEOF(RingBuffer ring) {
+		
+		assert(ring.workingHeadPos.value<=ring.consumerData.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
+		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
+		
+		assert(ring.tailPos.get()+ring.maxSize>=ring.headPos.get()+2) : "Must block first to ensure we have 2 spots for the EOF marker";
+		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
+		ring.buffer[ring.mask &((int)ring.consumerData.nextWorkingHead +  RingBuffer.from(ring).templateOffset)]    = -1;	
+		ring.buffer[ring.mask &((int)ring.consumerData.nextWorkingHead +1 +  RingBuffer.from(ring).templateOffset)] = 0;
+		
+		ring.headPos.lazySet(ring.workingHeadPos.value = ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + 2);			
+		
+	}
+
+	public static void publishWrites(RingBuffer outputRing) {
+		assert(outputRing.workingHeadPos.value<=outputRing.consumerData.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
+	
+		if (outputRing.writeTrailingCountOfBytesConsumed) {
+			RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, outputRing.consumerData.nextWorkingHead -1 ); 
+		}
+		//single length field still needs to move this value up, so this is always done
+		outputRing.bytesWriteLastConsumedBytePos = outputRing.byteWorkingHeadPos.value;
+		
+		if ((--outputRing.batchPublishCountDown<=0)) {			
+			//publish writes			
+			outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
+			outputRing.headPos.lazySet(outputRing.workingHeadPos.value);			
+			outputRing.batchPublishCountDown = outputRing.batchPublishCountDownInit;
+		}
+		 
+	}
+
+	/*
+	 * blocks until there is enough room for the requested fragment on the output ring.
+	 * if the fragment needs a template id it is written and the workingHeadPosition is set to the first field. 
+	 */
+	public static void blockWriteFragment(RingBuffer ring, int cursorPosition) {
+	
+		FieldReferenceOffsetManager from = RingBuffer.from(ring);
+		
+		RingWalker consumerData = ring.consumerData;
+		int fragSize = from.fragDataSize[cursorPosition];
+		consumerData.cachedTailPosition = spinBlockOnTail(consumerData.cachedTailPosition, consumerData.nextWorkingHead - (ring.maxSize - fragSize), ring);
+	
+		RingWalker.prepWriteFragment(ring, cursorPosition, from, fragSize);
+	}
+
+	/*
+	 * Return true if there is room for the desired fragment in the output buffer.
+	 * Places working head in place for the first field to be written (eg after the template Id, which is written by this method)
+	 * 
+	 */
+	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
+		int fragSize = RingBuffer.from(ring).fragDataSize[cursorPosition];
+		long target = ring.consumerData.nextWorkingHead - (ring.maxSize - fragSize);
+		return RingWalker.tryWriteFragment1(ring, cursorPosition, RingBuffer.from(ring), fragSize, target, ring.consumerData.cachedTailPosition >=  target);
+	}
+
+	public static void setPublishBatchSize(RingBuffer rb, int size) {
+		RingBuffer.setPublishBatchSize(rb, size);
 	}
 	
     

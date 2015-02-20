@@ -47,7 +47,6 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputTotals;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
-import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
@@ -171,11 +170,11 @@ public class TemplateLoaderTest {
            // RingBuffer.setPublishBatchSize(rb, 30);
 
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
-                if (RingWalker.tryReadFragment(rb)) {
+                if (RingReader.tryReadFragment(rb)) {
 	                	
 	                frags++;
-	                if (RingWalker.isNewMessage(rb.consumerData)) {
-	                    final int msgIdx = RingWalker.getMsgIdx(rb.consumerData);
+	                if (RingReader.isNewMessage(rb.consumerData)) {
+	                    final int msgIdx = RingReader.getMsgIdx(rb.consumerData);
 	                    
 	                    msgs.incrementAndGet();
 	                    
@@ -246,12 +245,12 @@ public class TemplateLoaderTest {
                     FASTReaderReactor.pump(reactor);
                 }               
                 while (FASTReaderReactor.pump(reactor)>=0) { 
-                    if (RingWalker.tryReadFragment(rb)) {
+                    if (RingReader.tryReadFragment(rb)) {
                        
                     }; 
                 }
                 //the buffer has extra records in it so we must clean them out here.
-                while (RingWalker.tryReadFragment(rb)) {
+                while (RingReader.tryReadFragment(rb)) {
                      
                 }
                 
@@ -372,9 +371,9 @@ public class TemplateLoaderTest {
         rb.reset();
 
         while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
-            if (RingWalker.tryReadFragment(rb)) {	
-	            if (RingWalker.isNewMessage(rb.consumerData)) {
-	                int templateId = RingWalker.getMsgIdx(rb.consumerData);
+            if (RingReader.tryReadFragment(rb)) {	
+	            if (RingReader.isNewMessage(rb.consumerData)) {
+	                int templateId = RingReader.getMsgIdx(rb.consumerData);
 	                if (templateId<0) {
 	                	break;
 	                }
@@ -477,8 +476,8 @@ public class TemplateLoaderTest {
             
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
-                    if (RingWalker.tryReadFragment(queue)) {
-                        if (RingWalker.isNewMessage(queue.consumerData)) {
+                    if (RingReader.tryReadFragment(queue)) {
+                        if (RingReader.isNewMessage(queue.consumerData)) {
                             msgs.incrementAndGet();   	
                         }
                         try{   
@@ -519,8 +518,8 @@ public class TemplateLoaderTest {
             double start = System.nanoTime();
             
             while (FASTReaderReactor.pump(reactor)>=0) {  
-                    if (RingWalker.tryReadFragment(queue)) {
-                       if (RingWalker.getMsgIdx(queue.consumerData)>=0) { //skip if we are waiting for more content.
+                    if (RingReader.tryReadFragment(queue)) {
+                       if (RingReader.getMsgIdx(queue.consumerData)>=0) { //skip if we are waiting for more content.
                                 FASTDynamicWriter.write(dynamicWriter);  
                              //   RingBuffer.releaseReadLock(queue);
                        }
@@ -627,9 +626,9 @@ public class TemplateLoaderTest {
             	assert(queue.byteWorkingTailPos.value<=queue.bytesHeadPos.get());
             	
             		//confirms full message to read on the queue            	
-                    if (RingWalker.tryReadFragment(queue)) {
-                        if (RingWalker.isNewMessage(queue.consumerData)) {
-                        	int msgIdx = RingWalker.getMsgIdx(queue);
+                    if (RingReader.tryReadFragment(queue)) {
+                        if (RingReader.isNewMessage(queue.consumerData)) {
+                        	int msgIdx = RingReader.getMsgIdx(queue);
 							if (msgIdx<0) {
                         		break;
                         	}
@@ -695,11 +694,11 @@ public class TemplateLoaderTest {
             if (concurrent) {
                 start = System.nanoTime(); 
                 while (isAlive.get()) {
-                    while (RingWalker.tryReadFragment(queue)) {
+                    while (RingReader.tryReadFragment(queue)) {
                         FASTDynamicWriter.write(dynamicWriter);  
                     }   
                 }
-                while (RingWalker.tryReadFragment(queue)) {
+                while (RingReader.tryReadFragment(queue)) {
                     FASTDynamicWriter.write(dynamicWriter);  
                 }
                 
@@ -711,7 +710,7 @@ public class TemplateLoaderTest {
                 //now start the timer
                 start = System.nanoTime();            
                 
-                while (RingWalker.tryReadFragment(queue)) {
+                while (RingReader.tryReadFragment(queue)) {
                         FASTDynamicWriter.write(dynamicWriter);  
                 } 
             }

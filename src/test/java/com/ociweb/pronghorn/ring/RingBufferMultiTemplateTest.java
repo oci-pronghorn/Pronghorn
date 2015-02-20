@@ -92,12 +92,12 @@ public class RingBufferMultiTemplateTest {
        
         //now read the data back
         int k = testSize;
-        while (tryReadFragment(ring)) {
-        	if (isNewMessage(ring)) {
+        while (RingReader.tryReadFragment(ring)) {
+        	if (RingReader.isNewMessage(ring)) {
         		--k;
         		int expectedLength = (ring.maxAvgVarLen*k)/testSize;	
         		
-        		int msgLoc = messageIdx(ring);
+        		int msgLoc = RingReader.getMsgIdx(ring);
         		if (msgLoc<0) {
         			return;
         		}
@@ -164,7 +164,7 @@ public class RingBufferMultiTemplateTest {
         while (true) {
         	
         	if (j == 0) {
-        		RingWalker.publishEOF(ring);
+        		RingWriter.publishEOF(ring);
         		return;//done
         	}
         	
@@ -175,7 +175,7 @@ public class RingBufferMultiTemplateTest {
         	
         	switch(selectedTemplateId) {
 	        	case 2: //boxes
-	        		if (tryWriteFragment(ring, MSG_BOXES_LOC)) { //AUTO writes template id as needed
+	        		if (RingWriter.tryWriteFragment(ring, MSG_BOXES_LOC)) { //AUTO writes template id as needed
 		        		j--;
 		        		byte[] source = buildMockData((j*blockSize)/testSize);
 		        		
@@ -183,7 +183,7 @@ public class RingBufferMultiTemplateTest {
 		        		RingWriter.writeBytes(ring, BOX_OWNER_LOC, source);
 	        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
 	        		
-		        		RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
+		        		RingWriter.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
 	            		Thread.yield();
@@ -191,7 +191,7 @@ public class RingBufferMultiTemplateTest {
 	            	}       
 	        		break;
 	        	case 1: //samples
-	        		if (tryWriteFragment(ring, MSG_SAMPLE_LOC)) { 
+	        		if (RingWriter.tryWriteFragment(ring, MSG_SAMPLE_LOC)) { 
 		        		j--;
 		        				        		
 		        		RingWriter.writeInt(ring, SAMPLE_YEAR_LOC ,2014);
@@ -201,7 +201,7 @@ public class RingBufferMultiTemplateTest {
 	        			assertTrue(ring.writeTrailingCountOfBytesConsumed);
 
 		        				        		
-		        		RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
+		        		RingWriter.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
 	        			Thread.yield();
@@ -209,13 +209,13 @@ public class RingBufferMultiTemplateTest {
 	            	}  
 	        		break;
 	        	case 4: //reset
-	        		if (tryWriteFragment(ring, MSG_RESET_LOC)) { 
+	        		if (RingWriter.tryWriteFragment(ring, MSG_RESET_LOC)) { 
 	        			j--;
 	        			
 	        			RingWriter.writeBytes(ring, REST_VERSION, ASCII_VERSION);
 	        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
 
-	        			RingWalker.publishWrites(ring); //must always publish the writes if message or fragment
+	        			RingWriter.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
 	        			Thread.yield();
@@ -337,10 +337,10 @@ public class RingBufferMultiTemplateTest {
 		populateRingBufferWithSequence(ring, testSize);
 		
 		//Ring is full of messages, this loop runs until the ring is empty.
-        while (tryReadFragment(ring)) {
-        	assertTrue(isNewMessage(ring));
+        while (RingReader.tryReadFragment(ring)) {
+        	assertTrue(RingReader.isNewMessage(ring));
 
-        	int msgIdx = RingWalker.getMsgIdx(ring);
+        	int msgIdx = RingReader.getMsgIdx(ring);
         	if (msgIdx<0) {
         		break;
         	}
@@ -353,13 +353,13 @@ public class RingBufferMultiTemplateTest {
         	
 					
 			//now we now that we have 2 fragments to read
-			tryReadFragment(ring);
+			RingReader.tryReadFragment(ring);
 			assertEquals(10, RingReader.readLong(ring, SQUAD_TRUCK_ID));
 			assertEquals(2000, RingReader.readDecimalMantissa(ring, TRUCK_CAPACITY));
 			assertEquals(2, RingReader.readDecimalExponent(ring, TRUCK_CAPACITY));
 			assertEquals(20.00d, RingReader.readDouble(ring, TRUCK_CAPACITY),.001);
         	
-			tryReadFragment(ring);
+			RingReader.tryReadFragment(ring);
 			assertEquals(11, RingReader.readLong(ring, SQUAD_TRUCK_ID));
 			assertEquals(3000, RingReader.readDecimalMantissa(ring, TRUCK_CAPACITY));
 			assertEquals(2, RingReader.readDecimalExponent(ring, TRUCK_CAPACITY));
@@ -377,25 +377,25 @@ public class RingBufferMultiTemplateTest {
         while (true) {
         	
         	if (j==0) {
-        		RingWalker.publishEOF(ring);
+        		RingWriter.publishEOF(ring);
         		return;//done
         	}
         	
         	
-        	if (tryWriteFragment(ring, MSG_TRUCKS_LOC)) { //AUTO writes template id as needed
+        	if (RingWriter.tryWriteFragment(ring, MSG_TRUCKS_LOC)) { //AUTO writes template id as needed
  
         		RingWriter.writeASCII(ring, SQUAD_NAME, "TheBobSquad");     		
         		
         		//WRITE THE FIRST MEMBER OF THE SEQ
         		//block to ensure we have room for the next fragment, and ensure that bytes consumed gets recorded
-        		blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);//could use tryWrite here but it would make this example more complex
+        		RingWriter.blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);//could use tryWrite here but it would make this example more complex
         		
         		RingWriter.writeLong(ring, SQUAD_TRUCK_ID, 10);         
         		RingWriter.writeDecimal(ring, TRUCK_CAPACITY, 2, 2000);
         		
         		//WRITE THE SECOND MEMBER OF THE SEQ
         		//block to ensure we have room for the next fragment, and ensure that bytes consumed gets recorded
-        		blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);
+        		RingWriter.blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);
         		
         		RingWriter.writeLong(ring, SQUAD_TRUCK_ID, 11);
         		RingWriter.writeDouble(ring, TRUCK_CAPACITY, 30d, 2); //alternate way of writing a decimal
@@ -407,7 +407,7 @@ public class RingBufferMultiTemplateTest {
         		
         		RingWriter.writeInt(ring, SQUAD_NO_MEMBERS, 2); //NOTE: we are writing this field very late because we now know how many we wrote.
         		
-        		RingWalker.publishWrites(ring);
+        		RingWriter.publishWrites(ring);
         		        		
         		 j--;       		
     		} else {

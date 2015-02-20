@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.ring;
 
-import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragment;
-import static com.ociweb.pronghorn.ring.RingWalker.isNewMessage; 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -33,9 +31,9 @@ public class RingBufferSingleTemplateTest {
         
         byte[] target = new byte[varDataMax];
         int k = testSize;
-        while (tryReadFragment(ring)) {
-        	if (isNewMessage(ring)) {
-        		assertEquals(0, RingWalker.messageIdx(ring));
+        while (RingReader.tryReadFragment(ring)) {
+        	if (RingReader.isNewMessage(ring)) {
+        		assertEquals(0, RingReader.getMsgIdx(ring));
         		
 	        	int expectedLength = (varDataMax*(--k))/testSize;	
 	        	int actualLength = RingReader.readBytes(ring, BYTE_LOC, target, 0); //read bytes as normal code would do
@@ -53,7 +51,7 @@ public class RingBufferSingleTemplateTest {
         		return;//done
         	}
 
-        	if (RingWalker.tryWriteFragment(ring,FRAG_LOC)) { //returns true if there is room to write this fragment
+        	if (RingWriter.tryWriteFragment(ring,FRAG_LOC)) { //returns true if there is room to write this fragment
      		
         		int arraySize = (--j*blockSize)/testSize;
         		byte[] arrayData = buildTestData(arraySize);
@@ -114,11 +112,11 @@ public class RingBufferSingleTemplateTest {
         	//This is the example code that one would normally use.
         	
         	//System.err.println("content "+ring.contentRemaining(ring));
-	        if (tryReadFragment(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
+	        if (RingReader.tryReadFragment(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
 	        	k--;//count down all the expected messages so we stop this test at the right time
 
-	        	assertTrue(isNewMessage(ring));//would use this method rarely to determine if fragment starts new message
-	        	assertEquals(0, RingWalker.messageIdx(ring)); //when we only have 1 message type this would not normally be called
+	        	assertTrue(RingReader.isNewMessage(ring));//would use this method rarely to determine if fragment starts new message
+	        	assertEquals(0, RingReader.getMsgIdx(ring)); //when we only have 1 message type this would not normally be called
 
 	        	int expectedLength = (varDataMax*k)/testSize;		        	
 	        	int actualLength = RingReader.readBytes(ring, BYTE_LOC, target, 0); //read bytes as normal code would do

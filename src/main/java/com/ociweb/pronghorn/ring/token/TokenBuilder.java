@@ -23,7 +23,6 @@ public class TokenBuilder {
      */
 	
     // See fast writer for details and mask sizes
-    public static final int MASK_TYPE = 0x1F; // 5 bits
 
     public static final int MAX_FIELD_ID_BITS = 21;//fills exactly 3 bytes in FAST int encoding
     public static final int MAX_FIELD_ID_VALUE = (1 << MAX_FIELD_ID_BITS) - 1;
@@ -38,6 +37,7 @@ public class TokenBuilder {
 
     public static final int MASK_ABSENT_DEFAULT = 0x3; // 2 bits on //default value
 
+    public static final int MASK_TYPE = (1<<BITS_TYPE)-1;
     public static final int MASK_OPER = (1<<BITS_OPER)-1; 
 
     // sequence is stored as a length field type which appears in the stream
@@ -65,8 +65,8 @@ public class TokenBuilder {
 
 
     // Decimals must pass in both operators in the tokenOpps field together
-    public static int buildToken(int tokenType, int tokenOpps, int count /* RENAME this */) {
-        assert (count <= MAX_INSTANCE);
+    public static int buildToken(int tokenType, int tokenOpps, int id) {
+        assert (id <= MAX_INSTANCE);
         assert (TypeMask.toString(tokenType).indexOf("unknown") == -1) : "Unknown type of " + tokenType + " "
                 + Integer.toHexString(tokenType);
         assert (tokenType >= 0);
@@ -74,7 +74,7 @@ public class TokenBuilder {
         assert (tokenOpps >= 0);
         assert (tokenOpps <= MASK_OPER) : "Opps " + Integer.toHexString(tokenOpps);
 
-        return 0x80000000 | (tokenType << TokenBuilder.SHIFT_TYPE) | (tokenOpps << TokenBuilder.SHIFT_OPER) | count & MAX_INSTANCE;
+        return 0x80000000 | (tokenType << TokenBuilder.SHIFT_TYPE) | (tokenOpps << TokenBuilder.SHIFT_OPER) | id & MAX_INSTANCE;
 
     }
 

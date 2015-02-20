@@ -7,7 +7,6 @@ import java.io.IOException;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.RingWriter;
 
 public class AppendableASCIIRing implements Appendable {
@@ -90,7 +89,7 @@ public class AppendableASCIIRing implements Appendable {
 	}
 
 	public void flush() {
-		RingWalker.blockWriteFragment(ringBuffer,0);
+		RingWriter.blockWriteFragment(ringBuffer,0);
 		RingStreams.writeEOF(ringBuffer);
 	}
 }

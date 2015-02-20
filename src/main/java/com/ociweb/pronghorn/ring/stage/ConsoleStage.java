@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.ring.stage;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingWalker;
+import com.ociweb.pronghorn.ring.RingReader;
 
 public class ConsoleStage implements Runnable {
 
@@ -25,7 +25,7 @@ public class ConsoleStage implements Runnable {
 	public void run() {
 			
 		FieldReferenceOffsetManager from = RingBuffer.from(inputRing);
-		RingWalker.setReleaseBatchSize(inputRing, 4);
+		RingReader.setReleaseBatchSize(inputRing, 4);
 		
 		long[] totalCounts = new long[from.tokensLen];
 		long[] counts = new long[from.tokensLen];
@@ -99,9 +99,9 @@ public class ConsoleStage implements Runnable {
 		
 		int msgIdx = 0;
 		
-		while (RingWalker.tryReadFragment(inputRing)) {
-			if (RingWalker.isNewMessage(inputRing)) {
-				msgIdx = RingWalker.getMsgIdx(inputRing);
+		while (RingReader.tryReadFragment(inputRing)) {
+			if (RingReader.isNewMessage(inputRing)) {
+				msgIdx = RingReader.getMsgIdx(inputRing);
 				if (msgIdx<0) {
 					break;
 				} else {

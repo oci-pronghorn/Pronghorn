@@ -11,7 +11,6 @@ import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
 import com.ociweb.pronghorn.ring.RingReader;
-import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
@@ -1336,7 +1335,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
         
         //start new message with preamble if needed        
-        if (rbRingBuffer.mask!=0 && RingWalker.isNewMessage(rbRingBuffer.consumerData)) {     //TODO: D, optimize, checks that this is not the code generation    
+        if (rbRingBuffer.mask!=0 && RingReader.isNewMessage(rbRingBuffer.consumerData)) {     //TODO: D, optimize, checks that this is not the code generation    
             callBeginMessage(writer, rbRingBuffer);
         }
 

@@ -1,7 +1,7 @@
 package com.ociweb.pronghorn.ring.route;
 
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingWalker;
+import com.ociweb.pronghorn.ring.RingReader;
 
 public class RoundRobinRouteStage implements Runnable {
 
@@ -41,13 +41,13 @@ public class RoundRobinRouteStage implements Runnable {
 
 	private static boolean processAvailData(RoundRobinRouteStage stage) {
 		
-		if (RingWalker.tryReadFragment(stage.inputRing)) {
+		if (RingReader.tryReadFragment(stage.inputRing)) {
 			
-			if (RingWalker.messageIdx(stage.inputRing)<0) {
+			if (RingReader.getMsgIdx(stage.inputRing)<0) {
 				return false;//exit with EOF
 			}			
 			RingBuffer ring = stage.outputRings[stage.targetRing];
-			while (!RingWalker.tryMoveSingleMessage(stage.inputRing, ring)) {
+			while (!RingReader.tryMoveSingleMessage(stage.inputRing, ring)) {
 			}
 			if (--stage.targetRing<0) {
 				stage.targetRing = stage.targetRingInit;

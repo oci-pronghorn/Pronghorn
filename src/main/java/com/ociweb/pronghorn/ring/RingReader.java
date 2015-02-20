@@ -557,8 +557,65 @@ public class RingReader {//TODO: B, build another static reader that does auto c
             };
     }
 
-    public static boolean isNewMessage(RingBuffer rb) {
-		return RingWalker.isNewMessage(rb.consumerData);
+	public static void setReleaseBatchSize(RingBuffer rb, int size) {
+		RingBuffer.setReleaseBatchSize(rb, size);  	
+	}
+
+	/**
+	 * Copies current message from input ring to output ring.  Once copied that message is no longer readable.
+	 * Message could be read before calling this copy using a low-level look ahead technique.
+	 * 
+	 * Returns false until the full message is copied.
+	 * 
+	 * Once called must continue to retry until true is returned or the message will be left in a partial state.
+	 * 
+	 * 
+	 * @param inputRing
+	 * @param outputRing
+	 * @return
+	 */
+	public static boolean tryMoveSingleMessage(RingBuffer inputRing, RingBuffer outputRing) {
+		assert(RingBuffer.from(inputRing) == RingBuffer.from(outputRing));
+		//NOTE: all the reading makes use of the high-level API to manage the fragment state, this call assumes tryRead was called once already.
+			
+		//we may re-enter this function to continue the copy
+		RingWalker consumerData = inputRing.consumerData;
+		boolean copied = RingWalker.copyFragment0(inputRing, outputRing, inputRing.workingTailPos.value, consumerData.nextWorkingTail);
+		while (copied && !FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(inputRing), consumerData.nextCursor)) {			
+			//using short circut logic so copy does not happen unless the prep is successful
+			copied = RingWalker.prepReadFragment(inputRing, consumerData) && RingWalker.copyFragment0(inputRing, outputRing, inputRing.workingTailPos.value, consumerData.nextWorkingTail);			
+		}
+		return copied;
+	}
+
+	public static boolean isNewMessage(RingWalker rw) {
+		return rw.isNewMessage;
+	}
+
+	public static boolean isNewMessage(RingBuffer ring) {
+		return ring.consumerData.isNewMessage;
+	}
+
+	public static int getMsgIdx(RingBuffer rb) {
+		return rb.consumerData.msgIdx;
+	}
+
+	public static int getMsgIdx(RingWalker rw) {
+		return rw.msgIdx;
+	}
+
+	//this impl only works for simple case where every message is one fragment. 
+	public static boolean tryReadFragment(RingBuffer ringBuffer) { 
+	
+		if (null==ringBuffer.buffer) {
+			ringBuffer.init();//hack test
+		}		
+		
+		if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBuffer.consumerData.nextCursor)) {    		
+			return RingWalker.prepReadMessage(ringBuffer, ringBuffer.consumerData);			   
+	    } else {  
+			return RingWalker.prepReadFragment(ringBuffer, ringBuffer.consumerData);
+	    }
 	}
 
 }

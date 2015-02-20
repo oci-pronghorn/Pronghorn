@@ -975,7 +975,7 @@ public final class RingBuffer {
      * @param ring
      */
     public static void releaseReadLock(RingBuffer ring) {
-    	assert(ring.consumerData.cursor<=0 && !RingWalker.isNewMessage(ring.consumerData)) : "Unsupported mix of high and low level API.  ";
+    	assert(ring.consumerData.cursor<=0 && !RingReader.isNewMessage(ring.consumerData)) : "Unsupported mix of high and low level API.  ";
 		if ((--ring.batchReleaseCountDown<=0)) {			
 
 			ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value); 

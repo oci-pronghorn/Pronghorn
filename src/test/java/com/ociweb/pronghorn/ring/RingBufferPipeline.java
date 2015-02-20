@@ -14,6 +14,7 @@ import org.junit.Test;
 
 import com.ociweb.pronghorn.ring.route.RoundRobinRouteStage;
 import com.ociweb.pronghorn.ring.route.SplitterStage;
+import com.ociweb.pronghorn.ring.util.PipelineThreadPoolExecutor;
 
 public class RingBufferPipeline {
 	
@@ -128,6 +129,8 @@ public class RingBufferPipeline {
 		 ExecutorService daemonService = daemonThreads<=0 ? null : Executors.newFixedThreadPool(daemonThreads, daemonThreadFactory());
 		 ExecutorService normalService = Executors.newFixedThreadPool(normalThreads);
 		 
+		 ExecutorService reloadingService = new PipelineThreadPoolExecutor(4);
+		 
 		 
 		 //build all the rings
 		 int j = stages-1;
@@ -191,7 +194,7 @@ public class RingBufferPipeline {
 			    		 RingBuffer.setPublishBatchSize(splitsBuffers[r],8);
 			    		 
 			    	 }
-			    	 RingWalker.setReleaseBatchSize(rings[j], 8); 
+			    	 RingReader.setReleaseBatchSize(rings[j], 8); 
 			    	 daemonService.submit(new RoundRobinRouteStage(rings[j++], splitsBuffers));
 			     } else {
 			    	 daemonService.submit(new SplitterStage(rings[j++], splitsBuffers)); 
@@ -297,16 +300,16 @@ public class RingBufferPipeline {
 				public void run() {
 					try {
 						 long messageCount = testMessages; 
-						 RingWalker.setPublishBatchSize(outputRing, 8);
+						 RingWriter.setPublishBatchSize(outputRing, 8);
 	
 						 while (--messageCount>=0) {
 							
-							 RingWalker.blockWriteFragment(outputRing, MESSAGE_LOC);
+							 RingWriter.blockWriteFragment(outputRing, MESSAGE_LOC);
 							 RingWriter.writeBytes(outputRing, FIELD_LOC, testArray, 0, testArray.length);							 
-							 RingWalker.publishWrites(outputRing);
+							 RingWriter.publishWrites(outputRing);
 							 
 						 }
-						 RingWalker.publishEOF(outputRing);
+						 RingWriter.publishEOF(outputRing);
 
 					} catch (Throwable t) {
 						RingBuffer.shutdown(outputRing);
@@ -370,23 +373,23 @@ public class RingBufferPipeline {
 				@Override
 				public void run() {
 					try {			
-						RingWalker.setReleaseBatchSize(inputRing, 8);
-						RingWalker.setPublishBatchSize(outputRing, 8);
+						RingReader.setReleaseBatchSize(inputRing, 8);
+						RingWriter.setPublishBatchSize(outputRing, 8);
 						
 						int msgId = 0;
 						do {
-							if (RingWalker.tryReadFragment(inputRing)) { 
-								assert(RingWalker.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
-								msgId = RingWalker.getMsgIdx(inputRing);
+							if (RingReader.tryReadFragment(inputRing)) { 
+								assert(RingReader.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
+								msgId = RingReader.getMsgIdx(inputRing);
 								
 								
 								//wait until the target ring has room for this message
 								if (0==msgId) {
-									RingWalker.blockWriteFragment(outputRing,MSG_ID);
+									RingWriter.blockWriteFragment(outputRing,MSG_ID);
 									//copy this message from one ring to the next
 									//NOTE: in the normal world I would expect the data to be modified before getting moved.
 									RingReader.copyBytes(inputRing, outputRing, FIELD_ID, FIELD_ID);
-									RingWalker.publishWrites(outputRing);
+									RingWriter.publishWrites(outputRing);
 
 								} 
 							} else {
@@ -395,7 +398,7 @@ public class RingBufferPipeline {
 							//exit the loop logic is not defined by the ring but instead is defined by data/usage, in this case we use a null byte array aka (-1 length)
 						} while (msgId!=-1);
 																	
-						RingWalker.publishEOF(outputRing);
+						RingWriter.publishEOF(outputRing);
 						
 
 					} catch (Throwable t) {
@@ -499,11 +502,11 @@ public class RingBufferPipeline {
 	                    	}
 							
 							//try also releases previously read fragments
-							if (RingWalker.tryReadFragment(inputRing)) {
+							if (RingReader.tryReadFragment(inputRing)) {
 														
 								
-								assert(RingWalker.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
-								msgId = RingWalker.getMsgIdx(inputRing);
+								assert(RingReader.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
+								msgId = RingReader.getMsgIdx(inputRing);
 								
 								if (msgId>=0) {																	
 									msgCount++;

@@ -47,7 +47,7 @@ public class RingBufferMonitorStage implements Runnable {
 		}
 		
 		
-		RingWalker.setPublishBatchSize(notifyRingBuffer, 128);
+		RingWriter.setPublishBatchSize(notifyRingBuffer, 128);
 	}
 	
 	/**
@@ -67,15 +67,15 @@ public class RingBufferMonitorStage implements Runnable {
 	public void run() {
 		try {
 			
-			RingWalker.blockWriteFragment(notifyRingBuffer,TEMPLATE_LOC);
+			RingWriter.blockWriteFragment(notifyRingBuffer,TEMPLATE_LOC);
 			
 			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TIME_LOC, System.currentTimeMillis());
 			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_HEAD_LOC, RingBuffer.headPosition(observedRingBuffer));
 			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TAIL_LOC, RingBuffer.headPosition(observedRingBuffer));
-			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_MSG_LOC, RingWalker.getMsgIdx(observedRingBuffer));			
+			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_MSG_LOC, RingReader.getMsgIdx(observedRingBuffer));			
 			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_SIZE_LOC, observedRingBuffer.maxSize);
 			
-			RingWalker.publishWrites(notifyRingBuffer);			
+			RingWriter.publishWrites(notifyRingBuffer);			
 			
 		} catch (Throwable t) {
 			RingBuffer.shutdown(notifyRingBuffer);
