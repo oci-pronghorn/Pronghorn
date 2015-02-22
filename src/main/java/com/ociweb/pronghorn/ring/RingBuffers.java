@@ -22,7 +22,7 @@ public class RingBuffers {
                     break;
                 }
             }
-            count += (j>>>31); //add the high bit because this is negative              
+            count += (j>>>31); //add the high bit because this is negative when we reach the end             
         }              
         
         this.uniqueBuffers = new RingBuffer[count];
@@ -36,7 +36,7 @@ public class RingBuffers {
                 }
             }
             uniqueBuffers[count] = buffers[i];
-            count += (j>>>31); //add the high bit because this is negative              
+            count += (j>>>31); //add the high bit because this is negative when we reach the end             
         }        
                 
     }

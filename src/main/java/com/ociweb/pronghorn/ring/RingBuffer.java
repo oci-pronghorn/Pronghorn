@@ -1,9 +1,8 @@
 package com.ociweb.pronghorn.ring;
 
-import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
-
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.ociweb.pronghorn.ring.util.PaddedAtomicInteger;
@@ -23,18 +22,17 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
  * 
  * 
  * Storage:
- *  int - 1 slot
- *  long - 2 slots, high then low 
- *  text - 2 slots, index then length  (if index is negative use constant array)
+ *  int     - 1 slot
+ *  long    - 2 slots, high then low 
+ *  text    - 2 slots, index then length  (if index is negative use constant array)
+ *  decimal - 3 slots, exponent then long mantissa
  * 
  */
 
-// TODO: C, add map method which can take data from one ring buffer and populate another.
 // TODO: C, look at adding reduce method in addition to filter.
 // TODO: X, dev ops tool to empty (drain) buffers and record the loss.
 // TODO: B, must add way of selecting what field to skip writing for the consumer.
-
-//TODO: B, build  null ring buffer to drop messages.
+// TODO: B, build  null ring buffer to drop messages.
 
 
 public final class RingBuffer {
@@ -100,7 +98,7 @@ public final class RingBuffer {
     public final byte bBits;
     public static final int EOF_SIZE = 2;
     
-    private final AtomicBoolean shutDown = new AtomicBoolean(false);//TODO: A, create unit test examples for using this.
+    private final AtomicBoolean shutDown = new AtomicBoolean(false);
 	public boolean writeTrailingCountOfBytesConsumed;
 	FieldReferenceOffsetManager from;
     
@@ -108,6 +106,11 @@ public final class RingBuffer {
 	int batchReleaseCountDownInit = 0;
 	int batchPublishCountDown = 0;
 	int batchPublishCountDownInit = 0;
+	
+	
+	public final int ringId;	
+	private static AtomicInteger ringCounter = new AtomicInteger();
+	
 	
     public static void setReleaseBatchSize(RingBuffer rb, int size) {
     	
@@ -177,6 +180,7 @@ public final class RingBuffer {
     private RingBuffer(byte primaryBits, byte byteBits, byte[] byteConstants, FieldReferenceOffsetManager from) {
 
         //constant data will never change and is populated externally.
+        this.ringId = ringCounter.getAndIncrement();
         
     	this.pBits = primaryBits;
     	this.bBits = byteBits;
@@ -279,7 +283,31 @@ public final class RingBuffer {
         RingWalker.reset(consumerData, toPos);
     }
 
-    public static void addLongAsASCII(RingBuffer outputRing, long value) {
+    public static void addDecimalAsASCII(int readDecimalExponent,	long readDecimalMantissa, RingBuffer outputRing) {
+		long ones = (long)(readDecimalMantissa*RingReader.powdi[64 + readDecimalExponent]);
+		validateVarLength(outputRing, 21);
+		int max = 21 + outputRing.byteWorkingHeadPos.value;
+		int len = leftConvertLongToASCII(outputRing, ones, max);
+		outputRing.byteWorkingHeadPos.value = 0xEFFFFFFF&(len + outputRing.byteWorkingHeadPos.value);
+		
+		addASCIIToBytes(".", outputRing);
+		
+		long frac =  Math.abs(readDecimalMantissa - (long)(ones/RingReader.powdi[64 + readDecimalExponent]));		        			
+		validateVarLength(outputRing, 21);
+		int max1 = 21 + outputRing.byteWorkingHeadPos.value;
+		int len1 = leftConvertLongToASCII(outputRing, frac, max1);		
+		outputRing.byteWorkingHeadPos.value = 0xEFFFFFFF&(len1 + outputRing.byteWorkingHeadPos.value);
+		
+		//may require trailing zeros
+		while (len1<readDecimalExponent) {
+			addASCIIToBytes("0",outputRing);
+			len1++;
+		}
+		
+		
+	}
+
+	public static void addLongAsASCII(RingBuffer outputRing, long value) {
 		validateVarLength(outputRing, 21);
 		int max = 21 + outputRing.byteWorkingHeadPos.value;
 		int len = leftConvertLongToASCII(outputRing, value, max);
@@ -904,12 +932,7 @@ public final class RingBuffer {
         
     } 
     
-    public static void dump(RingBuffer rb) {
-                       
-        // move the removePosition up to the addPosition
-        // new Exception("WARNING THIS IS NO LONGER COMPATIBLE WITH PUMP CALLS").printStackTrace();
-        rb.tailPos.lazySet(rb.workingTailPos.value = rb.workingHeadPos.value);
-    }
+
 
     // WARNING: consumer of these may need to loop around end of buffer !!
     // these are needed for fast direct READ FROM here
@@ -986,6 +1009,20 @@ public final class RingBuffer {
     	
     }
     
+    public static void releaseAll(RingBuffer ring) {
+
+			ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value= ring.byteWorkingHeadPos.value); 
+			ring.tailPos.lazySet(ring.workingTailPos.value= ring.workingHeadPos.value);
+			    	
+    }
+    
+    @Deprecated
+    public static void dump(RingBuffer rb) {
+        
+        // move the removePosition up to the addPosition
+        // new Exception("WARNING THIS IS NO LONGER COMPATIBLE WITH PUMP CALLS").printStackTrace();
+        rb.tailPos.lazySet(rb.workingTailPos.value = rb.workingHeadPos.value);
+    }
     
     
     /**

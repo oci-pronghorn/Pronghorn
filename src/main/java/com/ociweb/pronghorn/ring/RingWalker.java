@@ -134,8 +134,7 @@ public class RingWalker {
 		
 		if ((--ringBuffer.batchReleaseCountDown<=0)) {	
 			
-			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); //		
-			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);//inlined from RingBuffer.ReleaseFragment, this one never adjusts bytes because we are in a fragment
+			RingReader.releaseReadLock(ringBuffer);
 		
 			ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
 		}
@@ -257,8 +256,7 @@ public class RingWalker {
 			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
 		} else {
 			
-			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			
-			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); //inlined release however the byte adjust must happen on every message so its done earlier
+			RingReader.releaseReadLock(ringBuffer);
 						
 			ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
 			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
