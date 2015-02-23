@@ -27,6 +27,7 @@ import com.ociweb.pronghorn.GraphManager;
 import com.ociweb.pronghorn.ring.route.RoundRobinRouteStage2;
 import com.ociweb.pronghorn.ring.route.SplitterStage2;
 import com.ociweb.pronghorn.ring.stage.PronghornStage;
+import com.ociweb.pronghorn.ring.threading.FixedThreadPoolStageManager;
 import com.ociweb.pronghorn.ring.threading.StageManager;
 //import com.ociweb.pronghorn.ring.util.PipelineThreadPoolExecutor;
 import com.ociweb.pronghorn.ring.threading.ThreadPerStageManager;
@@ -55,7 +56,7 @@ public class RingBufferPipeline2 {
 	            if (headPosCache < nextTargetHeadPos) {
 					headPosCache = inputRing.headPos.longValue();
 					if (headPosCache < nextTargetHeadPos) {
-						return true; //come back later when we find more content
+						return false; //this is a state-less stage so it must return false not true unless there is good reason.
 					}
 				}
 	        
@@ -133,7 +134,6 @@ public class RingBufferPipeline2 {
 		        	
 		            int msgId = RingBuffer.takeMsgIdx(inputRing);
 		            if (msgId<0) {  
-		            	//System.err.println("done after "+messageCount+" messages and "+total+" bytes ");
 		            	assertEquals(testMessages,useRoute? messageCount*splits: messageCount);		            			            	
 		            	RingBuffer.releaseAll(inputRing);						
 		            	return false;
@@ -197,7 +197,6 @@ public class RingBufferPipeline2 {
 
 		@Override
 		public boolean exhaustedPoll() {
-
 				
 				int lastPos = -1;
 				
@@ -227,9 +226,10 @@ public class RingBufferPipeline2 {
 								}
 							}
 
-
 						} else if (-1 == msgId) {
+							assertEquals(testMessages,useRoute? msgCount*splits: msgCount);	
 							RingReader.releaseReadLock(inputRing);
+							//System.err.println("done");
 							return false;
 						}
 					} 
@@ -417,7 +417,7 @@ public class RingBufferPipeline2 {
 		@Override
 		public boolean exhaustedPoll() {
 
-			 while (messageCount>=0) {				
+			 while (messageCount>0) {				
 				 if (RingWriter.tryWriteFragment(outputRing, MESSAGE_LOC)) {
 					 RingWriter.writeBytes(outputRing, FIELD_LOC, testArray, 0, testArray.length);							 
 					 RingWriter.publishWrites(outputRing);
@@ -516,15 +516,16 @@ public class RingBufferPipeline2 {
 	private void pipelineTest(boolean highLevelAPI, boolean monitor, boolean useTap, boolean useRouter) {
 		final GraphManager gm = new GraphManager();
 		
-		StageManager normalService = new ThreadPerStageManager(gm);
-
+		 StageManager normalService = new ThreadPerStageManager(gm);
 		
+		//TODO: need extra confirmation that all the data made it to the end before shutdown.
+		 //StageManager normalService = new FixedThreadPoolStageManager(gm, 6);
+				
 		 System.out.println();
-		 
+				 
 		 assertEquals("For "+FieldReferenceOffsetManager.RAW_BYTES.name+" expected no need to add field.",
 				      0,FieldReferenceOffsetManager.RAW_BYTES.fragNeedsAppendedCountOfBytesConsumed[0]);
-			
-		
+					
 		 int stagesBetweenSourceAndSink = stages -2;
 		 
 		 int daemonThreads = (useTap ? stagesBetweenSourceAndSink : 0);
@@ -533,22 +534,18 @@ public class RingBufferPipeline2 {
 		 int normalThreads =    2/* source and sink*/   + ((useTap ? splits : 1)*stagesBetweenSourceAndSink); 
 		 int totalThreads = daemonThreads+schcheduledThreads+normalThreads;
 
-		 
-		 ScheduledThreadPoolExecutor scheduledService = new ScheduledThreadPoolExecutor(schcheduledThreads, daemonThreadFactory());
-
-		 
-		 
+		 		 
 		 //build all the rings
 		 int j = stages-1;
 		 RingBuffer[] rings = new RingBuffer[j];
 		 
-		 //PronghornStage[] monitorStages = null;
-		 Runnable[] monitorStages = null;
+		 PronghornStage[] monitorStages = null;
+
 		 		 
 		 RingBuffer[] monitorRings = null;
 		 FieldReferenceOffsetManager montorFROM = null;
 		 if (monitor) {
-			monitorStages = new Runnable[j];
+			monitorStages = new PronghornStage[j];
 		 	monitorRings = new RingBuffer[j];
 		 	montorFROM = RingBufferMonitorStage.buildFROM();
 		 }
@@ -573,26 +570,29 @@ public class RingBufferPipeline2 {
 			 if (monitor) {
 				 monitorRings[j] = new RingBuffer(new RingBufferConfig((byte)16, (byte)2, null, montorFROM));
 				 //assertTrue(mo)
-				 monitorStages[j] = new RingBufferMonitorStage(rings[j], monitorRings[j]);	
+				 monitorStages[j] = new RingBufferMonitorStage2(gm, rings[j], monitorRings[j]);	
 				 
 				 //this is a bit complex may be better to move this inside on thread?
-				 scheduledService.scheduleAtFixedRate(monitorStages[j], j*5, 41, TimeUnit.MILLISECONDS);	
-				// normalService.submit(41000000, monitorStages[j]);
+				
+				 //scheduledService.scheduleAtFixedRate(monitorStages[j], j*5, 41, TimeUnit.MILLISECONDS);	
+				 normalService.submit(41000000, monitorStages[j]);
 				 
 				 final RingBuffer mon = monitorRings[j];
 				 
-			//	 normalService.submit(47000000, new DumpMonitorStage(gm, mon));
+				 normalService.submit(47000000, new DumpMonitorStage(gm, mon));
 				 
-				 scheduledService.scheduleAtFixedRate(new Runnable() {
-					PronghornStage stage =  new DumpMonitorStage(gm, mon);
-					@Override
-					public void run() {
-						stage.exhaustedPoll();
-					}
-					 
-				 }
-						 
-						 , 100+(j*5), 47, TimeUnit.MILLISECONDS);	
+//				 scheduledService.scheduleAtFixedRate(new Runnable() {
+//					PronghornStage stage =  new DumpMonitorStage(gm, mon);
+//					@Override
+//					public void run() {
+//						stage.exhaustedPoll();
+//					}
+//					 
+//				 }
+//						 
+//						 , 100+(j*5), 47, TimeUnit.MILLISECONDS);	
+				 
+				 
 			 }
 		 }
 		 		 
@@ -695,8 +695,8 @@ public class RingBufferPipeline2 {
 					}
 				}	 
 
-		 scheduledService.shutdownNow();
-		 scheduledService=null;
+//		 scheduledService.shutdownNow();
+//		 scheduledService=null;
 		 
 	}
 

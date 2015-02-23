@@ -60,6 +60,7 @@ public abstract class PronghornStage {
 	 * @param stateless
 	 */
 	protected PronghornStage(GraphManager pm, RingBuffer[] inputs, RingBuffer[] outputs, boolean stateless) {
+		assert(!stateless || inputs!=NONE) : "Stage with no input can not also be stateless";
 		this.stageId = stageCounter.getAndIncrement();		
 		this.graphManager = pm;
 		this.stateless = stateless;
@@ -74,6 +75,7 @@ public abstract class PronghornStage {
 	}
     
 	protected PronghornStage(GraphManager pm, RingBuffer[] inputs, RingBuffer output, boolean stateless) {
+		assert(!stateless || inputs!=NONE) : "Stage with no input can not also be stateless";
 		this.stageId = stageCounter.getAndIncrement();		
 		this.graphManager = pm;
 		this.stateless = stateless;
@@ -90,6 +92,16 @@ public abstract class PronghornStage {
 		return getClass().getSimpleName()+"["+String.valueOf(stageId)+"]";
 	}
 	
+	/**
+	 * Process all the work that is immediately available.
+	 * If this method returns false it will no longer be scheduled unless is is state-less.
+	 * 
+	 * For most stages this should return true until some shutdown condition is recognized.
+	 * 
+	 * For a state-less stage this should always return false unless it is forced to leave some ondone work on the input queue.
+	 * 
+	 * @return
+	 */
     public abstract boolean exhaustedPoll();
 	
 	
