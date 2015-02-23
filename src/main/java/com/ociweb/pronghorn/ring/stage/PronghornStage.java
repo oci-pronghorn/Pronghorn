@@ -20,33 +20,33 @@ public abstract class PronghornStage {
 	public final boolean stateless;
 	private static AtomicInteger stageCounter = new AtomicInteger();
 	
-	private GraphManager pm;
+	protected GraphManager graphManager;
 	
 	//in the constructor us a zero length array if there are no values.
 	protected PronghornStage(GraphManager pm, RingBuffer[] inputs, RingBuffer[] outputs) {
 		this.stageId = stageCounter.getAndIncrement();		
-		this.pm = pm;
+		this.graphManager = pm;
 		this.stateless = false;
 		GraphManager.register(pm, this, inputs, outputs);
 	}
 	
 	protected PronghornStage(GraphManager pm, RingBuffer input, RingBuffer[] outputs) {
 		this.stageId = stageCounter.getAndIncrement();	
-		this.pm = pm;
+		this.graphManager = pm;
 		this.stateless = false;
 		GraphManager.register(pm, this, input, outputs);
 	}
     
 	protected PronghornStage(GraphManager pm, RingBuffer[] inputs, RingBuffer output) {
 		this.stageId = stageCounter.getAndIncrement();		
-		this.pm = pm;
+		this.graphManager = pm;
 		this.stateless = false;
 		GraphManager.register(pm, this, inputs, output);
 	}
 	
 	protected PronghornStage(GraphManager pm, RingBuffer input, RingBuffer output) {
 		this.stageId = stageCounter.getAndIncrement();	
-		this.pm = pm;
+		this.graphManager = pm;
 		this.stateless = false;
 		GraphManager.register(pm, this, input, output);
 	}
@@ -61,28 +61,28 @@ public abstract class PronghornStage {
 	 */
 	protected PronghornStage(GraphManager pm, RingBuffer[] inputs, RingBuffer[] outputs, boolean stateless) {
 		this.stageId = stageCounter.getAndIncrement();		
-		this.pm = pm;
+		this.graphManager = pm;
 		this.stateless = stateless;
 		GraphManager.register(pm, this, inputs, outputs);
 	}
 	
 	protected PronghornStage(GraphManager pm, RingBuffer input, RingBuffer[] outputs, boolean stateless) {
 		this.stageId = stageCounter.getAndIncrement();	
-		this.pm = pm;
+		this.graphManager = pm;
 		this.stateless = stateless;
 		GraphManager.register(pm, this, input, outputs);
 	}
     
 	protected PronghornStage(GraphManager pm, RingBuffer[] inputs, RingBuffer output, boolean stateless) {
 		this.stageId = stageCounter.getAndIncrement();		
-		this.pm = pm;
+		this.graphManager = pm;
 		this.stateless = stateless;
 		GraphManager.register(pm, this, inputs, output);
 	}
 	
 	protected PronghornStage(GraphManager pm, RingBuffer input, RingBuffer output, boolean stateless) {
 		this.stageId = stageCounter.getAndIncrement();	
-		this.pm = pm;
+		this.graphManager = pm;
 		this.stateless = stateless;
 		GraphManager.register(pm, this, input, output);
 	}

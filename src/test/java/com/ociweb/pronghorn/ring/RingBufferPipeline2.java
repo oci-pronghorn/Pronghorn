@@ -35,107 +35,110 @@ public class RingBufferPipeline2 {
 	
 	private final class DumpMonitorStage extends PronghornStage {
 		private final RingBuffer inputRing;
-
+		private int monitorMessageSize;
+		private long nextTargetHeadPos;
+		private long messageCount = 0;
+		private long headPosCache;
+		
 		private DumpMonitorStage(GraphManager gm,RingBuffer inputRing) {
-			super(gm,inputRing, NONE);
+			super(gm,inputRing, NONE, true /*stateless*/);
 			this.inputRing = inputRing;
+			this.monitorMessageSize = RingBuffer.from(inputRing).fragDataSize[0];
+			this.nextTargetHeadPos = monitorMessageSize;
+			this.headPosCache = inputRing.headPos.longValue();
 		}
 
 		@Override
 		public boolean exhaustedPoll() {  
 
-				int monitorMessageSize = RingBuffer.from(inputRing).fragDataSize[0];
-								
-		        //only enter this block when we know there are records to read
-			    long target = monitorMessageSize;
-		        long headPosCache = spinBlockOnHead(headPosition(inputRing), target, inputRing);	
-		        long messageCount = 0;
+			do {				
+	            if (headPosCache < nextTargetHeadPos) {
+					headPosCache = inputRing.headPos.longValue();
+					if (headPosCache < nextTargetHeadPos) {
+						return true; //come back later when we find more content
+					}
+				}
+	        
+	            //read the message
+	            int msgId = RingBuffer.readValue(0, inputRing.buffer,inputRing.mask,inputRing.workingTailPos.value); 
+	            
+	            if (msgId<0) {   
+	            	System.out.println("exited after reading: " + messageCount+" monitor samples");
+	            	return false;
+	            }
+	            
+	            long time = RingReader.readLong(inputRing, RingBufferMonitorStage.TEMPLATE_TIME_LOC);
+	            long head = RingReader.readLong(inputRing, RingBufferMonitorStage.TEMPLATE_HEAD_LOC);
+	            long tail = RingReader.readLong(inputRing, RingBufferMonitorStage.TEMPLATE_TAIL_LOC);
+	            int tmpId = RingReader.readInt(inputRing, RingBufferMonitorStage.TEMPLATE_MSG_LOC);
+	            
+	            
+	        //TODO: AAAAAA this is a mixed high low problem and must be converted to one side or the other
+	            //TODO: AAAAA need a monitor object that manages all this information so it does not cultter the businss logic
+	            //TODO: AAAAA need method on that object for building up the tree?
+	            
+	            inputRing.workingTailPos.value+=monitorMessageSize;
+	                     
+	            int queueDepth = (int)(head-tail);
+	            //vs what?
+	            
+	            
+	           // System.err.println(time+"  "+head+"  "+tail+"   "+tmpId);
+				
+	        	//doing nothing with the data
+				releaseReadLock(inputRing);
 
-		            //read the message
-		            int msgId = RingBuffer.readValue(0, inputRing.buffer,inputRing.mask,inputRing.workingTailPos.value); 
-		            
-		            if (msgId<0) {   
-		            	System.out.println("exited after reading: " + messageCount+" monitor samples");
-		            	return false;
-		            }
-		            
-		            long time = RingReader.readLong(inputRing, RingBufferMonitorStage.TEMPLATE_TIME_LOC);
-		            long head = RingReader.readLong(inputRing, RingBufferMonitorStage.TEMPLATE_HEAD_LOC);
-		            long tail = RingReader.readLong(inputRing, RingBufferMonitorStage.TEMPLATE_TAIL_LOC);
-		            int tmpId = RingReader.readInt(inputRing, RingBufferMonitorStage.TEMPLATE_MSG_LOC);
-		            
-		            
-		        //TODO: AAAAAA this is a mixed high low problem and must be converted to one side or the other
-		            //TODO: AAAAA need a monitor object that manages all this information so it does not cultter the businss logic
-		            //TODO: AAAAA need method on that object for building up the tree?
-		            
-		            inputRing.workingTailPos.value+=monitorMessageSize;
-		                     
-		            int queueDepth = (int)(head-tail);
-		            //vs what?
-		            
-		            
-		           // System.err.println(time+"  "+head+"  "+tail+"   "+tmpId);
-					
-		        	//doing nothing with the data
-					releaseReadLock(inputRing);
-
-		        	
-		        	messageCount++;
-		        	
-		        	//block until one more byteVector is ready.
-		        	target += monitorMessageSize;
-		        	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		
-
-			return true;
+	        	
+	        	messageCount++;
+	        	
+	        	//block until one more byteVector is ready.
+	        	nextTargetHeadPos += monitorMessageSize;
+		        	                       	    	                        		
+			} while (true);
 		}
 	}
 
 	private final class DumpStageLowLevel extends PronghornStage {
 		private final RingBuffer inputRing;
 		private final boolean useRoute;
+		private long expectedMessageCount;
+		private long total = 0;
+		private int lastPos = -1;
+		
+		//only enter this block when we know there are records to read
+		private long nextTargetHead;
+		private long headPosCache;
+		private long messageCount = 0;
 
 		private DumpStageLowLevel(GraphManager gm,RingBuffer inputRing, boolean useRoute) {
 			super(gm,inputRing, NONE);
 			this.inputRing = inputRing;
 			this.useRoute = useRoute;
+			RingBuffer.setReleaseBatchSize(inputRing, 8);
+			expectedMessageCount = useRoute?testMessages/splits:testMessages;
+			nextTargetHead = 1 + tailPosition(inputRing);
+			headPosCache = headPosition(inputRing);		
 		}
 
 		@Override
 		public boolean exhaustedPoll() {  
-
-				RingBuffer.setReleaseBatchSize(inputRing, 8);
-				
-		 	    long total = 0;
-		 	    int lastPos = -1;
-		 	   
-		        //only enter this block when we know there are records to read
-			    long target = 1+tailPosition(inputRing);
-		        long headPosCache = headPosition(inputRing);
-		        long messageCount = 0;
-		        long expectedMessageCount = useRoute?testMessages/splits:testMessages;
-		        
-		        while (true) {
 		        	
-		        	if (messageCount==expectedMessageCount) {
-		        		//quit early there are no more message coming because this is how many were sent.
-		        		//System.err.println("done after "+messageCount+" messages and "+total+" bytes ");
-		        		RingBuffer.releaseAll(inputRing);
-		               	return false;
-		        	}
-		        	
-		            //read the message
-		        	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);
+			do {
+			        if (headPosCache < nextTargetHead) {
+						headPosCache = inputRing.headPos.longValue();
+						if (headPosCache < nextTargetHead) {
+							return true; //come back later when we find more content
+						}
+					}
 		        	
 		            int msgId = RingBuffer.takeMsgIdx(inputRing);
 		            if (msgId<0) {  
 		            	//System.err.println("done after "+messageCount+" messages and "+total+" bytes ");
-		            	assertEquals(testMessages,useRoute? messageCount*splits: messageCount);
-		            			            	
-		            	RingBuffer.releaseAll(inputRing);
-						
+		            	assertEquals(testMessages,useRoute? messageCount*splits: messageCount);		            			            	
+		            	RingBuffer.releaseAll(inputRing);						
 		            	return false;
 		            }
+		            
 		        	int meta = takeRingByteMetaData(inputRing);
 		        	int len = takeRingByteLen(inputRing);
 		        	assertEquals(testArray.length,len);
@@ -170,10 +173,9 @@ public class RingBufferPipeline2 {
 		        	total += len;
 
 		        	//block until one more byteVector is ready.
-		        	target += msgSize;
-		        }   
-
-	//		return false;//TODO: B, refactor to not loop here.
+		        	nextTargetHead += msgSize;
+			} while(true);
+			
 		}
 	}
 
@@ -182,35 +184,28 @@ public class RingBufferPipeline2 {
 		private final boolean useRoute;
 		final int MSG_ID = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
 		final int FIELD_ID = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD;
+		long expectedMessageCount;
+		int msgCount=0;
 
 		private DumpStageHighLevel(GraphManager gm,RingBuffer inputRing, boolean useRoute) {
 			super(gm, inputRing, NONE);
 			this.inputRing = inputRing;
 			this.useRoute = useRoute;
+			this.expectedMessageCount = useRoute?testMessages/splits:testMessages;
+			//	RingWalker.setReleaseBatchSize(inputRing, 8);
 		}
 
 		@Override
 		public boolean exhaustedPoll() {
 
-				long expectedMessageCount = useRoute?testMessages/splits:testMessages;
-			//	RingWalker.setReleaseBatchSize(inputRing, 8);
 				
-				int msgCount=0;
 				int lastPos = -1;
-				int msgId = 0;
-				do {
-		        	if (msgCount==expectedMessageCount) {
-		        		//quit early there are no more message coming because this is how many were sent.
-		        		//System.err.println("done after "+messageCount+" messages and "+total+" bytes ");
-		               	return false;
-		        	}
-					
+				
 					//try also releases previously read fragments
-					if (RingReader.tryReadFragment(inputRing)) {
-												
+					while (RingReader.tryReadFragment(inputRing)) {												
 						
 						assert(RingReader.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
-						msgId = RingReader.getMsgIdx(inputRing);
+						int msgId = RingReader.getMsgIdx(inputRing);
 						
 						if (msgId>=0) {																	
 							msgCount++;
@@ -233,86 +228,94 @@ public class RingBufferPipeline2 {
 							}
 
 
+						} else if (-1 == msgId) {
+							RingReader.releaseReadLock(inputRing);
+							return false;
 						}
-					} else {
-						Thread.yield();//do something meaningful while we wait for new data
-					}
-					
-					//exit the loop logic is not defined by the ring but instead is defined by data/usage, in this case we use a null byte array aka (-1 length)
-				} while (msgId!=-1);
-				//System.err.println("done");
-				
-				RingReader.releaseReadLock(inputRing);
-				
-
-			return false;// TODO: B, refactor to not spin here.
+					} 
+					return true;
+	
 		}
 	}
 
 	private final class CopyStageLowLevel extends PronghornStage {
 		private final RingBuffer outputRing;
 		private final RingBuffer inputRing;
+		
+		private long nextHeadTarget;
+		private long headPosCache;
+		
+		//two per message, and we only want half the buffer to be full
+		private long tailPosCache;
+		
+		//keep local copy of the last time the tail was checked to avoid contention.
+		private long nextTailTarget;
+		private int mask;
 
 		private CopyStageLowLevel(GraphManager gm,RingBuffer outputRing, RingBuffer inputRing) {
 			super(gm,inputRing,outputRing);
 			this.outputRing = outputRing;
 			this.inputRing = inputRing;
+
+			//RingBuffer.setReleaseBatchSize(inputRing, 8);
+			//RingBuffer.setPublishBatchSize(outputRing, 8);
+			
+			//only enter this block when we know there are records to read
+			this.nextHeadTarget = tailPosition(inputRing) + RingBuffer.EOF_SIZE;
+			this.headPosCache = headPosition(inputRing);
+			
+			//two per message, and we only want half the buffer to be full
+			this.tailPosCache = tailPosition(outputRing);
+			
+			//keep local copy of the last time the tail was checked to avoid contention.
+			this.nextTailTarget = headPosition(outputRing) - (outputRing.maxSize- msgSize);			
+			
+			this.mask = byteMask(outputRing); // data often loops around end of array so this mask is required
 		}
 
 		@Override
 		public boolean exhaustedPoll() {
 				
-				RingBuffer.setReleaseBatchSize(inputRing, 8);
-				RingBuffer.setPublishBatchSize(outputRing, 8);
-				
-		        //only enter this block when we know there are records to read
-			    long nextHeadTarget = tailPosition(inputRing) + 2;
-			    long headPosCache = headPosition(inputRing);
-			    
-		        //two per message, and we only want half the buffer to be full
-		        long tailPosCache = tailPosition(outputRing);
-		        
-			    //keep local copy of the last time the tail was checked to avoid contention.
-		        long nextTailTarget = headPosition(outputRing) - (outputRing.maxSize- msgSize);
-		        
-		        
-		        int mask = byteMask(outputRing); // data often loops around end of array so this mask is required
-		        int msgId = 0;
-		        do {
-		        	
-		        	//is there data to be written
-		        	headPosCache = spinBlockOnHead(headPosCache, nextHeadTarget, inputRing); //TOOD: AAAA, need assert to catch long block here.
-		        	nextHeadTarget += msgSize;
+					//TODO: B, need to find a way to make this pattern easy
+					//must update headPosCache but only when we need to 
+			        if (headPosCache < nextHeadTarget) {
+						headPosCache = inputRing.headPos.longValue();
+						if (headPosCache < nextHeadTarget) {
+							return true;
+						}
+					}
 
-		            //read the message
-		            msgId = RingBuffer.takeMsgIdx(inputRing);
+			        if (tailPosCache < nextTailTarget) {
+			        	tailPosCache = outputRing.tailPos.longValue();
+						if (tailPosCache < nextTailTarget) {
+							return true;
+						}
+					}
+			        					
+					nextHeadTarget += msgSize;
+					
+					//read the message
+		        	int msgId = RingBuffer.takeMsgIdx(inputRing);
 					
 					if (msgId==0) {	   															
 		            	int meta = takeRingByteMetaData(inputRing);
 		            	int len = takeRingByteLen(inputRing);
 		            	//is there room to write
-		            	tailPosCache = spinBlockOnTail(tailPosCache, nextTailTarget, outputRing);
 		            	nextTailTarget += msgSize;
 		            	
 		            	RingBuffer.addMsgIdx(outputRing, 0);
 						RingBuffer.addByteArrayWithMask(outputRing, mask, len, byteBackingArray(meta, inputRing), bytePosition(meta, inputRing, len));	
 								
-						publishWrites(outputRing);
-						releaseReadLock(inputRing);
-					} 
+						RingBuffer.publishWrites(outputRing);
+						RingBuffer.releaseReadLock(inputRing);
+					} else if (-1 == msgId) {							
+						RingBuffer.publishEOF(outputRing);						
+						RingBuffer.releaseAll(inputRing);						
+						assert(RingBuffer.contentRemaining(inputRing)==0);						
+						return false;						
+					}
 					 
-		        }  while (msgId!=-1);
-		        
-		        
-				tailPosCache = spinBlockOnTail(tailPosCache, nextTailTarget, outputRing);
-				
-				RingBuffer.publishEOF(outputRing);
-				
-				RingBuffer.releaseAll(inputRing);
-				
-				assert(RingBuffer.contentRemaining(inputRing)==0);
-		        
-				return false;// TODO: B, refactor to not spin here.
+					return true;        
 
 		}
 	}
@@ -327,21 +330,18 @@ public class RingBufferPipeline2 {
 			super(gm,inputRing,outputRing);
 			this.outputRing = outputRing;
 			this.inputRing = inputRing;
+
+			RingReader.setReleaseBatchSize(inputRing, 8);
+			RingWriter.setPublishBatchSize(outputRing, 8);
 		}
 
 		@Override
 		public boolean exhaustedPoll() {
-		
-				RingReader.setReleaseBatchSize(inputRing, 8);
-				RingWriter.setPublishBatchSize(outputRing, 8);
-				
-				int msgId = 0;
-				do {
-					if (RingReader.tryReadFragment(inputRing)) { 
+
+					while (RingReader.tryReadFragment(inputRing)) { 
 						assert(RingReader.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
-						msgId = RingReader.getMsgIdx(inputRing);
-						
-						
+						int msgId = RingReader.getMsgIdx(inputRing);
+												
 						//wait until the target ring has room for this message
 						if (0==msgId) {
 							RingWriter.blockWriteFragment(outputRing,MSG_ID);
@@ -350,17 +350,15 @@ public class RingBufferPipeline2 {
 							RingReader.copyBytes(inputRing, outputRing, FIELD_ID, FIELD_ID);
 							RingWriter.publishWrites(outputRing);
 
-						} 
-					} else {
-						Thread.yield();//do something meaningful while we wait for new data
-					}
-					//exit the loop logic is not defined by the ring but instead is defined by data/usage, in this case we use a null byte array aka (-1 length)
-				} while (msgId!=-1);
-															
-				RingWriter.publishEOF(outputRing);
-				RingReader.releaseReadLock(inputRing);
-				
-				return false;// TODO: B, refactor to not spin here.
+						} else if (-1==msgId) {
+							RingWriter.publishEOF(outputRing);				
+							RingReader.releaseReadLock(inputRing);
+							assert(RingBuffer.contentRemaining(inputRing)==0);
+							return false;
+						}
+					} 
+					return true;
+
 		}
 	}
 
@@ -399,40 +397,37 @@ public class RingBufferPipeline2 {
 		      }
 		      
 		      tailPosCache = spinBlockOnTail(tailPosCache, nextTailTarget, outputRing);
-
 		      RingBuffer.publishEOF(outputRing);
-
-			return false;//do not come back
+		      return false;//do not come back
 		}
 	}
 
 	private final class ProductionStageHighLevel extends PronghornStage {
 		private final RingBuffer outputRing;
-		final int MESSAGE_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
-		final int FIELD_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD;
+		private final int MESSAGE_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
+		private final int FIELD_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD;
+		private long messageCount = testMessages; 
 
 		private ProductionStageHighLevel(GraphManager gm, RingBuffer outputRing) {
 			super(gm,NONE,outputRing);
 			this.outputRing = outputRing;
+			RingWriter.setPublishBatchSize(outputRing, 8);
 		}
 
 		@Override
 		public boolean exhaustedPoll() {
 
-			 long messageCount = testMessages; 
-			 RingWriter.setPublishBatchSize(outputRing, 8);
-
-			 while (--messageCount>=0) {
-				
-				 RingWriter.blockWriteFragment(outputRing, MESSAGE_LOC);
-				 RingWriter.writeBytes(outputRing, FIELD_LOC, testArray, 0, testArray.length);							 
-				 RingWriter.publishWrites(outputRing);
-				 
+			 while (messageCount>=0) {				
+				 if (RingWriter.tryWriteFragment(outputRing, MESSAGE_LOC)) {
+					 RingWriter.writeBytes(outputRing, FIELD_LOC, testArray, 0, testArray.length);							 
+					 RingWriter.publishWrites(outputRing);
+					 messageCount--;
+				 } else {
+					 return true;
+				 }
 			 }
-			 RingWriter.publishEOF(outputRing);
-
-			return false;//do not come back
-			
+			 RingWriter.publishEOF(outputRing);			 
+ 			 return false;//do not come back			
 		}
 	}
 
@@ -474,26 +469,25 @@ public class RingBufferPipeline2 {
 	}
 
 	
+	@Test
+	public void pipelineExampleHighLevelSplits() {			
+		pipelineTest(true, false, true, false);		
+	}
 	
-//	@Test
-//	public void pipelineExampleHighLevelSplits() {			
-//		pipelineTest(true, false, true, false);		
-//	}
-//	
-//	@Test
-//	public void pipelineExampleLowLevelSplits() {			
-//		pipelineTest(false, false, true, false);		
-//	}
-//	
-//	@Test
-//	public void pipelineExampleHighLevelSplitsWithMonitor() {			
-//		pipelineTest(true, true, true, false);		
-//	}
-//	
-//	@Test
-//	public void pipelineExampleLowLevelSplitsWithMonitor() {			
-//		pipelineTest(false, true, true, false);		
-//	}
+	@Test
+	public void pipelineExampleLowLevelSplits() {			
+		pipelineTest(false, false, true, false);		
+	}
+	
+	@Test
+	public void pipelineExampleHighLevelSplitsWithMonitor() {			
+		pipelineTest(true, true, true, false);		
+	}
+	
+	@Test
+	public void pipelineExampleLowLevelSplitsWithMonitor() {			
+		pipelineTest(false, true, true, false);		
+	}
 
 	
 
@@ -521,12 +515,11 @@ public class RingBufferPipeline2 {
 
 	private void pipelineTest(boolean highLevelAPI, boolean monitor, boolean useTap, boolean useRouter) {
 		final GraphManager gm = new GraphManager();
-		StageManager.resetAsserts();//needed for unit tests that run in the same JVM
+		
 		StageManager normalService = new ThreadPerStageManager(gm);
 
 		
-		System.out.println();
-		 	 
+		 System.out.println();
 		 
 		 assertEquals("For "+FieldReferenceOffsetManager.RAW_BYTES.name+" expected no need to add field.",
 				      0,FieldReferenceOffsetManager.RAW_BYTES.fragNeedsAppendedCountOfBytesConsumed[0]);
@@ -549,19 +542,29 @@ public class RingBufferPipeline2 {
 		 int j = stages-1;
 		 RingBuffer[] rings = new RingBuffer[j];
 		 
-		 RingBufferMonitorStage[] monitorStages = null;
+		 //PronghornStage[] monitorStages = null;
+		 Runnable[] monitorStages = null;
+		 		 
 		 RingBuffer[] monitorRings = null;
 		 FieldReferenceOffsetManager montorFROM = null;
 		 if (monitor) {
-			monitorStages = new RingBufferMonitorStage[j];
+			monitorStages = new Runnable[j];
 		 	monitorRings = new RingBuffer[j];
 		 	montorFROM = RingBufferMonitorStage.buildFROM();
 		 }
 		 
+		 byte ex = (byte)(useRouter ? 0 : 1);
+		 
 		 while (--j>=0)  {
-			 rings[j] = new RingBuffer(new RingBufferConfig(primaryBits, secondaryBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
-			 			 
-			 assertEquals("For "+rings[j].consumerData.from.name+" expected no need to add field.",0,rings[j].consumerData.from.fragNeedsAppendedCountOfBytesConsumed[0]);
+			 
+			 if (stages-2==j) {
+				 //need to make this ring bigger when the splitter is used
+				 rings[j] = new RingBuffer(new RingBufferConfig((byte)(primaryBits+ex), (byte)(secondaryBits+ex), null,  FieldReferenceOffsetManager.RAW_BYTES));
+			 }  else {
+				 rings[j] = new RingBuffer(new RingBufferConfig(primaryBits, secondaryBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
+			 } 
+			 
+			 assertEquals("For "+rings[j].ringWalker.from.name+" expected no need to add field.",0,rings[j].ringWalker.from.fragNeedsAppendedCountOfBytesConsumed[0]);
 		
 			 
 			 //test by starting at different location in the ring to force roll over.
@@ -574,7 +577,12 @@ public class RingBufferPipeline2 {
 				 
 				 //this is a bit complex may be better to move this inside on thread?
 				 scheduledService.scheduleAtFixedRate(monitorStages[j], j*5, 41, TimeUnit.MILLISECONDS);	
+				// normalService.submit(41000000, monitorStages[j]);
+				 
 				 final RingBuffer mon = monitorRings[j];
+				 
+			//	 normalService.submit(47000000, new DumpMonitorStage(gm, mon));
+				 
 				 scheduledService.scheduleAtFixedRate(new Runnable() {
 					PronghornStage stage =  new DumpMonitorStage(gm, mon);
 					@Override
@@ -603,10 +611,11 @@ public class RingBufferPipeline2 {
 				 
 				 RingBuffer[] splitsBuffers = new RingBuffer[splits];
 				 splitsBuffers[0] = rings[j+1];//must jump ahead because we are setting this early
+				 assert(splitsBuffers[0].pBits == ex+primaryBits);
 				 if (splits>1) {
 					 int k = splits;
 					 while (--k>0) {
-						 splitsBuffers[k] = new RingBuffer(new RingBufferConfig(primaryBits, secondaryBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
+						 splitsBuffers[k] = new RingBuffer(new RingBufferConfig((byte)(primaryBits+ex), (byte)(secondaryBits+ex), null,  FieldReferenceOffsetManager.RAW_BYTES));
 						RingBuffer inputRing = splitsBuffers[k];
 						boolean useRoute = useTap&useRouter;
 						 ///
@@ -648,12 +657,9 @@ public class RingBufferPipeline2 {
 				//dump the Queue data
 				int k=0;
 				while (k<rings.length){
-					
-					System.err.println("Ring "+k+"  "+rings[k].toString());
-										
+					System.err.println(gm.getRingProducer(gm, rings[k].ringId)+" ->\n    "+rings[k].toString()+" ->\n    "+gm.getRingConsumer(gm, rings[k].ringId));										
 					k++;
-				}
-				
+				}				
 			}
 			
 			assertTrue("Test timed out, forced shut down of stages",cleanExit); //the tests are all getting cut here
@@ -687,9 +693,7 @@ public class RingBufferPipeline2 {
 					while (--t>=0) {
 						RingBuffer.shutdown(monitorRings[t]);
 					}
-				}
-
-		 
+				}	 
 
 		 scheduledService.shutdownNow();
 		 scheduledService=null;

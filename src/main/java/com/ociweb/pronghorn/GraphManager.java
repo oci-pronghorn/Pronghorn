@@ -28,9 +28,17 @@ public class GraphManager {
 	
 	//for lookup of Stage from Stage id
 	private PronghornStage[]  stageIdToStage = new PronghornStage[INIT_STAGES];
-	
 		
+	//this is not tracking each time thread is running but instead the larger granularity of
+	//the stage and if it has permanently terminated
+	private byte[] stageTerminationState = new byte[0];// 0 - unknown, 1 - registered, 2 - terminated
 	
+
+	
+	//this is never used as a runtime but only as a construction lock
+	private Object lock = new Object();		
+	
+	//Should only be called by methods that are protected by the lock
 	private static int[] setValue(int[] target, int idx, int value) {		
 		int[] result = target;
 		if (idx>=target.length) {
@@ -57,102 +65,132 @@ public class GraphManager {
 		result[idx] = value;
 		return result;
 	}	
-
-
-	public static void register(GraphManager pm, PronghornStage baseStage, RingBuffer[] inputs, RingBuffer[] outputs) {
+	
+	private static byte[] incValue(byte[] target, int idx) {		
 		
-		
-		int stageId = baseStage.stageId;
-		
-		pm.stageIdToStage = setValue(pm.stageIdToStage, stageId, baseStage);		
-		pm.stageIdToInput = setValue(pm.stageIdToInput, stageId, pm.topInput);
-		pm.stageIdToOutput = setValue(pm.stageIdToOutput, stageId, pm.topOutput);
-		
-		int i;
-		//loop over inputs
-		i = inputs.length;
-		while (--i>=0) {
-			regInput(pm, inputs[i], stageId);
+		byte[] result = target;
+		if (idx>=target.length) {
+			result = Arrays.copyOf(target, (1+idx)*2); //double the array
 		}
+		//very large count that is not expected to roll-over
+		result[idx]++;
+		return result;
+	}
+	
+
+	public static void register(GraphManager gm, PronghornStage stage, RingBuffer[] inputs, RingBuffer[] outputs) {
 		
-		//loop over outputs
-		i = outputs.length;
-		while (--i>=0) {
-			regOutput(pm, outputs[i], stageId);
+		synchronized(gm.lock) {
+			int stageId = stage.stageId;
+			
+			gm.stageTerminationState = incValue(gm.stageTerminationState, stageId); //state changes from 0 to 1
+			assert(1 == gm.stageTerminationState[stageId]);
+			
+			gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
+			gm.stageIdToInput = setValue(gm.stageIdToInput, stageId, gm.topInput);
+			gm.stageIdToOutput = setValue(gm.stageIdToOutput, stageId, gm.topOutput);
+			
+			int i;
+			//loop over inputs
+			i = inputs.length;
+			while (--i>=0) {
+				regInput(gm, inputs[i], stageId);
+			}
+			
+			//loop over outputs
+			i = outputs.length;
+			while (--i>=0) {
+				regOutput(gm, outputs[i], stageId);
+			}
+			
+			gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, -1);
+			gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, -1);
 		}
-		
-		pm.multInputIds = setValue(pm.multInputIds, pm.topInput++, -1);
-		pm.multOutputIds = setValue(pm.multOutputIds, pm.topOutput++, -1);
-		
 		
 	}
 
 
-	public static void register(GraphManager pm, PronghornStage baseStage, RingBuffer input, RingBuffer[] outputs) {
-		
-		int stageId = baseStage.stageId;
-		
-		pm.stageIdToStage = setValue(pm.stageIdToStage, stageId, baseStage);		
-		pm.stageIdToInput = setValue(pm.stageIdToInput, stageId, pm.topInput);
-		pm.stageIdToOutput = setValue(pm.stageIdToOutput, stageId, pm.topOutput);
-		
-		//loop over inputs
-		regInput(pm, input, stageId);
-		
-		int i;
-		//loop over outputs
-		i = outputs.length;
-		while (--i>=0) {
-			regOutput(pm, outputs[i], stageId);
+	public static void register(GraphManager gm, PronghornStage stage, RingBuffer input, RingBuffer[] outputs) {
+		synchronized(gm.lock) {
+			int stageId = stage.stageId;
+			
+			gm.stageTerminationState = incValue(gm.stageTerminationState, stageId); //state changes from 0 to 1
+			assert(1 == gm.stageTerminationState[stageId]);
+			
+			gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
+			gm.stageIdToInput = setValue(gm.stageIdToInput, stageId, gm.topInput);
+			gm.stageIdToOutput = setValue(gm.stageIdToOutput, stageId, gm.topOutput);
+			
+			//loop over inputs
+			regInput(gm, input, stageId);
+			
+			int i;
+			//loop over outputs
+			i = outputs.length;
+			while (--i>=0) {
+				regOutput(gm, outputs[i], stageId);
+			}
+			
+			gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, -1);
+			gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, -1);
 		}
-		
-		pm.multInputIds = setValue(pm.multInputIds, pm.topInput++, -1);
-		pm.multOutputIds = setValue(pm.multOutputIds, pm.topOutput++, -1);
-		
 	}
 
 
-	public static void register(GraphManager pm, PronghornStage baseStage, RingBuffer[] inputs, RingBuffer output) {
-		
-		int stageId = baseStage.stageId;
-		
-		pm.stageIdToStage = setValue(pm.stageIdToStage, stageId, baseStage);		
-		pm.stageIdToInput = setValue(pm.stageIdToInput, stageId, pm.topInput);
-		pm.stageIdToOutput = setValue(pm.stageIdToOutput, stageId, pm.topOutput);
-		
-		int i;
-		//loop over inputs
-		i = inputs.length;
-		while (--i>=0) {
-			regInput(pm, inputs[i], stageId);
+	public static void register(GraphManager gm, PronghornStage stage, RingBuffer[] inputs, RingBuffer output) {
+		synchronized(gm.lock) {
+			int stageId = stage.stageId;
+			
+			gm.stageTerminationState = incValue(gm.stageTerminationState, stageId); //state changes from 0 to 1
+			assert(1 == gm.stageTerminationState[stageId]);
+			
+			gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
+			gm.stageIdToInput = setValue(gm.stageIdToInput, stageId, gm.topInput);
+			gm.stageIdToOutput = setValue(gm.stageIdToOutput, stageId, gm.topOutput);
+			
+			int i;
+			//loop over inputs
+			i = inputs.length;
+			while (--i>=0) {
+				regInput(gm, inputs[i], stageId);
+			}
+			
+			//loop over outputs
+			regOutput(gm, output, stageId);			
+			
+			gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, -1);
+			gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, -1);
 		}
-		
-		//loop over outputs
-		regOutput(pm, output, stageId);			
-		
-		pm.multInputIds = setValue(pm.multInputIds, pm.topInput++, -1);
-		pm.multOutputIds = setValue(pm.multOutputIds, pm.topOutput++, -1);
-		
 	}
 
 
-	public static void register(GraphManager pm, PronghornStage baseStage, RingBuffer input, RingBuffer output) {
-		
-		int stageId = baseStage.stageId;
-				
-		pm.stageIdToStage = setValue(pm.stageIdToStage, stageId, baseStage);		
-		pm.stageIdToInput = setValue(pm.stageIdToInput, stageId, pm.topInput);
-		pm.stageIdToOutput = setValue(pm.stageIdToOutput, stageId, pm.topOutput);
-		
-		//loop over inputs
-		regInput(pm, input, stageId);
-
-		//loop over outputs
-		regOutput(pm, output, stageId);			
-		
-		pm.multInputIds = setValue(pm.multInputIds, pm.topInput++, -1);
-		pm.multOutputIds = setValue(pm.multOutputIds, pm.topOutput++, -1);
-				
+	public static void register(GraphManager gm, PronghornStage stage, RingBuffer input, RingBuffer output) {
+		synchronized(gm.lock) {
+			int stageId = stage.stageId;
+					
+			gm.stageTerminationState = incValue(gm.stageTerminationState, stageId); //state changes from 0 to 1
+			assert(1 == gm.stageTerminationState[stageId]);
+			
+			gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
+			gm.stageIdToInput = setValue(gm.stageIdToInput, stageId, gm.topInput);
+			gm.stageIdToOutput = setValue(gm.stageIdToOutput, stageId, gm.topOutput);
+			
+			//loop over inputs
+			regInput(gm, input, stageId);
+	
+			//loop over outputs
+			regOutput(gm, output, stageId);			
+			
+			gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, -1);
+			gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, -1);
+		}
+	}
+	
+	public static void terminate(GraphManager gm, PronghornStage stage ) {
+		synchronized(gm.lock) {
+			gm.stageTerminationState = incValue(gm.stageTerminationState, stage.stageId); //state changes from 1 to 2
+			assert(2 == gm.stageTerminationState[stage.stageId]);
+		}
 	}
 
 	private static void regOutput(GraphManager pm, RingBuffer output,
@@ -172,7 +210,7 @@ public class GraphManager {
 	}
 
 
-	public static void shutdownNeighbors(GraphManager pm, PronghornStage baseStage) {
+	public static void shutdownNeighborRings(GraphManager pm, PronghornStage baseStage) {
 				
 		int inputPos  = pm.stageIdToInput[baseStage.stageId];
 	    int outputPos =	pm.stageIdToOutput[baseStage.stageId];		
@@ -209,26 +247,44 @@ public class GraphManager {
 	
 	/**
 	 * Walks all the way back up the tree until every source is reached or a ring with content is encountered.
+	 * When a source is encountered it assumes more content is on the way unless the source is terminated.
+	 * 
 	 * This is a slow method that should not be called at runtime but it is very helpful for clean shutdowns.
 	 */
-	public static boolean hasUpstreamData(GraphManager m, int stageId) {
+	public static boolean mayHaveUpstreamData(GraphManager m, int stageId) {
+		
+		if (2 == m.stageTerminationState[stageId]) { //terminated 
+			return false;
+		}
+		
+		
 		int inputPos  = m.stageIdToInput[stageId];
 		int ringId;
+		int inputCounts=0;
 		    
 		while ((ringId = m.multInputIds[inputPos++])>=0) {
-									
+							
+				++inputCounts;
 		    	if (RingBuffer.contentRemaining( m.ringIdToRing[ringId])>0) {
+		    		//return true because we found content sitting on a ring
 		    		return true;
 		    	}
 		    	
+		    	int feedingStage = m.ringIdToStages[ringId*2];
 		    	//if the producer stage has data
-		    	if (hasUpstreamData(m, m.ringIdToStages[ringId*2])) {
+		    	if (mayHaveUpstreamData(m, feedingStage)) {
+		    		//return true because true was returned from upstream
 		    		return true;
 		    	}
 		}
 		
-		
-		return false;
+		//true if this is a top level stage and was not terminated at top of this function
+		//all other cases return false because the recursive check has already completed above.
+		return 0==inputCounts;
+	}
+	
+	public static boolean isProducerTerminated(GraphManager m, int ringId) {
+		return 2==m.stageTerminationState[m.ringIdToStages[ringId*2]];
 	}
 
 

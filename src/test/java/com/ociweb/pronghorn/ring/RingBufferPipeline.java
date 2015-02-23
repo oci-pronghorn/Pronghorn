@@ -161,7 +161,7 @@ public class RingBufferPipeline {
 		 while (--j>=0)  {
 			 rings[j] = new RingBuffer(new RingBufferConfig(primaryBits, secondaryBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
 			 			 
-			 assertEquals("For "+rings[j].consumerData.from.name+" expected no need to add field.",0,rings[j].consumerData.from.fragNeedsAppendedCountOfBytesConsumed[0]);
+			 assertEquals("For "+rings[j].ringWalker.from.name+" expected no need to add field.",0,rings[j].ringWalker.from.fragNeedsAppendedCountOfBytesConsumed[0]);
 		
 			 
 			 //test by starting at different location in the ring to force roll over.

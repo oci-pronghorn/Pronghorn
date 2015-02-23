@@ -19,7 +19,7 @@ public class SplitterStage2 extends PronghornStage {
 	private RingBuffer[] targets;
 	private long[] targetHeadPos;
 	
-	public int moreToCopy;
+	public int moreToCopy=-2;;
 	
 	public SplitterStage2(GraphManager gm, RingBuffer source, RingBuffer ... targets) {
 		super(gm,source,targets, true /*stateless*/);
@@ -47,12 +47,20 @@ public class SplitterStage2 extends PronghornStage {
 				throw new UnsupportedOperationException("Both source and target schemas must be the same");
 			}
 			
-			if (targets[i].pBits < source.pBits) {
-				throw new UnsupportedOperationException("The target ring "+i+" primary bit size must be at least "+source.pBits+" but it was "+targets[i].pBits);
+			//NOTE: longest message that holds a sequence needs to fit within a ring if the use case is to set the sequence length last.
+			//      therefore if that target is full and needs one more fragment we may have a problem if the batch it has grabbed is 
+			//      nearly has large as the target ring.  To resolve this we only need to ensure that the target ring is 2x the source.
+			
+			int reqTargetSize = source.pBits+1; //target ring must be 2x bigger than source
+			if (targets[i].pBits < reqTargetSize) {
+				throw new UnsupportedOperationException("The target ring "+i+" primary bit size must be at least "+reqTargetSize+" but it was "+targets[i].pBits+
+						           ". To avoid blocking hang behavior the target rings must always be 2x larger than the source ring.");
 			}
 			
-			if (targets[i].bBits < source.bBits) {
-				throw new UnsupportedOperationException("The target ring "+i+" byte bit size must be at least "+source.bBits+" but it was "+targets[i].bBits);
+			reqTargetSize = source.bBits+1;
+			if (targets[i].bBits < reqTargetSize) {
+				throw new UnsupportedOperationException("The target ring "+i+" byte bit size must be at least "+reqTargetSize+" but it was "+targets[i].bBits+
+									". To avoid blocking hang behavior the target rings must always be 2x larger than the source ring.");
 			}
 			
 			int minDif = source.bBits     -    source.pBits;
@@ -69,7 +77,6 @@ public class SplitterStage2 extends PronghornStage {
 	}
 
 	private static boolean processAvailData(SplitterStage2 ss) {
-		
 		int byteHeadPos;
         long headPos;
 		
@@ -147,17 +154,17 @@ public class SplitterStage2 extends PronghornStage {
 				
 			}
 		} while(ss.moreToCopy>0);
-		
 		//reset for next time.
 		int i = ss.targets.length;
 		while (--i>=0) {
 			//mark this one as done.
 			ss.targetHeadPos[i] += totalPrimaryCopy;
 		}
+		ss.moreToCopy=-2;
 	}
 
 	public String toString() {
-		return "spliiter stage  moreToCopy:"+moreToCopy+" source content "+RingBuffer.contentRemaining(source);
+		return getClass().getSimpleName()+ (-2==moreToCopy ? " not running ": " moreToCopy:"+moreToCopy)+" source content "+RingBuffer.contentRemaining(source);
 	}
 
 	private static void blockCopy(SplitterStage2 ss, int byteTailPos,
@@ -177,7 +184,7 @@ public class SplitterStage2 extends PronghornStage {
 		ringBuffer.workingHeadPos.value = ringBuffer.headPos.addAndGet(totalPrimaryCopy);	
 		
 		//HackTEST
-		ringBuffer.consumerData.bnmHeadPosCache = ringBuffer.workingHeadPos.value;
+		ringBuffer.ringWalker.bnmHeadPosCache = ringBuffer.workingHeadPos.value;
 		
 	}
 	

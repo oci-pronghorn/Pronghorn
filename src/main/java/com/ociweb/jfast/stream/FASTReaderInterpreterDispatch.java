@@ -106,7 +106,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         genWriteTemplateId(this);
         //set this again because the code generation path may not have set it if it were skipped.
         RingBuffer rb = RingBuffers.get(ringBuffers,activeScriptCursor);
-        rb.writeTrailingCountOfBytesConsumed = msgIdx>=0 && (1==rb.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
+        rb.writeTrailingCountOfBytesConsumed = msgIdx>=0 && (1==rb.ringWalker.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
     }
     
     //TODO: MUST only call when we know there is room for the biggest known fragment, must avoid additional checks.
@@ -124,7 +124,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         } else {
         	rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
         	//this is not the beginning of a fragment but we still need to mark the need to add the trailing bytes.
-        	rbRingBuffer.writeTrailingCountOfBytesConsumed = (1==rbRingBuffer.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[activeScriptCursor]);        	
+        	rbRingBuffer.writeTrailingCountOfBytesConsumed = (1==rbRingBuffer.ringWalker.from.fragNeedsAppendedCountOfBytesConsumed[activeScriptCursor]);        	
         }
               
            
@@ -133,7 +133,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         
         //Waiting for tail position to change! can cache the value, must make same change in compiled code.
         long neededTailStop = rbRingBuffer.workingHeadPos.value   - rbRingBuffer.maxSize + fragDataSize;
-        if (rbRingBuffer.consumerData.tailCache < neededTailStop && ((rbRingBuffer.consumerData.tailCache=rbRingBuffer.tailPos.longValue()) < neededTailStop) ) {
+        if (rbRingBuffer.ringWalker.tailCache < neededTailStop && ((rbRingBuffer.ringWalker.tailCache=rbRingBuffer.tailPos.longValue()) < neededTailStop) ) {
               return 0; //no space to read data and start new message so read nothing
         }
         

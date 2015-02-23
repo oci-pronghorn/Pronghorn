@@ -92,7 +92,7 @@ public final class RingBuffer {
     // end of moveNextFields
 
     static final int JUMP_MASK = 0xFFFFF;
-    public RingWalker consumerData;
+    public RingWalker ringWalker;
     
     public final byte pBits;
     public final byte bBits;
@@ -149,12 +149,12 @@ public final class RingBuffer {
     public String toString() {
     	
     	StringBuilder result = new StringBuilder();
+    	result.append("RingId:").append(ringId);
     	result.append(" tailPos ").append(tailPos.get());
     	result.append(" wrkTailPos ").append(workingTailPos.value);
     	result.append(" headPos ").append(headPos.get());
     	result.append(" wrkHeadPos ").append(workingHeadPos.value);
-    	result.append(" size ").append(maxSize);
-    	result.append(" full ").append(headPos.get()-tailPos.get());
+    	result.append("  ").append(headPos.get()-tailPos.get()).append("/").append(maxSize);
     	result.append("  bytes tailPos ").append(bytesTailPos.get());
     	result.append(" bytes wrkTailPos ").append(byteWorkingTailPos.value);    	
     	result.append(" bytes headPos ").append(bytesHeadPos.get());
@@ -200,7 +200,7 @@ public final class RingBuffer {
         
         init(); //TODO: Test NUMA by removing this method, only do after the rest of the testing works. 
    
-        this.consumerData = new RingWalker(mask, from);
+        this.ringWalker = new RingWalker(mask, from);
         this.constByteBuffer = byteConstants;
 
         
@@ -256,7 +256,7 @@ public final class RingBuffer {
         byteWorkingTailPos.value = 0;
         bytesTailPos.set(0);
         writeTrailingCountOfBytesConsumed = false;
-        RingWalker.reset(consumerData, 0);
+        RingWalker.reset(ringWalker, 0);
     }
         
     /**
@@ -280,7 +280,7 @@ public final class RingBuffer {
         byteWorkingTailPos.value = bPos;
         bytesTailPos.set(bPos);
         writeTrailingCountOfBytesConsumed = false;
-        RingWalker.reset(consumerData, toPos);
+        RingWalker.reset(ringWalker, toPos);
     }
 
     public static void addDecimalAsASCII(int readDecimalExponent,	long readDecimalMantissa, RingBuffer outputRing) {
@@ -829,7 +829,7 @@ public final class RingBuffer {
      	//this MUST be done here at the START of a message so all its internal fragments work with the same base position
      	 markBytesWriteBase(rb);
     	
-    	 assert(rb.consumerData.nextWorkingHead<=rb.headPos.get() || rb.workingHeadPos.value<=rb.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
+    	 assert(rb.ringWalker.nextWorkingHead<=rb.headPos.get() || rb.workingHeadPos.value<=rb.ringWalker.nextWorkingHead) : "Unsupported mix of high and low level API.";
    	
 		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, msgIdx);		
 		 
@@ -837,7 +837,7 @@ public final class RingBuffer {
 	}
 
 	public static void markMsgBytesConsumed(RingBuffer rb, int msgIdx) {
-		rb.writeTrailingCountOfBytesConsumed = (1==rb.consumerData.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
+		rb.writeTrailingCountOfBytesConsumed = (1==rb.ringWalker.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
 	}
 
    
@@ -998,7 +998,7 @@ public final class RingBuffer {
      * @param ring
      */
     public static void releaseReadLock(RingBuffer ring) {
-    	assert(ring.consumerData.cursor<=0 && !RingReader.isNewMessage(ring.consumerData)) : "Unsupported mix of high and low level API.  ";
+    	assert(ring.ringWalker.cursor<=0 && !RingReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
 		if ((--ring.batchReleaseCountDown<=0)) {			
 
 			ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value); 
@@ -1040,7 +1040,7 @@ public final class RingBuffer {
 		ring.bytesWriteLastConsumedBytePos = ring.byteWorkingHeadPos.value;
 		
     	
-    	assert(ring.consumerData.nextWorkingHead<=ring.headPos.get() || ring.workingHeadPos.value<=ring.consumerData.nextWorkingHead) : "Unsupported mix of high and low level API.";
+    	assert(ring.ringWalker.nextWorkingHead<=ring.headPos.get() || ring.workingHeadPos.value<=ring.ringWalker.nextWorkingHead) : "Unsupported mix of high and low level API.";
     	
     	publishHeadPositions(ring);  	
     }
@@ -1160,7 +1160,7 @@ public final class RingBuffer {
 	}
 
 	public static FieldReferenceOffsetManager from(RingBuffer ring) {
-		return ring.consumerData.from;
+		return ring.ringWalker.from;
 	}
 
 	public static void writeTrailingCountOfBytesConsumed(RingBuffer ring, long pos) {

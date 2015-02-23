@@ -234,7 +234,7 @@ public class RingBufferMultiTemplateTest {
         while (true) {
         	
         	if (j == 0) {
-        		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
+        		ring.ringWalker.cachedTailPosition = spinBlockOnTail(ring.ringWalker.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
         		RingBuffer.publishEOF(ring);
         		return;//done
         	}
@@ -246,7 +246,7 @@ public class RingBufferMultiTemplateTest {
         	
         	switch(selectedTemplateId) {
 	        	case 2: //boxes
-	        		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 4), ring);
+	        		ring.ringWalker.cachedTailPosition = spinBlockOnTail(ring.ringWalker.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 4), ring);
 	        		
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_BOXES_LOC);
@@ -257,7 +257,7 @@ public class RingBufferMultiTemplateTest {
 	        		RingBuffer.publishWrites(ring);
 	        		break;
 	        	case 1: //samples
-	        		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 8), ring);
+	        		ring.ringWalker.cachedTailPosition = spinBlockOnTail(ring.ringWalker.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 8), ring);
 	        		
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_SAMPLE_LOC);
@@ -272,7 +272,7 @@ public class RingBufferMultiTemplateTest {
 	        		RingBuffer.publishWrites(ring);
 	        		break;
 	        	case 4: //reset
-	        		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 3), ring);
+	        		ring.ringWalker.cachedTailPosition = spinBlockOnTail(ring.ringWalker.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 3), ring);
 	        		
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_RESET_LOC);

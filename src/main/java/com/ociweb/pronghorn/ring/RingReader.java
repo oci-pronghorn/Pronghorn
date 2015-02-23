@@ -51,22 +51,22 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	public static int readInt(RingBuffer ring, int loc) {
 		//allow all types of int and length
 		assert((loc&0x1C<<OFF_BITS)==0 || (loc&0x1F<<OFF_BITS)==(0x14<<OFF_BITS)) : "Expected to read some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-        return RingBuffer.readInt(ring.buffer, ring.mask, ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
+        return RingBuffer.readInt(ring.buffer, ring.mask, ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
     }
 	
 	public static short readShort(RingBuffer ring, int loc) {
 		assert((loc&0x1C<<OFF_BITS)==0) : "Expected to read some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-        return (short)RingBuffer.readInt(ring.buffer, ring.mask, ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
+        return (short)RingBuffer.readInt(ring.buffer, ring.mask, ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
     }
 	
 	public static byte readByte(RingBuffer ring, int loc) {
 		assert((loc&0x1C<<OFF_BITS)==0) : "Expected to read some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-        return (byte)RingBuffer.readInt(ring.buffer, ring.mask, ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
+        return (byte)RingBuffer.readInt(ring.buffer, ring.mask, ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
     }
 
 	public static long readLong(RingBuffer ring, int loc) {
 		assert((loc&0x1C<<OFF_BITS)==(0x4<<OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);   
-        return RingBuffer.readLong(ring.buffer, ring.mask, ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] +(OFF_MASK&loc));
+        return RingBuffer.readLong(ring.buffer, ring.mask, ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] +(OFF_MASK&loc));
     }
 
     public static double readDouble(RingBuffer ring, int loc) {
@@ -91,23 +91,23 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 
     public static int readDecimalExponent(RingBuffer ring, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to read some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
-    	return RingBuffer.readInt(ring.buffer,ring.mask,ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc));
+    	return RingBuffer.readInt(ring.buffer,ring.mask,ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc));
     }
     
     public static long readDecimalMantissa(RingBuffer ring, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to read some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
-        return RingBuffer.readLong(ring.buffer, ring.mask, ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc) + 1);//plus one to skip over exponent
+        return RingBuffer.readLong(ring.buffer, ring.mask, ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc) + 1);//plus one to skip over exponent
     }
     
     public static int readDataLength(RingBuffer ring, int loc) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
-        return ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc) + 1)];// second int is always the length
+        return ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc) + 1)];// second int is always the length
     }
     
     public static Appendable readASCII(RingBuffer ring, int loc, Appendable target) {
     	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-        int pos = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
+        int pos = ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         int len = RingReader.readDataLength(ring, loc);
 
         if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
@@ -120,7 +120,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     public static Appendable readUTF8(RingBuffer ring, int loc, Appendable target) {
 		assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
-        int pos = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
+        int pos = ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         int len = RingReader.readDataLength(ring, loc);
         
         if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
@@ -163,7 +163,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     public static int readUTF8(RingBuffer ring, int loc, char[] target, int targetOffset) {
 		assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
-        int pos = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
+        int pos = ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         int bytesLength = RingReader.readDataLength(ring, loc);
         
         
@@ -236,7 +236,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     public static int readASCII(RingBuffer ring, int loc, char[] target, int targetOffset) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
-        long tmp = ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
+        long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
         
@@ -288,7 +288,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         //char count is not comparable to byte count for UTF8 of length greater than zero.
         //must convert one to the other before comparison.
         
-        int pos = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
+        int pos = ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         if (pos < 0) {
             return eqUTF8Const(ring,len,seq,POS_CONST_MASK & pos);
         } else {
@@ -300,7 +300,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     public static boolean eqASCII(RingBuffer ring, int loc, CharSequence seq) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 	
-		long idx = ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
+		long idx = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
         int len = ring.buffer[ring.mask & (int)(idx + 1)];
         if (len!=seq.length()) {
             return false;
@@ -407,27 +407,27 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 			   (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || 
 			   (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
-        return ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc) + 1)];// second int is always the length
+        return ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc) + 1)];// second int is always the length
     }
     
     public static int readBytesPosition(RingBuffer ring, int loc) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
-        int tmp = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc) )];
+        int tmp = ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc) )];
 		return tmp<0 ? POS_CONST_MASK & tmp : RingBuffer.restorePosition(ring,tmp);// first int is always the length
     }
 
     public static byte[] readBytesBackingArray(RingBuffer ring, int loc) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
-    	 int pos = ring.buffer[ring.mask & (int)(ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc))];
+    	 int pos = ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc))];
     	 return pos<0 ? ring.constByteBuffer :  ring.byteBuffer;
     }
     
     public static ByteBuffer readBytes(RingBuffer ring, int loc, ByteBuffer target) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
-        long tmp = ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
+        long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
                 
@@ -458,7 +458,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     public static int readBytes(RingBuffer ring, int loc, byte[] target, int targetOffset) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
-    	long tmp = ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
+    	long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 
         int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
@@ -489,7 +489,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     public static int readBytes(RingBuffer ring, int loc, byte[] target, int targetOffset, int targetMask) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
-        long tmp = ring.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
+        long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
                 
@@ -506,15 +506,15 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		assert((sourceLOC&0x1C<<OFF_BITS)==0) : "Expected to read some type of int but found "+TypeMask.toString((sourceLOC>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		assert((targetLOC&0x1C<<RingWriter.OFF_BITS)==0) : "Expected to write some type of int but found "+TypeMask.toString((targetLOC>>RingWriter.OFF_BITS)&TokenBuilder.MASK_TYPE);
         
-		targetRing.buffer[targetRing.mask &((int)targetRing.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(targetLOC>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&targetLOC))] =
-		     sourceRing.buffer[sourceRing.mask & (int)(sourceRing.consumerData.activeReadFragmentStack[STACK_OFF_MASK&(sourceLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&sourceLOC))];
+		targetRing.buffer[targetRing.mask &((int)targetRing.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(targetLOC>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&targetLOC))] =
+		     sourceRing.buffer[sourceRing.mask & (int)(sourceRing.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(sourceLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&sourceLOC))];
     }
     
     public static void copyLong(final RingBuffer sourceRing, final RingBuffer targetRing, int sourceLOC, int targetLOC) {
     	assert((sourceLOC&0x1C<<RingReader.OFF_BITS)==(0x4<<RingReader.OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((sourceLOC>>RingReader.OFF_BITS)&TokenBuilder.MASK_TYPE);
     	assert((targetLOC&0x1C<<RingWriter.OFF_BITS)==(0x4<<RingWriter.OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((targetLOC>>RingWriter.OFF_BITS)&TokenBuilder.MASK_TYPE);
-		long srcIdx = sourceRing.consumerData.activeReadFragmentStack[RingReader.STACK_OFF_MASK&(sourceLOC>>RingReader.STACK_OFF_SHIFT)] +(RingReader.OFF_MASK&sourceLOC);   	
-		long targetIdx = (targetRing.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(targetLOC>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&targetLOC));	
+		long srcIdx = sourceRing.ringWalker.activeReadFragmentStack[RingReader.STACK_OFF_MASK&(sourceLOC>>RingReader.STACK_OFF_SHIFT)] +(RingReader.OFF_MASK&sourceLOC);   	
+		long targetIdx = (targetRing.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(targetLOC>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&targetLOC));	
 		targetRing.buffer[targetRing.mask & (int)targetIdx]     = sourceRing.buffer[sourceRing.mask & (int)srcIdx];
 		targetRing.buffer[targetRing.mask & (int)targetIdx+1] = sourceRing.buffer[sourceRing.mask & (int)srcIdx+1];
     }
@@ -523,8 +523,8 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     	assert((sourceLOC&0x1E<<RingReader.OFF_BITS)==(0x0C<<RingReader.OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((sourceLOC>>RingReader.OFF_BITS)&TokenBuilder.MASK_TYPE);
     	assert((targetLOC&0x1E<<RingWriter.OFF_BITS)==(0x0C<<RingWriter.OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((targetLOC>>RingWriter.OFF_BITS)&TokenBuilder.MASK_TYPE); 
 
-    	long srcIdx = sourceRing.consumerData.activeReadFragmentStack[RingReader.STACK_OFF_MASK&(sourceLOC>>RingReader.STACK_OFF_SHIFT)] +(RingReader.OFF_MASK&sourceLOC);   	
-		long targetIdx = (targetRing.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(targetLOC>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&targetLOC));	
+    	long srcIdx = sourceRing.ringWalker.activeReadFragmentStack[RingReader.STACK_OFF_MASK&(sourceLOC>>RingReader.STACK_OFF_SHIFT)] +(RingReader.OFF_MASK&sourceLOC);   	
+		long targetIdx = (targetRing.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(targetLOC>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&targetLOC));	
 	
 		targetRing.buffer[targetRing.mask & (int)targetIdx]     = sourceRing.buffer[sourceRing.mask & (int)srcIdx];
 		targetRing.buffer[targetRing.mask & (int)targetIdx+1] = sourceRing.buffer[sourceRing.mask & (int)srcIdx+1];
@@ -543,7 +543,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		int p = targetRing.byteWorkingHeadPos.value;
 		
 		RingBuffer.setBytePosAndLen(targetRing.buffer, targetRing.mask, 
-				targetRing.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(targetLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&targetLOC), p, length, RingBuffer.bytesWriteBase(targetRing)); 
+				targetRing.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(targetLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&targetLOC), p, length, RingBuffer.bytesWriteBase(targetRing)); 
 	
 		targetRing.byteWorkingHeadPos.value =  0xEFFFFFFF&(p + length);	
 		
@@ -579,7 +579,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		//NOTE: all the reading makes use of the high-level API to manage the fragment state, this call assumes tryRead was called once already.
 			
 		//we may re-enter this function to continue the copy
-		RingWalker consumerData = inputRing.consumerData;
+		RingWalker consumerData = inputRing.ringWalker;
 		boolean copied = RingWalker.copyFragment0(inputRing, outputRing, inputRing.workingTailPos.value, consumerData.nextWorkingTail);
 		while (copied && !FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(inputRing), consumerData.nextCursor)) {			
 			//using short circut logic so copy does not happen unless the prep is successful
@@ -593,11 +593,11 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	}
 
 	public static boolean isNewMessage(RingBuffer ring) {
-		return ring.consumerData.isNewMessage;
+		return ring.ringWalker.isNewMessage;
 	}
 
 	public static int getMsgIdx(RingBuffer rb) {
-		return rb.consumerData.msgIdx;
+		return rb.ringWalker.msgIdx;
 	}
 
 	public static int getMsgIdx(RingWalker rw) {
@@ -611,14 +611,16 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 			ringBuffer.init();//hack test
 		}		
 		
-		if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBuffer.consumerData.nextCursor)) {    		
-			return RingWalker.prepReadMessage(ringBuffer, ringBuffer.consumerData);			   
+		if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBuffer.ringWalker.nextCursor)) {    		
+			return RingWalker.prepReadMessage(ringBuffer, ringBuffer.ringWalker);			   
 	    } else {  
-			return RingWalker.prepReadFragment(ringBuffer, ringBuffer.consumerData);
+			return RingWalker.prepReadFragment(ringBuffer, ringBuffer.ringWalker);
 	    }
 	}
 
 	public static void releaseReadLock(RingBuffer ringBuffer) {
+		ringBuffer.workingTailPos.value = ringBuffer.ringWalker.nextWorkingTail;
+		
 		ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			
 		ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); //inlined release however the byte adjust must happen on every message so its done earlier
 	}

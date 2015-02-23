@@ -233,25 +233,20 @@ public class RingWalker {
 		if (tmpNextWokingTail>0) { //first iteration it will not have a valid position
 			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];	
 		}	
-			
-        //can't check because the bytes rollover now.
-		//assert(ringBuffer.byteWorkingTailPos.value <= ringBuffer.bytesHeadPos.get()) : "expected to have data up to "+ringBuffer.byteWorkingTailPos.value+" but we only have "+ringBuffer.bytesHeadPos.get();
-		
-//		//
-		//from the last known fragment move up the working tail position to this new fragment location
-		ringBuffer.workingTailPos.value = tmpNextWokingTail;
-		
+
 		//the byteWorkingTail now holds the new base
 		RingBuffer.markBytesReadBase(ringBuffer);
-	
-	
+
 		
+	
 		
 		//
 		//batched release of the old positions back to the producer
 		//could be done every time but batching reduces contention
 		//this batching is only done per-message so the fragments can remain and be read
 		if ((--ringBuffer.batchReleaseCountDown>0)) {	
+			//from the last known fragment move up the working tail position to this new fragment location
+			ringBuffer.workingTailPos.value = ringBufferConsumer.nextWorkingTail;
 			
 			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
 		} else {
@@ -326,7 +321,7 @@ public class RingWalker {
 			prepWriteFragment(ring, cursorPosition, from, fragSize);
 		} else {
 			//only if there is no room should we hit the CAS tailPos and then try again.
-			hasRoom = (ring.consumerData.cachedTailPosition = ring.tailPos.longValue()) >=  target;		
+			hasRoom = (ring.ringWalker.cachedTailPosition = ring.tailPos.longValue()) >=  target;		
 			if (hasRoom) {		
 				prepWriteFragment(ring, cursorPosition, from, fragSize);
 			}
@@ -341,7 +336,7 @@ public class RingWalker {
 		
 		//Must double check this here for nested sequences
 		if (ring.writeTrailingCountOfBytesConsumed) {
-			RingBuffer.writeTrailingCountOfBytesConsumed(ring, ring.consumerData.nextWorkingHead -1 ); 
+			RingBuffer.writeTrailingCountOfBytesConsumed(ring, ring.ringWalker.nextWorkingHead -1 ); 
 		}
 		
 		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {			
@@ -351,16 +346,16 @@ public class RingWalker {
 			RingBuffer.markBytesWriteBase(ring);
 			
 			//Start new stack of fragments because this is a new message
-			ring.consumerData.activeWriteFragmentStack[0] = ring.workingHeadPos.value;
+			ring.ringWalker.activeWriteFragmentStack[0] = ring.workingHeadPos.value;
 			ring.buffer[ring.mask &(int)(ring.workingHeadPos.value + from.templateOffset)] = cursorPosition;
 
 		 } else {
 			
 			//this fragment does not start a new message but its start position must be recorded for usage later
-			ring.consumerData.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=ring.workingHeadPos.value;
+			ring.ringWalker.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=ring.workingHeadPos.value;
 		 }
 		ring.workingHeadPos.value += fragSize;
-		ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + fragSize;
+		ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + fragSize;
 
 		//when publish is called this new byte will be appended due to this request
 		ring.writeTrailingCountOfBytesConsumed = (1==from.fragNeedsAppendedCountOfBytesConsumed[cursorPosition]);

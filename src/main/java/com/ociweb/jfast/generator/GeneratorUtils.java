@@ -169,9 +169,9 @@ public class GeneratorUtils {
             
             builder.append("fieldPos = 0;\n");
             builder.append("\n");
-            builder.append("setActiveScriptCursor(rb.consumerData.cursor);\n");        
+            builder.append("setActiveScriptCursor(rb.ringWalker.cursor);\n");        
 
-            builder.append("if ("+RingWalker.class.getCanonicalName()+".isNewMessage(rb.consumerData)) {\n");                
+            builder.append("if ("+RingWalker.class.getCanonicalName()+".isNewMessage(rb.ringWalker)) {\n");                
             
             if (preambleLength==0) {
                 builder.append("    beginMessage(this);\n");
@@ -189,9 +189,9 @@ public class GeneratorUtils {
             builder.append("    "+RingBuffer.class.getSimpleName()+" rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,x);\n" ); 
             
 		    //TODO: B, simplify this to do less runtime work.
-			builder.append(" {int fragmentSize = rb.consumerData.from.fragDataSize[x]+ rb.consumerData.from.templateOffset + 1;\n\r")
+			builder.append(" {int fragmentSize = rb.ringWalker.from.fragDataSize[x]+ rb.ringWalker.from.templateOffset + 1;\n\r")
 			       .append(" long neededTailStop = rb.workingHeadPos.value - (rb.maxSize-fragmentSize);\n\r")
-			       .append(" if (rb.consumerData.tailCache < neededTailStop && ((rb.consumerData.tailCache=rb.tailPos.longValue()) < neededTailStop) ) {\n\r")
+			       .append(" if (rb.ringWalker.tailCache < neededTailStop && ((rb.ringWalker.tailCache=rb.tailPos.longValue()) < neededTailStop) ) {\n\r")
 			       .append("       return 0;//nothing read\n\r")
 			       .append(" }}\n\r");
             

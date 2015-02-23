@@ -94,7 +94,7 @@ public class DispatchLoader {
             
             return (T)generatedClass.getConstructor(catBytes.getClass()).newInstance(catBytes);
         } catch (Throwable t) {
-        	log.error("Error in creating instance, attempting source regeneration and recompile.", t);
+        	log.trace("Error in creating instance, attempting source regeneration and recompile.", t);
             //can not create instance because the class is no longer compatible with the rest of the code base so force a recompile
             Class generatedClass = new FASTClassLoader(catBytes, parentClassLoader, FORCE_COMPILE).loadClass(type);
             return (T)generatedClass.getConstructor(catBytes.getClass()).newInstance(catBytes);

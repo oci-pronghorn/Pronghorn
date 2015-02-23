@@ -191,7 +191,7 @@ public class SplitterStage implements Runnable {
 		ringBuffer.workingHeadPos.value = ringBuffer.headPos.addAndGet(totalPrimaryCopy);	
 		
 		//HackTEST
-		ringBuffer.consumerData.bnmHeadPosCache = ringBuffer.workingHeadPos.value;
+		ringBuffer.ringWalker.bnmHeadPosCache = ringBuffer.workingHeadPos.value;
 		
 	}
 	
