@@ -111,12 +111,12 @@ public class ThreadPerStageManager extends StageManager {
 				try {	
 					boolean hasMoreWork = true;
 					do {
-						assert(confirmRunStart(stage));
+					//	assert(confirmRunStart(stage));
 						hasMoreWork = stage.exhaustedPoll();
-						//if (!hasMoreWork) {
-						//	Thread.yield();
-						//}
-						assert(confirmRunStop(stage));
+					//	if (!hasMoreWork) {
+					//		Thread.yield();
+					//	}
+					//	assert(confirmRunStop(stage));
 					} while (!isShutDownNow &&
 							   (hasMoreWork || 
 							       (stage.stateless &&
@@ -128,7 +128,7 @@ public class ThreadPerStageManager extends StageManager {
 					log.error("Unexpected error in stage {}", stage);
 					log.error("Stacktrace",t);
 					GraphManager.shutdownNeighborRings(graphManager, stage);
-					assert(confirmRunStop(stage));
+				//	assert(confirmRunStop(stage));
 				}
 			}			
 		};

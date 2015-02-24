@@ -4,13 +4,14 @@
 package com.ociweb.jfast.catalog.loader;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Properties;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
+import org.xml.sax.helpers.AttributesImpl;
 import org.xml.sax.helpers.DefaultHandler;
 
 import com.ociweb.jfast.primitive.FASTOutput;
@@ -18,32 +19,77 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
-import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
+
+interface SAXEvent
+{
+    void play(TemplateHandler handler) throws SAXException;
+}
+
+class StartElementEvent implements SAXEvent {
+    String uri;
+    String localName;
+    String qName;
+    Attributes attributes;
+
+    StartElementEvent(String uri, String localName, String qName, Attributes attributes)
+    {
+        this.uri = uri;
+        this.localName = localName;
+        this.qName = qName;
+        this.attributes = new AttributesImpl(attributes);
+    }
+
+    public void play(TemplateHandler handler) throws SAXException
+    {
+       handler.startElement(uri,localName,qName,attributes);
+    }
+}
+
+class EndElementEvent implements SAXEvent {
+    String uri;
+    String localName;
+    String qName;
+
+    EndElementEvent(String uri, String localName, String qName)
+    {
+        this.uri = uri;
+        this.localName = localName;
+        this.qName = qName;
+    }
+
+    public void play(TemplateHandler handler) throws SAXException
+    {
+        handler.endElement(uri,localName, qName);
+    }
+}
+
 
 public class TemplateHandler extends DefaultHandler {
 
 	//TODO: AA, add support for not repeating the template id if message of same time are in sequence.
-	
+
     private static final String SPECIAL_PREFIX = "'>";
-    
+
     //TODO: C, simplify this and find all the common methods that can be pulled out.
-    
+
     private final PrimitiveWriter writer;
-    
+
     //it could be made bigger but this also consumes more memory so we need a good reason
     //TODO: B, instead of making this larger find a way to make scripts re-use the fragments of other scripts
     private final static int MAX_SCRIPT_LENGTH = 1<<24;//16M
     static {
     	assert(MAX_SCRIPT_LENGTH>TokenBuilder.MAX_FIELD_ID_VALUE) : "script length constant is not large enough";
     }
-    
+
     // Catalog represents all the templates supported
     int[] catalogScriptTokens = new int[MAX_SCRIPT_LENGTH];
     long[] catalogScriptFieldIds = new long[MAX_SCRIPT_LENGTH];
     String[] catalogScriptFieldNames = new String[MAX_SCRIPT_LENGTH];
     String[] catalogScriptDictionaryNames = new String[MAX_SCRIPT_LENGTH];
-    
+
+    List<SAXEvent> templateEvents;
+    Map<String,List<SAXEvent>> templateMap = new HashMap<String, List<SAXEvent>>();
 
     int catalogTemplateScriptIdx = 0;
 
@@ -91,9 +137,9 @@ public class TemplateHandler extends DefaultHandler {
     long templateIdBiggest = 0;
     int templateIdUnique = 0;
     // holds offset to template in script
-    
+
     //can only support 64K unique keys but the actual values can be much larger 32 bit ints
-    LongHashTable templateToOffset = new LongHashTable(17); 
+    LongHashTable templateToOffset = new LongHashTable(17);
     LongHashTable templateToLimit = new LongHashTable(17);
 
     String templateName;
@@ -114,7 +160,7 @@ public class TemplateHandler extends DefaultHandler {
     int fieldExponentAbsent;
     int fieldExponentOperator;
     String fieldExponentOperatorValue;
-    
+
     long fieldMantissaAbsent;
     int fieldMantissaOperator;
     String fieldMantissaOperatorValue;
@@ -133,11 +179,11 @@ public class TemplateHandler extends DefaultHandler {
     //TODO: B, Make these smaller they do not need to be this big
     int[] groupOpenTokenPMapStack = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
     int[] groupOpenTokenStack = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
-    
+
     int groupTokenStackHead = -1;
     int maxGroupTokenStackDepth;
     final ClientConfig clientConfig;
-    
+
 
     public TemplateHandler(FASTOutput output, ClientConfig clientConfig) {
         this.writer = new PrimitiveWriter(4096, output, false);
@@ -146,191 +192,79 @@ public class TemplateHandler extends DefaultHandler {
         this.activeDictionary = dictionaryNames.indexOf(globalDictionaryName);
 
     }
-    
+
     public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
 
-        if (qName.equalsIgnoreCase("uint32")) {            
-            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerUnsignedOptional : TypeMask.IntegerUnsigned;
-            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
-        } else if (qName.equalsIgnoreCase("int32")) {
-            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerSignedOptional : TypeMask.IntegerSigned;
-            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
-        } else if (qName.equalsIgnoreCase("uint64")) {
-            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongUnsignedOptional : TypeMask.LongUnsigned;
-            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
-        } else if (qName.equalsIgnoreCase("int64")) {
-            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongSignedOptional : TypeMask.LongSigned;
-            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
-        } else if (qName.equalsIgnoreCase("length")) {
-            fieldType = TypeMask.GroupLength;// NOTE: length is not optional
-            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
-        } else if (qName.equalsIgnoreCase("string")) {
-            if ("unicode".equals(attributes.getValue("charset"))) {
-                // default is required
-                fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.TextUTF8Optional
-                        : TypeMask.TextUTF8;
-            } else {
-                // default is ascii
-                fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.TextASCIIOptional
-                        : TypeMask.TextASCII;
-            }
-            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
-        } else if (qName.equalsIgnoreCase("decimal")) {
-            fieldPMapInc = 2; // any operators must count as two PMap fields.
-            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.DecimalOptional  : TypeMask.Decimal;
-            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
-
-            fieldExponentOperator = OperatorMask.Field_None;
-            fieldMantissaOperator = OperatorMask.Field_None;
-
-        } else if (qName.equalsIgnoreCase("exponent")) {
-            fieldPMapInc = 1;
-            if ("optional".equals(attributes.getValue("presence"))) {
-                fieldType = TypeMask.DecimalOptional;
-            }
-            fieldOperator = OperatorMask.Field_None;
-
-            String absentString = attributes.getValue("nt_absent_const");
-            if (null != absentString && absentString.trim().length() > 0) {
-                fieldExponentAbsent = Integer.parseInt(absentString.trim());
-            } else {
-                // default value for absent of this type
-                fieldExponentAbsent = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
-            }
-
-        } else if (qName.equalsIgnoreCase("mantissa")) {
-            fieldPMapInc = 1;
-            fieldOperator = OperatorMask.Field_None;
-
-            String absentString = attributes.getValue("nt_absent_const");
-            if (null != absentString && absentString.trim().length() > 0) {
-                fieldMantissaAbsent = Long.parseLong(absentString.trim());
-            } else {
-                // default value for absent of this type
-                fieldMantissaAbsent = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
-            }
-
-        } else if (qName.equalsIgnoreCase("bytevector")) {
-            fieldOperator = OperatorMask.Field_None;
-            fieldType = TypeMask.ByteArray;
-            fieldId = Integer.parseInt(attributes.getValue("id"));
-            fieldName = attributes.getValue("name");
-
-        } else if (qName.equalsIgnoreCase("copy")) {
-            setActiveDictionary(attributes);
-            fieldOperator = OperatorMask.Field_Copy;
-            fieldOperatorValue = attributes.getValue("value");
-            groupOpenTokenPMapStack[groupTokenStackHead] += fieldPMapInc;
-
-        } else if (qName.equalsIgnoreCase("constant")) {
-            fieldOperator = OperatorMask.Field_Constant;
-            fieldOperatorValue = attributes.getValue("value");
-            if ((fieldType & 1) != 0) {
-                groupOpenTokenPMapStack[groupTokenStackHead] += fieldPMapInc;
-            }
-        } else if (qName.equalsIgnoreCase("default")) {
-            fieldOperator = OperatorMask.Field_Default;
-            fieldOperatorValue = attributes.getValue("value");
-            groupOpenTokenPMapStack[groupTokenStackHead] += fieldPMapInc;
-
-        } else if (qName.equalsIgnoreCase("delta")) {
-            setActiveDictionary(attributes);
-            fieldOperator = OperatorMask.Field_Delta;
-            fieldOperatorValue = attributes.getValue("value");
-            // Never uses pmap
-
-        } else if (qName.equalsIgnoreCase("increment")) {
-            setActiveDictionary(attributes);
-            fieldOperator = OperatorMask.Field_Increment;
-            groupOpenTokenPMapStack[groupTokenStackHead] += fieldPMapInc;
-            fieldOperatorValue = attributes.getValue("value");
-
-        } else if (qName.equalsIgnoreCase("tail")) {
-            setActiveDictionary(attributes);
-            fieldOperator = OperatorMask.Field_Tail;
-            // Never uses pmap
-
-        } else if (qName.equalsIgnoreCase("group")) {
-        	int token = TokenBuilder.buildToken(TypeMask.Group, 0, catalogTemplateScriptIdx);
-            
-            basicGroupStart(attributes, token);
-
-            catalogScriptTokens[    catalogTemplateScriptIdx] = token;
-            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            fieldName=null;//ensure it is only used once
-            catalogScriptFieldIds[  catalogTemplateScriptIdx++] = 0; // Zero id for group
-
-        } else if (qName.equalsIgnoreCase("sequence")) {
-        	int token = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Seq, catalogTemplateScriptIdx + 1);
-
-            basicGroupStart(attributes, token);
-            //add 1 because we moved the length back up to the previous location
-            catalogScriptFieldNames[catalogTemplateScriptIdx+1] = fieldName;
-            // sequence token is not added to the script until the Length field
-            // is seen
-
-        } else if (qName.equalsIgnoreCase("template")) {
+        if (qName.equalsIgnoreCase("template")) {
             // must support zero so we add 1 to the index.
             int templateOffset = catalogTemplateScriptIdx + 1;
             fieldName = attributes.getValue("name");
-            
-            templateId = Long.parseLong(attributes.getValue("id"));
-            
-            if (!LongHashTable.setItem(templateToOffset, templateId, templateOffset)) {
-            	throw new SAXException("Error in XML file, Duplicate template id: " + templateId);
-            }          
-            
-            if (templateId < 0) {
-                throw new SAXException("Template Id must be positive: " + templateId);
-            } else {
-                templateIdBiggest = Math.max(templateIdBiggest, templateId);
+            String templateIdString = attributes.getValue("id");
+            if (templateIdString != null ) {
+                templateId = Long.parseLong(templateIdString);
+
+                if (!LongHashTable.setItem(templateToOffset, templateId, templateOffset)) {
+                	throw new SAXException("Error in XML file, Duplicate template id: " + templateId);
+                }
+
+                if (templateId < 0) {
+                    throw new SAXException("Template Id must be positive: " + templateId);
+                } else {
+                    templateIdBiggest = Math.max(templateIdBiggest, templateId);
+                }
+
+                // Token must hold the max bytes needed for the PMap but this is the
+                // start element
+                // and that data is not ready yet. So in the Count field we will put
+                // the templateScriptIdx.
+                // upon close of this element the token at that location in the
+                // templateScript must have
+                // the Count updated to the right value.
+                boolean hasTemplateId = true;//TODO: where do we get this from?  THIS is ONLY set on the group open the close does not need it.
+                int token = TokenBuilder.buildToken(TypeMask.Group, hasTemplateId ? OperatorMask.Group_Bit_Templ : 0, catalogTemplateScriptIdx);
+
+                // this token will tell how to get back to the index in the script
+                // to fix it.
+                // this value will also be needed for the back jump value in the
+                // closing task.
+                groupOpenTokenStack[++groupTokenStackHead] = token;
+                maxGroupTokenStackDepth = Math.max(maxGroupTokenStackDepth, groupTokenStackHead);
+                groupOpenTokenPMapStack[groupTokenStackHead] = 0;
+
+                catalogScriptTokens[    catalogTemplateScriptIdx] = token;
+                catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+
+                String dictionaryName = setActiveDictionary(attributes);
+                catalogScriptDictionaryNames[catalogTemplateScriptIdx] = dictionaryName;
+
+                fieldName=null;//ensure it is only used once
+                catalogScriptFieldIds[  catalogTemplateScriptIdx++] = templateId;
+
+
+
+                // messages do not need to be listed in catalogTemplateScript
+                // because they are the top level group.
+
+                templateXMLns = attributes.getValue("xmlns");
+                templateName = attributes.getValue("name");
+
+
+                if ("Y".equalsIgnoreCase(attributes.getValue("reset"))) {
+                    // add Dictionary command to reset in the script
+                    int resetToken = TokenBuilder.buildToken(TypeMask.Dictionary, OperatorMask.Dictionary_Reset,
+                            activeDictionary);
+
+                    catalogScriptTokens[catalogTemplateScriptIdx] = resetToken;
+                    catalogScriptFieldNames[catalogTemplateScriptIdx] = templateName;
+                    catalogScriptFieldIds[catalogTemplateScriptIdx++] = templateId;
+                }
+            }
+            else {
+                templateId = -1;
+                templateName = attributes.getValue("name");
             }
 
-            // Token must hold the max bytes needed for the PMap but this is the
-            // start element
-            // and that data is not ready yet. So in the Count field we will put
-            // the templateScriptIdx.
-            // upon close of this element the token at that location in the
-            // templateScript must have
-            // the Count updated to the right value.
-            boolean hasTemplateId = true;//TODO: where do we get this from?  THIS is ONLY set on the group open the close does not need it.
-            int token = TokenBuilder.buildToken(TypeMask.Group, hasTemplateId ? OperatorMask.Group_Bit_Templ : 0, catalogTemplateScriptIdx);
-
-            // this token will tell how to get back to the index in the script
-            // to fix it.
-            // this value will also be needed for the back jump value in the
-            // closing task.
-            groupOpenTokenStack[++groupTokenStackHead] = token;
-            maxGroupTokenStackDepth = Math.max(maxGroupTokenStackDepth, groupTokenStackHead);
-            groupOpenTokenPMapStack[groupTokenStackHead] = 0;
-
-            catalogScriptTokens[    catalogTemplateScriptIdx] = token;
-            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            
-            String dictionaryName = setActiveDictionary(attributes);
-            catalogScriptDictionaryNames[catalogTemplateScriptIdx] = dictionaryName;
-            
-            fieldName=null;//ensure it is only used once
-            catalogScriptFieldIds[  catalogTemplateScriptIdx++] = templateId;
-
-            
-            
-            // messages do not need to be listed in catalogTemplateScript
-            // because they are the top level group.
-
-            templateXMLns = attributes.getValue("xmlns");
-            templateName = attributes.getValue("name");
-
-
-            if ("Y".equalsIgnoreCase(attributes.getValue("reset"))) {
-                // add Dictionary command to reset in the script
-                int resetToken = TokenBuilder.buildToken(TypeMask.Dictionary, OperatorMask.Dictionary_Reset,
-                        activeDictionary);
-
-                catalogScriptTokens[catalogTemplateScriptIdx] = resetToken;
-                catalogScriptFieldNames[catalogTemplateScriptIdx] = templateName;
-                catalogScriptFieldIds[catalogTemplateScriptIdx++] = templateId;
-            }
+            templateEvents = new ArrayList<SAXEvent>();
 
         } else if (qName.equalsIgnoreCase("templates")) {
             setActiveDictionary(attributes);
@@ -338,14 +272,158 @@ public class TemplateHandler extends DefaultHandler {
 
         } else if (qName.equalsIgnoreCase("templateRef")) {
         	//a templateRef is NOT a group but it is LIKE one as far as building its script is concerned
-        	
-        	int token = TokenBuilder.buildToken(TypeMask.TemplateRef, 0, catalogTemplateScriptIdx);
-            basicGroupStart(attributes, token);
 
-            catalogScriptTokens[    catalogTemplateScriptIdx] = token;
-            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            fieldName=null;//ensure it is only used once
-            catalogScriptFieldIds[  catalogTemplateScriptIdx++] = 0; // Zero id 
+            // int token = TokenBuilder.buildToken(TypeMask.TemplateRef, 0, catalogTemplateScriptIdx);
+            //             basicGroupStart(attributes, token);
+            //
+            //             catalogScriptTokens[    catalogTemplateScriptIdx] = token;
+            //             catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+            //             fieldName=null;//ensure it is only used once
+            //             catalogScriptFieldIds[  catalogTemplateScriptIdx++] = 0; // Zero id
+
+            String refName = attributes.getValue("name");
+            if (refName == null) {
+                throw new SAXException("dynamic templateRef is not supported");
+            }
+
+            List<SAXEvent> events = templateMap.get(refName);
+            if (events == null) {
+                throw new SAXException("templateRef to unknown template " + refName);
+            }
+
+            for (SAXEvent ev : events) {
+                ev.play(this);
+            }
+        }
+        else {
+
+            templateEvents.add(new StartElementEvent(uri,localName,qName,attributes));
+
+            if (templateId < 0)
+                return;
+
+
+            if (qName.equalsIgnoreCase("uint32")) {
+                fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerUnsignedOptional : TypeMask.IntegerUnsigned;
+                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+            } else if (qName.equalsIgnoreCase("int32")) {
+                fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerSignedOptional : TypeMask.IntegerSigned;
+                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+            } else if (qName.equalsIgnoreCase("uint64")) {
+                fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongUnsignedOptional : TypeMask.LongUnsigned;
+                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
+            } else if (qName.equalsIgnoreCase("int64")) {
+                fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongSignedOptional : TypeMask.LongSigned;
+                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
+            } else if (qName.equalsIgnoreCase("length")) {
+                fieldType = TypeMask.GroupLength;// NOTE: length is not optional
+                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+            } else if (qName.equalsIgnoreCase("string")) {
+                if ("unicode".equals(attributes.getValue("charset"))) {
+                    // default is required
+                    fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.TextUTF8Optional
+                            : TypeMask.TextUTF8;
+                } else {
+                    // default is ascii
+                    fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.TextASCIIOptional
+                            : TypeMask.TextASCII;
+                }
+                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+            } else if (qName.equalsIgnoreCase("decimal")) {
+                fieldPMapInc = 2; // any operators must count as two PMap fields.
+                fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.DecimalOptional  : TypeMask.Decimal;
+                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+
+                fieldExponentOperator = OperatorMask.Field_None;
+                fieldMantissaOperator = OperatorMask.Field_None;
+
+            } else if (qName.equalsIgnoreCase("exponent")) {
+                fieldPMapInc = 1;
+                if ("optional".equals(attributes.getValue("presence"))) {
+                    fieldType = TypeMask.DecimalOptional;
+                }
+                fieldOperator = OperatorMask.Field_None;
+
+                String absentString = attributes.getValue("nt_absent_const");
+                if (null != absentString && absentString.trim().length() > 0) {
+                    fieldExponentAbsent = Integer.parseInt(absentString.trim());
+                } else {
+                    // default value for absent of this type
+                    fieldExponentAbsent = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                }
+
+            } else if (qName.equalsIgnoreCase("mantissa")) {
+                fieldPMapInc = 1;
+                fieldOperator = OperatorMask.Field_None;
+
+                String absentString = attributes.getValue("nt_absent_const");
+                if (null != absentString && absentString.trim().length() > 0) {
+                    fieldMantissaAbsent = Long.parseLong(absentString.trim());
+                } else {
+                    // default value for absent of this type
+                    fieldMantissaAbsent = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
+                }
+
+            } else if (qName.equalsIgnoreCase("bytevector")) {
+                fieldOperator = OperatorMask.Field_None;
+                fieldType = TypeMask.ByteArray;
+                fieldId = Integer.parseInt(attributes.getValue("id"));
+                fieldName = attributes.getValue("name");
+
+            } else if (qName.equalsIgnoreCase("copy")) {
+                setActiveDictionary(attributes);
+                fieldOperator = OperatorMask.Field_Copy;
+                fieldOperatorValue = attributes.getValue("value");
+                groupOpenTokenPMapStack[groupTokenStackHead] += fieldPMapInc;
+
+            } else if (qName.equalsIgnoreCase("constant")) {
+                fieldOperator = OperatorMask.Field_Constant;
+                fieldOperatorValue = attributes.getValue("value");
+                if ((fieldType & 1) != 0) {
+                    groupOpenTokenPMapStack[groupTokenStackHead] += fieldPMapInc;
+                }
+            } else if (qName.equalsIgnoreCase("default")) {
+                fieldOperator = OperatorMask.Field_Default;
+                fieldOperatorValue = attributes.getValue("value");
+                groupOpenTokenPMapStack[groupTokenStackHead] += fieldPMapInc;
+
+            } else if (qName.equalsIgnoreCase("delta")) {
+                setActiveDictionary(attributes);
+                fieldOperator = OperatorMask.Field_Delta;
+                fieldOperatorValue = attributes.getValue("value");
+                // Never uses pmap
+
+            } else if (qName.equalsIgnoreCase("increment")) {
+                setActiveDictionary(attributes);
+                fieldOperator = OperatorMask.Field_Increment;
+                groupOpenTokenPMapStack[groupTokenStackHead] += fieldPMapInc;
+                fieldOperatorValue = attributes.getValue("value");
+
+            } else if (qName.equalsIgnoreCase("tail")) {
+                setActiveDictionary(attributes);
+                fieldOperator = OperatorMask.Field_Tail;
+                // Never uses pmap
+
+            } else if (qName.equalsIgnoreCase("group")) {
+            	int token = TokenBuilder.buildToken(TypeMask.Group, 0, catalogTemplateScriptIdx);
+
+                basicGroupStart(attributes, token);
+
+                catalogScriptTokens[    catalogTemplateScriptIdx] = token;
+                catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+                fieldName=null;//ensure it is only used once
+                catalogScriptFieldIds[  catalogTemplateScriptIdx++] = 0; // Zero id for group
+
+            } else if (qName.equalsIgnoreCase("sequence")) {
+            	int token = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Seq, catalogTemplateScriptIdx + 1);
+
+                basicGroupStart(attributes, token);
+                //add 1 because we moved the length back up to the previous location
+                catalogScriptFieldNames[catalogTemplateScriptIdx+1] = fieldName;
+                // sequence token is not added to the script until the Length field
+                // is seen
+
+            }
         }
     }
 
@@ -420,170 +498,15 @@ public class TemplateHandler extends DefaultHandler {
          * sequence of LONGS.
          */
 
-        if (qName.equalsIgnoreCase("uint32") || qName.equalsIgnoreCase("int32")) {
+         if (qName.equalsIgnoreCase("template")) {
 
-            int token = buildToken(tokenBuilderIntCount);
+             templateMap.put(templateName, templateEvents);
 
-            int optionalOffset = 0;
-            if (fieldOperator == OperatorMask.Field_Default) {
-                if ((fieldType & 1) != 0) {
-                    // optional default
-                    optionalOffset = 1;
-                }
-            }
+             if (templateId < 0)
+                 return;
 
-            // only set if the value was given
-            if (null != fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
-                int tmp = Integer.parseInt(fieldOperatorValue);
-                defaultConstValues.addInitInteger(token & TokenBuilder.MAX_INSTANCE, tmp < 0 ? tmp : optionalOffset
-                        + tmp);// +1 for optional not applied to negative
-                               // values.
-            } 
-            // if no default is set the field must be undefined and therefore
-            // remains zero which is the signed 
-
-            fieldOperatorValue = null;
-
-            catalogScriptTokens[catalogTemplateScriptIdx] = token;
-            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            fieldName=null;//ensure it is only used once
-            catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
-
-        } else if (qName.equalsIgnoreCase("uint64") || qName.equalsIgnoreCase("int64")) {
-
-            int token = buildToken(tokenBuilderLongCount);
-
-            int optionalOffset = 0;
-            if (fieldOperator == OperatorMask.Field_Default) {
-                if ((fieldType & 1) != 0) {
-                    // optional default
-                    optionalOffset = 1;
-                }
-            }
-
-            // only set if the value was given
-            if (null != fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
-                long tmp = Long.parseLong(fieldOperatorValue);
-                defaultConstValues.addInitLong(token & TokenBuilder.MAX_INSTANCE, tmp < 0 ? tmp : optionalOffset + tmp);// +1
-                                                                                                                        // for
-                                                                                                                        // optional
-                                                                                                                        // not
-                                                                                                                        // applied
-                                                                                                                        // to
-                                                                                                                        // negative
-                                                                                                                        // values.
-            }
-            // if no default is set the field must be undefined and therefore
-            // remains zero
-
-            fieldOperatorValue = null;
-
-            catalogScriptTokens[catalogTemplateScriptIdx] = token;
-            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            fieldName=null;//ensure it is only used once
-            catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
-
-        } else if (qName.equalsIgnoreCase("string")) {
-
-            int token = buildToken(tokenBuilderByteCount);
-            int idx = token & TokenBuilder.MAX_INSTANCE;
-
-            // only set if the value was given
-            if (null != fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
-                defaultConstValues.addInit(idx, fieldOperatorValue.getBytes());
-            } else {
-            	//TODO: A, this needs a unit test to ensure this null is represented as null all the way to the dictionary
-                defaultConstValues.addInit(idx, null);
-            }
-            fieldOperatorValue = null;
-
-            catalogScriptTokens[catalogTemplateScriptIdx] = token;
-            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            fieldName=null;//ensure it is only used once
-            catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
-
-        } else if (qName.equalsIgnoreCase("decimal")) {
-
-            fieldOperator = fieldExponentOperator;
-            int tokenExponent = buildToken(tokenBuilderIntCount);
-            
-            //Mantissa is NEVER optional because the optional logic is done by exponent.
-            //Masking off the optional bit
-            fieldType = 0xFFFFFFFE&fieldType;            
-            
-            fieldOperator = fieldMantissaOperator;
-            int tokenMantisssa = buildToken(tokenBuilderLongCount);
-
-            int optionalExponentOffset = 0;
-            if (fieldExponentOperator == OperatorMask.Field_Default) {
-                if ((fieldType & 1) != 0) {
-                    // optional default
-                    optionalExponentOffset = 1;
-                }
-            }
-            
-            // only set if the value was given
-            if (null != fieldExponentOperatorValue && !fieldExponentOperatorValue.isEmpty()) {
-                int tmp = Integer.parseInt(fieldExponentOperatorValue);
-                defaultConstValues.addInitInteger(tokenExponent & TokenBuilder.MAX_INSTANCE, tmp < 0 ? tmp
-                        : optionalExponentOffset + tmp);// +1 for optional not
-                                                        // applied to negative
-                                                        // values.
-            }
-            // if no default is set the field must be undefined and therefore
-            // remains zero
-
-            fieldExponentOperatorValue = null;
-
-            int optionalMantissaOffset = 0;
-            if (fieldMantissaOperator == OperatorMask.Field_Default) {
-                if ((fieldType & 1) != 0) {
-                    // optional default
-                    optionalMantissaOffset = 1;
-                }
-            }
-
-            // only set if the value was given
-            if (null != fieldMantissaOperatorValue && !fieldMantissaOperatorValue.isEmpty()) {
-                long tmp = Long.parseLong(fieldMantissaOperatorValue);
-                defaultConstValues.addInitLong(tokenMantisssa & TokenBuilder.MAX_INSTANCE, tmp < 0 ? tmp
-                        : optionalMantissaOffset + tmp);// +1 for optional not
-                                                        // applied to negative
-                                                        // values.
-            }
-            // if no default is set the field must be undefined and therefore
-            // remains zero
-
-            fieldMantissaOperatorValue = null;
-
-            catalogScriptTokens[catalogTemplateScriptIdx] = tokenExponent;
-            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
-           
-            catalogScriptTokens[catalogTemplateScriptIdx] = tokenMantisssa;
-            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            fieldName=null;//ensure it is only used once
-            catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
-
-            fieldPMapInc = 1;// set back to 1 we are leaving decimal processing
-        } else if (qName.equalsIgnoreCase("exponent")) {
-            fieldExponentOperator = fieldOperator;
-            fieldExponentOperatorValue = fieldOperatorValue;
-            fieldOperatorValue = null;
-        } else if (qName.equalsIgnoreCase("mantissa")) {
-            fieldMantissaOperator = fieldOperator;
-            fieldMantissaOperatorValue = fieldOperatorValue;
-            fieldOperatorValue = null;
-        } else if (qName.equalsIgnoreCase("bytevector")) {
-
-            int token = buildToken(tokenBuilderByteCount);
-
-            catalogScriptTokens[    catalogTemplateScriptIdx] = token;
-            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            fieldName=null;//ensure it is only used once
-            catalogScriptFieldIds[  catalogTemplateScriptIdx++] = fieldId;
-
-        } else if (qName.equalsIgnoreCase("template")) {
+             // System.err.println("templateId=" + templateId);
+             // System.err.println("templateName=" + templateName);
 
         	if (!LongHashTable.setItem(templateToLimit,templateId, catalogTemplateScriptIdx)) {
         		throw new RuntimeException("internal parse error");
@@ -613,7 +536,7 @@ public class TemplateHandler extends DefaultHandler {
             int groupSize = catalogTemplateScriptIdx - openGroupIdx;
             // change open token so it has the total number of script steps
             // inside the group.
-            catalogScriptTokens[openGroupIdx] = (groupOpenTokenStack[groupTokenStackHead] = 
+            catalogScriptTokens[openGroupIdx] = (groupOpenTokenStack[groupTokenStackHead] =
                                                 (TokenBuilder.MAX_FIELD_MASK & openToken) | (TokenBuilder.MAX_FIELD_ID_VALUE & groupSize));
             openGroupIdx++; //fieldId already populated do not modify
 
@@ -621,7 +544,7 @@ public class TemplateHandler extends DefaultHandler {
             catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
             catalogTemplateScriptIdx++; //fieldId already populated do not modify
 
-            
+
             // we do need to decrement the stack counter because it was used for
             // capture of the pmap size
             groupTokenStackHead--;
@@ -629,36 +552,206 @@ public class TemplateHandler extends DefaultHandler {
 
             templateIdUnique++;
 
-        } else if (qName.equalsIgnoreCase("length")) {
-            // Length must be the first field inside of the sequence.
-
-            int token = buildToken(tokenBuilderIntCount);
-
-            // NOTE: we want the sequence length to come first then the
-            // repeating group pmap therefore
-            // we are waiting until now to add the open group token.
-            catalogScriptTokens[    catalogTemplateScriptIdx] = token;
-            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            fieldName=null;//ensure it is only used once
-            catalogScriptFieldIds[  catalogTemplateScriptIdx++] = fieldId;
-
-            catalogScriptTokens[catalogTemplateScriptIdx] = groupOpenTokenStack[groupTokenStackHead];
-            catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
-
-        } else if (qName.equalsIgnoreCase("sequence")) {
-        	int opMask = OperatorMask.Group_Bit_Close | OperatorMask.Group_Bit_Seq;
-            basicGroupClose(opMask);
-
-        } else if (qName.equalsIgnoreCase("group")) {
-        	int opMask = OperatorMask.Group_Bit_Close;
-            basicGroupClose(opMask);
-
-        } else if (qName.equalsIgnoreCase("templates")) {
+        }else if (qName.equalsIgnoreCase("templates")) {
             templatesXMLns = null;
         } else if (qName.equalsIgnoreCase("templateRef")) {
         	//tempalateRef is NOT a group but it is closed with the same flag
-        	int opMask = OperatorMask.Group_Bit_Close;
-            basicGroupClose(opMask);
+            // int opMask = OperatorMask.Group_Bit_Close;
+            //             basicGroupClose(opMask);
+        }
+        else {
+            templateEvents.add(new EndElementEvent(uri,localName,qName));
+            if (templateId < 0)
+                return;
+
+            if (qName.equalsIgnoreCase("uint32") || qName.equalsIgnoreCase("int32")) {
+
+                int token = buildToken(tokenBuilderIntCount);
+
+                int optionalOffset = 0;
+                if (fieldOperator == OperatorMask.Field_Default) {
+                    if ((fieldType & 1) != 0) {
+                        // optional default
+                        optionalOffset = 1;
+                    }
+                }
+
+                // only set if the value was given
+                if (null != fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
+                    int tmp = Integer.parseInt(fieldOperatorValue);
+                    defaultConstValues.addInitInteger(token & TokenBuilder.MAX_INSTANCE, tmp < 0 ? tmp : optionalOffset
+                            + tmp);// +1 for optional not applied to negative
+                                   // values.
+                }
+                // if no default is set the field must be undefined and therefore
+                // remains zero which is the signed
+
+                fieldOperatorValue = null;
+
+                catalogScriptTokens[catalogTemplateScriptIdx] = token;
+                catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+                fieldName=null;//ensure it is only used once
+                catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
+
+            } else if (qName.equalsIgnoreCase("uint64") || qName.equalsIgnoreCase("int64")) {
+
+                int token = buildToken(tokenBuilderLongCount);
+
+                int optionalOffset = 0;
+                if (fieldOperator == OperatorMask.Field_Default) {
+                    if ((fieldType & 1) != 0) {
+                        // optional default
+                        optionalOffset = 1;
+                    }
+                }
+
+                // only set if the value was given
+                if (null != fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
+                    long tmp = Long.parseLong(fieldOperatorValue);
+                    defaultConstValues.addInitLong(token & TokenBuilder.MAX_INSTANCE, tmp < 0 ? tmp : optionalOffset + tmp);// +1
+                                                                                                                            // for
+                                                                                                                            // optional
+                                                                                                                            // not
+                                                                                                                            // applied
+                                                                                                                            // to
+                                                                                                                            // negative
+                                                                                                                            // values.
+                }
+                // if no default is set the field must be undefined and therefore
+                // remains zero
+
+                fieldOperatorValue = null;
+
+                catalogScriptTokens[catalogTemplateScriptIdx] = token;
+                catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+                fieldName=null;//ensure it is only used once
+                catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
+
+            } else if (qName.equalsIgnoreCase("string")) {
+
+                int token = buildToken(tokenBuilderByteCount);
+                int idx = token & TokenBuilder.MAX_INSTANCE;
+
+                // only set if the value was given
+                if (null != fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
+                    defaultConstValues.addInit(idx, fieldOperatorValue.getBytes());
+                } else {
+                	//TODO: A, this needs a unit test to ensure this null is represented as null all the way to the dictionary
+                    defaultConstValues.addInit(idx, null);
+                }
+                fieldOperatorValue = null;
+
+                catalogScriptTokens[catalogTemplateScriptIdx] = token;
+                catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+                fieldName=null;//ensure it is only used once
+                catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
+
+            } else if (qName.equalsIgnoreCase("decimal")) {
+
+                fieldOperator = fieldExponentOperator;
+                int tokenExponent = buildToken(tokenBuilderIntCount);
+
+                //Mantissa is NEVER optional because the optional logic is done by exponent.
+                //Masking off the optional bit
+                fieldType = 0xFFFFFFFE&fieldType;
+
+                fieldOperator = fieldMantissaOperator;
+                int tokenMantisssa = buildToken(tokenBuilderLongCount);
+
+                int optionalExponentOffset = 0;
+                if (fieldExponentOperator == OperatorMask.Field_Default) {
+                    if ((fieldType & 1) != 0) {
+                        // optional default
+                        optionalExponentOffset = 1;
+                    }
+                }
+
+                // only set if the value was given
+                if (null != fieldExponentOperatorValue && !fieldExponentOperatorValue.isEmpty()) {
+                    int tmp = Integer.parseInt(fieldExponentOperatorValue);
+                    defaultConstValues.addInitInteger(tokenExponent & TokenBuilder.MAX_INSTANCE, tmp < 0 ? tmp
+                            : optionalExponentOffset + tmp);// +1 for optional not
+                                                            // applied to negative
+                                                            // values.
+                }
+                // if no default is set the field must be undefined and therefore
+                // remains zero
+
+                fieldExponentOperatorValue = null;
+
+                int optionalMantissaOffset = 0;
+                if (fieldMantissaOperator == OperatorMask.Field_Default) {
+                    if ((fieldType & 1) != 0) {
+                        // optional default
+                        optionalMantissaOffset = 1;
+                    }
+                }
+
+                // only set if the value was given
+                if (null != fieldMantissaOperatorValue && !fieldMantissaOperatorValue.isEmpty()) {
+                    long tmp = Long.parseLong(fieldMantissaOperatorValue);
+                    defaultConstValues.addInitLong(tokenMantisssa & TokenBuilder.MAX_INSTANCE, tmp < 0 ? tmp
+                            : optionalMantissaOffset + tmp);// +1 for optional not
+                                                            // applied to negative
+                                                            // values.
+                }
+                // if no default is set the field must be undefined and therefore
+                // remains zero
+
+                fieldMantissaOperatorValue = null;
+
+                catalogScriptTokens[catalogTemplateScriptIdx] = tokenExponent;
+                catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+                catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
+
+                catalogScriptTokens[catalogTemplateScriptIdx] = tokenMantisssa;
+                catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+                fieldName=null;//ensure it is only used once
+                catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
+
+                fieldPMapInc = 1;// set back to 1 we are leaving decimal processing
+            } else if (qName.equalsIgnoreCase("exponent")) {
+                fieldExponentOperator = fieldOperator;
+                fieldExponentOperatorValue = fieldOperatorValue;
+                fieldOperatorValue = null;
+            } else if (qName.equalsIgnoreCase("mantissa")) {
+                fieldMantissaOperator = fieldOperator;
+                fieldMantissaOperatorValue = fieldOperatorValue;
+                fieldOperatorValue = null;
+            } else if (qName.equalsIgnoreCase("bytevector")) {
+
+                int token = buildToken(tokenBuilderByteCount);
+
+                catalogScriptTokens[    catalogTemplateScriptIdx] = token;
+                catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+                fieldName=null;//ensure it is only used once
+                catalogScriptFieldIds[  catalogTemplateScriptIdx++] = fieldId;
+
+            } else if (qName.equalsIgnoreCase("length")) {
+                // Length must be the first field inside of the sequence.
+
+                int token = buildToken(tokenBuilderIntCount);
+
+                // NOTE: we want the sequence length to come first then the
+                // repeating group pmap therefore
+                // we are waiting until now to add the open group token.
+                catalogScriptTokens[    catalogTemplateScriptIdx] = token;
+                catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+                fieldName=null;//ensure it is only used once
+                catalogScriptFieldIds[  catalogTemplateScriptIdx++] = fieldId;
+
+                catalogScriptTokens[catalogTemplateScriptIdx] = groupOpenTokenStack[groupTokenStackHead];
+                catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
+
+            } else if (qName.equalsIgnoreCase("sequence")) {
+            	int opMask = OperatorMask.Group_Bit_Close | OperatorMask.Group_Bit_Seq;
+                basicGroupClose(opMask);
+
+            } else if (qName.equalsIgnoreCase("group")) {
+            	int opMask = OperatorMask.Group_Bit_Close;
+                basicGroupClose(opMask);
+
+            }
         }
 
     }
@@ -682,13 +775,13 @@ public class TemplateHandler extends DefaultHandler {
 
 		// change open token so it has the total number of script steps
 		// inside the group.
-		catalogScriptTokens[openGroupIdx] = (groupOpenTokenStack[groupTokenStackHead] = 
+		catalogScriptTokens[openGroupIdx] = (groupOpenTokenStack[groupTokenStackHead] =
 		                                    (TokenBuilder.MAX_FIELD_MASK & openToken) | (TokenBuilder.MAX_FIELD_ID_VALUE & groupSize));
 		catalogScriptFieldIds[openGroupIdx++] = 0;
 
 		//add closing group to script
 		catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
-		
+
 		catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
 
 		groupTokenStackHead--;// pop this group off the stack to work on the
@@ -704,19 +797,19 @@ public class TemplateHandler extends DefaultHandler {
                 System.arraycopy(dTokens, 0, newDTokens, 0, dTokens.length);
             }
             int tokCount = count.getAndIncrement();
-            
+
             //must do decimal resets as either int or long
             int saveAsType = (fieldType!=TypeMask.Decimal &&
-                    fieldType!=TypeMask.DecimalOptional) ? fieldType : 
+                    fieldType!=TypeMask.DecimalOptional) ? fieldType :
                         (count==tokenBuilderLongCount ? TypeMask.LongSigned : TypeMask.IntegerSigned  );
 
-            //Only USE Decimal for the exponent field and USE Long for the Mantissa field            
+            //Only USE Decimal for the exponent field and USE Long for the Mantissa field
             int tokenType = TypeMask.LongSigned==saveAsType? saveAsType : fieldType;
             newDTokens[activeDictionary] = token = TokenBuilder.buildToken(tokenType, fieldOperator, tokCount);
-                        
+
             saveResetListMembers(activeDictionary, saveAsType, tokCount, fieldOperator);
             fieldTokensUnique++;
-            
+
             dictionaryMap[fieldId] = dTokens = newDTokens;
 
         } else {
@@ -730,17 +823,17 @@ public class TemplateHandler extends DefaultHandler {
                 }
             } else {
                 int tokCount = count.getAndIncrement();
-                
+
                 //must do decimal resets as either int or long
-                int saveAsType = (fieldType!=TypeMask.Decimal&&fieldType!=TypeMask.DecimalOptional) ? fieldType : 
+                int saveAsType = (fieldType!=TypeMask.Decimal&&fieldType!=TypeMask.DecimalOptional) ? fieldType :
                     (count==tokenBuilderLongCount ? TypeMask.LongSigned : TypeMask.IntegerSigned  );
-                
-                //Only USE Decimal for the exponent field and USE Long for the Mantissa field            
+
+                //Only USE Decimal for the exponent field and USE Long for the Mantissa field
                 int tokenType = TypeMask.LongSigned==saveAsType? saveAsType : fieldType;
-                
+
                 dTokens[activeDictionary] = token = TokenBuilder.buildToken(tokenType, fieldOperator, tokCount);
-                
-                
+
+
                 saveResetListMembers(activeDictionary, saveAsType, tokCount, fieldOperator);
                 fieldTokensUnique++;
             }
@@ -758,12 +851,12 @@ public class TemplateHandler extends DefaultHandler {
 
         // these never update the dictionary so they should never do a reset.
         if (OperatorMask.Field_None == fieldOperator ||
-            OperatorMask.Field_Constant == fieldOperator || 
+            OperatorMask.Field_Constant == fieldOperator ||
             OperatorMask.Field_Default == fieldOperator) {
             // System.err.println("skipped "+TypeMask.toString(fieldType));
             return;
         }
-        
+
         // only need to group by major type.
         int d = activeDictionary << TokenBuilder.BITS_TYPE;
 
@@ -793,21 +886,21 @@ public class TemplateHandler extends DefaultHandler {
         // identifiers. All cache friendly forward motion.
 
         int dictionaryCount = dictionaryNames.size();
-        
+
         tokenIdxMembers = new int[dictionaryCount][];
-        
+
         tokenIdxMemberHeads = new int[dictionaryCount];
-        
+
         int j = resetList.size();
         while (--j >= 0) {
             if (!resetList.get(j).isEmpty()) {
             	final int d = j >>> TokenBuilder.BITS_TYPE;
-        
+
         		//only allocate exactly what is needed, when it is needed for the type needed
                 if (null == tokenIdxMembers[d]) {
                 	tokenIdxMembers[d] = new int[lengthOfArrayForThisType(d)];
                 }
-        		
+
                 int t = j & TokenBuilder.MASK_TYPE;
                 int stopInt = 0xFFFF0000 | t;
                 tokenIdxMembers[d][tokenIdxMemberHeads[d]++] = stopInt;
@@ -815,22 +908,22 @@ public class TemplateHandler extends DefaultHandler {
                 for (Integer i : resetList.get(j)) {
                     tokenIdxMembers[d][tokenIdxMemberHeads[d]++] = i.intValue();
                 }
-                
-                
-            } 
+
+
+            }
         }
         // tokenIdxMembers are ready to be saved but must be trimmed by heads
-        
+
     }
 
-    
+
 	private int lengthOfArrayForThisType(int target) {
 		int maxTokens = 0;
         int j = resetList.size();
         while (--j >= 0) {
         	final int d = j >>> TokenBuilder.BITS_TYPE;
             if (d == target) {
-	        	List<Integer> list = resetList.get(j);        	
+	        	List<Integer> list = resetList.get(j);
 	        	if (!list.isEmpty()) {
 	        		maxTokens = maxTokens + list.size() + 1;
 	        	}
@@ -849,14 +942,14 @@ public class TemplateHandler extends DefaultHandler {
         // needed by the consumer.
         // this enables fast startup/recovery times that do not produce garbage.
 
-        defaultConstValues.setTypeCounts(  tokenBuilderIntCount.intValue(), 
+        defaultConstValues.setTypeCounts(  tokenBuilderIntCount.intValue(),
 			                               tokenBuilderLongCount.intValue(),
-			                               tokenBuilderByteCount.intValue(), 
-			                               byteGap, 
-			                               maxByteLength); 
+			                               tokenBuilderByteCount.intValue(),
+			                               byteGap,
+			                               maxByteLength);
 
        //System.err.println("Names:"+ Arrays.toString(catalogScriptFieldNames));
-        
+
         // write catalog data.
         TemplateCatalogConfig.save(writer, fieldIdBiggest, templateIdUnique, templateIdBiggest, defaultConstValues,
                 catalogLargestTemplatePMap, catalogLargestNonTemplatePMap, tokenIdxMembers, tokenIdxMemberHeads,

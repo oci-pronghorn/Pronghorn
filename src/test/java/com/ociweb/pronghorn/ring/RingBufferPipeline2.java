@@ -7,7 +7,6 @@ import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.publishWrites;
 import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
-import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
@@ -17,7 +16,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -27,7 +25,6 @@ import com.ociweb.pronghorn.GraphManager;
 import com.ociweb.pronghorn.ring.route.RoundRobinRouteStage2;
 import com.ociweb.pronghorn.ring.route.SplitterStage2;
 import com.ociweb.pronghorn.ring.stage.PronghornStage;
-import com.ociweb.pronghorn.ring.threading.FixedThreadPoolStageManager;
 import com.ociweb.pronghorn.ring.threading.StageManager;
 //import com.ociweb.pronghorn.ring.util.PipelineThreadPoolExecutor;
 import com.ociweb.pronghorn.ring.threading.ThreadPerStageManager;
