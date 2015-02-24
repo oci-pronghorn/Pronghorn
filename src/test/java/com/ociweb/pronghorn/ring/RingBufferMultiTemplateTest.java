@@ -414,14 +414,75 @@ public class RingBufferMultiTemplateTest {
         		//Unable to write because there is no room so do something else while we are waiting.
         		Thread.yield();
         		
+        	}     
+        }
+	}
+	
+	//TODO: B, build a unit test to show nested sequences.
+	
+	@Test
+	public void zeroSequenceFragmentWriteRead() {
+		byte primaryRingSizeInBits = 9; 
+    	byte byteRingSizeInBits = 18;
+    
+    	
+		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+		
+		int testSize = 5;
+		
+		//in this method we write two sequence members but only record the count after writing the members
+		populateRingBufferWithZeroSequence(ring, testSize);
+		
+		//Ring is full of messages, this loop runs until the ring is empty.
+        while (RingReader.tryReadFragment(ring)) {
+        	assertTrue(RingReader.isNewMessage(ring));
+
+        	int msgIdx = RingReader.getMsgIdx(ring);
+        	if (msgIdx<0) {
+        		break;
+        	}
+			assertEquals(MSG_TRUCKS_LOC, msgIdx);
+
+			assertEquals("TheBobSquad", RingReader.readASCII(ring, SQUAD_NAME, new StringBuilder()).toString());
+			
+			int sequenceCount = RingReader.readInt(ring, SQUAD_NO_MEMBERS);
+			assertEquals(0,sequenceCount);
+        
+		        	
+        }
+		
+	}
+
+	private void populateRingBufferWithZeroSequence(RingBuffer ring, int testSize) {
+		
+		int j = testSize;
+        while (true) {
+        	
+        	if (j==0) {
+        		RingWriter.publishEOF(ring);
+        		return;//done
+        	}
+        	
+        	
+        	if (RingWriter.tryWriteFragment(ring, MSG_TRUCKS_LOC)) { //AUTO writes template id as needed
+ 
+        		RingWriter.writeASCII(ring, SQUAD_NAME, "TheBobSquad");     		
+        		        		      		
+        		RingWriter.writeInt(ring, SQUAD_NO_MEMBERS, 0); //NOTE: we are writing this field very late because we now know how many we wrote.
+        		
+        		RingWriter.publishWrites(ring);
+        		        		
+        		 j--;       		
+    		} else {
+        		//Unable to write because there is no room so do something else while we are waiting.
+        		Thread.yield();
+        		
         	}       
         	
       	
         	
         }
 	}
-
-	
 	
 	
 }
