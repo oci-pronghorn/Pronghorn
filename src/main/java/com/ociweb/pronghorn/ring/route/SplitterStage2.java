@@ -22,7 +22,7 @@ public class SplitterStage2 extends PronghornStage {
 	public int moreToCopy=-2;;
 	
 	public SplitterStage2(GraphManager gm, RingBuffer source, RingBuffer ... targets) {
-		super(gm,source,targets, true /*stateless*/);
+		super(gm,source,targets);
 		
 		this.source = source;
 		this.targets = targets;
@@ -72,8 +72,8 @@ public class SplitterStage2 extends PronghornStage {
 	}
 
 	@Override
-	public boolean exhaustedPoll() {		
-		return processAvailData(this);//TODO: C, Should enable use of true to return partial copy. this may cause hang as written.
+	public void run() {		
+		processAvailData(this);//TODO: C, Should enable use of true to return partial copy. this may cause hang as written.
 	}
 
 	private static boolean processAvailData(SplitterStage2 ss) {

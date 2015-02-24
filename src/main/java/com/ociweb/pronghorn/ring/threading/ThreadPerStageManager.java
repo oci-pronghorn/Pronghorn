@@ -32,6 +32,10 @@ public class ThreadPerStageManager extends StageManager {
 	 * @return
 	 */
 	public boolean awaitTermination(long timeout, TimeUnit unit) {
+		
+		
+		///TOOD: for simplicity this needs to terminate the inputs AND the inputs can block if needed.??
+		
 		isShuttingDown = true;
 		executorService.shutdown();
 		try {
@@ -54,6 +58,10 @@ public class ThreadPerStageManager extends StageManager {
 	 * Work in the flow may be lost as a result.
 	 */
 	public boolean TerminateNow() {
+		
+		
+		//TODO: kill the input stages?
+		
 		isShuttingDown = true;
 		isShutDownNow = true;
 		try {
@@ -109,26 +117,21 @@ public class ThreadPerStageManager extends StageManager {
 			@Override
 			public void run() {
 				try {	
-					boolean hasMoreWork = true;
 					do {
-					//	assert(confirmRunStart(stage));
-						hasMoreWork = stage.exhaustedPoll();
-					//	if (!hasMoreWork) {
-					//		Thread.yield();
-					//	}
-					//	assert(confirmRunStop(stage));
-					} while (!isShutDownNow &&
-							   (hasMoreWork || 
-							       (stage.stateless &&
-							    		   (!isShuttingDown || GraphManager.mayHaveUpstreamData(graphManager, stage.stageId) ))   ));	
+						assert(confirmRunStart(stage));
+						stage.run();
+						assert(confirmRunStop(stage));
+						
+					} while (!isShutDownNow && (!isShuttingDown || GraphManager.mayHaveUpstreamData(graphManager, stage.stageId) ));	
+			
+					stage.terminate();
 					
-					GraphManager.terminate(graphManager,stage);
 								
 				} catch (Throwable t) {
 					log.error("Unexpected error in stage {}", stage);
 					log.error("Stacktrace",t);
 					GraphManager.shutdownNeighborRings(graphManager, stage);
-				//	assert(confirmRunStop(stage));
+					assert(confirmRunStop(stage));
 				}
 			}			
 		};
@@ -149,15 +152,16 @@ public class ThreadPerStageManager extends StageManager {
 			/**
 			 * Run the stage such that the leading edge of each run is nsScheduledRate apart.
 			 * If the runtime of one pass is longer than the rate the runs will happen sequentially with no delay.
+			 * 
+			 * stops calling when terminate is started
 			 */
 			@Override
 			public void run() {
 				try {	
-					boolean hasMoreWork = true;
 					do {
 						long start = System.nanoTime();
 						assert(confirmRunStart(stage));
-						hasMoreWork = stage.exhaustedPoll();
+						stage.run();
 						
 						int sleepFor = nsScheduleRate - (int)(System.nanoTime()-start);
 						if (sleepFor>0) {
@@ -166,12 +170,10 @@ public class ThreadPerStageManager extends StageManager {
 							Thread.sleep(sleepMs, sleepNs);
 						};
 						assert(confirmRunStop(stage));
-					} while (!isShutDownNow &&
-							   (hasMoreWork || 
-							       (stage.stateless &&
-							    		   (!isShuttingDown || GraphManager.mayHaveUpstreamData(graphManager, stage.stageId) ))   ));	
+												
+					} while (!isShutDownNow && !isShuttingDown);	
 					
-					GraphManager.terminate(graphManager,stage);
+					stage.terminate();
 							
 				} catch (Throwable t) {
 					log.error("Unexpected error in stage {}", stage);

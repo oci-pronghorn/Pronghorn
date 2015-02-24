@@ -26,39 +26,33 @@ public abstract class StageManager {
 	
 	//called by assert
 	protected boolean confirmRunStart(PronghornStage stage) {	
+		Thread.currentThread().setName("Stage:"+stage.toString());
 		synchronized (assertLock) {
-
-			Thread.currentThread().setName("Stage:"+stage.toString());
-			
 			runCounters = incValue(runCounters, stage.stageId);
-			//confirm that count is odd, because we now added added 1 to start the stage
-			if (0 == (runCounters[stage.stageId]&1)) {
-				log.error("Expected stage {} to be starting but it appears to already be running.", stage);
-				return false;
-			}
-			return true;
 		}
+		//confirm that count is odd, because we now added added 1 to start the stage
+		if (0 == (runCounters[stage.stageId]&1)) {
+			log.error("Expected stage {} to be starting but it appears to already be running.", stage);
+			return false;
+		}
+		return true;
 	}
 	
 	//called by assert
 	protected boolean confirmRunStop(PronghornStage stage) {		
 		synchronized (assertLock) {
 			runCounters = incValue(runCounters, stage.stageId);
-			//confirm that count is even, because we added 1 to start the stage and now 1 to stop the stage
-			if (0 != (runCounters[stage.stageId]&1)) {
-				log.error("Expected stage {} to be stopping but it appears to be running.", stage);
-				return false;
-			}			
-			return true;
 		}
+		//confirm that count is even, because we added 1 to start the stage and now 1 to stop the stage
+		if (0 != (runCounters[stage.stageId]&1)) {
+			log.error("Expected stage {} to be stopping but it appears to be running.", stage);
+			return false;
+		}			
+		return true;
 	}
 	
 	private static long[] incValue(long[] target, int idx) {		
-		
-		long[] result = target;
-		if (idx>=target.length) {
-			result = Arrays.copyOf(target, (1+idx)*2); //double the array
-		}
+		long[] result = idx<target.length ? target :  Arrays.copyOf(target, (1+idx)*2); //double the array
 		//very large count that is not expected to roll-over
 		result[idx]++;
 		return result;

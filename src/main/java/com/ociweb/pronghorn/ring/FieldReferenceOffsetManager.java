@@ -424,22 +424,10 @@ public class FieldReferenceOffsetManager {
 		int x = framentStart;
         		
 		//upper bits is 4 bits of information
-		final int stackOff = from.fragDepth[x]<<RW_STACK_OFF_SHIFT;
 
-        while (true) {
-            if (from.fieldNameScript[x].equalsIgnoreCase(target)) {
-            	
-            	int fieldType = TokenBuilder.extractType(from.tokens[x])<<RW_FIELD_OFF_BITS;
-            	//type is 5 bits of information
-            	
-                //the remaining bits for the offset is 32 -(4+5) or 23 which is 8M for the fixed portion of any fragment
-            	
-            	int fieldOff =  (0==x) ? from.templateOffset+1 : from.fragDataSize[x];
-            	assert(fieldOff>=0);
-            	assert(fieldOff < (1<<RW_FIELD_OFF_BITS)) : "Fixed portion of a fragment can not be larger than "+(1<<RW_FIELD_OFF_BITS)+" bytes";
-                
-                return stackOff | fieldType | fieldOff;
-                
+        while (x < from.fieldNameScript.length) {
+            if (from.fieldNameScript[x].equalsIgnoreCase(target)) {            	
+            	return buildFieldLoc(from, framentStart, x);                
             }
             
             int token = from.tokens[x];
@@ -457,11 +445,35 @@ public class FieldReferenceOffsetManager {
         throw new UnsupportedOperationException("Unable to find field name: "+target+" in "+Arrays.toString(from.fieldNameScript));
 	}
 
+	private static int buildFieldLoc(FieldReferenceOffsetManager from,
+			int framentStart, int fieldCursor) {
+		final int stackOff = from.fragDepth[framentStart]<<RW_STACK_OFF_SHIFT;
+		int fieldType = TokenBuilder.extractType(from.tokens[fieldCursor])<<RW_FIELD_OFF_BITS;
+		//type is 5 bits of information
+		
+		//the remaining bits for the offset is 32 -(4+5) or 23 which is 8M for the fixed portion of any fragment
+		
+		int fieldOff =  (0==fieldCursor) ? from.templateOffset+1 : from.fragDataSize[fieldCursor];
+		assert(fieldOff>=0);
+		assert(fieldOff < (1<<RW_FIELD_OFF_BITS)) : "Fixed portion of a fragment can not be larger than "+(1<<RW_FIELD_OFF_BITS)+" bytes";
+		
+		return stackOff | fieldType | fieldOff;
+	}
+
+    public static int lookupToken(String target, int framentStart, FieldReferenceOffsetManager from) {
+    	return from.tokens[lookupFragmentLocator(target,framentStart,from)];
+    }
     
+    public static int lookupSequenceLengthLoc(String target, int framentStart, FieldReferenceOffsetManager from) {
+    	int x = lookupFragmentLocator(target, framentStart, from);
+    	return buildFieldLoc(from, framentStart, x-1);
+    }
+	
+	
     public static int lookupFragmentLocator(String target, int framentStart, FieldReferenceOffsetManager from) {
 		int x = framentStart;
         		
-        while (true) {
+        while (x < from.fieldNameScript.length) {
             if (from.fieldNameScript[x].equalsIgnoreCase(target)) {
             	return x;
             }

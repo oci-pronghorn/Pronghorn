@@ -24,8 +24,8 @@ public class RoundRobinRouteStage2 extends PronghornStage {
 	}
 
 	@Override
-	public boolean exhaustedPoll() {		
-		return processAvailData(this);
+	public void run() {		
+		processAvailData(this);
 	}
 
 	private static boolean processAvailData(RoundRobinRouteStage2 stage) {

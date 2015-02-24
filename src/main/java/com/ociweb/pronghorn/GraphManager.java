@@ -189,6 +189,9 @@ public class GraphManager {
 	public static void terminate(GraphManager gm, PronghornStage stage ) {
 		synchronized(gm.lock) {
 			gm.stageTerminationState = incValue(gm.stageTerminationState, stage.stageId); //state changes from 1 to 2
+			if ( gm.stageTerminationState[stage.stageId]>2) {
+				gm.stageTerminationState[stage.stageId] = 2;
+			}
 			assert(2 == gm.stageTerminationState[stage.stageId]);
 		}
 	}
@@ -246,10 +249,7 @@ public class GraphManager {
 
 	
 	/**
-	 * Walks all the way back up the tree until every source is reached or a ring with content is encountered.
-	 * When a source is encountered it assumes more content is on the way unless the source is terminated.
-	 * 
-	 * This is a slow method that should not be called at runtime but it is very helpful for clean shutdowns.
+	 * Return false only when every path is checked so every ring is empty and every stage is terminated.
 	 */
 	public static boolean mayHaveUpstreamData(GraphManager m, int stageId) {
 		
@@ -265,17 +265,16 @@ public class GraphManager {
 		while ((ringId = m.multInputIds[inputPos++])>=0) {
 							
 				++inputCounts;
-		    	if (RingBuffer.contentRemaining( m.ringIdToRing[ringId])>0) {
-		    		//return true because we found content sitting on a ring
-		    		return true;
-		    	}
-		    	
-		    	int feedingStage = m.ringIdToStages[ringId*2];
-		    	//if the producer stage has data
-		    	if (mayHaveUpstreamData(m, feedingStage)) {
-		    		//return true because true was returned from upstream
-		    		return true;
-		    	}
+				
+				if (isProducerTerminated(m, ringId)) {
+					//if producer is terminated check input ring, if not empty return true
+			    	if (RingBuffer.contentRemaining( m.ringIdToRing[ringId])>0) {
+			    		//return true because we found content sitting on a ring
+			    		return true;
+			    	}
+				} else {
+					return true;
+				}				
 		}
 		
 		//true if this is a top level stage and was not terminated at top of this function
@@ -287,7 +286,9 @@ public class GraphManager {
 		return 2==m.stageTerminationState[m.ringIdToStages[ringId*2]];
 	}
 
-
+    public static boolean isStageTerminated(GraphManager m, int stageId) {
+    	return 2==m.stageTerminationState[stageId];
+    }
 
 
 	

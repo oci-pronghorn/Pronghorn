@@ -360,6 +360,7 @@ public class RingWriter {
 		ring.headPos.lazySet(ring.workingHeadPos.value = ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + RingBuffer.EOF_SIZE);			
 		
 	}
+	//TODO: AAAA, make tryPublishEOF
 
 	public static void publishWrites(RingBuffer outputRing) {
 		assert(outputRing.workingHeadPos.value<=outputRing.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";

@@ -68,7 +68,7 @@ public class RingBufferMonitorStage2 extends PronghornStage {
 	}
 
 	@Override
-	public boolean exhaustedPoll() {
+	public void run() {
 		
 		//if we can't write then do it again on the next cycle, and skip this data point.
 		if (RingWriter.tryWriteFragment(notifyRingBuffer,TEMPLATE_LOC)) {		
@@ -80,8 +80,7 @@ public class RingBufferMonitorStage2 extends PronghornStage {
 			
 			RingWriter.publishWrites(notifyRingBuffer);	
 		}
-		//keep running this until the stage feeding this ring is terminated.
-		return GraphManager.isProducerTerminated(graphManager, observedRingBuffer.ringId);
+
 	}
 
 }
