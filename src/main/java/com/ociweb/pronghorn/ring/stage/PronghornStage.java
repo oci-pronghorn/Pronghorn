@@ -46,18 +46,27 @@ public abstract class PronghornStage {
 		GraphManager.register(pm, this, input, output);
 	}
 	
+	public static int totalStages() {
+		return stageCounter.get();
+	}
+	
+	public void startup() {
+		//override to connect to databases etc.
+	}
 
 	public String toString() {
 		return getClass().getSimpleName()+"["+String.valueOf(stageId)+"]";
 	}
 	
-	public void terminate() {
+	public void shutdown() {
 		GraphManager.terminate(graphManager, this);
 	}
 	
 	
 	/**
 	 * Process all the work that is immediately available.
+	 * Should periodically return, if it is away too long this can be controlled by making the output ring smaller.
+	 * 
 	 */
     public abstract void run();
 	

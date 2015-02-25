@@ -28,10 +28,13 @@ public class GraphManager {
 	
 	//for lookup of Stage from Stage id
 	private PronghornStage[]  stageIdToStage = new PronghornStage[INIT_STAGES];
+	private int[]             stageIdToRate  = new int[INIT_STAGES];
+	
 		
 	//this is not tracking each time thread is running but instead the larger granularity of
 	//the stage and if it has permanently terminated
 	private byte[] stageTerminationState = new byte[0];// 0 - unknown, 1 - registered, 2 - terminated
+	
 	
 
 	
@@ -289,6 +292,51 @@ public class GraphManager {
     public static boolean isStageTerminated(GraphManager m, int stageId) {
     	return 2==m.stageTerminationState[stageId];
     }
+
+	public static void terminateInputStages(GraphManager m) {
+				
+		int i = m.stageIdToStage.length;
+		while (--i>=0) {
+			if (null!=m.stageIdToStage[i]) {
+				//an input stage is one that has no input ring buffers
+				if (-1 == m.multInputIds[m.stageIdToInput[m.stageIdToStage[i].stageId]]) {
+					m.stageIdToStage[i].shutdown();
+				}
+			}
+		}
+		
+	}
+
+	
+	public static void setContinuousRun(GraphManager m, PronghornStage stage) {
+		synchronized(m.lock) {			
+			m.stageIdToRate = setValue(m.stageIdToRate,stage.stageId, 0);
+		}
+	}
+	
+	public static void setScheduleRate(GraphManager m, int nsScheduleRate, PronghornStage stage) {
+		synchronized(m.lock) {			
+			m.stageIdToRate = setValue(m.stageIdToRate,stage.stageId, nsScheduleRate);
+		}
+	}
+
+	public static int getScheduleRate(GraphManager m, int stageId) {
+		return m.stageIdToRate[stageId];
+	}
+
+	public static void setContinuousRun(GraphManager graphManager, PronghornStage ... stages) {
+		int i = stages.length;
+		while (--i>=0) {
+			setScheduleRate(graphManager, 0, stages[i]);
+		}
+	}
+
+	public static void setScheduleRate(GraphManager graphManager, int nsScheduleRate, PronghornStage ... stages) {
+		int i = stages.length;
+		while (--i>=0) {
+			setScheduleRate(graphManager, nsScheduleRate, stages[i]);
+		}
+	}
 
 
 	

@@ -22,8 +22,31 @@ public class ThreadPerStageManager extends StageManager {
 		super(graphManager);		
 		
 		this.executorService = Executors.newCachedThreadPool();
+		
 	}
-
+	
+	
+	public void startup() {
+		
+		int i = PronghornStage.totalStages();
+		while (--i>=0) {
+			PronghornStage stage = GraphManager.getStage(graphManager, i);
+			if (null!=stage) {
+				stage.startup();
+				int rate = GraphManager.getScheduleRate(graphManager, stage.stageId);
+				if (0==rate) {
+					executorService.execute(buildRunnable(stage));	
+				} else {
+					executorService.execute(buildRunnable(rate, stage));
+				}
+			}
+		}
+	}
+	
+	public void shutdown(){		
+		GraphManager.terminateInputStages(graphManager);
+	}
+	
 	/**
 	 * Normal shutdown request, blocks until all the stages have finished by seeing the poison pill.
 	 * 
@@ -58,10 +81,7 @@ public class ThreadPerStageManager extends StageManager {
 	 * Work in the flow may be lost as a result.
 	 */
 	public boolean TerminateNow() {
-		
-		
-		//TODO: kill the input stages?
-		
+				
 		isShuttingDown = true;
 		isShutDownNow = true;
 		try {
@@ -74,28 +94,10 @@ public class ThreadPerStageManager extends StageManager {
 		return true;
 	}	
 	
-	public void submit(PronghornStage stage) {		
-		executorService.execute(buildRunnable(stage));		
-	}
-	
-	public void submit(int msScheduleRate, PronghornStage stage) {		
-		executorService.execute(buildRunnable(msScheduleRate, stage));		
-	}
-	
-	
-	public void submitAll(PronghornStage ... stages) {
-		int i = stages.length;
-		while (--i>=0) {
-			executorService.execute(buildRunnable(stages[i]));
-		}
-	}
 
-	public void submitAll(int nsScheduleRate, PronghornStage ... stages) {
-		int i = stages.length;
-		while (--i>=0) {
-			executorService.execute(buildRunnable(nsScheduleRate, stages[i]));
-		}
-	}
+	
+	
+	
 	
 	protected Runnable buildRunnable(final PronghornStage stage) {
 
@@ -124,7 +126,7 @@ public class ThreadPerStageManager extends StageManager {
 						
 					} while (!isShutDownNow && (!isShuttingDown || GraphManager.mayHaveUpstreamData(graphManager, stage.stageId) ));	
 			
-					stage.terminate();
+					stage.shutdown();
 					
 								
 				} catch (Throwable t) {
@@ -173,7 +175,7 @@ public class ThreadPerStageManager extends StageManager {
 												
 					} while (!isShutDownNow && !isShuttingDown);	
 					
-					stage.terminate();
+					stage.shutdown();
 							
 				} catch (Throwable t) {
 					log.error("Unexpected error in stage {}", stage);

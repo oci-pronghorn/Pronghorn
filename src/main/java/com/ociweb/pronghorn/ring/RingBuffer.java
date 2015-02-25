@@ -973,6 +973,17 @@ public final class RingBuffer {
     
     public static int takeValue(RingBuffer ring) {    	
     	return readValue(0, ring.buffer,ring.mask,ring.workingTailPos.value++);
+    }   
+   
+    public static long takeLong(RingBuffer ring) {
+    	long result = readLong(ring.buffer,ring.mask,ring.workingTailPos.value);
+    	ring.workingTailPos.value+=2;
+    	return result;
+    }
+    
+    public static long readLong(int idx, RingBuffer ring) {
+    	return readLong(ring.buffer,ring.mask,idx+ring.workingTailPos.value);
+
     }
     
     public static int takeMsgIdx(RingBuffer ring) {    	

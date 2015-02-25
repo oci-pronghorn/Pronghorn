@@ -399,7 +399,7 @@ public class RingBufferPipeline2 {
 					  publishWrites(outputRing);
 		        } else {
 				      RingBuffer.publishEOF(outputRing);
-				      terminate();
+				      shutdown();
 				      return;
 		        }		        
 		        
@@ -432,7 +432,7 @@ public class RingBufferPipeline2 {
 				 }
 			 }
 			 RingWriter.publishEOF(outputRing);	
-			 terminate();
+			 shutdown();
  			 return;//do not come back			
 		}
 	}
@@ -576,25 +576,22 @@ public class RingBufferPipeline2 {
 				 
 				 //this is a bit complex may be better to move this inside on thread?
 				
-				 normalService.submit(41000000, monitorStages[j]);
+				 GraphManager.setScheduleRate(gm, 41000000, monitorStages[j]);
 				 
 				 final RingBuffer mon = monitorRings[j];
 				 
-				 normalService.submit(47000000, new DumpMonitorStage(gm, mon));
-
+				 GraphManager.setScheduleRate(gm, 47000000, new DumpMonitorStage(gm, mon));
 				 
 			 }
 		 }
 		 		 
-		 
-		 //start the timer		 
-		 final long start = System.currentTimeMillis();
+
 		 
 		 //add all the stages start running
 		 j = 0;
 		RingBuffer outputRing = rings[j];
 		
-		 normalService.submit(highLevelAPI ? new ProductionStageHighLevel(gm, outputRing) : new ProductionStageLowLevel(gm, outputRing));
+		 GraphManager.setContinuousRun(gm, highLevelAPI ? new ProductionStageHighLevel(gm, outputRing) : new ProductionStageLowLevel(gm, outputRing));
 		 int i = stagesBetweenSourceAndSink;
 		 while (--i>=0) {
 			 if (useTap & 0==i) { //only do taps on first stage or this test could end up using many many threads.		 
@@ -609,7 +606,7 @@ public class RingBufferPipeline2 {
 						RingBuffer inputRing = splitsBuffers[k];
 						boolean useRoute = useTap&useRouter;
 						 ///
-						 normalService.submit(highLevelAPI ? new DumpStageHighLevel(gm, inputRing, useRoute) : new DumpStageLowLevel(gm, inputRing, useRoute));
+						 GraphManager.setContinuousRun(gm, highLevelAPI ? new DumpStageHighLevel(gm, inputRing, useRoute) : new DumpStageLowLevel(gm, inputRing, useRoute));
 					 }
 				 } 
 				 
@@ -621,24 +618,26 @@ public class RingBufferPipeline2 {
 			    		 
 			    	 }
 			    	 RingReader.setReleaseBatchSize(rings[j], 8); 
-			    	 normalService.submit(new RoundRobinRouteStage2(gm, rings[j++], splitsBuffers));
+			    	 GraphManager.setContinuousRun(gm, new RoundRobinRouteStage2(gm, rings[j++], splitsBuffers));
 			     } else {
-			    	 normalService.submit(new SplitterStage2(gm, rings[j++], splitsBuffers)); 
+			    	 GraphManager.setContinuousRun(gm, new SplitterStage2(gm, rings[j++], splitsBuffers)); 
 			     }
 			 } else {			 
 				 RingBuffer inputRing = rings[j++];
 				RingBuffer outputRing1 = rings[j];
-				normalService.submit(highLevelAPI ? new CopyStageHighLevel(gm, outputRing1, inputRing) : new CopyStageLowLevel(gm, outputRing1, inputRing));		
+				GraphManager.setContinuousRun(gm, highLevelAPI ? new CopyStageHighLevel(gm, outputRing1, inputRing) : new CopyStageLowLevel(gm, outputRing1, inputRing));		
 			 }
 			 
 		 }
 		RingBuffer inputRing = rings[j];
 		boolean useRoute = useTap&useRouter;
-		 normalService.submit(highLevelAPI ? new DumpStageHighLevel(gm, inputRing, useRoute) : new DumpStageLowLevel(gm, inputRing, useRoute));
+		 GraphManager.setContinuousRun(gm, highLevelAPI ? new DumpStageHighLevel(gm, inputRing, useRoute) : new DumpStageLowLevel(gm, inputRing, useRoute));
 		 
 		 System.out.println("########################################################## Testing "+ (highLevelAPI?"HIGH level ":"LOW level ")+(useTap? "using "+splits+(useRouter?" router ":" splitter "):"")+(monitor?"monitored":"")+" totalThreads:"+totalThreads);
 		 
-		
+		 //start the timer		 
+		 final long start = System.currentTimeMillis();
+		    normalService.startup();
 		 //blocks until all the submitted runnables have stopped
 		
 			 //this timeout is set very large to support slow machines that may also run this test.

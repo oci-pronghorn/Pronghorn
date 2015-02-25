@@ -74,11 +74,11 @@ public abstract class StageManager {
 		}
 		
 	}
+
 	
-	public abstract void submitAll(PronghornStage ... stages);
-	public abstract void submit(PronghornStage stage);
-	public abstract void submitAll(int nsScheduleRate, PronghornStage ... stages);
-	public abstract void submit(int nsScheduleRate, PronghornStage stage);
+	
+	public abstract void startup();
+	public abstract void shutdown();
 	public abstract boolean awaitTermination(long timeout, TimeUnit unit);
 	public abstract boolean TerminateNow();
 	
