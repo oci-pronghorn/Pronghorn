@@ -51,5 +51,27 @@
 	        </decimal>  
         </sequence>
    </template>
+   
+   <template name="TrucksMark2" id="51" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+        <string name="Squad" id="51201">
+            <copy/>
+        </string>
+        <sequence name="Members">
+            <length name="NoMembers" id="51202"/>
+            <uInt64 name="TruckId" id="51203"/>
+            <decimal name="Capacity" id="51203">
+                        <exponent>
+                            <default value="0"/>
+                        </exponent>
+                        <mantissa>
+                            <delta/>
+                        </mantissa>
+            </decimal> 
+            <sequence name="Things">
+                     <length name="NoThings" id="51402"/>
+                     <uInt32 name="AThing"   id="51403"/>
+            </sequence> 
+        </sequence>
+   </template>
 
 </templates>

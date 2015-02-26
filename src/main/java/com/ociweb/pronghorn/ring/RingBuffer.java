@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.ring;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -283,7 +284,105 @@ public final class RingBuffer {
         RingWalker.reset(ringWalker, toPos);
     }
 
-    public static void addDecimalAsASCII(int readDecimalExponent,	long readDecimalMantissa, RingBuffer outputRing) {
+    public static ByteBuffer readBytes(RingBuffer ring, ByteBuffer target, int pos, int len) {
+		if (pos < 0) {
+	        return readBytesConst(ring,len,target,RingReader.POS_CONST_MASK & pos);
+	    } else {
+	        return readBytesRing(ring,len,target,restorePosition(ring,pos));
+	    }
+	}
+
+	private static ByteBuffer readBytesRing(RingBuffer ring, int len, ByteBuffer target, int pos) {
+	    byte[] buffer = ring.byteBuffer;
+	    int mask = ring.byteMask;
+	    while (--len >= 0) {
+	        target.put(buffer[mask & pos++]); //TODO: AAAA, should be done as to block copies instead of this loop!!
+	    }
+	    return target;
+	}
+
+	private static ByteBuffer readBytesConst(RingBuffer ring, int len, ByteBuffer target, int pos) {
+	    	target.put(ring.constByteBuffer, pos, len);
+	//        byte[] buffer = ring.constByteBuffer; //TODO: delete if all the unit tests are passing
+	//        while (--len >= 0) {
+	//            target.put(buffer[pos++]);
+	//        }
+	        return target;
+	    }
+
+	public static Appendable readASCII(RingBuffer ring, Appendable target,	int pos, int len) {
+		if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
+	        return readASCIIConst(ring,len,target,RingReader.POS_CONST_MASK & pos);
+	    } else {        	
+	        return readASCIIRing(ring,len,target,restorePosition(ring,pos));
+	    }
+	}
+
+	private static Appendable readASCIIRing(RingBuffer ring, int len, Appendable target, int pos) {
+		byte[] buffer = ring.byteBuffer;
+		int mask = ring.byteMask;
+		
+	    try {
+	        while (--len >= 0) {
+	            target.append((char)buffer[mask & pos++]);
+	        }
+	    } catch (IOException e) {
+	       throw new RuntimeException(e);
+	    }
+	    return target;
+	}
+
+	private static Appendable readASCIIConst(RingBuffer ring, int len, Appendable target, int pos) {
+	    try {
+	    	byte[] buffer = ring.constByteBuffer;
+	        while (--len >= 0) {
+	            target.append((char)buffer[pos++]);
+	        }
+	    } catch (IOException e) {
+	       throw new RuntimeException(e);
+	    }
+	    return target;
+	}
+
+	public static Appendable readUTF8(RingBuffer ring, Appendable target, int pos, int len) {
+		if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
+	        return readUTF8Const(ring,len,target,RingReader.POS_CONST_MASK & pos);
+	    } else {
+	        return readUTF8Ring(ring,len,target,restorePosition(ring,pos));
+	    }
+	}
+
+	private static Appendable readUTF8Const(RingBuffer ring, int bytesLen, Appendable target, int ringPos) {
+		  try{
+			  long charAndPos = ((long)ringPos)<<32;
+			  long limit = ((long)ringPos+bytesLen)<<32;
+			  
+			  while (charAndPos<limit) {		      
+			      charAndPos = decodeUTF8Fast(ring.constByteBuffer, charAndPos, 0xFFFFFFFF); //constants do not wrap            
+			      target.append((char)charAndPos);
+			  }
+		  } catch (IOException e) {
+			  throw new RuntimeException(e);
+		  }
+		  return target;       
+	}
+
+	private static Appendable readUTF8Ring(RingBuffer ring, int bytesLen, Appendable target, int ringPos) {
+		  try{
+			  long charAndPos = ((long)ringPos)<<32;
+			  long limit = ((long)ringPos+bytesLen)<<32;
+			  
+			  while (charAndPos<limit) {		      
+			      charAndPos = decodeUTF8Fast(ring.byteBuffer, charAndPos, ring.byteMask);            
+			      target.append((char)charAndPos);
+			  }
+		  } catch (IOException e) {
+			  throw new RuntimeException(e);
+		  }
+		  return target;       
+	}
+
+	public static void addDecimalAsASCII(int readDecimalExponent,	long readDecimalMantissa, RingBuffer outputRing) {
 		long ones = (long)(readDecimalMantissa*RingReader.powdi[64 + readDecimalExponent]);
 		validateVarLength(outputRing, 21);
 		int max = 21 + outputRing.byteWorkingHeadPos.value;

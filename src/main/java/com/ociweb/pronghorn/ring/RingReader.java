@@ -1,6 +1,5 @@
 package com.ociweb.pronghorn.ring;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
@@ -108,59 +107,17 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     public static Appendable readASCII(RingBuffer ring, int loc, Appendable target) {
     	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
         int pos = ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
-        int len = RingReader.readDataLength(ring, loc);
-
-        if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
-            return readASCIIConst(ring,len,target,POS_CONST_MASK & pos);
-        } else {        	
-            return readASCIIRing(ring,len,target,RingBuffer.restorePosition(ring,pos));
-        }
+        return RingBuffer.readASCII(ring, target, pos, RingReader.readDataLength(ring, loc));
     }
-    
-    public static Appendable readUTF8(RingBuffer ring, int loc, Appendable target) {
+
+	public static Appendable readUTF8(RingBuffer ring, int loc, Appendable target) {
 		assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
         int pos = ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
-        int len = RingReader.readDataLength(ring, loc);
-        
-        if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
-            return readUTF8Const(ring,len,target,POS_CONST_MASK & pos);
-        } else {
-            return readUTF8Ring(ring,len,target,RingBuffer.restorePosition(ring,pos));
-        }
+        return RingBuffer.readUTF8(ring, target, pos, RingReader.readDataLength(ring, loc));
     }
-   
-	private static Appendable readUTF8Const(RingBuffer ring, int bytesLen, Appendable target, int ringPos) {
-		  try{
-			  long charAndPos = ((long)ringPos)<<32;
-			  long limit = ((long)ringPos+bytesLen)<<32;
-			  
-			  while (charAndPos<limit) {		      
-			      charAndPos = RingBuffer.decodeUTF8Fast(ring.constByteBuffer, charAndPos, 0xFFFFFFFF); //constants do not wrap            
-			      target.append((char)charAndPos);
-			  }
-		  } catch (IOException e) {
-			  throw new RuntimeException(e);
-		  }
-		  return target;       
-	}
-	
-	private static Appendable readUTF8Ring(RingBuffer ring, int bytesLen, Appendable target, int ringPos) {
-		  try{
-			  long charAndPos = ((long)ringPos)<<32;
-			  long limit = ((long)ringPos+bytesLen)<<32;
-			  
-			  while (charAndPos<limit) {		      
-			      charAndPos = RingBuffer.decodeUTF8Fast(ring.byteBuffer, charAndPos, ring.byteMask);            
-			      target.append((char)charAndPos);
-			  }
-		  } catch (IOException e) {
-			  throw new RuntimeException(e);
-		  }
-		  return target;       
-	}
-	
-    public static int readUTF8(RingBuffer ring, int loc, char[] target, int targetOffset) {
+
+	public static int readUTF8(RingBuffer ring, int loc, char[] target, int targetOffset) {
 		assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
         int pos = ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
@@ -181,10 +138,8 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 			  
 	  int i = targetloc;
 	  while (charAndPos<limit) {
-	      
 	      charAndPos = RingBuffer.decodeUTF8Fast(ring.constByteBuffer, charAndPos, 0xFFFFFFFF);//constants never loop back            
 	      target[i++] = (char)charAndPos;
-	
 	  }
 	  return i - targetloc;    
 	}
@@ -195,44 +150,15 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		  long limit = ((long)(ringPos+bytesLen))<<32;
 						  
 		  int i = targetloc;
-		  while (charAndPos<limit) {
-		      
+		  while (charAndPos<limit) {		      
 		      charAndPos = RingBuffer.decodeUTF8Fast(ring.byteBuffer, charAndPos, ring.byteMask);    
-		      target[i++] = (char)charAndPos;
-		
+		      target[i++] = (char)charAndPos;		
 		  }
 		  return i - targetloc;
 		         
 	}
 	
 	
-    private static Appendable readASCIIConst(RingBuffer ring, int len, Appendable target, int pos) {
-        try {
-            byte[] buffer = ring.constByteBuffer;
-            while (--len >= 0) {
-                target.append((char)buffer[pos++]);
-            }
-        } catch (IOException e) {
-           throw new RuntimeException(e);
-        }
-        return target;
-    }
-    
-    
-    private static Appendable readASCIIRing(RingBuffer ring, int len, Appendable target, int pos) {
-    	
-        try {
-            byte[] buffer = ring.byteBuffer;
-            int mask = ring.byteMask;
-            while (--len >= 0) {
-                target.append((char)buffer[mask & pos++]);
-            }
-        } catch (IOException e) {
-           throw new RuntimeException(e);
-        }
-        return target;
-    }
-       
     public static int readASCII(RingBuffer ring, int loc, char[] target, int targetOffset) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
@@ -431,31 +357,10 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
                 
-        if (pos < 0) {
-            return readBytesConst(ring,len,target,POS_CONST_MASK & pos);
-        } else {
-            return readBytesRing(ring,len,target,RingBuffer.restorePosition(ring,pos));
-        }
-    }
-    
-    private static ByteBuffer readBytesConst(RingBuffer ring, int len, ByteBuffer target, int pos) {
-        byte[] buffer = ring.constByteBuffer;
-        while (--len >= 0) {
-            target.put(buffer[pos++]);
-        }
-        return target;
+        return RingBuffer.readBytes(ring, target, pos, len);
     }
 
-    private static ByteBuffer readBytesRing(RingBuffer ring, int len, ByteBuffer target, int pos) {
-        byte[] buffer = ring.byteBuffer;
-        int mask = ring.byteMask;
-        while (--len >= 0) {
-            target.put(buffer[mask & pos++]);
-        }
-        return target;
-    }
-    
-    public static int readBytes(RingBuffer ring, int loc, byte[] target, int targetOffset) {
+	public static int readBytes(RingBuffer ring, int loc, byte[] target, int targetOffset) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
     	long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);

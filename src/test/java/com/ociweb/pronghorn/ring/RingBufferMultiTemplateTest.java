@@ -42,7 +42,7 @@ public class RingBufferMultiTemplateTest {
     
 	@Test
 	public void startup() {
-		int messageTypeCount = 4;
+		int messageTypeCount = 5;
 		assertEquals(messageTypeCount,FROM.messageStarts.length);
 		
 	}

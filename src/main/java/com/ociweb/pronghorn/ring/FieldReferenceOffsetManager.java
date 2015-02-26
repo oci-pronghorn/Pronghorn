@@ -152,18 +152,18 @@ public class FieldReferenceOffsetManager {
             //consumer of this need not check for null because it is always created.
         }
         tokensLen = null==tokens?0:tokens.length;
-                
-
-	
+          
 	}
 
 	public String toString() {
 		if (null==name) {
-			return fieldNameScript.length<20 ? Arrays.toString(fieldNameScript) : "ScriptLen:"+fieldNameScript.length; //TODO: find a better way to "make up" a name
+			return fieldNameScript.length<20 ? Arrays.toString(fieldNameScript) : "ScriptLen:"+fieldNameScript.length;
 		} else {
 			return name;
 		}
 	}
+	
+	
 	
     private float buildFragScript(int[] scriptTokens, short preableBytes) {
     	int spaceForTemplateId = 1;
