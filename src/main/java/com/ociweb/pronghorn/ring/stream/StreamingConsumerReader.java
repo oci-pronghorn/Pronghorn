@@ -138,10 +138,10 @@ public class StreamingConsumerReader {
 							}
 						} while (++j<from.tokens.length && FieldReferenceOffsetManager.isGroupClosed(from, j) );
 						//if the stack is empty set the continuation for fields that appear after the sequence
-						if (nestedFragmentDepth < 0) {
-							nestedFragmentDepth = 0;
-							cursorStack[0] = j;
+						if (j<from.tokens.length && !FieldReferenceOffsetManager.isGroup(from, j)) {
+							cursorStack[++nestedFragmentDepth] = j;
 						}
+						return;//this is always the end of a fragment
 					}					
 					break;
 				case TypeMask.GroupLength:
@@ -153,8 +153,9 @@ public class StreamingConsumerReader {
 					cursorStack[nestedFragmentDepth] = cursor+fieldsInScript;
 										
 					visitor.visitSequenceOpen(from.fieldNameScript[j+1],from.fieldIdScript[j+1],seqLen);
-					
-					break;
+					//do not pick up the nestedFragmentDepth adjustment, exit now because we know 
+					//group length is always the end of a fragment
+					return; 					
 				case TypeMask.IntegerSigned:
 					visitor.visitSignedInteger(from.fieldNameScript[j],from.fieldIdScript[j],RingBuffer.readValue(idx++, inputRing));
 					break;
@@ -305,6 +306,11 @@ public class StreamingConsumerReader {
 		    	default: System.err.println("unknown "+TokenBuilder.tokenToString(from.tokens[j]));
 			}
 		}
+		
+		//we are here because it did not exit early with close group or group length therefore this
+		//fragment is one of those that is not wrapped by a group open/close and we should do the close logic.
+		nestedFragmentDepth--; 
+		
 	}
 	
 }

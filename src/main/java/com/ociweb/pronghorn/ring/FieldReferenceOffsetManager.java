@@ -400,12 +400,17 @@ public class FieldReferenceOffsetManager {
 	}
 
 	public static boolean isGroupClosed(FieldReferenceOffsetManager from,  int cursor) {
-		return TypeMask.Group == TokenBuilder.extractType(from.tokens[cursor]) &&
+		return isGroup(from, cursor) &&
 		 0 != (OperatorMask.Group_Bit_Close&TokenBuilder.extractOper(from.tokens[cursor]));
 	}
 
 	public static boolean isGroupOpen(FieldReferenceOffsetManager from, int cursor) {
-		return 0 == (OperatorMask.Group_Bit_Close&TokenBuilder.extractOper(from.tokens[cursor]));
+		return isGroup(from, cursor) && 
+				0 == (OperatorMask.Group_Bit_Close&TokenBuilder.extractOper(from.tokens[cursor]));
+	}
+
+	public static boolean isGroup(FieldReferenceOffsetManager from, int cursor) {
+		return TypeMask.Group == TokenBuilder.extractType(from.tokens[cursor]);
 	}
 
 	public static int maxVarLenFieldsPerPrimaryRingSize(FieldReferenceOffsetManager from, int mx) {
