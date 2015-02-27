@@ -4,7 +4,8 @@ import java.nio.ByteBuffer;
 
 public class StreamingConsumerAdapter implements StreamingConsumer {
 
-	StringBuilder temp =  new StringBuilder(128); //caution may produce garbage 
+	StringBuilder tempStringBuilder =  new StringBuilder(128); 
+	ByteBuffer tempByteBuffer = ByteBuffer.allocate(512);
 	
 	@Override
 	public boolean paused() {
@@ -25,6 +26,10 @@ public class StreamingConsumerAdapter implements StreamingConsumer {
 
 	@Override
 	public void visitSequenceOpen(String name, long id, int length) {
+	}
+
+	@Override
+	public void visitSequenceClose(String name, long id) {
 	}
 
 	@Override
@@ -82,19 +87,23 @@ public class StreamingConsumerAdapter implements StreamingConsumer {
 
 	@Override
 	public Appendable targetASCII(String name, long id) {
-		temp.setLength(0);
-		return temp;
+		tempStringBuilder.setLength(0);
+		return tempStringBuilder;
 	}
 
 	@Override
 	public Appendable targetUTF8(String name, long id) {
-		temp.setLength(0);
-		return temp;
+		tempStringBuilder.setLength(0);
+		return tempStringBuilder;
 	}
 
 	@Override
-	public ByteBuffer targetBytes(String name, long id) {
-		throw new UnsupportedOperationException("To use this feature this method must be implemented by the using code.");
+	public ByteBuffer targetBytes(String name, long id, int length) {
+		tempByteBuffer.clear();
+		if (tempByteBuffer.capacity()<length) {
+			tempByteBuffer = ByteBuffer.allocate(length*2);
+		}
+		return tempByteBuffer;
 	}
 
 	@Override
@@ -111,26 +120,25 @@ public class StreamingConsumerAdapter implements StreamingConsumer {
 
 	@Override
 	public Appendable targetOptionalASCII(String name, long id) {
-		temp.setLength(0);
-		return temp;
+		tempStringBuilder.setLength(0);
+		return tempStringBuilder;
 	}
 
 	@Override
 	public Appendable targetOptionalUTF8(String name, long id) {
-		temp.setLength(0);
-		return temp;
+		tempStringBuilder.setLength(0);
+		return tempStringBuilder;
 	}
 
 	@Override
-	public ByteBuffer targetOptionalBytes(String name, long id) {
-		throw new UnsupportedOperationException("To use this feature this method must be implemented by the using code.");
+	public ByteBuffer targetOptionalBytes(String name, long id, int length) {
+		tempByteBuffer.clear();
+		if (tempByteBuffer.capacity()<length) {
+			tempByteBuffer = ByteBuffer.allocate(length*2);
+		}
+		return tempByteBuffer;
 	}
 
-	@Override
-	public void visitSequenceClose(String name, long id) {
-		// TODO Auto-generated method stub
-		
-	}
 
 
 }

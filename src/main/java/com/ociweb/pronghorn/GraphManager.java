@@ -307,6 +307,9 @@ public class GraphManager {
 		
 	}
 
+	//TODO: add annotations to the graph.
+	//TODO: build immutable copy of graph from the selected annotations
+	//TODO: annotations to group the stages?
 	
 	public static void setContinuousRun(GraphManager m, PronghornStage stage) {
 		synchronized(m.lock) {			

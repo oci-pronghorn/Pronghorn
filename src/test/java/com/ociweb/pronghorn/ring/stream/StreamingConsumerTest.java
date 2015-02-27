@@ -6,7 +6,9 @@ import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupTempla
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 
 import org.junit.Test;
 
@@ -19,7 +21,7 @@ import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.RingWriter;
 
-public class StreamParserTest {
+public class StreamingConsumerTest {
 
 	private static final byte[] ASCII_VERSION = "1.0".getBytes();
 
@@ -51,6 +53,10 @@ public class StreamParserTest {
 	private final int MSG_TRUCK_THING_SEQ_LOC = lookupFragmentLocator("Things", MSG_TRUCK_SEQ_LOC, FROM);
 	private final int THING_ID_LOC = lookupFieldLocator("AThing", MSG_TRUCK_THING_SEQ_LOC, FROM);
 	
+	//closing fragment starts with the same name as the first field of that fragment
+	private final int FRAG_JOMQ_LOC = lookupFragmentLocator("JustOneMoreQuestion", MSG_TRUCKS_LOC, FROM);
+	private final int JOMQ_LOC = lookupFieldLocator("JustOneMoreQuestion", MSG_TRUCK_THING_SEQ_LOC, FROM);
+	
 	public static FieldReferenceOffsetManager buildFROM() {
 		 
 		String source = "/template/smallExample.xml";
@@ -71,77 +77,38 @@ public class StreamParserTest {
 		
 		//in this method we write two sequence members but only record the count after writing the members
 		populateRingBufferWithSequence(ring, testSize);
+				
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		PrintStream ps = new PrintStream(baos);
 		
-//		0 Group/OpenTemplPMap/3
-//		1 IntegerUnsigned/None/0
-//		2 ASCII/Copy/0
-//		3 Group/ClosePMap/3
 		
-//		4 Group/OpenTemplPMap/6
-//		5 IntegerUnsigned/Copy/1
-//		6 IntegerUnsigned/Copy/2
-//		7 IntegerUnsigned/Copy/3
-//		8 Decimal/Default/4
-//		9 LongSigned/Delta/0
-//		10 Group/ClosePMap/6
+		StreamingConsumer visitor = new StreamingConsumerToJSON(ps); 
 		
-//		11 Group/OpenTempl/2
-//		12 ASCII/Constant/1
-//		13 Group/Close/2
-//		14 Group/OpenTemplPMap/8
-//		15 ASCII/Copy/2
-//		16 Length/None/5
+		StreamingConsumerReader reader = new StreamingConsumerReader(ring, visitor );
 		
-//		17 Group/OpenSeqPMap/4
-//		18 LongUnsigned/None/1
-//		19 Decimal/Default/6
-//		20 LongSigned/Delta/2
-//		21 Group/CloseSeqPMap/4
-//		22 Group/ClosePMap/8
+		//ring is fully populated so we should not need to call this run again
+		reader.run();
 		
-		StreamingConsumer visitor = new StreamingConsumerToJSON(System.out); 
+		ps.close();
+		String results = new String(baos.toByteArray());
 		
-		StreamingConsumerReader parser = new StreamingConsumerReader(ring, visitor );
+		System.err.println(results);
 		
-		//ring is fully populated so we should not need to call this run again.s
-		parser.run();
-
-//		
-//		
-//		//Ring is full of messages, this loop runs until the ring is empty.
-//        while (RingReader.tryReadFragment(ring)) {
-//        	assertTrue(RingReader.isNewMessage(ring));
-//
-//        	int msgIdx = RingReader.getMsgIdx(ring);
-//        	if (msgIdx<0) {
-//        		break;
-//        	}
-//			assertEquals(MSG_TRUCKS_LOC, msgIdx);
-//
-//			assertEquals("TheBobSquad", RingReader.readASCII(ring, SQUAD_NAME, new StringBuilder()).toString());
-//			
-//			int sequenceCount = RingReader.readInt(ring, SQUAD_NO_MEMBERS);
-//			assertEquals(2,sequenceCount);
-//        	
-//					
-//			//now we now that we have 2 fragments to read
-//			RingReader.tryReadFragment(ring);
-//			assertEquals(10, RingReader.readLong(ring, SQUAD_TRUCK_ID));
-//			assertEquals(2000, RingReader.readDecimalMantissa(ring, TRUCK_CAPACITY));
-//			assertEquals(2, RingReader.readDecimalExponent(ring, TRUCK_CAPACITY));
-//			assertEquals(20.00d, RingReader.readDouble(ring, TRUCK_CAPACITY),.001);
-//        	
-//			RingReader.tryReadFragment(ring);
-//			assertEquals(11, RingReader.readLong(ring, SQUAD_TRUCK_ID));
-//			assertEquals(3000, RingReader.readDecimalMantissa(ring, TRUCK_CAPACITY));
-//			assertEquals(2, RingReader.readDecimalExponent(ring, TRUCK_CAPACITY));
-//			assertEquals(30.00d, RingReader.readDouble(ring, TRUCK_CAPACITY),.001);
-//        	
-//        }
+		//spot check the produced JSON
+		assertTrue(results, results.indexOf("\"TruckId\":10")>0);
+		assertTrue(results, results.indexOf("{\"AThing\":7}")>0);
+		assertTrue(results, results.indexOf("{\"JustOneMoreQuestion\":42}")>0);
 		
 	}
 	
 	
+    //Primary ring data for this example
+	// X - start of message
+	// E - end of fragment byte length
+	// L - length starting sequence
+	//
+    // X   strng  L  E       ___id  decimal___  L  E      t  E      ___id  decimal___  L  E      t  E   omq E 
+    //[23, 0, 11, 2, 11,     0, 10, 2, 0, 2000, 1, 0,     7, 0,     0, 11, 2, 0, 3000, 1, 0,     7, 0,  42, 0
 	
 	
 	private void populateRingBufferWithSequence(RingBuffer ring, int testSize) {
@@ -189,11 +156,11 @@ public class StreamParserTest {
         		RingWriter.writeInt(ring, SQUAD_NO_MEMBERS, 2); //NOTE: we are writing this field very late because we now know how many we wrote.
         		
         		
-        	//	RingWriter.blockWriteFragment(ring, MSG_TRUCK_AGE_FRAG_LOC);
+        		RingWriter.blockWriteFragment(ring, FRAG_JOMQ_LOC);
+       		
+        		RingWriter.writeInt(ring, JOMQ_LOC, 42);
         		
-        //		RingWriter.writeLong(ring, SQUAD_AGE, 42);
-        		
-        		RingWriter.publishWrites(ring);
+        		RingWriter.publishWrites(ring); 
         		        		
         		 j--;       		
     		} else {

@@ -303,10 +303,6 @@ public final class RingBuffer {
 
 	private static ByteBuffer readBytesConst(RingBuffer ring, int len, ByteBuffer target, int pos) {
 	    	target.put(ring.constByteBuffer, pos, len);
-	//        byte[] buffer = ring.constByteBuffer; //TODO: delete if all the unit tests are passing
-	//        while (--len >= 0) {
-	//            target.put(buffer[pos++]);
-	//        }
 	        return target;
 	    }
 

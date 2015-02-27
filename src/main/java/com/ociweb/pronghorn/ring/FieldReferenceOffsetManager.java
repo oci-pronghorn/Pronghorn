@@ -44,11 +44,13 @@ public class FieldReferenceOffsetManager {
 	private final long absentLong = TokenBuilder.absentValue64(TokenBuilder.MASK_ABSENT_DEFAULT); 
 	
     
-    private static int[] SINGLE_MESSAGE_BYTEARRAY_TOKENS = new int[]{TokenBuilder.buildToken(TypeMask.ByteArray, 
-														                                      OperatorMask.Field_None, 
-														                                      0)};
-	private static String[] SINGLE_MESSAGE_BYTEARRAY_NAMES = new String[]{NAME_BYTE_ARRAY};
-	private static long[] SINGLE_MESSAGE_BYTEARRAY_IDS = new long[]{0};
+    private static int[] SINGLE_MESSAGE_BYTEARRAY_TOKENS = new int[]{
+    																TokenBuilder.buildToken(TypeMask.Group, 0, 0),
+    																TokenBuilder.buildToken(TypeMask.ByteArray, OperatorMask.Field_None, 1),
+						                                            TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Close, 0)
+    };
+	private static String[] SINGLE_MESSAGE_BYTEARRAY_NAMES = new String[]{NAME_CHUNKED_STREAM,NAME_BYTE_ARRAY,null};
+	private static long[] SINGLE_MESSAGE_BYTEARRAY_IDS = new long[]{0,1,0};
 	private static final short ZERO_PREMABLE = 0;
 	public static final FieldReferenceOffsetManager RAW_BYTES = new FieldReferenceOffsetManager(SINGLE_MESSAGE_BYTEARRAY_TOKENS, 
 			                                                                                    ZERO_PREMABLE, 
@@ -162,8 +164,7 @@ public class FieldReferenceOffsetManager {
 			return name;
 		}
 	}
-	
-	
+		
 	
     private float buildFragScript(int[] scriptTokens, short preableBytes) {
     	int spaceForTemplateId = 1;
@@ -253,7 +254,7 @@ public class FieldReferenceOffsetManager {
                 		// System.err.println("started with zero at :"+fragmentStartIdx);
                 	} else {
                 		depth--;
-                		fragDataSize[fragmentStartIdx] = -1; //these are group closings
+                		fragDataSize[fragmentStartIdx] = 0;//leave as zero so we can start trailing fragments   -1; //these are group closings
                 	}
                 }
                 depth++;                
@@ -386,7 +387,28 @@ public class FieldReferenceOffsetManager {
 		
     }
     
-    public static int maxVarLenFieldsPerPrimaryRingSize(FieldReferenceOffsetManager from, int mx) {
+    public static void debugFROM(FieldReferenceOffsetManager from) {
+		int j = 0; ///debug code to be removed
+		while (j<from.tokens.length) {
+			System.err.println((j<10? " ": "" )+j+" Depth:"+from.fragDepth[j]+" ScrSiz:"+from.fragScriptSize[j]+ " DatSiz:"+from.fragDataSize[j]+" "+TokenBuilder.tokenToString(from.tokens[j]));
+			j++;
+		}
+	}
+
+	public static boolean isGroupOpenSequence(FieldReferenceOffsetManager from, int cursor) {
+		return 0 != (OperatorMask.Group_Bit_Seq&TokenBuilder.extractOper(from.tokens[cursor]));
+	}
+
+	public static boolean isGroupClosed(FieldReferenceOffsetManager from,  int cursor) {
+		return TypeMask.Group == TokenBuilder.extractType(from.tokens[cursor]) &&
+		 0 != (OperatorMask.Group_Bit_Close&TokenBuilder.extractOper(from.tokens[cursor]));
+	}
+
+	public static boolean isGroupOpen(FieldReferenceOffsetManager from, int cursor) {
+		return 0 == (OperatorMask.Group_Bit_Close&TokenBuilder.extractOper(from.tokens[cursor]));
+	}
+
+	public static int maxVarLenFieldsPerPrimaryRingSize(FieldReferenceOffsetManager from, int mx) {
 		int maxVarCount = (int)Math.ceil(mx*from.maxVarFieldPerUnit);
 		//we require at least 2 fields to ensure that the average approach works in all cases
 		if (maxVarCount < 2) {

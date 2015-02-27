@@ -5,7 +5,9 @@ import java.nio.ByteBuffer;
 
 public class StreamingConsumerToJSON implements StreamingConsumer {
 
-	StringBuilder temp =  new StringBuilder(128); 
+	StringBuilder tempStringBuilder =  new StringBuilder(128); 
+	ByteBuffer tempByteBuffer = ByteBuffer.allocate(512);
+	
 	PrintStream out;
 	int depth = 0;
 	int step = 2;
@@ -44,7 +46,7 @@ public class StreamingConsumerToJSON implements StreamingConsumer {
 	public void visitFragmentClose(String name, long id) {
 		depth -= step;
 		writeTab();
-		out.println("{");		
+		out.println("}");		
 	}
 
 	@Override
@@ -123,8 +125,8 @@ public class StreamingConsumerToJSON implements StreamingConsumer {
 
 	@Override
 	public Appendable targetASCII(String name, long id) {
-		temp.setLength(0);
-		return temp;
+		tempStringBuilder.setLength(0);
+		return tempStringBuilder;
 	}
 
 	@Override
@@ -135,8 +137,8 @@ public class StreamingConsumerToJSON implements StreamingConsumer {
 
 	@Override
 	public Appendable targetOptionalASCII(String name, long id) {
-		temp.setLength(0);
-		return temp;
+		tempStringBuilder.setLength(0);
+		return tempStringBuilder;
 	}
 
 	@Override
@@ -147,8 +149,8 @@ public class StreamingConsumerToJSON implements StreamingConsumer {
 
 	@Override
 	public Appendable targetUTF8(String name, long id) {
-		temp.setLength(0);
-		return temp;
+		tempStringBuilder.setLength(0);
+		return tempStringBuilder;
 	}
 
 	@Override
@@ -159,33 +161,42 @@ public class StreamingConsumerToJSON implements StreamingConsumer {
 
 	@Override
 	public Appendable targetOptionalUTF8(String name, long id) {
-		temp.setLength(0);
-		return temp;
+		tempStringBuilder.setLength(0);
+		return tempStringBuilder;
 	}
 
 	@Override
 	public void visitOptionalUTF8(String name, long id, Appendable value) {
 		writeTab();
-		out.println("{\""+name+"\":\""+value+"\"}");
-		
+		out.println("{\""+name+"\":\""+value+"\"}");		
 	}
 
 	@Override
-	public ByteBuffer targetBytes(String name, long id) {
-		throw new UnsupportedOperationException("Still not sure how big to make this buffer, may be the wrong data structure"); //TODO: AA, follow up on this.
+	public ByteBuffer targetBytes(String name, long id, int length) {
+		tempByteBuffer.clear();
+		if (tempByteBuffer.capacity()<length) {
+			tempByteBuffer = ByteBuffer.allocate(length*2);
+		}
+		return tempByteBuffer;
 	}
 
 	@Override
-	public void visitBytes(String name, long id, ByteBuffer target) {
+	public void visitBytes(String name, long id, ByteBuffer value) {
+		//undefined how we should send a binary block to JSON
 	}
 
 	@Override
-	public ByteBuffer targetOptionalBytes(String name, long id) {
-		throw new UnsupportedOperationException("Still not sure how big to make this buffer, may be the wrong data structure"); //TODO: AA, follow up on this.
+	public ByteBuffer targetOptionalBytes(String name, long id, int length) {
+		tempByteBuffer.clear();
+		if (tempByteBuffer.capacity()<length) {
+			tempByteBuffer = ByteBuffer.allocate(length*2);
+		}
+		return tempByteBuffer;	
 	}
 
 	@Override
-	public void visitOptionalBytes(String name, long id, ByteBuffer target) {
+	public void visitOptionalBytes(String name, long id, ByteBuffer value) {
+		//undefined how we should send a binary block to JSON
 	}
 
 }

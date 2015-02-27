@@ -72,6 +72,7 @@
                      <uInt32 name="AThing"   id="51403"/>
             </sequence> 
         </sequence>
+        <uInt32 name="JustOneMoreQuestion" id="61403"/>
    </template>
 
 </templates>

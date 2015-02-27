@@ -68,15 +68,12 @@ public interface StreamingConsumer {
 	void visitOptionalUTF8(String name, long id, Appendable target);
 	
 	//the bytes are are written to the target ByteBuffer that is also returned.
-	ByteBuffer targetBytes(String name, long id);
-	void visitBytes(String name, long id, ByteBuffer target);
+	ByteBuffer targetBytes(String name, long id, int length);
+	void visitBytes(String name, long id, ByteBuffer value);
 	
-	//the bytes are written to the target ByteBuffer that is also returned.
 	//this method will NOT be called if the value is absent from the stream
-	ByteBuffer targetOptionalBytes(String name, long id);
-	void visitOptionalBytes(String name, long id, ByteBuffer target);
-
-
+	ByteBuffer targetOptionalBytes(String name, long id, int length);
+	void visitOptionalBytes(String name, long id, ByteBuffer value);
 	
 	
 }

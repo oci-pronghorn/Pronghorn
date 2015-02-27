@@ -1,22 +1,12 @@
 package com.ociweb.pronghorn.ring.stream;
 
-import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
-import static com.ociweb.pronghorn.ring.RingBuffer.byteMask;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
-import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingReader;
-import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
@@ -37,7 +27,8 @@ public class StreamingConsumerReader {
 		this.visitor = visitor;
 		this.inputRing = inputRing;
 		
-		this.from = RingBuffer.from(inputRing);		
+		this.from = RingBuffer.from(inputRing);	
+		
 		this.cursorStack = new int[this.from.maximumFragmentStackDepth];
 		this.sequenceCounters = new int[this.from.maximumFragmentStackDepth];
 		
@@ -46,27 +37,20 @@ public class StreamingConsumerReader {
 		
 		this.nextTargetHead = 1 + tailPosition(inputRing);
 		this.headPosCache = headPosition(inputRing);	
-		this.nestedFragmentDepth = 0;		
+		this.nestedFragmentDepth = -1;		
+
+		//debugFROM(from);
 		
-		int j = 0; ///debug code to be removed
-		while (j<from.tokens.length) {
-			System.err.println(j+" "+TokenBuilder.tokenToString(from.tokens[j]));
-			j++;
-		}
 	}
-	
-//TODO: need test with nested sequence
-//TODO: addUTF8 support
-//TODO: add the visitor interface.
-	
+
 	public void run() {
 		
-		do {
-			
+		do {			
 			    if (visitor.paused()) {
 			    	return;
 			    }
-			   //return to try again later if we can not read a fragment
+			    
+			    //return to try again later if we can not read a fragment
 		        if (headPosCache < nextTargetHead) {
 					headPosCache = inputRing.headPos.longValue();
 					if (headPosCache < nextTargetHead) {
@@ -76,7 +60,8 @@ public class StreamingConsumerReader {
 		        		        
 		        int startPos;
 		        int cursor;
-		        if (0==nestedFragmentDepth) {
+
+		        if (nestedFragmentDepth<0) {	
 		        	//start new message
 		        	
 		        	//block until one more byteVector is ready.
@@ -84,6 +69,7 @@ public class StreamingConsumerReader {
 		        	if (cursor<0) {
 		        		int zero = RingBuffer.takeValue(inputRing);
 		        		assert(0==zero);
+		        		RingBuffer.releaseAll(inputRing);
 		        		return;
 		        	}
 		        	startPos = 1;//new message so skip over this messageId field
@@ -98,35 +84,23 @@ public class StreamingConsumerReader {
 			        
 			        inputRing.workingTailPos.value += (from.fragDataSize[cursor]-startPos);
 			        
-					releaseReadLock(inputRing);
 		        	
 		        } else {
 		        	
 		        	cursor = cursorStack[nestedFragmentDepth];
 		        	startPos = 0;//this is not a new message so there is no id to jump over.
-		        	
-		        	
+		        			        	
 			        //must the next read position forward by the size of this fragment so next time we confirm that there is a fragment to read.
 			        nextTargetHead += from.fragDataSize[cursor];
-			        		        		        
+			        			        
 			        //visit all the fields in this fragment
 			        processFragment(startPos, cursor);
 			        
 			        inputRing.workingTailPos.value += (from.fragDataSize[cursor]-startPos);
 			        
-					releaseReadLock(inputRing);
 		        	
-		        	
-		        	//decrement one count because we are now doing one pass over the fragment
-		        	if(--sequenceCounters[nestedFragmentDepth]<=0) {
-		        		visitor.visitSequenceClose(from.fieldNameScript[cursor],from.fieldIdScript[cursor]);
-		        		nestedFragmentDepth--; //will become zero so we start a new message
-		        	}
-		        			        	
 		        }
-
-	            	
-	        	
+		        releaseReadLock(inputRing);
 		} while(true); //keep running until we run out of content
 		
 	}
@@ -137,14 +111,37 @@ public class StreamingConsumerReader {
 		int idx = 0;
 		while (i<fieldsInScript) {
 			int j = cursor+i++;
-						
+			
 			switch (TokenBuilder.extractType(from.tokens[j])) {
 				case TypeMask.Group:
-					int operator = TokenBuilder.extractOper(from.tokens[j]);
-					if (0 == (OperatorMask.Group_Bit_Close&operator)) {
+					if (FieldReferenceOffsetManager.isGroupOpen(from, j)) {
 						visitor.visitFragmentOpen(from.fieldNameScript[j],from.fieldIdScript[j]);
-					} else {
-						visitor.visitFragmentClose(from.fieldNameScript[j],from.fieldIdScript[j]);
+					} else {				
+						do {//close this member of the sequence or template
+							String name = from.fieldNameScript[j];
+							long id = from.fieldIdScript[j];
+							visitor.visitFragmentClose(name,id);
+							//if this was a close of sequence count down so we now when to close it.
+							if (FieldReferenceOffsetManager.isGroupOpenSequence(from, j)) {
+								//close of one sequence member
+								if (--sequenceCounters[nestedFragmentDepth]<=0) {
+									//close of the sequence
+									visitor.visitSequenceClose(name,id);
+									nestedFragmentDepth--; //will become zero so we start a new message
+								} else {
+									break;
+								}
+							} else {
+								//this close was not a sequence so it must be the end of the message
+								nestedFragmentDepth = -1;
+								return;//must exit so we do not pick up any more fields
+							}
+						} while (++j<from.tokens.length && FieldReferenceOffsetManager.isGroupClosed(from, j) );
+						//if the stack is empty set the continuation for fields that appear after the sequence
+						if (nestedFragmentDepth < 0) {
+							nestedFragmentDepth = 0;
+							cursorStack[0] = j;
+						}
 					}					
 					break;
 				case TypeMask.GroupLength:
@@ -154,6 +151,7 @@ public class StreamingConsumerReader {
 					nestedFragmentDepth++;
 					sequenceCounters[nestedFragmentDepth]= seqLen;
 					cursorStack[nestedFragmentDepth] = cursor+fieldsInScript;
+										
 					visitor.visitSequenceOpen(from.fieldNameScript[j+1],from.fieldIdScript[j+1],seqLen);
 					
 					break;
@@ -288,7 +286,7 @@ public class StreamingConsumerReader {
 						int pos = bytePosition(meta,inputRing,len);    		
 						String name = from.fieldNameScript[j];
 						long id = from.fieldIdScript[j];
-						visitor.visitBytes(name, id, RingBuffer.readBytes(inputRing, visitor.targetBytes(name, id), pos, len));
+						visitor.visitBytes(name, id, RingBuffer.readBytes(inputRing, visitor.targetBytes(name, id, len), pos, len));
 					}
 					break;	
 				case TypeMask.ByteArrayOptional:
@@ -300,14 +298,13 @@ public class StreamingConsumerReader {
 							int pos = bytePosition(meta,inputRing,len);    		
 							String name = from.fieldNameScript[j];
 							long id = from.fieldIdScript[j];
-							visitor.visitOptionalBytes(name, id, RingBuffer.readBytes(inputRing, visitor.targetOptionalBytes(name, id), pos, len));
+							visitor.visitOptionalBytes(name, id, RingBuffer.readBytes(inputRing, visitor.targetOptionalBytes(name, id, len), pos, len));
 						}
 					}
 					break;
 		    	default: System.err.println("unknown "+TokenBuilder.tokenToString(from.tokens[j]));
 			}
 		}
-		//inputRing.workingTailPos.value+=idx;
 	}
 	
 }

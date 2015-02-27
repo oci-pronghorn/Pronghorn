@@ -16,6 +16,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -25,6 +27,10 @@ import com.ociweb.pronghorn.GraphManager;
 import com.ociweb.pronghorn.ring.route.RoundRobinRouteStage2;
 import com.ociweb.pronghorn.ring.route.SplitterStage2;
 import com.ociweb.pronghorn.ring.stage.PronghornStage;
+import com.ociweb.pronghorn.ring.stream.StreamingConsumer;
+import com.ociweb.pronghorn.ring.stream.StreamingConsumerAdapter;
+import com.ociweb.pronghorn.ring.stream.StreamingConsumerReader;
+import com.ociweb.pronghorn.ring.stream.StreamingConsumerToJSON;
 import com.ociweb.pronghorn.ring.threading.StageManager;
 //import com.ociweb.pronghorn.ring.util.PipelineThreadPoolExecutor;
 import com.ociweb.pronghorn.ring.threading.ThreadPerStageManager;
@@ -177,6 +183,44 @@ public class RingBufferPipeline2 {
 		}
 	}
 
+	private final class DumpStageStreamingConsumer extends PronghornStage {
+
+		private final boolean useRoute;
+		private final StreamingConsumer visitor;
+		private final StreamingConsumerReader reader;
+		
+		private DumpStageStreamingConsumer(GraphManager gm,RingBuffer inputRing, boolean useRoute) {
+			super(gm, inputRing, NONE);
+			this.useRoute = useRoute;			
+			this.visitor =// new StreamingConsumerToJSON(System.out); 
+					new StreamingConsumerAdapter() {
+				@Override
+				public void visitBytes(String name, long id, ByteBuffer value) {
+					
+					value.flip();
+					if (0==value.remaining()) {
+						return;//EOM??
+					}
+					assertEquals(testArray.length, value.remaining());
+					value.get(tempArray);
+			//	    System.err.println(new String(Arrays.copyOfRange(tempArray, 0 ,100)));
+		///		    System.err.println(new String(Arrays.copyOfRange(testArray,0,100)));
+				    //TODO: B, this test is not passing.
+					
+					//assertTrue(Arrays.equals(testArray, tempArray));
+		
+				}
+			};
+			reader = new StreamingConsumerReader(inputRing, visitor );
+		}
+
+		@Override
+		public void run() {
+				reader.run();
+		}
+	}
+	
+	
 	private final class DumpStageHighLevel extends PronghornStage {
 		private final RingBuffer inputRing;
 		private final boolean useRoute;
@@ -442,6 +486,7 @@ public class RingBufferPipeline2 {
 	private static final String testString = testString1+testString1+testString1+testString1+testString1+testString1+testString1+testString1;
 	//using length of 61 because it is prime and will wrap at odd places
 	private final byte[] testArray = testString.getBytes();//, this is a reasonable test message.".getBytes();
+	private final byte[] tempArray = new byte[testArray.length];
 	private final long testMessages = 1000000; 
 	private final int stages = 4;
 	private final int splits = 2;
@@ -521,7 +566,7 @@ public class RingBufferPipeline2 {
 	
 		 GraphManager gm = new GraphManager();
 		
-		 StageManager normalService = new ThreadPerStageManager(gm);
+		
 						
 		 System.out.println();
 				 
@@ -606,7 +651,10 @@ public class RingBufferPipeline2 {
 						RingBuffer inputRing = splitsBuffers[k];
 						boolean useRoute = useTap&useRouter;
 						 ///
-						 GraphManager.setContinuousRun(gm, highLevelAPI ? new DumpStageHighLevel(gm, inputRing, useRoute) : new DumpStageLowLevel(gm, inputRing, useRoute));
+						 GraphManager.setContinuousRun(gm, highLevelAPI ? 
+								 										// new DumpStageStreamingConsumer(gm, inputRing, useRoute):
+								                                         new DumpStageHighLevel(gm, inputRing, useRoute) :
+							                                             new DumpStageLowLevel(gm, inputRing, useRoute));
 					 }
 				 } 
 				 
@@ -629,19 +677,30 @@ public class RingBufferPipeline2 {
 			 }
 			 
 		 }
-		RingBuffer inputRing = rings[j];
-		boolean useRoute = useTap&useRouter;
-		 GraphManager.setContinuousRun(gm, highLevelAPI ? new DumpStageHighLevel(gm, inputRing, useRoute) : new DumpStageLowLevel(gm, inputRing, useRoute));
+		 
+	  	 RingBuffer inputRing = rings[j];
+		 boolean useRoute = useTap&useRouter;
+		 GraphManager.setContinuousRun(gm, highLevelAPI ? 
+				 									//	new DumpStageStreamingConsumer(gm, inputRing, useRoute):
+				                                          new DumpStageHighLevel(gm, inputRing, useRoute) :
+			                                              new DumpStageLowLevel(gm, inputRing, useRoute));
 		 
 		 System.out.println("########################################################## Testing "+ (highLevelAPI?"HIGH level ":"LOW level ")+(useTap? "using "+splits+(useRouter?" router ":" splitter "):"")+(monitor?"monitored":"")+" totalThreads:"+totalThreads);
 		 
 		 //start the timer		 
 		 final long start = System.currentTimeMillis();
-		    normalService.startup();
+		 
+		 //TODO: AAA, build immutable graph of those nodes by label and or relationshp.
+		 //      
+		 StageManager scheduler = new ThreadPerStageManager(gm); //TODO: AAAAA, immutable complete graph.
+		 
+		 scheduler.startup();
+		 
+		 
 		 //blocks until all the submitted runnables have stopped
 		
 			 //this timeout is set very large to support slow machines that may also run this test.
-			boolean cleanExit = normalService.awaitTermination(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+			boolean cleanExit = scheduler.awaitTermination(TIMEOUT_SECONDS, TimeUnit.SECONDS);
 			if (!cleanExit) {
 				//dump the Queue data
 				int k=0;
