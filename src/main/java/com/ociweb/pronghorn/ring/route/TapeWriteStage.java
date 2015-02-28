@@ -6,14 +6,10 @@ import java.nio.IntBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
-import java.nio.channels.WritableByteChannel;
 
 import com.ociweb.pronghorn.GraphManager;
-import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.stage.PronghornStage;
-import com.sun.xml.internal.messaging.saaj.packaging.mime.Header;
 
 /**
  *
