@@ -17,6 +17,11 @@ public class SplitterStage implements Runnable {
 	private RingBuffer[] targets;
 	private long[] targetHeadPos;
 	
+	//TODO: BB, need new stage to manage tramp data and re-merge 
+	//      Write tramp to final destination, and await the non tramp to finish.
+	//      One stage that keeps its own pipeline? 
+	
+		
 	public int moreToCopy;
 	
 	public SplitterStage(RingBuffer source, RingBuffer ... targets) {

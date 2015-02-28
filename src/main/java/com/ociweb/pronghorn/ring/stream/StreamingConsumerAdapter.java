@@ -15,6 +15,10 @@ public class StreamingConsumerAdapter implements StreamingConsumer {
 	@Override
 	public void visitTemplateOpen(String name, long id) {
 	}
+	
+	@Override
+	public void visitTemplateClose(String name, long id) {
+	}
 
 	@Override
 	public void visitFragmentOpen(String name, long id) {

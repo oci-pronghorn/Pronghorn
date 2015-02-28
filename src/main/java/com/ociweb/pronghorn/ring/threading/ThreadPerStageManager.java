@@ -33,7 +33,7 @@ public class ThreadPerStageManager extends StageManager {
 			PronghornStage stage = GraphManager.getStage(graphManager, i);
 			if (null!=stage) {
 				stage.startup();
-				int rate = GraphManager.getScheduleRate(graphManager, stage.stageId);
+				int rate = (Integer)GraphManager.getAnnotation(graphManager, stage, GraphManager.SCHEDULE_RATE, Integer.valueOf(0));
 				if (0==rate) {
 					executorService.execute(buildRunnable(stage));	
 				} else {

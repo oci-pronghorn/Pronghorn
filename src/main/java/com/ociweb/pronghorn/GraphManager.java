@@ -28,9 +28,7 @@ public class GraphManager {
 	
 	//for lookup of Stage from Stage id
 	private PronghornStage[]  stageIdToStage = new PronghornStage[INIT_STAGES];
-	private int[]             stageIdToRate  = new int[INIT_STAGES];
-	
-		
+			
 	//this is not tracking each time thread is running but instead the larger granularity of
 	//the stage and if it has permanently terminated
 	private byte[] stageTerminationState = new byte[0];// 0 - unknown, 1 - registered, 2 - terminated
@@ -38,6 +36,7 @@ public class GraphManager {
 	//add the annotation to this list first so we have an Id associated with it
 	private Object[] annotationIdToKey = new Object[INIT_STAGES];
 	private Object[] annotationIdToValue = new Object[INIT_STAGES];
+	private int[] annotationIdToStageId = new int[INIT_STAGES];
 	private int totalAnnotationCount = 0;
 
 	//store the annotation ids here
@@ -45,6 +44,9 @@ public class GraphManager {
 	private int[] multAnnotationIds = new int[INIT_RINGS]; //a -1 marks the end of a run of values
 	private int topAnnotation = 0;
 	
+
+	
+	public static String SCHEDULE_RATE = "SCHEDULE_RATE";
 	
 	//this is never used as a runtime but only as a construction lock
 	private Object lock = new Object();		
@@ -343,46 +345,81 @@ public class GraphManager {
 	//TODO: add annotations to the graph.
 	//TODO: build immutable copy of graph from the selected annotations
 	//TODO: annotations to group the stages?
-	
-	public static void setContinuousRun(GraphManager m, PronghornStage stage) {
-		synchronized(m.lock) {			
-			m.stageIdToRate = setValue(m.stageIdToRate,stage.stageId, 0);
+
+	public static void addAnnotation(GraphManager graphManager, Object key, Object value, PronghornStage ... stages) {
+		int i = stages.length;
+		while (--i>=0) {
+			addAnnotation(graphManager, key, value, stages[i]);
 		}
 	}
 	
-	public static void addAnnotation(GraphManager m, Object key, Object value) {
+	public static void addAnnotation(GraphManager m, Object key, Object value, PronghornStage stage) {
 		synchronized(m.lock) {	
 			
-			m.annotationIdToKey[m.totalAnnotationCount] = key;
-			m.annotationIdToValue[m.totalAnnotationCount] = value;
+			//if Annotation key already exists then replace previous value
+			int annotationId = findAnnotationIdForKey(stage.stageId, key);
+			
+			//TODO: AA, if this is not -1 then we do a replacement
+			
+			
+			
+			
+			//extract as add annotation method.
+			//even if the same key/value is given to multiple stages we add it multiple times here
+			//this allows for direct lookup later for every instance found
+			m.annotationIdToKey = setValue(m.annotationIdToKey, m.totalAnnotationCount, key);
+			m.annotationIdToValue = setValue(m.annotationIdToValue, m.totalAnnotationCount, value);
+			m.annotationIdToStageId = setValue(m.annotationIdToStageId, m.totalAnnotationCount, stage.stageId);
+			
+			int beginIdx = m.stageIdToAnnotationsBeginIdx[stage.stageId];
+		    if (m.topAnnotation == m.multAnnotationIds.length) {
+		    	//create new larger array		    	
+		    	int[] newMultiAnnotationIdx = new int[m.multAnnotationIds.length*2];
+		    	System.arraycopy(m.multAnnotationIds, 0, newMultiAnnotationIdx, 0, beginIdx);
+		    	System.arraycopy(m.multAnnotationIds, beginIdx, newMultiAnnotationIdx, beginIdx+1, m.topAnnotation-(beginIdx+1));
+		    	m.multAnnotationIds = newMultiAnnotationIdx;		    	
+		    } else {
+		    	//move all the data down.
+		    	System.arraycopy(m.multAnnotationIds, beginIdx, m.multAnnotationIds, beginIdx+1, m.topAnnotation-(beginIdx+1));
+		    }
+		    
+		    m.multAnnotationIds[beginIdx] = m.totalAnnotationCount;//before we inc this value is the index to this key/value pair
+		    
 			m.totalAnnotationCount++;
+			m.topAnnotation++;
 			
 		}
 	}
-
-	public static void setScheduleRate(GraphManager m, int nsScheduleRate, PronghornStage stage) {
-		synchronized(m.lock) {			
-			m.stageIdToRate = setValue(m.stageIdToRate,stage.stageId, nsScheduleRate);
-		}
+	
+	//also add get regex of key string
+	
+	private static int findAnnotationIdForKey(int stageId, Object key) {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
-	public static int getScheduleRate(GraphManager m, int stageId) {
-		return m.stageIdToRate[stageId];
+	
+	/**
+	 * Returns annotation if one is found by this key on this stage, if Annotation is not found it returns the defaultValue
+	 * @param m
+	 * @param stage
+	 * @param key
+	 * @return
+	 */
+	public static Object getAnnotation(GraphManager m, PronghornStage stage, Object key, Object defaultValue) {
+		int idx = m.stageIdToAnnotationsBeginIdx[stage.stageId];
+		int annotationId;
+		while(-1 != (annotationId = m.multAnnotationIds[idx])) {
+			if (m.annotationIdToKey[annotationId].equals(key)) {
+				return m.annotationIdToValue[annotationId];
+			}
+			idx++;
+		}		
+		return defaultValue;
 	}
+	
+	
 
-	public static void setContinuousRun(GraphManager graphManager, PronghornStage ... stages) {
-		int i = stages.length;
-		while (--i>=0) {
-			setScheduleRate(graphManager, 0, stages[i]);
-		}
-	}
-
-	public static void setScheduleRate(GraphManager graphManager, int nsScheduleRate, PronghornStage ... stages) {
-		int i = stages.length;
-		while (--i>=0) {
-			setScheduleRate(graphManager, nsScheduleRate, stages[i]);
-		}
-	}
 
 
 	

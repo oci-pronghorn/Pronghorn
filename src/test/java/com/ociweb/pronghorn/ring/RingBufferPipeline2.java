@@ -26,6 +26,7 @@ import org.junit.Test;
 import com.ociweb.pronghorn.GraphManager;
 import com.ociweb.pronghorn.ring.route.RoundRobinRouteStage2;
 import com.ociweb.pronghorn.ring.route.SplitterStage2;
+import com.ociweb.pronghorn.ring.route.TapeWriteStage;
 import com.ociweb.pronghorn.ring.stage.PronghornStage;
 import com.ociweb.pronghorn.ring.stream.StreamingConsumer;
 import com.ociweb.pronghorn.ring.stream.StreamingConsumerAdapter;
@@ -621,11 +622,11 @@ public class RingBufferPipeline2 {
 				 
 				 //this is a bit complex may be better to move this inside on thread?
 				
-				 GraphManager.setScheduleRate(gm, 41000000, monitorStages[j]);
+				 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(41000000), monitorStages[j]);
 				 
 				 final RingBuffer mon = monitorRings[j];
 				 
-				 GraphManager.setScheduleRate(gm, 47000000, new DumpMonitorStage(gm, mon));
+				 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(47000000), new DumpMonitorStage(gm, mon));
 				 
 			 }
 		 }
@@ -636,7 +637,7 @@ public class RingBufferPipeline2 {
 		 j = 0;
 		RingBuffer outputRing = rings[j];
 		
-		 GraphManager.setContinuousRun(gm, highLevelAPI ? new ProductionStageHighLevel(gm, outputRing) : new ProductionStageLowLevel(gm, outputRing));
+		 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? new ProductionStageHighLevel(gm, outputRing) : new ProductionStageLowLevel(gm, outputRing));
 		 int i = stagesBetweenSourceAndSink;
 		 while (--i>=0) {
 			 if (useTap & 0==i) { //only do taps on first stage or this test could end up using many many threads.		 
@@ -651,10 +652,10 @@ public class RingBufferPipeline2 {
 						RingBuffer inputRing = splitsBuffers[k];
 						boolean useRoute = useTap&useRouter;
 						 ///
-						 GraphManager.setContinuousRun(gm, highLevelAPI ? 
-								 										// new DumpStageStreamingConsumer(gm, inputRing, useRoute):
-								                                         new DumpStageHighLevel(gm, inputRing, useRoute) :
-							                                             new DumpStageLowLevel(gm, inputRing, useRoute));
+						 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? 
+						// new DumpStageStreamingConsumer(gm, inputRing, useRoute):
+						 new DumpStageHighLevel(gm, inputRing, useRoute) :
+						 new DumpStageLowLevel(gm, inputRing, useRoute));
 					 }
 				 } 
 				 
@@ -666,24 +667,24 @@ public class RingBufferPipeline2 {
 			    		 
 			    	 }
 			    	 RingReader.setReleaseBatchSize(rings[j], 8); 
-			    	 GraphManager.setContinuousRun(gm, new RoundRobinRouteStage2(gm, rings[j++], splitsBuffers));
+			    	 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), new RoundRobinRouteStage2(gm, rings[j++], splitsBuffers));
 			     } else {
-			    	 GraphManager.setContinuousRun(gm, new SplitterStage2(gm, rings[j++], splitsBuffers)); 
+			    	 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), new SplitterStage2(gm, rings[j++], splitsBuffers)); 
 			     }
 			 } else {			 
 				 RingBuffer inputRing = rings[j++];
 				RingBuffer outputRing1 = rings[j];
-				GraphManager.setContinuousRun(gm, highLevelAPI ? new CopyStageHighLevel(gm, outputRing1, inputRing) : new CopyStageLowLevel(gm, outputRing1, inputRing));		
+				GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? new CopyStageHighLevel(gm, outputRing1, inputRing) : new CopyStageLowLevel(gm, outputRing1, inputRing));		
 			 }
 			 
 		 }
 		 
 	  	 RingBuffer inputRing = rings[j];
 		 boolean useRoute = useTap&useRouter;
-		 GraphManager.setContinuousRun(gm, highLevelAPI ? 
-				 									//	new DumpStageStreamingConsumer(gm, inputRing, useRoute):
-				                                          new DumpStageHighLevel(gm, inputRing, useRoute) :
-			                                              new DumpStageLowLevel(gm, inputRing, useRoute));
+		 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? 
+			//	new DumpStageStreamingConsumer(gm, inputRing, useRoute):
+			      new DumpStageHighLevel(gm, inputRing, useRoute) :
+			      new DumpStageLowLevel(gm, inputRing, useRoute));
 		 
 		 System.out.println("########################################################## Testing "+ (highLevelAPI?"HIGH level ":"LOW level ")+(useTap? "using "+splits+(useRouter?" router ":" splitter "):"")+(monitor?"monitored":"")+" totalThreads:"+totalThreads);
 		 

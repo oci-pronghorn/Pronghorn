@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.ring;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -107,7 +108,15 @@ public final class RingBuffer {
 	int batchReleaseCountDownInit = 0;
 	int batchPublishCountDown = 0;
 	int batchPublishCountDownInit = 0;
-	
+		
+	//NOTE:
+	//     This is the future direction of the ring buffer that is not yet complete
+	//     By migrating all array index usages to these the backing ring can be moved outside the Java heap
+	//     By moving the ring outside the Java heap other applications have have direct access
+	//     The Overhead of the poly method call is what has prevented this change
+	private IntBuffer wrappedPrimaryIntBuffer;
+	private ByteBuffer wrappedSecondaryByteBuffer;
+
 	
 	public final int ringId;	
 	private static AtomicInteger ringCounter = new AtomicInteger();
@@ -220,7 +229,10 @@ public final class RingBuffer {
 	public void init() {
         this.byteBuffer = new byte[maxByteSize];
         this.buffer = new int[maxSize]; 
-        this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};                
+        this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};    
+
+        this.wrappedPrimaryIntBuffer = IntBuffer.wrap(this.buffer);
+        this.wrappedSecondaryByteBuffer = ByteBuffer.wrap(this.byteBuffer);
         
     }
     
@@ -1274,6 +1286,14 @@ public final class RingBuffer {
 		ring.buffer[ring.mask & (int)pos] = ring.byteWorkingHeadPos.value - ring.bytesWriteLastConsumedBytePos;
 		ring.bytesWriteLastConsumedBytePos = ring.byteWorkingHeadPos.value;
 		ring.writeTrailingCountOfBytesConsumed = false;
+	}
+
+	public static IntBuffer wrappedPrimaryIntBuffer(RingBuffer ring) {
+		return ring.wrappedPrimaryIntBuffer;
+	}
+	
+	public static ByteBuffer wrappedSecondaryByteBuffer(RingBuffer ring) {
+		return ring.wrappedSecondaryByteBuffer;
 	}
 	
 }

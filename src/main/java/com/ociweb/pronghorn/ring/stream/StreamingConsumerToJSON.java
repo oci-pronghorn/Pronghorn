@@ -34,6 +34,13 @@ public class StreamingConsumerToJSON implements StreamingConsumer {
 		out.println("{\""+name+"\":");			
 		depth = step;
 	}
+	
+	@Override
+	public void visitTemplateClose(String name, long id) {
+		depth -= step;
+		writeTab();
+		out.println("}");
+	}
 
 	@Override
 	public void visitFragmentOpen(String name, long id) {

@@ -12,8 +12,10 @@ public interface StreamingConsumer {
 	 */
 	boolean paused();
 
-	void visitTemplateOpen(String name, long id);
-
+	void visitTemplateOpen(String name, long id); 
+	
+	void visitTemplateClose(String name, long id);
+	
 	void visitFragmentOpen(String name, long id);
 
 	void visitFragmentClose(String name, long id);

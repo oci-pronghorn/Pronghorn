@@ -120,9 +120,10 @@ public class StreamingConsumerReader {
 						do {//close this member of the sequence or template
 							String name = from.fieldNameScript[j];
 							long id = from.fieldIdScript[j];
-							visitor.visitFragmentClose(name,id);
+							
 							//if this was a close of sequence count down so we now when to close it.
 							if (FieldReferenceOffsetManager.isGroupOpenSequence(from, j)) {
+								visitor.visitFragmentClose(name,id);
 								//close of one sequence member
 								if (--sequenceCounters[nestedFragmentDepth]<=0) {
 									//close of the sequence
@@ -132,6 +133,7 @@ public class StreamingConsumerReader {
 									break;
 								}
 							} else {
+								visitor.visitTemplateClose(name,id);
 								//this close was not a sequence so it must be the end of the message
 								nestedFragmentDepth = -1;
 								return;//must exit so we do not pick up any more fields
