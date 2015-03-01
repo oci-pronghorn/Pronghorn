@@ -1,50 +1,49 @@
 package com.ociweb.pronghorn.ring.stage;
 
+import com.ociweb.pronghorn.GraphManager;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingReader;
 
-public class ConsoleStage implements Runnable {
+public class ConsoleStage extends PronghornStage {
 
 	private final RingBuffer inputRing;
 	private final StringBuilder console = new StringBuilder();
 	private final int posionPillMessageId;
 	
-	
-	public ConsoleStage(RingBuffer inputRing) {
-		this.inputRing = inputRing;
-		posionPillMessageId = -1;
+	private final long[] totalCounts;
+	private final long[] counts;
+		
+	public ConsoleStage(GraphManager gm, RingBuffer inputRing) {
+		this(gm,inputRing,-1);
 	}
 	
-	public ConsoleStage(RingBuffer inputRing, int pillId) {
+	public ConsoleStage(GraphManager gm, RingBuffer inputRing, int pillId) {
+		super(gm, inputRing, NONE);
 		this.inputRing = inputRing;
 		posionPillMessageId = pillId;
+
+		FieldReferenceOffsetManager from = RingBuffer.from(inputRing);		
+		totalCounts = new long[from.tokensLen];
+		counts = new long[from.tokensLen];
+	}
+
+	@Override
+	public void shutdown() {
+		super.shutdown();
+		processCounts("Final:",counts,totalCounts);
+		processTotal("Totals:",totalCounts, RingBuffer.from(inputRing));
 	}
 
 	@Override
 	public void run() {
 			
-		FieldReferenceOffsetManager from = RingBuffer.from(inputRing);
-		RingReader.setReleaseBatchSize(inputRing, 4);
-		
-		long[] totalCounts = new long[from.tokensLen];
-		long[] counts = new long[from.tokensLen];
-		
-		try {
-			while (dataToRead(counts)) {
-				if (!processCounts("Running:",counts,totalCounts)) {
-					//no new data so slow down.
-					Thread.sleep(200);
-				}
-				Thread.yield();
+		while (dataToRead(counts)) {
+			if (!processCounts("Running:",counts,totalCounts)) {
+				return;
 			}
-			processCounts("Final:",counts,totalCounts);
-			processTotal("Totals:",totalCounts, from);
-			
-		} catch (Throwable t) {
-			t.printStackTrace();
-			RingBuffer.shutdown(inputRing);
 		}
+
 	}
 
 	private boolean processCounts(String label, long[] counts,	long[] totalCounts) {

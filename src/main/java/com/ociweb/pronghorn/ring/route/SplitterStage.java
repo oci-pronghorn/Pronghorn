@@ -1,8 +1,10 @@
 package com.ociweb.pronghorn.ring.route;
 
+import com.ociweb.pronghorn.GraphManager;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingReader;
+import com.ociweb.pronghorn.ring.stage.PronghornStage;
 
 /**
  * Given n ring buffers with the same FROM/Schema
@@ -11,20 +13,16 @@ import com.ociweb.pronghorn.ring.RingReader;
  * @author Nathan Tippy
  *
  */
-public class SplitterStage implements Runnable {
+public class SplitterStage extends PronghornStage {
 
 	private RingBuffer source;
 	private RingBuffer[] targets;
 	private long[] targetHeadPos;
 	
-	//TODO: BB, need new stage to manage tramp data and re-merge 
-	//      Write tramp to final destination, and await the non tramp to finish.
-	//      One stage that keeps its own pipeline? 
+	public int moreToCopy=-2;;
 	
-		
-	public int moreToCopy;
-	
-	public SplitterStage(RingBuffer source, RingBuffer ... targets) {
+	public SplitterStage(GraphManager gm, RingBuffer source, RingBuffer ... targets) {
+		super(gm,source,targets);
 		
 		this.source = source;
 		this.targets = targets;
@@ -49,12 +47,20 @@ public class SplitterStage implements Runnable {
 				throw new UnsupportedOperationException("Both source and target schemas must be the same");
 			}
 			
-			if (targets[i].pBits < source.pBits) {
-				throw new UnsupportedOperationException("The target ring "+i+" primary bit size must be at least "+source.pBits+" but it was "+targets[i].pBits);
+			//NOTE: longest message that holds a sequence needs to fit within a ring if the use case is to set the sequence length last.
+			//      therefore if that target is full and needs one more fragment we may have a problem if the batch it has grabbed is 
+			//      nearly has large as the target ring.  To resolve this we only need to ensure that the target ring is 2x the source.
+			
+			int reqTargetSize = source.pBits+1; //target ring must be 2x bigger than source
+			if (targets[i].pBits < reqTargetSize) {
+				throw new UnsupportedOperationException("The target ring "+i+" primary bit size must be at least "+reqTargetSize+" but it was "+targets[i].pBits+
+						           ". To avoid blocking hang behavior the target rings must always be 2x larger than the source ring.");
 			}
 			
-			if (targets[i].bBits < source.bBits) {
-				throw new UnsupportedOperationException("The target ring "+i+" byte bit size must be at least "+source.bBits+" but it was "+targets[i].bBits);
+			reqTargetSize = source.bBits+1;
+			if (targets[i].bBits < reqTargetSize) {
+				throw new UnsupportedOperationException("The target ring "+i+" byte bit size must be at least "+reqTargetSize+" but it was "+targets[i].bBits+
+									". To avoid blocking hang behavior the target rings must always be 2x larger than the source ring.");
 			}
 			
 			int minDif = source.bBits     -    source.pBits;
@@ -66,35 +72,17 @@ public class SplitterStage implements Runnable {
 	}
 
 	@Override
-	public void run() {
-		
-		assert(Thread.currentThread().isDaemon()) : "This stage can only be run with daemon threads";
-		if (!Thread.currentThread().isDaemon()) {
-			throw new UnsupportedOperationException("This stage can only be run with daemon threads");
-		}
-		if (null==source.buffer) {
-			source.init();
-		}
-		
-		try{			
-			while (processAvailData(this)) {
-				Thread.yield();
-			}
-		} catch (Throwable t) {
-			RingBuffer.shutdown(source);
-			int i = targets.length;
-			while(--i>=0) {
-				RingBuffer.shutdown(targets[i]);
-			}
-			
-		}
+	public void run() {		
+		processAvailData(this);//TODO: C, Should enable use of true to return partial copy. this may cause hang as written.
 	}
 
 	private static boolean processAvailData(SplitterStage ss) {
-		
 		int byteHeadPos;
         long headPos;
 		
+        if (null==ss.source.buffer) {
+        	ss.source.init();
+        }
         //TODO: A, publush to a single atomic long and read it here.
         //get the new head position
         byteHeadPos = ss.source.bytesHeadPos.get();
@@ -115,7 +103,7 @@ public class SplitterStage implements Runnable {
 		long totalPrimaryCopy = (headPos - tempTail);
 		if (totalPrimaryCopy <= 0) {
 			assert(totalPrimaryCopy==0);
-			return true;
+			return false; //nothing to copy so come back later
 		}
 			
 		int bMask = ss.source.byteMask;		
@@ -133,7 +121,7 @@ public class SplitterStage implements Runnable {
 		ss.source.bytesTailPos.lazySet(ss.source.byteWorkingTailPos.value = 0xEFFFFFFF&(tempByteTail + totalBytesCopy));		
 		ss.source.tailPos.lazySet(ss.source.workingTailPos.value = tempTail + totalPrimaryCopy);
 		
-		return true;
+		return false; //finished all the copy  for now
 	}
 
 	//single pass attempt to copy if any can not accept the data then they are skipped
@@ -166,17 +154,17 @@ public class SplitterStage implements Runnable {
 				
 			}
 		} while(ss.moreToCopy>0);
-		
 		//reset for next time.
 		int i = ss.targets.length;
 		while (--i>=0) {
 			//mark this one as done.
 			ss.targetHeadPos[i] += totalPrimaryCopy;
 		}
+		ss.moreToCopy=-2;
 	}
 
 	public String toString() {
-		return "spliiter stage  moreToCopy:"+moreToCopy+" source content "+RingBuffer.contentRemaining(source);
+		return getClass().getSimpleName()+ (-2==moreToCopy ? " not running ": " moreToCopy:"+moreToCopy)+" source content "+RingBuffer.contentRemaining(source);
 	}
 
 	private static void blockCopy(SplitterStage ss, int byteTailPos,

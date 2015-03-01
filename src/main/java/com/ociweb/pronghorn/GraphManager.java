@@ -7,8 +7,10 @@ import com.ociweb.pronghorn.ring.stage.PronghornStage;
 
 public class GraphManager {
 	
-	private static int INIT_RINGS = 32;
-	private static int INIT_STAGES = 32;
+	public final static String SCHEDULE_RATE = "SCHEDULE_RATE";
+	private final static int INIT_RINGS = 32;
+	private final static int INIT_STAGES = 32;
+
 				
 	//for lookup of source id and target id from the ring id
 	private int[] ringIdToStages  = new int[INIT_RINGS*2]; //stores the sourceId and targetId for every ring id.
@@ -44,12 +46,102 @@ public class GraphManager {
 	private int[] multAnnotationIds = new int[INIT_RINGS]; //a -1 marks the end of a run of values
 	private int topAnnotation = 0;
 	
+	//this is never used as a runtime but only as a construction lock
+	private Object lock = new Object();	
+	
+	private boolean enableMutation = true;
+	
 
 	
-	public static String SCHEDULE_RATE = "SCHEDULE_RATE";
+	public static GraphManager cloneAll(GraphManager m) {
+		GraphManager clone = new GraphManager();
+		//register each stage
+		int i = m.stageIdToStage.length;
+		while (--i>=0) {
+			PronghornStage stage = m.stageIdToStage[i];
+			if (null!=stage) {
+				copyStage(m, clone, stage);
+				copyAnnotationsForStage(m, clone, stage);	
+			}
+		}
+		return clone;
+	}
 	
-	//this is never used as a runtime but only as a construction lock
-	private Object lock = new Object();		
+	public GraphManager cloneStagesWithAnnotationKey(GraphManager m, Object key) {
+		GraphManager clone = new GraphManager();
+		//register each stage
+		int i = m.stageIdToStage.length;
+		while (--i>=0) {
+			PronghornStage stage = m.stageIdToStage[i];
+			if (null!=stage) {
+				//copy this stage if it has the required key
+				if (null != getAnnotation(m, stage, key, null)) {
+					copyStage(m, clone, stage);
+					copyAnnotationsForStage(m, clone, stage);
+				}
+			}
+		}
+		return clone;
+	}
+	
+	public GraphManager cloneStagesWithAnnotationKeyValue(GraphManager m, Object key, Object value) {
+		GraphManager clone = new GraphManager();
+		//register each stage
+		int i = m.stageIdToStage.length;
+		while (--i>=0) {
+			PronghornStage stage = m.stageIdToStage[i];
+			if (null!=stage) {
+				//copy this stage if it has the required key
+				if (value.equals(getAnnotation(m, stage, key, null))) {
+					copyStage(m, clone, stage);
+					copyAnnotationsForStage(m, clone, stage);
+				}
+			}
+		}
+		return clone;
+	}
+	
+	
+	private static void copyAnnotationsForStage(GraphManager m,	GraphManager clone, PronghornStage stage) {
+		int idx;
+		int annotationId;
+		int stageId = stage.stageId;
+		
+		idx = m.stageIdToAnnotationsBeginIdx[stageId];
+		while (-1 != (annotationId=m.multAnnotationIds[idx++])) {
+			Object key = m.annotationIdToKey[annotationId];
+			Object value = m.annotationIdToValue[annotationId];					
+			addAnnotation(clone, key, value, stage);									
+		}
+	}
+
+	private static void copyStage(GraphManager m, GraphManager clone, PronghornStage stage) {
+		int stageId = beginStageRegister(clone, stage);
+		
+		int idx;
+		int ringId;
+		
+		idx = m.stageIdToInputsBeginIdx[stageId];
+		while (-1 != (ringId=m.multInputIds[idx++])) {					
+			regInput(clone, m.ringIdToRing[ringId], stageId);					
+		}				
+		
+		idx = m.stageIdToOutputsBeginIdx[stageId];
+		while (-1 != (ringId=m.multOutputIds[idx++])) {					
+			regOutput(clone, m.ringIdToRing[ringId], stageId);					
+		}		
+		
+		//register(clone, stage, input, outputs);
+		endStageRegister(clone);
+	}
+
+	
+	//NOTE: may extend this to use regular expressions against keys or values
+	
+	public static void disableMutation(GraphManager m) {
+		m.enableMutation = false;
+	}
+	
 	
 	//Should only be called by methods that are protected by the lock
 	private static int[] setValue(int[] target, int idx, int value) {		
@@ -103,17 +195,7 @@ public class GraphManager {
 	public static void register(GraphManager gm, PronghornStage stage, RingBuffer[] inputs, RingBuffer[] outputs) {
 		
 		synchronized(gm.lock) {
-			int stageId = stage.stageId;
-			
-			assert(stageId>=gm.stageIdToStage.length || null==gm.stageIdToStage[stageId]) : "Can only register the same stage once";
-			
-			gm.stageTerminationState = incValue(gm.stageTerminationState, stageId); //state changes from 0 to 1
-			assert(1 == gm.stageTerminationState[stageId]);
-			
-			gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
-			gm.stageIdToInputsBeginIdx = setValue(gm.stageIdToInputsBeginIdx, stageId, gm.topInput);
-			gm.stageIdToOutputsBeginIdx = setValue(gm.stageIdToOutputsBeginIdx, stageId, gm.topOutput);			
-			gm.stageIdToAnnotationsBeginIdx = setValue(gm.stageIdToAnnotationsBeginIdx, stageId, gm.topAnnotation);
+			int stageId = beginStageRegister(gm, stage);
 						
 			int i;
 			//loop over inputs
@@ -128,27 +210,39 @@ public class GraphManager {
 				regOutput(gm, outputs[i], stageId);
 			}
 			
-			gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, -1);
-			gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, -1);
-			gm.multAnnotationIds = setValue(gm.multAnnotationIds, gm.topAnnotation++, -1);
+			endStageRegister(gm);
 		}
 		
+	}
+
+	private static void endStageRegister(GraphManager gm) {
+		gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, -1);
+		gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, -1);
+		gm.multAnnotationIds = setValue(gm.multAnnotationIds, gm.topAnnotation++, -1);
+	}
+
+	private static int beginStageRegister(GraphManager gm, PronghornStage stage) {
+		
+		assert(gm.enableMutation): "Can not mutate graph, mutation has been disabled";
+		
+		int stageId = stage.stageId;
+		
+		assert(stageId>=gm.stageIdToStage.length || null==gm.stageIdToStage[stageId]) : "Can only register the same stage once";
+		
+		gm.stageTerminationState = incValue(gm.stageTerminationState, stageId); //state changes from 0 to 1
+		assert(1 == gm.stageTerminationState[stageId]);
+		
+		gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
+		gm.stageIdToInputsBeginIdx = setValue(gm.stageIdToInputsBeginIdx, stageId, gm.topInput);
+		gm.stageIdToOutputsBeginIdx = setValue(gm.stageIdToOutputsBeginIdx, stageId, gm.topOutput);			
+		gm.stageIdToAnnotationsBeginIdx = setValue(gm.stageIdToAnnotationsBeginIdx, stageId, gm.topAnnotation);
+		return stageId;
 	}
 
 
 	public static void register(GraphManager gm, PronghornStage stage, RingBuffer input, RingBuffer[] outputs) {
 		synchronized(gm.lock) {
-			int stageId = stage.stageId;
-			
-			assert(stageId>=gm.stageIdToStage.length || null==gm.stageIdToStage[stageId]) : "Can only register the same stage once";
-			
-			gm.stageTerminationState = incValue(gm.stageTerminationState, stageId); //state changes from 0 to 1
-			assert(1 == gm.stageTerminationState[stageId]);
-			
-			gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
-			gm.stageIdToInputsBeginIdx = setValue(gm.stageIdToInputsBeginIdx, stageId, gm.topInput);
-			gm.stageIdToOutputsBeginIdx = setValue(gm.stageIdToOutputsBeginIdx, stageId, gm.topOutput);
-			gm.stageIdToAnnotationsBeginIdx = setValue(gm.stageIdToAnnotationsBeginIdx, stageId, gm.topAnnotation);
+			int stageId = beginStageRegister(gm, stage);
 			
 			//loop over inputs
 			regInput(gm, input, stageId);
@@ -160,26 +254,14 @@ public class GraphManager {
 				regOutput(gm, outputs[i], stageId);
 			}
 			
-			gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, -1);
-			gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, -1);
-			gm.multAnnotationIds = setValue(gm.multAnnotationIds, gm.topAnnotation++, -1);
+			endStageRegister(gm);
 		}
 	}
 
 
 	public static void register(GraphManager gm, PronghornStage stage, RingBuffer[] inputs, RingBuffer output) {
 		synchronized(gm.lock) {
-			int stageId = stage.stageId;
-			
-			assert(stageId>=gm.stageIdToStage.length || null==gm.stageIdToStage[stageId]) : "Can only register the same stage once";
-			
-			gm.stageTerminationState = incValue(gm.stageTerminationState, stageId); //state changes from 0 to 1
-			assert(1 == gm.stageTerminationState[stageId]);
-			
-			gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
-			gm.stageIdToInputsBeginIdx = setValue(gm.stageIdToInputsBeginIdx, stageId, gm.topInput);
-			gm.stageIdToOutputsBeginIdx = setValue(gm.stageIdToOutputsBeginIdx, stageId, gm.topOutput);
-			gm.stageIdToAnnotationsBeginIdx = setValue(gm.stageIdToAnnotationsBeginIdx, stageId, gm.topAnnotation);
+			int stageId = beginStageRegister(gm, stage);
 			
 			int i;
 			//loop over inputs
@@ -191,26 +273,14 @@ public class GraphManager {
 			//loop over outputs
 			regOutput(gm, output, stageId);			
 			
-			gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, -1);
-			gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, -1);
-			gm.multAnnotationIds = setValue(gm.multAnnotationIds, gm.topAnnotation++, -1);
+			endStageRegister(gm);
 		}
 	}
 
 
 	public static void register(GraphManager gm, PronghornStage stage, RingBuffer input, RingBuffer output) {
 		synchronized(gm.lock) {
-			int stageId = stage.stageId;
-			
-			assert(stageId>=gm.stageIdToStage.length || null==gm.stageIdToStage[stageId]) : "Can only register the same stage once";
-					
-			gm.stageTerminationState = incValue(gm.stageTerminationState, stageId); //state changes from 0 to 1
-			assert(1 == gm.stageTerminationState[stageId]);
-			
-			gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
-			gm.stageIdToInputsBeginIdx = setValue(gm.stageIdToInputsBeginIdx, stageId, gm.topInput);
-			gm.stageIdToOutputsBeginIdx = setValue(gm.stageIdToOutputsBeginIdx, stageId, gm.topOutput);
-			gm.stageIdToAnnotationsBeginIdx = setValue(gm.stageIdToAnnotationsBeginIdx, stageId, gm.topAnnotation);
+			int stageId = beginStageRegister(gm, stage);
 			
 			//loop over inputs
 			regInput(gm, input, stageId);
@@ -218,9 +288,7 @@ public class GraphManager {
 			//loop over outputs
 			regOutput(gm, output, stageId);			
 			
-			gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, -1);
-			gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, -1);
-			gm.multAnnotationIds = setValue(gm.multAnnotationIds, gm.topAnnotation++, -1);
+			endStageRegister(gm);
 		}
 	}
 	
@@ -251,8 +319,89 @@ public class GraphManager {
 	}
 
 
-	public static void shutdownNeighborRings(GraphManager pm, PronghornStage baseStage) {
+	public static void addAnnotation(GraphManager graphManager, Object key, Object value, PronghornStage ... stages) {
+		int i = stages.length;
+		while (--i>=0) {
+			addAnnotation(graphManager, key, value, stages[i]);
+		}
+	}
+	
+	public static void addAnnotation(GraphManager m, Object key, Object value, PronghornStage stage) {
+		synchronized(m.lock) {	
+			
+			//if Annotation key already exists then replace previous value
+			int annotationId = findAnnotationIdForKey(m, stage.stageId, key);
+			
+			if (-1 != annotationId) {
+				//simple replace with new value
+				m.annotationIdToValue[annotationId] = value;				
+			} else {
+				//extract as add annotation method.
+				//even if the same key/value is given to multiple stages we add it multiple times here
+				//this allows for direct lookup later for every instance found
+				m.annotationIdToKey = setValue(m.annotationIdToKey, m.totalAnnotationCount, key);
+				m.annotationIdToValue = setValue(m.annotationIdToValue, m.totalAnnotationCount, value);
+				m.annotationIdToStageId = setValue(m.annotationIdToStageId, m.totalAnnotationCount, stage.stageId);
 				
+				int beginIdx = m.stageIdToAnnotationsBeginIdx[stage.stageId];
+			    if (m.topAnnotation == m.multAnnotationIds.length) {
+			    	//create new larger array		    	
+			    	int[] newMultiAnnotationIdx = new int[m.multAnnotationIds.length*2];
+			    	System.arraycopy(m.multAnnotationIds, 0, newMultiAnnotationIdx, 0, beginIdx);
+			    	System.arraycopy(m.multAnnotationIds, beginIdx, newMultiAnnotationIdx, beginIdx+1, m.topAnnotation-(beginIdx));
+			    	m.multAnnotationIds = newMultiAnnotationIdx;		    	
+			    } else {
+			    	//move all the data down.
+			    	System.arraycopy(m.multAnnotationIds, beginIdx, m.multAnnotationIds, beginIdx+1, m.topAnnotation-(beginIdx));
+			    }
+			    
+			    m.multAnnotationIds[beginIdx] = m.totalAnnotationCount;//before we inc this value is the index to this key/value pair
+			    
+				m.totalAnnotationCount++;
+				m.topAnnotation++;
+				
+			}
+			
+		}
+	}
+	
+	//also add get regex of key string
+	
+	private static int findAnnotationIdForKey(GraphManager m, int stageId, Object key) {
+		int idx = m.stageIdToAnnotationsBeginIdx[stageId];
+		int annotationId;
+		while(-1 != (annotationId = m.multAnnotationIds[idx])) {
+			if (m.annotationIdToKey[annotationId].equals(key)) {
+				return annotationId;
+			}
+			idx++;
+		}		
+		return -1;
+	}
+	
+
+	
+	/**
+	 * Returns annotation if one is found by this key on this stage, if Annotation is not found it returns the defaultValue
+	 * @param m
+	 * @param stage
+	 * @param key
+	 * @return
+	 */
+	public static Object getAnnotation(GraphManager m, PronghornStage stage, Object key, Object defaultValue) {
+		int idx = m.stageIdToAnnotationsBeginIdx[stage.stageId];
+		int annotationId;
+		while(-1 != (annotationId = m.multAnnotationIds[idx])) {
+			if (m.annotationIdToKey[annotationId].equals(key)) {
+				return m.annotationIdToValue[annotationId];
+			}
+			idx++;
+		}		
+		return defaultValue;
+	}
+	
+	public static void shutdownNeighborRings(GraphManager pm, PronghornStage baseStage) {
+		
 		int inputPos  = pm.stageIdToInputsBeginIdx[baseStage.stageId];
 	    int outputPos =	pm.stageIdToOutputsBeginIdx[baseStage.stageId];		
 		
@@ -341,84 +490,6 @@ public class GraphManager {
 		}
 		
 	}
-
-	//TODO: add annotations to the graph.
-	//TODO: build immutable copy of graph from the selected annotations
-	//TODO: annotations to group the stages?
-
-	public static void addAnnotation(GraphManager graphManager, Object key, Object value, PronghornStage ... stages) {
-		int i = stages.length;
-		while (--i>=0) {
-			addAnnotation(graphManager, key, value, stages[i]);
-		}
-	}
-	
-	public static void addAnnotation(GraphManager m, Object key, Object value, PronghornStage stage) {
-		synchronized(m.lock) {	
-			
-			//if Annotation key already exists then replace previous value
-			int annotationId = findAnnotationIdForKey(stage.stageId, key);
-			
-			//TODO: AA, if this is not -1 then we do a replacement
-			
-			
-			
-			
-			//extract as add annotation method.
-			//even if the same key/value is given to multiple stages we add it multiple times here
-			//this allows for direct lookup later for every instance found
-			m.annotationIdToKey = setValue(m.annotationIdToKey, m.totalAnnotationCount, key);
-			m.annotationIdToValue = setValue(m.annotationIdToValue, m.totalAnnotationCount, value);
-			m.annotationIdToStageId = setValue(m.annotationIdToStageId, m.totalAnnotationCount, stage.stageId);
-			
-			int beginIdx = m.stageIdToAnnotationsBeginIdx[stage.stageId];
-		    if (m.topAnnotation == m.multAnnotationIds.length) {
-		    	//create new larger array		    	
-		    	int[] newMultiAnnotationIdx = new int[m.multAnnotationIds.length*2];
-		    	System.arraycopy(m.multAnnotationIds, 0, newMultiAnnotationIdx, 0, beginIdx);
-		    	System.arraycopy(m.multAnnotationIds, beginIdx, newMultiAnnotationIdx, beginIdx+1, m.topAnnotation-(beginIdx+1));
-		    	m.multAnnotationIds = newMultiAnnotationIdx;		    	
-		    } else {
-		    	//move all the data down.
-		    	System.arraycopy(m.multAnnotationIds, beginIdx, m.multAnnotationIds, beginIdx+1, m.topAnnotation-(beginIdx+1));
-		    }
-		    
-		    m.multAnnotationIds[beginIdx] = m.totalAnnotationCount;//before we inc this value is the index to this key/value pair
-		    
-			m.totalAnnotationCount++;
-			m.topAnnotation++;
-			
-		}
-	}
-	
-	//also add get regex of key string
-	
-	private static int findAnnotationIdForKey(int stageId, Object key) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	
-	/**
-	 * Returns annotation if one is found by this key on this stage, if Annotation is not found it returns the defaultValue
-	 * @param m
-	 * @param stage
-	 * @param key
-	 * @return
-	 */
-	public static Object getAnnotation(GraphManager m, PronghornStage stage, Object key, Object defaultValue) {
-		int idx = m.stageIdToAnnotationsBeginIdx[stage.stageId];
-		int annotationId;
-		while(-1 != (annotationId = m.multAnnotationIds[idx])) {
-			if (m.annotationIdToKey[annotationId].equals(key)) {
-				return m.annotationIdToValue[annotationId];
-			}
-			idx++;
-		}		
-		return defaultValue;
-	}
-	
-	
 
 
 

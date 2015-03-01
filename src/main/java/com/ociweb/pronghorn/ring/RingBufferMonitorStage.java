@@ -3,9 +3,11 @@ package com.ociweb.pronghorn.ring;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
+import com.ociweb.pronghorn.GraphManager;
+import com.ociweb.pronghorn.ring.stage.PronghornStage;
 
 
-public class RingBufferMonitorStage implements Runnable {
+public class RingBufferMonitorStage extends PronghornStage {
 
 	private final RingBuffer observedRingBuffer;
 	private final RingBuffer notifyRingBuffer;
@@ -37,7 +39,8 @@ public class RingBufferMonitorStage implements Runnable {
 	 * @param observedRingBuffer
 	 * @param notifyRingBuffer
 	 */
-	public RingBufferMonitorStage(RingBuffer observedRingBuffer, RingBuffer notifyRingBuffer) {
+	public RingBufferMonitorStage(GraphManager gm, RingBuffer observedRingBuffer, RingBuffer notifyRingBuffer) {
+		super(gm, NONE, notifyRingBuffer);
 		this.observedRingBuffer = observedRingBuffer;
 		this.notifyRingBuffer = notifyRingBuffer;
 		
@@ -65,21 +68,18 @@ public class RingBufferMonitorStage implements Runnable {
 	
 	@Override
 	public void run() {
-		try {
-			
-			RingWriter.blockWriteFragment(notifyRingBuffer,TEMPLATE_LOC);
-			
-			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TIME_LOC, System.currentTimeMillis());
-			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_HEAD_LOC, RingBuffer.headPosition(observedRingBuffer));
-			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TAIL_LOC, RingBuffer.headPosition(observedRingBuffer));
-			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_MSG_LOC, RingReader.getMsgIdx(observedRingBuffer));			
-			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_SIZE_LOC, observedRingBuffer.maxSize);
-			
-			RingWriter.publishWrites(notifyRingBuffer);			
-			
-		} catch (Throwable t) {
-			RingBuffer.shutdown(notifyRingBuffer);
-		}
+
+			if (RingWriter.tryWriteFragment(notifyRingBuffer,TEMPLATE_LOC)) {
+				
+				RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TIME_LOC, System.currentTimeMillis());
+				RingWriter.writeLong(notifyRingBuffer, TEMPLATE_HEAD_LOC, RingBuffer.headPosition(observedRingBuffer));
+				RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TAIL_LOC, RingBuffer.headPosition(observedRingBuffer));
+				RingWriter.writeInt(notifyRingBuffer, TEMPLATE_MSG_LOC, RingReader.getMsgIdx(observedRingBuffer));			
+				RingWriter.writeInt(notifyRingBuffer, TEMPLATE_SIZE_LOC, observedRingBuffer.maxSize);
+				
+				RingWriter.publishWrites(notifyRingBuffer);			
+			}
+
 	}
 
 }

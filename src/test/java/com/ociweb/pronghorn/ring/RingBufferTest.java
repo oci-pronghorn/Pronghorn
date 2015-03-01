@@ -232,7 +232,7 @@ public class RingBufferTest {
         //clean shutdown of thread executor
         exService.shutdown();
         try {
-			exService.awaitTermination(10, TimeUnit.SECONDS);
+			exService.awaitTermination(10, TimeUnit.SECONDS); //TODO: AAA, must rewrite with new threading model 
 		} catch (InterruptedException e) {
 			//ignore we are exiting
 		}

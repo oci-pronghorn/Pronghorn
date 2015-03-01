@@ -21,6 +21,7 @@ public abstract class StageManager {
 	private long[] runCounters = new long[0]; //only grows when asserts are on
 	
 	public StageManager(GraphManager graphManager) {
+		GraphManager.disableMutation(graphManager);
 		this.graphManager = graphManager;
 	}
 	
