@@ -74,8 +74,7 @@ public class RingBufferPipeline {
 	            
 	            
 	        //TODO: AAAAAA this is a mixed high low problem and must be converted to one side or the other
-	            //TODO: AAAAA need a monitor object that manages all this information so it does not cultter the businss logic
-	            //TODO: AAAAA need method on that object for building up the tree?
+
 	            
 	            inputRing.workingTailPos.value+=monitorMessageSize;
 	                     
@@ -348,7 +347,7 @@ public class RingBufferPipeline {
 					} else if (-1 == msgId) {							
 						RingBuffer.publishEOF(outputRing);						
 						RingBuffer.releaseAll(inputRing);						
-						assert(RingBuffer.contentRemaining(inputRing)==0);						
+						assert(RingBuffer.contentRemaining(inputRing)==0) : "should be empty but has:"+RingBuffer.contentRemaining(inputRing);						
 						return;						
 					}
 			}while (true);	 
@@ -395,7 +394,7 @@ public class RingBufferPipeline {
 							return;
 						}
 					} else if (-1==msgId) {
-						RingWriter.publishEOF(outputRing);	 //TODO, hidden blocking call			
+						RingWriter.publishEOF(outputRing);	 //TODO: AA, hidden blocking call			
 						RingReader.releaseReadLock(inputRing);
 						assert(RingBuffer.contentRemaining(inputRing)==0);
 						return;
@@ -686,7 +685,7 @@ public class RingBufferPipeline {
 		 //start the timer		 
 		 final long start = System.currentTimeMillis();
 		 
-		 StageManager scheduler = new ThreadPerStageManager(gm);;//TODO: AAA, clone all is stil not working.GraphManager.cloneAll(gm));
+		 StageManager scheduler = new ThreadPerStageManager(GraphManager.cloneAll(gm));
 		 
 		 scheduler.startup();
 		 

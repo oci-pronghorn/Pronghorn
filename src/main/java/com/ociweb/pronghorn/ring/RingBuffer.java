@@ -305,10 +305,24 @@ public final class RingBuffer {
 	}
 
 	private static ByteBuffer readBytesRing(RingBuffer ring, int len, ByteBuffer target, int pos) {
-	    byte[] buffer = ring.byteBuffer;
-	    int mask = ring.byteMask;
+		int mask = ring.byteMask;
+		byte[] buffer = ring.byteBuffer;
+		
+//		int len1 =  (mask+1)-pos;
+//		if (len1>=len) {
+//			//flat copy
+//			target.put(buffer, pos, len);
+//			
+//		} else {
+//			//roll over
+//			
+//			
+//		}
+		
+		
+		
 	    while (--len >= 0) {
-	        target.put(buffer[mask & pos++]); //TODO: AAAA, should be done as to block copies instead of this loop!!
+	        target.put(buffer[mask & pos++]); //TODO: AAAAAA, should be done as to block copies instead of this loop!!
 	    }
 	    return target;
 	}
@@ -1237,7 +1251,6 @@ public final class RingBuffer {
     
     public static long spinBlockOnHead(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
     	
-		assert(isLowLevelRead(ringBuffer));
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
     		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
@@ -1251,15 +1264,6 @@ public final class RingBuffer {
 		}
 		return lastCheckedValue;
     }
-    
-	private static boolean isLowLevelRead(RingBuffer ringBuffer) {
-		//confirm that this thread is only using low level reading for this instance of the ring buffer
-		
-		//TODO: AAAAA, important feature to help developers 
-		//OR a bit mask together and hold it in the ring buffer as readAccessors /writeAccessors
-		
-		return true;
-	}
 
 	public static int byteMask(RingBuffer ring) {
 		return ring.byteMask;

@@ -18,32 +18,32 @@ public abstract class PronghornStage {
 
 	public final int stageId;	
 	private static AtomicInteger stageCounter = new AtomicInteger();
+	private GraphManager graphManager;
 	
-	protected GraphManager graphManager;
 	
 	//in the constructor us a zero length array if there are no values.
-	protected PronghornStage(GraphManager pm, RingBuffer[] inputs, RingBuffer[] outputs) {
-		this.stageId = stageCounter.getAndIncrement();		
-		this.graphManager = pm;
-		GraphManager.register(pm, this, inputs, outputs);
+	protected PronghornStage(GraphManager graphManager, RingBuffer[] inputs, RingBuffer[] outputs) {
+		this.stageId = stageCounter.getAndIncrement();	
+		this.graphManager = graphManager;
+		GraphManager.register(graphManager, this, inputs, outputs);
 	}
 	
-	protected PronghornStage(GraphManager pm, RingBuffer input, RingBuffer[] outputs) {
+	protected PronghornStage(GraphManager graphManager, RingBuffer input, RingBuffer[] outputs) {
 		this.stageId = stageCounter.getAndIncrement();	
-		this.graphManager = pm;
-		GraphManager.register(pm, this, input, outputs);
+		this.graphManager = graphManager;
+		GraphManager.register(graphManager, this, input, outputs);
 	}
     
-	protected PronghornStage(GraphManager pm, RingBuffer[] inputs, RingBuffer output) {
-		this.stageId = stageCounter.getAndIncrement();		
-		this.graphManager = pm;
-		GraphManager.register(pm, this, inputs, output);
+	protected PronghornStage(GraphManager graphManager, RingBuffer[] inputs, RingBuffer output) {
+		this.stageId = stageCounter.getAndIncrement();	
+		this.graphManager = graphManager;
+		GraphManager.register(graphManager, this, inputs, output);
 	}
 	
-	protected PronghornStage(GraphManager pm, RingBuffer input, RingBuffer output) {
+	protected PronghornStage(GraphManager graphManager, RingBuffer input, RingBuffer output) {
 		this.stageId = stageCounter.getAndIncrement();	
-		this.graphManager = pm;
-		GraphManager.register(pm, this, input, output);
+		this.graphManager = graphManager;
+		GraphManager.register(graphManager, this, input, output);
 	}
 	
 	public static int totalStages() {

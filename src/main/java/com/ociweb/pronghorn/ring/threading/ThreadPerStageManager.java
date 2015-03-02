@@ -111,11 +111,6 @@ public class ThreadPerStageManager extends StageManager {
 				return stage.toString();
 			}
 			
-			///TODO: call terminate from the source stage and set isShutting down.
-			///TODO: convert all stages to use the stateless shutdown
-			///TDOO: may have upstream must return true for source till it calls shutdown.
-			
-			
 			@Override
 			public void run() {
 				try {	

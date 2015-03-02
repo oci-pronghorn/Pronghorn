@@ -360,7 +360,29 @@ public class RingWriter {
 		ring.headPos.lazySet(ring.workingHeadPos.value = ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + RingBuffer.EOF_SIZE);			
 		
 	}
-	//TODO: AAAA, make tryPublishEOF
+	
+	public static boolean tryPublishEOF(RingBuffer ring) {
+		
+		assert(ring.workingHeadPos.value<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";				
+		long nextTailTarget = ring.workingHeadPos.value - (ring.maxSize - RingBuffer.EOF_SIZE);
+				
+        if (ring.ringWalker.cachedTailPosition < nextTailTarget) {
+        	ring.ringWalker.cachedTailPosition = ring.tailPos.longValue();
+			if (ring.ringWalker.cachedTailPosition < nextTailTarget) {
+				return false;
+			}
+		}
+		
+		assert(ring.tailPos.get()+ring.maxSize>=ring.headPos.get()+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
+		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
+		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +  RingBuffer.from(ring).templateOffset)]    = -1;	
+		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  RingBuffer.from(ring).templateOffset)] = 0;
+		
+		ring.headPos.lazySet(ring.workingHeadPos.value = ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + RingBuffer.EOF_SIZE);	
+		return true;
+		
+	}
+	
 
 	public static void publishWrites(RingBuffer outputRing) {
 		assert(outputRing.workingHeadPos.value<=outputRing.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";

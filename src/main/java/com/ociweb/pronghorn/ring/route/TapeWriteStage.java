@@ -147,7 +147,7 @@ public class TapeWriteStage extends PronghornStage {
 		
 
 		primaryInts.position(primaryTailPos);
-		primaryInts.limit(primaryTailPos+totalPrimaryCopy); //TODO: AAAAA, this will not work on the wrap, we must mask and do muliple copies
+		primaryInts.limit(primaryTailPos+totalPrimaryCopy); //TODO: AA, this will not work on the wrap, we must mask and do muliple copies
 		
 		secondaryBytes.position(byteTailPos);
 		secondaryBytes.limit(byteTailPos+totalBytesCopy);
