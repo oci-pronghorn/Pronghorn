@@ -40,7 +40,8 @@ public class RingBufferMonitorStage extends PronghornStage {
 	 * @param notifyRingBuffer
 	 */
 	public RingBufferMonitorStage(GraphManager gm, RingBuffer observedRingBuffer, RingBuffer notifyRingBuffer) {
-		super(gm, NONE, notifyRingBuffer);
+		//the observed ring buffer is NOT an input
+		super(gm, NONE, notifyRingBuffer); //TODO: B, should not allow stateless and no input at the same time. add assert
 		this.observedRingBuffer = observedRingBuffer;
 		this.notifyRingBuffer = notifyRingBuffer;
 		
@@ -50,7 +51,7 @@ public class RingBufferMonitorStage extends PronghornStage {
 		}
 		
 		
-		RingWriter.setPublishBatchSize(notifyRingBuffer, 128);
+		RingWriter.setPublishBatchSize(notifyRingBuffer, 0);
 	}
 	
 	/**
@@ -65,20 +66,22 @@ public class RingBufferMonitorStage extends PronghornStage {
 		return catalog.getFROM();
 		
 	}
-	
+
 	@Override
 	public void run() {
-
-			if (RingWriter.tryWriteFragment(notifyRingBuffer,TEMPLATE_LOC)) {
-				
-				RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TIME_LOC, System.currentTimeMillis());
-				RingWriter.writeLong(notifyRingBuffer, TEMPLATE_HEAD_LOC, RingBuffer.headPosition(observedRingBuffer));
-				RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TAIL_LOC, RingBuffer.headPosition(observedRingBuffer));
-				RingWriter.writeInt(notifyRingBuffer, TEMPLATE_MSG_LOC, RingReader.getMsgIdx(observedRingBuffer));			
-				RingWriter.writeInt(notifyRingBuffer, TEMPLATE_SIZE_LOC, observedRingBuffer.maxSize);
-				
-				RingWriter.publishWrites(notifyRingBuffer);			
-			}
+		
+		//if we can't write then do it again on the next cycle, and skip this data point.
+		if (RingWriter.tryWriteFragment(notifyRingBuffer,TEMPLATE_LOC)) {		
+			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TIME_LOC, System.currentTimeMillis());
+			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_HEAD_LOC, RingBuffer.headPosition(observedRingBuffer));
+			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TAIL_LOC, RingBuffer.headPosition(observedRingBuffer));
+			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_MSG_LOC, RingReader.getMsgIdx(observedRingBuffer));			
+			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_SIZE_LOC, observedRingBuffer.maxSize);
+			
+			RingWriter.publishWrites(notifyRingBuffer);	
+			
+			
+		}
 
 	}
 

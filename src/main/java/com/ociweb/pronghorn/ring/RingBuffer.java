@@ -50,6 +50,7 @@ public final class RingBuffer {
     //TODO: AA, note original disrupter allows for multiple threads to each visit the same spot and each do mutation
     //          there is no problem with doing this upgrade to the ring buffer support.
     
+    //TODO:AAA, ensure that that position of head and tail are avail so the release can block
     
     public final int maxSize;
     public int[] buffer;
@@ -322,7 +323,7 @@ public final class RingBuffer {
 		
 		
 	    while (--len >= 0) {
-	        target.put(buffer[mask & pos++]); //TODO: AAAAAA, should be done as to block copies instead of this loop!!
+	        target.put(buffer[mask & pos++]); //TODO: A, should be done as to block copies instead of this loop!!
 	    }
 	    return target;
 	}

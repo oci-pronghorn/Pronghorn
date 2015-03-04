@@ -28,7 +28,6 @@ import com.ociweb.pronghorn.ring.stream.StreamingConsumer;
 import com.ociweb.pronghorn.ring.stream.StreamingConsumerAdapter;
 import com.ociweb.pronghorn.ring.stream.StreamingConsumerReader;
 import com.ociweb.pronghorn.ring.threading.StageManager;
-//import com.ociweb.pronghorn.ring.util.PipelineThreadPoolExecutor;
 import com.ociweb.pronghorn.ring.threading.ThreadPerStageManager;
 
 public class RingBufferPipeline {
@@ -44,7 +43,7 @@ public class RingBufferPipeline {
 			super(gm,inputRing, NONE);
 			this.inputRing = inputRing;
 			this.monitorMessageSize = RingBuffer.from(inputRing).fragDataSize[0];
-			this.nextTargetHeadPos = monitorMessageSize;
+			this.nextTargetHeadPos = inputRing.tailPos.longValue()+monitorMessageSize;
 			this.headPosCache = inputRing.headPos.longValue();
 		}
 
@@ -60,29 +59,24 @@ public class RingBufferPipeline {
 				}
 	        
 	            //read the message
-	            int msgId = RingBuffer.readValue(0, inputRing.buffer,inputRing.mask,inputRing.workingTailPos.value); 
+	            int msgId = RingBuffer.takeMsgIdx(inputRing);//readValue(0, inputRing.buffer,inputRing.mask,inputRing.workingTailPos.value); 
 	            
 	            if (msgId<0) {   
 	            	System.out.println("exited after reading: " + messageCount+" monitor samples");
 	            	return;
 	            }
 	            
-	            long time = RingReader.readLong(inputRing, RingBufferMonitorStage.TEMPLATE_TIME_LOC);
-	            long head = RingReader.readLong(inputRing, RingBufferMonitorStage.TEMPLATE_HEAD_LOC);
-	            long tail = RingReader.readLong(inputRing, RingBufferMonitorStage.TEMPLATE_TAIL_LOC);
-	            int tmpId = RingReader.readInt(inputRing, RingBufferMonitorStage.TEMPLATE_MSG_LOC);
-	            
-	            
-	        //TODO: AAAAAA this is a mixed high low problem and must be converted to one side or the other
+	            long time = RingBuffer.takeLong(inputRing);
+	            long head = RingBuffer.takeLong(inputRing);
+	            long tail = RingBuffer.takeLong(inputRing);
+	            int tmpId = RingBuffer.takeValue(inputRing);
+	            int bufSize = RingBuffer.takeValue(inputRing);
+	            int bLen = RingBuffer.takeValue(inputRing);
 
-	            
 	            inputRing.workingTailPos.value+=monitorMessageSize;
 	                     
 	            int queueDepth = (int)(head-tail);
-	            //vs what?
-	            
-	            
-	           // System.err.println(time+"  "+head+"  "+tail+"   "+tmpId);
+                //show depth vs bufSize	            
 				
 	        	//doing nothing with the data
 				releaseReadLock(inputRing);
@@ -611,16 +605,18 @@ public class RingBufferPipeline {
 	  		 
 			 if (monitor) {
 				 monitorRings[j] = new RingBuffer(new RingBufferConfig((byte)16, (byte)2, null, montorFROM));
-				 //assertTrue(mo)
-				 monitorStages[j] = new RingBufferMonitorStage2(gm, rings[j], monitorRings[j]);	
+				 final RingBuffer monRing = monitorRings[j];
+
+				 monitorStages[j] = new RingBufferMonitorStage(gm, rings[j], monRing);	
+				 
+				 
 				 
 				 //this is a bit complex may be better to move this inside on thread?
 				
-				 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(41000000), monitorStages[j]);
+				 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(4100000), monitorStages[j]);
 				 
-				 final RingBuffer mon = monitorRings[j];
 				 
-				 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(47000000), new DumpMonitorStage(gm, mon));
+				 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(4700000), new DumpMonitorStage(gm, monRing));
 				 
 			 }
 		 }
