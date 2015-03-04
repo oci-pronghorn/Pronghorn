@@ -1,12 +1,12 @@
-package com.ociweb.pronghorn.ring.stage;
+package com.ociweb.pronghorn.stage;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.GraphManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.stage.threading.GraphManager;
 
 
 public abstract class PronghornStage {

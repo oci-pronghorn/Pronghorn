@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.ring.threading;
+package com.ociweb.pronghorn.stage.threading;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -6,8 +6,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.GraphManager;
-import com.ociweb.pronghorn.ring.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.PronghornStage;
 
 public abstract class StageManager {
 

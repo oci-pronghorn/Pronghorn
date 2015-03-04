@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.ring.route;
+package com.ociweb.pronghorn.stage.route;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -7,9 +7,9 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 
-import com.ociweb.pronghorn.GraphManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.threading.GraphManager;
 
 /**
  *

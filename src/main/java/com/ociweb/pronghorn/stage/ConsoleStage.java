@@ -1,9 +1,9 @@
-package com.ociweb.pronghorn.ring.stage;
+package com.ociweb.pronghorn.stage;
 
-import com.ociweb.pronghorn.GraphManager;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingReader;
+import com.ociweb.pronghorn.stage.threading.GraphManager;
 
 public class ConsoleStage extends PronghornStage {
 

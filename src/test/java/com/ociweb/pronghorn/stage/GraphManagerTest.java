@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn;
+package com.ociweb.pronghorn.stage;
 
 import static org.junit.Assert.*;
 
@@ -7,7 +7,8 @@ import org.junit.Test;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
-import com.ociweb.pronghorn.ring.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.threading.GraphManager;
 
 public class GraphManagerTest {
 

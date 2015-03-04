@@ -3,8 +3,8 @@ package com.ociweb.pronghorn.ring;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
-import com.ociweb.pronghorn.GraphManager;
-import com.ociweb.pronghorn.ring.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.threading.GraphManager;
 
 
 public class RingBufferMonitorStage extends PronghornStage {

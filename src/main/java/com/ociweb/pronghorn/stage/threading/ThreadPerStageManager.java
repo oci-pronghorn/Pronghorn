@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.ring.threading;
+package com.ociweb.pronghorn.stage.threading;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -7,8 +7,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.GraphManager;
-import com.ociweb.pronghorn.ring.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.PronghornStage;
 
 public class ThreadPerStageManager extends StageManager {
 	private static final Logger log = LoggerFactory.getLogger(ThreadPerStageManager.class);

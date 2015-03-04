@@ -1,12 +1,12 @@
-package com.ociweb.pronghorn.ring.route;
+package com.ociweb.pronghorn.stage.route;
 
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
 
-import com.ociweb.pronghorn.GraphManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingReader;
-import com.ociweb.pronghorn.ring.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.threading.GraphManager;
 
 public class RoundRobinRouteStage extends PronghornStage {
 

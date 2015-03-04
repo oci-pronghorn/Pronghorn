@@ -16,8 +16,6 @@ public class AppendableUTF8Ring implements Appendable {
 	private long outputTarget;
 	private long tailPosCache;
 	
-//	private int countDownInit = 0;
-//	private int countDown;
 	private final static int step = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 	
 	public AppendableUTF8Ring(RingBuffer ringBuffer) {
@@ -29,9 +27,6 @@ public class AppendableUTF8Ring implements Appendable {
 		int messagesPerRing = (1<<(ringBuffer.pBits-1));
 		outputTarget = step-messagesPerRing;//this value is negative		
 		tailPosCache = tailPosition(ringBuffer);
-		
-//		countDownInit = messagesPerRing>>2;
-//		countDown = countDownInit;
 		
 	}
 	
@@ -45,11 +40,9 @@ public class AppendableUTF8Ring implements Appendable {
 		int byteLength = RingBuffer.copyUTF8ToByte(csq, 0, ringBuffer.byteBuffer, ringBuffer.byteMask, p, csq.length());
 		ringBuffer.byteWorkingHeadPos.value = p+byteLength;
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, RingBuffer.bytesWriteBase(ringBuffer), p, byteLength);
-		
-//		if ((--countDown)<=0) {
-			RingBuffer.publishWrites(ringBuffer);
-//			countDown = countDownInit;
-//		}
+
+		RingBuffer.publishWrites(ringBuffer);
+
 		return this;
 	}
 
@@ -65,10 +58,8 @@ public class AppendableUTF8Ring implements Appendable {
 		ringBuffer.byteWorkingHeadPos.value = p+byteLength;
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos,  RingBuffer.bytesWriteBase(ringBuffer), p, byteLength);
 		
-//		if ((--countDown)<=0) {
-			RingBuffer.publishWrites(ringBuffer);
-//			countDown = countDownInit;
-//		}
+		RingBuffer.publishWrites(ringBuffer);
+
 		return this;
 	}
 
@@ -84,11 +75,9 @@ public class AppendableUTF8Ring implements Appendable {
 		int byteLength = RingBuffer.copyUTF8ToByte(temp, 0, ringBuffer.byteBuffer, ringBuffer.byteMask, p, sourceLen);
 		ringBuffer.byteWorkingHeadPos.value = p+byteLength;
 		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, RingBuffer.bytesWriteBase(ringBuffer), p, byteLength);
-		
-//		if ((--countDown)<=0) {
-			RingBuffer.publishWrites(ringBuffer);
-//			countDown = countDownInit;
-//		}
+
+		RingBuffer.publishWrites(ringBuffer);
+
 		return this;
 	}
 	

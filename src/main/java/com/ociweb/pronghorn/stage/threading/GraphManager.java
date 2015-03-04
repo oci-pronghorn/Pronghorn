@@ -1,9 +1,9 @@
-package com.ociweb.pronghorn;
+package com.ociweb.pronghorn.stage.threading;
 
 import java.util.Arrays;
 
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.PronghornStage;
 
 public class GraphManager {
 	

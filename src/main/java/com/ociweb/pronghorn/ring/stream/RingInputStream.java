@@ -71,7 +71,7 @@ public class RingInputStream extends InputStream {
 		//this helps branch prediction and pre-fetch
 		int result;
 		if (remainingSourceLength <= 0) {
-			result = blockForNewContent(targetData, targetOffset, targetLength);
+			result = blockForNewContent(targetData, targetOffset, targetLength); //TODO: AA, need to rewrite to non-blocking.
 		} else {		
 			result = sendRemainingContent(targetData, targetOffset, targetLength);
 		}

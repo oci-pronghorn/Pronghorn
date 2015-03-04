@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.ring;
+package com.ociweb.pronghorn.stage;
 
 import static com.ociweb.pronghorn.ring.RingBuffer.addByteArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
@@ -20,15 +20,21 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
-import com.ociweb.pronghorn.GraphManager;
-import com.ociweb.pronghorn.ring.route.RoundRobinRouteStage;
-import com.ociweb.pronghorn.ring.route.SplitterStage;
-import com.ociweb.pronghorn.ring.stage.PronghornStage;
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
+import com.ociweb.pronghorn.ring.RingBufferMonitorStage;
+import com.ociweb.pronghorn.ring.RingReader;
+import com.ociweb.pronghorn.ring.RingWriter;
 import com.ociweb.pronghorn.ring.stream.StreamingConsumer;
 import com.ociweb.pronghorn.ring.stream.StreamingConsumerAdapter;
 import com.ociweb.pronghorn.ring.stream.StreamingConsumerReader;
-import com.ociweb.pronghorn.ring.threading.StageManager;
-import com.ociweb.pronghorn.ring.threading.ThreadPerStageManager;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.route.RoundRobinRouteStage;
+import com.ociweb.pronghorn.stage.route.SplitterStage;
+import com.ociweb.pronghorn.stage.threading.GraphManager;
+import com.ociweb.pronghorn.stage.threading.StageManager;
+import com.ociweb.pronghorn.stage.threading.ThreadPerStageManager;
 
 public class RingBufferPipeline {
 	
