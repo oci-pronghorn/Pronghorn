@@ -1,21 +1,28 @@
 //Copyright 2013, Nathan Tippy
 //See LICENSE file for BSD license details.
 //Send support requests to http://www.ociweb.com/contact
-package com.ociweb.jfast.catalog.loader;
+package com.ociweb.pronghorn.ring.loader;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.AttributesImpl;
 import org.xml.sax.helpers.DefaultHandler;
 
-import com.ociweb.jfast.primitive.FASTOutput;
-import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
@@ -71,10 +78,6 @@ public class TemplateHandler extends DefaultHandler {
 
     private static final String SPECIAL_PREFIX = "'>";
 
-    //TODO: C, simplify this and find all the common methods that can be pulled out.
-
-    private final PrimitiveWriter writer;
-
     //it could be made bigger but this also consumes more memory so we need a good reason
     //TODO: B, instead of making this larger find a way to make scripts re-use the fragments of other scripts
     private final static int MAX_SCRIPT_LENGTH = 1<<24;//16M
@@ -83,26 +86,26 @@ public class TemplateHandler extends DefaultHandler {
     }
 
     // Catalog represents all the templates supported
-    int[] catalogScriptTokens = new int[MAX_SCRIPT_LENGTH];
-    long[] catalogScriptFieldIds = new long[MAX_SCRIPT_LENGTH];
-    String[] catalogScriptFieldNames = new String[MAX_SCRIPT_LENGTH];
-    String[] catalogScriptDictionaryNames = new String[MAX_SCRIPT_LENGTH];
+    public int[] catalogScriptTokens = new int[MAX_SCRIPT_LENGTH];
+    public long[] catalogScriptFieldIds = new long[MAX_SCRIPT_LENGTH];
+    public String[] catalogScriptFieldNames = new String[MAX_SCRIPT_LENGTH];
+    public String[] catalogScriptDictionaryNames = new String[MAX_SCRIPT_LENGTH];
 
     List<SAXEvent> templateEvents;
     Map<String,List<SAXEvent>> templateMap = new HashMap<String, List<SAXEvent>>();
 
-    int catalogTemplateScriptIdx = 0;
+    public int catalogTemplateScriptIdx = 0;
 
-    int catalogLargestTemplatePMap = 0;
-    int catalogLargestNonTemplatePMap = 0;
+    public int catalogLargestTemplatePMap = 0;
+    public int catalogLargestNonTemplatePMap = 0;
 
-    DictionaryFactory defaultConstValues = new DictionaryFactory();
+    public DictionaryFactory defaultConstValues = new DictionaryFactory();
 
     List<List<Integer>> resetList = new ArrayList<List<Integer>>();
 
     // post processing for catalog
-    int[][] tokenIdxMembers;
-    int[] tokenIdxMemberHeads;
+    public int[][] tokenIdxMembers;
+    public int[] tokenIdxMemberHeads;
 
     // compact slower structure to determine dictionaries because data is very
     // sparse and not large
@@ -134,20 +137,20 @@ public class TemplateHandler extends DefaultHandler {
     // these fields never need to be in a stack and the values put here by the
     // start will still be there for end.
     long templateId;
-    long templateIdBiggest = 0;
-    int templateIdUnique = 0;
+    public long templateIdBiggest = 0;
+    public int templateIdUnique = 0;
     // holds offset to template in script
 
     //can only support 64K unique keys but the actual values can be much larger 32 bit ints
-    LongHashTable templateToOffset = new LongHashTable(17);
-    LongHashTable templateToLimit = new LongHashTable(17);
+    public LongHashTable templateToOffset = new LongHashTable(17);
+    public LongHashTable templateToLimit = new LongHashTable(17);
 
     String templateName;
     String templateXMLns;
 
     // Fields never nest and only appear one after the other.
     int fieldId;
-    int fieldIdBiggest = 0;
+    public int fieldIdBiggest = 0;
     int fieldTokensUnique = 0;
 
     int fieldType;
@@ -181,13 +184,19 @@ public class TemplateHandler extends DefaultHandler {
     int[] groupOpenTokenStack = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
 
     int groupTokenStackHead = -1;
-    int maxGroupTokenStackDepth;
-    final ClientConfig clientConfig;
+    public int maxGroupTokenStackDepth;
+
+	public static final long DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG = Long.MAX_VALUE;
+
+	// because optional values are sent as +1 when >= 0 it is not possible to
+	// send the
+	// largest supported positive value, as a result this is the ideal default
+	// because it can not possibly collide with any real values
+	public static final int DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT = Integer.MAX_VALUE;
 
 
-    public TemplateHandler(FASTOutput output, ClientConfig clientConfig) {
-        this.writer = new PrimitiveWriter(4096, output, false);
-        this.clientConfig = clientConfig;
+    public TemplateHandler() {
+       
         this.dictionaryNames.add(globalDictionaryName);
         this.activeDictionary = dictionaryNames.indexOf(globalDictionaryName);
 
@@ -305,19 +314,19 @@ public class TemplateHandler extends DefaultHandler {
 
             if (qName.equalsIgnoreCase("uint32")) {
                 fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerUnsignedOptional : TypeMask.IntegerUnsigned;
-                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
             } else if (qName.equalsIgnoreCase("int32")) {
                 fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerSignedOptional : TypeMask.IntegerSigned;
-                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
             } else if (qName.equalsIgnoreCase("uint64")) {
                 fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongUnsignedOptional : TypeMask.LongUnsigned;
-                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
+                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
             } else if (qName.equalsIgnoreCase("int64")) {
                 fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongSignedOptional : TypeMask.LongSigned;
-                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
+                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
             } else if (qName.equalsIgnoreCase("length")) {
                 fieldType = TypeMask.GroupLength;// NOTE: length is not optional
-                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
             } else if (qName.equalsIgnoreCase("string")) {
                 if ("unicode".equals(attributes.getValue("charset"))) {
                     // default is required
@@ -328,11 +337,11 @@ public class TemplateHandler extends DefaultHandler {
                     fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.TextASCIIOptional
                             : TypeMask.TextASCII;
                 }
-                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
             } else if (qName.equalsIgnoreCase("decimal")) {
                 fieldPMapInc = 2; // any operators must count as two PMap fields.
                 fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.DecimalOptional  : TypeMask.Decimal;
-                commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
 
                 fieldExponentOperator = OperatorMask.Field_None;
                 fieldMantissaOperator = OperatorMask.Field_None;
@@ -349,7 +358,7 @@ public class TemplateHandler extends DefaultHandler {
                     fieldExponentAbsent = Integer.parseInt(absentString.trim());
                 } else {
                     // default value for absent of this type
-                    fieldExponentAbsent = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                    fieldExponentAbsent = DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                 }
 
             } else if (qName.equalsIgnoreCase("mantissa")) {
@@ -361,7 +370,7 @@ public class TemplateHandler extends DefaultHandler {
                     fieldMantissaAbsent = Long.parseLong(absentString.trim());
                 } else {
                     // default value for absent of this type
-                    fieldMantissaAbsent = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
+                    fieldMantissaAbsent = DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
                 }
 
             } else if (qName.equalsIgnoreCase("bytevector")) {
@@ -932,34 +941,64 @@ public class TemplateHandler extends DefaultHandler {
 		return maxTokens;
 	}
 
-    public void postProcessing(int byteGap, int maxByteLength) {
-
-
-        buildDictionaryMemberLists();
+    public static void postProcessDictionary(TemplateHandler handler, int byteGap, int maxByteLength) {
+		handler.buildDictionaryMemberLists();
 
         // the catalog file need not be "Small" but it probably will be.
         // the catalog file must be "Fast" to load without any "Processing"
         // needed by the consumer.
         // this enables fast startup/recovery times that do not produce garbage.
 
-        defaultConstValues.setTypeCounts(  tokenBuilderIntCount.intValue(),
-			                               tokenBuilderLongCount.intValue(),
-			                               tokenBuilderByteCount.intValue(),
+        handler.defaultConstValues.setTypeCounts(   handler.tokenBuilderIntCount.intValue(),
+									        		handler.tokenBuilderLongCount.intValue(),
+									        		handler.tokenBuilderByteCount.intValue(),
 			                               byteGap,
 			                               maxByteLength);
-
-       //System.err.println("Names:"+ Arrays.toString(catalogScriptFieldNames));
-
-        // write catalog data.
-        TemplateCatalogConfig.save(writer, fieldIdBiggest, templateIdUnique, templateIdBiggest, defaultConstValues,
-                catalogLargestTemplatePMap, catalogLargestNonTemplatePMap, tokenIdxMembers, tokenIdxMemberHeads,
-                catalogScriptTokens, catalogScriptFieldIds, catalogScriptFieldNames, catalogScriptDictionaryNames,
-                catalogTemplateScriptIdx,  templateToOffset, templateToLimit ,
-                maxGroupTokenStackDepth + 1, clientConfig);
-
-        // close stream.
-        PrimitiveWriter.flush(writer);
-
+	}
+    
+    public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes) {
+    	return  new FieldReferenceOffsetManager(
+    			  handler.catalogScriptTokens, 
+       		      preambleBytes, 
+       		      handler.catalogScriptFieldNames,
+       	       	  handler.catalogScriptFieldIds,
+       		      handler.catalogScriptDictionaryNames,
+	              "Catalog");
     }
+    
+    public static FieldReferenceOffsetManager loadFrom(String source) throws ParserConfigurationException, SAXException, IOException {
+    	return loadFrom(source,(short)0);
+    }
+    
+	public static FieldReferenceOffsetManager loadFrom(String source, short preamble) throws ParserConfigurationException, SAXException, IOException {
+
+		InputStream sourceInputStream = TemplateHandler.class.getResourceAsStream(source);
+
+		File folder = null;
+		if (null == sourceInputStream) {
+			folder = new File(source);
+			if (folder.exists() && !folder.isDirectory()) {
+				sourceInputStream = new FileInputStream(source);
+			}
+		}
+
+		TemplateHandler handler = new TemplateHandler();
+
+		SAXParserFactory spfac = SAXParserFactory.newInstance();
+		SAXParser sp = spfac.newSAXParser();
+		if (null != sourceInputStream) {
+			sp.parse(sourceInputStream, handler);
+		} else {
+			for (File f : folder.listFiles()) {
+				if (f.isFile()) {
+					sp.parse(f, handler);
+				}
+			}
+		}
+
+		return TemplateHandler.from(handler,preamble);
+	}
+    
+    
 
 }

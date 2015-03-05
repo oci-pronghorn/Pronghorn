@@ -3,23 +3,22 @@ package com.ociweb.pronghorn.ring.stream;
 import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupFieldLocator;
 import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupFragmentLocator;
 import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupTemplateLocator;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 
-import org.junit.Test;
+import javax.xml.parsers.ParserConfigurationException;
 
-import com.ociweb.jfast.catalog.loader.ClientConfig;
-import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
-import com.ociweb.jfast.catalog.loader.TemplateLoader;
+import org.junit.Test;
+import org.xml.sax.SAXException;
+
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
-import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.RingWriter;
+import com.ociweb.pronghorn.ring.loader.TemplateHandler;
 
 public class StreamingConsumerTest {
 
@@ -58,10 +57,16 @@ public class StreamingConsumerTest {
 	private final int JOMQ_LOC = lookupFieldLocator("JustOneMoreQuestion", MSG_TRUCK_THING_SEQ_LOC, FROM);
 	
 	public static FieldReferenceOffsetManager buildFROM() {
-		 
-		String source = "/template/smallExample.xml";
-		TemplateCatalogConfig catalog = new TemplateCatalogConfig(TemplateLoader.buildCatBytes(source, new ClientConfig()));
-		return catalog.getFROM();
+		try {
+			return TemplateHandler.loadFrom("/template/smallExample.xml");
+		} catch (ParserConfigurationException e) {
+			e.printStackTrace();
+		} catch (SAXException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}	
+		return null;
 		
 	}
 	

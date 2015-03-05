@@ -1,10 +1,9 @@
 //Copyright 2013, Nathan Tippy
 //See LICENSE file for BSD license details.
 //Send support requests to http://www.ociweb.com/contact
-package com.ociweb.jfast.field;
+package com.ociweb.pronghorn.ring.util;
 
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
 
 
 
@@ -113,9 +112,11 @@ public class LocalHeap {
     }
 
     public static void reset(LocalHeap heap) {
-        int i = heap.itemCount;
-        while (--i >= 0) {
-            setNull(i, heap);
+    	if (null!=heap) {
+	        int i = heap.itemCount;
+	        while (--i >= 0) {
+	            setNull(i, heap);
+	        }
         }
     }
 
@@ -767,7 +768,9 @@ public class LocalHeap {
         return tat[offset + 1];
     }
 
-    public static void addLocalHeapValue(int heapId, int sourceLen, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
+
+
+	public static void addLocalHeapValue(int heapId, int sourceLen, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
 	    final int p = rbRingBuffer.byteWorkingHeadPos.value;
 	    if (sourceLen > 0) {
 	        final int offset = heapId << 2;

@@ -453,7 +453,7 @@ public class FieldReferenceOffsetManager {
 		//upper bits is 4 bits of information
 
         while (x < from.fieldNameScript.length) {
-            if (from.fieldNameScript[x].equalsIgnoreCase(target)) {            	
+            if (target.equalsIgnoreCase(from.fieldNameScript[x])) {            	
             	return buildFieldLoc(from, framentStart, x);                
             }
             
@@ -501,7 +501,7 @@ public class FieldReferenceOffsetManager {
 		int x = framentStart;
         		
         while (x < from.fieldNameScript.length) {
-            if (from.fieldNameScript[x].equalsIgnoreCase(target)) {
+            if (target.equalsIgnoreCase(from.fieldNameScript[x])) {
             	return x;
             }
             

@@ -1,15 +1,22 @@
 package com.ociweb.pronghorn.ring;
 
-import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.*;
+import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupFieldLocator;
+import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupFragmentLocator;
+import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupTemplateLocator;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
-import static com.ociweb.pronghorn.ring.RingWalker.*;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.junit.Test;
+import org.xml.sax.SAXException;
 
-import com.ociweb.jfast.catalog.loader.ClientConfig;
-import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
-import com.ociweb.jfast.catalog.loader.TemplateLoader;
+import com.ociweb.pronghorn.ring.loader.TemplateHandler;
 
 public class RingBufferMultiTemplateTest {
 
@@ -49,11 +56,16 @@ public class RingBufferMultiTemplateTest {
 	
 	
 	public static FieldReferenceOffsetManager buildFROM() {
-		 
-		String source = "/template/smallExample.xml";
-		TemplateCatalogConfig catalog = new TemplateCatalogConfig(TemplateLoader.buildCatBytes(source, new ClientConfig()));
-		return catalog.getFROM();
-		
+		try {
+			return TemplateHandler.loadFrom("/template/smallExample.xml");
+		} catch (ParserConfigurationException e) {
+			e.printStackTrace();
+		} catch (SAXException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}	
+		return null;
 	}
 	
 	

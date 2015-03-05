@@ -1,11 +1,9 @@
 //Copyright 2013, Nathan Tippy
 //See LICENSE file for BSD license details.
 //Send support requests to http://www.ociweb.com/contact
-package com.ociweb.jfast.catalog.loader;
+package com.ociweb.pronghorn.ring.loader;
 
-import com.ociweb.jfast.field.LocalHeap;
-import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.pronghorn.ring.util.LocalHeap;
 
 /**
  * Holds count of how many of each type of field is required and what the
@@ -36,25 +34,25 @@ public class DictionaryFactory {
 
     private static final int INIT_GROW_STEP = 16;
 
-    private int integerCount;
-    private int longCount;
-    private int bytesCount;
+    public int integerCount;
+    public int longCount;
+    public int bytesCount;
 
-    private int integerInitCount;
-    private int[] integerInitIndex;
-    private int[] integerInitValue;
+    public int integerInitCount;
+    public int[] integerInitIndex;
+    public int[] integerInitValue;
 
-    private int longInitCount;
-    private int[] longInitIndex;
-    private long[] longInitValue;
+    public int longInitCount;
+    public int[] longInitIndex;
+    public long[] longInitValue;
 
-    private int byteInitCount;
-    private int[] byteInitIndex;
-    private byte[][] byteInitValue;
-    private int byteInitTotalLength;
+    public int byteInitCount;
+    public int[] byteInitIndex;
+    public byte[][] byteInitValue;
+    public int byteInitTotalLength;
     
-    private int singleBytesSize;
-    private int gapBytesSize;
+    public int singleBytesSize;
+    public int gapBytesSize;
     
     LocalHeap byteHeap;    
 
@@ -88,105 +86,7 @@ public class DictionaryFactory {
         this.singleBytesSize = bytesNominalLength;
     }
 
-    public DictionaryFactory(PrimitiveReader reader) {
-
-    	this.singleBytesSize = PrimitiveReader.readIntegerUnsigned(reader);
-    	this.gapBytesSize = PrimitiveReader.readIntegerUnsigned(reader);
-    	
-        this.integerCount = PrimitiveReader.readIntegerUnsigned(reader);
-        this.longCount = PrimitiveReader.readIntegerUnsigned(reader);
-        this.bytesCount = PrimitiveReader.readIntegerUnsigned(reader);
-
-        this.integerInitCount = PrimitiveReader.readIntegerUnsigned(reader);
-        this.integerInitIndex = new int[integerInitCount];
-        this.integerInitValue = new int[integerInitCount];
-        int c = integerInitCount;
-        while (--c >= 0) {
-            integerInitIndex[c] = PrimitiveReader.readIntegerUnsigned(reader);
-            integerInitValue[c] = PrimitiveReader.readIntegerSigned(reader);
-        }
-
-        this.longInitCount = PrimitiveReader.readIntegerUnsigned(reader);
-        this.longInitIndex = new int[longInitCount];
-        this.longInitValue = new long[longInitCount];
-        c = longInitCount;
-        while (--c >= 0) {
-            longInitIndex[c] = PrimitiveReader.readIntegerUnsigned(reader);
-            longInitValue[c] = PrimitiveReader.readLongSigned(reader);
-        }
-
-
-        this.byteInitCount = PrimitiveReader.readIntegerUnsigned(reader);
-        this.byteInitIndex = new int[byteInitCount];
-        this.byteInitValue = new byte[byteInitCount][];
-        c = byteInitCount;
-        while (--c >= 0) {
-            byteInitIndex[c] = PrimitiveReader.readIntegerUnsigned(reader);
-            int len = PrimitiveReader.readIntegerUnsigned(reader);
-            if (len>0) {
-            	byte[] value = new byte[len];
-            	PrimitiveReader.readByteData(value, 0, len, reader);
-            	byteInitValue[c] = value;
-            } else {
-            	if (len<0) {
-            		byteInitValue[c]=null;
-            	} else {
-            		byteInitValue[c]=new byte[0];
-            	}
-            }
-        }
-        byteInitTotalLength = PrimitiveReader.readIntegerUnsigned(reader);
-
-    }
-
-    public void save(PrimitiveWriter writer) {
-
-    	PrimitiveWriter.writeIntegerUnsigned(singleBytesSize, writer);
-    	PrimitiveWriter.writeIntegerUnsigned(gapBytesSize, writer);
-    	
-        PrimitiveWriter.writeIntegerUnsigned(integerCount, writer);
-        PrimitiveWriter.writeIntegerUnsigned(longCount, writer);
-        PrimitiveWriter.writeIntegerUnsigned(bytesCount, writer);
-
-        PrimitiveWriter.writeIntegerUnsigned(integerInitCount, writer);
-        int c = integerInitCount;
-        while (--c >= 0) {
-            PrimitiveWriter.writeIntegerUnsigned(integerInitIndex[c], writer);
-            PrimitiveWriter.writeIntegerSigned(integerInitValue[c], writer);
-        }
-
-        PrimitiveWriter.writeIntegerUnsigned(longInitCount, writer);
-        c = longInitCount;
-        while (--c >= 0) {
-            PrimitiveWriter.writeIntegerUnsigned(longInitIndex[c], writer);
-            PrimitiveWriter.writeLongSigned(longInitValue[c], writer);
-        }
-
-        PrimitiveWriter.writeIntegerUnsigned(byteInitCount, writer);
-        c = byteInitCount;
-        while (--c >= 0) {
-            PrimitiveWriter.writeIntegerUnsigned(byteInitIndex[c], writer);
-            byte[] value = byteInitValue[c];
-            PrimitiveWriter.writeIntegerUnsigned(null==value? -1 :value.length, writer);
-            if (null!=value && value.length>0) {
-            	PrimitiveWriter.writeByteArrayData(value, 0, value.length, writer);
-            }
-        }
-        PrimitiveWriter.writeIntegerUnsigned(byteInitTotalLength, writer);
-
-        /*
-         * Fastest searialize deserialize however its more verbose and there is
-         * no object dectection and construction.
-         * 
-         * These files can be deleted and modified but those changes are only
-         * refelected on startup. New templates can be added but an explicit
-         * call must be made to load them. The new templates will be loaded
-         * dynamicaly on first use but this is not recommended.
-         */
-
-    }
-
-    public void addInitInteger(int idx, int value) {
+	public void addInitInteger(int idx, int value) {
 
         integerInitIndex[integerInitCount] = idx;
         integerInitValue[integerInitCount] = value;
@@ -299,12 +199,6 @@ public class DictionaryFactory {
         }
     }
 
-    public void reset(LocalHeap heap) {
-        if (null != heap) {
-            LocalHeap.reset(heap);
-        }
-    }
-
     public static byte[] initConstantByteArray(DictionaryFactory dcr) {
         if (null!=dcr) {
             LocalHeap byteHeap = dcr.byteDictionary();
@@ -320,5 +214,7 @@ public class DictionaryFactory {
             return null;
         }
     }
+
+
 
 }
