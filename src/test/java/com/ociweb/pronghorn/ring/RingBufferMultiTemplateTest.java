@@ -65,6 +65,7 @@ public class RingBufferMultiTemplateTest {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}	
+		fail("unable to load");
 		return null;
 	}
 	
@@ -84,8 +85,8 @@ public class RingBufferMultiTemplateTest {
 
 
 	private void singleFragmentWriteRead(boolean useHighLevel) {
-		byte primaryRingSizeInBits = 9; 
-    	byte byteRingSizeInBits = 18;
+		byte primaryRingSizeInBits = 7; 
+    	byte byteRingSizeInBits = 16;
     	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
 		
@@ -337,8 +338,8 @@ public class RingBufferMultiTemplateTest {
 	 */
 	@Test
 	public void sequenceFragmentWriteRead() {
-		byte primaryRingSizeInBits = 9; 
-    	byte byteRingSizeInBits = 18;
+		byte primaryRingSizeInBits = 7; 
+    	byte byteRingSizeInBits = 16;
     
     	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
@@ -434,8 +435,8 @@ public class RingBufferMultiTemplateTest {
 	
 	@Test
 	public void zeroSequenceFragmentWriteRead() {
-		byte primaryRingSizeInBits = 9; 
-    	byte byteRingSizeInBits = 18;
+		byte primaryRingSizeInBits = 7; 
+    	byte byteRingSizeInBits = 16;
     
     	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
