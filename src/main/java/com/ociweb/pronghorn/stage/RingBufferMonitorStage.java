@@ -1,9 +1,16 @@
-package com.ociweb.pronghorn.ring;
+package com.ociweb.pronghorn.stage;
 
-import com.ociweb.jfast.catalog.loader.ClientConfig;
-import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
-import com.ociweb.jfast.catalog.loader.TemplateLoader;
-import com.ociweb.pronghorn.stage.PronghornStage;
+import java.io.IOException;
+
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.xml.sax.SAXException;
+
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingReader;
+import com.ociweb.pronghorn.ring.RingWriter;
+import com.ociweb.pronghorn.ring.loader.TemplateHandler;
 import com.ociweb.pronghorn.stage.threading.GraphManager;
 
 
@@ -58,13 +65,17 @@ public class RingBufferMonitorStage extends PronghornStage {
 	 * This FROM is provided for easy construction of RingBuffers.
 	 * @return
 	 */
-	public static FieldReferenceOffsetManager buildFROM() {
-		 
-		String source = "/ringMonitor.xml";
-		ClientConfig clientConfig = new ClientConfig();		
-		TemplateCatalogConfig catalog = new TemplateCatalogConfig(TemplateLoader.buildCatBytes(source, clientConfig ));
-		return catalog.getFROM();
-		
+	public static FieldReferenceOffsetManager buildFROM() {		 
+		try {
+			return TemplateHandler.loadFrom("/ringMonitor.xml");
+		} catch (ParserConfigurationException e) {
+			e.printStackTrace();
+		} catch (SAXException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}		
+		return null;
 	}
 
 	@Override
@@ -75,7 +86,7 @@ public class RingBufferMonitorStage extends PronghornStage {
 			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TIME_LOC, System.currentTimeMillis());
 			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_HEAD_LOC, RingBuffer.headPosition(observedRingBuffer));
 			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TAIL_LOC, RingBuffer.headPosition(observedRingBuffer));
-			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_MSG_LOC, RingReader.getMsgIdx(observedRingBuffer));			
+			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_MSG_LOC, RingReader.getMsgIdx(observedRingBuffer));	//TODO: AAA, not sure this is not mixed		
 			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_SIZE_LOC, observedRingBuffer.maxSize);
 			
 			RingWriter.publishWrites(notifyRingBuffer);	
