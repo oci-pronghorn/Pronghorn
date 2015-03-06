@@ -118,7 +118,7 @@ public class ThreadPerStageManager extends StageManager {
 						stage.run();
 						assert(confirmRunStop(stage));
 						
-					} while (!isShutDownNow && (!isShuttingDown || GraphManager.mayHaveUpstreamData(graphManager, stage.stageId) ));	
+					} while (!isShutDownNow && ( (!isShuttingDown && !GraphManager.isStageTerminated(graphManager, stage.stageId)) || GraphManager.mayHaveUpstreamData(graphManager, stage.stageId) ));	
 			
 					stage.shutdown();
 					
