@@ -83,18 +83,6 @@ public class StreamingConsumerToJSON implements StreamingConsumer {
 	}
 
 	@Override
-	public void visitOptionalSignedInteger(String name, long id, int value) {
-		writeTab();
-		out.println("{\""+name+"\":"+Integer.valueOf(value)+"}");
-	}
-
-	@Override
-	public void visitOptionalUnsignedInteger(String name, long id, long value) {
-		writeTab();
-		out.println("{\""+name+"\":"+Long.valueOf(value)+"}");
-	}
-
-	@Override
 	public void visitSignedLong(String name, long id, long value) {
 		writeTab();
 		out.println("{\""+name+"\":"+Long.valueOf(value)+"}");
@@ -107,25 +95,7 @@ public class StreamingConsumerToJSON implements StreamingConsumer {
 	}
 
 	@Override
-	public void visitOptinoalSignedLong(String name, long id, long value) {
-		writeTab();
-		out.println("{\""+name+"\":"+Long.valueOf(value)+"}");
-	}
-
-	@Override
-	public void visitOptionalUnsignedLong(String name, long id, long value) {
-		writeTab();
-		out.println("{\""+name+"\":"+Long.valueOf(value)+"}"); //TODO: this is not strictly right and can be negative!!
-	}
-
-	@Override
 	public void visitDecimal(String name, long id, int exp, long mant) {
-		writeTab();
-		out.println("{\""+name+"\":["+Integer.valueOf(exp)+","+Long.valueOf(mant)+"]}");
-	}
-
-	@Override
-	public void visitOptionalDecimal(String name, long id, int exp, long mant) {
 		writeTab();
 		out.println("{\""+name+"\":["+Integer.valueOf(exp)+","+Long.valueOf(mant)+"]}");
 	}
@@ -143,18 +113,6 @@ public class StreamingConsumerToJSON implements StreamingConsumer {
 	}
 
 	@Override
-	public Appendable targetOptionalASCII(String name, long id) {
-		tempStringBuilder.setLength(0);
-		return tempStringBuilder;
-	}
-
-	@Override
-	public void visitOptionalASCII(String name, long id, Appendable value) {
-		writeTab();
-		out.println("{\""+name+"\":\""+value+"\"}");
-	}
-
-	@Override
 	public Appendable targetUTF8(String name, long id) {
 		tempStringBuilder.setLength(0);
 		return tempStringBuilder;
@@ -164,18 +122,6 @@ public class StreamingConsumerToJSON implements StreamingConsumer {
 	public void visitUTF8(String name, long id, Appendable value) {
 		writeTab();
 		out.println("{\""+name+"\":\""+value+"\"}");
-	}
-
-	@Override
-	public Appendable targetOptionalUTF8(String name, long id) {
-		tempStringBuilder.setLength(0);
-		return tempStringBuilder;
-	}
-
-	@Override
-	public void visitOptionalUTF8(String name, long id, Appendable value) {
-		writeTab();
-		out.println("{\""+name+"\":\""+value+"\"}");		
 	}
 
 	@Override
@@ -193,17 +139,11 @@ public class StreamingConsumerToJSON implements StreamingConsumer {
 	}
 
 	@Override
-	public ByteBuffer targetOptionalBytes(String name, long id, int length) {
-		tempByteBuffer.clear();
-		if (tempByteBuffer.capacity()<length) {
-			tempByteBuffer = ByteBuffer.allocate(length*2);
-		}
-		return tempByteBuffer;	
+	public void startup() {
 	}
 
 	@Override
-	public void visitOptionalBytes(String name, long id, ByteBuffer value) {
-		//undefined how we should send a binary block to JSON
+	public void shutdown() {
 	}
 
 }

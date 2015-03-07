@@ -483,7 +483,6 @@ public class FieldReferenceOffsetManager {
 		int fieldOff =  (0==fieldCursor) ? from.templateOffset+1 : from.fragDataSize[fieldCursor];
 		assert(fieldOff>=0);
 		assert(fieldOff < (1<<RW_FIELD_OFF_BITS)) : "Fixed portion of a fragment can not be larger than "+(1<<RW_FIELD_OFF_BITS)+" bytes";
-		
 		return stackOff | fieldType | fieldOff;
 	}
 

@@ -42,13 +42,18 @@ public class StreamingConsumerReader {
 		//debugFROM(from);
 		
 	}
+	
+	public void startup() {
+		this.visitor.startup();
+	}
+	
+	public void shutdown() {
+		this.visitor.shutdown();
+	}
 
 	public void run() {
 		
-		do {			
-			    if (visitor.paused()) {
-			    	return;
-			    }
+		while (!visitor.paused()) {	
 			    
 			    //return to try again later if we can not read a fragment
 		        if (headPosCache < nextTargetHead) {
@@ -101,7 +106,7 @@ public class StreamingConsumerReader {
 		        	
 		        }
 		        releaseReadLock(inputRing);
-		} while(true); //keep running until we run out of content
+		}
 		
 	}
 
@@ -168,7 +173,7 @@ public class StreamingConsumerReader {
 					{
 						int value = RingBuffer.readValue(idx++, inputRing);
 						if (FieldReferenceOffsetManager.getAbsent32Value(from)!=value) {
-							visitor.visitOptionalSignedInteger(from.fieldNameScript[j],from.fieldIdScript[j],value);
+							visitor.visitSignedInteger(from.fieldNameScript[j],from.fieldIdScript[j],value);
 						}
 					}
 					break;
@@ -176,7 +181,7 @@ public class StreamingConsumerReader {
 					{
 						int value = RingBuffer.readValue(idx++, inputRing);
 						if (FieldReferenceOffsetManager.getAbsent32Value(from)!=value) {
-							visitor.visitOptionalUnsignedInteger(from.fieldNameScript[j],0xFFFFFFFFl&(long)from.fieldIdScript[j],value);
+							visitor.visitUnsignedInteger(from.fieldNameScript[j],0xFFFFFFFFl&(long)from.fieldIdScript[j],value);
 						}
 					}
 					break;
@@ -225,7 +230,7 @@ public class StreamingConsumerReader {
 						long mant = RingBuffer.readLong(idx, inputRing);
 						idx+=2;
 						if (FieldReferenceOffsetManager.getAbsent32Value(from)!=exp) {
-							visitor.visitOptionalDecimal(from.fieldNameScript[j],from.fieldIdScript[j],exp,mant);
+							visitor.visitDecimal(from.fieldNameScript[j],from.fieldIdScript[j],exp,mant);
 						}
 						i++;//add 1 extra because decimal takes up 2 slots in the script
 					}
@@ -251,7 +256,7 @@ public class StreamingConsumerReader {
 							int pos = bytePosition(meta,inputRing,len);    		
 							String name = from.fieldNameScript[j];
 							long id = from.fieldIdScript[j];
-							visitor.visitOptionalASCII(name, id, RingBuffer.readASCII(inputRing, visitor.targetOptionalASCII(name, id), pos, len));
+							visitor.visitASCII(name, id, RingBuffer.readASCII(inputRing, visitor.targetASCII(name, id), pos, len));
 						}
 					}
 					break;
@@ -276,7 +281,7 @@ public class StreamingConsumerReader {
 							int pos = bytePosition(meta,inputRing,len);    		
 							String name = from.fieldNameScript[j];
 							long id = from.fieldIdScript[j];
-							visitor.visitOptionalUTF8(name, id, RingBuffer.readUTF8(inputRing, visitor.targetOptionalUTF8(name, id), pos, len));
+							visitor.visitUTF8(name, id, RingBuffer.readUTF8(inputRing, visitor.targetUTF8(name, id), pos, len));
 						}
 					}
 					break;
@@ -301,7 +306,7 @@ public class StreamingConsumerReader {
 							int pos = bytePosition(meta,inputRing,len);    		
 							String name = from.fieldNameScript[j];
 							long id = from.fieldIdScript[j];
-							visitor.visitOptionalBytes(name, id, RingBuffer.readBytes(inputRing, visitor.targetOptionalBytes(name, id, len), pos, len));
+							visitor.visitBytes(name, id, RingBuffer.readBytes(inputRing, visitor.targetBytes(name, id, len), pos, len));
 						}
 					}
 					break;

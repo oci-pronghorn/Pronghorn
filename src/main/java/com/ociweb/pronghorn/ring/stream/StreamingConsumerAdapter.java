@@ -45,14 +45,6 @@ public class StreamingConsumerAdapter implements StreamingConsumer {
 	}
 
 	@Override
-	public void visitOptionalSignedInteger(String string, long id, int value) {
-	}
-
-	@Override
-	public void visitOptionalUnsignedInteger(String string, long id, long value) {	
-	}
-
-	@Override
 	public void visitSignedLong(String string, long id, long value) {
 	}
 
@@ -61,32 +53,11 @@ public class StreamingConsumerAdapter implements StreamingConsumer {
 	}
 
 	@Override
-	public void visitOptinoalSignedLong(String string, long id, long value) {	
-	}
-
-	@Override
-	public void visitOptionalUnsignedLong(String string, long id, long value) {	
-	}
-
-	@Override
 	public void visitDecimal(String name, long id, int exp, long mant) {	
 	}
 
 	@Override
-	public void visitOptionalDecimal(String name, long id, int exp, long mant) {	
-	}
-
-
-	@Override
-	public void visitOptionalASCII(String name, long id, Appendable value) {
-	}
-
-	@Override
 	public void visitUTF8(String name, long id, Appendable value) {
-	}
-
-	@Override
-	public void visitOptionalUTF8(String name, long id, Appendable value) {
 	}
 
 	@Override
@@ -115,34 +86,15 @@ public class StreamingConsumerAdapter implements StreamingConsumer {
 	}
 
 	@Override
-	public void visitOptionalBytes(String name, long id, ByteBuffer value) {
-	}
-
-	@Override
 	public void visitASCII(String name, long id, Appendable value) {
 	}
 
 	@Override
-	public Appendable targetOptionalASCII(String name, long id) {
-		tempStringBuilder.setLength(0);
-		return tempStringBuilder;
+	public void startup() {
 	}
 
 	@Override
-	public Appendable targetOptionalUTF8(String name, long id) {
-		tempStringBuilder.setLength(0);
-		return tempStringBuilder;
+	public void shutdown() {
 	}
-
-	@Override
-	public ByteBuffer targetOptionalBytes(String name, long id, int length) {
-		tempByteBuffer.clear();
-		if (tempByteBuffer.capacity()<length) {
-			tempByteBuffer = ByteBuffer.allocate(length*2);
-		}
-		return tempByteBuffer;
-	}
-
-
 
 }

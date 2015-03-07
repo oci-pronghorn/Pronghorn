@@ -280,7 +280,7 @@ public class RingStreams {
 	    	        	
 	    	//block until one more byteVector is ready.
 	    	
-	    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		           
+	    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing); //TODO: AAAA,  make this non blocking.	                        	    	                        		           
 	    	
 	    	int msg = RingBuffer.takeMsgIdx(inputRing);
 
