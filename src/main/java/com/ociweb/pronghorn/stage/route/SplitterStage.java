@@ -4,7 +4,7 @@ import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.threading.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
  * Given n ring buffers with the same FROM/Schema

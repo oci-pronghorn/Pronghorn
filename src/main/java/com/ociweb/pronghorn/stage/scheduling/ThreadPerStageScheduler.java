@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.stage.threading;
+package com.ociweb.pronghorn.stage.scheduling;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -9,15 +9,15 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.stage.PronghornStage;
 
-public class ThreadPerStageManager extends StageManager {
-	private static final Logger log = LoggerFactory.getLogger(ThreadPerStageManager.class);
+public class ThreadPerStageScheduler extends StageScheduler {
+	private static final Logger log = LoggerFactory.getLogger(ThreadPerStageScheduler.class);
 	
 	private ExecutorService executorService; 
 	private volatile boolean isShutDownNow = false;
 	private volatile boolean isShuttingDown = false;
 	
 	
-	public ThreadPerStageManager(GraphManager graphManager) {
+	public ThreadPerStageScheduler(GraphManager graphManager) {
 		super(graphManager);		
 		
 		this.executorService = Executors.newCachedThreadPool();
@@ -120,7 +120,10 @@ public class ThreadPerStageManager extends StageManager {
 						
 					} while (!isShutDownNow && ( (!isShuttingDown && !GraphManager.isStageTerminated(graphManager, stage.stageId)) || GraphManager.mayHaveUpstreamData(graphManager, stage.stageId) ));	
 			
-					stage.shutdown();
+					//only call if its not already shutdown
+					if (!GraphManager.isStageTerminated(graphManager, stage.stageId)) {					
+						stage.shutdown();
+					}
 					
 								
 				} catch (Throwable t) {

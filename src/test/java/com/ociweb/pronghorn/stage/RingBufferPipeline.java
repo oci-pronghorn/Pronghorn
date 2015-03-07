@@ -30,9 +30,9 @@ import com.ociweb.pronghorn.ring.stream.StreamingConsumerAdapter;
 import com.ociweb.pronghorn.ring.stream.StreamingConsumerReader;
 import com.ociweb.pronghorn.stage.route.RoundRobinRouteStage;
 import com.ociweb.pronghorn.stage.route.SplitterStage;
-import com.ociweb.pronghorn.stage.threading.GraphManager;
-import com.ociweb.pronghorn.stage.threading.StageManager;
-import com.ociweb.pronghorn.stage.threading.ThreadPerStageManager;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
+import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 
 public class RingBufferPipeline {
 	
@@ -685,7 +685,7 @@ public class RingBufferPipeline {
 		 //start the timer		 
 		 final long start = System.currentTimeMillis();
 		 
-		 StageManager scheduler = new ThreadPerStageManager(GraphManager.cloneAll(gm));
+		 StageScheduler scheduler = new ThreadPerStageScheduler(GraphManager.cloneAll(gm));
 		 
 		 scheduler.startup();
 		 

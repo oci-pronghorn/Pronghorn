@@ -6,7 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.stage.threading.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 
 public abstract class PronghornStage {

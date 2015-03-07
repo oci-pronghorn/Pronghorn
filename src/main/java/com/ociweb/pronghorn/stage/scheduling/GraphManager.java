@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.stage.threading;
+package com.ociweb.pronghorn.stage.scheduling;
 
 import java.util.Arrays;
 
@@ -500,7 +500,7 @@ public class GraphManager {
 				
 		int i = m.stageIdToStage.length;
 		while (--i>=0) {
-			if (null!=m.stageIdToStage[i]) {
+			if (null!=m.stageIdToStage[i]) {				
 				//an input stage is one that has no input ring buffers
 				if (-1 == m.multInputIds[m.stageIdToInputsBeginIdx[m.stageIdToStage[i].stageId]]) {
 					m.stageIdToStage[i].shutdown();

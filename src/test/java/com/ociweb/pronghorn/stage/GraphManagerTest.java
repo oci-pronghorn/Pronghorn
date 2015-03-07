@@ -8,7 +8,7 @@ import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.threading.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class GraphManagerTest {
 

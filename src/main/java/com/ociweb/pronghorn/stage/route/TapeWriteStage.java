@@ -9,7 +9,7 @@ import java.nio.channels.FileChannel.MapMode;
 
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.threading.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**
  *

@@ -6,7 +6,7 @@ import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.threading.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class RoundRobinRouteStage extends PronghornStage {
 

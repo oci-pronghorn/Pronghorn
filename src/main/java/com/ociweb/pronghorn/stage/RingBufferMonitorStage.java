@@ -11,7 +11,7 @@ import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.RingWriter;
 import com.ociweb.pronghorn.ring.loader.TemplateHandler;
-import com.ociweb.pronghorn.stage.threading.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 
 public class RingBufferMonitorStage extends PronghornStage {

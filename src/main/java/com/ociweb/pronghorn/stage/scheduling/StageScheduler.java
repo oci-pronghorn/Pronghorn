@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.stage.threading;
+package com.ociweb.pronghorn.stage.scheduling;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -8,9 +8,9 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.stage.PronghornStage;
 
-public abstract class StageManager {
+public abstract class StageScheduler {
 
-	private static final Logger log = LoggerFactory.getLogger(StageManager.class);
+	private static final Logger log = LoggerFactory.getLogger(StageScheduler.class);
 	protected GraphManager graphManager;
 	
 	//these fields are not used at production run time but are used by the asserts to validate:
@@ -19,7 +19,7 @@ public abstract class StageManager {
 	private Object assertLock = new Object();
 	private long[] runCounters = new long[0]; //only grows when asserts are on
 	
-	public StageManager(GraphManager graphManager) {
+	public StageScheduler(GraphManager graphManager) {
 		GraphManager.disableMutation(graphManager);
 		this.graphManager = graphManager;
 	}
