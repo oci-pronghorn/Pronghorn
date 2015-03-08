@@ -12,7 +12,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public abstract class PronghornStage {
 	
 	private static final Logger log = LoggerFactory.getLogger(PronghornStage.class);
-	protected static final RingBuffer[] NONE = new RingBuffer[0];
+	public static final RingBuffer[] NONE = new RingBuffer[0];
 	
 	//What if we only have 1 because this is the first or last stage?
 

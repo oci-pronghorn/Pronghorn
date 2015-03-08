@@ -62,13 +62,13 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		executorService.shutdown();
 		try {
 			boolean cleanExit = executorService.awaitTermination(timeout, unit);
-			assert(validShutdownState());
+			assert(validShutdownState());			
 			return cleanExit;
 		} catch (InterruptedException e) {
 			executorService.shutdownNow();
 			Thread.currentThread().interrupt();
 		} catch (Throwable e) {
-			log.trace("awaitTermination", e);
+			log.error("awaitTermination", e);
 			return false;
 		}
 		return true;

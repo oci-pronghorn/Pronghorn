@@ -70,6 +70,9 @@ public abstract class StageScheduler {
 					result = false;
 				}				
 			}
+			if (!result) {
+				log.error("unclean shutdown");				
+			}
 			return result;
 		}
 		
