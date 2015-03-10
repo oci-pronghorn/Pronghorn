@@ -16,6 +16,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
@@ -200,7 +201,7 @@ public class RingBufferPipeline {
 		///		    System.err.println(new String(Arrays.copyOfRange(testArray,0,100)));
 				    //TODO: B, this test is not passing.
 					
-					//assertTrue(Arrays.equals(testArray, tempArray));
+				//	assertTrue(Arrays.equals(testArray, tempArray));
 		
 				}
 			};
@@ -310,7 +311,7 @@ public class RingBufferPipeline {
 		public void run() {
 				
 			do {
-					//TODO: B, need to find a way to make this pattern easy
+					//TODO: B, need to find a way to make this pattern easy, must at least build example templates.
 					//must update headPosCache but only when we need to 
 			        if (headPosCache < nextHeadTarget) {
 						headPosCache = inputRing.headPos.longValue();
@@ -716,7 +717,6 @@ public class RingBufferPipeline {
 					assertFalse("Unexpected error in thread, see console output",RingBuffer.isShutdown(monitorRings[t]));
 				}
 			}
-			//TODO: should we flush all the monitoring?
 			
 			long duration = System.currentTimeMillis()-start;
 			

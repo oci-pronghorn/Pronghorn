@@ -118,10 +118,7 @@ public class TapeWriteStage extends PronghornStage {
 		//now do the copies
 		if (doingCopy(ss, byteTailPos, primaryTailPos, (int)totalPrimaryCopy, totalBytesCopy)) {
 								
-			//TODO: write the count of primary ints and count of secondary bytes to another optional stream
-			//TODO: use splitter before this stage, indexer will read one side of split and the counts messages. to write index file.
-			//TODO: play back file with those cunks into same indexer to do it after the fact
-			//TODO: if index is very slow then have it trail the file write and use the infinite ring stage 
+			//TODO: play back file with those cunks into indexer to do it after the fact
 			
 			
 			//release tail so data can be written
