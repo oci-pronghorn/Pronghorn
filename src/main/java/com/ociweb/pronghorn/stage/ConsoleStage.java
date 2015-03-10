@@ -37,12 +37,11 @@ public class ConsoleStage extends PronghornStage {
 
 	@Override
 	public void run() {
-			
-		while (dataToRead(counts)) {
-			if (!processCounts("Running:",counts,totalCounts)) {
-				return;
-			}
+		dataToRead(counts);
+		if (!processCounts("Running:",counts,totalCounts)) {
+			return;
 		}
+
 
 	}
 
@@ -94,7 +93,7 @@ public class ConsoleStage extends PronghornStage {
 		return totalMsg>0;
 	}
 	
-	private boolean dataToRead(long[] counts) {
+	private void dataToRead(long[] counts) {
 		
 		int msgIdx = 0;
 		
@@ -107,7 +106,6 @@ public class ConsoleStage extends PronghornStage {
 					counts[msgIdx]++;
 				}
 			}
-		}
-		return msgIdx!=posionPillMessageId;
+		}		
 	}
 }

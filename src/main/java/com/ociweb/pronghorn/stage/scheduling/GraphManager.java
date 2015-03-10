@@ -472,6 +472,7 @@ public class GraphManager {
 							
 				++inputCounts;
 				
+				//check that producer is terminated first.
 				if (isProducerTerminated(m, ringId)) {
 					//if producer is terminated check input ring, if not empty return true
 			    	if (RingBuffer.contentRemaining( m.ringIdToRing[ringId])>0) {
@@ -503,7 +504,7 @@ public class GraphManager {
 			if (null!=m.stageIdToStage[i]) {				
 				//an input stage is one that has no input ring buffers
 				if (-1 == m.multInputIds[m.stageIdToInputsBeginIdx[m.stageIdToStage[i].stageId]]) {
-					m.stageIdToStage[i].shutdown();
+					m.stageIdToStage[i].shutdown(); //TOOD: better error reporting here.
 				}
 			}
 		}

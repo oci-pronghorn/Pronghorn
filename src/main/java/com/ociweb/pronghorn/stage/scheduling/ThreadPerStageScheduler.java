@@ -43,7 +43,11 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	}
 	
 	public void shutdown(){		
-		GraphManager.terminateInputStages(graphManager);
+		try {
+		 GraphManager.terminateInputStages(graphManager);
+		} catch (Throwable t) {
+			log.error("Stacktrace",t);
+		}
 	}
 	
 	/**
