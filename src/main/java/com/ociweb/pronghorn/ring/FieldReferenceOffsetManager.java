@@ -165,6 +165,7 @@ public class FieldReferenceOffsetManager {
 		}
 	}
 		
+	///TOOD: A, investigate why scriptTokens array can be so much larger than the data it contains.
 	
     private float buildFragScript(int[] scriptTokens, short preableBytes) {
     	int spaceForTemplateId = 1;
@@ -189,15 +190,18 @@ public class FieldReferenceOffsetManager {
         //this is because that is the value that will already appear in that slot.
         //
         
-        
         while (i<scriptLength) {          
            	
             //now past the end of the template so 
             //close it because this index starts a new one
             //first position is always part of a new template
-            
+
+        	int tempToken = scriptTokens[i]; 
+        	//valid tokens are always negative, script length may go on past the data.
+            assert(tempToken<0) : "valid tokens are always negative";
+        	
             //sequences and optional groups will always have group tags.
-            int tempToken = scriptTokens[i];
+
         	int type = TokenBuilder.extractType(tempToken);
             boolean isGroup = TypeMask.Group == type;    
             boolean isGroupOpen = isGroup && (0 == (tempToken & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
@@ -216,6 +220,8 @@ public class FieldReferenceOffsetManager {
                 }
                 
                 int lastFragTotalSize = fragDataSize[fragmentStartIdx];
+                assert(lastFragTotalSize<65536) : "Fragments larger than this are possible but unlikely, You do not want to do this";
+                
                 maxFragmentDataSize = Math.max(maxFragmentDataSize, lastFragTotalSize);
                 minFragmentDataSize = Math.min(minFragmentDataSize, lastFragTotalSize);
        //         System.err.println("new fragmetn at "+i);
@@ -245,7 +251,7 @@ public class FieldReferenceOffsetManager {
 					int preambleInts = (preableBytes+3)>>2;     
                     assert(0==depth) : "check for length without following body, could be checked earlier in XML";
                     fragDataSize[fragmentStartIdx] = preambleInts+spaceForTemplateId;  //these are the starts of messages
-                    
+                    assert(fragDataSize[fragmentStartIdx]<65536) : "Premable is way to big, consider a different design";
                     //System.err.println("started with ints at :"+fragmentStartIdx);
                     
                 } else {
@@ -290,7 +296,7 @@ public class FieldReferenceOffsetManager {
             sumOfVarLengthFields += TypeMask.ringBufferFieldVarLen[tokenType];
             
 			int fSize = TypeMask.ringBufferFieldSize[tokenType];
-            
+			
             fragDataSize[fragmentStartIdx] += fSize;
             fragScriptSize[fragmentStartIdx]++;
             
@@ -305,6 +311,7 @@ public class FieldReferenceOffsetManager {
         accumVarLengthCounts(fragmentStartIdx, varLenFieldCount, varLenFieldLast);
         
         int lastFragTotalSize = fragDataSize[fragmentStartIdx];
+        assert(lastFragTotalSize<65536) : "Fragments larger than this are possible but unlikely, You do not want to do this fragment of "+lastFragTotalSize;
         
         maxFragmentDataSize = Math.max(maxFragmentDataSize, lastFragTotalSize);
         minFragmentDataSize = Math.min(minFragmentDataSize, lastFragTotalSize);

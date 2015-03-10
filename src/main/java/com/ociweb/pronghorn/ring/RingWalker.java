@@ -270,7 +270,10 @@ public class RingWalker {
 
 		if (ringBufferConsumer.msgIdx >= 0 && ringBufferConsumer.msgIdx < fragDataSize.length) {
 			//assert that we can read the fragment size. if not we get a partial fragment failure.
-			assert(ringBuffer.headPos.get() >= (ringBufferConsumer.nextWorkingTail + fragDataSize[ringBufferConsumer.msgIdx])) : "Partial fragment detected at "+ringBuffer.headPos.get()+" needs "+fragDataSize[ringBufferConsumer.msgIdx]+" for msgIdx:"+ringBufferConsumer.msgIdx;
+			assert(ringBuffer.headPos.get() >= (ringBufferConsumer.nextWorkingTail + fragDataSize[ringBufferConsumer.msgIdx])) : 
+				 "Partial fragment detected at "+ringBuffer.headPos.get()+" needs "+ (ringBufferConsumer.nextWorkingTail + fragDataSize[ringBufferConsumer.msgIdx])+
+				    " cached head was "+ringBufferConsumer.bnmHeadPosCache+" max frag known "+FieldReferenceOffsetManager.maxFragmentSize(ringBufferConsumer.from)+
+				    " for msgIdx:"+ringBufferConsumer.msgIdx;
 
 			ringBufferConsumer.nextWorkingTail = tmpNextWokingTail + fragDataSize[ringBufferConsumer.msgIdx];//save the size of this new fragment we are about to read  		    		
 			ringBufferConsumer.cursor = ringBufferConsumer.msgIdx;  

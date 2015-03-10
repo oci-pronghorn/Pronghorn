@@ -32,7 +32,6 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
  */
 
 // TODO: C, look at adding reduce method in addition to filter.
-// TODO: X, dev ops tool to empty (drain) buffers and record the loss.
 // TODO: B, must add way of selecting what field to skip writing for the consumer.
 // TODO: B, build  null ring buffer to drop messages.
 
@@ -46,21 +45,18 @@ public final class RingBuffer {
     public static class PaddedInt {
         public int value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
     }
-    
-    //TODO: AA, note original disrupter allows for multiple threads to each visit the same spot and each do mutation
-    //          there is no problem with doing this upgrade to the ring buffer support.
-    
+
     //TODO:AAA, ensure that that position of head and tail are avail so the release can block
     
     public final int maxSize;
     public int[] buffer;
     public final int mask;
 
-    //TODO: AAA, group these together and move into RingWalker
+    //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers
     public final PaddedLong workingHeadPos = new PaddedLong();
     public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos
 
-    //TODO: AAA, group these together and move into RingWalker
+    //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers
     public final PaddedLong workingTailPos = new PaddedLong();
     public final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos
 
@@ -71,7 +67,7 @@ public final class RingBuffer {
     //New interface for unified access to next head position.
     //public final AtomicLong publishedHead = new PaddedAtomicLong(); // top 32 is primary, low 32 is byte 
     
-    //TODO: AAA, group these together and move into RingWalker
+    //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers
     public final PaddedInt byteWorkingHeadPos = new PaddedInt();
     public final PaddedAtomicInteger bytesHeadPos = new PaddedAtomicInteger(); //Base value for byte array writes, may get renamed( and may not need to be atomic)
    
@@ -81,7 +77,7 @@ public final class RingBuffer {
 	
         
     
-    //TODO: AAA, group these together and move into RingWalker
+    //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers
     public final PaddedAtomicInteger bytesTailPos = new PaddedAtomicInteger();
     public final PaddedInt byteWorkingTailPos = new PaddedInt();
     
@@ -678,8 +674,7 @@ public final class RingBuffer {
 	   * 
 	   */
 	  public static long decodeUTF8Fast(byte[] source, long posAndChar, int mask) { //pass in long of last position?
-	      //TODO: these masks appear to be wrong.
-		  
+
 		  // 7  //high bit zero all others its 1
 		  // 5 6
 		  // 4 6 6

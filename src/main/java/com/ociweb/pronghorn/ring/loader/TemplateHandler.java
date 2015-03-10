@@ -8,6 +8,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -958,7 +959,7 @@ public class TemplateHandler extends DefaultHandler {
     
     public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes) {
     	return  new FieldReferenceOffsetManager(
-    			  handler.catalogScriptTokens, 
+    			  Arrays.copyOfRange(handler.catalogScriptTokens,0,handler.catalogTemplateScriptIdx), 
        		      preambleBytes, 
        		      handler.catalogScriptFieldNames,
        	       	  handler.catalogScriptFieldIds,

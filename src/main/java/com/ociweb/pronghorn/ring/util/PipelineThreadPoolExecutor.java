@@ -10,9 +10,7 @@ import java.util.concurrent.TimeUnit;
 public class PipelineThreadPoolExecutor extends ThreadPoolExecutor {
 
 	//TODO: lookup of the LOC must go up the tree in case the schema changed.
-	//TODO: move executor into the RingBuffers
-	//TODO: run must not block and must return.
-	
+
 	
 	//Instead of runnable we could build our own interface? or base class?
 	//the run must return one state,   exit, noWork, didWorkDoneAll, didWorkLeftData

@@ -300,28 +300,6 @@ public class RingBufferMultiTemplateTest {
         }
 	}
 	
-	/*
-	 * Thoughts on writing message without knowing its type till the end:  TODO: AA, build unit test for this case and formalize.
-	 *     The low level API is used for writing the type after the fact in some cases like this.
-	 *     The high level could not be used because we block for the largest possible message not a specific one.
-	 *     We must set the base offset and store the location when starting the unknown message
-	 *     We do need to set the bytes consumed when finished.
-	 *     
-	 *     FOR START OF MESSAGE
-	                            RingBuffer.markBytesWriteBase(outputRing);
-						    	offestForMsgIdx = outputRing.workingHeadPos.value++; 
-						    		 
-						    		 		     
-           FOR END OF MESSAGE						    		 		     
-	   				            int msgIdx = extractNewSchema.messageIdx(messageTemplateIdHash);
-		           				RingBuffer.setValue(outputRing.buffer, outputRing.mask, offestForMsgIdx, msgIdx);
-		        				
-		        				//only need to set this because we waited until now to know what the message ID was
-		        				RingBuffer.markMsgBytesConsumed(outputRing, msgIdx);
-	 * 
-	 */
-	
-	
 	
 
 	private byte[] buildMockData(int size) {
@@ -382,7 +360,7 @@ public class RingBufferMultiTemplateTest {
 		
 	}
 	
-	//TODO: AAAA, it would be nice to discover early that the ring buffer is too small for a sequence of size x, TBD
+	//TODO: A, it would be nice to discover early that the ring buffer is too small for a sequence of size x, TBD
 	
 	private void populateRingBufferWithSequence(RingBuffer ring, int testSize) {
 		

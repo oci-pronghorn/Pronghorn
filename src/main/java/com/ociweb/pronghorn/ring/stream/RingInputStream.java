@@ -26,6 +26,10 @@ public class RingInputStream extends InputStream {
 	private int remainingSourceOffset;
 	private byte[] oneByte = new byte[1]; 
 	
+	/**
+	 * By definition an input stream is blocking so this adds a blocking API for the ring buffer.
+	 * @param ring
+	 */
 	public RingInputStream(RingBuffer ring) {
 		this.ring = ring;
 		this.sourceByteMask = ring.byteMask;
@@ -71,7 +75,7 @@ public class RingInputStream extends InputStream {
 		//this helps branch prediction and pre-fetch
 		int result;
 		if (remainingSourceLength <= 0) {
-			result = blockForNewContent(targetData, targetOffset, targetLength); //TODO: AA, need to rewrite to non-blocking.
+			result = blockForNewContent(targetData, targetOffset, targetLength); 
 		} else {		
 			result = sendRemainingContent(targetData, targetOffset, targetLength);
 		}
