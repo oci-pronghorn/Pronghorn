@@ -225,11 +225,11 @@ public class RingWriter {
         rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(p + length);        
     }
     
-    public static void writeBytes(RingBuffer rb, int loc, byte[] source, int offset, int length) {
+    public static void writeBytes(RingBuffer rb, int loc, byte[] source, int offset, int length, int mask) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
     	assert(length>=0);
-		RingBuffer.copyBytesFromToRing(source, offset, Integer.MAX_VALUE, rb.byteBuffer, rb.byteWorkingHeadPos.value, rb.byteMask, length);		
+		RingBuffer.copyBytesFromToRing(source, offset, mask, rb.byteBuffer, rb.byteWorkingHeadPos.value, rb.byteMask, length);		
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), rb.byteWorkingHeadPos.value, length, RingBuffer.bytesWriteBase(rb));
 		rb.byteWorkingHeadPos.value =  0xEFFFFFFF&(rb.byteWorkingHeadPos.value + length);	
     }

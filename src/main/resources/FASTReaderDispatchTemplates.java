@@ -1,11 +1,11 @@
 package com.ociweb.jfast.generator;
 
 import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.field.LocalHeap;
+import com.ociweb.pronghorn.ring.util.LocalHeap;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
-import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.pronghorn.ring.loader.DictionaryFactory;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
