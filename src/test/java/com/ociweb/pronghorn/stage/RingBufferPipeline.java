@@ -462,7 +462,7 @@ public class RingBufferPipeline {
 
 			 while (messageCount>0) {				
 				 if (RingWriter.tryWriteFragment(outputRing, MESSAGE_LOC)) {
-					 RingWriter.writeBytes(outputRing, FIELD_LOC, testArray, 0, testArray.length);							 
+					 RingWriter.writeBytes(outputRing, FIELD_LOC, testArray, 0, testArray.length, Integer.MAX_VALUE);							 
 					 RingWriter.publishWrites(outputRing);
 					 messageCount--;
 				 } else {
