@@ -34,7 +34,7 @@ public class SplitterStage extends PronghornStage {
 		
 		while(--i>=0) {
 			
-			targetHeadPos[i] = targets[i].headPos.get(); 
+			targetHeadPos[i] = RingBuffer.headPosition(targets[i]); 
 			
 			//targets can not batch returns so this must be set
 			RingBuffer.setReleaseBatchSize(targets[i], 0);
@@ -86,10 +86,10 @@ public class SplitterStage extends PronghornStage {
         //TODO: A, publush to a single atomic long and read it here.
         //get the new head position
         byteHeadPos = ss.source.bytesHeadPos.get();
-		headPos = ss.source.headPos.get();		
-		while(byteHeadPos != ss.source.bytesHeadPos.get() || headPos != ss.source.headPos.get()  ) {
+		headPos = RingBuffer.headPosition(ss.source);		
+		while(byteHeadPos != ss.source.bytesHeadPos.get() || headPos != RingBuffer.headPosition(ss.source) ) {
 			byteHeadPos = ss.source.bytesHeadPos.get();
-			headPos = ss.source.headPos.get();
+			headPos = RingBuffer.headPosition(ss.source);
 		}	
 			
 		
@@ -143,7 +143,7 @@ public class SplitterStage extends PronghornStage {
 				if ( (totalPrimaryCopy + ss.targetHeadPos[i]) > headCache) {		
 					
 					//the tail must be larger than this position for there to be room to write
-					if ((ringBuffer.tailPos.get() >= totalPrimaryCopy + headCache - ringBuffer.maxSize) && 
+					if ((RingBuffer.tailPosition(ringBuffer) >= totalPrimaryCopy + headCache - ringBuffer.maxSize) && 
 						(totalBytesCopy <= (ringBuffer.maxByteSize- RingBuffer.bytesOfContent(ringBuffer)) ) ) {
 						blockCopy(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);
 					} else {
@@ -179,7 +179,7 @@ public class SplitterStage extends PronghornStage {
 								
 		//copy the primary data
 		RingBuffer.copyIntsFromToRing(ss.source.buffer,                primaryTailPos, ss.source.mask, 
-									 ringBuffer.buffer, (int)ringBuffer.headPos.get(), ringBuffer.mask, 
+									 ringBuffer.buffer, (int)RingBuffer.headPosition(ringBuffer), ringBuffer.mask, 
 									 totalPrimaryCopy);
 		ringBuffer.workingHeadPos.value = ringBuffer.headPos.addAndGet(totalPrimaryCopy);	
 		

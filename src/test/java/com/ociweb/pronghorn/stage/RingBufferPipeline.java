@@ -48,8 +48,8 @@ public class RingBufferPipeline {
 			super(gm,inputRing, NONE);
 			this.inputRing = inputRing;
 			this.monitorMessageSize = RingBuffer.from(inputRing).fragDataSize[0];
-			this.nextTargetHeadPos = inputRing.tailPos.longValue()+monitorMessageSize;
-			this.headPosCache = inputRing.headPos.longValue();
+			this.nextTargetHeadPos = RingBuffer.tailPosition(inputRing)+monitorMessageSize;
+			this.headPosCache = RingBuffer.headPosition(inputRing);
 		}
 
 		@Override
@@ -57,7 +57,7 @@ public class RingBufferPipeline {
 
 			do {				
 	            if (headPosCache < nextTargetHeadPos) {
-					headPosCache = inputRing.headPos.longValue();
+					headPosCache = RingBuffer.headPosition(inputRing);
 					if (headPosCache < nextTargetHeadPos) {
 						return; //this is a state-less stage so it must return false not true unless there is good reason.
 					}
@@ -123,7 +123,7 @@ public class RingBufferPipeline {
 				//System.err.println(headPosCache+"  "+nextTargetHead+"  "+messageCount+"vs"+testMessages);
 				
 			        if (headPosCache < nextTargetHead) {
-						headPosCache = inputRing.headPos.longValue();
+						headPosCache = RingBuffer.headPosition(inputRing);
 						if (headPosCache < nextTargetHead) {
 							return; //come back later when we find more content
 						}
@@ -159,7 +159,7 @@ public class RingBufferPipeline {
 						while (--i>=0) {
 							if (testArray[i]==data[(pos+i)&mask]) {		    									
 							} else {
-								fail("String does not match at index "+i+" of "+len+"   tailPos:"+inputRing.tailPos.get()+" byteFailurePos:"+(pos+i)+" masked "+((pos+i)&mask));
+								fail("String does not match at index "+i+" of "+len+"   tailPos:"+RingBuffer.tailPosition(inputRing)+" byteFailurePos:"+(pos+i)+" masked "+((pos+i)&mask));
 								
 							}
 						}
@@ -314,14 +314,14 @@ public class RingBufferPipeline {
 					//TODO: B, need to find a way to make this pattern easy, must at least build example templates.
 					//must update headPosCache but only when we need to 
 			        if (headPosCache < nextHeadTarget) {
-						headPosCache = inputRing.headPos.longValue();
+						headPosCache = RingBuffer.headPosition(inputRing);
 						if (headPosCache < nextHeadTarget) {
 							return;
 						}
 					}
 
 			        if (tailPosCache < nextTailTarget) {
-			        	tailPosCache = outputRing.tailPos.longValue();
+			        	tailPosCache = RingBuffer.tailPosition(outputRing);
 						if (tailPosCache < nextTailTarget) {
 							return;
 						}
@@ -423,7 +423,7 @@ public class RingBufferPipeline {
 			
 			 do {
 		        if (tailPosCache < nextTailTarget) {
-		        	tailPosCache = outputRing.tailPos.longValue();
+		        	tailPosCache = RingBuffer.tailPosition(outputRing);
 					if (tailPosCache < nextTailTarget) {
 						return;
 					}
