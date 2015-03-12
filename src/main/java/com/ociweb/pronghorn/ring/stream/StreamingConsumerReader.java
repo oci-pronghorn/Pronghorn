@@ -57,7 +57,7 @@ public class StreamingConsumerReader {
 			    
 			    //return to try again later if we can not read a fragment
 		        if (headPosCache < nextTargetHead) {
-					headPosCache = inputRing.headPos.longValue();
+					headPosCache = RingBuffer.headPosition(inputRing);
 					if (headPosCache < nextTargetHead) {
 						return; //come back later when we find more content
 					}

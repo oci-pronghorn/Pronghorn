@@ -52,13 +52,13 @@ public final class RingBuffer {
     public int[] buffer;
     public final int mask;
 
-    //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers
+    //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers  Must convert to accessor methods first
     public final PaddedLong workingHeadPos = new PaddedLong();
-    public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos
+    public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos //TODO: AAAA, this is modified externally and should not be
 
-    //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers
+    //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
     public final PaddedLong workingTailPos = new PaddedLong();
-    public final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos
+    public final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos  //TODO: AAAA, this is modified externally and should not be
 
     public final int maxByteSize;
     public byte[] byteBuffer;
@@ -67,7 +67,7 @@ public final class RingBuffer {
     //New interface for unified access to next head position.
     //public final AtomicLong publishedHead = new PaddedAtomicLong(); // top 32 is primary, low 32 is byte 
     
-    //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers
+    //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
     public final PaddedInt byteWorkingHeadPos = new PaddedInt();
     public final PaddedAtomicInteger bytesHeadPos = new PaddedAtomicInteger(); //Base value for byte array writes, may get renamed( and may not need to be atomic)
    
@@ -77,7 +77,7 @@ public final class RingBuffer {
 	
         
     
-    //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers
+    //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
     public final PaddedAtomicInteger bytesTailPos = new PaddedAtomicInteger();
     public final PaddedInt byteWorkingTailPos = new PaddedInt();
     
