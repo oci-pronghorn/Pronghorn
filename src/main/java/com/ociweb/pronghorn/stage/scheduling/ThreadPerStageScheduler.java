@@ -24,7 +24,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		
 	}
 	
-	
+	//TODO: AAA, where is the assert startup?
 	public void startup() {
 		
 		int i = PronghornStage.totalStages();

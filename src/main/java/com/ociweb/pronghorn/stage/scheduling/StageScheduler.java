@@ -66,8 +66,15 @@ public abstract class StageScheduler {
 			while (--i>=0) {
 				//confirm that all the counts are even, because we added 1 to start the stage and now 1 to stop the stage
 				if (0!=(runCounters[i]&1)) {
-					log.error("Expected stage {} to be stopped but it appears to be running.", GraphManager.getStage(graphManager,i));
+					PronghornStage stage = GraphManager.getStage(graphManager,i);
+					log.error("Expected stage {} to be stopped but it appears to be running.", stage);
 					result = false;
+					//get the input rings and output rings
+					
+				    GraphManager.logInputs(log, graphManager, stage);
+				    GraphManager.logOutputs(log, graphManager, stage);
+				    					
+					
 				}				
 			}
 			if (!result) {

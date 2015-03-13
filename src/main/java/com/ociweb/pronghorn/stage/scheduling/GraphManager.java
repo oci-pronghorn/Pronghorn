@@ -2,6 +2,8 @@ package com.ociweb.pronghorn.stage.scheduling;
 
 import java.util.Arrays;
 
+import org.slf4j.Logger;
+
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.stage.PronghornStage;
 
@@ -507,7 +509,23 @@ public class GraphManager {
 					m.stageIdToStage[i].shutdown(); //TOOD: better error reporting here.
 				}
 			}
-		}
+		}		
+	}
+
+	public static void logOutputs(Logger log, GraphManager m, PronghornStage stage) {
+		int ringId;
+		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
+		while (-1 != (ringId=m.multOutputIds[idx++])) {					
+			log.error("Output Queue :{}",m.ringIdToRing[ringId]);				
+		}	
+	}
+
+	public static void logInputs(Logger log, GraphManager m,	PronghornStage stage) {
+		int ringId;
+		int idx = m.stageIdToInputsBeginIdx[stage.stageId];
+		while (-1 != (ringId=m.multInputIds[idx++])) {	
+			log.error("Input Queue :{}",m.ringIdToRing[ringId]);					
+		}				
 		
 	}
 
