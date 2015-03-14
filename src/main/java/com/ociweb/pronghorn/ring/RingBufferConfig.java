@@ -17,8 +17,8 @@ public class RingBufferConfig {
 	
 	public RingBufferConfig(FieldReferenceOffsetManager from) {
 		//default size which is smaller than half of 64K because this is the L1 cache size on intel haswell.
-		this.primaryBits = 7;
-		this.byteBits = 14;
+		this.primaryBits = 6;
+		this.byteBits = 15;
 		this.byteConst = null;
 		this.from = from;
 		//validate

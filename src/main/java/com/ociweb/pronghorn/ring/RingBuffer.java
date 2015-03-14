@@ -54,11 +54,11 @@ public final class RingBuffer {
 
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers  Must convert to accessor methods first
     public final PaddedLong workingHeadPos = new PaddedLong();
-    public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos //TODO: AAAA, this is modified externally and should not be
+    final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos 
 
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
     public final PaddedLong workingTailPos = new PaddedLong();
-    public final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos  //TODO: AAAA, this is modified externally and should not be
+    final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos  
 
     public final int maxByteSize;
     public byte[] byteBuffer;
@@ -1104,6 +1104,7 @@ public final class RingBuffer {
     }
     
     public static int takeMsgIdx(RingBuffer ring) {    	
+    	//TODO: AAA, need to add assert to detect if this release was forgotten.
     	RingBuffer.markBytesReadBase(ring);
     	return readValue(0, ring.buffer,ring.mask,ring.workingTailPos.value++);
     }
@@ -1287,10 +1288,30 @@ public final class RingBuffer {
 		 return ring.headPos.get();
 	}
 
+	/**
+	 * This method is only for build transfer stages that require direct manipulation of the position.
+	 * Only call this if you really know what you are doing.
+	 * @param ring
+	 * @param workingHeadPos
+	 */
+	public static void publishWorkingHeadPosition(RingBuffer ring, int workingHeadPos) {
+		ring.headPos.lazySet(ring.workingHeadPos.value = workingHeadPos);
+	}
+	
 	public static long tailPosition(RingBuffer ring) {
 		return ring.tailPos.get();
 	}
-
+	
+	/**
+	 * This method is only for build transfer stages that require direct manipulation of the position.
+	 * Only call this if you really know what you are doing.
+	 * @param ring
+	 * @param workingTailPos
+	 */
+	public static void publishWorkingTailPosition(RingBuffer ring, long workingTailPos) {
+		ring.tailPos.lazySet(ring.workingTailPos.value = workingTailPos);
+	}
+	
 	public static int primarySize(RingBuffer ring) {
 		return ring.maxSize;
 	}

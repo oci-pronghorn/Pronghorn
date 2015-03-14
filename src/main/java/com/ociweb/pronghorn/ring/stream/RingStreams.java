@@ -239,7 +239,7 @@ public class RingStreams {
 		int stop = dataOffset+dataLength;
 		while (position<stop) {
 			 
-			    tailPosCache = spinBlockOnTail(tailPosCache, headPosition(output)-fill, output);
+			    tailPosCache = spinBlockOnTail(tailPosCache, headPosition(output)-fill, output); ///TODO:AAAAAA, written the slow way.
 
 			    int fragmentLength = (int)Math.min(blockSize, stop-position);
 		 
@@ -254,7 +254,7 @@ public class RingStreams {
 	}
 
 	public static void writeEOF(RingBuffer ring) {
-		spinBlockOnTail(tailPosition(ring), headPosition(ring)-(1 + ring.mask - 2), ring);
+		spinBlockOnTail(tailPosition(ring), headPosition(ring)-(1 + ring.mask - RingBuffer.EOF_SIZE), ring);
 		RingBuffer.publishEOF(ring);	
 	}
 
