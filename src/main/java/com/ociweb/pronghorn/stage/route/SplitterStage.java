@@ -98,7 +98,7 @@ public class SplitterStage extends PronghornStage {
 		//get the start and stop locations for the copy
 		//now find the point to start reading from, this is moved forward with each new read.		
 		int pMask = ss.source.mask;
-		long tempTail = ss.source.tailPos.get();
+		long tempTail = RingBuffer.tailPosition(ss.source);
 		int primaryTailPos = pMask & (int)tempTail;				
 		long totalPrimaryCopy = (headPos - tempTail);
 		if (totalPrimaryCopy <= 0) {
@@ -118,8 +118,8 @@ public class SplitterStage extends PronghornStage {
 		doingCopy(ss, byteTailPos, primaryTailPos, (int)totalPrimaryCopy, totalBytesCopy);
 								
 		//release tail so data can be written
-		ss.source.bytesTailPos.lazySet(ss.source.byteWorkingTailPos.value = 0xEFFFFFFF&(tempByteTail + totalBytesCopy));		
-		ss.source.tailPos.lazySet(ss.source.workingTailPos.value = tempTail + totalPrimaryCopy);
+		ss.source.bytesTailPos.lazySet(ss.source.byteWorkingTailPos.value = 0xEFFFFFFF&(tempByteTail + totalBytesCopy));
+		RingBuffer.publishWorkingTailPosition(ss.source,tempTail + totalPrimaryCopy);
 		
 		return false; //finished all the copy  for now
 	}
@@ -178,10 +178,12 @@ public class SplitterStage extends PronghornStage {
 		ringBuffer.byteWorkingHeadPos.value = ringBuffer.bytesHeadPos.addAndGet(totalBytesCopy);
 								
 		//copy the primary data
+		int headPosition = (int)RingBuffer.headPosition(ringBuffer);
 		RingBuffer.copyIntsFromToRing(ss.source.buffer,                primaryTailPos, ss.source.mask, 
-									 ringBuffer.buffer, (int)RingBuffer.headPosition(ringBuffer), ringBuffer.mask, 
+									 ringBuffer.buffer, headPosition, ringBuffer.mask, 
 									 totalPrimaryCopy);
-		ringBuffer.workingHeadPos.value = ringBuffer.headPos.addAndGet(totalPrimaryCopy);	
+		
+		RingBuffer.publishWorkingHeadPosition(ringBuffer, headPosition + totalPrimaryCopy);
 		
 		//HackTEST
 		ringBuffer.ringWalker.bnmHeadPosCache = ringBuffer.workingHeadPos.value;
