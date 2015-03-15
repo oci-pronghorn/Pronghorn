@@ -163,6 +163,8 @@ public class GraphManager {
 		if (idx>=target.length) {
 			result = Arrays.copyOf(target, (1+idx)*2); //double the array
 		}
+		assert(0==result[idx]) : "duplicate assignment detected, see stack and double check all the stages added to the graph.";
+		
 		result[idx] = value;
 		return result;
 	}
@@ -260,7 +262,8 @@ public class GraphManager {
 
 
 	public static void register(GraphManager gm, PronghornStage stage, RingBuffer input, RingBuffer[] outputs) {
-		synchronized(gm.lock) {
+		synchronized(gm.lock) {		
+			
 			int stageId = beginStageRegister(gm, stage);
 			setStageInitialState(gm, stageId);
 			
