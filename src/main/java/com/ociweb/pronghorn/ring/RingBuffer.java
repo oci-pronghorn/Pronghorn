@@ -1,5 +1,10 @@
 package com.ociweb.pronghorn.ring;
 
+import static com.ociweb.pronghorn.ring.RingBuffer.addBytePosAndLen;
+import static com.ociweb.pronghorn.ring.RingBuffer.copyASCIIToBytes;
+import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
+import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
@@ -408,7 +413,7 @@ public final class RingBuffer {
 		int len = leftConvertLongToASCII(outputRing, ones, max);
 		outputRing.byteWorkingHeadPos.value = 0xEFFFFFFF&(len + outputRing.byteWorkingHeadPos.value);
 		
-		addASCIIToBytes(".", outputRing);
+		copyASCIIToBytes(".", outputRing);
 		
 		long frac =  Math.abs(readDecimalMantissa - (long)(ones/RingReader.powdi[64 + readDecimalExponent]));		        			
 		validateVarLength(outputRing, 21);
@@ -418,7 +423,7 @@ public final class RingBuffer {
 		
 		//may require trailing zeros
 		while (len1<readDecimalExponent) {
-			addASCIIToBytes("0",outputRing);
+			copyASCIIToBytes("0",outputRing);
 			len1++;
 		}
 		
@@ -467,6 +472,7 @@ public final class RingBuffer {
 		return Math.min(maxBatchFromBytes, maxBatchFromPrimary);
 	}
 
+	@Deprecated
 	public static void publishEOF(RingBuffer ring) {
 		
 		assert(ring.tailPos.get()+ring.maxSize>=ring.headPos.get()+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
@@ -753,11 +759,19 @@ public final class RingBuffer {
 	    return (((long)sourcePos)<<32) | chr;
 	  }
 
-	public static int addASCIIToBytes(CharSequence source, RingBuffer rbRingBuffer) {
-		return addASCIIToBytes(source, 0, source.length(), rbRingBuffer);
+	public static int copyASCIIToBytes(CharSequence source, RingBuffer rbRingBuffer) {
+		return copyASCIIToBytes(source, 0, source.length(), rbRingBuffer);
 	}
 	  
-	public static int addASCIIToBytes(CharSequence source, int sourceIdx, final int sourceLen, RingBuffer rbRingBuffer) {
+	public static void addASCII(CharSequence source, int sourceIdx, int sourceCharCount, RingBuffer rb) {
+		addBytePosAndLen(rb, copyASCIIToBytes(source, sourceIdx, sourceCharCount, rb), sourceCharCount);	
+	}
+	
+	public static void addASCII(char[] source, int sourceIdx, int sourceCharCount, RingBuffer rb) {
+		addBytePosAndLen(rb, copyASCIIToBytes(source, sourceIdx, sourceCharCount, rb), sourceCharCount);			
+	}
+	
+	public static int copyASCIIToBytes(CharSequence source, int sourceIdx, final int sourceLen, RingBuffer rbRingBuffer) {
 		final int p = rbRingBuffer.byteWorkingHeadPos.value;
 		//TODO: revisit this not sure this conditional is required
 	    if (sourceLen > 0) {
@@ -779,7 +793,7 @@ public final class RingBuffer {
 		return p;
 	}
 
-    public static int addASCIIToBytes(char[] source, int sourceIdx,	final int sourceLen, RingBuffer rbRingBuffer) {
+    public static int copyASCIIToBytes(char[] source, int sourceIdx, final int sourceLen, RingBuffer rbRingBuffer) {
 		final int p = rbRingBuffer.byteWorkingHeadPos.value;
 	    if (sourceLen > 0) {
 	    	int targetMask = rbRingBuffer.byteMask;
@@ -801,22 +815,38 @@ public final class RingBuffer {
 		return p;
 	}
 
-	public static void copyASCIIToByte(char[] source, int sourceIdx, byte[] target, int targetIdx, int len) {
+	private static void copyASCIIToByte(char[] source, int sourceIdx, byte[] target, int targetIdx, int len) {
 		int i = len;
 		while (--i>=0) {
 			target[targetIdx+i] = (byte)(0xFF&source[sourceIdx+i]);
 		}
 	}
 
-	public static void copyASCIIToByte(CharSequence source, int sourceIdx, byte[] target, int targetIdx, int len) {
+	private static void copyASCIIToByte(CharSequence source, int sourceIdx, byte[] target, int targetIdx, int len) {
 		int i = len;
 		while (--i>=0) {
 			target[targetIdx+i] = (byte)(0xFF&source.charAt(sourceIdx+i));
 		}
 	}
 
-	public static int copyUTF8ToByte(CharSequence source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {
+	public static void addUTF8(CharSequence source, int sourceIdx, int sourceCharCount, RingBuffer rb) {
+		addBytePosAndLen(rb, rb.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceIdx,sourceCharCount,rb));		
+	}
 	
+	public static void addUTF8(char[] source, int sourceIdx, int sourceCharCount, RingBuffer rb) {
+		addBytePosAndLen(rb, rb.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceIdx,sourceCharCount,rb));		
+	}
+	
+	/**
+	 * WARNING: unlike the ASCII version this method returns bytes written and not the position
+	 */
+	public static int copyUTF8ToByte(CharSequence source, int sourceIdx, int sourceCharCount, RingBuffer rb) {
+		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, rb.byteWorkingHeadPos.value, sourceCharCount);
+		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(rb.byteWorkingHeadPos.value+byteLength);
+		return byteLength;
+	}
+	
+	private static int copyUTF8ToByte(CharSequence source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {	
 	    int pos = targetIdx;
 	    int c = 0;        
 	    while (c < charCount) {
@@ -825,7 +855,16 @@ public final class RingBuffer {
 	    return pos - targetIdx;
 	}
 
-	public static int copyUTF8ToByte(char[] source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {
+	/**
+	 * WARNING: unlike the ASCII version this method returns bytes written and not the position
+	 */
+	public static int copyUTF8ToByte(char[] source, int sourceIdx, int sourceCharCount, RingBuffer rb) {
+		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, rb.byteWorkingHeadPos.value, sourceCharCount);
+		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(rb.byteWorkingHeadPos.value+byteLength);
+		return byteLength;
+	}
+	
+	private static int copyUTF8ToByte(char[] source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {
 	
 	    int pos = targetIdx;
 	    int c = 0;        
@@ -834,6 +873,11 @@ public final class RingBuffer {
 	    }		
 	    return pos - targetIdx;
 	}
+	
+	
+	
+	
+	
 
 	public static int encodeSingleChar(int c, byte[] buffer,int mask, int pos) {
 	
@@ -932,11 +976,15 @@ public final class RingBuffer {
     }
     
 
+    @Deprecated //use addIntValue
 	public static void addValue(RingBuffer rb, int value) {
-		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
+    	 addIntValue(value, rb);		
 	}
  
-    
+	public static void addIntValue(int value, RingBuffer rb) {
+		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
+	}
+
     
     //must be called by low-level API when starting a new message
     public static void addMsgIdx(RingBuffer rb, int msgIdx) {
@@ -971,12 +1019,17 @@ public final class RingBuffer {
     } 
     
     public static void addBytePosAndLen(int[] buffer, int rbMask, PaddedLong headCache, int baseBytePos, int position, int length) {
-    	long p = headCache.value; 
-        setBytePosAndLen(buffer, rbMask, p, position, length, baseBytePos);        
-        headCache.value = p+2;
+        setBytePosAndLen(buffer, rbMask, headCache.value, position, length, baseBytePos);        
+        headCache.value = headCache.value+2;
         
     }
 
+    public static void addBytePosAndLen(RingBuffer ring, int position, int length) {
+    	PaddedLong headCache = ring.workingHeadPos;
+		setBytePosAndLen(ring.buffer, ring.mask, headCache.value, position, length, RingBuffer.bytesWriteBase(ring));        
+		headCache.value = headCache.value+2;
+    }
+    
 	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat, int baseBytePos) {
 	   	//negative position is written as is because the internal array does not have any offset (but it could some day)
     	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
@@ -1036,7 +1089,12 @@ public final class RingBuffer {
 		return pos;
 	}   
     
+	@Deprecated //use addLongVlue(value, rb)
     public static void addLongValue(RingBuffer rb, long value) {
+		 addLongValue(value, rb);		
+	}
+		
+	public static void addLongValue(long value, RingBuffer rb) {
 		 addLongValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
 	}
     
@@ -1174,12 +1232,17 @@ public final class RingBuffer {
     	publishHeadPositions(ring);  	
     }
 
+    public static void publishAllWrites(RingBuffer ring) {
+    	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); 
+		ring.headPos.lazySet(ring.workingHeadPos.value);			
+		ring.batchPublishCountDown = ring.batchPublishCountDownInit;    	
+    }
+    
+    
 	public static void publishHeadPositions(RingBuffer ring) {
 		if ((--ring.batchPublishCountDown<=0)) {			
 			//publish writes			
-			ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); 
-			ring.headPos.lazySet(ring.workingHeadPos.value);			
-			ring.batchPublishCountDown = ring.batchPublishCountDownInit;
+			publishAllWrites(ring);
 		}
 	}
     
@@ -1334,5 +1397,36 @@ public final class RingBuffer {
 	public static ByteBuffer wrappedSecondaryByteBuffer(RingBuffer ring) {
 		return ring.wrappedSecondaryByteBuffer;
 	}
+
+	/////////////
+	//low level API
+	////////////
+	
+	
+	//This holds the last known state of the tail position, if its sufficiently far ahead it indicates that
+	//we do not need to fetch it again and this reduces contention on the CAS with the reader.
+	//This is an important performance feature of the low level API and should not be modified.
+	private long llwTailPosCache;
+	private long llwNextTailTarget; //TODO: move these into private class
+	
+	public static void initLowLevelWriter(RingBuffer output) {
+
+			//We have no idea if this was a new ring or one previously used so instead of assuming the 
+			//tail is at zero as it would be on construction we will ask for the value explicitly here
+			output.llwTailPosCache = tailPosition(output);
+			output.llwNextTailTarget = headPosition(output) - output.maxSize;
+
+	}
+	
+	public static boolean roomToLowLevelWrite(RingBuffer output, int size) {
+		return (output.llwTailPosCache >= output.llwNextTailTarget+size) ||  //only does second part if the first does not pass 
+			   ((output.llwTailPosCache = RingBuffer.tailPosition(output)) >= output.llwNextTailTarget+size);
+	}
+	
+	public static void confirmLowLevelWrite(RingBuffer output, int size) {
+		output.llwNextTailTarget += size;
+	}
+
+
 	
 }

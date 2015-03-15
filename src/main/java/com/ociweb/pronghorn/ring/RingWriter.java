@@ -259,40 +259,30 @@ public class RingWriter {
     	assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 
     	RingBuffer.validateVarLength(rb, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-        final int p = rb.byteWorkingHeadPos.value;	    
-		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, p, source.length());
-		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(p+byteLength);
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength, RingBuffer.bytesWriteBase(rb));
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask,
+				rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc),				
+				rb.byteWorkingHeadPos.value, RingBuffer.copyUTF8ToByte(source, 0, source.length(), rb), RingBuffer.bytesWriteBase(rb));
     }
 
     public static void writeUTF8(RingBuffer rb, int loc, CharSequence source, int offset, int length) {
     	assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 
     	RingBuffer.validateVarLength(rb, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-        final int p = rb.byteWorkingHeadPos.value;	    
-		int byteLength = RingBuffer.copyUTF8ToByte(source, offset, rb.byteBuffer, rb.byteMask, p, length);
-		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(p+byteLength);
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength, RingBuffer.bytesWriteBase(rb));
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), rb.byteWorkingHeadPos.value, RingBuffer.copyUTF8ToByte(source, offset, length, rb), RingBuffer.bytesWriteBase(rb));
     }
         
     public static void writeUTF8(RingBuffer rb, int loc, char[] source) {
     	assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
     	
-    	RingBuffer.validateVarLength(rb, source.length<<3); //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-        final int p = rb.byteWorkingHeadPos.value;		
-		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, p, source.length);
-		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(p+byteLength);       
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength, RingBuffer.bytesWriteBase(rb));
+    	RingBuffer.validateVarLength(rb, source.length<<3); //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)      
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), rb.byteWorkingHeadPos.value, RingBuffer.copyUTF8ToByte(source, 0, source.length, rb), RingBuffer.bytesWriteBase(rb));
     }
       
     public static void writeUTF8(RingBuffer rb, int loc, char[] source, int offset, int length) {
     	assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
     	
-    	RingBuffer.validateVarLength(rb, length<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-        final int p = rb.byteWorkingHeadPos.value;		
-		int byteLength = RingBuffer.copyUTF8ToByte(source, offset, rb.byteBuffer, rb.byteMask, p, length);
-		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(p+byteLength);       
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength, RingBuffer.bytesWriteBase(rb));
+    	RingBuffer.validateVarLength(rb, length<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)     
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), rb.byteWorkingHeadPos.value, RingBuffer.copyUTF8ToByte(source, offset, length, rb), RingBuffer.bytesWriteBase(rb));
     }
 
     public static void writeASCII(RingBuffer rb, int loc, char[] source) {
@@ -300,7 +290,7 @@ public class RingWriter {
 
     	RingBuffer.validateVarLength(rb,source.length);
 		int sourceLen = source.length;
-        final int p = RingBuffer.addASCIIToBytes(source, 0, sourceLen,	rb);
+        final int p = RingBuffer.copyASCIIToBytes(source, 0, sourceLen,	rb);
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, sourceLen, RingBuffer.bytesWriteBase(rb));
     }
     
@@ -308,7 +298,7 @@ public class RingWriter {
     	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 
     	RingBuffer.validateVarLength(rb,length);
-        final int p = RingBuffer.addASCIIToBytes(source, offset, length,	rb);
+        final int p = RingBuffer.copyASCIIToBytes(source, offset, length,	rb);
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, length, RingBuffer.bytesWriteBase(rb));
     }   
     
@@ -317,7 +307,7 @@ public class RingWriter {
 
     	RingBuffer.validateVarLength(rb, source.length());
 		int sourceLen = source.length();
-        final int p = RingBuffer.addASCIIToBytes(source, 0, sourceLen, rb);
+        final int p = RingBuffer.copyASCIIToBytes(source, 0, sourceLen, rb);
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, sourceLen, RingBuffer.bytesWriteBase(rb));
     }
     
@@ -325,7 +315,7 @@ public class RingWriter {
     	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 
     	RingBuffer.validateVarLength(rb, source.length());
-        final int p = RingBuffer.addASCIIToBytes(source, offset, length, rb);
+        final int p = RingBuffer.copyASCIIToBytes(source, offset, length, rb);
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, length, RingBuffer.bytesWriteBase(rb));
     }
     
