@@ -83,8 +83,8 @@ public final class RingBuffer {
         
     
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
-    public final PaddedAtomicInteger bytesTailPos = new PaddedAtomicInteger();
     public final PaddedInt byteWorkingTailPos = new PaddedInt();
+    public final PaddedAtomicInteger bytesTailPos = new PaddedAtomicInteger();
     
     //defined externally and never changes
     final byte[] constByteBuffer;
@@ -1350,6 +1350,10 @@ public final class RingBuffer {
 	public static long headPosition(RingBuffer ring) {
 		 return ring.headPos.get();
 	}
+	
+	public static int bytesHeadPosition(RingBuffer ring) {
+		return ring.bytesHeadPos.get();
+	}
 
 	/**
 	 * This method is only for build transfer stages that require direct manipulation of the position.
@@ -1363,6 +1367,10 @@ public final class RingBuffer {
 	
 	public static long tailPosition(RingBuffer ring) {
 		return ring.tailPos.get();
+	}
+	
+	public static int bytesTailPosition(RingBuffer ring) {
+		return ring.bytesTailPos.get();
 	}
 	
 	/**
@@ -1418,6 +1426,8 @@ public final class RingBuffer {
 
 	}
 	
+	//TODO: AA, can high level API leverage this
+	//TODO: AA, adjust unit tests to use this.
 	public static boolean roomToLowLevelWrite(RingBuffer output, int size) {
 		return (output.llwTailPosCache >= output.llwNextTailTarget+size) ||  //only does second part if the first does not pass 
 			   ((output.llwTailPosCache = RingBuffer.tailPosition(output)) >= output.llwNextTailTarget+size);

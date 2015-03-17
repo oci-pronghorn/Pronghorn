@@ -84,6 +84,7 @@ public class RingStreams {
 						outputStream.write(data, off, len1);
 						outputStream.write(data, 0, len-len1);
 					}
+					outputStream.flush();
 	        		releaseReadLock(inputRing);
             	}
         	}
@@ -160,6 +161,7 @@ public class RingStreams {
 					 	//simple add bytes
 						 os.write(data, adjustedOffset, len); 
 					}
+					os.flush();
 				}
 				
         		releaseReadLock(inputRing);

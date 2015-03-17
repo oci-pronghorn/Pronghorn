@@ -9,7 +9,6 @@ import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
 
-import java.io.IOException;
 import java.io.InputStream;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
