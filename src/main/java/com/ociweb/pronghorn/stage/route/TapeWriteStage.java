@@ -86,10 +86,10 @@ public class TapeWriteStage extends PronghornStage {
         
         //TODO: A, publish to a single atomic long and read it here.
         //get the new head position
-        byteHeadPos = ss.source.bytesHeadPos.get();
+        byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
 		headPos = RingBuffer.headPosition(ss.source);		
-		while(byteHeadPos != ss.source.bytesHeadPos.get() || headPos != RingBuffer.headPosition(ss.source) ) {
-			byteHeadPos = ss.source.bytesHeadPos.get();
+		while(byteHeadPos != RingBuffer.bytesHeadPosition(ss.source) || headPos != RingBuffer.headPosition(ss.source) ) {
+			byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
 			headPos = RingBuffer.headPosition(ss.source);
 		}	
 			
@@ -108,7 +108,7 @@ public class TapeWriteStage extends PronghornStage {
 		}
 			
 		int bMask = ss.source.byteMask;		
-		int tempByteTail = ss.source.bytesTailPos.get();
+		int tempByteTail = RingBuffer.bytesTailPosition(ss.source);
 		int byteTailPos = bMask & tempByteTail;
 		int totalBytesCopy =      (bMask & byteHeadPos) - byteTailPos; 
 		if (totalBytesCopy < 0) {

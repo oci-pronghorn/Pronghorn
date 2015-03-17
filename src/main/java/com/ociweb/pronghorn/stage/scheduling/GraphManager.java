@@ -13,6 +13,8 @@ public class GraphManager {
 		private Object lock = new Object();	
 		public byte[] stageTerminationState = new byte[0];
 	}
+	
+	//TODO: add init of -1 to all the arrays for better error checking.
 
 	public final static String SCHEDULE_RATE = "SCHEDULE_RATE";
 	private final static int INIT_RINGS = 32;
@@ -324,7 +326,38 @@ public class GraphManager {
 				gm.stageStateData.stageTerminationState[stage.stageId] = 2;
 			}
 			assert(2 == gm.stageStateData.stageTerminationState[stage.stageId]);
+			assert(recordInputsAndOutputValuesForValidation(gm, stage.stageId));
 		}
+	}
+
+	private static boolean recordInputsAndOutputValuesForValidation(GraphManager gm, int stageId) {
+		
+		
+		int ringId;
+		int idx;
+		
+		idx = gm.stageIdToInputsBeginIdx[stageId];
+		while (-1 != (ringId=gm.multInputIds[idx++])) {	
+			
+			//record the tail positions for this stage
+			
+			//gm.ringIdToRing[ringId];	//Must verify these are the same after the shutdown is complete
+			
+		}
+		
+		
+		idx = gm.stageIdToOutputsBeginIdx[stageId];
+		while (-1 != (ringId=gm.multOutputIds[idx++])) {	
+			
+			//record the head positions for this stage
+			
+			//gm.ringIdToRing[ringId];	//Must verify these are the same after the shutdown is complete	
+			
+		}	
+		
+		
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 	private static void regOutput(GraphManager pm, RingBuffer output,
@@ -465,6 +498,7 @@ public class GraphManager {
 	public static boolean mayHaveUpstreamData(GraphManager m, int stageId) {
 		
 		if (2 == m.stageStateData.stageTerminationState[stageId]) { //terminated 
+			//TODO: may want to add log of full queue found here.
 			return false;
 		}
 		
@@ -509,6 +543,12 @@ public class GraphManager {
 			if (null!=m.stageIdToStage[i]) {				
 				//an input stage is one that has no input ring buffers
 				if (-1 == m.multInputIds[m.stageIdToInputsBeginIdx[m.stageIdToStage[i].stageId]]) {
+					//TODO: this call can happen when the stage is still running. should wait for exit run();
+					
+					
+					//TOOD: need new base class for the blocking stage.
+					
+					
 					m.stageIdToStage[i].shutdown(); //TOOD: better error reporting here.
 				}
 			}
