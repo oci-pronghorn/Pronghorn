@@ -444,7 +444,7 @@ public class RingWalker {
 		RingBuffer.copyBytesFromToRing(inputRing.byteBuffer, inputRing.byteWorkingTailPos.value, inputRing.byteMask, 
 				                       outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask, 
 				                       bytesToCopy);
-		outputRing.byteWorkingHeadPos.value =  0xEFFFFFFF&(bytesToCopy+outputRing.byteWorkingHeadPos.value);
+		outputRing.byteWorkingHeadPos.value =  RingBuffer.BYTES_WRAP_MASK&(bytesToCopy+outputRing.byteWorkingHeadPos.value);
 		
 		
 		//release the input fragment, we are using working tail and next working tail so batch release should work on walker.

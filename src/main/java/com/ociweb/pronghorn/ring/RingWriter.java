@@ -222,7 +222,7 @@ public class RingWriter {
 		
     	RingBuffer.validateVarLength(rb, length);
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), p, length, RingBuffer.bytesWriteBase(rb));
-        rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(p + length);        
+        rb.byteWorkingHeadPos.value = RingBuffer.BYTES_WRAP_MASK&(p + length);        
     }
     
     public static void writeBytes(RingBuffer rb, int loc, byte[] source, int offset, int length, int mask) {
@@ -231,7 +231,7 @@ public class RingWriter {
     	assert(length>=0);
 		RingBuffer.copyBytesFromToRing(source, offset, mask, rb.byteBuffer, rb.byteWorkingHeadPos.value, rb.byteMask, length);		
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), rb.byteWorkingHeadPos.value, length, RingBuffer.bytesWriteBase(rb));
-		rb.byteWorkingHeadPos.value =  0xEFFFFFFF&(rb.byteWorkingHeadPos.value + length);	
+		rb.byteWorkingHeadPos.value =  RingBuffer.BYTES_WRAP_MASK&(rb.byteWorkingHeadPos.value + length);	
     }
         
     public static void writeBytes(RingBuffer rb, int loc, byte[] source) { // 01000
@@ -243,7 +243,7 @@ public class RingWriter {
         assert(sourceLen>=0);		
         RingBuffer.copyBytesFromToRing(source, 0, Integer.MAX_VALUE, rb.byteBuffer, rb.byteWorkingHeadPos.value, rb.byteMask, sourceLen);   	
         RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), rb.byteWorkingHeadPos.value, sourceLen, RingBuffer.bytesWriteBase(rb));
-		rb.byteWorkingHeadPos.value = 0xEFFFFFFF&(rb.byteWorkingHeadPos.value + sourceLen);
+		rb.byteWorkingHeadPos.value = RingBuffer.BYTES_WRAP_MASK&(rb.byteWorkingHeadPos.value + sourceLen);
     }
         
 	public static void writeBytes(RingBuffer rb, int loc, ByteBuffer source, int length) {		
