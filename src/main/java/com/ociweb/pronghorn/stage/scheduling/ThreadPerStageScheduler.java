@@ -71,11 +71,11 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		} catch (InterruptedException e) {
 			executorService.shutdownNow();
 			Thread.currentThread().interrupt();
+			return true;			
 		} catch (Throwable e) {
 			log.error("awaitTermination", e);
 			return false;
 		}
-		return true;
 	}
 	
 	

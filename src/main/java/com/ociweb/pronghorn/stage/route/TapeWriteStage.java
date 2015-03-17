@@ -122,7 +122,7 @@ public class TapeWriteStage extends PronghornStage {
 			
 			
 			//release tail so data can be written
-			ss.source.bytesTailPos.lazySet(ss.source.byteWorkingTailPos.value = 0xEFFFFFFF&(tempByteTail + totalBytesCopy));		
+			ss.source.bytesTailPos.lazySet(ss.source.byteWorkingTailPos.value = RingBuffer.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy));		
 			RingBuffer.publishWorkingTailPosition(ss.source,tempTail + totalPrimaryCopy);
 			
 			return true;

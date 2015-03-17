@@ -536,6 +536,8 @@ public class GraphManager {
     	return 2==m.stageStateData.stageTerminationState[stageId];
     }
 
+    //TODO: AA must have blocking base stage to extend for blockers.
+    
 	public static void terminateInputStages(GraphManager m) {
 				
 		int i = m.stageIdToStage.length;
