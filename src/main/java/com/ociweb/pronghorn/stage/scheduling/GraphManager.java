@@ -357,7 +357,7 @@ public class GraphManager {
 		
 		
 		// TODO Auto-generated method stub
-		return false;
+		return true;
 	}
 
 	private static void regOutput(GraphManager pm, RingBuffer output,
