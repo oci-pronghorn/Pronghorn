@@ -511,10 +511,6 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 
 	//this impl only works for simple case where every message is one fragment. 
 	public static boolean tryReadFragment(RingBuffer ringBuffer) { 
-	
-		if (null==ringBuffer.buffer) {
-			ringBuffer.init();//hack test
-		}		
 		
 		if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBuffer.ringWalker.nextCursor)) {    		
 			return RingWalker.prepReadMessage(ringBuffer, ringBuffer.ringWalker);			   

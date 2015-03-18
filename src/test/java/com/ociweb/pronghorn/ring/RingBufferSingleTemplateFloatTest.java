@@ -34,6 +34,7 @@ public class RingBufferSingleTemplateFloatTest {
     	byte byteRingSizeInBits = 18;
     	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+    	ring.initBuffers();
     	
         int messageSize = FROM.fragDataSize[FRAG_LOC];
         
@@ -105,6 +106,7 @@ public class RingBufferSingleTemplateFloatTest {
     	final byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
     	final byte byteRingSizeInBits = 16;
     	final RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+    	ring.initBuffers();
     	
         final int messageSize = FROM.fragDataSize[FRAG_LOC];
         

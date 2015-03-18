@@ -111,7 +111,8 @@ public class RingBufferSingleTemplateUTF8Test {
     
 
     	final RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
-    	        
+    	ring.initBuffers();
+    	
         final int varDataMax = ring.maxAvgVarLen >> 3; //fewer chars for UTF8        
         final int testSize = (1<<byteRingSizeInBits)/ring.maxAvgVarLen; 
                 

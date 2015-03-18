@@ -89,7 +89,7 @@ public class RingBufferMultiTemplateTest {
     	byte byteRingSizeInBits = 16;
     	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
-		
+		ring.initBuffers();
 		//Setup the test data sizes derived from the templates used
 		byte[] target = new byte[ring.maxAvgVarLen];
 		
@@ -321,7 +321,7 @@ public class RingBufferMultiTemplateTest {
     
     	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
-		
+		ring.initBuffers();
 		int testSize = 5;
 		
 		//in this method we write two sequence members but only record the count after writing the members
@@ -418,7 +418,7 @@ public class RingBufferMultiTemplateTest {
     
     	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
-		
+		ring.initBuffers();
 		int testSize = 5;
 		
 		//in this method we write two sequence members but only record the count after writing the members

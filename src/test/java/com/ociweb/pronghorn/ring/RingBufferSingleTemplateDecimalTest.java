@@ -33,7 +33,7 @@ public class RingBufferSingleTemplateDecimalTest {
     	byte byteRingSizeInBits = 17;
     	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
-    	
+    	ring.initBuffers();
         int messageSize = FROM.fragDataSize[FRAG_LOC];
         
         int varDataMax = (ring.byteMask/(ring.mask>>1))/messageSize;        
@@ -109,6 +109,7 @@ public class RingBufferSingleTemplateDecimalTest {
     	final byte primaryRingSizeInBits = 8; //this ring is 2^7 eg 128
     	final byte byteRingSizeInBits = 16;
     	final RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+    	ring.initBuffers();
     	
         final int messageSize = FROM.fragDataSize[FRAG_LOC];
         

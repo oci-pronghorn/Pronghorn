@@ -77,7 +77,7 @@ public class StreamingConsumerTest {
     
     	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
-		
+		ring.initBuffers();
 		int testSize = 5;
 		
 		//in this method we write two sequence members but only record the count after writing the members

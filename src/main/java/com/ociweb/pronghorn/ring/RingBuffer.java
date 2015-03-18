@@ -106,7 +106,22 @@ public final class RingBuffer {
 	public boolean writeTrailingCountOfBytesConsumed;
 	FieldReferenceOffsetManager from;
     
+	//NOTE: this only works because its 1 bit less than the roll-over sign bit
 	public static final int BYTES_WRAP_MASK = 0x7FFFFFFF;
+	
+//                   this is a thought experiment, Delete it	
+//	int x = 3;
+//	int y = (1<<31)-1;
+//	
+//	int dif = x-y;
+//	System.err.println(Integer.toHexString(dif)+" for  "+dif);
+//	
+//	int masked = dif & y;
+//	System.err.println(Integer.toHexString(masked)+" for  "+masked);
+//	
+//	int fixed = dif+(1<<31);
+//	System.err.println(Integer.toHexString(fixed)+" for  "+fixed);
+//
 	
 	int batchReleaseCountDown = 0;
 	int batchReleaseCountDownInit = 0;
@@ -211,9 +226,7 @@ public final class RingBuffer {
 
         this.maxByteSize =  1 << byteBits;
         this.byteMask = maxByteSize - 1;
-        
-        init(); //TODO: Test NUMA by removing this method, only do after the rest of the testing works. 
-   
+
         this.ringWalker = new RingWalker(mask, from);
         this.constByteBuffer = byteConstants;
 
@@ -230,7 +243,7 @@ public final class RingBuffer {
         }
     }
 
-	public void init() {
+	public void initBuffers() {
         this.byteBuffer = new byte[maxByteSize];
         this.buffer = new int[maxSize]; 
         this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};    
@@ -240,6 +253,14 @@ public final class RingBuffer {
         
     }
     
+	public boolean isInit() {
+		return null!=this.byteBuffer &&
+			   null!=this.buffer &&
+			   null!=this.bufferLookup &&
+			   null!=this.wrappedPrimaryIntBuffer &&
+			   null!=this.wrappedSecondaryByteBuffer;
+	}
+	
 	public static void validateVarLength(RingBuffer rb, int length) {
 		int newAvg = (length+rb.varLenMovingAverage)>>1;
         if (newAvg>rb.maxAvgVarLen)	{
@@ -1316,10 +1337,7 @@ public final class RingBuffer {
     		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
     			throw new RingBufferException("Unexpected shutdown");
     		}
-    		//we are blocking before we can read
-    		if (null==ringBuffer.buffer) {
-    			ringBuffer.init();//hack test
-    		}
+
 		    lastCheckedValue = ringBuffer.headPos.longValue();
 		}
 		return lastCheckedValue;
@@ -1340,10 +1358,7 @@ public final class RingBuffer {
     		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
     			throw new RingBufferException("Unexpected shutdown");
     		}
-    		//we are blocking before we can read
-    		if (null==ringBuffer.buffer) {
-    			ringBuffer.init();//hack test
-    		}
+
 		    lastCheckedValue = ringBuffer.headPos.longValue();
 		}
 		return lastCheckedValue;
@@ -1442,6 +1457,8 @@ public final class RingBuffer {
 	public static void confirmLowLevelWrite(RingBuffer output, int size) {
 		output.llwNextTailTarget += size;
 	}
+
+
 
 
 	

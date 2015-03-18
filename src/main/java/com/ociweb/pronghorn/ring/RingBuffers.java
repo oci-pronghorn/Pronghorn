@@ -42,6 +42,7 @@ public class RingBuffers {
     }
 
     public static RingBuffers buildNoFanRingBuffers(RingBuffer rb) {
+    	rb.initBuffers();
     	FieldReferenceOffsetManager from = RingBuffer.from(rb);
     	int scriptLength = 0==from.tokens.length ? 1 : from.tokens.length;
 		

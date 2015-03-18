@@ -44,6 +44,7 @@ public class RingBufferTest {
     	byte byteRingSizeInBits = 16;
     	
         RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
+        ring.initBuffers();
         
         byte[] testArray = new byte[]{(byte)1,(byte)2,(byte)3,(byte)4,(byte)5};
         int testInt = 7;
