@@ -79,10 +79,7 @@ public class SplitterStage extends PronghornStage {
 	private static boolean processAvailData(SplitterStage ss) {
 		int byteHeadPos;
         long headPos;
-		
-        if (null==ss.source.buffer) {
-        	ss.source.init();
-        }
+
         //TODO: A, publush to a single atomic long and read it here.
         //get the new head position
         byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);

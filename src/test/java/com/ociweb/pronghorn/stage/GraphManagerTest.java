@@ -20,9 +20,11 @@ public class GraphManagerTest {
 		GraphManager gm = new GraphManager();
 		
 		RingBuffer rb1 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		rb1.initBuffers();
 		
 		RingBuffer rb2 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
-			
+		rb2.initBuffers();
+		
 		PronghornStage a = new SimpleOut(gm,rb1); 
 		PronghornStage b = new SimpleInOut(gm,rb1,rb2); 
 		PronghornStage c = new SimpleIn(gm,rb2); 
@@ -69,12 +71,17 @@ public class GraphManagerTest {
 		GraphManager gm = new GraphManager();
 		
 		RingBuffer rb1 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
-		
+		rb1.initBuffers();
 		RingBuffer rb21 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		rb21.initBuffers();
 		RingBuffer rb22 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		rb22.initBuffers();
 		
 		RingBuffer rb211 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		rb211.initBuffers();
+		
 		RingBuffer rb221 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		rb221.initBuffers();
 		
 		PronghornStage a = new SimpleOut(gm,rb1); 
 		PronghornStage b = new SimpleInOutSplit(gm, rb1, rb21, rb22); 

@@ -574,6 +574,30 @@ public class GraphManager {
 		
 	}
 
+	/**
+	 * Initialize the buffers for the input rings of this stage and
+	 * Block until some other code has initialized the output rings. 
+	 * 
+	 * @param m
+	 * @param stageId
+	 */
+	public static void initInputRings(GraphManager m, int stageId) {
+		int ringId;
+		int idx = m.stageIdToInputsBeginIdx[stageId];
+		while (-1 != (ringId=m.multInputIds[idx++])) {
+			m.ringIdToRing[ringId].initBuffers();				
+		}
+		//Does not return until some other stage has initialized the output rings
+		idx = m.stageIdToOutputsBeginIdx[stageId];
+		while (-1 != (ringId=m.multOutputIds[idx++])) {
+			RingBuffer ringBuffer = m.ringIdToRing[ringId];
+			while (!ringBuffer.isInit()) {
+				Thread.yield();
+			}				
+		}	
+		
+	}
+
 
 
 	

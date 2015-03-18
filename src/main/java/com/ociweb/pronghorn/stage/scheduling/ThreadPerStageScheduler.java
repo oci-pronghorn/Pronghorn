@@ -24,22 +24,23 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		
 	}
 	
-	//TODO: AAA, where is the assert startup?
 	public void startup() {
 		
 		int i = PronghornStage.totalStages();
 		while (--i>=0) {
 			PronghornStage stage = GraphManager.getStage(graphManager, i);
-			if (null!=stage) {
-				stage.startup();
+			if (null != stage) {
 				int rate = (Integer)GraphManager.getAnnotation(graphManager, stage, GraphManager.SCHEDULE_RATE, Integer.valueOf(0));
 				if (0==rate) {
-					executorService.execute(buildRunnable(stage));	
+					executorService.execute(buildRunnable(stage)); 	
 				} else {
 					executorService.execute(buildRunnable(rate, stage));
 				}
 			}
 		}
+		
+		
+		
 	}
 	
 	public void shutdown(){		
@@ -116,7 +117,12 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			
 			@Override
 			public void run() {
-				try {	
+				try {
+					
+					//TODO: need to record state so we know the failure point
+					//TODO: need to init the ring buffer in startup for numa.
+					stage.startup();
+					
 					do {
 						assert(confirmRunStart(stage));
 						stage.run();
@@ -161,6 +167,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			@Override
 			public void run() {
 				try {	
+					stage.startup();
+					
 					do {
 						long start = System.nanoTime();
 						assert(confirmRunStart(stage));
@@ -176,7 +184,10 @@ public class ThreadPerStageScheduler extends StageScheduler {
 												
 					} while (!isShutDownNow && !isShuttingDown);	
 					
-					stage.shutdown();
+					//only call if its not already shutdown
+					if (!GraphManager.isStageTerminated(graphManager, stage.stageId)) {					
+						stage.shutdown();
+					}
 							
 				} catch (Throwable t) {
 					log.error("Unexpected error in stage {}", stage);

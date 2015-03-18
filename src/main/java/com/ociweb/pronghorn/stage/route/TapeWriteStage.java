@@ -71,9 +71,6 @@ public class TapeWriteStage extends PronghornStage {
 
 	@Override
 	public void run() {		
-		if (null==this.source.buffer) {
-			this.source.init();
-		}
 		while (processAvailData(this)) {
 			//keeps going while there is room to write or there is data to be written.
 		};
