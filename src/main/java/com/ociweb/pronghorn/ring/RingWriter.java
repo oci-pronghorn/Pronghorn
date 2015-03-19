@@ -340,7 +340,7 @@ public class RingWriter {
 	public static void publishEOF(RingBuffer ring) {
 		
 		assert(ring.workingHeadPos.value<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
-		ring.ringWalker.cachedTailPosition = spinBlockOnTail(ring.ringWalker.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - RingBuffer.EOF_SIZE), ring);
+		ring.llwTailPosCache = spinBlockOnTail(ring.llwTailPosCache, ring.workingHeadPos.value - (ring.maxSize - RingBuffer.EOF_SIZE), ring);
 		
 		assert(ring.tailPos.get()+ring.maxSize>=ring.headPos.get()+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
@@ -356,9 +356,9 @@ public class RingWriter {
 		assert(ring.workingHeadPos.value<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";				
 		long nextTailTarget = ring.workingHeadPos.value - (ring.maxSize - RingBuffer.EOF_SIZE);
 				
-        if (ring.ringWalker.cachedTailPosition < nextTailTarget) {
-        	ring.ringWalker.cachedTailPosition = ring.tailPos.longValue();
-			if (ring.ringWalker.cachedTailPosition < nextTailTarget) {
+        if (ring.llwTailPosCache < nextTailTarget) {
+        	ring.llwTailPosCache = ring.tailPos.longValue();
+			if (ring.llwTailPosCache < nextTailTarget) {
 				return false;
 			}
 		}
@@ -403,7 +403,7 @@ public class RingWriter {
 		
 		RingWalker consumerData = ring.ringWalker;
 		int fragSize = from.fragDataSize[cursorPosition];
-		consumerData.cachedTailPosition = spinBlockOnTail(consumerData.cachedTailPosition, consumerData.nextWorkingHead - (ring.maxSize - fragSize), ring);
+		ring.llwTailPosCache = spinBlockOnTail(ring.llwTailPosCache, consumerData.nextWorkingHead - (ring.maxSize - fragSize), ring);
 	
 		RingWalker.prepWriteFragment(ring, cursorPosition, from, fragSize);
 	}
@@ -416,7 +416,7 @@ public class RingWriter {
 	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
 		int fragSize = RingBuffer.from(ring).fragDataSize[cursorPosition];
 		long target = ring.ringWalker.nextWorkingHead - (ring.maxSize - fragSize);
-		return RingWalker.tryWriteFragment1(ring, cursorPosition, RingBuffer.from(ring), fragSize, target, ring.ringWalker.cachedTailPosition >=  target);
+		return RingWalker.tryWriteFragment1(ring, cursorPosition, RingBuffer.from(ring), fragSize, target, ring.llwTailPosCache >=  target);
 	}
 
 	public static void setPublishBatchSize(RingBuffer rb, int size) {

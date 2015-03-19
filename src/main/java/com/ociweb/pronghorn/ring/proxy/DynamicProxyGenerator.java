@@ -32,5 +32,7 @@ public class DynamicProxyGenerator<T> {
 	//TODO: create newInputInstance
 	//TODO: create newMixedInstance may come in a few flavors
 	
+	//Use the names Producer and Consumer
+	
 	
 }

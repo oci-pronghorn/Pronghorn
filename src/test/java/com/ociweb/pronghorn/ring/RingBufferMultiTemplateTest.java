@@ -247,7 +247,7 @@ public class RingBufferMultiTemplateTest {
         while (true) {
         	
         	if (j == 0) {
-        		ring.ringWalker.cachedTailPosition = spinBlockOnTail(ring.ringWalker.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
+        		ring.llwTailPosCache = spinBlockOnTail(ring.llwTailPosCache, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
         		RingBuffer.publishEOF(ring);
         		return;//done
         	}
@@ -259,7 +259,7 @@ public class RingBufferMultiTemplateTest {
         	
         	switch(selectedTemplateId) {
 	        	case 2: //boxes
-	        		ring.ringWalker.cachedTailPosition = spinBlockOnTail(ring.ringWalker.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 4), ring);
+	        		ring.llwTailPosCache = spinBlockOnTail(ring.llwTailPosCache, ring.workingHeadPos.value - (ring.maxSize - 4), ring);
 	        		
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_BOXES_LOC);
@@ -270,7 +270,7 @@ public class RingBufferMultiTemplateTest {
 	        		RingBuffer.publishWrites(ring);
 	        		break;
 	        	case 1: //samples
-	        		ring.ringWalker.cachedTailPosition = spinBlockOnTail(ring.ringWalker.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 8), ring);
+	        		ring.llwTailPosCache = spinBlockOnTail(ring.llwTailPosCache, ring.workingHeadPos.value - (ring.maxSize - 8), ring);
 	        		
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_SAMPLE_LOC);
@@ -285,7 +285,7 @@ public class RingBufferMultiTemplateTest {
 	        		RingBuffer.publishWrites(ring);
 	        		break;
 	        	case 4: //reset
-	        		ring.ringWalker.cachedTailPosition = spinBlockOnTail(ring.ringWalker.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - 3), ring);
+	        		ring.llwTailPosCache = spinBlockOnTail(ring.llwTailPosCache, ring.workingHeadPos.value - (ring.maxSize - 3), ring);
 	        		
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_RESET_LOC);

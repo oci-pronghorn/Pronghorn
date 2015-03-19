@@ -194,6 +194,7 @@ public final class RingBuffer {
     
 	
     public RingBuffer(RingBufferConfig config) {
+    	//TODO: B, keep this object instead of creating more members?
     	this(config.primaryBits, config.byteBits, config.byteConst, config.from);
     }
     
@@ -284,6 +285,9 @@ public final class RingBuffer {
         tailPos.set(0);
         headPos.set(0); 
         
+        llwHeadPosCache = 0;
+        llwTailPosCache = 0;
+        
         bytesWriteBase = 0;
         bytesReadBase = 0;
         bytesWriteLastConsumedBytePos = 0;
@@ -307,6 +311,9 @@ public final class RingBuffer {
         workingTailPos.value = toPos;
         tailPos.set(toPos);
         headPos.set(toPos); 
+        
+        llwHeadPosCache = toPos;
+        llwTailPosCache = toPos;
         
         byteWorkingHeadPos.value = bPos;
         bytesHeadPos.set(bPos);
@@ -1063,6 +1070,7 @@ public final class RingBuffer {
     		tmp = (int)(positionDat-baseBytePos);	
     		if (tmp<0) {
     			tmp &= RingBuffer.BYTES_WRAP_MASK;
+    			//System.err.println("new value is "+tmp);
     		}
     	}
     	
@@ -1081,7 +1089,6 @@ public final class RingBuffer {
 
         if (len>=0) {
         	ring.byteWorkingTailPos.value =  BYTES_WRAP_MASK&(len+ring.byteWorkingTailPos.value);
-        //	assert(ring.bytesHeadPos.get() >= (pos+len)) : "expected to be at byte pos "+(pos+len)+" but we are only at "+ring.bytesHeadPos.get();
         }
 
         return pos;
@@ -1435,9 +1442,10 @@ public final class RingBuffer {
 	//This holds the last known state of the tail position, if its sufficiently far ahead it indicates that
 	//we do not need to fetch it again and this reduces contention on the CAS with the reader.
 	//This is an important performance feature of the low level API and should not be modified.
-	private long llwTailPosCache;
+	long llwTailPosCache;
 	private long llwNextTailTarget; //TODO: move these into private class
 	
+	//TODO: once we confirm both of these are used by high and low API this method can be removed
 	public static void initLowLevelWriter(RingBuffer output) {
 
 			//We have no idea if this was a new ring or one previously used so instead of assuming the 
@@ -1447,7 +1455,6 @@ public final class RingBuffer {
 
 	}
 	
-	//TODO: AA, can high level API leverage this
 	//TODO: AA, adjust unit tests to use this.
 	public static boolean roomToLowLevelWrite(RingBuffer output, int size) {
 		return (output.llwTailPosCache >= output.llwNextTailTarget+size) ||  //only does second part if the first does not pass 
@@ -1457,8 +1464,30 @@ public final class RingBuffer {
 	public static void confirmLowLevelWrite(RingBuffer output, int size) {
 		output.llwNextTailTarget += size;
 	}
+	
+	long llwHeadPosCache;
+	private long llwNextHeadTarget; //TODO: move these into private class
+	
 
+	//TODO: once we confirm both of these are used by high and low API this method can be removed
+	public static void initLowLevelReader(RingBuffer input) {
+		//We have no idea if this was a new ring or one previously used so instead of assuming the 
+		//head is at zero as it would be on construction we will ask for the value explicitly here
+		input.llwNextHeadTarget = tailPosition(input);
+		input.llwHeadPosCache = headPosition(input);	
 
+	}
+	
+	public static boolean contentToLowLevelRead(RingBuffer input, int size) {
+		return (input.llwHeadPosCache >= input.llwNextHeadTarget+size) ||  //only does second part if the first does not pass 
+			   ((input.llwHeadPosCache = RingBuffer.headPosition(input)) >= input.llwNextHeadTarget+size);
+	}
+	
+	public static long confirmLowLevelRead(RingBuffer input, int size) {
+		return (input.llwNextHeadTarget += size);
+	}
+	
+	
 
 
 	

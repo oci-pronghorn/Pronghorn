@@ -509,6 +509,11 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		return rw.msgIdx;
 	}
 
+	
+	public static int bytesConsumedByFragment(RingBuffer ringBuffer) {
+		return ringBuffer.ringWalker.nextWorkingTail>0 ? ringBuffer.buffer[ringBuffer.mask & (int)(ringBuffer.ringWalker.nextWorkingTail-1)] : 0;
+	}
+	
 	//this impl only works for simple case where every message is one fragment. 
 	public static boolean tryReadFragment(RingBuffer ringBuffer) { 
 		
