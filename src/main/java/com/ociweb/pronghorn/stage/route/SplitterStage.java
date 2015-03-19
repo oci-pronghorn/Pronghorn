@@ -181,10 +181,7 @@ public class SplitterStage extends PronghornStage {
 									 totalPrimaryCopy);
 		
 		RingBuffer.publishWorkingHeadPosition(ringBuffer, headPosition + totalPrimaryCopy);
-		
-		//HackTEST
-		ringBuffer.ringWalker.bnmHeadPosCache = ringBuffer.workingHeadPos.value;
-		
+
 	}
 	
 	
