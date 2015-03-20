@@ -1,10 +1,5 @@
 package com.ociweb.pronghorn.ring;
 
-import static com.ociweb.pronghorn.ring.RingBuffer.addBytePosAndLen;
-import static com.ociweb.pronghorn.ring.RingBuffer.copyASCIIToBytes;
-import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
@@ -1036,6 +1031,8 @@ public final class RingBuffer {
 		rb.writeTrailingCountOfBytesConsumed = (1==rb.ringWalker.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
 	}
 
+	//TODO: B, need to update build server to ensure this runs on both Java6 and Java ME 8
+	
    
     //we are only allowed 12% of the time or so for doing this write.
     //this pushes only ~5gbs but if we had 100% it would scale to 45gbs
@@ -1421,7 +1418,8 @@ public final class RingBuffer {
 
 	public static void writeTrailingCountOfBytesConsumed(RingBuffer ring, long pos) {
 				
-		ring.buffer[ring.mask & (int)pos] = ring.byteWorkingHeadPos.value - ring.bytesWriteLastConsumedBytePos;
+		int consumed = ring.byteWorkingHeadPos.value - ring.bytesWriteLastConsumedBytePos;		
+		ring.buffer[ring.mask & (int)pos] = consumed>=0 ? consumed : consumed&BYTES_WRAP_MASK ;
 		ring.bytesWriteLastConsumedBytePos = ring.byteWorkingHeadPos.value;
 		ring.writeTrailingCountOfBytesConsumed = false;
 	}

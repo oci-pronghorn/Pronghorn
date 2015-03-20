@@ -443,24 +443,34 @@ public class FieldReferenceOffsetManager {
     	throw new UnsupportedOperationException("Unable to find template name: "+name);
     }
     
-
+	public static int lookupTemplateLocator(final long id, FieldReferenceOffsetManager from) {
+    	int i = from.messageStarts.length;
+    	while(--i>=0) {
+    		if (id == from.fieldIdScript[from.messageStarts[i]]) {
+    			
+    			return from.messageStarts[i];
+    		}
+    	}
+    	throw new UnsupportedOperationException("Unable to find template id: "+id);
+    }
+	
     
     /**
      * This does not return the token found in the script but rather a special value that can be used to 
      * get dead reckoning offset into the field location. 
      * 
-     * @param target
+     * @param name
      * @param framentStart
      * @param from
      * @return
      */
-    public static int lookupFieldLocator(String target, int framentStart, FieldReferenceOffsetManager from) {
+    public static int lookupFieldLocator(String name, int framentStart, FieldReferenceOffsetManager from) {
 		int x = framentStart;
         		
 		//upper bits is 4 bits of information
 
         while (x < from.fieldNameScript.length) {
-            if (target.equalsIgnoreCase(from.fieldNameScript[x])) {            	
+            if (name.equalsIgnoreCase(from.fieldNameScript[x])) {            	
             	return buildFieldLoc(from, framentStart, x);                
             }
             
@@ -476,9 +486,34 @@ public class FieldReferenceOffsetManager {
             
             x++;
         }
-        throw new UnsupportedOperationException("Unable to find field name: "+target+" in "+Arrays.toString(from.fieldNameScript));
+        throw new UnsupportedOperationException("Unable to find field name: "+name+" in "+Arrays.toString(from.fieldNameScript));
 	}
 
+    public static int lookupFieldLocator(long id, int framentStart, FieldReferenceOffsetManager from) {
+		int x = framentStart;
+        		
+		//upper bits is 4 bits of information
+
+        while (x < from.fieldNameScript.length) {
+            if (id == from.fieldIdScript[x]) {            	
+            	return buildFieldLoc(from, framentStart, x);                
+            }
+            
+            int token = from.tokens[x];
+            int type = TokenBuilder.extractType(token);
+            boolean isGroupClosed = TypeMask.Group == type &&
+            		                (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) &&
+            		                (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
+           
+            if (isGroupClosed) {
+            	break;
+            }
+            
+            x++;
+        }
+        throw new UnsupportedOperationException("Unable to find field id: "+id+" in "+Arrays.toString(from.fieldNameScript));
+	}
+    
 	private static int buildFieldLoc(FieldReferenceOffsetManager from,
 			int framentStart, int fieldCursor) {
 		final int stackOff = from.fragDepth[framentStart]<<RW_STACK_OFF_SHIFT;
@@ -524,6 +559,29 @@ public class FieldReferenceOffsetManager {
             x++;
         }
         throw new UnsupportedOperationException("Unable to find fragment name: "+target+" in "+Arrays.toString(from.fieldNameScript));
+	}
+    
+    public static int lookupFragmentLocator(final long id, int framentStart, FieldReferenceOffsetManager from) {
+		int x = framentStart;
+        		
+        while (x < from.fieldNameScript.length) {
+            if (id == from.fieldIdScript[x]) {
+            	return x;
+            }
+            
+            int token = from.tokens[x];
+            int type = TokenBuilder.extractType(token);
+            boolean isGroupClosed = TypeMask.Group == type &&
+            		                (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) &&
+            		                (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
+           
+            if (isGroupClosed) {
+            	break;
+            }
+            
+            x++;
+        }
+        throw new UnsupportedOperationException("Unable to find fragment id: "+id+" in "+Arrays.toString(from.fieldNameScript));
 	}
     
     

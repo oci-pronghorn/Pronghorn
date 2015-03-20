@@ -200,11 +200,11 @@ public class RingWriter {
     
     public static void writeFloat(RingBuffer rb, int loc, float value, int places) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);   	
-    	RingBuffer.setValues(rb.buffer, rb.mask, (rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc)), places, (long)(value*powd[64+places]));
+    	RingBuffer.setValues(rb.buffer, rb.mask, (rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc)), places, (long)Math.rint(value*powd[64+places]));
     }
     public static void writeDouble(RingBuffer rb, int loc, double value, int places) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
-    	RingBuffer.setValues(rb.buffer, rb.mask, (rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc)), places, (long)(value*powd[64+places]));
+    	RingBuffer.setValues(rb.buffer, rb.mask, (rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc)), places, (long)Math.rint(value*powd[64+places]));
     }
     
     public static void writeFloatAsIntBits(RingBuffer rb, int loc, float value) {
@@ -314,7 +314,7 @@ public class RingWriter {
     public static void writeASCII(RingBuffer rb, int loc, CharSequence source, int offset, int length) {
     	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 
-    	RingBuffer.validateVarLength(rb, source.length());
+    	RingBuffer.validateVarLength(rb, length);
         final int p = RingBuffer.copyASCIIToBytes(source, offset, length, rb);
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, length, RingBuffer.bytesWriteBase(rb));
     }
