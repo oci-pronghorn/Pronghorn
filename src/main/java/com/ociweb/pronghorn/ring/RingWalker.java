@@ -11,14 +11,13 @@ public class RingWalker {
     boolean isNewMessage;
     public boolean waiting;
     public int cursor;
-    
-        
-    public long nextWorkingTail; //NOTE: assumes that ring tail also starts at zero
-    public long nextWorkingHead;;
+            
+    public long nextWorkingTail; 
+    public long nextWorkingHead; //This is NOT the same as the low level head cache, this is for writing side of the ring
 
     private int[] seqStack;
     private int seqStackHead;
-    public long tailCache;
+
     public final FieldReferenceOffsetManager from;
     
     //TODO: AA, need to add error checking to caputre the case when something on the stack has fallen off the ring
@@ -31,13 +30,13 @@ public class RingWalker {
     
 	
 	RingWalker(int mask, FieldReferenceOffsetManager from) {
-		this(-1, false, false, -1, -1, -1, 0, new int[from.maximumFragmentStackDepth], -1, -1, from, mask);
+		this(-1, false, false, -1, -1, -1, 0, new int[from.maximumFragmentStackDepth], -1, from, mask);
 	}
 	
 	
     private RingWalker(int messageId, boolean isNewMessage, boolean waiting, long waitingNextStop,
                                     long bnmHeadPosCache, int cursor, int activeFragmentDataSize, int[] seqStack, int seqStackHead,
-                                    long tailCache, FieldReferenceOffsetManager from, int rbMask) {
+                                    FieldReferenceOffsetManager from, int rbMask) {
     	if (null==from) {
     		throw new UnsupportedOperationException();
     	}
@@ -47,7 +46,6 @@ public class RingWalker {
         this.cursor = cursor;
         this.seqStack = seqStack;
         this.seqStackHead = seqStackHead;
-        this.tailCache = tailCache;
         this.from = from;
         this.activeWriteFragmentStack = new long[from.maximumFragmentStackDepth];
         this.activeReadFragmentStack = new long[from.maximumFragmentStackDepth];
@@ -297,7 +295,6 @@ public class RingWalker {
  
 	static void reset(RingWalker consumerData, int ringPos) {
         consumerData.waiting = (false);
-        consumerData.tailCache=-1;
         
         /////
         consumerData.cursor = (-1);

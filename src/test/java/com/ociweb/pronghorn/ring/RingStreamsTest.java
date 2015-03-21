@@ -24,7 +24,6 @@ public class RingStreamsTest {
 		RingBuffer testRing = new RingBuffer(new RingBufferConfig((byte)4, (byte)13, null,  FieldReferenceOffsetManager.RAW_BYTES));
 		testRing.initBuffers();
 		
-		testRing.initBuffers();
 		StringBuilder builder = new StringBuilder();
 		
 		while (builder.length()<4096) {

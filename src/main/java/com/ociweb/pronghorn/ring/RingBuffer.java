@@ -7,6 +7,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.ring.util.PaddedAtomicInteger;
 import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 
@@ -51,7 +54,8 @@ public final class RingBuffer {
     public final int maxSize;
     public int[] buffer;
     public final int mask;
-
+    private static final Logger log = LoggerFactory.getLogger(RingBuffer.class);
+    		
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers  Must convert to accessor methods first
     public final PaddedLong workingHeadPos = new PaddedLong();
     final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos 
@@ -122,6 +126,14 @@ public final class RingBuffer {
 	int batchReleaseCountDownInit = 0;
 	int batchPublishCountDown = 0;
 	int batchPublishCountDownInit = 0;
+	
+    
+	long llwTailPosCache;
+	long llwNextTailTarget; //TODO: move these into private class
+	
+	long llwHeadPosCache;
+	private long llwNextHeadTarget; //TODO: move these into private class
+	
 		
 	//NOTE:
 	//     This is the future direction of the ring buffer that is not yet complete
@@ -240,14 +252,22 @@ public final class RingBuffer {
     }
 
 	public void initBuffers() {
-        this.byteBuffer = new byte[maxByteSize];
+		assert(!isInit()) : "RingBuffer was already initialized";
+		if (!isInit()) {
+			buildBufffers();
+		} else {
+			log.warn("Init was already called once already on this ring buffer");
+		}
+    }
+
+	private void buildBufffers() {
+		this.byteBuffer = new byte[maxByteSize];
         this.buffer = new int[maxSize]; 
         this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};    
 
         this.wrappedPrimaryIntBuffer = IntBuffer.wrap(this.buffer);
         this.wrappedSecondaryByteBuffer = ByteBuffer.wrap(this.byteBuffer);
-        
-    }
+	}
     
 	public boolean isInit() {
 		return null!=this.byteBuffer &&
@@ -269,7 +289,8 @@ public final class RingBuffer {
         rb.varLenMovingAverage = newAvg;
 	}
 
-    
+
+	
     /**
      * Empty and restore to original values.
      */
@@ -282,6 +303,8 @@ public final class RingBuffer {
         
         llwHeadPosCache = 0;
         llwTailPosCache = 0;
+        llwNextTailTarget = 0 - maxSize;
+        llwNextHeadTarget = 0;
         
         bytesWriteBase = 0;
         bytesReadBase = 0;
@@ -309,6 +332,8 @@ public final class RingBuffer {
         
         llwHeadPosCache = toPos;
         llwTailPosCache = toPos;
+        llwNextTailTarget = toPos - maxSize;
+        llwNextHeadTarget = toPos;
         
         byteWorkingHeadPos.value = bPos;
         bytesHeadPos.set(bPos);
@@ -1020,7 +1045,7 @@ public final class RingBuffer {
      	//this MUST be done here at the START of a message so all its internal fragments work with the same base position
      	 markBytesWriteBase(rb);
     	
-    	 assert(rb.ringWalker.nextWorkingHead<=rb.headPos.get() || rb.workingHeadPos.value<=rb.ringWalker.nextWorkingHead) : "Unsupported mix of high and low level API.";
+    	 assert(rb.llwNextHeadTarget<=rb.headPos.get() || rb.workingHeadPos.value<=rb.llwNextHeadTarget) : "Unsupported mix of high and low level API.";
    	
 		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, msgIdx);		
 		 
@@ -1258,7 +1283,7 @@ public final class RingBuffer {
 		ring.bytesWriteLastConsumedBytePos = ring.byteWorkingHeadPos.value;
 		
     	
-    	assert(ring.ringWalker.nextWorkingHead<=ring.headPos.get() || ring.workingHeadPos.value<=ring.ringWalker.nextWorkingHead) : "Unsupported mix of high and low level API.";
+    	assert(ring.llwNextHeadTarget<=ring.headPos.get() || ring.workingHeadPos.value<=ring.llwNextHeadTarget) : "Unsupported mix of high and low level API.";
     	
     	publishHeadPositions(ring);  	
     }
@@ -1440,15 +1465,13 @@ public final class RingBuffer {
 	//This holds the last known state of the tail position, if its sufficiently far ahead it indicates that
 	//we do not need to fetch it again and this reduces contention on the CAS with the reader.
 	//This is an important performance feature of the low level API and should not be modified.
-	long llwTailPosCache;
-	private long llwNextTailTarget; //TODO: move these into private class
+
 	
 	//TODO: once we confirm both of these are used by high and low API this method can be removed
 	public static void initLowLevelWriter(RingBuffer output) {
-
-			//We have no idea if this was a new ring or one previously used so instead of assuming the 
-			//tail is at zero as it would be on construction we will ask for the value explicitly here
-			output.llwTailPosCache = tailPosition(output);
+//
+//			//We have no idea if this was a new ring or one previously used so instead of assuming the 
+//			//tail is at zero as it would be on construction we will ask for the value explicitly here
 			output.llwNextTailTarget = headPosition(output) - output.maxSize;
 
 	}
@@ -1463,18 +1486,6 @@ public final class RingBuffer {
 		output.llwNextTailTarget += size;
 	}
 	
-	long llwHeadPosCache;
-	private long llwNextHeadTarget; //TODO: move these into private class
-	
-
-	//TODO: once we confirm both of these are used by high and low API this method can be removed
-	public static void initLowLevelReader(RingBuffer input) {
-		//We have no idea if this was a new ring or one previously used so instead of assuming the 
-		//head is at zero as it would be on construction we will ask for the value explicitly here
-		input.llwNextHeadTarget = tailPosition(input);
-		input.llwHeadPosCache = headPosition(input);	
-
-	}
 	
 	public static boolean contentToLowLevelRead(RingBuffer input, int size) {
 		return (input.llwHeadPosCache >= input.llwNextHeadTarget+size) ||  //only does second part if the first does not pass 

@@ -4,6 +4,8 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
@@ -20,14 +22,17 @@ public class OutputRingInvocationHandler implements InvocationHandler {
 	private static final byte[] EMPTY_BYTES = new byte[0];
 	private final RingBuffer outputRing;
 	private final FieldReferenceOffsetManager from;
+	private final int msgIdx;
 	//This only supports one template message
 
 	private final LongHashTable fieldIdTable = new LongHashTable(7); //no need to use messageId in the keys
 	
+	private final IntHashTable fieldHash = new IntHashTable(7);
+	
 	public OutputRingInvocationHandler(RingBuffer outputRing, int msgIdx, Class<?> clazz) {
 		this.outputRing = outputRing;
 		this.from = RingBuffer.from(outputRing);
-
+		this.msgIdx = msgIdx;
 		
 		//  NEW IDEA BUT ITS NOT FULLY DONE YET
 //		Method[] methods = clazz.getMethods();
@@ -64,13 +69,21 @@ public class OutputRingInvocationHandler implements InvocationHandler {
 		}		
 	}
 	
+//	Map<Method,Integer> temp = new HashMap<Method,Integer>();
+	
 	
 	@Override
 	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
 					
-		ProngTemplateField fieldAnnonation = method.getAnnotation(ProngTemplateField.class);
-		int fieldLoc = LongHashTable.getItem(fieldIdTable, fieldAnnonation.fieldId());
-				
+		int fieldLoc;
+		//Integer fieldLoc = temp.get(method);
+		//if (null==fieldLoc) {
+			ProngTemplateField fieldAnnonation = method.getAnnotation(ProngTemplateField.class);
+			fieldLoc =  LongHashTable.getItem(fieldIdTable, fieldAnnonation.fieldId());
+		//	temp.put(method, fieldLoc);
+		//}
+		
+		
 		int extractedType = (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE;
 		
 		switch (extractedType) {
