@@ -475,7 +475,7 @@ public class RingBufferPipeline {
 		}
 	}
 
-	private static final int TIMEOUT_SECONDS = 120;
+	private static final int TIMEOUT_SECONDS = 20;
 	private static final String testString1 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@@";
 	private static final String testString = testString1+testString1+testString1+testString1+testString1+testString1+testString1+testString1;
 	//using length of 61 because it is prime and will wrap at odd places
@@ -558,6 +558,8 @@ public class RingBufferPipeline {
 
 	private void pipelineTest(boolean highLevelAPI, boolean monitor, boolean useTap, boolean useRouter) {
 	
+		
+		
 		 GraphManager gm = new GraphManager();
 		
 		
@@ -630,9 +632,10 @@ public class RingBufferPipeline {
 		 
 		 //add all the stages start running
 		 j = 0;
-		RingBuffer outputRing = rings[j];
-		
+	 	 RingBuffer outputRing = rings[j];
+	
 		 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? new ProductionStageHighLevel(gm, outputRing) : new ProductionStageLowLevel(gm, outputRing));
+				 
 		 int i = stagesBetweenSourceAndSink;
 		 while (--i>=0) {
 			 if (useTap & 0==i) { //only do taps on first stage or this test could end up using many many threads.		 
