@@ -545,7 +545,7 @@ public class GraphManager {
 			if (null!=m.stageIdToStage[i]) {				
 				//an input stage is one that has no input ring buffers
 				if (-1 == m.multInputIds[m.stageIdToInputsBeginIdx[m.stageIdToStage[i].stageId]]) {
-					//TODO: this call can happen when the stage is still running. should wait for exit run();
+					//TODO: AA, this call can happen when the stage is still running. should wait for exit run() ??;
 					
 					
 					//TOOD: need new base class for the blocking stage.

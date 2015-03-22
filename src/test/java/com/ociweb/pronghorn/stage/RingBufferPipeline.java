@@ -259,17 +259,24 @@ public class RingBufferPipeline {
 									fail("\nexpected:\n"+testString+"\nfound:\n"+RingReader.readASCII(inputRing, FIELD_ID, new StringBuilder()).toString() );
 								}
 							}
-
-						} else if (-1 == msgId) {
-							assertEquals(testMessages,useRoute? msgCount*splits: msgCount);	
 							RingReader.releaseReadLock(inputRing);
-							//System.err.println("done");
+						} else if (-1 == msgId) {
+							RingReader.releaseReadLock(inputRing);
 							return;
 						}
 					} 
 					return;
 	
 		}
+
+		@Override
+		public void shutdown() {
+			assertEquals(testMessages,useRoute? msgCount*splits: msgCount);	
+			super.shutdown();
+		}
+		
+		
+		
 	}
 
 	private final class CopyStageLowLevel extends PronghornStage {

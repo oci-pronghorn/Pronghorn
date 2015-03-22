@@ -1,8 +1,5 @@
 package com.ociweb.pronghorn.stage.route;
 
-import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
-
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -14,6 +11,7 @@ public class RoundRobinRouteStage extends PronghornStage {
 	RingBuffer[] outputRings;
 	int targetRing;
 	int targetRingInit;
+	int msgId = -2;
 	
 	public RoundRobinRouteStage(GraphManager gm, RingBuffer inputRing, RingBuffer ... outputRings) {
 		super(gm,inputRing,outputRings);
@@ -28,29 +26,39 @@ public class RoundRobinRouteStage extends PronghornStage {
 		processAvailData(this);
 	}
 
-	private static boolean processAvailData(RoundRobinRouteStage stage) {
+	//TODO: AA, May need NEW round robin stage that is low level and only works with messages
+	//TODO: AA, May also need to add cursor to head of all fragments.
+	
+	private static void processAvailData(RoundRobinRouteStage stage) {
 		
-		if (RingReader.tryReadFragment(stage.inputRing)) {
-			
-			if (RingReader.getMsgIdx(stage.inputRing)<0) {
-				RingReader.releaseReadLock(stage.inputRing);
-				//send the EOF message to all of the targets.
-				int i = stage.outputRings.length;
-				while (--i>=0) {
-					RingBuffer ring = stage.outputRings[i];
-					RingBuffer.spinBlockOnTail(tailPosition(ring), headPosition(ring) - (ring.maxSize-RingBuffer.EOF_SIZE), ring);
-					RingBuffer.publishEOF(ring);
-				}
-				return false;//exit with EOF
-			}			
-			RingBuffer ring = stage.outputRings[stage.targetRing];
-			while (!RingReader.tryMoveSingleMessage(stage.inputRing, ring)) { //TODO: B, rewite so it does not block on write
-			}
-			if (--stage.targetRing<0) {
-				stage.targetRing = stage.targetRingInit;
-			}
+		if (-2==stage.msgId && RingReader.tryReadFragment(stage.inputRing)) {
+			stage.msgId = RingReader.getMsgIdx(stage.inputRing);
+			if (stage.msgId<0) {
+				oldShutdown(stage);
+				return;
+			}		
 		}	
-		return true;
+			
+		if (stage.msgId>=0) {
+			if (RingReader.tryMoveSingleMessage(stage.inputRing, stage.outputRings[stage.targetRing])) {
+				if (--stage.targetRing<0) {
+					stage.targetRing = stage.targetRingInit;
+				}
+				stage.msgId = -2;
+				return;
+			}
+		}
+		return;
+	}
+
+	private static void oldShutdown(RoundRobinRouteStage stage) {
+		//send the EOF message to all of the targets.
+		int i = stage.outputRings.length;
+		while (--i>=0) {
+			RingBuffer.publishAllWrites(stage.outputRings[i]);
+		}
+		RingReader.releaseReadLock(stage.inputRing);
+		stage.msgId = -2;
 	}
 	
 	

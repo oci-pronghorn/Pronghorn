@@ -49,20 +49,18 @@ public abstract class PronghornStage {
 	public static int totalStages() {
 		return stageCounter.get();
 	}
+
 	
 	public void startup() {
-		//if this is overridden it must also call super.startup();
 		
 		//override to do work that must be done once.
 		//    Allocation of Objects/Memory so that it is done on this thread and supports Numa
 		//    Database connections
 		//    Other one time setup work.
 		GraphManager.initInputRings(this.graphManager, this.stageId);
+	
 		
 		
-		
-		
-		//TODO: set state to started up.
 	}
 
 	public String toString() {
@@ -73,6 +71,7 @@ public abstract class PronghornStage {
 		GraphManager.terminate(graphManager, this);
 	}
 	
+
 	
 	/**
 	 * Process all the work that is immediately available.
