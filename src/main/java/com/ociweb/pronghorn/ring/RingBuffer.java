@@ -825,22 +825,23 @@ public final class RingBuffer {
 		final int p = rbRingBuffer.byteWorkingHeadPos.value;
 		//TODO: revisit this not sure this conditional is required
 	    if (sourceLen > 0) {
-	    	int targetMask = rbRingBuffer.byteMask;
-	    	byte[] target = rbRingBuffer.byteBuffer;        	
-			
-	        int tStart = p & targetMask;
-	        int len1 = 1+targetMask - tStart;
-	        
-			if (len1>=sourceLen) {
-				RingBuffer.copyASCIIToByte(source, sourceIdx, target, tStart, sourceLen);
-			} else {
-			    // done as two copies
-			    RingBuffer.copyASCIIToByte(source, sourceIdx, target, tStart, len1);
-			    RingBuffer.copyASCIIToByte(source, sourceIdx + len1, target, 0, sourceLen - len1);
-			}
-	        rbRingBuffer.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(p + sourceLen);
+	    	int tStart = p & rbRingBuffer.byteMask;
+	        copyASCIIToBytes2(source, sourceIdx, sourceLen, rbRingBuffer, p, rbRingBuffer.byteBuffer, tStart, 1+rbRingBuffer.byteMask - tStart);
 	    }
 		return p;
+	}
+
+	private static void copyASCIIToBytes2(CharSequence source, int sourceIdx,
+			final int sourceLen, RingBuffer rbRingBuffer, final int p,
+			byte[] target, int tStart, int len1) {
+		if (len1>=sourceLen) {
+			RingBuffer.copyASCIIToByte(source, sourceIdx, target, tStart, sourceLen);
+		} else {
+		    // done as two copies
+		    RingBuffer.copyASCIIToByte(source, sourceIdx, target, tStart, len1);
+		    RingBuffer.copyASCIIToByte(source, sourceIdx + len1, target, 0, sourceLen - len1);
+		}
+		rbRingBuffer.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(p + sourceLen);
 	}
 
     public static int copyASCIIToBytes(char[] source, int sourceIdx, final int sourceLen, RingBuffer rbRingBuffer) {
@@ -1320,6 +1321,7 @@ public final class RingBuffer {
 		RingBuffer.addMsgIdx(ring, msgIdx);
 	}
     
+	//TODO: AAA, need wipe on read method for secure data passing.
     
     //All the spin lock methods share the same implementation. Unfortunately these can not call 
     //a common implementation because the extra method jump degrades the performance in tight loops

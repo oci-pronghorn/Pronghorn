@@ -27,30 +27,11 @@ public class OutputRingInvocationHandler implements InvocationHandler {
 
 	private final LongHashTable fieldIdTable = new LongHashTable(7); //no need to use messageId in the keys
 	
-	private final IntHashTable fieldHash = new IntHashTable(7);
 	
 	public OutputRingInvocationHandler(RingBuffer outputRing, int msgIdx, Class<?> clazz) {
 		this.outputRing = outputRing;
 		this.from = RingBuffer.from(outputRing);
 		this.msgIdx = msgIdx;
-		
-		//  NEW IDEA BUT ITS NOT FULLY DONE YET
-//		Method[] methods = clazz.getMethods();
-//		int j = methods.length;
-//		while (--j>=0) {
-//			ProngTemplateField fieldAnnonation = methods[j].getAnnotation(ProngTemplateField.class);
-//			if (null!=fieldAnnonation) {
-//				//save these fields so we need not look them up again later.
-//		
-//				int fieldLoc = FieldReferenceOffsetManager.lookupFieldLocator(fieldAnnonation.fieldId(), msgIdx, from);				
-//				int hashCode = System.identityHashCode(methods[j]);
-//								
-//				IntHashTable.setItem(fieldHash, hashCode, fieldLoc);
-//								
-//			}			
-//		}
-		
-		
 					
 		int fields = this.from.fragScriptSize[msgIdx];
 		int c = 0;
@@ -69,118 +50,119 @@ public class OutputRingInvocationHandler implements InvocationHandler {
 		}		
 	}
 	
-//	Map<Method,Integer> temp = new HashMap<Method,Integer>();
-	
-	
 	@Override
 	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
 					
-		int fieldLoc;
-		//Integer fieldLoc = temp.get(method);
-		//if (null==fieldLoc) {
-			ProngTemplateField fieldAnnonation = method.getAnnotation(ProngTemplateField.class);
-			fieldLoc =  LongHashTable.getItem(fieldIdTable, fieldAnnonation.fieldId());
-		//	temp.put(method, fieldLoc);
-		//}
+		ProngTemplateField fieldAnnonation = method.getAnnotation(ProngTemplateField.class);
+		int fieldLoc =  LongHashTable.getItem(fieldIdTable, fieldAnnonation.fieldId());		
+		writeForYourType(args, fieldAnnonation, fieldLoc, (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE);		
 		
-		
-		int extractedType = (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE;
-		
+		return null;
+	}
+
+	private void writeForYourType(Object[] args,
+			ProngTemplateField fieldAnnonation, int fieldLoc, int extractedType) {
 		switch (extractedType) {
 			case 0:
-				RingWriter.writeInt(outputRing, fieldLoc, ((Number)args[0]).intValue());		
-				break;
-			case 1:
-				if (null == args[0]) {
-					RingWriter.writeInt(outputRing, fieldLoc, FieldReferenceOffsetManager.getAbsent32Value(from));
-				} else {
-					RingWriter.writeInt(outputRing, fieldLoc, ((Number)args[0]).intValue());	
-				}
-				break;
 			case 2:
 				RingWriter.writeInt(outputRing, fieldLoc, ((Number)args[0]).intValue());		
 				break;
+			case 1:
 			case 3:
-				if (null == args[0]) {
-					RingWriter.writeInt(outputRing, fieldLoc, FieldReferenceOffsetManager.getAbsent32Value(from));
-				} else {
-					RingWriter.writeInt(outputRing, fieldLoc, ((Number)args[0]).intValue());	
-				}
+				writeIntOptional(args, fieldLoc);
 				break;
 			case 4:
-				RingWriter.writeLong(outputRing, fieldLoc, ((Number)args[0]).longValue());		
-				break;
-			case 5:
-				if (null == args[0]) {
-					RingWriter.writeLong(outputRing, fieldLoc, FieldReferenceOffsetManager.getAbsent64Value(from));
-				} else {
-					RingWriter.writeLong(outputRing, fieldLoc, ((Number)args[0]).longValue());	
-				}
-				break;
 			case 6:
 				RingWriter.writeLong(outputRing, fieldLoc, ((Number)args[0]).longValue());		
 				break;
+			case 5:
 			case 7:
-				if (null == args[0]) {
-					RingWriter.writeLong(outputRing, fieldLoc, FieldReferenceOffsetManager.getAbsent64Value(from));
-				} else {
-					RingWriter.writeLong(outputRing, fieldLoc, ((Number)args[0]).longValue());	
-				}
+				writeLongOptional(args, fieldLoc);
 				break;
 			case 8:
 				RingWriter.writeASCII(outputRing, fieldLoc, args[0].toString());
 				break;
 			case 9:
-				if (null==args[0]) {
-					RingWriter.writeASCII(outputRing, fieldLoc, EMPTY_CHAR, 0, -1);
-				} else {
-					RingWriter.writeASCII(outputRing, fieldLoc, args[0].toString());
-				}
+				writeOptionalASCII(args, fieldLoc);
 				break;
 			case 10:
 				RingWriter.writeUTF8(outputRing, fieldLoc, args[0].toString());
 				break;
 			case 11:
-				if (null==args[0]) {
-					RingWriter.writeUTF8(outputRing, fieldLoc, EMPTY_CHAR, 0, -1);
-				} else {
-					RingWriter.writeUTF8(outputRing, fieldLoc, args[0].toString());
-				}
+				writeOptionalUTF8(args, fieldLoc);
 				break;	
 			case 12:
-				RingWriter.writeDouble(outputRing, fieldLoc, ((Number)args[0]).doubleValue(),method.getAnnotation(ProngTemplateField.class).decimalPlaces());	
+				RingWriter.writeDouble(outputRing, fieldLoc, ((Number)args[0]).doubleValue(),fieldAnnonation.decimalPlaces());	
 				break;
 			case 13:
-				if (null==args[0]) {
-					RingWriter.writeDecimal(outputRing, fieldLoc, FieldReferenceOffsetManager.getAbsent32Value(from), FieldReferenceOffsetManager.getAbsent64Value(from));
-				} else {
-					RingWriter.writeDouble(outputRing, fieldLoc, ((Number)args[0]).doubleValue(),method.getAnnotation(ProngTemplateField.class).decimalPlaces());	
-				}
+				writeOptionalDecimal(args, fieldAnnonation, fieldLoc);
 				break;
 			case 14:
-				if (args[0] instanceof ByteBuffer) {
-					RingWriter.writeBytes(outputRing, fieldLoc, (ByteBuffer)args[0], args.length>1 ? ((Number)args[1]).intValue() : ((ByteBuffer)args[0]).remaining());			
-				} else {
-					RingWriter.writeBytes(outputRing, fieldLoc, (byte[])args[0]);					
-				}				
+				writeBytes(args, fieldLoc);				
 				break;
 			case 15:
-				if (null==args[0]) {
-					RingWriter.writeBytes(outputRing, fieldLoc, EMPTY_BYTES, 0, -1, 1);
-				} else {
-					if (args[0] instanceof ByteBuffer) {
-						RingWriter.writeBytes(outputRing, fieldLoc, (ByteBuffer)args[0], args.length>1 ? ((Number)args[1]).intValue() : ((ByteBuffer)args[0]).remaining());			
-					} else {
-						RingWriter.writeBytes(outputRing, fieldLoc, (byte[])args[0]);					
-					}
-				}
+				writeOptionalBytes(args, fieldLoc);
 				break;	
 			default:
 				throw new UnsupportedOperationException("No support yet for "+TypeMask.xmlTypeName[extractedType]);
 		
-		}		
-		
-		return null;
+		}
+	}
+
+	private void writeOptionalBytes(Object[] args, int fieldLoc) {
+		if (null==args[0]) {
+			RingWriter.writeBytes(outputRing, fieldLoc, EMPTY_BYTES, 0, -1, 1);
+		} else {
+			writeBytes(args, fieldLoc);
+		}
+	}
+
+	private void writeBytes(Object[] args, int fieldLoc) {
+		if (args[0] instanceof ByteBuffer) {
+			RingWriter.writeBytes(outputRing, fieldLoc, (ByteBuffer)args[0], args.length>1 ? ((Number)args[1]).intValue() : ((ByteBuffer)args[0]).remaining());			
+		} else {
+			RingWriter.writeBytes(outputRing, fieldLoc, (byte[])args[0]);					
+		}
+	}
+
+	private void writeOptionalDecimal(Object[] args, ProngTemplateField fieldAnnonation, int fieldLoc) {
+		if (null==args[0]) {
+			RingWriter.writeDecimal(outputRing, fieldLoc, FieldReferenceOffsetManager.getAbsent32Value(from), FieldReferenceOffsetManager.getAbsent64Value(from));
+		} else {
+			RingWriter.writeDouble(outputRing, fieldLoc, ((Number)args[0]).doubleValue(),fieldAnnonation.decimalPlaces());	
+		}
+	}
+
+	private void writeOptionalUTF8(Object[] args, int fieldLoc) {
+		if (null==args[0]) {
+			RingWriter.writeUTF8(outputRing, fieldLoc, EMPTY_CHAR, 0, -1);
+		} else {
+			RingWriter.writeUTF8(outputRing, fieldLoc, args[0].toString());
+		}
+	}
+
+	private void writeOptionalASCII(Object[] args, int fieldLoc) {
+		if (null==args[0]) {
+			RingWriter.writeASCII(outputRing, fieldLoc, EMPTY_CHAR, 0, -1);
+		} else {
+			RingWriter.writeASCII(outputRing, fieldLoc, args[0].toString());
+		}
+	}
+
+	private void writeLongOptional(Object[] args, int fieldLoc) {
+		if (null == args[0]) {
+			RingWriter.writeLong(outputRing, fieldLoc, FieldReferenceOffsetManager.getAbsent64Value(from));
+		} else {
+			RingWriter.writeLong(outputRing, fieldLoc, ((Number)args[0]).longValue());	
+		}
+	}
+
+	private void writeIntOptional(Object[] args, int fieldLoc) {
+		if (null == args[0]) {
+			RingWriter.writeInt(outputRing, fieldLoc, FieldReferenceOffsetManager.getAbsent32Value(from));
+		} else {
+			RingWriter.writeInt(outputRing, fieldLoc, ((Number)args[0]).intValue());	
+		}
 	}
 
 }

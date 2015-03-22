@@ -31,8 +31,10 @@ public class EventConsumer {
 				return null;
 			}
 		}
+		return slowCreate(consumer, clazz);		
+	}
 
-		
+	private static <T> T slowCreate(final EventConsumer consumer, Class<T> clazz) {
 		int msgIdx = FieldReferenceOffsetManager.lookupTemplateLocator(clazz.getAnnotation(ProngTemplateMessage.class).templateId(), consumer.from);
 
 		if (RingWriter.tryWriteFragment(consumer.output, msgIdx)) {
@@ -50,7 +52,6 @@ public class EventConsumer {
 		} else {
 			return null;
 		}
-		
 	}
 
 	public static void publish(EventConsumer consumer, Object dq) {

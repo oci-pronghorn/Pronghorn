@@ -329,32 +329,40 @@ public class RingWalker {
 		//NOTE: this is called by both blockWrite and tryWrite.  It must not call publish because we need to support
 		//      nested long sequences where we don't know the length until after they are all written.
 		
-		//Must double check this here for nested sequences
-		if (ring.writeTrailingCountOfBytesConsumed) {
-			RingBuffer.writeTrailingCountOfBytesConsumed(ring, ring.ringWalker.nextWorkingHead -1 ); 
-		}
-		
-		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {			
-	
-			//each time some bytes were written in the previous fragment this value was incremented.		
-			//now it becomes the base value for all byte writes
-			RingBuffer.markBytesWriteBase(ring);
-			
-			//Start new stack of fragments because this is a new message
-			ring.ringWalker.activeWriteFragmentStack[0] = ring.workingHeadPos.value;
-			ring.buffer[ring.mask &(int)(ring.workingHeadPos.value + from.templateOffset)] = cursorPosition;
-
-		 } else {
-			
-			//this fragment does not start a new message but its start position must be recorded for usage later
-			ring.ringWalker.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=ring.workingHeadPos.value;
-		 }
+		prepWriteFragmentSpecificProcessing(ring, cursorPosition, from);
 		ring.workingHeadPos.value += fragSize;
 		ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + fragSize;
 
 		//when publish is called this new byte will be appended due to this request
 		ring.writeTrailingCountOfBytesConsumed = (1==from.fragNeedsAppendedCountOfBytesConsumed[cursorPosition]);
 				
+	}
+
+
+	private static void prepWriteFragmentSpecificProcessing(RingBuffer ring, int cursorPosition, FieldReferenceOffsetManager from) {
+		//Must double check this here for nested sequences, TODO: B, confrim this assumption
+		if (ring.writeTrailingCountOfBytesConsumed) {
+			RingBuffer.writeTrailingCountOfBytesConsumed(ring, ring.ringWalker.nextWorkingHead -1 ); 
+		}
+		
+		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {
+			prepWriteMessageStart(ring, cursorPosition, from);
+		 } else {			
+			//this fragment does not start a new message but its start position must be recorded for usage later
+			ring.ringWalker.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=ring.workingHeadPos.value;
+		 }
+	}
+
+
+	private static void prepWriteMessageStart(RingBuffer ring,
+			int cursorPosition, FieldReferenceOffsetManager from) {
+		//each time some bytes were written in the previous fragment this value was incremented.		
+		//now it becomes the base value for all byte writes
+		RingBuffer.markBytesWriteBase(ring);
+		
+		//Start new stack of fragments because this is a new message
+		ring.ringWalker.activeWriteFragmentStack[0] = ring.workingHeadPos.value;
+		ring.buffer[ring.mask &(int)(ring.workingHeadPos.value + from.templateOffset)] = cursorPosition;
 	}
 
 	
@@ -413,8 +421,7 @@ public class RingWalker {
 	}
 
 
-	private static boolean copyFragment1(RingBuffer inputRing,
-			RingBuffer outputRing, long start, int spaceNeeded, int bytesToCopy) {
+	private static boolean copyFragment1(RingBuffer inputRing, RingBuffer outputRing, long start, int spaceNeeded, int bytesToCopy) {
 		if ((spaceNeeded >  outputRing.maxSize-(int)(outputRing.workingHeadPos.value - outputRing.tailPos.longValue())) || 
 			(bytesToCopy > outputRing.maxByteSize-RingBuffer.bytesOfContent(outputRing))) {
 			return false;
