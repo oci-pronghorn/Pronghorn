@@ -442,15 +442,15 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		assert((targetLOC&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (targetLOC&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (targetLOC&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((targetLOC>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 				
 		//High level API example of reading bytes from one ring buffer into another array that wraps with a mask
-		int length = readBytes(sourceRing, sourceLOC, targetRing.byteBuffer, targetRing.byteWorkingHeadPos.value, targetRing.byteMask);
-		RingBuffer.validateVarLength(targetRing, length);							
-		
-		int p = targetRing.byteWorkingHeadPos.value;
-		
+		return copyBytes(targetRing, targetLOC, readBytes(sourceRing, sourceLOC, targetRing.byteBuffer, targetRing.byteWorkingHeadPos.value, targetRing.byteMask), targetRing.byteWorkingHeadPos.value);
+	}
+
+	private static int copyBytes(final RingBuffer targetRing, int targetLOC, int length, int byteWrkHdPos) {
+		RingBuffer.validateVarLength(targetRing, length);	
 		RingBuffer.setBytePosAndLen(targetRing.buffer, targetRing.mask, 
-				targetRing.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(targetLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&targetLOC), p, length, RingBuffer.bytesWriteBase(targetRing)); 
+				targetRing.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(targetLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&targetLOC), byteWrkHdPos, length, RingBuffer.bytesWriteBase(targetRing)); 
 	
-		targetRing.byteWorkingHeadPos.value =  RingBuffer.BYTES_WRAP_MASK&(p + length);	
+		targetRing.byteWorkingHeadPos.value =  RingBuffer.BYTES_WRAP_MASK&(byteWrkHdPos + length);	
 		
 		return length;
 	}

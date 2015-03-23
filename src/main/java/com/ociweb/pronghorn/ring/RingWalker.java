@@ -257,39 +257,55 @@ public class RingWalker {
 	private static void prepReadMessage2(RingBuffer ringBuffer, RingWalker ringBufferConsumer, final long tmpNextWokingTail) {
 		//
 		//Start new stack of fragments because this is a new message
-		ringBufferConsumer.activeReadFragmentStack[0] = tmpNextWokingTail;
-				 
+		ringBufferConsumer.activeReadFragmentStack[0] = tmpNextWokingTail;				 
 		ringBufferConsumer.msgIdx = ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)];
-		int[] fragDataSize = ringBufferConsumer.from.fragDataSize;
+		prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail,	ringBufferConsumer.from.fragDataSize);
+	}
 
+
+	private static void prepReadMessage2(RingBuffer ringBuffer,	RingWalker ringBufferConsumer, final long tmpNextWokingTail, int[] fragDataSize) {
 		if (ringBufferConsumer.msgIdx >= 0 && ringBufferConsumer.msgIdx < fragDataSize.length) {
-			//assert that we can read the fragment size. if not we get a partial fragment failure.
-			assert(ringBuffer.headPos.get() >= (ringBufferConsumer.nextWorkingTail + fragDataSize[ringBufferConsumer.msgIdx])) : 
-				 "Partial fragment detected at "+ringBuffer.headPos.get()+" needs "+ (ringBufferConsumer.nextWorkingTail + fragDataSize[ringBufferConsumer.msgIdx])+
-				    " cached head was "+ringBuffer.llwHeadPosCache+" max frag known "+FieldReferenceOffsetManager.maxFragmentSize(ringBufferConsumer.from)+
-				    " for msgIdx:"+ringBufferConsumer.msgIdx;
-
-			ringBufferConsumer.nextWorkingTail = tmpNextWokingTail + fragDataSize[ringBufferConsumer.msgIdx];//save the size of this new fragment we are about to read  		    		
-			ringBufferConsumer.cursor = ringBufferConsumer.msgIdx;  
-			
-			int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.msgIdx + ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.msgIdx]) -1;
-			if (TypeMask.GroupLength == ((ringBufferConsumer.from.tokens[lastScriptPos] >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) {
-				//Can not assume end of message any more.
-				beginNewSequence(ringBufferConsumer, ringBuffer.buffer[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
-			} 
+			prepReadMessage2Normal(ringBuffer, ringBufferConsumer, tmpNextWokingTail, fragDataSize); 
 		} else {
-			//rare so we can afford some extra checking at this point 
-			if (ringBufferConsumer.msgIdx > fragDataSize.length) {
-				//this is very large so it is probably bad data, catch it now and send back a meaningful error
-				int limit = (ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset))+1;
-				throw new UnsupportedOperationException("Bad msgId:"+ringBufferConsumer.msgIdx+
-						" encountered at last absolute position:"+(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)+
-						" recent primary ring context:"+Arrays.toString( Arrays.copyOfRange(ringBuffer.buffer, Math.max(0, limit-10), limit )));
-			}		
-			
-			//this is commonly used as the end of file marker    		
-			ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+RingBuffer.EOF_SIZE;
+			prepReadMessage2EOF(ringBuffer, ringBufferConsumer, tmpNextWokingTail, fragDataSize);
 		}
+	}
+
+
+	private static void prepReadMessage2Normal(RingBuffer ringBuffer,
+			RingWalker ringBufferConsumer, final long tmpNextWokingTail,
+			int[] fragDataSize) {
+		//assert that we can read the fragment size. if not we get a partial fragment failure.
+		assert(ringBuffer.headPos.get() >= (ringBufferConsumer.nextWorkingTail + fragDataSize[ringBufferConsumer.msgIdx])) : 
+			 "Partial fragment detected at "+ringBuffer.headPos.get()+" needs "+ (ringBufferConsumer.nextWorkingTail + fragDataSize[ringBufferConsumer.msgIdx])+
+			    " cached head was "+ringBuffer.llwHeadPosCache+" max frag known "+FieldReferenceOffsetManager.maxFragmentSize(ringBufferConsumer.from)+
+			    " for msgIdx:"+ringBufferConsumer.msgIdx;
+
+		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail + fragDataSize[ringBufferConsumer.msgIdx];//save the size of this new fragment we are about to read  		    		
+		ringBufferConsumer.cursor = ringBufferConsumer.msgIdx;  
+		
+		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.msgIdx + ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.msgIdx]) -1;
+		if (TypeMask.GroupLength == ((ringBufferConsumer.from.tokens[lastScriptPos] >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) {
+			//Can not assume end of message any more.
+			beginNewSequence(ringBufferConsumer, ringBuffer.buffer[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
+		}
+	}
+
+
+	private static void prepReadMessage2EOF(RingBuffer ringBuffer,
+			RingWalker ringBufferConsumer, final long tmpNextWokingTail,
+			int[] fragDataSize) {
+		//rare so we can afford some extra checking at this point 
+		if (ringBufferConsumer.msgIdx > fragDataSize.length) {
+			//this is very large so it is probably bad data, catch it now and send back a meaningful error
+			int limit = (ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset))+1;
+			throw new UnsupportedOperationException("Bad msgId:"+ringBufferConsumer.msgIdx+
+					" encountered at last absolute position:"+(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)+
+					" recent primary ring context:"+Arrays.toString( Arrays.copyOfRange(ringBuffer.buffer, Math.max(0, limit-10), limit )));
+		}		
+		
+		//this is commonly used as the end of file marker    		
+		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+RingBuffer.EOF_SIZE;
 	}
     
  

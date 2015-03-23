@@ -60,8 +60,7 @@ public class OutputRingInvocationHandler implements InvocationHandler {
 		return null;
 	}
 
-	private void writeForYourType(Object[] args,
-			ProngTemplateField fieldAnnonation, int fieldLoc, int extractedType) {
+	private void writeForYourType(Object[] args, ProngTemplateField fieldAnnonation, int fieldLoc, int extractedType) {
 		switch (extractedType) {
 			case 0:
 			case 2:
