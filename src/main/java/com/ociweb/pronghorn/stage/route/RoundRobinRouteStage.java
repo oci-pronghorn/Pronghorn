@@ -45,6 +45,7 @@ public class RoundRobinRouteStage extends PronghornStage {
 					stage.targetRing = stage.targetRingInit;
 				}
 				stage.msgId = -2;
+				RingReader.releaseReadLock(stage.inputRing);
 				return;
 			}
 		}

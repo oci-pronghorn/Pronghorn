@@ -124,12 +124,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					//TODO: need to init the ring buffer in startup for numa.
 					stage.startup();
 					
-					do {
-						assert(confirmRunStart(stage));
-						stage.run();
-						assert(confirmRunStop(stage));
-						
-					} while (!isShutDownNow && ( (!isShuttingDown && !GraphManager.isStageTerminated(graphManager, stage.stageId)) || GraphManager.mayHaveUpstreamData(graphManager, stage.stageId) ));	
+					runLoop(stage);	
 			
 					//only call if its not already shutdown
 					if (!GraphManager.isStageTerminated(graphManager, stage.stageId)) {					
@@ -170,20 +165,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				try {	
 					stage.startup();
 					
-					do {
-						long start = System.nanoTime();
-						assert(confirmRunStart(stage));
-						stage.run();
-						
-						int sleepFor = nsScheduleRate - (int)(System.nanoTime()-start);
-						if (sleepFor>0) {
-							int sleepMs = sleepFor/1000000;
-							int sleepNs = sleepFor%1000000;
-							Thread.sleep(sleepMs, sleepNs);
-						};
-						assert(confirmRunStop(stage));
-												
-					} while (!isShutDownNow && !isShuttingDown);	
+					runPeriodicLoop(nsScheduleRate, stage);	
 					
 					//only call if its not already shutdown
 					if (!GraphManager.isStageTerminated(graphManager, stage.stageId)) {					
@@ -199,5 +181,32 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				}
 			}			
 		};
+	}
+
+	private void runLoop(final PronghornStage stage) {
+		do {
+			assert(confirmRunStart(stage));
+			stage.run();
+			assert(confirmRunStop(stage));
+			
+		} while (!isShutDownNow && ( (!isShuttingDown && !GraphManager.isStageTerminated(graphManager, stage.stageId)) || GraphManager.mayHaveUpstreamData(graphManager, stage.stageId) ));
+	}
+
+	private void runPeriodicLoop(final int nsScheduleRate,
+			final PronghornStage stage) throws InterruptedException {
+		do {
+			long start = System.nanoTime();
+			assert(confirmRunStart(stage));
+			stage.run();
+			
+			int sleepFor = nsScheduleRate - (int)(System.nanoTime()-start);
+			if (sleepFor>0) {
+				int sleepMs = sleepFor/1000000;
+				int sleepNs = sleepFor%1000000;
+				Thread.sleep(sleepMs, sleepNs);
+			};
+			assert(confirmRunStop(stage));
+									
+		} while (!isShutDownNow && !isShuttingDown);
 	}
 }

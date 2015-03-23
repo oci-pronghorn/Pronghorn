@@ -19,7 +19,10 @@ public class SplitterStage extends PronghornStage {
 	private RingBuffer[] targets;
 	private long[] targetHeadPos;
 	
-	public int moreToCopy=-2;;
+	public int moreToCopy=-2;
+	
+	private int byteHeadPos;
+    private long headPos;
 	
 	public SplitterStage(GraphManager gm, RingBuffer source, RingBuffer ... targets) {
 		super(gm,source,targets);
@@ -73,52 +76,56 @@ public class SplitterStage extends PronghornStage {
 
 	@Override
 	public void run() {		
-		processAvailData(this);//TODO: C, Should enable use of true to return partial copy. this may cause hang as written.
+		//TODO: A, Keep state here as to how much was copied and return when we have written all those possible, then finish write later
+		//         NOTE: only release after everything is copied.
+		processAvailData(this);
 	}
 
 	private static boolean processAvailData(SplitterStage ss) {
-		int byteHeadPos;
-        long headPos;
 
-        //TODO: A, publush to a single atomic long and read it here.
-        //get the new head position
-        byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
-		headPos = RingBuffer.headPosition(ss.source);		
-		while(byteHeadPos != RingBuffer.bytesHeadPosition(ss.source) || headPos != RingBuffer.headPosition(ss.source) ) {
-			byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
-			headPos = RingBuffer.headPosition(ss.source);
-		}	
-			
+        findStableCutPoint(ss);			
+        //we have established the point that we can read up to, this value is changed by the writer on the other side
 		
-		//we have established the point that we can read up to, this value is changed by the writer on the other side
 						
 		//get the start and stop locations for the copy
 		//now find the point to start reading from, this is moved forward with each new read.		
-		int pMask = ss.source.mask;
 		long tempTail = RingBuffer.tailPosition(ss.source);
-		int primaryTailPos = pMask & (int)tempTail;				
-		long totalPrimaryCopy = (headPos - tempTail);
+		long totalPrimaryCopy = (ss.headPos - tempTail);
 		if (totalPrimaryCopy <= 0) {
 			assert(totalPrimaryCopy==0);
 			return false; //nothing to copy so come back later
 		}
+		ss.moreToCopy = 0;
+		
 			
-		int bMask = ss.source.byteMask;		
+		int primaryTailPos = ss.source.mask & (int)tempTail;				
 		int tempByteTail = RingBuffer.bytesTailPosition(ss.source);
-		int byteTailPos = bMask & tempByteTail;
-		int totalBytesCopy =      (bMask & byteHeadPos) - byteTailPos; 
+		int byteTailPos = ss.source.byteMask & tempByteTail;
+		int totalBytesCopy =      (ss.source.byteMask & ss.byteHeadPos) - byteTailPos; 
 		if (totalBytesCopy < 0) {
-			totalBytesCopy += (bMask+1);
+			totalBytesCopy += (ss.source.byteMask+1);
 		}
 				
 		//now do the copies
 		doingCopy(ss, byteTailPos, primaryTailPos, (int)totalPrimaryCopy, totalBytesCopy);
 								
 		//release tail so data can be written
+		
 		ss.source.bytesTailPos.lazySet(ss.source.byteWorkingTailPos.value = RingBuffer.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy));
 		RingBuffer.publishWorkingTailPosition(ss.source,tempTail + totalPrimaryCopy);
 		
 		return false; //finished all the copy  for now
+	}
+
+	private static void findStableCutPoint(SplitterStage ss) {
+		//TODO: A, publush to a single atomic long and read it here.
+        //get the new head position
+        ss.byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
+        ss.headPos = RingBuffer.headPosition(ss.source);		
+		while(ss.byteHeadPos != RingBuffer.bytesHeadPosition(ss.source) || ss.headPos != RingBuffer.headPosition(ss.source) ) {
+			ss.byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
+			ss.headPos = RingBuffer.headPosition(ss.source);
+		}
 	}
 
 	//single pass attempt to copy if any can not accept the data then they are skipped
@@ -150,7 +157,12 @@ public class SplitterStage extends PronghornStage {
 				} // else this is already done.
 				
 			}
-		} while(ss.moreToCopy>0);
+		} while(ss.moreToCopy>0);		
+		
+		setAllAsDone(ss, totalPrimaryCopy);
+	}
+
+	private static void setAllAsDone(SplitterStage ss, int totalPrimaryCopy) {
 		//reset for next time.
 		int i = ss.targets.length;
 		while (--i>=0) {
