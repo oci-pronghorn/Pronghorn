@@ -19,10 +19,12 @@ public class MonitorConsoleStage extends PronghornStage {
 
 	private final RingBuffer[] inputs;
 	private Histogram[] hists;
+	private GraphManager graphManager;
 	
 	public MonitorConsoleStage(GraphManager graphManager, RingBuffer ... inputs) {
 		super(graphManager, inputs, NONE);
 		this.inputs = inputs;
+		this.graphManager = graphManager;
 		
 		validateSchema(inputs);
 	}
@@ -44,7 +46,7 @@ public class MonitorConsoleStage extends PronghornStage {
 		int i = inputs.length;
 		hists = new Histogram[i];
 		while (--i>=0) {
-			hists[i] = new Histogram(10000,50,0,100);
+			hists[i] = new Histogram(1000,50,0,100);
 		}
 	}
 		
@@ -73,8 +75,6 @@ public class MonitorConsoleStage extends PronghornStage {
 				int lastMsgIdx = RingReader.readInt(ring, TEMPLATE_MSG_LOC);
 				int ringSize = RingReader.readInt(ring, TEMPLATE_SIZE_LOC);
 				
-			//	System.err.println("xxxx "+i+"   "+((100*(head-tail))/ringSize)+"  "+(head-tail)+"  "+ringSize);
-				
 				Histogram.sample( (100*(head-tail))/ringSize, hists[i]);
 					
 								
@@ -90,9 +90,19 @@ public class MonitorConsoleStage extends PronghornStage {
 	@Override
 	public void shutdown() {
 		
+		
 		int i = hists.length;
 		while (--i>=0) {
-			System.out.println("   "+i+" "+hists[i]);
+			
+			long value = hists[i].valueAtPercent(.5);
+			
+			if (value>40) {
+			
+				//TOOD: must annotate stages with names that can be used by the ring
+				//String name = graphManager.getRingName(inputs[i]);
+			
+				System.out.println("   "+i+" "+hists[i]);
+			}
 		}
 		super.shutdown();
 	}

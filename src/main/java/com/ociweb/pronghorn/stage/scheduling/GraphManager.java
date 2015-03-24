@@ -5,7 +5,10 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
+import com.ociweb.pronghorn.stage.route.SplitterStage;
 
 public class GraphManager {
 	
@@ -17,6 +20,8 @@ public class GraphManager {
 	//TODO: add init of -1 to all the arrays for better error checking.
 
 	public final static String SCHEDULE_RATE = "SCHEDULE_RATE";
+	public final static String STAGE_NAME    = "STAGE_NAME";
+	
 	private final static int INIT_RINGS = 32;
 	private final static int INIT_STAGES = 32;
 
@@ -598,11 +603,50 @@ public class GraphManager {
 		
 	}
 
+	public static RingBuffer[] attachMonitorsToGraph(GraphManager gm, Integer monitorRate, RingBufferConfig ringBufferMonitorConfig) {
 
+		int j = gm.ringIdToRing.length;
+		int count = 0;
+		while (--j>=0) {
+			if (null!=gm.ringIdToRing[j]) {
+				count++;
+			}
+		}
+		if (0==count) {
+			throw new UnsupportedOperationException("Nothing to monitor, move this call down to after graph is constructed.");
+		}
+		RingBuffer[] monBuffers = new RingBuffer[count];
+		int monBufIdx = 0;
+		j = gm.ringIdToRing.length;
+		while (--j>=0) {
+			
+			if (null!=gm.ringIdToRing[j]) {
+				
+				monBuffers[monBufIdx] = new RingBuffer(ringBufferMonitorConfig);
+				GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, monitorRate, new RingBufferMonitorStage(gm, gm.ringIdToRing[j],  monBuffers[monBufIdx]));
+				
+				monBufIdx++;
+				
+			}
+		}
+		return monBuffers;	
+	}
 
-	
-	
-	
-	
+	public static void enableBatching(GraphManager gm) {
+		int j = gm.ringIdToRing.length;
+		while (--j>=0) {
+			RingBuffer ring = gm.ringIdToRing[j];
+			if (null!=ring) {
+				
+				if (!(GraphManager.getRingConsumer(gm, ring.ringId) instanceof SplitterStage) ) { //TODO: extract this as an annotation or member of stage?
+					RingBuffer.setMaxReleaseBatchSize(ring);
+				}
+				if (!(GraphManager.getRingProducer(gm, ring.ringId) instanceof SplitterStage) ) {
+					RingBuffer.setMaxPublishBatchSize(ring);
+				}				
+				
+			}
+		}
+	}
 
 }
