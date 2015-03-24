@@ -38,10 +38,6 @@ public class SplitterStage extends PronghornStage {
 		while(--i>=0) {
 			
 			targetHeadPos[i] = RingBuffer.headPosition(targets[i]); 
-			
-			//targets can not batch returns so this must be set
-			RingBuffer.setReleaseBatchSize(targets[i], 0);
-			RingReader.setReleaseBatchSize(targets[i], 0);
 					
 			//confirm this target is large enough for the needed data.
 			FieldReferenceOffsetManager targetFrom = RingBuffer.from(targets[i]);

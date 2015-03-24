@@ -591,7 +591,7 @@ public class GraphManager {
 		idx = m.stageIdToOutputsBeginIdx[stageId];
 		while (-1 != (ringId=m.multOutputIds[idx++])) {
 			RingBuffer ringBuffer = m.ringIdToRing[ringId];
-			while (!ringBuffer.isInit()) {
+			while (!RingBuffer.isInit(ringBuffer)) {
 				Thread.yield();
 			}				
 		}	

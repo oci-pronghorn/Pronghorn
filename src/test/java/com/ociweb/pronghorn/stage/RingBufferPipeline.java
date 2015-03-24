@@ -16,7 +16,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
@@ -29,6 +28,8 @@ import com.ociweb.pronghorn.ring.RingWriter;
 import com.ociweb.pronghorn.ring.stream.StreamingConsumer;
 import com.ociweb.pronghorn.ring.stream.StreamingConsumerAdapter;
 import com.ociweb.pronghorn.ring.stream.StreamingConsumerReader;
+import com.ociweb.pronghorn.stage.monitor.MonitorFROM;
+import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
 import com.ociweb.pronghorn.stage.route.RoundRobinRouteStage;
 import com.ociweb.pronghorn.stage.route.SplitterStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -597,7 +598,7 @@ public class RingBufferPipeline {
 		 if (monitor) {
 			monitorStages = new PronghornStage[j];
 		 	monitorRings = new RingBuffer[j];
-		 	montorFROM = RingBufferMonitorStage.buildFROM();
+		 	montorFROM = MonitorFROM.buildFROM();
 		 }
 		 
 		 byte ex = (byte)(useRouter ? 0 : 1);

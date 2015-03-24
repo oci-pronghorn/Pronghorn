@@ -192,20 +192,23 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		} while (!isShutDownNow && ( (!isShuttingDown && !GraphManager.isStageTerminated(graphManager, stage.stageId)) || GraphManager.mayHaveUpstreamData(graphManager, stage.stageId) ));
 	}
 
-	private void runPeriodicLoop(final int nsScheduleRate,
-			final PronghornStage stage) throws InterruptedException {
+	private void runPeriodicLoop(final int nsScheduleRate, final PronghornStage stage) {
 		do {
 			long start = System.nanoTime();
 			assert(confirmRunStart(stage));
 			stage.run();
+			assert(confirmRunStop(stage));
 			
 			int sleepFor = nsScheduleRate - (int)(System.nanoTime()-start);
 			if (sleepFor>0) {
 				int sleepMs = sleepFor/1000000;
 				int sleepNs = sleepFor%1000000;
-				Thread.sleep(sleepMs, sleepNs);
+				try {
+					Thread.sleep(sleepMs, sleepNs);
+				} catch (InterruptedException e) {
+					return;
+				}
 			};
-			assert(confirmRunStop(stage));
 									
 		} while (!isShutDownNow && !isShuttingDown);
 	}
