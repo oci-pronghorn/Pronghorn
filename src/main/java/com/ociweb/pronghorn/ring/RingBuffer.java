@@ -252,8 +252,8 @@ public final class RingBuffer {
     }
 
 	public void initBuffers() {
-		assert(!isInit()) : "RingBuffer was already initialized";
-		if (!isInit()) {
+		assert(!isInit(this)) : "RingBuffer was already initialized";
+		if (!isInit(this)) {
 			buildBufffers();
 		} else {
 			log.warn("Init was already called once already on this ring buffer");
@@ -269,12 +269,12 @@ public final class RingBuffer {
         this.wrappedSecondaryByteBuffer = ByteBuffer.wrap(this.byteBuffer);
 	}
     
-	public boolean isInit() {
-		return null!=this.byteBuffer &&
-			   null!=this.buffer &&
-			   null!=this.bufferLookup &&
-			   null!=this.wrappedPrimaryIntBuffer &&
-			   null!=this.wrappedSecondaryByteBuffer;
+	public static boolean isInit(RingBuffer ring) {
+		return null!=ring.byteBuffer &&
+			   null!=ring.buffer &&
+			   null!=ring.bufferLookup &&
+			   null!=ring.wrappedPrimaryIntBuffer &&
+			   null!=ring.wrappedSecondaryByteBuffer;
 	}
 	
 	public static void validateVarLength(RingBuffer rb, int length) {
@@ -1080,24 +1080,18 @@ public final class RingBuffer {
     }
 
     public static void addBytePosAndLen(RingBuffer ring, int position, int length) {
-    	PaddedLong headCache = ring.workingHeadPos;
-		setBytePosAndLen(ring.buffer, ring.mask, headCache.value, position, length, RingBuffer.bytesWriteBase(ring));        
-		headCache.value = headCache.value+2;
+		setBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos.value, position, length, RingBuffer.bytesWriteBase(ring));        
+		ring.workingHeadPos.value+=2;
     }
     
 	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat, int baseBytePos) {
 	   	//negative position is written as is because the internal array does not have any offset (but it could some day)
     	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
-    	int tmp = positionDat;
     	if (positionDat>=0) {
-    		tmp = (int)(positionDat-baseBytePos);	
-    		if (tmp<0) {
-    			tmp &= RingBuffer.BYTES_WRAP_MASK;
-    			//System.err.println("new value is "+tmp);
-    		}
-    	}
-    	
-        buffer[rbMask & (int)ringPos] = tmp;
+    		buffer[rbMask & (int)ringPos] = (int)(positionDat-baseBytePos) & RingBuffer.BYTES_WRAP_MASK; //mask is needed for the negative case, does no harm in positive case	
+    	} else {
+    		buffer[rbMask & (int)ringPos] = positionDat;    		
+    	}    	
         buffer[rbMask & (int)(ringPos+1)] = lengthDat;
 	} 
     

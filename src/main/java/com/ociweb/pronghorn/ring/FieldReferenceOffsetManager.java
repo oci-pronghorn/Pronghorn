@@ -421,6 +421,9 @@ public class FieldReferenceOffsetManager {
 	}
 
 	public static int maxVarLenFieldsPerPrimaryRingSize(FieldReferenceOffsetManager from, int mx) {
+		if (0==from.maxVarFieldPerUnit) {
+			return 0;
+		}
 		int maxVarCount = (int)Math.ceil(mx*from.maxVarFieldPerUnit);
 		//we require at least 2 fields to ensure that the average approach works in all cases
 		if (maxVarCount < 2) {
