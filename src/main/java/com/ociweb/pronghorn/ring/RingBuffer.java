@@ -164,6 +164,22 @@ public final class RingBuffer {
     	rb.batchPublishCountDown = size;    	
     }
 	
+    public static void setMaxPublishBatchSize(RingBuffer rb) {
+    	
+    	int size = computeMaxBatchSize(rb, 2);
+    	
+    	rb.batchPublishCountDownInit = size;
+    	rb.batchPublishCountDown = size;    	
+    	
+    }
+    
+    public static void setMaxReleaseBatchSize(RingBuffer rb) {
+    	
+    	int size = computeMaxBatchSize(rb, 2);
+    	rb.batchReleaseCountDownInit = size;
+    	rb.batchReleaseCountDown = size;    	
+    	
+    }
 
     
     public static int bytesWriteBase(RingBuffer rb) {

@@ -33,6 +33,11 @@ public class OutputRingInvocationHandler implements InvocationHandler {
 		this.from = RingBuffer.from(outputRing);
 		this.msgIdx = msgIdx;
 					
+		//TODO: walk all the fields of the object/class and get the annotated fields
+		//      find length and unique char positions in the method names
+		//      build a trie based on these values that ends with the right operation and attributes
+		//      in run code must apply this with the positions for decimals
+		
 		int fields = this.from.fragScriptSize[msgIdx];
 		int c = 0;
 		while (++c<fields) {
