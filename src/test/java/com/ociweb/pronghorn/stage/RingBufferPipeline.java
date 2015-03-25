@@ -143,8 +143,7 @@ public class RingBufferPipeline {
 		        	int len = takeRingByteLen(inputRing);
 		        	assertEquals(testArray.length,len);
 
-		        	//converting this to the position will cause the byte posistion to increment.
-		        	int pos = bytePosition(meta, inputRing, len);//has side effect of moving the byte pointer!!
+		        	int pos = bytePosition(meta, inputRing, len);
 		        	
 					if (lastPos>=0) {
 						assertEquals((lastPos+len)&inputRing.byteMask,pos&inputRing.byteMask);

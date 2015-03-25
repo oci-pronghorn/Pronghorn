@@ -44,8 +44,13 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		
 	}
 	
-	public void shutdown(){		
-		try {
+	public void shutdown(){	
+		
+		//TODO: Note new test see if this works. should not need to call terminate on input stages if they are not blocking!
+		isShuttingDown = true;
+		
+		
+		try {//TODO: test removing this block.
 		 GraphManager.terminateInputStages(graphManager);
 		} catch (Throwable t) {
 			log.error("Stacktrace",t);
