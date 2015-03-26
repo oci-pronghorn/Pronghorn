@@ -649,4 +649,15 @@ public class GraphManager {
 		}
 	}
 
+	public static String getRingName(GraphManager gm, RingBuffer ringBuffer) {
+		
+		PronghornStage consumer = getRingConsumer(gm, ringBuffer.ringId);
+		PronghornStage producer = getRingProducer(gm, ringBuffer.ringId);
+		
+		String consumerName = getAnnotation(gm, consumer, STAGE_NAME, consumer.getClass().getSimpleName()).toString();
+		String producerName = getAnnotation(gm, producer, STAGE_NAME, producer.getClass().getSimpleName()).toString();
+		
+		return producerName + "-"+Integer.toString(ringBuffer.ringId)+"-" + consumerName;
+	}
+
 }

@@ -658,7 +658,7 @@ public class RingBufferPipeline {
 						boolean useRoute = useTap&useRouter;
 						 ///
 						 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? 
-						// new DumpStageStreamingConsumer(gm, inputRing, useRoute):
+						 //new DumpStageStreamingConsumer(gm, inputRing, useRoute):
 						 new DumpStageHighLevel(gm, inputRing, useRoute) :
 						 new DumpStageLowLevel(gm, inputRing, useRoute));
 					 }

@@ -18,6 +18,7 @@ public class RingBufferMonitorStage extends PronghornStage {
 
 	private final RingBuffer observedRingBuffer;
 	private final RingBuffer notifyRingBuffer;
+	private final GraphManager gm;
 		
 	/**
 	 * This class should be used with the ScheduledThreadPoolExecutor for 
@@ -31,6 +32,7 @@ public class RingBufferMonitorStage extends PronghornStage {
 		super(gm, NONE, notifyRingBuffer); 
 		this.observedRingBuffer = observedRingBuffer;
 		this.notifyRingBuffer = notifyRingBuffer;
+		this.gm = gm;
 		
 		FieldReferenceOffsetManager from = RingBuffer.from(notifyRingBuffer); 
 		if (!from.fieldNameScript[0].equals("RingStatSample")) {
@@ -54,5 +56,10 @@ public class RingBufferMonitorStage extends PronghornStage {
 			
 			RingWriter.publishWrites(notifyRingBuffer);	
 		}
+	}
+
+	public String getObservedRingName() {
+		//NOTE: is this really the right graph, may need to get the graph from the producer or consumer of the observedRingBuffer!!
+		return GraphManager.getRingName(gm, observedRingBuffer);
 	}
 }

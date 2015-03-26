@@ -97,11 +97,16 @@ public class MonitorConsoleStage extends PronghornStage {
 			long value = hists[i].valueAtPercent(.5);
 			
 			if (value>40) {
-			
-				//TOOD: must annotate stages with names that can be used by the ring
-				//String name = graphManager.getRingName(inputs[i]);
-			
-				System.out.println("   "+i+" "+hists[i]);
+				PronghornStage producer = GraphManager.getRingProducer(graphManager,  inputs[i].ringId);
+				//NOTE: may need to walk up tree till we find this object, (future feature)
+				String ringName;
+				if (producer instanceof RingBufferMonitorStage) {
+					ringName = ((RingBufferMonitorStage)producer).getObservedRingName();
+				} else {
+					ringName = "Unknown";
+				}
+				
+				System.out.println("    "+i+" "+ringName+" Queue Fill Median:"+value+"% Average:"+(Histogram.accumulatedTotal(hists[i])/Histogram.sampleCount(hists[i]))+"%");
 			}
 		}
 		super.shutdown();

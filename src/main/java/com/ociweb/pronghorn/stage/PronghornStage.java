@@ -58,7 +58,7 @@ public abstract class PronghornStage {
 		//    Database connections
 		//    Other one time setup work.
 		GraphManager.initInputRings(this.graphManager, this.stageId);
-	
+	    //TODO: if startup never completes the scheudler needs to report this as an error.
 		
 		
 	}
