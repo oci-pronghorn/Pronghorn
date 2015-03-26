@@ -77,7 +77,10 @@ public final class RingBuffer {
    
     public int bytesWriteLastConsumedBytePos = 0;
     public int bytesWriteBase = 0;    
-    public int bytesReadBase = 0;    
+    public int bytesReadBase = 0;       
+	
+	public static final int RELATIVE_POS_MASK = 0x7FFFFFFF; //removes high bit which indicates this is a constant
+	
 	
         
     
@@ -364,11 +367,11 @@ public final class RingBuffer {
         RingWalker.reset(ringWalker, toPos);
     }
 
-    public static ByteBuffer readBytes(RingBuffer ring, ByteBuffer target, int pos, int len) {
-		if (pos < 0) {
-	        return readBytesConst(ring,len,target,RingReader.POS_CONST_MASK & pos);
+    public static ByteBuffer readBytes(RingBuffer ring, ByteBuffer target, int meta, int len) {
+		if (meta < 0) {
+	        return readBytesConst(ring,len,target,RingReader.POS_CONST_MASK & meta);
 	    } else {
-	        return readBytesRing(ring,len,target,restorePosition(ring,pos));
+	        return readBytesRing(ring,len,target,restorePosition(ring,meta));
 	    }
 	}
 
@@ -400,11 +403,11 @@ public final class RingBuffer {
 	        return target;
 	    }
 
-	public static Appendable readASCII(RingBuffer ring, Appendable target,	int pos, int len) {
-		if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
-	        return readASCIIConst(ring,len,target,RingReader.POS_CONST_MASK & pos);
+	public static Appendable readASCII(RingBuffer ring, Appendable target,	int meta, int len) {
+		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
+	        return readASCIIConst(ring,len,target,RingReader.POS_CONST_MASK & meta);
 	    } else {        	
-	        return readASCIIRing(ring,len,target,restorePosition(ring,pos));
+	        return readASCIIRing(ring,len,target,restorePosition(ring, meta));
 	    }
 	}
 
@@ -434,11 +437,11 @@ public final class RingBuffer {
 	    return target;
 	}
 
-	public static Appendable readUTF8(RingBuffer ring, Appendable target, int pos, int len) {
-		if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
-	        return readUTF8Const(ring,len,target,RingReader.POS_CONST_MASK & pos);
+	public static Appendable readUTF8(RingBuffer ring, Appendable target, int meta, int len) {
+		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
+	        return readUTF8Const(ring,len,target,RingReader.POS_CONST_MASK & meta);
 	    } else {
-	        return readUTF8Ring(ring,len,target,restorePosition(ring,pos));
+	        return readUTF8Ring(ring,len,target,restorePosition(ring,meta));
 	    }
 	}
 
@@ -1118,7 +1121,7 @@ public final class RingBuffer {
 	}
 
     public static int bytePosition(int meta, RingBuffer ring, int len) {
-    	int pos = restorePosition(ring, meta & 0x7FFFFFFF);
+    	int pos = restorePosition(ring, meta & RELATIVE_POS_MASK);
 
         if (len>=0) {
         	ring.byteWorkingTailPos.value =  BYTES_WRAP_MASK&(len+ring.byteWorkingTailPos.value);
@@ -1128,7 +1131,7 @@ public final class RingBuffer {
     }   
 
     public static int bytePositionGen(int meta, RingBuffer ring, int len) {
-    	return restorePosition(ring, meta & 0x7FFFFFFF);
+    	return restorePosition(ring, meta & RELATIVE_POS_MASK);
     }
     
     

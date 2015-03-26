@@ -104,6 +104,10 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         return ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc) + 1)];// second int is always the length
     }
     
+    //TODO: B, add new method CharSequence readASCII(RingBuffer ring, int loc, CharSequenceFlyweight target)
+    //      Char sequence must wrap the ring buffer backing array.  Passed in object is re-used for this call
+    
+    
     public static Appendable readASCII(RingBuffer ring, int loc, Appendable target) {
     	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
         int pos = ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];   
@@ -336,6 +340,10 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         return ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc) + 1)];// second int is always the length
     }
     
+    public static int readBytesMask(RingBuffer ring, int loc) {
+    	return ring.byteMask;
+    }
+    
     public static int readBytesPosition(RingBuffer ring, int loc) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
@@ -529,8 +537,6 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	public static void releaseReadLock(RingBuffer ringBuffer) {
 		
 //		if ((--ringBuffer.batchReleaseCountDown<=0)) {	
-			
-			RingBuffer.releaseReadLock(ringBuffer);
 			
      		ringBuffer.workingTailPos.value = ringBuffer.ringWalker.nextWorkingTail;
 			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			

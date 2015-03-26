@@ -92,7 +92,9 @@ public class StreamingConsumerTest {
 		StreamingConsumerReader reader = new StreamingConsumerReader(ring, visitor );
 		
 		//ring is fully populated so we should not need to call this run again
-		reader.run();
+		while (RingBuffer.contentRemaining(ring)>0) {
+			reader.run();
+		}
 		
 		ps.close();
 		String results = new String(baos.toByteArray());
