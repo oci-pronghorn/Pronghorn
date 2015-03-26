@@ -128,7 +128,9 @@ public class RingWalker {
 		
 		if ((--ringBuffer.batchReleaseCountDown<=0)) {	
 			
-			RingReader.releaseReadLock(ringBuffer);
+			ringBuffer.workingTailPos.value = ringBuffer.ringWalker.nextWorkingTail;
+			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			
+			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);
 		
 			ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
 		}
@@ -245,7 +247,9 @@ public class RingWalker {
 			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
 		} else {
 			
-			RingReader.releaseReadLock(ringBuffer);
+			ringBuffer.workingTailPos.value = ringBuffer.ringWalker.nextWorkingTail;
+			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			
+			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);
 						
 			ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
 			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);

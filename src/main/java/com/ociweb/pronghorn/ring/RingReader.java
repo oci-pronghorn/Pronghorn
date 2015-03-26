@@ -524,11 +524,23 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	    }
 	}
 
+	
+    //This is NOT supporting batching like the other calls. TODO: can this be resolved?
 	public static void releaseReadLock(RingBuffer ringBuffer) {
-		ringBuffer.workingTailPos.value = ringBuffer.ringWalker.nextWorkingTail;
 		
-		ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			
-		ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); //inlined release however the byte adjust must happen on every message so its done earlier
+//		if ((--ringBuffer.batchReleaseCountDown<=0)) {	
+			
+			RingBuffer.releaseReadLock(ringBuffer);
+			
+     		ringBuffer.workingTailPos.value = ringBuffer.ringWalker.nextWorkingTail;
+			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			
+			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); 
+			
+		
+//			ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
+//		}
+		
+		
 	}
 
 }
