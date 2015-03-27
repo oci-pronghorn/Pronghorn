@@ -34,17 +34,6 @@ public class ColorMinusScheduler extends StageScheduler {
     private GraphManager graphManager;
     private PronghornStage[] stages;
 
-    // no atomic access, simply accept 
-    // inaccuracies if there are multiple producers. 
-    // we don't worry about rollover 
-    // on a 64bit value. Processing 100M messages 
-    // a second, it won't rollover for ~5000+ years. 
-    // If we need to handle rollover, for safety 
-    // critical apps do it on the increment side,
-    // and handle by resetting all counters to 0. 
-    private long[] workCount;    // current observed work count
-    private long[] previousWorkCount;    // last observed work count
-
     // where each thread is assigned,
     // no locking required, each thread 
     // updates their own.
@@ -94,14 +83,8 @@ public class ColorMinusScheduler extends StageScheduler {
 
         this.threadCount = new AtomicInteger[numberOfStages];
         for(AtomicInteger v : this.threadCount) {
-            v.set(0);
+            v = new AtomicInteger();
         }
-
-        this.workCount = new long[this.numberOfStages];
-        Arrays.fill(this.workCount, 0);
-
-        this.previousWorkCount = new long[this.numberOfStages];
-        Arrays.fill(this.previousWorkCount, 0);
 
         // initialization. This destroys NUMA
         // however, the multiphase startup 
@@ -128,7 +111,7 @@ public class ColorMinusScheduler extends StageScheduler {
         }
     }
 
-    public void shutdown(){     
+    public void shutdown(){
         try {
          GraphManager.terminateInputStages(graphManager);
         } catch (Throwable t) {
@@ -212,7 +195,6 @@ public class ColorMinusScheduler extends StageScheduler {
             tryAssign(threadId, nextStageId);
         } while(keepPolling(threadId));
 
-        setPreviousValue(nextStageId);
         return this.stages[nextStageId];
     } 
 
@@ -320,12 +302,6 @@ public class ColorMinusScheduler extends StageScheduler {
 
         return totalWork;
     }
-
-    // update the previous observed work count value.
-    private final void setPreviousValue(int stageId) {
-        this.previousWorkCount[stageId] = this.workCount[stageId];
-    }
-
 
     // create the processing threads.
     protected Runnable buildRunnable(final int threadId) {
