@@ -337,7 +337,6 @@ public class GraphManager {
 
 	private static boolean recordInputsAndOutputValuesForValidation(GraphManager gm, int stageId) {
 		
-		
 		int ringId;
 		int idx;
 		
@@ -482,6 +481,10 @@ public class GraphManager {
 		return m.stageIdToStage[stageId];
 	}
 	
+	public static PronghornStage[] getStages(GraphManager m) {
+		return m.stageIdToStage;
+	}
+	
 	public static RingBuffer getRing(GraphManager gm, int ringId) {
 		return gm.ringIdToRing[ringId];
 	}
@@ -494,9 +497,23 @@ public class GraphManager {
 		return  gm.stageIdToStage[gm.ringIdToStages[(ringId*2)+1]];
 	}
 	
+	// return list of input rings for stage.
+	public static int[] getInputRingIdsForStage(GraphManager gm, int stageId) {
 
+		int[] ringIds = new int[INIT_RINGS];
+		int index = gm.stageIdToInputsBeginIdx[stageId];
 
-	
+		while(-1 != gm.multInputIds[index]) {
+			ringIds[index] = gm.multInputIds[index++];
+		}
+
+		for(; index < INIT_RINGS; ++index) {
+			ringIds[index] = -1;
+		}
+
+		return ringIds;
+	}
+
 	/**
 	 * Return false only when every path is checked so every ring is empty and every stage is terminated.
 	 */
