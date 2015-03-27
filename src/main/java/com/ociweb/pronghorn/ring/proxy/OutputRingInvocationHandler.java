@@ -14,6 +14,7 @@ import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
+import com.ociweb.pronghorn.ring.util.hash.MurmurHash;
 
 public class OutputRingInvocationHandler implements InvocationHandler {
 	//TODO: NOTE: this approach does NOT support nested structures at all.
@@ -25,47 +26,146 @@ public class OutputRingInvocationHandler implements InvocationHandler {
 	private final int msgIdx;
 	//This only supports one template message
 
-	private final LongHashTable fieldIdTable = new LongHashTable(7); //no need to use messageId in the keys
+
+	private final IntHashTable hashTable;
+	private final int[] fieldLocs;
+	private final int[] decimalPlaces;
+	private final int[] types;
+	
+	private int c1 = 0;
+	private int c2 = 0;
+	private int c3 = 0;
 	
 	
 	public OutputRingInvocationHandler(RingBuffer outputRing, int msgIdx, Class<?> clazz) {
 		this.outputRing = outputRing;
 		this.from = RingBuffer.from(outputRing);
 		this.msgIdx = msgIdx;
-					
-		//TODO: walk all the fields of the object/class and get the annotated fields
-		//      find length and unique char positions in the method names
-		//      build a trie based on these values that ends with the right operation and attributes
-		//      in run code must apply this with the positions for decimals
+							
+		int j;
+				
+		//Compute the shortest name and
+		//computed the leading chars that all match
 		
-		int fields = this.from.fragScriptSize[msgIdx];
-		int c = 0;
-		while (++c<fields) {
-			
-			int fieldCursor = msgIdx+c;
-			long fieldId = this.from.fieldIdScript[fieldCursor];
-			int fieldLoc = FieldReferenceOffsetManager.lookupFieldLocator(fieldId, msgIdx, from);
-			
-			LongHashTable.setItem(fieldIdTable, fieldId,  fieldLoc);
-			
-			int extractedType = (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE;
-			if (TypeMask.Decimal==extractedType || TypeMask.DecimalOptional==extractedType) {
-				c++;//one extra field for decimals
+		int minMethodNameLength = Integer.MAX_VALUE;
+		int leadingMatchingChars = Integer.MAX_VALUE;
+		
+		final Method[] methods = clazz.getMethods();
+		
+		hashTable = new IntHashTable(8);
+		fieldLocs = new int[methods.length];
+		decimalPlaces = new int[methods.length];	
+		types = new int[methods.length];
+		
+		j = methods.length;
+		String lastName = null;
+		while (--j>=0) {
+			Method method = methods[j];			
+			ProngTemplateField fieldAnnonation = method.getAnnotation(ProngTemplateField.class);
+			if (null!=fieldAnnonation) {
+				String methodName = method.getName();
+				minMethodNameLength = Math.min(minMethodNameLength, methodName.length());
+				if (null!=lastName) {
+					int limit = Math.min(methodName.length(), lastName.length());
+					int i = 0;
+					while (i<limit && lastName.charAt(i)==methodName.charAt(i)) {
+						i++;
+					}
+					leadingMatchingChars = Math.min(leadingMatchingChars, i);					
+				}
+				lastName = methodName;
 			}
-		}		
+		}
+				
+		int posToCheck = minMethodNameLength-leadingMatchingChars;
+		
+		if (posToCheck <= 3) {
+			throw new UnsupportedOperationException("Method names are too similar. Every annotated field must have a different field name.");
+		}
+		
+		//TODO: need to try different values, but for now this will work fine.
+		//This is all done at runtime so it still works with obfuscation.
+		c1 = leadingMatchingChars+1;
+		c2 = leadingMatchingChars+2; 
+		c3 = leadingMatchingChars+3; 
+		
+		
+		//TODO: need to confirm that values are less than minMethodNameLength and together lead to a unique value.
+		
+		//find those with the same name length
+		//of those check that c1 makes them unique
+		//once c1 is set must move to c2 to make the next unique.
+		//loop here and make nested loop call?
+		j = methods.length;
+		while (--j>=0) {
+			Method method = methods[j];			
+			ProngTemplateField fieldAnnonation = method.getAnnotation(ProngTemplateField.class);
+			if (null!=fieldAnnonation) {
+				String methodName = method.getName();
+				
+				//scan all the method names down from this one to check for another with the same length
+				int k = j;
+				while (--k>=0) {
+					Method method2 = methods[k];			
+					ProngTemplateField fieldAnnonation2 = method.getAnnotation(ProngTemplateField.class);
+					if (null!=fieldAnnonation2) {
+						String methodName2 = method.getName();		
+						if (methodName2.length()== methodName.length()) {
+							//these two methods have a name of the same length
+							
+							//must find first column that sets them apart.
+							
+							
+						}
+					}
+				}
+				
+				
+				
+			}
+		}
+					
+		
+		j = methods.length;
+		while (--j>=0) {
+			Method method = methods[j];			
+			ProngTemplateField fieldAnnonation = method.getAnnotation(ProngTemplateField.class);
+			if (null!=fieldAnnonation) {
+				
+				String name = method.getName();
+				
+				int fieldLoc = FieldReferenceOffsetManager.lookupFieldLocator(fieldAnnonation.fieldId(), msgIdx, from);		
+				
+				int key = buildKey(name, c1, c2, c3);
+				
+				fieldLocs[j] = fieldLoc;
+				decimalPlaces[j] = fieldAnnonation.decimalPlaces();
+				types[j] = (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE;
+								
+				IntHashTable.setItem(hashTable, key, j);	
+								
+			}
+		}
+		
+		
 	}
 	
-	@Override
-	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-					
-		ProngTemplateField fieldAnnonation = method.getAnnotation(ProngTemplateField.class);
-		int fieldLoc =  LongHashTable.getItem(fieldIdTable, fieldAnnonation.fieldId());		
-		writeForYourType(args, fieldAnnonation, fieldLoc, (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE);		
+	//could make this long however do we really need to?
+	public int buildKey(String value, int c1, int c2, int c3) {
 		
+		return ((int)value.length()<<24) | ((int)value.charAt(c1)<<16) | ((int)value.charAt(c2)<<8) | ((int)value.charAt(c3));
+				
+	}
+	
+	
+	@Override
+	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {							
+		int idx = IntHashTable.getItem(hashTable, buildKey(method.getName(), c1, c2, c3));
+		writeForYourType(args, decimalPlaces[idx], fieldLocs[idx], types[idx]);				
 		return null;
 	}
 
-	private void writeForYourType(Object[] args, ProngTemplateField fieldAnnonation, int fieldLoc, int extractedType) {
+	private void writeForYourType(Object[] args, int decimalPlaces, int fieldLoc, int extractedType) {
 		switch (extractedType) {
 			case 0:
 			case 2:
@@ -96,10 +196,10 @@ public class OutputRingInvocationHandler implements InvocationHandler {
 				writeOptionalUTF8(args, fieldLoc);
 				break;	
 			case 12:
-				RingWriter.writeDouble(outputRing, fieldLoc, ((Number)args[0]).doubleValue(),fieldAnnonation.decimalPlaces());	
+				RingWriter.writeDouble(outputRing, fieldLoc, ((Number)args[0]).doubleValue(), decimalPlaces);	
 				break;
 			case 13:
-				writeOptionalDecimal(args, fieldAnnonation, fieldLoc);
+				writeOptionalDecimal(args, decimalPlaces, fieldLoc);
 				break;
 			case 14:
 				writeBytes(args, fieldLoc);				
@@ -129,11 +229,11 @@ public class OutputRingInvocationHandler implements InvocationHandler {
 		}
 	}
 
-	private void writeOptionalDecimal(Object[] args, ProngTemplateField fieldAnnonation, int fieldLoc) {
+	private void writeOptionalDecimal(Object[] args, int decimalPlaces, int fieldLoc) {
 		if (null==args[0]) {
 			RingWriter.writeDecimal(outputRing, fieldLoc, FieldReferenceOffsetManager.getAbsent32Value(from), FieldReferenceOffsetManager.getAbsent64Value(from));
 		} else {
-			RingWriter.writeDouble(outputRing, fieldLoc, ((Number)args[0]).doubleValue(),fieldAnnonation.decimalPlaces());	
+			RingWriter.writeDouble(outputRing, fieldLoc, ((Number)args[0]).doubleValue(), decimalPlaces);	
 		}
 	}
 

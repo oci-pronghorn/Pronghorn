@@ -198,6 +198,8 @@ public final class RingBuffer {
     }
     
     public static void markBytesReadBase(RingBuffer rb) {
+    	//this assert is not quite right because we may have string fields of zero length, TODO: add check for this before restoring the assert.
+     	//assert(0==from(rb).maxVarFieldPerUnit || rb.byteWorkingTailPos.value != rb.bytesReadBase) : "byteWorkingTailPos should have moved forward";
     	rb.bytesReadBase = rb.byteWorkingTailPos.value;
     }
     

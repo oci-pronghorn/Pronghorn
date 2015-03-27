@@ -64,15 +64,21 @@ public class StreamingConsumerReader {
 		        	startPos = 0;//this is not a new message so there is no id to jump over.			        
 		        	
 		        }
+		        int dataSize = from.fragDataSize[cursor];
 		        
 		        //must the next read position forward by the size of this fragment so next time we confirm that there is a fragment to read.
-		        RingBuffer.confirmLowLevelRead(inputRing, from.fragDataSize[cursor]);
+				RingBuffer.confirmLowLevelRead(inputRing, dataSize);
 
 		        //visit all the fields in this fragment
 		        processFragment(startPos, cursor);
 		        
-		      //  RingBuffer.publishWorkingTailPosition(inputRing,  inputRing.workingTailPos.value+(from.fragDataSize[cursor]-startPos));
-		        inputRing.workingTailPos.value += (from.fragDataSize[cursor]-startPos);
+		        //move the position up but exclude the one byte that we already added on
+		        inputRing.workingTailPos.value += (dataSize-startPos);
+		        
+		        //add the bytes consumed by this fragment, this is always the last value in the fragment
+		        inputRing.byteWorkingTailPos.value += inputRing.buffer[(int) (inputRing.mask&(inputRing.workingTailPos.value-1))];
+		        
+		        
 		        RingBuffer.releaseReadLock(inputRing);
 		}	
 		
