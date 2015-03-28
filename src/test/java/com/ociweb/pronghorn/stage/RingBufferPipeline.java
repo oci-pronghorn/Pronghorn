@@ -25,9 +25,9 @@ import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.RingWriter;
-import com.ociweb.pronghorn.ring.stream.StreamingConsumer;
-import com.ociweb.pronghorn.ring.stream.StreamingConsumerAdapter;
-import com.ociweb.pronghorn.ring.stream.StreamingConsumerReader;
+import com.ociweb.pronghorn.ring.stream.StreamingReadVisitor;
+import com.ociweb.pronghorn.ring.stream.StreamingReadVisitorAdapter;
+import com.ociweb.pronghorn.ring.stream.StreamingVisitorReader;
 import com.ociweb.pronghorn.stage.monitor.MonitorFROM;
 import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
 import com.ociweb.pronghorn.stage.route.RoundRobinRouteStage;
@@ -180,14 +180,14 @@ public class RingBufferPipeline {
 	private final class DumpStageStreamingConsumer extends PronghornStage {
 
 		private final boolean useRoute;
-		private final StreamingConsumer visitor;
-		private final StreamingConsumerReader reader;
+		private final StreamingReadVisitor visitor;
+		private final StreamingVisitorReader reader;
 		
 		private DumpStageStreamingConsumer(GraphManager gm,RingBuffer inputRing, boolean useRoute) {
 			super(gm, inputRing, NONE);
 			this.useRoute = useRoute;			
 			this.visitor =// new StreamingConsumerToJSON(System.out); 
-					new StreamingConsumerAdapter() {
+					new StreamingReadVisitorAdapter() {
 				@Override
 				public void visitBytes(String name, long id, ByteBuffer value) {
 					
@@ -205,7 +205,7 @@ public class RingBufferPipeline {
 		
 				}
 			};
-			reader = new StreamingConsumerReader(inputRing, visitor );
+			reader = new StreamingVisitorReader(inputRing, visitor );
 		}
 
 		@Override

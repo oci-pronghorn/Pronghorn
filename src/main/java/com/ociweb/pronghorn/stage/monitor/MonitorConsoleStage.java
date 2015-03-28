@@ -75,9 +75,10 @@ public class MonitorConsoleStage extends PronghornStage {
 				int lastMsgIdx = RingReader.readInt(ring, TEMPLATE_MSG_LOC);
 				int ringSize = RingReader.readInt(ring, TEMPLATE_SIZE_LOC);
 				
-				Histogram.sample( (100*(head-tail))/ringSize, hists[i]);
-					
-								
+				long pctFull = (100*(head-tail))/ringSize;
+				//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
+				Histogram.sample( pctFull>=0 ? pctFull<=100 ? pctFull : 99 : 0, hists[i]);
+													
 				RingReader.releaseReadLock(ring);
 			}
 		
