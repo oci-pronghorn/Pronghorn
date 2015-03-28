@@ -10,14 +10,12 @@ import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
 
 public class EventConsumer {
 
-	private final RingBuffer output;
-	private final FieldReferenceOffsetManager from;
+	private final RingBuffer output;	
 	private Object cached;
 	private int    cachedMsgId;
 	
 	public EventConsumer(RingBuffer output) {
 		this.output = output;
-		this.from = RingBuffer.from(output);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -35,14 +33,14 @@ public class EventConsumer {
 	}
 
 	private static <T> T slowCreate(final EventConsumer consumer, Class<T> clazz) {
-		int msgIdx = FieldReferenceOffsetManager.lookupTemplateLocator(clazz.getAnnotation(ProngTemplateMessage.class).templateId(), consumer.from);
+		int msgIdx = FieldReferenceOffsetManager.lookupTemplateLocator(clazz.getAnnotation(ProngTemplateMessage.class).templateId(), RingBuffer.from(consumer.output));
 
 		if (RingWriter.tryWriteFragment(consumer.output, msgIdx)) {
 			
 			T result = (T) Proxy.newProxyInstance(
-					clazz.getClassLoader(),
-					new Class[] { clazz },
-					new OutputRingInvocationHandler(consumer.output, msgIdx, clazz));	
+								clazz.getClassLoader(),
+								new Class[] { clazz },
+								new OutputRingInvocationHandler(consumer.output, msgIdx, clazz));	
 			
 			consumer.cached = result; //TODO: needs smarter pool but this is fine for now.
 			consumer.cachedMsgId = msgIdx;

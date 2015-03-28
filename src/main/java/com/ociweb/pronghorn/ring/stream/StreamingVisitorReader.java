@@ -5,9 +5,9 @@ import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
-public class StreamingConsumerReader {
+public class StreamingVisitorReader {
 
-	private StreamingConsumer visitor;
+	private StreamingReadVisitor visitor;
 	private RingBuffer inputRing;
 	private FieldReferenceOffsetManager from;
 	
@@ -16,7 +16,7 @@ public class StreamingConsumerReader {
 	private int[] sequenceCounters;
 	
 	
-	public StreamingConsumerReader(RingBuffer inputRing, StreamingConsumer visitor) {
+	public StreamingVisitorReader(RingBuffer inputRing, StreamingReadVisitor visitor) {
 		this.visitor = visitor;
 		this.inputRing = inputRing;
 		

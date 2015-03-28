@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.ring.stream;
 import java.io.PrintStream;
 import java.nio.ByteBuffer;
 
-public class StreamingConsumerToJSON implements StreamingConsumer {
+public class StreamingReadVisitorToJSON implements StreamingReadVisitor {
 
 	StringBuilder tempStringBuilder =  new StringBuilder(128); 
 	ByteBuffer tempByteBuffer = ByteBuffer.allocate(512);
@@ -12,7 +12,7 @@ public class StreamingConsumerToJSON implements StreamingConsumer {
 	int depth = 0;
 	int step = 2;
 	
-	public StreamingConsumerToJSON(PrintStream out) {
+	public StreamingReadVisitorToJSON(PrintStream out) {
 		this.out = out;
 	}
 	

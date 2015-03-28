@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.ring.stream;
 
 import java.nio.ByteBuffer;
 
-public class StreamingConsumerAdapter implements StreamingConsumer {
+public class StreamingReadVisitorAdapter implements StreamingReadVisitor {
 
 	StringBuilder tempStringBuilder =  new StringBuilder(128); 
 	ByteBuffer tempByteBuffer = ByteBuffer.allocate(512);

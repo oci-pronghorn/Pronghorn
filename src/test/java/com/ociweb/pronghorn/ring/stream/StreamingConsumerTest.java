@@ -87,9 +87,9 @@ public class StreamingConsumerTest {
 		PrintStream ps = new PrintStream(baos);
 		
 		
-		StreamingConsumer visitor = new StreamingConsumerToJSON(ps); 
+		StreamingReadVisitor visitor = new StreamingReadVisitorToJSON(ps); 
 		
-		StreamingConsumerReader reader = new StreamingConsumerReader(ring, visitor );
+		StreamingVisitorReader reader = new StreamingVisitorReader(ring, visitor );
 		
 		//ring is fully populated so we should not need to call this run again
 		while (RingBuffer.contentRemaining(ring)>0) {

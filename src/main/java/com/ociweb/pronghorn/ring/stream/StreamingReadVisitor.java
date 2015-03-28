@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.ring.stream;
 
 import java.nio.ByteBuffer;
 
-public interface StreamingConsumer {
+public interface StreamingReadVisitor {
 
 	/**
 	 * While this is true no more fragments will be read.  

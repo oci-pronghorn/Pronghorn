@@ -10,9 +10,9 @@ import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
-public class StreamingProducerReader {
+public class StreamingVisitorWriter {
 
-	private StreamingConsumer visitor;
+	private StreamingReadVisitor visitor;
 	private RingBuffer outputRing;
 //	private long nextTargetHead;
 //	private long headPosCache;
@@ -24,7 +24,7 @@ public class StreamingProducerReader {
 	
 	//TODO: Just starting to rough in this class based on the reader.
 	
-	public StreamingProducerReader(RingBuffer outputRing, StreamingConsumer visitor) {
+	public StreamingVisitorWriter(RingBuffer outputRing, StreamingReadVisitor visitor) {
 		this.visitor = visitor;
 		this.outputRing = outputRing;
 		

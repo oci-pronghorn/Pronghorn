@@ -16,23 +16,23 @@ import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
 import com.ociweb.pronghorn.ring.util.hash.MurmurHash;
 
-public class OutputRingInvocationHandler extends RingHandler implements InvocationHandler {
+public class InputRingInvocationHandler extends RingHandler implements InvocationHandler {
 	//TODO: NOTE: this approach does NOT support nested structures at all.
 
-	private static final Logger log = LoggerFactory.getLogger(OutputRingInvocationHandler.class);
+	private static final Logger log = LoggerFactory.getLogger(InputRingInvocationHandler.class);
 	
 	//This only supports one template message
-	private final OutputRingWriterMethod[] writers;
+	private final InputRingReaderMethod[] readers;
 	
 	
-	public OutputRingInvocationHandler(RingBuffer outputRing, int msgIdx, Class<?> clazz) {
+	public InputRingInvocationHandler(RingBuffer inputRing, int msgIdx, Class<?> clazz) {
 		super(clazz.getMethods());
 		
-		FieldReferenceOffsetManager from = RingBuffer.from(outputRing);
+		FieldReferenceOffsetManager from = RingBuffer.from(inputRing);
 		final Method[] methods = clazz.getMethods();
-					
+							
 
-		writers = new OutputRingWriterMethod[MAX_METHODS];
+		readers = new InputRingReaderMethod[MAX_METHODS];
 		int j = methods.length;
 		while (--j>=0) {
 			final Method method = methods[j];			
@@ -42,10 +42,10 @@ public class OutputRingInvocationHandler extends RingHandler implements Invocati
 				int fieldLoc = FieldReferenceOffsetManager.lookupFieldLocator(fieldAnnonation.fieldId(), msgIdx, from);		
 				
 				int key = buildKey(this, method.getName());
-				if (null!=writers[key]) {
+				if (null!=readers[key]) {
 					throw new UnsupportedOperationException();
 				}
-				writers[key] = OutputRingWriterMethod.buildWriteForYourType(outputRing, fieldAnnonation.decimalPlaces(), fieldLoc, (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE, from);
+				readers[key] = InputRingReaderMethod.buildReadForYourType(inputRing, fieldAnnonation.decimalPlaces(), fieldLoc, (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE, from);
 								
 			}
 		}
@@ -54,8 +54,7 @@ public class OutputRingInvocationHandler extends RingHandler implements Invocati
 		
 	@Override
 	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {							
-		writers[buildKey(this,method.getName())].write(args);
-		return null;
+		return readers[buildKey(this,method.getName())].read(args);
 	}
 
 }
