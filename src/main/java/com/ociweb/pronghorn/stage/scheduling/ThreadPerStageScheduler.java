@@ -126,13 +126,14 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				try {
 					
 					//TODO: need to record state so we know the failure point
-					//TODO: need to init the ring buffer in startup for numa.
+					
+					GraphManager.initInputRings(graphManager, stage.stageId);
 					stage.startup();
 					
 					runLoop(stage);	
 			
 					//only call if its not already shutdown
-					if (!GraphManager.isStageTerminated(graphManager, stage.stageId)) {					
+					if (!GraphManager.isStageTerminated(graphManager, stage.stageId)) {	 //TODO: AAA, remove this conditional and have the stages request shutdown to be done here!!				
 						stage.shutdown();
 					}
 					
@@ -168,6 +169,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			@Override
 			public void run() {
 				try {	
+					
+					GraphManager.initInputRings(graphManager, stage.stageId);
 					stage.startup();
 					
 					runPeriodicLoop(nsScheduleRate, stage);	

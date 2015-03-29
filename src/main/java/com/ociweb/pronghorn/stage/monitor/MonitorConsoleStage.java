@@ -9,6 +9,7 @@ import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_TIME_LOC;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.util.Histogram;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -111,6 +112,18 @@ public class MonitorConsoleStage extends PronghornStage {
 			}
 		}
 		super.shutdown();
+	}
+
+	
+	/**
+	 * Easy entry point for adding monitoring to the graph.  This should be copied by all the other monitor consumers.  TODO: build for JMX, SLF4J, Socket.io
+	 * @param gm
+	 * @param monitorRate
+	 * @param ringBufferMonitorConfig
+	 */
+	public static void attach(GraphManager gm, Integer monitorRate, RingBufferConfig ringBufferMonitorConfig) {
+		GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, monitorRate, new MonitorConsoleStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig)));
+	
 	}
 
 	

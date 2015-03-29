@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
 import org.slf4j.Logger;
@@ -7,6 +9,7 @@ import org.slf4j.Logger;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
 import com.ociweb.pronghorn.stage.route.SplitterStage;
 
@@ -602,7 +605,7 @@ public class GraphManager {
 		}	
 		
 	}
-
+	
 	public static RingBuffer[] attachMonitorsToGraph(GraphManager gm, Integer monitorRate, RingBufferConfig ringBufferMonitorConfig) {
 
 		int j = gm.ringIdToRing.length;

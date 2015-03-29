@@ -57,10 +57,7 @@ public abstract class PronghornStage {
 		//    Allocation of Objects/Memory so that it is done on this thread and supports Numa
 		//    Database connections
 		//    Other one time setup work.
-		GraphManager.initInputRings(this.graphManager, this.stageId);
-	    //TODO: if startup never completes the scheudler needs to report this as an error.
-		
-		
+
 	}
 
 	public String toString() {
@@ -68,10 +65,13 @@ public abstract class PronghornStage {
 	}
 	
 	public void shutdown() {
+		
+		//stages need to write their own shutdown but never call it.
+		
+		//this flag marks this for shutdown so it will not be re-scheduled again.
 		GraphManager.terminate(graphManager, this);
 	}
 	
-
 	
 	/**
 	 * Process all the work that is immediately available.
