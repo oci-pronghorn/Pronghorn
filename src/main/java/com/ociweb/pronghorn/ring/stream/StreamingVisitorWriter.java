@@ -1,9 +1,6 @@
 package com.ociweb.pronghorn.ring.stream;
 
-import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
-import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
+import static com.ociweb.pronghorn.ring.RingBuffer.*;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
@@ -14,9 +11,8 @@ public class StreamingVisitorWriter {
 
 	private StreamingReadVisitor visitor;
 	private RingBuffer outputRing;
-//	private long nextTargetHead;
-//	private long headPosCache;
 	private FieldReferenceOffsetManager from;
+	private int maxFragmentSize;
 	
 	private int nestedFragmentDepth;
 	private int[] cursorStack;
@@ -30,37 +26,30 @@ public class StreamingVisitorWriter {
 		
 		this.from = RingBuffer.from(outputRing);	
 		
+		this.maxFragmentSize = FieldReferenceOffsetManager.maxFragmentSize(this.from);
+	
+		
 		this.cursorStack = new int[this.from.maximumFragmentStackDepth];
 		this.sequenceCounters = new int[this.from.maximumFragmentStackDepth];
 		
-		//publish only happens on fragment boundary therefore we can assume that if 
-		//we can read 1 then we can read the full fragment
-		
-//		this.nextTargetHead = 1 + tailPosition(outputRing);
-//		this.headPosCache = headPosition(outputRing);	
 		this.nestedFragmentDepth = -1;		
-
-		//debugFROM(from);
-		
 	}
 
 	public void run() {
 		
-		while (!visitor.paused()) {	
-			    
-//			    //return to try again later if we can not read a fragment
-//		        if (headPosCache < nextTargetHead) {
-//					headPosCache = inputRing.headPos.longValue();
-//					if (headPosCache < nextTargetHead) {
-//						return; //come back later when we find more content
-//					}
-//				}
-		        		        
+		//write as long as its not posed and we have room to write any possible known fragment
+		while (!visitor.paused() && RingBuffer.roomToLowLevelWrite(outputRing, maxFragmentSize) ) {	
+			    	        
 		        int startPos;
 		        int cursor;
 
 		        if (nestedFragmentDepth<0) {	
 		        	//start new message
+		        	
+		        	
+		        	
+		        	
+		        	
 		        	
 //		        	//block until one more byteVector is ready.
 //		        	cursor = RingBuffer.takeMsgIdx(inputRing);
