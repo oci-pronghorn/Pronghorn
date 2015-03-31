@@ -272,7 +272,6 @@ public class RingBufferPipeline {
 		@Override
 		public void shutdown() {
 			assertEquals(testMessages,useRoute? msgCount*splits: msgCount);	
-			super.shutdown();
 		}
 		
 		
@@ -444,7 +443,7 @@ public class RingBufferPipeline {
 					  publishWrites(outputRing);
 		        } else {
 				      RingBuffer.publishEOF(outputRing);
-				      shutdown();
+				      requestShutdown();
 				      return;
 		        }		        
 		        
@@ -477,7 +476,7 @@ public class RingBufferPipeline {
 				 }
 			 }
 			 RingWriter.publishEOF(outputRing);	
-			 shutdown();
+			 requestShutdown();
  			 return;//do not come back			
 		}
 	}

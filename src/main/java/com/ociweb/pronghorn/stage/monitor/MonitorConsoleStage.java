@@ -111,7 +111,6 @@ public class MonitorConsoleStage extends PronghornStage {
 				System.out.println("    "+i+" "+ringName+" Queue Fill Median:"+value+"% Average:"+(Histogram.accumulatedTotal(hists[i])/Histogram.sampleCount(hists[i]))+"%");
 			}
 		}
-		super.shutdown();
 	}
 
 	

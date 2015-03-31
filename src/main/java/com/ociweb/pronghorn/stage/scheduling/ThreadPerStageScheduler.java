@@ -107,8 +107,6 @@ public class ThreadPerStageScheduler extends StageScheduler {
 
 	
 	
-	
-	
 	protected Runnable buildRunnable(final PronghornStage stage) {
 
 		return new Runnable() {
@@ -132,11 +130,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					
 					runLoop(stage);	
 			
-					//only call if its not already shutdown
-					if (!GraphManager.isStageTerminated(graphManager, stage.stageId)) {	 //TODO: AAA, remove this conditional and have the stages request shutdown to be done here!!				
-						stage.shutdown();
-					}
-					
+					stage.shutdown();				
 								
 				} catch (Throwable t) {
 					log.error("Unexpected error in stage {}", stage);
@@ -174,11 +168,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					stage.startup();
 					
 					runPeriodicLoop(nsScheduleRate, stage);	
-					
-					//only call if its not already shutdown
-					if (!GraphManager.isStageTerminated(graphManager, stage.stageId)) {					
-						stage.shutdown();
-					}
+			
+					stage.shutdown();
 							
 				} catch (Throwable t) {
 					log.error("Unexpected error in stage {}", stage);

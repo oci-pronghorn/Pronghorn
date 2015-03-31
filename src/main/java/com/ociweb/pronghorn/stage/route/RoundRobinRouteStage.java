@@ -31,29 +31,37 @@ public class RoundRobinRouteStage extends PronghornStage {
 	
 	private static void processAvailData(RoundRobinRouteStage stage) {
 		
-		if (-2==stage.msgId && RingReader.tryReadFragment(stage.inputRing)) {
-			stage.msgId = RingReader.getMsgIdx(stage.inputRing);
-			if (stage.msgId<0) {
-				oldShutdown(stage);
-				return;
-			}		
-		}	
-			
-		if (stage.msgId>=0) {
+		do {
+		
+			if (-2==stage.msgId) {
+				if (RingReader.tryReadFragment(stage.inputRing)) {
+					if ((stage.msgId = RingReader.getMsgIdx(stage.inputRing))<0) {
+						oldShutdown(stage);
+						return;
+					}		
+				} else {
+					return;
+				}
+			}
+	
 			if (RingReader.tryMoveSingleMessage(stage.inputRing, stage.outputRings[stage.targetRing])) {
+				RingReader.releaseReadLock(stage.inputRing);
 				if (--stage.targetRing<0) {
 					stage.targetRing = stage.targetRingInit;
-				}
-				
+				}				
 				stage.msgId = -2;
-				RingReader.releaseReadLock(stage.inputRing);
+			} else {
 				return;
 			}
-		}
-		return;
+
+		} while(true);	
+
 	}
 
+	@Deprecated
 	private static void oldShutdown(RoundRobinRouteStage stage) {
+		//new Exception("warning old shutdown is used").printStackTrace();;
+		
 		//send the EOF message to all of the targets.
 		int i = stage.outputRings.length;
 		while (--i>=0) {
@@ -61,6 +69,7 @@ public class RoundRobinRouteStage extends PronghornStage {
 		}
 		RingReader.releaseReadLock(stage.inputRing);
 		stage.msgId = -2;
+		stage.requestShutdown();
 	}
 	
 	

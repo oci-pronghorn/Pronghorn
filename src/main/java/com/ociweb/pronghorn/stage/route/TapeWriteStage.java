@@ -59,7 +59,7 @@ public class TapeWriteStage extends PronghornStage {
 
 	@Override
 	public void shutdown() {
-		super.shutdown();		
+
 		try {
 			fileChannel.close();
 		} catch (IOException e) {

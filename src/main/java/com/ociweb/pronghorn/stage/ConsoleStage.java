@@ -30,7 +30,6 @@ public class ConsoleStage extends PronghornStage {
 
 	@Override
 	public void shutdown() {
-		super.shutdown();
 		processCounts("Final:",counts,totalCounts);
 		processTotal("Totals:",totalCounts, RingBuffer.from(inputRing));
 	}

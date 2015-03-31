@@ -17,27 +17,27 @@ public class SplitterStage extends PronghornStage {
 
 	private RingBuffer source;
 	private RingBuffer[] targets;
-	private long[] targetHeadPos;
-	
-	public int moreToCopy=-2;
 	
 	private int byteHeadPos;
     private long headPos;
-	
+    private long cachedTail;
+	private long totalPrimaryCopy;
+	private int[] working;
+	private int   workingPos;
+    
 	public SplitterStage(GraphManager gm, RingBuffer source, RingBuffer ... targets) {
 		super(gm,source,targets);
 		
 		this.source = source;
 		this.targets = targets;
-		
+	
 		FieldReferenceOffsetManager sourceFrom = RingBuffer.from(source);
 		
 		int i = targets.length;
-		this.targetHeadPos = new long[i];
-		
+		working = new int[i];
 		while(--i>=0) {
 			
-			targetHeadPos[i] = RingBuffer.headPosition(targets[i]); 
+			RingBuffer.initLowLevelWriter(targets[i]);
 					
 			//confirm this target is large enough for the needed data.
 			FieldReferenceOffsetManager targetFrom = RingBuffer.from(targets[i]);
@@ -71,52 +71,67 @@ public class SplitterStage extends PronghornStage {
 	}
 
 	@Override
+	public void startup() {
+		cachedTail = RingBuffer.tailPosition(source);
+	}
+	
+	@Override
 	public void run() {		
-		//TODO: A, Keep state here as to how much was copied and return when we have written all those possible, then finish write later
-		//         NOTE: only release after everything is copied.
 		processAvailData(this);
 	}
 
-	private static boolean processAvailData(SplitterStage ss) {
+	
+	int tempByteTail; 
+	int byteTailPos;
+	int totalBytesCopy;
+	
+	private static void processAvailData(SplitterStage ss) {
 
-        findStableCutPoint(ss);			
-        //we have established the point that we can read up to, this value is changed by the writer on the other side
-		
-						
-		//get the start and stop locations for the copy
-		//now find the point to start reading from, this is moved forward with each new read.		
-		long tempTail = RingBuffer.tailPosition(ss.source);
-		long totalPrimaryCopy = (ss.headPos - tempTail);
-		if (totalPrimaryCopy <= 0) {
-			assert(totalPrimaryCopy==0);
-			return false; //nothing to copy so come back later
+		if (0==ss.totalPrimaryCopy) {
+	        findStableCutPoint(ss);			
+	        //we have established the point that we can read up to, this value is changed by the writer on the other side
+										
+			//get the start and stop locations for the copy
+			//now find the point to start reading from, this is moved forward with each new read.
+			if ((ss.totalPrimaryCopy = (ss.headPos - ss.cachedTail)) <= 0) {
+				assert(ss.totalPrimaryCopy==0);
+				return; //nothing to copy so come back later
+			}
+			//clear the flags for which targets have room
+			int i = ss.working.length;
+			ss.workingPos = i;
+			while (--i>=0) {
+				ss.working[i]=i;
+			}
+			//collect all the constant values needed for doing the copy
+			ss.tempByteTail = RingBuffer.bytesTailPosition(ss.source);
+			ss.byteTailPos = ss.source.byteMask & ss.tempByteTail;
+			if ((ss.totalBytesCopy =      (ss.source.byteMask & ss.byteHeadPos) - ss.byteTailPos) < 0) {
+				ss.totalBytesCopy += (ss.source.byteMask+1);
+			}			
 		}
-		ss.moreToCopy = 0;
+
+		//if all the copies are done then record it as complete, does as much work as possible each time its called.
+		if (doneCopy(ss, ss.byteTailPos, ss.source.mask & (int)ss.cachedTail, (int)ss.totalPrimaryCopy, ss.totalBytesCopy)) {
+			recordCopyComplete(ss, ss.tempByteTail, ss.totalBytesCopy);			
+		}					
 		
-			
-		int primaryTailPos = ss.source.mask & (int)tempTail;				
-		int tempByteTail = RingBuffer.bytesTailPosition(ss.source);
-		int byteTailPos = ss.source.byteMask & tempByteTail;
-		int totalBytesCopy =      (ss.source.byteMask & ss.byteHeadPos) - byteTailPos; 
-		if (totalBytesCopy < 0) {
-			totalBytesCopy += (ss.source.byteMask+1);
-		}
-				
-		//now do the copies
-		doingCopy(ss, byteTailPos, primaryTailPos, (int)totalPrimaryCopy, totalBytesCopy);
-								
+		return; //finished all the copy  for now
+	}
+
+	private static void recordCopyComplete(SplitterStage ss, int tempByteTail,
+			int totalBytesCopy) {
 		//release tail so data can be written
 		
 		ss.source.bytesTailPos.lazySet(ss.source.byteWorkingTailPos.value = RingBuffer.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy));
-		RingBuffer.publishWorkingTailPosition(ss.source,tempTail + totalPrimaryCopy);
-		
-		return false; //finished all the copy  for now
+		RingBuffer.publishWorkingTailPosition(ss.source,(ss.cachedTail+=ss.totalPrimaryCopy));
+		ss.totalPrimaryCopy = 0; //clear so next time we find the next block
 	}
 
+
+
 	private static void findStableCutPoint(SplitterStage ss) {
-		//TODO: A, publush to a single atomic long and read it here.
-        //get the new head position
-        ss.byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
+		ss.byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
         ss.headPos = RingBuffer.headPosition(ss.source);		
 		while(ss.byteHeadPos != RingBuffer.bytesHeadPosition(ss.source) || ss.headPos != RingBuffer.headPosition(ss.source) ) {
 			ss.byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
@@ -124,52 +139,35 @@ public class SplitterStage extends PronghornStage {
 		}
 	}
 
+	
 	//single pass attempt to copy if any can not accept the data then they are skipped
 	//and true will be returned instead of false.
-	private static void doingCopy(SplitterStage ss, 
+	private static boolean doneCopy(SplitterStage ss, 
 			                   int byteTailPos, int primaryTailPos, 
 			                   int totalPrimaryCopy, 
 			                   int totalBytesCopy) {
-		
-		
-		do {
-			ss.moreToCopy = 0;
-			int i = ss.targets.length;
-			while (--i>=0) {			
-				RingBuffer ringBuffer = ss.targets[i];					
-								
-				//check to see if we already pushed to this output ring.
-				long headCache = ringBuffer.workingHeadPos.value;
-				if ( (totalPrimaryCopy + ss.targetHeadPos[i]) > headCache) {		
-					
-					//the tail must be larger than this position for there to be room to write
-					if ((RingBuffer.tailPosition(ringBuffer) >= totalPrimaryCopy + headCache - ringBuffer.maxSize) && 
-						(totalBytesCopy <= (ringBuffer.maxByteSize- RingBuffer.bytesOfContent(ringBuffer)) ) ) {
-						blockCopy(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);
-					} else {
-						ss.moreToCopy++;
-					}
-					
-				} // else this is already done.
-				
+
+		int j = 0;
+		int c = 0;
+		while (j<ss.workingPos) {
+			
+			if (!RingBuffer.roomToLowLevelWrite(ss.targets[ss.working[j]], totalPrimaryCopy)) {
+			 	ss.working[c++] = ss.working[j];
+			} else {
+				RingBuffer ringBuffer = ss.targets[ss.working[j]];					
+				blockCopy(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);				
+				RingBuffer.confirmLowLevelWrite(ringBuffer, totalPrimaryCopy);	
 			}
-		} while(ss.moreToCopy>0);		
-		
-		setAllAsDone(ss, totalPrimaryCopy);
+			j++;
+		}
+		ss.workingPos = c;
+		return 0==c; //returns false when there are still targets to write
+
 	}
 
-	private static void setAllAsDone(SplitterStage ss, int totalPrimaryCopy) {
-		//reset for next time.
-		int i = ss.targets.length;
-		while (--i>=0) {
-			//mark this one as done.
-			ss.targetHeadPos[i] += totalPrimaryCopy;
-		}
-		ss.moreToCopy=-2;
-	}
 
 	public String toString() {
-		return getClass().getSimpleName()+ (-2==moreToCopy ? " not running ": " moreToCopy:"+moreToCopy)+" source content "+RingBuffer.contentRemaining(source);
+		return getClass().getSimpleName()+ " source content "+RingBuffer.contentRemaining(source);
 	}
 
 	private static void blockCopy(SplitterStage ss, int byteTailPos,

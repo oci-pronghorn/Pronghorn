@@ -69,6 +69,10 @@ public abstract class PronghornStage {
 		//stages need to write their own shutdown but never call it.
 		
 		//this flag marks this for shutdown so it will not be re-scheduled again.
+		requestShutdown();
+	}
+
+	public void requestShutdown() {
 		GraphManager.terminate(graphManager, this);
 	}
 	

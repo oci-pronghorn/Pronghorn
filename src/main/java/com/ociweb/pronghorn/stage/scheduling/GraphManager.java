@@ -23,6 +23,7 @@ public class GraphManager {
 	//TODO: add init of -1 to all the arrays for better error checking.
 
 	public final static String SCHEDULE_RATE = "SCHEDULE_RATE";
+	public final static String MONITOR = "MONITOR";
 	public final static String STAGE_NAME    = "STAGE_NAME";
 	
 	private final static int INIT_RINGS = 32;
@@ -559,7 +560,7 @@ public class GraphManager {
 					//TOOD: need new base class for the blocking stage.
 					
 					
-					m.stageIdToStage[i].shutdown(); //TOOD: better error reporting here.
+					m.stageIdToStage[i].requestShutdown(); //TOOD: better error reporting here.
 				}
 			}
 		}		
@@ -623,10 +624,14 @@ public class GraphManager {
 		j = gm.ringIdToRing.length;
 		while (--j>=0) {
 			
-			if (null!=gm.ringIdToRing[j]) {
-				
+			RingBuffer ringBuffer = gm.ringIdToRing[j];
+			//Do not monitor those rings that are part of other monitoring networks.
+			if (null!=ringBuffer && !ringHoldsMonitorData(gm, ringBuffer) ) {
+
 				monBuffers[monBufIdx] = new RingBuffer(ringBufferMonitorConfig);
-				GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, monitorRate, new RingBufferMonitorStage(gm, gm.ringIdToRing[j],  monBuffers[monBufIdx]));
+				RingBufferMonitorStage stage = new RingBufferMonitorStage(gm, ringBuffer,  monBuffers[monBufIdx]);
+				GraphManager.addAnnotation(gm, GraphManager.MONITOR, "dummy", stage);
+				GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
 				
 				monBufIdx++;
 				
@@ -635,11 +640,16 @@ public class GraphManager {
 		return monBuffers;	
 	}
 
+	private static boolean ringHoldsMonitorData(GraphManager gm, RingBuffer ringBuffer) {
+		return null != GraphManager.getAnnotation(gm, GraphManager.getRingProducer(gm, ringBuffer.ringId), GraphManager.MONITOR, null);
+	}
+
 	public static void enableBatching(GraphManager gm) {
 		int j = gm.ringIdToRing.length;
 		while (--j>=0) {
 			RingBuffer ring = gm.ringIdToRing[j];
-			if (null!=ring) {
+			//never enable batching on the monitor rings
+			if (null!=ring && !ringHoldsMonitorData(gm, ring) ) {
 				
 				if (!(GraphManager.getRingConsumer(gm, ring.ringId) instanceof SplitterStage) ) { //TODO: extract this as an annotation or member of stage?
 					RingBuffer.setMaxReleaseBatchSize(ring);
