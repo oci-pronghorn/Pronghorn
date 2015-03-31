@@ -288,6 +288,9 @@ public final class RingBuffer {
 
         this.wrappedPrimaryIntBuffer = IntBuffer.wrap(this.buffer);
         this.wrappedSecondaryByteBuffer = ByteBuffer.wrap(this.byteBuffer);
+        
+        assert(0==wrappedSecondaryByteBuffer.position() && wrappedSecondaryByteBuffer.capacity()==wrappedSecondaryByteBuffer.limit()) : "The ByteBuffer is not clear.";
+        
 	}
     
 	public static boolean isInit(RingBuffer ring) {
