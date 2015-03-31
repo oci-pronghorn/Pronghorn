@@ -149,12 +149,14 @@ public class SplitterStage extends PronghornStage {
 
 		int j = 0;
 		int c = 0;
-		while (j<ss.workingPos) {
+		int[] working = ss.working;
+		int limit = ss.workingPos;
+		while (j<limit) {
 			
-			if (!RingBuffer.roomToLowLevelWrite(ss.targets[ss.working[j]], totalPrimaryCopy)) {
-			 	ss.working[c++] = ss.working[j];
+			if (!RingBuffer.roomToLowLevelWrite(ss.targets[working[j]], totalPrimaryCopy)) {
+			 	working[c++] = working[j];
 			} else {
-				RingBuffer ringBuffer = ss.targets[ss.working[j]];					
+				RingBuffer ringBuffer = ss.targets[working[j]];					
 				blockCopy(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);				
 				RingBuffer.confirmLowLevelWrite(ringBuffer, totalPrimaryCopy);	
 			}
