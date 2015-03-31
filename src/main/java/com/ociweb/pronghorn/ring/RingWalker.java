@@ -437,7 +437,7 @@ public class RingWalker {
 	}
 	
 	static boolean copyFragment0(RingBuffer inputRing, RingBuffer outputRing, long start, long end) {
-		return copyFragment1(inputRing, outputRing, start, (int)(end-start), inputRing.buffer[inputRing.mask&(int)(end-1)]);
+		return copyFragment1(inputRing, outputRing, start, (int)(end-start), inputRing.buffer[inputRing.mask&(((int)end)-1)]);
 	}
 
 

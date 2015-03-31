@@ -178,7 +178,7 @@ public final class RingBuffer {
     
     public static void setMaxReleaseBatchSize(RingBuffer rb) {
     	
-    	int size = computeMaxBatchSize(rb, 2);
+    	int size = computeMaxBatchSize(rb, 4);
     	rb.batchReleaseCountDownInit = size;
     	rb.batchReleaseCountDown = size;    	
     	
@@ -1495,8 +1495,16 @@ public final class RingBuffer {
 	
 	//TODO: AA, adjust unit tests to use this.
 	public static boolean roomToLowLevelWrite(RingBuffer output, int size) {
-		return (output.llwTailPosCache >= output.llwNextTailTarget+size) ||  //only does second part if the first does not pass 
-			   ((output.llwTailPosCache = RingBuffer.tailPosition(output)) >= output.llwNextTailTarget+size);
+		return roomToLowLevelWrite(output, output.llwNextTailTarget+size);
+	}
+
+	private static boolean roomToLowLevelWrite(RingBuffer output, long target) {
+		//only does second part if the first does not pass 
+		return (output.llwTailPosCache >= target) || roomToLowLevelWriteSlow(output, target);
+	}
+
+	private static boolean roomToLowLevelWriteSlow(RingBuffer output, long target) {
+		return (output.llwTailPosCache = output.tailPos.get()) >= target;
 	}
 	
 	public static void confirmLowLevelWrite(RingBuffer output, int size) {
@@ -1505,8 +1513,16 @@ public final class RingBuffer {
 	
 	
 	public static boolean contentToLowLevelRead(RingBuffer input, int size) {
-		return (input.llwHeadPosCache >= input.llwNextHeadTarget+size) ||  //only does second part if the first does not pass 
-			   ((input.llwHeadPosCache = RingBuffer.headPosition(input)) >= input.llwNextHeadTarget+size);
+		return contentToLowLevelRead(input, input.llwNextHeadTarget+size);
+	}
+
+	private static boolean contentToLowLevelRead(RingBuffer input, long target) {
+		//only does second part if the first does not pass 
+		return (input.llwHeadPosCache >= target) || contentToLowLevelReadSlow(input, target);
+	}
+
+	private static boolean contentToLowLevelReadSlow(RingBuffer input, long target) {
+		return (input.llwHeadPosCache = input.headPos.get()) >= target;
 	}
 	
 	public static long confirmLowLevelRead(RingBuffer input, int size) {
