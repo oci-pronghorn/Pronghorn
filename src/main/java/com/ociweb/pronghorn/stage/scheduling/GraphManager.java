@@ -225,17 +225,17 @@ public class GraphManager {
 			int stageId = beginStageRegister(gm, stage);
 			setStageInitialState(gm, stageId);
 			
-			int i;
-			//loop over inputs
-			i = inputs.length;
-			while (--i>=0) {
-				regInput(gm, inputs[i], stageId);
+			int i=0;
+			int limit = inputs.length;
+			while (i<limit) {
+				regInput(gm, inputs[i++], stageId);
 			}
 			
 			//loop over outputs
-			i = outputs.length;
-			while (--i>=0) {
-				regOutput(gm, outputs[i], stageId);
+			i = 0;
+			limit = outputs.length;
+			while (i<limit) {
+				regOutput(gm, outputs[i++], stageId);
 			}
 			
 			endStageRegister(gm);
@@ -281,11 +281,10 @@ public class GraphManager {
 			//loop over inputs
 			regInput(gm, input, stageId);
 			
-			int i;
-			//loop over outputs
-			i = outputs.length;
-			while (--i>=0) {
-				regOutput(gm, outputs[i], stageId);
+			int i = 0;
+			int limit = outputs.length;
+			while (i<limit) {
+				regOutput(gm, outputs[i++], stageId);
 			}
 			
 			endStageRegister(gm);
@@ -298,11 +297,10 @@ public class GraphManager {
 			int stageId = beginStageRegister(gm, stage);
 			setStageInitialState(gm, stageId);
 			
-			int i;
-			//loop over inputs
-			i = inputs.length;
-			while (--i>=0) {
-				regInput(gm, inputs[i], stageId);
+			int i = 0;
+			int limit = inputs.length;
+			while (i<limit) {
+				regInput(gm, inputs[i++], stageId);
 			}
 			
 			//loop over outputs
@@ -554,18 +552,64 @@ public class GraphManager {
 			if (null!=m.stageIdToStage[i]) {				
 				//an input stage is one that has no input ring buffers
 				if (-1 == m.multInputIds[m.stageIdToInputsBeginIdx[m.stageIdToStage[i].stageId]]) {
-					//TODO: AA, this call can happen when the stage is still running. should wait for exit run() ??;
-					
-					
-					//TOOD: need new base class for the blocking stage.
-					
-					
-					m.stageIdToStage[i].requestShutdown(); //TOOD: better error reporting here.
+					m.stageIdToStage[i].requestShutdown();
 				}
 			}
 		}		
 	}
 
+	public static RingBuffer getOutputRing(GraphManager m, PronghornStage stage) {
+		return getOutputRing(m, stage, 1);
+	}
+	
+	public static RingBuffer getOutputRing(GraphManager m, PronghornStage stage, int ordinalOutput) {
+		
+		int ringId;
+		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
+		while (-1 != (ringId=m.multOutputIds[idx++])) {		
+			if (--ordinalOutput<=0) {
+				return m.ringIdToRing[ringId];
+			}
+		}	
+		throw new UnsupportedOperationException("Invalid configuration. Unable to find requested output ordinal "+ordinalOutput);
+	}
+	
+	public static int getOutputRingCount(GraphManager m, PronghornStage stage) {
+		
+		int ringId;
+		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
+		int count = 0;
+		while (-1 != (ringId=m.multOutputIds[idx++])) {		
+			count++;
+		}	
+		return count;
+	}
+
+	public static RingBuffer getInputRing(GraphManager m, PronghornStage stage) {
+		return getInputRing(m, stage, 1);
+	}
+	
+	public static RingBuffer getInputRing(GraphManager m,	PronghornStage stage, int ordinalInput) {
+		int ringId;
+		int idx = m.stageIdToInputsBeginIdx[stage.stageId];
+		while (-1 != (ringId=m.multInputIds[idx++])) {	
+			if (--ordinalInput<=0) {
+				return m.ringIdToRing[ringId];
+			}				
+		}				
+		throw new UnsupportedOperationException("Invalid configuration. Unable to find requested input ordinal "+ordinalInput);
+	}
+	
+	public static int getInputRingCount(GraphManager m, PronghornStage stage) {
+		int ringId;
+		int idx = m.stageIdToInputsBeginIdx[stage.stageId];
+		int count = 0;
+		while (-1 != (ringId=m.multInputIds[idx++])) {	
+			count++;	
+		}				
+		return count;
+	}
+	
 	public static void logOutputs(Logger log, GraphManager m, PronghornStage stage) {
 		int ringId;
 		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
@@ -671,6 +715,39 @@ public class GraphManager {
 		String producerName = getAnnotation(gm, producer, STAGE_NAME, producer.getClass().getSimpleName()).toString();
 		
 		return producerName + "-"+Integer.toString(ringBuffer.ringId)+"-" + consumerName;
+	}
+
+	/**
+	 * Start with ordinal selection of input stages then ordinal selection of each output ring there after.
+	 * TODO: do generic return that extends pronghornStage
+	 * @param gm
+	 * @param path
+	 */
+	public static PronghornStage findStageByPath(GraphManager m, int ... path) {
+		
+		int ordinal = path[0];
+		int i = 0;
+	    int limit = m.stageIdToStage.length;
+		while (i<limit) {
+			if (null!=m.stageIdToStage[i]) {				
+				//an input stage is one that has no input ring buffers
+				if (-1 == m.multInputIds[m.stageIdToInputsBeginIdx[m.stageIdToStage[i].stageId]]) {
+					if (--ordinal<=0) {
+						//starting from 1 find this path
+						return findStageByPath(m, m.stageIdToStage[i], 1, path);
+					}
+				}
+			}
+			i++;
+		}	
+		throw new UnsupportedOperationException("Unable to find ordinal input stage of "+path[0]);
+	}
+
+	private static PronghornStage findStageByPath(GraphManager m, PronghornStage stage, int idx, int[] path) {
+		if (idx>=path.length) {
+			return stage;
+		}
+		return findStageByPath(m,getRingConsumer(m, getOutputRing(m,stage,path[idx]).ringId),1+idx,path);
 	}
 
 }
