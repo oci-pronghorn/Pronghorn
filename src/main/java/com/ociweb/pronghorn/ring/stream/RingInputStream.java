@@ -14,7 +14,7 @@ import java.io.InputStream;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 
-public class RingInputStream extends InputStream {
+public class RingInputStream extends InputStream implements AutoCloseable {
 
 	private final RingBuffer ring;
 	private final int sourceByteMask;

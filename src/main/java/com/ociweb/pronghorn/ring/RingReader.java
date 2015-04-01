@@ -492,11 +492,10 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		//NOTE: all the reading makes use of the high-level API to manage the fragment state, this call assumes tryRead was called once already.
 			
 		//we may re-enter this function to continue the copy
-		RingWalker consumerData = inputRing.ringWalker;
-		boolean copied = RingWalker.copyFragment0(inputRing, outputRing, inputRing.workingTailPos.value, consumerData.nextWorkingTail);
-		while (copied && !FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(inputRing), consumerData.nextCursor)) {			
+		boolean copied = RingWalker.copyFragment0(inputRing, outputRing, inputRing.workingTailPos.value, inputRing.ringWalker.nextWorkingTail);
+		while (copied && !FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(inputRing), inputRing.ringWalker.nextCursor)) {			
 			//using short circut logic so copy does not happen unless the prep is successful
-			copied = RingWalker.prepReadFragment(inputRing, consumerData) && RingWalker.copyFragment0(inputRing, outputRing, inputRing.workingTailPos.value, consumerData.nextWorkingTail);			
+			copied = RingWalker.prepReadFragment(inputRing, inputRing.ringWalker) && RingWalker.copyFragment0(inputRing, outputRing, inputRing.workingTailPos.value, inputRing.ringWalker.nextWorkingTail);			
 		}
 		return copied;
 	}

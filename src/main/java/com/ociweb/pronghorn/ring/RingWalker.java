@@ -442,20 +442,21 @@ public class RingWalker {
 
 
 	private static boolean copyFragment1(RingBuffer inputRing, RingBuffer outputRing, long start, int spaceNeeded, int bytesToCopy) {
-		if ((spaceNeeded >  outputRing.maxSize-(int)(outputRing.workingHeadPos.value - outputRing.tailPos.longValue())) || 
-			(bytesToCopy > outputRing.maxByteSize-RingBuffer.bytesOfContent(outputRing))) {
+		if ((spaceNeeded >  outputRing.maxSize-(int)(outputRing.workingHeadPos.value - outputRing.tailPos.get()))
+		///		|| 
+		//	(bytesToCopy > outputRing.maxByteSize-RingBuffer.bytesOfContent(outputRing)) //NOTE: why would we need to check bytes to copy?? should be asserted on rings in constructor
+		) {
 			return false;
 		}
 		
-		copyFragment2(inputRing, outputRing, start, spaceNeeded, bytesToCopy);		
+		copyFragment2(inputRing, outputRing, (int)start, spaceNeeded, bytesToCopy);		
 		return true;
 	}
 
 
-	private static void copyFragment2(RingBuffer inputRing,
-			RingBuffer outputRing, long start, int spaceNeeded, int bytesToCopy) {
+	private static void copyFragment2(RingBuffer inputRing,	RingBuffer outputRing, int start, int spaceNeeded, int bytesToCopy) {
 		
-		RingBuffer.copyIntsFromToRing(inputRing.buffer, (int)start, inputRing.mask, 
+		RingBuffer.copyIntsFromToRing(inputRing.buffer, start, inputRing.mask, 
 				                      outputRing.buffer, (int)outputRing.workingHeadPos.value, outputRing.mask, 
 				                      spaceNeeded);
 		outputRing.workingHeadPos.value+=spaceNeeded;

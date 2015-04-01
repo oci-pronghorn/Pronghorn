@@ -5,7 +5,7 @@ import java.io.OutputStream;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 
-public class RingOutputStream extends OutputStream {
+public class RingOutputStream extends OutputStream implements AutoCloseable {
 
 	private RingBuffer ring;
 	private int blockSize;
