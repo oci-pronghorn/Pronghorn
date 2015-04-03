@@ -253,7 +253,6 @@ public class RingWriter {
 	
 
 	public static void publishWrites(RingBuffer outputRing) {
-		assert(outputRing.workingHeadPos.value<=outputRing.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
 	
 		if (outputRing.writeTrailingCountOfBytesConsumed) {
 			RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, outputRing.ringWalker.nextWorkingHead -1 ); 
@@ -261,13 +260,19 @@ public class RingWriter {
 		//single length field still needs to move this value up, so this is always done
 		outputRing.bytesWriteLastConsumedBytePos = outputRing.byteWorkingHeadPos.value;
 		
-		if ((--outputRing.batchPublishCountDown<=0)) {			
-			//publish writes			
-			outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
-			outputRing.headPos.lazySet(outputRing.workingHeadPos.value);			
-			outputRing.batchPublishCountDown = outputRing.batchPublishCountDownInit;
+		if ((--outputRing.batchPublishCountDown>0)) {			
+			return;
 		}
+		publishWrites2(outputRing);
 		 
+	}
+
+	private static void publishWrites2(RingBuffer outputRing) {
+		assert(outputRing.workingHeadPos.value<=outputRing.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
+		//publish writes			
+		outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
+		outputRing.headPos.lazySet(outputRing.workingHeadPos.value);			
+		outputRing.batchPublishCountDown = outputRing.batchPublishCountDownInit;
 	}
 
 	/*

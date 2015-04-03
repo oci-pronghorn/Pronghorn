@@ -128,11 +128,7 @@ public class RingWalker {
 		
 		if ((--ringBuffer.batchReleaseCountDown<=0)) {	
 			
-			ringBuffer.workingTailPos.value = ringBuffer.ringWalker.nextWorkingTail;
-			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			
-			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);
-		
-			ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
+			releaseBlockBeforeReadMessage(ringBuffer);
 		}
 
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1;
@@ -234,8 +230,6 @@ public class RingWalker {
 		RingBuffer.markBytesReadBase(ringBuffer);
 
 		
-	
-		
 		//
 		//batched release of the old positions back to the producer
 		//could be done every time but batching reduces contention
@@ -243,18 +237,20 @@ public class RingWalker {
 		if ((--ringBuffer.batchReleaseCountDown>0)) {	
 			//from the last known fragment move up the working tail position to this new fragment location
 			ringBuffer.workingTailPos.value = ringBufferConsumer.nextWorkingTail;
-			
-			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
-		} else {
-			
-			ringBuffer.workingTailPos.value = ringBuffer.ringWalker.nextWorkingTail;
-			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			
-			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);
-						
-			ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
-			prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
+		} else {			
+			releaseBlockBeforeReadMessage(ringBuffer);
 		}
+		prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
 
+	}
+
+
+	private static void releaseBlockBeforeReadMessage(RingBuffer ringBuffer) {
+		ringBuffer.workingTailPos.value = ringBuffer.ringWalker.nextWorkingTail;
+		ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			
+		ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);
+					
+		ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
 	}
 
 
@@ -442,13 +438,10 @@ public class RingWalker {
 
 
 	private static boolean copyFragment1(RingBuffer inputRing, RingBuffer outputRing, long start, int spaceNeeded, int bytesToCopy) {
-		if ((spaceNeeded >  outputRing.maxSize-(int)(outputRing.workingHeadPos.value - outputRing.tailPos.get()))
-		///		|| 
-		//	(bytesToCopy > outputRing.maxByteSize-RingBuffer.bytesOfContent(outputRing)) //NOTE: why would we need to check bytes to copy?? should be asserted on rings in constructor
-		) {
+		
+		if ((spaceNeeded >  outputRing.maxSize-(int)(outputRing.workingHeadPos.value - outputRing.tailPos.get()) )) {
 			return false;
 		}
-		
 		copyFragment2(inputRing, outputRing, (int)start, spaceNeeded, bytesToCopy);		
 		return true;
 	}

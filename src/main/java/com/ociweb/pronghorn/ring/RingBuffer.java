@@ -47,6 +47,22 @@ public final class RingBuffer {
     
     public static class PaddedInt {
         public int value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
+
+		public int get() { //TODO: if this works may want to inline.
+			return value;
+		}
+
+		public void set(int i) {
+			value = i;
+		}
+
+		public void lazySet(int i) {
+			value = i;//only here for API matching.
+		}
+
+		public int addAndGet(int inc) {
+			return value += inc;
+		}
     }
 
     //TODO:AAA, ensure that that position of head and tail are avail so the release can block
@@ -73,20 +89,20 @@ public final class RingBuffer {
     
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
     public final PaddedInt byteWorkingHeadPos = new PaddedInt();
-    public final PaddedAtomicInteger bytesHeadPos = new PaddedAtomicInteger(); //Base value for byte array writes, may get renamed( and may not need to be atomic)
-   
+    public final PaddedInt bytesHeadPos = new PaddedInt();
+    
+    
     public int bytesWriteLastConsumedBytePos = 0;
     public int bytesWriteBase = 0;    
     public int bytesReadBase = 0;       
 	
 	public static final int RELATIVE_POS_MASK = 0x7FFFFFFF; //removes high bit which indicates this is a constant
-	
-	
-        
+	   
     
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
     public final PaddedInt byteWorkingTailPos = new PaddedInt();
-    public final PaddedAtomicInteger bytesTailPos = new PaddedAtomicInteger();
+    public final PaddedInt bytesTailPos = new PaddedInt();
+    
     
     //defined externally and never changes
     final byte[] constByteBuffer;
@@ -1260,16 +1276,19 @@ public final class RingBuffer {
      * @param ring
      */
     public static void releaseReadLock(RingBuffer ring) {
-    	assert(ring.ringWalker.cursor<=0 && !RingReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
-		if ((--ring.batchReleaseCountDown<=0)) {			
-
-			ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value); 
-			ring.tailPos.lazySet(ring.workingTailPos.value);
-			
-			ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
+		if (--ring.batchReleaseCountDown > 0) {			
+			return;
 		}
-    	
+		releaseReadLock2(ring);    	
     }
+
+	private static void releaseReadLock2(RingBuffer ring) {
+		assert(ring.ringWalker.cursor<=0 && !RingReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
+		ring.bytesTailPos.value=ring.byteWorkingTailPos.value; 
+		ring.tailPos.lazySet(ring.workingTailPos.value);
+		
+		ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
+	}
     
     public static void releaseAll(RingBuffer ring) {
 
@@ -1324,7 +1343,7 @@ public final class RingBuffer {
     public static void abandonWrites(RingBuffer ring) {    
         //ignore the fact that any of this was written to the ring buffer
     	ring.workingHeadPos.value = ring.headPos.longValue();
-    	ring.byteWorkingHeadPos.value = ring.bytesHeadPos.intValue();
+    	ring.byteWorkingHeadPos.value = ring.bytesHeadPos.get();
     }
 
 
