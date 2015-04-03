@@ -18,8 +18,7 @@ public abstract class PronghornStage {
 
 	public final int stageId;	
 	private static AtomicInteger stageCounter = new AtomicInteger();
-	private GraphManager graphManager;
-		
+	private GraphManager graphManager;		
 	
 	//in the constructor us a zero length array if there are no values.
 	protected PronghornStage(GraphManager graphManager, RingBuffer[] inputs, RingBuffer[] outputs) {

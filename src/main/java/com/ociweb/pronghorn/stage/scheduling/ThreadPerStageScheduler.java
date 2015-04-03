@@ -13,7 +13,6 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	private static final Logger log = LoggerFactory.getLogger(ThreadPerStageScheduler.class);
 	
 	private ExecutorService executorService; 
-	private volatile boolean isShutDownNow = false;
 	private volatile boolean isShuttingDown = false;
 	
 	
@@ -92,8 +91,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	 */
 	public boolean TerminateNow() {
 				
-		isShuttingDown = true;
-		isShutDownNow = true;
+		shutdown();
 		try {
 			//give the stages 1 full second to shut down cleanly
 			return executorService.awaitTermination(1, TimeUnit.SECONDS);
@@ -182,13 +180,21 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		};
 	}
 
-	private void runLoop(final PronghornStage stage) {
+	private final void runLoop(final PronghornStage stage) {
+		int i = 0;
 		do {
 			assert(confirmRunStart(stage));
 			stage.run();
-			assert(confirmRunStop(stage));
-			
-		} while (!isShutDownNow && ( (!isShuttingDown && !GraphManager.isStageTerminated(graphManager, stage.stageId)) || GraphManager.mayHaveUpstreamData(graphManager, stage.stageId) ));
+			assert(confirmRunStop(stage));	
+			//one out of every 128 passes we will yield to play nice since we may end up with a lot of threads
+			if (0==(0x7F&i++)){
+				Thread.yield();
+			}
+		} while ( continueRunning(this, stage));
+	}
+
+	private static boolean continueRunning(ThreadPerStageScheduler tpss, final PronghornStage stage) {
+		return (!tpss.isShuttingDown && !GraphManager.isStageTerminated(tpss.graphManager, stage.stageId)) || GraphManager.mayHaveUpstreamData(tpss.graphManager, stage.stageId);
 	}
 
 	private void runPeriodicLoop(final int nsScheduleRate, final PronghornStage stage) {
@@ -209,6 +215,6 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				}
 			};
 									
-		} while (!isShutDownNow && !isShuttingDown);
+		} while (!isShuttingDown);
 	}
 }
