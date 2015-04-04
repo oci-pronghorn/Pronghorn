@@ -279,16 +279,15 @@ public class RingWriter {
 	 * blocks until there is enough room for the requested fragment on the output ring.
 	 * if the fragment needs a template id it is written and the workingHeadPosition is set to the first field. 
 	 */
-	@Deprecated //convert to use tryWriteFragment ASAP
-	public static void blockWriteFragment(RingBuffer ring, int cursorPosition) {
+	public static void blockWriteFragment(RingBuffer ring, int messageTemplateLOC) {
 	
 		FieldReferenceOffsetManager from = RingBuffer.from(ring);
 		
 		RingWalker consumerData = ring.ringWalker;
-		int fragSize = from.fragDataSize[cursorPosition];
+		int fragSize = from.fragDataSize[messageTemplateLOC];
 		ring.llwTailPosCache = spinBlockOnTail(ring.llwTailPosCache, consumerData.nextWorkingHead - (ring.maxSize - fragSize), ring);
 	
-		RingWalker.prepWriteFragment(ring, cursorPosition, from, fragSize);
+		RingWalker.prepWriteFragment(ring, messageTemplateLOC, from, fragSize);
 	}
 
 	/*
