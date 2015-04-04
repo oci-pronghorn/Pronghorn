@@ -9,10 +9,12 @@ public class ConsoleStage extends PronghornStage {
 
 	private final RingBuffer inputRing;
 	private final StringBuilder console = new StringBuilder();
-	private final int posionPillMessageId;
 	
 	private final long[] totalCounts;
 	private final long[] counts;
+	
+	private long stepTime = 2000;//2 sec
+	private long nextOutTime = System.currentTimeMillis()+stepTime;
 		
 	public ConsoleStage(GraphManager gm, RingBuffer inputRing) {
 		this(gm,inputRing,-1);
@@ -21,7 +23,6 @@ public class ConsoleStage extends PronghornStage {
 	public ConsoleStage(GraphManager gm, RingBuffer inputRing, int pillId) {
 		super(gm, inputRing, NONE);
 		this.inputRing = inputRing;
-		posionPillMessageId = pillId;
 
 		FieldReferenceOffsetManager from = RingBuffer.from(inputRing);		
 		totalCounts = new long[from.tokensLen];
@@ -36,12 +37,25 @@ public class ConsoleStage extends PronghornStage {
 
 	@Override
 	public void run() {
-		dataToRead(counts);
-		if (!processCounts("Running:",counts,totalCounts)) {
-			return;
+		boolean foundData = dataToRead(counts);
+		long now = System.currentTimeMillis();
+		if (foundData || now>nextOutTime) {
+			nextOutTime = now+stepTime;			
+			if (!processCounts("Running:",counts,totalCounts)) {
+				return;
+			}
 		}
 
 
+	}
+	
+	public long totalMessages() {
+		long sum = 0;
+		int i = totalCounts.length;
+		while (--i>=0) {
+			sum += totalCounts[i];
+		}
+		return sum;
 	}
 
 	private boolean processCounts(String label, long[] counts,	long[] totalCounts) {
@@ -92,9 +106,10 @@ public class ConsoleStage extends PronghornStage {
 		return totalMsg>0;
 	}
 	
-	private void dataToRead(long[] counts) {
+	private boolean dataToRead(long[] counts) {
 		
 		int msgIdx = 0;
+		boolean data = false;
 		
 		while (RingReader.tryReadFragment(inputRing)) {
 			if (RingReader.isNewMessage(inputRing)) {
@@ -103,8 +118,10 @@ public class ConsoleStage extends PronghornStage {
 					break;
 				} else {
 					counts[msgIdx]++;
+					data = true;
 				}
 			}
 		}		
+		return data;
 	}
 }
