@@ -113,6 +113,13 @@ public class MonitorConsoleStage extends PronghornStage {
 		}
 	}
 
+	private static final Integer defaultMonitorRate = Integer.valueOf(50000000);
+	private static final RingBufferConfig defaultMonitorRingConfig = new RingBufferConfig(MonitorFROM.buildFROM(), 30, 0);
+	
+	public static void attach(GraphManager gm) {
+		attach(gm,defaultMonitorRate,defaultMonitorRingConfig);
+	}
+	
 	
 	/**
 	 * Easy entry point for adding monitoring to the graph.  This should be copied by all the other monitor consumers.  TODO: build for JMX, SLF4J, Socket.io

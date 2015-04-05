@@ -643,8 +643,7 @@ public class GraphManager {
 		//Does not return until some other stage has initialized the output rings
 		idx = m.stageIdToOutputsBeginIdx[stageId];
 		while (-1 != (ringId=m.multOutputIds[idx++])) {
-			RingBuffer ringBuffer = m.ringIdToRing[ringId];
-			while (!RingBuffer.isInit(ringBuffer)) {
+			while (!RingBuffer.isInit(m.ringIdToRing[ringId])) {
 				Thread.yield();
 			}				
 		}	

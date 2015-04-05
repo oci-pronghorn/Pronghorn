@@ -18,14 +18,12 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	
 	public ThreadPerStageScheduler(GraphManager graphManager) {
 		super(graphManager);		
-		
-		this.executorService = Executors.newCachedThreadPool();
-		
 	}
 	
 	public void startup() {
-		
+				
 		int i = PronghornStage.totalStages();
+		this.executorService = Executors.newFixedThreadPool(i);
 		while (--i>=0) {
 			PronghornStage stage = GraphManager.getStage(graphManager, i);
 			if (null != stage) {
@@ -37,9 +35,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					executorService.execute(buildRunnable(rate, stage));
 				}
 			}
-		}
-		
-		
+		}		
 		
 	}
 	
@@ -47,8 +43,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		
 		//TODO: Note new test see if this works. should not need to call terminate on input stages if they are not blocking!
 		isShuttingDown = true;
-		
-		
+				
 		try {//TODO: test removing this block.
 		 GraphManager.terminateInputStages(graphManager);
 		} catch (Throwable t) {
@@ -122,8 +117,10 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				try {
 					
 					//TODO: need to record state so we know the failure point
+					log.trace("block on initRings:"+stage.getClass().getSimpleName());					
+					GraphManager.initInputRings(graphManager, stage.stageId);					
+					log.trace("finished on initRings:"+stage.getClass().getSimpleName());
 					
-					GraphManager.initInputRings(graphManager, stage.stageId);
 					stage.startup();
 					
 					runLoop(stage);	
@@ -162,7 +159,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			public void run() {
 				try {	
 					
+					log.trace("block on initRings:"+stage.getClass().getSimpleName());
 					GraphManager.initInputRings(graphManager, stage.stageId);
+					log.trace("finished on initRings:"+stage.getClass().getSimpleName());
 					stage.startup();
 					
 					runPeriodicLoop(nsScheduleRate, stage);	
