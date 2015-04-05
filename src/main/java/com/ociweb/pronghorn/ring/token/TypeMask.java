@@ -7,18 +7,20 @@ public final class TypeMask {
 
     // each group of "similar" types must stay together as a block.
 
+	//                                                                    alternate numeric (optional bits mask 1???)
+	//                                                                    takes up same space and can have same compression just typed differently
     // 1
-    public final static int IntegerUnsigned = 0x00;        // 00000 even
-    public final static int IntegerUnsignedOptional = 0x01;// 00001 odd
-    public final static int IntegerSigned = 0x02;          // 00010 even
-    public final static int IntegerSignedOptional = 0x03;  // 00011 odd
+    public final static int IntegerUnsigned = 0x00;        // 00000 even  small/boolean  actual bit count defined in from.
+    public final static int IntegerUnsignedOptional = 0x01;// 00001 odd   small/booleanOptional
+    public final static int IntegerSigned = 0x02;          // 00010 even  float32
+    public final static int IntegerSignedOptional = 0x03;  // 00011 odd   float32Optional
 
     // 2
     public final static int LongUnsigned = 0x04;           // 00100
     public final static int LongUnsignedOptional = 0x05;   // 00101
-    public final static int LongSigned = 0x06;             // 00110
-    public final static int LongSignedOptional = 0x07;     // 00111
-
+    public final static int LongSigned = 0x06;             // 00110       double64
+    public final static int LongSignedOptional = 0x07;     // 00111       double64Optional
+    
     // 2
     public final static int TextASCII = 0x08;              // 01000
     public final static int TextASCIIOptional = 0x09;      // 01001
@@ -26,18 +28,30 @@ public final class TypeMask {
     public final static int TextUTF8Optional = 0x0B;       // 01011
 
     // 3
-    public final static int Decimal = 0x0C;                // 01100
-    public final static int DecimalOptional = 0x0D;        // 01101
+    public final static int Decimal = 0x0C;                // 01100       real (64/32)
+    public final static int DecimalOptional = 0x0D;        // 01101       realOptional
     // 2
-    public final static int ByteArray = 0x0E;              // 01110
+    public final static int ByteArray = 0x0E;              // 01110    (position and length) each in 32 bit int, high bits of position hold const and runtime rune/bcd encoding).
     public final static int ByteArrayOptional = 0x0F;      // 01111
 
     public final static int Group = 0x10;                  // 10000 
+ // public final static int OptionalGroup = 0x11;          // 10001 //not yet supported 
     
-    public final static int TemplateRef = 0x12;            // 10010
+    public final static int GoSub = 0x12;                  // 10010 for implementing unions and other complex structures
+    
+    
     // 1
     //for sequence this is an uint32
     public final static int GroupLength = 0x14;            // 10100   10?00
+
+    //                                                              //bitset ? can be byte array or can be int or long?  Should be on the primary ring as fixed steps!!
+    
+    
+    //                                                        11010 
+    //                                                        11011 
+    //                                                        11110 
+    //                                                        11111 
+    
 
     public final static int Dictionary = 0x18;             // 11000
     public final static int SpacerGap = 0x1C;              // 11100  //TODO: C, add call to this and gen method.  must add new SpacerGap  into the script as needed, set in the ClientConfig to inject to the template.
