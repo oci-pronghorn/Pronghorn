@@ -93,6 +93,8 @@ public class MonitorConsoleStage extends PronghornStage {
 	public void shutdown() {
 		
 		
+		//TODO: AA, may want to flat zeros if they are on the down stream of router? or switch?
+		
 		int i = hists.length;
 		while (--i>=0) {
 			
