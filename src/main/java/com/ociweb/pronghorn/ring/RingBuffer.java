@@ -1550,6 +1550,10 @@ public final class RingBuffer {
 	public static long confirmLowLevelRead(RingBuffer input, int size) {
 		return (input.llwNextHeadTarget += size);
 	}
+
+	public static boolean hasReleasePending(RingBuffer ringBuffer) {
+		return ringBuffer.batchReleaseCountDown!=ringBuffer.batchReleaseCountDownInit;
+	}
 	
 	
 
