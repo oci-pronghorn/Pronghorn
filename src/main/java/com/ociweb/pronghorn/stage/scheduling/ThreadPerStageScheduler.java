@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.stage.PronghornStage;
 
 public class ThreadPerStageScheduler extends StageScheduler {
@@ -41,14 +42,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	
 	public void shutdown(){	
 		
-		//TODO: Note new test see if this works. should not need to call terminate on input stages if they are not blocking!
+		GraphManager.terminateInputStages(graphManager);
 		isShuttingDown = true;
 				
-		try {//TODO: test removing this block.
-		 GraphManager.terminateInputStages(graphManager);
-		} catch (Throwable t) {
-			log.error("Stacktrace",t);
-		}
 	}
 	
 	/**
@@ -66,8 +62,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		isShuttingDown = true;
 		executorService.shutdown();
 		try {
-			boolean cleanExit = executorService.awaitTermination(timeout, unit);
-			assert(validShutdownState());			
+			boolean cleanExit = executorService.awaitTermination(timeout, unit);			
+			validShutdownState();		
 			return cleanExit;
 		} catch (InterruptedException e) {
 			executorService.shutdownNow();
@@ -125,13 +121,13 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					
 					runLoop(stage);	
 			
-					stage.shutdown();				
+					stage.shutdown();	
+					
 								
 				} catch (Throwable t) {
 					log.error("Unexpected error in stage {}", stage);
 					log.error("Stacktrace",t);
 					GraphManager.shutdownNeighborRings(graphManager, stage);
-					assert(confirmRunStop(stage));
 				}
 			}			
 		};
@@ -159,9 +155,10 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			public void run() {
 				try {	
 					
-					log.trace("block on initRings:"+stage.getClass().getSimpleName());
+					log.trace("block on initRings:{}",stage.getClass().getSimpleName());
 					GraphManager.initInputRings(graphManager, stage.stageId);
-					log.trace("finished on initRings:"+stage.getClass().getSimpleName());
+					log.trace("finished on initRings:{}",stage.getClass().getSimpleName());
+					
 					stage.startup();
 					
 					runPeriodicLoop(nsScheduleRate, stage);	
@@ -173,7 +170,6 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					log.error("Stacktrace",t);
 					GraphManager.shutdownNeighborRings(graphManager, stage);
 					Thread.currentThread().interrupt();
-					assert(confirmRunStop(stage));
 				}
 			}			
 		};
@@ -181,15 +177,18 @@ public class ThreadPerStageScheduler extends StageScheduler {
 
 	private final void runLoop(final PronghornStage stage) {
 		int i = 0;
+
 		do {
-			assert(confirmRunStart(stage));
-			stage.run();
-			assert(confirmRunStop(stage));	
+			stage.run();			
+						
 			//one out of every 128 passes we will yield to play nice since we may end up with a lot of threads
 			if (0==(0x7F&i++)){
+				//before doing yield must push any batched up writes.
+				GraphManager.publishAllWrites(graphManager, stage);
 				Thread.yield();
 			}
 		} while ( continueRunning(this, stage));
+		GraphManager.terminate(graphManager, stage); //Must ensure marked as terminated
 	}
 
 	private static boolean continueRunning(ThreadPerStageScheduler tpss, final PronghornStage stage) {
@@ -199,9 +198,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	private void runPeriodicLoop(final int nsScheduleRate, final PronghornStage stage) {
 		do {
 			long start = System.nanoTime();
-			assert(confirmRunStart(stage));
 			stage.run();
-			assert(confirmRunStop(stage));
 			
 			int sleepFor = nsScheduleRate - (int)(System.nanoTime()-start);
 			if (sleepFor>0) {
@@ -210,10 +207,11 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				try {
 					Thread.sleep(sleepMs, sleepNs);
 				} catch (InterruptedException e) {
-					return;
+					break;
 				}
 			};
 									
 		} while (!isShuttingDown);
+		GraphManager.terminate(graphManager, stage); //Must ensure marked as terminated
 	}
 }

@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
 import org.slf4j.Logger;
@@ -9,7 +7,6 @@ import org.slf4j.Logger;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
 import com.ociweb.pronghorn.stage.route.SplitterStage;
 
@@ -20,7 +17,6 @@ public class GraphManager {
 		public byte[] stageTerminationState = new byte[0];
 	}
 	
-	//TODO: add init of -1 to all the arrays for better error checking.
 
 	public final static String SCHEDULE_RATE = "SCHEDULE_RATE";
 	public final static String MONITOR = "MONITOR";
@@ -69,10 +65,28 @@ public class GraphManager {
 	private boolean enableMutation = true;
 	
 	public GraphManager() {
+		Arrays.fill(ringIdToStages, -1);
+		Arrays.fill(stageIdToInputsBeginIdx, -1);
+		Arrays.fill(multInputIds, -1);
+		Arrays.fill(stageIdToOutputsBeginIdx, -1);
+		Arrays.fill(multOutputIds, -1);
+		Arrays.fill(annotationIdToStageId, -1);
+		Arrays.fill(stageIdToAnnotationsBeginIdx, -1);
+		Arrays.fill(multAnnotationIds, -1);
+		
 		stageStateData = new GraphManagerStageStateData();
 	}
 	
 	private GraphManager(GraphManagerStageStateData parentStageStateData) {
+		Arrays.fill(ringIdToStages, -1);
+		Arrays.fill(stageIdToInputsBeginIdx, -1);
+		Arrays.fill(multInputIds, -1);
+		Arrays.fill(stageIdToOutputsBeginIdx, -1);
+		Arrays.fill(multOutputIds, -1);
+		Arrays.fill(annotationIdToStageId, -1);
+		Arrays.fill(stageIdToAnnotationsBeginIdx, -1);
+		Arrays.fill(multAnnotationIds, -1);
+		
 		//enables single point of truth for the stages states, all clones  share this object
 		stageStateData = parentStageStateData;
 	}
@@ -126,6 +140,26 @@ public class GraphManager {
 	}
 	
 	
+	public static boolean validShutdown(GraphManager m) {
+		boolean result = true;
+		int i = m.stageIdToStage.length;
+		while (--i>=0) {
+			if (null!=m.stageIdToStage[i]) {				
+				if (!isStageTerminated(m, i) ) { 				
+					PronghornStage stage = getStage(m,i);
+					logInputs(StageScheduler.log, m, stage);
+					StageScheduler.log.error("  Expected stage {} to be stopped but it appears to be running. terminated:{}", stage, isStageTerminated(m, i));
+					logOutputs(StageScheduler.log, m, stage);
+					result = false;
+				}				
+			}
+		}		
+		if (!result) {
+			StageScheduler.log.error("unclean shutdown");				
+		}
+		return result;
+	}
+
 	private static void copyAnnotationsForStage(GraphManager m,	GraphManager clone, PronghornStage stage) {
 		int idx;
 		int annotationId;
@@ -172,9 +206,11 @@ public class GraphManager {
 	private static int[] setValue(int[] target, int idx, int value) {		
 		int[] result = target;
 		if (idx>=target.length) {
-			result = Arrays.copyOf(target, (1+idx)*2); //double the array
+			int limit = (1+idx)*2;
+			result = Arrays.copyOf(target, limit); //double the array
+			Arrays.fill(result, target.length, limit-1, -1);
 		}
-		assert(0==result[idx]) : "duplicate assignment detected, see stack and double check all the stages added to the graph.";
+		assert(-1==result[idx]) : "duplicate assignment detected, see stack and double check all the stages added to the graph.";
 		
 		result[idx] = value;
 		return result;
@@ -520,6 +556,15 @@ public class GraphManager {
 				
 				//check that producer is terminated first.
 				if (isProducerTerminated(m, ringId)) {
+					
+					//ensure that we do not have any old data still on the ring from the consumer batching releases
+
+						
+					if (RingBuffer.hasReleasePending(m.ringIdToRing[ringId])) {
+						RingBuffer.releaseAll(m.ringIdToRing[ringId]);
+					}
+						
+					
 					//if producer is terminated check input ring, if not empty return true
 			    	if (RingBuffer.contentRemaining( m.ringIdToRing[ringId])>0) {
 			    		//return true because we found content sitting on a ring
@@ -574,10 +619,10 @@ public class GraphManager {
 		throw new UnsupportedOperationException("Invalid configuration. Unable to find requested output ordinal "+ordinalOutput);
 	}
 	
-	public static int getOutputRingCount(GraphManager m, PronghornStage stage) {
+	public static int getOutputRingCount(GraphManager m, int stageId) {
 		
 		int ringId;
-		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
+		int idx = m.stageIdToOutputsBeginIdx[stageId];
 		int count = 0;
 		while (-1 != (ringId=m.multOutputIds[idx++])) {		
 			count++;
@@ -645,6 +690,8 @@ public class GraphManager {
 		while (-1 != (ringId=m.multOutputIds[idx++])) {
 			while (!RingBuffer.isInit(m.ringIdToRing[ringId])) {
 				Thread.yield();
+				//double check that this was not built wrong, there must be a consumer of this ring
+				assert(null!=GraphManager.getRingConsumer(m, ringId));				
 			}				
 		}	
 		
@@ -747,6 +794,15 @@ public class GraphManager {
 			return stage;
 		}
 		return findStageByPath(m,getRingConsumer(m, getOutputRing(m,stage,path[idx]).ringId),1+idx,path);
+	}
+
+	//when batching is used we need to flush outstanding writes before yield
+	public static void publishAllWrites(GraphManager m, PronghornStage stage) {
+		int ringId;
+		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
+		while (-1 != (ringId=m.multOutputIds[idx++])) {	
+			RingBuffer.publishAllWrites(m.ringIdToRing[ringId]);				
+		}		
 	}
 
 }
