@@ -1022,6 +1022,7 @@ public final class RingBuffer {
 			source.get(rb.byteBuffer, 0, length - partialLength);					    		
 		} else {					    	
 			source.get(rb.byteBuffer, idx, length);
+			//System.err.println("recorded:"+new String(rb.byteBuffer, idx, length));
 		}
 		rb.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.byteWorkingHeadPos.value + length);
 	}
