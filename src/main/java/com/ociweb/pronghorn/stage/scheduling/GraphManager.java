@@ -13,9 +13,15 @@ import com.ociweb.pronghorn.stage.route.SplitterStage;
 
 public class GraphManager {
 	
-	private static class GraphManagerStageStateData {
+	private class GraphManagerStageStateData {
 		private Object lock = new Object();	
-		public byte[] stageTerminationState = new byte[0];
+		private byte[] stageStateArray = new byte[0];
+		
+		public final static byte STAGE_NEW = 0;
+		public final static byte STAGE_STARTED = 1;
+		public final static byte STAGE_STOPPING = 2;
+		public final static byte STAGE_TERMINATED = 3;
+		
 	}
 	
 
@@ -143,6 +149,7 @@ public class GraphManager {
 	
 	public static boolean validShutdown(GraphManager m) {
 		boolean result = true;
+		//TODO: B, refactor so this goes in order from producers to consumers.
 		int i = m.stageIdToStage.length;
 		while (--i>=0) {
 			if (null!=m.stageIdToStage[i]) {				
@@ -244,14 +251,18 @@ public class GraphManager {
 		return result;
 	}	
 	
-	private static byte[] incValue(byte[] target, int idx) {		
+	private static byte[] setValue(byte[] target, int idx, final byte value) {		
 		
 		byte[] result = target;
 		if (idx>=target.length) {
-			result = Arrays.copyOf(target, (1+idx)*2); //double the array
+			int limit = (1+idx)*2;
+			result = Arrays.copyOf(target, limit); //double the array
+			Arrays.fill(result, target.length, limit-1, (byte)-1);
 		}
-		//very large count that is not expected to roll-over
-		result[idx]++;
+		
+		assert(value >= result[idx]) : "byte values are only allowed to move forward, check the state rules. Found "+result[idx]+" expected "+(value-1);
+		
+		result[idx] = value;
 		return result;
 	}
 	
@@ -260,7 +271,7 @@ public class GraphManager {
 		
 		synchronized(gm.lock) {
 			int stageId = beginStageRegister(gm, stage);
-			setStageInitialState(gm, stageId);
+			setStateToNew(gm, stageId);
 			
 			int i=0;
 			int limit = inputs.length;
@@ -301,19 +312,14 @@ public class GraphManager {
 		return stageId;
 	}
 
-	private static void setStageInitialState(GraphManager gm, int stageId) {
-		synchronized(gm.stageStateData.lock) {
-			gm.stageStateData.stageTerminationState = incValue(gm.stageStateData.stageTerminationState, stageId); //state changes from 0 to 1
-			assert(1 == gm.stageStateData.stageTerminationState[stageId]);
-		}
-	}
+
 
 
 	public static void register(GraphManager gm, PronghornStage stage, RingBuffer input, RingBuffer[] outputs) {
 		synchronized(gm.lock) {		
 			
 			int stageId = beginStageRegister(gm, stage);
-			setStageInitialState(gm, stageId);
+			setStateToNew(gm, stageId);
 			
 			//loop over inputs
 			regInput(gm, input, stageId);
@@ -332,7 +338,7 @@ public class GraphManager {
 	public static void register(GraphManager gm, PronghornStage stage, RingBuffer[] inputs, RingBuffer output) {
 		synchronized(gm.lock) {
 			int stageId = beginStageRegister(gm, stage);
-			setStageInitialState(gm, stageId);
+			setStateToNew(gm, stageId);
 			
 			int i = 0;
 			int limit = inputs.length;
@@ -351,7 +357,7 @@ public class GraphManager {
 	public static void register(GraphManager gm, PronghornStage stage, RingBuffer input, RingBuffer output) {
 		synchronized(gm.lock) {
 			int stageId = beginStageRegister(gm, stage);
-			setStageInitialState(gm, stageId);
+			setStateToNew(gm, stageId);
 			
 			//loop over inputs
 			regInput(gm, input, stageId);
@@ -363,19 +369,35 @@ public class GraphManager {
 		}
 	}
 	
-	public static void terminate(GraphManager gm, PronghornStage stage ) {
+	private static void setStateToNew(GraphManager gm, int stageId) {
 		synchronized(gm.stageStateData.lock) {
-			gm.stageStateData.stageTerminationState = incValue(gm.stageStateData.stageTerminationState, stage.stageId); //state changes from 1 to 2
-			if ( gm.stageStateData.stageTerminationState[stage.stageId]>2) {
-				gm.stageStateData.stageTerminationState[stage.stageId] = 2;
-			}
-			assert(2 == gm.stageStateData.stageTerminationState[stage.stageId]);
-			assert(recordInputsAndOutputValuesForValidation(gm, stage.stageId));
+			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_NEW);
 		}
+		setStateToStarted(gm,stageId);
+	}
+	
+	public static void setStateToStopping(GraphManager gm, int stageId) {
+	//	synchronized(gm.stageStateData.lock) {
+			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_STOPPING);
+	//	}
 	}
 
+	public static void setStateToStarted(GraphManager gm, int stageId) {
+		synchronized(gm.stageStateData.lock) {
+			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_STARTED);
+		}
+	}
+	
+	public static void setStateToShutdown(GraphManager gm, int stageId) {
+	//	synchronized(gm.stageStateData.lock) {
+			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_TERMINATED);
+			//	assert(recordInputsAndOutputValuesForValidation(gm, stage.stageId));
+	//	}
+	}
+	
 	private static boolean recordInputsAndOutputValuesForValidation(GraphManager gm, int stageId) {
 		
+		//TODO: B, this is a test to see if the positions of the ring buffer have moved after shut down, would be called when the real shutdown is completed
 		
 		int ringId;
 		int idx;
@@ -404,19 +426,22 @@ public class GraphManager {
 		return true;
 	}
 
-	private static void regOutput(GraphManager pm, RingBuffer output,
-			int stageId) {
-		int outputId = output.ringId;
-		pm.ringIdToStages = setValue(pm.ringIdToStages, (outputId*2) , stageId); //source +0 then target +1
-		pm.ringIdToRing = setValue(pm.ringIdToRing, outputId, output);				
-		pm.multOutputIds = setValue(pm.multOutputIds, pm.topOutput++, outputId);
+	private static void regOutput(GraphManager pm, RingBuffer output, int stageId) {
+		if (null!=output) {
+			int outputId = output.ringId;
+			pm.ringIdToStages = setValue(pm.ringIdToStages, (outputId*2) , stageId); //source +0 then target +1
+			pm.ringIdToRing = setValue(pm.ringIdToRing, outputId, output);				
+			pm.multOutputIds = setValue(pm.multOutputIds, pm.topOutput++, outputId);
+		}
 	}
 
 	private static void regInput(GraphManager pm, RingBuffer input,	int stageId) {
-		int inputId = input.ringId;
-		pm.ringIdToStages = setValue(pm.ringIdToStages, (inputId*2)+1, stageId); //source +0 then target +1
-		pm.ringIdToRing = setValue(pm.ringIdToRing, inputId, input);
-		pm.multInputIds = setValue(pm.multInputIds, pm.topInput++, inputId);
+		if (null!=input) {
+			int inputId = input.ringId;
+			pm.ringIdToStages = setValue(pm.ringIdToStages, (inputId*2)+1, stageId); //source +0 then target +1
+			pm.ringIdToRing = setValue(pm.ringIdToRing, inputId, input);
+			pm.multInputIds = setValue(pm.multInputIds, pm.topInput++, inputId);
+		}
 	}
 
 
@@ -541,11 +566,9 @@ public class GraphManager {
 	 */
 	public static boolean mayHaveUpstreamData(GraphManager m, int stageId) {
 		
-		if (2 == m.stageStateData.stageTerminationState[stageId]) { //terminated 
-			//TODO: may want to add log of full queue found here.
+		if (isStageTerminated(m, stageId)) { //terminated 
 			return false;
-		}
-		
+		}		
 		
 		int inputPos  = m.stageIdToInputsBeginIdx[stageId];
 		int ringId;
@@ -559,7 +582,7 @@ public class GraphManager {
 				if (isProducerTerminated(m, ringId)) {
 					
 					//ensure that we do not have any old data still on the ring from the consumer batching releases
-
+			
 					//splitter should never have release pending to release because it does not use the release counters	
 					if (RingBuffer.hasReleasePending(m.ringIdToRing[ringId])) {
 						RingBuffer.releaseAll(m.ringIdToRing[ringId]);
@@ -567,7 +590,6 @@ public class GraphManager {
 					
 					//if producer is terminated check input ring, if not empty return true
 			    	if (RingBuffer.contentRemaining( m.ringIdToRing[ringId])>0) {
-			    		//return true because we found content sitting on a ring
 			    		return true;
 			    	}
 				} else {
@@ -577,17 +599,21 @@ public class GraphManager {
 		
 		//true if this is a top level stage and was not terminated at top of this function
 		//all other cases return false because the recursive check has already completed above.
-		return 0==inputCounts;
+		return 0==inputCounts && !isStageShuttingDown(m, stageId); //if input is shutting down it must not re-schedule
 	}
 	
 	public static boolean isProducerTerminated(GraphManager m, int ringId) {
-		return 2==m.stageStateData.stageTerminationState[m.ringIdToStages[ringId*2]];
+		return m.stageStateData.stageStateArray[m.ringIdToStages[ringId*2]] == GraphManagerStageStateData.STAGE_TERMINATED;
 	}
 
     public static boolean isStageTerminated(GraphManager m, int stageId) {
-    	return 2==m.stageStateData.stageTerminationState[stageId];
+    	return GraphManagerStageStateData.STAGE_TERMINATED == m.stageStateData.stageStateArray[stageId];
     }
 
+    public static boolean isStageShuttingDown(GraphManager m, int stageId) {
+    	return m.stageStateData.stageStateArray[stageId]>=GraphManagerStageStateData.STAGE_STOPPING; //or terminated
+    }
+    
     //TODO: AA must have blocking base stage to extend for blockers.
     
 	public static void terminateInputStages(GraphManager m) {

@@ -24,12 +24,18 @@ public class SplitterStage extends PronghornStage {
 	private long totalPrimaryCopy;
 	private int[] working;
 	private int   workingPos;
-    
+    	
+	int tempByteTail; 
+	int byteTailPos;
+	int totalBytesCopy;
+	
 	public SplitterStage(GraphManager gm, RingBuffer source, RingBuffer ... targets) {
 		super(gm,source,targets);
 		
 		this.source = source;
 		this.targets = targets;
+		
+		this.cachedTail = RingBuffer.tailPosition(source);
 	
 		this.supportsBatchedPublish = false;
 		this.supportsBatchedRelease = false;		
@@ -72,21 +78,22 @@ public class SplitterStage extends PronghornStage {
 			}
 		}
 	}
-
-	@Override
-	public void startup() {
-		cachedTail = RingBuffer.tailPosition(source);
-	}
 	
 	@Override
 	public void run() {		
 		processAvailData(this);
 	}
 
-	
-	int tempByteTail; 
-	int byteTailPos;
-	int totalBytesCopy;
+	@Override
+	public void shutdown() {
+		//if we are in the middle of a partial copy push the data out, this is blocking
+		while (0!=totalPrimaryCopy) {
+			//if all the copies are done then record it as complete, does as much work as possible each time its called.
+			if (doneCopy(this, byteTailPos, source.mask & (int)cachedTail, (int)totalPrimaryCopy, totalBytesCopy)) {
+				recordCopyComplete(this, tempByteTail, totalBytesCopy);			
+			}	
+		}
+	}
 	
 	private static void processAvailData(SplitterStage ss) {
 

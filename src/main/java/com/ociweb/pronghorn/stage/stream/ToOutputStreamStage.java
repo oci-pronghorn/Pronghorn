@@ -19,8 +19,9 @@ public class ToOutputStreamStage extends PronghornStage {
 	private final RingBuffer inputRing;
 	private final OutputStream outputStream;
 	private final int step;
+	private final boolean eol;
 	
-	public ToOutputStreamStage(GraphManager gm, RingBuffer inputRing, OutputStream outputStream) {
+	public ToOutputStreamStage(GraphManager gm, RingBuffer inputRing, OutputStream outputStream, boolean eol) {
 		super(gm,inputRing,NONE);
 		this.inputRing = inputRing;
 		this.outputStream = outputStream;
@@ -29,6 +30,7 @@ public class ToOutputStreamStage extends PronghornStage {
 		if (RingBuffer.from(inputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
+		this.eol = eol;
 	}
 
 		@Override
@@ -65,6 +67,9 @@ public class ToOutputStreamStage extends PronghornStage {
 								//rolled over the end of the buffer
 								outputStream.write(data, off, len1);
 								outputStream.write(data, 0, len-len1);
+							}
+							if (eol) {
+								outputStream.write('\n');
 							}
 							outputStream.flush();
 				    	}

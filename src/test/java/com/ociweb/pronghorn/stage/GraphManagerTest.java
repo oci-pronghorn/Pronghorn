@@ -51,16 +51,16 @@ public class GraphManagerTest {
 
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c.stageId)); //this is true because the first ring buffer has 1 integer
 		
-		GraphManager.terminate(gm, a);
+		GraphManager.setStateToStopping(gm, a.stageId);
 		
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c.stageId)); //this is true because the first ring buffer has 1 integer
 		
 		RingBuffer.takeValue(rb1);
 		RingBuffer.releaseReadLock(rb1);
-		GraphManager.terminate(gm, a);
-		GraphManager.terminate(gm, b);
+		GraphManager.setStateToStopping(gm, a.stageId);
+		GraphManager.setStateToStopping(gm, b.stageId);
 
-		assertFalse(GraphManager.mayHaveUpstreamData(gm, c.stageId)); //this is true because the first ring buffer has 1 integer
+		assertTrue(GraphManager.mayHaveUpstreamData(gm, c.stageId)); //this is true because the first ring buffer has 1 integer
 		
 		
 	}
@@ -98,7 +98,7 @@ public class GraphManagerTest {
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c1.stageId)); //this is true because the first ring buffer has 1 integer
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c2.stageId)); //this is true because the first ring buffer has 1 integer
 		
-		GraphManager.terminate(gm, a);
+		GraphManager.setStateToStopping(gm, a.stageId);
 				
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c1.stageId)); //this is true because the first ring buffer has 1 integer
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c2.stageId)); //this is true because the first ring buffer has 1 integer
@@ -106,13 +106,13 @@ public class GraphManagerTest {
 		RingBuffer.takeValue(rb1);
 		RingBuffer.releaseReadLock(rb1);
 		
-		GraphManager.terminate(gm, a);
-		GraphManager.terminate(gm, b);
-		GraphManager.terminate(gm, b1);
-		GraphManager.terminate(gm, b2);
+		GraphManager.setStateToStopping(gm, a.stageId);
+		GraphManager.setStateToStopping(gm, b.stageId);
+		GraphManager.setStateToStopping(gm, b1.stageId);
+		GraphManager.setStateToStopping(gm, b2.stageId);
 		
-		assertFalse(GraphManager.mayHaveUpstreamData(gm, c1.stageId)); //this is true because the first ring buffer has 1 integer
-		assertFalse(GraphManager.mayHaveUpstreamData(gm, c2.stageId)); //this is true because the first ring buffer has 1 integer
+		assertTrue(GraphManager.mayHaveUpstreamData(gm, c1.stageId)); //this is true because the first ring buffer has 1 integer
+		assertTrue(GraphManager.mayHaveUpstreamData(gm, c2.stageId)); //this is true because the first ring buffer has 1 integer
 
 		
 	}

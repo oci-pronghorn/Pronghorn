@@ -122,7 +122,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					runLoop(stage);	
 			
 					stage.shutdown();	
-					
+					GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
 								
 				} catch (Throwable t) {
 					log.error("Unexpected error in stage {}", stage);
@@ -164,6 +164,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					runPeriodicLoop(nsScheduleRate, stage);	
 			
 					stage.shutdown();
+					GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
 							
 				} catch (Throwable t) {
 					log.error("Unexpected error in stage {}", stage);
@@ -188,11 +189,10 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				Thread.yield();
 			}
 		} while ( continueRunning(this, stage));
-		GraphManager.terminate(graphManager, stage); //Must ensure marked as terminated
 	}
 
 	private static boolean continueRunning(ThreadPerStageScheduler tpss, final PronghornStage stage) {
-		return (!tpss.isShuttingDown && !GraphManager.isStageTerminated(tpss.graphManager, stage.stageId)) || GraphManager.mayHaveUpstreamData(tpss.graphManager, stage.stageId);
+		return (!tpss.isShuttingDown && !GraphManager.isStageShuttingDown(tpss.graphManager, stage.stageId)) || GraphManager.mayHaveUpstreamData(tpss.graphManager, stage.stageId);
 	}
 
 	private void runPeriodicLoop(final int nsScheduleRate, final PronghornStage stage) {
@@ -212,6 +212,5 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			};
 									
 		} while (!isShuttingDown);
-		GraphManager.terminate(graphManager, stage); //Must ensure marked as terminated
 	}
 }
