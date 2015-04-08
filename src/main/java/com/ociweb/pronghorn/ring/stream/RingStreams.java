@@ -68,7 +68,7 @@ public class RingStreams {
         		assert(0==bytesCount);
             	
         		releaseReadLock(inputRing);
-          		return;
+          		break;
         	} else {          
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
             	int len = takeRingByteLen(inputRing);
@@ -85,8 +85,8 @@ public class RingStreams {
 						outputStream.write(data, 0, len-len1);
 					}
 					outputStream.flush();
-	        		releaseReadLock(inputRing);
             	}
+            	releaseReadLock(inputRing);
         	}
         	
         	target += step;

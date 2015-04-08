@@ -1535,10 +1535,10 @@ public final class RingBuffer {
 	
 	
 	public static boolean contentToLowLevelRead(RingBuffer input, int size) {
-		return contentToLowLevelRead(input, input.llwNextHeadTarget+size);
+		return contentToLowLevelRead2(input, input.llwNextHeadTarget+size);
 	}
 
-	private static boolean contentToLowLevelRead(RingBuffer input, long target) {
+	private static boolean contentToLowLevelRead2(RingBuffer input, long target) {
 		//only does second part if the first does not pass 
 		return (input.llwHeadPosCache >= target) || contentToLowLevelReadSlow(input, target);
 	}
