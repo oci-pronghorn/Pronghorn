@@ -18,7 +18,10 @@ public abstract class PronghornStage {
 
 	public final int stageId;	
 	private static AtomicInteger stageCounter = new AtomicInteger();
-	private GraphManager graphManager;		
+	private GraphManager graphManager;	
+	protected boolean supportsBatchedRelease = true;
+	protected boolean supportsBatchedPublish = true;
+	
 	
 	//in the constructor us a zero length array if there are no values.
 	protected PronghornStage(GraphManager graphManager, RingBuffer[] inputs, RingBuffer[] outputs) {
@@ -82,6 +85,13 @@ public abstract class PronghornStage {
 	 * 
 	 */
     public abstract void run();
+
+    public static boolean supportsBatchedRelease(PronghornStage stage) {
+		return stage.supportsBatchedRelease;
+	}
 	
+    public static boolean supportsBatchedPublish(PronghornStage stage) {
+		return stage.supportsBatchedPublish;
+	}
 	
 }

@@ -31,6 +31,9 @@ public class SplitterStage extends PronghornStage {
 		this.source = source;
 		this.targets = targets;
 	
+		this.supportsBatchedPublish = false;
+		this.supportsBatchedRelease = false;		
+		
 		FieldReferenceOffsetManager sourceFrom = RingBuffer.from(source);
 		
 		int i = targets.length;
@@ -119,8 +122,7 @@ public class SplitterStage extends PronghornStage {
 		return; //finished all the copy  for now
 	}
 
-	private static void recordCopyComplete(SplitterStage ss, int tempByteTail,
-			int totalBytesCopy) {
+	private static void recordCopyComplete(SplitterStage ss, int tempByteTail, int totalBytesCopy) {
 		//release tail so data can be written
 		
 		ss.source.bytesTailPos.lazySet(ss.source.byteWorkingTailPos.value = RingBuffer.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy));

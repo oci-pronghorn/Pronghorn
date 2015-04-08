@@ -20,6 +20,8 @@ public class RoundRobinRouteStage extends PronghornStage {
 		this.targetRingInit = outputRings.length-1;
 		this.targetRing = targetRingInit;
 		
+		this.supportsBatchedPublish = false;
+		this.supportsBatchedRelease = false;
 		
 		//TODO:AAAA must confirm that the output rings are just as big or bigger than inputs and that both have the same schema!!
 		

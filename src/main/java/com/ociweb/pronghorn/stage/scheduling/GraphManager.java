@@ -8,6 +8,7 @@ import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
+import com.ociweb.pronghorn.stage.route.RoundRobinRouteStage;
 import com.ociweb.pronghorn.stage.route.SplitterStage;
 
 public class GraphManager {
@@ -559,11 +560,10 @@ public class GraphManager {
 					
 					//ensure that we do not have any old data still on the ring from the consumer batching releases
 
-						
+					//splitter should never have release pending to release because it does not use the release counters	
 					if (RingBuffer.hasReleasePending(m.ringIdToRing[ringId])) {
 						RingBuffer.releaseAll(m.ringIdToRing[ringId]);
-					}
-						
+					}						
 					
 					//if producer is terminated check input ring, if not empty return true
 			    	if (RingBuffer.contentRemaining( m.ringIdToRing[ringId])>0) {
@@ -741,10 +741,13 @@ public class GraphManager {
 			//never enable batching on the monitor rings
 			if (null!=ring && !ringHoldsMonitorData(gm, ring) ) {
 				
-				if (!(GraphManager.getRingConsumer(gm, ring.ringId) instanceof SplitterStage) ) { //TODO: extract this as an annotation or member of stage?
+				PronghornStage consumer = GraphManager.getRingConsumer(gm, ring.ringId);
+				if (PronghornStage.supportsBatchedRelease(consumer)) { 
 					RingBuffer.setMaxReleaseBatchSize(ring);
 				}
-				if (!(GraphManager.getRingProducer(gm, ring.ringId) instanceof SplitterStage) ) {
+				
+				PronghornStage producer = GraphManager.getRingProducer(gm, ring.ringId);
+				if (PronghornStage.supportsBatchedPublish(producer)) {
 					RingBuffer.setMaxPublishBatchSize(ring);
 				}				
 				
