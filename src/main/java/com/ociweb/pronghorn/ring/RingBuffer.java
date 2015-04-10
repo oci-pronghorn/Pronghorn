@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.ring.util.PaddedAtomicInteger;
 import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 
 
@@ -524,7 +523,7 @@ public final class RingBuffer {
 		validateVarLength(outputRing, 21);
 		int max = 21 + outputRing.byteWorkingHeadPos.value;
 		int len = leftConvertLongToASCII(outputRing, value, max);
-		addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), outputRing.byteWorkingHeadPos.value, len);
+		addBytePosAndLen(outputRing, outputRing.byteWorkingHeadPos.value, len);
 		outputRing.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(len + outputRing.byteWorkingHeadPos.value);
 	}
 
@@ -532,7 +531,7 @@ public final class RingBuffer {
 		validateVarLength(outputRing, 12);
 		int max = 12 + outputRing.byteWorkingHeadPos.value;
 		int len = leftConvertIntToASCII(outputRing, value, max);
-		addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), outputRing.byteWorkingHeadPos.value, len);
+		addBytePosAndLen(outputRing, outputRing.byteWorkingHeadPos.value, len);
 		outputRing.byteWorkingHeadPos.value = RingBuffer.BYTES_WRAP_MASK&(len + outputRing.byteWorkingHeadPos.value);
 	}
 
@@ -1030,7 +1029,7 @@ public final class RingBuffer {
 	public static void addByteArrayWithMask(final RingBuffer outputRing, int mask, int len, byte[] data, int offset) {
 		validateVarLength(outputRing, len);
 		copyBytesFromToRing(data,offset,mask,outputRing.byteBuffer,outputRing.byteWorkingHeadPos.value,outputRing.byteMask, len);
-		addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, RingBuffer.bytesWriteBase(outputRing), outputRing.byteWorkingHeadPos.value, len);
+		addBytePosAndLen(outputRing, outputRing.byteWorkingHeadPos.value, len);
 		outputRing.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(outputRing.byteWorkingHeadPos.value + len);
 	}
 
@@ -1059,13 +1058,13 @@ public final class RingBuffer {
     	
     	copyBytesFromToRing(source, sourceIdx, Integer.MAX_VALUE, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask, sourceLen);  
     	    
-    	addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, RingBuffer.bytesWriteBase(rbRingBuffer), rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
+    	addBytePosAndLen(rbRingBuffer, rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
         rbRingBuffer.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rbRingBuffer.byteWorkingHeadPos.value + sourceLen);		
 		
     }
     
     public static void addNullByteArray(RingBuffer rbRingBuffer) {
-        addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, RingBuffer.bytesWriteBase(rbRingBuffer), rbRingBuffer.byteWorkingHeadPos.value, -1);
+        addBytePosAndLen(rbRingBuffer, rbRingBuffer.byteWorkingHeadPos.value, -1);
     }
     
 
@@ -1113,17 +1112,16 @@ public final class RingBuffer {
         buffer[rbMask & (int)offset] = value;
     } 
     
-    public static void addBytePosAndLen(int[] buffer, int rbMask, PaddedLong headCache, int baseBytePos, int position, int length) {
-    	
-        setBytePosAndLen(buffer, rbMask, headCache.value, position, length, baseBytePos);        
-        headCache.value = headCache.value+2;
-        
-    }
 
     public static void addBytePosAndLen(RingBuffer ring, int position, int length) {
 		setBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos.value, position, length, RingBuffer.bytesWriteBase(ring));        
 		ring.workingHeadPos.value+=2;
     }
+    
+	public static void addBytePosAndLenSpecial(int[] buffer, int mask, PaddedLong workingHeadPos, int bytesBasePos, int position, int length) {
+		setBytePosAndLen(buffer, mask, workingHeadPos.value, position, length, bytesBasePos);        
+		workingHeadPos.value+=2;
+	}
     
 	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat, int baseBytePos) {
 	   	//negative position is written as is because the internal array does not have any offset (but it could some day)
@@ -1555,6 +1553,8 @@ public final class RingBuffer {
 	public static boolean hasReleasePending(RingBuffer ringBuffer) {
 		return ringBuffer.batchReleaseCountDown!=ringBuffer.batchReleaseCountDownInit;
 	}
+
+
 	
 	
 

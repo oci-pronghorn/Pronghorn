@@ -207,7 +207,7 @@ public class RingStreams {
 					
 					RingBuffer.addMsgIdx(outputRing, 0);
 					RingBuffer.validateVarLength(outputRing, size);
-					RingBuffer.addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, RingBuffer.bytesWriteBase(outputRing), position, size);
+					RingBuffer.addBytePosAndLen(outputRing, position, size);
 					outputRing.byteWorkingHeadPos.value = position + size;
 					RingBuffer.publishWrites(outputRing);
 					position += size;

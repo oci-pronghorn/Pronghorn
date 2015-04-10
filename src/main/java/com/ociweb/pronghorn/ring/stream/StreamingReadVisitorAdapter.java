@@ -37,19 +37,19 @@ public class StreamingReadVisitorAdapter implements StreamingReadVisitor {
 	}
 
 	@Override
-	public void visitSignedInteger(String string, long id, int value) {
+	public void visitSignedInteger(String name, long id, int value) {
 	}
 
 	@Override
-	public void visitUnsignedInteger(String string, long id, long value) {
+	public void visitUnsignedInteger(String name, long id, long value) {
 	}
 
 	@Override
-	public void visitSignedLong(String string, long id, long value) {
+	public void visitSignedLong(String name, long id, long value) {
 	}
 
 	@Override
-	public void visitUnsignedLong(String string, long id, long value) {	
+	public void visitUnsignedLong(String name, long id, long value) {	
 	}
 
 	@Override
