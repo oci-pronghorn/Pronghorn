@@ -24,6 +24,8 @@ public class ToOutputStreamStage extends PronghornStage {
 	public ToOutputStreamStage(GraphManager gm, RingBuffer inputRing, OutputStream outputStream, boolean eol) {
 		super(gm,inputRing,NONE);
 		this.inputRing = inputRing;
+		
+		
 		this.outputStream = outputStream;
 		this.step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		//this blind byte copy only works for this simple message type, it is not appropriate for other complex types
@@ -33,9 +35,9 @@ public class ToOutputStreamStage extends PronghornStage {
 		this.eol = eol;
 	}
 
-		@Override
+
+	    @Override
 		public void run() {
-			
 			try {				
 					
 				//NOTE: This can be made faster by looping and summing all the lengths to do one single copy to the output stream
@@ -44,9 +46,10 @@ public class ToOutputStreamStage extends PronghornStage {
 				int byteMask = inputRing.byteMask;
 				int byteSize = byteMask+1;
 				
+				
+				
 				while (RingBuffer.contentToLowLevelRead(inputRing, step)) {
-					        		                        	    	                        		           
-					
+						
 					int msgId = RingBuffer.takeMsgIdx(inputRing);
 												
 					if (msgId<0) { //exit logic
@@ -55,15 +58,17 @@ public class ToOutputStreamStage extends PronghornStage {
 					} else {    
 						RingBuffer.confirmLowLevelRead(inputRing, step);
 				    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
+		    					    			
 				    	int len = takeRingByteLen(inputRing);
+				    	int off = bytePosition(meta,inputRing,len)&byteMask; 			
+				    	
 				    	if (len>0) {            	
 							byte[] data = byteBackingArray(meta, inputRing);
-							int off = bytePosition(meta,inputRing,len)&byteMask;
 							int len1 = byteSize-off;
 							if (len1>=len) {
 								//simple add bytes
 								outputStream.write(data, off, len); 
-							} else {						
+							} else {		
 								//rolled over the end of the buffer
 								outputStream.write(data, off, len1);
 								outputStream.write(data, 0, len-len1);
