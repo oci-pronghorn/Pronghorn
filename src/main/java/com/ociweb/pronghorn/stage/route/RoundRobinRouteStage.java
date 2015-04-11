@@ -72,7 +72,7 @@ public class RoundRobinRouteStage extends PronghornStage {
 		//send the EOF message to all of the targets.
 		int i = stage.outputRings.length;
 		while (--i>=0) {
-			RingBuffer.publishAllWrites(stage.outputRings[i]);
+			RingBuffer.publishAllBatchedWrites(stage.outputRings[i]);
 		}
 		RingReader.releaseReadLock(stage.inputRing);
 		stage.msgId = -2;

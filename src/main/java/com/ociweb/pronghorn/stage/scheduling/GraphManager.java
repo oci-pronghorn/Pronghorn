@@ -830,7 +830,7 @@ public class GraphManager {
 		int ringId;
 		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
 		while (-1 != (ringId=m.multOutputIds[idx++])) {	
-			RingBuffer.publishAllWrites(m.ringIdToRing[ringId]);				
+			RingBuffer.publishAllBatchedWrites(m.ringIdToRing[ringId]);				
 		}		
 	}
 
