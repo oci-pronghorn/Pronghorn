@@ -16,6 +16,8 @@ public class ConsoleStage extends PronghornStage {
 	private long stepTime = 2000;//2 sec
 	private long nextOutTime = System.currentTimeMillis()+stepTime;
 		
+	//TODO: AA, need validation stage to confirm values are in range and text is not too long
+	
 	public ConsoleStage(GraphManager gm, RingBuffer inputRing) {
 		this(gm,inputRing,-1);
 	}
@@ -121,6 +123,7 @@ public class ConsoleStage extends PronghornStage {
 					data = true;
 				}
 			}
+			RingReader.releaseReadLock(inputRing);
 		}		
 		return data;
 	}
