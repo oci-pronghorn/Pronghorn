@@ -120,6 +120,8 @@ public final class RingBuffer {
     public static final int EOF_SIZE = 2;
     
     private final AtomicBoolean shutDown = new AtomicBoolean(false);
+    private RingBufferException firstShutdownCaller = null;
+    		
 	public boolean writeTrailingCountOfBytesConsumed;
 	FieldReferenceOffsetManager from;
     
@@ -606,15 +608,14 @@ public final class RingBuffer {
 	}
 
 	private static void doubleMaskTargetDoesNotWrap(byte[] source,
-			final int rStart, final int rStop, byte[] target, final int tStart,
-			int length) {
-		if (rStop >= rStart) {
+			final int srcStart, final int srcStop, byte[] target, final int trgStart,	int length) {
+		if (srcStop >= srcStart) {
 			//the source and target do not wrap
-			System.arraycopy(source, rStart, target, tStart, length);
+			System.arraycopy(source, srcStart, target, trgStart, length);
 		} else {
 			//the source is wrapping but not the target
-			System.arraycopy(source, rStart, target, tStart, length-rStop);
-			System.arraycopy(source, 0, target, tStart + length - rStop, rStop);
+			System.arraycopy(source, srcStart, target, trgStart, length-srcStop);
+			System.arraycopy(source, 0, target, trgStart + length - srcStop, srcStop);
 		}
 	}
 
@@ -1048,7 +1049,10 @@ public final class RingBuffer {
     }
     
     public static void shutdown(RingBuffer ring) {
-    	ring.shutDown.set(true);
+    	if (!ring.shutDown.getAndSet(true)) {
+    		ring.firstShutdownCaller = new RingBufferException("Shutdown called");    		
+    	};
+    	
     }    
 
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
@@ -1366,10 +1370,7 @@ public final class RingBuffer {
     public static long spinBlockOnTailTillMatchesHead(long lastCheckedValue, RingBuffer ringBuffer) {
     	long targetValue = ringBuffer.headPos.longValue();
     	while ( lastCheckedValue < targetValue) {
-    		Thread.yield(); //needed for now but re-evaluate performance impact
-    		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
-    			throw new RingBufferException("Unexpected shutdown");
-    		}
+    		spinWork(ringBuffer);
 		    lastCheckedValue = ringBuffer.tailPos.longValue();
 		} 
 		return lastCheckedValue;
@@ -1388,10 +1389,7 @@ public final class RingBuffer {
     public static long spinBlockOnTail(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
     	
     	while (null==ringBuffer.buffer || lastCheckedValue < targetValue) {
-    		Thread.yield();//needed for now but re-evaluate performance impact
-    		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
-    			throw new RingBufferException("Unexpected shutdown");
-    		}
+    		spinWork(ringBuffer);
 		    lastCheckedValue = ringBuffer.tailPos.longValue();
 		}
 		return lastCheckedValue;
@@ -1400,11 +1398,7 @@ public final class RingBuffer {
     public static long spinBlockOnHeadTillMatchesTail(long lastCheckedValue, RingBuffer ringBuffer) {
     	long targetValue = ringBuffer.tailPos.longValue();    	
     	while ( lastCheckedValue < targetValue) {
-    		Thread.yield();//needed for now but re-evaluate performance impact
-    		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
-    			throw new RingBufferException("Unexpected shutdown");
-    		}
-
+    		spinWork(ringBuffer);
 		    lastCheckedValue = ringBuffer.headPos.longValue();
 		}
 		return lastCheckedValue;
@@ -1421,15 +1415,18 @@ public final class RingBuffer {
     public static long spinBlockOnHead(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
     	
     	while ( lastCheckedValue < targetValue) {
-    		Thread.yield();//needed for now but re-evaluate performance impact
-    		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
-    			throw new RingBufferException("Unexpected shutdown");
-    		}
-
+    		spinWork(ringBuffer);
 		    lastCheckedValue = ringBuffer.headPos.longValue();
 		}
 		return lastCheckedValue;
     }
+
+	private static void spinWork(RingBuffer ringBuffer) {
+		Thread.yield();//needed for now but re-evaluate performance impact
+		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
+			throw null!=ringBuffer.firstShutdownCaller ? ringBuffer.firstShutdownCaller : new RingBufferException("Unexpected shutdown");
+		}
+	}
 
 	public static int byteMask(RingBuffer ring) {
 		return ring.byteMask;

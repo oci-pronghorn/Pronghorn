@@ -532,7 +532,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	}
 
 	
-    //This is NOT supporting batching like the other calls. TODO: can this be resolved?
+    //This is NOT supporting batching like the other calls. TODO: AA, need to fix to be the same as the others
 	public static void releaseReadLock(RingBuffer ringBuffer) {
 		
 //		if ((--ringBuffer.batchReleaseCountDown<=0)) {	

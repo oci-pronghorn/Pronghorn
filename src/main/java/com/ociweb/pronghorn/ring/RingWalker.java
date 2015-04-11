@@ -2,12 +2,16 @@ package com.ociweb.pronghorn.ring;
 
 import java.util.Arrays;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class RingWalker {
     int msgIdx=-1;
+    int msgIdxPrev =-1; //for debug
     boolean isNewMessage;
     public boolean waiting;
     public int cursor;
@@ -17,6 +21,7 @@ public class RingWalker {
 
     private int[] seqStack;
     private int seqStackHead;
+    private final Logger log = LoggerFactory.getLogger(RingWalker.class);
 
     public final FieldReferenceOffsetManager from;
     
@@ -30,17 +35,17 @@ public class RingWalker {
     
 	
 	RingWalker(int mask, FieldReferenceOffsetManager from) {
-		this(-1, false, false, -1, -1, -1, 0, new int[from.maximumFragmentStackDepth], -1, from, mask);
+		this(false, false, -1, -1, -1, 0, new int[from.maximumFragmentStackDepth], -1, from, mask);
 	}
 	
 	
-    private RingWalker(int messageId, boolean isNewMessage, boolean waiting, long waitingNextStop,
+    private RingWalker(boolean isNewMessage, boolean waiting, long waitingNextStop,
                                     long bnmHeadPosCache, int cursor, int activeFragmentDataSize, int[] seqStack, int seqStackHead,
                                     FieldReferenceOffsetManager from, int rbMask) {
     	if (null==from) {
     		throw new UnsupportedOperationException();
     	}
-        this.msgIdx = messageId;
+        this.msgIdx = -1;
         this.isNewMessage = isNewMessage;
         this.waiting = waiting;
         this.cursor = cursor;
@@ -52,10 +57,25 @@ public class RingWalker {
         
     }
 
-    static void setMsgIdx(RingWalker rw, int idx) {
+    static void setMsgIdx(RingWalker rw, int idx, long llwHeadPosCache) {
 		assert(idx<rw.from.fragDataSize.length) : "Corrupt stream, expected message idx < "+rw.from.fragDataSize.length+" however found "+idx;
 		assert(idx>-3);
+		rw.msgIdxPrev = rw.msgIdx;
+		//rw.log.trace("set message id {}", idx);
 		rw.msgIdx = idx;
+		
+		//This validation is very important, because all down stream consumers will assume it to be true.
+		assert(-1 ==idx || (rw.from.hasSimpleMessagesOnly && 0==rw.msgIdx && rw.from.messageStarts.length==1)  ||
+				TypeMask.Group == TokenBuilder.extractType(rw.from.tokens[rw.msgIdx])) :
+					"Templated message must start with group open and this starts with "+TokenBuilder.tokenToString(rw.from.tokens[rw.msgIdx])+ 
+					" readBase "+rw.activeReadFragmentStack[0] + " nextWorkingTail:"+rw.nextWorkingTail+" headPosCache:"+llwHeadPosCache;
+		assert(-1 ==idx || (rw.from.hasSimpleMessagesOnly && 0==rw.msgIdx && rw.from.messageStarts.length==1)  ||
+				(OperatorMask.Group_Bit_Close&TokenBuilder.extractOper(rw.from.tokens[rw.msgIdx])) == 0) :
+					"Templated message must start with group open and this starts with "+TokenBuilder.tokenToString(rw.from.tokens[rw.msgIdx])+
+					" readBase "+rw.activeReadFragmentStack[0] + " nextWorkingTail:"+rw.nextWorkingTail+" headPosCache:"+llwHeadPosCache;
+		
+		
+		
 	}
 
 
@@ -79,7 +99,7 @@ public class RingWalker {
 				prepReadFragment(ringBuffer, ringBufferConsumer, ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor], ringBufferConsumer.nextWorkingTail, target);
 			} else {
 				ringBufferConsumer.isNewMessage = false; 
-				
+								
 				assert (ringBuffer.llwHeadPosCache<=ringBufferConsumer.nextWorkingTail) : 
 					  "Partial fragment published!  expected "+(target-ringBufferConsumer.nextWorkingTail)+" but found "+(ringBuffer.llwHeadPosCache-ringBufferConsumer.nextWorkingTail);
 
@@ -95,11 +115,11 @@ public class RingWalker {
 		///
 		//check the ring buffer looking for new message	
 		//return false if we don't have enough data to read the first id and therefore the message
-		if (ringBuffer.llwHeadPosCache >= 2+ringBufferConsumer.nextWorkingTail) { 
+		if (ringBuffer.llwHeadPosCache > 1+ringBufferConsumer.nextWorkingTail) { 
 			prepReadMessage(ringBuffer, ringBufferConsumer, ringBufferConsumer.nextWorkingTail);
 		} else {
 			//only update the cache with this CAS call if we are still waiting for data
-			if ((ringBuffer.llwHeadPosCache = ringBuffer.headPos.get()) >=  2+ringBufferConsumer.nextWorkingTail) {
+			if ((ringBuffer.llwHeadPosCache = ringBuffer.headPos.get()) > 1+ringBufferConsumer.nextWorkingTail) {
 				prepReadMessage(ringBuffer, ringBufferConsumer, ringBufferConsumer.nextWorkingTail);
 			} else {
 				//rare slow case where we dont find any data
@@ -148,6 +168,9 @@ public class RingWalker {
         	 openOrCloseSequenceWhileInsideFragment(ringBuffer,	ringBufferConsumer, tmpNextWokingTail, target, lastScriptPos, lastTokenOfFragment);
         	 ringBufferConsumer.nextWorkingTail = target;
         }
+        
+	new Exception().printStackTrace();
+        
 	}
 
 
@@ -258,8 +281,13 @@ public class RingWalker {
 		//
 		//Start new stack of fragments because this is a new message
 		ringBufferConsumer.activeReadFragmentStack[0] = tmpNextWokingTail;				 
-		ringBufferConsumer.msgIdx = ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)];
+		setMsgIdx(ringBufferConsumer, readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail), ringBuffer.llwHeadPosCache);
 		prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail,	ringBufferConsumer.from.fragDataSize);
+	}
+
+
+	private static int readMsgIdx(RingBuffer ringBuffer, RingWalker ringBufferConsumer, final long tmpNextWokingTail) {
+		return ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)];
 	}
 
 
@@ -275,13 +303,16 @@ public class RingWalker {
 	private static void prepReadMessage2Normal(RingBuffer ringBuffer,
 			RingWalker ringBufferConsumer, final long tmpNextWokingTail,
 			int[] fragDataSize) {
-		//assert that we can read the fragment size. if not we get a partial fragment failure.
-		assert(ringBuffer.headPos.get() >= (ringBufferConsumer.nextWorkingTail + fragDataSize[ringBufferConsumer.msgIdx])) : 
-			 "Partial fragment detected at "+ringBuffer.headPos.get()+" needs "+ (ringBufferConsumer.nextWorkingTail + fragDataSize[ringBufferConsumer.msgIdx])+
-			    " cached head was "+ringBuffer.llwHeadPosCache+" max frag known "+FieldReferenceOffsetManager.maxFragmentSize(ringBufferConsumer.from)+
-			    " for msgIdx:"+ringBufferConsumer.msgIdx;
 
-		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail + fragDataSize[ringBufferConsumer.msgIdx];//save the size of this new fragment we are about to read  		    		
+		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail + fragDataSize[ringBufferConsumer.msgIdx];//save the size of this new fragment we are about to read  
+				
+		
+		//This validation is very important, because all down stream consumers will assume it to be true.
+		assert((ringBufferConsumer.from.hasSimpleMessagesOnly && 0==readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail) && ringBufferConsumer.from.messageStarts.length==1)  ||
+				TypeMask.Group == TokenBuilder.extractType(ringBufferConsumer.from.tokens[readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail)])) : "Templated message must start with group open and this starts with "+TokenBuilder.tokenToString(ringBufferConsumer.from.tokens[readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail)]);
+		assert((ringBufferConsumer.from.hasSimpleMessagesOnly && 0==readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail) && ringBufferConsumer.from.messageStarts.length==1)  ||
+				(OperatorMask.Group_Bit_Close&TokenBuilder.extractOper(ringBufferConsumer.from.tokens[readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail)])) == 0) : "Templated message must start with group open and this starts with "+TokenBuilder.tokenToString(ringBufferConsumer.from.tokens[readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail)]);
+	
 		ringBufferConsumer.cursor = ringBufferConsumer.msgIdx;  
 		
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.msgIdx + ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.msgIdx]) -1;
@@ -290,7 +321,6 @@ public class RingWalker {
 			beginNewSequence(ringBufferConsumer, ringBuffer.buffer[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
 		}
 	}
-
 
 	private static void prepReadMessage2EOF(RingBuffer ringBuffer,
 			RingWalker ringBufferConsumer, final long tmpNextWokingTail,
@@ -306,6 +336,7 @@ public class RingWalker {
 		
 		//this is commonly used as the end of file marker    		
 		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+RingBuffer.EOF_SIZE;
+		new Exception().printStackTrace();
 	}
     
  
@@ -319,7 +350,7 @@ public class RingWalker {
         consumerData.nextWorkingHead=ringPos;
         consumerData.nextWorkingTail=ringPos;        
         
-        RingWalker.setMsgIdx(consumerData,-1);
+        RingWalker.setMsgIdx(consumerData,-1,0);
         consumerData.isNewMessage = false;
         
     }
@@ -382,55 +413,7 @@ public class RingWalker {
 	}
 
 	
-	@Deprecated //use RingWriter
-	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
-	  		return RingWriter.tryWriteFragment(ring,cursorPosition);
-	}
-	  
-	@Deprecated //use RingWriter
-	public static void blockWriteFragment(RingBuffer ring, int cursorPosition) {
-	 		RingWriter.blockWriteFragment(ring,cursorPosition);
-	}
-	  
-	@Deprecated //use RingWriter
-	public static void publishEOF(RingBuffer ring) {
-		RingWriter.publishEOF(ring);
-	}
 	
-	@Deprecated //use RingWriter
-	public static void publishWrites(RingBuffer ring) {
-		RingWriter.publishWrites(ring);
-	}
-	
-	@Deprecated //use RingReader
-	public static boolean tryMoveSingleMessage(RingBuffer inputRing, RingBuffer outputRing) {
-		return RingReader.tryMoveSingleMessage(inputRing,outputRing);
-	}
-	
-	@Deprecated //use RingReader
-	public static boolean isNewMessage(RingBuffer ring) {
-		return RingReader.isNewMessage(ring);
-	}
-	
-	@Deprecated //use RingReader
-	public static int getMsgIdx(RingBuffer rb) {
-		return RingReader.getMsgIdx(rb);
-	}
-    
-	@Deprecated //use RingReader
-    public static int getMsgIdx(RingWalker rw) {
-		return RingReader.getMsgIdx(rw);
-	}
-
-	@Deprecated //use RingReader
-    public static boolean isNewMessage(RingWalker rw) {
-		return RingReader.isNewMessage(rw);
-	}
-
-	@Deprecated //use RingReader
-	public static boolean tryReadFragment(RingBuffer ringBuffer) { 
-		return RingReader.tryReadFragment(ringBuffer);
-	}
 	
 	static boolean copyFragment0(RingBuffer inputRing, RingBuffer outputRing, long start, long end) {
 		return copyFragment1(inputRing, outputRing, start, (int)(end-start), inputRing.buffer[inputRing.mask&(((int)end)-1)]);
