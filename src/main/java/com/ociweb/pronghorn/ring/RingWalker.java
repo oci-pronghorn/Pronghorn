@@ -73,8 +73,7 @@ public class RingWalker {
 				(OperatorMask.Group_Bit_Close&TokenBuilder.extractOper(rw.from.tokens[rw.msgIdx])) == 0) :
 					"Templated message must start with group open and this starts with "+TokenBuilder.tokenToString(rw.from.tokens[rw.msgIdx])+
 					" readBase "+rw.activeReadFragmentStack[0] + " nextWorkingTail:"+rw.nextWorkingTail+" headPosCache:"+llwHeadPosCache;
-		
-		
+			
 		
 	}
 
@@ -119,7 +118,7 @@ public class RingWalker {
 			prepReadMessage(ringBuffer, ringBufferConsumer, ringBufferConsumer.nextWorkingTail);
 		} else {
 			//only update the cache with this CAS call if we are still waiting for data
-			if ((ringBuffer.llwHeadPosCache = ringBuffer.headPos.get()) > 1+ringBufferConsumer.nextWorkingTail) {
+			if ((ringBuffer.llwHeadPosCache = RingBuffer.headPosition(ringBuffer)) > 1+ringBufferConsumer.nextWorkingTail) {
 				prepReadMessage(ringBuffer, ringBufferConsumer, ringBufferConsumer.nextWorkingTail);
 			} else {
 				//rare slow case where we dont find any data
@@ -168,8 +167,6 @@ public class RingWalker {
         	 openOrCloseSequenceWhileInsideFragment(ringBuffer,	ringBufferConsumer, tmpNextWokingTail, target, lastScriptPos, lastTokenOfFragment);
         	 ringBufferConsumer.nextWorkingTail = target;
         }
-        
-	new Exception().printStackTrace();
         
 	}
 
@@ -336,7 +333,7 @@ public class RingWalker {
 		
 		//this is commonly used as the end of file marker    		
 		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+RingBuffer.EOF_SIZE;
-		new Exception().printStackTrace();
+
 	}
     
  

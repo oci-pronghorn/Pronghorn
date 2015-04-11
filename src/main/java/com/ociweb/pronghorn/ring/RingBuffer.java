@@ -124,24 +124,14 @@ public final class RingBuffer {
     		
 	public boolean writeTrailingCountOfBytesConsumed;
 	FieldReferenceOffsetManager from;
+	
+	//hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
+	private int lastPublishedBytesHead;
+	private long lastPublishedHead;
     
 	//NOTE: this only works because its 1 bit less than the roll-over sign bit
 	public static final int BYTES_WRAP_MASK = 0x7FFFFFFF;
-	
-//                   this is a thought experiment, Delete it	
-//	int x = 3;
-//	int y = (1<<31)-1;
-//	
-//	int dif = x-y;
-//	System.err.println(Integer.toHexString(dif)+" for  "+dif);
-//	
-//	int masked = dif & y;
-//	System.err.println(Integer.toHexString(masked)+" for  "+masked);
-//	
-//	int fixed = dif+(1<<31);
-//	System.err.println(Integer.toHexString(fixed)+" for  "+fixed);
-//
-	
+
 	int batchReleaseCountDown = 0;
 	int batchReleaseCountDownInit = 0;
 	int batchPublishCountDown = 0;
@@ -167,6 +157,7 @@ public final class RingBuffer {
 	public final int ringId;	
 	private static AtomicInteger ringCounter = new AtomicInteger();
 	
+	private final int debugFlags;
 	
     public static void setReleaseBatchSize(RingBuffer rb, int size) {
     	
@@ -239,21 +230,14 @@ public final class RingBuffer {
     
 	
     public RingBuffer(RingBufferConfig config) {
-    	//TODO: B, keep this object instead of creating more members?
-    	this(config.primaryBits, config.byteBits, config.byteConst, config.from);
-    }
-    
-   
-    /**
-     * Construct ring buffer with re-usable constants and fragment structures
-     * 
-     * @param primaryBits
-     * @param byteBits
-     * @param byteConstants
-     * @param from
-     */
-    private RingBuffer(byte primaryBits, byte byteBits, byte[] byteConstants, FieldReferenceOffsetManager from) {
 
+    	byte primaryBits = config.primaryBits;
+    	byte byteBits = config.byteBits;
+    	byte[] byteConstants = config.byteConst;
+    	FieldReferenceOffsetManager from = config.from;
+    	
+    	debugFlags = config.debugFlags;
+    	
         //constant data will never change and is populated externally.
         this.ringId = ringCounter.getAndIncrement();
         
@@ -401,22 +385,20 @@ public final class RingBuffer {
 		int mask = ring.byteMask;
 		byte[] buffer = ring.byteBuffer;
 		
-//		int len1 =  (mask+1)-pos;
-//		if (len1>=len) {
-//			//flat copy
-//			target.put(buffer, pos, len);
-//			
-//		} else {
-//			//roll over
-//			
-//			
-//		}
+        int tStart = pos & mask;
+        int len1 = 1+mask - tStart;
+    	
+		if (len1>=len) {
+			target.put(buffer, pos, len);
+		} else {
+			target.put(buffer, pos, len1);
+			target.put(buffer, 0, len-len1);			
+		}
 		
-		
-		
-	    while (--len >= 0) {
-	        target.put(buffer[mask & pos++]); //TODO: A, should be done as to block copies instead of this loop!!
-	    }
+		//OLD delete after tests pass
+//	    while (--len >= 0) {
+//	        target.put(buffer[mask & pos++]); 
+//	    }
 	    return target;
 	}
 
@@ -897,8 +879,7 @@ public final class RingBuffer {
 				copyASCIIToByte(source, sourceIdx, target, tStart, sourceLen);
 			} else {
 			    // done as two copies
-			    int firstLen = 1+ targetMask - tStart;
-			    copyASCIIToByte(source, sourceIdx, target, tStart, firstLen);
+			    copyASCIIToByte(source, sourceIdx, target, tStart, 1+ targetMask - tStart);
 			    copyASCIIToByte(source, sourceIdx + len1, target, 0, sourceLen - len1);
 			}
 	        rbRingBuffer.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(p + sourceLen);
@@ -1090,7 +1071,7 @@ public final class RingBuffer {
      	//this MUST be done here at the START of a message so all its internal fragments work with the same base position
      	 markBytesWriteBase(rb);
     	
-    	 assert(rb.llwNextHeadTarget<=rb.headPos.get() || rb.workingHeadPos.value<=rb.llwNextHeadTarget) : "Unsupported mix of high and low level API.";
+   // 	 assert(rb.llwNextHeadTarget<=rb.headPos.get() || rb.workingHeadPos.value<=rb.llwNextHeadTarget) : "Unsupported mix of high and low level API.";
    	
 		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, msgIdx);		
 		 
@@ -1263,7 +1244,7 @@ public final class RingBuffer {
     
     
     public static int contentRemaining(RingBuffer rb) {
-        return (int)(rb.headPos.longValue() - rb.tailPos.longValue()); //must not go past add count because it is not release yet.
+        return (int)(rb.headPos.get() - rb.tailPos.get()); //must not go past add count because it is not release yet.
     }
 
     public static void setWorkingTailPosition(RingBuffer ring, long position) {
@@ -1329,17 +1310,43 @@ public final class RingBuffer {
     	publishHeadPositions(ring);  	
     }
 
-    public static void publishAllWrites(RingBuffer ring) {
-    	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); 
-		ring.headPos.lazySet(ring.workingHeadPos.value);			
+    /**
+     * Publish any writes that were held back due to batching.
+     * @param ring
+     */
+    public static void publishAllBatchedWrites(RingBuffer ring) {
+    	
+    	if (ring.lastPublishedHead>ring.headPos.get()) {
+    		ring.bytesHeadPos.lazySet(ring.lastPublishedBytesHead); 
+    		ring.headPos.lazySet(ring.lastPublishedHead);
+    	} else {
+    		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); 
+			ring.headPos.lazySet(ring.workingHeadPos.value);	
+    	}
+		
+		assert(debugHeadAssignment(ring));
 		ring.batchPublishCountDown = ring.batchPublishCountDownInit;    	
     }
     
     
+	private static boolean debugHeadAssignment(RingBuffer ring) {
+		
+		if (0!=(RingBufferConfig.SHOW_HEAD_PUBLISH&ring.debugFlags) ) {
+			new Exception("Debug stack for assignment of published head positition"+ring.headPos.get()).printStackTrace();
+		}
+		return true;
+	}
+	
 	public static void publishHeadPositions(RingBuffer ring) {
 		if ((--ring.batchPublishCountDown<=0)) {			
 			//publish writes			
-			publishAllWrites(ring);
+			ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); 
+			ring.headPos.lazySet(ring.workingHeadPos.value);			
+			assert(debugHeadAssignment(ring));
+			ring.batchPublishCountDown = ring.batchPublishCountDownInit;
+		} else {
+			ring.lastPublishedBytesHead = ring.byteWorkingHeadPos.value;
+			ring.lastPublishedHead = ring.workingHeadPos.value;
 		}
 	}
     
@@ -1368,7 +1375,7 @@ public final class RingBuffer {
     //where these spin locks are commonly used.
     
     public static long spinBlockOnTailTillMatchesHead(long lastCheckedValue, RingBuffer ringBuffer) {
-    	long targetValue = ringBuffer.headPos.longValue();
+    	long targetValue = ringBuffer.headPos.get();
     	while ( lastCheckedValue < targetValue) {
     		spinWork(ringBuffer);
 		    lastCheckedValue = ringBuffer.tailPos.longValue();
@@ -1399,7 +1406,7 @@ public final class RingBuffer {
     	long targetValue = ringBuffer.tailPos.longValue();    	
     	while ( lastCheckedValue < targetValue) {
     		spinWork(ringBuffer);
-		    lastCheckedValue = ringBuffer.headPos.longValue();
+		    lastCheckedValue = ringBuffer.headPos.get();
 		}
 		return lastCheckedValue;
     }
@@ -1416,7 +1423,7 @@ public final class RingBuffer {
     	
     	while ( lastCheckedValue < targetValue) {
     		spinWork(ringBuffer);
-		    lastCheckedValue = ringBuffer.headPos.longValue();
+		    lastCheckedValue = ringBuffer.headPos.get();
 		}
 		return lastCheckedValue;
     }

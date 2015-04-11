@@ -7,6 +7,7 @@ public class RingBufferConfig {
 	public final byte byteBits;
 	public final byte[] byteConst;
 	public final FieldReferenceOffsetManager from;
+	public int debugFlags = 0;
 
 	/**
 	 * This is not the constructor you are looking for.
@@ -67,5 +68,12 @@ public class RingBufferConfig {
 		return new RingBufferConfig((byte)(1+primaryBits), (byte)(1+byteBits), byteConst, from);
 	}
 	
+	public RingBufferConfig debug(int debugFlags){
+		RingBufferConfig result = new RingBufferConfig((byte)(primaryBits), (byte)(byteBits), byteConst, from);
+		result.debugFlags = debugFlags;
+		return result;
+	}
+	
+	public static final int SHOW_HEAD_PUBLISH = 1;
 	
 }
