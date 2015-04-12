@@ -339,7 +339,8 @@ public class RingBufferPipeline {
 							return;
 						}
 					} else if (-1==msgId) {
-						RingWriter.publishEOF(outputRing);	 //TODO: AA, hidden blocking call			
+						RingWriter.publishEOF(outputRing);	 //TODO: AA, hidden blocking call		
+						RingReader.setReleaseBatchSize(inputRing, 0);
 						RingReader.releaseReadLock(inputRing);
 						assert(RingBuffer.contentRemaining(inputRing)==0);
 						requestShutdown();
@@ -412,6 +413,8 @@ public class RingBufferPipeline {
 				 }
 			 }
 			 RingWriter.publishEOF(outputRing);	
+			 RingWriter.setPublishBatchSize(outputRing, 0);
+			 RingWriter.publishWrites(outputRing);
 			 requestShutdown();
  			 return;//do not come back			
 		}
