@@ -73,7 +73,7 @@ public final class RingBuffer {
     		
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers  Must convert to accessor methods first
     public final PaddedLong workingHeadPos = new PaddedLong();
-    final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos 
+    private final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos 
 
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
     public final PaddedLong workingTailPos = new PaddedLong();
@@ -138,8 +138,8 @@ public final class RingBuffer {
 	int batchPublishCountDownInit = 0;
 	
     
-	long llwTailPosCache;
-	long llwNextTailTarget; //TODO: move these into private class
+	long llrTailPosCache;
+	long llrNextTailTarget; //TODO: move these into private class
 	
 	long llwHeadPosCache;
 	private long llwNextHeadTarget; //TODO: move these into private class
@@ -327,8 +327,8 @@ public final class RingBuffer {
         headPos.set(0); 
         
         llwHeadPosCache = 0;
-        llwTailPosCache = 0;
-        llwNextTailTarget = 0 - maxSize;
+        llrTailPosCache = 0;
+        llrNextTailTarget = 0 - maxSize;
         llwNextHeadTarget = 0;
         
         bytesWriteBase = 0;
@@ -356,8 +356,8 @@ public final class RingBuffer {
         headPos.set(toPos); 
         
         llwHeadPosCache = toPos;
-        llwTailPosCache = toPos;
-        llwNextTailTarget = toPos - maxSize;
+        llrTailPosCache = toPos;
+        llrNextTailTarget = toPos - maxSize;
         llwNextHeadTarget = toPos;
         
         byteWorkingHeadPos.value = bPos;
@@ -1450,7 +1450,7 @@ public final class RingBuffer {
 	 * @param ring
 	 * @param workingHeadPos
 	 */
-	public static void publishWorkingHeadPosition(RingBuffer ring, int workingHeadPos) {
+	public static void publishWorkingHeadPosition(RingBuffer ring, long workingHeadPos) {
 		ring.headPos.lazySet(ring.workingHeadPos.value = workingHeadPos);
 	}
 	
@@ -1511,26 +1511,26 @@ public final class RingBuffer {
 //
 //			//We have no idea if this was a new ring or one previously used so instead of assuming the 
 //			//tail is at zero as it would be on construction we will ask for the value explicitly here
-			output.llwNextTailTarget = headPosition(output) - output.maxSize;
+			output.llrNextTailTarget = headPosition(output) - output.maxSize;
 
 	}
 	
 	//TODO: AA, adjust unit tests to use this.
 	public static boolean roomToLowLevelWrite(RingBuffer output, int size) {
-		return roomToLowLevelWrite(output, output.llwNextTailTarget+size);
+		return roomToLowLevelWrite(output, output.llrNextTailTarget+size);
 	}
 
 	private static boolean roomToLowLevelWrite(RingBuffer output, long target) {
 		//only does second part if the first does not pass 
-		return (output.llwTailPosCache >= target) || roomToLowLevelWriteSlow(output, target);
+		return (output.llrTailPosCache >= target) || roomToLowLevelWriteSlow(output, target);
 	}
 
 	private static boolean roomToLowLevelWriteSlow(RingBuffer output, long target) {
-		return (output.llwTailPosCache = output.tailPos.get()) >= target;
+		return (output.llrTailPosCache = output.tailPos.get()) >= target;
 	}
 	
 	public static void confirmLowLevelWrite(RingBuffer output, int size) {
-		output.llwNextTailTarget += size;
+		output.llrNextTailTarget += size;
 	}
 	
 	

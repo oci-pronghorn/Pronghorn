@@ -360,7 +360,7 @@ public class RingWalker {
 			prepWriteFragment(ring, cursorPosition, from, fragSize);
 		} else {
 			//only if there is no room should we hit the CAS tailPos and then try again.
-			hasRoom = (ring.llwTailPosCache = ring.tailPos.longValue()) >=  target;		
+			hasRoom = (ring.llrTailPosCache = ring.tailPos.longValue()) >=  target;		
 			if (hasRoom) {		
 				prepWriteFragment(ring, cursorPosition, from, fragSize);
 			}

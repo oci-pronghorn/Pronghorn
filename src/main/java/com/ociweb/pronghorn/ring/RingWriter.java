@@ -218,14 +218,14 @@ public class RingWriter {
 	public static void publishEOF(RingBuffer ring) {
 		
 		assert(ring.workingHeadPos.value<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
-		ring.llwTailPosCache = spinBlockOnTail(ring.llwTailPosCache, ring.workingHeadPos.value - (ring.maxSize - RingBuffer.EOF_SIZE), ring);
+		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, ring.workingHeadPos.value - (ring.maxSize - RingBuffer.EOF_SIZE), ring);
 		
-		assert(ring.tailPos.get()+ring.maxSize>=ring.headPos.get()+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
+		assert(ring.tailPos.get()+ring.maxSize>=RingBuffer.headPosition(ring)+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
 		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +  RingBuffer.from(ring).templateOffset)]    = -1;	
 		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  RingBuffer.from(ring).templateOffset)] = 0;
 		
-		ring.headPos.lazySet(ring.workingHeadPos.value = ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + RingBuffer.EOF_SIZE);			
+		RingBuffer.publishWorkingHeadPosition(ring, ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + RingBuffer.EOF_SIZE);	
 		
 	}
 	
@@ -234,19 +234,20 @@ public class RingWriter {
 		assert(ring.workingHeadPos.value<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";				
 		long nextTailTarget = ring.workingHeadPos.value - (ring.maxSize - RingBuffer.EOF_SIZE);
 				
-        if (ring.llwTailPosCache < nextTailTarget) {
-        	ring.llwTailPosCache = ring.tailPos.longValue();
-			if (ring.llwTailPosCache < nextTailTarget) {
+        if (ring.llrTailPosCache < nextTailTarget) {
+        	ring.llrTailPosCache = ring.tailPos.longValue();
+			if (ring.llrTailPosCache < nextTailTarget) {
 				return false;
 			}
 		}
 		
-		assert(ring.tailPos.get()+ring.maxSize>=ring.headPos.get()+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
+		assert(ring.tailPos.get()+ring.maxSize>=RingBuffer.headPosition(ring)+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
 		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +  RingBuffer.from(ring).templateOffset)]    = -1;	
 		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  RingBuffer.from(ring).templateOffset)] = 0;
 		
-		ring.headPos.lazySet(ring.workingHeadPos.value = ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + RingBuffer.EOF_SIZE);	
+		RingBuffer.publishWorkingHeadPosition(ring, ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + RingBuffer.EOF_SIZE);	
+	
 		return true;
 		
 	}
@@ -270,8 +271,9 @@ public class RingWriter {
 	private static void publishWrites2(RingBuffer outputRing) {
 		assert(outputRing.workingHeadPos.value<=outputRing.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
 		//publish writes			
-		outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 
-		outputRing.headPos.lazySet(outputRing.workingHeadPos.value);			
+		outputRing.bytesHeadPos.lazySet(outputRing.byteWorkingHeadPos.value); 		
+		RingBuffer.publishWorkingHeadPosition(outputRing, outputRing.workingHeadPos.value);
+		
 		outputRing.batchPublishCountDown = outputRing.batchPublishCountDownInit;
 	}
 
@@ -285,7 +287,7 @@ public class RingWriter {
 		
 		RingWalker consumerData = ring.ringWalker;
 		int fragSize = from.fragDataSize[messageTemplateLOC];
-		ring.llwTailPosCache = spinBlockOnTail(ring.llwTailPosCache, consumerData.nextWorkingHead - (ring.maxSize - fragSize), ring);
+		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, consumerData.nextWorkingHead - (ring.maxSize - fragSize), ring);
 	
 		RingWalker.prepWriteFragment(ring, messageTemplateLOC, from, fragSize);
 	}
@@ -298,7 +300,7 @@ public class RingWriter {
 	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
 		int fragSize = RingBuffer.from(ring).fragDataSize[cursorPosition];
 		long target = ring.ringWalker.nextWorkingHead - (ring.maxSize - fragSize);
-		return RingWalker.tryWriteFragment1(ring, cursorPosition, RingBuffer.from(ring), fragSize, target, ring.llwTailPosCache >=  target);
+		return RingWalker.tryWriteFragment1(ring, cursorPosition, RingBuffer.from(ring), fragSize, target, ring.llrTailPosCache >=  target);
 	}
 
 	public static void setPublishBatchSize(RingBuffer rb, int size) {
