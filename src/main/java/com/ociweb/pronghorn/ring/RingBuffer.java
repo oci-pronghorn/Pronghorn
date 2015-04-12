@@ -1319,9 +1319,6 @@ public final class RingBuffer {
     	if (ring.lastPublishedHead>ring.headPos.get()) {
     		ring.bytesHeadPos.lazySet(ring.lastPublishedBytesHead); 
     		ring.headPos.lazySet(ring.lastPublishedHead);
-    	} else {
-    		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); 
-			ring.headPos.lazySet(ring.workingHeadPos.value);	
     	}
 		
 		assert(debugHeadAssignment(ring));
