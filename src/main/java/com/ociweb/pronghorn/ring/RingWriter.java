@@ -220,7 +220,7 @@ public class RingWriter {
 		assert(ring.workingHeadPos.value<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
 		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, ring.workingHeadPos.value - (ring.maxSize - RingBuffer.EOF_SIZE), ring);
 		
-		assert(ring.tailPos.get()+ring.maxSize>=RingBuffer.headPosition(ring)+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
+		assert(RingBuffer.tailPosition(ring)+ring.maxSize>=RingBuffer.headPosition(ring)+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
 		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +  RingBuffer.from(ring).templateOffset)]    = -1;	
 		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  RingBuffer.from(ring).templateOffset)] = 0;
@@ -261,7 +261,8 @@ public class RingWriter {
 		//single length field still needs to move this value up, so this is always done
 		outputRing.bytesWriteLastConsumedBytePos = outputRing.byteWorkingHeadPos.value;
 		
-		if ((--outputRing.batchPublishCountDown>0)) {			
+		if ((--outputRing.batchPublishCountDown>0)) {		
+			RingBuffer.storeUnpublishedHead(outputRing);
 			return;
 		}
 		publishWrites2(outputRing);

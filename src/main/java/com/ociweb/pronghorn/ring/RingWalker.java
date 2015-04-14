@@ -360,7 +360,7 @@ public class RingWalker {
 			prepWriteFragment(ring, cursorPosition, from, fragSize);
 		} else {
 			//only if there is no room should we hit the CAS tailPos and then try again.
-			hasRoom = (ring.llrTailPosCache = ring.tailPos.longValue()) >=  target;		
+			hasRoom = (ring.llrTailPosCache = RingBuffer.tailPosition(ring)) >=  target;		
 			if (hasRoom) {		
 				prepWriteFragment(ring, cursorPosition, from, fragSize);
 			}
@@ -419,7 +419,7 @@ public class RingWalker {
 
 	private static boolean copyFragment1(RingBuffer inputRing, RingBuffer outputRing, long start, int spaceNeeded, int bytesToCopy) {
 		
-		if ((spaceNeeded >  outputRing.maxSize-(int)(outputRing.workingHeadPos.value - outputRing.tailPos.get()) )) {
+		if ((spaceNeeded >  outputRing.maxSize-(int)(outputRing.workingHeadPos.value - RingBuffer.tailPosition(outputRing)) )) {
 			return false;
 		}
 		copyFragment2(inputRing, outputRing, (int)start, spaceNeeded, bytesToCopy);		

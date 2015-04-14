@@ -541,6 +541,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			
 			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); 
 			
+			//RingBuffer.publishWorkingTailPosition(ringBuffer, workingTailPos);
 		
 //			ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
 //		}

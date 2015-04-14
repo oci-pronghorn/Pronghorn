@@ -174,7 +174,6 @@ public class FieldReferenceOffsetManager {
         int i = 0;      
         int fragmentStartIdx=0;
         int depth = 0; //used for base jub location when using high level API.
-        int sumOfVarLengthFields = 0;
         
         boolean nextTokenOpensFragment = true;// false; //must capture simple case when we do not have wrapping group?
         
@@ -291,9 +290,6 @@ public class FieldReferenceOffsetManager {
             fragDataSize[i]=fragDataSize[fragmentStartIdx]; //keep the individual offsets per field
             fragDepth[i] = fragDepth[fragmentStartIdx];
             
-           // System.err.println("Token "+TokenBuilder.tokenToString(token));
-            
-            sumOfVarLengthFields += TypeMask.ringBufferFieldVarLen[tokenType];
             
 			int fSize = TypeMask.ringBufferFieldSize[tokenType];
 			

@@ -97,7 +97,9 @@ public final class RingBuffer {
 	
 	public static final int RELATIVE_POS_MASK = 0x7FFFFFFF; //removes high bit which indicates this is a constant
 	   
-    
+    //TODO: AAAA, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
+	//            the time slices of the graph will need to be kept for all rings to reconstruct history later.
+	
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
     public final PaddedInt byteWorkingTailPos = new PaddedInt();
     public final PaddedInt bytesTailPos = new PaddedInt();
@@ -123,11 +125,19 @@ public final class RingBuffer {
     private RingBufferException firstShutdownCaller = null;
     		
 	public boolean writeTrailingCountOfBytesConsumed;
+	public boolean readTrailCountOfBytesConsumed; //TOOD: AAAA, urgent must integrate
+	
 	FieldReferenceOffsetManager from;
 	
 	//hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
 	private int lastPublishedBytesHead;
 	private long lastPublishedHead;
+	
+	//hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
+	private int lastReleasedBytesTail;
+	private long lastReleasedTail; //TODO: AAAAA, must integrate this usage 
+		
+	
     
 	//NOTE: this only works because its 1 bit less than the roll-over sign bit
 	public static final int BYTES_WRAP_MASK = 0x7FFFFFFF;
@@ -341,6 +351,7 @@ public final class RingBuffer {
         byteWorkingTailPos.value = 0;
         bytesTailPos.set(0);
         writeTrailingCountOfBytesConsumed = false;
+        readTrailCountOfBytesConsumed = false;
         RingWalker.reset(ringWalker, 0);
     }
         
@@ -1239,7 +1250,10 @@ public final class RingBuffer {
     public static int takeMsgIdx(RingBuffer ring) {    	
     	//TODO: AAA, need to add assert to detect if this release was forgotten.
     	RingBuffer.markBytesReadBase(ring);
-    	return readValue(0, ring.buffer,ring.mask,ring.workingTailPos.value++);
+    	
+    	int msgIdx = readValue(0, ring.buffer,ring.mask,ring.workingTailPos.value++);
+    	ring.readTrailCountOfBytesConsumed =  msgIdx>=0 && (1==ring.ringWalker.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
+    	return msgIdx;
     }
     
     
@@ -1260,6 +1274,12 @@ public final class RingBuffer {
      * @param ring
      */
     public static void releaseReadLock(RingBuffer ring) {
+    	if (ring.readTrailCountOfBytesConsumed) {
+    		//int bytesConsumed = takeValue(ring);  //TODO: AAAA, need to integrate this feature to enable every message to have the trailing count.
+    	}
+    	
+    	
+    	
 		if (--ring.batchReleaseCountDown > 0) {			
 			return;
 		}
@@ -1342,15 +1362,20 @@ public final class RingBuffer {
 			assert(debugHeadAssignment(ring));
 			ring.batchPublishCountDown = ring.batchPublishCountDownInit;
 		} else {
-			ring.lastPublishedBytesHead = ring.byteWorkingHeadPos.value;
-			ring.lastPublishedHead = ring.workingHeadPos.value;
+			storeUnpublishedHead(ring);
 		}
+	}
+
+	static void storeUnpublishedHead(RingBuffer ring) {
+		ring.lastPublishedBytesHead = ring.byteWorkingHeadPos.value;
+		ring.lastPublishedHead = ring.workingHeadPos.value;		
 	}
     
     public static void abandonWrites(RingBuffer ring) {    
         //ignore the fact that any of this was written to the ring buffer
     	ring.workingHeadPos.value = ring.headPos.longValue();
     	ring.byteWorkingHeadPos.value = ring.bytesHeadPos.get();
+    	storeUnpublishedHead(ring);
     }
 
 
