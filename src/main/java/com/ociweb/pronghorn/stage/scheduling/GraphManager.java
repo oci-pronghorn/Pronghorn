@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.stage.scheduling;
 import java.util.Arrays;
 
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
@@ -26,11 +27,16 @@ public class GraphManager {
 	
 
 	public final static String SCHEDULE_RATE = "SCHEDULE_RATE";
-	public final static String MONITOR = "MONITOR";
+	public final static String MONITOR       = "MONITOR";
 	public final static String STAGE_NAME    = "STAGE_NAME";
+	public final static String UNSCHEDULED   = "UNSCHEDULED";//new annotation for stages that should never get a thread (experimental)
+	public final static String BLOCKING      = "BLOCKING";   //new annotation for stages that do not give threads back.
+	
 	
 	private final static int INIT_RINGS = 32;
 	private final static int INIT_STAGES = 32;
+	
+	private final static Logger log = LoggerFactory.getLogger(GraphManager.class);
 
 				
 	//for lookup of source id and target id from the ring id
@@ -603,7 +609,12 @@ public class GraphManager {
 	}
 	
 	public static boolean isProducerTerminated(GraphManager m, int ringId) {
-		return m.stageStateData.stageStateArray[m.ringIdToStages[ringId*2]] == GraphManagerStageStateData.STAGE_TERMINATED;
+		int producerStageId = m.ringIdToStages[ringId*2];
+		if (producerStageId<0) {
+		    log.warn("No producer stage was found for ring {}, check the graph builder.",ringId);
+		    return true;
+		}
+        return m.stageStateData.stageStateArray[producerStageId] == GraphManagerStageStateData.STAGE_TERMINATED;
 	}
 
     public static boolean isStageTerminated(GraphManager m, int stageId) {

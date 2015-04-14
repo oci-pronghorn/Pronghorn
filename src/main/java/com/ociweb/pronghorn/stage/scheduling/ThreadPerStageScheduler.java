@@ -125,7 +125,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
 								
 				} catch (Throwable t) {
-					log.error("Unexpected error in stage {}", stage);
+					log.warn("Unexpected error in stage "+stage.stageId+" "+stage.getClass().getSimpleName());
 					log.error("Stacktrace",t);
 					GraphManager.shutdownNeighborRings(graphManager, stage);
 				}
