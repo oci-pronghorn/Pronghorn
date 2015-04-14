@@ -846,6 +846,10 @@ public final class RingBuffer {
 		return copyASCIIToBytes(source, 0, source.length(), rbRingBuffer);
 	}
 	  
+	public static void addASCII(CharSequence source, RingBuffer rb) {
+	    addASCII(source, 0, null==source ? -1 : source.length(), rb);
+	}
+	
 	public static void addASCII(CharSequence source, int sourceIdx, int sourceCharCount, RingBuffer rb) {
 		addBytePosAndLen(rb, copyASCIIToBytes(source, sourceIdx, sourceCharCount, rb), sourceCharCount);	
 	}
@@ -912,6 +916,10 @@ public final class RingBuffer {
 		}
 	}
 
+	public static void addUTF8(CharSequence source, RingBuffer rb) {
+	    addUTF8(source, 0, null==source? -1 : source.length(), rb);
+	}
+	
 	public static void addUTF8(CharSequence source, int sourceIdx, int sourceCharCount, RingBuffer rb) {
 		addBytePosAndLen(rb, rb.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceIdx,sourceCharCount,rb));		
 	}
@@ -1004,17 +1012,27 @@ public final class RingBuffer {
 	    return pos;
 	}
 
-	public static void addByteBuffer(RingBuffer rb, ByteBuffer source, int length) {
+	public static void addByteBuffer(ByteBuffer source, RingBuffer rb) {
+	    int bytePos = rb.byteWorkingHeadPos.value;    
+	    int len = -1;
+	    if (null!=source && source.hasRemaining()) {
+	        len = source.remaining();
+	        copyByteBuffer(source,source.remaining(),rb);
+	    }
+	    RingBuffer.addBytePosAndLen(rb, bytePos, len);
+	}
+	
+	public static void copyByteBuffer(ByteBuffer source, int length, RingBuffer rb) {
 		validateVarLength(rb, length);
 		int idx = rb.byteWorkingHeadPos.value & rb.byteMask;
 		int partialLength = 1 + rb.byteMask - idx;    		
-		if (partialLength<length) {   		
-			//read from source and write into byteBuffer
-			source.get(rb.byteBuffer, idx, partialLength);
-			source.get(rb.byteBuffer, 0, length - partialLength);					    		
+		//may need to wrap around ringBuffer so this may need to be two copies
+		if (partialLength>=length) {   		
+		    source.get(rb.byteBuffer, idx, length);
 		} else {					    	
-			source.get(rb.byteBuffer, idx, length);
-			//System.err.println("recorded:"+new String(rb.byteBuffer, idx, length));
+		    //read from source and write into byteBuffer
+		    source.get(rb.byteBuffer, idx, partialLength);
+		    source.get(rb.byteBuffer, 0, length - partialLength);					    
 		}
 		rb.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.byteWorkingHeadPos.value + length);
 	}
@@ -1275,7 +1293,7 @@ public final class RingBuffer {
      */
     public static void releaseReadLock(RingBuffer ring) {
     	if (ring.readTrailCountOfBytesConsumed) {
-    		//int bytesConsumed = takeValue(ring);  //TODO: AAAA, need to integrate this feature to enable every message to have the trailing count.
+    	//	int bytesConsumed = takeValue(ring);  //TODO: AAAA, need to integrate this feature to enable every message to have the trailing count.
     	}
     	
     	

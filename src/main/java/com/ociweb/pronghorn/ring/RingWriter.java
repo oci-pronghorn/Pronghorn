@@ -128,7 +128,7 @@ public class RingWriter {
 		
     	assert(length>=0);
     	int bytePos = rb.byteWorkingHeadPos.value;
-    	RingBuffer.addByteBuffer(rb, source, length);
+    	RingBuffer.copyByteBuffer(source, length, rb);
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), bytePos, length, RingBuffer.bytesWriteBase(rb));
     }
     
