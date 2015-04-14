@@ -78,6 +78,14 @@ public class StreamingVisitorWriter {
 		
 	}
 
+	   public void startup() {
+	        this.visitor.startup();
+	    }
+	    
+	    public void shutdown() {
+	        this.visitor.shutdown();
+	    }
+	    
 	private void processFragment(int startPos, int cursor) {
 		int fieldsInScript = from.fragScriptSize[cursor];
 		int i = startPos;

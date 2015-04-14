@@ -1423,16 +1423,6 @@ public final class RingBuffer {
 		return lastCheckedValue;
     }
     
-
-	// Replace call to spinBlockOnTail with this
-    
-	//    if (tailPosCache < nextTailTarget) {
-	//    	tailPosCache = outputRing.tailPos.longValue();
-	//		if (tailPosCache < nextTailTarget) {
-	//			return;
-	//		}
-	//	}
-	//    
     public static long spinBlockOnTail(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
     	
     	while (null==ringBuffer.buffer || lastCheckedValue < targetValue) {
@@ -1450,15 +1440,7 @@ public final class RingBuffer {
 		}
 		return lastCheckedValue;
     }
-    
-//  Replace spinBlockOnHead with
-//
-//  if (headPosCache < nextHeadTarget) {
-//		headPosCache = inputRing.headPos.longValue();
-//		if (headPosCache < nextHeadTarget) {
-//			return;
-//		}
-//	}
+
     public static long spinBlockOnHead(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
     	
     	while ( lastCheckedValue < targetValue) {
