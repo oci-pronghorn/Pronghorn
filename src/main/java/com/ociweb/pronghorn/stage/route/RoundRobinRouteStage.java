@@ -43,7 +43,7 @@ public class RoundRobinRouteStage extends PronghornStage {
 			if (-2==stage.msgId) {
 				if (RingReader.tryReadFragment(stage.inputRing)) {
 					if ((stage.msgId = RingReader.getMsgIdx(stage.inputRing))<0) {
-						oldShutdown(stage);
+						stage.requestShutdown();
 						return;
 					}		
 				} else {
@@ -65,19 +65,16 @@ public class RoundRobinRouteStage extends PronghornStage {
 
 	}
 
-	@Deprecated
-	private static void oldShutdown(RoundRobinRouteStage stage) {
-		//new Exception("warning old shutdown is used").printStackTrace();;
-		
+	@Override
+	public void shutdown() {
 		//send the EOF message to all of the targets.
-		int i = stage.outputRings.length;
+		int i = outputRings.length;
 		while (--i>=0) {
-			RingBuffer.publishAllBatchedWrites(stage.outputRings[i]);
+			RingBuffer.publishAllBatchedWrites(outputRings[i]);
 		}
-		RingReader.releaseReadLock(stage.inputRing);
-		stage.msgId = -2;
-		stage.requestShutdown();
+		RingReader.releaseReadLock(inputRing);
 	}
+
 	
 	
 }
