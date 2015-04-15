@@ -611,7 +611,7 @@ public class GraphManager {
 	public static boolean isProducerTerminated(GraphManager m, int ringId) {
 		int producerStageId = m.ringIdToStages[ringId*2];
 		if (producerStageId<0) {
-		    log.warn("No producer stage was found for ring {}, check the graph builder.",ringId);
+		    log.debug("No producer stage was found for ring {}, check the graph builder.",ringId);
 		    return true;
 		}
         return m.stageStateData.stageStateArray[producerStageId] == GraphManagerStageStateData.STAGE_TERMINATED;
