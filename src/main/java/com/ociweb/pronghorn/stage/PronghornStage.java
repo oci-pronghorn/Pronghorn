@@ -53,6 +53,16 @@ public abstract class PronghornStage {
 	}
 
 	
+	public void reset() {
+	    //TODO: build new error recovery into scheduler
+	    //      after exception position tail to re-read the same block an try again N times.
+	    //      after the N attempts skip over that block and continue
+	    //      after exception is caught and position is modified reset() is called before next run() call.
+	    
+	    
+	}
+	
+	
 	public void startup() {
 		
 		//override to do work that must be done once.
