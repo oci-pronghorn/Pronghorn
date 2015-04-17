@@ -7,13 +7,14 @@ import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class StreamingVisitorReader {
 
-	private StreamingReadVisitor visitor;
-	private RingBuffer inputRing;
-	private FieldReferenceOffsetManager from;
+	private final StreamingReadVisitor visitor;
+	private final RingBuffer inputRing;
+	private final FieldReferenceOffsetManager from;
 	
+	private final int[] cursorStack;
+	private final int[] sequenceCounters;
+
 	private int nestedFragmentDepth;
-	private int[] cursorStack;
-	private int[] sequenceCounters;
 	
 	
 	public StreamingVisitorReader(RingBuffer inputRing, StreamingReadVisitor visitor) {
@@ -31,6 +32,8 @@ public class StreamingVisitorReader {
 		this.nestedFragmentDepth = -1;		
 		
 	}
+	
+	//TODO: these 3 need to be turned into static.
 	
 	public void startup() {
 		this.visitor.startup();
@@ -91,6 +94,7 @@ public class StreamingVisitorReader {
 		return;
 	}
 
+	//TODO: this method is way way to big.
 	private void processFragment(int startPos, int cursor) {
 		int fieldsInScript = from.fragScriptSize[cursor];
 		String[] fieldNameScript = from.fieldNameScript;

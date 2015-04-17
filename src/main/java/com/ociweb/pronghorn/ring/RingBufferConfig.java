@@ -30,6 +30,10 @@ public class RingBufferConfig {
     	FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, 1<<primaryBits);
 	}
 	
+    public static RingBuffer edge(RingBufferConfig config) {
+        return new RingBuffer(config);
+    }
+	
 	public String toString() {
 		return "Primary:"+primaryBits+" Secondary:"+byteBits;
 	}
