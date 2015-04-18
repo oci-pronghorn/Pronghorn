@@ -639,6 +639,40 @@ public class GraphManager {
 			}
 		}		
 	}
+	
+	public static int getOutputStageCount(GraphManager m) {
+	    int count = 0;
+        int i = m.stageIdToStage.length;
+        while (--i>=0) {
+            if (null!=m.stageIdToStage[i]) {                
+                //an input stage is one that has no input ring buffers
+                if (-1 == m.multOutputIds[m.stageIdToOutputsBeginIdx[m.stageIdToStage[i].stageId]]) {
+                    if (!stageForMonitorData(m, m.stageIdToStage[i])) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
+	}
+	
+	   public static PronghornStage getOutputStage(GraphManager m, int ordinal) {
+	        int count = 0;
+	        int i = m.stageIdToStage.length;
+	        while (--i>=0) {
+	            if (null!=m.stageIdToStage[i]) {                
+	                //an input stage is one that has no input ring buffers
+	                if (-1 == m.multOutputIds[m.stageIdToOutputsBeginIdx[m.stageIdToStage[i].stageId]]) {
+	                    if (!stageForMonitorData(m, m.stageIdToStage[i])) {
+    	                    if (++count==ordinal) {
+    	                        return m.stageIdToStage[i];
+    	                    }
+	                    }
+	                }
+	            }
+	        }
+	        throw new UnsupportedOperationException("Invalid configuration. Unable to find requested output ordinal "+ordinal);
+	    }
 
 	public static RingBuffer getOutputPipe(GraphManager m, PronghornStage stage) {
 		return getOutputPipe(m, stage, 1);
@@ -656,7 +690,7 @@ public class GraphManager {
 		throw new UnsupportedOperationException("Invalid configuration. Unable to find requested output ordinal "+ordinalOutput);
 	}
 	
-	public static int getOutputRingCount(GraphManager m, int stageId) {
+	public static int getOutputPipeCount(GraphManager m, int stageId) {
 		
 		int ringId;
 		int idx = m.stageIdToOutputsBeginIdx[stageId];
@@ -682,7 +716,7 @@ public class GraphManager {
 		throw new UnsupportedOperationException("Invalid configuration. Unable to find requested input ordinal "+ordinalInput);
 	}
 	
-	public static int getInputRingCount(GraphManager m, PronghornStage stage) {
+	public static int getInputPipeCount(GraphManager m, PronghornStage stage) {
 		int ringId;
 		int idx = m.stageIdToInputsBeginIdx[stage.stageId];
 		int count = 0;
@@ -770,6 +804,10 @@ public class GraphManager {
 	private static boolean ringHoldsMonitorData(GraphManager gm, RingBuffer ringBuffer) {
 		return null != GraphManager.getAnnotation(gm, GraphManager.getRingProducer(gm, ringBuffer.ringId), GraphManager.MONITOR, null);
 	}
+	
+    private static boolean stageForMonitorData(GraphManager gm, PronghornStage stage) {
+        return null != GraphManager.getAnnotation(gm, stage, GraphManager.MONITOR, null);
+    }
 
 	public static void enableBatching(GraphManager gm) {
 		int j = gm.ringIdToRing.length;

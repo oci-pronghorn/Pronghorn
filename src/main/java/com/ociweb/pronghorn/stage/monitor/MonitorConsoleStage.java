@@ -100,7 +100,7 @@ public class MonitorConsoleStage extends PronghornStage {
 			
 			long value = hists[i].valueAtPercent(.5);
 			
-			if (value>40) {
+			if (value>80 || value < 1 ) {
 				PronghornStage producer = GraphManager.getRingProducer(graphManager,  inputs[i].ringId);
 				//NOTE: may need to walk up tree till we find this object, (future feature)
 				String ringName;
@@ -130,8 +130,10 @@ public class MonitorConsoleStage extends PronghornStage {
 	 * @param ringBufferMonitorConfig
 	 */
 	public static void attach(GraphManager gm, Integer monitorRate, RingBufferConfig ringBufferMonitorConfig) {
-		GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, monitorRate, new MonitorConsoleStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig)));
-	
+		MonitorConsoleStage stage = new MonitorConsoleStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig));
+        GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
+		GraphManager.addAnnotation(gm, GraphManager.MONITOR, "dummy", stage);
+		
 	}
 
 	

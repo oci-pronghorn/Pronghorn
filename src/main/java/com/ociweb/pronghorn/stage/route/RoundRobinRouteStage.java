@@ -20,53 +20,66 @@ public class RoundRobinRouteStage extends PronghornStage {
 		this.targetRingInit = outputRings.length-1;
 		this.targetRing = targetRingInit;
 		
-		this.supportsBatchedPublish = false;
-		this.supportsBatchedRelease = false;
+		this.supportsBatchedPublish = true;
+		this.supportsBatchedRelease = true;
 		
 		//TODO:AAAA must confirm that the output rings are just as big or bigger than inputs and that both have the same schema!!
 		
 		
 	}
 
+	//int temp = 0;
+	
 	@Override
 	public void run() {		
-		processAvailData(this);
+	    
+	      do {	          
+	            if (-2==this.msgId) {
+	                if (RingReader.tryReadFragment(this.inputRing)) {
+	                    if ((this.msgId = RingReader.getMsgIdx(this.inputRing))<0) {
+	                        this.requestShutdown();
+	                        return;
+	                    }       
+	                } else {
+//	                    if (temp>10) {
+//    	                    try {
+//                                Thread.sleep(0,1);
+//                            } catch (InterruptedException e) {
+//                                // TODO Auto-generated catch block
+//                                e.printStackTrace();
+//                            }
+//	                    } else {
+//	                        temp = 0;
+//	                    }
+	                    
+////	                    temp++; //stops here most often but why?
+	                    return;
+	                }
+	            }
+	    
+	            if (RingReader.tryMoveSingleMessage(this.inputRing, this.outputRings[this.targetRing])) {
+	                RingReader.releaseReadLock(this.inputRing);
+	                if (--this.targetRing<0) {
+	                    this.targetRing = this.targetRingInit;
+	                }               
+	                this.msgId = -2;
+	            } else {
+//	                temp--;
+	                return;
+	            }
+
+	        } while(true);  
 	}
 
 	//TODO: AA, May need NEW round robin stage that is low level and only works with messages
 	//TODO: AA, May also need to add cursor to head of all fragments.
-	
-	private static void processAvailData(RoundRobinRouteStage stage) {
-		
-		do {
-		
-			if (-2==stage.msgId) {
-				if (RingReader.tryReadFragment(stage.inputRing)) {
-					if ((stage.msgId = RingReader.getMsgIdx(stage.inputRing))<0) {
-						stage.requestShutdown();
-						return;
-					}		
-				} else {
-					return;
-				}
-			}
-	
-			if (RingReader.tryMoveSingleMessage(stage.inputRing, stage.outputRings[stage.targetRing])) {
-				RingReader.releaseReadLock(stage.inputRing);
-				if (--stage.targetRing<0) {
-					stage.targetRing = stage.targetRingInit;
-				}				
-				stage.msgId = -2;
-			} else {
-				return;
-			}
 
-		} while(true);	
-
-	}
 
 	@Override
 	public void shutdown() {
+	    
+	//    System.out.println("round robin exit balance:"+temp);
+	    
 		//send the EOF message to all of the targets.
 		int i = outputRings.length;
 		while (--i>=0) {
