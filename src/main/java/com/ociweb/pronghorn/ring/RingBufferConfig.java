@@ -30,7 +30,7 @@ public class RingBufferConfig {
     	FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, 1<<primaryBits);
 	}
 	
-    public static RingBuffer edge(RingBufferConfig config) {
+    public static RingBuffer pipe(RingBufferConfig config) {
         return new RingBuffer(config);
     }
 	
