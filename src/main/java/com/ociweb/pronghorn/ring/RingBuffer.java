@@ -400,16 +400,12 @@ public final class RingBuffer {
         int len1 = 1+mask - tStart;
     	
 		if (len1>=len) {
-			target.put(buffer, pos, len);
+			target.put(buffer, mask&pos, len);
 		} else {
-			target.put(buffer, pos, len1);
+			target.put(buffer, mask&pos, len1);
 			target.put(buffer, 0, len-len1);			
 		}
-		
-		//OLD delete after tests pass
-//	    while (--len >= 0) {
-//	        target.put(buffer[mask & pos++]); 
-//	    }
+
 	    return target;
 	}
 
@@ -932,9 +928,13 @@ public final class RingBuffer {
 	 * WARNING: unlike the ASCII version this method returns bytes written and not the position
 	 */
 	public static int copyUTF8ToByte(CharSequence source, int sourceIdx, int sourceCharCount, RingBuffer rb) {
-		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, rb.byteWorkingHeadPos.value, sourceCharCount);
-		rb.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.byteWorkingHeadPos.value+byteLength);
-		return byteLength;
+	    if (sourceCharCount>0) {
+    		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, rb.byteWorkingHeadPos.value, sourceCharCount);
+    		rb.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.byteWorkingHeadPos.value+byteLength);
+    		return byteLength;
+	    } else {
+	        return 0;
+	    }
 	}
 	
 	private static int copyUTF8ToByte(CharSequence source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {	
@@ -1102,7 +1102,7 @@ public final class RingBuffer {
     	
    // 	 assert(rb.llwNextHeadTarget<=rb.headPos.get() || rb.workingHeadPos.value<=rb.llwNextHeadTarget) : "Unsupported mix of high and low level API.";
    	
-		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, msgIdx);		
+		 rb.buffer[rb.mask & (int)rb.workingHeadPos.value++] = msgIdx;		
 		 
 		 markMsgBytesConsumed(rb, msgIdx);
 	}
