@@ -640,11 +640,11 @@ public class GraphManager {
 		}		
 	}
 
-	public static RingBuffer getOutputRing(GraphManager m, PronghornStage stage) {
-		return getOutputRing(m, stage, 1);
+	public static RingBuffer getOutputPipe(GraphManager m, PronghornStage stage) {
+		return getOutputPipe(m, stage, 1);
 	}
 	
-	public static RingBuffer getOutputRing(GraphManager m, PronghornStage stage, int ordinalOutput) {
+	public static RingBuffer getOutputPipe(GraphManager m, PronghornStage stage, int ordinalOutput) {
 		
 		int ringId;
 		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
@@ -667,11 +667,11 @@ public class GraphManager {
 		return count;
 	}
 
-	public static RingBuffer getInputRing(GraphManager m, PronghornStage stage) {
-		return getInputRing(m, stage, 1);
+	public static RingBuffer getInputPipe(GraphManager m, PronghornStage stage) {
+		return getInputPipe(m, stage, 1);
 	}
 	
-	public static RingBuffer getInputRing(GraphManager m,	PronghornStage stage, int ordinalInput) {
+	public static RingBuffer getInputPipe(GraphManager m,	PronghornStage stage, int ordinalInput) {
 		int ringId;
 		int idx = m.stageIdToInputsBeginIdx[stage.stageId];
 		while (-1 != (ringId=m.multInputIds[idx++])) {	
@@ -833,7 +833,7 @@ public class GraphManager {
 		if (idx>=path.length) {
 			return stage;
 		}
-		return findStageByPath(m,getRingConsumer(m, getOutputRing(m,stage,path[idx]).ringId),1+idx,path);
+		return findStageByPath(m,getRingConsumer(m, getOutputPipe(m,stage,path[idx]).ringId),1+idx,path);
 	}
 
 	//when batching is used we need to flush outstanding writes before yield
