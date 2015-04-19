@@ -51,12 +51,8 @@ public final class RingBuffer {
 			return value;
 		}
 
-		public void set(int i) {
-			value = i;
-		}
-
-		public void lazySet(int i) {
-			value = i;//only here for API matching.
+		public static void set(PaddedInt pi, int value) {
+		    pi.value = value;
 		}
 
 		public int addAndGet(int inc) {
@@ -187,7 +183,7 @@ public final class RingBuffer {
 	
     public static void setMaxPublishBatchSize(RingBuffer rb) {
     	
-    	int size = computeMaxBatchSize(rb, 2);
+    	int size = computeMaxBatchSize(rb, 3);
     	
     	rb.batchPublishCountDownInit = size;
     	rb.batchPublishCountDown = size;    	
@@ -196,7 +192,7 @@ public final class RingBuffer {
     
     public static void setMaxReleaseBatchSize(RingBuffer rb) {
     	
-    	int size = computeMaxBatchSize(rb, 4);
+    	int size = computeMaxBatchSize(rb, 3);
     	rb.batchReleaseCountDownInit = size;
     	rb.batchReleaseCountDown = size;    	
     	
@@ -346,10 +342,10 @@ public final class RingBuffer {
         bytesWriteLastConsumedBytePos = 0;
         
         byteWorkingHeadPos.value = 0;
-        bytesHeadPos.set(0);
+        PaddedInt.set(bytesHeadPos,0);
         
         byteWorkingTailPos.value = 0;
-        bytesTailPos.set(0);
+        PaddedInt.set(bytesTailPos,0);
         writeTrailingCountOfBytesConsumed = false;
         readTrailCountOfBytesConsumed = false;
         RingWalker.reset(ringWalker, 0);
@@ -372,14 +368,14 @@ public final class RingBuffer {
         llwNextHeadTarget = toPos;
         
         byteWorkingHeadPos.value = bPos;
-        bytesHeadPos.set(bPos);
+        PaddedInt.set(bytesHeadPos,bPos);
         
         bytesWriteBase = bPos;
         bytesReadBase = bPos;
         bytesWriteLastConsumedBytePos = bPos;
         
         byteWorkingTailPos.value = bPos;
-        bytesTailPos.set(bPos);
+        PaddedInt.set(bytesTailPos,bPos);
         writeTrailingCountOfBytesConsumed = false;
         RingWalker.reset(ringWalker, toPos);
     }
@@ -557,7 +553,7 @@ public final class RingBuffer {
 		
 		assert(ring.tailPos.get()+ring.maxSize>=ring.headPos.get()+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 		
-		ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
+		PaddedInt.set(ring.bytesHeadPos,ring.byteWorkingHeadPos.value);
 		ring.buffer[ring.mask &((int)ring.workingHeadPos.value +  from(ring).templateOffset)]    = -1;	
 		ring.buffer[ring.mask &((int)ring.workingHeadPos.value +1 +  from(ring).templateOffset)] = 0;
 		
@@ -1296,25 +1292,20 @@ public final class RingBuffer {
     	//	int bytesConsumed = takeValue(ring);  //TODO: AAAA, need to integrate this feature to enable every message to have the trailing count.
     	}
     	
-    	
-    	
-		if (--ring.batchReleaseCountDown > 0) {			
-			return;
-		}
-		releaseReadLock2(ring);    	
+    	//long expect = ring.tailPos.get();
+    	if ((--ring.batchReleaseCountDown<=0) ) {
+    	    assert(ring.ringWalker.cursor<=0 && !RingReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
+    	    ring.bytesTailPos.value=ring.byteWorkingTailPos.value; 
+    	    ring.tailPos.lazySet(ring.workingTailPos.value);
+    	    ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;   
+    	} 
+    	  	
     }
 
-	private static void releaseReadLock2(RingBuffer ring) {
-		assert(ring.ringWalker.cursor<=0 && !RingReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
-		ring.bytesTailPos.value=ring.byteWorkingTailPos.value; 
-		ring.tailPos.lazySet(ring.workingTailPos.value);
-		
-		ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
-	}
-    
-    public static void releaseAll(RingBuffer ring) {
+	public static void releaseAll(RingBuffer ring) {
 
-			ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value= ring.byteWorkingHeadPos.value); 
+			int i = ring.byteWorkingTailPos.value= ring.byteWorkingHeadPos.value;
+            PaddedInt.set(ring.bytesTailPos,i); 
 			ring.tailPos.lazySet(ring.workingTailPos.value= ring.workingHeadPos.value);
 			    	
     }
@@ -1355,7 +1346,7 @@ public final class RingBuffer {
     public static void publishAllBatchedWrites(RingBuffer ring) {
     	
     	if (ring.lastPublishedHead>ring.headPos.get()) {
-    		ring.bytesHeadPos.lazySet(ring.lastPublishedBytesHead); 
+    		PaddedInt.set(ring.bytesHeadPos,ring.lastPublishedBytesHead); 
     		ring.headPos.lazySet(ring.lastPublishedHead);
     	}
 		
@@ -1371,17 +1362,17 @@ public final class RingBuffer {
 		}
 		return true;
 	}
-	
+
 	public static void publishHeadPositions(RingBuffer ring) {
-		if ((--ring.batchPublishCountDown<=0)) {			
-			//publish writes			
-			ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value); 
-			ring.headPos.lazySet(ring.workingHeadPos.value);			
-			assert(debugHeadAssignment(ring));
-			ring.batchPublishCountDown = ring.batchPublishCountDownInit;
-		} else {
-			storeUnpublishedHead(ring);
-		}
+	    
+	    if ((--ring.batchPublishCountDown<=0)) {
+	        PaddedInt.set(ring.bytesHeadPos,ring.byteWorkingHeadPos.value); 
+	        ring.headPos.lazySet(ring.workingHeadPos.value);
+	        assert(debugHeadAssignment(ring));
+	        ring.batchPublishCountDown = ring.batchPublishCountDownInit;
+	    } else {
+	        storeUnpublishedHead(ring);
+	    }
 	}
 
 	static void storeUnpublishedHead(RingBuffer ring) {
@@ -1531,7 +1522,7 @@ public final class RingBuffer {
 	//This is an important performance feature of the low level API and should not be modified.
 
 	
-	//TODO: once we confirm both of these are used by high and low API this method can be removed
+	//TODO: AAAAAA, need to find a way to remove this quickly.
 	public static void initLowLevelWriter(RingBuffer output) {
 //
 //			//We have no idea if this was a new ring or one previously used so instead of assuming the 

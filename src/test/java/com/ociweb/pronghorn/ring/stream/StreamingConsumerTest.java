@@ -4,10 +4,13 @@ import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupFieldL
 import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupFragmentLocator;
 import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupTemplateLocator;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.Arrays;
+import java.util.Random;
 
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -23,6 +26,8 @@ import com.ociweb.pronghorn.ring.loader.TemplateHandler;
 public class StreamingConsumerTest {
 
 	private static final byte[] ASCII_VERSION = "1.0".getBytes();
+    private final byte primaryRingSizeInBits = 9; 
+    private final byte byteRingSizeInBits = 18;
 
 	private static final FieldReferenceOffsetManager FROM = buildFROM();
 	
@@ -72,8 +77,6 @@ public class StreamingConsumerTest {
 	
 	@Test
 	public void sequenceFragmentWriteRead() {
-		byte primaryRingSizeInBits = 9; 
-    	byte byteRingSizeInBits = 18;
     
     	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
@@ -98,9 +101,6 @@ public class StreamingConsumerTest {
 		
 		ps.close();
 		String results = new String(baos.toByteArray());
-		
-		System.err.println(results);
-		
 		//spot check the produced JSON
 		assertTrue(results, results.indexOf("\"TruckId\":10")>0);
 		assertTrue(results, results.indexOf("{\"AThing\":7}")>0);
@@ -108,15 +108,136 @@ public class StreamingConsumerTest {
 		
 	}
 	
+//	@Test
+//	public void generatorTest() {
+//	    
+//	       RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+//	       ring.initBuffers();
+//	       
+//	       StreamingWriteVisitorGenerator swvg = new StreamingWriteVisitorGenerator(FROM, new Random(2), 30, 30);
+//	       
+//	       StreamingVisitorWriter svw = new StreamingVisitorWriter(ring, swvg);
+//	       	       	       
+//	       ByteArrayOutputStream baos = new ByteArrayOutputStream();
+//	       PrintStream ps = new PrintStream(baos);
+//	       StreamingReadVisitor visitor = new StreamingReadVisitorToJSON(ps); 
+//	       
+//	       StreamingVisitorReader reader = new StreamingVisitorReader(ring, visitor );
+//	        
+//	       svw.startup();
+//	       reader.startup();
+//
+//	       svw.run();
+//	       reader.run();
+//	       
+//	       svw.shutdown();
+//	       reader.shutdown(); 	    
+//	    
+//	       String results = new String(baos.toByteArray());
+//	       //spot check the produced JSON
+//	       assertTrue(results, results.indexOf("\"Trucks\":")>0);
+//	       assertTrue(results, results.indexOf("{\"Squad\":")>0);
+//	       
+//	}
 	
-    //Primary ring data for this example
-	// X - start of message
-	// E - end of fragment byte length
-	// L - length starting sequence
-	//
-    // X   strng  L  E       ___id  decimal___  L  E      t  E      ___id  decimal___  L  E      t  E   omq E 
-    //[23, 0, 11, 2, 11,     0, 10, 2, 0, 2000, 1, 0,     7, 0,     0, 11, 2, 0, 3000, 1, 0,     7, 0,  42, 0
+	//@Test
+	public void matchingTestPositive() {
+	    
+        RingBuffer ring1 = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+        RingBuffer ring2 = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+        
+        ring1.initBuffers();
+        ring2.initBuffers();
+        
+        int commonSeed = 100;         
+        
+        StreamingWriteVisitorGenerator swvg1 = new StreamingWriteVisitorGenerator(FROM, new Random(commonSeed), 30, 30);        
+        StreamingVisitorWriter svw1 = new StreamingVisitorWriter(ring1, swvg1);
+        
+        StreamingWriteVisitorGenerator swvg2 = new StreamingWriteVisitorGenerator(FROM, new Random(commonSeed), 30, 30);        
+        StreamingVisitorWriter svw2 = new StreamingVisitorWriter(ring2, swvg2);
+        
+        
+        svw1.startup();
+        svw2.startup();
+	    
+        svw1.run();
+        svw2.run();
+        
+        svw1.run();
+        svw2.run();
+        
+        //confirm that both rings contain the exact same thing
+        assertTrue(Arrays.equals(ring1.buffer, ring2.buffer));
+        assertTrue(Arrays.equals(ring1.byteBuffer, ring2.byteBuffer));
+        
+        //now use matcher to confirm the same.
+        StreamingReadVisitorMatcher srvm = new StreamingReadVisitorMatcher(ring1);
+        StreamingVisitorReader svr = new StreamingVisitorReader(ring2, new StreamingReadVisitorDebugDelegate(srvm) );
+        
+        svr.startup();
+        
+        try {
+            svr.run();
+        } catch (Throwable t) {
+            t.printStackTrace();
+            fail(t.getMessage());
+        }
+        
+        svr.shutdown();
+        
+        svw1.shutdown();
+        svw2.shutdown();
+	    
+	}
 	
+    @Test
+    public void matchingTestNegative() {
+        
+        RingBuffer ring1 = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+        RingBuffer ring2 = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+        
+        ring1.initBuffers();
+        ring2.initBuffers();
+        
+        int commonSeed = 300;         
+        
+        StreamingWriteVisitorGenerator swvg1 = new StreamingWriteVisitorGenerator(FROM, new Random(commonSeed), 30, 30);        
+        StreamingVisitorWriter svw1 = new StreamingVisitorWriter(ring1, swvg1);
+        
+        StreamingWriteVisitorGenerator swvg2 = new StreamingWriteVisitorGenerator(FROM, new Random(commonSeed+1), 30, 30);        
+        StreamingVisitorWriter svw2 = new StreamingVisitorWriter(ring2, swvg2);
+        
+        
+        svw1.startup();
+        svw2.startup();
+        
+        svw1.run();
+        svw2.run();
+        
+        svw1.run();
+        svw2.run();
+        
+        
+        StreamingReadVisitorMatcher srvm = new StreamingReadVisitorMatcher(ring1);
+        StreamingVisitorReader svr = new StreamingVisitorReader(ring2, srvm);
+        
+        svr.startup();
+        
+        try {
+            svr.run();
+            fail("expected exception");
+        } catch (Throwable t) {
+            //success
+            //t.printStackTrace();
+        }
+        
+        svr.shutdown();
+        
+        svw1.shutdown();
+        svw2.shutdown();
+        
+    }
 	
 	private void populateRingBufferWithSequence(RingBuffer ring, int testSize) {
 		

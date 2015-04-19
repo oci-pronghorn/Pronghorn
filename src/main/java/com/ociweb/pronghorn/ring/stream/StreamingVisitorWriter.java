@@ -17,6 +17,7 @@ public class StreamingVisitorWriter {
 	private int nestedFragmentDepth;
 	private int[] cursorStack;
 	private int[] sequenceCounters;
+	private final int blockCount = 32;
 	
 	
 	public StreamingVisitorWriter(RingBuffer outputRing, StreamingWriteVisitor visitor) {
@@ -31,13 +32,16 @@ public class StreamingVisitorWriter {
 		this.cursorStack = new int[this.from.maximumFragmentStackDepth];
 		this.sequenceCounters = new int[this.from.maximumFragmentStackDepth];
 		
-		this.nestedFragmentDepth = -1;		
+		this.nestedFragmentDepth = -1;	
+		
+		RingBuffer.initLowLevelWriter(outputRing);
 	}
 
 	public void run() {
 		
 		//write as long as its not posed and we have room to write any possible known fragment
-		while (!visitor.paused() && RingBuffer.roomToLowLevelWrite(outputRing, maxFragmentSize) ) {	
+	    int count = this.blockCount;
+		while (!visitor.paused() && --count>=0 && RingBuffer.roomToLowLevelWrite(outputRing, maxFragmentSize) ) {	
 			    	        
 		        int startPos;
 		        int cursor;

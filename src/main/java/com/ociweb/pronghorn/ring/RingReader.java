@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.ring;
 
 import java.nio.ByteBuffer;
 
+import com.ociweb.pronghorn.ring.RingBuffer.PaddedInt;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
@@ -538,7 +539,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 //		if ((--ringBuffer.batchReleaseCountDown<=0)) {	
 			
      		ringBuffer.workingTailPos.value = ringBuffer.ringWalker.nextWorkingTail;
-			ringBuffer.bytesTailPos.lazySet(ringBuffer.byteWorkingTailPos.value); 			
+			PaddedInt.set(ringBuffer.bytesTailPos,ringBuffer.byteWorkingTailPos.value); 			
 			ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); 
 			
 			//RingBuffer.publishWorkingTailPosition(ringBuffer, workingTailPos);
