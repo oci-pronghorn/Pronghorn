@@ -8,6 +8,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffer.PaddedInt;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -119,7 +120,8 @@ public class TapeWriteStage extends PronghornStage {
 			
 			
 			//release tail so data can be written
-			ss.source.bytesTailPos.lazySet(ss.source.byteWorkingTailPos.value = RingBuffer.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy));		
+			int i = ss.source.byteWorkingTailPos.value = RingBuffer.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
+            PaddedInt.set(ss.source.bytesTailPos,i);		
 			RingBuffer.publishWorkingTailPosition(ss.source,tempTail + totalPrimaryCopy);
 			
 			return true;

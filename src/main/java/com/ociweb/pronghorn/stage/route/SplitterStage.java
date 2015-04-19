@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.stage.route;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffer.PaddedInt;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -132,7 +133,8 @@ public class SplitterStage extends PronghornStage {
 	private static void recordCopyComplete(SplitterStage ss, int tempByteTail, int totalBytesCopy) {
 		//release tail so data can be written
 		
-		ss.source.bytesTailPos.lazySet(ss.source.byteWorkingTailPos.value = RingBuffer.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy));
+		int i = ss.source.byteWorkingTailPos.value = RingBuffer.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
+        PaddedInt.set(ss.source.bytesTailPos,i);
 		RingBuffer.publishWorkingTailPosition(ss.source,(ss.cachedTail+=ss.totalPrimaryCopy));
 		ss.totalPrimaryCopy = 0; //clear so next time we find the next block
 	}
