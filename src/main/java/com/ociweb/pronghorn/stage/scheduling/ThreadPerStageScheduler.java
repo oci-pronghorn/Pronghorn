@@ -3,11 +3,11 @@ package com.ociweb.pronghorn.stage.scheduling;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.stage.PronghornStage;
 
 public class ThreadPerStageScheduler extends StageScheduler {
@@ -16,6 +16,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	private ExecutorService executorService; 
 	private volatile boolean isShuttingDown = false;
 	
+	//TODO: add low priority to the periodic threads? 
+	//TODO: check for Thread.yedld() want to phase that out and use parkNano
+	//TODO: Generative testing, end to end match and each stage confirmed against schema, bounds, behavior, relationship
 	
 	public ThreadPerStageScheduler(GraphManager graphManager) {
 		super(graphManager);		
@@ -181,12 +184,13 @@ public class ThreadPerStageScheduler extends StageScheduler {
 
 		do {
 			stage.run();			
-						
+					
+			//before doing yield must push any batched up writes.
+			GraphManager.publishAllWrites(graphManager, stage);
+			
 			//one out of every 128 passes we will yield to play nice since we may end up with a lot of threads
 			if (0==(0x7F&i++)){
-				//before doing yield must push any batched up writes.
-				GraphManager.publishAllWrites(graphManager, stage);
-				Thread.yield();
+				LockSupport.parkNanos(1);
 			}
 		} while ( continueRunning(this, stage));
 	}

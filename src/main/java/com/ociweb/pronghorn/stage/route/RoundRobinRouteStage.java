@@ -28,8 +28,6 @@ public class RoundRobinRouteStage extends PronghornStage {
 		
 	}
 
-	//int temp = 0;
-	
 	@Override
 	public void run() {		
 	    
@@ -40,19 +38,7 @@ public class RoundRobinRouteStage extends PronghornStage {
 	                        this.requestShutdown();
 	                        return;
 	                    }       
-	                } else {
-//	                    if (temp>10) {
-//    	                    try {
-//                                Thread.sleep(0,1);
-//                            } catch (InterruptedException e) {
-//                                // TODO Auto-generated catch block
-//                                e.printStackTrace();
-//                            }
-//	                    } else {
-//	                        temp = 0;
-//	                    }
-	                    
-////	                    temp++; //stops here most often but why?
+	                } else {	                    
 	                    return;
 	                }
 	            }
@@ -64,7 +50,6 @@ public class RoundRobinRouteStage extends PronghornStage {
 	                }               
 	                this.msgId = -2;
 	            } else {
-//	                temp--;
 	                return;
 	            }
 

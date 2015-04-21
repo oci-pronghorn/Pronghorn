@@ -878,7 +878,7 @@ public class GraphManager {
 	public static void publishAllWrites(GraphManager m, PronghornStage stage) {
 		int ringId;
 		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
-		while (-1 != (ringId=m.multOutputIds[idx++])) {	
+		while (-1 != (ringId=m.multOutputIds[idx++])) {	 //TODO: could be unrolled an inlined
 			RingBuffer.publishAllBatchedWrites(m.ringIdToRing[ringId]);				
 		}		
 	}
