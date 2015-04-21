@@ -108,37 +108,48 @@ public class StreamingConsumerTest {
 		
 	}
 	
-//	@Test
-//	public void generatorTest() {
-//	    
-//	       RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
-//	       ring.initBuffers();
-//	       
-//	       StreamingWriteVisitorGenerator swvg = new StreamingWriteVisitorGenerator(FROM, new Random(2), 30, 30);
-//	       
-//	       StreamingVisitorWriter svw = new StreamingVisitorWriter(ring, swvg);
-//	       	       	       
-//	       ByteArrayOutputStream baos = new ByteArrayOutputStream();
-//	       PrintStream ps = new PrintStream(baos);
-//	       StreamingReadVisitor visitor = new StreamingReadVisitorToJSON(ps); 
-//	       
-//	       StreamingVisitorReader reader = new StreamingVisitorReader(ring, visitor );
-//	        
-//	       svw.startup();
-//	       reader.startup();
-//
-//	       svw.run();
-//	       reader.run();
-//	       
-//	       svw.shutdown();
-//	       reader.shutdown(); 	    
-//	    
-//	       String results = new String(baos.toByteArray());
-//	       //spot check the produced JSON
-//	       assertTrue(results, results.indexOf("\"Trucks\":")>0);
-//	       assertTrue(results, results.indexOf("{\"Squad\":")>0);
-//	       
-//	}
+	@Test
+	public void generatorTest() {
+	    final int seed = 2;
+	    final long aLongValue = 2945688134060370505l;//hard coded value that comes from this seed 2
+	    final int aIntValue = 248789492;//hard coded value that comes from this seed 2
+	    final int aNegIntValue = -51;//hard coded value that comes from this seed 2
+        
+	    
+	       RingBuffer ring = new RingBuffer(new RingBufferConfig(FROM, 50, 30));
+	       ring.initBuffers();
+	       
+	       
+	       StreamingWriteVisitorGenerator swvg = new StreamingWriteVisitorGenerator(FROM, new Random(seed), 30, 30);
+	       
+	       StreamingVisitorWriter svw = new StreamingVisitorWriter(ring, swvg);
+	       	       	       
+	       ByteArrayOutputStream baos = new ByteArrayOutputStream();
+	       PrintStream ps = new PrintStream(baos);
+//	       PrintStream ps = System.out;
+	       StreamingReadVisitor visitor = new StreamingReadVisitorToJSON(ps); 
+	       
+	       StreamingVisitorReader reader = new StreamingVisitorReader(ring, visitor );
+	        
+	       svw.startup();
+	       reader.startup();
+
+	       svw.run();
+	       
+	       reader.run();
+	       
+	       svw.shutdown();
+	       reader.shutdown(); 	    
+	    
+	       String results = new String(baos.toByteArray());
+	       //spot check the produced JSON
+	       assertTrue(results, results.indexOf("\"Trucks\":")>0);
+	       assertTrue(results, results.indexOf("{\"Squad\":")>0);
+	       
+	       assertTrue(results, results.indexOf(Long.toString(aLongValue))>0);
+	       assertTrue(results, results.indexOf(Integer.toString(aIntValue))>0);
+	       assertTrue(results, results.indexOf(Integer.toString(aNegIntValue))>0);
+	}
 	
 	//@Test
 	public void matchingTestPositive() {

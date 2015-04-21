@@ -64,6 +64,7 @@ public class StreamingVisitorWriter {
 		        	//These name the message template but no need for them at this time
 		        	//String messageName = from.fieldNameScript[cursor];
 		        	//long messageId = from.fieldIdScript[cursor];
+		        	
 		        				        		        		        
 			        //visit all the fields in this fragment
 			        processFragment(startPos, cursor);
@@ -91,9 +92,10 @@ public class StreamingVisitorWriter {
 	    }
 	    
 	private void processFragment(int startPos, int cursor) {
-		int fieldsInScript = from.fragScriptSize[cursor];
+		int fieldsInFragment = from.fragScriptSize[cursor];
+		RingBuffer.markMsgBytesConsumed(outputRing, cursor);  
 		int i = startPos;
-		while (i<fieldsInScript) {
+		while (i<fieldsInFragment) {
 			int j = cursor+i++;
 			
 			switch (TokenBuilder.extractType(from.tokens[j])) {
@@ -138,11 +140,11 @@ public class StreamingVisitorWriter {
     				    int seqLen = visitor.pullSequenceLength(from.fieldNameScript[j],from.fieldIdScript[j]);
                         RingBuffer.addIntValue(seqLen, outputRing);    
 
-                        assert(i==fieldsInScript) :" this should be the last field";
+                        assert(i==fieldsInFragment) :" this should be the last field";
                         
     					nestedFragmentDepth++;
     					sequenceCounters[nestedFragmentDepth]= seqLen;
-    					cursorStack[nestedFragmentDepth] = cursor+fieldsInScript;
+    					cursorStack[nestedFragmentDepth] = cursor+fieldsInFragment;
     										
     					//do not pick up the nestedFragmentDepth adjustment, exit now because we know 
     					//group length is always the end of a fragment
@@ -271,6 +273,7 @@ public class StreamingVisitorWriter {
 		    	default: System.err.println("unknown "+TokenBuilder.tokenToString(from.tokens[j]));
 			}
 		}
+		
 		
 		//we are here because it did not exit early with close group or group length therefore this
 		//fragment is one of those that is not wrapped by a group open/close and we should do the close logic.

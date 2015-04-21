@@ -1202,7 +1202,7 @@ public final class RingBuffer {
         
         long p = headCache.value; 
         buffer[rbMask & (int)p] = (int)(value >>> 32);
-        buffer[rbMask & (int)(p+1)] = (int)(value & 0xFFFFFFFF);
+        buffer[rbMask & (int)(p+1)] = ((int)value);
         headCache.value = p+2;
         
     } 
