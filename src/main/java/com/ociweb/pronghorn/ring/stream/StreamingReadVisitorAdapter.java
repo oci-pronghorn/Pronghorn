@@ -21,7 +21,7 @@ public class StreamingReadVisitorAdapter implements StreamingReadVisitor {
 	}
 
 	@Override
-	public void visitFragmentOpen(String name, long id) {
+	public void visitFragmentOpen(String name, long id, int cursor) {
 	}
 
 	@Override

@@ -53,7 +53,7 @@ public class RingBufferSingleTemplateTest {
         	}
 
         	if (RingWriter.tryWriteFragment(ring,FRAG_LOC)) { //returns true if there is room to write this fragment
-     		
+        	    RingBuffer.writeTrailingCountOfBytesConsumed(ring, FRAG_LOC);
         		int arraySize = (--j*blockSize)/testSize;
         		byte[] arrayData = buildTestData(arraySize);
         		        		

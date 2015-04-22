@@ -37,9 +37,9 @@ public class StreamingReadVisitorDebugDelegate implements StreamingReadVisitor {
 	}
 
 	@Override
-	public void visitFragmentOpen(String name, long id) {
+	public void visitFragmentOpen(String name, long id, int cursor) {
 	    log.warn("visitFragmentOpen {}",name);
-	    delegate.visitFragmentOpen(name, id);
+	    delegate.visitFragmentOpen(name, id, cursor);
 	}
 
 	@Override

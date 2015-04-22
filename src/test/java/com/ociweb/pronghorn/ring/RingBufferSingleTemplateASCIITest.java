@@ -68,7 +68,8 @@ public class RingBufferSingleTemplateASCIITest {
         	}
         
         	if (RingWriter.tryWriteFragment(ring,FRAG_LOC)) { //returns true if there is room to write this fragment
-     		
+        	    RingBuffer.writeTrailingCountOfBytesConsumed(ring, FRAG_LOC);
+        	    
         		int stringSize = (--j*blockSize)/testSize;
         		String testString = buildTestString(stringSize);
         		        		

@@ -16,7 +16,7 @@ public interface StreamingReadVisitor {
 	
 	void visitTemplateClose(String name, long id);
 	
-	void visitFragmentOpen(String name, long id);
+	void visitFragmentOpen(String name, long id, int cursor);
 
 	void visitFragmentClose(String name, long id);
 

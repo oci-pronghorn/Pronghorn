@@ -333,14 +333,25 @@ public class FieldReferenceOffsetManager {
         return varLenMaxDensity;
 	}
 
-	private void accumVarLengthCounts(int fragmentStartIdx,
-			int varLenFieldCount, int varLenFieldLast) {
+    
+    public final static boolean  TAIL_ALL_FRAGS = false;
+    
+    
+	private void accumVarLengthCounts(int fragmentStartIdx,	int varLenFieldCount, int varLenFieldLast) {
 
-			//if last is 1 and count is 1 then don't else do			
-			if (1!=varLenFieldCount || 1!=varLenFieldLast) {     
-				fragDataSize[fragmentStartIdx]++;
-				fragNeedsAppendedCountOfBytesConsumed[fragmentStartIdx] = 1; //in all other cases its zero.
-			}
+	        if (TAIL_ALL_FRAGS) {
+	            
+	            fragDataSize[fragmentStartIdx]++;
+                fragNeedsAppendedCountOfBytesConsumed[fragmentStartIdx] = 1; //in all other cases its zero.
+                
+	        } else {
+    	    
+    			//if last is 1 and count is 1 then don't else do			
+    			if (1!=varLenFieldCount || 1!=varLenFieldLast) {     
+    				fragDataSize[fragmentStartIdx]++;
+    				fragNeedsAppendedCountOfBytesConsumed[fragmentStartIdx] = 1; //in all other cases its zero.
+    			}
+	        }
 	}
     
     

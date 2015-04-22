@@ -64,6 +64,8 @@ public class StreamingVisitorReader {
 		        				        		        	
 		        } else {
 		        	cursor = cursorStack[nestedFragmentDepth];
+		        	RingBuffer.mustReadMsgBytesConsumed(inputRing, cursor);
+		        	
 		        	startPos = 0;//this is not a new message so there is no id to jump over.			        
 		        	
 		        }
@@ -105,8 +107,8 @@ public class StreamingVisitorReader {
 			
 			switch (TokenBuilder.extractType(from.tokens[j])) {
 				case TypeMask.Group:
-					if (FieldReferenceOffsetManager.isGroupOpen(from, j)) {
-						visitor.visitFragmentOpen(fieldNameScript[j],from.fieldIdScript[j]);
+					if (FieldReferenceOffsetManager.isGroupOpen(from, j)) {					   
+						visitor.visitFragmentOpen(fieldNameScript[j],from.fieldIdScript[j], j);
 					} else {				
 						do {//close this member of the sequence or template
 							String name = fieldNameScript[j];

@@ -36,24 +36,41 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         int msgIdx = RingBuffer.takeMsgIdx(expectedInput);
         
         if (id != expectedFrom.fieldIdScript[msgIdx]) {
-            throw new AssertionError();
+            throw new AssertionError("expected message id: "+expectedFrom.fieldIdScript[msgIdx]+" was given "+id);
         }
     }
 
     @Override
     public void visitTemplateClose(String name, long id) {
+        endFragment();
+    }
+
+    private void endFragment() {
+//        if (expectedInput.readTrailCountOfBytesConsumed) {
+//          //has side effect of moving position
+//          int bytesConsumed = RingBuffer.takeValue(expectedInput);  //TODO: AAAA, need to remove once its part of releaseReadLock
+//          expectedInput.readTrailCountOfBytesConsumed = false;
+//        }
         RingBuffer.releaseReadLock(expectedInput);
     }
 
     @Override
-    public void visitFragmentOpen(String name, long id) {
+    public void visitFragmentOpen(String name, long id, int cursor) {
+        RingBuffer.mustReadMsgBytesConsumed(expectedInput, cursor);
+
         while (!RingBuffer.contentToLowLevelRead(expectedInput, 1)) {            
         };
+        
+       
+        //TODO: the expectedInput needs to have the trailing value.
+        
+        
     }
 
     @Override
     public void visitFragmentClose(String name, long id) {
-        RingBuffer.releaseReadLock(expectedInput);    }
+        endFragment();  
+    }
 
     @Override
     public void visitSequenceOpen(String name, long id, int length) {
@@ -64,7 +81,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
     @Override
     public void visitSequenceClose(String name, long id) {
-        RingBuffer.releaseReadLock(expectedInput);
+        endFragment();
     }
 
     @Override

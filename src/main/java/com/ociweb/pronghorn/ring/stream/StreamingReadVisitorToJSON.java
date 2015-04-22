@@ -43,7 +43,7 @@ public class StreamingReadVisitorToJSON implements StreamingReadVisitor {
 	}
 
 	@Override
-	public void visitFragmentOpen(String name, long id) {
+	public void visitFragmentOpen(String name, long id, int cursor) {
 		writeTab();
 		out.println("{\""+name+"\":");		
 		depth += step;

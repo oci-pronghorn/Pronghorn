@@ -194,7 +194,6 @@ public class RingBufferMultiTemplateTest {
 		        		
 		        		RingWriter.writeInt(ring, BOX_COUNT_LOC, 42);
 		        		RingWriter.writeBytes(ring, BOX_OWNER_LOC, source);
-	        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
 	        		
 		        		RingWriter.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
@@ -211,8 +210,6 @@ public class RingBufferMultiTemplateTest {
 		        		RingWriter.writeInt(ring, SAMPLE_MONTH_LOC ,12);
 		        		RingWriter.writeInt(ring, SAMPLE_DATE_LOC ,9);
 		        		RingWriter.writeDecimal(ring,  SAMPLE_WEIGHT, 2, (long) 123456);
-	        			assertTrue(ring.writeTrailingCountOfBytesConsumed);
-
 		        				        		
 		        		RingWriter.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
@@ -226,8 +223,6 @@ public class RingBufferMultiTemplateTest {
 	        			j--;
 	        			
 	        			RingWriter.writeBytes(ring, REST_VERSION, ASCII_VERSION);
-	        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
-
 	        			RingWriter.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
@@ -266,7 +261,9 @@ public class RingBufferMultiTemplateTest {
 	        		byte[] source = buildMockData((j*blockSize)/testSize);
 	        		RingBuffer.addValue(ring, 42);
 	        		RingBuffer.addByteArray(source, 0, source.length, ring);
-        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
+	        		if (!FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
+	        		    assertFalse(ring.writeTrailingCountOfBytesConsumed);
+	        		}
 	        		RingBuffer.publishWrites(ring);
 	        		break;
 	        	case 1: //samples
@@ -290,7 +287,9 @@ public class RingBufferMultiTemplateTest {
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_RESET_LOC);
 	        		RingBuffer.addByteArray(ASCII_VERSION, 0, ASCII_VERSION.length, ring);
-        			assertFalse(ring.writeTrailingCountOfBytesConsumed);
+	        		if (!FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
+	        		    assertFalse(ring.writeTrailingCountOfBytesConsumed);
+	        		}
 
 	        		RingBuffer.publishWrites(ring);
 

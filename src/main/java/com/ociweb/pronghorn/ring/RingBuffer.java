@@ -1266,8 +1266,12 @@ public final class RingBuffer {
     	RingBuffer.markBytesReadBase(ring);
     	
     	int msgIdx = readValue(0, ring.buffer,ring.mask,ring.workingTailPos.value++);
-    	ring.readTrailCountOfBytesConsumed =  msgIdx>=0 && (1==ring.ringWalker.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
+    	mustReadMsgBytesConsumed(ring, msgIdx);
     	return msgIdx;
+    }
+
+    public static void mustReadMsgBytesConsumed(RingBuffer ring, int msgIdx) {
+        ring.readTrailCountOfBytesConsumed =  msgIdx>=0 && (1==ring.ringWalker.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
     }
     
     
@@ -1288,10 +1292,11 @@ public final class RingBuffer {
      * @param ring
      */
     public static void releaseReadLock(RingBuffer ring) {
-    	if (ring.readTrailCountOfBytesConsumed) {
-    	//	int bytesConsumed = takeValue(ring);  //TODO: AAAA, need to integrate this feature to enable every message to have the trailing count.
-    	}
-    	
+        if (FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
+        	if (ring.readTrailCountOfBytesConsumed) {
+        		int bytesConsumed = takeValue(ring);  //TODO: AAAA, need to integrate this feature to enable every message to have the trailing count.
+        	}
+        } 	
     	//long expect = ring.tailPos.get();
     	if ((--ring.batchReleaseCountDown<=0) ) {
     	    assert(ring.ringWalker.cursor<=0 && !RingReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
