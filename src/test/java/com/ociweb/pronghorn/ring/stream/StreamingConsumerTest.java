@@ -151,7 +151,7 @@ public class StreamingConsumerTest {
 	       assertTrue(results, results.indexOf(Integer.toString(aNegIntValue))>0);
 	}
 	
-//	@Test
+	//@Test
 	public void matchingTestPositive() {
 	    
         RingBuffer ring1 = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));

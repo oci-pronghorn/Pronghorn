@@ -71,9 +71,13 @@ public class StreamingVisitorWriter {
 
 		        } else {
 		        	
+		            
+		            
 		        	cursor = cursorStack[nestedFragmentDepth];
 		        	startPos = 0;//this is not a new message so there is no id to jump over.
-			        			        
+			        
+		        	RingBuffer.markMsgBytesConsumed(outputRing, cursor);
+		        	
 			        //visit all the fields in this fragment
 			        processFragment(startPos, cursor);
  	

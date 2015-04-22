@@ -46,11 +46,14 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     }
 
     private void endFragment() {
-//        if (expectedInput.readTrailCountOfBytesConsumed) {
-//          //has side effect of moving position
-//          int bytesConsumed = RingBuffer.takeValue(expectedInput);  //TODO: AAAA, need to remove once its part of releaseReadLock
-//          expectedInput.readTrailCountOfBytesConsumed = false;
-//        }
+        if (expectedInput.readTrailCountOfBytesConsumed) {
+          //has side effect of moving position
+          int bytesConsumed = RingBuffer.takeValue(expectedInput);  //TODO: AAAA, need to remove once its part of releaseReadLock
+          expectedInput.readTrailCountOfBytesConsumed = false;
+        }
+        
+        //TODO: must confirm that we are at the right position to end this fragment
+        
         RingBuffer.releaseReadLock(expectedInput);
     }
 
@@ -110,6 +113,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     public void visitUnsignedLong(String name, long id, long value) {
         long temp;
         if ((temp=RingBuffer.takeLong(expectedInput)) != value) {
+            //TODO: the expected is WRONG and is looking at an index one too small.
             throw new AssertionError("expected long: "+Long.toHexString(temp)+" but got "+Long.toHexString(value));
         }
     }

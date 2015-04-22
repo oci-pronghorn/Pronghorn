@@ -607,7 +607,7 @@ public final class RingBuffer {
 	private static void doubleMaskTargetDoesNotWrap(int[] source,
 			final int rStart, final int rStop, int[] target, final int tStart,
 			int length) {
-		if (rStop >= rStart) {
+		if (rStop > rStart) {
 			//the source and target do not wrap
 			System.arraycopy(source, rStart, target, tStart, length);
 		} else {

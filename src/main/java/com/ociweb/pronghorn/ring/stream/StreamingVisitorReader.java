@@ -70,6 +70,11 @@ public class StreamingVisitorReader {
 		        	
 		        }
 		        int dataSize = from.fragDataSize[cursor];
+		        if (FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
+    		        if (inputRing.readTrailCountOfBytesConsumed) {
+    		            dataSize--; //because we add one more when calling release read lock for this same reason, refacor out later.
+    		        }
+		        }
 		        
 		        //must the next read position forward by the size of this fragment so next time we confirm that there is a fragment to read.
 				RingBuffer.confirmLowLevelRead(inputRing, dataSize);
@@ -91,7 +96,6 @@ public class StreamingVisitorReader {
 
 	private void oldShutdown() {
 		int zero = RingBuffer.takeValue(inputRing);
-		assert(0==zero);
 		RingBuffer.releaseAll(inputRing);
 		return;
 	}

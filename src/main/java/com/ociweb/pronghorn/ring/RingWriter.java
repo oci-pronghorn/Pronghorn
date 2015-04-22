@@ -285,6 +285,10 @@ public class RingWriter {
 	 */
 	public static void blockWriteFragment(RingBuffer ring, int messageTemplateLOC) {
 	
+	     if (ring.writeTrailingCountOfBytesConsumed) {
+	         RingBuffer.writeTrailingCountOfBytesConsumed(ring, ring.ringWalker.nextWorkingHead -1 ); 
+	     }
+	       
 		FieldReferenceOffsetManager from = RingBuffer.from(ring);
 		
 		RingWalker consumerData = ring.ringWalker;
