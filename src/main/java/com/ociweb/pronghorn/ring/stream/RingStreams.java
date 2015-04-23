@@ -66,7 +66,6 @@ public class RingStreams {
         	if (msgId<0) { //exit logic
         		int bytesCount = RingBuffer.takeValue(inputRing);
         		assert(0==bytesCount);
-            	
         		releaseReadLock(inputRing);
           		break;
         	} else {          

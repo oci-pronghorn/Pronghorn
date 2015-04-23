@@ -1292,11 +1292,12 @@ public final class RingBuffer {
      * @param ring
      */
     public static void releaseReadLock(RingBuffer ring) {
-        if (FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
+     //   if (FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
         	if (ring.readTrailCountOfBytesConsumed) {
         		int bytesConsumed = takeValue(ring);  //TODO: AAAA, need to integrate this feature to enable every message to have the trailing count.
+        		ring.readTrailCountOfBytesConsumed = false;
         	}
-        } 	
+     //   } 	
     	//long expect = ring.tailPos.get();
     	if ((--ring.batchReleaseCountDown<=0) ) {
     	    assert(ring.ringWalker.cursor<=0 && !RingReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";

@@ -11,133 +11,146 @@ public class StreamingReadVisitorDebugDelegate implements StreamingReadVisitor {
 	private ByteBuffer tempByteBuffer = ByteBuffer.allocate(512);
 	private StreamingReadVisitor delegate;
 	private Logger log = LoggerFactory.getLogger(StreamingReadVisitorDebugDelegate.class);
+	private long templateCount;
+	private int tab;
+	private String tabs = "                                                    ";
 	
 	public StreamingReadVisitorDebugDelegate(StreamingReadVisitor delegate) {
 	    this.delegate = delegate;
 	    
 	}
 	
+	private String buildTab() {
+	    return tabs.substring(0, tab);
+	}
+	
 	@Override
 	public boolean paused() {
-	    log.warn("paused");
+	    log.warn(buildTab()+"paused");
 		return delegate.paused();
 	}
 
 	@Override
-	public void visitTemplateOpen(String name, long id) {
-	    log.warn("visitTemplateOpen {}",name);
-	    
+	public void visitTemplateOpen(String name, long id) {	    
+	    log.warn(buildTab()+"visitTemplateOpen {}   ordinal:{}",name,++templateCount);	    
 	    delegate.visitTemplateOpen(name, id);
+	    tab++;
 	}
 	
 	@Override
 	public void visitTemplateClose(String name, long id) {
-	    log.warn("visitTemplateClose {}",name);
+	    tab--;
+	    log.warn(buildTab()+"visitTemplateClose {}",name);
 	    delegate.visitTemplateClose(name, id);
 	}
 
 	@Override
 	public void visitFragmentOpen(String name, long id, int cursor) {
-	    log.warn("visitFragmentOpen {}",name);
+	    log.warn(buildTab()+"visitFragmentOpen {}",name);
 	    delegate.visitFragmentOpen(name, id, cursor);
+	    tab++;
 	}
 
 	@Override
 	public void visitFragmentClose(String name, long id) {
-	    log.warn("visitFragmentClose {}",name);
+	    
+	    tab--;
+	    log.warn(buildTab()+"visitFragmentClose {}",name);
 	    delegate.visitFragmentClose(name, id);
 	}
 
 	@Override
 	public void visitSequenceOpen(String name, long id, int length) {
-	    log.warn("visitSequenceOpen {}",name);
+	    tab++;
+	    log.warn(buildTab()+"visitSequenceOpen {} length {}",name,length);
 	    delegate.visitSequenceOpen(name, id, length);
 	}
 
 	@Override
 	public void visitSequenceClose(String name, long id) {
-	    log.warn("visitSequenceClose {}",name);
+	    tab--;
+	    log.warn(buildTab()+"visitSequenceClose {}",name);
 	    delegate.visitSequenceClose(name,id);
 	}
 
 	@Override
 	public void visitSignedInteger(String name, long id, int value) {
-	    log.warn("visitSignedInteger {}",name);
+	    log.warn(buildTab()+"visitSignedInteger {}",name);
 	    delegate.visitSignedInteger(name,id,value);
 	}
 
 	@Override
 	public void visitUnsignedInteger(String name, long id, long value) {
-	    log.warn("visitUnsignedInteger {}",name);
+	    log.warn(buildTab()+"visitUnsignedInteger {} value {}", name, value);
 	    delegate.visitUnsignedInteger(name,id,value);
 	}
 
 	@Override
 	public void visitSignedLong(String name, long id, long value) {
-	    log.warn("visitSignedLong {}",name);
+	    log.warn(buildTab()+"visitSignedLong {}",name);
 	    delegate.visitSignedLong(name,id,value);
 	}
 
 	@Override
 	public void visitUnsignedLong(String name, long id, long value) {	
-	    log.warn("visitUnsignedLong {}",name);
+	    log.warn(buildTab()+"visitUnsignedLong {} value {}",name,value);
 	    delegate.visitUnsignedLong(name,id,value);
 	}
 
 	@Override
 	public void visitDecimal(String name, long id, int exp, long mant) {
-	    log.warn("visitDecimal {}",name);
+	    log.warn(buildTab()+"visitDecimal {}",name);
 	    delegate.visitDecimal(name,id,exp,mant);
 	}
 
 	@Override
 	public void visitUTF8(String name, long id, Appendable value) {
-	    log.warn("visitUTF8 {}",name);
+	    log.warn(buildTab()+"visitUTF8 {}",name);
 	    delegate.visitUTF8(name,id,value);
 	}
 
 	@Override
 	public Appendable targetASCII(String name, long id) {
-	    log.warn("targetASCII {}",name);
+	    log.warn(buildTab()+"targetASCII {}",name);
 	    
 	    return delegate.targetASCII(name,id);
 	}
 
 	@Override
 	public Appendable targetUTF8(String name, long id) {
-	    log.warn("targetUTF8 {}",name);
+	    log.warn(buildTab()+"targetUTF8 {}",name);
 	    
 	    return delegate.targetUTF8(name,id);
 	}
 
 	@Override
 	public ByteBuffer targetBytes(String name, long id, int length) {
-	    log.warn("targetBytes {}",name);
+	    log.warn(buildTab()+"targetBytes {}",name);
 	    
 	    return delegate.targetBytes(name, id, length);
 	}
 
 	@Override
 	public void visitBytes(String name, long id, ByteBuffer value) {
-	    log.warn("visitBytes {}",name);
+	    log.warn(buildTab()+"visitBytes {}",name);
 	    delegate.visitBytes(name, id, value);
 	}
 
 	@Override
 	public void visitASCII(String name, long id, Appendable value) {
-	    log.warn("visitASCII {}",name);
+	    log.warn(buildTab()+"visitASCII {}",name);
 	    delegate.visitASCII(name, id, value);
 	}
 
 	@Override
 	public void startup() {
-	    log.warn("startup");
+	    log.warn(buildTab()+"startup");
 	    delegate.startup();
 	}
 
 	@Override
 	public void shutdown() {
-	    log.warn("shutdown");
+	    log.warn(buildTab()+"shutdown");
 	    delegate.shutdown();
 	}
 

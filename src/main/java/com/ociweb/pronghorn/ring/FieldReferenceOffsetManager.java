@@ -334,7 +334,7 @@ public class FieldReferenceOffsetManager {
 	}
 
     
-    public final static boolean  TAIL_ALL_FRAGS = false;
+    public final static boolean  TAIL_ALL_FRAGS = true; //Inline
     
     
 	private void accumVarLengthCounts(int fragmentStartIdx,	int varLenFieldCount, int varLenFieldLast) {

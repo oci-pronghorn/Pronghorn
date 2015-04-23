@@ -5,7 +5,6 @@ import java.nio.ByteBuffer;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingReader;
-import com.ociweb.pronghorn.ring.RingWriter;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public abstract class InputRingReaderMethod {

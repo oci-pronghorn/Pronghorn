@@ -70,10 +70,8 @@ public class StreamingVisitorReader {
 		        	
 		        }
 		        int dataSize = from.fragDataSize[cursor];
-		        if (FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
-    		        if (inputRing.readTrailCountOfBytesConsumed) {
-    		            dataSize--; //because we add one more when calling release read lock for this same reason, refacor out later.
-    		        }
+		        if (inputRing.readTrailCountOfBytesConsumed){
+		            dataSize--;
 		        }
 		        
 		        //must the next read position forward by the size of this fragment so next time we confirm that there is a fragment to read.
@@ -89,12 +87,14 @@ public class StreamingVisitorReader {
 		        inputRing.byteWorkingTailPos.value += inputRing.buffer[(int) (inputRing.mask&(inputRing.workingTailPos.value-1))];
 		        
 		        
+		        
+		        //this will inc tail pos by one
 		        RingBuffer.releaseReadLock(inputRing);
 		}	
 		
 	}
 
-	private void oldShutdown() {
+    private void oldShutdown() {
 		int zero = RingBuffer.takeValue(inputRing);
 		RingBuffer.releaseAll(inputRing);
 		return;
@@ -102,6 +102,7 @@ public class StreamingVisitorReader {
 
 	//TODO: this method is way way to big.
 	private void processFragment(int startPos, int cursor) {
+
 		int fieldsInScript = from.fragScriptSize[cursor];
 		String[] fieldNameScript = from.fieldNameScript;
 		int i = startPos;
@@ -111,7 +112,7 @@ public class StreamingVisitorReader {
 			
 			switch (TokenBuilder.extractType(from.tokens[j])) {
 				case TypeMask.Group:
-					if (FieldReferenceOffsetManager.isGroupOpen(from, j)) {					   
+					if (FieldReferenceOffsetManager.isGroupOpen(from, j)) {
 						visitor.visitFragmentOpen(fieldNameScript[j],from.fieldIdScript[j], j);
 					} else {				
 						do {//close this member of the sequence or template
@@ -144,6 +145,7 @@ public class StreamingVisitorReader {
 					}					
 					break;
 				case TypeMask.GroupLength:
+		
 					assert(i==fieldsInScript) :" this should be the last field";
 					int seqLen = RingBuffer.readValue(idx, inputRing);
 					idx++;

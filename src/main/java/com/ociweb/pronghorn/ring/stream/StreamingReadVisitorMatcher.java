@@ -25,6 +25,11 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
     @Override
     public boolean paused() {
+//        //This is the end of a fragment and may need to move forward and remove the trailing byte
+//        if (expectedInput.readTrailCountOfBytesConsumed) {            
+//            RingBuffer.takeValue(expectedInput);            
+//            expectedInput.readTrailCountOfBytesConsumed = false;
+//        }
         return false;
     }
 
@@ -46,6 +51,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     }
 
     private void endFragment() {
+        
         if (expectedInput.readTrailCountOfBytesConsumed) {
           //has side effect of moving position
           int bytesConsumed = RingBuffer.takeValue(expectedInput);  //TODO: AAAA, need to remove once its part of releaseReadLock
@@ -59,6 +65,9 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
     @Override
     public void visitFragmentOpen(String name, long id, int cursor) {
+        
+
+                
         RingBuffer.mustReadMsgBytesConsumed(expectedInput, cursor);
 
         while (!RingBuffer.contentToLowLevelRead(expectedInput, 1)) {            
@@ -77,9 +86,17 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
     @Override
     public void visitSequenceOpen(String name, long id, int length) {
+
         if (RingBuffer.takeValue(expectedInput)!=length) {
             throw new AssertionError();
         };
+        
+        //This is the end of a fragment and may need to move forward and remove the trailing byte
+        if (expectedInput.readTrailCountOfBytesConsumed) {            
+            RingBuffer.takeValue(expectedInput);            
+            expectedInput.readTrailCountOfBytesConsumed = false;
+        }
+        
     }
 
     @Override

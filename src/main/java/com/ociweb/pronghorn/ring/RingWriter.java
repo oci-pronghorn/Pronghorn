@@ -287,6 +287,10 @@ public class RingWriter {
 	
 	     if (ring.writeTrailingCountOfBytesConsumed) {
 	         RingBuffer.writeTrailingCountOfBytesConsumed(ring, ring.ringWalker.nextWorkingHead -1 ); 
+	     } else {
+	         if (FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
+	             System.err.println("error, must not be false");
+	         }
 	     }
 	       
 		FieldReferenceOffsetManager from = RingBuffer.from(ring);

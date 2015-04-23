@@ -2,9 +2,6 @@ package com.ociweb.pronghorn.ring.proxy;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,9 +9,6 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
-import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
-import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
-import com.ociweb.pronghorn.ring.util.hash.MurmurHash;
 
 public class OutputRingInvocationHandler extends RingHandler implements InvocationHandler {
 	//TODO: NOTE: this approach does NOT support nested structures at all.
