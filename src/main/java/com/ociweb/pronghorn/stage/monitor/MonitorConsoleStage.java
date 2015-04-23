@@ -100,7 +100,7 @@ public class MonitorConsoleStage extends PronghornStage {
 			
 			long value = hists[i].valueAtPercent(.5);
 			
-			if (value>80 || value < 1 ) {
+			if ((value>80 || value < 1 ) && (Histogram.sampleCount(hists[i])>2)) {
 				PronghornStage producer = GraphManager.getRingProducer(graphManager,  inputs[i].ringId);
 				//NOTE: may need to walk up tree till we find this object, (future feature)
 				String ringName;
@@ -109,7 +109,7 @@ public class MonitorConsoleStage extends PronghornStage {
 				} else {
 					ringName = "Unknown";
 				}
-				
+					
 				System.out.println("    "+i+" "+ringName+" Queue Fill Median:"+value+"% Average:"+(Histogram.accumulatedTotal(hists[i])/Histogram.sampleCount(hists[i]))+"%");
 			}
 		}
