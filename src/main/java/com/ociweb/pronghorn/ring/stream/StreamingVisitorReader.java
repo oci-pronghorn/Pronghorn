@@ -70,9 +70,6 @@ public class StreamingVisitorReader {
 		        	
 		        }
 		        int dataSize = from.fragDataSize[cursor];
-		        if (inputRing.readTrailCountOfBytesConsumed){
-		            dataSize--;
-		        }
 		        
 		        //must the next read position forward by the size of this fragment so next time we confirm that there is a fragment to read.
 				RingBuffer.confirmLowLevelRead(inputRing, dataSize);
@@ -87,8 +84,11 @@ public class StreamingVisitorReader {
 		        inputRing.byteWorkingTailPos.value += inputRing.buffer[(int) (inputRing.mask&(inputRing.workingTailPos.value-1))];
 		        
 		        
+		        if (inputRing.readTrailCountOfBytesConsumed){
+		            inputRing.workingTailPos.value--;
+		        }
 		        
-		        //this will inc tail pos by one
+		        //this will inc tail pos by one so we dec above
 		        RingBuffer.releaseReadLock(inputRing);
 		}	
 		
