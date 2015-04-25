@@ -29,9 +29,9 @@ public class TapeWriteStage extends PronghornStage {
 	//           (4)    byte count of primary (this is always checked first for space when reading)
 	
 	private ByteBuffer header = ByteBuffer.allocate(8);
-	private IntBuffer  headerAsInts = header.asIntBuffer();;
+	private IntBuffer  headerAsInts = header.asIntBuffer();
 	
-	public int moreToCopy=-2;;
+	public int moreToCopy=-2;
 	
 	public TapeWriteStage(GraphManager gm, RingBuffer source, FileChannel fileChannel) {
 		super(gm,source,NONE);
@@ -41,7 +41,7 @@ public class TapeWriteStage extends PronghornStage {
 		//these restrictions are also in keeping with optimal usage of SSD/Spindle drives that prefer to read/write larger blocks
 		//when consuming stage of the reading ring can pull as little as it wants but that first ring should be large for optimal IO.
 		
-		this.source = source;;
+		this.source = source;
         this.fileChannel = fileChannel;
 	}
 	
@@ -74,7 +74,7 @@ public class TapeWriteStage extends PronghornStage {
 	public void run() {		
 		while (processAvailData(this)) {
 			//keeps going while there is room to write or there is data to be written.
-		};
+		}
 	}
 
 	private static boolean processAvailData(TapeWriteStage ss) {

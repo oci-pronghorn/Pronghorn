@@ -17,12 +17,8 @@ public class ConsoleStage extends PronghornStage {
 	private long nextOutTime = System.currentTimeMillis()+stepTime;
 		
 	//TODO: AA, need validation stage to confirm values are in range and text is not too long
-	
+
 	public ConsoleStage(GraphManager gm, RingBuffer inputRing) {
-		this(gm,inputRing,-1);
-	}
-	
-	public ConsoleStage(GraphManager gm, RingBuffer inputRing, int pillId) {
 		super(gm, inputRing, NONE);
 		this.inputRing = inputRing;
 

@@ -4,10 +4,8 @@ import static com.ociweb.pronghorn.ring.RingBuffer.addByteArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteMask;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.publishWrites;
 import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
-import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
 import static org.junit.Assert.assertEquals;
@@ -426,7 +424,7 @@ public class RingBufferPipeline {
 	//using length of 61 because it is prime and will wrap at odd places
 	private final byte[] testArray = testString.getBytes();//, this is a reasonable test message.".getBytes();
 	private final byte[] tempArray = new byte[testArray.length];
-	private final long testMessages = 1000000; 
+	private final long testMessages = 100000; 
 	private final int stages = 4;
 	private final int splits = 2;
 		

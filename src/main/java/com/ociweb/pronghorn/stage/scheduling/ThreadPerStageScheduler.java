@@ -213,7 +213,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				} catch (InterruptedException e) {
 					break;
 				}
-			};
+			}
 									
 		} while (!isShuttingDown);
 	}
