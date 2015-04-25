@@ -35,7 +35,7 @@ public class RingBufferSingleTemplateASCIITest {
         int k = testSize;
         while (RingReader.tryReadFragment(ring)) {
         	if (RingReader.isNewMessage(ring)) {
-        		target.setLength(0);;
+        		target.setLength(0);
         		assertEquals(0, RingReader.getMsgIdx(ring));
         		
 	        	int expectedLength = (varDataMax*(--k))/testSize;	

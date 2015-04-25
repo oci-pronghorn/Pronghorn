@@ -760,16 +760,6 @@ public class LocalHeap {
         heap.setInternal(targetIdx, buffer, startFrom, LocalHeap.length(sourceIdx,heap));
     }
 
-    private int start(int offset) {
-        return tat[offset];
-    }
-
-    private int stop(int offset) {
-        return tat[offset + 1];
-    }
-
-
-
 	public static void addLocalHeapValue(int heapId, int sourceLen, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
 	    final int p = rbRingBuffer.byteWorkingHeadPos.value;
 	    if (sourceLen > 0) {

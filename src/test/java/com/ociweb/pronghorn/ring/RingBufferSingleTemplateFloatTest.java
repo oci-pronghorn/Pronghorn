@@ -1,6 +1,5 @@
 package com.ociweb.pronghorn.ring;
 
-import static com.ociweb.pronghorn.ring.RingWalker.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 

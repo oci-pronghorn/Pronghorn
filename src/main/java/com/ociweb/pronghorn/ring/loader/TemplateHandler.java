@@ -315,19 +315,19 @@ public class TemplateHandler extends DefaultHandler {
 
             if (qName.equalsIgnoreCase("uint32")) {
                 fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerUnsignedOptional : TypeMask.IntegerUnsigned;
-                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                commonIdAttributes(attributes);
             } else if (qName.equalsIgnoreCase("int32")) {
                 fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerSignedOptional : TypeMask.IntegerSigned;
-                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                commonIdAttributes(attributes);
             } else if (qName.equalsIgnoreCase("uint64")) {
                 fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongUnsignedOptional : TypeMask.LongUnsigned;
-                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
+                commonIdAttributes(attributes);
             } else if (qName.equalsIgnoreCase("int64")) {
                 fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongSignedOptional : TypeMask.LongSigned;
-                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
+                commonIdAttributes(attributes);
             } else if (qName.equalsIgnoreCase("length")) {
                 fieldType = TypeMask.GroupLength;// NOTE: length is not optional
-                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                commonIdAttributes(attributes);
             } else if (qName.equalsIgnoreCase("string")) {
                 if ("unicode".equals(attributes.getValue("charset"))) {
                     // default is required
@@ -338,11 +338,11 @@ public class TemplateHandler extends DefaultHandler {
                     fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.TextASCIIOptional
                             : TypeMask.TextASCII;
                 }
-                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                commonIdAttributes(attributes);
             } else if (qName.equalsIgnoreCase("decimal")) {
                 fieldPMapInc = 2; // any operators must count as two PMap fields.
                 fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.DecimalOptional  : TypeMask.Decimal;
-                commonIdAttributes(attributes, DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                commonIdAttributes(attributes);
 
                 fieldExponentOperator = OperatorMask.Field_None;
                 fieldMantissaOperator = OperatorMask.Field_None;
@@ -481,7 +481,7 @@ public class TemplateHandler extends DefaultHandler {
         return dictionaryName;
     }
 
-    private void commonIdAttributes(Attributes attributes, long defaultAbsent) throws SAXException {
+    private void commonIdAttributes(Attributes attributes) throws SAXException {
     	fieldOperator = OperatorMask.Field_None;
         fieldId = Integer.parseInt(attributes.getValue("id"));
         if (fieldId < 0) {

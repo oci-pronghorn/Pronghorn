@@ -10,8 +10,6 @@ import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.stream.StreamingReadVisitor;
-import com.ociweb.pronghorn.ring.stream.StreamingReadVisitorAdapter;
 
 public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
@@ -37,7 +35,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     public void visitTemplateOpen(String name, long id) {
         
         while (!RingBuffer.contentToLowLevelRead(expectedInput, 1)) {            
-        };
+        }
         int msgIdx = RingBuffer.takeMsgIdx(expectedInput);
         
         if (id != expectedFrom.fieldIdScript[msgIdx]) {
@@ -71,7 +69,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         RingBuffer.mustReadMsgBytesConsumed(expectedInput, cursor);
 
         while (!RingBuffer.contentToLowLevelRead(expectedInput, 1)) {            
-        };
+        }
         
        
         //TODO: the expectedInput needs to have the trailing value.
@@ -89,7 +87,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
         if (RingBuffer.takeValue(expectedInput)!=length) {
             throw new AssertionError();
-        };
+        }
         
         //This is the end of a fragment and may need to move forward and remove the trailing byte
         if (expectedInput.readTrailCountOfBytesConsumed) {            

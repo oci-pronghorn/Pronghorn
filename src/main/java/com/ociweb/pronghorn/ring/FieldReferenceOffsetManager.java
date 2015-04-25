@@ -74,12 +74,6 @@ public class FieldReferenceOffsetManager {
     public final static int RW_FIELD_OFF_MASK = (1<<RW_FIELD_OFF_BITS)-1;
     
 	
-    /**
-     * Constructor is only for unit tests.
-     */
-    private FieldReferenceOffsetManager() {    	
-    	this(SINGLE_MESSAGE_BYTEARRAY_TOKENS, ZERO_PREMABLE, SINGLE_MESSAGE_BYTEARRAY_NAMES, SINGLE_MESSAGE_BYTEARRAY_IDS);
-    }
 
     public FieldReferenceOffsetManager(int[] scriptTokens, String[] scriptNames, long[] scriptIds) {
     	this(scriptTokens,(short)0,scriptNames,scriptIds);
@@ -649,12 +643,6 @@ public class FieldReferenceOffsetManager {
 	public static int minFragmentSize(FieldReferenceOffsetManager from) {
 		return from.minFragmentDataSize;
 	}
-
-	//NOTE: we use a special mask because the 4th bit may be on or off depending on pmap usage
-	private static int TEMPL_MASK =  (0x17 << TokenBuilder.SHIFT_OPER) |
-			                         (TokenBuilder.MASK_TYPE << TokenBuilder.SHIFT_TYPE);
-	private static int TEMPL_VALUE = (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER) | 
-			                           (TypeMask.Group << TokenBuilder.SHIFT_TYPE);
 		
 	public static boolean isTemplateStart(FieldReferenceOffsetManager from, int cursorPosition) {
 		//checks the shortcut hasSimpleMessagesOnly first before any complex logic

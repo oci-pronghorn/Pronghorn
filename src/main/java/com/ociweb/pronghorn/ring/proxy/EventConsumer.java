@@ -5,8 +5,6 @@ import java.lang.reflect.Proxy;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingWriter;
-import com.ociweb.pronghorn.ring.proxy.OutputRingInvocationHandler;
-import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
 
 public class EventConsumer {
 
@@ -53,6 +51,7 @@ public class EventConsumer {
 	}
 
 	public static void publish(EventConsumer consumer, Object dq) {
+	    assert(null==consumer.cached || dq==consumer.cached);
 		RingWriter.publishWrites(consumer.output);
 	}
 

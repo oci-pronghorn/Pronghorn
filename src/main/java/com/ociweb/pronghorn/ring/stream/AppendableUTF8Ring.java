@@ -7,7 +7,6 @@ import java.io.IOException;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingWriter;
 
 public class AppendableUTF8Ring implements Appendable {
 
@@ -36,7 +35,7 @@ public class AppendableUTF8Ring implements Appendable {
         outputTarget+=step;
         RingBuffer.addMsgIdx(ringBuffer, 0);
 		RingBuffer.validateVarLength(ringBuffer, csq.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-		RingBuffer.addBytePosAndLen(ringBuffer, ringBuffer.byteWorkingHeadPos.value, RingBuffer.copyUTF8ToByte(csq, 0, csq.length(), ringBuffer));
+		RingBuffer.addBytePosAndLen(ringBuffer, ringBuffer.byteWorkingHeadPos.value, RingBuffer.copyUTF8ToByte(csq, csq.length(), ringBuffer));
 
 		RingBuffer.publishWrites(ringBuffer);
 
@@ -50,7 +49,7 @@ public class AppendableUTF8Ring implements Appendable {
         outputTarget+=step;
         RingBuffer.addMsgIdx(ringBuffer, 0);
 		RingBuffer.validateVarLength(ringBuffer, csq.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-		RingBuffer.addBytePosAndLen(ringBuffer, ringBuffer.byteWorkingHeadPos.value,  RingBuffer.copyUTF8ToByte(csq, start, end-start, ringBuffer));
+		RingBuffer.addBytePosAndLen(ringBuffer, ringBuffer.byteWorkingHeadPos.value,  RingBuffer.copyUTF8ToByte(csq, end-start, ringBuffer));
 		
 		RingBuffer.publishWrites(ringBuffer);
 
@@ -65,7 +64,7 @@ public class AppendableUTF8Ring implements Appendable {
 	    RingBuffer.addMsgIdx(ringBuffer, 0);
 		RingBuffer.validateVarLength(ringBuffer, temp.length<<3);
 		 //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-		RingBuffer.addBytePosAndLen(ringBuffer, ringBuffer.byteWorkingHeadPos.value, RingBuffer.copyUTF8ToByte(temp, 0, temp.length, ringBuffer));
+		RingBuffer.addBytePosAndLen(ringBuffer, ringBuffer.byteWorkingHeadPos.value, RingBuffer.copyUTF8ToByte(temp, temp.length, ringBuffer));
 
 		RingBuffer.publishWrites(ringBuffer);
 

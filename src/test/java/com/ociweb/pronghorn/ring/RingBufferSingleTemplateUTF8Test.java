@@ -34,7 +34,7 @@ public class RingBufferSingleTemplateUTF8Test {
         int k = testSize;
         while (RingReader.tryReadFragment(ring)) {
         	if (RingReader.isNewMessage(ring)) {
-        		target.setLength(0);;
+        		target.setLength(0);
         		assertEquals(0, RingReader.getMsgIdx(ring));
         		
 	        	int expectedCharLength = (varDataMax*(--k))/testSize;

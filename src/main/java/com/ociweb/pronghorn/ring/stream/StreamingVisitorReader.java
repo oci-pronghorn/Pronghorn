@@ -95,7 +95,7 @@ public class StreamingVisitorReader {
 	}
 
     private void oldShutdown() {
-		int zero = RingBuffer.takeValue(inputRing);
+		RingBuffer.takeValue(inputRing);
 		RingBuffer.releaseAll(inputRing);
 		return;
 	}

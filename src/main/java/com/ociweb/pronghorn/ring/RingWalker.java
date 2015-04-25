@@ -35,14 +35,13 @@ public class RingWalker {
 	int nextCursor = -1;
     
 	
-	RingWalker(int mask, FieldReferenceOffsetManager from) {
-		this(false, false, -1, -1, -1, 0, new int[from.maximumFragmentStackDepth], -1, from, mask);
+	RingWalker(FieldReferenceOffsetManager from) {
+		this(false, false, -1, new int[from.maximumFragmentStackDepth], -1, from);
 	}
 	
 	
-    private RingWalker(boolean isNewMessage, boolean waiting, long waitingNextStop,
-                                    long bnmHeadPosCache, int cursor, int activeFragmentDataSize, int[] seqStack, int seqStackHead,
-                                    FieldReferenceOffsetManager from, int rbMask) {
+    private RingWalker(boolean isNewMessage, boolean waiting, int cursor,
+                                    int[] seqStack, int seqStackHead, FieldReferenceOffsetManager from) {
     	if (null==from) {
     		throw new UnsupportedOperationException();
     	}
@@ -165,7 +164,7 @@ public class RingWalker {
         if ( (lastTokenOfFragment &  ( 0x1B <<TokenBuilder.SHIFT_TYPE)) != ( 0x10<<TokenBuilder.SHIFT_TYPE ) ) {
         	 ringBufferConsumer.nextWorkingTail = target;//save the size of this new fragment we are about to read 
         } else {
-        	 openOrCloseSequenceWhileInsideFragment(ringBuffer,	ringBufferConsumer, tmpNextWokingTail, target, lastScriptPos, lastTokenOfFragment);
+        	 openOrCloseSequenceWhileInsideFragment(ringBuffer,	ringBufferConsumer, tmpNextWokingTail, lastScriptPos, lastTokenOfFragment);
         	 ringBufferConsumer.nextWorkingTail = target;
         }
         
@@ -174,8 +173,7 @@ public class RingWalker {
 
 	private static void openOrCloseSequenceWhileInsideFragment(
 			RingBuffer ringBuffer, final RingWalker ringBufferConsumer,
-			long tmpNextWokingTail, final long target, int lastScriptPos,
-			int lastTokenOfFragment) {
+			long tmpNextWokingTail, int lastScriptPos, int lastTokenOfFragment) {
 		//this is a group or groupLength that has appeared while inside a fragment that does not start a message
 
 		 //this single bit on indicates that this starts a sequence length  00100

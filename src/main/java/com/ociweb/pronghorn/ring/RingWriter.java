@@ -5,7 +5,6 @@ import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedInt;
-import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
@@ -139,7 +138,7 @@ public class RingWriter {
     	RingBuffer.validateVarLength(rb, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask,
 				rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc),				
-				rb.byteWorkingHeadPos.value, RingBuffer.copyUTF8ToByte(source, 0, source.length(), rb), RingBuffer.bytesWriteBase(rb));
+				rb.byteWorkingHeadPos.value, RingBuffer.copyUTF8ToByte(source, source.length(), rb), RingBuffer.bytesWriteBase(rb));
     }
 
     public static void writeUTF8(RingBuffer rb, int loc, CharSequence source, int offset, int length) {
@@ -153,7 +152,7 @@ public class RingWriter {
     	assert((loc&0x1E<<OFF_BITS)==TypeMask.TextUTF8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==TypeMask.ByteArray<<OFF_BITS) : "Expected to write some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
     	
     	RingBuffer.validateVarLength(rb, source.length<<3); //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)      
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), rb.byteWorkingHeadPos.value, RingBuffer.copyUTF8ToByte(source, 0, source.length, rb), RingBuffer.bytesWriteBase(rb));
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), rb.byteWorkingHeadPos.value, RingBuffer.copyUTF8ToByte(source, source.length, rb), RingBuffer.bytesWriteBase(rb));
     }
       
     public static void writeUTF8(RingBuffer rb, int loc, char[] source, int offset, int length) {

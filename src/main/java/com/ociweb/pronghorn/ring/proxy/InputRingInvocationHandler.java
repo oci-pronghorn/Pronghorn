@@ -39,7 +39,7 @@ public class InputRingInvocationHandler extends RingHandler implements Invocatio
 				if (null!=readers[key]) {
 					throw new UnsupportedOperationException();
 				}
-				readers[key] = InputRingReaderMethod.buildReadForYourType(inputRing, fieldAnnonation.decimalPlaces(), fieldLoc, (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE, from);
+				readers[key] = InputRingReaderMethod.buildReadForYourType(inputRing, fieldLoc, (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE, from);
 								
 			}
 		}

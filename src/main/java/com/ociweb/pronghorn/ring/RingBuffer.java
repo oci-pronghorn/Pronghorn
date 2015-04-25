@@ -263,7 +263,7 @@ public final class RingBuffer {
         this.maxByteSize =  1 << byteBits;
         this.byteMask = maxByteSize - 1;
 
-        this.ringWalker = new RingWalker(mask, from);
+        this.ringWalker = new RingWalker(from);
         this.constByteBuffer = byteConstants;
 
         
@@ -909,21 +909,21 @@ public final class RingBuffer {
 	}
 
 	public static void addUTF8(CharSequence source, RingBuffer rb) {
-	    addUTF8(source, 0, null==source? -1 : source.length(), rb);
+	    addUTF8(source, null==source? -1 : source.length(), rb);
 	}
 	
-	public static void addUTF8(CharSequence source, int sourceIdx, int sourceCharCount, RingBuffer rb) {
-		addBytePosAndLen(rb, rb.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceIdx,sourceCharCount,rb));		
+	public static void addUTF8(CharSequence source, int sourceCharCount, RingBuffer rb) {
+		addBytePosAndLen(rb, rb.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceCharCount,rb));		
 	}
 	
-	public static void addUTF8(char[] source, int sourceIdx, int sourceCharCount, RingBuffer rb) {
-		addBytePosAndLen(rb, rb.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceIdx,sourceCharCount,rb));		
+	public static void addUTF8(char[] source, int sourceCharCount, RingBuffer rb) {
+		addBytePosAndLen(rb, rb.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceCharCount,rb));		
 	}
 	
 	/**
 	 * WARNING: unlike the ASCII version this method returns bytes written and not the position
 	 */
-	public static int copyUTF8ToByte(CharSequence source, int sourceIdx, int sourceCharCount, RingBuffer rb) {
+	public static int copyUTF8ToByte(CharSequence source, int sourceCharCount, RingBuffer rb) {
 	    if (sourceCharCount>0) {
     		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, rb.byteWorkingHeadPos.value, sourceCharCount);
     		rb.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.byteWorkingHeadPos.value+byteLength);
@@ -932,6 +932,16 @@ public final class RingBuffer {
 	        return 0;
 	    }
 	}
+	
+   public static int copyUTF8ToByte(CharSequence source, int sourceOffset, int sourceCharCount, RingBuffer rb) {
+        if (sourceCharCount>0) {
+            int byteLength = RingBuffer.copyUTF8ToByte(source, sourceOffset, rb.byteBuffer, rb.byteMask, rb.byteWorkingHeadPos.value, sourceCharCount);
+            rb.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.byteWorkingHeadPos.value+byteLength);
+            return byteLength;
+        } else {
+            return 0;
+        }
+    }
 	
 	private static int copyUTF8ToByte(CharSequence source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {	
 	    int pos = targetIdx;
@@ -945,10 +955,16 @@ public final class RingBuffer {
 	/**
 	 * WARNING: unlike the ASCII version this method returns bytes written and not the position
 	 */
-	public static int copyUTF8ToByte(char[] source, int sourceIdx, int sourceCharCount, RingBuffer rb) {
+	public static int copyUTF8ToByte(char[] source, int sourceCharCount, RingBuffer rb) {
 		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, rb.byteWorkingHeadPos.value, sourceCharCount);
 		rb.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.byteWorkingHeadPos.value+byteLength);
 		return byteLength;
+	}
+	
+	public static int copyUTF8ToByte(char[] source, int sourceOffset, int sourceCharCount, RingBuffer rb) {
+	    int byteLength = RingBuffer.copyUTF8ToByte(source, sourceOffset, rb.byteBuffer, rb.byteMask, rb.byteWorkingHeadPos.value, sourceCharCount);
+	    rb.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.byteWorkingHeadPos.value+byteLength);
+	    return byteLength;
 	}
 	
 	private static int copyUTF8ToByte(char[] source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {
@@ -1057,7 +1073,7 @@ public final class RingBuffer {
     public static void shutdown(RingBuffer ring) {
     	if (!ring.shutDown.getAndSet(true)) {
     		ring.firstShutdownCaller = new RingBufferException("Shutdown called");    		
-    	};
+    	}
     	
     }    
 
@@ -1160,7 +1176,7 @@ public final class RingBuffer {
         return pos;
     }   
 
-    public static int bytePositionGen(int meta, RingBuffer ring, int len) {
+    public static int bytePositionGen(int meta, RingBuffer ring) {
     	return restorePosition(ring, meta & RELATIVE_POS_MASK);
     }
     
@@ -1294,7 +1310,7 @@ public final class RingBuffer {
     public static void releaseReadLock(RingBuffer ring) {
      //   if (FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
         	if (ring.readTrailCountOfBytesConsumed) {
-        		int bytesConsumed = takeValue(ring);  //TODO: AAAA, need to integrate this feature to enable every message to have the trailing count.
+        		takeValue(ring);  //TODO: AAAA, need to integrate this feature to enable every message to have the trailing count.
         		ring.readTrailCountOfBytesConsumed = false;
         	}
      //   } 	

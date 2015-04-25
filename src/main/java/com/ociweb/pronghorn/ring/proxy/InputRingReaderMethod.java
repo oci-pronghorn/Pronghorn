@@ -11,7 +11,7 @@ public abstract class InputRingReaderMethod {
 	
 	public abstract Object read(Object[] args);
 	
-	static InputRingReaderMethod buildReadForYourType(final RingBuffer inputRing, final int decimalPlaces, final int fieldLoc, final int extractedType, final FieldReferenceOffsetManager from) {
+	static InputRingReaderMethod buildReadForYourType(final RingBuffer inputRing, final int fieldLoc, final int extractedType, final FieldReferenceOffsetManager from) {
 		
 		final int absent32 = FieldReferenceOffsetManager.getAbsent32Value(from);
 		final long absent64 = FieldReferenceOffsetManager.getAbsent64Value(from);

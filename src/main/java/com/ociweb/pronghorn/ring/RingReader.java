@@ -342,6 +342,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
     
     public static int readBytesMask(RingBuffer ring, int loc) {
+        assert(0!=loc) : "This field needed for swapping to different array per field, like the constants array";
     	return ring.byteMask;
     }
     
@@ -389,7 +390,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
             byte[] buffer = ring.constByteBuffer;
             while (--len >= 0) {
                 target[targetloc++]=buffer[pos++];
-            };
+            }
     }
 
     private static void readBytesRing(RingBuffer ring, int len, byte[] target, int targetloc, int pos) {
@@ -468,7 +469,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
             byte[] buffer = ring.constByteBuffer;
             while (--len >= 0) {//TODO: A,  need to replace with intrinsics.
                 target[targetMask & targetloc++]=buffer[pos++];
-            };
+            }
     }
 
 	public static void setReleaseBatchSize(RingBuffer rb, int size) {

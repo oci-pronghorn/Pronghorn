@@ -52,6 +52,7 @@ public class EventProducer {
 	}
 
 	public static void dispose(EventProducer consumer, Object dq) {
+	    assert(null==consumer.cached || dq==consumer.cached);
 		RingReader.releaseReadLock(consumer.input);
 	}
 
