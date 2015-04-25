@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.ring.stream;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
+import static com.ociweb.pronghorn.ring.RingBuffer.readBytesAndreleaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
@@ -64,9 +64,7 @@ public class RingStreams {
 
         				
         	if (msgId<0) { //exit logic
-        		int bytesCount = RingBuffer.takeValue(inputRing);
-        		assert(0==bytesCount);
-        		releaseReadLock(inputRing);
+        		readBytesAndreleaseReadLock(inputRing);
           		break;
         	} else {          
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
@@ -85,7 +83,7 @@ public class RingStreams {
 					}
 					outputStream.flush();
             	}
-            	releaseReadLock(inputRing);
+            	readBytesAndreleaseReadLock(inputRing);
         	}
         	
         	target += step;
@@ -136,7 +134,7 @@ public class RingStreams {
         		int bytesCount = RingBuffer.takeValue(inputRing);
         		assert(0==bytesCount);
             	
-            	releaseReadLock(inputRing);
+            	readBytesAndreleaseReadLock(inputRing);
           		return;
         	} else {                    	
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
@@ -163,7 +161,7 @@ public class RingStreams {
 					os.flush();
 				}
 				
-        		releaseReadLock(inputRing);
+        		readBytesAndreleaseReadLock(inputRing);
         	}
         	
         	target += step;
@@ -291,7 +289,7 @@ public class RingStreams {
 	    		int bytesCount = RingBuffer.takeValue(inputRing);
 		    	assert(0==bytesCount);
 		    	
-	    		releaseReadLock(inputRing);
+	    		readBytesAndreleaseReadLock(inputRing);
 	    		visitor.close();
 	      		return;
 	    	} else {                    	
@@ -310,7 +308,7 @@ public class RingStreams {
 					 //simple add bytes
 					 visitor.visit(data, offset&byteMask, len); 
 				}
-	    		releaseReadLock(inputRing);
+	    		readBytesAndreleaseReadLock(inputRing);
 	    	}
 	    	
 	    	target += step;

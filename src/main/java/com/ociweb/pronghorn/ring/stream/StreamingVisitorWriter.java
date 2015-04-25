@@ -76,12 +76,13 @@ public class StreamingVisitorWriter {
 		        	cursor = cursorStack[nestedFragmentDepth];
 		        	startPos = 0;//this is not a new message so there is no id to jump over.
 			        
-		        	RingBuffer.markMsgBytesConsumed(outputRing, cursor);
+		        	RingBuffer.markMsgBytesConsumed(outputRing);
 		        	
 			        //visit all the fields in this fragment
 			        processFragment(startPos, cursor);
  	
 		        }
+		        
 		        publishWrites(outputRing);
 		}
 		
@@ -97,7 +98,7 @@ public class StreamingVisitorWriter {
 	    
 	private void processFragment(int startPos, int cursor) {
 		int fieldsInFragment = from.fragScriptSize[cursor];
-		RingBuffer.markMsgBytesConsumed(outputRing, cursor);  
+		RingBuffer.markMsgBytesConsumed(outputRing);  
 		int i = startPos;
 		while (i<fieldsInFragment) {
 			int j = cursor+i++;
@@ -123,8 +124,6 @@ public class StreamingVisitorWriter {
 									break;
 								}
 							} else {
-							    //The template has closed must flush							    
-							    publishWrites(outputRing);
 							    visitor.templateClose(name,id);
 								
 								//this close was not a sequence so it must be the end of the message

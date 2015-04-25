@@ -92,7 +92,7 @@ public class StreamingConsumerTest {
 		
 		StreamingReadVisitor visitor = new StreamingReadVisitorToJSON(ps); 
 		
-		StreamingVisitorReader reader = new StreamingVisitorReader(ring, new StreamingReadVisitorDebugDelegate(visitor) );
+		StreamingVisitorReader reader = new StreamingVisitorReader(ring, visitor);// new StreamingReadVisitorDebugDelegate(visitor) );
 		
 		//ring is fully populated so we should not need to call this run again
 		while (RingBuffer.contentRemaining(ring)>0) {
@@ -184,7 +184,7 @@ public class StreamingConsumerTest {
         
         //now use matcher to confirm the same.
         StreamingReadVisitorMatcher srvm = new StreamingReadVisitorMatcher(ring1);
-        StreamingVisitorReader svr = new StreamingVisitorReader(ring2, new StreamingReadVisitorDebugDelegate(srvm) );
+        StreamingVisitorReader svr = new StreamingVisitorReader(ring2, srvm);// new StreamingReadVisitorDebugDelegate(srvm) );
         
         svr.startup();
         
@@ -258,7 +258,6 @@ public class StreamingConsumerTest {
         while (true) {
         	
         	if (j==0) {
-        	    System.err.println("write EOF");
         		RingWriter.publishEOF(ring);
         		return;//done
         	}
@@ -267,7 +266,6 @@ public class StreamingConsumerTest {
  
         		RingWriter.writeASCII(ring, SQUAD_NAME, "TheBobSquad");     		
         		
-        		System.err.println("block  A squad");
         		//WRITE THE FIRST MEMBER OF THE SEQ
         		//block to ensure we have room for the next fragment, and ensure that bytes consumed gets recorded
         		RingWriter.blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);//could use tryWrite here but it would make this example more complex
@@ -276,12 +274,10 @@ public class StreamingConsumerTest {
         		RingWriter.writeDecimal(ring, TRUCK_CAPACITY, 2, 2000);
         		RingWriter.writeInt(ring, THING_NO_LOC, 1);
      
-        		System.err.println("block  B truckId 10, capacity 20.00 thingNo 1");
         		RingWriter.blockWriteFragment(ring, MSG_TRUCK_THING_SEQ_LOC);
         		RingWriter.writeInt(ring, THING_ID_LOC, 7);
         		//
         		
-        		System.err.println("block  C thingId 7");
         		//WRITE THE SECOND MEMBER OF THE SEQ
         		//block to ensure we have room for the next fragment, and ensure that bytes consumed gets recorded
         		RingWriter.blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);
@@ -290,7 +286,6 @@ public class StreamingConsumerTest {
         		RingWriter.writeDouble(ring, TRUCK_CAPACITY, 30d, 2); //alternate way of writing a decimal
         		RingWriter.writeInt(ring, THING_NO_LOC, 1);
    
-        		System.err.println("block  D TrunkId 11 capacity 30.00 thingNo 1");
         		RingWriter.blockWriteFragment(ring, MSG_TRUCK_THING_SEQ_LOC);
         		RingWriter.writeInt(ring, THING_ID_LOC, 7);
         		
@@ -301,15 +296,12 @@ public class StreamingConsumerTest {
         		
         		RingWriter.writeInt(ring, SQUAD_NO_MEMBERS, 2); //NOTE: we are writing this field very late because we now know how many we wrote.
         		
-        		System.err.println("block  E thing 7 squadMember 2");
         		RingWriter.blockWriteFragment(ring, FRAG_JOMQ_LOC);
        		
         		RingWriter.writeInt(ring, JOMQ_LOC, 42);
         		
         		RingWriter.publishWrites(ring);
-        		
-        		System.err.println("publish :"+j);
-        		        		
+        		        		        		
         		 j--;       		
     		} else {
         		//Unable to write because there is no room so do something else while we are waiting.

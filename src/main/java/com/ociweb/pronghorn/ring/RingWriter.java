@@ -255,9 +255,8 @@ public class RingWriter {
 
 	public static void publishWrites(RingBuffer outputRing) {
 	
-		if (outputRing.writeTrailingCountOfBytesConsumed) {
-			RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, outputRing.ringWalker.nextWorkingHead -1 ); 
-		}
+	    RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, outputRing.ringWalker.nextWorkingHead -1 ); 
+
 		//single length field still needs to move this value up, so this is always done
 		outputRing.bytesWriteLastConsumedBytePos = outputRing.byteWorkingHeadPos.value;
 		
@@ -284,13 +283,7 @@ public class RingWriter {
 	 */
 	public static void blockWriteFragment(RingBuffer ring, int messageTemplateLOC) {
 	
-	     if (ring.writeTrailingCountOfBytesConsumed) {
-	         RingBuffer.writeTrailingCountOfBytesConsumed(ring, ring.ringWalker.nextWorkingHead -1 ); 
-	     } else {
-	         if (FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
-	             System.err.println("error, must not be false");
-	         }
-	     }
+	    RingBuffer.writeTrailingCountOfBytesConsumed(ring, ring.ringWalker.nextWorkingHead -1 ); 
 	       
 		FieldReferenceOffsetManager from = RingBuffer.from(ring);
 		

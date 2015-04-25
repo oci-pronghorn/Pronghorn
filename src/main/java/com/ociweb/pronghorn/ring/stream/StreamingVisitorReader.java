@@ -64,8 +64,6 @@ public class StreamingVisitorReader {
 		        				        		        	
 		        } else {
 		        	cursor = cursorStack[nestedFragmentDepth];
-		        	RingBuffer.mustReadMsgBytesConsumed(inputRing, cursor);
-		        	
 		        	startPos = 0;//this is not a new message so there is no id to jump over.			        
 		        	
 		        }
@@ -84,12 +82,8 @@ public class StreamingVisitorReader {
 		        inputRing.byteWorkingTailPos.value += inputRing.buffer[(int) (inputRing.mask&(inputRing.workingTailPos.value-1))];
 		        
 		        
-		        if (inputRing.readTrailCountOfBytesConsumed){
-		            inputRing.workingTailPos.value--;
-		        }
-		        
-		        //this will inc tail pos by one so we dec above
 		        RingBuffer.releaseReadLock(inputRing);
+		        
 		}	
 		
 	}

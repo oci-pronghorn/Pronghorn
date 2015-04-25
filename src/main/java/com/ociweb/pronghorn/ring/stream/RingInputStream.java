@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.ring.stream;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
+import static com.ociweb.pronghorn.ring.RingBuffer.readBytesAndreleaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
 import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
@@ -108,10 +108,8 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 			int meta = takeRingByteMetaData(ring);//side effect, this moves the pointer and must happen before we call for length
 			int sourceLength = takeRingByteLen(ring);
 			return beginNewContent(targetData, targetOffset, targetLength, meta, sourceLength);
-		} else {   
-			int bytesCount = RingBuffer.takeValue(ring);
-			assert(0==bytesCount);						
-			releaseReadLock(ring);
+		} else {   					
+			readBytesAndreleaseReadLock(ring);
 			return -1;			
 		}
 	}
@@ -123,7 +121,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 		if (sourceLength<=targetLength) {
 			//the entire block can be sent
 			copyData(targetData, targetOffset, sourceLength, sourceData, sourceOffset);
-			releaseReadLock(ring);
+			readBytesAndreleaseReadLock(ring);
 			return sourceLength;
 		} else {
 			//only part of the block can be sent so save some for later
@@ -164,7 +162,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 		//the entire remaining part of the block can be sent
 		int len = remainingSourceLength;
 		copyData(targetData, targetOffset, len, byteBackingArray(remainingSourceMeta, ring), remainingSourceOffset);
-		releaseReadLock(ring);
+		readBytesAndreleaseReadLock(ring);
 		remainingSourceLength = -1; //clear because we are now done with the remaining content
 		return len;
 	}

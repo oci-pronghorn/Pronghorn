@@ -8,7 +8,7 @@ import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.dump;
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.publishWrites;
-import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
+import static com.ociweb.pronghorn.ring.RingBuffer.readBytesAndreleaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTailTillMatchesHead;
@@ -175,7 +175,7 @@ public class RingBufferTest {
                             
                             //allow writer to write up to new tail position
                             if (0==(messageCount&chunkMask) ) {
-                            	releaseReadLock(ring);
+                            	readBytesAndreleaseReadLock(ring);
                             	if (messageCount>0) {
                             		headPosCache = spinBlockOnHead(headPosCache, tailPosition(ring)+granularity, ring);
                             		
@@ -311,7 +311,7 @@ public class RingBufferTest {
     	                        
     	                        //allow writer to write up to new tail position
     	                        if (0==(messageCount&chunkMask) ) {
-    	                        	releaseReadLock(ring);
+    	                        	readBytesAndreleaseReadLock(ring);
     	                        	if (messageCount>0) {
     	                        		headPosCache = spinBlockOnHead(headPosCache, tailPosition(ring)+granularity, ring);	                        	    	                        		
     	                        	}

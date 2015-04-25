@@ -120,8 +120,6 @@ public final class RingBuffer {
     private final AtomicBoolean shutDown = new AtomicBoolean(false);
     private RingBufferException firstShutdownCaller = null;
     		
-	public boolean writeTrailingCountOfBytesConsumed;
-	public boolean readTrailCountOfBytesConsumed; //TOOD: AAAA, urgent must integrate
 	
 	FieldReferenceOffsetManager from;
 	
@@ -346,8 +344,6 @@ public final class RingBuffer {
         
         byteWorkingTailPos.value = 0;
         PaddedInt.set(bytesTailPos,0);
-        writeTrailingCountOfBytesConsumed = false;
-        readTrailCountOfBytesConsumed = false;
         RingWalker.reset(ringWalker, 0);
     }
         
@@ -376,7 +372,6 @@ public final class RingBuffer {
         
         byteWorkingTailPos.value = bPos;
         PaddedInt.set(bytesTailPos,bPos);
-        writeTrailingCountOfBytesConsumed = false;
         RingWalker.reset(ringWalker, toPos);
     }
 
@@ -1116,11 +1111,11 @@ public final class RingBuffer {
    	
 		 rb.buffer[rb.mask & (int)rb.workingHeadPos.value++] = msgIdx;		
 		 
-		 markMsgBytesConsumed(rb, msgIdx);
+		 markMsgBytesConsumed(rb);
 	}
 
-	public static void markMsgBytesConsumed(RingBuffer rb, int msgIdx) {
-		rb.writeTrailingCountOfBytesConsumed = (1==rb.ringWalker.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
+	public static void markMsgBytesConsumed(RingBuffer rb) {
+		
 	}
 
 	//TODO: B, need to update build server to ensure this runs on both Java6 and Java ME 8
@@ -1282,15 +1277,9 @@ public final class RingBuffer {
     	RingBuffer.markBytesReadBase(ring);
     	
     	int msgIdx = readValue(0, ring.buffer,ring.mask,ring.workingTailPos.value++);
-    	mustReadMsgBytesConsumed(ring, msgIdx);
     	return msgIdx;
     }
 
-    public static void mustReadMsgBytesConsumed(RingBuffer ring, int msgIdx) {
-        ring.readTrailCountOfBytesConsumed =  msgIdx>=0 && (1==ring.ringWalker.from.fragNeedsAppendedCountOfBytesConsumed[msgIdx]);
-    }
-    
-    
     public static int contentRemaining(RingBuffer rb) {
         return (int)(rb.headPos.get() - rb.tailPos.get()); //must not go past add count because it is not release yet.
     }
@@ -1307,21 +1296,19 @@ public final class RingBuffer {
      * Low level API release
      * @param ring
      */
+    public static void readBytesAndreleaseReadLock(RingBuffer ring) {
+   		takeValue(ring); 
+    	releaseReadLock(ring); 
+    	  	
+    }
+
     public static void releaseReadLock(RingBuffer ring) {
-     //   if (FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
-        	if (ring.readTrailCountOfBytesConsumed) {
-        		takeValue(ring);  //TODO: AAAA, need to integrate this feature to enable every message to have the trailing count.
-        		ring.readTrailCountOfBytesConsumed = false;
-        	}
-     //   } 	
-    	//long expect = ring.tailPos.get();
-    	if ((--ring.batchReleaseCountDown<=0) ) {
+        if ((--ring.batchReleaseCountDown<=0) ) {
     	    assert(ring.ringWalker.cursor<=0 && !RingReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
     	    ring.bytesTailPos.value=ring.byteWorkingTailPos.value; 
     	    ring.tailPos.lazySet(ring.workingTailPos.value);
     	    ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;   
-    	} 
-    	  	
+    	}
     }
 
 	public static void releaseAll(RingBuffer ring) {
@@ -1348,17 +1335,19 @@ public final class RingBuffer {
     public static void publishWrites(RingBuffer ring) {
     	
     	//happens at the end of every fragment
-    	if (ring.writeTrailingCountOfBytesConsumed) {
-			writeTrailingCountOfBytesConsumed(ring, ring.workingHeadPos.value++); //increment because this is the low-level API calling
-			//this updated the head so it must repositioned
-		} 
-		//single length field still needs to move this value up, so this is always done
+        writeTrailingCountOfBytesConsumed(ring, ring.workingHeadPos.value++); //increment because this is the low-level API calling
+		    
+		publishWritesBatched(ring);  	
+    }
+
+    public static void publishWritesBatched(RingBuffer ring) {
+        //single length field still needs to move this value up, so this is always done
 		ring.bytesWriteLastConsumedBytePos = ring.byteWorkingHeadPos.value;
 		
     	
     	assert(ring.llwNextHeadTarget<=ring.headPos.get() || ring.workingHeadPos.value<=ring.llwNextHeadTarget) : "Unsupported mix of high and low level API.";
     	
-    	publishHeadPositions(ring);  	
+    	publishHeadPositions(ring);
     }
 
     /**
@@ -1523,7 +1512,7 @@ public final class RingBuffer {
 		int consumed = ring.byteWorkingHeadPos.value - ring.bytesWriteLastConsumedBytePos;		
 		ring.buffer[ring.mask & (int)pos] = consumed>=0 ? consumed : consumed&BYTES_WRAP_MASK ;
 		ring.bytesWriteLastConsumedBytePos = ring.byteWorkingHeadPos.value;
-		ring.writeTrailingCountOfBytesConsumed = false;
+	//	ring.writeTrailingCountOfBytesConsumed = false;
 	}
 
 	public static IntBuffer wrappedPrimaryIntBuffer(RingBuffer ring) {

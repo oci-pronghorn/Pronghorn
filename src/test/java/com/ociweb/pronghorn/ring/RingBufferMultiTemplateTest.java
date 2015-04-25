@@ -5,7 +5,6 @@ import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupFragme
 import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupTemplateLocator;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -261,9 +260,6 @@ public class RingBufferMultiTemplateTest {
 	        		byte[] source = buildMockData((j*blockSize)/testSize);
 	        		RingBuffer.addValue(ring, 42);
 	        		RingBuffer.addByteArray(source, 0, source.length, ring);
-	        		if (!FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
-	        		    assertFalse(ring.writeTrailingCountOfBytesConsumed);
-	        		}
 	        		RingBuffer.publishWrites(ring);
 	        		break;
 	        	case 1: //samples
@@ -277,7 +273,6 @@ public class RingBufferMultiTemplateTest {
 	        		
 	        		RingBuffer.addValue(ring, 2);
 	        		RingBuffer.addLongValue(ring, 123456);
-	       			assertTrue(ring.writeTrailingCountOfBytesConsumed);
 
 	        		RingBuffer.publishWrites(ring);
 	        		break;
@@ -287,9 +282,6 @@ public class RingBufferMultiTemplateTest {
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_RESET_LOC);
 	        		RingBuffer.addByteArray(ASCII_VERSION, 0, ASCII_VERSION.length, ring);
-	        		if (!FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
-	        		    assertFalse(ring.writeTrailingCountOfBytesConsumed);
-	        		}
 
 	        		RingBuffer.publishWrites(ring);
 

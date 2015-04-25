@@ -25,10 +25,6 @@ public class FieldReferenceOffsetManager {
     
     //NOTE: these two arrays could be combined with a mask to simplify this in the future.
     public int[] fragDepth;
-    public int[] fragNeedsAppendedCountOfBytesConsumed;//TODO: put value in here to be indexed later when needed. low and high level will use it?
-      //FAST decode looks it up at front of fragment and writes extra total filed
-      //low level api will require message id to look up of trailing message is needed
-      //high level api ??? how is this done?
     
     public final String[] fieldNameScript;
     public final long[] fieldIdScript;
@@ -116,7 +112,6 @@ public class FieldReferenceOffsetManager {
             fragDataSize = null;
             fragScriptSize = null;
             fragDepth = null;
-            fragNeedsAppendedCountOfBytesConsumed = new int[1];
             
             maximumFragmentStackDepth = 0;
             maxVarFieldPerUnit = .5f;  
@@ -129,7 +124,6 @@ public class FieldReferenceOffsetManager {
             fragDataSize  = new int[scriptTokens.length]; //size of fragments and offsets to fields, first field of each fragment need not use this!
             fragScriptSize = new int[scriptTokens.length];
             fragDepth = new int[scriptTokens.length];
-            fragNeedsAppendedCountOfBytesConsumed = new int[scriptTokens.length];//full of zeros by default
             
             maxVarFieldPerUnit = buildFragScript(scriptTokens, preableBytes);
             
@@ -173,7 +167,6 @@ public class FieldReferenceOffsetManager {
         
         //must count these to ensure that var field writes stay small enough to never cause a problem in the byte ring.
         int varLenFieldCount = 0;
-        int varLenFieldLast = 0;
         float varLenMaxDensity = 0; //max varLength fields per int on outer ring buffer than can ever happen
         
         //
@@ -209,7 +202,7 @@ public class FieldReferenceOffsetManager {
                 if (i>fragmentStartIdx) {
                 	//NOTE: this size can not be changed up without reason, any place the low level API is used it will need
                 	//to know about the full size and append the right fields of the right size
-                	accumVarLengthCounts(fragmentStartIdx, varLenFieldCount, varLenFieldLast);
+                	fragDataSize[fragmentStartIdx]++;//Add one for trailing byte count on end of every fragment
                 }
                 
                 int lastFragTotalSize = fragDataSize[fragmentStartIdx];
@@ -217,7 +210,7 @@ public class FieldReferenceOffsetManager {
                 
                 maxFragmentDataSize = Math.max(maxFragmentDataSize, lastFragTotalSize);
                 minFragmentDataSize = Math.min(minFragmentDataSize, lastFragTotalSize);
-       //         System.err.println("new fragmetn at "+i);
+
                 if (varLenFieldCount>0) {
                 	//Caution: do not modify this logic unless you take into account the fact that
                 	//         * messages are made up of fragments and that some fragments are repeated others skipped
@@ -259,9 +252,6 @@ public class FieldReferenceOffsetManager {
                 depth++;                
                 
                 varLenFieldCount = 0;//reset to zero so we can count the number of var fields for this next fragment
-                varLenFieldLast = 0;
-                
-
                 
                 nextTokenOpensFragment = false;
             }
@@ -274,7 +264,7 @@ public class FieldReferenceOffsetManager {
                 nextTokenOpensFragment = true;
             } else {
             	//do not count group closed against our search for if the last field is variable
-            	varLenFieldCount += (varLenFieldLast=TypeMask.ringBufferFieldVarLen[tokenType]);
+            	varLenFieldCount += (TypeMask.ringBufferFieldVarLen[tokenType]);
             }
             if (isSeqLength) {
                 nextTokenOpensFragment = true;
@@ -298,7 +288,7 @@ public class FieldReferenceOffsetManager {
             i++;
         }
         
-        accumVarLengthCounts(fragmentStartIdx, varLenFieldCount, varLenFieldLast);
+        fragDataSize[fragmentStartIdx]++;//Add one for trailing byte count on end of every fragment
         
         int lastFragTotalSize = fragDataSize[fragmentStartIdx];
         assert(lastFragTotalSize<65536) : "Fragments larger than this are possible but unlikely, You do not want to do this fragment of "+lastFragTotalSize;
@@ -327,27 +317,6 @@ public class FieldReferenceOffsetManager {
         return varLenMaxDensity;
 	}
 
-    
-    public final static boolean  TAIL_ALL_FRAGS = true; //Inline
-    
-    
-	private void accumVarLengthCounts(int fragmentStartIdx,	int varLenFieldCount, int varLenFieldLast) {
-
-	        if (TAIL_ALL_FRAGS) {
-	            
-	            fragDataSize[fragmentStartIdx]++;
-                fragNeedsAppendedCountOfBytesConsumed[fragmentStartIdx] = 1; //in all other cases its zero.
-                
-	        } else {
-    	    
-    			//if last is 1 and count is 1 then don't else do			
-    			if (1!=varLenFieldCount || 1!=varLenFieldLast) {     
-    				fragDataSize[fragmentStartIdx]++;
-    				fragNeedsAppendedCountOfBytesConsumed[fragmentStartIdx] = 1; //in all other cases its zero.
-    			}
-	        }
-	}
-    
     
     public int[] messageStarts() {
     	return messageStarts;

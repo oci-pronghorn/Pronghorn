@@ -41,7 +41,6 @@ public class RingBufferSingleTemplateDecimalTest {
 
         writeTestValue(ring, varDataMax, testSize);
         
-        System.err.println("now read");
         //now read the data back        
         int FIELD_LOC = FieldReferenceOffsetManager.lookupFieldLocator(SINGLE_MESSAGE_NAMES[0], FRAG_LOC, FROM);
         

@@ -377,16 +377,12 @@ public class RingWalker {
 		ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + fragSize;
 
 		//when publish is called this new byte will be appended due to this request
-		ring.writeTrailingCountOfBytesConsumed = (1==from.fragNeedsAppendedCountOfBytesConsumed[cursorPosition]);
+		RingBuffer.markMsgBytesConsumed(ring);
 				
 	}
 
 
 	private static void prepWriteFragmentSpecificProcessing(RingBuffer ring, int cursorPosition, FieldReferenceOffsetManager from) {
-		//Must double check this here for nested sequences, TODO: B, confrim this assumption
-		if (ring.writeTrailingCountOfBytesConsumed) {
-			RingBuffer.writeTrailingCountOfBytesConsumed(ring, ring.ringWalker.nextWorkingHead -1 ); 
-		}
 		
 		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {
 			prepWriteMessageStart(ring, cursorPosition, from);

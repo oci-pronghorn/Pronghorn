@@ -61,7 +61,7 @@ public class RingBufferSingleTemplateTest {
         		
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message        		
-        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
+        		RingBuffer.publishWritesBatched(ring); //must always publish the writes if message or fragment
         		
         	} else {
         		//Unable to write because there is no room so do something else while we are waiting.
