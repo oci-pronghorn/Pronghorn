@@ -1,10 +1,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.ociweb</groupId>
-  <artifactId>jFASTStages</artifactId>
+  <artifactId>Pronghorn</artifactId>
   <version>0.0.1-SNAPSHOT</version>
-  <name>jFASTStages</name>
-  <description></description>
+  <name>Pronghorn</name>
+  <description>Primary dependency for any project using the Pronghorn framework</description>
+  
   <properties>
   <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -31,7 +32,7 @@
 		  <groupId>org.slf4j</groupId>
 		  <artifactId>slf4j-simple</artifactId>
 		  <version>1.7.9</version>
-		  <scope>provided</scope>
+		  <scope>runtime</scope>
 		</dependency> 	
   </dependencies>
   
@@ -39,12 +40,10 @@
     <repository>
       <releases>
         <enabled>false</enabled>
-        <updatePolicy>always</updatePolicy>
         <checksumPolicy>warn</checksumPolicy>
       </releases>
       <snapshots>
         <enabled>true</enabled>
-        <updatePolicy>always</updatePolicy>
         <checksumPolicy>warn</checksumPolicy>
       </snapshots>
       <id>ssh-repository</id>
