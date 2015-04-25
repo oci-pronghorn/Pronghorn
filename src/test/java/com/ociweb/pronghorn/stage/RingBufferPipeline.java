@@ -5,7 +5,7 @@ import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteMask;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.publishWrites;
-import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
+import static com.ociweb.pronghorn.ring.RingBuffer.readBytesAndreleaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
 import static org.junit.Assert.assertEquals;
@@ -67,7 +67,7 @@ public class RingBufferPipeline {
                 //show depth vs bufSize	            
 				
 	        	//doing nothing with the data
-				releaseReadLock(inputRing);
+				readBytesAndreleaseReadLock(inputRing);
 
 	        	
 	        	messageCount++;
@@ -126,7 +126,7 @@ public class RingBufferPipeline {
 						}
 					}
 					
-					releaseReadLock(inputRing);
+					readBytesAndreleaseReadLock(inputRing);
 		            	
 		        	messageCount++;
 		        	
@@ -290,7 +290,7 @@ public class RingBufferPipeline {
 					RingBuffer.addByteArrayWithMask(outputRing, mask, len, byteBackingArray(meta, inputRing), bytePosition(meta, inputRing, len));	
 							
 					RingBuffer.publishWrites(outputRing);
-					RingBuffer.releaseReadLock(inputRing);
+					RingBuffer.readBytesAndreleaseReadLock(inputRing);
 
 			} 
 				
@@ -410,9 +410,6 @@ public class RingBufferPipeline {
 				 }
 			 }
 			 RingWriter.publishEOF(outputRing);	
-			 			 
-			 RingWriter.setPublishBatchSize(outputRing, 0);
-			 RingWriter.publishWrites(outputRing);
 			 requestShutdown();
  			 return;//do not come back			
 		}
@@ -508,12 +505,7 @@ public class RingBufferPipeline {
 		
 						
 		 System.out.println();
-				 
-		 if (!FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
-		 assertEquals("For "+FieldReferenceOffsetManager.RAW_BYTES.name+" expected no need to add field.",
-				      0,FieldReferenceOffsetManager.RAW_BYTES.fragNeedsAppendedCountOfBytesConsumed[0]);
-					
-		 }
+
 		 int stagesBetweenSourceAndSink = stages -2;
 		 
 		 int daemonThreads = (useTap ? stagesBetweenSourceAndSink : 0);
@@ -548,9 +540,7 @@ public class RingBufferPipeline {
 			 }  else {
 				 rings[j] = new RingBuffer(new RingBufferConfig(primaryBits, secondaryBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
 			 } 
-			 if (!FieldReferenceOffsetManager.TAIL_ALL_FRAGS) {
-			     assertEquals("For "+rings[j].ringWalker.from.name+" expected no need to add field.",0,rings[j].ringWalker.from.fragNeedsAppendedCountOfBytesConsumed[0]);
-			 }
+
 			 
 			 //test by starting at different location in the ring to force roll over.
 			 rings[j].reset(rings[j].maxSize-13,rings[j].maxByteSize-101);

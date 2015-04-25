@@ -54,9 +54,8 @@ public class GraphManagerTest {
 		GraphManager.setStateToStopping(gm, a.stageId);
 		
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c.stageId)); //this is true because the first ring buffer has 1 integer
-		
-		RingBuffer.takeValue(rb1);
-		RingBuffer.releaseReadLock(rb1);
+				
+		RingBuffer.readBytesAndreleaseReadLock(rb1);
 		GraphManager.setStateToStopping(gm, a.stageId);
 		GraphManager.setStateToStopping(gm, b.stageId);
 
@@ -103,8 +102,7 @@ public class GraphManagerTest {
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c1.stageId)); //this is true because the first ring buffer has 1 integer
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c2.stageId)); //this is true because the first ring buffer has 1 integer
 				
-		RingBuffer.takeValue(rb1);
-		RingBuffer.releaseReadLock(rb1);
+		RingBuffer.readBytesAndreleaseReadLock(rb1);
 		
 		GraphManager.setStateToStopping(gm, a.stageId);
 		GraphManager.setStateToStopping(gm, b.stageId);
