@@ -76,7 +76,7 @@ public class StreamingVisitorWriter {
 		        	cursor = cursorStack[nestedFragmentDepth];
 		        	startPos = 0;//this is not a new message so there is no id to jump over.
 			        
-		        	RingBuffer.markMsgBytesConsumed(outputRing);
+		        	
 		        	
 			        //visit all the fields in this fragment
 			        processFragment(startPos, cursor);
@@ -98,7 +98,6 @@ public class StreamingVisitorWriter {
 	    
 	private void processFragment(int startPos, int cursor) {
 		int fieldsInFragment = from.fragScriptSize[cursor];
-		RingBuffer.markMsgBytesConsumed(outputRing);  
 		int i = startPos;
 		while (i<fieldsInFragment) {
 			int j = cursor+i++;

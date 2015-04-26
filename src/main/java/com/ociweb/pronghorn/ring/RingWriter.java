@@ -217,8 +217,8 @@ public class RingWriter {
 
 	public static void publishEOF(RingBuffer ring) {
 		
-		assert(ring.workingHeadPos.value<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
-		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, ring.workingHeadPos.value - (ring.maxSize - RingBuffer.EOF_SIZE), ring);
+		assert(RingBuffer.workingHeadPosition(ring)<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
+		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.maxSize - RingBuffer.EOF_SIZE), ring);
 		
 		assert(RingBuffer.tailPosition(ring)+ring.maxSize>=RingBuffer.headPosition(ring)+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 		PaddedInt.set(ring.bytesHeadPos,ring.byteWorkingHeadPos.value);
@@ -231,17 +231,17 @@ public class RingWriter {
 	
 	public static boolean tryPublishEOF(RingBuffer ring) {
 		
-		assert(ring.workingHeadPos.value<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";				
-		long nextTailTarget = ring.workingHeadPos.value - (ring.maxSize - RingBuffer.EOF_SIZE);
+		assert(RingBuffer.workingHeadPosition(ring)<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";				
+		long nextTailTarget = RingBuffer.workingHeadPosition(ring) - (ring.maxSize - RingBuffer.EOF_SIZE);
 				
         if (ring.llrTailPosCache < nextTailTarget) {
-        	ring.llrTailPosCache = ring.tailPos.longValue();
+        	ring.llrTailPosCache = RingBuffer.tailPosition(ring);
 			if (ring.llrTailPosCache < nextTailTarget) {
 				return false;
 			}
 		}
 		
-		assert(ring.tailPos.get()+ring.maxSize>=RingBuffer.headPosition(ring)+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
+		assert(RingBuffer.tailPosition(ring)+ring.maxSize>=RingBuffer.headPosition(ring)+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 		PaddedInt.set(ring.bytesHeadPos,ring.byteWorkingHeadPos.value);
 		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +  RingBuffer.from(ring).templateOffset)]    = -1;	
 		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  RingBuffer.from(ring).templateOffset)] = 0;
@@ -269,10 +269,10 @@ public class RingWriter {
 	}
 
 	private static void publishWrites2(RingBuffer outputRing) {
-		assert(outputRing.workingHeadPos.value<=outputRing.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
+		assert(RingBuffer.workingHeadPosition(outputRing)<=outputRing.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
 		//publish writes			
 		PaddedInt.set(outputRing.bytesHeadPos,outputRing.byteWorkingHeadPos.value); 		
-		RingBuffer.publishWorkingHeadPosition(outputRing, outputRing.workingHeadPos.value);
+		RingBuffer.publishWorkingHeadPosition(outputRing, RingBuffer.workingHeadPosition(outputRing));
 		
 		outputRing.batchPublishCountDown = outputRing.batchPublishCountDownInit;
 	}

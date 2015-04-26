@@ -73,7 +73,7 @@ public final class RingBuffer {
 
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
     public final PaddedLong workingTailPos = new PaddedLong();
-    final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos  
+    private final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos  
 
     public final int maxByteSize;
     public byte[] byteBuffer;
@@ -129,7 +129,7 @@ public final class RingBuffer {
 	
 	//hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
 	private int lastReleasedBytesTail;
-	private long lastReleasedTail; //TODO: AAAAA, must integrate this usage 
+	private long lastReleasedTail; //TODO: AAAAA, must integrate this usage into graph manager 
 		
 	
     
@@ -1089,15 +1089,11 @@ public final class RingBuffer {
     }
     
 
-    @Deprecated //use addIntValue
-	public static void addValue(RingBuffer rb, int value) {
-    	 addIntValue(value, rb);		
-	}
- 
-	public static void addIntValue(int value, RingBuffer rb) {
-		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
+    public static void addIntValue(int value, RingBuffer rb) {
+		 setValue(rb.buffer,rb.mask,rb.workingHeadPos.value++,value);		
 	}
 
+	//TODO: B, need to update build server to ensure this runs on both Java6 and Java ME 8
     
     //must be called by low-level API when starting a new message
     public static void addMsgIdx(RingBuffer rb, int msgIdx) {
@@ -1109,27 +1105,10 @@ public final class RingBuffer {
     	
    // 	 assert(rb.llwNextHeadTarget<=rb.headPos.get() || rb.workingHeadPos.value<=rb.llwNextHeadTarget) : "Unsupported mix of high and low level API.";
    	
-		 rb.buffer[rb.mask & (int)rb.workingHeadPos.value++] = msgIdx;		
-		 
-		 markMsgBytesConsumed(rb);
+		 rb.buffer[rb.mask & (int)rb.workingHeadPos.value++] = msgIdx;
 	}
 
-	public static void markMsgBytesConsumed(RingBuffer rb) {
-		
-	}
-
-	//TODO: B, need to update build server to ensure this runs on both Java6 and Java ME 8
-	
-   
-    //we are only allowed 12% of the time or so for doing this write.
-    //this pushes only ~5gbs but if we had 100% it would scale to 45gbs
-    //so this is not the real bottleneck and given the compression ratio of the test data
-    //we can push 1gbs more of compressed data for each 10% of cpu freed up.
-    public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value) {
-        buffer[rbMask & (int)headCache.value++] = value;
-    } 
-    
-    public static void setValue(int[] buffer, int rbMask, long offset, int value) {
+	public static void setValue(int[] buffer, int rbMask, long offset, int value) {
         buffer[rbMask & (int)offset] = value;
     } 
     
@@ -1191,9 +1170,10 @@ public final class RingBuffer {
         headCache.value = setValues(buffer, rbMask, headCache.value, value1, value2);
         
     }
+    
 
-	public static long setValues(int[] buffer, int rbMask, long pos,
-			int value1, long value2) {
+
+	public static long setValues(int[] buffer, int rbMask, long pos, int value1, long value2) {
 		buffer[rbMask & (int)pos++] = value1;
         buffer[rbMask & (int)pos++] = (int)(value2 >>> 32);
         buffer[rbMask & (int)pos++] = (int)(value2 & 0xFFFFFFFF);
@@ -1303,14 +1283,43 @@ public final class RingBuffer {
     }
 
     public static void releaseReadLock(RingBuffer ring) {
+        assert(RingBuffer.contentRemaining(ring)>=0);
+        
         if ((--ring.batchReleaseCountDown<=0) ) {
+            
     	    assert(ring.ringWalker.cursor<=0 && !RingReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
+    	  
     	    ring.bytesTailPos.value=ring.byteWorkingTailPos.value; 
     	    ring.tailPos.lazySet(ring.workingTailPos.value);
-    	    ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;   
+    	    ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;  
+    	    
+    	    
+    	} else {
+    	    storeUnpublishedTail(ring);
     	}
     }
+    
+    static void storeUnpublishedTail(RingBuffer ring) {
+        ring.lastReleasedBytesTail = ring.byteWorkingTailPos.value;
+        ring.lastReleasedTail = ring.workingTailPos.value;     
+    }
+    
+    /**
+     * Release any reads that were held back due to batching.
+     * @param ring
+     */
+    public static void releaseAllBatchedReads(RingBuffer ring) {
+        
+        if (ring.lastReleasedTail>ring.tailPos.get()) {
+            PaddedInt.set(ring.bytesTailPos,ring.lastReleasedBytesTail); 
+            ring.tailPos.lazySet(ring.lastReleasedTail);
+        }
+        
+        assert(debugHeadAssignment(ring));
+        ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;        
+    }
 
+    @Deprecated
 	public static void releaseAll(RingBuffer ring) {
 
 			int i = ring.byteWorkingTailPos.value= ring.byteWorkingHeadPos.value;
@@ -1467,6 +1476,14 @@ public final class RingBuffer {
 		 return ring.headPos.get();
 	}
 	
+	public static void incWorkingHeadPosition(RingBuffer ring, long incValue) {
+	    ring.workingHeadPos.value += incValue;
+	}
+	
+	public static long workingHeadPosition(RingBuffer ring) {
+	    return ring.workingHeadPos.value;
+	}
+	
 	public static int bytesHeadPosition(RingBuffer ring) {
 		return ring.bytesHeadPos.get();
 	}
@@ -1512,7 +1529,7 @@ public final class RingBuffer {
 		int consumed = ring.byteWorkingHeadPos.value - ring.bytesWriteLastConsumedBytePos;		
 		ring.buffer[ring.mask & (int)pos] = consumed>=0 ? consumed : consumed&BYTES_WRAP_MASK ;
 		ring.bytesWriteLastConsumedBytePos = ring.byteWorkingHeadPos.value;
-	//	ring.writeTrailingCountOfBytesConsumed = false;
+
 	}
 
 	public static IntBuffer wrappedPrimaryIntBuffer(RingBuffer ring) {

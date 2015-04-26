@@ -265,10 +265,9 @@ public class RingWalker {
 
 
 	private static void releaseBlockBeforeReadMessage(RingBuffer ringBuffer) {
-		ringBuffer.workingTailPos.value = ringBuffer.ringWalker.nextWorkingTail;
 		PaddedInt.set(ringBuffer.bytesTailPos,ringBuffer.byteWorkingTailPos.value); 			
-		ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);
-					
+		RingBuffer.publishWorkingTailPosition(ringBuffer, ringBuffer.ringWalker.nextWorkingTail);
+				
 		ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
 	}
 
@@ -373,11 +372,11 @@ public class RingWalker {
 		//      nested long sequences where we don't know the length until after they are all written.
 		
 		prepWriteFragmentSpecificProcessing(ring, cursorPosition, from);
-		ring.workingHeadPos.value += fragSize;
+		RingBuffer.incWorkingHeadPosition(ring, fragSize);
 		ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + fragSize;
 
 		//when publish is called this new byte will be appended due to this request
-		RingBuffer.markMsgBytesConsumed(ring);
+
 				
 	}
 
@@ -388,7 +387,7 @@ public class RingWalker {
 			prepWriteMessageStart(ring, cursorPosition, from);
 		 } else {			
 			//this fragment does not start a new message but its start position must be recorded for usage later
-			ring.ringWalker.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=ring.workingHeadPos.value;
+			ring.ringWalker.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=RingBuffer.workingHeadPosition(ring);
 		 }
 	}
 
@@ -400,8 +399,8 @@ public class RingWalker {
 		RingBuffer.markBytesWriteBase(ring);
 		
 		//Start new stack of fragments because this is a new message
-		ring.ringWalker.activeWriteFragmentStack[0] = ring.workingHeadPos.value;
-		ring.buffer[ring.mask &(int)(ring.workingHeadPos.value + from.templateOffset)] = cursorPosition;
+		ring.ringWalker.activeWriteFragmentStack[0] = RingBuffer.workingHeadPosition(ring);
+		ring.buffer[ring.mask &(int)(RingBuffer.workingHeadPosition(ring) + from.templateOffset)] = cursorPosition;
 	}
 
 	
@@ -414,7 +413,7 @@ public class RingWalker {
 
 	private static boolean copyFragment1(RingBuffer inputRing, RingBuffer outputRing, long start, int spaceNeeded, int bytesToCopy) {
 		
-		if ((spaceNeeded >  outputRing.maxSize-(int)(outputRing.workingHeadPos.value - RingBuffer.tailPosition(outputRing)) )) {
+		if ((spaceNeeded >  outputRing.maxSize-(int)(RingBuffer.workingHeadPosition(outputRing) - RingBuffer.tailPosition(outputRing)) )) {
 			return false;
 		}
 		copyFragment2(inputRing, outputRing, (int)start, spaceNeeded, bytesToCopy);		
@@ -425,9 +424,9 @@ public class RingWalker {
 	private static void copyFragment2(RingBuffer inputRing,	RingBuffer outputRing, int start, int spaceNeeded, int bytesToCopy) {
 		
 		RingBuffer.copyIntsFromToRing(inputRing.buffer, start, inputRing.mask, 
-				                      outputRing.buffer, (int)outputRing.workingHeadPos.value, outputRing.mask, 
+				                      outputRing.buffer, (int)RingBuffer.workingHeadPosition(outputRing), outputRing.mask, 
 				                      spaceNeeded);
-		outputRing.workingHeadPos.value+=spaceNeeded;
+		RingBuffer.incWorkingHeadPosition(outputRing, spaceNeeded);
 		
 		RingBuffer.copyBytesFromToRing(inputRing.byteBuffer, inputRing.byteWorkingTailPos.value, inputRing.byteMask, 
 				                       outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask, 

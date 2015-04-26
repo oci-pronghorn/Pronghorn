@@ -241,7 +241,7 @@ public class RingBufferMultiTemplateTest {
         while (true) {
         	
         	if (j == 0) {
-        		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, ring.workingHeadPos.value - (ring.maxSize - 1), ring);
+        		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.maxSize - 1), ring);
         		RingBuffer.publishEOF(ring);
         		return;//done
         	}
@@ -253,31 +253,31 @@ public class RingBufferMultiTemplateTest {
         	
         	switch(selectedTemplateId) {
 	        	case 2: //boxes
-	        		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, ring.workingHeadPos.value - (ring.maxSize - 4), ring);
+	        		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.maxSize - 4), ring);
 	        		
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_BOXES_LOC);
 	        		byte[] source = buildMockData((j*blockSize)/testSize);
-	        		RingBuffer.addValue(ring, 42);
+                RingBuffer.addIntValue(42, ring);
 	        		RingBuffer.addByteArray(source, 0, source.length, ring);
 	        		RingBuffer.publishWrites(ring);
 	        		break;
 	        	case 1: //samples
-	        		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, ring.workingHeadPos.value - (ring.maxSize - 8), ring);
+	        		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.maxSize - 8), ring);
 	        		
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_SAMPLE_LOC);
-	        		RingBuffer.addValue(ring, 2014);
-	        		RingBuffer.addValue(ring, 12);
-	        		RingBuffer.addValue(ring, 9);
+                RingBuffer.addIntValue(2014, ring);
+                RingBuffer.addIntValue(12, ring);
+                RingBuffer.addIntValue(9, ring);
 	        		
-	        		RingBuffer.addValue(ring, 2);
+                RingBuffer.addIntValue(2, ring);
 	        		RingBuffer.addLongValue(ring, 123456);
 
 	        		RingBuffer.publishWrites(ring);
 	        		break;
 	        	case 4: //reset
-	        		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, ring.workingHeadPos.value - (ring.maxSize - 3), ring);
+	        		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.maxSize - 3), ring);
 	        		
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_RESET_LOC);

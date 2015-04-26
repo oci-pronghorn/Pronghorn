@@ -1,7 +1,6 @@
 package com.ociweb.pronghorn.ring;
 
 import static com.ociweb.pronghorn.ring.RingBuffer.addByteArray;
-import static com.ociweb.pronghorn.ring.RingBuffer.addValue;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteMask;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
@@ -28,8 +27,6 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.ociweb.pronghorn.ring.RingBuffer;
-
 public class RingBufferTest {
 
    //only here outside the scope of the method to prevent escape analysis from detecting that
@@ -53,7 +50,7 @@ public class RingBufferTest {
         dump(ring);
         
         //write one integer to the ring buffer
-        addValue(ring, testInt);       
+        RingBuffer.addIntValue(testInt, ring);       
         
         //write array of bytes to ring buffer
         addByteArray(testArray, 0, testArray.length, ring);             
@@ -200,7 +197,7 @@ public class RingBufferTest {
                 int messageFieldCount = totalMessageFields;                
                 //write the record
                 while (--messageFieldCount>=0) {                    
-                    addValue(ring, messageFieldCount);  
+                    RingBuffer.addIntValue(messageFieldCount, ring);  
                 }
                 
                 if (0==(messageCount&chunkMask) ) {
