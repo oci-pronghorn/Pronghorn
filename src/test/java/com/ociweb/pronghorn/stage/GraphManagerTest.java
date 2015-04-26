@@ -46,7 +46,7 @@ public class GraphManagerTest {
 		assertTrue(b == GraphManager.getRingProducer(gm,rb2.ringId));
 		assertTrue(c == GraphManager.getRingConsumer(gm,rb2.ringId));
 		
-		RingBuffer.addValue(rb1, 101); //add a single int to the ring buffer
+		RingBuffer.addIntValue(101, rb1); //add a single int to the ring buffer
 		RingBuffer.publishWrites(rb1);
 
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c.stageId)); //this is true because the first ring buffer has 1 integer
@@ -91,7 +91,7 @@ public class GraphManagerTest {
 		PronghornStage c1 = new SimpleIn(gm, rb211); 
 		PronghornStage c2 = new SimpleIn(gm, rb221);
 		
-		RingBuffer.addValue(rb1, 101); //add a single int to the ring buffer
+		RingBuffer.addIntValue(101, rb1); //add a single int to the ring buffer
 		RingBuffer.publishWrites(rb1);
 		
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c1.stageId)); //this is true because the first ring buffer has 1 integer
