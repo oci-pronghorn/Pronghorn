@@ -143,7 +143,7 @@ public final class RingBuffer {
 	
     
 	long llrTailPosCache;
-	long llrNextTailTarget; //TODO: move these into private class
+	private long llrNextTailTarget; //TODO: move these into private class
 	
 	long llwHeadPosCache;
 	private long llwNextHeadTarget; //TODO: move these into private class
@@ -255,6 +255,10 @@ public final class RingBuffer {
         this.mask = maxSize - 1;
         
         this.from = from;
+        
+        //This init must be the same as what is done in reset()
+        //This target is a counter that marks if there is room to write more data into the ring without overriting other data.
+        this.llrNextTailTarget = 0-this.maxSize;
   
         //single text and byte buffers because this is where the variable length data will go.
 
@@ -332,7 +336,7 @@ public final class RingBuffer {
         
         llwHeadPosCache = 0;
         llrTailPosCache = 0;
-        llrNextTailTarget = 0 - maxSize;
+        llrNextTailTarget = 0 - maxSize;       
         llwNextHeadTarget = 0;
         
         bytesWriteBase = 0;
@@ -1278,6 +1282,7 @@ public final class RingBuffer {
      */
     public static void readBytesAndreleaseReadLock(RingBuffer ring) {
    		takeValue(ring); 
+   		
     	releaseReadLock(ring); 
     	  	
     }
@@ -1384,7 +1389,7 @@ public final class RingBuffer {
 	}
 
 	public static void publishHeadPositions(RingBuffer ring) {
-	    
+	    //TODO: need way to test if publish was called on an input ? may be much easer to detect missing publish. or extra release.
 	    if ((--ring.batchPublishCountDown<=0)) {
 	        PaddedInt.set(ring.bytesHeadPos,ring.byteWorkingHeadPos.value); 
 	        ring.headPos.lazySet(ring.workingHeadPos.value);
@@ -1407,6 +1412,7 @@ public final class RingBuffer {
     	storeUnpublishedHead(ring);
     }
 
+    //TODO: AAA, need wipe on read method for secure data passing.
 
     /**
      * Blocks until there is enough room for this first fragment of the message and records the messageId.
@@ -1415,45 +1421,38 @@ public final class RingBuffer {
      */
 	public static void blockWriteMessage(RingBuffer ring, int msgIdx) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(ring.tailPos.get(), ring.headPos.get()-(ring.maxSize-RingBuffer.from(ring).fragDataSize[msgIdx]), ring);
+	    spinBlockForRoom(ring, RingBuffer.from(ring).fragDataSize[msgIdx]);
 		RingBuffer.addMsgIdx(ring, msgIdx);
 	}
     
-	//TODO: AAA, need wipe on read method for secure data passing.
     
     //All the spin lock methods share the same implementation. Unfortunately these can not call 
     //a common implementation because the extra method jump degrades the performance in tight loops
     //where these spin locks are commonly used.
     
-    public static long spinBlockOnTailTillMatchesHead(long lastCheckedValue, RingBuffer ringBuffer) {
-    	long targetValue = ringBuffer.headPos.get();
-    	while ( lastCheckedValue < targetValue) {
-    		spinWork(ringBuffer);
-		    lastCheckedValue = ringBuffer.tailPos.longValue();
-		} 
-		return lastCheckedValue;
+    public static void spinBlockForRoom(RingBuffer ringBuffer, int size) {
+        while (!roomToLowLevelWrite(ringBuffer, size)) {
+            spinWork(ringBuffer);
+        }
     }
     
-    public static long spinBlockOnTail(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
-    	
+    @Deprecated //use spinBlockForRoom then confirm the write afterwords
+    public static long spinBlockOnTail(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {    	
     	while (null==ringBuffer.buffer || lastCheckedValue < targetValue) {
     		spinWork(ringBuffer);
 		    lastCheckedValue = ringBuffer.tailPos.longValue();
 		}
 		return lastCheckedValue;
     }
-    
-    public static long spinBlockOnHeadTillMatchesTail(long lastCheckedValue, RingBuffer ringBuffer) {
-    	long targetValue = ringBuffer.tailPos.longValue();    	
-    	while ( lastCheckedValue < targetValue) {
-    		spinWork(ringBuffer);
-		    lastCheckedValue = ringBuffer.headPos.get();
-		}
-		return lastCheckedValue;
-    }
 
-    public static long spinBlockOnHead(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
-    	
+    public static void spinBlockForContent(RingBuffer ringBuffer) {
+        while (!contentToLowLevelRead(ringBuffer, 1)) {
+            spinWork(ringBuffer);
+        }
+    }
+    
+    @Deprecated //use spinBlockForContent then confirm the read afterwords
+    public static long spinBlockOnHead(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {    	
     	while ( lastCheckedValue < targetValue) {
     		spinWork(ringBuffer);
 		    lastCheckedValue = ringBuffer.headPos.get();
@@ -1550,15 +1549,6 @@ public final class RingBuffer {
 	//This is an important performance feature of the low level API and should not be modified.
 
 	
-	//TODO: AAAAAA, need to find a way to remove this quickly.
-	public static void initLowLevelWriter(RingBuffer output) {
-//
-//			//We have no idea if this was a new ring or one previously used so instead of assuming the 
-//			//tail is at zero as it would be on construction we will ask for the value explicitly here
-			output.llrNextTailTarget = headPosition(output) - output.maxSize;
-
-	}
-	
 	//TODO: AA, adjust unit tests to use this.
 	public static boolean roomToLowLevelWrite(RingBuffer output, int size) {
 		return roomToLowLevelWrite(output, output.llrNextTailTarget+size);
@@ -1591,7 +1581,7 @@ public final class RingBuffer {
 		return (input.llwHeadPosCache = input.headPos.get()) >= target;
 	}
 	
-	public static long confirmLowLevelRead(RingBuffer input, int size) {
+	public static long confirmLowLevelRead(RingBuffer input, long size) {
 		return (input.llwNextHeadTarget += size);
 	}
 

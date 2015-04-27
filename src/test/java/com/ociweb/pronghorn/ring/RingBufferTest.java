@@ -10,7 +10,6 @@ import static com.ociweb.pronghorn.ring.RingBuffer.publishWrites;
 import static com.ociweb.pronghorn.ring.RingBuffer.readBytesAndreleaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
-import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTailTillMatchesHead;
 import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
@@ -209,7 +208,8 @@ public class RingBufferTest {
                 }
             }
             //wait until the other thread is finished reading
-            tailPosCache = spinBlockOnTailTillMatchesHead(tailPosCache, ring);
+            while ( RingBuffer.contentRemaining(ring) > 0 ) {
+            }
             
             long duration = System.nanoTime()-start;
             
@@ -340,7 +340,8 @@ public class RingBufferTest {
                                 
             }
             //wait until the other thread is finished reading
-            tailPosCache = spinBlockOnTailTillMatchesHead(tailPosCache, ring);
+            while ( RingBuffer.contentRemaining(ring) > 0 ) {
+            }
 
             long duration = System.nanoTime()-start;
             

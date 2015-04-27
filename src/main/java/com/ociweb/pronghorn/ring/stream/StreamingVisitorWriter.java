@@ -32,9 +32,7 @@ public class StreamingVisitorWriter {
 		this.cursorStack = new int[this.from.maximumFragmentStackDepth];
 		this.sequenceCounters = new int[this.from.maximumFragmentStackDepth];
 		
-		this.nestedFragmentDepth = -1;	
-		
-		RingBuffer.initLowLevelWriter(outputRing);
+		this.nestedFragmentDepth = -1;
 	}
 
 	public void run() {
