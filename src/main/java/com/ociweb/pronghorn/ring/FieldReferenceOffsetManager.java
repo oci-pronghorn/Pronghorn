@@ -372,7 +372,7 @@ public class FieldReferenceOffsetManager {
 		}
 	}
 
-	public static boolean isGroupOpenSequence(FieldReferenceOffsetManager from, int cursor) {
+	public static boolean isGroupSequence(FieldReferenceOffsetManager from, int cursor) {
 		return 0 != (OperatorMask.Group_Bit_Seq&TokenBuilder.extractOper(from.tokens[cursor]));
 	}
 

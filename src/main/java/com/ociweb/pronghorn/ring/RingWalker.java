@@ -329,7 +329,7 @@ public class RingWalker {
 					" recent primary ring context:"+Arrays.toString( Arrays.copyOfRange(ringBuffer.buffer, Math.max(0, limit-10), limit )));
 		}		
 		
-		//this is commonly used as the end of file marker    		
+		//this is commonly used as the end of file marker  
 		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+RingBuffer.EOF_SIZE;
 
 	}

@@ -108,14 +108,14 @@ public class StreamingVisitorReader {
 				case TypeMask.Group:
 					if (FieldReferenceOffsetManager.isGroupOpen(from, j)) {
 						visitor.visitFragmentOpen(fieldNameScript[j],from.fieldIdScript[j], j);
-					} else {				
+					} else {
 						do {//close this member of the sequence or template
 							String name = fieldNameScript[j];
 							long id = from.fieldIdScript[j];
 							
 							//if this was a close of sequence count down so we now when to close it.
-							if (FieldReferenceOffsetManager.isGroupOpenSequence(from, j)) {
-								visitor.visitFragmentClose(name,id);
+							if (FieldReferenceOffsetManager.isGroupSequence(from, j)) {
+							    visitor.visitFragmentClose(name,id);
 								//close of one sequence member
 								if (--sequenceCounters[nestedFragmentDepth]<=0) {
 									//close of the sequence
@@ -224,7 +224,7 @@ public class StreamingVisitorReader {
 					}
 					break;	
 				case TypeMask.TextASCII:
-					{						
+					{					
 						int meta = RingBuffer.readRingByteMetaData(idx, inputRing);
 						int len =  RingBuffer.readRingByteLen(idx, inputRing);
 						idx+=2;

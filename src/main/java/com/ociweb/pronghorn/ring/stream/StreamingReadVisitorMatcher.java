@@ -15,6 +15,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
     private final RingBuffer expectedInput;
     private final FieldReferenceOffsetManager expectedFrom;
+    private boolean needsClose = false;
     
     public StreamingReadVisitorMatcher(RingBuffer expectedInput) {
         this.expectedInput = expectedInput;
@@ -23,16 +24,12 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
     @Override
     public boolean paused() {
-//        //This is the end of a fragment and may need to move forward and remove the trailing byte
-//        if (expectedInput.readTrailCountOfBytesConsumed) {            
-//            RingBuffer.takeValue(expectedInput);            
-//            expectedInput.readTrailCountOfBytesConsumed = false;
-//        }
         return false;
     }
 
     @Override
     public void visitTemplateOpen(String name, long id) {
+        needsClose = true;
         
         while (!RingBuffer.contentToLowLevelRead(expectedInput, 1)) {            
         }
@@ -41,58 +38,61 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         if (id != expectedFrom.fieldIdScript[msgIdx]) {
             throw new AssertionError("expected message id: "+expectedFrom.fieldIdScript[msgIdx]+" was given "+id);
         }
+        
+        
     }
 
     @Override
     public void visitTemplateClose(String name, long id) {
-        endFragment();
+        if (needsClose) {
+            RingBuffer.takeValue(expectedInput); 
+            needsClose = false;
+            RingBuffer.releaseReadLock(expectedInput);
+        }
+        
     }
 
-    private void endFragment() {
-
-          int bytesConsumed = RingBuffer.takeValue(expectedInput);  
-
-        
-        //TODO: must confirm that we are at the right position to end this fragment
-        
-        RingBuffer.readBytesAndreleaseReadLock(expectedInput);
-    }
 
     @Override
     public void visitFragmentOpen(String name, long id, int cursor) {
-        
+        needsClose = true;
         while (!RingBuffer.contentToLowLevelRead(expectedInput, 1)) {            
         }
-        
-       
-        //TODO: the expectedInput needs to have the trailing value.
-        
         
     }
 
     @Override
     public void visitFragmentClose(String name, long id) {
-        endFragment();  
+        if (needsClose) {
+            RingBuffer.takeValue(expectedInput); 
+            needsClose = false;
+            RingBuffer.releaseReadLock(expectedInput);  
+        }
+        
     }
 
+        
     @Override
     public void visitSequenceOpen(String name, long id, int length) {
 
-        if (RingBuffer.takeValue(expectedInput)!=length) {
-            throw new AssertionError();
+        int tempLen;
+        if ((tempLen=RingBuffer.takeValue(expectedInput))!=length) {
+            throw new AssertionError("expected length: "+Long.toHexString(tempLen)+" but got "+Long.toHexString(length));
         }
-                  
-        RingBuffer.takeValue(expectedInput);            
- 
+        //This is the end of the fragment that ended with a length
+        RingBuffer.takeValue(expectedInput); 
+        needsClose = false;
+        RingBuffer.releaseReadLock(expectedInput);
+         
     }
 
     @Override
     public void visitSequenceClose(String name, long id) {
-        endFragment();
     }
 
     @Override
-    public void visitSignedInteger(String name, long id, int value) {        
+    public void visitSignedInteger(String name, long id, int value) { 
+        needsClose = true;
         if (RingBuffer.takeValue(expectedInput) != value) {
             throw new AssertionError();
         }
@@ -100,6 +100,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
     @Override
     public void visitUnsignedInteger(String name, long id, long value) {
+        needsClose = true;
         int temp;
         if ((temp = RingBuffer.takeValue(expectedInput)) != value) {
             throw new AssertionError("expected integer "+temp+" but found "+value);
@@ -108,6 +109,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
     @Override
     public void visitSignedLong(String name, long id, long value) {
+        needsClose = true;
         if (RingBuffer.takeLong(expectedInput) != value) {
             throw new AssertionError();
         }
@@ -115,26 +117,30 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
     @Override
     public void visitUnsignedLong(String name, long id, long value) {
+        needsClose = true;
+        
         long temp;
         if ((temp=RingBuffer.takeLong(expectedInput)) != value) {
-            //TODO: the expected is WRONG and is looking at an index one too small.
             throw new AssertionError("expected long: "+Long.toHexString(temp)+" but got "+Long.toHexString(value));
         }
     }
 
     @Override
     public void visitDecimal(String name, long id, int exp, long mant) {
-        if (RingBuffer.takeValue(expectedInput) != exp) {
-            throw new AssertionError();
+        needsClose = true;
+        int tempExp;
+        if ((tempExp = RingBuffer.takeValue(expectedInput)) != exp) {
+            throw new AssertionError("expected integer exponent "+tempExp+" but found "+exp);
         }
-        if (RingBuffer.takeLong(expectedInput) != mant) {
-            throw new AssertionError();
+        long tempMant;
+        if ((tempMant=RingBuffer.takeLong(expectedInput)) != mant) {
+            throw new AssertionError("expected long mantissa: "+Long.toHexString(tempMant)+" but got "+Long.toHexString(mant));
         }
     }
 
     @Override
     public void visitASCII(String name, long id, Appendable value) {
-        
+        needsClose = true;
         int meta = takeRingByteMetaData(expectedInput);
         int len = takeRingByteLen(expectedInput);
         int pos = bytePosition(meta, expectedInput, len);               
@@ -144,33 +150,50 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         //ascii so the bytes will match the chars
         CharSequence seq = (CharSequence)value;
         
+        if (seq.length() != len) {
+            throw new AssertionError("expected ASCII length: "+Long.toHexString(len)+" but got "+Long.toHexString(seq.length()));
+        }
         
+        int i = 0;
+        while (i<len) {
+            byte actual = (byte)seq.charAt(i);
+            byte expected = data[mask&(i+pos)];
+            if (actual != expected) {
+                throw new AssertionError("ASCII does not match at index "+i+" of length "+len);
+                
+            }
+            i++;
+        }
         
-        // TODO Auto-generated method stub
-
     }
 
     @Override
-    public void visitUTF8(String name, long id, Appendable target) {
+    public void visitUTF8(String name, long id, Appendable value) {
+        needsClose = true;
         int meta = takeRingByteMetaData(expectedInput);
         int len = takeRingByteLen(expectedInput);
         int pos = bytePosition(meta, expectedInput, len);               
         byte[] data = byteBackingArray(meta, expectedInput);
         int mask = byteMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
         
+        CharSequence seq = (CharSequence)value;
+       
         // TODO Auto-generated method stub
 
     }
 
     @Override
     public void visitBytes(String name, long id, ByteBuffer value) {
+        needsClose = true;
         int meta = takeRingByteMetaData(expectedInput);
         int len = takeRingByteLen(expectedInput);
         int pos = bytePosition(meta, expectedInput, len);               
         byte[] data = byteBackingArray(meta, expectedInput);
         int mask = byteMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
         
-        
+        if (value.remaining() != len) {
+            throw new AssertionError("expected bytes length: "+Long.toHexString(len)+" but got "+Long.toHexString(value.remaining()));
+        }
         
         // TODO Auto-generated method stub
 

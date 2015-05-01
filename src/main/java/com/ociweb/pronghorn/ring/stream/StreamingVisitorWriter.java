@@ -48,6 +48,7 @@ public class StreamingVisitorWriter {
 		        	
 		        	//start new message, visitor returns this new id to be written.
 		        	cursor = visitor.pullMessageIdx();
+		        	assert(isValidMessageStart(cursor, from));
 		        	if (cursor<0) {
 		        		RingBuffer.publishWrites(outputRing);
 		        		RingBuffer.publishAllBatchedWrites(outputRing);
@@ -86,7 +87,17 @@ public class StreamingVisitorWriter {
 		
 	}
 
-	   public void startup() {
+	private boolean isValidMessageStart(int cursor, FieldReferenceOffsetManager from) {
+	       int i = from.messageStarts.length;
+	       while (--i>=0) {
+	           if (cursor == from.messageStarts[i]) {
+	               return true;
+	           }
+	       }
+	       return false;
+    }
+
+    public void startup() {
 	        this.visitor.startup();
 	    }
 	    
@@ -110,7 +121,7 @@ public class StreamingVisitorWriter {
 							long id = from.fieldIdScript[j];
 							
 							//if this was a close of sequence count down so we now when to close it.
-							if (FieldReferenceOffsetManager.isGroupOpenSequence(from, j)) {
+							if (FieldReferenceOffsetManager.isGroupSequence(from, j)) {
 								visitor.fragmentClose(name,id);
 								//close of one sequence member
 								if (--sequenceCounters[nestedFragmentDepth]<=0) {

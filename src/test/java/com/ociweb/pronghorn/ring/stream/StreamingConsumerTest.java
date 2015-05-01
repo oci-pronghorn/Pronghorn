@@ -151,7 +151,7 @@ public class StreamingConsumerTest {
 	       assertTrue(results, results.indexOf(Integer.toString(aNegIntValue))>0);
 	}
 	
-//	@Test
+	@Test
 	public void matchingTestPositive() {
 	    
         RingBuffer ring1 = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
@@ -167,8 +167,7 @@ public class StreamingConsumerTest {
         
         StreamingWriteVisitorGenerator swvg2 = new StreamingWriteVisitorGenerator(FROM, new Random(commonSeed), 30, 30);        
         StreamingVisitorWriter svw2 = new StreamingVisitorWriter(ring2, swvg2);
-        
-        
+                
         svw1.startup();
         svw2.startup();
 	    
@@ -184,9 +183,10 @@ public class StreamingConsumerTest {
         
         //now use matcher to confirm the same.
         StreamingReadVisitorMatcher srvm = new StreamingReadVisitorMatcher(ring1);
-        StreamingVisitorReader svr = new StreamingVisitorReader(ring2, srvm);// new StreamingReadVisitorDebugDelegate(srvm) );
+        StreamingVisitorReader svr = new StreamingVisitorReader(ring2, srvm);//new StreamingReadVisitorDebugDelegate(srvm) );
         
         svr.startup();
+        
         
         try {
             svr.run();

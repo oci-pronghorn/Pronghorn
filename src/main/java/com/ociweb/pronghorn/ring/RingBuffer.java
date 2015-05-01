@@ -1281,6 +1281,8 @@ public final class RingBuffer {
      * @param ring
      */
     public static void readBytesAndreleaseReadLock(RingBuffer ring) {
+        //new Exception("release and take trialing byte").printStackTrace();
+        
    		takeValue(ring); 
    		
     	releaseReadLock(ring); 
@@ -1347,7 +1349,7 @@ public final class RingBuffer {
      * @param ring
      */
     public static void publishWrites(RingBuffer ring) {
-    	
+    	//new Exception("publish trialing byte").printStackTrace();
     	//happens at the end of every fragment
         writeTrailingCountOfBytesConsumed(ring, ring.workingHeadPos.value++); //increment because this is the low-level API calling
 		    
@@ -1388,7 +1390,9 @@ public final class RingBuffer {
 		return true;
 	}
 
+	
 	public static void publishHeadPositions(RingBuffer ring) {
+
 	    //TODO: need way to test if publish was called on an input ? may be much easer to detect missing publish. or extra release.
 	    if ((--ring.batchPublishCountDown<=0)) {
 	        PaddedInt.set(ring.bytesHeadPos,ring.byteWorkingHeadPos.value); 
