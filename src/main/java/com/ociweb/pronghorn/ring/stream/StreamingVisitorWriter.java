@@ -64,9 +64,6 @@ public class StreamingVisitorWriter {
 		        	//String messageName = from.fieldNameScript[cursor];
 		        	//long messageId = from.fieldIdScript[cursor];
 		        	
-		        				        		        		        
-			        //visit all the fields in this fragment
-			        processFragment(startPos, cursor);
 
 		        } else {
 		        	
@@ -74,16 +71,17 @@ public class StreamingVisitorWriter {
 		            
 		        	cursor = cursorStack[nestedFragmentDepth];
 		        	startPos = 0;//this is not a new message so there is no id to jump over.
-			        
-		        	
-		        	
-			        //visit all the fields in this fragment
-			        processFragment(startPos, cursor);
- 	
+			    
 		        }
+		        
+		        //visit all the fields in this fragment
+		        processFragment(startPos, cursor);
+		        
+		        RingBuffer.confirmLowLevelWrite(outputRing, from.fragDataSize[cursor]);
 		        
 		        publishWrites(outputRing);
 		}
+		publishAllBatchedWrites(outputRing);
 		
 	}
 
