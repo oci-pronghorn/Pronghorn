@@ -267,7 +267,6 @@ public class RingBufferPipeline {
 
 		@Override
 		public void startup() {
-			RingBuffer.initLowLevelWriter(outputRing);
 		}
 		
 		@Override
@@ -362,8 +361,6 @@ public class RingBufferPipeline {
 
 		
 		public void startup() {
-			
-			RingBuffer.initLowLevelWriter(outputRing);
 		}
 		
 		@Override

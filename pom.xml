@@ -12,7 +12,7 @@
   <dependencies>
         <dependency>
             <groupId>com.ociweb</groupId>
-            <artifactId>jFASTRings</artifactId>
+            <artifactId>PronghornPipes</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency> 
       	<dependency>

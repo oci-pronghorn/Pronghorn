@@ -46,7 +46,7 @@ public class SplitterStage extends PronghornStage {
 		working = new int[i];
 		while(--i>=0) {
 			
-			RingBuffer.initLowLevelWriter(targets[i]);
+			
 					
 			//confirm this target is large enough for the needed data.
 			FieldReferenceOffsetManager targetFrom = RingBuffer.from(targets[i]);

@@ -15,6 +15,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	
 	private ExecutorService executorService; 
 	private volatile boolean isShuttingDown = false;
+    private volatile Throwable firstException;//will remain null if nothing is wrong
 	
 	//TODO: add low priority to the periodic threads? 
 	//TODO: check for Thread.yedld() want to phase that out and use parkNano
@@ -64,17 +65,30 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		
 		isShuttingDown = true;
 		executorService.shutdown();
+		
+		//
+		if (null!=firstException) {
+		    throw new RuntimeException(firstException);
+		}
+		
 		try {
 			boolean cleanExit = executorService.awaitTermination(timeout, unit);			
-			validShutdownState();		
+			validShutdownState();			
 			return cleanExit;
 		} catch (InterruptedException e) {
 			executorService.shutdownNow();
 			Thread.currentThread().interrupt();
 			return true;			
 		} catch (Throwable e) {
+		    if (null==firstException) {
+                throw new RuntimeException(e);
+            }
 			log.error("awaitTermination", e);
 			return false;
+		} finally {
+		    if (null!=firstException) {
+	            throw new RuntimeException(firstException);
+	        }
 		}
 	}
 	
@@ -128,6 +142,13 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
 								
 				} catch (Throwable t) {
+				    
+	                synchronized(this) {
+                        if (null==firstException) {
+                            firstException = t;
+                        }
+                    }   
+	                
 				    log.error("Stacktrace",t);
 					log.warn("Unexpected error in stage "+stage.stageId+" "+stage.getClass().getSimpleName());
 					GraphManager.shutdownNeighborRings(graphManager, stage);
@@ -170,6 +191,13 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
 							
 				} catch (Throwable t) {
+				    
+				    synchronized(this) {
+    				    if (null==firstException) {
+    				        firstException = t;
+    				    }
+				    }				    
+				    
 					log.error("Unexpected error in stage {}", stage);
 					log.error("Stacktrace",t);
 					GraphManager.shutdownNeighborRings(graphManager, stage);
