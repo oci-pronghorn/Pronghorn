@@ -177,9 +177,8 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         int mask = byteMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
         
         CharSequence seq = (CharSequence)value;
-       
-        // TODO Auto-generated method stub
-
+        
+        //TODO: AAAA, must do UTF8 compare but do go go with chars or bytes? not sure yet
     }
 
     @Override
@@ -195,7 +194,16 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
             throw new AssertionError("expected bytes length: "+Long.toHexString(len)+" but got "+Long.toHexString(value.remaining()));
         }
         
-        // TODO Auto-generated method stub
+        int i = 0;
+        while (i<len) {
+            byte actual = value.get(i+value.position());
+            byte expected = data[mask&(i+pos)];
+            if (actual != expected) {
+                throw new AssertionError("ASCII does not match at index "+i+" of length "+len);
+                
+            }
+            i++;
+        }
 
     }
 
