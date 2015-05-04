@@ -98,7 +98,9 @@ public final class RingBuffer {
 	
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
     public final PaddedInt byteWorkingTailPos = new PaddedInt();
-    public final PaddedInt bytesTailPos = new PaddedInt();
+    private final PaddedInt bytesTailPos = new PaddedInt();
+    
+
     
     
     //defined externally and never changes
@@ -1593,7 +1595,9 @@ public final class RingBuffer {
 		return ringBuffer.batchReleaseCountDown!=ringBuffer.batchReleaseCountDownInit;
 	}
 
-
+    public static void setBytesTail(RingBuffer ring, int value) {
+        PaddedInt.set(ring.bytesTailPos, value);
+    }
 	
 	
 

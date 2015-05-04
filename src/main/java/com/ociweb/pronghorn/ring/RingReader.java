@@ -2,7 +2,6 @@ package com.ociweb.pronghorn.ring;
 
 import java.nio.ByteBuffer;
 
-import com.ociweb.pronghorn.ring.RingBuffer.PaddedInt;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
@@ -534,12 +533,11 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	}
 
 	
-    //This is NOT supporting batching like the other calls. TODO: AA, need to fix to be the same as the others
+    //This is NOT supporting batching like the other calls. TODO: AAAA, need to fix to be the same as the others
 	public static void releaseReadLock(RingBuffer ringBuffer) {
 		
 //		if ((--ringBuffer.batchReleaseCountDown<=0)) {	
-			
-			PaddedInt.set(ringBuffer.bytesTailPos,ringBuffer.byteWorkingTailPos.value); 			
+	        RingBuffer.setBytesTail(ringBuffer,ringBuffer.byteWorkingTailPos.value); 			
 			RingBuffer.publishWorkingTailPosition(ringBuffer, ringBuffer.ringWalker.nextWorkingTail);
 		
 //			ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;

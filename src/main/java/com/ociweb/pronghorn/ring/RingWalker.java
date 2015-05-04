@@ -5,7 +5,6 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.ring.RingBuffer.PaddedInt;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
@@ -265,7 +264,7 @@ public class RingWalker {
 
 
 	private static void releaseBlockBeforeReadMessage(RingBuffer ringBuffer) {
-		PaddedInt.set(ringBuffer.bytesTailPos,ringBuffer.byteWorkingTailPos.value); 			
+	    RingBuffer.setBytesTail(ringBuffer,ringBuffer.byteWorkingTailPos.value); 			
 		RingBuffer.publishWorkingTailPosition(ringBuffer, ringBuffer.ringWalker.nextWorkingTail);
 				
 		ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
