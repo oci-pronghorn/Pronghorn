@@ -131,8 +131,9 @@ public class SplitterStage extends PronghornStage {
 	private static void recordCopyComplete(SplitterStage ss, int tempByteTail, int totalBytesCopy) {
 		//release tail so data can be written
 		
-		int i = ss.source.byteWorkingTailPos.value = RingBuffer.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
-        RingBuffer.setBytesTail(ss.source,i);   
+		int i = RingBuffer.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
+		RingBuffer.setBytesWorkingTail(ss.source, i);
+        RingBuffer.setBytesTail(ss.source, i);   
 		RingBuffer.publishWorkingTailPosition(ss.source,(ss.cachedTail+=ss.totalPrimaryCopy));
 		ss.totalPrimaryCopy = 0; //clear so next time we find the next block
 	}
@@ -189,7 +190,8 @@ public class SplitterStage extends PronghornStage {
 		RingBuffer.copyBytesFromToRing(ss.source.byteBuffer,                   byteTailPos, ss.source.byteMask, 
 									  ringBuffer.byteBuffer, RingBuffer.bytesHeadPosition(ringBuffer), ringBuffer.byteMask, 
 									  totalBytesCopy);
-		ringBuffer.byteWorkingHeadPos.value = ringBuffer.bytesHeadPos.addAndGet(totalBytesCopy);
+		
+		ringBuffer.byteWorkingHeadPos.value = RingBuffer.addAndGetBytesHead(ringBuffer, totalBytesCopy);
 								
 		//copy the primary data
 		int headPosition = (int)RingBuffer.headPosition(ringBuffer);
