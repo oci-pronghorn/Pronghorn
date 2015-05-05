@@ -79,7 +79,7 @@ public class StreamingVisitorReader {
 		        inputRing.workingTailPos.value += (dataSize-startPos);
 		        
 		        //add the bytes consumed by this fragment, this is always the last value in the fragment
-		        inputRing.byteWorkingTailPos.value += inputRing.buffer[(int) (inputRing.mask&(inputRing.workingTailPos.value-1))];
+		        RingBuffer.addAndGetBytesWorkingTailPosition(inputRing, inputRing.buffer[(int) (inputRing.mask&(inputRing.workingTailPos.value-1))]);
 		        
 		        
 		        RingBuffer.releaseReadLock(inputRing);

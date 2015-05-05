@@ -134,7 +134,7 @@ public class RingWalker {
 			long tmpNextWokingTail, final long target) {
 
 		//always increment this tail position by the count of bytes used by this fragment
-		ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];			
+		RingBuffer.addAndGetBytesWorkingTailPosition(ringBuffer, ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)]);			
 
 
 		//from the last known fragment move up the working tail position to this new fragment location
@@ -142,7 +142,7 @@ public class RingWalker {
 		//save the index into these fragments so the reader will be able to find them.
 		ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] =tmpNextWokingTail;
 		
-		assert(ringBuffer.byteWorkingTailPos.value <= ringBuffer.bytesHeadPos.get()) : "expected to have data up to "+ringBuffer.byteWorkingTailPos.value+" but we only have "+ringBuffer.bytesHeadPos.get();
+		assert(RingBuffer.bytesWorkingTailPosition(ringBuffer) <= RingBuffer.bytesHeadPosition(ringBuffer)) : "expected to have data up to "+RingBuffer.bytesWorkingTailPosition(ringBuffer)+" but we only have "+RingBuffer.bytesHeadPosition(ringBuffer);
 		
 		if ((--ringBuffer.batchReleaseCountDown<=0)) {	
 			
@@ -241,7 +241,7 @@ public class RingWalker {
 		
 		//always increment this tail position by the count of bytes used by this fragment
 		if (tmpNextWokingTail>0) { //first iteration it will not have a valid position
-			ringBuffer.byteWorkingTailPos.value += ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];	
+		    RingBuffer.addAndGetBytesWorkingTailPosition(ringBuffer, ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)]);	
 		}	
 
 		//the byteWorkingTail now holds the new base
@@ -264,7 +264,7 @@ public class RingWalker {
 
 
 	private static void releaseBlockBeforeReadMessage(RingBuffer ringBuffer) {
-	    RingBuffer.setBytesTail(ringBuffer,ringBuffer.byteWorkingTailPos.value); 			
+	    RingBuffer.setBytesTail(ringBuffer,RingBuffer.bytesWorkingTailPosition(ringBuffer)); 			
 		RingBuffer.publishWorkingTailPosition(ringBuffer, ringBuffer.ringWalker.nextWorkingTail);
 				
 		ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
@@ -427,7 +427,7 @@ public class RingWalker {
 				                      spaceNeeded);
 		RingBuffer.incWorkingHeadPosition(outputRing, spaceNeeded);
 		
-		RingBuffer.copyBytesFromToRing(inputRing.byteBuffer, inputRing.byteWorkingTailPos.value, inputRing.byteMask, 
+		RingBuffer.copyBytesFromToRing(inputRing.byteBuffer, RingBuffer.bytesWorkingTailPosition(inputRing), inputRing.byteMask, 
 				                       outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask, 
 				                       bytesToCopy);
 		outputRing.byteWorkingHeadPos.value =  RingBuffer.BYTES_WRAP_MASK&(bytesToCopy+outputRing.byteWorkingHeadPos.value);

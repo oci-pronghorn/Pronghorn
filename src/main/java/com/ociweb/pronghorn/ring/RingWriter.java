@@ -4,7 +4,6 @@ import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 
 import java.nio.ByteBuffer;
 
-import com.ociweb.pronghorn.ring.RingBuffer.PaddedInt;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
@@ -221,7 +220,7 @@ public class RingWriter {
 		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.maxSize - RingBuffer.EOF_SIZE), ring);
 		
 		assert(RingBuffer.tailPosition(ring)+ring.maxSize>=RingBuffer.headPosition(ring)+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
-		PaddedInt.set(ring.bytesHeadPos,ring.byteWorkingHeadPos.value);
+		RingBuffer.setBytesHead(ring, ring.byteWorkingHeadPos.value);
 		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +  RingBuffer.from(ring).templateOffset)]    = -1;	
 		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  RingBuffer.from(ring).templateOffset)] = 0;
 		
@@ -242,7 +241,7 @@ public class RingWriter {
 		}
 		
 		assert(RingBuffer.tailPosition(ring)+ring.maxSize>=RingBuffer.headPosition(ring)+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
-		PaddedInt.set(ring.bytesHeadPos,ring.byteWorkingHeadPos.value);
+		RingBuffer.setBytesHead(ring, ring.byteWorkingHeadPos.value);
 		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +  RingBuffer.from(ring).templateOffset)]    = -1;	
 		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  RingBuffer.from(ring).templateOffset)] = 0;
 		
@@ -271,7 +270,7 @@ public class RingWriter {
 	private static void publishWrites2(RingBuffer outputRing) {
 		assert(RingBuffer.workingHeadPosition(outputRing)<=outputRing.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
 		//publish writes			
-		PaddedInt.set(outputRing.bytesHeadPos,outputRing.byteWorkingHeadPos.value); 		
+		RingBuffer.setBytesHead(outputRing, outputRing.byteWorkingHeadPos.value);		
 		RingBuffer.publishWorkingHeadPosition(outputRing, RingBuffer.workingHeadPosition(outputRing));
 		
 		outputRing.batchPublishCountDown = outputRing.batchPublishCountDownInit;

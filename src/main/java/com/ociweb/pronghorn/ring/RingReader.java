@@ -537,7 +537,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	public static void releaseReadLock(RingBuffer ringBuffer) {
 		
 //		if ((--ringBuffer.batchReleaseCountDown<=0)) {	
-	        RingBuffer.setBytesTail(ringBuffer,ringBuffer.byteWorkingTailPos.value); 			
+	        RingBuffer.setBytesTail(ringBuffer,RingBuffer.bytesWorkingTailPosition(ringBuffer)); 			
 			RingBuffer.publishWorkingTailPosition(ringBuffer, ringBuffer.ringWalker.nextWorkingTail);
 		
 //			ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;

@@ -33,35 +33,53 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
  * 
  */
 
-// TODO: C, look at adding reduce method in addition to filter.
-// TODO: B, must add way of selecting what field to skip writing for the consumer.
-// TODO: B, build  null ring buffer to drop messages.
-
-
 public final class RingBuffer {
    
     public static class PaddedLong {
         public long value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
+        
+        public static long get(PaddedLong pi) { 
+            return pi.value;
+        }
+    
+        public static void set(PaddedLong pi, long value) {
+            pi.value = value;
+        }
+    
+        public static long addAndGet(PaddedLong pi, long inc) {
+                return pi.value += inc;
+        }
+        
+        public String toString() {
+            return Long.toString(value);
+        }
+        
     }
     
     public static class PaddedInt {
         public int value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
 
-		public int get() { //TODO: if this works may want to inline.
-			return value;
-		}
+		public static int get(PaddedInt pi) { 
+	            return pi.value;
+	    }
 
 		public static void set(PaddedInt pi, int value) {
 		    pi.value = value;
 		}
 
-		public int addAndGet(int inc) {
-			return value += inc;
+	    public static int addAndGet(PaddedInt pi, int inc) {
+	            return pi.value += inc;
+	    }
+	    
+	    public static int addAndGet(PaddedInt pi, int inc, int wrapMask) {
+               return pi.value = wrapMask&(inc+pi.value);
+        }
+		
+		public String toString() {
+		    return Integer.toString(value);
 		}
     }
 
-    //TODO:AAA, ensure that that position of head and tail are avail so the release can block
-    
     public final int maxSize;
     public int[] buffer;
     public final int mask;
@@ -84,7 +102,7 @@ public final class RingBuffer {
     
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
     public final PaddedInt byteWorkingHeadPos = new PaddedInt();
-    public final PaddedInt bytesHeadPos = new PaddedInt();
+    private final PaddedInt bytesHeadPos = new PaddedInt();
     
     
     public int bytesWriteLastConsumedBytePos = 0;
@@ -97,7 +115,7 @@ public final class RingBuffer {
 	//            the time slices of the graph will need to be kept for all rings to reconstruct history later.
 	
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
-    public final PaddedInt byteWorkingTailPos = new PaddedInt();
+    private final PaddedInt byteWorkingTailPos = new PaddedInt();
     private final PaddedInt bytesTailPos = new PaddedInt();
     
 
@@ -226,9 +244,9 @@ public final class RingBuffer {
     	result.append(" headPos ").append(headPos.get());
     	result.append(" wrkHeadPos ").append(workingHeadPos.value);
     	result.append("  ").append(headPos.get()-tailPos.get()).append("/").append(maxSize);
-    	result.append("  bytes tailPos ").append(bytesTailPos.get());
+    	result.append("  bytes tailPos ").append(PaddedInt.get(bytesTailPos));
     	result.append(" bytes wrkTailPos ").append(byteWorkingTailPos.value);    	
-    	result.append(" bytes headPos ").append(bytesHeadPos.get());
+    	result.append(" bytes headPos ").append(PaddedInt.get(bytesHeadPos));
     	result.append(" bytes wrkHeadPos ").append(byteWorkingHeadPos.value);   	
     	    	
     	return result.toString();
@@ -530,7 +548,7 @@ public final class RingBuffer {
      * @return
      */
 	public static int bytesOfContent(RingBuffer ringBuffer) {		
-		int dif = (ringBuffer.byteMask&ringBuffer.byteWorkingHeadPos.value) - (ringBuffer.byteMask&ringBuffer.bytesTailPos.get());
+		int dif = (ringBuffer.byteMask&ringBuffer.byteWorkingHeadPos.value) - (ringBuffer.byteMask&PaddedInt.get(ringBuffer.bytesTailPos));
 		return ((dif>>31)<<ringBuffer.bBits)+dif;
 	}
 
@@ -1171,12 +1189,16 @@ public final class RingBuffer {
         
     }    
     
+    @Deprecated
     public static void addValues(int[] buffer, int rbMask, PaddedLong headCache, int value1, long value2) {
         
         headCache.value = setValues(buffer, rbMask, headCache.value, value1, value2);
         
     }
     
+    public static void addDecimal(int exponent, long mantissa, RingBuffer ring) {
+        ring.workingHeadPos.value = setValues(ring.buffer, ring.mask, ring.workingHeadPos.value, exponent, mantissa);   
+    }
 
 
 	public static long setValues(int[] buffer, int rbMask, long pos, int value1, long value2) {
@@ -1414,7 +1436,7 @@ public final class RingBuffer {
     public static void abandonWrites(RingBuffer ring) {    
         //ignore the fact that any of this was written to the ring buffer
     	ring.workingHeadPos.value = ring.headPos.longValue();
-    	ring.byteWorkingHeadPos.value = ring.bytesHeadPos.get();
+    	ring.byteWorkingHeadPos.value = PaddedInt.get(ring.bytesHeadPos);
     	storeUnpublishedHead(ring);
     }
 
@@ -1488,10 +1510,6 @@ public final class RingBuffer {
 	public static long workingHeadPosition(RingBuffer ring) {
 	    return ring.workingHeadPos.value;
 	}
-	
-	public static int bytesHeadPosition(RingBuffer ring) {
-		return ring.bytesHeadPos.get();
-	}
 
 	/**
 	 * This method is only for build transfer stages that require direct manipulation of the position.
@@ -1507,9 +1525,7 @@ public final class RingBuffer {
 		return ring.tailPos.get();
 	}
 	
-	public static int bytesTailPosition(RingBuffer ring) {
-		return ring.bytesTailPos.get();
-	}
+
 	
 	/**
 	 * This method is only for build transfer stages that require direct manipulation of the position.
@@ -1595,12 +1611,38 @@ public final class RingBuffer {
 		return ringBuffer.batchReleaseCountDown!=ringBuffer.batchReleaseCountDownInit;
 	}
 
+    public static int bytesTailPosition(RingBuffer ring) {
+        return PaddedInt.get(ring.bytesTailPos);
+    }
+	
     public static void setBytesTail(RingBuffer ring, int value) {
         PaddedInt.set(ring.bytesTailPos, value);
     }
 	
-	
-
+    public static int bytesHeadPosition(RingBuffer ring) {
+        return PaddedInt.get(ring.bytesHeadPos);
+    }
+    
+    public static void setBytesHead(RingBuffer ring, int value) {
+        PaddedInt.set(ring.bytesHeadPos, value);
+    }
+    
+    public static int addAndGetBytesHead(RingBuffer ring, int inc) {
+        return PaddedInt.addAndGet(ring.bytesHeadPos, inc);
+    }
+    
+    public static int bytesWorkingTailPosition(RingBuffer ring) {
+        return PaddedInt.get(ring.byteWorkingTailPos);
+    }
+    
+    public static int addAndGetBytesWorkingTailPosition(RingBuffer ring, int inc) {
+        return PaddedInt.addAndGet(ring.byteWorkingTailPos, inc, RingBuffer.BYTES_WRAP_MASK);
+    }
+    
+    public static void setBytesWorkingTail(RingBuffer ring, int value) {
+        PaddedInt.set(ring.byteWorkingTailPos, value);
+        
+    }
 
 	
 }
