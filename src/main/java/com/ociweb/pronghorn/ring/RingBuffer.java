@@ -509,11 +509,12 @@ public final class RingBuffer {
 		outputRing.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(len + outputRing.byteWorkingHeadPos.value);
 		
 		copyASCIIToBytes(".", outputRing);
+
+		long frac = Math.abs(readDecimalMantissa - (long)(ones/RingReader.powdi[64 + readDecimalExponent]));		  
 		
-		long frac =  Math.abs(readDecimalMantissa - (long)(ones/RingReader.powdi[64 + readDecimalExponent]));		        			
 		validateVarLength(outputRing, 21);
 		int max1 = 21 + outputRing.byteWorkingHeadPos.value;
-		int len1 = leftConvertLongToASCII(outputRing, frac, max1);		
+		int len1 = leftConvertLongWithLeadingZerosToASCII(outputRing, readDecimalExponent, frac, max1);		
 		outputRing.byteWorkingHeadPos.value = RingBuffer.BYTES_WRAP_MASK&(len1 + outputRing.byteWorkingHeadPos.value);
 		
 		//may require trailing zeros
@@ -757,6 +758,41 @@ public final class RingBuffer {
 		}
 		return length;
 	}
+	
+   public static int leftConvertLongWithLeadingZerosToASCII(RingBuffer rb, int chars, long value, int idx) {
+        //max places is value for -2B therefore its 11 places so we start out that far and work backwards.
+        //this will leave a gap but that is not a problem.
+        byte[] target = rb.byteBuffer;
+        long tmp = Math.abs(value);   
+        int max = idx;
+        
+        do {
+            //do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
+            long t = tmp/10;
+            long r = tmp%10;
+            target[rb.byteMask&--idx] = (byte)('0'+r);
+            tmp = t;
+            chars--;
+        } while (0!=tmp);
+        while(--chars>=0) {
+            target[rb.byteMask&--idx] = '0';	            
+        }	        
+        
+        target[rb.byteMask& (idx-1)] = (byte)'-';
+        //to make it positive we jump over the sign.
+        idx -= (1&(value>>63));
+        
+        int length = max-idx;
+        //shift it down to the head
+        if (idx!=rb.byteWorkingHeadPos.value) {
+            int s = 0;
+            while (s<length) {
+                target[rb.byteMask & (s+rb.byteWorkingHeadPos.value)] = target[rb.byteMask & (s+idx)];
+                s++;
+            }
+        }
+        return length;
+    }
 
 	public static int readInt(int[] buffer, int mask, long index) {
 		return buffer[mask & (int)(index)];
@@ -1344,10 +1380,10 @@ public final class RingBuffer {
         if (ring.lastReleasedTail>ring.tailPos.get()) {
             PaddedInt.set(ring.bytesTailPos,ring.lastReleasedBytesTail); 
             ring.tailPos.lazySet(ring.lastReleasedTail);
+            ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;        
         }
         
         assert(debugHeadAssignment(ring));
-        ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;        
     }
 
     @Deprecated

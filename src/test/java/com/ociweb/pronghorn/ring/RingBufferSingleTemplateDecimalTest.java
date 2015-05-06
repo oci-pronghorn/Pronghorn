@@ -34,6 +34,12 @@ public class RingBufferSingleTemplateDecimalTest {
     	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
     	ring.initBuffers();
+    	
+    	String emptyToString = ring.toString();
+    	assertTrue(emptyToString, emptyToString.contains("headPos 0"));
+    	assertTrue(emptyToString, emptyToString.contains("tailPos 0"));
+    	assertTrue(emptyToString, emptyToString.contains("RingId:"));
+            	
         int messageSize = FROM.fragDataSize[FRAG_LOC];
         
         int varDataMax = (ring.byteMask/(ring.mask>>1))/messageSize;        

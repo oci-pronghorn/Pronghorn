@@ -6,7 +6,6 @@ import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class RingBufferSingleTemplateUTF8Test {
@@ -14,17 +13,18 @@ public class RingBufferSingleTemplateUTF8Test {
 	final FieldReferenceOffsetManager FROM = FieldReferenceOffsetManager.RAW_BYTES;
 	final int FRAG_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
 	
-	final byte primaryRingSizeInBits = 8; 
-	final byte byteRingSizeInBits = 19;
+	final byte primaryRingSizeInBits = 3; 
+	final byte byteRingSizeInBits = 22;
 	
-    @Ignore
-    public void simpleBytesWriteRead() {//TODO: B, this unit test hangs, need to walk it slow and find the problem
+    @Test
+    public void simpleBytesWriteRead() {
         	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+		ring.initBuffers();
     	        
-        int varDataMax = ring.maxAvgVarLen >> 3; //fewer chars for UTF8        
+        int varDataMax = ring.maxAvgVarLen / 5; //fewer chars for UTF8        
         int testSize = (1<<byteRingSizeInBits)/ring.maxAvgVarLen; 
-
+        
         populateRingBufferWithUTF8(ring, varDataMax, testSize);
         
                 
@@ -101,7 +101,7 @@ public class RingBufferSingleTemplateUTF8Test {
 		char[] arrayData = new char[arraySize];
 		int i = arrayData.length;
 		while (--i >= 0) {
-			arrayData[i] = (char)(i&0xFFFF);//short
+			arrayData[i] = (char)((11*i)&0xFFFFF);//short
 		}
 		return new String(arrayData);
 	}
