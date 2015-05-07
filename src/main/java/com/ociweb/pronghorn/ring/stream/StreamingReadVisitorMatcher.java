@@ -24,15 +24,13 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
     @Override
     public boolean paused() {
-        return false;
+        return !RingBuffer.contentToLowLevelRead(expectedInput, 1);
     }
 
     @Override
     public void visitTemplateOpen(String name, long id) {
         needsClose = true;
         
-        while (!RingBuffer.contentToLowLevelRead(expectedInput, 1)) {            
-        }
         int msgIdx = RingBuffer.takeMsgIdx(expectedInput);
         
         if (id != expectedFrom.fieldIdScript[msgIdx]) {
@@ -47,6 +45,9 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         if (needsClose) {
             RingBuffer.takeValue(expectedInput); 
             needsClose = false;
+            
+            RingBuffer.setWorkingHeadTarget(expectedInput);
+                                    
             RingBuffer.releaseReadLock(expectedInput);
         }
         
@@ -56,9 +57,6 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     @Override
     public void visitFragmentOpen(String name, long id, int cursor) {
         needsClose = true;
-        while (!RingBuffer.contentToLowLevelRead(expectedInput, 1)) {            
-        }
-        
     }
 
     @Override
@@ -66,8 +64,13 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         if (needsClose) {
             RingBuffer.takeValue(expectedInput); 
             needsClose = false;
+            
+            RingBuffer.setWorkingHeadTarget(expectedInput);
+            
             RingBuffer.releaseReadLock(expectedInput);  
         }
+        
+        //TODO: AAAA, must block at the top of EVERY fragment!! if fragment starts after close of sequence how do we detect this? Inject a new visitFragmentOpen?
         
     }
 

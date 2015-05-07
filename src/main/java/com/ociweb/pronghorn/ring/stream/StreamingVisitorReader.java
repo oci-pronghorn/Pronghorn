@@ -125,6 +125,7 @@ public class StreamingVisitorReader {
 									break;
 								}
 							} else {
+							    assert(nestedFragmentDepth<=0) : " nested depth "+nestedFragmentDepth;
 								visitor.visitTemplateClose(name,id);
 								//this close was not a sequence so it must be the end of the message
 								nestedFragmentDepth = -1;

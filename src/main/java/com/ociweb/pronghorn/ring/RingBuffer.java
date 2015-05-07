@@ -244,10 +244,10 @@ public final class RingBuffer {
     	result.append(" headPos ").append(headPos.get());
     	result.append(" wrkHeadPos ").append(workingHeadPos.value);
     	result.append("  ").append(headPos.get()-tailPos.get()).append("/").append(maxSize);
-    	result.append("  bytes tailPos ").append(PaddedInt.get(bytesTailPos));
-    	result.append(" bytes wrkTailPos ").append(byteWorkingTailPos.value);    	
-    	result.append(" bytes headPos ").append(PaddedInt.get(bytesHeadPos));
-    	result.append(" bytes wrkHeadPos ").append(byteWorkingHeadPos.value);   	
+    	result.append("  bytesTailPos ").append(PaddedInt.get(bytesTailPos));
+    	result.append(" bytesWrkTailPos ").append(byteWorkingTailPos.value);    	
+    	result.append(" bytesHeadPos ").append(PaddedInt.get(bytesHeadPos));
+    	result.append(" bytesWrkHeadPos ").append(byteWorkingHeadPos.value);   	
     	    	
     	return result.toString();
     }
@@ -1150,6 +1150,7 @@ public final class RingBuffer {
     
 
     public static void addIntValue(int value, RingBuffer rb) {
+         assert(rb.workingHeadPos.value <= rb.mask+RingBuffer.tailPosition(rb));
 		 setValue(rb.buffer,rb.mask,rb.workingHeadPos.value++,value);		
 	}
 
@@ -1157,7 +1158,7 @@ public final class RingBuffer {
     
     //must be called by low-level API when starting a new message
     public static void addMsgIdx(RingBuffer rb, int msgIdx) {
-    	
+        assert(rb.workingHeadPos.value <= rb.mask+RingBuffer.tailPosition(rb));
     	assert(msgIdx>=0) : "Call publishEOF() instead of this method";
     	
      	//this MUST be done here at the START of a message so all its internal fragments work with the same base position
@@ -1174,6 +1175,7 @@ public final class RingBuffer {
     
 
     public static void addBytePosAndLen(RingBuffer ring, int position, int length) {
+        assert(ring.workingHeadPos.value <= ring.mask+RingBuffer.tailPosition(ring));
 		setBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos.value, position, length, RingBuffer.bytesWriteBase(ring));        
 		ring.workingHeadPos.value+=2;
     }
@@ -1276,6 +1278,7 @@ public final class RingBuffer {
 	}
 	
 	public static int takeRingByteLen(RingBuffer ring) {		
+	    assert(ring.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
 		return ring.buffer[(int)(ring.mask & (ring.workingTailPos.value++))];// second int is always the length     
 	}
     
@@ -1290,6 +1293,7 @@ public final class RingBuffer {
 	}
 			
 	public static int takeRingByteMetaData(RingBuffer ring) {
+	    assert(ring.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
 		return readValue(0,ring.buffer,ring.mask,ring.workingTailPos.value++);
 	}
 	
@@ -1302,10 +1306,12 @@ public final class RingBuffer {
     }
     
     public static int takeValue(RingBuffer ring) {    	
-    	return readValue(0, ring.buffer,ring.mask,ring.workingTailPos.value++);
+        assert(ring.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
+    	return readValue(0, ring.buffer, ring.mask, ring.workingTailPos.value++);
     }   
    
     public static long takeLong(RingBuffer ring) {
+        assert(ring.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
     	long result = readLong(ring.buffer,ring.mask,ring.workingTailPos.value);
     	ring.workingTailPos.value+=2;
     	return result;
@@ -1316,7 +1322,9 @@ public final class RingBuffer {
 
     }
     
-    public static int takeMsgIdx(RingBuffer ring) {    	
+    public static int takeMsgIdx(RingBuffer ring) {    
+        assert(ring.workingTailPos.value<RingBuffer.workingHeadPosition(ring)) : " tail is "+ring.workingTailPos.value+" but head is "+RingBuffer.workingHeadPosition(ring);
+        
     	//TODO: AAA, need to add assert to detect if this release was forgotten.
     	RingBuffer.markBytesReadBase(ring);
     	
@@ -1420,8 +1428,8 @@ public final class RingBuffer {
         //single length field still needs to move this value up, so this is always done
 		ring.bytesWriteLastConsumedBytePos = ring.byteWorkingHeadPos.value;
 		
-    	
-    	assert(ring.llwNextHeadTarget<=ring.headPos.get() || ring.workingHeadPos.value<=ring.llwNextHeadTarget) : "Unsupported mix of high and low level API.";
+    	assert(ring.workingHeadPos.value >= RingBuffer.headPosition(ring));
+    	assert(ring.llwNextHeadTarget<=RingBuffer.headPosition(ring) || ring.workingHeadPos.value<=ring.llwNextHeadTarget) : "Unsupported mix of high and low level API. NextHead>head and workingHead>nextHead";
     	
     	publishHeadPositions(ring);
     }
@@ -1643,6 +1651,11 @@ public final class RingBuffer {
 		return (input.llwNextHeadTarget += size);
 	}
 
+	//TODO: AAA, this is more reliable, can I apply this everyewhere?
+    public static void setWorkingHeadTarget(RingBuffer input) {
+        input.llwNextHeadTarget =  RingBuffer.getWorkingTailPosition(input);
+    }
+	
 	public static boolean hasReleasePending(RingBuffer ringBuffer) {
 		return ringBuffer.batchReleaseCountDown!=ringBuffer.batchReleaseCountDownInit;
 	}
