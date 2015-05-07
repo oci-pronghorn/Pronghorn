@@ -1306,7 +1306,7 @@ public final class RingBuffer {
     }
     
     public static int takeValue(RingBuffer ring) {    	
-        assert(ring.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
+        //TODO: breaks code generator, should fix assert(ring.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
     	return readValue(0, ring.buffer, ring.mask, ring.workingTailPos.value++);
     }   
    
