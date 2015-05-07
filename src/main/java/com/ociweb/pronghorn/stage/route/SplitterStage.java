@@ -167,7 +167,7 @@ public class SplitterStage extends PronghornStage {
 			 	working[c++] = working[j];
 			} else {
 				RingBuffer ringBuffer = ss.targets[working[j]];					
-				blockCopy(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);				
+				copyData(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);				
 				RingBuffer.confirmLowLevelWrite(ringBuffer, totalPrimaryCopy);	
 			}
 			j++;
@@ -182,7 +182,7 @@ public class SplitterStage extends PronghornStage {
 		return getClass().getSimpleName()+ " source content "+RingBuffer.contentRemaining(source);
 	}
 
-	private static void blockCopy(SplitterStage ss, int byteTailPos,
+	private static void copyData(SplitterStage ss, int byteTailPos,
 								int totalBytesCopy, int primaryTailPos, int totalPrimaryCopy,
 								RingBuffer ringBuffer) {
 		

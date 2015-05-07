@@ -584,9 +584,10 @@ public class GraphManager {
 				if (isProducerTerminated(m, ringId)) {
 					
 					//ensure that we do not have any old data still on the ring from the consumer batching releases
-			
+    
 					//splitter should never have release pending to release because it does not use the release counters	
 					if (RingBuffer.hasReleasePending(m.ringIdToRing[ringId])) {
+					 //   releaseAllBatchedReads
 						RingBuffer.releaseAll(m.ringIdToRing[ringId]);
 					}						
 					
@@ -878,5 +879,16 @@ public class GraphManager {
 			RingBuffer.publishAllBatchedWrites(m.ringIdToRing[ringId]);				
 		}		
 	}
+	
+//    public static void releaseAllReads(GraphManager m, PronghornStage stage) {
+//        int ringId;
+//        int idx = m.stageIdToInputsBeginIdx[stage.stageId];
+//        while (-1 != (ringId=m.multInputIds[idx++])) {  //TODO: could be unrolled an inlined
+//            RingBuffer.releaseAllBatchedReads(m.ringIdToRing[ringId]);           
+//        }       
+//    }
+//	
+    
+    
 
 }
