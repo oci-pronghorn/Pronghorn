@@ -47,9 +47,7 @@ public class StreamingWriteVisitorGenerator implements StreamingWriteVisitor {
 
     @Override
     public long pullUnsignedLong(String name, long id) {
-        long v =  Math.abs(random.nextLong());
-       // System.err.println("generated "+name+" "+v+" "+Long.toHexString(v));
-        return v;
+        return Math.abs(random.nextLong());
     }
 
     @Override
@@ -105,7 +103,7 @@ public class StreamingWriteVisitorGenerator implements StreamingWriteVisitor {
 
     @Override
     public int pullSequenceLength(String name, long id) {
-        return Math.abs(0x7&random.nextInt());//need small sequences
+        return Math.abs(0x7&random.nextInt());//7 need small sequences
     }
 
     @Override

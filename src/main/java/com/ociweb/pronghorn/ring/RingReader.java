@@ -533,7 +533,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	}
 
 	
-    //This is NOT supporting batching like the other calls. TODO: AAAA, need to fix to be the same as the others
+    //This is NOT supporting batching like the other calls. TODO: AAAAAAA, need to fix to be the same as the others
 	public static void releaseReadLock(RingBuffer ringBuffer) {
 		
 //		if ((--ringBuffer.batchReleaseCountDown<=0)) {	
@@ -545,5 +545,56 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		
 		
 	}
+
+	//TODO: AAA, refactor to take appendable so we can use this in other places
+    public static void printFragment(RingBuffer input) {
+        
+        int cursor = input.ringWalker.cursor;
+        
+        //TODO: AAA, from here down this can be common and shared for low level or high level use.
+        FieldReferenceOffsetManager from = RingBuffer.from(input);
+        int fields = from.fragScriptSize[cursor];
+        System.err.println("cursor:"+cursor+" new message: "+input.ringWalker.isNewMessage+" fields: "+fields);
+        int i = 0;
+        while (i<fields) {
+            String name = from.fieldNameScript[i+cursor];
+            long id = from.fieldIdScript[i+cursor];
+            int token = from.tokens[i+cursor];
+            int type = TokenBuilder.extractType(token);
+            
+            //fields not message name
+            String value = "";
+            if (i>0 || !input.ringWalker.isNewMessage) {
+                int pos = from.fragDataSize[i+cursor];  
+                //create string values of each field so we can see them easily
+//                switch (type) {
+//                
+//                
+//                }
+                
+                
+                value = ""+pos;
+            }
+            
+            System.err.println("   "+name+":"+id+"  "+value);
+            
+            //TWEET  x+t+"xxx" is a bad idea.
+            
+            
+            if (TypeMask.Decimal==type || TypeMask.DecimalOptional==type) {
+                i++;//skip second slot for decimals
+            }
+            
+            i++;
+        }
+        
+        
+        
+        
+        
+        
+        // TODO Auto-generated method stub
+        
+    }
 
 }

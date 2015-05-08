@@ -301,13 +301,14 @@ public final class RingBuffer {
         }
     }
 
-	public void initBuffers() {
+	public RingBuffer initBuffers() {
 		assert(!isInit(this)) : "RingBuffer was already initialized";
 		if (!isInit(this)) {
 			buildBufffers();
 		} else {
 			log.warn("Init was already called once already on this ring buffer");
 		}
+		return this;
     }
 
 	private void buildBufffers() {
@@ -454,6 +455,7 @@ public final class RingBuffer {
 	private static Appendable readASCIIConst(RingBuffer ring, int len, Appendable target, int pos) {
 	    try {
 	    	byte[] buffer = ring.constByteBuffer;
+	    	assert(null!=buffer) : "If constants are used the constByteBuffer was not initialized. Otherwise corruption in the stream has been discovered";
 	        while (--len >= 0) {
 	            target.append((char)buffer[pos++]);
 	        }
@@ -1523,7 +1525,7 @@ public final class RingBuffer {
         }
     }
     
-    @Deprecated //use spinBlockForContent then confirm the read afterwords
+    //Used by RingInputStream to duplicate contract behavior,  TODO: AA rename to waitForAvailableContent or blockUntilContentReady?
     public static long spinBlockOnHead(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {    	
     	while ( lastCheckedValue < targetValue) {
     		spinWork(ringBuffer);

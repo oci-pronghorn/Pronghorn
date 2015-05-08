@@ -617,5 +617,63 @@ public class FieldReferenceOffsetManager {
 		//checks the shortcut hasSimpleMessagesOnly first before any complex logic
 		return from.hasSimpleMessagesOnly || (cursorPosition<=0) || cursorPosition>=from.fragDepth.length || (0==from.fragDepth[cursorPosition]);
 	}
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + absentInt;
+        result = prime * result + (int) (absentLong ^ (absentLong >>> 32));
+        result = prime * result + Arrays.hashCode(dictionaryNameScript);
+        result = prime * result + Arrays.hashCode(fieldIdScript);
+        result = prime * result + Arrays.hashCode(fieldNameScript);
+        result = prime * result + ((name == null) ? 0 : name.hashCode());
+        result = prime * result + preambleOffset;
+        result = prime * result + Arrays.hashCode(tokens);
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        FieldReferenceOffsetManager other = (FieldReferenceOffsetManager) obj;
+        if (absentInt != other.absentInt) {
+            return false;
+        }
+        if (absentLong != other.absentLong) {
+            return false;
+        }
+        if (!Arrays.equals(dictionaryNameScript, other.dictionaryNameScript)) {
+            return false;
+        }
+        if (!Arrays.equals(fieldIdScript, other.fieldIdScript)) {
+            return false;
+        }
+        if (!Arrays.equals(fieldNameScript, other.fieldNameScript)) {
+            return false;
+        }
+        if (name == null) {
+            if (other.name != null) {
+                return false;
+            }
+        } else if (!name.equals(other.name)) {
+            return false;
+        }
+        if (preambleOffset != other.preambleOffset) {
+            return false;
+        }
+        if (!Arrays.equals(tokens, other.tokens)) {
+            return false;
+        }
+        return true;
+    }
     
 }
