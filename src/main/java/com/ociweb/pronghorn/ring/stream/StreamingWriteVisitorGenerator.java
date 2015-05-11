@@ -103,7 +103,8 @@ public class StreamingWriteVisitorGenerator implements StreamingWriteVisitor {
 
     @Override
     public int pullSequenceLength(String name, long id) {
-        return Math.abs(0x7&random.nextInt());//7 need small sequences
+        //TODO: AA, note that NoMDEntries must not be zero for jFAST test, This is a bug in jFAST that needs to be fixed.
+        return 1+Math.abs(0x7&random.nextInt());//7 need small sequences
     }
 
     @Override
