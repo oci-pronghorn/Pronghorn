@@ -112,8 +112,8 @@ public class StreamingConsumerTest {
 	public void generatorTest() {
 	    final int seed = 2;
 	    final long aLongValue = 2945688134060370505l;//hard coded value that comes from this seed 2
-	    final int aIntValue = 248789492;//hard coded value that comes from this seed 2
-	    final int aNegIntValue = -51;//hard coded value that comes from this seed 2
+	    final int aIntValue = 140719389;//hard coded value that comes from this seed 2
+	    final int aNegIntValue = -29;//hard coded value that comes from this seed 2
         
 	    
 	       RingBuffer ring = new RingBuffer(new RingBufferConfig(FROM, 50, 30));
