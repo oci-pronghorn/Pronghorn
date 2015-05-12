@@ -101,7 +101,7 @@ public final class RingBuffer {
     //public final AtomicLong publishedHead = new PaddedAtomicLong(); // top 32 is primary, low 32 is byte 
     
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
-    public final PaddedInt byteWorkingHeadPos = new PaddedInt();
+    private final PaddedInt byteWorkingHeadPos = new PaddedInt();
     private final PaddedInt bytesHeadPos = new PaddedInt();
     
     
@@ -1691,9 +1691,19 @@ public final class RingBuffer {
     }
     
     public static void setBytesWorkingTail(RingBuffer ring, int value) {
-        PaddedInt.set(ring.byteWorkingTailPos, value);
-        
+        PaddedInt.set(ring.byteWorkingTailPos, value);        
+    }
+    
+    public static int bytesWorkingHeadPosition(RingBuffer ring) {
+        return PaddedInt.get(ring.byteWorkingHeadPos);
     }
 
+    public static int addAndGetBytesWorkingHeadPosition(RingBuffer ring, int inc) {
+        return PaddedInt.addAndGet(ring.byteWorkingHeadPos, inc, RingBuffer.BYTES_WRAP_MASK);
+    }
+    
+    public static void setBytesWorkingHead(RingBuffer ring, int value) {
+        PaddedInt.set(ring.byteWorkingHeadPos, value);        
+    }
 	
 }

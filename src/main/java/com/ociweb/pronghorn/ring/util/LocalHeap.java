@@ -761,14 +761,15 @@ public class LocalHeap {
     }
 
 	public static void addLocalHeapValue(int heapId, int sourceLen, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
-	    final int p = rbRingBuffer.byteWorkingHeadPos.value;
+	    final int p = RingBuffer.bytesWorkingHeadPosition(rbRingBuffer);
 	    if (sourceLen > 0) {
 	        final int offset = heapId << 2;
 			final int pos = byteHeap.tat[offset];
 			final int len = byteHeap.tat[offset + 1] - pos;
 			
 			copyToRingBuffer(rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, pos, len, byteHeap.data);
-			rbRingBuffer.byteWorkingHeadPos.value = p + len;
+
+	        RingBuffer.addAndGetBytesWorkingHeadPosition(rbRingBuffer,len);
 	    }      
 	    
 	    RingBuffer.addBytePosAndLen(rbRingBuffer, p, sourceLen);
