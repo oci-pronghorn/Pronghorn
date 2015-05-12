@@ -222,6 +222,14 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				LockSupport.parkNanos(1);
 			}
 		} while ( continueRunning(this, stage));
+		
+//	    boolean debug = false;
+//	    if (debug) {
+//	        System.err.println(stage+" shutdown because shutdown:"+isShuttingDown+" or stageShutingDown:"+GraphManager.isStageShuttingDown(graphManager, stage.stageId));
+//	       
+//	        
+//	    }
+		
 	}
 
 	private static boolean continueRunning(ThreadPerStageScheduler tpss, final PronghornStage stage) {

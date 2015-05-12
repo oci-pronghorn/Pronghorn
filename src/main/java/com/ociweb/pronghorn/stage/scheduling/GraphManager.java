@@ -561,7 +561,6 @@ public class GraphManager {
 	}
 	
 
-
 	
 	/**
 	 * Return false only when every path is checked so every ring is empty and every stage is terminated.
@@ -756,10 +755,22 @@ public class GraphManager {
 		//Does not return until some other stage has initialized the output rings
 		idx = m.stageIdToOutputsBeginIdx[stageId];
 		while (-1 != (ringId=m.multOutputIds[idx++])) {
+		    
+		    try {
+    		    //double check that this was not built wrong, there must be a consumer of this ring
+    		    if (null==GraphManager.getRingConsumer(m, ringId)) {
+    		        throw new UnsupportedOperationException("No consumer for ring "+ringId);
+    		    }				
+		    } catch (ArrayIndexOutOfBoundsException aiobe) {
+		        if ("-1".equals(aiobe.getMessage())) {
+		            throw new UnsupportedOperationException("No consumer for ring "+ringId);
+		        } else {
+		            throw new RuntimeException(aiobe);
+		        }
+		    }
+		    
 			while (!RingBuffer.isInit(m.ringIdToRing[ringId])) {
 				Thread.yield();
-				//double check that this was not built wrong, there must be a consumer of this ring
-				assert(null!=GraphManager.getRingConsumer(m, ringId));				
 			}				
 		}	
 		
