@@ -329,6 +329,7 @@ public class RingBufferPipeline {
 							//NOTE: in the normal world I would expect the data to be modified before getting moved.
 							RingReader.copyBytes(inputRing, outputRing, FIELD_ID, FIELD_ID);
 							RingWriter.publishWrites(outputRing);
+							RingReader.releaseReadLock(inputRing);
 							msgId = -2;
 						} else {
 							return;
