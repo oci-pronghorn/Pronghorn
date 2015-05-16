@@ -1,8 +1,11 @@
-package com.ociweb.pronghorn.ring.template.generator;
+package com.ociweb.pronghorn.ring.schema.generator;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.ociweb.pronghorn.ring.schema.generator.ItemGenerator;
+import com.ociweb.pronghorn.ring.schema.generator.TemplateGenerator;
 
 public class CatalogGenerator implements ItemGenerator {
     public static final String HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+

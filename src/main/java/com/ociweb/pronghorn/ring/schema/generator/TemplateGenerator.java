@@ -1,8 +1,13 @@
-package com.ociweb.pronghorn.ring.template.generator;
+package com.ociweb.pronghorn.ring.schema.generator;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.ociweb.pronghorn.ring.schema.generator.FieldGenerator;
+import com.ociweb.pronghorn.ring.schema.generator.GroupGenerator;
+import com.ociweb.pronghorn.ring.schema.generator.ItemGenerator;
+import com.ociweb.pronghorn.ring.schema.generator.SequenceGenerator;
 
 public class TemplateGenerator implements ItemGenerator {
 

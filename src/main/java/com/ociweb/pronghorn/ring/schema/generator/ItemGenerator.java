@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.ring.template.generator;
+package com.ociweb.pronghorn.ring.schema.generator;
 
 import java.io.IOException;
 

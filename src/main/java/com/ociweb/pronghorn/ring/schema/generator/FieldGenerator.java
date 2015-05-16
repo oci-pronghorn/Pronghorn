@@ -1,7 +1,9 @@
-package com.ociweb.pronghorn.ring.template.generator;
+package com.ociweb.pronghorn.ring.schema.generator;
 
 import java.io.IOException;
 
+import com.ociweb.pronghorn.ring.schema.generator.FieldGenerator;
+import com.ociweb.pronghorn.ring.schema.generator.ItemGenerator;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
