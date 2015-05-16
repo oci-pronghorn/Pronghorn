@@ -21,7 +21,7 @@ import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingWriter;
-import com.ociweb.pronghorn.ring.template.loader.TemplateHandler;
+import com.ociweb.pronghorn.ring.schema.loader.TemplateHandler;
 
 public class StreamingConsumerTest {
 
