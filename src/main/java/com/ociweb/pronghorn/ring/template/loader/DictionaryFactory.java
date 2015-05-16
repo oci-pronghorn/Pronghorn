@@ -1,7 +1,7 @@
 //Copyright 2013, Nathan Tippy
 //See LICENSE file for BSD license details.
 //Send support requests to http://www.ociweb.com/contact
-package com.ociweb.pronghorn.ring.loader;
+package com.ociweb.pronghorn.ring.template.loader;
 
 import com.ociweb.pronghorn.ring.util.LocalHeap;
 

@@ -15,7 +15,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
-import com.ociweb.pronghorn.ring.loader.TemplateHandler;
+import com.ociweb.pronghorn.ring.template.loader.TemplateHandler;
 
 public class RingBufferMultiTemplateTest {
 
