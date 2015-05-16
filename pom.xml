@@ -3,6 +3,10 @@
   <groupId>com.ociweb</groupId>
   <artifactId>Pronghorn</artifactId>
   <version>0.0.1-SNAPSHOT</version>
+      <!-- Looking for the release jar? This project is under active development.
+         Please consider getting involved and sponsoring the completion of Pronghorn.
+         mailto:info@ociweb.com;?subject=Pronghorn%20Sponsor%20Inquiry
+     -->
   <name>Pronghorn</name>
   <description>Primary dependency for any project using the Pronghorn framework</description>
   
@@ -35,29 +39,6 @@
 		  <scope>runtime</scope>
 		</dependency> 	
   </dependencies>
-  
-  <repositories>
-    <repository>
-      <releases>
-        <enabled>false</enabled>
-        <checksumPolicy>warn</checksumPolicy>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-        <checksumPolicy>warn</checksumPolicy>
-      </snapshots>
-      <id>ssh-repository</id>
-      <url>scpexe://extranet.ociweb.com/pronghorn/repo</url>
-      <layout>default</layout>
-    </repository>
-  </repositories>
-  
-  <distributionManagement>
-    <repository>
-      <id>ssh-repository</id>
-      <url>scpexe://extranet.ociweb.com/pronghorn/repo</url>
-    </repository>
-  </distributionManagement>
   
   <build>
   
