@@ -456,7 +456,7 @@ public final class RingBuffer {
 	    try {
 	    	byte[] buffer = ring.constByteBuffer;
 	    	assert(null!=buffer) : "If constants are used the constByteBuffer was not initialized. Otherwise corruption in the stream has been discovered";
-	        while (--len >= 0) {
+	    	while (--len >= 0) {
 	            target.append((char)buffer[pos++]);
 	        }
 	    } catch (IOException e) {

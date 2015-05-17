@@ -976,29 +976,41 @@ public class TemplateHandler extends DefaultHandler {
 		InputStream sourceInputStream = TemplateHandler.class.getResourceAsStream(source);
 
 		File folder = null;
-		if (null == sourceInputStream) {
-			folder = new File(source);
-			if (folder.exists() && !folder.isDirectory()) {
-				sourceInputStream = new FileInputStream(source);
-			}
-		}
-
-		TemplateHandler handler = new TemplateHandler();
-
-		SAXParserFactory spfac = SAXParserFactory.newInstance();
-		SAXParser sp = spfac.newSAXParser();
-		if (null != sourceInputStream) {
-			sp.parse(sourceInputStream, handler);
-		} else {
-			for (File f : folder.listFiles()) {
-				if (f.isFile()) {
-					sp.parse(f, handler);
-				}
-			}
-		}
-
-		return TemplateHandler.from(handler,preamble);
+        if (null == sourceInputStream) {
+        	folder = new File(source);
+        	if (folder.exists() && !folder.isDirectory()) {
+        		sourceInputStream = new FileInputStream(source);
+        	}
+        }
+        
+        TemplateHandler handler = new TemplateHandler();
+        
+        SAXParserFactory spfac = SAXParserFactory.newInstance();
+        SAXParser sp = spfac.newSAXParser();
+        if (null != sourceInputStream) {
+        	sp.parse(sourceInputStream, handler);
+        } else {
+        	for (File f : folder.listFiles()) {
+        		if (f.isFile()) {
+        			sp.parse(f, handler);
+        		}
+        	}
+        }
+        
+        return TemplateHandler.from(handler,preamble);
 	}
+
+    public static FieldReferenceOffsetManager loadFrom(InputStream sourceInputStream) throws ParserConfigurationException, SAXException, IOException {
+        
+        TemplateHandler handler = new TemplateHandler();
+        
+        SAXParserFactory spfac = SAXParserFactory.newInstance();
+        SAXParser sp = spfac.newSAXParser();
+        sp.parse(sourceInputStream, handler);
+        
+        return TemplateHandler.from(handler,(short)0);
+    }
+
     
     
 

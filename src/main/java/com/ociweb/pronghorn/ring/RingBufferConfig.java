@@ -68,6 +68,20 @@ public class RingBufferConfig {
 		this.from = from;
 	}
 	
+    public RingBufferConfig(FieldReferenceOffsetManager from, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields, byte[] byteConst) {
+        
+        int biggestFragment = FieldReferenceOffsetManager.maxFragmentSize(from);
+        int primaryMinSize = minimumFragmentsOnRing*biggestFragment;        
+        this.primaryBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1));
+        
+        int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, 1<<primaryBits);
+        int secondaryMinSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
+        this.byteBits = (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
+
+        this.byteConst = byteConst;
+        this.from = from;
+     }
+	
 	public RingBufferConfig grow2x(){
 		return new RingBufferConfig((byte)(1+primaryBits), (byte)(1+byteBits), byteConst, from);
 	}

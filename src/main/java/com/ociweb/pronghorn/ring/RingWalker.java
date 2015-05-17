@@ -66,15 +66,20 @@ public class RingWalker {
 		//This validation is very important, because all down stream consumers will assume it to be true.
 		assert(-1 ==idx || (rw.from.hasSimpleMessagesOnly && 0==rw.msgIdx && rw.from.messageStarts.length==1)  ||
 				TypeMask.Group == TokenBuilder.extractType(rw.from.tokens[rw.msgIdx])) :
-					"Templated message must start with group open and this starts with "+TokenBuilder.tokenToString(rw.from.tokens[rw.msgIdx])+ 
-					" readBase "+rw.activeReadFragmentStack[0] + " nextWorkingTail:"+rw.nextWorkingTail+" headPosCache:"+llwHeadPosCache;
+					errorMessageForMessageStartValidation(rw, llwHeadPosCache);
 		assert(-1 ==idx || (rw.from.hasSimpleMessagesOnly && 0==rw.msgIdx && rw.from.messageStarts.length==1)  ||
 				(OperatorMask.Group_Bit_Close&TokenBuilder.extractOper(rw.from.tokens[rw.msgIdx])) == 0) :
-					"Templated message must start with group open and this starts with "+TokenBuilder.tokenToString(rw.from.tokens[rw.msgIdx])+
-					" readBase "+rw.activeReadFragmentStack[0] + " nextWorkingTail:"+rw.nextWorkingTail+" headPosCache:"+llwHeadPosCache;
+					errorMessageForMessageStartValidation(rw, llwHeadPosCache);
 			
 		
 	}
+
+
+    private static String errorMessageForMessageStartValidation(RingWalker rw,
+            long llwHeadPosCache) {
+        return "Templated message must start with group open and this starts with "+TokenBuilder.tokenToString(rw.from.tokens[rw.msgIdx])+ 
+        " readBase "+rw.activeReadFragmentStack[0] + " nextWorkingTail:"+rw.nextWorkingTail+" headPosCache:"+llwHeadPosCache;
+    }
 
 
     //TODO: may want to move preamble to after the ID, it may be easier to reason about.
