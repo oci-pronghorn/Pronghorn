@@ -483,60 +483,55 @@ public class RingBufferMultiTemplateTest {
                 
 	}
 	
-	//TODO: AA, investigate the mapping of reactive streams interface on to the pipes.
-	
-	
-	//@Test  Work in progress need to get shutdown working.
+
+	@Test // Work in progress need to get shutdown working.
     public void generatedTest() {
         
-        int testSize = 17;//4;
-                
-                
-//        RingBuffer ring = new RingBuffer(new RingBufferConfig(FROM, 60, 60));
-//        ring.initBuffers();
-//        //in this method we write two sequence members but only record the count after writing the members
-//        populateRingBufferWithZeroSequence(ring, testSize);
+        int testSize = 80;//80 is ok, TODO: AAA,  but 85 hits zero length bug in generator, bad data. /30000;
+        int seed = 42;        
         
-        RingBuffer ring = buildPopulatedRing(FROM, new RingBufferConfig(FROM, 100, 60), 42, testSize, 60);
-                
+        RingBuffer ring = buildPopulatedRing(FROM, new RingBufferConfig(FROM, 10000, 60), seed, testSize, 60);
+                        
+        StringBuilder target = new StringBuilder();
+        
         //Ring is full of messages, this loop runs until the ring is empty.
         //int j = testSize;
-        int msgCount = 0;
-        while (RingReader.tryReadFragment(ring)) {
-             if (RingReader.isNewMessage(ring)) {
-                 msgCount++;
-             }
-
-             RingReader.printFragment(ring);
-//            
-//            int msgIdx = RingReader.getMsgIdx(ring);
-//            if (msgIdx<0) {
-//                break;
-//            }
-//            assertEquals(MSG_TRUCKS_LOC, msgIdx);
-//
-//            assertEquals("TheBobSquad", RingReader.readASCII(ring, SQUAD_NAME, new StringBuilder()).toString());
-//            
-//            int sequenceCount = RingReader.readInt(ring, SQUAD_NO_MEMBERS);
-//            
-//            if (0==(--j&1)) {           
-//                assertEquals(0,sequenceCount);
-//            } else {
-//                assertEquals(1,sequenceCount);
-//                 RingReader.tryReadFragment(ring);
-//                // RingReader.printFragment(ring);
-//                 assertEquals(11, RingReader.readLong(ring, SQUAD_TRUCK_ID));
-//                 assertEquals(3000, RingReader.readDecimalMantissa(ring, TRUCK_CAPACITY));
-//                 assertEquals(2, RingReader.readDecimalExponent(ring, TRUCK_CAPACITY));
-//            }
-            
-            RingReader.releaseReadLock(ring);
+        try {
+            int msgCount = 0;
+            while (RingReader.tryReadFragment(ring)) {
+                 if (RingReader.isNewMessage(ring)) {
+                     msgCount++;
+                 }
+    
+                 target.setLength(0);
+                 RingReader.printFragment(ring, target);
+                 
+                 assertTrue(target.length()>0);
                 
+                int msgIdx = RingReader.getMsgIdx(ring);
+                if (msgIdx<0) {
+                    break;
+                }
+                
+                //confirm that all message Ids are valid
+                int[] starts = FROM.messageStarts;
+                int i = starts.length;
+                boolean found = false;
+                while (--i>=0) {
+                    found |= starts[i]==msgIdx;
+                }
+                assertTrue(found);
+                
+                RingReader.releaseReadLock(ring);
+                    
+            }
+            // System.err.println("message count "+msgCount);
+        } finally {
+            System.err.println();
+            System.err.println("Last read fragment");
+            System.err.println(target);
             
-            System.err.println(ring);
         }
-        
-        System.err.println("message count "+msgCount);
         
     }
 	
@@ -557,10 +552,9 @@ public class RingBufferMultiTemplateTest {
         }
         svw2.shutdown();
         
-        System.err.println(ring2);
+      //  System.err.println("Final loaded ring "+ring2);
         
-      //  RingBuffer.publishEOF(ring2);
-        
+                
         return ring2;
     }
     

@@ -1,6 +1,10 @@
 package com.ociweb.pronghorn.ring;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
@@ -20,6 +24,8 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     public final static int STACK_OFF_MASK = FieldReferenceOffsetManager.RW_STACK_OFF_MASK;
     public final static int STACK_OFF_SHIFT = FieldReferenceOffsetManager.RW_STACK_OFF_SHIFT;
     public final static int OFF_BITS = FieldReferenceOffsetManager.RW_FIELD_OFF_BITS;
+    
+    public final static Logger log = LoggerFactory.getLogger(RingReader.class);
 
     public final static double[] powdi = new double[]{
     	1.0E64,1.0E63,1.0E62,1.0E61,1.0E60,1.0E59,1.0E58,1.0E57,1.0E56,1.0E55,1.0E54,1.0E53,1.0E52,1.0E51,1.0E50,1.0E49,1.0E48,1.0E47,1.0E46,1.0E45,1.0E44,1.0E43,1.0E42,1.0E41,1.0E40,1.0E39,1.0E38,1.0E37,1.0E36,1.0E35,1.0E34,1.0E33,
@@ -549,127 +555,127 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		
 	}
 
-	//TODO: AAA, refactor to take appendable so we can use this in other places
-    public static void printFragment(RingBuffer input) {
-        
-        int cursor = input.ringWalker.cursor;
-        if (cursor<0) {
-            System.err.println("EOF");
-            return;
-        }
-        
-        //TODO: AAA, from here down this can be common and shared for low level or high level use.
-        FieldReferenceOffsetManager from = RingBuffer.from(input);
-        int fields = from.fragScriptSize[cursor];
-        int dataSize = from.fragDataSize[cursor];
-        String msgName = from.fieldNameScript[cursor];
-        long msgId = from.fieldIdScript[cursor];
-        
-        System.err.println("cursor:"+cursor+" new message: "+input.ringWalker.isNewMessage+" fields: "+fields+" "+String.valueOf(msgName)+" id: "+msgId);
-        if (0==fields) {
-            System.err.println("WARNING: no fragments should have zero fields.");
-        }
-        int i = 0;
-        while (i<fields) {
-            final int p = i+cursor;
-            String name = from.fieldNameScript[p];            
-            long id = from.fieldIdScript[p];
+    public static void printFragment(RingBuffer input, Appendable target) {
+        try {
+            int cursor = input.ringWalker.cursor;
+            if (cursor<0) {
+                target.append("EOF").append("/n");
+                return;
+            }
             
-            int token = from.tokens[p];
-            int type = TokenBuilder.extractType(token);
+            //TODO: AAA, from here down this can be common and shared for low level or high level use.
+            FieldReferenceOffsetManager from = RingBuffer.from(input);
+            int fields = from.fragScriptSize[cursor];
+            int dataSize = from.fragDataSize[cursor];
+            String msgName = from.fieldNameScript[cursor];
+            long msgId = from.fieldIdScript[cursor];
             
-            //fields not message name
-            String value = "";
-            if (i>0 || !input.ringWalker.isNewMessage) {
-                int pos = from.fragDataSize[i+cursor];  
-                //create string values of each field so we can see them easily
-                switch (type) {
-                    case TypeMask.Group:
-                        
-                        int oper = TokenBuilder.extractOper(token);
-                        boolean open = (0==(OperatorMask.Group_Bit_Close&oper));
-                        value = "open:"+open+" pos:"+p;
-                        
-                        break;
-                    case TypeMask.GroupLength:
-                        int len = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
-                        value = Integer.toHexString(len)+"("+len+")";                        
-                        break;         
-                    case TypeMask.IntegerSigned:
-                    case TypeMask.IntegerUnsigned:                         
-                    case TypeMask.IntegerSignedOptional:
-                    case TypeMask.IntegerUnsignedOptional:
-                        int readInt = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
-                        value = Integer.toHexString(readInt)+"("+readInt+")";
-                        break;
-                    case TypeMask.LongSigned:
-                    case TypeMask.LongUnsigned:
-                    case TypeMask.LongSignedOptional:
-                    case TypeMask.LongUnsignedOptional:
-                        long readLong = RingBuffer.readLong(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
-                        value = Long.toHexString(readLong)+"("+readLong+")";
-                        break;
-                    case TypeMask.Decimal:
-                    case TypeMask.DecimalOptional:
-
-                        int exp = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
-                        long mantissa = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input)+1);
-                        value = exp+" "+mantissa;
+            target.append("cursor:"+cursor+" new message: "+input.ringWalker.isNewMessage+" fields: "+fields+" "+String.valueOf(msgName)+" id: "+msgId).append("\n");
+            if (0==fields) {
+                target.append("WARNING: no fragments should have zero fields.").append("\n");
+            }
+            int i = 0;
+            while (i<fields) {
+                final int p = i+cursor;
+                String name = from.fieldNameScript[p];            
+                long id = from.fieldIdScript[p];
+                
+                int token = from.tokens[p];
+                int type = TokenBuilder.extractType(token);
+                
+                //fields not message name
+                String value = "";
+                if (i>0 || !input.ringWalker.isNewMessage) {
+                    int pos = from.fragDataSize[i+cursor];  
+                    //create string values of each field so we can see them easily
+                    switch (type) {
+                        case TypeMask.Group:
                             
-                        break;  
-                    case TypeMask.TextASCII:
-                    case TypeMask.TextASCIIOptional:
-                        
-                        {                   
-                            int meta = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
-                            int length = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input)+1);
-                            StringBuilder target = new StringBuilder();
-                            RingBuffer.readASCII(input, target, meta, length);                       
-                            value = meta+" len:"+length;
-                            // value = target.toString();
-                        }
-                        break;
-                    case TypeMask.TextUTF8:
-                    case TypeMask.TextUTF8Optional:
+                            int oper = TokenBuilder.extractOper(token);
+                            boolean open = (0==(OperatorMask.Group_Bit_Close&oper));
+                            value = "open:"+open+" pos:"+p;
+                            
+                            break;
+                        case TypeMask.GroupLength:
+                            int len = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
+                            value = Integer.toHexString(len)+"("+len+")";                        
+                            break;         
+                        case TypeMask.IntegerSigned:
+                        case TypeMask.IntegerUnsigned:                         
+                        case TypeMask.IntegerSignedOptional:
+                        case TypeMask.IntegerUnsignedOptional:
+                            int readInt = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
+                            value = Integer.toHexString(readInt)+"("+readInt+")";
+                            break;
+                        case TypeMask.LongSigned:
+                        case TypeMask.LongUnsigned:
+                        case TypeMask.LongSignedOptional:
+                        case TypeMask.LongUnsignedOptional:
+                            long readLong = RingBuffer.readLong(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
+                            value = Long.toHexString(readLong)+"("+readLong+")";
+                            break;
+                        case TypeMask.Decimal:
+                        case TypeMask.DecimalOptional:
     
-                        {                   
-                            int meta = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
-                            int length = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input)+1);
-                            StringBuilder target = new StringBuilder();
-                            RingBuffer.readUTF8(input, target, meta, length);    
-                            value = meta+" len:"+length;
-                           // value = target.toString();
-                        }
-                        break;
-                    case TypeMask.ByteArray:
-                    case TypeMask.ByteArrayOptional:
-                        {                       
-                            int meta = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
-                            int length = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input)+1);
-                            value = meta+" len:"+length;
+                            int exp = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
+                            long mantissa = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input)+1);
+                            value = exp+" "+mantissa;
+                                
+                            break;  
+                        case TypeMask.TextASCII:
+                        case TypeMask.TextASCIIOptional:
                             
-                        }
-                        break;
-                    default: System.err.println("unknown ");
+                            {                   
+                                int meta = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
+                                int length = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input)+1);
+                                RingBuffer.readASCII(input, target, meta, length);                       
+                                value = meta+" len:"+length;
+                                // value = target.toString();
+                            }
+                            break;
+                        case TypeMask.TextUTF8:
+                        case TypeMask.TextUTF8Optional:
+        
+                            {                   
+                                int meta = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
+                                int length = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input)+1);
+                                RingBuffer.readUTF8(input, target, meta, length);    
+                                value = meta+" len:"+length;
+                               // value = target.toString();
+                            }
+                            break;
+                        case TypeMask.ByteArray:
+                        case TypeMask.ByteArrayOptional:
+                            {                       
+                                int meta = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input));
+                                int length = RingBuffer.readInt(input.buffer, input.mask, pos+RingBuffer.tailPosition(input)+1);
+                                value = meta+" len:"+length;
+                                
+                            }
+                            break;
+                        default: target.append("unknown ").append("\n");
+                        
+                    }
                     
+                    
+                    value += (" "+TypeMask.toString(type)+" "+pos);
                 }
                 
+                target.append("   "+name+":"+id+"  "+value).append("\n");
                 
-                value += (" "+TypeMask.toString(type)+" "+pos);
+                //TWEET  x+t+"xxx" is a bad idea.
+                
+                
+                if (TypeMask.Decimal==type || TypeMask.DecimalOptional==type) {
+                    i++;//skip second slot for decimals
+                }
+                
+                i++;
             }
-            
-            System.err.println("   "+name+":"+id+"  "+value);
-            
-            //TWEET  x+t+"xxx" is a bad idea.
-            
-            
-            if (TypeMask.Decimal==type || TypeMask.DecimalOptional==type) {
-                i++;//skip second slot for decimals
-            }
-            
-            i++;
+        } catch (IOException ioe) {
+            log.error("Unable to build text for fragment.",ioe);
+            throw new RuntimeException(ioe);
         }
-        
     }
 
 }

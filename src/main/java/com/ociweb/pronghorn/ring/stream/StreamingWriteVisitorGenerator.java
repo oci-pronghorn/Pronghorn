@@ -13,6 +13,7 @@ public class StreamingWriteVisitorGenerator implements StreamingWriteVisitor {
     private final char[] workingChar;
     private final int maxLenChars;
     private final int maxBytes;
+    private boolean paused = true; //must start in true state so first iteration will toggle and run
     
     public StreamingWriteVisitorGenerator(FieldReferenceOffsetManager from, Random random, int maxChars, int maxBytes) {
         this.random = random;
@@ -27,7 +28,7 @@ public class StreamingWriteVisitorGenerator implements StreamingWriteVisitor {
 
     @Override
     public boolean paused() {        
-        return false;
+        return paused = !paused;
     }
 
     @Override

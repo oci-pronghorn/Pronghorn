@@ -128,7 +128,7 @@ public class StreamingConsumerTest {
 	//       PrintStream ps = System.out;
 	       StreamingReadVisitor visitor = new StreamingReadVisitorToJSON(ps); 
 	       
-	       StreamingVisitorReader reader = new StreamingVisitorReader(ring, new StreamingReadVisitorDebugDelegate(visitor) );
+	       StreamingVisitorReader reader = new StreamingVisitorReader(ring, visitor);//, new StreamingReadVisitorDebugDelegate(visitor) );
 	        
 	       svw.startup();
 	       reader.startup();
@@ -142,7 +142,10 @@ public class StreamingConsumerTest {
 	       svw.shutdown();
 	       reader.shutdown(); 	    
 	    
-	       String results = new String(baos.toByteArray());
+	       byte[] byteArray = baos.toByteArray();
+	       assertTrue("No JSON was produced", byteArray.length>0);
+           String results = new String(byteArray);
+	       	       
 	       //spot check the produced JSON
 	       assertTrue(results, results.indexOf("\"Trucks\":")>0);
 	       assertTrue(results, results.indexOf("{\"Squad\":")>0);

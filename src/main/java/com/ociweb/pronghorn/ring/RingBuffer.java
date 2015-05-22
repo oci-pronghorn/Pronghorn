@@ -248,7 +248,7 @@ public final class RingBuffer {
     	result.append(" bytesWrkTailPos ").append(byteWorkingTailPos.value);    	
     	result.append(" bytesHeadPos ").append(PaddedInt.get(bytesHeadPos));
     	result.append(" bytesWrkHeadPos ").append(byteWorkingHeadPos.value);   	
-    	    	
+    	    	    	
     	return result.toString();
     }
     

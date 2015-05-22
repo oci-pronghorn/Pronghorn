@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.ring.stream;
 
-import static com.ociweb.pronghorn.ring.RingBuffer.*;
+import static com.ociweb.pronghorn.ring.RingBuffer.publishAllBatchedWrites;
+import static com.ociweb.pronghorn.ring.RingBuffer.publishWrites;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
@@ -17,7 +18,6 @@ public class StreamingVisitorWriter {
 	private int nestedFragmentDepth;
 	private int[] cursorStack;
 	private int[] sequenceCounters;
-	private final int blockCount = 1;//32;
 	
 	
 	public StreamingVisitorWriter(RingBuffer outputRing, StreamingWriteVisitor visitor) {
@@ -42,9 +42,8 @@ public class StreamingVisitorWriter {
 	public void run() {
 		
 		//write as long as its not posed and we have room to write any possible known fragment
-	    int count = this.blockCount;
 	    
-		while (!visitor.paused() && --count>=0 && RingBuffer.roomToLowLevelWrite(outputRing, maxFragmentSize) ) {	
+		while (!visitor.paused() && RingBuffer.roomToLowLevelWrite(outputRing, maxFragmentSize) ) {	
 			    	        
 		        int startPos;
 		        int cursor;
@@ -76,7 +75,6 @@ public class StreamingVisitorWriter {
 		        } else {
         	
 		            
-		            
 		        	cursor = cursorStack[nestedFragmentDepth];
 		        	startPos = 0;//this is not a new message so there is no id to jump over.
 			    
@@ -84,7 +82,7 @@ public class StreamingVisitorWriter {
 		        
 		        //visit all the fields in this fragment
 		        processFragment(startPos, cursor);
-		        
+		        		        
 		        RingBuffer.confirmLowLevelWrite(outputRing, from.fragDataSize[cursor]);
 		        
 		        publishWrites(outputRing);
@@ -135,7 +133,6 @@ public class StreamingVisitorWriter {
 								//close of one sequence member
 								if (--sequenceCounters[nestedFragmentDepth]<=0) {
 									//close of the sequence
-								   // System.err.println("close of sequence "+name+" id:"+id+" "+cursor);
 									visitor.sequenceClose(name,id);
 									nestedFragmentDepth--; //will become zero so we start a new message
 								
@@ -144,8 +141,9 @@ public class StreamingVisitorWriter {
 								}
 							} else {
 							    visitor.templateClose(name,id);
-							    //System.err.println("AA");//ok
 								
+							    assert(nestedFragmentDepth<=0) : "bad "+nestedFragmentDepth;
+							    
 								//this close was not a sequence so it must be the end of the message
 								nestedFragmentDepth = -1;
 								return;//must exit so we do not pick up any more fields
@@ -166,15 +164,9 @@ public class StreamingVisitorWriter {
                         RingBuffer.addIntValue(seqLen, outputRing);    
 
                         assert(i==fieldsInFragment) :" this should be the last field";
-                  //      if (seqLen>0) {
-        					sequenceCounters[++nestedFragmentDepth] = seqLen;
-        				//	System.err.println("open sequence "+seqLen+" for "+from.fieldNameScript[j]+" added to stack cursor? :"+(cursor+fieldsInFragment)+" from "+j);
-        					
-        					cursorStack[nestedFragmentDepth] = cursor+fieldsInFragment;
-                    //    } 
-    					//do not pick up the nestedFragmentDepth adjustment, exit now because we know 
-    					//group length is always the end of a fragment
-        				//	 System.err.println("CC"); //ok
+                        sequenceCounters[++nestedFragmentDepth] = seqLen;
+                        cursorStack[nestedFragmentDepth] = cursor+fieldsInFragment;
+  
     				}
 					return; 					
 				case TypeMask.IntegerSigned:
