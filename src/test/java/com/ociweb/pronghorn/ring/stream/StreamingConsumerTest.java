@@ -112,7 +112,6 @@ public class StreamingConsumerTest {
 	public void generatorTest() {
 	    final int seed = 2;
 	    final long aLongValue = 2945688134060370505l;//hard coded value that comes from this seed 2
-	    final int aIntValue = 140719389;//hard coded value that comes from this seed 2
 	    final int aNegIntValue = -29;//hard coded value that comes from this seed 2
         
 	    
@@ -126,15 +125,17 @@ public class StreamingConsumerTest {
 	       	       	       
 	       ByteArrayOutputStream baos = new ByteArrayOutputStream();
 	       PrintStream ps = new PrintStream(baos);
-//	       PrintStream ps = System.out;
+	//       PrintStream ps = System.out;
 	       StreamingReadVisitor visitor = new StreamingReadVisitorToJSON(ps); 
 	       
-	       StreamingVisitorReader reader = new StreamingVisitorReader(ring, visitor );
+	       StreamingVisitorReader reader = new StreamingVisitorReader(ring, new StreamingReadVisitorDebugDelegate(visitor) );
 	        
 	       svw.startup();
 	       reader.startup();
-
-	       svw.run();
+	     
+	        do {
+	           svw.run();
+	        } while (!svw.isAtBreakPoint());
 	       
 	       reader.run();
 	       
@@ -147,7 +148,6 @@ public class StreamingConsumerTest {
 	       assertTrue(results, results.indexOf("{\"Squad\":")>0);
 	       
 	       assertTrue(results, results.indexOf(Long.toString(aLongValue))>0);
-	       assertTrue(results, results.indexOf(Integer.toString(aIntValue))>0);
 	       assertTrue(results, results.indexOf(Integer.toString(aNegIntValue))>0);
 	}
 	

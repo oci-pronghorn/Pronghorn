@@ -16,6 +16,7 @@ public class StreamingVisitorReader {
 
 	private int nestedFragmentDepth;
 	
+	//TODO: AA, this does not work with preamble of any size.
 	
 	public StreamingVisitorReader(RingBuffer inputRing, StreamingReadVisitor visitor) {
 		this.visitor = visitor;
@@ -26,6 +27,7 @@ public class StreamingVisitorReader {
 		this.cursorStack = new int[this.from.maximumFragmentStackDepth];
 		this.sequenceCounters = new int[this.from.maximumFragmentStackDepth];
 		
+
 		//publish only happens on fragment boundary therefore we can assume that if 
 		//we can read 1 then we can read the full fragment
 		
@@ -58,7 +60,7 @@ public class StreamingVisitorReader {
 		        		oldShutdown();
 						return;
 		        	}
-		        	startPos = 1;//new message so skip over this messageId field
+		        	startPos = 1;//new message so skip over this messageId field		        	      	
 		        			        
 		        	visitor.visitTemplateOpen(from.fieldNameScript[cursor], from.fieldIdScript[cursor]);
 		        				        		        	

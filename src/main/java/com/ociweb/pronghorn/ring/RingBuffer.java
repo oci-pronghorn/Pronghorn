@@ -1593,7 +1593,8 @@ public final class RingBuffer {
 
 	public static void writeTrailingCountOfBytesConsumed(RingBuffer ring, long pos) {
 				
-		int consumed = ring.byteWorkingHeadPos.value - ring.bytesWriteLastConsumedBytePos;		
+		int consumed = ring.byteWorkingHeadPos.value - ring.bytesWriteLastConsumedBytePos;	
+		//log.trace("wrote {} bytes consumed to position {}",consumed,pos);
 		ring.buffer[ring.mask & (int)pos] = consumed>=0 ? consumed : consumed&BYTES_WRAP_MASK ;
 		ring.bytesWriteLastConsumedBytePos = ring.byteWorkingHeadPos.value;
 

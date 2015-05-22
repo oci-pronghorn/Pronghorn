@@ -527,7 +527,8 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	//this impl only works for simple case where every message is one fragment. 
 	public static boolean tryReadFragment(RingBuffer ringBuffer) { 
 		
-		if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBuffer.ringWalker.nextCursor)) {    		
+		if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBuffer.ringWalker.nextCursor)) {    
+		    assert(ringBuffer.ringWalker.seqStackHead<0) : "Error the seqStack should be empty but found value at "+ringBuffer.ringWalker.seqStackHead;
 			return RingWalker.prepReadMessage(ringBuffer, ringBuffer.ringWalker);			   
 	    } else {  
 			return RingWalker.prepReadFragment(ringBuffer, ringBuffer.ringWalker);
@@ -552,17 +553,29 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     public static void printFragment(RingBuffer input) {
         
         int cursor = input.ringWalker.cursor;
+        if (cursor<0) {
+            System.err.println("EOF");
+            return;
+        }
         
         //TODO: AAA, from here down this can be common and shared for low level or high level use.
         FieldReferenceOffsetManager from = RingBuffer.from(input);
         int fields = from.fragScriptSize[cursor];
-        System.err.println("cursor:"+cursor+" new message: "+input.ringWalker.isNewMessage+" fields: "+fields);
+        int dataSize = from.fragDataSize[cursor];
+        String msgName = from.fieldNameScript[cursor];
+        long msgId = from.fieldIdScript[cursor];
+        
+        System.err.println("cursor:"+cursor+" new message: "+input.ringWalker.isNewMessage+" fields: "+fields+" "+String.valueOf(msgName)+" id: "+msgId);
+        if (0==fields) {
+            System.err.println("WARNING: no fragments should have zero fields.");
+        }
         int i = 0;
         while (i<fields) {
-            String name = from.fieldNameScript[i+cursor];            
-            long id = from.fieldIdScript[i+cursor];
+            final int p = i+cursor;
+            String name = from.fieldNameScript[p];            
+            long id = from.fieldIdScript[p];
             
-            int token = from.tokens[i+cursor];
+            int token = from.tokens[p];
             int type = TokenBuilder.extractType(token);
             
             //fields not message name
@@ -575,7 +588,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
                         
                         int oper = TokenBuilder.extractOper(token);
                         boolean open = (0==(OperatorMask.Group_Bit_Close&oper));
-                        value = "open:"+open;
+                        value = "open:"+open+" pos:"+p;
                         
                         break;
                     case TypeMask.GroupLength:
@@ -656,13 +669,6 @@ public class RingReader {//TODO: B, build another static reader that does auto c
             
             i++;
         }
-        
-        
-        
-        
-        
-        
-        // TODO Auto-generated method stub
         
     }
 

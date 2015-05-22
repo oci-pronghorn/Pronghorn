@@ -32,7 +32,7 @@ public class StreamingWriteVisitorGenerator implements StreamingWriteVisitor {
 
     @Override
     public int pullMessageIdx() {        
-        return starts[random.nextInt(starts.length)];        
+        return starts[random.nextInt(starts.length)];
     }
 
     @Override
@@ -75,7 +75,7 @@ public class StreamingWriteVisitorGenerator implements StreamingWriteVisitor {
         int len = random.nextInt(maxLenChars);
         int i = len;
         while (--i>=0) {
-            workingChar[i] = (char)random.nextInt(127);
+            workingChar[i] = (char)('0'+random.nextInt(62));
         }        
         return new String(workingChar, 0, len);
     }
@@ -103,8 +103,7 @@ public class StreamingWriteVisitorGenerator implements StreamingWriteVisitor {
 
     @Override
     public int pullSequenceLength(String name, long id) {
-        //TODO: AA, note that NoMDEntries must not be zero for jFAST test, This is a bug in jFAST that needs to be fixed.
-        return 1+Math.abs(0x7&random.nextInt());//7 need small sequences
+        return Math.abs(0x7&random.nextInt());//7 need small sequences
     }
 
     @Override

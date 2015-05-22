@@ -9,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.util.Random;
 
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -16,6 +17,8 @@ import org.junit.Test;
 import org.xml.sax.SAXException;
 
 import com.ociweb.pronghorn.ring.schema.loader.TemplateHandler;
+import com.ociweb.pronghorn.ring.stream.StreamingVisitorWriter;
+import com.ociweb.pronghorn.ring.stream.StreamingWriteVisitorGenerator;
 
 public class RingBufferMultiTemplateTest {
 
@@ -404,21 +407,21 @@ public class RingBufferMultiTemplateTest {
 	
 	@Test
 	public void zeroSequenceFragmentWriteRead() {
-		byte primaryRingSizeInBits = 7; 
-    	byte byteRingSizeInBits = 16;
-    
     	
-		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+		RingBuffer ring = new RingBuffer(new RingBufferConfig(FROM, 60, 60));
 		ring.initBuffers();
-		int testSize = 5;
+		int testSize = 25;
 		
 		//in this method we write two sequence members but only record the count after writing the members
 		populateRingBufferWithZeroSequence(ring, testSize);
 		
 		//Ring is full of messages, this loop runs until the ring is empty.
+		int j = testSize;
         while (RingReader.tryReadFragment(ring)) {
         	assertTrue(RingReader.isNewMessage(ring));
 
+        	//RingReader.printFragment(ring);
+        	
         	int msgIdx = RingReader.getMsgIdx(ring);
         	if (msgIdx<0) {
         		break;
@@ -428,8 +431,19 @@ public class RingBufferMultiTemplateTest {
 			assertEquals("TheBobSquad", RingReader.readASCII(ring, SQUAD_NAME, new StringBuilder()).toString());
 			
 			int sequenceCount = RingReader.readInt(ring, SQUAD_NO_MEMBERS);
-			assertEquals(0,sequenceCount);
-        
+			
+			if (0==(--j&1)) {			
+			    assertEquals(0,sequenceCount);
+			} else {
+			    assertEquals(1,sequenceCount);
+		         RingReader.tryReadFragment(ring);
+		        // RingReader.printFragment(ring);
+		         assertEquals(11, RingReader.readLong(ring, SQUAD_TRUCK_ID));
+		         assertEquals(3000, RingReader.readDecimalMantissa(ring, TRUCK_CAPACITY));
+		         assertEquals(2, RingReader.readDecimalExponent(ring, TRUCK_CAPACITY));
+			}
+			
+			RingReader.releaseReadLock(ring);
 		        	
         }
 		
@@ -438,33 +452,122 @@ public class RingBufferMultiTemplateTest {
 	private void populateRingBufferWithZeroSequence(RingBuffer ring, int testSize) {
 		
 		int j = testSize;
-        while (true) {
-        	
-        	if (j==0) {
-        		RingWriter.publishEOF(ring);
-        		return;//done
-        	}
-        	
+        while (--j>=0) {
         	
         	if (RingWriter.tryWriteFragment(ring, MSG_TRUCKS_LOC)) { //AUTO writes template id as needed
  
         		RingWriter.writeASCII(ring, SQUAD_NAME, "TheBobSquad");     		
-        		        		      		
-        		RingWriter.writeInt(ring, SQUAD_NO_MEMBERS, 0); //NOTE: we are writing this field very late because we now know how many we wrote.
+        		        		
+        		if (0==(j&1)) {
+        		    RingWriter.writeInt(ring, SQUAD_NO_MEMBERS, 0); //NOTE: we are writing this field very late because we now know how many we wrote.
+        		} else {
+            		
+            		//block to ensure we have room for the next fragment, and ensure that bytes consumed gets recorded
+                    RingWriter.blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);                    
+                    RingWriter.writeLong(ring, SQUAD_TRUCK_ID, 11);
+                    RingWriter.writeDouble(ring, TRUCK_CAPACITY, 30d, 2); //alternate way of writing a decimal
+                    
+                    //NOTE: because we are waiting until the end of the  sequence to write its length we have two rules
+                    //      1. Publish can not be called between these fragments because it will publish a zero for the count
+                    //      2. The RingBuffer must be large enough to hold all the fragments in the sequence.
+                    //      Neither one of these apply when the length can be set first.
+                    
+                    RingWriter.writeInt(ring, SQUAD_NO_MEMBERS, 1); //NOTE: we are writing this field very late because we now know how many we wrote.
+        		}
         		
         		RingWriter.publishWrites(ring);
-        		        		
-        		 j--;       		
-    		} else {
-        		//Unable to write because there is no room so do something else while we are waiting.
-        		Thread.yield();
-        		
-        	}       
-        	
-      	
-        	
+        		          		
+    		} 
         }
+        RingWriter.publishEOF(ring);
+                
 	}
 	
+	//TODO: AA, investigate the mapping of reactive streams interface on to the pipes.
+	
+	
+	//@Test  Work in progress need to get shutdown working.
+    public void generatedTest() {
+        
+        int testSize = 17;//4;
+                
+                
+//        RingBuffer ring = new RingBuffer(new RingBufferConfig(FROM, 60, 60));
+//        ring.initBuffers();
+//        //in this method we write two sequence members but only record the count after writing the members
+//        populateRingBufferWithZeroSequence(ring, testSize);
+        
+        RingBuffer ring = buildPopulatedRing(FROM, new RingBufferConfig(FROM, 100, 60), 42, testSize, 60);
+                
+        //Ring is full of messages, this loop runs until the ring is empty.
+        //int j = testSize;
+        int msgCount = 0;
+        while (RingReader.tryReadFragment(ring)) {
+             if (RingReader.isNewMessage(ring)) {
+                 msgCount++;
+             }
+
+             RingReader.printFragment(ring);
+//            
+//            int msgIdx = RingReader.getMsgIdx(ring);
+//            if (msgIdx<0) {
+//                break;
+//            }
+//            assertEquals(MSG_TRUCKS_LOC, msgIdx);
+//
+//            assertEquals("TheBobSquad", RingReader.readASCII(ring, SQUAD_NAME, new StringBuilder()).toString());
+//            
+//            int sequenceCount = RingReader.readInt(ring, SQUAD_NO_MEMBERS);
+//            
+//            if (0==(--j&1)) {           
+//                assertEquals(0,sequenceCount);
+//            } else {
+//                assertEquals(1,sequenceCount);
+//                 RingReader.tryReadFragment(ring);
+//                // RingReader.printFragment(ring);
+//                 assertEquals(11, RingReader.readLong(ring, SQUAD_TRUCK_ID));
+//                 assertEquals(3000, RingReader.readDecimalMantissa(ring, TRUCK_CAPACITY));
+//                 assertEquals(2, RingReader.readDecimalExponent(ring, TRUCK_CAPACITY));
+//            }
+            
+            RingReader.releaseReadLock(ring);
+                
+            
+            System.err.println(ring);
+        }
+        
+        System.err.println("message count "+msgCount);
+        
+    }
+	
+	
+    public RingBuffer buildPopulatedRing(FieldReferenceOffsetManager from, RingBufferConfig rbConfig, int commonSeed, int iterations, int varLength) {
+        int i;
+        RingBuffer ring2 = new RingBuffer(rbConfig);
+        ring2.initBuffers();
+        
+        StreamingWriteVisitorGenerator swvg2 = new StreamingWriteVisitorGenerator(from, new Random(commonSeed), varLength, varLength);    
+                
+        StreamingVisitorWriter svw2 = new StreamingVisitorWriter(ring2, swvg2);
+        
+        svw2.startup();     
+        i = iterations;
+        while (--i>=0 || !svw2.isAtBreakPoint()) {
+            svw2.run();
+        }
+        svw2.shutdown();
+        
+        System.err.println(ring2);
+        
+      //  RingBuffer.publishEOF(ring2);
+        
+        return ring2;
+    }
+    
+    
+    
+    
+    
+    
 	
 }

@@ -20,8 +20,10 @@ public class RingWalker {
     public long nextWorkingHead; //This is NOT the same as the low level head cache, this is for writing side of the ring
 
     private int[] seqStack;
-    private int seqStackHead;
-    private final Logger log = LoggerFactory.getLogger(RingWalker.class);
+    private int[] seqCursors;
+    
+    int seqStackHead;
+    private static final Logger log = LoggerFactory.getLogger(RingWalker.class);
 
     public final FieldReferenceOffsetManager from;
     
@@ -35,33 +37,30 @@ public class RingWalker {
     
 	
 	RingWalker(FieldReferenceOffsetManager from) {
-		this(false, false, -1, new int[from.maximumFragmentStackDepth], -1, from);
+		
+		    if (null==from) {
+	            throw new UnsupportedOperationException();
+	        }
+	        this.msgIdx = -1;
+	        this.isNewMessage = false;
+	        this.waiting = false;
+	        this.cursor = -1;
+	        this.seqStack = new int[from.maximumFragmentStackDepth];
+	        this.seqCursors = new int[from.maximumFragmentStackDepth];
+	        this.seqStackHead = -1;
+	        this.from = from;
+	        this.activeWriteFragmentStack = new long[from.maximumFragmentStackDepth];
+	        this.activeReadFragmentStack = new long[from.maximumFragmentStackDepth];
 	}
 	
-	
-    private RingWalker(boolean isNewMessage, boolean waiting, int cursor,
-                                    int[] seqStack, int seqStackHead, FieldReferenceOffsetManager from) {
-    	if (null==from) {
-    		throw new UnsupportedOperationException();
-    	}
-        this.msgIdx = -1;
-        this.isNewMessage = isNewMessage;
-        this.waiting = waiting;
-        this.cursor = cursor;
-        this.seqStack = seqStack;
-        this.seqStackHead = seqStackHead;
-        this.from = from;
-        this.activeWriteFragmentStack = new long[from.maximumFragmentStackDepth];
-        this.activeReadFragmentStack = new long[from.maximumFragmentStackDepth];
-        
-    }
+
 
     static void setMsgIdx(RingWalker rw, int idx, long llwHeadPosCache) {
-		assert(idx<rw.from.fragDataSize.length) : "Corrupt stream, expected message idx < "+rw.from.fragDataSize.length+" however found "+idx;
-		assert(idx>-3);
 		rw.msgIdxPrev = rw.msgIdx;
 		//rw.log.trace("set message id {}", idx);
 		rw.msgIdx = idx;
+		assert(isMsgIdxStartNewMessage(idx, rw)) : "Bad msgIdx is not a starting point. ";
+		assert(idx>-3);
 		
 		//This validation is very important, because all down stream consumers will assume it to be true.
 		assert(-1 ==idx || (rw.from.hasSimpleMessagesOnly && 0==rw.msgIdx && rw.from.messageStarts.length==1)  ||
@@ -93,7 +92,13 @@ public class RingWalker {
 		//check the ring buffer looking for full next fragment
 		//return false if we don't have enough data 
 		ringBufferConsumer.cursor = ringBufferConsumer.nextCursor;
+		
+		assert(isValidFragmentStart(ringBuffer, ringBufferConsumer.nextWorkingTail)) : "last assigned fragment start is invalid, should have been detected far before this point.";
+		
 		final long target = ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor] + ringBufferConsumer.nextWorkingTail; //One for the template ID NOTE: Caution, this simple implementation does NOT support preamble
+		
+		assert(isValidFragmentStart(ringBuffer, target)) : "Bad target of "+target+" for new fragment start. cursor:"+ringBufferConsumer.cursor+" name:"+ringBufferConsumer.from.fieldNameScript[ringBufferConsumer.cursor] +"    X="+ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor]+"+"+ ringBufferConsumer.nextWorkingTail;
+		
 		if (ringBuffer.llwHeadPosCache >= target) {
 			prepReadFragment(ringBuffer, ringBufferConsumer, ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor], ringBufferConsumer.nextWorkingTail, target);
 		} else {
@@ -164,6 +169,9 @@ public class RingWalker {
 	private static void prepReadFragment2(RingBuffer ringBuffer,
 			final RingWalker ringBufferConsumer, long tmpNextWokingTail,
 			final long target, int lastScriptPos, int lastTokenOfFragment) {
+	    
+	    assert(isValidFragmentStart(ringBuffer, target)) : "Bad target of "+target+" for new fragment start";
+	    
 		//                                   11011    must not equal               10000
         if ( (lastTokenOfFragment &  ( 0x1B <<TokenBuilder.SHIFT_TYPE)) != ( 0x10<<TokenBuilder.SHIFT_TYPE ) ) {
         	 ringBufferConsumer.nextWorkingTail = target;//save the size of this new fragment we are about to read 
@@ -175,7 +183,42 @@ public class RingWalker {
 	}
 
 
-	private static void openOrCloseSequenceWhileInsideFragment(
+	private static boolean isValidFragmentStart(RingBuffer ringBuffer, long newFragmentBegin) {
+        
+	    if (newFragmentBegin<=0) {
+	        return true;
+	    }
+	    //this fragment must not be after the head write position
+	    if (newFragmentBegin>RingBuffer.headPosition(ringBuffer)) {
+	        FieldReferenceOffsetManager.debugFROM(RingBuffer.from(ringBuffer));
+	        log.error("new fragment to read is after head write position "+newFragmentBegin+"  "+ringBuffer);	        
+	        int start = Math.max(0, ringBuffer.mask&(int)newFragmentBegin-5);
+	        int stop  = Math.min(ringBuffer.buffer.length, ringBuffer.mask&(int)newFragmentBegin+5);
+	        log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(ringBuffer.buffer, start, stop)));
+	        return false;
+	    }
+	    if (newFragmentBegin>0) {
+	        int byteCount = ringBuffer.buffer[ringBuffer.mask & (int)(newFragmentBegin-1)];
+	        if (byteCount<0) {
+	            log.error("if this is a new fragment then previous fragment is negative byte count, more likely this is NOT a valid fragment start.");
+	            int start = Math.max(0, ringBuffer.mask&(int)newFragmentBegin-5);
+	            int stop  = Math.min(ringBuffer.buffer.length, ringBuffer.mask&(int)newFragmentBegin+5);
+	            log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(ringBuffer.buffer, start, stop)));
+	            return false;
+	        }
+           if (byteCount>ringBuffer.byteMask) {
+                log.error("if this is a new fragment then previous fragment byte count is larger than byte buffer, more likely this is NOT a valid fragment start.");
+                int start = Math.max(0, ringBuffer.mask&(int)newFragmentBegin-5);
+                int stop  = Math.min(ringBuffer.buffer.length, ringBuffer.mask&(int)newFragmentBegin+5);
+                log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(ringBuffer.buffer, start, stop)));
+                return false;
+            }	        
+	    }
+        return true;
+    }
+
+
+    private static void openOrCloseSequenceWhileInsideFragment(
 			RingBuffer ringBuffer, final RingWalker ringBufferConsumer,
 			long tmpNextWokingTail, int lastScriptPos, int lastTokenOfFragment) {
 		//this is a group or groupLength that has appeared while inside a fragment that does not start a message
@@ -203,8 +246,7 @@ public class RingWalker {
     			break;
     		}
     		int token = ringBufferConsumer.from.tokens[ringBufferConsumer.nextCursor ];
-    		isClosingGroup = (TypeMask.Group==((token >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) && 
-    				         (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
+    		isClosingGroup = isClosingGroup(token) && !isClosingSequence(token);
   	    	if (isClosingGroup) {
     		   ringBufferConsumer.nextCursor++;
     		}
@@ -212,46 +254,78 @@ public class RingWalker {
 	}
 
 
+    private static boolean isClosingGroup(int token) {
+        return (TypeMask.Group==((token >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) && 
+               (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
+    }
+    
+    private static boolean isClosingSequence(int token) {
+        return (TypeMask.Group==((token >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) && 
+               (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) &&
+               (0 != (token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)));
+    }
+
+   private static boolean isSeqLength(int token) {
+       return (TypeMask.GroupLength==((token >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE));
+    }
+
+	//only called when a closing sequence group is hit.
 	private static void continueSequence(final RingWalker ringBufferConsumer) {
 		//check top of the stack
 		if (--ringBufferConsumer.seqStack[ringBufferConsumer.seqStackHead]>0) {		            	
 			//stay on cursor location we are counting down.
-		    ringBufferConsumer.nextCursor = ringBufferConsumer.cursor;
+		    ringBufferConsumer.nextCursor = ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead];
+		    
 		} else {
-			ringBufferConsumer.seqStackHead = ringBufferConsumer.seqStackHead - 1; 
-			
-			//this was not a sequence so the next point is found by a simple addition of the fragSize
-			autoReturnFromCloseGroups(ringBufferConsumer);
+			if (--ringBufferConsumer.seqStackHead>=0) {
+			    if (isClosingSequence(ringBufferConsumer.from.tokens[ringBufferConsumer.nextCursor ])) {
+                    ringBufferConsumer.nextCursor = ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead];                    
+                }
+			} else {
+			    //this was not a sequence so the next point is found by a simple addition of the fragSize
+			    autoReturnFromCloseGroups(ringBufferConsumer);
+			}
 		}
 	}
 
 
 	private static void beginNewSequence(final RingWalker ringBufferConsumer, int seqLength) {
+	    //NOTE: this method assumes that nextCursor is pointing to the beginning of this sequence fragment.
 		if (seqLength > 0) {
-			//System.err.println("started stack with:"+seqLength);
-			ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead]=seqLength;
-		
+			ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
+			ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead] = ringBufferConsumer.nextCursor;	
 		} else {
 			//jump over and skip this altogether, the next thing at working tail will be later in the script
-			ringBufferConsumer.nextCursor += ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.nextCursor];
+		    do {		    
+		        ringBufferConsumer.nextCursor += ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.nextCursor];
+		        //NOTE: we must jump over fragments so we keep jumping if any fragment ends in group length.
+		    } while (isSeqLength(ringBufferConsumer.from.tokens[ringBufferConsumer.nextCursor-1]));
+			
 			autoReturnFromCloseGroups(ringBufferConsumer);
 		}
 	}
 
 
-	private static void prepReadMessage(RingBuffer ringBuffer, RingWalker ringBufferConsumer, long tmpNextWokingTail) {
+
+
+
+    private static void prepReadMessage(RingBuffer ringBuffer, RingWalker ringBufferConsumer, long tmpNextWokingTail) {
 		//we now have enough room to read the id
 		//for this simple case we always have a new message
 		ringBufferConsumer.isNewMessage = true; 
 		
 		//always increment this tail position by the count of bytes used by this fragment
 		if (tmpNextWokingTail>0) { //first iteration it will not have a valid position
-		    RingBuffer.addAndGetBytesWorkingTailPosition(ringBuffer, ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)]);	
+		    int bytesConsumed = ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];
+		    assert(bytesConsumed>=0 && bytesConsumed<=ringBuffer.byteBuffer.length) : "bad byte count at "+(tmpNextWokingTail-1);
+		    //System.err.println("bytes consumed :"+bytesConsumed);
+		    
+		    
+		    RingBuffer.addAndGetBytesWorkingTailPosition(ringBuffer, bytesConsumed);
 		}	
 
 		//the byteWorkingTail now holds the new base
 		RingBuffer.markBytesReadBase(ringBuffer);
-
 		
 		//
 		//batched release of the old positions back to the producer
@@ -265,10 +339,29 @@ public class RingWalker {
 		}
 		prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
 
+		
 	}
 
 
-	private static void releaseBlockBeforeReadMessage(RingBuffer ringBuffer) {
+	private static boolean isMsgIdxStartNewMessage(int msgIdx, RingWalker ringBufferConsumer) {
+        if (msgIdx<0) {
+            return true;
+        }
+	    
+	    int[] starts = ringBufferConsumer.from.messageStarts;
+	    int i = starts.length;
+	    while (--i>=0) {
+	        if (starts[i]==msgIdx) {
+	            return true;
+	        }
+	    }
+	    
+	    System.err.println("bad curstor "+msgIdx+" expected one of "+Arrays.toString(starts));	    
+	    return false;
+    }
+
+
+    private static void releaseBlockBeforeReadMessage(RingBuffer ringBuffer) {
 	    RingBuffer.setBytesTail(ringBuffer,RingBuffer.bytesWorkingTailPosition(ringBuffer)); 			
 		RingBuffer.publishWorkingTailPosition(ringBuffer, ringBuffer.ringWalker.nextWorkingTail);
 				
@@ -286,7 +379,13 @@ public class RingWalker {
 
 
 	private static int readMsgIdx(RingBuffer ringBuffer, RingWalker ringBufferConsumer, final long tmpNextWokingTail) {
-		return ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)];
+	    
+		int i = ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset);
+        int idx = ringBuffer.buffer[i];
+        
+		
+		assert(isMsgIdxStartNewMessage(idx, ringBufferConsumer)) : "Bad msgIdx is not a starting point.";
+		return idx;
 	}
 
 
@@ -304,7 +403,6 @@ public class RingWalker {
 			int[] fragDataSize) {
 
 		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail + fragDataSize[ringBufferConsumer.msgIdx];//save the size of this new fragment we are about to read  
-				
 		
 		//This validation is very important, because all down stream consumers will assume it to be true.
 		assert((ringBufferConsumer.from.hasSimpleMessagesOnly && 0==readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail) && ringBufferConsumer.from.messageStarts.length==1)  ||
@@ -326,6 +424,9 @@ public class RingWalker {
 			int[] fragDataSize) {
 		//rare so we can afford some extra checking at this point 
 		if (ringBufferConsumer.msgIdx > fragDataSize.length) {
+		    
+		    
+		    
 			//this is very large so it is probably bad data, catch it now and send back a meaningful error
 			int limit = (ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset))+1;
 			throw new UnsupportedOperationException("Bad msgId:"+ringBufferConsumer.msgIdx+
@@ -335,7 +436,7 @@ public class RingWalker {
 		
 		//this is commonly used as the end of file marker  
 		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+RingBuffer.EOF_SIZE;
-
+		//System.err.println("DDDD set next workig tail:"+tmpNextWokingTail+" + "+RingBuffer.EOF_SIZE);
 	}
     
  

@@ -17,7 +17,7 @@ public class StreamingVisitorWriter {
 	private int nestedFragmentDepth;
 	private int[] cursorStack;
 	private int[] sequenceCounters;
-	private final int blockCount = 32;
+	private final int blockCount = 1;//32;
 	
 	
 	public StreamingVisitorWriter(RingBuffer outputRing, StreamingWriteVisitor visitor) {
@@ -34,11 +34,16 @@ public class StreamingVisitorWriter {
 		
 		this.nestedFragmentDepth = -1;
 	}
+	
+	public boolean isAtBreakPoint() {
+	    return nestedFragmentDepth<0;
+	}
 
 	public void run() {
 		
 		//write as long as its not posed and we have room to write any possible known fragment
 	    int count = this.blockCount;
+	    
 		while (!visitor.paused() && --count>=0 && RingBuffer.roomToLowLevelWrite(outputRing, maxFragmentSize) ) {	
 			    	        
 		        int startPos;
@@ -54,6 +59,9 @@ public class StreamingVisitorWriter {
 		        		RingBuffer.publishAllBatchedWrites(outputRing);
 		        		return;
 		        	}
+		        	
+		        	//System.err.println("new message Idx "+cursor+" writen to "+(outputRing.workingHeadPos.value));
+		        	
 		        	RingBuffer.addMsgIdx(outputRing,  cursor);
 		        	
 		        	startPos = 1;//new message so skip over this messageId field
@@ -66,7 +74,7 @@ public class StreamingVisitorWriter {
 		        	
 
 		        } else {
-		        	
+        	
 		            
 		            
 		        	cursor = cursorStack[nestedFragmentDepth];
@@ -106,6 +114,8 @@ public class StreamingVisitorWriter {
 	private void processFragment(int startPos, int cursor) {
 		int fieldsInFragment = from.fragScriptSize[cursor];
 		int i = startPos;
+		
+		//System.err.println("begin write of fragment "+from.fieldNameScript[cursor]+" "+cursor);
 		while (i<fieldsInFragment) {
 			int j = cursor+i++;
 			
@@ -121,16 +131,20 @@ public class StreamingVisitorWriter {
 							//if this was a close of sequence count down so we now when to close it.
 							if (FieldReferenceOffsetManager.isGroupSequence(from, j)) {
 								visitor.fragmentClose(name,id);
+								
 								//close of one sequence member
 								if (--sequenceCounters[nestedFragmentDepth]<=0) {
 									//close of the sequence
+								   // System.err.println("close of sequence "+name+" id:"+id+" "+cursor);
 									visitor.sequenceClose(name,id);
 									nestedFragmentDepth--; //will become zero so we start a new message
+								
 								} else {
 									break;
 								}
 							} else {
 							    visitor.templateClose(name,id);
+							    //System.err.println("AA");//ok
 								
 								//this close was not a sequence so it must be the end of the message
 								nestedFragmentDepth = -1;
@@ -141,22 +155,26 @@ public class StreamingVisitorWriter {
 						if (j<from.tokens.length && !FieldReferenceOffsetManager.isGroup(from, j)) {
 							cursorStack[++nestedFragmentDepth] = j;
 						}
+					//	 System.err.println("close nested fragments, next starts at "+(1+outputRing.workingHeadPos.value));
 						return;//this is always the end of a fragment
 					}					
 					break;
 				case TypeMask.GroupLength:				    
     				{
+    				    
     				    int seqLen = visitor.pullSequenceLength(from.fieldNameScript[j],from.fieldIdScript[j]);
                         RingBuffer.addIntValue(seqLen, outputRing);    
 
                         assert(i==fieldsInFragment) :" this should be the last field";
-                        
-    					nestedFragmentDepth++;
-    					sequenceCounters[nestedFragmentDepth]= seqLen;
-    					cursorStack[nestedFragmentDepth] = cursor+fieldsInFragment;
-    										
+                  //      if (seqLen>0) {
+        					sequenceCounters[++nestedFragmentDepth] = seqLen;
+        				//	System.err.println("open sequence "+seqLen+" for "+from.fieldNameScript[j]+" added to stack cursor? :"+(cursor+fieldsInFragment)+" from "+j);
+        					
+        					cursorStack[nestedFragmentDepth] = cursor+fieldsInFragment;
+                    //    } 
     					//do not pick up the nestedFragmentDepth adjustment, exit now because we know 
     					//group length is always the end of a fragment
+        				//	 System.err.println("CC"); //ok
     				}
 					return; 					
 				case TypeMask.IntegerSigned:
@@ -221,7 +239,9 @@ public class StreamingVisitorWriter {
 					break;
 				case TypeMask.Decimal:
 					{					    
-					    RingBuffer.addIntValue(visitor.pullDecimalExponent(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
+					    int pullDecimalExponent = visitor.pullDecimalExponent(from.fieldNameScript[j],from.fieldIdScript[j]);
+					    
+                        RingBuffer.addIntValue(pullDecimalExponent, outputRing);
 					    RingBuffer.addLongValue(visitor.pullDecimalMantissa(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
 
 						i++;//add 1 extra because decimal takes up 2 slots in the script
