@@ -161,7 +161,7 @@ public class RingWalker {
 		
 		assert(RingBuffer.bytesWorkingTailPosition(ringBuffer) <= RingBuffer.bytesHeadPosition(ringBuffer)) : "expected to have data up to "+RingBuffer.bytesWorkingTailPosition(ringBuffer)+" but we only have "+RingBuffer.bytesHeadPosition(ringBuffer);
 		
-		if ((--ringBuffer.batchReleaseCountDown<=0)) {	
+		if ((RingBuffer.decBatchRelease(ringBuffer)<=0)) {	
 			
 			releaseBlockBeforeReadMessage(ringBuffer);
 		}
@@ -358,7 +358,7 @@ public class RingWalker {
 		//batched release of the old positions back to the producer
 		//could be done every time but batching reduces contention
 		//this batching is only done per-message so the fragments can remain and be read
-		if ((--ringBuffer.batchReleaseCountDown>0)) {	
+		if ((RingBuffer.decBatchRelease(ringBuffer)>0)) {	
 			//from the last known fragment move up the working tail position to this new fragment location
 			ringBuffer.workingTailPos.value = ringBufferConsumer.nextWorkingTail;
 		} else {			
@@ -392,7 +392,7 @@ public class RingWalker {
 	    RingBuffer.setBytesTail(ringBuffer,RingBuffer.bytesWorkingTailPosition(ringBuffer)); 			
 		RingBuffer.publishWorkingTailPosition(ringBuffer, ringBuffer.ringWalker.nextWorkingTail);
 				
-		ringBuffer.batchReleaseCountDown = ringBuffer.batchReleaseCountDownInit;
+		RingBuffer.beginNewReleaseBatch(ringBuffer);
 	}
 
 

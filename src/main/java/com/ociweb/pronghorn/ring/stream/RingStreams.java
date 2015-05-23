@@ -253,6 +253,7 @@ public class RingStreams {
 		}
 	}
 
+	@Deprecated
 	public static void writeEOF(RingBuffer ring) {
 		spinBlockOnTail(tailPosition(ring), headPosition(ring)-(1 + ring.mask - RingBuffer.EOF_SIZE), ring);
 		RingBuffer.publishEOF(ring);	

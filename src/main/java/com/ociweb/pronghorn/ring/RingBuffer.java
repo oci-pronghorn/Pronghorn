@@ -80,10 +80,25 @@ public final class RingBuffer {
 		}
     }
 
-    public final int maxSize;
-    public int[] buffer;
-    public final int mask;
     private static final Logger log = LoggerFactory.getLogger(RingBuffer.class);
+    public static final int RELATIVE_POS_MASK = 0x7FFFFFFF; //removes high bit which indicates this is a constant
+    private static final AtomicInteger ringCounter = new AtomicInteger();
+    public static final int BYTES_WRAP_MASK = 0x7FFFFFFF;//NOTE: this trick only works because its 1 bit less than the roll-over sign bit
+
+    //these public fields are fine because they are all final
+    public final int ringId;	
+    public final int maxSize;
+    public final int mask;
+    public final int maxByteSize;
+    public final int byteMask;
+    public final byte pBits;
+    public final byte bBits;
+    public final FieldReferenceOffsetManager from;    
+    
+    
+    //TODO: AAAA, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
+    //            the time slices of the graph will need to be kept for all rings to reconstruct history later.
+    
     		
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers  Must convert to accessor methods first
     public final PaddedLong workingHeadPos = new PaddedLong();
@@ -93,9 +108,13 @@ public final class RingBuffer {
     public final PaddedLong workingTailPos = new PaddedLong();
     private final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos  
 
-    public final int maxByteSize;
+    //TODO: A, group these together and move into RingWalker, needed for gap support for audit trail.
+    private final PaddedInt byteWorkingTailPos = new PaddedInt();
+    private final PaddedInt bytesTailPos = new PaddedInt();
+
+    //delayed construction on these to support NUMA
     public byte[] byteBuffer;
-    public final int byteMask;
+    public int[] buffer;
     
     //New interface for unified access to next head position.
     //public final AtomicLong publishedHead = new PaddedAtomicLong(); // top 32 is primary, low 32 is byte 
@@ -108,21 +127,11 @@ public final class RingBuffer {
     public int bytesWriteLastConsumedBytePos = 0;
     public int bytesWriteBase = 0;    
     public int bytesReadBase = 0;       
-	
-	public static final int RELATIVE_POS_MASK = 0x7FFFFFFF; //removes high bit which indicates this is a constant
 	   
-    //TODO: AAAA, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
-	//            the time slices of the graph will need to be kept for all rings to reconstruct history later.
-	
-    //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
-    private final PaddedInt byteWorkingTailPos = new PaddedInt();
-    private final PaddedInt bytesTailPos = new PaddedInt();
-    
-
-    
+        
     
     //defined externally and never changes
-    final byte[] constByteBuffer;
+    protected final byte[] constByteBuffer;
     private byte[][] bufferLookup;
     
     public final int maxAvgVarLen; 
@@ -133,15 +142,12 @@ public final class RingBuffer {
     static final int JUMP_MASK = 0xFFFFF;
     public RingWalker ringWalker;
     
-    public final byte pBits;
-    public final byte bBits;
     public static final int EOF_SIZE = 2;
     
     private final AtomicBoolean shutDown = new AtomicBoolean(false);
     private RingBufferException firstShutdownCaller = null;
     		
 	
-	FieldReferenceOffsetManager from;
 	
 	//hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
 	private int lastPublishedBytesHead;
@@ -151,17 +157,13 @@ public final class RingBuffer {
 	private int lastReleasedBytesTail;
 	private long lastReleasedTail; //TODO: AAAAA, must integrate this usage into graph manager 
 		
+	//hold the batch positions, when the number reaches zero the records are send or released
+	private int batchReleaseCountDown = 0;
+	private int batchReleaseCountDownInit = 0;
+	private int batchPublishCountDown = 0;
+	private int batchPublishCountDownInit = 0;
+		
 	
-    
-	//NOTE: this only works because its 1 bit less than the roll-over sign bit
-	public static final int BYTES_WRAP_MASK = 0x7FFFFFFF;
-
-	int batchReleaseCountDown = 0;
-	int batchReleaseCountDownInit = 0;
-	int batchPublishCountDown = 0;
-	int batchPublishCountDownInit = 0;
-	
-    
 	long llrTailPosCache;
 	private long llrNextTailTarget; //TODO: move these into private class
 	
@@ -177,9 +179,6 @@ public final class RingBuffer {
 	private IntBuffer wrappedPrimaryIntBuffer;
 	private ByteBuffer wrappedSecondaryByteBuffer;
 
-	
-	public final int ringId;	
-	private static AtomicInteger ringCounter = new AtomicInteger();
 	
 	private final int debugFlags;
 	
@@ -1706,5 +1705,22 @@ public final class RingBuffer {
     public static void setBytesWorkingHead(RingBuffer ring, int value) {
         PaddedInt.set(ring.byteWorkingHeadPos, value);        
     }
+    
+    public static int decBatchRelease(RingBuffer rb) {
+        return --rb.batchReleaseCountDown;
+    }
+    
+    public static int decBatchPublish(RingBuffer rb) {
+        return --rb.batchPublishCountDown;
+    }
+        
+    public static void beginNewReleaseBatch(RingBuffer rb) {
+        rb.batchReleaseCountDown = rb.batchReleaseCountDownInit;
+    }
+    
+    public static void beginNewPublishBatch(RingBuffer rb) {
+        rb.batchPublishCountDown = rb.batchPublishCountDownInit;
+    }
+    
 	
 }
