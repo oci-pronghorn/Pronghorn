@@ -101,11 +101,11 @@ public final class RingBuffer {
     
     		
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers  Must convert to accessor methods first
-    public final PaddedLong workingHeadPos = new PaddedLong();
+    public final PaddedLong workingHeadPos = new PaddedLong(); //XXX access methods added just need to be used.
     private final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos 
 
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
-    public final PaddedLong workingTailPos = new PaddedLong();
+    public final PaddedLong workingTailPos = new PaddedLong(); //XXX access methods added just need to be used.
     private final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos  
 
     //TODO: A, group these together and move into RingWalker, needed for gap support for audit trail.
@@ -113,8 +113,11 @@ public final class RingBuffer {
     private final PaddedInt bytesTailPos = new PaddedInt();
 
     //delayed construction on these to support NUMA
-    public byte[] byteBuffer;
-    public int[] buffer;
+    public byte[] byteBuffer;//XXX access methods added just need to be used, must prevent external replacement.
+    public int[] buffer;//XXX access methods added just need to be used, must prevent external replacement.
+
+    
+    
     
     //New interface for unified access to next head position.
     //public final AtomicLong publishedHead = new PaddedAtomicLong(); // top 32 is primary, low 32 is byte 
@@ -124,11 +127,11 @@ public final class RingBuffer {
     private final PaddedInt bytesHeadPos = new PaddedInt();
     
     
-    public int bytesWriteLastConsumedBytePos = 0;
-    public int bytesWriteBase = 0;    
-    public int bytesReadBase = 0;       
-	   
-        
+    public int bytesWriteLastConsumedBytePos = 0; //XXX method updateBytesWriteLastConsumedPos exists just needs to be used.  
+    
+    private int bytesWriteBase = 0;    
+    private int bytesReadBase = 0;       
+	           
     
     //defined externally and never changes
     protected final byte[] constByteBuffer;
@@ -1547,15 +1550,32 @@ public final class RingBuffer {
 	public static long headPosition(RingBuffer ring) {
 		 return ring.headPos.get();
 	}
-	
-	public static void incWorkingHeadPosition(RingBuffer ring, long incValue) {
-	    ring.workingHeadPos.value += incValue;
-	}
-	
-	public static long workingHeadPosition(RingBuffer ring) {
-	    return ring.workingHeadPos.value;
-	}
+    
+    public static long workingHeadPosition(RingBuffer ring) {
+        return PaddedLong.get(ring.workingHeadPos);
+    }
+    
+    public static void setWorkingHead(RingBuffer ring, int value) {
+        PaddedLong.set(ring.workingHeadPos, value);
+    }
+    
+    public static long addAndGetWorkingHead(RingBuffer ring, int inc) {
+        return PaddedLong.addAndGet(ring.workingHeadPos, inc);
+    }
 
+    public static long workingTailPosition(RingBuffer ring) {
+        return PaddedLong.get(ring.workingTailPos);
+    }
+    
+    public static void setWorkingTail(RingBuffer ring, int value) {
+        PaddedLong.set(ring.workingTailPos, value);
+    }
+    
+    public static long addAndGetWorkingTail(RingBuffer ring, int inc) {
+        return PaddedLong.addAndGet(ring.workingTailPos, inc);
+    }
+    
+    
 	/**
 	 * This method is only for build transfer stages that require direct manipulation of the position.
 	 * Only call this if you really know what you are doing.
@@ -1721,6 +1741,17 @@ public final class RingBuffer {
     public static void beginNewPublishBatch(RingBuffer rb) {
         rb.batchPublishCountDown = rb.batchPublishCountDownInit;
     }
+        
+    public static byte[] byteBuffer(RingBuffer rb) {
+        return rb.byteBuffer;
+    }
     
+    public static int[] primaryBuffer(RingBuffer rb) {
+        return rb.buffer;
+    }
+        
+    public static void updateBytesWriteLastConsumedPos(RingBuffer rb) {
+        rb.bytesWriteLastConsumedBytePos = RingBuffer.bytesWorkingHeadPosition(rb);
+    }
 	
 }

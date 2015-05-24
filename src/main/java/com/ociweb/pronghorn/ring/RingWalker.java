@@ -505,7 +505,7 @@ public class RingWalker {
 		//      nested long sequences where we don't know the length until after they are all written.
 		
 		prepWriteFragmentSpecificProcessing(ring, cursorPosition, from);
-		RingBuffer.incWorkingHeadPosition(ring, fragSize);
+		RingBuffer.addAndGetWorkingHead(ring, fragSize);
 		ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + fragSize;
 
 		//when publish is called this new byte will be appended due to this request
@@ -559,7 +559,7 @@ public class RingWalker {
 		RingBuffer.copyIntsFromToRing(inputRing.buffer, start, inputRing.mask, 
 				                      outputRing.buffer, (int)RingBuffer.workingHeadPosition(outputRing), outputRing.mask, 
 				                      spaceNeeded);
-		RingBuffer.incWorkingHeadPosition(outputRing, spaceNeeded);
+		RingBuffer.addAndGetWorkingHead(outputRing, spaceNeeded);
 		
 		RingBuffer.copyBytesFromToRing(inputRing.byteBuffer, RingBuffer.bytesWorkingTailPosition(inputRing), inputRing.byteMask, 
 				                       outputRing.byteBuffer, RingBuffer.bytesWorkingHeadPosition(outputRing), outputRing.byteMask, 
