@@ -80,8 +80,6 @@ public class TapeWriteStage extends PronghornStage {
 		int byteHeadPos;
         long headPos;
 		       
-        
-        //TODO: A, publish to a single atomic long and read it here.
         //get the new head position
         byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
 		headPos = RingBuffer.headPosition(ss.source);		

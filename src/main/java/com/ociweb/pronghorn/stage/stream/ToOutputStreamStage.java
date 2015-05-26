@@ -44,42 +44,36 @@ public class ToOutputStreamStage extends PronghornStage {
 				//      That change may however increase latency.
 				
 				int byteMask = inputRing.byteMask;
-				int byteSize = byteMask+1;
-				
-				
+				int byteSize = byteMask+1;								
 				
 				while (RingBuffer.contentToLowLevelRead(inputRing, step)) {
 						
 					int msgId = RingBuffer.takeMsgIdx(inputRing);
-												
-					if (msgId<0) { //exit logic
-						new Exception("old style close detected, please fix.").printStackTrace();  ///TODO delete this code
-						
-					} else {    
-						RingBuffer.confirmLowLevelRead(inputRing, step);
-				    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
-		    					    			
-				    	int len = takeRingByteLen(inputRing);
-				    	int off = bytePosition(meta,inputRing,len)&byteMask; 			
-				    	
-				    	if (len>0) {            	
-							byte[] data = byteBackingArray(meta, inputRing);
-							int len1 = byteSize-off;
-							if (len1>=len) {
-								//simple add bytes
-								outputStream.write(data, off, len); 
-							} else {		
-								//rolled over the end of the buffer
-								outputStream.write(data, off, len1);
-								outputStream.write(data, 0, len-len1);
-							}
-							if (eol) {
-								outputStream.write('\n');
-							}
-							outputStream.flush();
-				    	}
-				    	readBytesAndreleaseReadLock(inputRing);
-					}				    
+  
+					RingBuffer.confirmLowLevelRead(inputRing, step);
+			    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
+	    					    			
+			    	int len = takeRingByteLen(inputRing);
+			    	int off = bytePosition(meta,inputRing,len)&byteMask; 			
+			    	
+			    	if (len>0) {            	
+						byte[] data = byteBackingArray(meta, inputRing);
+						int len1 = byteSize-off;
+						if (len1>=len) {
+							//simple add bytes
+							outputStream.write(data, off, len); 
+						} else {		
+							//rolled over the end of the buffer
+							outputStream.write(data, off, len1);
+							outputStream.write(data, 0, len-len1);
+						}
+						if (eol) {
+							outputStream.write('\n');
+						}
+						outputStream.flush();
+			    	}
+			    	readBytesAndreleaseReadLock(inputRing);
+			    
 				}			
 				
 			} catch (IOException e) {
