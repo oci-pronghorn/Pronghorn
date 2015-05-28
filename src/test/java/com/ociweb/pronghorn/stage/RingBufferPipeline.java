@@ -61,7 +61,7 @@ public class RingBufferPipeline {
 	            int bufSize = RingBuffer.takeValue(inputRing);
 	            int bLen = RingBuffer.takeValue(inputRing);
 
-	            inputRing.workingTailPos.value+=monitorMessageSize;
+	            RingBuffer.setWorkingTailPosition(inputRing, RingBuffer.getWorkingTailPosition(inputRing)+monitorMessageSize);
 	                     
 	            int queueDepth = (int)(head-tail);
                 //show depth vs bufSize	            
