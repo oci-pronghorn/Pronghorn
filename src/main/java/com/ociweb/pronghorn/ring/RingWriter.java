@@ -260,7 +260,7 @@ public class RingWriter {
 	    RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, outputRing.ringWalker.nextWorkingHead -1 ); 
 
 		//single length field still needs to move this value up, so this is always done
-		outputRing.bytesWriteLastConsumedBytePos = RingBuffer.bytesWorkingHeadPosition(outputRing);
+	    RingBuffer.updateBytesWriteLastConsumedPos(outputRing);
 		
 		if ((RingBuffer.decBatchPublish(outputRing)>0)) {		
 			RingBuffer.storeUnpublishedHead(outputRing);

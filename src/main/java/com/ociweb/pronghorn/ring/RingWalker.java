@@ -155,7 +155,8 @@ public class RingWalker {
 
 
 		//from the last known fragment move up the working tail position to this new fragment location
-		ringBuffer.workingTailPos.value = tmpNextWokingTail;
+		RingBuffer.setWorkingTailPosition(ringBuffer, tmpNextWokingTail);
+		
 		//save the index into these fragments so the reader will be able to find them.
 		ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] =tmpNextWokingTail;
 		
@@ -360,7 +361,8 @@ public class RingWalker {
 		//this batching is only done per-message so the fragments can remain and be read
 		if ((RingBuffer.decBatchRelease(ringBuffer)>0)) {	
 			//from the last known fragment move up the working tail position to this new fragment location
-			ringBuffer.workingTailPos.value = ringBufferConsumer.nextWorkingTail;
+		    RingBuffer.setWorkingTailPosition(ringBuffer, ringBufferConsumer.nextWorkingTail);
+		    
 		} else {			
 			releaseBlockBeforeReadMessage(ringBuffer);
 		}

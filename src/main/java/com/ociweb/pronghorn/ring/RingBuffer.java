@@ -136,7 +136,7 @@ public final class RingBuffer {
     public int[] buffer;//XXX access methods added just need to be used, must prevent external replacement.
 
         
-    public int bytesWriteLastConsumedBytePos = 0; //XXX method updateBytesWriteLastConsumedPos exists just needs to be used.  
+    private int bytesWriteLastConsumedBytePos = 0; 
     
     private int bytesWriteBase = 0;    
     private int bytesReadBase = 0;       
@@ -1349,13 +1349,7 @@ public final class RingBuffer {
         return (int)(rb.headPos.get() - rb.tailPos.get()); //must not go past add count because it is not release yet.
     }
 
-    public static void setWorkingTailPosition(RingBuffer ring, long position) {
-    	ring.workingTailPos.value = position;
-    }
-    
-    public static long getWorkingTailPosition(RingBuffer ring) {
-    	return ring.workingTailPos.value;
-    }
+
 
     /**
      * Low level API release
@@ -1572,18 +1566,18 @@ public final class RingBuffer {
         return PaddedLong.addAndGet(ring.workingHeadPos, inc);
     }
 
-    public static long workingTailPosition(RingBuffer ring) {
+    public static long getWorkingTailPosition(RingBuffer ring) {
         return PaddedLong.get(ring.workingTailPos);
     }
     
-    public static void setWorkingTail(RingBuffer ring, int value) {
+    public static void setWorkingTailPosition(RingBuffer ring, long value) {
         PaddedLong.set(ring.workingTailPos, value);
     }
     
     public static long addAndGetWorkingTail(RingBuffer ring, int inc) {
         return PaddedLong.addAndGet(ring.workingTailPos, inc);
     }
-    
+
     
 	/**
 	 * This method is only for build transfer stages that require direct manipulation of the position.

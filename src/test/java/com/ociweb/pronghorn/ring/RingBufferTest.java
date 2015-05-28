@@ -379,7 +379,7 @@ public class RingBufferTest {
 			if (testArray.length != len) {
 				fail("expected " + testArray.length + " but found " + len
 						+ " gr " + granularity + "   working tail pos "
-						+ ring.workingTailPos.value);
+						+ RingBuffer.getWorkingTailPosition(ring));
 			}
 
 			// not checking every byte for equals because it would slow down
