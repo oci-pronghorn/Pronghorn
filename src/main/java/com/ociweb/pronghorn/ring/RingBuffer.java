@@ -1282,12 +1282,17 @@ public final class RingBuffer {
     // WARNING: consumer of these may need to loop around end of buffer !!
     // these are needed for fast direct READ FROM here
 
+    @Deprecated
     public static int readRingByteLen(int fieldPos, int[] rbB, int rbMask, PaddedLong rbPos) {
-        return rbB[(int) (rbMask & (rbPos.value + fieldPos + 1))];// second int is always the length
+        return readRingByteLen(fieldPos,rbB, rbMask, rbPos.value);
+    }
+    
+    public static int readRingByteLen(int fieldPos, int[] rbB, int rbMask, long rbPos) {
+        return rbB[(int) (rbMask & (rbPos + fieldPos + 1))];// second int is always the length
     }
 
 	public static int readRingByteLen(int idx, RingBuffer ring) {
-		return readRingByteLen(idx,ring.buffer,ring.mask,ring.workingTailPos);       
+		return readRingByteLen(idx,ring.buffer, ring.mask, ring.workingTailPos.value);       
 	}
 	
 	public static int takeRingByteLen(RingBuffer ring) {		
