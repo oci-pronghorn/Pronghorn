@@ -99,17 +99,17 @@ public class RingWalker {
 		
 		assert(isValidFragmentStart(ringBuffer, target)) : invalidFragmentStartMessage(ringBufferConsumer, target);
 				
-		if (ringBuffer.llwHeadPosCache >= target) {
+		if (ringBuffer.llWrite.llwHeadPosCache >= target) {
 			prepReadFragment(ringBuffer, ringBufferConsumer, ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor], ringBufferConsumer.nextWorkingTail, target);
 		} else {
 			//only update the cache with this CAS call if we are still waiting for data
-			if ((ringBuffer.llwHeadPosCache = RingBuffer.headPosition(ringBuffer)) >= target) {
+			if ((ringBuffer.llWrite.llwHeadPosCache = RingBuffer.headPosition(ringBuffer)) >= target) {
 				prepReadFragment(ringBuffer, ringBufferConsumer, ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor], ringBufferConsumer.nextWorkingTail, target);
 			} else {
 				ringBufferConsumer.isNewMessage = false; 
 								
-				assert (ringBuffer.llwHeadPosCache<=ringBufferConsumer.nextWorkingTail) : 
-					  "Partial fragment published!  expected "+(target-ringBufferConsumer.nextWorkingTail)+" but found "+(ringBuffer.llwHeadPosCache-ringBufferConsumer.nextWorkingTail);
+				assert (ringBuffer.llWrite.llwHeadPosCache<=ringBufferConsumer.nextWorkingTail) : 
+					  "Partial fragment published!  expected "+(target-ringBufferConsumer.nextWorkingTail)+" but found "+(ringBuffer.llWrite.llwHeadPosCache-ringBufferConsumer.nextWorkingTail);
 
 				return false;
 			}
@@ -130,11 +130,11 @@ public class RingWalker {
 		///
 		//check the ring buffer looking for new message	
 		//return false if we don't have enough data to read the first id and therefore the message
-		if (ringBuffer.llwHeadPosCache > 1+ringBufferConsumer.nextWorkingTail) { 
+		if (ringBuffer.llWrite.llwHeadPosCache > 1+ringBufferConsumer.nextWorkingTail) { 
 			prepReadMessage(ringBuffer, ringBufferConsumer, ringBufferConsumer.nextWorkingTail);
 		} else {
 			//only update the cache with this CAS call if we are still waiting for data
-			if ((ringBuffer.llwHeadPosCache = RingBuffer.headPosition(ringBuffer)) > 1+ringBufferConsumer.nextWorkingTail) {
+			if ((ringBuffer.llWrite.llwHeadPosCache = RingBuffer.headPosition(ringBuffer)) > 1+ringBufferConsumer.nextWorkingTail) {
 				prepReadMessage(ringBuffer, ringBufferConsumer, ringBufferConsumer.nextWorkingTail);
 			} else {
 				//rare slow case where we dont find any data
@@ -402,7 +402,7 @@ public class RingWalker {
 		//
 		//Start new stack of fragments because this is a new message
 		ringBufferConsumer.activeReadFragmentStack[0] = tmpNextWokingTail;				 
-		setMsgIdx(ringBufferConsumer, readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail), ringBuffer.llwHeadPosCache);
+		setMsgIdx(ringBufferConsumer, readMsgIdx(ringBuffer, ringBufferConsumer, tmpNextWokingTail), ringBuffer.llWrite.llwHeadPosCache);
 		prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail,	ringBufferConsumer.from.fragDataSize);
 	}
 
@@ -493,7 +493,7 @@ public class RingWalker {
 			prepWriteFragment(ring, cursorPosition, from, fragSize);
 		} else {
 			//only if there is no room should we hit the CAS tailPos and then try again.
-			hasRoom = (ring.llrTailPosCache = RingBuffer.tailPosition(ring)) >=  target;		
+			hasRoom = (ring.llRead.llrTailPosCache = RingBuffer.tailPosition(ring)) >=  target;		
 			if (hasRoom) {		
 				prepWriteFragment(ring, cursorPosition, from, fragSize);
 			}

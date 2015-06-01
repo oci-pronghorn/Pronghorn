@@ -35,6 +35,22 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 
 public final class RingBuffer {
    
+    public static class LLWrite {
+        public long llwHeadPosCache;
+        public long llwNextHeadTarget;
+
+        public LLWrite() {
+        }
+    }
+
+    public static class LLRead {
+        public long llrTailPosCache;
+        public long llrNextTailTarget;
+
+        public LLRead() {
+        }
+    }
+
     public static class ByteBufferHead {
         public final PaddedInt byteWorkingHeadPos;
         public final PaddedInt bytesHeadPos;
@@ -104,7 +120,8 @@ public final class RingBuffer {
     public static final int RELATIVE_POS_MASK = 0x7FFFFFFF; //removes high bit which indicates this is a constant
     private static final AtomicInteger ringCounter = new AtomicInteger();
     public static final int BYTES_WRAP_MASK = 0x7FFFFFFF;//NOTE: this trick only works because its 1 bit less than the roll-over sign bit
-
+    public static final int EOF_SIZE = 2;
+    
     //these public fields are fine because they are all final
     public final int ringId;	
     public final int maxSize;
@@ -114,6 +131,7 @@ public final class RingBuffer {
     public final byte pBits;
     public final byte bBits;
     public final FieldReferenceOffsetManager from;    
+    public final int maxAvgVarLen; 
     
     
     //TODO: AAAA, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
@@ -130,7 +148,9 @@ public final class RingBuffer {
 
     private final ByteBufferTail byteBufferTail = new ByteBufferTail();
     private final ByteBufferHead byteBufferHead = new ByteBufferHead();
-        
+
+    
+    
     //delayed construction on these to support NUMA
     public byte[] byteBuffer;//XXX access methods added just need to be used, must prevent external replacement.
     public int[] buffer;//XXX access methods added just need to be used, must prevent external replacement.
@@ -145,21 +165,20 @@ public final class RingBuffer {
     //defined externally and never changes
     protected final byte[] constByteBuffer;
     private byte[][] bufferLookup;
+    LLRead llRead;
+    LLWrite llWrite;
     
-    public final int maxAvgVarLen; 
     private int varLenMovingAverage = 0;//this is an exponential moving average
 
     // end of moveNextFields
 
     static final int JUMP_MASK = 0xFFFFF;
-    public RingWalker ringWalker;
+    public RingWalker ringWalker; //TODO: make private after jFAST switches to no longer need
     
-    public static final int EOF_SIZE = 2;
     
     private final AtomicBoolean shutDown = new AtomicBoolean(false);
     private RingBufferException firstShutdownCaller = null;
     		
-	
 	
 	//hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
 	private int lastPublishedBytesHead;
@@ -174,16 +193,9 @@ public final class RingBuffer {
 	private int batchReleaseCountDownInit = 0;
 	private int batchPublishCountDown = 0;
 	private int batchPublishCountDownInit = 0;
-		
-	
-	long llrTailPosCache; //TODO: AA make private
-	private long llrNextTailTarget; //TODO: move these into private class
-	
-	long llwHeadPosCache; //TODO: AA make private
-	private long llwNextHeadTarget; //TODO: move these into private class
-	
-		
-	//NOTE:
+			
+    
+    //NOTE:
 	//     This is the future direction of the ring buffer that is not yet complete
 	//     By migrating all array index usages to these the backing ring can be moved outside the Java heap
 	//     By moving the ring outside the Java heap other applications have have direct access
@@ -286,11 +298,7 @@ public final class RingBuffer {
         this.mask = maxSize - 1;
         
         this.from = from;
-        
-        //This init must be the same as what is done in reset()
-        //This target is a counter that marks if there is room to write more data into the ring without overriting other data.
-        this.llrNextTailTarget = 0-this.maxSize;
-  
+          
         //single text and byte buffers because this is where the variable length data will go.
 
         this.maxByteSize =  1 << byteBits;
@@ -323,7 +331,26 @@ public final class RingBuffer {
     }
 
 	private void buildBufffers() {
-		this.byteBuffer = new byte[maxByteSize];
+        
+        assert(workingHeadPos.value == headPos.get());
+        assert(workingTailPos.value == tailPos.get());
+        assert(workingHeadPos.value == workingTailPos.value);
+        assert(tailPos.get()==headPos.get());
+        
+        long toPos = workingHeadPos.value;//can use this now that we have confirmed they all match.
+        
+        this.llRead = new LLRead();
+        this.llWrite = new LLWrite();
+        
+        //This init must be the same as what is done in reset()
+        //This target is a counter that marks if there is room to write more data into the ring without overwriting other data.
+        this.llRead.llrNextTailTarget = 0-this.maxSize;
+        llWrite.llwHeadPosCache = toPos;
+        llRead.llrTailPosCache = toPos;
+        llRead.llrNextTailTarget = toPos - maxSize;
+        llWrite.llwNextHeadTarget = toPos;
+        
+        this.byteBuffer = new byte[maxByteSize];
         this.buffer = new int[maxSize]; 
         this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};    
 
@@ -339,7 +366,9 @@ public final class RingBuffer {
 			   null!=ring.buffer &&
 			   null!=ring.bufferLookup &&
 			   null!=ring.wrappedPrimaryIntBuffer &&
-			   null!=ring.wrappedSecondaryByteBuffer;
+			   null!=ring.wrappedSecondaryByteBuffer &&
+			   null!=ring.llRead &&
+			   null!=ring.llWrite;
 	}
 	
 	public static void validateVarLength(RingBuffer rb, int length) {
@@ -360,27 +389,7 @@ public final class RingBuffer {
      * Empty and restore to original values.
      */
     public void reset() {
-
-    	workingHeadPos.value = 0;
-        workingTailPos.value = 0;
-        tailPos.set(0);
-        headPos.set(0); 
-        
-        llwHeadPosCache = 0;
-        llrTailPosCache = 0;
-        llrNextTailTarget = 0 - maxSize;       
-        llwNextHeadTarget = 0;
-        
-        bytesWriteBase = 0;
-        bytesReadBase = 0;
-        bytesWriteLastConsumedBytePos = 0;
-        
-        byteBufferHead.byteWorkingHeadPos.value = 0;
-        PaddedInt.set(byteBufferHead.bytesHeadPos,0);
-        
-        byteBufferTail.byteWorkingTailPos.value = 0;
-        PaddedInt.set(byteBufferTail.bytesTailPos,0);
-        RingWalker.reset(ringWalker, 0);
+    	reset(0,0);
     }
         
     /**
@@ -394,10 +403,12 @@ public final class RingBuffer {
         tailPos.set(toPos);
         headPos.set(toPos); 
         
-        llwHeadPosCache = toPos;
-        llrTailPosCache = toPos;
-        llrNextTailTarget = toPos - maxSize;
-        llwNextHeadTarget = toPos;
+        if (null!=llWrite) {
+            llWrite.llwHeadPosCache = toPos;
+            llRead.llrTailPosCache = toPos;
+            llRead.llrNextTailTarget = toPos - maxSize;
+            llWrite.llwNextHeadTarget = toPos;
+        }
         
         byteBufferHead.byteWorkingHeadPos.value = bPos;
         PaddedInt.set(byteBufferHead.bytesHeadPos,bPos);
@@ -1441,7 +1452,7 @@ public final class RingBuffer {
 		ring.bytesWriteLastConsumedBytePos = ring.byteBufferHead.byteWorkingHeadPos.value;
 		
     	assert(ring.workingHeadPos.value >= RingBuffer.headPosition(ring));
-    	assert(ring.llwNextHeadTarget<=RingBuffer.headPosition(ring) || ring.workingHeadPos.value<=ring.llwNextHeadTarget) : "Unsupported mix of high and low level API. NextHead>head and workingHead>nextHead";
+    	assert(ring.llWrite.llwNextHeadTarget<=RingBuffer.headPosition(ring) || ring.workingHeadPos.value<=ring.llWrite.llwNextHeadTarget) : "Unsupported mix of high and low level API. NextHead>head and workingHead>nextHead";
     	
     	publishHeadPositions(ring);
     }
@@ -1563,7 +1574,7 @@ public final class RingBuffer {
         return PaddedLong.get(ring.workingHeadPos);
     }
     
-    public static void setWorkingHead(RingBuffer ring, int value) {
+    public static void setWorkingHead(RingBuffer ring, long value) {
         PaddedLong.set(ring.workingHeadPos, value);
     }
     
@@ -1617,6 +1628,10 @@ public final class RingBuffer {
 	public static FieldReferenceOffsetManager from(RingBuffer ring) {
 		return ring.ringWalker.from;
 	}
+	
+	public static int cursor(RingBuffer ring) {
+        return ring.ringWalker.cursor;
+    }
 
 	public static void writeTrailingCountOfBytesConsumed(RingBuffer ring, long pos) {
 				
@@ -1647,43 +1662,43 @@ public final class RingBuffer {
 	
 	//TODO: AA, adjust unit tests to use this.
 	public static boolean roomToLowLevelWrite(RingBuffer output, int size) {
-		return roomToLowLevelWrite(output, output.llrNextTailTarget+size);
+		return roomToLowLevelWrite(output, output.llRead.llrNextTailTarget+size);
 	}
 
 	private static boolean roomToLowLevelWrite(RingBuffer output, long target) {
 		//only does second part if the first does not pass 
-		return (output.llrTailPosCache >= target) || roomToLowLevelWriteSlow(output, target);
+		return (output.llRead.llrTailPosCache >= target) || roomToLowLevelWriteSlow(output, target);
 	}
 
 	private static boolean roomToLowLevelWriteSlow(RingBuffer output, long target) {
-		return (output.llrTailPosCache = output.tailPos.get()) >= target;
+		return (output.llRead.llrTailPosCache = output.tailPos.get()) >= target;
 	}
 	
 	public static void confirmLowLevelWrite(RingBuffer output, int size) {
-		output.llrNextTailTarget += size;
+		output.llRead.llrNextTailTarget += size;
 	}
 	
 	
 	public static boolean contentToLowLevelRead(RingBuffer input, int size) {
-		return contentToLowLevelRead2(input, input.llwNextHeadTarget+size);
+		return contentToLowLevelRead2(input, input.llWrite.llwNextHeadTarget+size);
 	}
 
 	private static boolean contentToLowLevelRead2(RingBuffer input, long target) {
 		//only does second part if the first does not pass 
-		return (input.llwHeadPosCache >= target) || contentToLowLevelReadSlow(input, target);
+		return (input.llWrite.llwHeadPosCache >= target) || contentToLowLevelReadSlow(input, target);
 	}
 
 	private static boolean contentToLowLevelReadSlow(RingBuffer input, long target) {
-		return (input.llwHeadPosCache = input.headPos.get()) >= target;
+		return (input.llWrite.llwHeadPosCache = input.headPos.get()) >= target;
 	}
 	
 	public static long confirmLowLevelRead(RingBuffer input, long size) {
-		return (input.llwNextHeadTarget += size);
+		return (input.llWrite.llwNextHeadTarget += size);
 	}
 
 	//TODO: AAA, this is more reliable, can I apply this everyewhere?
     public static void setWorkingHeadTarget(RingBuffer input) {
-        input.llwNextHeadTarget =  RingBuffer.getWorkingTailPosition(input);
+        input.llWrite.llwNextHeadTarget =  RingBuffer.getWorkingTailPosition(input);
     }
 	
 	public static boolean hasReleasePending(RingBuffer ringBuffer) {
@@ -1760,6 +1775,14 @@ public final class RingBuffer {
         
     public static void updateBytesWriteLastConsumedPos(RingBuffer rb) {
         rb.bytesWriteLastConsumedBytePos = RingBuffer.bytesWorkingHeadPosition(rb);
+    }
+        
+    public static PaddedLong getworkingTailPositionObject(RingBuffer rb) {
+        return rb.workingTailPos;
+    }
+    
+    public static PaddedLong getworkingHeadPositionObject(RingBuffer rb) {
+        return rb.workingHeadPos;
     }
 	
 }

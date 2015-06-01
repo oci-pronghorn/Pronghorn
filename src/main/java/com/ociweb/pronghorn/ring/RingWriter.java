@@ -219,7 +219,7 @@ public class RingWriter {
 	public static void publishEOF(RingBuffer ring) {
 		
 		assert(RingBuffer.workingHeadPosition(ring)<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
-		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.maxSize - RingBuffer.EOF_SIZE), ring);
+		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.maxSize - RingBuffer.EOF_SIZE), ring);
 		
 		assert(RingBuffer.tailPosition(ring)+ring.maxSize>=RingBuffer.headPosition(ring)+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 		RingBuffer.setBytesHead(ring, RingBuffer.bytesWorkingHeadPosition(ring));
@@ -291,7 +291,7 @@ public class RingWriter {
 		
 		RingWalker consumerData = ring.ringWalker;
 		int fragSize = from.fragDataSize[messageTemplateLOC];
-		ring.llrTailPosCache = spinBlockOnTail(ring.llrTailPosCache, consumerData.nextWorkingHead - (ring.maxSize - fragSize), ring);
+		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, consumerData.nextWorkingHead - (ring.maxSize - fragSize), ring);
 	
 		RingWalker.prepWriteFragment(ring, messageTemplateLOC, from, fragSize);
 	}
@@ -304,7 +304,7 @@ public class RingWriter {
 	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
 		int fragSize = RingBuffer.from(ring).fragDataSize[cursorPosition];
 		long target = ring.ringWalker.nextWorkingHead - (ring.maxSize - fragSize);
-		return RingWalker.tryWriteFragment1(ring, cursorPosition, RingBuffer.from(ring), fragSize, target, ring.llrTailPosCache >=  target);
+		return RingWalker.tryWriteFragment1(ring, cursorPosition, RingBuffer.from(ring), fragSize, target, ring.llRead.llrTailPosCache >=  target);
 	}
 
 	public static void setPublishBatchSize(RingBuffer rb, int size) {
