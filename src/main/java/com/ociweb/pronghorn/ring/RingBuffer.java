@@ -143,7 +143,7 @@ public final class RingBuffer {
     private final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos 
 
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
-    public final PaddedLong workingTailPos = new PaddedLong(); //XXX access methods added just need to be used.
+    private final PaddedLong workingTailPos = new PaddedLong(); //XXX access methods added just need to be used.
     private final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos  
 
     private final ByteBufferTail byteBufferTail = new ByteBufferTail();
@@ -1777,11 +1777,11 @@ public final class RingBuffer {
         rb.bytesWriteLastConsumedBytePos = RingBuffer.bytesWorkingHeadPosition(rb);
     }
         
-    public static PaddedLong getworkingTailPositionObject(RingBuffer rb) {
+    public static PaddedLong getWorkingTailPositionObject(RingBuffer rb) {
         return rb.workingTailPos;
     }
     
-    public static PaddedLong getworkingHeadPositionObject(RingBuffer rb) {
+    public static PaddedLong getWorkingHeadPositionObject(RingBuffer rb) {
         return rb.workingHeadPos;
     }
 	
