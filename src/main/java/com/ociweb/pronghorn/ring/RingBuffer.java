@@ -139,11 +139,11 @@ public final class RingBuffer {
     
     		
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers  Must convert to accessor methods first
-    public final PaddedLong workingHeadPos = new PaddedLong(); //XXX access methods added just need to be used.
+    public final PaddedLong workingHeadPos = new PaddedLong(); 
     private final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos 
 
     //TODO: AAA, group these together and move into RingWalker, to support multi threaded consumers Must convert to accessor methods first
-    private final PaddedLong workingTailPos = new PaddedLong(); //XXX access methods added just need to be used.
+    private final PaddedLong workingTailPos = new PaddedLong(); 
     private final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos  
 
     private final ByteBufferTail byteBufferTail = new ByteBufferTail();
@@ -173,7 +173,7 @@ public final class RingBuffer {
     // end of moveNextFields
 
     static final int JUMP_MASK = 0xFFFFF;
-    public RingWalker ringWalker; //TODO: make private after jFAST switches to no longer need
+    final RingWalker ringWalker;
     
     
     private final AtomicBoolean shutDown = new AtomicBoolean(false);
