@@ -187,8 +187,8 @@ public class SplitterStage extends PronghornStage {
 								RingBuffer ringBuffer) {
 		
 		//copy the bytes
-		RingBuffer.copyBytesFromToRing(ss.source.byteBuffer,                   byteTailPos, ss.source.byteMask, 
-									  ringBuffer.byteBuffer, RingBuffer.bytesHeadPosition(ringBuffer), ringBuffer.byteMask, 
+		RingBuffer.copyBytesFromToRing(RingBuffer.byteBuffer(ss.source),                   byteTailPos, ss.source.byteMask, 
+		        RingBuffer.byteBuffer(ringBuffer), RingBuffer.bytesHeadPosition(ringBuffer), ringBuffer.byteMask, 
 									  totalBytesCopy);
 		
 		RingBuffer.setBytesWorkingHead(ringBuffer, RingBuffer.addAndGetBytesHead(ringBuffer, totalBytesCopy));
