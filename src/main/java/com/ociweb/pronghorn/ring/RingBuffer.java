@@ -157,8 +157,8 @@ public final class RingBuffer {
     //TODO: AAAA, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
     //            the time slices of the graph will need to be kept for all rings to reconstruct history later.
     
-    		
-    private PrimaryBufferHead primaryBufferHead = new PrimaryBufferHead();
+    final RingWalker ringWalker;		
+    private PrimaryBufferHead primaryBufferHead = new PrimaryBufferHead(); 
     private PrimaryBufferTail primaryBufferTail = new PrimaryBufferTail();
     private final ByteBufferHead byteBufferHead = new ByteBufferHead();
     private final ByteBufferTail byteBufferTail = new ByteBufferTail();    
@@ -185,7 +185,7 @@ public final class RingBuffer {
     // end of moveNextFields
 
     static final int JUMP_MASK = 0xFFFFF;
-    final RingWalker ringWalker;
+    
     
     
     private final AtomicBoolean shutDown = new AtomicBoolean(false);

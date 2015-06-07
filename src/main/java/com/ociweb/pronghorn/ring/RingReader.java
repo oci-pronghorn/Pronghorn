@@ -162,7 +162,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 						  
 		  int i = targetloc;
 		  while (charAndPos<limit) {		      
-		      charAndPos = RingBuffer.decodeUTF8Fast(ring.byteBuffer, charAndPos, ring.byteMask);    
+		      charAndPos = RingBuffer.decodeUTF8Fast(RingBuffer.byteBuffer(ring), charAndPos, ring.byteMask);    
 		      target[i++] = (char)charAndPos;		
 		  }
 		  return i - targetloc;
@@ -207,7 +207,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     
     private static void readASCIIRing(RingBuffer ring, int len, char[] target, int targetloc, int pos) {
     	
-        byte[] buffer = ring.byteBuffer;
+        byte[] buffer = RingBuffer.byteBuffer(ring);
         int mask = ring.byteMask;
         while (--len >= 0) {
             target[targetloc++]=(char)buffer[mask & pos++];
@@ -293,7 +293,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     
     private static boolean eqASCIIRing(RingBuffer ring, int len, CharSequence seq, int pos) {
     	
-        byte[] buffer = ring.byteBuffer;
+        byte[] buffer = RingBuffer.byteBuffer(ring);
         
         int mask = ring.byteMask;
         int i = 0;
@@ -318,7 +318,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         int chars = seq.length();
         while (--chars>=0 && charAndPos<limit) {
             
-            charAndPos = RingBuffer.decodeUTF8Fast(ring.byteBuffer, charAndPos, mask);
+            charAndPos = RingBuffer.decodeUTF8Fast(RingBuffer.byteBuffer(ring), charAndPos, mask);
             
             if (seq.charAt(i++) != (char)charAndPos) {
                 return false;
@@ -363,7 +363,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
     	 int pos = ring.buffer[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc))];
-    	 return pos<0 ? ring.constByteBuffer :  ring.byteBuffer;
+    	 return pos<0 ? ring.constByteBuffer :  RingBuffer.byteBuffer(ring);
     }
     
     public static ByteBuffer readBytes(RingBuffer ring, int loc, ByteBuffer target) {
@@ -400,7 +400,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
 
     private static void readBytesRing(RingBuffer ring, int len, byte[] target, int targetloc, int pos) {
-            byte[] buffer = ring.byteBuffer;
+            byte[] buffer = RingBuffer.byteBuffer(ring);
             int mask = ring.byteMask;
             while (--len >= 0) {
                 target[targetloc++]=buffer[mask & pos++];
@@ -417,7 +417,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         if (pos < 0) {
             readBytesConst(ring,len,target, targetOffset,targetMask, POS_CONST_MASK & pos);
         } else {
-            RingBuffer.copyBytesFromToRing(ring.byteBuffer, RingBuffer.restorePosition(ring,pos), ring.byteMask, target, targetOffset, targetMask,	len);
+            RingBuffer.copyBytesFromToRing(RingBuffer.byteBuffer(ring), RingBuffer.restorePosition(ring,pos), ring.byteMask, target, targetOffset, targetMask,	len);
         }
         return len;
     }
@@ -458,7 +458,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		assert((targetLOC&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (targetLOC&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (targetLOC&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((targetLOC>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 				
 		//High level API example of reading bytes from one ring buffer into another array that wraps with a mask w
-		return copyBytes(targetRing, targetLOC, readBytes(sourceRing, sourceLOC, targetRing.byteBuffer,  RingBuffer.bytesWorkingHeadPosition(targetRing), targetRing.byteMask));
+		return copyBytes(targetRing, targetLOC, readBytes(sourceRing, sourceLOC, RingBuffer.byteBuffer(targetRing),  RingBuffer.bytesWorkingHeadPosition(targetRing), targetRing.byteMask));
 	}
 
 	private static int copyBytes(final RingBuffer targetRing, int targetLOC, int length) {

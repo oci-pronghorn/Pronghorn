@@ -107,7 +107,7 @@ public class RingWriter {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
     	assert(length>=0);
-		RingBuffer.copyBytesFromToRing(source, offset, mask, rb.byteBuffer, RingBuffer.bytesWorkingHeadPosition(rb), rb.byteMask, length);		
+		RingBuffer.copyBytesFromToRing(source, offset, mask, RingBuffer.byteBuffer(rb), RingBuffer.bytesWorkingHeadPosition(rb), rb.byteMask, length);		
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), RingBuffer.bytesWorkingHeadPosition(rb), length, RingBuffer.bytesWriteBase(rb));
         RingBuffer.addAndGetBytesWorkingHeadPosition(rb, length);	
     }
@@ -119,7 +119,7 @@ public class RingWriter {
     	RingBuffer.validateVarLength(rb, sourceLen);
 		
         assert(sourceLen>=0);		
-        RingBuffer.copyBytesFromToRing(source, 0, Integer.MAX_VALUE, rb.byteBuffer, RingBuffer.bytesWorkingHeadPosition(rb), rb.byteMask, sourceLen);   	
+        RingBuffer.copyBytesFromToRing(source, 0, Integer.MAX_VALUE, RingBuffer.byteBuffer(rb), RingBuffer.bytesWorkingHeadPosition(rb), rb.byteMask, sourceLen);   	
         RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), RingBuffer.bytesWorkingHeadPosition(rb), sourceLen, RingBuffer.bytesWriteBase(rb));
         RingBuffer.addAndGetBytesWorkingHeadPosition(rb,sourceLen);
     }

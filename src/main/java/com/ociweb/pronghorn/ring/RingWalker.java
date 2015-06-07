@@ -345,7 +345,7 @@ public class RingWalker {
 		//always increment this tail position by the count of bytes used by this fragment
 		if (tmpNextWokingTail>0) { //first iteration it will not have a valid position
 		    int bytesConsumed = ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];
-		    assert(bytesConsumed>=0 && bytesConsumed<=ringBuffer.byteBuffer.length) : "bad byte count at "+(tmpNextWokingTail-1);
+		    assert(bytesConsumed>=0 && bytesConsumed<=RingBuffer.byteBuffer(ringBuffer).length) : "bad byte count at "+(tmpNextWokingTail-1);
 		    //System.err.println("bytes consumed :"+bytesConsumed);
 		    
 		    
@@ -563,8 +563,8 @@ public class RingWalker {
 				                      spaceNeeded);
 		RingBuffer.addAndGetWorkingHead(outputRing, spaceNeeded);
 		
-		RingBuffer.copyBytesFromToRing(inputRing.byteBuffer, RingBuffer.bytesWorkingTailPosition(inputRing), inputRing.byteMask, 
-				                       outputRing.byteBuffer, RingBuffer.bytesWorkingHeadPosition(outputRing), outputRing.byteMask, 
+		RingBuffer.copyBytesFromToRing(RingBuffer.byteBuffer(inputRing), RingBuffer.bytesWorkingTailPosition(inputRing), inputRing.byteMask, 
+		                               RingBuffer.byteBuffer(outputRing), RingBuffer.bytesWorkingHeadPosition(outputRing), outputRing.byteMask, 
 				                       bytesToCopy);
 
         RingBuffer.addAndGetBytesWorkingHeadPosition(outputRing, bytesToCopy);		

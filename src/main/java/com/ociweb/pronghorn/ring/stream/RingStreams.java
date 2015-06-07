@@ -189,7 +189,7 @@ public class RingStreams {
 		long targetTailValue = headPosition(outputRing)-fill;
 		long tailPosCache = tailPosition(outputRing);
 		
-		byte[] buffer = outputRing.byteBuffer;
+		byte[] buffer = RingBuffer.byteBuffer(outputRing);
 		int byteMask = outputRing.byteMask;
 		
 		int position = RingBuffer.bytesWorkingHeadPosition(outputRing);

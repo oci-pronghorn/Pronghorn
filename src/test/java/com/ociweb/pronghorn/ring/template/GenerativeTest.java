@@ -55,7 +55,7 @@ public class GenerativeTest {
        
        //confirm that both rings contain the exact same thing
        assertTrue(Arrays.equals(ring1.buffer, ring2.buffer));
-       assertTrue(Arrays.equals(ring1.byteBuffer, ring2.byteBuffer));
+       assertTrue(Arrays.equals(RingBuffer.byteBuffer(ring1), RingBuffer.byteBuffer(ring2)));
        
        //////////////////////////
        //now starts the real test, we need to read/write these values, and check them against the original 
