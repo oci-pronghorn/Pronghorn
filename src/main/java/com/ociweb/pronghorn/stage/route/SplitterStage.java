@@ -195,8 +195,8 @@ public class SplitterStage extends PronghornStage {
 								
 		//copy the primary data
 		int headPosition = (int)RingBuffer.headPosition(ringBuffer);
-		RingBuffer.copyIntsFromToRing(ss.source.buffer,                primaryTailPos, ss.source.mask, 
-									 ringBuffer.buffer, headPosition, ringBuffer.mask, 
+		RingBuffer.copyIntsFromToRing(RingBuffer.primaryBuffer(ss.source), primaryTailPos, ss.source.mask, 
+		        RingBuffer.primaryBuffer(ringBuffer), headPosition, ringBuffer.mask, 
 									 totalPrimaryCopy);
 		
 		RingBuffer.publishWorkingHeadPosition(ringBuffer, headPosition + totalPrimaryCopy);

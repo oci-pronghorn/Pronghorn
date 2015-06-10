@@ -82,7 +82,7 @@ public class GeneratorValidatorTest {
         assertTrue(inputRing2 == ring2);
                 
         
-        assertTrue(Arrays.equals(ring1.buffer,ring2.buffer));
+        assertTrue(Arrays.equals(RingBuffer.primaryBuffer(ring1),RingBuffer.primaryBuffer(ring2)));
         assertTrue(Arrays.equals(RingBuffer.byteBuffer(ring1),RingBuffer.byteBuffer(ring2)));
         assertEquals(RingBuffer.headPosition(ring1),RingBuffer.headPosition(ring2));
         assertEquals(RingBuffer.tailPosition(ring1),RingBuffer.tailPosition(ring2));
