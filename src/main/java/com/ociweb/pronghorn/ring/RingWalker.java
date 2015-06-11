@@ -151,7 +151,7 @@ public class RingWalker {
 			long tmpNextWokingTail, final long target) {
 
 		//always increment this tail position by the count of bytes used by this fragment
-		RingBuffer.addAndGetBytesWorkingTailPosition(ringBuffer, ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)]);			
+		RingBuffer.addAndGetBytesWorkingTailPosition(ringBuffer, RingBuffer.primaryBuffer(ringBuffer)[ringBuffer.mask & (int)(tmpNextWokingTail-1)]);			
 
 
 		//from the last known fragment move up the working tail position to this new fragment location
@@ -201,24 +201,24 @@ public class RingWalker {
 	        FieldReferenceOffsetManager.debugFROM(RingBuffer.from(ringBuffer));
 	        log.error("new fragment to read is after head write position "+newFragmentBegin+"  "+ringBuffer);	        
 	        int start = Math.max(0, ringBuffer.mask&(int)newFragmentBegin-5);
-	        int stop  = Math.min(ringBuffer.buffer.length, ringBuffer.mask&(int)newFragmentBegin+5);
-	        log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(ringBuffer.buffer, start, stop)));
+	        int stop  = Math.min(RingBuffer.primaryBuffer(ringBuffer).length, ringBuffer.mask&(int)newFragmentBegin+5);
+	        log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(RingBuffer.primaryBuffer(ringBuffer), start, stop)));
 	        return false;
 	    }
 	    if (newFragmentBegin>0) {
-	        int byteCount = ringBuffer.buffer[ringBuffer.mask & (int)(newFragmentBegin-1)];
+	        int byteCount = RingBuffer.primaryBuffer(ringBuffer)[ringBuffer.mask & (int)(newFragmentBegin-1)];
 	        if (byteCount<0) {
 	            log.error("if this is a new fragment then previous fragment is negative byte count, more likely this is NOT a valid fragment start.");
 	            int start = Math.max(0, ringBuffer.mask&(int)newFragmentBegin-5);
-	            int stop  = Math.min(ringBuffer.buffer.length, ringBuffer.mask&(int)newFragmentBegin+5);
-	            log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(ringBuffer.buffer, start, stop)));
+	            int stop  = Math.min(RingBuffer.primaryBuffer(ringBuffer).length, ringBuffer.mask&(int)newFragmentBegin+5);
+	            log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(RingBuffer.primaryBuffer(ringBuffer), start, stop)));
 	            return false;
 	        }
             if (byteCount>ringBuffer.byteMask) {
                 log.error("if this is a new fragment then previous fragment byte count is larger than byte buffer, more likely this is NOT a valid fragment start. "+byteCount);
                 int start = Math.max(0, ringBuffer.mask&(int)newFragmentBegin-5);
-                int stop  = Math.min(ringBuffer.buffer.length, ringBuffer.mask&(int)newFragmentBegin+5);
-                log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(ringBuffer.buffer, start, stop)));
+                int stop  = Math.min(RingBuffer.primaryBuffer(ringBuffer).length, ringBuffer.mask&(int)newFragmentBegin+5);
+                log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(RingBuffer.primaryBuffer(ringBuffer), start, stop)));
                 return false;
             }	        
 	    }
@@ -234,7 +234,7 @@ public class RingWalker {
 		 //this single bit on indicates that this starts a sequence length  00100
 		 if ( (lastTokenOfFragment &  ( 0x04 <<TokenBuilder.SHIFT_TYPE)) != 0 ) {
 			 //this is a groupLength Sequence that starts inside of a fragment 
-			 beginNewSequence(ringBufferConsumer, ringBuffer.buffer[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
+			 beginNewSequence(ringBufferConsumer, RingBuffer.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
 		 } else 
 	     if (//if this is a closing sequence group.
 				 (lastTokenOfFragment & ( (OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close) <<TokenBuilder.SHIFT_OPER)) == ((OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close)<<TokenBuilder.SHIFT_OPER)          
@@ -344,7 +344,7 @@ public class RingWalker {
 		
 		//always increment this tail position by the count of bytes used by this fragment
 		if (tmpNextWokingTail>0) { //first iteration it will not have a valid position
-		    int bytesConsumed = ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail-1)];
+		    int bytesConsumed = RingBuffer.primaryBuffer(ringBuffer)[ringBuffer.mask & (int)(tmpNextWokingTail-1)];
 		    assert(bytesConsumed>=0 && bytesConsumed<=RingBuffer.byteBuffer(ringBuffer).length) : "bad byte count at "+(tmpNextWokingTail-1);
 		    //System.err.println("bytes consumed :"+bytesConsumed);
 		    
@@ -410,7 +410,7 @@ public class RingWalker {
 	private static int readMsgIdx(RingBuffer ringBuffer, RingWalker ringBufferConsumer, final long tmpNextWokingTail) {
 	    
 		int i = ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset);
-        int idx = ringBuffer.buffer[i];
+        int idx = RingBuffer.primaryBuffer(ringBuffer)[i];
         
 		
 		assert(isMsgIdxStartNewMessage(idx, ringBufferConsumer)) : "Bad msgIdx is not a starting point.";
@@ -446,7 +446,7 @@ public class RingWalker {
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.msgIdx + ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.msgIdx]) -1;
 		if (TypeMask.GroupLength == ((ringBufferConsumer.from.tokens[lastScriptPos] >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) {
 			//Can not assume end of message any more.
-			beginNewSequence(ringBufferConsumer, ringBuffer.buffer[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
+			beginNewSequence(ringBufferConsumer, RingBuffer.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
 		}
 	}
 
@@ -462,7 +462,7 @@ public class RingWalker {
 			int limit = (ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset))+1;
 			throw new UnsupportedOperationException("Bad msgId:"+ringBufferConsumer.msgIdx+
 					" encountered at last absolute position:"+(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)+
-					" recent primary ring context:"+Arrays.toString( Arrays.copyOfRange(ringBuffer.buffer, Math.max(0, limit-10), limit )));
+					" recent primary ring context:"+Arrays.toString( Arrays.copyOfRange(RingBuffer.primaryBuffer(ringBuffer), Math.max(0, limit-10), limit )));
 		}		
 		
 		//this is commonly used as the end of file marker  
@@ -535,14 +535,14 @@ public class RingWalker {
 		
 		//Start new stack of fragments because this is a new message
 		ring.ringWalker.activeWriteFragmentStack[0] = RingBuffer.workingHeadPosition(ring);
-		ring.buffer[ring.mask &(int)(RingBuffer.workingHeadPosition(ring) + from.templateOffset)] = cursorPosition;
+		RingBuffer.primaryBuffer(ring)[ring.mask &(int)(RingBuffer.workingHeadPosition(ring) + from.templateOffset)] = cursorPosition;
 	}
 
 	
 	
 	
 	static boolean copyFragment0(RingBuffer inputRing, RingBuffer outputRing, long start, long end) {
-		return copyFragment1(inputRing, outputRing, start, (int)(end-start), inputRing.buffer[inputRing.mask&(((int)end)-1)]);
+		return copyFragment1(inputRing, outputRing, start, (int)(end-start), RingBuffer.primaryBuffer(inputRing)[inputRing.mask&(((int)end)-1)]);
 	}
 
 
@@ -558,8 +558,8 @@ public class RingWalker {
 
 	private static void copyFragment2(RingBuffer inputRing,	RingBuffer outputRing, int start, int spaceNeeded, int bytesToCopy) {
 		
-		RingBuffer.copyIntsFromToRing(inputRing.buffer, start, inputRing.mask, 
-				                      outputRing.buffer, (int)RingBuffer.workingHeadPosition(outputRing), outputRing.mask, 
+		RingBuffer.copyIntsFromToRing(RingBuffer.primaryBuffer(inputRing), start, inputRing.mask, 
+		                              RingBuffer.primaryBuffer(outputRing), (int)RingBuffer.workingHeadPosition(outputRing), outputRing.mask, 
 				                      spaceNeeded);
 		RingBuffer.addAndGetWorkingHead(outputRing, spaceNeeded);
 		

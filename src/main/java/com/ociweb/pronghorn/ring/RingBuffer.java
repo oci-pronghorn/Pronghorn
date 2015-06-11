@@ -164,8 +164,8 @@ public final class RingBuffer {
     private final ByteBufferTail byteBufferTail = new ByteBufferTail();    
     
     //delayed construction on these to support NUMA
-    public byte[] byteBuffer;//XXX access methods added just need to be used, must prevent external replacement.
-    public int[] buffer;//XXX access methods added just need to be used, must prevent external replacement.
+    private byte[] byteBuffer;
+    private int[] buffer;
 
         
     private int bytesWriteLastConsumedBytePos = 0; 
@@ -1399,7 +1399,8 @@ public final class RingBuffer {
             
     	    assert(ring.ringWalker.cursor<=0 && !RingReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
     	  
-    	    ring.byteBufferTail.bytesTailPos.value=ring.byteBufferTail.byteWorkingTailPos.value; 
+    	    RingBuffer.setBytesTail(ring,RingBuffer.bytesWorkingTailPosition(ring));      
+    	    
     	    ring.primaryBufferTail.tailPos.lazySet(ring.primaryBufferTail.workingTailPos.value);
     	    ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;  
     	    
@@ -1407,6 +1408,22 @@ public final class RingBuffer {
     	} else {
     	    storeUnpublishedTail(ring);
     	}
+    }
+    
+    public static void releaseReadLock2(RingBuffer ring) {
+   
+        if ((--ring.batchReleaseCountDown<=0)) {  
+        
+                 RingBuffer.setBytesTail(ring,RingBuffer.bytesWorkingTailPosition(ring));            
+                 RingBuffer.publishWorkingTailPosition(ring, ring.ringWalker.nextWorkingTail);
+             
+                 ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
+        } else {
+                 ring.lastReleasedBytesTail = ring.byteBufferTail.byteWorkingTailPos.value;
+                 ring.lastReleasedTail = ring.ringWalker.nextWorkingTail;// ring.primaryBufferTail.workingTailPos.value;
+        }
+  
+                 
     }
     
     static void storeUnpublishedTail(RingBuffer ring) {
