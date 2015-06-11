@@ -194,7 +194,7 @@ public class RingBufferPipeline {
 			super(gm, inputRing, NONE);
 			this.inputRing = inputRing;
 			this.useRoute = useRoute;
-			RingReader.setReleaseBatchSize(inputRing, 8);
+			RingBuffer.setReleaseBatchSize(inputRing, 8);
 		}
 
 		@Override
@@ -336,7 +336,7 @@ public class RingBufferPipeline {
 					} else if (-1==msgId) {
 						
 						RingWriter.publishEOF(outputRing);	 //TODO: AA, hidden blocking call		
-						RingReader.setReleaseBatchSize(inputRing, 0);
+						RingBuffer.setReleaseBatchSize(inputRing, 0);
 						RingReader.releaseReadLock(inputRing);
 						assert(RingBuffer.contentRemaining(inputRing)==0);
 						requestShutdown();
