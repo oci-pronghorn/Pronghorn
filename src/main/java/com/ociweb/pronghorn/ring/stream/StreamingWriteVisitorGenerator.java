@@ -102,9 +102,12 @@ public class StreamingWriteVisitorGenerator implements StreamingWriteVisitor {
         return result;
     }
 
+    int SEQ_MASK = 0x07;
+    
     @Override
     public int pullSequenceLength(String name, long id) {
-        return Math.abs(0x7&random.nextInt());//7 need small sequences
+        int len = Math.abs(SEQ_MASK & random.nextInt());//mask used to keep sequences "small"
+        return len;
     }
 
     @Override

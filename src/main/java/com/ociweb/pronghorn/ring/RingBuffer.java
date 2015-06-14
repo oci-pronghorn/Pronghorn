@@ -198,7 +198,7 @@ public final class RingBuffer {
 	
 	//hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
 	private int lastReleasedBytesTail;
-	private long lastReleasedTail; //TODO: AAAAA, must integrate this usage into graph manager 
+	private long lastReleasedTail;
 		
 	//hold the batch positions, when the number reaches zero the records are send or released
 	private int batchReleaseCountDown = 0;

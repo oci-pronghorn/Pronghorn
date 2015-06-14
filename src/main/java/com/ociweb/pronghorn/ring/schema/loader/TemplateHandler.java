@@ -958,6 +958,7 @@ public class TemplateHandler extends DefaultHandler {
 	}
     
     public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes) {
+                
     	return  new FieldReferenceOffsetManager(
     			  Arrays.copyOfRange(handler.catalogScriptTokens,0,handler.catalogTemplateScriptIdx), 
        		      preambleBytes, 

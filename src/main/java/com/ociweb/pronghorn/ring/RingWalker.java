@@ -234,7 +234,8 @@ public class RingWalker {
 		 //this single bit on indicates that this starts a sequence length  00100
 		 if ( (lastTokenOfFragment &  ( 0x04 <<TokenBuilder.SHIFT_TYPE)) != 0 ) {
 			 //this is a groupLength Sequence that starts inside of a fragment 
-			 beginNewSequence(ringBufferConsumer, RingBuffer.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
+			 int seqLength = RingBuffer.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask];
+             beginNewSequence(ringBufferConsumer, seqLength);
 		 } else 
 	     if (//if this is a closing sequence group.
 				 (lastTokenOfFragment & ( (OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close) <<TokenBuilder.SHIFT_OPER)) == ((OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close)<<TokenBuilder.SHIFT_OPER)          
@@ -252,6 +253,7 @@ public class RingWalker {
     	boolean isClosingGroup = false;
     	do {				  
     		if (ringBufferConsumer.nextCursor >= ringBufferConsumer.from.tokens.length) {
+    		    ringBufferConsumer.isNewMessage = true;
     			return;
     		}
     		int token = ringBufferConsumer.from.tokens[ringBufferConsumer.nextCursor ];
@@ -260,10 +262,16 @@ public class RingWalker {
     		   ringBufferConsumer.nextCursor++;
     		}
     	} while (isClosingGroup);
+
+    //	ringBufferConsumer.nextCursor++;//   
     	 
     	if (isOpenTemplate(ringBufferConsumer.nextCursor)) {
     	    ringBufferConsumer.nextCursor = -1;
-    	}
+    	    ringBufferConsumer.isNewMessage = true;
+    	} //else {
+    	    //skip over the sequence
+    	 //   
+    	//}
     	
     	
 	}
@@ -319,21 +327,29 @@ public class RingWalker {
 
 	private static void beginNewSequence(final RingWalker ringBufferConsumer, int seqLength) {
 	    //NOTE: this method assumes that nextCursor is pointing to the beginning of this sequence fragment.
-		if (seqLength > 0) {
+//		if (seqLength > 0) {
 			ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
-			ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead] = ringBufferConsumer.nextCursor;	
-		} else {
-			//jump over and skip this altogether, the next thing at working tail will be later in the script
-		    do {		    
-		        ringBufferConsumer.nextCursor += ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.nextCursor];
-		        //NOTE: we must jump over fragments so we keep jumping if any fragment ends in group length.
-		    } while (isSeqLength(ringBufferConsumer.from.tokens[ringBufferConsumer.nextCursor-1]));
+			ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead] = ringBufferConsumer.nextCursor;  
 			
-			autoReturnFromCloseGroups(ringBufferConsumer);
-		}
+//		} else {
+//		    ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
+//		//    ringBufferConsumer.nextCursor += ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.nextCursor];
+//            ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead] = ringBufferConsumer.nextCursor;  
+//            ringBufferConsumer.isNewMessage = true;
+//            
+//		    
+////			//jump over and skip this altogether, the next thing at working tail will be later in the script
+////		    do {		    
+////		        //--ringBufferConsumer.seqStackHead;
+////		        ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
+////		        
+////		        ringBufferConsumer.nextCursor += ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.nextCursor];
+////		        //NOTE: we must jump over fragments so we keep jumping if any fragment ends in group length.
+////		    } while (isSeqLength(ringBufferConsumer.from.tokens[ringBufferConsumer.nextCursor-1]));
+////			
+////			autoReturnFromCloseGroups(ringBufferConsumer);
+//		}
 	}
-
-
 
 
 

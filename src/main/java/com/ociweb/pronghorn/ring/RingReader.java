@@ -552,17 +552,28 @@ public class RingReader {//TODO: B, build another static reader that does auto c
                 return;
             }
             
-            //TODO: AAA, from here down this can be common and shared for low level or high level use.
+            
+            //TODO: AAA, from here down (extract this as method) this can be common and shared for low level or high level use.
             FieldReferenceOffsetManager from = RingBuffer.from(input);
             int fields = from.fragScriptSize[cursor];
+            assert (cursor<from.tokensLen-1);//there are no single token messages so there is no room at the last position.
+            
+            
             int dataSize = from.fragDataSize[cursor];
             String msgName = from.fieldNameScript[cursor];
             long msgId = from.fieldIdScript[cursor];
             
-            target.append("cursor:"+cursor+" new message: "+input.ringWalker.isNewMessage+" fields: "+fields+" "+String.valueOf(msgName)+" id: "+msgId).append("\n");
-            if (0==fields) {
-                target.append("WARNING: no fragments should have zero fields.").append("\n");
+            target.append("cursor:"+cursor+" new message: "+input.ringWalker.isNewMessage+
+                           " fields: "+fields+" "+String.valueOf(msgName)+
+                           " id: "+msgId).append("\n");
+            
+            if (0==fields && cursor==from.tokensLen-1) { //this is an odd case and should not happen
+                //TODO: AA length is too long and we need to detect cursor out of bounds!
+                System.err.println("total tokens:"+from.tokens.length);//Arrays.toString(from.fieldNameScript));
+                System.exit(-1);
             }
+            
+            
             int i = 0;
             while (i<fields) {
                 final int p = i+cursor;
