@@ -235,67 +235,24 @@ public class RingWalker {
 		 if ( (lastTokenOfFragment &  ( 0x04 <<TokenBuilder.SHIFT_TYPE)) != 0 ) {
 			 //this is a groupLength Sequence that starts inside of a fragment 
 			 int seqLength = RingBuffer.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask];
-             beginNewSequence(ringBufferConsumer, seqLength);
-		 } else 
-	     if (//if this is a closing sequence group.
-				 (lastTokenOfFragment & ( (OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close) <<TokenBuilder.SHIFT_OPER)) == ((OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close)<<TokenBuilder.SHIFT_OPER)          
-	            ) {
-	                continueSequence(ringBufferConsumer);
-		        } 
+			 //now start new sequence
+             ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
+             ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead] = ringBufferConsumer.nextCursor;
+             
+		 } else {
+    	     if (//if this is a closing sequence group.
+    				 (lastTokenOfFragment & ( (OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close) <<TokenBuilder.SHIFT_OPER)) == ((OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close)<<TokenBuilder.SHIFT_OPER)          
+    	            ) {
+    	                continueSequence(ringBufferConsumer);
+    		        }
+		 }
 		 
 	}
-
-
-	private static void autoReturnFromCloseGroups(
-			final RingWalker ringBufferConsumer) {
-		//While the next cursor is a close group keep incrementing to get out of this nesting.
-    	//TODO: must be an easier faster way to do this.
-    	boolean isClosingGroup = false;
-    	do {				  
-    		if (ringBufferConsumer.nextCursor >= ringBufferConsumer.from.tokens.length) {
-    		    ringBufferConsumer.isNewMessage = true;
-    			return;
-    		}
-    		int token = ringBufferConsumer.from.tokens[ringBufferConsumer.nextCursor ];
-    		isClosingGroup = isClosingGroup(token) && !isClosingSequence(token);
-  	    	if (isClosingGroup) {
-    		   ringBufferConsumer.nextCursor++;
-    		}
-    	} while (isClosingGroup);
-
-    //	ringBufferConsumer.nextCursor++;//   
-    	 
-    	if (isOpenTemplate(ringBufferConsumer.nextCursor)) {
-    	    ringBufferConsumer.nextCursor = -1;
-    	    ringBufferConsumer.isNewMessage = true;
-    	} //else {
-    	    //skip over the sequence
-    	 //   
-    	//}
-    	
-    	
-	}
-
-
-    private static boolean isClosingGroup(int token) {
-        return (TypeMask.Group==((token >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) && 
-               (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
-    }
-    
-    private static boolean isOpenTemplate(int token) {
-        return (TypeMask.Group==((token >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) && 
-                (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) &&
-               (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
-    }
     
     private static boolean isClosingSequence(int token) {
         return (TypeMask.Group==((token >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) && 
                (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) &&
                (0 != (token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)));
-    }
-
-   private static boolean isSeqLength(int token) {
-       return (TypeMask.GroupLength==((token >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE));
     }
 
 	//only called when a closing sequence group is hit.
@@ -307,53 +264,32 @@ public class RingWalker {
 		   // System.err.println("ENDING WITHsss :"+ringBufferConsumer.nextCursor);
 		    
 		} else {
-			if (--ringBufferConsumer.seqStackHead>=0) {
-			    if (isClosingSequence(ringBufferConsumer.from.tokens[ringBufferConsumer.nextCursor ])) {
-			        if (--ringBufferConsumer.seqStack[ringBufferConsumer.seqStackHead]>0) {  
-			            ringBufferConsumer.nextCursor = ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead];
-			        } else {
-			            --ringBufferConsumer.seqStackHead;//this dec is the same as the one in the above conditional
-			            //TODO: A, Note this repeating pattern above, this supports 2 nested sequences, Rewrite as while loop to support any number of nested sequences.
-			            ringBufferConsumer.nextCursor++;
-			        }
-                }
-			} else {
-			    assert(ringBufferConsumer.seqStackHead<0) : "Error the seqStack should be empty but found value at "+ringBufferConsumer.seqStackHead;
-			    ringBufferConsumer.nextCursor++;
-			}
+			closeSequence(ringBufferConsumer);
 		}
 	}
 
 
-	private static void beginNewSequence(final RingWalker ringBufferConsumer, int seqLength) {
-	    //NOTE: this method assumes that nextCursor is pointing to the beginning of this sequence fragment.
-//		if (seqLength > 0) {
-			ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
-			ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead] = ringBufferConsumer.nextCursor;  
-			
-//		} else {
-//		    ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
-//		//    ringBufferConsumer.nextCursor += ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.nextCursor];
-//            ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead] = ringBufferConsumer.nextCursor;  
-//            ringBufferConsumer.isNewMessage = true;
-//            
-//		    
-////			//jump over and skip this altogether, the next thing at working tail will be later in the script
-////		    do {		    
-////		        //--ringBufferConsumer.seqStackHead;
-////		        ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
-////		        
-////		        ringBufferConsumer.nextCursor += ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.nextCursor];
-////		        //NOTE: we must jump over fragments so we keep jumping if any fragment ends in group length.
-////		    } while (isSeqLength(ringBufferConsumer.from.tokens[ringBufferConsumer.nextCursor-1]));
-////			
-////			autoReturnFromCloseGroups(ringBufferConsumer);
-//		}
-	}
+   //TODO:AAAA, must auto call this on sequence of zero to close the sequence the nextCursor must be set to end not begginning.
+	
+    private static void closeSequence(final RingWalker ringBufferConsumer) {
+        if (--ringBufferConsumer.seqStackHead>=0) {
+            if (isClosingSequence(ringBufferConsumer.from.tokens[ringBufferConsumer.nextCursor ])) {
+                if (--ringBufferConsumer.seqStack[ringBufferConsumer.seqStackHead]>0) {  
+                    ringBufferConsumer.nextCursor = ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead];
+                } else {
+                    --ringBufferConsumer.seqStackHead;//this dec is the same as the one in the above conditional
+                    //TODO: A, Note this repeating pattern above, this supports 2 nested sequences, Rewrite as while loop to support any number of nested sequences.
+                    ringBufferConsumer.nextCursor++;
+                }
+            }
+        } else {
+            assert(ringBufferConsumer.seqStackHead<0) : "Error the seqStack should be empty but found value at "+ringBufferConsumer.seqStackHead;
+            ringBufferConsumer.nextCursor++;
+        }
+    }
 
 
-
-    private static void prepReadMessage(RingBuffer ringBuffer, RingWalker ringBufferConsumer, long tmpNextWokingTail) {
+	private static void prepReadMessage(RingBuffer ringBuffer, RingWalker ringBufferConsumer, long tmpNextWokingTail) {
 		//we now have enough room to read the id
 		//for this simple case we always have a new message
 		ringBufferConsumer.isNewMessage = true; 
@@ -462,7 +398,12 @@ public class RingWalker {
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.msgIdx + ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.msgIdx]) -1;
 		if (TypeMask.GroupLength == ((ringBufferConsumer.from.tokens[lastScriptPos] >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) {
 			//Can not assume end of message any more.
-			beginNewSequence(ringBufferConsumer, RingBuffer.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask]);
+			int seqLength = RingBuffer.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask];
+            final RingWalker ringBufferConsumer1 = ringBufferConsumer;
+			//now start new sequence
+            ringBufferConsumer1.seqStack[++ringBufferConsumer1.seqStackHead] = seqLength;
+            ringBufferConsumer1.seqCursors[ringBufferConsumer1.seqStackHead] = ringBufferConsumer1.nextCursor;
+
 		}
 	}
 

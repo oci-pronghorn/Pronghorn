@@ -4,9 +4,7 @@ import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupFieldL
 import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupFragmentLocator;
 import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupTemplateLocator;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.util.Random;
@@ -431,10 +429,12 @@ public class RingBufferMultiTemplateTest {
 			
 			int sequenceCount = RingReader.readInt(ring, SQUAD_NO_MEMBERS);
 			
-			//TODO: AAAA, must fix zero sequence an determine where it is flawed.
-			if (false && 0==(--j&1)) {			
+			
+			if (0==(--j&1)) {			
 			    assertTrue(RingReader.isNewMessage(ring));
 			    assertEquals(0,sequenceCount);
+			    RingReader.tryReadFragment(ring); //WARNING: this is often missed.
+			    assertFalse(RingReader.isNewMessage(ring));
 			} else {
 			    assertTrue(RingReader.isNewMessage(ring));
 			    assertEquals(1,sequenceCount);
@@ -461,7 +461,7 @@ public class RingBufferMultiTemplateTest {
         		RingWriter.writeASCII(ring, SQUAD_NAME, "TheBobSquad");     		
         		RingWriter.blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);                    
         		        		
-        		if (false && 0==(j&1)) {
+        		if (0==(j&1)) {
         		    RingWriter.writeInt(ring, SQUAD_NO_MEMBERS, 0); //NOTE: we are writing this field very late because we now know how many we wrote.
         		} else {
             		
@@ -478,6 +478,7 @@ public class RingBufferMultiTemplateTest {
         		}
         		
         		RingWriter.publishWrites(ring);
+        		RingBuffer.publishAllBatchedWrites(ring);
         		          		
     		} 
         }
