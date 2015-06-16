@@ -51,7 +51,6 @@ public class RingBufferMultiTemplateTest {
 	public void startup() {
 		int messageTypeCount = 5;
 		assertEquals(messageTypeCount,FROM.messageStarts.length);
-		
 	}
 	
 	
@@ -443,6 +442,7 @@ public class RingBufferMultiTemplateTest {
 		         assertEquals(11, RingReader.readLong(ring, SQUAD_TRUCK_ID));
 		         assertEquals(3000, RingReader.readDecimalMantissa(ring, TRUCK_CAPACITY));
 		         assertEquals(2, RingReader.readDecimalExponent(ring, TRUCK_CAPACITY));
+
 			}
 			
 			RingReader.releaseReadLock(ring);

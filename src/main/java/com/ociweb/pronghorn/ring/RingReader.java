@@ -6,7 +6,6 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
@@ -545,137 +544,20 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	}
 
     public static void printFragment(RingBuffer input, Appendable target) {
+        int cursor = input.ringWalker.cursor;
         try {
-            int cursor = input.ringWalker.cursor;
             if (cursor<0) {
                 target.append("EOF").append("/n");
                 return;
             }
+            target.append(" new message: "+input.ringWalker.isNewMessage);
             
-            
-            //TODO: AAA, from here down (extract this as method) this can be common and shared for low level or high level use.
-            FieldReferenceOffsetManager from = RingBuffer.from(input);
-            int fields = from.fragScriptSize[cursor];
-            assert (cursor<from.tokensLen-1);//there are no single token messages so there is no room at the last position.
-            
-            
-            int dataSize = from.fragDataSize[cursor];
-            String msgName = from.fieldNameScript[cursor];
-            long msgId = from.fieldIdScript[cursor];
-            
-            target.append("cursor:"+cursor+" new message: "+input.ringWalker.isNewMessage+
-                           " fields: "+fields+" "+String.valueOf(msgName)+
-                           " id: "+msgId).append("\n");
-            
-            if (0==fields && cursor==from.tokensLen-1) { //this is an odd case and should not happen
-                //TODO: AA length is too long and we need to detect cursor out of bounds!
-                System.err.println("total tokens:"+from.tokens.length);//Arrays.toString(from.fieldNameScript));
-                System.exit(-1);
-            }
-            
-            
-            int i = 0;
-            while (i<fields) {
-                final int p = i+cursor;
-                String name = from.fieldNameScript[p];            
-                long id = from.fieldIdScript[p];
-                
-                int token = from.tokens[p];
-                int type = TokenBuilder.extractType(token);
-                
-                //fields not message name
-                String value = "";
-                if (i>0 || !input.ringWalker.isNewMessage) {
-                    int pos = from.fragDataSize[i+cursor];  
-                    //create string values of each field so we can see them easily
-                    switch (type) {
-                        case TypeMask.Group:
-                            
-                            int oper = TokenBuilder.extractOper(token);
-                            boolean open = (0==(OperatorMask.Group_Bit_Close&oper));
-                            value = "open:"+open+" pos:"+p;
-                            
-                            break;
-                        case TypeMask.GroupLength:
-                            int len = RingBuffer.readInt(RingBuffer.primaryBuffer(input), input.mask, pos+RingBuffer.tailPosition(input));
-                            value = Integer.toHexString(len)+"("+len+")";                        
-                            break;         
-                        case TypeMask.IntegerSigned:
-                        case TypeMask.IntegerUnsigned:                         
-                        case TypeMask.IntegerSignedOptional:
-                        case TypeMask.IntegerUnsignedOptional:
-                            int readInt = RingBuffer.readInt(RingBuffer.primaryBuffer(input), input.mask, pos+RingBuffer.tailPosition(input));
-                            value = Integer.toHexString(readInt)+"("+readInt+")";
-                            break;
-                        case TypeMask.LongSigned:
-                        case TypeMask.LongUnsigned:
-                        case TypeMask.LongSignedOptional:
-                        case TypeMask.LongUnsignedOptional:
-                            long readLong = RingBuffer.readLong(RingBuffer.primaryBuffer(input), input.mask, pos+RingBuffer.tailPosition(input));
-                            value = Long.toHexString(readLong)+"("+readLong+")";
-                            break;
-                        case TypeMask.Decimal:
-                        case TypeMask.DecimalOptional:
-    
-                            int exp = RingBuffer.readInt(RingBuffer.primaryBuffer(input), input.mask, pos+RingBuffer.tailPosition(input));
-                            long mantissa = RingBuffer.readInt(RingBuffer.primaryBuffer(input), input.mask, pos+RingBuffer.tailPosition(input)+1);
-                            value = exp+" "+mantissa;
-                                
-                            break;  
-                        case TypeMask.TextASCII:
-                        case TypeMask.TextASCIIOptional:
-                            
-                            {                   
-                                int meta = RingBuffer.readInt(RingBuffer.primaryBuffer(input), input.mask, pos+RingBuffer.tailPosition(input));
-                                int length = RingBuffer.readInt(RingBuffer.primaryBuffer(input), input.mask, pos+RingBuffer.tailPosition(input)+1);
-                                RingBuffer.readASCII(input, target, meta, length);                       
-                                value = meta+" len:"+length;
-                                // value = target.toString();
-                            }
-                            break;
-                        case TypeMask.TextUTF8:
-                        case TypeMask.TextUTF8Optional:
-        
-                            {                   
-                                int meta = RingBuffer.readInt(RingBuffer.primaryBuffer(input), input.mask, pos+RingBuffer.tailPosition(input));
-                                int length = RingBuffer.readInt(RingBuffer.primaryBuffer(input), input.mask, pos+RingBuffer.tailPosition(input)+1);
-                                RingBuffer.readUTF8(input, target, meta, length);    
-                                value = meta+" len:"+length;
-                               // value = target.toString();
-                            }
-                            break;
-                        case TypeMask.ByteArray:
-                        case TypeMask.ByteArrayOptional:
-                            {                       
-                                int meta = RingBuffer.readInt(RingBuffer.primaryBuffer(input), input.mask, pos+RingBuffer.tailPosition(input));
-                                int length = RingBuffer.readInt(RingBuffer.primaryBuffer(input), input.mask, pos+RingBuffer.tailPosition(input)+1);
-                                value = meta+" len:"+length;
-                                
-                            }
-                            break;
-                        default: target.append("unknown ").append("\n");
-                        
-                    }
-                    
-                    
-                    value += (" "+TypeMask.toString(type)+" "+pos);
-                }
-                
-                target.append("   "+name+":"+id+"  "+value).append("\n");
-                
-                //TWEET  x+t+"xxx" is a bad idea.
-                
-                
-                if (TypeMask.Decimal==type || TypeMask.DecimalOptional==type) {
-                    i++;//skip second slot for decimals
-                }
-                
-                i++;
-            }
         } catch (IOException ioe) {
             log.error("Unable to build text for fragment.",ioe);
             throw new RuntimeException(ioe);
         }
+        
+        RingBuffer.appendFragment(input, target, cursor);
     }
 
 }
