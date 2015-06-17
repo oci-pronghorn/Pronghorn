@@ -22,7 +22,7 @@
       	<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>4.8.1</version>
+			<version>4.12</version>
 			<type>jar</type>
 			<scope>test</scope>
 			<optional>false</optional>
@@ -30,12 +30,12 @@
 		<dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.9</version>
+            <version>1.7.12</version>
         </dependency>   	
         <dependency>
 		  <groupId>org.slf4j</groupId>
 		  <artifactId>slf4j-simple</artifactId>
-		  <version>1.7.9</version>
+		  <version>1.7.12</version>
 		  <scope>runtime</scope>
 		</dependency> 	
   </dependencies>
@@ -62,15 +62,7 @@
   </repositories>
   
   <build>
-  
-    <extensions>
-      <extension>
-        <groupId>org.apache.maven.wagon</groupId>
-         <artifactId>wagon-ssh-external</artifactId>
-         <version>1.0-beta-6</version>
-      </extension>
-    </extensions>
-  
+    
   <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

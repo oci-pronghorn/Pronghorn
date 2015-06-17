@@ -891,6 +891,7 @@ public class GraphManager {
 		}		
 	}
 	
+//TODO: B, integrate this into the schedulers	
 //    public static void releaseAllReads(GraphManager m, PronghornStage stage) {
 //        int ringId;
 //        int idx = m.stageIdToInputsBeginIdx[stage.stageId];
