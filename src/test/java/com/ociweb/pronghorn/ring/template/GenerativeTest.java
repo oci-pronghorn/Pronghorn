@@ -40,6 +40,7 @@ public class GenerativeTest {
     
    @Test
    public void mostImporantCoverageTest() {
+       
        StringBuilder schema = new StringBuilder();
        
        generateCoveringTestSchema(schema);
