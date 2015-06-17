@@ -68,7 +68,7 @@ public class FieldReferenceOffsetManager {
     public final static int RW_STACK_OFF_MASK = (1<<STACK_OFF_BITS)-1;
     public final static int RW_STACK_OFF_SHIFT = 32-STACK_OFF_BITS;
     public final static int RW_FIELD_OFF_MASK = (1<<RW_FIELD_OFF_BITS)-1;
-    
+    public final short preableBytes;
 	
 
     public FieldReferenceOffsetManager(int[] scriptTokens, String[] scriptNames, long[] scriptIds) {
@@ -86,7 +86,7 @@ public class FieldReferenceOffsetManager {
     
     //NOTE: message fragments start at startsLocal values however they end when they hit end of group, sequence length or end the the array.
 	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds, String[] scriptDictionaryNames, String name) {
-			
+		this.preableBytes = preableBytes;
 		this.name = name;
 		//TODO: B, clientConfig must be able to skip reading the preamble,
         int PREAMBLE_MASK = 0xFFFFFFFF;//Set to zero when we are not sending the preamble
