@@ -957,14 +957,13 @@ public class TemplateHandler extends DefaultHandler {
 			                               maxByteLength);
 	}
     
-    public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes) {
-                
+    public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes) {                
     	return  new FieldReferenceOffsetManager(
     			  Arrays.copyOfRange(handler.catalogScriptTokens,0,handler.catalogTemplateScriptIdx), 
        		      preambleBytes, 
-       		      handler.catalogScriptFieldNames,
-       	       	  handler.catalogScriptFieldIds,
-       		      handler.catalogScriptDictionaryNames,
+       		      Arrays.copyOfRange(handler.catalogScriptFieldNames,0,handler.catalogTemplateScriptIdx),
+       		      Arrays.copyOfRange(handler.catalogScriptFieldIds,0,handler.catalogTemplateScriptIdx),
+       		      Arrays.copyOfRange(handler.catalogScriptDictionaryNames,0,handler.catalogTemplateScriptIdx),
 	              "Catalog");
     }
     
