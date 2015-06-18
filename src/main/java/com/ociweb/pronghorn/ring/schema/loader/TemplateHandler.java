@@ -957,14 +957,18 @@ public class TemplateHandler extends DefaultHandler {
 			                               maxByteLength);
 	}
     
-    public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes) {                
+    public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes) {   
+        return from(handler, preambleBytes,"Catalog");
+    }
+    
+    public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes, String name) {                
     	return  new FieldReferenceOffsetManager(
     			  Arrays.copyOfRange(handler.catalogScriptTokens,0,handler.catalogTemplateScriptIdx), 
        		      preambleBytes, 
        		      Arrays.copyOfRange(handler.catalogScriptFieldNames,0,handler.catalogTemplateScriptIdx),
        		      Arrays.copyOfRange(handler.catalogScriptFieldIds,0,handler.catalogTemplateScriptIdx),
        		      Arrays.copyOfRange(handler.catalogScriptDictionaryNames,0,handler.catalogTemplateScriptIdx),
-	              "Catalog");
+       		      name);
     }
     
     public static FieldReferenceOffsetManager loadFrom(String source) throws ParserConfigurationException, SAXException, IOException {
@@ -997,8 +1001,12 @@ public class TemplateHandler extends DefaultHandler {
         	}
         }
         
-        return TemplateHandler.from(handler,preamble);
+        return TemplateHandler.from(handler,preamble, simpleName(source));
 	}
+
+    public static String simpleName(String source) {
+        return source.substring(Math.max(Math.max(0, 1+source.lastIndexOf('/')), Math.max(0, 1+source.lastIndexOf('\\'))));
+    }
 
     public static FieldReferenceOffsetManager loadFrom(InputStream sourceInputStream) throws ParserConfigurationException, SAXException, IOException {
         
