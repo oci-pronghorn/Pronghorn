@@ -26,6 +26,7 @@ public class GraphManager {
 
 	public final static String SCHEDULE_RATE = "SCHEDULE_RATE";
 	public final static String MONITOR       = "MONITOR";
+	public final static String PRODUCER      = "PRODUCER";//explicit so it can be found even if it has feedback inputs.    
 	public final static String STAGE_NAME    = "STAGE_NAME";
 	public final static String UNSCHEDULED   = "UNSCHEDULED";//new annotation for stages that should never get a thread (experimental)
 	public final static String BLOCKING      = "BLOCKING";   //new annotation for stages that do not give threads back.
@@ -124,7 +125,7 @@ public class GraphManager {
 			PronghornStage stage = m.stageIdToStage[i];
 			if (null!=stage) {
 				//copy this stage if it has the required key
-				if (null != getAnnotation(m, stage, key, null)) {
+				if (this != getAnnotation(m, stage, key, this)) {
 					copyStage(m, clone, stage);
 					copyAnnotationsForStage(m, clone, stage);
 				}
@@ -132,6 +133,39 @@ public class GraphManager {
 		}
 		return clone;
 	}
+	
+   public int countStagesWithAnnotationKey(GraphManager m, Object key) {
+        
+        int count = 0;
+        int i = m.stageIdToStage.length;
+        while (--i>=0) {
+            PronghornStage stage = m.stageIdToStage[i];
+            if (null!=stage) {
+                //count this stage if it has the required key
+                if (this != getAnnotation(m, stage, key, this)) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+	
+    public PronghornStage getStageWithAnnotationKey(GraphManager m, Object key, int ordinal) {
+       
+       int i = m.stageIdToStage.length;
+       while (--i>=0) {
+           PronghornStage stage = m.stageIdToStage[i];
+           if (null!=stage) {
+               //count this stage if it has the required key
+               if (this != getAnnotation(m, stage, key, this)) {
+                   if (--ordinal<=0) {
+                       return stage;
+                   }
+               }
+           }
+       }
+       throw new UnsupportedOperationException("Invalid configuration. Unable to find requested ordinal "+ordinal);
+    }
 	
 	public GraphManager cloneStagesWithAnnotationKeyValue(GraphManager m, Object key, Object value) {
 		GraphManager clone = new GraphManager();
