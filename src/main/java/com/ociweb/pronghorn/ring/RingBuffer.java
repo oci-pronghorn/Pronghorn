@@ -291,6 +291,11 @@ public final class RingBuffer {
     }
     
 	
+    public RingBufferConfig config() { //this method is primarily used for testing
+        return new RingBufferConfig(pBits,bBits,constByteBuffer,from);
+    }
+    
+    
     public RingBuffer(RingBufferConfig config) {
 
     	byte primaryBits = config.primaryBits;
@@ -335,6 +340,10 @@ public final class RingBuffer {
         }
     }
 
+    public static int totalRings() {
+        return ringCounter.get();
+    }
+    
 	public RingBuffer initBuffers() {
 		assert(!isInit(this)) : "RingBuffer was already initialized";
 		if (!isInit(this)) {
