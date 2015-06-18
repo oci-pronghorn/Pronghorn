@@ -1011,7 +1011,46 @@ public class TemplateHandler extends DefaultHandler {
         return TemplateHandler.from(handler,(short)0);
     }
 
-    
+    public static void buildFROMConstructionSource(StringBuilder target, FieldReferenceOffsetManager expectedFrom, String varName, String fromName) {
+        //write out the expected source.
+        target.append("public final static FieldReferenceOffsetManager ");
+        target.append(varName).append(" = new ").append(FieldReferenceOffsetManager.class.getSimpleName()).append("(\n");
+
+        target.append("    new int[]{");
+            for(int token:expectedFrom.tokens) {
+                target.append("0x").append(Integer.toHexString(token)).append(',');
+            }
+        target.setLength(target.length()-1);
+        target.append("},\n    ");
+        
+        target.append("(short)").append(0).append(",\n");// expectedFrom.preambleBytes;//TODO: swap in
+        
+        target.append("    new String[]{");
+        for(String tmp:expectedFrom.fieldNameScript) {
+            if (null==tmp) {
+                target.append("null,");
+            } else {
+                target.append('"').append(tmp).append("\",");
+            }
+        }
+        target.setLength(target.length()-1);
+        target.append("},\n");
+
+        target.append("    new long[]").append(Arrays.toString(expectedFrom.fieldIdScript).replaceAll("\\[","\\{").replaceAll("\\]","\\}")).append(",\n");
+        
+        target.append("    new String[]{");
+        for(String tmp:expectedFrom.dictionaryNameScript) {
+            if (null==tmp) {
+                target.append("null,");
+            } else {
+                target.append('"').append(tmp).append("\",");
+            }
+        }
+        target.setLength(target.length()-1);
+        target.append("},\n");
+        
+        target.append("    \""+fromName+"\");");
+    }
     
 
 }
