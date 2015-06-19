@@ -134,7 +134,7 @@ public class GraphManager {
 		return clone;
 	}
 	
-   public int countStagesWithAnnotationKey(GraphManager m, Object key) {
+   public static int countStagesWithAnnotationKey(GraphManager m, Object key) {
         
         int count = 0;
         int i = m.stageIdToStage.length;
@@ -142,7 +142,7 @@ public class GraphManager {
             PronghornStage stage = m.stageIdToStage[i];
             if (null!=stage) {
                 //count this stage if it has the required key
-                if (this != getAnnotation(m, stage, key, this)) {
+                if (null != getAnnotation(m, stage, key, null)) {
                     count++;
                 }
             }
@@ -150,14 +150,14 @@ public class GraphManager {
         return count;
     }
 	
-    public PronghornStage getStageWithAnnotationKey(GraphManager m, Object key, int ordinal) {
+    public static PronghornStage getStageWithAnnotationKey(GraphManager m, Object key, int ordinal) {
        
        int i = m.stageIdToStage.length;
        while (--i>=0) {
            PronghornStage stage = m.stageIdToStage[i];
            if (null!=stage) {
                //count this stage if it has the required key
-               if (this != getAnnotation(m, stage, key, this)) {
+               if (null != getAnnotation(m, stage, key, null)) {
                    if (--ordinal<=0) {
                        return stage;
                    }
