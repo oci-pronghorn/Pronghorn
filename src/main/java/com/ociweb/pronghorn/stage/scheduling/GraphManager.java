@@ -415,9 +415,9 @@ public class GraphManager {
 	}
 	
 	public static void setStateToStopping(GraphManager gm, int stageId) {
-	//	synchronized(gm.stageStateData.lock) {
+		synchronized(gm.stageStateData.lock) {
 			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_STOPPING);
-	//	}
+		}
 	}
 
 	public static void setStateToStarted(GraphManager gm, int stageId) {
@@ -427,10 +427,10 @@ public class GraphManager {
 	}
 	
 	public static void setStateToShutdown(GraphManager gm, int stageId) {
-	//	synchronized(gm.stageStateData.lock) {
+		synchronized(gm.stageStateData.lock) {
 			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_TERMINATED);
 			//	assert(recordInputsAndOutputValuesForValidation(gm, stage.stageId));
-	//	}
+		}
 	}
 	
 	private static boolean recordInputsAndOutputValuesForValidation(GraphManager gm, int stageId) {
@@ -604,6 +604,7 @@ public class GraphManager {
 		if (isStageTerminated(m, stageId)) { //terminated 
 			return false;
 		}		
+				
 		
 		int inputPos  = m.stageIdToInputsBeginIdx[stageId];
 		int ringId;
@@ -648,7 +649,9 @@ public class GraphManager {
 	}
 
     public static boolean isStageTerminated(GraphManager m, int stageId) {
-    	return GraphManagerStageStateData.STAGE_TERMINATED == m.stageStateData.stageStateArray[stageId];
+    	synchronized(m.stageStateData.lock) {
+    		return GraphManagerStageStateData.STAGE_TERMINATED <= m.stageStateData.stageStateArray[stageId];
+    	}
     }
 
     public static boolean isStageShuttingDown(GraphManager m, int stageId) {
@@ -658,16 +661,22 @@ public class GraphManager {
     //TODO: AA must have blocking base stage to extend for blockers.
     
 	public static void terminateInputStages(GraphManager m) {
-				
+		
 		int i = m.stageIdToStage.length;
 		while (--i>=0) {
 			if (null!=m.stageIdToStage[i]) {				
 				//an input stage is one that has no input ring buffers
 				if (-1 == m.multInputIds[m.stageIdToInputsBeginIdx[m.stageIdToStage[i].stageId]]) {
+					//terminate all stages without any inputs
 					m.stageIdToStage[i].requestShutdown();
+				} else if (null != getAnnotation(m, m.stageIdToStage[i], PRODUCER, null)) {
+					//also terminate all stages decorated as producers
+					m.stageIdToStage[i].requestShutdown();
+					//producers with inputs must be forced to terminate or the input queue will prevent shutdown
+					setStateToShutdown(m, m.stageIdToStage[i].stageId); 					
 				}
 			}
-		}		
+		}
 	}
 	
 	public static int getOutputStageCount(GraphManager m) {
