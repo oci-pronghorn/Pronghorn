@@ -1517,20 +1517,21 @@ public final class RingBuffer {
     }
 
 
+    public static void releaseReads(RingBuffer ring) {
+    	takeValue(ring);    		
+    	releaseReadLock(ring); 
+    }
 
     /**
      * Low level API release
      * @param ring
      */
+    @Deprecated
     public static void readBytesAndreleaseReadLock(RingBuffer ring) {
-        //new Exception("release and take trialing byte").printStackTrace();
-        
-   		takeValue(ring); 
-   		
-    	releaseReadLock(ring); 
-    	  	
+    	releaseReads(ring);
     }
 
+    //TODO: AAA, need to simplify API and keep this one internal
     public static void releaseReadLock(RingBuffer ring) {
         assert(RingBuffer.contentRemaining(ring)>=0);
         
