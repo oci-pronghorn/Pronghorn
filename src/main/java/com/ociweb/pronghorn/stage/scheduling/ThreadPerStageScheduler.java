@@ -215,7 +215,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					
 			//before doing yield must push any batched up writes & reads
 			GraphManager.publishAllWrites(graphManager, stage);
-		//	GraphManager.releaseAllReads(graphManager, stage);
+			//GraphManager.releaseAllReads(graphManager, stage);
 			
 			//one out of every 128 passes we will yield to play nice since we may end up with a lot of threads
 			if (0==(0x7F&i++)){

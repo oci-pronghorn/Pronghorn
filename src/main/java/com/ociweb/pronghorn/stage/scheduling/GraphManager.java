@@ -621,8 +621,7 @@ public class GraphManager {
     
 					//splitter should never have release pending to release because it does not use the release counters	
 					if (RingBuffer.hasReleasePending(m.ringIdToRing[ringId])) {
-					 //   releaseAllBatchedReads
-						RingBuffer.releaseAll(m.ringIdToRing[ringId]);
+						RingBuffer.releaseAllBatchedReads(m.ringIdToRing[ringId]);
 					}						
 					
 					//if producer is terminated check input ring, if not empty return true
