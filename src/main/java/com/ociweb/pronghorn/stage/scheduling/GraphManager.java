@@ -604,10 +604,24 @@ public class GraphManager {
 		if (isStageTerminated(m, stageId)) { //terminated 
 			return false;
 		}		
+		int ringId;
 				
+		//if all the output targets have terminated return false because this data will never be consumed
+		//using this back pressure the shutdown of all stages can be done		
+		int outputPos  = m.stageIdToOutputsBeginIdx[stageId];
+		boolean noConsumers = true;
+		int count = 0;
+		while ((ringId = m.multOutputIds[outputPos++])>=0) {
+			count++;
+			noConsumers = noConsumers & isStageTerminated(m,GraphManager.getRingConsumer(m, ringId).stageId);						
+		}				
+		if (count>0 && noConsumers) {
+			//ignore input because all the consumers have already shut down
+			return false;
+		}		
+		
 		
 		int inputPos  = m.stageIdToInputsBeginIdx[stageId];
-		int ringId;
 		int inputCounts=0;
 		    
 		while ((ringId = m.multInputIds[inputPos++])>=0) {
@@ -621,7 +635,7 @@ public class GraphManager {
     
 					//splitter should never have release pending to release because it does not use the release counters	
 					if (RingBuffer.hasReleasePending(m.ringIdToRing[ringId])) {
-						RingBuffer.releaseAllBatchedReads(m.ringIdToRing[ringId]);
+						RingBuffer.releaseAll(m.ringIdToRing[ringId]);
 					}						
 					
 					//if producer is terminated check input ring, if not empty return true

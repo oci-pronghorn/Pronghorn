@@ -651,9 +651,9 @@ public class RingBufferPipeline {
 			long duration = System.currentTimeMillis()-start;
 			
 			long bytes = testMessages * (long)testArray.length;
-			long bpSec = (1000l*bytes*8l)/duration;
+			long bpSec = 0==duration ? 0 :(1000l*bytes*8l)/duration;
 			
-			long msgPerMs = testMessages/duration;
+			long msgPerMs = 0==duration ? 0 :testMessages/duration;
 			System.out.println("Bytes:"+bytes+"  Gbits/sec:"+(bpSec/1000000000f)+" stages:"+stages+" msg/ms:"+msgPerMs+" MsgSize:"+testArray.length);
 
 				t = rings.length;
