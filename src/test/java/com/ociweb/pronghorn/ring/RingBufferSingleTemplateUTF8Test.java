@@ -49,9 +49,21 @@ public class RingBufferSingleTemplateUTF8Test {
 	        	} else {
 		        	int actualLength = RingReader.readUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, target2, 0);
 		        	assertEquals(expectedCharLength,actualLength);
-		        	assertTrue("exp:"+testString+" vs \nfnd:"+new String(Arrays.copyOfRange(target2, 0, expectedCharLength)),		        			    
-		        			    Arrays.equals(testString.toCharArray(), Arrays.copyOfRange(target2, 0, expectedCharLength) )
-		        			   );	        		
+		        	
+		        	int j = expectedCharLength;
+		        	while (--j>=0) {
+		        		int expectedChar = (int)testString.charAt(j);
+		        		int computedChar = (int)target2[j];
+		        		if (expectedChar!=computedChar) {
+		        			
+		        			//special case, these are utf-16 reserved chars and the utf-8 encoder will turn them into 63
+		        			if (computedChar==63 && (0xD800==(0xF800&expectedChar))) {
+		        				//not an error
+		        			} else {
+		        				fail("exp:"+testString+" vs \nfnd:"+new String(Arrays.copyOfRange(target2, 0, expectedCharLength))   );	        		
+		        			}
+		        		}		        		
+		        	}
 	        	}        	
 	        	
         	}
@@ -101,7 +113,7 @@ public class RingBufferSingleTemplateUTF8Test {
 		char[] arrayData = new char[arraySize];
 		int i = arrayData.length;
 		while (--i >= 0) {
-			arrayData[i] = (char)((11*i)&0xFFFFF);//short
+			arrayData[i] = (char)((11*i)&0xFFFFFFF);
 		}
 		return new String(arrayData);
 	}
@@ -150,15 +162,38 @@ public class RingBufferSingleTemplateUTF8Test {
 	        	if (0==(k&2)) {
 		        	int actualLength = ((StringBuilder)RingReader.readUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, target)).length();
 		        	assertEquals(expectedLength,actualLength);	
-		        	assertEquals(testString,target.toString());
+		        	int j = expectedLength;
+		        	while (--j>=0) {
+		        		int expectedChar = (int)testString.charAt(j);
+		        		int computedChar = (int)target.charAt(j);
+		        		if (expectedChar!=computedChar) {
+		        			
+		        			//special case, these are utf-16 reserved chars and the utf-8 encoder will turn them into 63
+		        			if (computedChar==63 && (0xD800==(0xF800&expectedChar))) {
+		        				//not an error
+		        			} else {
+		        				fail("exp:"+testString+" vs \nfnd:"+new String(Arrays.copyOfRange(target2, 0, expectedLength))   );	        		
+		        			}
+		        		}		        		
+		        	}
 	        	}  else {
 	        		int actualLength = RingReader.readUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, target2, 0);
 		        	assertEquals(expectedLength,actualLength);
-		        	assertTrue(testString+" vs "+new String(target2, 0, actualLength),		        			    
-		        			    Arrays.equals(testString.toCharArray(), 
-		        			                 Arrays.copyOfRange(target2, 0, actualLength)
-		        			                 )
-		        			   );	
+		        	
+		        	int j = expectedLength;
+		        	while (--j>=0) {
+		        		int expectedChar = (int)testString.charAt(j);
+		        		int computedChar = (int)target2[j];
+		        		if (expectedChar!=computedChar) {
+		        			
+		        			//special case, these are utf-16 reserved chars and the utf-8 encoder will turn them into 63
+		        			if (computedChar==63 && (0xD800==(0xF800&expectedChar))) {
+		        				//not an error
+		        			} else {
+		        				fail("exp:"+testString+" vs \nfnd:"+new String(Arrays.copyOfRange(target2, 0, expectedLength))   );	        		
+		        			}
+		        		}		        		
+		        	}
 	        	}
 	        } else {
 	        	if (++x>1000000) {
