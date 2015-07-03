@@ -1232,31 +1232,36 @@ public final class RingBuffer {
 	                // code point 16
 	                buffer[mask&pos++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
 	            } else {
-	                if (c < 0x1FFFFF) {
-	                    // code point 21
-	                    buffer[mask&pos++] = (byte) (0xF0 | ((c >> 18) & 0x07));
-	                } else {
-	                    if (c < 0x3FFFFFF) {
-	                        // code point 26
-	                        buffer[mask&pos++] = (byte) (0xF8 | ((c >> 24) & 0x03));
-	                    } else {
-	                        if (c < 0x7FFFFFFF) {
-	                            // code point 31
-	                            buffer[mask&pos++] = (byte) (0xFC | ((c >> 30) & 0x01));
-	                        } else {
-	                            throw new UnsupportedOperationException("can not encode char with value: " + c);
-	                        }
-	                        buffer[mask&pos++] = (byte) (0x80 | ((c >> 24) & 0x3F));
-	                    }
-	                    buffer[mask&pos++] = (byte) (0x80 | ((c >> 18) & 0x3F));
-	                }
-	                buffer[mask&pos++] = (byte) (0x80 | ((c >> 12) & 0x3F));
+	                pos = rareEncodeCase(c, buffer, mask, pos);
 	            }
 	            buffer[mask&pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
 	        }
 	        buffer[mask&pos++] = (byte) (0x80 | (c & 0x3F));	        
 	    }	
 	    return pos;
+	}
+
+	private static int rareEncodeCase(int c, byte[] buffer, int mask, int pos) {
+		if (c < 0x1FFFFF) {
+		    // code point 21
+		    buffer[mask&pos++] = (byte) (0xF0 | ((c >> 18) & 0x07));
+		} else {
+		    if (c < 0x3FFFFFF) {
+		        // code point 26
+		        buffer[mask&pos++] = (byte) (0xF8 | ((c >> 24) & 0x03));
+		    } else {
+		        if (c < 0x7FFFFFFF) {
+		            // code point 31
+		            buffer[mask&pos++] = (byte) (0xFC | ((c >> 30) & 0x01));
+		        } else {
+		            throw new UnsupportedOperationException("can not encode char with value: " + c);
+		        }
+		        buffer[mask&pos++] = (byte) (0x80 | ((c >> 24) & 0x3F));
+		    }
+		    buffer[mask&pos++] = (byte) (0x80 | ((c >> 18) & 0x3F));
+		}
+		buffer[mask&pos++] = (byte) (0x80 | ((c >> 12) & 0x3F));
+		return pos;
 	}
 
 	public static void addByteBuffer(ByteBuffer source, RingBuffer rb) {
