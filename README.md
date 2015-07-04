@@ -22,7 +22,7 @@ The RingBuffer class contains 2 private array buffers, one for fixed data and on
 
 #Ring Buffer Features
 
-* Garbage free, runtime data passing does not create or free any memory
+* Garbage free, runtime data passing does not allocate or free any memory
 * Lock free, CAS used for setting position of head/tail on ring buffer 
 * Non-blocking, try methods provided to enable continuous progress 
 * Support for both simple messages and complex messages with nested sequences
