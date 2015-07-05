@@ -10,28 +10,27 @@ import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class RingWalker {
-    int msgIdx=-1;
+	private static final Logger log = LoggerFactory.getLogger(RingWalker.class);
+	public final FieldReferenceOffsetManager from;
+
+	int msgIdx=-1;
     int msgIdxPrev =-1; //for debug
     boolean isNewMessage;
-    public boolean waiting;
     public int cursor;
             
-    public long nextWorkingTail; 
+    public long nextWorkingTail; //These two fields are holding state for the high level API
     public long nextWorkingHead; //This is NOT the same as the low level head cache, this is for writing side of the ring
 
-    private int[] seqStack;
-    private int[] seqCursors;
-    
-    int seqStackHead;
-    private static final Logger log = LoggerFactory.getLogger(RingWalker.class);
-
-    public final FieldReferenceOffsetManager from;
     
     //TODO: AA, need to add error checking to caputre the case when something on the stack has fallen off the ring
     //      This can be a simple assert when we move the tail that it does not go past the value in stack[0];
+    
 	final long[] activeReadFragmentStack;
 	final long[] activeWriteFragmentStack; 
-
+	private final int[] seqStack;
+	private final int[] seqCursors;
+	int seqStackHead; //TODO: convert to private
+	
 		
 	int nextCursor = -1;
     
@@ -43,7 +42,6 @@ public class RingWalker {
 	        }
 	        this.msgIdx = -1;
 	        this.isNewMessage = false;
-	        this.waiting = false;
 	        this.cursor = -1;
 	        this.seqStack = new int[from.maximumFragmentStackDepth];
 	        this.seqCursors = new int[from.maximumFragmentStackDepth];
@@ -483,8 +481,7 @@ public class RingWalker {
     
  
 	static void reset(RingWalker consumerData, int ringPos) {
-        consumerData.waiting = (false);
-        
+
         /////
         consumerData.cursor = (-1);
         consumerData.nextCursor = (-1);

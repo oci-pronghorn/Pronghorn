@@ -152,24 +152,46 @@ public final class RingBuffer {
     public final int maxByteSize;
     public final int byteMask;
     public final byte pBits;
-    public final byte bBits;
-    public final FieldReferenceOffsetManager from;    
+    public final byte bBits;   
     public final int maxAvgVarLen; 
     
     
     //TODO: AAAA, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
     //            the time slices of the graph will need to be kept for all rings to reconstruct history later.
     
-    final RingWalker ringWalker;		
-    private PrimaryBufferHead primaryBufferHead = new PrimaryBufferHead(); 
-    private PrimaryBufferTail primaryBufferTail = new PrimaryBufferTail();
-    private final ByteBufferHead byteBufferHead = new ByteBufferHead();
-    private final ByteBufferTail byteBufferTail = new ByteBufferTail();    
     
-    //delayed construction on these to support NUMA
-    private byte[] byteBuffer;
-    private int[] buffer;
+    
+    private final PrimaryBufferHead primaryBufferHead = new PrimaryBufferHead(); 
+    private final ByteBufferHead byteBufferHead = new ByteBufferHead();
+    LLWrite llWrite; //low level write head pos cache and target
+    //hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
+    private int lastPublishedBytesHead;
+    private long lastPublishedHead;
 
+    
+    
+    //TODO: AAA, must lock down exacty what must change when the replay mode is on.    
+    final RingWalker ringWalker;	
+    private final PrimaryBufferTail primaryBufferTail = new PrimaryBufferTail(); //primary working and public
+    private final ByteBufferTail byteBufferTail = new ByteBufferTail(); //primary working and public   
+    LLRead llRead; //low level read tail pos cache and target
+    
+    //Replay NOTES:
+    //   replay must store primary/byte working positions and replace them.
+    //
+    //      ringWalker contains a lot of high-level state that must be saved and restored
+    //      TODO: as a first release it might be best to protect this and only allow replay with the low level?
+    //
+    //          llRead/llWrite hold next and cached values that do not appear to need adjustment
+    //          canRead will always return true for low level api however
+    //          confirm of read must never be called because this value can not be changed!
+    
+    
+    
+    //these values are only modified and used when replay is NOT in use
+    //hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
+    private int lastReleasedBytesTail;
+    private long lastReleasedTail;
         
     private int bytesWriteLastConsumedBytePos = 0; 
     
@@ -177,49 +199,65 @@ public final class RingBuffer {
     private int bytesReadBase = 0;       
 	           
     
+    //delayed construction on these to support NUMA
+    private byte[] byteBuffer;
+    private int[] buffer;
     //defined externally and never changes
     protected final byte[] constByteBuffer;
     private byte[][] bufferLookup;
-    LLRead llRead;
-    LLWrite llWrite;
+    //NOTE:
+    //     This is the future direction of the ring buffer which is not yet complete
+    //     By migrating all array index usages to these the backing ring can be moved outside the Java heap
+    //     By moving the ring outside the Java heap other applications have have direct access
+    //     The Overhead of the poly method call is what has prevented this change
+    private IntBuffer wrappedPrimaryIntBuffer;
+    private ByteBuffer wrappedSecondaryByteBuffer;
+
     
+    //for writes validates that bytes of var length field is within the expected bounds.
     private int varLenMovingAverage = 0;//this is an exponential moving average
 
-    // end of moveNextFields
-
-    static final int JUMP_MASK = 0xFFFFF;
+    static final int JUMP_MASK = 0xFFFFF;    
     
-    
-    
+    //fields for emergency shut down
     private final AtomicBoolean shutDown = new AtomicBoolean(false);
     private RingBufferException firstShutdownCaller = null;
-    		
-	
-	//hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
-	private int lastPublishedBytesHead;
-	private long lastPublishedHead;
-	
-	//hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
-	private int lastReleasedBytesTail;
-	private long lastReleasedTail;
+    			
 		
 	//hold the batch positions, when the number reaches zero the records are send or released
 	private int batchReleaseCountDown = 0;
 	private int batchReleaseCountDownInit = 0;
 	private int batchPublishCountDown = 0;
 	private int batchPublishCountDownInit = 0;
-			
-    
-    //NOTE:
-	//     This is the future direction of the ring buffer that is not yet complete
-	//     By migrating all array index usages to these the backing ring can be moved outside the Java heap
-	//     By moving the ring outside the Java heap other applications have have direct access
-	//     The Overhead of the poly method call is what has prevented this change
-	private IntBuffer wrappedPrimaryIntBuffer;
-	private ByteBuffer wrappedSecondaryByteBuffer;
-
-	
+			    	
 	private final int debugFlags;
+	
+	
+	////
+	//New methods needed for PronghornGateway
+	///
+	
+	public static void replayUnReleased() {
+		
+		
+		
+//	 - store current working point, (ONLY if we at this point, not if in another replay) 
+//	 - move cursor back to published tail
+	}
+	 
+	public static boolean isReplaying() {
+//	  - return true if the cursor is before workingTail
+		
+		//NOTE: lastReleased must not be updated when isReplaying is true
+		return false;
+	}
+	
+	public static void cancelReplay() {
+///	  - move cursor back up to workingTail
+	}
+	
+	////
+	////
 	
     public static void setReleaseBatchSize(RingBuffer rb, int size) {
     	
@@ -292,7 +330,7 @@ public final class RingBuffer {
     
 	
     public RingBufferConfig config() { //this method is primarily used for testing
-        return new RingBufferConfig(pBits,bBits,constByteBuffer,from);
+        return new RingBufferConfig(pBits,bBits,constByteBuffer,ringWalker.from);
     }
     
     
@@ -316,9 +354,7 @@ public final class RingBuffer {
         //single buffer size for every nested set of groups, must be set to support the largest need.
         this.maxSize = 1 << primaryBits;
         this.mask = maxSize - 1;
-        
-        this.from = from;
-          
+                  
         //single text and byte buffers because this is where the variable length data will go.
 
         this.maxByteSize =  1 << byteBits;
@@ -1549,9 +1585,8 @@ public final class RingBuffer {
             
     	    assert(ring.ringWalker.cursor<=0 && !RingReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
     	  
-    	    RingBuffer.setBytesTail(ring,RingBuffer.bytesWorkingTailPosition(ring));      
-    	    
-    	    ring.primaryBufferTail.tailPos.lazySet(ring.primaryBufferTail.workingTailPos.value);
+    	    RingBuffer.setBytesTail(ring,RingBuffer.bytesWorkingTailPosition(ring));          	    
+    	    ring.primaryBufferTail.tailPos.lazySet(ring.primaryBufferTail.workingTailPos.value);    	    
     	    ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;  
     	    
     	    
@@ -1575,6 +1610,28 @@ public final class RingBuffer {
   
                  
     }
+    
+
+    
+    // value in lastReleased moves forward to the point for release up to 
+    // tail position is where we start releasing from.
+    //
+    // 
+    //  head
+    //
+    //
+    //  working tail - read from here
+    //
+    //  new last release
+    //
+    //         //scan this block for data to remove?
+    //
+    //  tail  
+    //
+    //  
+    //
+    
+    
     
     static void storeUnpublishedTail(RingBuffer ring) {
         ring.lastReleasedBytesTail = ring.byteBufferTail.byteWorkingTailPos.value;

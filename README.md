@@ -1,8 +1,16 @@
 
-PronghornPipes [![Powered by CloudBees](https://www.cloudbees.com/sites/default/files/styles/large/public/Button-Powered-by-CB.png?itok=uMDWINfY)](https://pronghorn.ci.cloudbees.com/)
+PronghornPipes  
 =====
+Click for build status [![Powered by CloudBees](https://www.cloudbees.com/sites/default/files/styles/large/public/Button-Powered-by-CB.png?itok=uMDWINfY)](https://pronghorn.ci.cloudbees.com/)    
 
-Ring buffer based queue utility for applications that require high performance or a small footprint.  Well suited for embedded and stream based processing.
+Ring buffer based queuing utility for applications that require high performance and/or a small footprint.  Well suited for embedded and stream based processing. 
+
+Some of the key ideas embodied in the project are:
+- Messages are data not objects
+- Using memory sequentially is faster than random access
+- Exclusive use of primitives provides for a smaller memory footprint
+- Stream processing must be garbage free to eliminate stalls and support deterministic behavior
+- Single producer single consumer lock free queues provide for simple designs and good performance
 
 #Purpose
 
