@@ -46,6 +46,14 @@ public final class RingBuffer {
             this.workingTailPos = new PaddedLong();
             this.tailPos = new PaddedAtomicLong();
         }
+
+        /**
+         * Switch the working back to the published tail position.
+         * Only used by replay feature, not for general use.
+         */
+		public void rollBackWorking() {
+			workingTailPos.value = tailPos.get();
+		}
     }
 
     public static class PrimaryBufferHead {
@@ -92,6 +100,14 @@ public final class RingBuffer {
             this.byteWorkingTailPos = new PaddedInt();
             this.bytesTailPos = new PaddedInt();
         }
+
+        /**
+         * Switch the working back to the published tail position.
+         * Only used by replay feature, not for general use.
+         */
+		public void rollBackWorking() {
+			byteWorkingTailPos.value = bytesTailPos.value;
+		}
     }
 
     public static class PaddedLong {
@@ -168,10 +184,8 @@ public final class RingBuffer {
     private int lastPublishedBytesHead;
     private long lastPublishedHead;
 
-    
-    
-    //TODO: AAA, must lock down exacty what must change when the replay mode is on.    
     final RingWalker ringWalker;	
+    
     private final PrimaryBufferTail primaryBufferTail = new PrimaryBufferTail(); //primary working and public
     private final ByteBufferTail byteBufferTail = new ByteBufferTail(); //primary working and public   
     LLRead llRead; //low level read tail pos cache and target
@@ -179,12 +193,16 @@ public final class RingBuffer {
     //Replay NOTES:
     //   replay must store primary/byte working positions and replace them.
     //
-    //      ringWalker contains a lot of high-level state that must be saved and restored
-    //      TODO: as a first release it might be best to protect this and only allow replay with the low level?
+    //   The High-Level and Event APIs require a lot of state to ensure lookup of the field locations.
+    //   Duplication or reproduction of this state is not possible (or not yet known how) when we want
+    //   to replay the messages from tail up to working tail.  
     //
-    //          llRead/llWrite hold next and cached values that do not appear to need adjustment
-    //          canRead will always return true for low level api however
-    //          confirm of read must never be called because this value can not be changed!
+    //   As a result, the replay feature will only be supported by the low-level API.
+    //   It may be supported by the visitor API if a need arises.
+    //
+    //     llRead/llWrite hold next and cached values that do not appear to need adjustment
+    //     canRead will always return true for low level api however
+    //     confirm of read must never be called because this value can not be changed!
     
     
     
@@ -233,27 +251,32 @@ public final class RingBuffer {
 	private final int debugFlags;
 	
 	
+	private long holdingPrimaryWorkingTail;
+	private int  holdingBytesWorkingTail;
+	
 	////
 	//New methods needed for PronghornGateway
-	///
-	
-	public static void replayUnReleased() {
+	///	
+	//TODO: AAAAA, Must build tests for these 3 new methods.
+	public static void replayUnReleased(RingBuffer ringBuffer) {
+		if (!isReplaying(ringBuffer)) {
+			//save working values			
+			ringBuffer.holdingPrimaryWorkingTail = RingBuffer.getWorkingTailPosition(ringBuffer);			
+			ringBuffer.holdingBytesWorkingTail = RingBuffer.bytesWorkingTailPosition(ringBuffer);			
+		}
 		
-		
-		
-//	 - store current working point, (ONLY if we at this point, not if in another replay) 
-//	 - move cursor back to published tail
+		ringBuffer.primaryBufferTail.rollBackWorking();
+		ringBuffer.byteBufferTail.rollBackWorking();
+				
 	}
 	 
-	public static boolean isReplaying() {
-//	  - return true if the cursor is before workingTail
-		
-		//NOTE: lastReleased must not be updated when isReplaying is true
-		return false;
+	public static boolean isReplaying(RingBuffer ringBuffer) {		
+		return RingBuffer.getWorkingTailPosition(ringBuffer)<ringBuffer.holdingPrimaryWorkingTail;
 	}
 	
-	public static void cancelReplay() {
-///	  - move cursor back up to workingTail
+	public static void cancelReplay(RingBuffer ringBuffer) {
+		ringBuffer.primaryBufferTail.workingTailPos.value = ringBuffer.holdingPrimaryWorkingTail;
+		ringBuffer.byteBufferTail.byteWorkingTailPos.value = ringBuffer.holdingBytesWorkingTail;
 	}
 	
 	////

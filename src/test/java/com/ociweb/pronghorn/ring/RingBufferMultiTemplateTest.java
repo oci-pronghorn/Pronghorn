@@ -83,9 +83,11 @@ public class RingBufferMultiTemplateTest {
     }
 
 
-	private void singleFragmentWriteRead(boolean useHighLevel) {
+	private void singleFragmentWriteRead(boolean useHighLevelToPopulate) {
 		byte primaryRingSizeInBits = 7; 
     	byte byteRingSizeInBits = 16;
+    	
+    	boolean testReplayFeature = true;
     	
 		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
 		ring.initBuffers();
@@ -96,7 +98,7 @@ public class RingBufferMultiTemplateTest {
 		int LARGEST_MESSAGE_SIZE = FROM.fragDataSize[MSG_SAMPLE_LOC];    
         int testSize = ((1<<primaryRingSizeInBits)/LARGEST_MESSAGE_SIZE)-2;
         
-        if (useHighLevel) {
+        if (useHighLevelToPopulate) {
             populateRingBufferHighLevel(ring, ring.maxAvgVarLen, testSize);
         } else {
         	populateRingBufferLowLevel(ring, ring.maxAvgVarLen, testSize);
@@ -117,10 +119,8 @@ public class RingBufferMultiTemplateTest {
         		//must cast for this test because the id can be 64 bits but we can only switch on 32 bit numbers
         		int templateId = (int)FROM.fieldIdScript[msgLoc];
         		       		
-        	//	System.err.println("read TemplateID:"+templateId);
         		switch (templateId) {
 	        		case 2:
-	        		//	System.err.println("checking with "+k);
 	        			
 	        			assertEquals(MSG_BOXES_LOC,msgLoc);
 	        			
@@ -130,7 +130,6 @@ public class RingBufferMultiTemplateTest {
 	        			int ownLen = RingReader.readBytes(ring, BOX_OWNER_LOC, target, 0);
 	        			assertEquals(expectedLength,ownLen);
 
-	        		//	System.err.println("BOX LOC:"+Integer.toHexString(BOX_COUNT_LOC));
 	        			break;
 	        		case 1:
 	        			assertEquals(MSG_SAMPLE_LOC,msgLoc);
@@ -161,11 +160,32 @@ public class RingBufferMultiTemplateTest {
 	        			fail("Unexpected templateId of "+templateId);
 	        			break;
         		
-        		}
-        		        		
+        		}       		
         	} else {
         		fail("All fragments are messages for this test.");
         	}
+        	
+        	if (testReplayFeature) {
+        		
+        		RingBuffer.replayUnReleased(ring);
+        		//assertTrue(RingBuffer.isReplaying(ring));
+        		
+        		//TODO: AAA, this does not work because high level read is releasing the messages on every turn so...
+        		//     this is never technically in replay mode.
+        		
+//        		if (RingBuffer.isReplaying(ring)) {
+//        			System.err.println("replay detected");
+//        			
+//        			int msgId = RingBuffer.takeMsgIdx(ring);
+//        			System.err.println("id is "+msgId);
+//        			
+//        		}
+        		
+        		RingBuffer.cancelReplay(ring);
+        	}
+        	
+        	
+        	
         }
 	}
 

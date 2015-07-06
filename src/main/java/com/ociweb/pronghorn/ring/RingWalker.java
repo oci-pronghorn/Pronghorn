@@ -162,7 +162,7 @@ public class RingWalker {
 		
 		if ((RingBuffer.decBatchRelease(ringBuffer)<=0)) {	
 			
-			releaseBlockBeforeReadMessage(ringBuffer);
+			RingBuffer.releaseReadLock2(ringBuffer);
 		}
 
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1;
@@ -367,7 +367,7 @@ public class RingWalker {
 		    RingBuffer.setWorkingTailPosition(ringBuffer, ringBufferConsumer.nextWorkingTail);
 		    
 		} else {			
-			releaseBlockBeforeReadMessage(ringBuffer);
+			RingBuffer.releaseReadLock2(ringBuffer);
 		}
 		prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
 
@@ -388,20 +388,12 @@ public class RingWalker {
 	        }
 	    }
 	    
-	    System.err.println("bad curstor "+msgIdx+" expected one of "+Arrays.toString(starts));	    
+	    System.err.println("bad cursor "+msgIdx+" expected one of "+Arrays.toString(starts));	    
 	    return false;
     }
 
 
-    private static void releaseBlockBeforeReadMessage(RingBuffer ringBuffer) {
-	    RingBuffer.setBytesTail(ringBuffer,RingBuffer.bytesWorkingTailPosition(ringBuffer)); 			
-		RingBuffer.publishWorkingTailPosition(ringBuffer, ringBuffer.ringWalker.nextWorkingTail);
-				
-		RingBuffer.beginNewReleaseBatch(ringBuffer);
-	}
-
-
-	private static void prepReadMessage2(RingBuffer ringBuffer, RingWalker ringBufferConsumer, final long tmpNextWokingTail) {
+    private static void prepReadMessage2(RingBuffer ringBuffer, RingWalker ringBufferConsumer, final long tmpNextWokingTail) {
 		//
 		//Start new stack of fragments because this is a new message
 		ringBufferConsumer.activeReadFragmentStack[0] = tmpNextWokingTail;				 
