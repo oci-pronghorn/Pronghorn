@@ -171,7 +171,7 @@ public class RingBufferTest {
                             
                             //allow writer to write up to new tail position
                             if (0==(messageCount&chunkMask) ) {
-                            	readBytesAndreleaseReadLock(ring);
+                            	RingBuffer.releaseReads(ring);
                             	if (messageCount>0) {
                             		headPosCache = spinBlockOnHead(headPosCache, tailPosition(ring)+granularity, ring);
                             		
@@ -308,7 +308,7 @@ public class RingBufferTest {
     	                        
     	                        //allow writer to write up to new tail position
     	                        if (0==(messageCount&chunkMask) ) {
-    	                        	readBytesAndreleaseReadLock(ring);
+    	                        	RingBuffer.releaseReads(ring);
     	                        	if (messageCount>0) {
     	                        		headPosCache = spinBlockOnHead(headPosCache, tailPosition(ring)+granularity, ring);	                        	    	                        		
     	                        	}

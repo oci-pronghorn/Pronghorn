@@ -70,20 +70,34 @@ public class RingBufferMultiTemplateTest {
 	
 	
     @Test
-    public void simpleBytesWriteReadLowLevel() {
+    public void simpleBytesWriteLowLevelReadHighLevel() {
     	boolean useHighLevel = false;    	
-    	singleFragmentWriteRead(useHighLevel);    
+    	singleFragmentReadHighLevel(useHighLevel);    
     }
 
 	
     @Test
-    public void simpleBytesWriteReadHighLevel() {
+    public void simpleBytesWriteHighLevelReadHighLevel() {
     	boolean useHighLevel = true;    	
-    	singleFragmentWriteRead(useHighLevel);    
+    	singleFragmentReadHighLevel(useHighLevel);    
     }
 
 
-	private void singleFragmentWriteRead(boolean useHighLevelToPopulate) {
+    @Test
+    public void simpleBytesWriteLowLevelReadLowLevel() {
+    	boolean useHighLevel = false;    	
+    	singleFragmentReadLowLevel(useHighLevel);    
+    }
+
+	
+    @Test
+    public void simpleBytesWriteHighLevelReadLowLevel() {
+    	boolean useHighLevel = true;    	
+    	singleFragmentReadLowLevel(useHighLevel);    
+    }
+
+
+	private void singleFragmentReadHighLevel(boolean useHighLevelToPopulate) {
 		byte primaryRingSizeInBits = 7; 
     	byte byteRingSizeInBits = 16;
     	
@@ -168,27 +182,130 @@ public class RingBufferMultiTemplateTest {
         	if (testReplayFeature) {
         		
         		RingBuffer.replayUnReleased(ring);
-        		//assertTrue(RingBuffer.isReplaying(ring));
-        		
-        		//TODO: AAA, this does not work because high level read is releasing the messages on every turn so...
-        		//     this is never technically in replay mode.
-        		
-//        		if (RingBuffer.isReplaying(ring)) {
-//        			System.err.println("replay detected");
-//        			
-//        			int msgId = RingBuffer.takeMsgIdx(ring);
-//        			System.err.println("id is "+msgId);
-//        			
-//        		}
-        		
         		RingBuffer.cancelReplay(ring);
         	}
-        	
-        	
         	
         }
 	}
 
+		
+	private void singleFragmentReadLowLevel(boolean useHighLevelToPopulate) {
+		byte primaryRingSizeInBits = 7; 
+    	byte byteRingSizeInBits = 16;
+    	
+    	boolean testReplayFeature = true;
+    	
+		RingBuffer ring = new RingBuffer(new RingBufferConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+		ring.initBuffers();
+		//Setup the test data sizes derived from the templates used
+		byte[] target = new byte[ring.maxAvgVarLen];
+		
+		
+		int LARGEST_MESSAGE_SIZE = FROM.fragDataSize[MSG_SAMPLE_LOC];    
+        int testSize = ((1<<primaryRingSizeInBits)/LARGEST_MESSAGE_SIZE)-2;
+        
+        if (useHighLevelToPopulate) {
+            populateRingBufferHighLevel(ring, ring.maxAvgVarLen, testSize);
+        } else {
+        	populateRingBufferLowLevel(ring, ring.maxAvgVarLen, testSize);
+        }
+       
+        //now read the data back
+        int k = testSize;
+                
+        //Prevent this from release until we are ready
+        RingBuffer.setReleaseBatchSize(ring, 8);//Integer.MAX_VALUE);
+        
+        
+        while (RingBuffer.contentToLowLevelRead(ring, 1)) {
+        	        	
+    		--k;
+    		int expectedLength = (ring.maxAvgVarLen*k)/testSize;	
+    		
+    		final int msgLoc =  RingBuffer.takeMsgIdx(ring);
+    		if (msgLoc<0) {
+    			return;
+    		}
+    		
+    		//must cast for this test because the id can be 64 bits but we can only switch on 32 bit numbers
+    		int templateId = (int)FROM.fieldIdScript[msgLoc];
+    		       		
+    		switch (templateId) {
+        		case 2:
+        			
+        			assertEquals(MSG_BOXES_LOC,msgLoc);
+        			
+        			int count = RingBuffer.takeValue(ring);
+        			assertEquals(42,count);
+        				        
+        			{
+        				int meta = RingBuffer.takeRingByteMetaData(ring);
+        	        	int len = RingBuffer.takeRingByteLen(ring);
+        	        	assertEquals(expectedLength, len);
+        	        	RingBuffer.readBytes(ring, target, 0, 0xFFFFFFFF, meta, len);	        	        
+        			}
+
+        			break;
+        		case 1:
+        			assertEquals(MSG_SAMPLE_LOC,msgLoc);
+        			
+        			int year = RingBuffer.takeValue(ring);
+        			assertEquals(2014,year);
+        			
+        			int month = RingBuffer.takeValue(ring);
+        			assertEquals(12,month);
+        			
+        			int day = RingBuffer.takeValue(ring);
+        			assertEquals(9,day);
+        			
+        			
+        			int wExp = RingBuffer.takeValue(ring);
+        			assertEquals(2,wExp);	        			
+        			
+        			long wMan = RingBuffer.takeLong(ring);
+        			assertEquals(123456,wMan);
+        			
+        			
+        			break;
+        		case 4:
+        			assertEquals(MSG_RESET_LOC,msgLoc);
+        			
+        			{
+        				int meta = RingBuffer.takeRingByteMetaData(ring);
+        	        	int len = RingBuffer.takeRingByteLen(ring);
+        	        	assertEquals(3,len);
+        	        	RingBuffer.readBytes(ring, target, 0, 0xFFFFFFFF, meta, len);	   
+        			}
+        			
+        			break;
+        		default:
+        			fail("Unexpected templateId of "+templateId);
+        			break;    		
+    		}       		
+        	
+    		RingBuffer.releaseReads(ring);
+    
+    		RingBuffer.confirmLowLevelRead(ring, FROM.fragDataSize[msgLoc]);
+        		
+        	if (testReplayFeature) {
+        		
+        		RingBuffer.replayUnReleased(ring);
+        		
+        		assertTrue(RingBuffer.isReplaying(ring));
+        		
+        		//we are now ready to re-read the last message
+        		int reReadMsgIdx = RingBuffer.takeMsgIdx(ring);
+        		assertEquals(msgLoc,reReadMsgIdx);
+        		        		
+        		RingBuffer.cancelReplay(ring);
+        	}
+        	
+        	RingBuffer.releaseAllBatchedReads(ring);
+        	
+        }
+	}
+	
+	
 	private void populateRingBufferHighLevel(RingBuffer ring, int blockSize, int testSize) {
 		
 		int[] templateIds = new int[] {2,1,4};

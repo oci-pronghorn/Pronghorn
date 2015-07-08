@@ -64,7 +64,7 @@ public class RingStreams {
 
         				
         	if (msgId<0) { //exit logic
-        		readBytesAndreleaseReadLock(inputRing);
+        		RingBuffer.releaseReads(inputRing);
           		break;
         	} else {          
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
@@ -83,7 +83,7 @@ public class RingStreams {
 					}
 					outputStream.flush();
             	}
-            	readBytesAndreleaseReadLock(inputRing);
+            	RingBuffer.releaseReads(inputRing);
         	}
         	
         	target += step;
@@ -134,7 +134,7 @@ public class RingStreams {
         		int bytesCount = RingBuffer.takeValue(inputRing);
         		assert(0==bytesCount);
             	
-            	readBytesAndreleaseReadLock(inputRing);
+        		RingBuffer.releaseReads(inputRing);
           		return;
         	} else {                    	
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
@@ -161,7 +161,7 @@ public class RingStreams {
 					os.flush();
 				}
 				
-        		readBytesAndreleaseReadLock(inputRing);
+				RingBuffer.releaseReads(inputRing);
         	}
         	
         	target += step;
@@ -291,7 +291,7 @@ public class RingStreams {
 	    		int bytesCount = RingBuffer.takeValue(inputRing);
 		    	assert(0==bytesCount);
 		    	
-	    		readBytesAndreleaseReadLock(inputRing);
+		    	RingBuffer.releaseReads(inputRing);
 	    		visitor.close();
 	      		return;
 	    	} else {                    	
@@ -310,7 +310,7 @@ public class RingStreams {
 					 //simple add bytes
 					 visitor.visit(data, offset&byteMask, len); 
 				}
-	    		readBytesAndreleaseReadLock(inputRing);
+				RingBuffer.releaseReads(inputRing);
 	    	}
 	    	
 	    	target += step;

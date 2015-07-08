@@ -639,6 +639,15 @@ public final class RingBuffer {
 	        return readBytesRing(ring,len,target,restorePosition(ring,meta));
 	    }
 	}
+    
+    public static void readBytes(RingBuffer ring, byte[] target, int targetIdx, int targetMask, int meta, int len) {
+		if (meta < 0) {
+			//NOTE: constByteBuffer does not wrap so we do not need the mask
+			copyBytesFromToRing(ring.constByteBuffer, RingReader.POS_CONST_MASK & meta, 0xFFFFFFFF, target, targetIdx, targetMask, len);
+	    } else {
+			copyBytesFromToRing(ring.byteBuffer,restorePosition(ring,meta),ring.byteMask,target,targetIdx,targetMask,len);
+	    }
+	}
 
 	private static ByteBuffer readBytesRing(RingBuffer ring, int len, ByteBuffer target, int pos) {
 		int mask = ring.byteMask;

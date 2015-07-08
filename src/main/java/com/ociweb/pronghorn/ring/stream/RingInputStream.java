@@ -109,7 +109,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 			int sourceLength = takeRingByteLen(ring);
 			return beginNewContent(targetData, targetOffset, targetLength, meta, sourceLength);
 		} else {   					
-			readBytesAndreleaseReadLock(ring);
+			RingBuffer.releaseReads(ring);
 			return -1;			
 		}
 	}
@@ -121,7 +121,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 		if (sourceLength<=targetLength) {
 			//the entire block can be sent
 			copyData(targetData, targetOffset, sourceLength, sourceData, sourceOffset);
-			readBytesAndreleaseReadLock(ring);
+			RingBuffer.releaseReads(ring);
 			return sourceLength;
 		} else {
 			//only part of the block can be sent so save some for later
@@ -162,7 +162,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 		//the entire remaining part of the block can be sent
 		int len = remainingSourceLength;
 		copyData(targetData, targetOffset, len, byteBackingArray(remainingSourceMeta, ring), remainingSourceOffset);
-		readBytesAndreleaseReadLock(ring);
+		RingBuffer.releaseReads(ring);
 		remainingSourceLength = -1; //clear because we are now done with the remaining content
 		return len;
 	}
