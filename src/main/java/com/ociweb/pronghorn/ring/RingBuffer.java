@@ -797,11 +797,14 @@ public final class RingBuffer {
 	}
 
 	public static void validateBatchSize(RingBuffer rb, int size) {
-		int mustFit = 2;
-		int maxBatch = computeMaxBatchSize(rb, mustFit);
+		int maxBatch = computeMaxBatchSize(rb);
 		if (size>maxBatch) {
 			throw new UnsupportedOperationException("For the configured ring buffer the batch size can be no larger than "+maxBatch);
 		}
+	}
+	
+	public static int computeMaxBatchSize(RingBuffer rb) {
+		return computeMaxBatchSize(rb,2);//default mustFit of 2
 	}
 
 	public static int computeMaxBatchSize(RingBuffer rb, int mustFit) {
