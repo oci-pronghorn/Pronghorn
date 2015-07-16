@@ -371,7 +371,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		int pos = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp)];
         int len = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp + 1)];
-                
+        
         return RingBuffer.readBytes(ring, target, pos, len);
     }
 

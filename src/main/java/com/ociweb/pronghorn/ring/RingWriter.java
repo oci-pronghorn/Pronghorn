@@ -99,8 +99,7 @@ public class RingWriter {
 		
     	RingBuffer.validateVarLength(rb, length);
 		writeSpecialBytesPosAndLen(rb, loc, length, p);
-        
-		RingBuffer.addAndGetBytesWorkingHeadPosition(rb, length);        
+		
     }
     
     public static void writeBytes(RingBuffer rb, int loc, byte[] source, int offset, int length, int mask) {
@@ -130,11 +129,12 @@ public class RingWriter {
     	assert(length>=0);
     	int bytePos = RingBuffer.bytesWorkingHeadPosition(rb);
     	RingBuffer.copyByteBuffer(source, length, rb);
-		writeSpecialBytesPosAndLen(rb, loc, length, bytePos);
+		RingBuffer.setBytePosAndLen(RingBuffer.primaryBuffer(rb), rb.mask, rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), bytePos, length, RingBuffer.bytesWriteBase(rb));
     }
 
 	public static void writeSpecialBytesPosAndLen(RingBuffer rb, int loc, int length, int bytePos) {
 		RingBuffer.setBytePosAndLen(RingBuffer.primaryBuffer(rb), rb.mask, rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), bytePos, length, RingBuffer.bytesWriteBase(rb));
+		RingBuffer.addAndGetBytesWorkingHeadPosition(rb, length);        
 	}
     
     public static void writeUTF8(RingBuffer rb, int loc, CharSequence source) {
