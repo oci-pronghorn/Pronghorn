@@ -562,6 +562,18 @@ public class GraphManager {
 		return defaultValue;
 	}
 	
+	public static Object getAnnotation(GraphManager m, int stageId, Object key, Object defaultValue) {
+		int idx = m.stageIdToAnnotationsBeginIdx[stageId];
+		int annotationId;
+		while(-1 != (annotationId = m.multAnnotationIds[idx])) {
+			if (m.annotationIdToKey[annotationId].equals(key)) {
+				return m.annotationIdToValue[annotationId];
+			}
+			idx++;
+		}		
+		return defaultValue;
+	}
+	
 	public static void shutdownNeighborRings(GraphManager pm, PronghornStage baseStage) {
 		
 		int inputPos  = pm.stageIdToInputsBeginIdx[baseStage.stageId];
@@ -604,6 +616,7 @@ public class GraphManager {
 		if (isStageTerminated(m, stageId)) { //terminated 
 			return false;
 		}		
+				
 		int ringId;
 				
 		//if all the output targets have terminated return false because this data will never be consumed

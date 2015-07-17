@@ -138,21 +138,29 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					
 					runLoop(stage);	
 			
-					stage.shutdown();	
-					GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
-								
-				} catch (Throwable t) {
-				    
-	                synchronized(this) {
-                        if (null==firstException) {
-                            firstException = t;
-                        }
-                    }   
-	                
-				    log.error("Stacktrace",t);
-					log.warn("Unexpected error in stage "+stage.stageId+" "+stage.getClass().getSimpleName());
-					GraphManager.shutdownNeighborRings(graphManager, stage);
+				} catch (Throwable t) {				    
+	                recordTheException(stage, t);
+				} finally {
+					//shutdown will always be called no matter how the stage was exited.
+					try {
+						stage.shutdown();					
+					} catch(Throwable t) {
+						recordTheException(stage, t);
+					} finally {
+						GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
+					}
 				}
+			}
+
+			private void recordTheException(final PronghornStage stage, Throwable t) {
+				synchronized(this) {
+				    if (null==firstException) {
+				        firstException = t;
+				    }
+				}   	                
+				log.error("Stacktrace",t);
+				log.warn("Unexpected error in stage "+stage.stageId+" "+stage.getClass().getSimpleName());
+				GraphManager.shutdownNeighborRings(graphManager, stage);
 			}			
 		};
 	}
