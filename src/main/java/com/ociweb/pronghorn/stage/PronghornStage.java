@@ -85,8 +85,7 @@ public abstract class PronghornStage {
 	public void requestShutdown() {
 		GraphManager.setStateToStopping(graphManager, stageId);
 	}
-	
-	
+
 	/**
 	 * Process all the work that is immediately available.
 	 * Should periodically return, if it is away too long this can be controlled by making the output ring smaller.

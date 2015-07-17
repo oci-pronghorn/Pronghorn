@@ -24,7 +24,7 @@ public class GraphManager {
 	}
 	
 
-	public final static String SCHEDULE_RATE = "SCHEDULE_RATE";
+	public final static String SCHEDULE_RATE = "SCHEDULE_RATE"; //in ns
 	public final static String MONITOR       = "MONITOR";
 	public final static String PRODUCER      = "PRODUCER";//explicit so it can be found even if it has feedback inputs.    
 	public final static String STAGE_NAME    = "STAGE_NAME";

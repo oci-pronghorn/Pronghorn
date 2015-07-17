@@ -72,7 +72,7 @@ public class ToOutputStreamStage extends PronghornStage {
 						}
 						outputStream.flush();
 			    	}
-			    	readBytesAndreleaseReadLock(inputRing);
+			    	RingBuffer.releaseReads(inputRing);
 			    
 				}			
 				
