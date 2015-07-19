@@ -113,6 +113,11 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     //TODO: B, add new method CharSequence readASCII(RingBuffer ring, int loc, CharSequenceFlyweight target)
     //      Char sequence must wrap the ring buffer backing array.  Passed in object is re-used for this call
     
+    public static boolean isEqual(RingBuffer ring, int loc, CharSequence charSeq) {
+    	//TODO: check for eqivalance
+    	int pos = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];      	
+    	return RingBuffer.isEqual(ring, charSeq, pos, RingReader.readDataLength(ring, loc));
+    }
     
     public static Appendable readASCII(RingBuffer ring, int loc, Appendable target) {
     	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
@@ -375,6 +380,50 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         return RingBuffer.readBytes(ring, target, pos, len);
     }
 
+
+	public static ByteBuffer wrappedBuffer1(RingBuffer ring, int loc) {
+    	long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
+
+        int pos = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp)];
+        int len = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp + 1)];
+		
+        if (pos < 0) {
+        	ByteBuffer buffer = RingBuffer.wrappedSecondaryConstByteBuffer(ring);
+        	int position = RingReader.POS_CONST_MASK & pos;    
+        	buffer.position(position);
+        	buffer.limit(position+len);        	
+        	return buffer;
+        } else {
+        	ByteBuffer buffer = RingBuffer.wrappedSecondaryByteBuffer(ring);
+            
+        	
+        	//TODO: AA readBytesRing(ring,len,target,targetOffset,RingBuffer.restorePosition(ring,pos));
+        }
+        
+		return null;
+	}
+
+	public static ByteBuffer wrappedBuffer2(RingBuffer ring, int loc) {
+    	long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
+
+        int pos = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp)];
+        int len = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp + 1)];
+        
+        if (pos < 0) {
+        	ByteBuffer buffer = RingBuffer.wrappedSecondaryConstByteBuffer(ring);
+        	buffer.position(0);
+        	buffer.limit(0);
+        	return buffer;
+        } else {
+        	ByteBuffer buffer = RingBuffer.wrappedSecondaryByteBuffer(ring);
+        	
+        	
+            //TODO: AA readBytesRing(ring,len,target,targetOffset,RingBuffer.restorePosition(ring,pos));
+        }
+		
+		return null;
+	}
+    
 	public static int readBytes(RingBuffer ring, int loc, byte[] target, int targetOffset) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
@@ -559,5 +608,6 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         
         RingBuffer.appendFragment(input, target, cursor);
     }
+
 
 }

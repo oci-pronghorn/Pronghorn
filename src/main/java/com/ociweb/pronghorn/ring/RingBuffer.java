@@ -174,11 +174,11 @@ public final class RingBuffer {
     
     //TODO: AAAA, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
     //            the time slices of the graph will need to be kept for all rings to reconstruct history later.
-    
-    
+        
     
     private final PrimaryBufferHead primaryBufferHead = new PrimaryBufferHead(); 
     private final ByteBufferHead byteBufferHead = new ByteBufferHead();
+        
     LLWrite llWrite; //low level write head pos cache and target
     //hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
     private int lastPublishedBytesHead;
@@ -230,7 +230,7 @@ public final class RingBuffer {
     //     The Overhead of the poly method call is what has prevented this change
     private IntBuffer wrappedPrimaryIntBuffer;
     private ByteBuffer wrappedSecondaryByteBuffer;
-
+    private ByteBuffer wrappedSecondaryConstByteBuffer;
     
     //for writes validates that bytes of var length field is within the expected bounds.
     private int varLenMovingAverage = 0;//this is an exponential moving average
@@ -439,6 +439,7 @@ public final class RingBuffer {
 
         this.wrappedPrimaryIntBuffer = IntBuffer.wrap(this.buffer);
         this.wrappedSecondaryByteBuffer = ByteBuffer.wrap(this.byteBuffer);
+        this.wrappedSecondaryConstByteBuffer = null==this.constByteBuffer?null:ByteBuffer.wrap(this.constByteBuffer);
         
         assert(0==wrappedSecondaryByteBuffer.position() && wrappedSecondaryByteBuffer.capacity()==wrappedSecondaryByteBuffer.limit()) : "The ByteBuffer is not clear.";
         
@@ -677,6 +678,39 @@ public final class RingBuffer {
 	    } else {        	
 	        return readASCIIRing(ring,len,target,restorePosition(ring, meta));
 	    }
+	}
+	
+	public static boolean isEqual(RingBuffer ring, CharSequence charSeq, int meta, int len) {
+		if (len!=charSeq.length()) {
+			return false;
+		}
+		if (meta < 0) {
+			
+			int pos = RingReader.POS_CONST_MASK & meta;
+
+	    	byte[] buffer = ring.constByteBuffer;
+	    	assert(null!=buffer) : "If constants are used the constByteBuffer was not initialized. Otherwise corruption in the stream has been discovered";
+	    	while (--len >= 0) {
+	    		if (charSeq.charAt(len)!=buffer[pos+len]) {
+	    			return false;
+	    		}
+	        }
+			
+		} else {
+
+			byte[] buffer = ring.byteBuffer;
+			int mask = ring.byteMask;
+			int pos = restorePosition(ring, meta);
+
+	        while (--len >= 0) {
+	    		if (charSeq.charAt(len)!=buffer[mask&(pos+len)]) {
+	    			return false;
+	    		}
+	        }
+			
+		}
+				
+		return true;
 	}
 
 	private static Appendable readASCIIRing(RingBuffer ring, int len, Appendable target, int pos) {
@@ -1919,6 +1953,10 @@ public final class RingBuffer {
 		return ring.wrappedSecondaryByteBuffer;
 	}
 
+	public static ByteBuffer wrappedSecondaryConstByteBuffer(RingBuffer ring) {
+		return ring.wrappedSecondaryConstByteBuffer;
+	}
+	
 	/////////////
 	//low level API
 	////////////
@@ -2052,5 +2090,8 @@ public final class RingBuffer {
     public static PaddedLong getWorkingHeadPositionObject(RingBuffer rb) {
         return rb.primaryBufferHead.workingHeadPos;
     }
+
+
+
 	
 }
