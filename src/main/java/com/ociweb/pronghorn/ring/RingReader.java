@@ -384,44 +384,49 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	public static ByteBuffer wrappedBuffer1(RingBuffer ring, int loc) {
     	long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 
-        int pos = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp)];
+        int meta = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp)];
         int len = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp + 1)];
-		
-        if (pos < 0) {
-        	ByteBuffer buffer = RingBuffer.wrappedSecondaryConstByteBuffer(ring);
-        	int position = RingReader.POS_CONST_MASK & pos;    
+        ByteBuffer buffer;
+        if (meta < 0) {
+        	buffer = RingBuffer.wrappedSecondaryConstByteBuffer(ring);
+        	int position = RingReader.POS_CONST_MASK & meta;    
         	buffer.position(position);
         	buffer.limit(position+len);        	
-        	return buffer;
         } else {
-        	ByteBuffer buffer = RingBuffer.wrappedSecondaryByteBuffer(ring);
-            
-        	
-        	//TODO: AA readBytesRing(ring,len,target,targetOffset,RingBuffer.restorePosition(ring,pos));
+        	buffer = RingBuffer.wrappedSecondaryByteBuffer(ring);
+        	int position = ring.byteMask & RingBuffer.restorePosition(ring,meta);
+        	buffer.clear();
+        	buffer.position(position);
+        	//use the end of the buffer if the lengh runs past it.
+        	buffer.limit(Math.min(ring.maxByteSize, position+len));
         }
-        
-		return null;
+        return buffer;
 	}
 
 	public static ByteBuffer wrappedBuffer2(RingBuffer ring, int loc) {
     	long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 
-        int pos = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp)];
+        int meta = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp)];
         int len = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp + 1)];
-        
-        if (pos < 0) {
-        	ByteBuffer buffer = RingBuffer.wrappedSecondaryConstByteBuffer(ring);
+        ByteBuffer buffer;
+        if (meta < 0) {
+        	//always zero because constant array never wraps
+        	buffer = RingBuffer.wrappedSecondaryConstByteBuffer(ring);
         	buffer.position(0);
         	buffer.limit(0);
-        	return buffer;
         } else {
-        	ByteBuffer buffer = RingBuffer.wrappedSecondaryByteBuffer(ring);
-        	
-        	
-            //TODO: AA readBytesRing(ring,len,target,targetOffset,RingBuffer.restorePosition(ring,pos));
-        }
-		
-		return null;
+        	buffer = RingBuffer.wrappedSecondaryByteBuffer(ring);
+        	int position = ring.byteMask & RingBuffer.restorePosition(ring,meta);
+        	buffer.clear();
+            //position is zero
+        	int endPos = position+len;
+        	if (endPos>ring.maxByteSize) {
+        		buffer.limit(ring.byteMask & endPos);
+        	} else {
+        		buffer.limit(0);
+        	}
+        }		
+		return buffer;
 	}
     
 	public static int readBytes(RingBuffer ring, int loc, byte[] target, int targetOffset) {
@@ -443,7 +448,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     private static void readBytesConst(RingBuffer ring, int len, byte[] target, int targetloc, int pos) {
             byte[] buffer = ring.constByteBuffer;
             while (--len >= 0) {
-                target[targetloc++]=buffer[pos++];
+                target[targetloc++]=buffer[pos++]; //TODO: AAAA replace with arrayCopy
             }
     }
 
@@ -451,7 +456,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
             byte[] buffer = RingBuffer.byteBuffer(ring);
             int mask = ring.byteMask;
             while (--len >= 0) {
-                target[targetloc++]=buffer[mask & pos++];
+                target[targetloc++]=buffer[mask & pos++]; //TODO: AAAA replace with dual arrayCopy
             }
     }
     
