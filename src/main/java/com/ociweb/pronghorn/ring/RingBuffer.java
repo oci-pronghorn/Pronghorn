@@ -66,8 +66,8 @@ public final class RingBuffer {
          * Switch the working back to the published tail position.
          * Only used by replay feature, not for general use.
          */
-		public void rollBackWorking() {
-			workingTailPos.value = tailPos.get();
+		public long rollBackWorking() {
+			return workingTailPos.value = tailPos.get();
 		}
     }
 
@@ -135,8 +135,8 @@ public final class RingBuffer {
          * Switch the working back to the published tail position.
          * Only used by replay feature, not for general use.
          */
-		public void rollBackWorking() {
-			byteWorkingTailPos.value = bytesTailPos.value;
+		public int rollBackWorking() {
+			return byteWorkingTailPos.value = bytesTailPos.value;
 		}
     }
 
@@ -288,9 +288,10 @@ public final class RingBuffer {
 
     static final int JUMP_MASK = 0xFFFFF;
 
-//cas: In what sense is this emergency only?  It appears to be the way a non-emergency shutdown would also work?
-    //fields for emergency shut down
-    private final AtomicBoolean shutDown = new AtomicBoolean(false);
+    //Exceptions must not occur within consumers/producers of rings however when they do we no longer have 
+    //a clean understanding of state. To resolve the problem all producers and consumers must also shutdown.
+    //This flag passes the signal so any producer/consumer that sees it on knows to shut down and pass on the flag.
+    private final AtomicBoolean imperativeShutDown = new AtomicBoolean(false);
     private RingBufferException firstShutdownCaller = null;
 
 
@@ -305,22 +306,38 @@ public final class RingBuffer {
 
 	private long holdingPrimaryWorkingTail;
 	private int  holdingBytesWorkingTail;
+	private int holdingBytesReadBase;
 
-// cas: comment -- obsolete comment?
-	////
-	//New methods needed for PronghornGateway
-	///
-	//TODO: AAAAA, Must build tests for these 3 new methods.
+
 	public static void replayUnReleased(RingBuffer ringBuffer) {
+	    
+//We must enforce this but we have a few unit tests that are in violation which need to be fixed first	    
+//	    if (!RingBuffer.from(ringBuffer).hasSimpleMessagesOnly) {
+//	        throw new UnsupportedOperationException("replay of unreleased messages is not supported unless every message is also a single fragment.");
+//	    }
+	    
 		if (!isReplaying(ringBuffer)) {
-			//save working values
-			ringBuffer.holdingPrimaryWorkingTail = RingBuffer.getWorkingTailPosition(ringBuffer);
-			ringBuffer.holdingBytesWorkingTail = RingBuffer.bytesWorkingTailPosition(ringBuffer);
+			//save all working values only once if we re-enter replaying multiple times.			
+			
+		    ringBuffer.holdingPrimaryWorkingTail = RingBuffer.getWorkingTailPosition(ringBuffer);			
+			ringBuffer.holdingBytesWorkingTail = RingBuffer.bytesWorkingTailPosition(ringBuffer);			
+						
+			//NOTE: we must never adjust the ringWalker.nextWorkingHead because this is replay and must not modify write position!
+			ringBuffer.ringWalker.holdingNextWorkingTail = ringBuffer.ringWalker.nextWorkingTail; 
+			ringBuffer.ringWalker.holdingNextWorkingHead = ringBuffer.ringWalker.nextWorkingHead; //Should not change, this is saved for validation that it did not change during replay. 
+			
+			ringBuffer.holdingBytesReadBase = ringBuffer.bytesReadBase;
+			
 		}
-
-		ringBuffer.primaryBufferTail.rollBackWorking();
-		ringBuffer.byteBufferTail.rollBackWorking();
-
+		
+		//clears the stack and cursor position back to -1 so we assume that the next read will begin a new message
+		RingWalker.resetCursorState(ringBuffer.ringWalker);
+		
+		//set new position values for high and low api
+		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.primaryBufferTail.rollBackWorking();
+		ringBuffer.bytesReadBase = ringBuffer.byteBufferTail.rollBackWorking(); //this byte position is used by both high and low api
+		
+		
 	}
 
 	public static boolean isReplaying(RingBuffer ringBuffer) {
@@ -330,6 +347,11 @@ public final class RingBuffer {
 	public static void cancelReplay(RingBuffer ringBuffer) {
 		ringBuffer.primaryBufferTail.workingTailPos.value = ringBuffer.holdingPrimaryWorkingTail;
 		ringBuffer.byteBufferTail.byteWorkingTailPos.value = ringBuffer.holdingBytesWorkingTail;
+		
+		ringBuffer.bytesReadBase = ringBuffer.holdingBytesReadBase;
+		
+		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.ringWalker.holdingNextWorkingTail ;
+		assert(ringBuffer.ringWalker.holdingNextWorkingHead == ringBuffer.ringWalker.nextWorkingHead);
 	}
 
 	////
@@ -1145,6 +1167,26 @@ public final class RingBuffer {
 		return buffer[mask & (int)(index)];
 	}
 
+	/**
+	 * Read and return the int value at this position and clear the value with the provided clearValue.
+	 * This ensures no future calls will be able to read the value once this is done.
+	 * 
+	 * This is primarily needed for secure data xfers when the re-use of a ring buffer may 'leak' old values.
+	 * It is also useful for setting flags in conjuction with the replay feature.
+	 * 
+	 * @param buffer
+	 * @param mask
+	 * @param index
+	 * @param clearValue
+	 * @return
+	 */
+	public static int readIntSecure(int[] buffer, int mask, long index, int clearValue) {
+	        int idx = mask & (int)(index);
+            int result =  buffer[idx];
+            buffer[idx] = clearValue;
+            return result;
+	}
+	
 	public static long readLong(int[] buffer, int mask, long index) {
 		return (((long) buffer[mask & (int)index]) << 32) | (((long) buffer[mask & (int)(index + 1)]) & 0xFFFFFFFFl);
 	}
@@ -1479,11 +1521,11 @@ public final class RingBuffer {
     }
 
     public static boolean isShutdown(RingBuffer ring) {
-    	return ring.shutDown.get();
+    	return ring.imperativeShutDown.get();
     }
 
     public static void shutdown(RingBuffer ring) {
-    	if (!ring.shutDown.getAndSet(true)) {
+    	if (!ring.imperativeShutDown.getAndSet(true)) {
     		ring.firstShutdownCaller = new RingBufferException("Shutdown called");
     	}
 

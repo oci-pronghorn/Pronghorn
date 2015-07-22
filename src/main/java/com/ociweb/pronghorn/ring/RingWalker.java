@@ -18,8 +18,12 @@ public class RingWalker {
     boolean isNewMessage;
     public int cursor;
             
-    public long nextWorkingTail; //These two fields are holding state for the high level API
+    //These two fields are holding state for the high level API
+    public long nextWorkingTail; //This is NOT the same as the low level tail cache, this is for reading side of the ring
     public long nextWorkingHead; //This is NOT the same as the low level head cache, this is for writing side of the ring
+
+    public long holdingNextWorkingTail; 
+    public long holdingNextWorkingHead;
 
     
     //TODO: AA, need to add error checking to caputre the case when something on the stack has fallen off the ring
@@ -236,67 +240,15 @@ public class RingWalker {
 			 //now start new sequence
              ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
              ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead] = ringBufferConsumer.nextCursor;
-             if (seqLength==0) {
-                 sequenceStepForward(ringBuffer);
-             }
-             
 		 } else {
     	     if (//if this is a closing sequence group.
     				 (lastTokenOfFragment & ( (OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close) <<TokenBuilder.SHIFT_OPER)) == ((OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close)<<TokenBuilder.SHIFT_OPER)          
-    	            ) {
-    	         
-//    	         System.err.println("count "+ringBufferConsumer.seqStack[ringBufferConsumer.seqStackHead] );
-//    	         if (0==ringBufferConsumer.seqStack[ringBufferConsumer.seqStackHead]) {
-//    	             
-//    	             //started with zero so move foreward this was a zero length sequence.
-//    	             RingWalker.prepReadFragment(ringBuffer, ringBuffer.ringWalker);
-//    	             
-//    	             RingReader.releaseReadLock(ringBuffer);
-//    	             
-//    	             
-//    	         }
-    	         
+    	            ) {    	         
     	                continueSequence(ringBufferConsumer);
     		        }
 		 }
 		 
 	}
-    
-    private static void sequenceStepForward(RingBuffer ringBuffer) {
-        //This does not work because its too early?
-        
-        
-//        RingWalker ringBufferConsumer = ringBuffer.ringWalker;
-//        
-//        final long target = ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor] + ringBufferConsumer.nextWorkingTail; //One for the template ID NOTE: Caution, this simple implementation does NOT support preamble
-//        
-//        int scriptFragSize = ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor];
-//        
-//        long tmpNextWokingTail = ringBufferConsumer.nextWorkingTail;
-//      //always increment this tail position by the count of bytes used by this fragment
-//        RingBuffer.addAndGetBytesWorkingTailPosition(ringBuffer, RingBuffer.primaryBuffer(ringBuffer)[ringBuffer.mask & (int)(tmpNextWokingTail-1)]);           
-//
-//
-//        //from the last known fragment move up the working tail position to this new fragment location
-//        RingBuffer.setWorkingTailPosition(ringBuffer, tmpNextWokingTail);
-//        
-//        //save the index into these fragments so the reader will be able to find them.
-//        ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] =tmpNextWokingTail;
-//        
-//        assert(RingBuffer.bytesWorkingTailPosition(ringBuffer) <= RingBuffer.bytesHeadPosition(ringBuffer)) : "expected to have data up to "+RingBuffer.bytesWorkingTailPosition(ringBuffer)+" but we only have "+RingBuffer.bytesHeadPosition(ringBuffer);
-//        
-//        if ((RingBuffer.decBatchRelease(ringBuffer)<=0)) {  
-//            
-//            releaseBlockBeforeReadMessage(ringBuffer);
-//        }
-//
-//        
-//        
-//        int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1;
-//        prepReadFragment2(ringBuffer, ringBufferConsumer, tmpNextWokingTail, target, lastScriptPos, ringBufferConsumer.from.tokens[lastScriptPos]); 
-        
-    }
-
 
 
     private static boolean isClosingSequence(int token) {
@@ -446,9 +398,6 @@ public class RingWalker {
 			//now start new sequence
             ringBufferConsumer1.seqStack[++ringBufferConsumer1.seqStackHead] = seqLength;
             ringBufferConsumer1.seqCursors[ringBufferConsumer1.seqStackHead] = ringBufferConsumer1.nextCursor;
-            if (seqLength==0) {
-                sequenceStepForward(ringBuffer);
-            }
 		}
 	}
 
@@ -472,18 +421,26 @@ public class RingWalker {
 	}
     
  
-	static void reset(RingWalker consumerData, int ringPos) {
+	static void reset(RingWalker ringWalker, int ringPos) {
 
         /////
-        consumerData.cursor = (-1);
-        consumerData.nextCursor = (-1);
-        consumerData.seqStackHead = -1;
-        consumerData.nextWorkingHead=ringPos;
-        consumerData.nextWorkingTail=ringPos;        
+        resetCursorState(ringWalker);
         
-        RingWalker.setMsgIdx(consumerData,-1,0);
-        consumerData.isNewMessage = false;
+        ringWalker.nextWorkingHead=ringPos;// reading position
+        ringWalker.nextWorkingTail=ringPos;// writing position        
+                
+    }
+
+
+
+    static void resetCursorState(RingWalker ringWalker) {
+        ringWalker.cursor = -1;
+        ringWalker.nextCursor = -1;
+        ringWalker.seqStackHead = -1;
+        ringWalker.msgIdxPrev = -1;
+        ringWalker.msgIdx = -1;
         
+        ringWalker.isNewMessage = false;
     }
 
 	

@@ -39,26 +39,19 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     	1.0f,0.1f,0.01f,0.001f,1.0E-4f,1.0E-5f,1.0E-6f,1.0E-7f,1.0E-8f,1.0E-9f,1.0E-10f,1.0E-11f,1.0E-12f,1.0E-13f,1.0E-14f,1.0E-15f,1.0E-16f,1.0E-17f,1.0E-18f,1.0E-19f,1.0E-20f,1.0E-21f,1.0E-22f,1.0E-23f,1.0E-24f,1.0E-25f,1.0E-26f,1.0E-27f,1.0E-28f,1.0E-29f,1.0E-30f,1.0E-31f,
     	0E-32f,1.0E-33f,1.0E-34f,1.0E-35f,1.0E-36f,1.0E-37f,1.0E-38f,1.0E-39f,1.0E-40f,1.0E-41f,0E-42f,1.0E-43f,1.0E-44f,1.0E-45f,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN
     };
-    
-//    /**
-//     * These deprecated methods will be deleted in Feb 2015
-//     * They should be in-lined or replaced before then
-//     */
-//    @Deprecated
-//    public static int readInt(int[] buffer, int mask, PaddedLong pos, int loc) {
-//          return RingBuffer.readInt(buffer, mask, pos.value +  loc);
-//    }
-//	@Deprecated
-//    public static long readLong(int[] buffer, int mask, PaddedLong pos, int loc) {
-//    	return RingBuffer.readLong(buffer, mask, pos.value + loc);
-//    }
-    
+       
 	public static int readInt(RingBuffer ring, int loc) {
 		//allow all types of int and length
 		assert((loc&0x1C<<OFF_BITS)==0 || (loc&0x1F<<OFF_BITS)==(0x14<<OFF_BITS)) : "Expected to read some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
         return RingBuffer.readInt(RingBuffer.primaryBuffer(ring), ring.mask, ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
     }
 	
+	public static int readIntSecure(RingBuffer ring, int loc, int clearValue) {
+        //allow all types of int and length
+        assert((loc&0x1C<<OFF_BITS)==0 || (loc&0x1F<<OFF_BITS)==(0x14<<OFF_BITS)) : "Expected to read some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+        return RingBuffer.readIntSecure(RingBuffer.primaryBuffer(ring), ring.mask, ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc),clearValue);
+    }
+    	
 	public static short readShort(RingBuffer ring, int loc) {
 		assert((loc&0x1C<<OFF_BITS)==0) : "Expected to read some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
         return (short)RingBuffer.readInt(RingBuffer.primaryBuffer(ring), ring.mask, ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
