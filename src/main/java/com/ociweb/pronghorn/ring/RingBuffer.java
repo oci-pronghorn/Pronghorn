@@ -194,8 +194,13 @@ public final class RingBuffer {
     }
 
     private static final Logger log = LoggerFactory.getLogger(RingBuffer.class);
-//cas: I just have to say that I think it's time to get rid of the all caps constants.  We aren't shell programming
-// anymore.  Okay.  That's all.  I feel better now.
+    
+    //I would like to follow the convention where all caps constants are used to indicate static final values which are resolved at compile time.
+    //This is distinct from other static finals which hold run time instances and values computed from runtime input.
+    //The reason for this distinction is that these members have special properties.
+    //    A) the literal value replaces the variable by the compiler so..   a change of value requires a recompile of all dependent jars.
+    //    B) these are the only variables which are allowed as case values in switch statements.
+   
     public static final int RELATIVE_POS_MASK = 0x7FFFFFFF; //removes high bit which indicates this is a constant
     private static final AtomicInteger ringCounter = new AtomicInteger();
 // cas: your comment confuses me since this is exactly the same as the relativePositionMask above.
@@ -234,23 +239,6 @@ public final class RingBuffer {
     private final PrimaryBufferTail primaryBufferTail = new PrimaryBufferTail(); //primary working and public
     private final ByteBufferTail byteBufferTail = new ByteBufferTail(); //primary working and public
     LLRead llRead; //low level read tail pos cache and target
-
-    //Replay NOTES:
-    //   replay must store primary/byte working positions and replace them.
-    //
-    //   The High-Level and Event APIs require a lot of state to ensure lookup of the field locations.
-    //   Duplication or reproduction of this state is not possible (or not yet known how) when we want
-    //   to replay the messages from tail up to working tail.
-    //
-    //   As a result, the replay feature will only be supported by the low-level API.
-    //   It may be supported by the visitor API if a need arises.
-    //
-    //     llRead/llWrite hold next and cached values that do not appear to need adjustment
-    //     canRead will always return true for low level api however
-//cas: the following line is cryptic.
-    //     confirm of read must never be called because this value can not be changed!
-
-
 
     //these values are only modified and used when replay is NOT in use
     //hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
@@ -356,6 +344,11 @@ public final class RingBuffer {
 
 	////
 	////
+	public static void batchAllReleases(RingBuffer rb) {
+	       rb.batchReleaseCountDownInit = Integer.MAX_VALUE;
+	       rb.batchReleaseCountDown = Integer.MAX_VALUE;
+	}
+	
 
     public static void setReleaseBatchSize(RingBuffer rb, int size) {
 
@@ -411,7 +404,10 @@ public final class RingBuffer {
     	rb.bytesReadBase = rb.byteBufferTail.byteWorkingTailPos.value;
     }
 
-// cas: comment -- is this current with what you would want to see?
+    /**
+     * Helpful user readable summary of the ring buffer.
+     * Shows where the head and tail positions are along with how full the ring is at the time of call.
+     */
     public String toString() {
 
     	StringBuilder result = new StringBuilder();
@@ -442,14 +438,12 @@ public final class RingBuffer {
     	byte primaryBits = config.primaryBits;
     	byte byteBits = config.byteBits;
     	byte[] byteConstants = config.byteConst;
-// cas:  I hadn't noticed the acronym -- clever.
-    	FieldReferenceOffsetManager from = config.from;
+
 
     	debugFlags = config.debugFlags;
 
-        //constant data will never change and is populated externally.
-//cas: comment -- So.  If this is populated externally, why do you have to be concerned about incrementing the value
-// for the next ringId?
+        //Assign the immutable universal id value for this specific instance
+    	//these values are required to keep track of all ring buffers when graphs are built
         this.ringId = ringCounter.getAndIncrement();
 
     	this.pBits = primaryBits;
@@ -467,6 +461,7 @@ public final class RingBuffer {
         this.maxByteSize =  1 << byteBits;
         this.byteMask = maxByteSize - 1;
 
+        FieldReferenceOffsetManager from = config.from;
         this.ringWalker = new RingWalker(from);
         this.constByteBuffer = byteConstants;
 
@@ -490,16 +485,15 @@ public final class RingBuffer {
 	public RingBuffer initBuffers() {
 		assert(!isInit(this)) : "RingBuffer was already initialized";
 		if (!isInit(this)) {
-			buildBufffers();
+			buildBuffers();
 		} else {
 			log.warn("Init was already called once already on this ring buffer");
 		}
 		return this;
     }
 
-//cas: sp. s/Bufffers/Buffers/
 //cas: LEFT OFF HERE.
-	private void buildBufffers() {
+	private void buildBuffers() {
 
         assert(primaryBufferHead.workingHeadPos.value == primaryBufferHead.headPos.get());
         assert(primaryBufferTail.workingTailPos.value == primaryBufferTail.tailPos.get());
@@ -534,7 +528,9 @@ public final class RingBuffer {
 	}
 
 	public static boolean isInit(RingBuffer ring) {
-//cas: comment -- are you sure you have to check all of these?
+	    //Due to the fact that no locks are used it becomes necessary to check
+	    //every single field to ensure the full initialization of the object
+	    //this is done as part of graph set up and as such is called rarely.
 		return null!=ring.byteBuffer &&
 			   null!=ring.buffer &&
 			   null!=ring.bufferLookup &&
