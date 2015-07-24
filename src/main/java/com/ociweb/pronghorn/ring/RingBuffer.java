@@ -26,14 +26,16 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 //         mature enough that the public API should be well-documented.  (Although I'm not sure all the public API
 //         really is public.)  There will be some "jdoc" comments below as hints for whoever does it.
 
-//cas: jdoc: expand to give full understanding of the primary and secondary (byte) buffer usage.
-//cas: comment -- is this still aimed primarily at FAST?
 /**
- * Specialized ring buffer for holding decoded values from a FAST stream. Ring
- * buffer has blocks written which correspond to whole messages or sequence
- * items. Within these blocks the consumer is provided random (eg. direct)
- * access capabilities.
- *
+ * Schema aware data pipe implemented as an internal pair of ring buffers.  One ring holds all the fixed length 
+ * fields and the fixed length meta data relating to the variable length (unstructured firelds).  The other ring
+ * holds only bytes which back the variable length fields like Strings, or Images.
+ * 
+ * The supported Schema is defined in the FieldReferenceOffsetManager passed in upon construction.  The Schema is 
+ * make up of Messages and Messages are are made up of one or more fixed length fragments.  
+ * 
+ * These fragments enable direct lookup of fields within sequences and enable the consumptino of larger messages than 
+ * would fit within the defined limits of the buffers. 
  *
  *
  * @author Nathan Tippy
@@ -50,63 +52,87 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 
 public final class RingBuffer {
 
-    static class PrimaryBufferTail {
-//cas: comment -- how come you can get away with the the first being non-atomic?  And is there any value in making
-// the tail an AtomicLong when it is created as a PaddedAtomic?
-        public final PaddedLong workingTailPos;
-        public final AtomicLong tailPos;
+    /**
+     * Holds the active head position information
+     */
+    static class PrimaryBufferHead {
+        final PaddedLong workingHeadPos;
+        final AtomicLong headPos;
 
-        public PrimaryBufferTail() {
+        PrimaryBufferHead() {
+            this.workingHeadPos = new PaddedLong();
+            this.headPos = new PaddedAtomicLong();
+        }
+    }
+    
+    static class PrimaryBufferTail {
+        
+        /**
+         * The workingTailPosition is only to be used by the consuming thread. As values are read the tail is moved forward.
+         * Eventually the consumer finishes the read of the fragment and will use this working position as the value to be published
+         * in order to inform the writer of this new free space.
+         */
+        final PaddedLong workingTailPos; //no need for CAS since only one thread will ever use this.
+        
+        /**
+         * This is the official published tail position. It is written to by the consuming thread and frequently polled by the producing thread.
+         * Making use of the built in CAS features of AtomicLong forms a memory gate that enables this lock free implementation to function.
+         */
+        final AtomicLong tailPos;
+
+        /**
+         * Holds the active tail position information
+         */
+        PrimaryBufferTail() {
             this.workingTailPos = new PaddedLong();
             this.tailPos = new PaddedAtomicLong();
         }
 
-//cas: comment -- if not for general usage, would a package protection be more appropriate?
         /**
          * Switch the working back to the published tail position.
          * Only used by replay feature, not for general use.
          */
-		public long rollBackWorking() {
+		long rollBackWorking() {
 			return workingTailPos.value = tailPos.get();
 		}
     }
 
-//cas:  comment -- this is _really_ minor, but most folk put the head before the tail.
-    static class PrimaryBufferHead {
-        public final PaddedLong workingHeadPos;
-        public final AtomicLong headPos;
 
-        public PrimaryBufferHead() {
-            this.workingHeadPos = new PaddedLong();
-//cas: I find it curious that the PaddedAtomic is a separate class whereas the PaddedOthers are in this class.  Given
-// the sized of this class, I thing splitting the Int/Long out might be a good idea as well.
-            this.headPos = new PaddedAtomicLong();
+/**
+ * Spinning on a CAS AtomicLong leads to a lot of contention which will decrease performance.
+ * Once we know that the producer can write up to a given position there  is no need to keep polling until we have written up to that point.
+ * This class hold the head value until that position is reached.
+ */
+    static class LowLevelAPIWritePositionCache {
+        /**
+         * This is the position the producer is allowed to write up to before having to ask the CAS AtomicLong again for a new value. 
+         */
+        long llwHeadPosCache;
+ 
+        /**
+         * This holds the last position that has been officially written.  The Low Level API uses the size of the next fragment
+         * added to this value to determine if the next write will need to go past the cached head position above.
+         * 
+         * Once we know that the write will fit this value is incremented by the size to confirm the write.  This is independent 
+         * of the workingHeadPosition by design so we have two accounting mechanisms to help detected errors.
+         * 
+         * TODO: AA add asserts that implemented the above claim.
+         */
+        long llwConfirmedWrittenPosition;
+
+        LowLevelAPIWritePositionCache() {
         }
     }
-
-//cas: comment -- I would move these below the byte buffer.
-//cas: naming -- I find the names LLWrite/Read sort of confusing since they don't either read or write.  They really
-// are data-only classes that hold positions.  As such, something like LLWritePos and LLReadPos would be better,
-// but still not accurate.  In actual fact, when I see a Target and a Cache as the only members of a class, I'm not
-// sure what to call this thing.
-//cas: jdoc: explain why a cache is needed when the actual head position is available.
-    public static class LLWrite {
-        public long llwHeadPosCache;
-//cas: comment -- I find this confusing/redundant..  A "head" is a target.  It's the pointer to a place in a buffer.
-// Isn't this just the next value for the head (nextHead)?
-        public long llwNextHeadTarget;
-//cas: I'm not sure of the value of a no-arg ctor in a file this long.
-        public LLWrite() {
-        }
-    }
+    
 //cas: see above ;-\
-    public static class LLRead {
-        public long llrTailPosCache;
-        public long llrNextTailTarget;
+    static class LLRead {
+        long llrTailPosCache;
+        long llwConfirmedReadPosition;
 
-        public LLRead() {
+        LLRead() {
         }
     }
+    
 //cas: comment -- The initial jdoc will explain the use of the two buffers.  However, the names of the buffers
 // should match their function.  If one is a primary buffer, then the other is a secondary buffer. If the second is
 // a byte buffer, then the first is an integer (or some such numeric term) buffer.  In conversation, you've referred to
@@ -224,7 +250,7 @@ public final class RingBuffer {
     private final PrimaryBufferHead primaryBufferHead = new PrimaryBufferHead();
     private final ByteBufferHead byteBufferHead = new ByteBufferHead();
 
-    LLWrite llWrite; //low level write head pos cache and target
+    LowLevelAPIWritePositionCache llWrite; //low level write head pos cache and target
 //cas: jdoc -- This is the first mention of batch(ing).  It would really help the maintainer's comprehension of what
 // you mean if you would explain this hugely overloaded word somewhere prior to use -- probably in the class's javadoc.
     //hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
@@ -500,17 +526,17 @@ public final class RingBuffer {
         long toPos = primaryBufferHead.workingHeadPos.value;//can use this now that we have confirmed they all match.
 
         this.llRead = new LLRead();
-        this.llWrite = new LLWrite();
+        this.llWrite = new LowLevelAPIWritePositionCache();
 
         // cas: comment.  If it really, truly must be the same, then a common routine should be
         // extracted (unless you can call reset here).
         //This init must be the same as what is done in reset()
         //This target is a counter that marks if there is room to write more data into the ring without overwriting other data.
-        this.llRead.llrNextTailTarget = 0-this.maxSize;
+        this.llRead.llwConfirmedReadPosition = 0-this.maxSize;
         llWrite.llwHeadPosCache = toPos;
         llRead.llrTailPosCache = toPos;
-        llRead.llrNextTailTarget = toPos - maxSize;
-        llWrite.llwNextHeadTarget = toPos;
+        llRead.llwConfirmedReadPosition = toPos - maxSize;
+        llWrite.llwConfirmedWrittenPosition = toPos;
 
         this.byteBuffer = new byte[maxByteSize];
         this.buffer = new int[maxSize];
@@ -572,8 +598,8 @@ public final class RingBuffer {
         if (null!=llWrite) {
             llWrite.llwHeadPosCache = toPos;
             llRead.llrTailPosCache = toPos;
-            llRead.llrNextTailTarget = toPos - maxSize;
-            llWrite.llwNextHeadTarget = toPos;
+            llRead.llwConfirmedReadPosition = toPos - maxSize;
+            llWrite.llwConfirmedWrittenPosition = toPos;
         }
 
         byteBufferHead.byteWorkingHeadPos.value = bPos;
@@ -1859,7 +1885,7 @@ public final class RingBuffer {
 		ring.bytesWriteLastConsumedBytePos = ring.byteBufferHead.byteWorkingHeadPos.value;
 
     	assert(ring.primaryBufferHead.workingHeadPos.value >= RingBuffer.headPosition(ring));
-    	assert(ring.llWrite.llwNextHeadTarget<=RingBuffer.headPosition(ring) || ring.primaryBufferHead.workingHeadPos.value<=ring.llWrite.llwNextHeadTarget) : "Unsupported mix of high and low level API. NextHead>head and workingHead>nextHead";
+    	assert(ring.llWrite.llwConfirmedWrittenPosition<=RingBuffer.headPosition(ring) || ring.primaryBufferHead.workingHeadPos.value<=ring.llWrite.llwConfirmedWrittenPosition) : "Unsupported mix of high and low level API. NextHead>head and workingHead>nextHead";
 
     	publishHeadPositions(ring);
     }
@@ -2071,7 +2097,7 @@ public final class RingBuffer {
 
 	//TODO: AA, adjust unit tests to use this.
 	public static boolean roomToLowLevelWrite(RingBuffer output, int size) {
-		return roomToLowLevelWrite(output, output.llRead.llrNextTailTarget+size);
+		return roomToLowLevelWrite(output, output.llRead.llwConfirmedReadPosition+size);
 	}
 
 	private static boolean roomToLowLevelWrite(RingBuffer output, long target) {
@@ -2084,12 +2110,12 @@ public final class RingBuffer {
 	}
 
 	public static void confirmLowLevelWrite(RingBuffer output, int size) {
-		output.llRead.llrNextTailTarget += size;
+		output.llRead.llwConfirmedReadPosition += size;
 	}
 
 
 	public static boolean contentToLowLevelRead(RingBuffer input, int size) {
-		return contentToLowLevelRead2(input, input.llWrite.llwNextHeadTarget+size);
+		return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition+size);
 	}
 
 	private static boolean contentToLowLevelRead2(RingBuffer input, long target) {
@@ -2102,11 +2128,11 @@ public final class RingBuffer {
 	}
 
 	public static long confirmLowLevelRead(RingBuffer input, long size) {
-		return (input.llWrite.llwNextHeadTarget += size);
+		return (input.llWrite.llwConfirmedWrittenPosition += size);
 	}
 
     public static void setWorkingHeadTarget(RingBuffer input) {
-        input.llWrite.llwNextHeadTarget =  RingBuffer.getWorkingTailPosition(input);
+        input.llWrite.llwConfirmedWrittenPosition =  RingBuffer.getWorkingTailPosition(input);
     }
 
 	public static boolean hasReleasePending(RingBuffer ringBuffer) {
