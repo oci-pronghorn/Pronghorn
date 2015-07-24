@@ -50,7 +50,7 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 
 public final class RingBuffer {
 
-    public static class PrimaryBufferTail {
+    static class PrimaryBufferTail {
 //cas: comment -- how come you can get away with the the first being non-atomic?  And is there any value in making
 // the tail an AtomicLong when it is created as a PaddedAtomic?
         public final PaddedLong workingTailPos;
@@ -72,7 +72,7 @@ public final class RingBuffer {
     }
 
 //cas:  comment -- this is _really_ minor, but most folk put the head before the tail.
-    public static class PrimaryBufferHead {
+    static class PrimaryBufferHead {
         public final PaddedLong workingHeadPos;
         public final AtomicLong headPos;
 
@@ -141,12 +141,10 @@ public final class RingBuffer {
     }
 
     public static class PaddedLong {
-//cas: comment.  Is there any sort of way to guarantee these will be consecutive?  (looks like I need to revisit the
-// spec.
+        //provided that there are no other members of this object all these primitives will be next to one another in memory.        
         public long value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
 
-//cas: comment -- value is public.  Is there any overhead that can be avoided by accessing value directly vis a vis
-// using the following accessors?
+        //small static method will be frequently in-lined allowing direct access to the member without method overead
         public static long get(PaddedLong pi) {
             return pi.value;
         }
@@ -155,8 +153,7 @@ public final class RingBuffer {
             pi.value = value;
         }
 
-//cas: naming -- this should just be add.  Most folk would expect an add to return the resulting sum.
-        public static long addAndGet(PaddedLong pi, long inc) {
+        public static long add(PaddedLong pi, long inc) {
                 return pi.value += inc;
         }
 
@@ -167,8 +164,10 @@ public final class RingBuffer {
     }
 
     public static class PaddedInt {
-//cas: comment -- why do int and long have the same number of pad variables?
-        public int value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
+        //most platforms have 64 byte cache lines so this is padded to consume 16 4 byte ints
+        //if a platform has smaller cache lines this will use a little more memory than required but the performance will still be preserved.
+        //modern Intel and AMD chips commonly have 64 byte cache lines
+        public int value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7, padding8, padding9, padding10, padding11, padding13, padding14, padding15, padding16;
 
 		public static int get(PaddedInt pi) {
 	            return pi.value;
@@ -178,14 +177,12 @@ public final class RingBuffer {
 		    pi.value = value;
 		}
 
-//cas: naming
-	    public static int addAndGet(PaddedInt pi, int inc) {
+	    public static int add(PaddedInt pi, int inc) {
 	            return pi.value += inc;
 	    }
 
-//cas: naming -- does this have to be overloaded?  Can the name be changed to indicate it safely rolls over?
-	    public static int addAndGet(PaddedInt pi, int inc, int wrapMask) {
-               return pi.value = wrapMask&(inc+pi.value);
+	    public static int maskedAdd(PaddedInt pi, int inc, int wrapMask) {
+               return pi.value = wrapMask & (inc + pi.value);
         }
 
 		public String toString() {
@@ -1987,7 +1984,7 @@ public final class RingBuffer {
     }
 
     public static long addAndGetWorkingHead(RingBuffer ring, int inc) {
-        return PaddedLong.addAndGet(ring.primaryBufferHead.workingHeadPos, inc);
+        return PaddedLong.add(ring.primaryBufferHead.workingHeadPos, inc);
     }
 
     public static long getWorkingTailPosition(RingBuffer ring) {
@@ -1999,7 +1996,7 @@ public final class RingBuffer {
     }
 
     public static long addAndGetWorkingTail(RingBuffer ring, int inc) {
-        return PaddedLong.addAndGet(ring.primaryBufferTail.workingTailPos, inc);
+        return PaddedLong.add(ring.primaryBufferTail.workingTailPos, inc);
     }
 
 
@@ -2133,7 +2130,7 @@ public final class RingBuffer {
     }
 
     public static int addAndGetBytesHead(RingBuffer ring, int inc) {
-        return PaddedInt.addAndGet(ring.byteBufferHead.bytesHeadPos, inc);
+        return PaddedInt.add(ring.byteBufferHead.bytesHeadPos, inc);
     }
 
     public static int bytesWorkingTailPosition(RingBuffer ring) {
@@ -2141,7 +2138,7 @@ public final class RingBuffer {
     }
 
     public static int addAndGetBytesWorkingTailPosition(RingBuffer ring, int inc) {
-        return PaddedInt.addAndGet(ring.byteBufferTail.byteWorkingTailPos, inc, RingBuffer.BYTES_WRAP_MASK);
+        return PaddedInt.maskedAdd(ring.byteBufferTail.byteWorkingTailPos, inc, RingBuffer.BYTES_WRAP_MASK);
     }
 
     public static void setBytesWorkingTail(RingBuffer ring, int value) {
@@ -2153,7 +2150,7 @@ public final class RingBuffer {
     }
 
     public static int addAndGetBytesWorkingHeadPosition(RingBuffer ring, int inc) {
-        return PaddedInt.addAndGet(ring.byteBufferHead.byteWorkingHeadPos, inc, RingBuffer.BYTES_WRAP_MASK);
+        return PaddedInt.maskedAdd(ring.byteBufferHead.byteWorkingHeadPos, inc, RingBuffer.BYTES_WRAP_MASK);
     }
 
     public static void setBytesWorkingHead(RingBuffer ring, int value) {
