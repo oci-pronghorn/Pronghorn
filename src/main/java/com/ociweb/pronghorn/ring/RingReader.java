@@ -146,7 +146,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 			  
 	  int i = targetloc;
 	  while (charAndPos<limit) {
-	      charAndPos = RingBuffer.decodeUTF8Fast(ring.constByteBuffer, charAndPos, 0xFFFFFFFF);//constants never loop back            
+	      charAndPos = RingBuffer.decodeUTF8Fast(ring.unstructuredLayoutConstBuffer, charAndPos, 0xFFFFFFFF);//constants never loop back            
 	      target[i++] = (char)charAndPos;
 	  }
 	  return i - targetloc;    
@@ -193,7 +193,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     
 
     private static void readASCIIConst(RingBuffer ring, int len, char[] target, int targetloc, int pos) {
-        byte[] buffer = ring.constByteBuffer;
+        byte[] buffer = ring.unstructuredLayoutConstBuffer;
         while (--len >= 0) {
             char c = (char)buffer[pos++];
             target[targetloc++] = c;
@@ -248,7 +248,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
 
     private static boolean eqASCIIConst(RingBuffer ring, int len, CharSequence seq, int pos) {
-        byte[] buffer = ring.constByteBuffer;
+        byte[] buffer = ring.unstructuredLayoutConstBuffer;
         int i = 0;
         while (--len >= 0) {
             if (seq.charAt(i++)!=buffer[pos++]) {
@@ -276,7 +276,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         int chars = seq.length();
         while (--chars>=0) {
             
-            charAndPos = RingBuffer.decodeUTF8Fast(ring.constByteBuffer, charAndPos, Integer.MAX_VALUE);
+            charAndPos = RingBuffer.decodeUTF8Fast(ring.unstructuredLayoutConstBuffer, charAndPos, Integer.MAX_VALUE);
             
             if (seq.charAt(i++) != (char)charAndPos) {
                 return false;
@@ -360,7 +360,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
     	 int pos = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc))];
-    	 return pos<0 ? ring.constByteBuffer :  RingBuffer.byteBuffer(ring);
+    	 return pos<0 ? ring.unstructuredLayoutConstBuffer :  RingBuffer.byteBuffer(ring);
     }
     
     public static ByteBuffer readBytes(RingBuffer ring, int loc, ByteBuffer target) {
@@ -439,7 +439,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
     
     private static void readBytesConst(RingBuffer ring, int len, byte[] target, int targetloc, int pos) {
-            byte[] buffer = ring.constByteBuffer;
+            byte[] buffer = ring.unstructuredLayoutConstBuffer;
             while (--len >= 0) {
                 target[targetloc++]=buffer[pos++]; //TODO: AAAA replace with arrayCopy
             }
@@ -519,7 +519,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	}
     
     private static void readBytesConst(RingBuffer ring, int len, byte[] target, int targetloc, int targetMask, int pos) {
-            byte[] buffer = ring.constByteBuffer;
+            byte[] buffer = ring.unstructuredLayoutConstBuffer;
             while (--len >= 0) {//TODO: A,  need to replace with intrinsics.
                 target[targetMask & targetloc++]=buffer[pos++];
             }
