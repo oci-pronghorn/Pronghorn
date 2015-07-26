@@ -223,9 +223,9 @@ public class RingWriter {
 	public static void publishEOF(RingBuffer ring) {
 		
 		assert(RingBuffer.workingHeadPosition(ring)<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
-		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.maxSize - RingBuffer.EOF_SIZE), ring);
+		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.sizeOfStructuredLayoutRingBuffer - RingBuffer.EOF_SIZE), ring);
 		
-		assert(RingBuffer.tailPosition(ring)+ring.maxSize>=RingBuffer.headPosition(ring)+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
+		assert(RingBuffer.tailPosition(ring)+ring.sizeOfStructuredLayoutRingBuffer>=RingBuffer.headPosition(ring)+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 		RingBuffer.setBytesHead(ring, RingBuffer.bytesWorkingHeadPosition(ring));
 		RingBuffer.primaryBuffer(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +  RingBuffer.from(ring).templateOffset)]    = -1;	
 		RingBuffer.primaryBuffer(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  RingBuffer.from(ring).templateOffset)] = 0;
@@ -295,7 +295,7 @@ public class RingWriter {
 		
 		RingWalker consumerData = ring.ringWalker;
 		int fragSize = from.fragDataSize[messageTemplateLOC];
-		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, consumerData.nextWorkingHead - (ring.maxSize - fragSize), ring);
+		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, consumerData.nextWorkingHead - (ring.sizeOfStructuredLayoutRingBuffer - fragSize), ring);
 	
 		RingWalker.prepWriteFragment(ring, messageTemplateLOC, from, fragSize);
 	}
@@ -307,7 +307,7 @@ public class RingWriter {
 	 */
 	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
 		int fragSize = RingBuffer.from(ring).fragDataSize[cursorPosition];
-		long target = ring.ringWalker.nextWorkingHead - (ring.maxSize - fragSize);
+		long target = ring.ringWalker.nextWorkingHead - (ring.sizeOfStructuredLayoutRingBuffer - fragSize);
 		return RingWalker.tryWriteFragment1(ring, cursorPosition, RingBuffer.from(ring), fragSize, target, ring.llRead.llrTailPosCache >=  target);
 	}
 

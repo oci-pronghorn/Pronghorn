@@ -378,7 +378,7 @@ public class RingBufferMultiTemplateTest {
         while (true) {
         	
         	if (j == 0) {
-        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.maxSize - 1), ring);
+        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.sizeOfStructuredLayoutRingBuffer - 1), ring);
         		RingBuffer.publishEOF(ring);
         		return;//done
         	}
@@ -390,7 +390,7 @@ public class RingBufferMultiTemplateTest {
         	
         	switch(selectedTemplateId) {
 	        	case 2: //boxes
-	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.maxSize - 4), ring);
+	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.sizeOfStructuredLayoutRingBuffer - 4), ring);
 	        		
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_BOXES_LOC);
@@ -400,7 +400,7 @@ public class RingBufferMultiTemplateTest {
 	        		RingBuffer.publishWrites(ring);
 	        		break;
 	        	case 1: //samples
-	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.maxSize - 8), ring);
+	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.sizeOfStructuredLayoutRingBuffer - 8), ring);
 	        		
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_SAMPLE_LOC);
@@ -414,7 +414,7 @@ public class RingBufferMultiTemplateTest {
 	        		RingBuffer.publishWrites(ring);
 	        		break;
 	        	case 4: //reset
-	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.maxSize - 3), ring);
+	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, RingBuffer.workingHeadPosition(ring) - (ring.sizeOfStructuredLayoutRingBuffer - 3), ring);
 	        		
 	        		j--;
 	        		RingBuffer.addMsgIdx(ring, MSG_RESET_LOC);

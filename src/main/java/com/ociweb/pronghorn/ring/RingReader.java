@@ -391,7 +391,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         	buffer.clear();
         	buffer.position(position);
         	//use the end of the buffer if the lengh runs past it.
-        	buffer.limit(Math.min(ring.maxByteSize, position+len));
+        	buffer.limit(Math.min(ring.sizeOfUntructuredLayoutRingBuffer, position+len));
         }
         return buffer;
 	}
@@ -413,7 +413,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         	buffer.clear();
             //position is zero
         	int endPos = position+len;
-        	if (endPos>ring.maxByteSize) {
+        	if (endPos>ring.sizeOfUntructuredLayoutRingBuffer) {
         		buffer.limit(ring.byteMask & endPos);
         	} else {
         		buffer.limit(0);

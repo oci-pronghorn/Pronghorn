@@ -240,9 +240,9 @@ public final class RingBuffer {
 
     //these public fields are fine because they are all final
     public final int ringId;
-    public final int maxSize;
+    public final int sizeOfStructuredLayoutRingBuffer;
+    public final int sizeOfUntructuredLayoutRingBuffer;
     public final int mask;
-    public final int maxByteSize;
     public final int byteMask;
     public final byte pBits;
     public final byte bBits;
@@ -451,7 +451,7 @@ public final class RingBuffer {
     	result.append(" wrkTailPos ").append(primaryBufferTail.workingTailPos.value);
     	result.append(" headPos ").append(structuredLayoutRingBufferHead.headPos.get());
     	result.append(" wrkHeadPos ").append(structuredLayoutRingBufferHead.workingHeadPos.value);
-    	result.append("  ").append(structuredLayoutRingBufferHead.headPos.get()-primaryBufferTail.tailPos.get()).append("/").append(maxSize);
+    	result.append("  ").append(structuredLayoutRingBufferHead.headPos.get()-primaryBufferTail.tailPos.get()).append("/").append(sizeOfStructuredLayoutRingBuffer);
     	result.append("  bytesTailPos ").append(PaddedInt.get(byteBufferTail.bytesTailPos));
     	result.append(" bytesWrkTailPos ").append(byteBufferTail.byteWorkingTailPos.value);
     	result.append(" bytesHeadPos ").append(PaddedInt.get(unstructuredLayoutRingBufferHead.bytesHeadPos));
@@ -461,8 +461,11 @@ public final class RingBuffer {
     }
 
 
-// cas: cryptic.  (Don't see where the values for the privates come from.)
-    public RingBufferConfig config() { //this method is primarily used for testing
+    /**
+     * Return the configuration used for this ring buffer, Helpful when we need to make clones of the ring which will hold same message types.
+     * @return
+     */
+    public RingBufferConfig config() { //TODO: AAA, this creates garbage and we should just hold the config object instead of copying the values out.  Then return the same instance here.
         return new RingBufferConfig(pBits,bBits,unstructuredLayoutConstBuffer,ringWalker.from);
     }
 
@@ -488,13 +491,13 @@ public final class RingBuffer {
 
 //cas: naming.  This should be consistent with the maxByteSize, i.e., maxFixedSize or whatever.
         //single buffer size for every nested set of groups, must be set to support the largest need.
-        this.maxSize = 1 << primaryBits;
-        this.mask = maxSize - 1;
+        this.sizeOfStructuredLayoutRingBuffer = 1 << primaryBits;
+        this.mask = sizeOfStructuredLayoutRingBuffer - 1;
 
         //single text and byte buffers because this is where the variable length data will go.
 
-        this.maxByteSize =  1 << byteBits;
-        this.byteMask = maxByteSize - 1;
+        this.sizeOfUntructuredLayoutRingBuffer =  1 << byteBits;
+        this.byteMask = sizeOfUntructuredLayoutRingBuffer - 1;
 
         FieldReferenceOffsetManager from = config.from;
         this.ringWalker = new RingWalker(from);
@@ -505,11 +508,11 @@ public final class RingBuffer {
         	maxAvgVarLen = 0; //no fragments had any variable length fields so we never allow any
         } else {
         	//given outer ring buffer this is the maximum number of var fields that can exist at the same time.
-        	int mx = maxSize;
+        	int mx = sizeOfStructuredLayoutRingBuffer;
         	int maxVarCount = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, mx);
         	//to allow more almost 2x more flexibility in variable length bytes we track pairs of writes and ensure the
         	//two together are below the threshold rather than each alone
-        	maxAvgVarLen = maxByteSize/maxVarCount;
+        	maxAvgVarLen = sizeOfUntructuredLayoutRingBuffer/maxVarCount;
         }
     }
 
@@ -544,14 +547,14 @@ public final class RingBuffer {
         // extracted (unless you can call reset here).
         //This init must be the same as what is done in reset()
         //This target is a counter that marks if there is room to write more data into the ring without overwriting other data.
-        this.llRead.llwConfirmedReadPosition = 0-this.maxSize;
+        this.llRead.llwConfirmedReadPosition = 0-this.sizeOfStructuredLayoutRingBuffer;
         llWrite.llwHeadPosCache = toPos;
         llRead.llrTailPosCache = toPos;
-        llRead.llwConfirmedReadPosition = toPos - maxSize;
+        llRead.llwConfirmedReadPosition = toPos - sizeOfStructuredLayoutRingBuffer;
         llWrite.llwConfirmedWrittenPosition = toPos;
 
-        this.unstructuredLayoutRingBuffer = new byte[maxByteSize];
-        this.structuredLayoutRingBuffer = new int[maxSize];
+        this.unstructuredLayoutRingBuffer = new byte[sizeOfUntructuredLayoutRingBuffer];
+        this.structuredLayoutRingBuffer = new int[sizeOfStructuredLayoutRingBuffer];
         this.bufferLookup = new byte[][] {unstructuredLayoutRingBuffer,unstructuredLayoutConstBuffer};
 
         this.wrappedStructuredLayoutRingBuffer = IntBuffer.wrap(this.structuredLayoutRingBuffer);
@@ -611,7 +614,7 @@ public final class RingBuffer {
         if (null!=llWrite) {
             llWrite.llwHeadPosCache = toPos;
             llRead.llrTailPosCache = toPos;
-            llRead.llwConfirmedReadPosition = toPos - maxSize;
+            llRead.llwConfirmedReadPosition = toPos - sizeOfStructuredLayoutRingBuffer;
             llWrite.llwConfirmedWrittenPosition = toPos;
         }
 
@@ -964,15 +967,15 @@ public final class RingBuffer {
 
 	public static int computeMaxBatchSize(RingBuffer rb, int mustFit) {
 		assert(mustFit>=1);
-		int maxBatchFromBytes = rb.maxAvgVarLen==0?Integer.MAX_VALUE:(rb.maxByteSize/rb.maxAvgVarLen)/mustFit;
-		int maxBatchFromPrimary = (rb.maxSize/FieldReferenceOffsetManager.maxFragmentSize(from(rb)))/mustFit;
+		int maxBatchFromBytes = rb.maxAvgVarLen==0?Integer.MAX_VALUE:(rb.sizeOfUntructuredLayoutRingBuffer/rb.maxAvgVarLen)/mustFit;
+		int maxBatchFromPrimary = (rb.sizeOfStructuredLayoutRingBuffer/FieldReferenceOffsetManager.maxFragmentSize(from(rb)))/mustFit;
 		return Math.min(maxBatchFromBytes, maxBatchFromPrimary);
 	}
 
 	@Deprecated
 	public static void publishEOF(RingBuffer ring) {
 
-		assert(ring.primaryBufferTail.tailPos.get()+ring.maxSize>=ring.structuredLayoutRingBufferHead.headPos.get()+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
+		assert(ring.primaryBufferTail.tailPos.get()+ring.sizeOfStructuredLayoutRingBuffer>=ring.structuredLayoutRingBufferHead.headPos.get()+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 
 		PaddedInt.set(ring.unstructuredLayoutRingBufferHead.bytesHeadPos,ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value);
 		ring.structuredLayoutRingBuffer[ring.mask &((int)ring.structuredLayoutRingBufferHead.workingHeadPos.value +  from(ring).templateOffset)]    = -1;
@@ -2065,8 +2068,9 @@ public final class RingBuffer {
 		ring.primaryBufferTail.tailPos.lazySet(ring.primaryBufferTail.workingTailPos.value = workingTailPos);
 	}
 
+	@Deprecated
 	public static int primarySize(RingBuffer ring) {
-		return ring.maxSize;
+		return ring.sizeOfStructuredLayoutRingBuffer;
 	}
 
 	public static FieldReferenceOffsetManager from(RingBuffer ring) {

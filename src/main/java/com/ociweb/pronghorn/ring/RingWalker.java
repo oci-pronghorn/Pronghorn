@@ -506,7 +506,7 @@ public class RingWalker {
 
 	private static boolean copyFragment1(RingBuffer inputRing, RingBuffer outputRing, long start, int spaceNeeded, int bytesToCopy) {
 		
-		if ((spaceNeeded >  outputRing.maxSize-(int)(RingBuffer.workingHeadPosition(outputRing) - RingBuffer.tailPosition(outputRing)) )) {
+		if ((spaceNeeded >  outputRing.sizeOfStructuredLayoutRingBuffer-(int)(RingBuffer.workingHeadPosition(outputRing) - RingBuffer.tailPosition(outputRing)) )) {
 			return false;
 		}
 		copyFragment2(inputRing, outputRing, (int)start, spaceNeeded, bytesToCopy);		
