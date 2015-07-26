@@ -52,7 +52,7 @@ public class RingBufferMonitorStage extends PronghornStage {
 			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_HEAD_LOC, RingBuffer.headPosition(observedRingBuffer));
 			RingWriter.writeLong(notifyRingBuffer, TEMPLATE_TAIL_LOC, RingBuffer.tailPosition(observedRingBuffer));
 			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_MSG_LOC, RingReader.getMsgIdx(observedRingBuffer));	
-			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_SIZE_LOC, observedRingBuffer.maxSize);
+			RingWriter.writeInt(notifyRingBuffer, TEMPLATE_SIZE_LOC, observedRingBuffer.sizeOfStructuredLayoutRingBuffer);
 			
 			RingWriter.publishWrites(notifyRingBuffer);	
 		}

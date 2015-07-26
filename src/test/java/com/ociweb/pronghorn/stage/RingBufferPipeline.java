@@ -540,7 +540,7 @@ public class RingBufferPipeline {
 
 			 
 			 //test by starting at different location in the ring to force roll over.
-			 rings[j].reset(rings[j].maxSize-13,rings[j].maxByteSize-101);
+			 rings[j].reset(rings[j].sizeOfStructuredLayoutRingBuffer-13,rings[j].sizeOfUntructuredLayoutRingBuffer-101);
 	  		 
 			 if (monitor) {
 				 monitorRings[j] = new RingBuffer(new RingBufferConfig((byte)16, (byte)2, null, montorFROM));
