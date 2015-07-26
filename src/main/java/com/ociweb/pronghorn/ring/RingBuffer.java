@@ -556,6 +556,7 @@ public final class RingBuffer {
 
         this.wrappedStructuredLayoutRingBuffer = IntBuffer.wrap(this.structuredLayoutRingBuffer);
         this.wrappedUnstructuredLayoutRingBufferA = ByteBuffer.wrap(this.unstructuredLayoutRingBuffer);
+        this.wrappedUnstructuredLayoutRingBufferB = ByteBuffer.wrap(this.unstructuredLayoutRingBuffer);
         this.wrappedUnstructuredLayoutConstBuffer = null==this.unstructuredLayoutConstBuffer?null:ByteBuffer.wrap(this.unstructuredLayoutConstBuffer);
 
         assert(0==wrappedUnstructuredLayoutRingBufferA.position() && wrappedUnstructuredLayoutRingBufferA.capacity()==wrappedUnstructuredLayoutRingBufferA.limit()) : "The ByteBuffer is not clear.";
