@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+  
+   <template name="RingStatSample" id="1" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+        <uInt64 name="MS"   id="1">
+            <delta/>
+        </uInt64>
+        <uInt64 name="Head" id="2">
+            <delta/>
+        </uInt64>
+        <uInt64 name="Tail" id="3">
+            <delta/>
+        </uInt64>
+        <uInt32 name="TemplateId" id="4"/>
+        <uInt32 name="BufferSize" id="5">
+            <copy/>            
+        </uInt32>
+        
+    </template>
+    
+    <template name="RingStatEnhancedSample" id="2" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+        <uInt64 name="MS"   id="1">
+            <delta/>
+        </uInt64>
+        <uInt64 name="Head" id="2">
+            <delta/>
+        </uInt64>
+        <uInt64 name="Tail" id="3">
+            <delta/>
+        </uInt64>
+        <uInt32 name="TemplateId" id="4"/>
+        <uInt32 name="BufferSize" id="5">
+            <copy/>            
+        </uInt32>
+        <!-- Derived Fields -->
+        <uInt32 name="StackDepth" id="21">
+            <delta/>
+        </uInt32>
+        <uInt32 name="Latency" id="22">
+            <copy/>
+        </uInt32>                
+        
+    </template>
+
+</templates>
