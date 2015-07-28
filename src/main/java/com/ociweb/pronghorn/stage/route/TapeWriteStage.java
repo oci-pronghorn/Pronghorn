@@ -136,8 +136,8 @@ public class TapeWriteStage extends PronghornStage {
 			                   int totalBytesCopy) {
 
 		
-		IntBuffer primaryInts = RingBuffer.wrappedPrimaryIntBuffer(ss.source);
-		ByteBuffer secondaryBytes = RingBuffer.wrappedSecondaryByteBuffer(ss.source);
+		IntBuffer primaryInts = RingBuffer.wrappedStructuredLayoutRingBuffer(ss.source);
+		ByteBuffer secondaryBytes = RingBuffer.wrappedUnstructuredLayoutRingBufferA(ss.source);
 		
 		
 

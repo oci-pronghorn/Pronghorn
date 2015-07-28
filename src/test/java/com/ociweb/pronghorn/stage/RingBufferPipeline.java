@@ -574,7 +574,7 @@ public class RingBufferPipeline {
 				 
 				 RingBuffer[] splitsBuffers = new RingBuffer[splits];
 				 splitsBuffers[0] = rings[j+1];//must jump ahead because we are setting this early
-				 assert(splitsBuffers[0].pBits == ex+primaryBits);
+				 assert(splitsBuffers[0].bitsOfStructuredLayoutRingBuffer == ex+primaryBits);
 				 if (splits>1) {
 					 int k = splits;
 					 while (--k>0) {
