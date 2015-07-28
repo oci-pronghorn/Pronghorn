@@ -381,12 +381,12 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         int len = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp + 1)];
         ByteBuffer buffer;
         if (meta < 0) {
-        	buffer = RingBuffer.wrappedSecondaryConstByteBuffer(ring);
+        	buffer = RingBuffer.wrappedUnstructuredLayoutConstBuffer(ring);
         	int position = RingReader.POS_CONST_MASK & meta;    
         	buffer.position(position);
         	buffer.limit(position+len);        	
         } else {
-        	buffer = RingBuffer.wrappedSecondaryByteBuffer(ring);
+        	buffer = RingBuffer.wrappedUnstructuredLayoutRingBufferA(ring);
         	int position = ring.byteMask & RingBuffer.restorePosition(ring,meta);
         	buffer.clear();
         	buffer.position(position);
@@ -404,11 +404,11 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         ByteBuffer buffer;
         if (meta < 0) {
         	//always zero because constant array never wraps
-        	buffer = RingBuffer.wrappedSecondaryConstByteBuffer(ring);
+        	buffer = RingBuffer.wrappedUnstructuredLayoutConstBuffer(ring);
         	buffer.position(0);
         	buffer.limit(0);
         } else {
-        	buffer = RingBuffer.wrappedSecondaryByteBuffer(ring);
+        	buffer = RingBuffer.wrappedUnstructuredLayoutRingBufferA(ring);
         	int position = ring.byteMask & RingBuffer.restorePosition(ring,meta);
         	buffer.clear();
             //position is zero

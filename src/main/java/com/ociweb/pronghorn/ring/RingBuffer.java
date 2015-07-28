@@ -128,11 +128,11 @@ public final class RingBuffer {
     }
     
 //cas: see above ;-\
-    static class LLRead {
+    static class LowLevelAPIReadPositionCache {
         long llrTailPosCache;
         long llwConfirmedReadPosition;
 
-        LLRead() {
+        LowLevelAPIReadPositionCache() {
         }
     }
 
@@ -244,27 +244,25 @@ public final class RingBuffer {
     public final int sizeOfUntructuredLayoutRingBuffer;
     public final int mask;
     public final int byteMask;
-    public final byte pBits;
-    public final byte bBits;
+    public final byte bitsOfStructuredLayoutRingBuffer;
+    public final byte bitsOfUntructuredLayoutRingBuffer;
     public final int maxAvgVarLen;
 
 
     //TODO: AAAA, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
     //            the time slices of the graph will need to be kept for all rings to reconstruct history later.
 
-//cas: comment -- there needs to be a general clean-up and regrouping of the next two and half-dozen private
-// variables.  It would be great if they could be lumped together by intended use to simply the coming jdoc.
+
     private final StructuredLayoutRingHead structuredLayoutRingBufferHead = new StructuredLayoutRingHead();
     private final UnstructuredLayoutRingHead unstructuredLayoutRingBufferHead = new UnstructuredLayoutRingHead();
 
     LowLevelAPIWritePositionCache llWrite; //low level write head pos cache and target
-
+    LowLevelAPIReadPositionCache llRead; //low level read tail pos cache and target
 
     final RingWalker ringWalker;
 
     private final StructuredLayoutRingTail primaryBufferTail = new StructuredLayoutRingTail(); //primary working and public
     private final UnstructuredLayoutRingTail byteBufferTail = new UnstructuredLayoutRingTail(); //primary working and public
-    LLRead llRead; //low level read tail pos cache and target
 
     //these values are only modified and used when replay is NOT in use
     //hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
@@ -466,7 +464,7 @@ public final class RingBuffer {
      * @return
      */
     public RingBufferConfig config() { //TODO: AAA, this creates garbage and we should just hold the config object instead of copying the values out.  Then return the same instance here.
-        return new RingBufferConfig(pBits,bBits,unstructuredLayoutConstBuffer,ringWalker.from);
+        return new RingBufferConfig(bitsOfStructuredLayoutRingBuffer,bitsOfUntructuredLayoutRingBuffer,unstructuredLayoutConstBuffer,ringWalker.from);
     }
 
 
@@ -484,8 +482,8 @@ public final class RingBuffer {
     	//these values are required to keep track of all ring buffers when graphs are built
         this.ringId = ringCounter.getAndIncrement();
 
-    	this.pBits = primaryBits;
-    	this.bBits = byteBits;
+    	this.bitsOfStructuredLayoutRingBuffer = primaryBits;
+    	this.bitsOfUntructuredLayoutRingBuffer = byteBits;
 
         assert (primaryBits >= 0); //zero is a special case for a mock ring
 
@@ -540,7 +538,7 @@ public final class RingBuffer {
 
         long toPos = structuredLayoutRingBufferHead.workingHeadPos.value;//can use this now that we have confirmed they all match.
 
-        this.llRead = new LLRead();
+        this.llRead = new LowLevelAPIReadPositionCache();
         this.llWrite = new LowLevelAPIWritePositionCache();
 
         // cas: comment.  If it really, truly must be the same, then a common routine should be
@@ -586,7 +584,7 @@ public final class RingBuffer {
         	int bytesPerInt = (int)Math.ceil(length*RingBuffer.from(rb).maxVarFieldPerUnit);
         	int bitsDif = 32 - Integer.numberOfLeadingZeros(bytesPerInt - 1);
 
-        	throw new UnsupportedOperationException("Can not write byte array of length "+length+". The dif between primary and byte bits should be at least "+bitsDif+". "+rb.pBits+","+rb.bBits);
+        	throw new UnsupportedOperationException("Can not write byte array of length "+length+". The dif between primary and byte bits should be at least "+bitsDif+". "+rb.bitsOfStructuredLayoutRingBuffer+","+rb.bitsOfUntructuredLayoutRingBuffer);
         }
         rb.varLenMovingAverage = newAvg;
 	}
@@ -951,7 +949,7 @@ public final class RingBuffer {
      */
 	public static int bytesOfContent(RingBuffer ringBuffer) {
 		int dif = (ringBuffer.byteMask&ringBuffer.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value) - (ringBuffer.byteMask&PaddedInt.get(ringBuffer.byteBufferTail.bytesTailPos));
-		return ((dif>>31)<<ringBuffer.bBits)+dif;
+		return ((dif>>31)<<ringBuffer.bitsOfUntructuredLayoutRingBuffer)+dif;
 	}
 
 	public static void validateBatchSize(RingBuffer rb, int size) {
@@ -2090,15 +2088,19 @@ public final class RingBuffer {
 
 	}
 
-	public static IntBuffer wrappedPrimaryIntBuffer(RingBuffer ring) {
+	public static IntBuffer wrappedStructuredLayoutRingBuffer(RingBuffer ring) {
 		return ring.wrappedStructuredLayoutRingBuffer;
 	}
 
-	public static ByteBuffer wrappedSecondaryByteBuffer(RingBuffer ring) {
+	public static ByteBuffer wrappedUnstructuredLayoutRingBufferA(RingBuffer ring) {
 		return ring.wrappedUnstructuredLayoutRingBufferA;
 	}
 
-	public static ByteBuffer wrappedSecondaryConstByteBuffer(RingBuffer ring) {
+    public static ByteBuffer wrappedUnstructuredLayoutRingBufferB(RingBuffer ring) {
+        return ring.wrappedUnstructuredLayoutRingBufferB;
+    }
+    
+	public static ByteBuffer wrappedUnstructuredLayoutConstBuffer(RingBuffer ring) {
 		return ring.wrappedUnstructuredLayoutConstBuffer;
 	}
 

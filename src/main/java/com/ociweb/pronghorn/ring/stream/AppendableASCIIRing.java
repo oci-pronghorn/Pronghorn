@@ -26,7 +26,7 @@ public class AppendableASCIIRing implements Appendable {
 		if (RingBuffer.from(ringBuffer) != FieldReferenceOffsetManager.RAW_BYTES) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
-		int messagesPerRing = (1<<(ringBuffer.pBits-1));
+		int messagesPerRing = (1<<(ringBuffer.bitsOfStructuredLayoutRingBuffer-1));
 		outputTarget = step-messagesPerRing;//this value is negative		
 		tailPosCache = tailPosition(ringBuffer);
 		
