@@ -374,7 +374,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
 
 
-	public static ByteBuffer wrappedBuffer1(RingBuffer ring, int loc) {
+	public static ByteBuffer wrappedUnstructuredLayoutBufferA(RingBuffer ring, int loc) {
     	long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 
         int meta = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp)];
@@ -396,7 +396,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         return buffer;
 	}
 
-	public static ByteBuffer wrappedBuffer2(RingBuffer ring, int loc) {
+	public static ByteBuffer wrappedUnstructuredLayoutBufferB(RingBuffer ring, int loc) {
     	long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 
         int meta = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp)];
@@ -408,7 +408,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         	buffer.position(0);
         	buffer.limit(0);
         } else {
-        	buffer = RingBuffer.wrappedUnstructuredLayoutRingBufferA(ring);
+        	buffer = RingBuffer.wrappedUnstructuredLayoutRingBufferB(ring);
         	int position = ring.byteMask & RingBuffer.restorePosition(ring,meta);
         	buffer.clear();
             //position is zero
