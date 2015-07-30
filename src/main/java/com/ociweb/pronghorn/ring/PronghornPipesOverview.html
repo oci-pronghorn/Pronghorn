@@ -1,0 +1,44 @@
+<body>
+<h1>Pronghorn Pipes</h1>
+Pronghorn Pipes is a ring buffer based queuing utility for applications that require high performance and/or a small footprint. Well suited for embedded and stream based processing.
+
+Some of the key ideas embodied in the project are:
+<ul>
+    <li>Messages are data not objects</li>
+    <li>Using memory sequentially is faster than random access</li>
+    <li>Exclusive use of primitives provides for a smaller memory footprint</li>
+    <li>Stream processing must be garbage free to eliminate stalls and support deterministic behavior</li>
+    <li>Single producer single consumer lock free queues provide for simple designs and good performance</li>
+</ul>
+
+<h2>Purpose</h2>
+The purpose of this project was to build a light weight data passing queue for large concurrent application development. The Pronghorn framework makes use of these queues for all message passing between actors.
+
+Applications using Embedded and/or Compact Profiles will find this project most helpful. None of the collections APIs are used and all the processing is done with primitives. The only external dependencies are JUnit for testing and SLF4J for logging.
+
+<h2>Design</h2>
+These queues are similar to the Disruptor and also fill the same purpose which is to pass data between threads.
+
+Unlike other Java projects PronghornPipes defines messages as data and therefore are always serialized and do not have a (first class) object representation. Messages passed on the queue are defined in an XML file and are loaded into a schema object (FieldReferenceOffsetManager). This object can be used directly eliminating any need to use XML or parsing in a deliverable product.
+
+All the APIs read and write the fields directly in place (eg on the queue). This eliminates pointer chasing overhead and encourages sequential usage and optimal cache line usage.
+
+The RingBuffer class contains 2 private array buffers, one for fixed data and one for variable length data. This design enables direct access to any fields within the messages while supporting variable length field types.
+
+<h2>Ring Buffer Features</h2>
+<ul>
+    <li>Garbage free, runtime data passing does not allocate or free any memory</li>
+    <li>Lock free, CAS used for setting position of head/tail on ring buffer</li>
+    <li>Non-blocking, try methods provided to enable continuous progress</li>
+    <li>Support for both simple messages and complex messages with nested sequences</li>
+</ul>
+
+<h2>Multiple Usage APIs</h2>
+Internally there is one layout format for the data however to support all the different uses cases there are 4 different API to access the rings.
+<ul>
+    <li>Low level API for serialized data directly on the ring</li>
+    <li>High level API for field specific access</li>
+    <li>Streaming API using call-backs for each field for dynamic applications</li>
+    <li>Event Consumer/PRoduceer API for Object mapping</li>
+</ul>
+</body>
