@@ -63,15 +63,10 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     public void visitFragmentClose(String name, long id) {
         if (needsClose) {
             RingBuffer.takeValue(expectedInput); 
-            needsClose = false;
-            
-            RingBuffer.setWorkingHeadTarget(expectedInput);
-            
+            needsClose = false;            
+            RingBuffer.setWorkingHeadTarget(expectedInput);            
             RingBuffer.releaseReadLock(expectedInput);  
-        }
-        
-        //TODO: AAAA, must block at the top of EVERY fragment!! if fragment starts after close of sequence how do we detect this? Inject a new visitFragmentOpen?
-        
+        }  
     }
 
         
@@ -181,7 +176,8 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         
         CharSequence seq = (CharSequence)value;
         
-        //TODO: AAAA, must do UTF8 compare but do go go with chars or bytes? not sure yet
+        throw new UnsupportedOperationException();
+        //TODO: AAAA, WARNING THIS IS INCOMPLETE must do UTF8 compare but do go go with chars or bytes? not sure yet
     }
 
     @Override

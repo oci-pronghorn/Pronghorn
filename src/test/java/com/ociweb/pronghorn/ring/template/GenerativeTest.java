@@ -27,10 +27,10 @@ import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class GenerativeTest {
     
-    //TODO: AA, use "events" not "messages" in notation, this will lead to event source designs
-    //TODO: AA, testing full generative of nested sequences
-    //TODO: AA, continue to make private accessors for ring buffer
-    //TODO: AA, investigate the mapping of reactive streams interface on to the pipes.
+    //TODO: A, THOUGHT use "events" not "messages" in notation, this will lead to event source designs
+
+    
+    //TODO:M, investigate the mapping of reactive streams interface on to the pipes.
     
     
     

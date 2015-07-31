@@ -16,7 +16,7 @@ public class StreamingVisitorReader {
 
 	private int nestedFragmentDepth;
 	
-	//TODO: AA, this does not work with preamble of any size.
+	//TODO: B, this does not work with preamble of any size. is preamble a feature we really want to continue supporting in all case?
 	
 	public StreamingVisitorReader(RingBuffer inputRing, StreamingReadVisitor visitor) {
 		this.visitor = visitor;

@@ -1,5 +1,9 @@
 package com.ociweb.pronghorn.ring.stream;
 
+import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
+import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
+import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
+
 import java.io.OutputStream;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
@@ -38,6 +42,7 @@ public class RingOutputStream extends OutputStream implements AutoCloseable {
 	
 	@Override
 	public void close() {
-		RingStreams.writeEOF(ring);
+		spinBlockOnTail(tailPosition(ring), headPosition(ring)-(1 + ring.mask - RingBuffer.EOF_SIZE), ring);
+        RingBuffer.publishEOF(ring);
 	}
 }

@@ -119,7 +119,7 @@ public final class RingBuffer {
          * Once we know that the write will fit this value is incremented by the size to confirm the write.  This is independent 
          * of the workingHeadPosition by design so we have two accounting mechanisms to help detected errors.
          * 
-         * TODO: AA add asserts that implemented the above claim.
+         * TODO:M add asserts that implemented the claim found above in the comments.
          */
         long llwConfirmedWrittenPosition;
 
@@ -249,7 +249,7 @@ public final class RingBuffer {
     public final int maxAvgVarLen;
 
 
-    //TODO: AAAA, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
+    //TODO: B, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
     //            the time slices of the graph will need to be kept for all rings to reconstruct history later.
 
 
@@ -432,7 +432,7 @@ public final class RingBuffer {
     }
 
     public static void markBytesReadBase(RingBuffer rb) {
-    	//this assert is not quite right because we may have string fields of zero length, TODO: add check for this before restoring the assert.
+    	//this assert is not quite right because we may have string fields of zero length, TODO:M add check for this before restoring the assert.
      	//assert(0==from(rb).maxVarFieldPerUnit || rb.byteWorkingTailPos.value != rb.bytesReadBase) : "byteWorkingTailPos should have moved forward";
     	rb.unstructuredLayoutReadBase = rb.byteBufferTail.byteWorkingTailPos.value;
     }
@@ -463,7 +463,8 @@ public final class RingBuffer {
      * Return the configuration used for this ring buffer, Helpful when we need to make clones of the ring which will hold same message types.
      * @return
      */
-    public RingBufferConfig config() { //TODO: AAA, this creates garbage and we should just hold the config object instead of copying the values out.  Then return the same instance here.
+    public RingBufferConfig config() { 
+        //TODO:M, this creates garbage and we should just hold the config object instead of copying the values out.  Then return the same instance here.
         return new RingBufferConfig(bitsOfStructuredLayoutRingBuffer,bitsOfUntructuredLayoutRingBuffer,unstructuredLayoutConstBuffer,ringWalker.from);
     }
 
@@ -1743,7 +1744,6 @@ public final class RingBuffer {
     }
 
     public static int takeValue(RingBuffer ring) {
-        //TODO: breaks code generator, should fix assert(ring.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
     	return readValue(0, ring.structuredLayoutRingBuffer, ring.mask, ring.primaryBufferTail.workingTailPos.value++);
     }
 
@@ -1762,7 +1762,7 @@ public final class RingBuffer {
     public static int takeMsgIdx(RingBuffer ring) {
         assert(ring.primaryBufferTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring)) : " tail is "+ring.primaryBufferTail.workingTailPos.value+" but head is "+RingBuffer.workingHeadPosition(ring);
 
-    	//TODO: AAA, need to add assert to detect if this release was forgotten.
+    	//TODO:M To make this more error proof for future developers need to add assert to detect if this release was forgotten. done by some easy math.
     	RingBuffer.markBytesReadBase(ring);
 
     	int msgIdx = readValue(0, ring.structuredLayoutRingBuffer,ring.mask,ring.primaryBufferTail.workingTailPos.value++);
@@ -1788,7 +1788,6 @@ public final class RingBuffer {
     	releaseReads(ring);
     }
 
-    //TODO: AAA, need to simplify API and keep this one internal
     public static void releaseReadLock(RingBuffer ring) {
         assert(RingBuffer.contentRemaining(ring)>=0);
 
@@ -2113,8 +2112,6 @@ public final class RingBuffer {
 	//we do not need to fetch it again and this reduces contention on the CAS with the reader.
 	//This is an important performance feature of the low level API and should not be modified.
 
-
-	//TODO: AA, adjust unit tests to use this.
 	public static boolean roomToLowLevelWrite(RingBuffer output, int size) {
 		return roomToLowLevelWrite(output, output.llRead.llwConfirmedReadPosition+size);
 	}

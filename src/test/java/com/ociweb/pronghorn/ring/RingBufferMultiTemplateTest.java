@@ -488,7 +488,7 @@ public class RingBufferMultiTemplateTest {
 		
 	}
 	
-	//TODO: A, it would be nice to discover early that the ring buffer is too small for a sequence of size x, TBD
+	//TODO:B, it would be nice to discover early that the ring buffer is too small for a sequence of size x, TBD
 	
 	private void populateRingBufferWithSequence(RingBuffer ring, int testSize) {
 		
@@ -648,11 +648,9 @@ public class RingBufferMultiTemplateTest {
                  RingReader.printFragment(ring, target);                 
                  assertTrue(target.length()>0);
                  
-                 //TODO: AA, Must add validator that values are the same as generated.
-                 //TODO: AA, Must add validator that values are in the range of contract
-                 
-                 System.err.println(target); //TODO: A, must resolve this error.
-                 
+                 //TODO:M, Must add validator that values are the same as generated.
+                 //TODO:M, Must add validator that values are in the range of contract
+                                  
                  
                 int msgIdx = RingReader.getMsgIdx(ring);
                 if (msgIdx<0) {

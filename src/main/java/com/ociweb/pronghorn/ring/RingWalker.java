@@ -26,8 +26,9 @@ public class RingWalker {
     public long holdingNextWorkingHead;
 
     
-    //TODO: AA, need to add error checking to caputre the case when something on the stack has fallen off the ring
-    //      This can be a simple assert when we move the tail that it does not go past the value in stack[0];
+    //TODO:M, Make code more foolproof for usage by developers. 
+    //        need to add error checking to caputre the case when something on the stack has fallen off the ring
+    //        This can be a simple assert when we move the tail that it does not go past the value in stack[0];
     
 	final long[] activeReadFragmentStack;
 	final long[] activeWriteFragmentStack; 
@@ -271,9 +272,6 @@ public class RingWalker {
 		}
 	}
 
-
-   //TODO:AAAA, must auto call this on sequence of zero to close the sequence the nextCursor must be set to end not begginning.
-	
     private static void closeSequence(final RingWalker ringBufferConsumer) {
         if (--ringBufferConsumer.seqStackHead>=0) {
             if (isClosingSequence(ringBufferConsumer.from.tokens[ringBufferConsumer.nextCursor ])) {
@@ -281,7 +279,7 @@ public class RingWalker {
                     ringBufferConsumer.nextCursor = ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead];
                 } else {
                     --ringBufferConsumer.seqStackHead;//this dec is the same as the one in the above conditional
-                    //TODO: A, Note this repeating pattern above, this supports 2 nested sequences, Rewrite as while loop to support any number of nested sequences.
+                    //TODO:M, Note this repeating pattern above, this supports 2 nested sequences, Rewrite as while loop to support any number of nested sequences.
                     ringBufferConsumer.nextCursor++;
                 }
             }

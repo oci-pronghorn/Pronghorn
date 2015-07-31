@@ -11,9 +11,9 @@ import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class RingBufferSingleTemplateFloatTest {
 
-    private static int[] SINGLE_MESSAGE_TOKENS = new int[]{TokenBuilder.buildToken(TypeMask.IntegerUnsigned, //TODO: may want to make special type
-																				            OperatorMask.Field_None, 
-																				            0)};
+    private static int[] SINGLE_MESSAGE_TOKENS = new int[]{TokenBuilder.buildToken(TypeMask.IntegerUnsigned, 
+																			       OperatorMask.Field_None, 
+																			       0)};
 	private static String[] SINGLE_MESSAGE_NAMES = new String[]{"Float"};
 	private static long[] SINGLE_MESSAGE_IDS = new long[]{0};
 	private static final short ZERO_PREMABLE = 0;

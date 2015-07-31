@@ -1,7 +1,7 @@
 package com.ociweb.pronghorn.ring.util;
 
 
-//Needs work to clean it up and make it more effecient but it gets the job done in general.
+//Needs work to clean it up and make it more efficient but it gets the job done in general.
 
 public class Histogram {
 

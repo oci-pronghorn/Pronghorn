@@ -46,6 +46,40 @@ public class FROMValidation {
 	    //confirm that every field accessor is found
 	    //if not report single error and full source as it should be.
 	    
+	    //TODO: walk.
+	    
+	    int[] msgStart = encodedFrom.messageStarts;
+	    
+	    boolean ok = true;
+	    
+	    int i = msgStart.length;
+	    while (--i>=0) {
+	        int expectedMsgIdx = msgStart[i];
+	        String name = encodedFrom.fieldNameScript[i];	      
+	        long id = encodedFrom.fieldIdScript[i];
+	        int lookedUpMsgIdx = encodedFrom.lookupTemplateLocator(name, encodedFrom);
+	        assert(expectedMsgIdx == lookedUpMsgIdx) : "The same FROM object does not agree with its self";
+	        
+	        
+	        String constantName = "MSG_"+name.toUpperCase()+"_"+id;
+	        boolean found = false;
+	        int j = fields.length;
+	        while (--j>=0 && !found) {
+	            String fieldName = fields[j].getName();
+	            if (fieldName.equals(constantName)) {
+	                found = true;
+	                //now check for value.
+	                //TODO: print this value does not match.
+	                
+	            }
+	        }
+	        if (!found) {
+	            //TODO: print this constant is missing
+	            
+	        }
+	        
+	        
+	    }
 	    
 	    
 	    
@@ -54,7 +88,4 @@ public class FROMValidation {
 	    return true;
 	}
 
-	
-	//TODO: we need something similar for the Twitter App Id work, we can save it as part of the unit tests and generate a deployable which is obfuscated.
-	
 }

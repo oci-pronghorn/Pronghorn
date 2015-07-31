@@ -9,6 +9,7 @@ import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
@@ -36,7 +37,12 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 	}
-		
+	
+	@Override
+    public int available() throws IOException {
+        return 0;
+    }
+    
 	@Override
 	public int read() {
 		//this array does not escape the scope of this method so it will
@@ -93,7 +99,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 		do {
 			//block until we have something to read
 		    headPosCache = spinBlockOnHead(headPosCache, target, ring);
-		    target+=recordSize;
+		    target+=recordSize;		    
 		    returnLength = sendNewContent(targetData, targetOffset, targetLength);		    
 		    
 		} while (returnLength==0); //Must block until at least 1 byte was read or -1 EOF detected

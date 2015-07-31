@@ -75,7 +75,7 @@ class EndElementEvent implements SAXEvent {
 
 public class TemplateHandler extends DefaultHandler {
 
-	//TODO: AA, add support for not repeating the template id if message of same time are in sequence.
+	//TODO: B, needs FAST knowledge to add this,  add support for not repeating the template id if message of same time are in sequence.
 
     private static final String SPECIAL_PREFIX = "'>";
 
@@ -230,7 +230,7 @@ public class TemplateHandler extends DefaultHandler {
                 // upon close of this element the token at that location in the
                 // templateScript must have
                 // the Count updated to the right value.
-                boolean hasTemplateId = true;//TODO: where do we get this from?  THIS is ONLY set on the group open the close does not need it.
+                boolean hasTemplateId = true;//TODO: B FAST, where do we get this from?  THIS is ONLY set on the group open the close does not need it.
                 int token = TokenBuilder.buildToken(TypeMask.Group, hasTemplateId ? OperatorMask.Group_Bit_Templ : 0, catalogTemplateScriptIdx);
 
                 // this token will tell how to get back to the index in the script
@@ -646,7 +646,7 @@ public class TemplateHandler extends DefaultHandler {
                 if (null != fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
                     defaultConstValues.addInit(idx, fieldOperatorValue.getBytes());
                 } else {
-                	//TODO: A, this needs a unit test to ensure this null is represented as null all the way to the dictionary
+                	//TODO:M, for someone who knows how FAST works,  this needs a unit test to ensure this null is represented as null all the way to the dictionary
                     defaultConstValues.addInit(idx, null);
                 }
                 fieldOperatorValue = null;

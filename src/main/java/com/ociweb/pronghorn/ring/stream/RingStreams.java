@@ -199,7 +199,7 @@ public class RingStreams {
 			while ( (size=inputStream.read(buffer,position&byteMask,((position&byteMask) > ((position+maxBlockSize-1) & byteMask)) ? 1+byteMask-(position&byteMask) : maxBlockSize))>=0 ) {	
 				if (size>0) {
 					//block until there is a slot to write into
-					tailPosCache = spinBlockOnTail(tailPosCache, targetTailValue, outputRing);
+					tailPosCache = spinBlockOnTail(tailPosCache, targetTailValue, outputRing);///TODO:M Rewrite using RingBuffer.roomToLowLevelWrite(output, size)
 					targetTailValue += step;
 					
 					RingBuffer.addMsgIdx(outputRing, 0);
@@ -239,7 +239,7 @@ public class RingStreams {
 		int stop = dataOffset+dataLength;
 		while (position<stop) {
 			 
-			    tailPosCache = spinBlockOnTail(tailPosCache, headPosition(output)-fill, output); ///TODO:AAAAAA, written the slow way.
+			    tailPosCache = spinBlockOnTail(tailPosCache, headPosition(output)-fill, output); ///TODO:M Rewrite using RingBuffer.roomToLowLevelWrite(output, size)
 
 			    int fragmentLength = (int)Math.min(blockSize, stop-position);
 		 
@@ -254,7 +254,7 @@ public class RingStreams {
 	}
 
 	@Deprecated
-	public static void writeEOF(RingBuffer ring) {
+	public static void writeEOF(RingBuffer ring) {//TODO:M propose a way to remove the need for this poison pill and the blocking use of this call on close()
 		spinBlockOnTail(tailPosition(ring), headPosition(ring)-(1 + ring.mask - RingBuffer.EOF_SIZE), ring);
 		RingBuffer.publishEOF(ring);	
 	}
@@ -281,7 +281,7 @@ public class RingStreams {
 	    	        	
 	    	//block until one more byteVector is ready.
 	    	
-	    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing); //TODO: AA,  make this non blocking.	                        	    	                        		           
+	    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing); //TODO:M,  make this non blocking- will require method signature change.	                        	    	                        		           
 	    	
 	    	int msg = RingBuffer.takeMsgIdx(inputRing);
 

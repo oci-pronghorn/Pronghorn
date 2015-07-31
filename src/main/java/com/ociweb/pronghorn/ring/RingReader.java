@@ -102,12 +102,8 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		
         return RingBuffer.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc) + 1)];// second int is always the length
     }
-    
-    //TODO: B, add new method CharSequence readASCII(RingBuffer ring, int loc, CharSequenceFlyweight target)
-    //      Char sequence must wrap the ring buffer backing array.  Passed in object is re-used for this call
-    
+  
     public static boolean isEqual(RingBuffer ring, int loc, CharSequence charSeq) {
-    	//TODO: check for eqivalance
     	int pos = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];      	
     	return RingBuffer.isEqual(ring, charSeq, pos, RingReader.readDataLength(ring, loc));
     }
@@ -441,7 +437,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     private static void readBytesConst(RingBuffer ring, int len, byte[] target, int targetloc, int pos) {
             byte[] buffer = ring.unstructuredLayoutConstBuffer;
             while (--len >= 0) {
-                target[targetloc++]=buffer[pos++]; //TODO: AAAA replace with arrayCopy
+                target[targetloc++]=buffer[pos++]; //TODO:M replace with arrayCopy
             }
     }
 
@@ -449,7 +445,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
             byte[] buffer = RingBuffer.byteBuffer(ring);
             int mask = ring.byteMask;
             while (--len >= 0) {
-                target[targetloc++]=buffer[mask & pos++]; //TODO: AAAA replace with dual arrayCopy
+                target[targetloc++]=buffer[mask & pos++]; //TODO:M replace with dual arrayCopy as seen elsewhere
             }
     }
     
@@ -520,7 +516,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     
     private static void readBytesConst(RingBuffer ring, int len, byte[] target, int targetloc, int targetMask, int pos) {
             byte[] buffer = ring.unstructuredLayoutConstBuffer;
-            while (--len >= 0) {//TODO: A,  need to replace with intrinsics.
+            while (--len >= 0) {//TODO:M replace with double arrayCopy as seen elsewhere
                 target[targetMask & targetloc++]=buffer[pos++];
             }
     }
