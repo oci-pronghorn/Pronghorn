@@ -134,6 +134,28 @@ public class GraphManager {
 		return clone;
 	}
 	
+   //TODO: We may want to deprecate this	
+   public static PronghornStage[] getStages(GraphManager m) {
+        return m.stageIdToStage;
+    }
+   
+   //TODO: We may want to deprecate this    
+   public static int[] getInputRingIdsForStage(GraphManager gm, int stageId) {
+
+       int[] ringIds = new int[INIT_RINGS];
+       int index = gm.stageIdToInputsBeginIdx[stageId];
+
+       while(-1 != gm.multInputIds[index]) {
+           ringIds[index] = gm.multInputIds[index++];
+       }
+
+       for(; index < INIT_RINGS; ++index) {
+           ringIds[index] = -1;
+       }
+
+       return ringIds;
+   }
+	
    public static int countStagesWithAnnotationKey(GraphManager m, Object key) {
         
         int count = 0;
