@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.stage.route;
+package com.ociweb.pronghorn.stage.file;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -137,9 +137,7 @@ public class TapeWriteStage extends PronghornStage {
 
 		
 		IntBuffer primaryInts = RingBuffer.wrappedStructuredLayoutRingBuffer(ss.source);
-		ByteBuffer secondaryBytes = RingBuffer.wrappedUnstructuredLayoutRingBufferA(ss.source);
-		
-		
+		ByteBuffer secondaryBytes = RingBuffer.wrappedUnstructuredLayoutRingBufferA(ss.source);	
 
 		primaryInts.position(primaryTailPos);
 		primaryInts.limit(primaryTailPos+totalPrimaryCopy); //TODO: AA, this will not work on the wrap, we must mask and do muliple copies
