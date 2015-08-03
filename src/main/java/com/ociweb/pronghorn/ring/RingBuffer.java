@@ -27,15 +27,15 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 //         really is public.)  There will be some "jdoc" comments below as hints for whoever does it.
 
 /**
- * Schema aware data pipe implemented as an internal pair of ring buffers.  One ring holds all the fixed length 
+ * Schema aware data pipe implemented as an internal pair of ring buffers.  One ring holds all the fixed length
  * fields and the fixed length meta data relating to the variable length (unstructured firelds).  The other ring
  * holds only bytes which back the variable length fields like Strings, or Images.
- * 
- * The supported Schema is defined in the FieldReferenceOffsetManager passed in upon construction.  The Schema is 
- * make up of Messages and Messages are are made up of one or more fixed length fragments.  
- * 
- * These fragments enable direct lookup of fields within sequences and enable the consumptino of larger messages than 
- * would fit within the defined limits of the buffers. 
+ *
+ * The supported Schema is defined in the FieldReferenceOffsetManager passed in upon construction.  The Schema is
+ * make up of Messages and Messages are are made up of one or more fixed length fragments.
+ *
+ * These fragments enable direct lookup of fields within sequences and enable the consumptino of larger messages than
+ * would fit within the defined limits of the buffers.
  *
  *
  * @author Nathan Tippy
@@ -69,16 +69,16 @@ public final class RingBuffer {
             this.headPos = new PaddedAtomicLong();
         }
     }
-    
+
     static class StructuredLayoutRingTail {
-        
+
         /**
          * The workingTailPosition is only to be used by the consuming thread. As values are read the tail is moved forward.
          * Eventually the consumer finishes the read of the fragment and will use this working position as the value to be published
          * in order to inform the writer of this new free space.
          */
         final PaddedLong workingTailPos; //no need for CAS since only one thread will ever use this.
-        
+
         /**
          * This is the official published tail position. It is written to by the consuming thread and frequently polled by the producing thread.
          * Making use of the built in CAS features of AtomicLong forms a memory gate that enables this lock free implementation to function.
@@ -110,25 +110,25 @@ public final class RingBuffer {
  */
     static class LowLevelAPIWritePositionCache {
         /**
-         * This is the position the producer is allowed to write up to before having to ask the CAS AtomicLong again for a new value. 
+         * This is the position the producer is allowed to write up to before having to ask the CAS AtomicLong again for a new value.
          */
         long llwHeadPosCache;
- 
+
         /**
          * This holds the last position that has been officially written.  The Low Level API uses the size of the next fragment
          * added to this value to determine if the next write will need to go past the cached head position above.
-         * 
-         * Once we know that the write will fit this value is incremented by the size to confirm the write.  This is independent 
+         *
+         * Once we know that the write will fit this value is incremented by the size to confirm the write.  This is independent
          * of the workingHeadPosition by design so we have two accounting mechanisms to help detected errors.
          * 
-         * TODO:M add asserts that implemented the claim found above in the comments.
+         * TODO:M add asserts that implement the claim found above in the comments.
          */
         long llwConfirmedWrittenPosition;
 
         LowLevelAPIWritePositionCache() {
         }
     }
-    
+
 //cas: see above ;-\
     static class LowLevelAPIReadPositionCache {
         long llrTailPosCache;
@@ -167,7 +167,7 @@ public final class RingBuffer {
     }
 
     public static class PaddedLong {
-        //provided that there are no other members of this object all these primitives will be next to one another in memory.        
+        //provided that there are no other members of this object all these primitives will be next to one another in memory.
         public long value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
 
         //small static method will be frequently in-lined allowing direct access to the member without method overhead
@@ -217,24 +217,23 @@ public final class RingBuffer {
     }
 
     private static final Logger log = LoggerFactory.getLogger(RingBuffer.class);
-    
+
     //I would like to follow the convention where all caps constants are used to indicate static final values which are resolved at compile time.
     //This is distinct from other static finals which hold run time instances and values computed from runtime input.
     //The reason for this distinction is that these members have special properties.
     //    A) the literal value replaces the variable by the compiler so..   a change of value requires a recompile of all dependent jars.
     //    B) these are the only variables which are allowed as case values in switch statements.
-   
+
     //This mask is used to filter the meta value used for variable length fields.
     //after applying this mask to meta the result is always the relative offset within the byte buffer of where the variable length data starts.
     //NOTE: when the high bit is set we will not pull the value from the ring buffer but instead use the constants array (these are pronouns)
     public static final int RELATIVE_POS_MASK = 0x7FFFFFFF; //removes high bit which indicates this is a constant
-      
 
     //This mask is here to support the fact that variable length fields will run out of space because the head/tail are 32 bit ints instead of
     //longs that are used for the structured layout data.  This mask enables the int to wrap back down to zero instead of going negative.
     //this will only happen once for every 2GB written.
     public static final int BYTES_WRAP_MASK = 0x7FFFFFFF;//NOTE: this trick only works because its 1 bit less than the roll-over sign bit
-        
+
     //A few corner use cases require a poison pill EOF message to be sent down the pipes to ensure each consumer knows when to shut down.
     //This is here for compatibility with legacy APIs,  This constant is the size of the EOF message.
     public static final int EOF_SIZE = 2;
@@ -306,7 +305,7 @@ public final class RingBuffer {
 
     static final int JUMP_MASK = 0xFFFFF;
 
-    //Exceptions must not occur within consumers/producers of rings however when they do we no longer have 
+    //Exceptions must not occur within consumers/producers of rings however when they do we no longer have
     //a clean understanding of state. To resolve the problem all producers and consumers must also shutdown.
     //This flag passes the signal so any producer/consumer that sees it on knows to shut down and pass on the flag.
     private final AtomicBoolean imperativeShutDown = new AtomicBoolean(false);
@@ -323,7 +322,7 @@ public final class RingBuffer {
 	    //hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
     private int lastPublishedUnstructuredLayoutRingBufferHead;
     private long lastPublishedStructuredLayoutRingBufferHead;
-	    
+
 	private final int debugFlags;
 
 	private long holdingPrimaryWorkingTail;
@@ -332,36 +331,40 @@ public final class RingBuffer {
 
 
 	public static void replayUnReleased(RingBuffer ringBuffer) {
-	    
-//We must enforce this but we have a few unit tests that are in violation which need to be fixed first	    
+
+//We must enforce this but we have a few unit tests that are in violation which need to be fixed first
 //	    if (!RingBuffer.from(ringBuffer).hasSimpleMessagesOnly) {
 //	        throw new UnsupportedOperationException("replay of unreleased messages is not supported unless every message is also a single fragment.");
 //	    }
-	    
+
 		if (!isReplaying(ringBuffer)) {
-			//save all working values only once if we re-enter replaying multiple times.			
-			
-		    ringBuffer.holdingPrimaryWorkingTail = RingBuffer.getWorkingTailPosition(ringBuffer);			
-			ringBuffer.holdingBytesWorkingTail = RingBuffer.bytesWorkingTailPosition(ringBuffer);			
-						
+			//save all working values only once if we re-enter replaying multiple times.
+
+		    ringBuffer.holdingPrimaryWorkingTail = RingBuffer.getWorkingTailPosition(ringBuffer);
+			ringBuffer.holdingBytesWorkingTail = RingBuffer.bytesWorkingTailPosition(ringBuffer);
+
 			//NOTE: we must never adjust the ringWalker.nextWorkingHead because this is replay and must not modify write position!
-			ringBuffer.ringWalker.holdingNextWorkingTail = ringBuffer.ringWalker.nextWorkingTail; 
-			ringBuffer.ringWalker.holdingNextWorkingHead = ringBuffer.ringWalker.nextWorkingHead; //Should not change, this is saved for validation that it did not change during replay. 
-			
+			ringBuffer.ringWalker.holdingNextWorkingTail = ringBuffer.ringWalker.nextWorkingTail;
+			ringBuffer.ringWalker.holdingNextWorkingHead = ringBuffer.ringWalker.nextWorkingHead; //Should not change, this is saved for validation that it did not change during replay.
+
 			ringBuffer.holdingBytesReadBase = ringBuffer.unstructuredLayoutReadBase;
-			
+
 		}
-		
+
 		//clears the stack and cursor position back to -1 so we assume that the next read will begin a new message
 		RingWalker.resetCursorState(ringBuffer.ringWalker);
-		
+
 		//set new position values for high and low api
 		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.structuredLayoutRingTail.rollBackWorking();
 		ringBuffer.unstructuredLayoutReadBase = ringBuffer.unstructuredLayoutRingTail.rollBackWorking(); //this byte position is used by both high and low api
-		
-		
 	}
 
+/**
+ * Returns <code>true</code> if the provided pipe is replaying.
+ *
+ * @param ringBuffer  the ringBuffer to check.
+ * @return            <code>true</code> if the ringBuffer is replaying, <code>false</code> if it is not.
+ */
 	public static boolean isReplaying(RingBuffer ringBuffer) {
 		return RingBuffer.getWorkingTailPosition(ringBuffer)<ringBuffer.holdingPrimaryWorkingTail;
 	}
@@ -369,9 +372,9 @@ public final class RingBuffer {
 	public static void cancelReplay(RingBuffer ringBuffer) {
 		ringBuffer.structuredLayoutRingTail.workingTailPos.value = ringBuffer.holdingPrimaryWorkingTail;
 		ringBuffer.unstructuredLayoutRingTail.byteWorkingTailPos.value = ringBuffer.holdingBytesWorkingTail;
-		
+
 		ringBuffer.unstructuredLayoutReadBase = ringBuffer.holdingBytesReadBase;
-		
+
 		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.ringWalker.holdingNextWorkingTail ;
 		assert(ringBuffer.ringWalker.holdingNextWorkingHead == ringBuffer.ringWalker.nextWorkingHead);
 	}
@@ -382,7 +385,7 @@ public final class RingBuffer {
 	       rb.batchReleaseCountDownInit = Integer.MAX_VALUE;
 	       rb.batchReleaseCountDown = Integer.MAX_VALUE;
 	}
-	
+
 
     public static void setReleaseBatchSize(RingBuffer rb, int size) {
 
@@ -530,7 +533,6 @@ public final class RingBuffer {
 		return this;
     }
 
-//cas: LEFT OFF HERE.
 	private void buildBuffers() {
 
         assert(structuredLayoutRingBufferHead.workingHeadPos.value == structuredLayoutRingBufferHead.headPos.get());
@@ -543,8 +545,6 @@ public final class RingBuffer {
         this.llRead = new LowLevelAPIReadPositionCache();
         this.llWrite = new LowLevelAPIWritePositionCache();
 
-        // cas: comment.  If it really, truly must be the same, then a common routine should be
-        // extracted (unless you can call reset here).
         //This init must be the same as what is done in reset()
         //This target is a counter that marks if there is room to write more data into the ring without overwriting other data.
         this.llRead.llwConfirmedReadPosition = 0-this.sizeOfStructuredLayoutRingBuffer;
@@ -1204,10 +1204,10 @@ public final class RingBuffer {
 	/**
 	 * Read and return the int value at this position and clear the value with the provided clearValue.
 	 * This ensures no future calls will be able to read the value once this is done.
-	 * 
+	 *
 	 * This is primarily needed for secure data xfers when the re-use of a ring buffer may 'leak' old values.
 	 * It is also useful for setting flags in conjuction with the replay feature.
-	 * 
+	 *
 	 * @param buffer
 	 * @param mask
 	 * @param index
@@ -1220,7 +1220,7 @@ public final class RingBuffer {
             buffer[idx] = clearValue;
             return result;
 	}
-	
+
 	public static long readLong(int[] buffer, int mask, long index) {
 		return (((long) buffer[mask & (int)index]) << 32) | (((long) buffer[mask & (int)(index + 1)]) & 0xFFFFFFFFl);
 	}
