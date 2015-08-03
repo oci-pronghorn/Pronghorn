@@ -261,15 +261,15 @@ public final class RingBuffer {
 
     final RingWalker ringWalker;
 
-    private final StructuredLayoutRingTail primaryBufferTail = new StructuredLayoutRingTail(); //primary working and public
-    private final UnstructuredLayoutRingTail byteBufferTail = new UnstructuredLayoutRingTail(); //primary working and public
+    private final StructuredLayoutRingTail structuredLayoutRingTail = new StructuredLayoutRingTail(); //primary working and public
+    private final UnstructuredLayoutRingTail unstructuredLayoutRingTail = new UnstructuredLayoutRingTail(); //primary working and public
 
     //these values are only modified and used when replay is NOT in use
     //hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
     private int lastReleasedBytesTail;
     private long lastReleasedTail;
 
-    private int bytesWriteLastConsumedBytePos = 0;
+    private int unstructuredWriteLastConsumedBytePos = 0;
 
     //All references found in the messages/fragments to variable length content are relative.  These members hold the current
     //base offset to which the relative value is added to find the absolute position in the ring.
@@ -355,8 +355,8 @@ public final class RingBuffer {
 		RingWalker.resetCursorState(ringBuffer.ringWalker);
 		
 		//set new position values for high and low api
-		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.primaryBufferTail.rollBackWorking();
-		ringBuffer.unstructuredLayoutReadBase = ringBuffer.byteBufferTail.rollBackWorking(); //this byte position is used by both high and low api
+		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.structuredLayoutRingTail.rollBackWorking();
+		ringBuffer.unstructuredLayoutReadBase = ringBuffer.unstructuredLayoutRingTail.rollBackWorking(); //this byte position is used by both high and low api
 		
 		
 	}
@@ -366,8 +366,8 @@ public final class RingBuffer {
 	}
 
 	public static void cancelReplay(RingBuffer ringBuffer) {
-		ringBuffer.primaryBufferTail.workingTailPos.value = ringBuffer.holdingPrimaryWorkingTail;
-		ringBuffer.byteBufferTail.byteWorkingTailPos.value = ringBuffer.holdingBytesWorkingTail;
+		ringBuffer.structuredLayoutRingTail.workingTailPos.value = ringBuffer.holdingPrimaryWorkingTail;
+		ringBuffer.unstructuredLayoutRingTail.byteWorkingTailPos.value = ringBuffer.holdingBytesWorkingTail;
 		
 		ringBuffer.unstructuredLayoutReadBase = ringBuffer.holdingBytesReadBase;
 		
@@ -434,7 +434,7 @@ public final class RingBuffer {
     public static void markBytesReadBase(RingBuffer rb) {
     	//this assert is not quite right because we may have string fields of zero length, TODO:M add check for this before restoring the assert.
      	//assert(0==from(rb).maxVarFieldPerUnit || rb.byteWorkingTailPos.value != rb.bytesReadBase) : "byteWorkingTailPos should have moved forward";
-    	rb.unstructuredLayoutReadBase = rb.byteBufferTail.byteWorkingTailPos.value;
+    	rb.unstructuredLayoutReadBase = rb.unstructuredLayoutRingTail.byteWorkingTailPos.value;
     }
 
     /**
@@ -445,13 +445,13 @@ public final class RingBuffer {
 
     	StringBuilder result = new StringBuilder();
     	result.append("RingId:").append(ringId);
-    	result.append(" tailPos ").append(primaryBufferTail.tailPos.get());
-    	result.append(" wrkTailPos ").append(primaryBufferTail.workingTailPos.value);
+    	result.append(" tailPos ").append(structuredLayoutRingTail.tailPos.get());
+    	result.append(" wrkTailPos ").append(structuredLayoutRingTail.workingTailPos.value);
     	result.append(" headPos ").append(structuredLayoutRingBufferHead.headPos.get());
     	result.append(" wrkHeadPos ").append(structuredLayoutRingBufferHead.workingHeadPos.value);
-    	result.append("  ").append(structuredLayoutRingBufferHead.headPos.get()-primaryBufferTail.tailPos.get()).append("/").append(sizeOfStructuredLayoutRingBuffer);
-    	result.append("  bytesTailPos ").append(PaddedInt.get(byteBufferTail.bytesTailPos));
-    	result.append(" bytesWrkTailPos ").append(byteBufferTail.byteWorkingTailPos.value);
+    	result.append("  ").append(structuredLayoutRingBufferHead.headPos.get()-structuredLayoutRingTail.tailPos.get()).append("/").append(sizeOfStructuredLayoutRingBuffer);
+    	result.append("  bytesTailPos ").append(PaddedInt.get(unstructuredLayoutRingTail.bytesTailPos));
+    	result.append(" bytesWrkTailPos ").append(unstructuredLayoutRingTail.byteWorkingTailPos.value);
     	result.append(" bytesHeadPos ").append(PaddedInt.get(unstructuredLayoutRingBufferHead.bytesHeadPos));
     	result.append(" bytesWrkHeadPos ").append(unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value);
 
@@ -533,9 +533,9 @@ public final class RingBuffer {
 	private void buildBuffers() {
 
         assert(structuredLayoutRingBufferHead.workingHeadPos.value == structuredLayoutRingBufferHead.headPos.get());
-        assert(primaryBufferTail.workingTailPos.value == primaryBufferTail.tailPos.get());
-        assert(structuredLayoutRingBufferHead.workingHeadPos.value == primaryBufferTail.workingTailPos.value);
-        assert(primaryBufferTail.tailPos.get()==structuredLayoutRingBufferHead.headPos.get());
+        assert(structuredLayoutRingTail.workingTailPos.value == structuredLayoutRingTail.tailPos.get());
+        assert(structuredLayoutRingBufferHead.workingHeadPos.value == structuredLayoutRingTail.workingTailPos.value);
+        assert(structuredLayoutRingTail.tailPos.get()==structuredLayoutRingBufferHead.headPos.get());
 
         long toPos = structuredLayoutRingBufferHead.workingHeadPos.value;//can use this now that we have confirmed they all match.
 
@@ -601,32 +601,32 @@ public final class RingBuffer {
 
     /**
      * Rest to desired position, helpful in unit testing to force wrap off the end.
-     * @param toPos
+     * @param structuredPos
      */
-    public void reset(int toPos, int bPos) {
+    public void reset(int structuredPos, int unstructuredPos) {
 
-    	structuredLayoutRingBufferHead.workingHeadPos.value = toPos;
-        primaryBufferTail.workingTailPos.value = toPos;
-        primaryBufferTail.tailPos.set(toPos);
-        structuredLayoutRingBufferHead.headPos.set(toPos);
+    	structuredLayoutRingBufferHead.workingHeadPos.value = structuredPos;
+        structuredLayoutRingTail.workingTailPos.value = structuredPos;
+        structuredLayoutRingTail.tailPos.set(structuredPos);
+        structuredLayoutRingBufferHead.headPos.set(structuredPos);
 
         if (null!=llWrite) {
-            llWrite.llwHeadPosCache = toPos;
-            llRead.llrTailPosCache = toPos;
-            llRead.llwConfirmedReadPosition = toPos - sizeOfStructuredLayoutRingBuffer;
-            llWrite.llwConfirmedWrittenPosition = toPos;
+            llWrite.llwHeadPosCache = structuredPos;
+            llRead.llrTailPosCache = structuredPos;
+            llRead.llwConfirmedReadPosition = structuredPos - sizeOfStructuredLayoutRingBuffer;
+            llWrite.llwConfirmedWrittenPosition = structuredPos;
         }
 
-        unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = bPos;
-        PaddedInt.set(unstructuredLayoutRingBufferHead.bytesHeadPos,bPos);
+        unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = unstructuredPos;
+        PaddedInt.set(unstructuredLayoutRingBufferHead.bytesHeadPos,unstructuredPos);
 
-        unstructuredLayoutWriteBase = bPos;
-        unstructuredLayoutReadBase = bPos;
-        bytesWriteLastConsumedBytePos = bPos;
+        unstructuredLayoutWriteBase = unstructuredPos;
+        unstructuredLayoutReadBase = unstructuredPos;
+        unstructuredWriteLastConsumedBytePos = unstructuredPos;
 
-        byteBufferTail.byteWorkingTailPos.value = bPos;
-        PaddedInt.set(byteBufferTail.bytesTailPos,bPos);
-        RingWalker.reset(ringWalker, toPos);
+        unstructuredLayoutRingTail.byteWorkingTailPos.value = unstructuredPos;
+        PaddedInt.set(unstructuredLayoutRingTail.bytesTailPos,unstructuredPos);
+        RingWalker.reset(ringWalker, structuredPos);
     }
 
     public static void appendFragment(RingBuffer input, Appendable target, int cursor) {
@@ -702,7 +702,6 @@ public final class RingBuffer {
                             break;
                         case TypeMask.TextASCII:
                         case TypeMask.TextASCIIOptional:
-
                             {
                                 int meta = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input));
                                 int length = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input)+1);
@@ -949,7 +948,7 @@ public final class RingBuffer {
      * @return
      */
 	public static int bytesOfContent(RingBuffer ringBuffer) {
-		int dif = (ringBuffer.byteMask&ringBuffer.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value) - (ringBuffer.byteMask&PaddedInt.get(ringBuffer.byteBufferTail.bytesTailPos));
+		int dif = (ringBuffer.byteMask&ringBuffer.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value) - (ringBuffer.byteMask&PaddedInt.get(ringBuffer.unstructuredLayoutRingTail.bytesTailPos));
 		return ((dif>>31)<<ringBuffer.bitsOfUntructuredLayoutRingBuffer)+dif;
 	}
 
@@ -974,7 +973,7 @@ public final class RingBuffer {
 	@Deprecated
 	public static void publishEOF(RingBuffer ring) {
 
-		assert(ring.primaryBufferTail.tailPos.get()+ring.sizeOfStructuredLayoutRingBuffer>=ring.structuredLayoutRingBufferHead.headPos.get()+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
+		assert(ring.structuredLayoutRingTail.tailPos.get()+ring.sizeOfStructuredLayoutRingBuffer>=ring.structuredLayoutRingBufferHead.headPos.get()+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 
 		PaddedInt.set(ring.unstructuredLayoutRingBufferHead.bytesHeadPos,ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value);
 		ring.structuredLayoutRingBuffer[ring.mask &((int)ring.structuredLayoutRingBufferHead.workingHeadPos.value +  from(ring).templateOffset)]    = -1;
@@ -1639,7 +1638,7 @@ public final class RingBuffer {
     	int pos = restorePosition(ring, meta & RELATIVE_POS_MASK);
 
         if (len>=0) {
-        	ring.byteBufferTail.byteWorkingTailPos.value =  BYTES_WRAP_MASK&(len+ring.byteBufferTail.byteWorkingTailPos.value);
+        	ring.unstructuredLayoutRingTail.byteWorkingTailPos.value =  BYTES_WRAP_MASK&(len+ring.unstructuredLayoutRingTail.byteWorkingTailPos.value);
         }
 
         return pos;
@@ -1697,27 +1696,17 @@ public final class RingBuffer {
 
     }
 
-
-
-    // WARNING: consumer of these may need to loop around end of buffer !!
-    // these are needed for fast direct READ FROM here
-
-    @Deprecated
-    public static int readRingByteLen(int fieldPos, int[] rbB, int rbMask, PaddedLong rbPos) {
-        return readRingByteLen(fieldPos,rbB, rbMask, rbPos.value);
-    }
-
     public static int readRingByteLen(int fieldPos, int[] rbB, int rbMask, long rbPos) {
         return rbB[(int) (rbMask & (rbPos + fieldPos + 1))];// second int is always the length
     }
 
 	public static int readRingByteLen(int idx, RingBuffer ring) {
-		return readRingByteLen(idx,ring.structuredLayoutRingBuffer, ring.mask, ring.primaryBufferTail.workingTailPos.value);
+		return readRingByteLen(idx,ring.structuredLayoutRingBuffer, ring.mask, ring.structuredLayoutRingTail.workingTailPos.value);
 	}
 
 	public static int takeRingByteLen(RingBuffer ring) {
-	    assert(ring.primaryBufferTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
-		return ring.structuredLayoutRingBuffer[(int)(ring.mask & (ring.primaryBufferTail.workingTailPos.value++))];// second int is always the length
+	    assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
+		return ring.structuredLayoutRingBuffer[(int)(ring.mask & (ring.structuredLayoutRingTail.workingTailPos.value++))];// second int is always the length
 	}
 
 
@@ -1727,12 +1716,12 @@ public final class RingBuffer {
     }
 
 	public static int readRingByteMetaData(int pos, RingBuffer rb) {
-		return readValue(pos,rb.structuredLayoutRingBuffer,rb.mask,rb.primaryBufferTail.workingTailPos.value);
+		return readValue(pos,rb.structuredLayoutRingBuffer,rb.mask,rb.structuredLayoutRingTail.workingTailPos.value);
 	}
 
 	public static int takeRingByteMetaData(RingBuffer ring) {
-	    assert(ring.primaryBufferTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
-		return readValue(0,ring.structuredLayoutRingBuffer,ring.mask,ring.primaryBufferTail.workingTailPos.value++);
+	    assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
+		return readValue(0,ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value++);
 	}
 
     public static int readValue(int fieldPos, int[] rbB, int rbMask, long rbPos) {
@@ -1740,37 +1729,37 @@ public final class RingBuffer {
     }
 
     public static int readValue(int idx, RingBuffer ring) {
-    	return readValue(idx, ring.structuredLayoutRingBuffer,ring.mask,ring.primaryBufferTail.workingTailPos.value);
+    	return readValue(idx, ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value);
     }
 
     public static int takeValue(RingBuffer ring) {
-    	return readValue(0, ring.structuredLayoutRingBuffer, ring.mask, ring.primaryBufferTail.workingTailPos.value++);
+    	return readValue(0, ring.structuredLayoutRingBuffer, ring.mask, ring.structuredLayoutRingTail.workingTailPos.value++);
     }
 
     public static long takeLong(RingBuffer ring) {
-        assert(ring.primaryBufferTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
-    	long result = readLong(ring.structuredLayoutRingBuffer,ring.mask,ring.primaryBufferTail.workingTailPos.value);
-    	ring.primaryBufferTail.workingTailPos.value+=2;
+        assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
+    	long result = readLong(ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value);
+    	ring.structuredLayoutRingTail.workingTailPos.value+=2;
     	return result;
     }
 
     public static long readLong(int idx, RingBuffer ring) {
-    	return readLong(ring.structuredLayoutRingBuffer,ring.mask,idx+ring.primaryBufferTail.workingTailPos.value);
+    	return readLong(ring.structuredLayoutRingBuffer,ring.mask,idx+ring.structuredLayoutRingTail.workingTailPos.value);
 
     }
 
     public static int takeMsgIdx(RingBuffer ring) {
-        assert(ring.primaryBufferTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring)) : " tail is "+ring.primaryBufferTail.workingTailPos.value+" but head is "+RingBuffer.workingHeadPosition(ring);
+        assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring)) : " tail is "+ring.structuredLayoutRingTail.workingTailPos.value+" but head is "+RingBuffer.workingHeadPosition(ring);
 
     	//TODO:M To make this more error proof for future developers need to add assert to detect if this release was forgotten. done by some easy math.
     	RingBuffer.markBytesReadBase(ring);
 
-    	int msgIdx = readValue(0, ring.structuredLayoutRingBuffer,ring.mask,ring.primaryBufferTail.workingTailPos.value++);
+    	int msgIdx = readValue(0, ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value++);
     	return msgIdx;
     }
 
     public static int contentRemaining(RingBuffer rb) {
-        return (int)(rb.structuredLayoutRingBufferHead.headPos.get() - rb.primaryBufferTail.tailPos.get()); //must not go past add count because it is not release yet.
+        return (int)(rb.structuredLayoutRingBufferHead.headPos.get() - rb.structuredLayoutRingTail.tailPos.get()); //must not go past add count because it is not release yet.
     }
 
 
@@ -1796,7 +1785,7 @@ public final class RingBuffer {
     	    assert(ring.ringWalker.cursor<=0 && !RingReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
 
     	    RingBuffer.setBytesTail(ring,RingBuffer.bytesWorkingTailPosition(ring));
-    	    ring.primaryBufferTail.tailPos.lazySet(ring.primaryBufferTail.workingTailPos.value);
+    	    ring.structuredLayoutRingTail.tailPos.lazySet(ring.structuredLayoutRingTail.workingTailPos.value);
     	    ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
 
 
@@ -1814,7 +1803,7 @@ public final class RingBuffer {
 
                  ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
         } else {
-                 ring.lastReleasedBytesTail = ring.byteBufferTail.byteWorkingTailPos.value;
+                 ring.lastReleasedBytesTail = ring.unstructuredLayoutRingTail.byteWorkingTailPos.value;
                  ring.lastReleasedTail = ring.ringWalker.nextWorkingTail;// ring.primaryBufferTail.workingTailPos.value;
         }
 
@@ -1844,8 +1833,8 @@ public final class RingBuffer {
 
 
     static void storeUnpublishedTail(RingBuffer ring) {
-        ring.lastReleasedBytesTail = ring.byteBufferTail.byteWorkingTailPos.value;
-        ring.lastReleasedTail = ring.primaryBufferTail.workingTailPos.value;
+        ring.lastReleasedBytesTail = ring.unstructuredLayoutRingTail.byteWorkingTailPos.value;
+        ring.lastReleasedTail = ring.structuredLayoutRingTail.workingTailPos.value;
     }
 
     /**
@@ -1854,9 +1843,9 @@ public final class RingBuffer {
      */
     public static void releaseAllBatchedReads(RingBuffer ring) {
 
-        if (ring.lastReleasedTail>ring.primaryBufferTail.tailPos.get()) {
-            PaddedInt.set(ring.byteBufferTail.bytesTailPos,ring.lastReleasedBytesTail);
-            ring.primaryBufferTail.tailPos.lazySet(ring.lastReleasedTail);
+        if (ring.lastReleasedTail>ring.structuredLayoutRingTail.tailPos.get()) {
+            PaddedInt.set(ring.unstructuredLayoutRingTail.bytesTailPos,ring.lastReleasedBytesTail);
+            ring.structuredLayoutRingTail.tailPos.lazySet(ring.lastReleasedTail);
             ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
         }
 
@@ -1866,9 +1855,9 @@ public final class RingBuffer {
     @Deprecated
 	public static void releaseAll(RingBuffer ring) {
 
-			int i = ring.byteBufferTail.byteWorkingTailPos.value= ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
-            PaddedInt.set(ring.byteBufferTail.bytesTailPos,i);
-			ring.primaryBufferTail.tailPos.lazySet(ring.primaryBufferTail.workingTailPos.value= ring.structuredLayoutRingBufferHead.workingHeadPos.value);
+			int i = ring.unstructuredLayoutRingTail.byteWorkingTailPos.value= ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+            PaddedInt.set(ring.unstructuredLayoutRingTail.bytesTailPos,i);
+			ring.structuredLayoutRingTail.tailPos.lazySet(ring.structuredLayoutRingTail.workingTailPos.value= ring.structuredLayoutRingBufferHead.workingHeadPos.value);
 
     }
 
@@ -1877,7 +1866,7 @@ public final class RingBuffer {
 
         // move the removePosition up to the addPosition
         // new Exception("WARNING THIS IS NO LONGER COMPATIBLE WITH PUMP CALLS").printStackTrace();
-        rb.primaryBufferTail.tailPos.lazySet(rb.primaryBufferTail.workingTailPos.value = rb.structuredLayoutRingBufferHead.workingHeadPos.value);
+        rb.structuredLayoutRingTail.tailPos.lazySet(rb.structuredLayoutRingTail.workingTailPos.value = rb.structuredLayoutRingBufferHead.workingHeadPos.value);
     }
 
 
@@ -1895,7 +1884,7 @@ public final class RingBuffer {
 
     public static void publishWritesBatched(RingBuffer ring) {
         //single length field still needs to move this value up, so this is always done
-		ring.bytesWriteLastConsumedBytePos = ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+		ring.unstructuredWriteLastConsumedBytePos = ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
 
     	assert(ring.structuredLayoutRingBufferHead.workingHeadPos.value >= RingBuffer.headPosition(ring));
     	assert(ring.llWrite.llwConfirmedWrittenPosition<=RingBuffer.headPosition(ring) || ring.structuredLayoutRingBufferHead.workingHeadPos.value<=ring.llWrite.llwConfirmedWrittenPosition) : "Unsupported mix of high and low level API. NextHead>head and workingHead>nextHead";
@@ -1979,7 +1968,7 @@ public final class RingBuffer {
     public static long spinBlockOnTail(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
     	while (null==ringBuffer.structuredLayoutRingBuffer || lastCheckedValue < targetValue) {
     		spinWork(ringBuffer);
-		    lastCheckedValue = ringBuffer.primaryBufferTail.tailPos.longValue();
+		    lastCheckedValue = ringBuffer.structuredLayoutRingTail.tailPos.longValue();
 		}
 		return lastCheckedValue;
     }
@@ -2027,15 +2016,15 @@ public final class RingBuffer {
     }
 
     public static long getWorkingTailPosition(RingBuffer ring) {
-        return PaddedLong.get(ring.primaryBufferTail.workingTailPos);
+        return PaddedLong.get(ring.structuredLayoutRingTail.workingTailPos);
     }
 
     public static void setWorkingTailPosition(RingBuffer ring, long value) {
-        PaddedLong.set(ring.primaryBufferTail.workingTailPos, value);
+        PaddedLong.set(ring.structuredLayoutRingTail.workingTailPos, value);
     }
 
     public static long addAndGetWorkingTail(RingBuffer ring, int inc) {
-        return PaddedLong.add(ring.primaryBufferTail.workingTailPos, inc);
+        return PaddedLong.add(ring.structuredLayoutRingTail.workingTailPos, inc);
     }
 
 
@@ -2050,7 +2039,7 @@ public final class RingBuffer {
 	}
 
 	public static long tailPosition(RingBuffer ring) {
-		return ring.primaryBufferTail.tailPos.get();
+		return ring.structuredLayoutRingTail.tailPos.get();
 	}
 
 
@@ -2062,7 +2051,7 @@ public final class RingBuffer {
 	 * @param workingTailPos
 	 */
 	public static void publishWorkingTailPosition(RingBuffer ring, long workingTailPos) {
-		ring.primaryBufferTail.tailPos.lazySet(ring.primaryBufferTail.workingTailPos.value = workingTailPos);
+		ring.structuredLayoutRingTail.tailPos.lazySet(ring.structuredLayoutRingTail.workingTailPos.value = workingTailPos);
 	}
 
 	@Deprecated
@@ -2080,10 +2069,10 @@ public final class RingBuffer {
 
 	public static void writeTrailingCountOfBytesConsumed(RingBuffer ring, long pos) {
 
-		int consumed = ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value - ring.bytesWriteLastConsumedBytePos;
+		int consumed = ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value - ring.unstructuredWriteLastConsumedBytePos;
 		//log.trace("wrote {} bytes consumed to position {}",consumed,pos);
 		ring.structuredLayoutRingBuffer[ring.mask & (int)pos] = consumed>=0 ? consumed : consumed&BYTES_WRAP_MASK ;
-		ring.bytesWriteLastConsumedBytePos = ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+		ring.unstructuredWriteLastConsumedBytePos = ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
 
 	}
 
@@ -2122,7 +2111,7 @@ public final class RingBuffer {
 	}
 
 	private static boolean roomToLowLevelWriteSlow(RingBuffer output, long target) {
-		return (output.llRead.llrTailPosCache = output.primaryBufferTail.tailPos.get()) >= target;
+		return (output.llRead.llrTailPosCache = output.structuredLayoutRingTail.tailPos.get()) >= target;
 	}
 
 	public static void confirmLowLevelWrite(RingBuffer output, int size) {
@@ -2155,12 +2144,17 @@ public final class RingBuffer {
 		return ringBuffer.batchReleaseCountDown!=ringBuffer.batchReleaseCountDownInit;
 	}
 
+	public static int getUnstructuredLayoutRingTailPosition(RingBuffer ring) {
+	    return PaddedInt.get(ring.unstructuredLayoutRingTail.bytesTailPos);
+	}
+	
+	@Deprecated
     public static int bytesTailPosition(RingBuffer ring) {
-        return PaddedInt.get(ring.byteBufferTail.bytesTailPos);
+        return getUnstructuredLayoutRingTailPosition(ring);
     }
 
     public static void setBytesTail(RingBuffer ring, int value) {
-        PaddedInt.set(ring.byteBufferTail.bytesTailPos, value);
+        PaddedInt.set(ring.unstructuredLayoutRingTail.bytesTailPos, value);
     }
 
     public static int bytesHeadPosition(RingBuffer ring) {
@@ -2175,16 +2169,21 @@ public final class RingBuffer {
         return PaddedInt.add(ring.unstructuredLayoutRingBufferHead.bytesHeadPos, inc);
     }
 
+    public static int getWorkingUnstructuredLayoutRingTailPosition(RingBuffer ring) {
+        return PaddedInt.get(ring.unstructuredLayoutRingTail.byteWorkingTailPos);
+    }
+    
+    @Deprecated
     public static int bytesWorkingTailPosition(RingBuffer ring) {
-        return PaddedInt.get(ring.byteBufferTail.byteWorkingTailPos);
+        return getWorkingUnstructuredLayoutRingTailPosition(ring);
     }
 
     public static int addAndGetBytesWorkingTailPosition(RingBuffer ring, int inc) {
-        return PaddedInt.maskedAdd(ring.byteBufferTail.byteWorkingTailPos, inc, RingBuffer.BYTES_WRAP_MASK);
+        return PaddedInt.maskedAdd(ring.unstructuredLayoutRingTail.byteWorkingTailPos, inc, RingBuffer.BYTES_WRAP_MASK);
     }
 
     public static void setBytesWorkingTail(RingBuffer ring, int value) {
-        PaddedInt.set(ring.byteBufferTail.byteWorkingTailPos, value);
+        PaddedInt.set(ring.unstructuredLayoutRingTail.byteWorkingTailPos, value);
     }
 
     public static int bytesWorkingHeadPosition(RingBuffer ring) {
@@ -2224,11 +2223,11 @@ public final class RingBuffer {
     }
 
     public static void updateBytesWriteLastConsumedPos(RingBuffer rb) {
-        rb.bytesWriteLastConsumedBytePos = RingBuffer.bytesWorkingHeadPosition(rb);
+        rb.unstructuredWriteLastConsumedBytePos = RingBuffer.bytesWorkingHeadPosition(rb);
     }
 
     public static PaddedLong getWorkingTailPositionObject(RingBuffer rb) {
-        return rb.primaryBufferTail.workingTailPos;
+        return rb.structuredLayoutRingTail.workingTailPos;
     }
 
     public static PaddedLong getWorkingHeadPositionObject(RingBuffer rb) {
