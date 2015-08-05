@@ -284,8 +284,8 @@ public final class RingBuffer {
     //
     // As a result of the above the construction of the buffers is postponed and done with an initBuffers() method.
     // The initBuffers() method will be called by the consuming thread before the pipe is used. (see Pronghorn)
-    private byte[] unstructuredLayoutRingBuffer;
-    private int[] structuredLayoutRingBuffer;
+    public byte[] unstructuredLayoutRingBuffer; //TODO: B, these two must remain public until the meta/sql modules are fully integrated.
+    public int[] structuredLayoutRingBuffer;
     //defined externally and never changes
     protected final byte[] unstructuredLayoutConstBuffer;
     private byte[][] bufferLookup;
