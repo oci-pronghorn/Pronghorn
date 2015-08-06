@@ -1,0 +1,493 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+
+<!--
+Template ID:
+bit 0 = 0 is not nullable, 1 is nullable (+1)
+bits 1-5 = type ID (see TypeMask.java)
+bit 6 = 0 is no name, 1 is named (+64)
+bit 7 = always 1, to avoid a template with ID 0 (+128)
+bit 8 = 0 if a regular type, 1 if a marker for a NULL type (+256)
+
+** = new types not originally in TypeMask.java
+128 = 0 1 0 00000 0 uInt32
+129 = 0 1 0 00000 1   optional
+384 = 1 1 0 00000 0   nullable
+192 = 0 1 1 00000 0   named
+193 = 0 1 1 00000 1   named optional
+448 = 1 1 1 00000 0   named nullable
+    
+130 = 0 1 0 00001 0 int32
+131 = 0 1 0 00001 1   optional
+386 = 1 1 0 00001 0   nullable
+194 = 0 1 1 00001 0   named
+195 = 0 1 1 00001 1   named optional   
+450 = 1 1 1 00001 0   named nullable 
+    
+132 = 0 1 0 00010 0 uInt64
+133 = 0 1 0 00010 1   optional
+388 = 1 1 0 00010 0   nullable
+196 = 0 1 1 00010 0   named
+197 = 0 1 1 00010 1   named optional  
+452 = 1 1 1 00010 0   named nullable
+    
+134 = 0 1 0 00011 0 int64
+135 = 0 1 0 00011 1   optional
+390 = 1 1 0 00011 0   nullable
+198 = 0 1 1 00011 0   named
+199 = 0 1 1 00011 1   named optional  
+454 = 1 1 1 00011 0   named nullable
+    
+136 = 0 1 0 00100 0 ASCII (as string)
+200 = 0 1 1 00100 0   named
+392 = 1 1 0 00100 0   nullable
+456 = 1 1 1 00100 0   named nullable
+    
+138 = 0 1 0 00101 0 UTF8 (as string)
+202 = 0 1 1 00101 0   named
+394 = 1 1 0 00101 0   nullable
+458 = 1 1 1 00101 0   named nullable
+    
+140 = 0 1 0 00110 0 decimal
+141 = 0 1 0 00110 1   optional
+396 = 1 1 0 00110 0   nullable
+204 = 0 1 1 00110 0   named
+205 = 0 1 1 00110 1   named optional
+460 = 1 1 1 00110 0   named nullable
+    
+142 = 0 1 0 00111 0 byteArray (implicitly nullable with length 0?)
+206 = 0 1 1 00111 0   named
+398 = 1 1 0 00111 0   nullable
+462 = 1 1 1 00111 0   named nullable
+    
+144 = 0 1 0 01000 0 begin group (Group)
+208	= 0 1 1 01000 0   named
+ 	
+146 = 0 1 0 01001 0 end group **
+ 
+148 = 0 1 0 01010 0 begin sequence (GroupLength)
+212 = 0 1 1 01010 0   named 
+ 	
+150 = 0 1 0 01011 0 end sequence **
+ 
+152 = 0 1 0 01100 0 dictionary (is this needed as a message?)
+ 
+156 = 0 1 0 01110 0 spacer gap (is this needed as a message?)
+ 
+158 = 0 1 0 01111 0 (available - any missing FAST type to put here?)
+ 
+160 = 0 1 0 10000 0 begin message **
+224 = 0 1 1 10000 0   named  
+ 	
+162 = 0 1 0 10001 0 end message **
+ 
+164 = 0 1 0 10010 0 untyped null **
+228 = 0 1 1 10010 0   named   
+ 	
+166 = 0 1 0 10011 0 boolean **
+423 = 1 1 0 10011 1   nullable
+230 = 0 1 1 10011 0   named
+487 = 1 1 1 10011 1   named nullable    
+    
+168 = 0 1 0 10100 0 float (as int32) **
+425 = 1 1 0 10100 1   nullable
+232 = 0 1 1 10100 0   named
+489 = 1 1 1 10100 1   named nullable  
+    
+170 = 0 1 0 10101 0 double (as int64) **
+427 = 1 1 0 10101 1   nullable
+234 = 0 1 1 10101 0   named
+491 = 1 1 1 10101 1   named nullable
+
+172 = 0 1 0 10110 0 date time (as int64) **
+429 = 1 1 0 10110 1   nullable
+236 = 0 1 1 10110 0   named
+493 = 1 1 1 10110 1   named nullable
+
+174 = 0 1 0 10111 0 serialized Java object (as byte array) **
+431 = 1 1 0 10111 1   nullable
+238 = 0 1 1 10111 0   named
+495 = 1 1 1 10111 1   named nullable
+
+176 = 0 1 0 11000 0 timestamp (as int64 datetime, int32 nanos, int32 tzoffset) **
+433 = 1 1 0 11000 1   nullable
+240 = 0 1 1 11000 0   named
+497 = 1 1 1 11000 1   named nullable
+
+nullable types are ones that are related to their base types by one bit
+  these contain a length - 0 or 1, and if 1, then the actual type follows
+
+Field ID:
+Must be unique across templates unless the identical field appears in multiple templates
+ -->
+ 
+  	<template name="UInt32" id="128" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<uInt32 name="Value" id="1" />
+   	</template>
+   	
+ 	<template name="OptionalUInt32" id="129" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<uInt32 name="Value" id="2" />
+   	</template>   	
+   	
+ 	<template name="NullableUInt32" id="384" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="3" />
+   	</template>   	
+   	
+ 	<template name="NamedUInt32" id="192" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="4" />
+ 		<uInt32 name="Value" id="5" />
+   	</template>
+   	
+ 	<template name="NamedOptionalUInt32" id="193" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="6" />
+ 		<uInt32 name="Value" id="7" />
+   	</template>
+   	
+  	<template name="NamedNullableUInt32" id="448" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+  		<string name="Name" id="8" />
+ 		<int32 name="NotNull" id="9" />
+   	</template> 
+   	
+   	  	
+
+ 	<template name="Int32" id="130" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="Value" id="10" />
+   	</template>
+   	
+ 	<template name="OptionalInt32" id="131" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="Value" id="11" />
+   	</template>   	
+   	
+ 	<template name="NullableInt32" id="386" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="12" />
+   	</template>    	
+   	
+ 	<template name="NamedInt32" id="194" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="13" />
+ 		<int32 name="Value" id="14" />
+   	</template>
+   	
+ 	<template name="NamedOptionalInt32" id="195" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="15" />
+ 		<int32 name="Value" id="16" />
+   	</template>
+ 
+  	<template name="NamedNullableInt32" id="450" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+  		<string name="Name" id="17" />
+ 		<int32 name="NotNull" id="18" />
+   	</template>   	
+   	
+   	
+   	<template name="UInt64" id="132" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<uInt64 name="Value" id="19" />
+   	</template>
+   	
+ 	<template name="OptionalUInt64" id="133" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<uInt64 name="Value" id="20" />
+   	</template>   	
+   	
+  	<template name="NullableUInt64" id="388" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="21" />
+   	</template>   	
+   	
+ 	<template name="NamedUInt64" id="196" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="22" />
+ 		<uInt64 name="Value" id="23" />
+   	</template>
+   	
+ 	<template name="NamedOptionalUInt64" id="197" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="24" />
+ 		<uInt64 name="Value" id="25" />
+   	</template>
+ 
+   	<template name="NamedNullableUInt64" id="452" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+  		<string name="Name" id="26" />
+ 		<int32 name="NotNull" id="27" />
+   	</template>   	  	
+   	
+   	
+   	<template name="Int64" id="134" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int64 name="Value" id="28" />
+   	</template>
+   	
+ 	<template name="OptionalInt64" id="135" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int64 name="Value" id="29" />
+   	</template>   	
+   	
+ 	<template name="NamedInt64" id="198" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="30" />
+ 		<int64 name="Value" id="31" />
+   	</template>
+   	
+   	<template name="NullableInt64" id="390" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="32" />
+   	</template>   	  	
+   	
+ 	<template name="NamedOptionalInt64" id="199" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="33" />
+ 		<int64 name="Value" id="34" />
+   	</template> 
+   	
+  	<template name="NamedNullableInt64" id="454" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+  		<string name="Name" id="35" />
+ 		<int32 name="NotNull" id="36" />
+   	</template>  
+   	
+ 
+    <template name="ASCII" id="136" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Value" id="37" />
+   	</template>
+   	
+ 	<template name="NamedASCII" id="200" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="38" />
+ 		<string name="Value" id="39" />
+   	</template>
+
+   	<template name="NullableASCII" id="392" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="40" />
+   	</template>  
+   	
+   	<template name="NamedNullableASCII" id="456" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   		<string name="Name" id="41" />
+ 		<int32 name="NotNull" id="42" />
+   	</template>    	
+   	
+   	
+    <template name="UTF8" id="138" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Value" id="43" />
+   	</template>
+   	
+ 	<template name="NamedUTF8" id="202" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="44" />
+ 		<string name="Value" id="45" />
+   	</template>
+   	
+   	<template name="NullableUTF8" id="394" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="46" />
+   	</template>  
+   	
+   	<template name="NamedNullableUTF8" id="458" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   		<string name="Name" id="47" />
+ 		<int32 name="NotNull" id="48" />
+   	</template>    	
+   	
+
+    <template name="Decimal" id="140" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<decimal name="Value" id="49" />
+   	</template>
+   	
+ 	<template name="OptionalDecimal" id="141" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<decimal name="Value" id="50" />
+   	</template>   	
+   	
+   	<template name="NullableDecimal" id="396" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="51" />
+   	</template>  
+   	
+ 	<template name="NamedDecimal" id="204" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="52" />
+ 		<decimal name="Value" id="53" />
+   	</template>
+   	
+ 	<template name="NamedOptionalDecimal" id="205" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="54" />
+ 		<decimal name="Value" id="55" />
+   	</template> 
+   	
+   	<template name="NamedNullableDecimal" id="460" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   		<string name="Name" id="56" />
+ 		<int32 name="NotNull" id="57" />
+   	</template>  
+   	
+ 
+    <template name="ByteArray" id="142" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<byteVector name="Value" id="58" />
+   	</template>
+   	
+   	<template name="NullableByteArray" id="398" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="59" />
+   	</template>  
+   	
+ 	<template name="NamedByteArray" id="206" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="60" />
+ 		<byteVector name="Value" id="61" />
+   	</template>
+   	  	  	  	
+    <template name="NamedNullableByteArray" id="462" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   		<string name="Name" id="62" />
+ 		<int32 name="NotNull" id="63" />
+   	</template>  	  	  	  	
+
+    <template name="BeginGroup" id="144" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   	</template>
+   	
+    <template name="NamedBeginGroup" id="208" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+    	<string name="Name" id="64" />
+   	</template>   	   	  	  	  	
+   	  	  	  	
+ 
+    <template name="EndGroup" id="146" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   	</template>
+   	
+   	  <!--This is meta data so its not the real length type, the real length field would indicate a sub fragment is about to start  -->
+   	
+    <template name="BeginSequence" id="148" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+    	<uInt32 name="Length" id="65" />
+   	</template>
+   	
+    <template name="NamedBeginSequence" id="212" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+    	<string name="Name" id="66" />
+     	<uInt32 name="Length" id="67" />   	
+   	</template>   	   	  	  	  	
+   	  	  	  	
+ 
+    <template name="EndSequence" id="150" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   	</template>  	
+   	
+   	
+   	  	  	  	 
+	<template name="BeginMessage" id="160" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   	</template>
+   
+	<template name="NamedBeginMessage" id="224" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="Name" id="68" />
+   	</template>
+   	
+   	
+ 	<template name="EndMessage" id="162" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   	</template>
+   	
+   	
+  	<template name="Null" id="164" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   	</template>
+   
+	<template name="NamedNull" id="228" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+		<string name="Name" id="69" />
+   	</template> 	
+   	
+   	
+   	
+  	<template name="Boolean" id="166" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="Value" id="70" />
+   	</template>
+   	
+ 	<template name="NullableBoolean" id="423" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="71" />
+   	</template>   	
+   	
+ 	<template name="NamedBoolean" id="230" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="72" />
+ 		<int32 name="Value" id="73" />
+   	</template>
+   	
+ 	<template name="NamedNullableBoolean" id="487" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="74" />
+ 		<int32 name="NotNull" id="75" />
+   	</template>   	
+   	
+   	
+   	
+   	<template name="Float" id="168" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="Value" id="76" />
+   	</template>
+   	
+ 	<template name="NullableFloat" id="425" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="77" />
+   	</template>   	
+   	
+ 	<template name="NamedFloat" id="232" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="78" />
+ 		<int32 name="Value" id="79" />
+   	</template>
+   	
+ 	<template name="NamedNullableFloat" id="489" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="80" />
+ 		<int32 name="NotNull" id="81" />
+   	</template>   	  	
+   	
+
+
+   	<template name="Double" id="170" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int64 name="Value" id="82" />
+   	</template>
+   	
+ 	<template name="NullableDouble" id="427" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="83" />
+   	</template>   	
+   	
+ 	<template name="NamedDouble" id="234" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="84" />
+ 		<int64 name="Value" id="85" />
+   	</template>
+   	
+ 	<template name="NamedNullableDouble" id="491" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="86" />
+ 		<int32 name="NotNull" id="87" />
+   	</template>   	 
+   	
+   	
+   	<template name="DateTime" id="172" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int64 name="Value" id="88" />
+   	</template>
+   	
+ 	<template name="NullableDateTime" id="429" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="89" />
+   	</template>   	
+   	
+ 	<template name="NamedDateTime" id="236" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="90" />
+ 		<int64 name="Value" id="91" />
+   	</template>
+   	
+ 	<template name="NamedNullableDateTime" id="493" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="92" />
+ 		<int32 name="NotNull" id="93" />
+   	</template>
+   	
+   	
+   	
+   	<template name="SerializedJavaObject" id="174" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<byteVector name="Value" id="94" />
+   	</template>
+   	
+   	<template name="NullableSerializedJavaObject" id="431" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="95" />
+   	</template>  
+   	
+ 	<template name="NamedSerializedJavaObject" id="238" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="96" />
+ 		<byteVector name="Value" id="97" />
+   	</template>
+   	  	  	  	
+    <template name="NamedNullableSerializedJavaObject" id="495" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   		<string name="Name" id="98" />
+ 		<int32 name="NotNull" id="99" />
+   	</template> 
+   	
+   	
+   	<template name="Timestamp" id="176" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int64 name="DateTime" id="100" />
+ 		<int32 name="Nanos" id="101" />
+ 		<int32 name="TZOffset" id="102" />
+   	</template>
+   	
+ 	<template name="NullableTimestamp" id="433" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<int32 name="NotNull" id="103" />
+   	</template>   	
+   	
+ 	<template name="NamedTimestamp" id="240" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="104" />
+ 		<int64 name="DateTime" id="105" />
+ 		<int32 name="Nanos" id="106" />
+ 		<int32 name="TZOffset" id="107" />
+   	</template>
+   	
+ 	<template name="NamedNullableTimestamp" id="497" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+ 		<string name="Name" id="108" />
+ 		<int32 name="NotNull" id="109" />
+   	</template>
+   	   	
+   <template name="Flush" id="62" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   </template>
+   	   	
+</templates>
