@@ -33,7 +33,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			PronghornStage stage = GraphManager.getStage(graphManager, i);
 			if (null != stage) {
 			    Object value = GraphManager.getAnnotation(graphManager, stage, GraphManager.SCHEDULE_RATE, Integer.valueOf(0));			    
-				int rate = value instanceof Number ? ((Number)value).intValue() : Integer.parseInt(value.toString());
+				long rate = value instanceof Number ? ((Number)value).longValue() : Long.parseLong(value.toString());
 				
 				if (0==rate) {
 					executorService.execute(buildRunnable(stage)); 	
@@ -166,7 +166,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		};
 	}
 	
-	protected Runnable buildRunnable(final int nsScheduleRate, final PronghornStage stage) {
+	protected Runnable buildRunnable(final long nsScheduleRate, final PronghornStage stage) {
 
 		return new Runnable() {
 			//once we get a thread we never give it back
@@ -247,15 +247,15 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				GraphManager.mayHaveUpstreamData(tpss.graphManager, stage.stageId);
 	}
 
-	private void runPeriodicLoop(final int nsScheduleRate, final PronghornStage stage) {
+	private void runPeriodicLoop(final long nsScheduleRate, final PronghornStage stage) {
 		do {
 			long start = System.nanoTime();
 			stage.run();
 			
-			int sleepFor = nsScheduleRate - (int)(System.nanoTime()-start);
+			long sleepFor = nsScheduleRate - (long)(System.nanoTime()-start);
 			if (sleepFor>0) {
-				int sleepMs = sleepFor/1000000;
-				int sleepNs = sleepFor%1000000;
+			    long sleepMs = sleepFor/1000000;
+			    int sleepNs = (int)sleepFor%1000000;
 				try {
 					Thread.sleep(sleepMs, sleepNs);
 				} catch (InterruptedException e) {
