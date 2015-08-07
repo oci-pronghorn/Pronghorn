@@ -81,10 +81,13 @@
 	   <plugin>
 	        <artifactId>maven-compiler-plugin</artifactId>
 	        <version>3.0</version>
-	        <configuration>
-	            <source>1.6</source>
-	            <target>1.6</target>
-	        </configuration>
+	          <configuration>
+	          	<compilerArguments>
+				    <profile>compact1</profile>
+				</compilerArguments>
+	            <source>1.7</source>
+	            <target>1.8</target>
+	          </configuration>
 	   </plugin>
 
       <plugin>

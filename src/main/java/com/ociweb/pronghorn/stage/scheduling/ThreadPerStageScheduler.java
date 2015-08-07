@@ -32,7 +32,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		while (--i>=0) {
 			PronghornStage stage = GraphManager.getStage(graphManager, i);
 			if (null != stage) {
-				int rate = (Integer)GraphManager.getAnnotation(graphManager, stage, GraphManager.SCHEDULE_RATE, Integer.valueOf(0));
+			    Object value = GraphManager.getAnnotation(graphManager, stage, GraphManager.SCHEDULE_RATE, Integer.valueOf(0));			    
+				int rate = value instanceof Number ? ((Number)value).intValue() : Integer.parseInt(value.toString());
 				
 				if (0==rate) {
 					executorService.execute(buildRunnable(stage)); 	
