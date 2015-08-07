@@ -55,6 +55,8 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 
 public final class RingBuffer {
 
+    private static final AtomicInteger ringCounter = new AtomicInteger();
+    
     /**
      * Holds the active head position information
      */
@@ -226,8 +228,7 @@ public final class RingBuffer {
     //after applying this mask to meta the result is always the relative offset within the byte buffer of where the variable length data starts.
     //NOTE: when the high bit is set we will not pull the value from the ring buffer but instead use the constants array (these are pronouns)
     public static final int RELATIVE_POS_MASK = 0x7FFFFFFF; //removes high bit which indicates this is a constant
-    
-    private static final AtomicInteger ringCounter = new AtomicInteger();
+      
 
     //This mask is here to support the fact that variable length fields will run out of space because the head/tail are 32 bit ints instead of
     //longs that are used for the structured layout data.  This mask enables the int to wrap back down to zero instead of going negative.
