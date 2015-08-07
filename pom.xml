@@ -36,7 +36,7 @@
 		  <groupId>org.slf4j</groupId>
 		  <artifactId>slf4j-simple</artifactId>
 		  <version>1.7.12</version>
-		  <scope>runtime</scope>
+		  <!--  scope>runtime</scope -->
 		</dependency> 	
   </dependencies>
   
@@ -82,9 +82,9 @@
 	        <artifactId>maven-compiler-plugin</artifactId>
 	        <version>3.0</version>
 	          <configuration>
-	          	<compilerArguments>
-				    <profile>compact1</profile>
-				</compilerArguments>
+	          	<!--  compilerArguments>
+				    <profile>compact3</profile>
+				</compilerArguments -->
 	            <source>1.7</source>
 	            <target>1.8</target>
 	          </configuration>
