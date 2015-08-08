@@ -310,6 +310,10 @@ public class RingWriter {
 		long target = ring.ringWalker.nextWorkingHead - (ring.sizeOfStructuredLayoutRingBuffer - fragSize);
 		return RingWalker.tryWriteFragment1(ring, cursorPosition, RingBuffer.from(ring), fragSize, target, ring.llRead.llrTailPosCache >=  target);
 	}
+	
+	public static boolean hasRoomForFragmentOfSize(RingBuffer ring, int fragSize) {
+	    return ring.llRead.llrTailPosCache >= ring.ringWalker.nextWorkingHead - (ring.sizeOfStructuredLayoutRingBuffer - fragSize);
+	}
 
 	public static void setPublishBatchSize(RingBuffer rb, int size) {
 		RingBuffer.setPublishBatchSize(rb, size);
