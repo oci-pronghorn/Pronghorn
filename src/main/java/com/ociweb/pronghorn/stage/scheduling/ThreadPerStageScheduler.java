@@ -32,7 +32,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		while (--i>=0) {
 			PronghornStage stage = GraphManager.getStage(graphManager, i);
 			if (null != stage) {
-			    Object value = GraphManager.getAnnotation(graphManager, stage, GraphManager.SCHEDULE_RATE, Integer.valueOf(0));			    
+			    Object value = GraphManager.getAnnotation(graphManager, stage, GraphManager.SCHEDULE_RATE, Long.valueOf(0));			    
 				long rate = value instanceof Number ? ((Number)value).longValue() : Long.parseLong(value.toString());
 				
 				if (0==rate) {
@@ -250,12 +250,14 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	private void runPeriodicLoop(final long nsScheduleRate, final PronghornStage stage) {
 		do {
 			long start = System.nanoTime();
+			
 			stage.run();
 			
 			long sleepFor = nsScheduleRate - (long)(System.nanoTime()-start);
+						
 			if (sleepFor>0) {
-			    long sleepMs = sleepFor/1000000;
-			    int sleepNs = (int)sleepFor%1000000;
+			    long sleepMs = sleepFor/1000000l;
+			    int sleepNs = (int)(sleepFor%1000000l);
 				try {
 					Thread.sleep(sleepMs, sleepNs);
 				} catch (InterruptedException e) {
