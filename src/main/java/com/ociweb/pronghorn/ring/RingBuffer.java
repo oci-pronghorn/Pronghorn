@@ -2243,7 +2243,6 @@ public final class RingBuffer {
 	    return PaddedInt.get(ring.unstructuredLayoutRingTail.bytesTailPos);
 	}
 
-
 	@Deprecated
     public static int bytesTailPosition(RingBuffer ring) {
         return getUnstructuredLayoutRingTailPosition(ring);
@@ -2268,7 +2267,6 @@ public final class RingBuffer {
     public static int getWorkingUnstructuredLayoutRingTailPosition(RingBuffer ring) {
         return PaddedInt.get(ring.unstructuredLayoutRingTail.byteWorkingTailPos);
     }
-
 
     @Deprecated
     public static int bytesWorkingTailPosition(RingBuffer ring) {
@@ -2330,8 +2328,4 @@ public final class RingBuffer {
     public static PaddedLong getWorkingHeadPositionObject(RingBuffer rb) {
         return rb.structuredLayoutRingBufferHead.workingHeadPos;
     }
-
-
-
-
 }
