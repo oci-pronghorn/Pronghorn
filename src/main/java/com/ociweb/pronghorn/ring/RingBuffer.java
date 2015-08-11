@@ -27,19 +27,19 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 //         really is public.)  There will be some "jdoc" comments below as hints for whoever does it.
 
 /**
- * Schema aware data pipe implemented as an internal pair of ring buffers.  One ring holds all the fixed length 
- * fields and the fixed length meta data relating to the variable length (unstructured firelds).  The other ring
- * holds only bytes which back the variable length fields like Strings, or Images.
- * 
- * The supported Schema is defined in the FieldReferenceOffsetManager passed in upon construction.  The Schema is 
- * make up of Messages and Messages are are made up of one or more fixed length fragments.  
- * 
- * These fragments enable direct lookup of fields within sequences and enable the consumptino of larger messages than 
- * would fit within the defined limits of the buffers. 
  *
+ * Schema aware data pipe implemented as an internal pair of ring buffers.
+ *
+ * One ring holds all the fixed-length fields and the fixed-length meta data relating to the variable-length
+ * (unstructured fields).  The other ring holds only bytes which back the variable-length fields like Strings or Images.
+ *
+ * The supported Schema is defined in the FieldReferenceOffsetManager passed in upon construction.  The Schema is
+ * made up of Messages. Messages are made up of one or more fixed-length fragments.
+ *
+ * The Message fragments enable direct lookup of fields within sequences and enable the consumption of larger messages
+ * than would fit within the defined limits of the buffers.
  *
  * @author Nathan Tippy
- *
  *
  * //cas: this needs expanded explanation of what a slot is. (best if done above.)
  * Storage:
@@ -49,19 +49,24 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
  *  decimal - 3 slots, exponent then long mantissa
  *
  *
- * StructuredLayoutRing  (these do in fact have strong type definition per field, in addition to being fixed length)
- * UnstructuredLayoutRing  (these are just bytes that are commonly UTF-8 encoded strings but may be image data or even video/audio)
+ * StructuredLayoutRing   - These have strong type definition per field in addition to being fixed-length.
+ * UnstructuredLayoutRing - These are just bytes that are commonly UTF-8 encoded strings but may be image data or
+ * even video/audio streams.
+ *
+ * @since 0.1
+ *
  */
-
 public final class RingBuffer {
 
     private static final AtomicInteger ringCounter = new AtomicInteger();
     
     /**
-     * Holds the active head position information
+     * Holds the active head position information.
      */
     static class StructuredLayoutRingHead {
+        // Position used during creation of a message in the ring.
         final PaddedLong workingHeadPos;
+        // Actual position of the next Write location.
         final AtomicLong headPos;
 
         StructuredLayoutRingHead() {
@@ -69,75 +74,91 @@ public final class RingBuffer {
             this.headPos = new PaddedAtomicLong();
         }
     }
-    
+
+    /**
+     * Holds the active tail position information.
+     */
     static class StructuredLayoutRingTail {
-        
         /**
-         * The workingTailPosition is only to be used by the consuming thread. As values are read the tail is moved forward.
-         * Eventually the consumer finishes the read of the fragment and will use this working position as the value to be published
-         * in order to inform the writer of this new free space.
+         * The workingTailPosition is only to be used by the consuming thread. As values are read the tail is moved
+         * forward.  Eventually the consumer finishes the read of the fragment and will use this working position as
+         * the value to be published in order to inform the writer of this new free space.
          */
-        final PaddedLong workingTailPos; //no need for CAS since only one thread will ever use this.
-        
+        final PaddedLong workingTailPos; // No need for an atomic operation since only one thread will ever use this.
+
         /**
-         * This is the official published tail position. It is written to by the consuming thread and frequently polled by the producing thread.
-         * Making use of the built in CAS features of AtomicLong forms a memory gate that enables this lock free implementation to function.
+         * This is the official published tail position. It is written to by the consuming thread and frequently
+         * polled by the producing thread.  Making use of the built in CAS features of AtomicLong forms a memory
+         * gate that enables this lock free implementation to function.
          */
         final AtomicLong tailPos;
 
-        /**
-         * Holds the active tail position information
-         */
         StructuredLayoutRingTail() {
             this.workingTailPos = new PaddedLong();
             this.tailPos = new PaddedAtomicLong();
         }
 
         /**
-         * Switch the working back to the published tail position.
-         * Only used by replay feature, not for general use.
+         * Switch the working tail back to the published tail position.
+         * Only used by the replay feature, not for general use.
          */
+        // TODO: ?
+        // Enforce the contract of replay-only.
 		long rollBackWorking() {
 			return workingTailPos.value = tailPos.get();
 		}
     }
 
 
-/**
- * Spinning on a CAS AtomicLong leads to a lot of contention which will decrease performance.
- * Once we know that the producer can write up to a given position there  is no need to keep polling until we have written up to that point.
- * This class hold the head value until that position is reached.
- */
+    /**
+     * Spinning on a CAS AtomicLong leads to a lot of contention which will decrease performance.
+     * Once we know that the producer can write up to a given position there is no need to keep polling until data
+     * is written up to that point.  This class holds the head value until that position is reached.
+     */
     static class LowLevelAPIWritePositionCache {
         /**
-         * This is the position the producer is allowed to write up to before having to ask the CAS AtomicLong again for a new value. 
+         * This is the position the producer is allowed to write up to before having to ask the CAS AtomicLong
+         * for a new value.
          */
         long llwHeadPosCache;
- 
+
         /**
-         * This holds the last position that has been officially written.  The Low Level API uses the size of the next fragment
-         * added to this value to determine if the next write will need to go past the cached head position above.
-         * 
-         * Once we know that the write will fit this value is incremented by the size to confirm the write.  This is independent 
-         * of the workingHeadPosition by design so we have two accounting mechanisms to help detected errors.
-         * 
-         * TODO:M add asserts that implemented the claim found above in the comments.
+         * Holds the last position that has been officially written.  The Low Level API uses the size of the next
+         * fragment added to this value to determine if the next write will need to go past the cached head position
+         * above.
+         *
+         * // TODO: reword "by the size of the fragment"?
+         * Once it is known that the write will fit, this value is incremented by the size to confirm the write.
+         * This is independent of the workingHeadPosition by design so we have two accounting mechanisms to help
+         * detect errors.
+         *
+         * TODO:M add asserts that implement the claim found above in the comments.
          */
         long llwConfirmedWrittenPosition;
 
+        // TODO: Determine is this is going to be used -- if not, delete it.
         LowLevelAPIWritePositionCache() {
         }
     }
-    
-//cas: see above ;-\
+
+    /**
+     * Holds the tail value for the consumer.
+     */
     static class LowLevelAPIReadPositionCache {
         long llrTailPosCache;
+        /**
+         * Holds the last position that has been officially read.
+         */
         long llwConfirmedReadPosition;
 
+        // TODO: Determine is this is going to be used -- if not, delete it.
         LowLevelAPIReadPositionCache() {
         }
     }
 
+    /**
+     * Serves the same function as the StructuredLayoutRingHead, but holds information for the UnstructuredLayoutRing.
+     */
     static class UnstructuredLayoutRingHead {
         final PaddedInt byteWorkingHeadPos;
         final PaddedInt bytesHeadPos;
@@ -148,6 +169,9 @@ public final class RingBuffer {
         }
     }
 
+    /**
+     * Serves the same function as the StructuredLayoutRingTail, but holds information for the UnstructuredLayoutRing.
+     */
     static class UnstructuredLayoutRingTail {
         final PaddedInt byteWorkingTailPos;
         final PaddedInt bytesTailPos;
@@ -157,84 +181,153 @@ public final class RingBuffer {
             this.bytesTailPos = new PaddedInt();
         }
 
+        // TODO: The "only used by" needs to be enforced.
         /**
-         * Switch the working back to the published tail position.
-         * Only used by replay feature, not for general use.
+         * Switch the working tail back to the published tail position.
+         * Only used by the replay feature, not for general use.
          */
 		int rollBackWorking() {
 			return byteWorkingTailPos.value = bytesTailPos.value;
 		}
     }
 
+    /**
+     * Provides a container holding a long value that fills a 64-byte cache line.
+     */
     public static class PaddedLong {
-        //provided that there are no other members of this object all these primitives will be next to one another in memory.        
+        // These primitives will be next to one another in memory if there are no other members of this object.
+        // TODO: Is this public?
         public long value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
 
-        //small static method will be frequently in-lined allowing direct access to the member without method overhead
-        public static long get(PaddedLong pi) {
-            return pi.value;
+        // The following accessor methods are static instead of instance methods because small static methods will
+        // frequently be in-lined which allows direct access to the value member without method overhead.
+        /**
+         * Provides access to the value of this PaddedLong.
+         * @param pl  is the PaddedLong containing the desired value.
+         * @return    the value contained by the provided long.
+         */
+        public static long get(PaddedLong pl) {
+            return pl.value;
         }
 
-        public static void set(PaddedLong pi, long value) {
-            pi.value = value;
+        /**
+         * Sets the value of the provided PaddedLong.
+         * @param pl     is the padded long to contain the value.
+         * @param value  is the value to be put into the padded long.
+         */
+        public static void set(PaddedLong pl, long value) {
+            pl.value = value;
         }
 
-        public static long add(PaddedLong pi, long inc) {
-                return pi.value += inc;
+        /**
+         * Adds the provided increment to the existing value of the long.
+         * <b>N.B.</b> A PaddedLong is initialized to zero.  There is no problem invoking this method on a PaddedLong
+         * that has never had the set method called.  It may not achieve the desired effect, but it will not cause a
+         * runtime error.
+         * @param pl   is the padded long containing the value to increment.
+         * @param inc  is the amount to add.
+         * @return     the incremented value of the provided padded long instance.
+         */
+        public static long add(PaddedLong pl, long inc) {
+                return pl.value += inc;
         }
 
+        /**
+         * Provides a readable representation of the value of this padded long instance.
+         * @return  a String of the Long value of this padded long instance.
+         */
         public String toString() {
             return Long.toString(value);
         }
 
     }
 
+    /**
+     * Provides a container holding an int value that fills a 64-byte cache line.
+     */
     public static class PaddedInt {
-        //most platforms have 64 byte cache lines so this is padded to consume 16 4 byte ints
-        //if a platform has smaller cache lines this will use a little more memory than required but the performance will still be preserved.
-        //modern Intel and AMD chips commonly have 64 byte cache lines
-        public int value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7, padding8, padding9, padding10, padding11, padding13, padding14, padding15, padding16;
+        // Most platforms have 64 byte cache lines so the value variable is padded so 16 four byte ints are consumed.
+        // If a platform has smaller cache lines, this approach will use a little more memory than required but the
+        // performance gains will still be preserved.
+        // Modern Intel and AMD chips commonly have 64 byte cache lines.
+        // TODO: code This should just be 15, shouldn't it?
+        public int value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7, padding8,
+            padding9, padding10, padding11, padding13, padding14, padding15, padding16;
 
+        /**
+         * Provides access to the value of this PaddedInt.
+         * @param pi  is the PaddedInt containing the desired value.
+         * @return    the value contained by the provided int.
+         */
 		public static int get(PaddedInt pi) {
 	            return pi.value;
 	    }
 
+        /**
+         * Sets the value of the provided PaddedInt.
+         * @param pi     is the padded int to contain the value.
+         * @param value  is the value to be put into the padded int.
+         */
 		public static void set(PaddedInt pi, int value) {
 		    pi.value = value;
 		}
 
+        /**
+         * Adds the provided increment to the existing value of the int.
+         * <b>N.B.</b> A PaddedInt is initialized to zero.  There is not problem invoking this method on a PaddedInt
+         * that has never had the set method called.  It may not achieve the desired effect, but it will not cause a
+         * runtime error.
+         * @param pi   is the padded int containing the value to increment.
+         * @param inc  is the amount to add.
+         * @return     the incremented value of the provided padded int instance.
+         */
 	    public static int add(PaddedInt pi, int inc) {
 	            return pi.value += inc;
 	    }
 
+        /**
+         * Provides an increment routine to support the need to wrap the head and tail markers of a buffer from the
+         * maximum int value to 0 without going negative. The method adds the provided increment to the existing value
+         * of the provided PaddedInt. The resultant sum is <code>and</code>ed to the provided mask to remove any
+         * sign bit that may have been set in the case of an overflow of the maximum-sized integer.
+         * <b>N.B.</b> A PaddedInt is initialized to zero.  There is no problem invoking this method on a PaddedInt
+         * that has never had the set method called.  It may not achieve the desired effect, but it will not cause a
+         * runtime error.
+         * @param pi   is the padded int containing the value to increment.
+         * @param inc  is the amount to add.
+         * @return     the incremented value of the provided padded int instance.
+         */
 	    public static int maskedAdd(PaddedInt pi, int inc, int wrapMask) {
                return pi.value = wrapMask & (inc + pi.value);
         }
 
+        /**
+         * Provides a readable representation of the value of this padded long instance.
+         * @return  a String of the Long value of this padded long instance.
+         */
 		public String toString() {
 		    return Integer.toString(value);
 		}
     }
 
     private static final Logger log = LoggerFactory.getLogger(RingBuffer.class);
-    
+
     //I would like to follow the convention where all caps constants are used to indicate static final values which are resolved at compile time.
     //This is distinct from other static finals which hold run time instances and values computed from runtime input.
     //The reason for this distinction is that these members have special properties.
     //    A) the literal value replaces the variable by the compiler so..   a change of value requires a recompile of all dependent jars.
     //    B) these are the only variables which are allowed as case values in switch statements.
-   
-    //This mask is used to filter the meta value used for variable length fields.
-    //after applying this mask to meta the result is always the relative offset within the byte buffer of where the variable length data starts.
+
+    //This mask is used to filter the meta value used for variable-length fields.
+    //after applying this mask to meta the result is always the relative offset within the byte buffer of where the variable-length data starts.
     //NOTE: when the high bit is set we will not pull the value from the ring buffer but instead use the constants array (these are pronouns)
     public static final int RELATIVE_POS_MASK = 0x7FFFFFFF; //removes high bit which indicates this is a constant
-      
 
-    //This mask is here to support the fact that variable length fields will run out of space because the head/tail are 32 bit ints instead of
+    //This mask is here to support the fact that variable-length fields will run out of space because the head/tail are 32 bit ints instead of
     //longs that are used for the structured layout data.  This mask enables the int to wrap back down to zero instead of going negative.
     //this will only happen once for every 2GB written.
     public static final int BYTES_WRAP_MASK = 0x7FFFFFFF;//NOTE: this trick only works because its 1 bit less than the roll-over sign bit
-        
+
     //A few corner use cases require a poison pill EOF message to be sent down the pipes to ensure each consumer knows when to shut down.
     //This is here for compatibility with legacy APIs,  This constant is the size of the EOF message.
     public static final int EOF_SIZE = 2;
@@ -272,7 +365,7 @@ public final class RingBuffer {
 
     private int unstructuredWriteLastConsumedBytePos = 0;
 
-    //All references found in the messages/fragments to variable length content are relative.  These members hold the current
+    //All references found in the messages/fragments to variable-length content are relative.  These members hold the current
     //base offset to which the relative value is added to find the absolute position in the ring.
     //These values are only updated as each fragment is consumed or produced.
     private int unstructuredLayoutWriteBase = 0;
@@ -306,7 +399,7 @@ public final class RingBuffer {
 
     static final int JUMP_MASK = 0xFFFFF;
 
-    //Exceptions must not occur within consumers/producers of rings however when they do we no longer have 
+    //Exceptions must not occur within consumers/producers of rings however when they do we no longer have
     //a clean understanding of state. To resolve the problem all producers and consumers must also shutdown.
     //This flag passes the signal so any producer/consumer that sees it on knows to shut down and pass on the flag.
     private final AtomicBoolean imperativeShutDown = new AtomicBoolean(false);
@@ -323,7 +416,7 @@ public final class RingBuffer {
 	    //hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
     private int lastPublishedUnstructuredLayoutRingBufferHead;
     private long lastPublishedStructuredLayoutRingBufferHead;
-	    
+
 	private final int debugFlags;
 
 	private long holdingPrimaryWorkingTail;
@@ -332,36 +425,40 @@ public final class RingBuffer {
 
 
 	public static void replayUnReleased(RingBuffer ringBuffer) {
-	    
-//We must enforce this but we have a few unit tests that are in violation which need to be fixed first	    
+
+//We must enforce this but we have a few unit tests that are in violation which need to be fixed first
 //	    if (!RingBuffer.from(ringBuffer).hasSimpleMessagesOnly) {
 //	        throw new UnsupportedOperationException("replay of unreleased messages is not supported unless every message is also a single fragment.");
 //	    }
-	    
+
 		if (!isReplaying(ringBuffer)) {
-			//save all working values only once if we re-enter replaying multiple times.			
-			
-		    ringBuffer.holdingPrimaryWorkingTail = RingBuffer.getWorkingTailPosition(ringBuffer);			
-			ringBuffer.holdingBytesWorkingTail = RingBuffer.bytesWorkingTailPosition(ringBuffer);			
-						
+			//save all working values only once if we re-enter replaying multiple times.
+
+		    ringBuffer.holdingPrimaryWorkingTail = RingBuffer.getWorkingTailPosition(ringBuffer);
+			ringBuffer.holdingBytesWorkingTail = RingBuffer.bytesWorkingTailPosition(ringBuffer);
+
 			//NOTE: we must never adjust the ringWalker.nextWorkingHead because this is replay and must not modify write position!
-			ringBuffer.ringWalker.holdingNextWorkingTail = ringBuffer.ringWalker.nextWorkingTail; 
-			ringBuffer.ringWalker.holdingNextWorkingHead = ringBuffer.ringWalker.nextWorkingHead; //Should not change, this is saved for validation that it did not change during replay. 
-			
+			ringBuffer.ringWalker.holdingNextWorkingTail = ringBuffer.ringWalker.nextWorkingTail;
+			ringBuffer.ringWalker.holdingNextWorkingHead = ringBuffer.ringWalker.nextWorkingHead; //Should not change, this is saved for validation that it did not change during replay.
+
 			ringBuffer.holdingBytesReadBase = ringBuffer.unstructuredLayoutReadBase;
-			
+
 		}
-		
+
 		//clears the stack and cursor position back to -1 so we assume that the next read will begin a new message
 		RingWalker.resetCursorState(ringBuffer.ringWalker);
-		
+
 		//set new position values for high and low api
 		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.structuredLayoutRingTail.rollBackWorking();
 		ringBuffer.unstructuredLayoutReadBase = ringBuffer.unstructuredLayoutRingTail.rollBackWorking(); //this byte position is used by both high and low api
-		
-		
 	}
 
+/**
+ * Returns <code>true</code> if the provided pipe is replaying.
+ *
+ * @param ringBuffer  the ringBuffer to check.
+ * @return            <code>true</code> if the ringBuffer is replaying, <code>false</code> if it is not.
+ */
 	public static boolean isReplaying(RingBuffer ringBuffer) {
 		return RingBuffer.getWorkingTailPosition(ringBuffer)<ringBuffer.holdingPrimaryWorkingTail;
 	}
@@ -369,9 +466,9 @@ public final class RingBuffer {
 	public static void cancelReplay(RingBuffer ringBuffer) {
 		ringBuffer.structuredLayoutRingTail.workingTailPos.value = ringBuffer.holdingPrimaryWorkingTail;
 		ringBuffer.unstructuredLayoutRingTail.byteWorkingTailPos.value = ringBuffer.holdingBytesWorkingTail;
-		
+
 		ringBuffer.unstructuredLayoutReadBase = ringBuffer.holdingBytesReadBase;
-		
+
 		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.ringWalker.holdingNextWorkingTail ;
 		assert(ringBuffer.ringWalker.holdingNextWorkingHead == ringBuffer.ringWalker.nextWorkingHead);
 	}
@@ -382,7 +479,7 @@ public final class RingBuffer {
 	       rb.batchReleaseCountDownInit = Integer.MAX_VALUE;
 	       rb.batchReleaseCountDown = Integer.MAX_VALUE;
 	}
-	
+
 
     public static void setReleaseBatchSize(RingBuffer rb, int size) {
 
@@ -464,7 +561,7 @@ public final class RingBuffer {
      * Return the configuration used for this ring buffer, Helpful when we need to make clones of the ring which will hold same message types.
      * @return
      */
-    public RingBufferConfig config() { 
+    public RingBufferConfig config() {
         //TODO:M, this creates garbage and we should just hold the config object instead of copying the values out.  Then return the same instance here.
         return new RingBufferConfig(bitsOfStructuredLayoutRingBuffer,bitsOfUntructuredLayoutRingBuffer,unstructuredLayoutConstBuffer,ringWalker.from);
     }
@@ -494,7 +591,7 @@ public final class RingBuffer {
         this.sizeOfStructuredLayoutRingBuffer = 1 << primaryBits;
         this.mask = sizeOfStructuredLayoutRingBuffer - 1;
 
-        //single text and byte buffers because this is where the variable length data will go.
+        //single text and byte buffers because this is where the variable-length data will go.
 
         this.sizeOfUntructuredLayoutRingBuffer =  1 << byteBits;
         this.byteMask = sizeOfUntructuredLayoutRingBuffer - 1;
@@ -505,12 +602,12 @@ public final class RingBuffer {
 
 
         if (0 == from.maxVarFieldPerUnit || 0==primaryBits) { //zero bits is for the dummy mock case
-        	maxAvgVarLen = 0; //no fragments had any variable length fields so we never allow any
+        	maxAvgVarLen = 0; //no fragments had any variable-length fields so we never allow any
         } else {
         	//given outer ring buffer this is the maximum number of var fields that can exist at the same time.
         	int mx = sizeOfStructuredLayoutRingBuffer;
         	int maxVarCount = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, mx);
-        	//to allow more almost 2x more flexibility in variable length bytes we track pairs of writes and ensure the
+        	//to allow more almost 2x more flexibility in variable-length bytes we track pairs of writes and ensure the
         	//two together are below the threshold rather than each alone
         	maxAvgVarLen = sizeOfUntructuredLayoutRingBuffer/maxVarCount;
         }
@@ -530,7 +627,6 @@ public final class RingBuffer {
 		return this;
     }
 
-//cas: LEFT OFF HERE.
 	private void buildBuffers() {
 
         assert(structuredLayoutRingBufferHead.workingHeadPos.value == structuredLayoutRingBufferHead.headPos.get());
@@ -543,8 +639,6 @@ public final class RingBuffer {
         this.llRead = new LowLevelAPIReadPositionCache();
         this.llWrite = new LowLevelAPIWritePositionCache();
 
-        // cas: comment.  If it really, truly must be the same, then a common routine should be
-        // extracted (unless you can call reset here).
         //This init must be the same as what is done in reset()
         //This target is a counter that marks if there is room to write more data into the ring without overwriting other data.
         this.llRead.llwConfirmedReadPosition = 0-this.sizeOfStructuredLayoutRingBuffer;
@@ -1204,10 +1298,10 @@ public final class RingBuffer {
 	/**
 	 * Read and return the int value at this position and clear the value with the provided clearValue.
 	 * This ensures no future calls will be able to read the value once this is done.
-	 * 
+	 *
 	 * This is primarily needed for secure data xfers when the re-use of a ring buffer may 'leak' old values.
 	 * It is also useful for setting flags in conjuction with the replay feature.
-	 * 
+	 *
 	 * @param buffer
 	 * @param mask
 	 * @param index
@@ -1220,7 +1314,7 @@ public final class RingBuffer {
             buffer[idx] = clearValue;
             return result;
 	}
-	
+
 	public static long readLong(int[] buffer, int mask, long index) {
 		return (((long) buffer[mask & (int)index]) << 32) | (((long) buffer[mask & (int)(index + 1)]) & 0xFFFFFFFFl);
 	}
@@ -2088,7 +2182,7 @@ public final class RingBuffer {
     public static ByteBuffer wrappedUnstructuredLayoutRingBufferB(RingBuffer ring) {
         return ring.wrappedUnstructuredLayoutRingBufferB;
     }
-    
+
 	public static ByteBuffer wrappedUnstructuredLayoutConstBuffer(RingBuffer ring) {
 		return ring.wrappedUnstructuredLayoutConstBuffer;
 	}
@@ -2148,7 +2242,7 @@ public final class RingBuffer {
 	public static int getUnstructuredLayoutRingTailPosition(RingBuffer ring) {
 	    return PaddedInt.get(ring.unstructuredLayoutRingTail.bytesTailPos);
 	}
-	
+
 	@Deprecated
     public static int bytesTailPosition(RingBuffer ring) {
         return getUnstructuredLayoutRingTailPosition(ring);
@@ -2173,7 +2267,7 @@ public final class RingBuffer {
     public static int getWorkingUnstructuredLayoutRingTailPosition(RingBuffer ring) {
         return PaddedInt.get(ring.unstructuredLayoutRingTail.byteWorkingTailPos);
     }
-    
+
     @Deprecated
     public static int bytesWorkingTailPosition(RingBuffer ring) {
         return getWorkingUnstructuredLayoutRingTailPosition(ring);
@@ -2234,8 +2328,4 @@ public final class RingBuffer {
     public static PaddedLong getWorkingHeadPositionObject(RingBuffer rb) {
         return rb.structuredLayoutRingBufferHead.workingHeadPos;
     }
-
-
-
-
 }
