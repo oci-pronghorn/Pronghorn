@@ -14,7 +14,8 @@ public class LineSplitterFileChannelStage extends LineSplitterByteBufferStage {
 	private final FileChannel fileChannel;
 	private final boolean showProgress;
 	private final Logger log = LoggerFactory.getLogger(LineSplitterFileChannelStage.class);
-	
+	private boolean hasRun = false;
+	        
 	public LineSplitterFileChannelStage(GraphManager graphManager, FileChannel fileChannel, RingBuffer outputRing) {
 		super(graphManager, null, outputRing);
 		
@@ -24,6 +25,10 @@ public class LineSplitterFileChannelStage extends LineSplitterByteBufferStage {
 	
 	@Override
 	public void run() {
+	    if (hasRun) {
+	        requestShutdown();
+	        return;
+	    }
 		log.info("running line splitter now");
 		try{
 			long maxStep = Math.max(1<<27, 1<<outputRing.bitsOfUntructuredLayoutRingBuffer);
@@ -52,6 +57,7 @@ public class LineSplitterFileChannelStage extends LineSplitterByteBufferStage {
 			
 			requestShutdown();
 			log.trace("shutdown the line splitter");
+			hasRun = true;
 			
 		} catch (Exception e) {
 			throw new RuntimeException(e);

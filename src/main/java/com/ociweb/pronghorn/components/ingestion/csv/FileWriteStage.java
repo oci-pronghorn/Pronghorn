@@ -47,8 +47,8 @@ public class FileWriteStage extends PronghornStage {
 	        	
 	            int msgId = RingBuffer.takeMsgIdx(inputRing);
 	            if (msgId<0) {  	
-
-	                RingBuffer.takeValue(inputRing); 
+	                RingBuffer.dump(inputRing); //posion pill detected TODO: shoul dot require this draconian call.
+	                //RingBuffer.takeValue(inputRing); 
 	                RingBuffer.releaseReadLock(inputRing);       
 	                RingBuffer.releaseAllBatchedReads(inputRing);
 	            	assert(RingBuffer.contentRemaining(inputRing)==0) : "still has content to write";
@@ -58,6 +58,10 @@ public class FileWriteStage extends PronghornStage {
 	            
 	        	int meta = takeRingByteMetaData(inputRing);
 	        	int len = takeRingByteLen(inputRing);
+	        	if (len<=0) {
+	        	    //TODO: use logger!
+	        	    System.err.println("Warning we have write length of "+len+" "+inputRing);
+	        	}
 
 	        	//converting this to the position will cause the byte posistion to increment.
 	        	int pos = bytePosition(meta, inputRing, len);//has side effect of moving the byte pointer!!
@@ -74,7 +78,9 @@ public class FileWriteStage extends PronghornStage {
                 	inputByteBuffer.limit(idx+len);
                 	inputByteBuffer.position(idx);
                 	try {
-						channel.write(inputByteBuffer);
+						if (len != channel.write(inputByteBuffer)) {
+						    throw new RuntimeException("Did not write expected length.");
+						}
 					} catch (IOException e) {
 						e.printStackTrace();
 						throw new RuntimeException(e);
@@ -106,7 +112,7 @@ public class FileWriteStage extends PronghornStage {
                 RingBuffer.takeValue(inputRing); 
                 
                 RingBuffer.releaseReadLock(inputRing);         
-            
+                
                 
 				assert(RingBuffer.contentRemaining(inputRing)>=0) : "still has "+RingBuffer.contentRemaining(inputRing)+" content to write "+inputRing;
 				

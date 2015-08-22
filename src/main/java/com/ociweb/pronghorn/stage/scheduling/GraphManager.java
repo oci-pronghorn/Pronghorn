@@ -1,6 +1,8 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
 import java.util.Arrays;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -209,16 +211,23 @@ public class GraphManager {
 	
 	public static boolean validShutdown(GraphManager m) {
 		boolean result = true;
-		//TODO: B, refactor so this goes in order from producers to consumers.
-		int i = m.stageIdToStage.length;
-		while (--i>=0) {
+
+		int i = -1;
+		while (++i<m.stageIdToStage.length) {
 			if (null!=m.stageIdToStage[i]) {				
 				if (!isStageTerminated(m, i) ) { 				
 					PronghornStage stage = getStage(m,i);
+					StageScheduler.log.error("-------------------");//divide the log for better clarity
 					logInputs(StageScheduler.log, m, stage);
 					StageScheduler.log.error("  Expected stage {} to be stopped but it appears to be running. terminated:{}", stage, isStageTerminated(m, i));
 					logOutputs(StageScheduler.log, m, stage);
+					StageScheduler.log.error("-------------------");//divide the log for better clarity
+					
 					result = false;
+					
+					reportUnexpectedThreadStacks();
+					
+					
 				}				
 			}
 		}		
@@ -227,6 +236,37 @@ public class GraphManager {
 		}
 		return result;
 	}
+
+    private static void reportUnexpectedThreadStacks() {
+        Map<Thread, StackTraceElement[]> allTraces = Thread.getAllStackTraces();
+        for(Entry<Thread, StackTraceElement[]> item: allTraces.entrySet()) {
+            
+            StackTraceElement[] ste = item.getValue();
+            boolean ignore = false;
+            int j = ste.length;
+            while (--j>=0) {
+                //These are common to all of Java and normal ways to block a thread
+                ignore |= ste[j].toString().contains("getAllStackTraces");					        
+                ignore |= ste[j].toString().contains("java.lang.Object.wait");
+                ignore |= ste[j].toString().contains("java.util.concurrent.locks.LockSupport.parkNanos");		
+            }
+            
+            j = ste.length;
+            if (j>0) {
+                //These are very frequent at the bottom of Pronghorn stack.
+        	    ignore |= ste[0].toString().contains("ThreadPerStageScheduler.continueRunning");
+        	    ignore |= ste[0].toString().contains("com.ociweb.pronghorn.stage.scheduling.GraphManager");
+        	            					    
+        	    if (!ignore) {
+        		    System.err.println("");
+        		    System.err.println(item.getKey().getName());
+        		    while (--j>=0) {
+        		        System.err.println("   "+ste[j]);
+        		    }
+        	    }
+            }					    
+        }
+    }
 
 	private static void copyAnnotationsForStage(GraphManager m,	GraphManager clone, PronghornStage stage) {
 		int idx;
@@ -867,7 +907,7 @@ public class GraphManager {
 		
 	}
 	
-	public static RingBuffer[] attachMonitorsToGraph(GraphManager gm, Integer monitorRate, RingBufferConfig ringBufferMonitorConfig) {
+	public static RingBuffer[] attachMonitorsToGraph(GraphManager gm, Long monitorRate, RingBufferConfig ringBufferMonitorConfig) {
 
 		int j = gm.ringIdToRing.length;
 		int count = 0;

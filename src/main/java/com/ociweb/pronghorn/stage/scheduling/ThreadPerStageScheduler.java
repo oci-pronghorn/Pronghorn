@@ -135,6 +135,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					GraphManager.initInputRings(graphManager, stage.stageId);					
 					log.trace("finished on initRings:"+stage.getClass().getSimpleName());
 					
+					Thread.currentThread().setName(stage.getClass().getSimpleName());
 					stage.startup();
 					
 					runLoop(stage);	
@@ -155,12 +156,24 @@ public class ThreadPerStageScheduler extends StageScheduler {
 
 			private void recordTheException(final PronghornStage stage, Throwable t) {
 				synchronized(this) {
-				    if (null==firstException) {
+				    if (null==firstException) {				        
 				        firstException = t;
 				    }
 				}   	                
-				log.error("Stacktrace",t);
-				log.warn("Unexpected error in stage "+stage.stageId+" "+stage.getClass().getSimpleName());
+                log.error("Stacktrace",t);
+				int inputcount = GraphManager.getInputPipeCount(graphManager, stage);
+				log.error("Unexpected error in stage "+stage.stageId+" "+stage.getClass().getSimpleName()+" inputs:"+inputcount);
+				
+				int i = inputcount;
+				while (--i>=0) {
+				    
+				    log.error("left input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
+				    
+				}
+				
+				
+				
+				
 				GraphManager.shutdownNeighborRings(graphManager, stage);
 			}			
 		};
@@ -192,6 +205,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					GraphManager.initInputRings(graphManager, stage.stageId);
 					log.trace("finished on initRings:{}",stage.getClass().getSimpleName());
 					
+					Thread.currentThread().setName(stage.getClass().getSimpleName());
 					stage.startup();
 					
 					runPeriodicLoop(nsScheduleRate, stage);	
@@ -207,8 +221,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
     				    }
 				    }				    
 				    
+				    log.error("Stacktrace",t);
 					log.error("Unexpected error in stage {}", stage);
-					log.error("Stacktrace",t);
 					GraphManager.shutdownNeighborRings(graphManager, stage);
 					Thread.currentThread().interrupt();
 				}

@@ -111,7 +111,7 @@ public class TapeWriteStage extends PronghornStage {
 		}
 				
 		//now do the copies
-		if (doingCopy(ss, byteTailPos, primaryTailPos, (int)totalPrimaryCopy, totalBytesCopy)) {
+		if (0==totalBytesCopy || doingCopy(ss, byteTailPos, primaryTailPos, (int)totalPrimaryCopy, totalBytesCopy)) {
 								
 			//TODO: play back file with those cunks into indexer to do it after the fact
 			

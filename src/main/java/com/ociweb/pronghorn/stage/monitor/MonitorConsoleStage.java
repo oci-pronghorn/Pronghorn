@@ -115,13 +115,16 @@ public class MonitorConsoleStage extends PronghornStage {
 		}
 	}
 
-	private static final Integer defaultMonitorRate = Integer.valueOf(50000000);
+	private static final Long defaultMonitorRate = Long.valueOf(50000000);
 	private static final RingBufferConfig defaultMonitorRingConfig = new RingBufferConfig(MonitorFROM.buildFROM(), 30, 0);
 	
 	public static void attach(GraphManager gm) {
 		attach(gm,defaultMonitorRate,defaultMonitorRingConfig);
 	}
 	
+	public static void attach(GraphManager gm, long rate) {
+	        attach(gm,Long.valueOf(rate),defaultMonitorRingConfig);
+	}
 	
 	/**
 	 * Easy entry point for adding monitoring to the graph.  This should be copied by all the other monitor consumers.  TODO: build for JMX, SLF4J, Socket.io
@@ -129,7 +132,7 @@ public class MonitorConsoleStage extends PronghornStage {
 	 * @param monitorRate
 	 * @param ringBufferMonitorConfig
 	 */
-	public static void attach(GraphManager gm, Integer monitorRate, RingBufferConfig ringBufferMonitorConfig) {
+	public static void attach(GraphManager gm, Long monitorRate, RingBufferConfig ringBufferMonitorConfig) {
 		MonitorConsoleStage stage = new MonitorConsoleStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig));
         GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
 		GraphManager.addAnnotation(gm, GraphManager.MONITOR, "dummy", stage);
