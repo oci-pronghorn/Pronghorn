@@ -90,7 +90,11 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 		return result;
 	}
 
+//	boolean closed = false;// TODO: C, clean this up to make simpler
 	private int blockForNewContent(byte[] targetData, int targetOffset, int targetLength) {
+//	    if (closed) {
+//	        return -1;
+//	    }
 		int returnLength = 0;
 		//only need to look for 1 value then step forward by steps this lets us pick up the EOM message without hanging.
 		long target = 1+tailPosition(ring);
@@ -114,8 +118,9 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 			int meta = takeRingByteMetaData(ring);//side effect, this moves the pointer and must happen before we call for length
 			int sourceLength = takeRingByteLen(ring);
 			return beginNewContent(targetData, targetOffset, targetLength, meta, sourceLength);
-		} else {   					
-			RingBuffer.releaseReads(ring);
+		} else { 
+			RingBuffer.releaseReads(ring); //TOOD: bad idea needs more elegant solution.
+		//	closed = true;
 			return -1;			
 		}
 	}
@@ -174,7 +179,9 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 	}
 
 	private void copyData(byte[] targetData, int targetOffset, int sourceLength, byte[] sourceData, int sourceOffset) {
-
+	    if (0==sourceLength) {
+	        return; //TODO: needs to be cleaned up but we can not use the logic below when length is zero.
+	    }
 		if ((sourceOffset&sourceByteMask) > ((sourceOffset+sourceLength-1) & sourceByteMask)) {
 			//rolled over the end of the buffer
 			 int len1 = 1+sourceByteMask-(sourceOffset&sourceByteMask);

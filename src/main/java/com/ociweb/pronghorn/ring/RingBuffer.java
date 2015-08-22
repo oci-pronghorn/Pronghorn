@@ -680,7 +680,10 @@ public final class RingBuffer {
         	int bytesPerInt = (int)Math.ceil(length*RingBuffer.from(rb).maxVarFieldPerUnit);
         	int bitsDif = 32 - Integer.numberOfLeadingZeros(bytesPerInt - 1);
 
-        	throw new UnsupportedOperationException("Can not write byte array of length "+length+". The dif between primary and byte bits should be at least "+bitsDif+". "+rb.bitsOfStructuredLayoutRingBuffer+","+rb.bitsOfUntructuredLayoutRingBuffer);
+        	throw new UnsupportedOperationException("Can not write byte array of length "+length+
+        	                                        ". The dif between primary and byte bits should be at least "+bitsDif+
+        	                                        ". "+rb.bitsOfStructuredLayoutRingBuffer+","+rb.bitsOfUntructuredLayoutRingBuffer+
+        	                                        ". The limit is "+rb.maxAvgVarLen+" for pipe "+rb);
         }
         rb.varLenMovingAverage = newAvg;
 	}
@@ -722,6 +725,40 @@ public final class RingBuffer {
         unstructuredLayoutRingTail.byteWorkingTailPos.value = unstructuredPos;
         PaddedInt.set(unstructuredLayoutRingTail.bytesTailPos,unstructuredPos);
         RingWalker.reset(ringWalker, structuredPos);
+    }
+
+    public static int convertToUTF8(final char[] charSeq, final int charSeqOff, final int charSeqLength, final byte[] targetBuf, final int targetIdx, final int targetMask) {
+    	
+    	int target = targetIdx;				
+        int c = 0;
+        while (c < charSeqLength) {
+        	target = encodeSingleChar((int) charSeq[charSeqOff+c++], targetBuf, targetMask, target);
+        }
+        //NOTE: the above loop will keep looping around the target buffer until done and will never cause an array out of bounds.
+        //      the length returned however will be larger than targetMask, this should be treated as an error.
+        return target-targetIdx;//length;
+    }
+
+    public static int convertToUTF8(final CharSequence charSeq, final int charSeqOff, final int charSeqLength, final byte[] targetBuf, final int targetIdx, final int targetMask) {
+        /**
+         * 
+         * Converts CharSequence (base class of String) into UTF-8 encoded bytes and writes those bytes to an array.
+         * The write loops around the end using the targetMask so the returned length must be checked after the call
+         * to determine if and overflow occurred. 
+         * 
+         * Due to the variable nature of converting chars into bytes there is not easy way to know before walking how
+         * many bytes will be needed.  To prevent any overflow ensure that you have 6*lengthOfCharSequence bytes available.
+         * 
+         */
+    	
+    	int target = targetIdx;				
+        int c = 0;
+        while (c < charSeqLength) {
+        	target = encodeSingleChar((int) charSeq.charAt(charSeqOff+c++), targetBuf, targetMask, target);
+        }
+        //NOTE: the above loop will keep looping around the target buffer until done and will never cause an array out of bounds.
+        //      the length returned however will be larger than targetMask, this should be treated as an error.
+        return target-targetIdx;//length;
     }
 
     public static void appendFragment(RingBuffer input, Appendable target, int cursor) {
@@ -1800,7 +1837,7 @@ public final class RingBuffer {
 	}
 
 	public static int takeRingByteLen(RingBuffer ring) {
-	    assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
+	//    assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
 		return ring.structuredLayoutRingBuffer[(int)(ring.mask & (ring.structuredLayoutRingTail.workingTailPos.value++))];// second int is always the length
 	}
 
@@ -1815,7 +1852,7 @@ public final class RingBuffer {
 	}
 
 	public static int takeRingByteMetaData(RingBuffer ring) {
-	    assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
+	//    assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
 		return readValue(0,ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value++);
 	}
 
@@ -1938,7 +1975,7 @@ public final class RingBuffer {
      */
     public static void releaseAllBatchedReads(RingBuffer ring) {
 
-        if (ring.lastReleasedTail>ring.structuredLayoutRingTail.tailPos.get()) {
+        if (ring.lastReleasedTail > ring.structuredLayoutRingTail.tailPos.get()) {
             PaddedInt.set(ring.unstructuredLayoutRingTail.bytesTailPos,ring.lastReleasedBytesTail);
             ring.structuredLayoutRingTail.tailPos.lazySet(ring.lastReleasedTail);
             ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
@@ -2155,6 +2192,7 @@ public final class RingBuffer {
 	}
 
 	public static FieldReferenceOffsetManager from(RingBuffer ring) {
+	    assert(null!=ring);
 		return ring.ringWalker.from;
 	}
 

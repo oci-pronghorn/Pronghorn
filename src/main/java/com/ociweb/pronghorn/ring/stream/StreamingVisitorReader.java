@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.ring.stream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
@@ -7,6 +10,8 @@ import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class StreamingVisitorReader {
 
+    private static final Logger log = LoggerFactory.getLogger(StreamingVisitorReader.class);
+    
 	private final StreamingReadVisitor visitor;
 	private final RingBuffer inputRing;
 	private final FieldReferenceOffsetManager from;
@@ -296,7 +301,12 @@ public class StreamingVisitorReader {
 						}
 					}
 					break;
-		    	default: System.err.println("unknown "+TokenBuilder.tokenToString(from.tokens[j]));
+				case TypeMask.Dictionary:
+				    {
+				        log.debug("dictionary operation discovered, TODO: add this to the vistor to be supported");
+				    }
+				    break;	
+		    	default: log.error("unknown token type:"+TokenBuilder.tokenToString(from.tokens[j]));
 			}
 		}
 		

@@ -306,6 +306,7 @@ public class RingWriter {
 	 * 
 	 */
 	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
+	    assert(null!=ring);
 		int fragSize = RingBuffer.from(ring).fragDataSize[cursorPosition];
 		long target = ring.ringWalker.nextWorkingHead - (ring.sizeOfStructuredLayoutRingBuffer - fragSize);
 		return RingWalker.tryWriteFragment1(ring, cursorPosition, RingBuffer.from(ring), fragSize, target, ring.llRead.llrTailPosCache >=  target);
