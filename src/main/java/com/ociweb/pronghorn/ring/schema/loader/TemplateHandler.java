@@ -150,8 +150,8 @@ public class TemplateHandler extends DefaultHandler {
     String templateXMLns;
 
     // Fields never nest and only appear one after the other.
-    int fieldId;
-    public int fieldIdBiggest = 0;
+    long fieldId;
+    public long fieldIdBiggest = 0;
     int fieldTokensUnique = 0;
 
     int fieldType;
@@ -211,7 +211,10 @@ public class TemplateHandler extends DefaultHandler {
             fieldName = attributes.getValue("name");
             String templateIdString = attributes.getValue("id");
             if (templateIdString != null ) {
-                templateId = Long.parseLong(templateIdString);
+                //numeric value of template id can be in hex and start with 0x or can be decimal.
+                templateId = templateIdString.startsWith("0x") ? 
+                        Long.parseLong(templateIdString.substring(2), 16) :    
+                        Long.parseLong(templateIdString);
 
                 if (!LongHashTable.setItem(templateToOffset, templateId, templateOffset)) {
                 	throw new SAXException("Error in XML file, Duplicate template id: " + templateId);
@@ -483,7 +486,11 @@ public class TemplateHandler extends DefaultHandler {
 
     private void commonIdAttributes(Attributes attributes) throws SAXException {
     	fieldOperator = OperatorMask.Field_None;
-        fieldId = Integer.parseInt(attributes.getValue("id"));
+    	String strValue = attributes.getValue("id");
+    	if (null==strValue) {
+    	    throw new SAXException("id is a required attribute on all fields in the template with ID "+templateId);
+    	}
+        fieldId = strValue.startsWith("0x") ? Long.parseUnsignedLong(strValue.substring(2), 16) : Long.parseLong(strValue);
         if (fieldId < 0) {
             throw new SAXException("Field Id must be positive: " + fieldId);
         } else {
@@ -799,8 +806,12 @@ public class TemplateHandler extends DefaultHandler {
 	}
 
     private int buildToken(AtomicInteger count) throws SAXException {
+        int intFieldId = (int)fieldId; //TODO: Fix design limitation, dictionaryMap is an array and limited to the lenght of an int not log
+        if (((long)intFieldId) != fieldId) {
+            throw new UnsupportedOperationException("Can not loop up, the field ID is too large.");
+        }
         int token;
-        int[] dTokens = dictionaryMap[fieldId];
+        int[] dTokens = dictionaryMap[intFieldId];
         if (null == dTokens || dTokens.length <= activeDictionary) {
             int[] newDTokens = new int[activeDictionary + 1];
             if (null != dTokens) {
@@ -820,7 +831,7 @@ public class TemplateHandler extends DefaultHandler {
             saveResetListMembers(activeDictionary, saveAsType, tokCount, fieldOperator);
             fieldTokensUnique++;
 
-            dictionaryMap[fieldId] = dTokens = newDTokens;
+            dictionaryMap[intFieldId] = dTokens = newDTokens;
 
         } else {
             token = dTokens[activeDictionary];
