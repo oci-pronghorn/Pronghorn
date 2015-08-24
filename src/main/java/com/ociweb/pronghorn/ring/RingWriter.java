@@ -133,6 +133,7 @@ public class RingWriter {
     }
 
 	public static void writeSpecialBytesPosAndLen(RingBuffer rb, int loc, int length, int bytePos) {
+	    RingBuffer.validateVarLength(rb,length);
 		RingBuffer.setBytePosAndLen(RingBuffer.primaryBuffer(rb), rb.mask, rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), bytePos, length, RingBuffer.bytesWriteBase(rb));
 		RingBuffer.addAndGetBytesWorkingHeadPosition(rb, length);        
 	}
@@ -313,7 +314,12 @@ public class RingWriter {
 	}
 	
 	public static boolean hasRoomForFragmentOfSize(RingBuffer ring, int fragSize) {
-	    return ring.llRead.llrTailPosCache >= ring.ringWalker.nextWorkingHead - (ring.sizeOfStructuredLayoutRingBuffer - fragSize);
+	    long limit = ring.ringWalker.nextWorkingHead - (ring.sizeOfStructuredLayoutRingBuffer - fragSize);
+	    if (!(ring.llRead.llrTailPosCache >= limit)) {
+	        return (ring.llRead.llrTailPosCache =  RingBuffer.tailPosition(ring)) >= limit;
+	    } else {
+	        return true;
+	    }
 	}
 
 	public static void setPublishBatchSize(RingBuffer rb, int size) {

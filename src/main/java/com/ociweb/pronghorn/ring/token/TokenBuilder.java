@@ -24,6 +24,10 @@ public class TokenBuilder {
 	
     // See fast writer for details and mask sizes
 
+    //////
+    //This was upgraded so 21 bits is the maximum number of fields, the actual field id value is kept elsewhere in an array of long.
+    //see FieldReferenceOffsetManager for details.
+    //////
     public static final int MAX_FIELD_ID_BITS = 21;//fills exactly 3 bytes in FAST int encoding
     public static final int MAX_FIELD_ID_VALUE = (1 << MAX_FIELD_ID_BITS) - 1;
     public static final int MAX_INSTANCE = MAX_FIELD_ID_VALUE;

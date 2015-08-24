@@ -488,7 +488,7 @@ public class TemplateHandler extends DefaultHandler {
     	fieldOperator = OperatorMask.Field_None;
     	String strValue = attributes.getValue("id");
     	if (null==strValue) {
-    	    throw new SAXException("id is a required attribute on all fields in the template with ID "+templateId);
+    	    throw new SAXException("id is a required attribute on all fields in the template with ID "+templateId+"(0x"+Long.toHexString(templateId)+")");
     	}
         fieldId = strValue.startsWith("0x") ? Long.parseUnsignedLong(strValue.substring(2), 16) : Long.parseLong(strValue);
         if (fieldId < 0) {
@@ -806,7 +806,8 @@ public class TemplateHandler extends DefaultHandler {
 	}
 
     private int buildToken(AtomicInteger count) throws SAXException {
-        int intFieldId = (int)fieldId; //TODO: Fix design limitation, dictionaryMap is an array and limited to the lenght of an int not log
+                
+        int intFieldId = (int)fieldId; //TODO: Fix design limitation, Use new LongHashMap to map into ordal int of this matrix,  dictionaryMap is an array and limited to the lenght of an int not log
         if (((long)intFieldId) != fieldId) {
             throw new UnsupportedOperationException("Can not loop up, the field ID is too large.");
         }
