@@ -70,6 +70,13 @@ public final class TypeMask {
 															        0, 0, 0, 0,
 															        0, 0, 0, 0, 0};
 
+    //NOTE: if type is Decimal, jump by 2
+    public final static int[] scriptTokenSize = new int[] {   1, 1, 1, 1, 
+                                                              1, 1, 1, 1, 
+                                                              1, 1, 1, 1, 
+                                                              2, 2, 1, 1,  
+                                                              1, 1, 1, 1,
+                                                              1, 1, 1, 1, 1};
     
     public final static String[] xmlTypeName = new String[] { "uInt32", "uInt32", "int32", "int32", "uInt64", "uInt64", "int64", "int64",
         "string", "string", "string", "string", "decimal", "decimal", "byteVector", "byteVector",
