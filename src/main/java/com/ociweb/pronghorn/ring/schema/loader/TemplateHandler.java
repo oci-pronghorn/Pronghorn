@@ -92,7 +92,8 @@ public class TemplateHandler extends DefaultHandler {
     public String[] catalogScriptFieldNames = new String[MAX_SCRIPT_LENGTH];
     public String[] catalogScriptDictionaryNames = new String[MAX_SCRIPT_LENGTH];
 
-    List<SAXEvent> templateEvents;
+    final List<SAXEvent> templateEvents = new ArrayList<SAXEvent>();
+    
     Map<String,List<SAXEvent>> templateMap = new HashMap<String, List<SAXEvent>>();
 
     public int catalogTemplateScriptIdx = 0;
@@ -119,7 +120,7 @@ public class TemplateHandler extends DefaultHandler {
     // / the second array will contain zeros to allow direct offset to the
     // dictionary.
 
-    int[][] dictionaryMap = new int[TokenBuilder.MAX_FIELD_ID_VALUE][];
+    int[][] dictionaryMap = new int[TokenBuilder.MAX_FIELD_ID_VALUE+1][];
 
     // TODO: T, must detect two fieldId defined in different dictionaries when
     // they appear in the same stop node block.
@@ -217,7 +218,7 @@ public class TemplateHandler extends DefaultHandler {
                         Long.parseLong(templateIdString);
 
                 if (!LongHashTable.setItem(templateToOffset, templateId, templateOffset)) {
-                	throw new SAXException("Error in XML file, Duplicate template id: " + templateId);
+                	throw new SAXException("Error in XML file, Duplicate template id: " + templateId+"(0x"+Long.toHexString(templateId)+")");
                 }
 
                 if (templateId < 0) {
@@ -277,7 +278,7 @@ public class TemplateHandler extends DefaultHandler {
                 templateName = attributes.getValue("name");
             }
 
-            templateEvents = new ArrayList<SAXEvent>();
+            templateEvents.clear();
 
         } else if (qName.equalsIgnoreCase("templates")) {
             setActiveDictionary(attributes);

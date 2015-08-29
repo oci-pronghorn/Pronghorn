@@ -1885,11 +1885,19 @@ public final class RingBuffer {
 
     	//TODO:M To make this more error proof for future developers need to add assert to detect if this release was forgotten. done by some easy math.
     	RingBuffer.markBytesReadBase(ring);
-
-    	int msgIdx = readValue(0, ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value++);
-    	return msgIdx;
+    	return readValue(0, ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value++);
     }
 
+    public static int peekInt(RingBuffer ring) {
+        return readValue(0, ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value);
+    }
+    
+    public static int peekInt(RingBuffer ring, int offset) {
+        return readValue(0, ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value+offset);
+    }
+        
+    
+    
     public static int contentRemaining(RingBuffer rb) {
         return (int)(rb.structuredLayoutRingBufferHead.headPos.get() - rb.structuredLayoutRingTail.tailPos.get()); //must not go past add count because it is not release yet.
     }

@@ -569,10 +569,10 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	}
 	
 	//this impl only works for simple case where every message is one fragment. 
-	public static boolean tryReadFragment(RingBuffer ringBuffer) { 
+	public static boolean tryReadFragment(RingBuffer ringBuffer) {
 		
 		if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBuffer.ringWalker.nextCursor)) {    
-		    assert(ringBuffer.ringWalker.seqStackHead<0) : "Error the seqStack should be empty but found value at "+ringBuffer.ringWalker.seqStackHead;
+		    assert(ringBuffer.ringWalker.seqStackHead<0) : "Error the seqStack should be empty";
 			return RingWalker.prepReadMessage(ringBuffer, ringBuffer.ringWalker);			   
 	    } else {  
 			return RingWalker.prepReadFragment(ringBuffer, ringBuffer.ringWalker);
