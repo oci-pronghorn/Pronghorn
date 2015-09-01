@@ -371,54 +371,20 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 
 
 	public static ByteBuffer wrappedUnstructuredLayoutBufferA(RingBuffer ring, int loc) {
-    	long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
-
-        int meta = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp)];
-        int len = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp + 1)];
-        ByteBuffer buffer;
-        if (meta < 0) {
-        	buffer = RingBuffer.wrappedUnstructuredLayoutConstBuffer(ring);
-        	int position = RingReader.POS_CONST_MASK & meta;    
-        	buffer.position(position);
-        	buffer.limit(position+len);        	
-        } else {
-        	buffer = RingBuffer.wrappedUnstructuredLayoutRingBufferA(ring);
-        	int position = ring.byteMask & RingBuffer.restorePosition(ring,meta);
-        	buffer.clear();
-        	buffer.position(position);
-        	//use the end of the buffer if the lengh runs past it.
-        	buffer.limit(Math.min(ring.sizeOfUntructuredLayoutRingBuffer, position+len));
-        }
-        return buffer;
+    	long pos = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
+        int meta = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(pos)];
+        int len = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(pos + 1)];
+        return RingBuffer.wrappedUnstructuredLayoutBufferA(ring, meta, len);
 	}
 
-	public static ByteBuffer wrappedUnstructuredLayoutBufferB(RingBuffer ring, int loc) {
-    	long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
-
-        int meta = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp)];
-        int len = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp + 1)];
-        ByteBuffer buffer;
-        if (meta < 0) {
-        	//always zero because constant array never wraps
-        	buffer = RingBuffer.wrappedUnstructuredLayoutConstBuffer(ring);
-        	buffer.position(0);
-        	buffer.limit(0);
-        } else {
-        	buffer = RingBuffer.wrappedUnstructuredLayoutRingBufferB(ring);
-        	int position = ring.byteMask & RingBuffer.restorePosition(ring,meta);
-        	buffer.clear();
-            //position is zero
-        	int endPos = position+len;
-        	if (endPos>ring.sizeOfUntructuredLayoutRingBuffer) {
-        		buffer.limit(ring.byteMask & endPos);
-        	} else {
-        		buffer.limit(0);
-        	}
-        }		
-		return buffer;
+    public static ByteBuffer wrappedUnstructuredLayoutBufferB(RingBuffer ring, int loc) {
+    	long pos = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
+        int meta = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(pos)];
+        int len = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(pos + 1)];
+        return RingBuffer.wrappedUnstructuredLayoutBufferB(ring, meta, len);
 	}
-    
-	public static int readBytes(RingBuffer ring, int loc, byte[] target, int targetOffset) {
+
+    public static int readBytes(RingBuffer ring, int loc, byte[] target, int targetOffset) {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
     	long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);

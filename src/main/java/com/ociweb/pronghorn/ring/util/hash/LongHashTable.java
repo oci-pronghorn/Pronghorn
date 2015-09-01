@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.ring.util.hash;
 
 
 /**
- * Non-Thread safe simple fast hash for int to int mapping.
+ * Non-Thread safe simple fast hash for long to int mapping.
  * 
  * No set is allowed unless no previous value is found.
  * To change previous value replace must be called.

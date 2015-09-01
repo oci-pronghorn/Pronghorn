@@ -73,7 +73,7 @@ public class IntHashTable {
 		while (((int)block) != key && block != 0) { 			
 			block = ht.data[++hash & mask];
 		}
-		return 0==block;
+		return 0!=block; //TODO: needs test.
 	}
 	
 	public static boolean replaceItem(IntHashTable ht, int key, int newValue) {

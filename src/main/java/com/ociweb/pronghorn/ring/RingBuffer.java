@@ -727,6 +727,47 @@ public final class RingBuffer {
         RingWalker.reset(ringWalker, structuredPos);
     }
 
+
+    public static ByteBuffer wrappedUnstructuredLayoutBufferB(RingBuffer ring, int meta, int len) {
+        ByteBuffer buffer;
+        if (meta < 0) {
+        	//always zero because constant array never wraps
+        	buffer = wrappedUnstructuredLayoutConstBuffer(ring);
+        	buffer.position(0);
+        	buffer.limit(0);
+        } else {
+        	buffer = wrappedUnstructuredLayoutRingBufferB(ring);
+        	int position = ring.byteMask & restorePosition(ring,meta);
+        	buffer.clear();
+            //position is zero
+        	int endPos = position+len;
+        	if (endPos>ring.sizeOfUntructuredLayoutRingBuffer) {
+        		buffer.limit(ring.byteMask & endPos);
+        	} else {
+        		buffer.limit(0);
+        	}
+        }		
+    	return buffer;
+    }
+
+    public static ByteBuffer wrappedUnstructuredLayoutBufferA(RingBuffer ring, int meta, int len) {
+        ByteBuffer buffer;
+        if (meta < 0) {
+        	buffer = wrappedUnstructuredLayoutConstBuffer(ring);
+        	int position = RingReader.POS_CONST_MASK & meta;    
+        	buffer.position(position);
+        	buffer.limit(position+len);        	
+        } else {
+        	buffer = wrappedUnstructuredLayoutRingBufferA(ring);
+        	int position = ring.byteMask & restorePosition(ring,meta);
+        	buffer.clear();
+        	buffer.position(position);
+        	//use the end of the buffer if the lengh runs past it.
+        	buffer.limit(Math.min(ring.sizeOfUntructuredLayoutRingBuffer, position+len));
+        }
+        return buffer;
+    }
+
     public static int convertToUTF8(final char[] charSeq, final int charSeqOff, final int charSeqLength, final byte[] targetBuf, final int targetIdx, final int targetMask) {
     	
     	int target = targetIdx;				
@@ -1653,6 +1694,16 @@ public final class RingBuffer {
 	    RingBuffer.addBytePosAndLen(rb, bytePos, len);
 	}
 
+   public static void addByteBuffer(ByteBuffer source, int length, RingBuffer rb) {
+        int bytePos = rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+        int len = -1;
+        if (null!=source && length>0) {
+            len = length;
+            copyByteBuffer(source,length,rb);
+        }
+        RingBuffer.addBytePosAndLen(rb, bytePos, len);
+    }
+	   
 	public static void copyByteBuffer(ByteBuffer source, int length, RingBuffer rb) {
 		validateVarLength(rb, length);
 		int idx = rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value & rb.byteMask;
@@ -1744,10 +1795,18 @@ public final class RingBuffer {
 		ring.structuredLayoutRingBufferHead.workingHeadPos.value+=2;
     }
 
-	public static void addBytePosAndLenSpecial(int[] buffer, int mask, PaddedLong workingHeadPos, int bytesBasePos, int position, int length) {
-		setBytePosAndLen(buffer, mask, workingHeadPos.value, position, length, bytesBasePos);
-		workingHeadPos.value+=2;
-	}
+    public static void addBytePosAndLenSpecial(RingBuffer targetOutput, final int startBytePos, int bytesLength) {
+        PaddedLong workingHeadPos = getWorkingHeadPositionObject(targetOutput);
+        setBytePosAndLen(primaryBuffer(targetOutput), targetOutput.mask, workingHeadPos.value, startBytePos, bytesLength, bytesWriteBase(targetOutput));
+        PaddedLong.add(workingHeadPos, 2);
+    }
+    
+//Delete Mid Sep 2015
+//    @Deprecated  //try to inline and remove.
+//	public static void addBytePosAndLenSpecial(int[] buffer, int mask, PaddedLong workingHeadPos, int bytesBasePos, int position, int length) {
+//		setBytePosAndLen(buffer, mask, workingHeadPos.value, position, length, bytesBasePos);
+//		PaddedLong.add(workingHeadPos, 2);
+//	}
 
 	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat, int baseBytePos) {
 	   	//negative position is written as is because the internal array does not have any offset (but it could some day)
@@ -1851,6 +1910,7 @@ public final class RingBuffer {
 		return readValue(pos,rb.structuredLayoutRingBuffer,rb.mask,rb.structuredLayoutRingTail.workingTailPos.value);
 	}
 
+	//TODO: must always read metadata before length, easy mistake to make, need assert to ensure this is caught if happens.
 	public static int takeRingByteMetaData(RingBuffer ring) {
 	//    assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
 		return readValue(0,ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value++);
