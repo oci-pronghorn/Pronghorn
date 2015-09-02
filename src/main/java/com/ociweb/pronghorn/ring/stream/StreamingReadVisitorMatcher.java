@@ -6,6 +6,7 @@ import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
@@ -175,9 +176,19 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         int mask = byteMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
         
         CharSequence seq = (CharSequence)value;
+        int seqPos = 0;
         
-        throw new UnsupportedOperationException();
-        //TODO: AAAA, WARNING THIS IS INCOMPLETE must do UTF8 compare but do go go with chars or bytes? not sure yet
+        //we must check that seq equals the text encoded in data and if they do not match throw an AssertionError.        
+        long charAndPos = ((long)pos)<<32;
+        long limit = ((long)pos+len)<<32;
+
+        while (charAndPos<limit) {
+            charAndPos = RingBuffer.decodeUTF8Fast(data, charAndPos, mask);
+            char expectedChar = (char)charAndPos;
+            if (seq.charAt(seqPos++)!=expectedChar) {
+                throw new AssertionError("UTF8 does not match at char index "+(seqPos-1)+" of length "+seq.length());
+            }
+        }
     }
 
     @Override
