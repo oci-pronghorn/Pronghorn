@@ -1962,9 +1962,11 @@ public final class RingBuffer {
     }
 
 
-    public static void releaseReads(RingBuffer ring) {
-        RingBuffer.markBytesReadBase(ring, takeValue(ring));
+    public static int releaseReads(RingBuffer ring) {
+        int len = takeValue(ring);
+        RingBuffer.markBytesReadBase(ring, len);
     	releaseReadLock(ring);
+    	return len;
     }
 
     //Delete Sep 15th
@@ -1977,6 +1979,7 @@ public final class RingBuffer {
 //    	releaseReads(ring);
 //    }
 
+    @Deprecated
     public static void releaseReadLock(RingBuffer ring) {
         assert(RingBuffer.contentRemaining(ring)>=0);
 
