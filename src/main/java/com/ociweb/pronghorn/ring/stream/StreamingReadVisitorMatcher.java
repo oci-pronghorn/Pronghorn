@@ -44,12 +44,8 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     @Override
     public void visitTemplateClose(String name, long id) {
         if (needsClose) {
-            RingBuffer.takeValue(expectedInput); 
             needsClose = false;
-            
-            RingBuffer.setWorkingHeadTarget(expectedInput);
-                                    
-            RingBuffer.releaseReadLock(expectedInput);
+            RingBuffer.releaseReads(expectedInput);
         }
         
     }
@@ -63,10 +59,8 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     @Override
     public void visitFragmentClose(String name, long id) {
         if (needsClose) {
-            RingBuffer.takeValue(expectedInput); 
             needsClose = false;            
-            RingBuffer.setWorkingHeadTarget(expectedInput);            
-            RingBuffer.releaseReadLock(expectedInput);  
+            RingBuffer.releaseReads(expectedInput);
         }  
     }
 
@@ -78,11 +72,8 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         if ((tempLen=RingBuffer.takeValue(expectedInput))!=length) {
             throw new AssertionError("expected length: "+Long.toHexString(tempLen)+" but got "+Long.toHexString(length));
         }
-        //This is the end of the fragment that ended with a length
-        RingBuffer.takeValue(expectedInput); 
         needsClose = false;
-        RingBuffer.releaseReadLock(expectedInput);
-         
+        RingBuffer.releaseReads(expectedInput);
     }
 
     @Override

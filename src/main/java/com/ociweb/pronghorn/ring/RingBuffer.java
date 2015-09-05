@@ -1962,25 +1962,16 @@ public final class RingBuffer {
     }
 
 
+    //TODO: AAA rename as releaseReadLock
     public static int releaseReads(RingBuffer ring) {
         int len = takeValue(ring);
         RingBuffer.markBytesReadBase(ring, len);
-    	releaseReadLock(ring);
+    	batchedReleasePublish(ring);
     	return len;
     }
 
-    //Delete Sep 15th
-//    /**
-//     * Low level API release
-//     * @param ring
-//     */
-//    @Deprecated
-//    public static void readBytesAndreleaseReadLock(RingBuffer ring) {
-//    	releaseReads(ring);
-//    }
 
-    @Deprecated
-    public static void releaseReadLock(RingBuffer ring) {
+    private static void batchedReleasePublish(RingBuffer ring) {
         assert(RingBuffer.contentRemaining(ring)>=0);
 
         if ((--ring.batchReleaseCountDown<=0) ) {
@@ -1990,7 +1981,6 @@ public final class RingBuffer {
     	    RingBuffer.setBytesTail(ring,RingBuffer.bytesWorkingTailPosition(ring));
     	    ring.structuredLayoutRingTail.tailPos.lazySet(ring.structuredLayoutRingTail.workingTailPos.value);
     	    ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
-
 
     	} else {
     	    storeUnpublishedTail(ring);

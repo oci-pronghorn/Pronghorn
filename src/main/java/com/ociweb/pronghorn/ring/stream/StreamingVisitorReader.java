@@ -83,14 +83,12 @@ public class StreamingVisitorReader {
 		        processFragment(startPos, cursor);
 		        
 		        //move the position up but exclude the one byte that we already added on
-		        RingBuffer.setWorkingTailPosition(inputRing, RingBuffer.getWorkingTailPosition(inputRing)+ (dataSize-startPos) );
+		        RingBuffer.setWorkingTailPosition(inputRing, RingBuffer.getWorkingTailPosition(inputRing)+ (dataSize-startPos) - 1 );//Subtract one so release reads can get the byte count
 				        
 		        //add the bytes consumed by this fragment, this is always the last value in the fragment
 		        RingBuffer.addAndGetBytesWorkingTailPosition(inputRing, RingBuffer.primaryBuffer(inputRing)[(int) (inputRing.mask&(RingBuffer.getWorkingTailPosition(inputRing)-1))]);
 		        
-		        
-		        RingBuffer.releaseReadLock(inputRing);
-		        
+		        RingBuffer.releaseReads(inputRing);		        
 		}	
 		
 	}
