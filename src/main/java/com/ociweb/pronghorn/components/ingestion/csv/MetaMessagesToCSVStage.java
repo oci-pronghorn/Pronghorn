@@ -63,6 +63,8 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 	        	int templateId = (int)MetaMessageDefs.FROM.fieldIdScript[msgLoc];	        	
 	        	int type = 0x3F & (templateId>>1); //also contains name because we masked with 111111	        	
 	        	
+	        //	System.err.println("type "+type);
+	        	
 	        	switch (type) {
 
 	        		case 0: //UInt32	   
@@ -170,9 +172,13 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 		        			byte[] backing      = RingReader.readBytesBackingArray(stage.inputRing, MetaMessageDefs.ASCII_VALUE_LOC);
 							RingBuffer outputRing = stage.outputRing;
 		        			
+						//	System.err.println("data:"+new String(backing, readBytesPos, readBytesLength));
+							
 							RingBuffer.copyBytesFromToRing(backing,readBytesPos,stage.inputRing.byteMask,outputRing.unstructuredLayoutRingBuffer,RingBuffer.bytesWorkingHeadPosition(outputRing),outputRing.byteMask, readBytesLength);
 							RingBuffer.setBytesWorkingHead(outputRing, RingBuffer.BYTES_WRAP_MASK&(RingBuffer.bytesWorkingHeadPosition(outputRing) + readBytesLength));
     			
+							
+							
 		        		}
 		        		break;
 	        		case 68: //ASCII Named
@@ -243,8 +249,6 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 	        		case 31: //flush
 	        		    
 	        			RingBuffer.publishEOF(stage.outputRing); //TODO: B, up down stream stage still needs this, need to remove.
-	        			RingBuffer.setReleaseBatchSize(stage.inputRing, 0);
-	        			RingReader.releaseReadLock(stage.inputRing);
 
 	        			stage.requestShutdown();
 	        			return;
@@ -255,7 +259,9 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 	        	}
 	        	
 	        	log.trace("Name:{} {} {}",name,msgLoc,templateId);
-	        	
+
+	        	RingBuffer.setReleaseBatchSize(stage.inputRing, 0);
+	        	RingReader.releaseReadLock(stage.inputRing);
 		 } 
 
 	}

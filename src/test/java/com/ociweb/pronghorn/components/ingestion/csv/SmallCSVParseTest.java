@@ -405,6 +405,7 @@ public class SmallCSVParseTest {
 	        	if (debug) {
 	        		System.err.println(name+"  "+msgLoc+" "+templateId);
 	        	}
+	        	RingReader.releaseReadLock(fieldsRing);
 	        	
 		 }
 		 assertEquals("There must be matching open and close messsage messages",countBegins,countEnds);
@@ -417,89 +418,7 @@ public class SmallCSVParseTest {
 		 }
 	}
 	
-	/**
-	 * This is NOT the example you are looking for.  This is a simplified single threaded test, it would not be done like this in the real world.
-	 */
-	@Test
-	public void testIngestTemplate() {
-		ByteBuffer data = sourceBuffer.asReadOnlyBuffer();				
-		RingBuffer linesRing = new RingBuffer(linesRingConfig);
-		RingBuffer fieldsRing = new RingBuffer(fieldsRingConfig);
-		RingBuffer flatFileRing = new RingBuffer(flatFileRingConfig);
-		
-		linesRing.initBuffers();
-		fieldsRing.initBuffers();
-		flatFileRing.initBuffers();
-		
-		GraphManager gm = new GraphManager();
-		
-		LineSplitterByteBufferStage lineSplitter = new LineSplitterByteBufferStage(gm, data, linesRing);
-		
-		//this assumes that the ring buffer is large enough to hold the small test file
-		lineSplitter.startup();
-		lineSplitter.blockingRun();
-		lineSplitter.shutdown();
-				
-		FieldSplitterStage fieldSplitter = new FieldSplitterStage(gm, linesRing, fieldsRing);
-		
-		//this assumes that the ring buffer is large enough to hold the small test file
-		fieldSplitter.startup();
-		fieldSplitter.run();
-		fieldSplitter.shutdown();
-		
-		//meta messages to CSV
-		MetaMessagesToCSVStage csvBuilderStage = new MetaMessagesToCSVStage(gm, fieldsRing, flatFileRing);
-		
-		//this assumes that the ring buffer is large enough to hold the small test file
-		csvBuilderStage.startup();
-		csvBuilderStage.run();
-		csvBuilderStage.shutdown();
-				
-		File temp;
-		try {
-			temp = File.createTempFile("testFile", "csv");
-			FileChannel outputFileChannel = new RandomAccessFile(temp, "rws").getChannel();     
-			FileWriteStage fileWriter = new FileWriteStage(gm, flatFileRing,outputFileChannel);
-			
-			fileWriter.startup();
-			fileWriter.run();	
-			
-			fileWriter.shutdown();
-						
-			assertEquals("File size does not match:"+temp.getAbsolutePath(),sourceBuffer.remaining(),temp.length());
-			
-			//load both files
-			byte[] expected = new byte[sourceBuffer.remaining()];
-			byte[] rebuilt = new byte[sourceBuffer.remaining()];
-			
-			try {
-				InputStream testStream = SmallCSVParseTest.class.getResourceAsStream(TEST_FILE);			
-				testStream.read(expected);
-				testStream.close();
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
-				fail();
-			}
-			
-			try {
-				InputStream builtStream = new FileInputStream(temp);
-				builtStream.read(rebuilt);
-				builtStream.close();
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
-				fail();
-			}
-			
-			assertTrue("Bad data\n"+new String(rebuilt),Arrays.equals(expected,rebuilt));
 
-			
-		} catch (IOException e) {
-			e.printStackTrace();
-			fail();
-		}
-		
-		
-	}
 	
 	/**
 	 * This is the example you are looking for

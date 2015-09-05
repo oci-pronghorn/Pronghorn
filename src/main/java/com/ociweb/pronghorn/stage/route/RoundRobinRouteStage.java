@@ -70,7 +70,6 @@ public class RoundRobinRouteStage extends PronghornStage {
 		while (--i>=0) {
 			RingBuffer.publishAllBatchedWrites(outputRings[i]);
 		}
-		RingReader.releaseReadLock(inputRing);
 	}
 
 	

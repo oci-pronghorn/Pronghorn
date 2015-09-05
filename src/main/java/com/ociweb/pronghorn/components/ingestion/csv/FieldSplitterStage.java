@@ -3,7 +3,6 @@ package com.ociweb.pronghorn.components.ingestion.csv;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteMask;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.readBytesAndreleaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
@@ -103,7 +102,7 @@ public class FieldSplitterStage extends PronghornStage {
 				//done reading bytes input can have that section of the array again.
 	
 	    	}
-	    	readBytesAndreleaseReadLock(inputRing);
+	    	RingBuffer.releaseReads(inputRing);
 		}
 		
 	}

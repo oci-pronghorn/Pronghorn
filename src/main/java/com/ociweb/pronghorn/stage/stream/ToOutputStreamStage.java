@@ -2,7 +2,6 @@ package com.ociweb.pronghorn.stage.stream;
 
 import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.readBytesAndreleaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
 

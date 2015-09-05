@@ -5,7 +5,6 @@ import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteMask;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.publishWrites;
-import static com.ociweb.pronghorn.ring.RingBuffer.readBytesAndreleaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
 import static org.junit.Assert.assertEquals;
@@ -200,31 +199,34 @@ public class RingBufferPipeline {
 		@Override
 		public void run() {
 				
-				int lastPos = -1;
-				
+		            int lastPos = -1;
+		    		            
 					//try also releases previously read fragments
 					while (RingReader.tryReadFragment(inputRing)) {												
-						
+	
 						assert(RingReader.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
 						int msgId = RingReader.getMsgIdx(inputRing);
 						
-						if (msgId>=0) {																	
+						if (msgId>=0) {		
+						    
 							msgCount++;
 							//check the data
 							int len = RingReader.readBytesLength(inputRing, FIELD_ID);
 							assertEquals(testArray.length,len);
-																
-							//test that pos moves as expected
+							
 							int pos = RingReader.readBytesPosition(inputRing, FIELD_ID);
+
 							if (lastPos>=0) {
-								assertEquals((lastPos+len)&inputRing.byteMask, pos&inputRing.byteMask);
+								assertEquals(msgCount+" Expected pos to jump by length:"+len+" for mask "+inputRing.byteMask,
+								             (lastPos+len) & inputRing.byteMask, 
+								             pos           & inputRing.byteMask);
 							} 
 							lastPos = pos;
-											
+							
 							//This block causes a dramatic slow down of the work!!
 							if (deepTest) {
 								if (!RingReader.eqASCII(inputRing, FIELD_ID, testString)) {
-									fail("\nexpected:\n"+testString+"\nfound:\n"+RingReader.readASCII(inputRing, FIELD_ID, new StringBuilder()).toString() );
+									fail("\n msgCount:"+msgCount+"\nexpected:\n"+testString+"\nfound:\n"+RingReader.readASCII(inputRing, FIELD_ID, new StringBuilder()).toString() );
 								}
 							}
 							RingReader.releaseReadLock(inputRing);
