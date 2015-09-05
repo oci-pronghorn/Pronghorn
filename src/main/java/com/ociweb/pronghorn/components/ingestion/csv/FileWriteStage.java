@@ -47,9 +47,8 @@ public class FileWriteStage extends PronghornStage {
 	        	
 	            int msgId = RingBuffer.takeMsgIdx(inputRing);
 	            if (msgId<0) {  	
-	                RingBuffer.dump(inputRing); //posion pill detected TODO: shoul dot require this draconian call.
-	                //RingBuffer.takeValue(inputRing); 
-	                RingBuffer.releaseReadLock(inputRing);       
+	                RingBuffer.releaseReads(inputRing);
+    
 	                RingBuffer.releaseAllBatchedReads(inputRing);
 	            	assert(RingBuffer.contentRemaining(inputRing)==0) : "still has content to write";
 	            	requestShutdown();
@@ -103,17 +102,11 @@ public class FileWriteStage extends PronghornStage {
 						channel.write(inputByteBuffer);
 					} catch (IOException e) {
 						throw new RuntimeException(e);
-					}
-                	
+					}                	
                 }
-                
-                
-				
-                RingBuffer.takeValue(inputRing); 
-                
-                RingBuffer.releaseReadLock(inputRing);         
-                
-                
+                                
+				RingBuffer.releaseReads(inputRing);      
+                                
 				assert(RingBuffer.contentRemaining(inputRing)>=0) : "still has "+RingBuffer.contentRemaining(inputRing)+" content to write "+inputRing;
 				
 		}

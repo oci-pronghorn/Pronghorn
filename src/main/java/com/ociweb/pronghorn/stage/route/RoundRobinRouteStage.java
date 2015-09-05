@@ -35,6 +35,7 @@ public class RoundRobinRouteStage extends PronghornStage {
 	            if (-2==this.msgId) {
 	                if (RingReader.tryReadFragment(this.inputRing)) {
 	                    if ((this.msgId = RingReader.getMsgIdx(this.inputRing))<0) {
+	                        RingReader.releaseReadLock(this.inputRing);
 	                        this.requestShutdown();
 	                        return;
 	                    }       
