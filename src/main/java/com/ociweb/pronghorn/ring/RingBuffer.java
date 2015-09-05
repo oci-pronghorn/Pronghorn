@@ -529,10 +529,22 @@ public final class RingBuffer {
     	return rb.unstructuredLayoutReadBase;
     }
 
-    public static void markBytesReadBase(RingBuffer rb) {
-    	//this assert is not quite right because we may have string fields of zero length, TODO:M add check for this before restoring the assert.
-     	//assert(0==from(rb).maxVarFieldPerUnit || rb.byteWorkingTailPos.value != rb.bytesReadBase) : "byteWorkingTailPos should have moved forward";
-    	rb.unstructuredLayoutReadBase = rb.unstructuredLayoutRingTail.byteWorkingTailPos.value;
+    public static void markBytesReadBase(RingBuffer rb) {   
+        
+        //grab the last int of the last message it holds the bytes consumed count for that message, workingTailPos is already on first int of the next message so we roll back via addition.
+                
+        int delta = rb.structuredLayoutRingBuffer[rb.mask & (int) (rb.structuredLayoutRingTail.workingTailPos.value + rb.mask )]; 
+        
+//        System.out.println("orig:"+(rb.mask &rb.structuredLayoutRingTail.workingTailPos.value)+
+//     " backOne:"+(rb.mask & (int) (rb.structuredLayoutRingTail.workingTailPos.value + rb.mask ))+
+//     " mask "+ rb.mask);
+//        
+        
+        rb.unstructuredLayoutReadBase = BYTES_WRAP_MASK&(rb.unstructuredLayoutReadBase + delta); 
+
+  //      System.err.println("delta: "+delta+" from: "+(rb.mask & (int) (rb.structuredLayoutRingTail.workingTailPos.value + rb.mask )) +"  readBase  "+rb.unstructuredLayoutReadBase );
+        
+        
     }
 
     /**
@@ -1825,16 +1837,12 @@ public final class RingBuffer {
 
 	}
 
+	//TOOD: AAAAAA urgent inline
     public static int bytePosition(int meta, RingBuffer ring, int len) {
-    	int pos = restorePosition(ring, meta & RELATIVE_POS_MASK);
-
-        if (len>=0) {
-        	ring.unstructuredLayoutRingTail.byteWorkingTailPos.value =  BYTES_WRAP_MASK&(len+ring.unstructuredLayoutRingTail.byteWorkingTailPos.value);
-        }
-
-        return pos;
+    	return restorePosition(ring, meta & RELATIVE_POS_MASK);
     }
 
+  //TOOD: AAAAAA urgent inline
     public static int bytePositionGen(int meta, RingBuffer ring) {
     	return restorePosition(ring, meta & RELATIVE_POS_MASK);
     }
@@ -1945,7 +1953,7 @@ public final class RingBuffer {
 
     	//TODO:M To make this more error proof for future developers need to add assert to detect if this release was forgotten. done by some easy math.
     	RingBuffer.markBytesReadBase(ring);
-    	return readValue(0, ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value++);
+    	return readValue(0, ring.structuredLayoutRingBuffer, ring.mask, ring. structuredLayoutRingTail.workingTailPos.value++);
     }
 
     public static int peekInt(RingBuffer ring) {

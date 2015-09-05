@@ -306,7 +306,7 @@ public class RingWalker {
 		}	
 
 		//the byteWorkingTail now holds the new base
-		RingBuffer.markBytesReadBase(ringBuffer);
+		RingBuffer.markBytesReadBase(ringBuffer); 
 		
 		//
 		//batched release of the old positions back to the producer

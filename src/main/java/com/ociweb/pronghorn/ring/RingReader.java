@@ -110,8 +110,10 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     
     public static Appendable readASCII(RingBuffer ring, int loc, Appendable target) {
     	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-        int pos = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];   
-        return RingBuffer.readASCII(ring, target, pos, RingReader.readDataLength(ring, loc));
+        int pos = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
+        int len = RingReader.readDataLength(ring, loc);
+        RingBuffer.bytePosition(pos, ring, len);//TODO: Fix, we need this side effect, others probably as well to sum up how many bytes are read
+        return RingBuffer.readASCII(ring, target, pos, len);
     }
 
 	public static Appendable readUTF8(RingBuffer ring, int loc, Appendable target) {
@@ -131,7 +133,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         if (pos < 0) {
             return readUTF8Const(ring,bytesLength,target, targetOffset, POS_CONST_MASK & pos);
         } else {
-            return readUTF8Ring(ring,bytesLength,target, targetOffset,RingBuffer.restorePosition(ring,pos));
+            return readUTF8Ring(ring,bytesLength,target, targetOffset,RingBuffer.bytePosition(pos, ring, bytesLength));
         }
     }
     
@@ -182,7 +184,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
                 
             }
         } else {
-            readASCIIRing(ring,len,target, targetOffset,RingBuffer.restorePosition(ring,pos));
+            readASCIIRing(ring,len,target, targetOffset,RingBuffer.bytePosition(pos, ring, len));
         }
         return len;
     }
@@ -365,7 +367,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		int pos = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp)];
         int len = RingBuffer.primaryBuffer(ring)[ring.mask & (int)(tmp + 1)];
-        
+        RingBuffer.bytePosition(pos, ring, len);//TODO: Fix, we need this side effect, others probably as well to sum up how many bytes are read
         return RingBuffer.readBytes(ring, target, pos, len);
     }
 
@@ -395,7 +397,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         if (pos < 0) {
             readBytesConst(ring,len,target,targetOffset,POS_CONST_MASK & pos);
         } else {
-            readBytesRing(ring,len,target,targetOffset,RingBuffer.restorePosition(ring,pos));
+            readBytesRing(ring,len,target,targetOffset,RingBuffer.bytePosition(pos,ring,len));
         }
         return len;
     }
@@ -425,7 +427,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         if (pos < 0) {
             readBytesConst(ring,len,target, targetOffset,targetMask, POS_CONST_MASK & pos);
         } else {
-            RingBuffer.copyBytesFromToRing(RingBuffer.byteBuffer(ring), RingBuffer.restorePosition(ring,pos), ring.byteMask, target, targetOffset, targetMask,	len);
+            RingBuffer.copyBytesFromToRing(RingBuffer.byteBuffer(ring), RingBuffer.bytePosition(pos,ring,len), ring.byteMask, target, targetOffset, targetMask,	len);
         }
         return len;
     }

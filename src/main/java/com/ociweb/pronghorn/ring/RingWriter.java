@@ -245,31 +245,6 @@ public class RingWriter {
 		
 	}
 
-//Delete in June 2015 if its not missed.	
-//	public static boolean tryPublishEOF(RingBuffer ring) {
-//		
-//		assert(RingBuffer.workingHeadPosition(ring)<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";				
-//		long nextTailTarget = RingBuffer.workingHeadPosition(ring) - (ring.maxSize - RingBuffer.EOF_SIZE);
-//				
-//        if (ring.llrTailPosCache < nextTailTarget) {
-//        	ring.llrTailPosCache = RingBuffer.tailPosition(ring);
-//			if (ring.llrTailPosCache < nextTailTarget) {
-//				return false;
-//			}
-//		}
-//		
-//		assert(RingBuffer.tailPosition(ring)+ring.maxSize>=RingBuffer.headPosition(ring)+RingBuffer.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
-//		RingBuffer.setBytesHead(ring, RingBuffer.bytesWorkingHeadPosition(ring));
-//		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +  RingBuffer.from(ring).templateOffset)]    = -1;	
-//		ring.buffer[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  RingBuffer.from(ring).templateOffset)] = 0;
-//		
-//		RingBuffer.publishWorkingHeadPosition(ring, ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + RingBuffer.EOF_SIZE);	
-//	
-//		return true;
-//		
-//	}
-	
-
 	public static void publishWrites(RingBuffer outputRing) {
 	
 	    RingBuffer.writeTrailingCountOfBytesConsumed(outputRing, outputRing.ringWalker.nextWorkingHead -1 ); 
