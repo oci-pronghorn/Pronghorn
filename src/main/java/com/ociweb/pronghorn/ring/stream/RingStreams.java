@@ -3,7 +3,6 @@ package com.ociweb.pronghorn.ring.stream;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.readBytesAndreleaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;

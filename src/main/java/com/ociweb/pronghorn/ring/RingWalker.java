@@ -153,27 +153,17 @@ public class RingWalker {
 			final RingWalker ringBufferConsumer, final int scriptFragSize,
 			long tmpNextWokingTail, final long target) {
 
-		//always increment this tail position by the count of bytes used by this fragment
-		RingBuffer.addAndGetBytesWorkingTailPosition(ringBuffer, RingBuffer.primaryBuffer(ringBuffer)[ringBuffer.mask & (int)(tmpNextWokingTail-1)]);			
-
-
 		//from the last known fragment move up the working tail position to this new fragment location
 		RingBuffer.setWorkingTailPosition(ringBuffer, tmpNextWokingTail);
 		
 		//save the index into these fragments so the reader will be able to find them.
-		ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] =tmpNextWokingTail;
+		ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] = tmpNextWokingTail;
 		
 		assert(RingBuffer.bytesWorkingTailPosition(ringBuffer) <= RingBuffer.bytesHeadPosition(ringBuffer)) : "expected to have data up to "+RingBuffer.bytesWorkingTailPosition(ringBuffer)+" but we only have "+RingBuffer.bytesHeadPosition(ringBuffer);
-		
-		if ((RingBuffer.decBatchRelease(ringBuffer)<=0)) {	
-			
-			RingBuffer.releaseReadLock2(ringBuffer);
-		}
 
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1;
 		prepReadFragment2(ringBuffer, ringBufferConsumer, tmpNextWokingTail, target, lastScriptPos, ringBufferConsumer.from.tokens[lastScriptPos]);	
 	
-
 	}
 
 
@@ -290,37 +280,16 @@ public class RingWalker {
     }
 
 
-	private static void prepReadMessage(RingBuffer ringBuffer, RingWalker ringBufferConsumer, long tmpNextWokingTail) {
-		//we now have enough room to read the id
+	private static void prepReadMessage(RingBuffer pipe, RingWalker ringBufferConsumer, long tmpNextWokingTail) {
+	    //Would like to add an assert like this but the logic is not right yet.
+	//    assert(pipe.ringWalker.nextWorkingTail == RingBuffer.getWorkingTailPosition(pipe) || 
+	  //          pipe.lastReleasedTail != pipe.ringWalker.nextWorkingTail) : "Must call release before trying to read next message.";
+
+	    //we now have enough room to read the id
 		//for this simple case we always have a new message
-		ringBufferConsumer.isNewMessage = true; 
-		
-		//always increment this tail position by the count of bytes used by this fragment
-		if (tmpNextWokingTail>0) { //first iteration it will not have a valid position
-		    int bytesConsumed = RingBuffer.primaryBuffer(ringBuffer)[ringBuffer.mask & (int)(tmpNextWokingTail-1)];
-		    assert(bytesConsumed>=0 && bytesConsumed<=RingBuffer.byteBuffer(ringBuffer).length) : "bad byte count at "+(tmpNextWokingTail-1);
-		    //System.err.println("bytes consumed :"+bytesConsumed);
-		    
-		    
-		    RingBuffer.addAndGetBytesWorkingTailPosition(ringBuffer, bytesConsumed);
-		}	
-
-		//the byteWorkingTail now holds the new base
-		RingBuffer.markBytesReadBase(ringBuffer); 
-		
-		//
-		//batched release of the old positions back to the producer
-		//could be done every time but batching reduces contention
-		//this batching is only done per-message so the fragments can remain and be read
-		if ((RingBuffer.decBatchRelease(ringBuffer)>0)) {	
-			//from the last known fragment move up the working tail position to this new fragment location
-		    RingBuffer.setWorkingTailPosition(ringBuffer, ringBufferConsumer.nextWorkingTail);
-		    
-		} else {			
-			RingBuffer.releaseReadLock2(ringBuffer);
-		}
-		prepReadMessage2(ringBuffer, ringBufferConsumer, tmpNextWokingTail);
-
+		ringBufferConsumer.isNewMessage = true;	
+		RingBuffer.setWorkingTailPosition(pipe, tmpNextWokingTail);
+		prepReadMessage2(pipe, ringBufferConsumer, tmpNextWokingTail);
 		
 	}
 

@@ -146,18 +146,11 @@ public class GenerativeTest {
                }
                
                RingWriter.publishWrites(ring1byReadWrite);
-               RingReader.releaseReadLock(ring1);
-               
-     //          System.err.println(   from.fieldNameScript[idx] );
-               
-                       
-               
+  
            }
-           
-           
-           
        }
        
+       RingReader.releaseReadLock(ring1); //once per message.
        
        
        

@@ -7,7 +7,6 @@ import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.dump;
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.publishWrites;
-import static com.ociweb.pronghorn.ring.RingBuffer.readBytesAndreleaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;

@@ -361,7 +361,7 @@ public final class RingBuffer {
     //these values are only modified and used when replay is NOT in use
     //hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
     private int lastReleasedBytesTail;
-    private long lastReleasedTail;
+    long lastReleasedTail;
 
     private int unstructuredWriteLastConsumedBytePos = 0;
 
@@ -528,23 +528,10 @@ public final class RingBuffer {
     public static int bytesReadBase(RingBuffer rb) {
     	return rb.unstructuredLayoutReadBase;
     }
-
-    public static void markBytesReadBase(RingBuffer rb) {   
         
-        //grab the last int of the last message it holds the bytes consumed count for that message, workingTailPos is already on first int of the next message so we roll back via addition.
-                
-        int delta = rb.structuredLayoutRingBuffer[rb.mask & (int) (rb.structuredLayoutRingTail.workingTailPos.value + rb.mask )]; 
-        
-//        System.out.println("orig:"+(rb.mask &rb.structuredLayoutRingTail.workingTailPos.value)+
-//     " backOne:"+(rb.mask & (int) (rb.structuredLayoutRingTail.workingTailPos.value + rb.mask ))+
-//     " mask "+ rb.mask);
-//        
-        
-        rb.unstructuredLayoutReadBase = BYTES_WRAP_MASK&(rb.unstructuredLayoutReadBase + delta); 
-
-  //      System.err.println("delta: "+delta+" from: "+(rb.mask & (int) (rb.structuredLayoutRingTail.workingTailPos.value + rb.mask )) +"  readBase  "+rb.unstructuredLayoutReadBase );
-        
-        
+    
+    public static void markBytesReadBase(RingBuffer rb, int bytesConsumed) {
+        rb.unstructuredLayoutReadBase += bytesConsumed;
     }
 
     /**
@@ -733,6 +720,7 @@ public final class RingBuffer {
         unstructuredLayoutWriteBase = unstructuredPos;
         unstructuredLayoutReadBase = unstructuredPos;
         unstructuredWriteLastConsumedBytePos = unstructuredPos;
+        
 
         unstructuredLayoutRingTail.byteWorkingTailPos.value = unstructuredPos;
         PaddedInt.set(unstructuredLayoutRingTail.bytesTailPos,unstructuredPos);
@@ -1833,16 +1821,22 @@ public final class RingBuffer {
 
 	public static int restorePosition(RingBuffer ring, int pos) {
 		assert(pos>=0);
-		return pos+ RingBuffer.bytesReadBase(ring);
+		return pos + RingBuffer.bytesReadBase(ring);
 
 	}
 
-	//TOOD: AAAAAA urgent inline
+	//TOOD: AAAAAA urgent inline??
     public static int bytePosition(int meta, RingBuffer ring, int len) {
-    	return restorePosition(ring, meta & RELATIVE_POS_MASK);
+    	int pos =  restorePosition(ring, meta & RELATIVE_POS_MASK);
+    	
+        if (len>=0) {
+            ring.unstructuredLayoutRingTail.byteWorkingTailPos.value =  BYTES_WRAP_MASK&(len+ring.unstructuredLayoutRingTail.byteWorkingTailPos.value);
+        }
+        
+        return pos;
     }
 
-  //TOOD: AAAAAA urgent inline
+  //TOOD: AAAAAA urgent inline??
     public static int bytePositionGen(int meta, RingBuffer ring) {
     	return restorePosition(ring, meta & RELATIVE_POS_MASK);
     }
@@ -1950,9 +1944,6 @@ public final class RingBuffer {
 
     public static int takeMsgIdx(RingBuffer ring) {
         assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring)) : " tail is "+ring.structuredLayoutRingTail.workingTailPos.value+" but head is "+RingBuffer.workingHeadPosition(ring);
-
-    	//TODO:M To make this more error proof for future developers need to add assert to detect if this release was forgotten. done by some easy math.
-    	RingBuffer.markBytesReadBase(ring);
     	return readValue(0, ring.structuredLayoutRingBuffer, ring.mask, ring. structuredLayoutRingTail.workingTailPos.value++);
     }
 
@@ -1972,18 +1963,19 @@ public final class RingBuffer {
 
 
     public static void releaseReads(RingBuffer ring) {
-    	takeValue(ring);
+        RingBuffer.markBytesReadBase(ring, takeValue(ring));
     	releaseReadLock(ring);
     }
 
-    /**
-     * Low level API release
-     * @param ring
-     */
-    @Deprecated
-    public static void readBytesAndreleaseReadLock(RingBuffer ring) {
-    	releaseReads(ring);
-    }
+    //Delete Sep 15th
+//    /**
+//     * Low level API release
+//     * @param ring
+//     */
+//    @Deprecated
+//    public static void readBytesAndreleaseReadLock(RingBuffer ring) {
+//    	releaseReads(ring);
+//    }
 
     public static void releaseReadLock(RingBuffer ring) {
         assert(RingBuffer.contentRemaining(ring)>=0);
@@ -2002,9 +1994,22 @@ public final class RingBuffer {
     	}
     }
 
-    public static void releaseReadLock2(RingBuffer ring) {
+    static void releaseReadLockForHighLevelAPI(RingBuffer ring) {
 
-        if ((--ring.batchReleaseCountDown<=0)) {
+        
+        assert(ring.ringWalker.nextWorkingTail!=RingBuffer.getWorkingTailPosition(ring)) : "Only call release once per message";
+        assert( ring.lastReleasedTail != ring.ringWalker.nextWorkingTail) : "Only call release once per message";
+
+        //Before release get the bytes consumed and record that value.
+        if (ring.ringWalker.nextWorkingTail>0) { //first iteration it will not have a valid position
+            //must grab this value now, its the last chance before we allow it to be written over.
+            int idx = ring.mask & (int)(ring.ringWalker.nextWorkingTail-1);        
+            int bytesConsumed = RingBuffer.primaryBuffer(ring)[idx];
+            RingBuffer.addAndGetBytesWorkingTailPosition(ring, bytesConsumed);
+            RingBuffer.markBytesReadBase(ring, bytesConsumed); 
+        }   
+               
+        if (decBatchRelease(ring)<=0) {
 
                  RingBuffer.setBytesTail(ring,RingBuffer.bytesWorkingTailPosition(ring));
                  RingBuffer.publishWorkingTailPosition(ring, ring.ringWalker.nextWorkingTail);
@@ -2014,11 +2019,9 @@ public final class RingBuffer {
                  ring.lastReleasedBytesTail = ring.unstructuredLayoutRingTail.byteWorkingTailPos.value;
                  ring.lastReleasedTail = ring.ringWalker.nextWorkingTail;// ring.primaryBufferTail.workingTailPos.value;
         }
-
-
     }
 
-
+    
 
     // value in lastReleased moves forward to the point for release up to
     // tail position is where we start releasing from.
