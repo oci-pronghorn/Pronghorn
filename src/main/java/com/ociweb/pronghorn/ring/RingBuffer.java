@@ -531,7 +531,7 @@ public final class RingBuffer {
         
     
     public static void markBytesReadBase(RingBuffer rb, int bytesConsumed) {
-        rb.unstructuredLayoutReadBase += bytesConsumed;
+        rb.unstructuredLayoutReadBase = RingBuffer.BYTES_WRAP_MASK & (rb.unstructuredLayoutReadBase+bytesConsumed);
     }
 
     /**
@@ -1971,7 +1971,7 @@ public final class RingBuffer {
     }
 
 
-    private static void batchedReleasePublish(RingBuffer ring) {
+    public static void batchedReleasePublish(RingBuffer ring) {
         assert(RingBuffer.contentRemaining(ring)>=0);
 
         if ((--ring.batchReleaseCountDown<=0) ) {
@@ -1990,8 +1990,9 @@ public final class RingBuffer {
     static void releaseReadLockForHighLevelAPI(RingBuffer ring) {
 
         
-        assert(ring.ringWalker.nextWorkingTail!=RingBuffer.getWorkingTailPosition(ring)) : "Only call release once per message";
-        assert( ring.lastReleasedTail != ring.ringWalker.nextWorkingTail) : "Only call release once per message";
+        
+        assert(RingBuffer.isReplaying(ring) || ring.ringWalker.nextWorkingTail!=RingBuffer.getWorkingTailPosition(ring)) : "Only call release once per message";
+        assert(RingBuffer.isReplaying(ring) || ring.lastReleasedTail != ring.ringWalker.nextWorkingTail) : "Only call release once per message";
 
         //Before release get the bytes consumed and record that value.
         if (ring.ringWalker.nextWorkingTail>0) { //first iteration it will not have a valid position
@@ -2054,6 +2055,29 @@ public final class RingBuffer {
         }
 
         assert(debugHeadAssignment(ring));
+    }
+    
+    public static void releaseBatchedReadReleasesUpToThisPosition(RingBuffer ring) {
+        
+        long newTailToPublish = RingBuffer.getWorkingTailPosition(ring);
+        int newTailBytesToPublish = RingBuffer.bytesWorkingTailPosition(ring);
+        
+        //int newTailBytesToPublish = RingBuffer.bytesReadBase(ring);
+        
+        assert(newTailToPublish<=ring.lastReleasedTail) : "This new value is forward of the next Release call, eg its too large";
+        assert(newTailToPublish>=ring.structuredLayoutRingTail.tailPos.get()) : "This new value is behind the existing published Tail, eg its too small ";
+        
+//        //TODO: These two asserts would be nice to have but the int of bytePos wraps every 2 gig causing false positives, these need more mask logic to be right
+//        assert(newTailBytesToPublish<=ring.lastReleasedBytesTail) : "This new value is forward of the next Release call, eg its too large";
+//        assert(newTailBytesToPublish>=ring.unstructuredLayoutRingTail.bytesTailPos.value) : "This new value is behind the existing published Tail, eg its too small ";
+//        assert(newTailBytesToPublish<=ring.bytesWorkingTailPosition(ring)) : "Out of bounds should never be above working tail";
+//        assert(newTailBytesToPublish<=ring.bytesHeadPosition(ring)) : "Out of bounds should never be above head";
+        
+        
+        PaddedInt.set(ring.unstructuredLayoutRingTail.bytesTailPos, newTailBytesToPublish);
+        ring.structuredLayoutRingTail.tailPos.lazySet(newTailToPublish);
+        ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
+                
     }
 
     @Deprecated
