@@ -5,14 +5,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 
 public abstract class PronghornStage {
 	
 	private static final Logger log = LoggerFactory.getLogger(PronghornStage.class);
-	public static final RingBuffer[] NONE = new RingBuffer[0];
+	public static final Pipe[] NONE = new Pipe[0];
 	
 	//What if we only have 1 because this is the first or last stage?
 
@@ -24,25 +24,25 @@ public abstract class PronghornStage {
 	
 	
 	//in the constructor us a zero length array if there are no values.
-	protected PronghornStage(GraphManager graphManager, RingBuffer[] inputs, RingBuffer[] outputs) {
+	protected PronghornStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs) {
 		this.stageId = stageCounter.getAndIncrement();	
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, inputs, outputs);
 	}
 	
-	protected PronghornStage(GraphManager graphManager, RingBuffer input, RingBuffer[] outputs) {
+	protected PronghornStage(GraphManager graphManager, Pipe input, Pipe[] outputs) {
 		this.stageId = stageCounter.getAndIncrement();	
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, input, outputs);
 	}
     
-	protected PronghornStage(GraphManager graphManager, RingBuffer[] inputs, RingBuffer output) {
+	protected PronghornStage(GraphManager graphManager, Pipe[] inputs, Pipe output) {
 		this.stageId = stageCounter.getAndIncrement();	
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, inputs, output);
 	}
 	
-	protected PronghornStage(GraphManager graphManager, RingBuffer input, RingBuffer output) {
+	protected PronghornStage(GraphManager graphManager, Pipe input, Pipe output) {
 		this.stageId = stageCounter.getAndIncrement();	
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, input, output);

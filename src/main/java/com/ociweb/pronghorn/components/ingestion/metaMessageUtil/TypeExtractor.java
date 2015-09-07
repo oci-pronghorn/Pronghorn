@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.components.ingestion.metaMessageUtil;
 
 import java.nio.ByteBuffer;
 
-import com.ociweb.pronghorn.ring.token.TypeMask;
+import com.ociweb.pronghorn.pipe.token.TypeMask;
 
 public class TypeExtractor {
 	

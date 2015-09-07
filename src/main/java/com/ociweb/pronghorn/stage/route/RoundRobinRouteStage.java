@@ -1,19 +1,19 @@
 package com.ociweb.pronghorn.stage.route;
 
-import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingReader;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class RoundRobinRouteStage extends PronghornStage {
 
-	RingBuffer inputRing;
-	RingBuffer[] outputRings;
+	Pipe inputRing;
+	Pipe[] outputRings;
 	int targetRing;
 	int targetRingInit;
 	int msgId = -2;
 	
-	public RoundRobinRouteStage(GraphManager gm, RingBuffer inputRing, RingBuffer ... outputRings) {
+	public RoundRobinRouteStage(GraphManager gm, Pipe inputRing, Pipe ... outputRings) {
 		super(gm,inputRing,outputRings);
 		this.inputRing = inputRing;
 		this.outputRings = outputRings;
@@ -33,9 +33,9 @@ public class RoundRobinRouteStage extends PronghornStage {
 	    
 	      do {	          
 	            if (-2==this.msgId) {
-	                if (RingReader.tryReadFragment(this.inputRing)) {
-	                    if ((this.msgId = RingReader.getMsgIdx(this.inputRing))<0) {
-	                        RingReader.releaseReadLock(this.inputRing);
+	                if (PipeReader.tryReadFragment(this.inputRing)) {
+	                    if ((this.msgId = PipeReader.getMsgIdx(this.inputRing))<0) {
+	                        PipeReader.releaseReadLock(this.inputRing);
 	                        this.requestShutdown();
 	                        return;
 	                    }       
@@ -44,8 +44,8 @@ public class RoundRobinRouteStage extends PronghornStage {
 	                }
 	            }
 	    
-	            if (RingReader.tryMoveSingleMessage(this.inputRing, this.outputRings[this.targetRing])) {
-	                RingReader.releaseReadLock(this.inputRing);
+	            if (PipeReader.tryMoveSingleMessage(this.inputRing, this.outputRings[this.targetRing])) {
+	                PipeReader.releaseReadLock(this.inputRing);
 	                if (--this.targetRing<0) {
 	                    this.targetRing = this.targetRingInit;
 	                }               
@@ -69,7 +69,7 @@ public class RoundRobinRouteStage extends PronghornStage {
 		//send the EOF message to all of the targets.
 		int i = outputRings.length;
 		while (--i>=0) {
-			RingBuffer.publishAllBatchedWrites(outputRings[i]);
+			Pipe.publishAllBatchedWrites(outputRings[i]);
 		}
 	}
 

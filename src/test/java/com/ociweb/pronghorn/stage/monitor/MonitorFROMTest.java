@@ -6,8 +6,8 @@ import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
-import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.ring.schema.loader.TemplateHandler;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 
 public class MonitorFROMTest {
 	

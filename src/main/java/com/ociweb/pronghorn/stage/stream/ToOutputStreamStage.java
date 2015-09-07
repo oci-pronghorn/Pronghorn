@@ -1,26 +1,26 @@
 package com.ociweb.pronghorn.stage.stream;
 
-import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
-import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
-import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
+import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
+import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
+import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
+import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
 
 import java.io.IOException;
 import java.io.OutputStream;
 
-import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class ToOutputStreamStage extends PronghornStage {
 
-	private final RingBuffer inputRing;
+	private final Pipe inputRing;
 	private final OutputStream outputStream;
 	private final int step;
 	private final boolean eol;
 	
-	public ToOutputStreamStage(GraphManager gm, RingBuffer inputRing, OutputStream outputStream, boolean eol) {
+	public ToOutputStreamStage(GraphManager gm, Pipe inputRing, OutputStream outputStream, boolean eol) {
 		super(gm,inputRing,NONE);
 		this.inputRing = inputRing;
 		
@@ -28,7 +28,7 @@ public class ToOutputStreamStage extends PronghornStage {
 		this.outputStream = outputStream;
 		this.step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		//this blind byte copy only works for this simple message type, it is not appropriate for other complex types
-		if (RingBuffer.from(inputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (Pipe.from(inputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		this.eol = eol;
@@ -45,11 +45,11 @@ public class ToOutputStreamStage extends PronghornStage {
 				int byteMask = inputRing.byteMask;
 				int byteSize = byteMask+1;								
 				
-				while (RingBuffer.contentToLowLevelRead(inputRing, step)) {
+				while (Pipe.contentToLowLevelRead(inputRing, step)) {
 						
-					int msgId = RingBuffer.takeMsgIdx(inputRing);
+					int msgId = Pipe.takeMsgIdx(inputRing);
   
-					RingBuffer.confirmLowLevelRead(inputRing, step);
+					Pipe.confirmLowLevelRead(inputRing, step);
 			    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
 	    					    			
 			    	int len = takeRingByteLen(inputRing);
@@ -71,7 +71,7 @@ public class ToOutputStreamStage extends PronghornStage {
 						}
 						outputStream.flush();
 			    	}
-			    	RingBuffer.releaseReads(inputRing);
+			    	Pipe.releaseReads(inputRing);
 			    
 				}			
 				

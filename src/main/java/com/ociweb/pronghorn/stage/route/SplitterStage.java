@@ -1,7 +1,7 @@
 package com.ociweb.pronghorn.stage.route;
 
-import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -14,8 +14,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  */
 public class SplitterStage extends PronghornStage {
 
-	private RingBuffer source;
-	private RingBuffer[] targets;
+	private Pipe source;
+	private Pipe[] targets;
 	
 	private int byteHeadPos;
     private long headPos;
@@ -28,18 +28,18 @@ public class SplitterStage extends PronghornStage {
 	int byteTailPos;
 	int totalBytesCopy;
 	
-	public SplitterStage(GraphManager gm, RingBuffer source, RingBuffer ... targets) {
+	public SplitterStage(GraphManager gm, Pipe source, Pipe ... targets) {
 		super(gm,source,targets);
 		
 		this.source = source;
 		this.targets = targets;
 		
-		this.cachedTail = RingBuffer.tailPosition(source);
+		this.cachedTail = Pipe.tailPosition(source);
 	
 		this.supportsBatchedPublish = false;
 		this.supportsBatchedRelease = false;		
 		
-		FieldReferenceOffsetManager sourceFrom = RingBuffer.from(source);
+		FieldReferenceOffsetManager sourceFrom = Pipe.from(source);
 		
 		int i = targets.length;
 		working = new int[i];
@@ -48,7 +48,7 @@ public class SplitterStage extends PronghornStage {
 			
 					
 			//confirm this target is large enough for the needed data.
-			FieldReferenceOffsetManager targetFrom = RingBuffer.from(targets[i]);
+			FieldReferenceOffsetManager targetFrom = Pipe.from(targets[i]);
 			
 			if (targetFrom != sourceFrom) {
 				throw new UnsupportedOperationException("Both source and target schemas must be the same");
@@ -113,7 +113,7 @@ public class SplitterStage extends PronghornStage {
 				ss.working[i]=i;
 			}
 			//collect all the constant values needed for doing the copy
-			ss.tempByteTail = RingBuffer.bytesTailPosition(ss.source);
+			ss.tempByteTail = Pipe.bytesTailPosition(ss.source);
 			ss.byteTailPos = ss.source.byteMask & ss.tempByteTail;
 			if ((ss.totalBytesCopy =      (ss.source.byteMask & ss.byteHeadPos) - ss.byteTailPos) < 0) {
 				ss.totalBytesCopy += (ss.source.byteMask+1);
@@ -131,21 +131,21 @@ public class SplitterStage extends PronghornStage {
 	private static void recordCopyComplete(SplitterStage ss, int tempByteTail, int totalBytesCopy) {
 		//release tail so data can be written
 		
-		int i = RingBuffer.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
-		RingBuffer.setBytesWorkingTail(ss.source, i);
-        RingBuffer.setBytesTail(ss.source, i);   
-		RingBuffer.publishWorkingTailPosition(ss.source,(ss.cachedTail+=ss.totalPrimaryCopy));
+		int i = Pipe.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
+		Pipe.setBytesWorkingTail(ss.source, i);
+        Pipe.setBytesTail(ss.source, i);   
+		Pipe.publishWorkingTailPosition(ss.source,(ss.cachedTail+=ss.totalPrimaryCopy));
 		ss.totalPrimaryCopy = 0; //clear so next time we find the next block
 	}
 
 
 
 	private static void findStableCutPoint(SplitterStage ss) {
-		ss.byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
-        ss.headPos = RingBuffer.headPosition(ss.source);		
-		while(ss.byteHeadPos != RingBuffer.bytesHeadPosition(ss.source) || ss.headPos != RingBuffer.headPosition(ss.source) ) {
-			ss.byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
-			ss.headPos = RingBuffer.headPosition(ss.source);
+		ss.byteHeadPos = Pipe.bytesHeadPosition(ss.source);
+        ss.headPos = Pipe.headPosition(ss.source);		
+		while(ss.byteHeadPos != Pipe.bytesHeadPosition(ss.source) || ss.headPos != Pipe.headPosition(ss.source) ) {
+			ss.byteHeadPos = Pipe.bytesHeadPosition(ss.source);
+			ss.headPos = Pipe.headPosition(ss.source);
 		}
 	}
 
@@ -163,12 +163,12 @@ public class SplitterStage extends PronghornStage {
 		int limit = ss.workingPos;
 		while (j<limit) {
 			
-			if (!RingBuffer.roomToLowLevelWrite(ss.targets[working[j]], totalPrimaryCopy)) {
+			if (!Pipe.roomToLowLevelWrite(ss.targets[working[j]], totalPrimaryCopy)) {
 			 	working[c++] = working[j];
 			} else {
-				RingBuffer ringBuffer = ss.targets[working[j]];					
+				Pipe ringBuffer = ss.targets[working[j]];					
 				copyData(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);				
-				RingBuffer.confirmLowLevelWrite(ringBuffer, totalPrimaryCopy);	
+				Pipe.confirmLowLevelWrite(ringBuffer, totalPrimaryCopy);	
 			}
 			j++;
 		}
@@ -179,27 +179,27 @@ public class SplitterStage extends PronghornStage {
 
 
 	public String toString() {
-		return getClass().getSimpleName()+ " source content "+RingBuffer.contentRemaining(source);
+		return getClass().getSimpleName()+ " source content "+Pipe.contentRemaining(source);
 	}
 
 	private static void copyData(SplitterStage ss, int byteTailPos,
 								int totalBytesCopy, int primaryTailPos, int totalPrimaryCopy,
-								RingBuffer ringBuffer) {
+								Pipe ringBuffer) {
 		
 		//copy the bytes
-		RingBuffer.copyBytesFromToRing(RingBuffer.byteBuffer(ss.source),                   byteTailPos, ss.source.byteMask, 
-		        RingBuffer.byteBuffer(ringBuffer), RingBuffer.bytesHeadPosition(ringBuffer), ringBuffer.byteMask, 
+		Pipe.copyBytesFromToRing(Pipe.byteBuffer(ss.source),                   byteTailPos, ss.source.byteMask, 
+		        Pipe.byteBuffer(ringBuffer), Pipe.bytesHeadPosition(ringBuffer), ringBuffer.byteMask, 
 									  totalBytesCopy);
 		
-		RingBuffer.setBytesWorkingHead(ringBuffer, RingBuffer.addAndGetBytesHead(ringBuffer, totalBytesCopy));
+		Pipe.setBytesWorkingHead(ringBuffer, Pipe.addAndGetBytesHead(ringBuffer, totalBytesCopy));
 								
 		//copy the primary data
-		int headPosition = (int)RingBuffer.headPosition(ringBuffer);
-		RingBuffer.copyIntsFromToRing(RingBuffer.primaryBuffer(ss.source), primaryTailPos, ss.source.mask, 
-		        RingBuffer.primaryBuffer(ringBuffer), headPosition, ringBuffer.mask, 
+		int headPosition = (int)Pipe.headPosition(ringBuffer);
+		Pipe.copyIntsFromToRing(Pipe.primaryBuffer(ss.source), primaryTailPos, ss.source.mask, 
+		        Pipe.primaryBuffer(ringBuffer), headPosition, ringBuffer.mask, 
 									 totalPrimaryCopy);
 		
-		RingBuffer.publishWorkingHeadPosition(ringBuffer, headPosition + totalPrimaryCopy);
+		Pipe.publishWorkingHeadPosition(ringBuffer, headPosition + totalPrimaryCopy);
 
 	}
 	

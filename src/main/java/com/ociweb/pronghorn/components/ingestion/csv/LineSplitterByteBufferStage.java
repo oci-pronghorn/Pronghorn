@@ -5,8 +5,8 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -14,7 +14,7 @@ public class LineSplitterByteBufferStage extends PronghornStage {
 
 	protected final ByteBuffer activeByteBuffer;
 	
-	protected final RingBuffer outputRing;
+	protected final Pipe outputRing;
 	
 	protected int quoteCount = 0;
 	protected int prevB = -1;
@@ -27,13 +27,13 @@ public class LineSplitterByteBufferStage extends PronghornStage {
     protected int shutdownPosition = -1;
     private final Logger log = LoggerFactory.getLogger(LineSplitterByteBufferStage.class);
     
-    public LineSplitterByteBufferStage(GraphManager graphManager, ByteBuffer sourceByteBuffer, RingBuffer outputRing) {
+    public LineSplitterByteBufferStage(GraphManager graphManager, ByteBuffer sourceByteBuffer, Pipe outputRing) {
     	super(graphManager, NONE, outputRing);
     	this.activeByteBuffer=sourceByteBuffer;
     	
     	this.outputRing=outputRing;
         
-		if (RingBuffer.from(outputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (Pipe.from(outputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		
@@ -69,7 +69,7 @@ public class LineSplitterByteBufferStage extends PronghornStage {
 		    	shutdownPosition = parseSingleByteBuffer(this, activeByteBuffer);			    	
 		    	if (shutdownPosition>=activeByteBuffer.limit()) {
 		    		resetForNextByteBuffer(this);
-		    		RingBuffer.publishAllBatchedWrites(outputRing);
+		    		Pipe.publishAllBatchedWrites(outputRing);
 		    		requestShutdown();
 		    	}
 			
@@ -80,7 +80,7 @@ public class LineSplitterByteBufferStage extends PronghornStage {
 			shutdownPosition = parseSingleByteBuffer(this, activeByteBuffer);			    	
 		} while (shutdownPosition<activeByteBuffer.limit());
     	resetForNextByteBuffer(this);	
-    	RingBuffer.publishAllBatchedWrites(outputRing);
+    	Pipe.publishAllBatchedWrites(outputRing);
     	requestShutdown();
 	}
 
@@ -90,7 +90,7 @@ public class LineSplitterByteBufferStage extends PronghornStage {
 		 int limit = sourceByteBuffer.limit();
 		 
 		 
-		 if (!RingBuffer.roomToLowLevelWrite(stage.outputRing, stage.stepSize)) {
+		 if (!Pipe.roomToLowLevelWrite(stage.outputRing, stage.stepSize)) {
 			 return position;
 		 }
 		 	    
@@ -108,14 +108,14 @@ public class LineSplitterByteBufferStage extends PronghornStage {
 							//The copy is an intrinsic and short copies are not as efficient
 							
 							sourceByteBuffer.position(stage.recordStart);
-							RingBuffer outputRing = stage.outputRing;
-							RingBuffer.confirmLowLevelWrite(stage.outputRing, stage.stepSize);
+							Pipe outputRing = stage.outputRing;
+							Pipe.confirmLowLevelWrite(stage.outputRing, stage.stepSize);
 							
 							
 							
-							RingBuffer.addMsgIdx(outputRing, 0);
-							long temp = RingBuffer.workingHeadPosition(outputRing);
-							int bytePos = RingBuffer.bytesWorkingHeadPosition(outputRing);    	
+							Pipe.addMsgIdx(outputRing, 0);
+							long temp = Pipe.workingHeadPosition(outputRing);
+							int bytePos = Pipe.bytesWorkingHeadPosition(outputRing);    	
 
 							//debug show the lines
 							boolean debug = false;
@@ -129,12 +129,12 @@ public class LineSplitterByteBufferStage extends PronghornStage {
 								
 							}
 							
-							RingBuffer.copyByteBuffer(sourceByteBuffer, len, outputRing);
-							RingBuffer.addBytePosAndLen(outputRing, bytePos, len);
+							Pipe.copyByteBuffer(sourceByteBuffer, len, outputRing);
+							Pipe.addBytePosAndLen(outputRing, bytePos, len);
 														
 							stage.recordCount++;
 
-							RingBuffer.publishWrites(outputRing);
+							Pipe.publishWrites(outputRing);
 
 							
 							stage.recordStart = position+1;

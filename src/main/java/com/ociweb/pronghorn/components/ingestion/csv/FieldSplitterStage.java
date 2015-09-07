@@ -1,19 +1,19 @@
 package com.ociweb.pronghorn.components.ingestion.csv;
 
-import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
-import static com.ociweb.pronghorn.ring.RingBuffer.byteMask;
-import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
-import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
-import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
+import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
+import static com.ociweb.pronghorn.pipe.Pipe.byteMask;
+import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
+import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnTail;
+import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
+import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.components.ingestion.metaMessageUtil.MetaMessageDefs;
 import com.ociweb.pronghorn.components.ingestion.metaMessageUtil.TypeExtractor;
-import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -24,8 +24,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  */
 public class FieldSplitterStage extends PronghornStage {
 
-	private final RingBuffer inputRing;
-	private final RingBuffer outputRing;	
+	private final Pipe inputRing;
+	private final Pipe outputRing;	
 	private final TypeExtractor typeExtractor;   
 	private final Logger log = LoggerFactory.getLogger(FieldSplitterStage.class);
 	
@@ -38,16 +38,16 @@ public class FieldSplitterStage extends PronghornStage {
     	quoter['"'] = 1; //except for the value of quote.
     }
      
-	public FieldSplitterStage(GraphManager graphManager, RingBuffer inputRing, RingBuffer outputRing) {
+	public FieldSplitterStage(GraphManager graphManager, Pipe inputRing, Pipe outputRing) {
 		super(graphManager,inputRing,outputRing);
 		this.inputRing = inputRing;
 		this.outputRing = outputRing;
 		
-		if (RingBuffer.from(inputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (Pipe.from(inputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages for input.");
 		}
 		
-		if (RingBuffer.from(outputRing) != MetaMessageDefs.FROM) {
+		if (Pipe.from(outputRing) != MetaMessageDefs.FROM) {
 			throw new UnsupportedOperationException("This class can only be used with the MetaFieldFROM catalog of messages for output.");
 		}
 		
@@ -68,17 +68,17 @@ public class FieldSplitterStage extends PronghornStage {
 		endOfData(outputRing);
 	}
 	
-	public void readData(FieldSplitterStage stage, RingBuffer inputRing, RingBuffer outputRing) {
+	public void readData(FieldSplitterStage stage, Pipe inputRing, Pipe outputRing) {
 	
 		//return if there is no data found
-		while (RingBuffer.contentToLowLevelRead(inputRing, step)) {
+		while (Pipe.contentToLowLevelRead(inputRing, step)) {
 
-	    	int msgIdx = RingBuffer.takeMsgIdx(inputRing);
+	    	int msgIdx = Pipe.takeMsgIdx(inputRing);
 	    				
 	    	if (msgIdx<0) { //exit logic
 	    		new Exception("warning old exit used").printStackTrace(); //DELETE this code
 	    	} else {   
-	    		RingBuffer.confirmLowLevelRead(inputRing,  step);
+	    		Pipe.confirmLowLevelRead(inputRing,  step);
 	    		
 	    		
 	    		int meta = takeRingByteMetaData(inputRing);
@@ -102,13 +102,13 @@ public class FieldSplitterStage extends PronghornStage {
 				//done reading bytes input can have that section of the array again.
 	
 	    	}
-	    	RingBuffer.releaseReads(inputRing);
+	    	Pipe.releaseReads(inputRing);
 		}
 		
 	}
 
 
-	private static void consumeBytes(TypeExtractor typeExtractor, RingBuffer output, byte[] data, int offset1, int length1, int offset2, int length2) {
+	private static void consumeBytes(TypeExtractor typeExtractor, Pipe output, byte[] data, int offset1, int length1, int offset2, int length2) {
 				
 		assert(length1>=0) : "bad length "+length1;
 		assert(length2>=0) : "bad length "+length2;
@@ -178,7 +178,7 @@ public class FieldSplitterStage extends PronghornStage {
 	}
 	
 	
-	private static void consumeBytes(TypeExtractor typeExtractor, RingBuffer output, byte[] data, int offset, int length) {
+	private static void consumeBytes(TypeExtractor typeExtractor, Pipe output, byte[] data, int offset, int length) {
 				
 		
 		int fieldIdx = 0;
@@ -201,7 +201,7 @@ public class FieldSplitterStage extends PronghornStage {
 				
 	}
 		
-	private static void consumeField(int fieldIdx, TypeExtractor typeExtractor, RingBuffer output, byte[] data, int offset, int length) {
+	private static void consumeField(int fieldIdx, TypeExtractor typeExtractor, Pipe output, byte[] data, int offset, int length) {
 		TypeExtractor.resetFieldSum(typeExtractor);
 		TypeExtractor.appendContent(typeExtractor, data, offset, offset+length);
 						
@@ -230,7 +230,7 @@ public class FieldSplitterStage extends PronghornStage {
 	}
 	
 	
-	private static void consumeField(int fieldIdx, TypeExtractor typeExtractor, RingBuffer output, byte[] data, int offset1, int length1, int offset2, int length2) {
+	private static void consumeField(int fieldIdx, TypeExtractor typeExtractor, Pipe output, byte[] data, int offset1, int length1, int offset2, int length2) {
 		TypeExtractor.resetFieldSum(typeExtractor);
 		assert(length1>=0) : "bad length "+length1;
 		TypeExtractor.appendContent(typeExtractor, data, offset1, offset1+length1);
@@ -249,7 +249,7 @@ public class FieldSplitterStage extends PronghornStage {
 	
 	
 	private static void writeMetaMessage(TypeExtractor typeExtractor,
-			byte[] data, int offset, int length, RingBuffer output) {
+			byte[] data, int offset, int length, Pipe output) {
 		
 		//RingBuffer.spinBlockOnTailTillMatchesHead(output.tailPos.get(), output);
 		//spinBlockOnTail(output.tailPos.get(), output.workingHeadPos.value-(output.maxSize-FieldReferenceOffsetManager.maxFragmentSize(RingBuffer.from(output))), output);
@@ -281,14 +281,14 @@ public class FieldSplitterStage extends PronghornStage {
 				  writeNull(output);				
 				break;
 		}
-		RingBuffer.setPublishBatchSize(output,  0);
-		RingBuffer.publishWrites(output);
+		Pipe.setPublishBatchSize(output,  0);
+		Pipe.publishWrites(output);
 	}
 
 
 	private static void writeMetaMessage(TypeExtractor typeExtractor,
 			byte[] data, int offset1, int length1, int offset2, int length2,
-			RingBuffer output) {
+			Pipe output) {
 		
 		//RingBuffer.spinBlockOnTailTillMatchesHead(output.tailPos.get(), output);
 		//spinBlockOnTail(output.tailPos.get(), output.workingHeadPos.value-(output.maxSize-FieldReferenceOffsetManager.maxFragmentSize(RingBuffer.from(output))), output);
@@ -320,143 +320,143 @@ public class FieldSplitterStage extends PronghornStage {
 				writeNull(output);				
 				break;	
 		}
-		RingBuffer.setPublishBatchSize(output,  0);
-		RingBuffer.publishWrites(output);
+		Pipe.setPublishBatchSize(output,  0);
+		Pipe.publishWrites(output);
 	}
 
 	
 	
 	
 	public static void writeBytesSplit(byte[] data, int offset1, int length1,
-			int offset2, int length2, RingBuffer output) {
+			int offset2, int length2, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(RingBuffer.tailPosition(output), RingBuffer.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-RingBuffer.from(output).fragDataSize[MetaMessageDefs.MSG_BYTEARRAY_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_BYTEARRAY_LOC]), output);
 		
-		RingBuffer.addMsgIdx(output, MetaMessageDefs.MSG_BYTEARRAY_LOC);
+		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_BYTEARRAY_LOC);
 			
-		int	bytePosition = RingBuffer.bytesWorkingHeadPosition(output);		    	
-		RingBuffer.copyBytesFromToRing(data, offset1, Integer.MAX_VALUE, output.unstructuredLayoutRingBuffer, bytePosition, output.byteMask, length1);
-		RingBuffer.copyBytesFromToRing(data, offset2, Integer.MAX_VALUE, output.unstructuredLayoutRingBuffer, bytePosition+length1, output.byteMask, length2);
+		int	bytePosition = Pipe.bytesWorkingHeadPosition(output);		    	
+		Pipe.copyBytesFromToRing(data, offset1, Integer.MAX_VALUE, output.unstructuredLayoutRingBuffer, bytePosition, output.byteMask, length1);
+		Pipe.copyBytesFromToRing(data, offset2, Integer.MAX_VALUE, output.unstructuredLayoutRingBuffer, bytePosition+length1, output.byteMask, length2);
 		int length3 = length1+length2;
 			
-		RingBuffer.validateVarLength(output, length3);
-		RingBuffer.addBytePosAndLen(output, bytePosition, length3);
-		RingBuffer.setBytesWorkingHead(output, bytePosition + length3);
+		Pipe.validateVarLength(output, length3);
+		Pipe.addBytePosAndLen(output, bytePosition, length3);
+		Pipe.setBytesWorkingHead(output, bytePosition + length3);
 	}
 
 	public static void writeASCIISplit(byte[] data, int offset1, int length1,
-			int offset2, int length2, RingBuffer output) {
+			int offset2, int length2, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(RingBuffer.tailPosition(output), RingBuffer.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-RingBuffer.from(output).fragDataSize[MetaMessageDefs.MSG_ASCII_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_ASCII_LOC]), output);
 		
-		RingBuffer.addMsgIdx(output, MetaMessageDefs.MSG_ASCII_LOC);
+		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_ASCII_LOC);
 			
-		int bytePosition = RingBuffer.bytesWorkingHeadPosition(output);
-		RingBuffer.copyBytesFromToRing(data, offset1, Integer.MAX_VALUE, output.unstructuredLayoutRingBuffer, bytePosition, output.byteMask, length1);
-		RingBuffer.copyBytesFromToRing(data, offset2, Integer.MAX_VALUE, output.unstructuredLayoutRingBuffer, bytePosition+length1, output.byteMask, length2);
+		int bytePosition = Pipe.bytesWorkingHeadPosition(output);
+		Pipe.copyBytesFromToRing(data, offset1, Integer.MAX_VALUE, output.unstructuredLayoutRingBuffer, bytePosition, output.byteMask, length1);
+		Pipe.copyBytesFromToRing(data, offset2, Integer.MAX_VALUE, output.unstructuredLayoutRingBuffer, bytePosition+length1, output.byteMask, length2);
 		int length = length1+length2;
 
-		RingBuffer.validateVarLength(output, length);
-		RingBuffer.addBytePosAndLen(output,bytePosition, length);
-		RingBuffer.setBytesWorkingHead(output, bytePosition + length);
+		Pipe.validateVarLength(output, length);
+		Pipe.addBytePosAndLen(output,bytePosition, length);
+		Pipe.setBytesWorkingHead(output, bytePosition + length);
 	}
 
-	public static void writeNull(RingBuffer output) {
+	public static void writeNull(Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(RingBuffer.tailPosition(output), RingBuffer.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-RingBuffer.from(output).fragDataSize[MetaMessageDefs.MSG_NULL_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_NULL_LOC]), output);
 		
-		RingBuffer.addMsgIdx(output, MetaMessageDefs.MSG_NULL_LOC);
+		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_NULL_LOC);
 	}
 
 	public static void writeDecimal(TypeExtractor typeExtractor,
-			RingBuffer output) {
+			Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(RingBuffer.tailPosition(output), RingBuffer.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-RingBuffer.from(output).fragDataSize[MetaMessageDefs.MSG_DECIMAL_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_DECIMAL_LOC]), output);
 		
-		RingBuffer.addMsgIdx(output, MetaMessageDefs.MSG_DECIMAL_LOC);	
-		RingBuffer.addDecimal(TypeExtractor.decimalPlaces(typeExtractor), typeExtractor.activeFieldLong*TypeExtractor.signMult(typeExtractor), output);
+		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_DECIMAL_LOC);	
+		Pipe.addDecimal(TypeExtractor.decimalPlaces(typeExtractor), typeExtractor.activeFieldLong*TypeExtractor.signMult(typeExtractor), output);
 	}
 
 	public static void writeBytes(byte[] data, int offset, int length,
-			RingBuffer output) {
+			Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(RingBuffer.tailPosition(output), RingBuffer.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-RingBuffer.from(output).fragDataSize[MetaMessageDefs.MSG_BYTEARRAY_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_BYTEARRAY_LOC]), output);
 		
-		RingBuffer.addMsgIdx(output, MetaMessageDefs.MSG_BYTEARRAY_LOC);
-		RingBuffer.addByteArray(data, offset, length, output);
+		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_BYTEARRAY_LOC);
+		Pipe.addByteArray(data, offset, length, output);
 	}
 
-	public static void writeASCII(byte[] data, int offset, int length, RingBuffer output) {
+	public static void writeASCII(byte[] data, int offset, int length, Pipe output) {
 
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(RingBuffer.tailPosition(output), RingBuffer.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-RingBuffer.from(output).fragDataSize[MetaMessageDefs.MSG_ASCII_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_ASCII_LOC]), output);
 		
-		RingBuffer.addMsgIdx(output,MetaMessageDefs.MSG_ASCII_LOC);
+		Pipe.addMsgIdx(output,MetaMessageDefs.MSG_ASCII_LOC);
 		
 		
-		RingBuffer.addByteArray(data, offset, length, output);
+		Pipe.addByteArray(data, offset, length, output);
 	}
 
-	public static void writeLong(TypeExtractor typeExtractor, RingBuffer output) {
+	public static void writeLong(TypeExtractor typeExtractor, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(RingBuffer.tailPosition(output), RingBuffer.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-RingBuffer.from(output).fragDataSize[MetaMessageDefs.MSG_INT64_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_INT64_LOC]), output);
 		
-		RingBuffer.addMsgIdx(output, MetaMessageDefs.MSG_INT64_LOC);
-		RingBuffer.addLongValue(output.structuredLayoutRingBuffer, output.mask, RingBuffer.getWorkingHeadPositionObject(output), typeExtractor.activeFieldLong*(long)TypeExtractor.signMult(typeExtractor));
+		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_INT64_LOC);
+		Pipe.addLongValue(output.structuredLayoutRingBuffer, output.mask, Pipe.getWorkingHeadPositionObject(output), typeExtractor.activeFieldLong*(long)TypeExtractor.signMult(typeExtractor));
 	}
 
-	public static void writeULong(TypeExtractor typeExtractor, RingBuffer output) {
+	public static void writeULong(TypeExtractor typeExtractor, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(RingBuffer.tailPosition(output), RingBuffer.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-RingBuffer.from(output).fragDataSize[MetaMessageDefs.MSG_UINT64_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_UINT64_LOC]), output);
 		
-		RingBuffer.addMsgIdx(output, MetaMessageDefs.MSG_UINT64_LOC);
-		RingBuffer.addLongValue(output.structuredLayoutRingBuffer, output.mask, RingBuffer.getWorkingHeadPositionObject(output), typeExtractor.activeFieldLong);
+		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_UINT64_LOC);
+		Pipe.addLongValue(output.structuredLayoutRingBuffer, output.mask, Pipe.getWorkingHeadPositionObject(output), typeExtractor.activeFieldLong);
 	}
 
-	public static void writeInt(TypeExtractor typeExtractor, RingBuffer output) {
+	public static void writeInt(TypeExtractor typeExtractor, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(RingBuffer.tailPosition(output), RingBuffer.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-RingBuffer.from(output).fragDataSize[MetaMessageDefs.MSG_INT32_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_INT32_LOC]), output);
 		
-		RingBuffer.addMsgIdx(output, MetaMessageDefs.MSG_INT32_LOC);
-		RingBuffer.setValue(output.structuredLayoutRingBuffer,output.mask,RingBuffer.getWorkingHeadPositionObject(output).value++,((int)typeExtractor.activeFieldLong)*TypeExtractor.signMult(typeExtractor));		
+		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_INT32_LOC);
+		Pipe.setValue(output.structuredLayoutRingBuffer,output.mask,Pipe.getWorkingHeadPositionObject(output).value++,((int)typeExtractor.activeFieldLong)*TypeExtractor.signMult(typeExtractor));		
 			
 			TypeExtractor.signMult(typeExtractor);
 	}
 
 	public static void writeUInt(TypeExtractor typeExtractor,
-			RingBuffer output) {
+			Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(RingBuffer.tailPosition(output), RingBuffer.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-RingBuffer.from(output).fragDataSize[MetaMessageDefs.MSG_UINT32_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_UINT32_LOC]), output);
 		
-		RingBuffer.addMsgIdx(output, MetaMessageDefs.MSG_UINT32_LOC);
-		RingBuffer.setValue(output.structuredLayoutRingBuffer,output.mask,RingBuffer.getWorkingHeadPositionObject(output).value++,(int)typeExtractor.activeFieldLong);
+		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_UINT32_LOC);
+		Pipe.setValue(output.structuredLayoutRingBuffer,output.mask,Pipe.getWorkingHeadPositionObject(output).value++,(int)typeExtractor.activeFieldLong);
 	}
 	
 	
-	private static void endOfData(RingBuffer ring) {
+	private static void endOfData(Pipe ring) {
 		
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(RingBuffer.tailPosition(ring), RingBuffer.workingHeadPosition(ring)-(ring.sizeOfStructuredLayoutRingBuffer-RingBuffer.from(ring).fragDataSize[MetaMessageDefs.MSG_FLUSH]), ring);
+		spinBlockOnTail(Pipe.tailPosition(ring), Pipe.workingHeadPosition(ring)-(ring.sizeOfStructuredLayoutRingBuffer-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_FLUSH]), ring);
 		
-		RingBuffer.addMsgIdx(ring, MetaMessageDefs.MSG_FLUSH);
-		RingBuffer.publishWrites(ring);
-		RingBuffer.publishAllBatchedWrites(ring);
+		Pipe.addMsgIdx(ring, MetaMessageDefs.MSG_FLUSH);
+		Pipe.publishWrites(ring);
+		Pipe.publishAllBatchedWrites(ring);
 	}
 
-	private static void beginningOfLine(RingBuffer ring) {
+	private static void beginningOfLine(Pipe ring) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(RingBuffer.tailPosition(ring), RingBuffer.workingHeadPosition(ring)-(ring.sizeOfStructuredLayoutRingBuffer-RingBuffer.from(ring).fragDataSize[MetaMessageDefs.MSG_MESSAGE_BEGIN_LOC]), ring);
+		spinBlockOnTail(Pipe.tailPosition(ring), Pipe.workingHeadPosition(ring)-(ring.sizeOfStructuredLayoutRingBuffer-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_MESSAGE_BEGIN_LOC]), ring);
 		
-		RingBuffer.addMsgIdx(ring, MetaMessageDefs.MSG_MESSAGE_BEGIN_LOC);
-		RingBuffer.publishWrites(ring);
+		Pipe.addMsgIdx(ring, MetaMessageDefs.MSG_MESSAGE_BEGIN_LOC);
+		Pipe.publishWrites(ring);
 	}
 	
-	private static void endOfLine(RingBuffer ring) {
+	private static void endOfLine(Pipe ring) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(RingBuffer.tailPosition(ring), RingBuffer.workingHeadPosition(ring)-(ring.sizeOfStructuredLayoutRingBuffer-RingBuffer.from(ring).fragDataSize[MetaMessageDefs.MSG_MESSAGE_END_LOC]), ring);
+		spinBlockOnTail(Pipe.tailPosition(ring), Pipe.workingHeadPosition(ring)-(ring.sizeOfStructuredLayoutRingBuffer-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_MESSAGE_END_LOC]), ring);
 		
-		RingBuffer.addMsgIdx(ring, MetaMessageDefs.MSG_MESSAGE_END_LOC);
-		RingBuffer.publishWrites(ring);
+		Pipe.addMsgIdx(ring, MetaMessageDefs.MSG_MESSAGE_END_LOC);
+		Pipe.publishWrites(ring);
 	}
 
 }

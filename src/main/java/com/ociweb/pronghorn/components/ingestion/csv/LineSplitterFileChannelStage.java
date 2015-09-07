@@ -6,7 +6,7 @@ import java.nio.channels.FileChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class LineSplitterFileChannelStage extends LineSplitterByteBufferStage {
@@ -16,7 +16,7 @@ public class LineSplitterFileChannelStage extends LineSplitterByteBufferStage {
 	private final Logger log = LoggerFactory.getLogger(LineSplitterFileChannelStage.class);
 	private boolean hasRun = false;
 	        
-	public LineSplitterFileChannelStage(GraphManager graphManager, FileChannel fileChannel, RingBuffer outputRing) {
+	public LineSplitterFileChannelStage(GraphManager graphManager, FileChannel fileChannel, Pipe outputRing) {
 		super(graphManager, null, outputRing);
 		
 		this.fileChannel = fileChannel;

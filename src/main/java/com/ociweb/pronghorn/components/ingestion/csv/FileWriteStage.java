@@ -1,38 +1,38 @@
 package com.ociweb.pronghorn.components.ingestion.csv;
 
-import static com.ociweb.pronghorn.ring.RingBuffer.byteMask;
-import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
-import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
+import static com.ociweb.pronghorn.pipe.Pipe.byteMask;
+import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
+import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
+import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class FileWriteStage extends PronghornStage {
 
-	private final RingBuffer inputRing;
+	private final Pipe inputRing;
 	private final FileChannel channel;
 
 	private final int msgSize = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 	
-	public FileWriteStage(GraphManager gm, RingBuffer input, FileChannel channel) {
+	public FileWriteStage(GraphManager gm, Pipe input, FileChannel channel) {
 		super(gm,input,NONE);
 		this.inputRing = input;
 		this.channel = channel;
-		assert(RingBuffer.from(input) == FieldReferenceOffsetManager.RAW_BYTES);
+		assert(Pipe.from(input) == FieldReferenceOffsetManager.RAW_BYTES);
 
 	}
 
 	@Override
 	public void shutdown() {
 		try {
-			assert(RingBuffer.contentRemaining(inputRing)<=0) : "still has content to write";
+			assert(Pipe.contentRemaining(inputRing)<=0) : "still has content to write";
 			channel.close();
 		} catch (IOException e) {
 			throw new RuntimeException(e);
@@ -41,16 +41,16 @@ public class FileWriteStage extends PronghornStage {
 
 	@Override
 	public void run() {
-	    while (RingBuffer.contentToLowLevelRead(inputRing, 1)) {
-	            RingBuffer.confirmLowLevelRead(inputRing, msgSize);
+	    while (Pipe.contentToLowLevelRead(inputRing, 1)) {
+	            Pipe.confirmLowLevelRead(inputRing, msgSize);
 
 	        	
-	            int msgId = RingBuffer.takeMsgIdx(inputRing);
+	            int msgId = Pipe.takeMsgIdx(inputRing);
 	            if (msgId<0) {  	
-	                RingBuffer.releaseReads(inputRing);
+	                Pipe.releaseReads(inputRing);
     
-	                RingBuffer.releaseAllBatchedReads(inputRing);
-	            	assert(RingBuffer.contentRemaining(inputRing)==0) : "still has content to write";
+	                Pipe.releaseAllBatchedReads(inputRing);
+	            	assert(Pipe.contentRemaining(inputRing)==0) : "still has content to write";
 	            	requestShutdown();
 	            	return;
 	            }
@@ -66,7 +66,7 @@ public class FileWriteStage extends PronghornStage {
 	        	int pos = bytePosition(meta, inputRing, len);//has side effect of moving the byte pointer!!
 	        	int mask = byteMask(inputRing);
 	        	
-	        	ByteBuffer inputByteBuffer= RingBuffer.wrappedUnstructuredLayoutRingBufferA(inputRing); //TODO: A, should this take into account constants?
+	        	ByteBuffer inputByteBuffer= Pipe.wrappedUnstructuredLayoutRingBufferA(inputRing); //TODO: A, should this take into account constants?
 	        	
 	        	int idx = (pos&mask);
                 int len1 = (mask+1)-idx;
@@ -105,9 +105,9 @@ public class FileWriteStage extends PronghornStage {
 					}                	
                 }
                                 
-				RingBuffer.releaseReads(inputRing);      
+				Pipe.releaseReads(inputRing);      
                                 
-				assert(RingBuffer.contentRemaining(inputRing)>=0) : "still has "+RingBuffer.contentRemaining(inputRing)+" content to write "+inputRing;
+				assert(Pipe.contentRemaining(inputRing)>=0) : "still has "+Pipe.contentRemaining(inputRing)+" content to write "+inputRing;
 				
 		}
 	}

@@ -7,22 +7,22 @@ import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_SIZE_LOC;
 import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_TAIL_LOC;
 import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_TIME_LOC;
 
-import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingBufferConfig;
-import com.ociweb.pronghorn.ring.RingReader;
-import com.ociweb.pronghorn.ring.util.Histogram;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.PipeReader;
+import com.ociweb.pronghorn.pipe.util.Histogram;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 
 public class MonitorConsoleStage extends PronghornStage {
 
-	private final RingBuffer[] inputs;
+	private final Pipe[] inputs;
 	private Histogram[] hists;
 	private GraphManager graphManager;
 	
-	public MonitorConsoleStage(GraphManager graphManager, RingBuffer ... inputs) {
+	public MonitorConsoleStage(GraphManager graphManager, Pipe ... inputs) {
 		super(graphManager, inputs, NONE);
 		this.inputs = inputs;
 		this.graphManager = graphManager;
@@ -30,10 +30,10 @@ public class MonitorConsoleStage extends PronghornStage {
 		validateSchema(inputs);
 	}
 
-	private void validateSchema(RingBuffer[] inputs) {
+	private void validateSchema(Pipe[] inputs) {
 		int i = inputs.length;
 		while (--i>=0) {
-			FieldReferenceOffsetManager from = RingBuffer.from(inputs[i]); 
+			FieldReferenceOffsetManager from = Pipe.from(inputs[i]); 
 			if (!from.fieldNameScript[0].equals("RingStatSample")) {
 				throw new UnsupportedOperationException("Can only write to ring buffer that is expecting montior records.");
 			}
@@ -61,26 +61,26 @@ public class MonitorConsoleStage extends PronghornStage {
 		int i = inputs.length;
 		while (--i>=0) {
 			
-			RingBuffer ring = inputs[i];
-			while (RingReader.tryReadFragment(ring)) {
+			Pipe ring = inputs[i];
+			while (PipeReader.tryReadFragment(ring)) {
 
 				
-				assert(TEMPLATE_LOC == RingReader.getMsgIdx(ring)) : "Only supporting the single monitor message type";
+				assert(TEMPLATE_LOC == PipeReader.getMsgIdx(ring)) : "Only supporting the single monitor message type";
 				
 
-				long time = RingReader.readLong(ring, TEMPLATE_TIME_LOC);
+				long time = PipeReader.readLong(ring, TEMPLATE_TIME_LOC);
 		
-				long head = RingReader.readLong(ring, TEMPLATE_HEAD_LOC);
-				long tail = RingReader.readLong(ring, TEMPLATE_TAIL_LOC);
+				long head = PipeReader.readLong(ring, TEMPLATE_HEAD_LOC);
+				long tail = PipeReader.readLong(ring, TEMPLATE_TAIL_LOC);
 				
-				int lastMsgIdx = RingReader.readInt(ring, TEMPLATE_MSG_LOC);
-				int ringSize = RingReader.readInt(ring, TEMPLATE_SIZE_LOC);
+				int lastMsgIdx = PipeReader.readInt(ring, TEMPLATE_MSG_LOC);
+				int ringSize = PipeReader.readInt(ring, TEMPLATE_SIZE_LOC);
 				
 				long pctFull = (100*(head-tail))/ringSize;
 				//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
 				Histogram.sample( pctFull>=0 ? pctFull<=100 ? pctFull : 99 : 0, hists[i]);
 													
-				RingReader.releaseReadLock(ring);
+				PipeReader.releaseReadLock(ring);
 			}
 		
 			
@@ -116,7 +116,7 @@ public class MonitorConsoleStage extends PronghornStage {
 	}
 
 	private static final Long defaultMonitorRate = Long.valueOf(50000000);
-	private static final RingBufferConfig defaultMonitorRingConfig = new RingBufferConfig(MonitorFROM.buildFROM(), 30, 0);
+	private static final PipeConfig defaultMonitorRingConfig = new PipeConfig(MonitorFROM.buildFROM(), 30, 0);
 	
 	public static void attach(GraphManager gm) {
 		attach(gm,defaultMonitorRate,defaultMonitorRingConfig);
@@ -132,7 +132,7 @@ public class MonitorConsoleStage extends PronghornStage {
 	 * @param monitorRate
 	 * @param ringBufferMonitorConfig
 	 */
-	public static void attach(GraphManager gm, Long monitorRate, RingBufferConfig ringBufferMonitorConfig) {
+	public static void attach(GraphManager gm, Long monitorRate, PipeConfig ringBufferMonitorConfig) {
 		MonitorConsoleStage stage = new MonitorConsoleStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig));
         GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
 		GraphManager.addAnnotation(gm, GraphManager.MONITOR, "dummy", stage);

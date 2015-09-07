@@ -1,20 +1,20 @@
 package com.ociweb.pronghorn.stage.test;
 
-import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.stream.StreamingReadVisitor;
-import com.ociweb.pronghorn.ring.stream.StreamingReadVisitorMatcher;
-import com.ociweb.pronghorn.ring.stream.StreamingVisitorReader;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitor;
+import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitorMatcher;
+import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class TestValidator extends PronghornStage {
     
-    private final RingBuffer expectedInput;
-    private final RingBuffer checkedInput;
+    private final Pipe expectedInput;
+    private final Pipe checkedInput;
     
     private final StreamingVisitorReader reader;
     
-    public TestValidator(GraphManager gm, RingBuffer ... input) {
+    public TestValidator(GraphManager gm, Pipe ... input) {
         super(gm, input, NONE);
         
         this.expectedInput = input[0];

@@ -1,13 +1,13 @@
 package com.ociweb.pronghorn.stage;
 
-import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingReader;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class ConsoleStage extends PronghornStage {
 
-	private final RingBuffer inputRing;
+	private final Pipe inputRing;
 	private final StringBuilder console = new StringBuilder();
 	
 	private final long[] totalCounts;
@@ -18,11 +18,11 @@ public class ConsoleStage extends PronghornStage {
 		
 	//TODO: AA, need validation stage to confirm values are in range and text is not too long
 
-	public ConsoleStage(GraphManager gm, RingBuffer inputRing) {
+	public ConsoleStage(GraphManager gm, Pipe inputRing) {
 		super(gm, inputRing, NONE);
 		this.inputRing = inputRing;
 
-		FieldReferenceOffsetManager from = RingBuffer.from(inputRing);		
+		FieldReferenceOffsetManager from = Pipe.from(inputRing);		
 		totalCounts = new long[from.tokensLen];
 		counts = new long[from.tokensLen];
 	}
@@ -30,7 +30,7 @@ public class ConsoleStage extends PronghornStage {
 	@Override
 	public void shutdown() {
 		processCounts("Final:",counts,totalCounts);
-		processTotal("Totals:",totalCounts, RingBuffer.from(inputRing));
+		processTotal("Totals:",totalCounts, Pipe.from(inputRing));
 	}
 
 	@Override
@@ -109,9 +109,9 @@ public class ConsoleStage extends PronghornStage {
 		int msgIdx = 0;
 		boolean data = false;
 		
-		while (RingReader.tryReadFragment(inputRing)) {
-			if (RingReader.isNewMessage(inputRing)) {
-				msgIdx = RingReader.getMsgIdx(inputRing);
+		while (PipeReader.tryReadFragment(inputRing)) {
+			if (PipeReader.isNewMessage(inputRing)) {
+				msgIdx = PipeReader.getMsgIdx(inputRing);
 				if (msgIdx<0) {
 					break;
 				} else {
@@ -119,7 +119,7 @@ public class ConsoleStage extends PronghornStage {
 					data = true;
 				}
 			}
-			RingReader.releaseReadLock(inputRing);
+			PipeReader.releaseReadLock(inputRing);
 		}		
 		return data;
 	}

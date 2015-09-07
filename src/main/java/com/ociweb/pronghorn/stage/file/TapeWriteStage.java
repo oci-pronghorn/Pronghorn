@@ -7,7 +7,7 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 
-import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -20,7 +20,7 @@ public class TapeWriteStage extends PronghornStage {
 
 	//TODO: C, clone this and write another stage that only writes the pure octet stream?
 	
-	private RingBuffer source;
+	private Pipe source;
 	private FileChannel fileChannel;
 	
 	//Header between each chunk must define 
@@ -32,7 +32,7 @@ public class TapeWriteStage extends PronghornStage {
 	
 	public int moreToCopy=-2;
 	
-	public TapeWriteStage(GraphManager gm, RingBuffer source, FileChannel fileChannel) {
+	public TapeWriteStage(GraphManager gm, Pipe source, FileChannel fileChannel) {
 		super(gm,source,NONE);
 		
 		//NOTE when writing ring ring size must be set to half the size of the reader to ensure there is no blocking.		
@@ -81,11 +81,11 @@ public class TapeWriteStage extends PronghornStage {
         long headPos;
 		       
         //get the new head position
-        byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
-		headPos = RingBuffer.headPosition(ss.source);		
-		while(byteHeadPos != RingBuffer.bytesHeadPosition(ss.source) || headPos != RingBuffer.headPosition(ss.source) ) {
-			byteHeadPos = RingBuffer.bytesHeadPosition(ss.source);
-			headPos = RingBuffer.headPosition(ss.source);
+        byteHeadPos = Pipe.bytesHeadPosition(ss.source);
+		headPos = Pipe.headPosition(ss.source);		
+		while(byteHeadPos != Pipe.bytesHeadPosition(ss.source) || headPos != Pipe.headPosition(ss.source) ) {
+			byteHeadPos = Pipe.bytesHeadPosition(ss.source);
+			headPos = Pipe.headPosition(ss.source);
 		}	
 			
 		
@@ -94,7 +94,7 @@ public class TapeWriteStage extends PronghornStage {
 		//get the start and stop locations for the copy
 		//now find the point to start reading from, this is moved forward with each new read.		
 		int pMask = ss.source.mask;
-		long tempTail = RingBuffer.tailPosition(ss.source);
+		long tempTail = Pipe.tailPosition(ss.source);
 		int primaryTailPos = pMask & (int)tempTail;				
 		long totalPrimaryCopy = (headPos - tempTail);
 		if (totalPrimaryCopy <= 0) {
@@ -103,7 +103,7 @@ public class TapeWriteStage extends PronghornStage {
 		}
 			
 		int bMask = ss.source.byteMask;		
-		int tempByteTail = RingBuffer.bytesTailPosition(ss.source);
+		int tempByteTail = Pipe.bytesTailPosition(ss.source);
 		int byteTailPos = bMask & tempByteTail;
 		int totalBytesCopy =      (bMask & byteHeadPos) - byteTailPos; 
 		if (totalBytesCopy < 0) {
@@ -117,10 +117,10 @@ public class TapeWriteStage extends PronghornStage {
 			
 			
 			//release tail so data can be written
-			int i = RingBuffer.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
-			RingBuffer.setBytesWorkingTail(ss.source, i);
-			RingBuffer.setBytesTail(ss.source,i);		
-			RingBuffer.publishWorkingTailPosition(ss.source,tempTail + totalPrimaryCopy);
+			int i = Pipe.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
+			Pipe.setBytesWorkingTail(ss.source, i);
+			Pipe.setBytesTail(ss.source,i);		
+			Pipe.publishWorkingTailPosition(ss.source,tempTail + totalPrimaryCopy);
 			
 			return true;
 		}
@@ -136,8 +136,8 @@ public class TapeWriteStage extends PronghornStage {
 			                   int totalBytesCopy) {
 
 		
-		IntBuffer primaryInts = RingBuffer.wrappedStructuredLayoutRingBuffer(ss.source);
-		ByteBuffer secondaryBytes = RingBuffer.wrappedUnstructuredLayoutRingBufferA(ss.source);	
+		IntBuffer primaryInts = Pipe.wrappedStructuredLayoutRingBuffer(ss.source);
+		ByteBuffer secondaryBytes = Pipe.wrappedUnstructuredLayoutRingBufferA(ss.source);	
 
 		primaryInts.position(primaryTailPos);
 		primaryInts.limit(primaryTailPos+totalPrimaryCopy); //TODO: AA, this will not work on the wrap, we must mask and do muliple copies
@@ -172,7 +172,7 @@ public class TapeWriteStage extends PronghornStage {
 	}
 
 	public String toString() {
-		return getClass().getSimpleName()+ (-2==moreToCopy ? " not running ": " moreToCopy:"+moreToCopy)+" source content "+RingBuffer.contentRemaining(source);
+		return getClass().getSimpleName()+ (-2==moreToCopy ? " not running ": " moreToCopy:"+moreToCopy)+" source content "+Pipe.contentRemaining(source);
 	}
 
 

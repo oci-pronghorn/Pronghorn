@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 
 // The Color- Scheduling algorithm
@@ -294,8 +294,8 @@ public class ColorMinusScheduler extends StageScheduler {
         int totalWork = 0; 
 
         while((index > 0) && (rings[index] >= 0)) {
-            RingBuffer ring = GraphManager.getRing(graphManager, rings[index]);
-            totalWork += RingBuffer.contentRemaining(ring);
+            Pipe ring = GraphManager.getRing(graphManager, rings[index]);
+            totalWork += Pipe.contentRemaining(ring);
 
             --index;
         }

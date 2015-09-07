@@ -7,8 +7,8 @@ import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingBufferConfig;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
 
@@ -54,7 +54,7 @@ public class GraphManager {
 	private int topOutput = 0;
 	
 	//for lookup of RingBuffer from RingBuffer id
-	private RingBuffer[] ringIdToRing = new RingBuffer[INIT_RINGS];
+	private Pipe[] ringIdToRing = new Pipe[INIT_RINGS];
 	
 	//for lookup of Stage from Stage id
 	private PronghornStage[]  stageIdToStage = new PronghornStage[INIT_STAGES];
@@ -289,13 +289,13 @@ public class GraphManager {
 		
 		idx = m.stageIdToInputsBeginIdx[stageId];
 		while (-1 != (ringId=m.multInputIds[idx++])) {	
-			assert(0==RingBuffer.contentRemaining(m.ringIdToRing[ringId]));
+			assert(0==Pipe.contentRemaining(m.ringIdToRing[ringId]));
 			regInput(clone, m.ringIdToRing[ringId], stageId);					
 		}				
 		
 		idx = m.stageIdToOutputsBeginIdx[stageId];
 		while (-1 != (ringId=m.multOutputIds[idx++])) {					
-			assert(0==RingBuffer.contentRemaining(m.ringIdToRing[ringId]));
+			assert(0==Pipe.contentRemaining(m.ringIdToRing[ringId]));
 			regOutput(clone, m.ringIdToRing[ringId], stageId);					
 		}		
 		
@@ -324,8 +324,8 @@ public class GraphManager {
 		return result;
 	}
 	
-	private static RingBuffer[] setValue(RingBuffer[] target, int idx, RingBuffer value) {		
-		RingBuffer[] result = target;
+	private static Pipe[] setValue(Pipe[] target, int idx, Pipe value) {		
+		Pipe[] result = target;
 		if (idx>=target.length) {
 			result = Arrays.copyOf(target, (1+idx)*2); //double the array
 		}
@@ -367,7 +367,7 @@ public class GraphManager {
 	}
 	
 
-	public static void register(GraphManager gm, PronghornStage stage, RingBuffer[] inputs, RingBuffer[] outputs) {
+	public static void register(GraphManager gm, PronghornStage stage, Pipe[] inputs, Pipe[] outputs) {
 		
 		synchronized(gm.lock) {
 			int stageId = beginStageRegister(gm, stage);
@@ -415,7 +415,7 @@ public class GraphManager {
 
 
 
-	public static void register(GraphManager gm, PronghornStage stage, RingBuffer input, RingBuffer[] outputs) {
+	public static void register(GraphManager gm, PronghornStage stage, Pipe input, Pipe[] outputs) {
 		synchronized(gm.lock) {		
 			
 			int stageId = beginStageRegister(gm, stage);
@@ -435,7 +435,7 @@ public class GraphManager {
 	}
 
 
-	public static void register(GraphManager gm, PronghornStage stage, RingBuffer[] inputs, RingBuffer output) {
+	public static void register(GraphManager gm, PronghornStage stage, Pipe[] inputs, Pipe output) {
 		synchronized(gm.lock) {
 			int stageId = beginStageRegister(gm, stage);
 			setStateToNew(gm, stageId);
@@ -454,7 +454,7 @@ public class GraphManager {
 	}
 
 
-	public static void register(GraphManager gm, PronghornStage stage, RingBuffer input, RingBuffer output) {
+	public static void register(GraphManager gm, PronghornStage stage, Pipe input, Pipe output) {
 		synchronized(gm.lock) {
 			int stageId = beginStageRegister(gm, stage);
 			setStateToNew(gm, stageId);
@@ -524,7 +524,7 @@ public class GraphManager {
 		return true;
 	}
 
-	private static void regOutput(GraphManager pm, RingBuffer output, int stageId) {
+	private static void regOutput(GraphManager pm, Pipe output, int stageId) {
 		if (null!=output) {
 			int outputId = output.ringId;
 			pm.ringIdToStages = setValue(pm.ringIdToStages, (outputId*2) , stageId); //source +0 then target +1
@@ -533,7 +533,7 @@ public class GraphManager {
 		}
 	}
 
-	private static void regInput(GraphManager pm, RingBuffer input,	int stageId) {
+	private static void regInput(GraphManager pm, Pipe input,	int stageId) {
 		if (null!=input) {
 			int inputId = input.ringId;
 			pm.ringIdToStages = setValue(pm.ringIdToStages, (inputId*2)+1, stageId); //source +0 then target +1
@@ -644,11 +644,11 @@ public class GraphManager {
 	    int ringId;
 	    
 	    while ((ringId = pm.multInputIds[inputPos++])>=0) {
-	    	RingBuffer.shutdown(pm.ringIdToRing[ringId]);	
+	    	Pipe.shutdown(pm.ringIdToRing[ringId]);	
 	    }
 	    
 	    while ((ringId = pm.multOutputIds[outputPos++])>=0) {
-		    RingBuffer.shutdown(pm.ringIdToRing[ringId]);	
+		    Pipe.shutdown(pm.ringIdToRing[ringId]);	
 		}
 	}
 
@@ -656,7 +656,7 @@ public class GraphManager {
 		return m.stageIdToStage[stageId];
 	}
 	
-	public static RingBuffer getRing(GraphManager gm, int ringId) {
+	public static Pipe getRing(GraphManager gm, int ringId) {
 		return gm.ringIdToRing[ringId];
 	}
 	
@@ -709,12 +709,12 @@ public class GraphManager {
 					//ensure that we do not have any old data still on the ring from the consumer batching releases
     
 					//splitter should never have release pending to release because it does not use the release counters	
-					if (RingBuffer.hasReleasePending(m.ringIdToRing[ringId])) {
-						RingBuffer.releaseAll(m.ringIdToRing[ringId]);
+					if (Pipe.hasReleasePending(m.ringIdToRing[ringId])) {
+						Pipe.releaseAll(m.ringIdToRing[ringId]);
 					}						
 					
 					//if producer is terminated check input ring, if not empty return true
-			    	if (RingBuffer.contentRemaining( m.ringIdToRing[ringId])>0) {
+			    	if (Pipe.contentRemaining( m.ringIdToRing[ringId])>0) {
 			    		return true;
 			    	}
 				} else {
@@ -801,11 +801,11 @@ public class GraphManager {
 	        throw new UnsupportedOperationException("Invalid configuration. Unable to find requested output ordinal "+ordinal);
 	    }
 
-	public static RingBuffer getOutputPipe(GraphManager m, PronghornStage stage) {
+	public static Pipe getOutputPipe(GraphManager m, PronghornStage stage) {
 		return getOutputPipe(m, stage, 1);
 	}
 	
-	public static RingBuffer getOutputPipe(GraphManager m, PronghornStage stage, int ordinalOutput) {
+	public static Pipe getOutputPipe(GraphManager m, PronghornStage stage, int ordinalOutput) {
 		
 		int ringId;
 		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
@@ -828,11 +828,11 @@ public class GraphManager {
 		return count;
 	}
 
-	public static RingBuffer getInputPipe(GraphManager m, PronghornStage stage) {
+	public static Pipe getInputPipe(GraphManager m, PronghornStage stage) {
 		return getInputPipe(m, stage, 1);
 	}
 	
-	public static RingBuffer getInputPipe(GraphManager m,	PronghornStage stage, int ordinalInput) {
+	public static Pipe getInputPipe(GraphManager m,	PronghornStage stage, int ordinalInput) {
 		int ringId;
 		int idx = m.stageIdToInputsBeginIdx[stage.stageId];
 		while (-1 != (ringId=m.multInputIds[idx++])) {	
@@ -900,14 +900,14 @@ public class GraphManager {
 		        }
 		    }
 		    
-			while (!RingBuffer.isInit(m.ringIdToRing[ringId])) {
+			while (!Pipe.isInit(m.ringIdToRing[ringId])) {
 				Thread.yield();
 			}				
 		}	
 		
 	}
 	
-	public static RingBuffer[] attachMonitorsToGraph(GraphManager gm, Long monitorRate, RingBufferConfig ringBufferMonitorConfig) {
+	public static Pipe[] attachMonitorsToGraph(GraphManager gm, Long monitorRate, PipeConfig ringBufferMonitorConfig) {
 
 		int j = gm.ringIdToRing.length;
 		int count = 0;
@@ -919,16 +919,16 @@ public class GraphManager {
 		if (0==count) {
 			throw new UnsupportedOperationException("Nothing to monitor, move this call down to after graph is constructed.");
 		}
-		RingBuffer[] monBuffers = new RingBuffer[count];
+		Pipe[] monBuffers = new Pipe[count];
 		int monBufIdx = 0;
 		j = gm.ringIdToRing.length;
 		while (--j>=0) {
 			
-			RingBuffer ringBuffer = gm.ringIdToRing[j];
+			Pipe ringBuffer = gm.ringIdToRing[j];
 			//Do not monitor those rings that are part of other monitoring networks.
 			if (null!=ringBuffer && !ringHoldsMonitorData(gm, ringBuffer) ) {
 
-				monBuffers[monBufIdx] = new RingBuffer(ringBufferMonitorConfig);
+				monBuffers[monBufIdx] = new Pipe(ringBufferMonitorConfig);
 				RingBufferMonitorStage stage = new RingBufferMonitorStage(gm, ringBuffer,  monBuffers[monBufIdx]);
 				GraphManager.addAnnotation(gm, GraphManager.MONITOR, "dummy", stage);
 				GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
@@ -940,7 +940,7 @@ public class GraphManager {
 		return monBuffers;	
 	}
 
-	private static boolean ringHoldsMonitorData(GraphManager gm, RingBuffer ringBuffer) {
+	private static boolean ringHoldsMonitorData(GraphManager gm, Pipe ringBuffer) {
 		return null != GraphManager.getAnnotation(gm, GraphManager.getRingProducer(gm, ringBuffer.ringId), GraphManager.MONITOR, null);
 	}
 	
@@ -951,25 +951,25 @@ public class GraphManager {
 	public static void enableBatching(GraphManager gm) {
 		int j = gm.ringIdToRing.length;
 		while (--j>=0) {
-			RingBuffer ring = gm.ringIdToRing[j];
+			Pipe ring = gm.ringIdToRing[j];
 			//never enable batching on the monitor rings
 			if (null!=ring && !ringHoldsMonitorData(gm, ring) ) {
 				
 				PronghornStage consumer = GraphManager.getRingConsumer(gm, ring.ringId);
 				if (PronghornStage.supportsBatchedRelease(consumer)) { 
-					RingBuffer.setMaxReleaseBatchSize(ring);
+					Pipe.setMaxReleaseBatchSize(ring);
 				}
 				
 				PronghornStage producer = GraphManager.getRingProducer(gm, ring.ringId);
 				if (PronghornStage.supportsBatchedPublish(producer)) {
-					RingBuffer.setMaxPublishBatchSize(ring);
+					Pipe.setMaxPublishBatchSize(ring);
 				}				
 				
 			}
 		}
 	}
 
-	public static String getRingName(GraphManager gm, RingBuffer ringBuffer) {
+	public static String getRingName(GraphManager gm, Pipe ringBuffer) {
 		
 		PronghornStage consumer = getRingConsumer(gm, ringBuffer.ringId);
 		PronghornStage producer = getRingProducer(gm, ringBuffer.ringId);
@@ -1018,7 +1018,7 @@ public class GraphManager {
 		int ringId;
 		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
 		while (-1 != (ringId=m.multOutputIds[idx++])) {	 //TODO: could be unrolled an inlined
-			RingBuffer.publishAllBatchedWrites(m.ringIdToRing[ringId]);				
+			Pipe.publishAllBatchedWrites(m.ringIdToRing[ringId]);				
 		}		
 	}
 	

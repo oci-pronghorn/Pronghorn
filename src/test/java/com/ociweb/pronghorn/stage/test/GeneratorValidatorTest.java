@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.stage.test;
 
-import static com.ociweb.pronghorn.ring.RingBufferConfig.pipe;
+import static com.ociweb.pronghorn.pipe.PipeConfig.pipe;
 import static com.ociweb.pronghorn.stage.scheduling.GraphManager.getOutputPipe;
 import static org.junit.Assert.*;
 
@@ -14,10 +14,10 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
-import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingBufferConfig;
-import com.ociweb.pronghorn.ring.schema.loader.TemplateHandler;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.route.SplitterStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -50,14 +50,14 @@ public class GeneratorValidatorTest {
         FieldReferenceOffsetManager from = buildFROM();        
         assertTrue(null!=from);
         
-        RingBufferConfig busConfig = new RingBufferConfig(from, 10, 64);
+        PipeConfig busConfig = new PipeConfig(from, 10, 64);
         
         GraphManager gm = new GraphManager();
         
-        RingBuffer inputRing1 = pipe(busConfig);
+        Pipe inputRing1 = pipe(busConfig);
         inputRing1.initBuffers();
         
-        RingBuffer inputRing2 = pipe(busConfig); 
+        Pipe inputRing2 = pipe(busConfig); 
         inputRing2.initBuffers();
         
         PronghornStage generator1 = new TestGenerator(gm, seed, iterations, inputRing1);        
@@ -75,29 +75,29 @@ public class GeneratorValidatorTest {
         generator1.shutdown();
         generator2.shutdown();
         
-        RingBuffer ring1 = getOutputPipe(gm, generator1);
-        RingBuffer ring2 = getOutputPipe(gm, generator2);
+        Pipe ring1 = getOutputPipe(gm, generator1);
+        Pipe ring2 = getOutputPipe(gm, generator2);
         
         assertTrue(inputRing1 == ring1);
         assertTrue(inputRing2 == ring2);
                 
         
-        assertTrue(Arrays.equals(RingBuffer.primaryBuffer(ring1),RingBuffer.primaryBuffer(ring2)));
-        assertTrue(Arrays.equals(RingBuffer.byteBuffer(ring1),RingBuffer.byteBuffer(ring2)));
-        assertEquals(RingBuffer.headPosition(ring1),RingBuffer.headPosition(ring2));
-        assertEquals(RingBuffer.tailPosition(ring1),RingBuffer.tailPosition(ring2));
+        assertTrue(Arrays.equals(Pipe.primaryBuffer(ring1),Pipe.primaryBuffer(ring2)));
+        assertTrue(Arrays.equals(Pipe.byteBuffer(ring1),Pipe.byteBuffer(ring2)));
+        assertEquals(Pipe.headPosition(ring1),Pipe.headPosition(ring2));
+        assertEquals(Pipe.tailPosition(ring1),Pipe.tailPosition(ring2));
                 
         
         PronghornStage validateResults = new TestValidator(gm, 
                 ring1, ring2
                 );
         
-        assertTrue(RingBuffer.tailPosition(ring1)<RingBuffer.headPosition(ring1));
+        assertTrue(Pipe.tailPosition(ring1)<Pipe.headPosition(ring1));
         validateResults.startup();
         validateResults.run();
         validateResults.shutdown();
         
-        assertTrue(RingBuffer.tailPosition(ring1)==RingBuffer.headPosition(ring1));
+        assertTrue(Pipe.tailPosition(ring1)==Pipe.headPosition(ring1));
    
     }
     
@@ -110,7 +110,7 @@ public class GeneratorValidatorTest {
         FieldReferenceOffsetManager from = buildFROM();        
         assertTrue(null!=from);
         
-        RingBufferConfig busConfig = new RingBufferConfig(from, 10, 64);
+        PipeConfig busConfig = new PipeConfig(from, 10, 64);
         
         GraphManager gm = new GraphManager();
         
@@ -149,7 +149,7 @@ public class GeneratorValidatorTest {
         FieldReferenceOffsetManager from = buildFROM();        
         assertTrue(null!=from);
         
-        RingBufferConfig busConfig = new RingBufferConfig(from, 10, 64);
+        PipeConfig busConfig = new PipeConfig(from, 10, 64);
         
         GraphManager gm = new GraphManager();
         

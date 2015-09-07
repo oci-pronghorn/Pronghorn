@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.stage.monitor;
 
-import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 
 public class MonitorFROM {
 	

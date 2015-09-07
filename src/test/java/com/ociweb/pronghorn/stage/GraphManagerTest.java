@@ -4,9 +4,9 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
-import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingBufferConfig;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -19,10 +19,10 @@ public class GraphManagerTest {
 		
 		GraphManager gm = new GraphManager();
 		
-		RingBuffer rb1 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb1 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
 		rb1.initBuffers();
 		
-		RingBuffer rb2 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb2 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
 		rb2.initBuffers();
 		
 		PronghornStage a = new SimpleOut(gm,rb1); 
@@ -46,8 +46,8 @@ public class GraphManagerTest {
 		assertTrue(b == GraphManager.getRingProducer(gm,rb2.ringId));
 		assertTrue(c == GraphManager.getRingConsumer(gm,rb2.ringId));
 		
-		RingBuffer.addIntValue(101, rb1); //add a single int to the ring buffer
-		RingBuffer.publishWrites(rb1);
+		Pipe.addIntValue(101, rb1); //add a single int to the ring buffer
+		Pipe.publishWrites(rb1);
 
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c.stageId)); //this is true because the first ring buffer has 1 integer
 		
@@ -55,7 +55,7 @@ public class GraphManagerTest {
 		
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c.stageId)); //this is true because the first ring buffer has 1 integer
 				
-		RingBuffer.releaseReads(rb1);
+		Pipe.releaseReads(rb1);
 		GraphManager.setStateToStopping(gm, a.stageId);
 		GraphManager.setStateToStopping(gm, b.stageId);
 
@@ -69,17 +69,17 @@ public class GraphManagerTest {
 		
 		GraphManager gm = new GraphManager();
 		
-		RingBuffer rb1 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb1 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
 		rb1.initBuffers();
-		RingBuffer rb21 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb21 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
 		rb21.initBuffers();
-		RingBuffer rb22 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb22 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
 		rb22.initBuffers();
 		
-		RingBuffer rb211 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb211 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
 		rb211.initBuffers();
 		
-		RingBuffer rb221 = new RingBuffer(new RingBufferConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb221 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
 		rb221.initBuffers();
 		
 		PronghornStage a = new SimpleOut(gm,rb1); 
@@ -91,8 +91,8 @@ public class GraphManagerTest {
 		PronghornStage c1 = new SimpleIn(gm, rb211); 
 		PronghornStage c2 = new SimpleIn(gm, rb221);
 		
-		RingBuffer.addIntValue(101, rb1); //add a single int to the ring buffer
-		RingBuffer.publishWrites(rb1);
+		Pipe.addIntValue(101, rb1); //add a single int to the ring buffer
+		Pipe.publishWrites(rb1);
 		
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c1.stageId)); //this is true because the first ring buffer has 1 integer
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c2.stageId)); //this is true because the first ring buffer has 1 integer
@@ -102,7 +102,7 @@ public class GraphManagerTest {
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c1.stageId)); //this is true because the first ring buffer has 1 integer
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c2.stageId)); //this is true because the first ring buffer has 1 integer
 				
-		RingBuffer.releaseReads(rb1);
+		Pipe.releaseReads(rb1);
 		
 		GraphManager.setStateToStopping(gm, a.stageId);
 		GraphManager.setStateToStopping(gm, b.stageId);
@@ -118,7 +118,7 @@ public class GraphManagerTest {
 	
 	private class SimpleInOut extends PronghornStage {
 
-		protected SimpleInOut(GraphManager pm, RingBuffer input, RingBuffer output) {
+		protected SimpleInOut(GraphManager pm, Pipe input, Pipe output) {
 			super(pm, input, output);
 		}
 
@@ -130,7 +130,7 @@ public class GraphManagerTest {
 	
 	private class SimpleInOutSplit extends PronghornStage {
 
-		protected SimpleInOutSplit(GraphManager pm, RingBuffer input, RingBuffer ... output) {
+		protected SimpleInOutSplit(GraphManager pm, Pipe input, Pipe ... output) {
 			super(pm, input, output);
 		}
 
@@ -142,7 +142,7 @@ public class GraphManagerTest {
 
 	private class SimpleOut extends PronghornStage {
 
-		protected SimpleOut(GraphManager pm, RingBuffer output) {
+		protected SimpleOut(GraphManager pm, Pipe output) {
 			super(pm, NONE, output);
 		}
 
@@ -154,7 +154,7 @@ public class GraphManagerTest {
 	
 	private class SimpleIn extends PronghornStage {
 
-		protected SimpleIn(GraphManager pm, RingBuffer input) {
+		protected SimpleIn(GraphManager pm, Pipe input) {
 			super(pm, input , NONE);
 		}
 
