@@ -439,7 +439,6 @@ public final class Pipe {
 
 			//NOTE: we must never adjust the ringWalker.nextWorkingHead because this is replay and must not modify write position!
 			ringBuffer.ringWalker.holdingNextWorkingTail = ringBuffer.ringWalker.nextWorkingTail;
-			ringBuffer.ringWalker.holdingNextWorkingHead = ringBuffer.ringWalker.nextWorkingHead; //Should not change, this is saved for validation that it did not change during replay.
 
 			ringBuffer.holdingBytesReadBase = ringBuffer.unstructuredLayoutReadBase;
 
@@ -469,8 +468,8 @@ public final class Pipe {
 
 		ringBuffer.unstructuredLayoutReadBase = ringBuffer.holdingBytesReadBase;
 
-		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.ringWalker.holdingNextWorkingTail ;
-		assert(ringBuffer.ringWalker.holdingNextWorkingHead == ringBuffer.ringWalker.nextWorkingHead);
+		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.ringWalker.holdingNextWorkingTail;
+		//NOTE while replay is in effect the head can be moved by the other (writing) thread.
 	}
 
 	////
@@ -495,6 +494,14 @@ public final class Pipe {
 
     	rb.batchPublishCountDownInit = size;
     	rb.batchPublishCountDown = size;
+    }
+    
+    public static int getPublishBatchSize(Pipe pipe) {
+        return pipe.batchPublishCountDownInit;
+    }
+    
+    public static int getReleaseBatchSize(Pipe pipe) {
+        return pipe.batchReleaseCountDownInit;
     }
 
     public static void setMaxPublishBatchSize(Pipe rb) {

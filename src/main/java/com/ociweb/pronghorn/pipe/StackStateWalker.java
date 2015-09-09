@@ -23,7 +23,6 @@ class StackStateWalker {
     public long nextWorkingHead; //This is NOT the same as the low level head cache, this is for writing side of the ring
 
     public long holdingNextWorkingTail; 
-    public long holdingNextWorkingHead;
 
     
     //TODO:M, Make code more foolproof for usage by developers. 
