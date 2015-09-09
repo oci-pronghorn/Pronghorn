@@ -546,11 +546,21 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	}
 
 	
-	public static void releaseReadLock(Pipe ringBuffer) {
-	    //NOTE: only for messages, for fragments release should not be called becauase this
-	    //      method will change the byteBase which should not be done inside a sequence.
-	    Pipe.releaseReadLockForHighLevelAPI(ringBuffer);
-		
+	public static void releaseReadLock(Pipe pipe) {
+	    
+        if (pipe.ringWalker.nextWorkingTail>0) { //first iteration it will not have a valid position
+            //must grab this value now, its the last chance before we allow it to be written over.
+            //these are all accumulated from every fragment, messages many have many fragments.
+            int bytesConsumed = Pipe.primaryBuffer(pipe)[pipe.mask & (int)(pipe.ringWalker.nextWorkingTail-1)];
+            Pipe.addAndGetBytesWorkingTailPosition(pipe, bytesConsumed);
+        } 
+	    
+	    //ensure we only call for new templates.
+	    if (FieldReferenceOffsetManager.isTemplateStart(Pipe.from(pipe), pipe.ringWalker.nextCursor)) {
+    	    //NOTE: only for messages, for fragments release should not be called becauase this
+    	    //      method will change the byteBase which should not be done inside a sequence.
+    	    Pipe.releaseReadLockForHighLevelAPI(pipe);
+	    }
 	}
 
     public static void printFragment(Pipe input, Appendable target) {

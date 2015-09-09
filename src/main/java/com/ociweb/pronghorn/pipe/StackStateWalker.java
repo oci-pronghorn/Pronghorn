@@ -62,7 +62,7 @@ class StackStateWalker {
 		//rw.log.trace("set message id {}", idx);
 		rw.msgIdx = idx;
 		assert(isMsgIdxStartNewMessage(idx, rw)) : "Bad msgIdx is not a starting point. ";
-		assert(idx>-3);
+		assert(idx>-3): idx;
 		
 		//This validation is very important, because all down stream consumers will assume it to be true.
 		assert(-1 ==idx || (rw.from.hasSimpleMessagesOnly && 0==rw.msgIdx && rw.from.messageStarts.length==1)  ||

@@ -615,8 +615,7 @@ public class FieldReferenceOffsetManager {
 		
 	public static boolean isTemplateStart(FieldReferenceOffsetManager from, int cursorPosition) {
 		//checks the shortcut hasSimpleMessagesOnly first before any complex logic
-	   // System.err.println("isTemplateStart__ "+from.hasSimpleMessagesOnly+"  "+cursorPosition+" "+from.fragDepth.length+"  "+  (cursorPosition>=0 && cursorPosition < from.fragDepth.length? (""+from.fragDepth[cursorPosition]):"") );
-		return from.hasSimpleMessagesOnly || (cursorPosition<=0) || cursorPosition>=from.fragDepth.length || (0==from.fragDepth[cursorPosition]);
+	    return from.hasSimpleMessagesOnly || (cursorPosition<=0) || cursorPosition>=from.fragDepth.length || (from.fragDepth[cursorPosition]<=0);
 	}
 
     @Override

@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.pipe.Pipe.PaddedInt;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
@@ -540,6 +541,13 @@ public final class Pipe {
     public static void markBytesReadBase(Pipe rb, int bytesConsumed) {
         rb.unstructuredLayoutReadBase = Pipe.BYTES_WRAP_MASK & (rb.unstructuredLayoutReadBase+bytesConsumed);
     }
+    
+    public static void markBytesReadBase(Pipe pipe) {
+        int value = PaddedInt.get(pipe.unstructuredLayoutRingTail.byteWorkingTailPos);        
+        pipe.unstructuredLayoutReadBase = Pipe.BYTES_WRAP_MASK & value;
+    }
+    
+    //;
 
     /**
      * Helpful user readable summary of the ring buffer.
@@ -1997,19 +2005,12 @@ public final class Pipe {
     static void releaseReadLockForHighLevelAPI(Pipe ring) {
 
         
-        
         assert(Pipe.isReplaying(ring) || ring.ringWalker.nextWorkingTail!=Pipe.getWorkingTailPosition(ring)) : "Only call release once per message";
         assert(Pipe.isReplaying(ring) || ring.lastReleasedTail != ring.ringWalker.nextWorkingTail) : "Only call release once per message";
 
-        //Before release get the bytes consumed and record that value.
-        if (ring.ringWalker.nextWorkingTail>0) { //first iteration it will not have a valid position
-            //must grab this value now, its the last chance before we allow it to be written over.
-            int idx = ring.mask & (int)(ring.ringWalker.nextWorkingTail-1);        
-            int bytesConsumed = Pipe.primaryBuffer(ring)[idx];
-            Pipe.addAndGetBytesWorkingTailPosition(ring, bytesConsumed);
-            Pipe.markBytesReadBase(ring, bytesConsumed); 
-        }   
-               
+        //take new tail position and make it the base because we are about to start a new message.        
+        Pipe.markBytesReadBase(ring);
+        
         if (decBatchRelease(ring)<=0) {
 
                  Pipe.setBytesTail(ring,Pipe.bytesWorkingTailPosition(ring));
