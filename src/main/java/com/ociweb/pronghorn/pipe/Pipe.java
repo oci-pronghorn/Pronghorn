@@ -1050,7 +1050,7 @@ public final class Pipe {
 	    return target;
 	}
 
-	public static Appendable readUTF8(Pipe ring, Appendable target, int meta, int len) {
+	public static Appendable readUTF8(Pipe ring, Appendable target, int meta, int len) { //TODO: update to use generics
 		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
 	        return readUTF8Const(ring,len,target,PipeReader.POS_CONST_MASK & meta);
 	    } else {
@@ -1699,14 +1699,16 @@ public final class Pipe {
 		return pos;
 	}
 
-	public static void addByteBuffer(ByteBuffer source, Pipe rb) {
-	    int bytePos = rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+	public static void addByteBuffer(ByteBuffer source, Pipe pipe) {
+	    int bytePos = pipe.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
 	    int len = -1;
 	    if (null!=source && source.hasRemaining()) {
 	        len = source.remaining();
-	        copyByteBuffer(source,source.remaining(),rb);
+	        copyByteBuffer(source,source.remaining(),pipe);
 	    }
-	    Pipe.addBytePosAndLen(rb, bytePos, len);
+	    //System.out.println("len to write "+len+" text:"+  readUTF8Ring(pipe, len, new StringBuilder(), bytePos));
+
+	    Pipe.addBytePosAndLen(pipe, bytePos, len);
 	}
 
    public static void addByteBuffer(ByteBuffer source, int length, Pipe rb) {
@@ -1946,7 +1948,7 @@ public final class Pipe {
     }
 
     public static long takeLong(Pipe ring) {
-        assert(ring.structuredLayoutRingTail.workingTailPos.value<Pipe.workingHeadPosition(ring));
+        assert(ring.structuredLayoutRingTail.workingTailPos.value<Pipe.workingHeadPosition(ring)) : "working tail "+ring.structuredLayoutRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(ring);
     	long result = readLong(ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value);
     	ring.structuredLayoutRingTail.workingTailPos.value+=2;
     	return result;
@@ -1958,6 +1960,18 @@ public final class Pipe {
     }
 
     public static int takeMsgIdx(Pipe ring) {
+        
+        /**
+         * TODO: mask the result int to only the bits which contain the msgId.
+         *       The other bits can bet retrieved by the getMessagePackedBits
+         *       The limit for the byte length is also known so there is 
+         *       another method getFragmentPackedBits which come from the tail.
+         *   
+         *       This bits must be defined in the template/FROM and bounds checked at compile time.
+         * 
+         */
+        
+        
         assert(ring.structuredLayoutRingTail.workingTailPos.value<Pipe.workingHeadPosition(ring)) : " tail is "+ring.structuredLayoutRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(ring);
     	return readValue(0, ring.structuredLayoutRingBuffer, ring.mask, ring. structuredLayoutRingTail.workingTailPos.value++);
     }
@@ -1969,7 +1983,10 @@ public final class Pipe {
     public static int peekInt(Pipe ring, int offset) {
         return readValue(0, ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value+offset);
     }
-        
+   
+    public static long peekLong(Pipe ring, int offset) {
+        return readLong(ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value+offset);
+    }
     
     
     public static int contentRemaining(Pipe rb) {
@@ -1988,20 +2005,30 @@ public final class Pipe {
 
     public static void batchedReleasePublish(Pipe ring) {
         assert(Pipe.contentRemaining(ring)>=0);
+        batchedReleasePublish(ring, ring.unstructuredLayoutRingTail.byteWorkingTailPos.value, ring.structuredLayoutRingTail.workingTailPos.value);
+    }
 
+    public static void batchedReleasePublish(Pipe ring, int byteWorkingTailPos, long workingTailPos) {
         if ((--ring.batchReleaseCountDown<=0) ) {
 
     	    assert(ring.ringWalker.cursor<=0 && !PipeReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
 
-    	    Pipe.setBytesTail(ring,Pipe.bytesWorkingTailPosition(ring));
-    	    ring.structuredLayoutRingTail.tailPos.lazySet(ring.structuredLayoutRingTail.workingTailPos.value);
+    	    Pipe.setBytesTail(ring,byteWorkingTailPos);
+    	    ring.structuredLayoutRingTail.tailPos.lazySet(workingTailPos);
+    	    
     	    ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
 
     	} else {
-    	    storeUnpublishedTail(ring);
+    	    storeUnpublishedTail(ring, workingTailPos, byteWorkingTailPos);
     	}
     }
 
+
+    static void storeUnpublishedTail(Pipe ring, long workingTailPos, int byteWorkingTailPos) {
+        ring.lastReleasedBytesTail = byteWorkingTailPos;
+        ring.lastReleasedTail = workingTailPos;
+    }
+    
     static void releaseReadLockForHighLevelAPI(Pipe ring) {
 
         
@@ -2045,11 +2072,6 @@ public final class Pipe {
 
 
 
-    static void storeUnpublishedTail(Pipe ring) {
-        ring.lastReleasedBytesTail = ring.unstructuredLayoutRingTail.byteWorkingTailPos.value;
-        ring.lastReleasedTail = ring.structuredLayoutRingTail.workingTailPos.value;
-    }
-
     /**
      * Release any reads that were held back due to batching.
      * @param ring
@@ -2072,6 +2094,11 @@ public final class Pipe {
         
         //int newTailBytesToPublish = RingBuffer.bytesReadBase(ring);
         
+        releaseBatchedReadReleasesUpToPosition(ring, newTailToPublish, newTailBytesToPublish);
+                
+    }
+
+    public static void releaseBatchedReadReleasesUpToPosition(Pipe ring, long newTailToPublish,  int newTailBytesToPublish) {
         assert(newTailToPublish<=ring.lastReleasedTail) : "This new value is forward of the next Release call, eg its too large";
         assert(newTailToPublish>=ring.structuredLayoutRingTail.tailPos.get()) : "This new value is behind the existing published Tail, eg its too small ";
         
@@ -2085,7 +2112,6 @@ public final class Pipe {
         PaddedInt.set(ring.unstructuredLayoutRingTail.bytesTailPos, newTailBytesToPublish);
         ring.structuredLayoutRingTail.tailPos.lazySet(newTailToPublish);
         ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
-                
     }
 
     @Deprecated
