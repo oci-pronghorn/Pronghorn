@@ -1817,13 +1817,6 @@ public final class Pipe {
         setBytePosAndLen(primaryBuffer(targetOutput), targetOutput.mask, workingHeadPos.value, startBytePos, bytesLength, bytesWriteBase(targetOutput));
         PaddedLong.add(workingHeadPos, 2);
     }
-    
-//Delete Mid Sep 2015
-//    @Deprecated  //try to inline and remove.
-//	public static void addBytePosAndLenSpecial(int[] buffer, int mask, PaddedLong workingHeadPos, int bytesBasePos, int position, int length) {
-//		setBytePosAndLen(buffer, mask, workingHeadPos.value, position, length, bytesBasePos);
-//		PaddedLong.add(workingHeadPos, 2);
-//	}
 
 	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat, int baseBytePos) {
 	   	//negative position is written as is because the internal array does not have any offset (but it could some day)
