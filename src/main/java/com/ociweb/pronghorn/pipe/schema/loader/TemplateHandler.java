@@ -491,7 +491,8 @@ public class TemplateHandler extends DefaultHandler {
     	if (null==strValue) {
     	    throw new SAXException("id is a required attribute on all fields in the template with ID "+templateId+"(0x"+Long.toHexString(templateId)+")");
     	}
-        fieldId = strValue.startsWith("0x") ? Long.parseUnsignedLong(strValue.substring(2), 16) : Long.parseLong(strValue);
+    	//NOTE:compatible with Java7 but may have problem with parse of large negative values
+        fieldId = strValue.startsWith("0x") ? Long.parseLong(strValue.substring(2), 16) : Long.parseLong(strValue);
         if (fieldId < 0) {
             throw new SAXException("Field Id must be positive: " + fieldId);
         } else {
