@@ -82,11 +82,11 @@
 	        <artifactId>maven-compiler-plugin</artifactId>
 	        <version>3.0</version>
 	          <configuration>
-	          	<compilerArguments>
+	          	<!--  compilerArguments>
 				    <profile>compact2</profile>
-				</compilerArguments>
+				</compilerArguments -->
 	            <source>1.7</source>
-	            <target>1.8</target>
+	            <target>1.7</target>
 	          </configuration>
 	   </plugin>
 
