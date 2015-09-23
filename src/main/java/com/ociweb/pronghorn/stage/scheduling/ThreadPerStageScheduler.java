@@ -145,11 +145,15 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				} finally {
 					//shutdown will always be called no matter how the stage was exited.
 					try {
-						stage.shutdown();					
+					    if (null!=stage) {
+					        stage.shutdown();	
+					    }
 					} catch(Throwable t) {
 						recordTheException(stage, t);
 					} finally {
-						GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
+					    if (null!=stage) {
+					        GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
+					    }
 					}
 				}
 			}
@@ -161,20 +165,23 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				    }
 				}   	                
                 log.error("Stacktrace",t);
-				int inputcount = GraphManager.getInputPipeCount(graphManager, stage);
-				log.error("Unexpected error in stage "+stage.stageId+" "+stage.getClass().getSimpleName()+" inputs:"+inputcount);
-				
-				int i = inputcount;
-				while (--i>=0) {
-				    
-				    log.error("left input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
-				    
-				}
-				
-				
-				
-				
-				GraphManager.shutdownNeighborRings(graphManager, stage);
+                
+                if (null==stage) {
+                    log.error("Stage was never initialized");
+                } else {
+                
+    				int inputcount = GraphManager.getInputPipeCount(graphManager, stage);
+    				log.error("Unexpected error in stage "+stage.stageId+" "+stage.getClass().getSimpleName()+" inputs:"+inputcount);
+    				
+    				int i = inputcount;
+    				while (--i>=0) {
+    				    
+    				    log.error("left input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
+    				    
+    				}
+    				
+    				GraphManager.shutdownNeighborRings(graphManager, stage);
+                }
 			}			
 		};
 	}
