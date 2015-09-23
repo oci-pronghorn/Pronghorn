@@ -2353,13 +2353,18 @@ public final class Pipe {
 	////////////
 
 
+
+	@Deprecated
+	public static boolean roomToLowLevelWrite(Pipe output, int size) {
+		return hasRoomForWrite(output, size);
+	}
+
 	//This holds the last known state of the tail position, if its sufficiently far ahead it indicates that
 	//we do not need to fetch it again and this reduces contention on the CAS with the reader.
 	//This is an important performance feature of the low level API and should not be modified.
-
-	public static boolean roomToLowLevelWrite(Pipe output, int size) {
-		return roomToLowLevelWrite(output, output.llRead.llwConfirmedReadPosition+size);
-	}
+    public static boolean hasRoomForWrite(Pipe output, int size) {
+        return roomToLowLevelWrite(output, output.llRead.llwConfirmedReadPosition+size);
+    }
 
 	private static boolean roomToLowLevelWrite(Pipe output, long target) {
 		//only does second part if the first does not pass
@@ -2370,14 +2375,22 @@ public final class Pipe {
 		return (output.llRead.llrTailPosCache = output.structuredLayoutRingTail.tailPos.get()) >= target;
 	}
 
-	public static void confirmLowLevelWrite(Pipe output, int size) {
+	public static void confirmLowLevelWrite(Pipe output, int size) { //TOOD: rename
 		output.llRead.llwConfirmedReadPosition += size;
 	}
 
-
+	@Deprecated
 	public static boolean contentToLowLevelRead(Pipe input, int size) {
-		return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition+size);
+		return hasContentToRead(input, size);
 	}
+
+    public static boolean hasContentToRead(Pipe input, int size) {
+        return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition+size);
+    }
+    
+    public static boolean hasContentToRead(Pipe input) {
+        return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition+1);
+    }
 
 	private static boolean contentToLowLevelRead2(Pipe input, long target) {
 		//only does second part if the first does not pass
