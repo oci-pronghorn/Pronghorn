@@ -41,14 +41,13 @@ public class FileWriteStage extends PronghornStage {
 
 	@Override
 	public void run() {
-	    while (Pipe.contentToLowLevelRead(inputRing, 1)) {
-	            Pipe.confirmLowLevelRead(inputRing, msgSize);
-
-	        	
+	    while (Pipe.hasContentToRead(inputRing)) {
+	            	        	
 	            int msgId = Pipe.takeMsgIdx(inputRing);
 	            if (msgId<0) {  	
-	                Pipe.releaseReads(inputRing);
-    
+	                //Pipe.releaseReads(inputRing);
+	                //Pipe.confirmLowLevelRead(inputRing, msgSize);
+                    Pipe.dump(inputRing);
 	                Pipe.releaseAllBatchedReads(inputRing);
 	            	assert(Pipe.contentRemaining(inputRing)==0) : "still has content to write";
 	            	requestShutdown();
@@ -105,7 +104,8 @@ public class FileWriteStage extends PronghornStage {
 					}                	
                 }
                                 
-				Pipe.releaseReads(inputRing);      
+				Pipe.releaseReads(inputRing);  
+				Pipe.confirmLowLevelRead(inputRing, msgSize);
                                 
 				assert(Pipe.contentRemaining(inputRing)>=0) : "still has "+Pipe.contentRemaining(inputRing)+" content to write "+inputRing;
 				
