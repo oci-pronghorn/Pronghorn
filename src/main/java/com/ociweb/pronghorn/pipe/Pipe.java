@@ -2375,8 +2375,8 @@ public final class Pipe {
 		return (output.llRead.llrTailPosCache = output.structuredLayoutRingTail.tailPos.get()) >= target;
 	}
 
-	public static void confirmLowLevelWrite(Pipe output, int size) { //TOOD: rename
-		output.llRead.llwConfirmedReadPosition += size;
+	public static long confirmLowLevelWrite(Pipe output, int size) { //TOOD: rename
+		return output.llRead.llwConfirmedReadPosition += size; //TODO: add check if this size does not match how many written we have a problem.
 	}
 
 	@Deprecated
@@ -2402,6 +2402,9 @@ public final class Pipe {
 	}
 
 	public static long confirmLowLevelRead(Pipe input, long size) {
+	    assert(size>0) : "Must have read something.";
+	    assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.structuredLayoutRingBufferHead.workingHeadPos.value) : "size was too large, past known data";
+	    assert(input.llWrite.llwConfirmedWrittenPosition + size >= input.structuredLayoutRingTail.tailPos.get()) : "size was too small, under known data";        
 		return (input.llWrite.llwConfirmedWrittenPosition += size);
 	}
 
