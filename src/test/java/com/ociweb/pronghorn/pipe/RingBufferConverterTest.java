@@ -91,8 +91,8 @@ public class RingBufferConverterTest {
         
         ring.reset();
         String ringToString = ring.toString();
-        assertTrue(ringToString, ringToString.contains("headPos 0"));
-        assertTrue(ringToString, ringToString.contains("tailPos 0"));
+        assertTrue(ringToString, ringToString.contains("slabHeadPos 0"));
+        assertTrue(ringToString, ringToString.contains("slabTailPos 0"));
 
         
         Pipe.addDecimalAsASCII(2, 1, ring); 
@@ -110,8 +110,8 @@ public class RingBufferConverterTest {
                         
         ring.reset();
         ringToString = ring.toString();
-        assertTrue(ringToString, ringToString.contains("headPos 0"));
-        assertTrue(ringToString, ringToString.contains("tailPos 0"));
+        assertTrue(ringToString, ringToString.contains("blobHeadPos 0"));
+        assertTrue(ringToString, ringToString.contains("blobTailPos 0"));
         
         Pipe.addDecimalAsASCII(-2, 1, ring);
         Pipe.addBytePosAndLen(ring,0,4);

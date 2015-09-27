@@ -41,8 +41,8 @@ public class RingBufferSingleTemplateDecimalTest {
     	ring.initBuffers();
     	
     	String emptyToString = ring.toString();
-    	assertTrue(emptyToString, emptyToString.contains("headPos 0"));
-    	assertTrue(emptyToString, emptyToString.contains("tailPos 0"));
+    	assertTrue(emptyToString, emptyToString.contains("slabHeadPos 0"));
+    	assertTrue(emptyToString, emptyToString.contains("slabTailPos 0"));
     	assertTrue(emptyToString, emptyToString.contains("RingId:"));
             	
         int messageSize = FROM.fragDataSize[FRAG_LOC];

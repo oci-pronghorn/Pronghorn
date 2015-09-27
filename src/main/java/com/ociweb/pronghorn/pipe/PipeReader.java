@@ -143,7 +143,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 			  
 	  int i = targetloc;
 	  while (charAndPos<limit) {
-	      charAndPos = Pipe.decodeUTF8Fast(ring.unstructuredLayoutConstBuffer, charAndPos, 0xFFFFFFFF);//constants never loop back            
+	      charAndPos = Pipe.decodeUTF8Fast(ring.blobConstBuffer, charAndPos, 0xFFFFFFFF);//constants never loop back            
 	      target[i++] = (char)charAndPos;
 	  }
 	  return i - targetloc;    
@@ -190,7 +190,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     
 
     private static void readASCIIConst(Pipe ring, int len, char[] target, int targetloc, int pos) {
-        byte[] buffer = ring.unstructuredLayoutConstBuffer;
+        byte[] buffer = ring.blobConstBuffer;
         while (--len >= 0) {
             char c = (char)buffer[pos++];
             target[targetloc++] = c;
@@ -245,7 +245,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     }
 
     private static boolean eqASCIIConst(Pipe ring, int len, CharSequence seq, int pos) {
-        byte[] buffer = ring.unstructuredLayoutConstBuffer;
+        byte[] buffer = ring.blobConstBuffer;
         int i = 0;
         while (--len >= 0) {
             if (seq.charAt(i++)!=buffer[pos++]) {
@@ -273,7 +273,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         int chars = seq.length();
         while (--chars>=0) {
             
-            charAndPos = Pipe.decodeUTF8Fast(ring.unstructuredLayoutConstBuffer, charAndPos, Integer.MAX_VALUE);
+            charAndPos = Pipe.decodeUTF8Fast(ring.blobConstBuffer, charAndPos, Integer.MAX_VALUE);
             
             if (seq.charAt(i++) != (char)charAndPos) {
                 return false;
@@ -357,7 +357,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
     	 int pos = Pipe.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc))];
-    	 return pos<0 ? ring.unstructuredLayoutConstBuffer :  Pipe.byteBuffer(ring);
+    	 return pos<0 ? ring.blobConstBuffer :  Pipe.byteBuffer(ring);
     }
     
     public static ByteBuffer readBytes(Pipe ring, int loc, ByteBuffer target) {
@@ -374,14 +374,14 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     	long pos = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
         int meta = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos)];
         int len = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos + 1)];
-        return Pipe.wrappedUnstructuredLayoutBufferA(ring, meta, len);
+        return Pipe.wrappedBlobRingA(ring, meta, len);
 	}
 
     public static ByteBuffer wrappedUnstructuredLayoutBufferB(Pipe ring, int loc) {
     	long pos = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
         int meta = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos)];
         int len = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos + 1)];
-        return Pipe.wrappedUnstructuredLayoutBufferB(ring, meta, len);
+        return Pipe.wrappedBlobRingB(ring, meta, len);
 	}
 
     public static int readBytes(Pipe ring, int loc, byte[] target, int targetOffset) {
@@ -401,7 +401,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     }
     
     private static void readBytesConst(Pipe ring, int len, byte[] target, int targetloc, int pos) {
-            byte[] buffer = ring.unstructuredLayoutConstBuffer;
+            byte[] buffer = ring.blobConstBuffer;
             while (--len >= 0) {
                 target[targetloc++]=buffer[pos++]; //TODO:M replace with arrayCopy
             }
@@ -481,7 +481,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	}
     
     private static void readBytesConst(Pipe ring, int len, byte[] target, int targetloc, int targetMask, int pos) {
-            byte[] buffer = ring.unstructuredLayoutConstBuffer;
+            byte[] buffer = ring.blobConstBuffer;
             while (--len >= 0) {//TODO:M replace with double arrayCopy as seen elsewhere
                 target[targetMask & targetloc++]=buffer[pos++];
             }

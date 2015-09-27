@@ -49,6 +49,8 @@ import com.ociweb.pronghorn.pipe.util.PaddedAtomicLong;
  *  text    - 2 slots, index then length  (if index is negative use constant array)
  *  decimal - 3 slots, exponent then long mantissa
  *
+ *  SlabRing - structured fixed size records
+ *  BlobRing - unstructured variable length field data 
  *
  * StructuredLayoutRing   - These have strong type definition per field in addition to being fixed-length.
  * UnstructuredLayoutRing - These are just bytes that are commonly UTF-8 encoded strings but may be image data or
@@ -64,13 +66,13 @@ public final class Pipe {
     /**
      * Holds the active head position information.
      */
-    static class StructuredLayoutRingHead {
+    static class SlabRingHead {
         // Position used during creation of a message in the ring.
         final PaddedLong workingHeadPos;
         // Actual position of the next Write location.
         final AtomicLong headPos;
 
-        StructuredLayoutRingHead() {
+        SlabRingHead() {
             this.workingHeadPos = new PaddedLong();
             this.headPos = new PaddedAtomicLong();
         }
@@ -79,7 +81,7 @@ public final class Pipe {
     /**
      * Holds the active tail position information.
      */
-    static class StructuredLayoutRingTail {
+    static class SlabRingTail {
         /**
          * The workingTailPosition is only to be used by the consuming thread. As values are read the tail is moved
          * forward.  Eventually the consumer finishes the read of the fragment and will use this working position as
@@ -94,7 +96,7 @@ public final class Pipe {
          */
         final AtomicLong tailPos;
 
-        StructuredLayoutRingTail() {
+        SlabRingTail() {
             this.workingTailPos = new PaddedLong();
             this.tailPos = new PaddedAtomicLong();
         }
@@ -160,11 +162,11 @@ public final class Pipe {
     /**
      * Serves the same function as the StructuredLayoutRingHead, but holds information for the UnstructuredLayoutRing.
      */
-    static class UnstructuredLayoutRingHead {
+    static class BlobRingHead {
         final PaddedInt byteWorkingHeadPos;
         final PaddedInt bytesHeadPos;
 
-        UnstructuredLayoutRingHead() {
+        BlobRingHead() {
             this.byteWorkingHeadPos = new PaddedInt();
             this.bytesHeadPos = new PaddedInt();
         }
@@ -173,11 +175,11 @@ public final class Pipe {
     /**
      * Serves the same function as the StructuredLayoutRingTail, but holds information for the UnstructuredLayoutRing.
      */
-    static class UnstructuredLayoutRingTail {
+    static class BlobRingTail {
         final PaddedInt byteWorkingTailPos;
         final PaddedInt bytesTailPos;
 
-        UnstructuredLayoutRingTail() {
+        BlobRingTail() {
             this.byteWorkingTailPos = new PaddedInt();
             this.bytesTailPos = new PaddedInt();
         }
@@ -335,12 +337,12 @@ public final class Pipe {
 
     //these public fields are fine because they are all final
     public final int ringId;
-    public final int sizeOfStructuredLayoutRingBuffer;
-    public final int sizeOfUntructuredLayoutRingBuffer;
+    public final int sizeOfSlabRing;
+    public final int sizeOfBlobRing;
     public final int mask;
     public final int byteMask;
-    public final byte bitsOfStructuredLayoutRingBuffer;
-    public final byte bitsOfUntructuredLayoutRingBuffer;
+    public final byte bitsOfSlabRing;
+    public final byte bitsOfBlogRing;
     public final int maxAvgVarLen;
 
 
@@ -348,29 +350,29 @@ public final class Pipe {
     //            the time slices of the graph will need to be kept for all rings to reconstruct history later.
 
 
-    private final StructuredLayoutRingHead structuredLayoutRingBufferHead = new StructuredLayoutRingHead();
-    private final UnstructuredLayoutRingHead unstructuredLayoutRingBufferHead = new UnstructuredLayoutRingHead();
+    private final SlabRingHead slabRingHead = new SlabRingHead();
+    private final BlobRingHead blobRingHead = new BlobRingHead();
 
     LowLevelAPIWritePositionCache llWrite; //low level write head pos cache and target
     LowLevelAPIReadPositionCache llRead; //low level read tail pos cache and target
 
     final StackStateWalker ringWalker;
 
-    private final StructuredLayoutRingTail structuredLayoutRingTail = new StructuredLayoutRingTail(); //primary working and public
-    private final UnstructuredLayoutRingTail unstructuredLayoutRingTail = new UnstructuredLayoutRingTail(); //primary working and public
+    private final SlabRingTail slabRingTail = new SlabRingTail(); //primary working and public
+    private final BlobRingTail blobRingTail = new BlobRingTail(); //primary working and public
 
     //these values are only modified and used when replay is NOT in use
     //hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
-    private int lastReleasedBytesTail;
-    long lastReleasedTail;
+    private int lastReleasedBlobTail;
+    long lastReleasedSlabTail;
 
-    private int unstructuredWriteLastConsumedBytePos = 0;
+    private int blobWriteLastConsumedPos = 0;
 
     //All references found in the messages/fragments to variable-length content are relative.  These members hold the current
     //base offset to which the relative value is added to find the absolute position in the ring.
     //These values are only updated as each fragment is consumed or produced.
-    private int unstructuredLayoutWriteBase = 0;
-    private int unstructuredLayoutReadBase = 0;
+    private int blobWriteBase = 0;
+    private int blobReadBase = 0;
 
     //Non Uniform Memory Architectures (NUMA) are supported by the Java Virtual Machine(JVM)
     //However there are some limitations.
@@ -379,21 +381,21 @@ public final class Pipe {
     //
     // As a result of the above the construction of the buffers is postponed and done with an initBuffers() method.
     // The initBuffers() method will be called by the consuming thread before the pipe is used. (see Pronghorn)
-    public byte[] unstructuredLayoutRingBuffer; //TODO: B, these two must remain public until the meta/sql modules are fully integrated.
-    public int[] structuredLayoutRingBuffer;
+    public byte[] blobRing; //TODO: B, these two must remain public until the meta/sql modules are fully integrated.
+    public int[] slabRing;
     //defined externally and never changes
-    protected final byte[] unstructuredLayoutConstBuffer;
-    private byte[][] bufferLookup;
+    protected final byte[] blobConstBuffer;
+    private byte[][] blobRingLookup;
     //NOTE:
     //     This is the future direction of the ring buffer which is not yet complete
     //     By migrating all array index usages to these the backing ring can be moved outside the Java heap
     //     By moving the ring outside the Java heap other applications have have direct access
     //     The Overhead of the poly method call is what has prevented this change
 
-    private IntBuffer wrappedStructuredLayoutRingBuffer;
-    private ByteBuffer wrappedUnstructuredLayoutRingBufferA;
-    private ByteBuffer wrappedUnstructuredLayoutRingBufferB;
-    private ByteBuffer wrappedUnstructuredLayoutConstBuffer;
+    private IntBuffer wrappedSlabRing;
+    private ByteBuffer wrappedBlobRingA;
+    private ByteBuffer wrappedBlobRingB;
+    private ByteBuffer wrappedBlobConstBuffer;
 
     //for writes validates that bytes of var length field is within the expected bounds.
     private int varLenMovingAverage = 0;//this is an exponential moving average
@@ -415,14 +417,14 @@ public final class Pipe {
 	//cas: jdoc -- This is the first mention of batch(ing).  It would really help the maintainer's comprehension of what
 	// you mean if you would explain this hugely overloaded word somewhere prior to use -- probably in the class's javadoc.
 	    //hold the publish position when batching so the batch can be flushed upon shutdown and thread context switches
-    private int lastPublishedUnstructuredLayoutRingBufferHead;
-    private long lastPublishedStructuredLayoutRingBufferHead;
+    private int lastPublishedBlobRingHead;
+    private long lastPublishedSlabRingHead;
 
 	private final int debugFlags;
 
-	private long holdingPrimaryWorkingTail;
-	private int  holdingBytesWorkingTail;
-	private int holdingBytesReadBase;
+	private long holdingSlabWorkingTail;
+	private int  holdingBlobWorkingTail;
+	private int holdingBlobReadBase;
 
 
 	public static void replayUnReleased(Pipe ringBuffer) {
@@ -435,13 +437,13 @@ public final class Pipe {
 		if (!isReplaying(ringBuffer)) {
 			//save all working values only once if we re-enter replaying multiple times.
 
-		    ringBuffer.holdingPrimaryWorkingTail = Pipe.getWorkingTailPosition(ringBuffer);
-			ringBuffer.holdingBytesWorkingTail = Pipe.bytesWorkingTailPosition(ringBuffer);
+		    ringBuffer.holdingSlabWorkingTail = Pipe.getWorkingTailPosition(ringBuffer);
+			ringBuffer.holdingBlobWorkingTail = Pipe.bytesWorkingTailPosition(ringBuffer);
 
 			//NOTE: we must never adjust the ringWalker.nextWorkingHead because this is replay and must not modify write position!
 			ringBuffer.ringWalker.holdingNextWorkingTail = ringBuffer.ringWalker.nextWorkingTail;
 
-			ringBuffer.holdingBytesReadBase = ringBuffer.unstructuredLayoutReadBase;
+			ringBuffer.holdingBlobReadBase = ringBuffer.blobReadBase;
 
 		}
 
@@ -449,8 +451,8 @@ public final class Pipe {
 		StackStateWalker.resetCursorState(ringBuffer.ringWalker);
 
 		//set new position values for high and low api
-		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.structuredLayoutRingTail.rollBackWorking();
-		ringBuffer.unstructuredLayoutReadBase = ringBuffer.unstructuredLayoutRingTail.rollBackWorking(); //this byte position is used by both high and low api
+		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.slabRingTail.rollBackWorking();
+		ringBuffer.blobReadBase = ringBuffer.blobRingTail.rollBackWorking(); //this byte position is used by both high and low api
 	}
 
 /**
@@ -460,14 +462,14 @@ public final class Pipe {
  * @return            <code>true</code> if the ringBuffer is replaying, <code>false</code> if it is not.
  */
 	public static boolean isReplaying(Pipe ringBuffer) {
-		return Pipe.getWorkingTailPosition(ringBuffer)<ringBuffer.holdingPrimaryWorkingTail;
+		return Pipe.getWorkingTailPosition(ringBuffer)<ringBuffer.holdingSlabWorkingTail;
 	}
 
 	public static void cancelReplay(Pipe ringBuffer) {
-		ringBuffer.structuredLayoutRingTail.workingTailPos.value = ringBuffer.holdingPrimaryWorkingTail;
-		ringBuffer.unstructuredLayoutRingTail.byteWorkingTailPos.value = ringBuffer.holdingBytesWorkingTail;
+		ringBuffer.slabRingTail.workingTailPos.value = ringBuffer.holdingSlabWorkingTail;
+		ringBuffer.blobRingTail.byteWorkingTailPos.value = ringBuffer.holdingBlobWorkingTail;
 
-		ringBuffer.unstructuredLayoutReadBase = ringBuffer.holdingBytesReadBase;
+		ringBuffer.blobReadBase = ringBuffer.holdingBlobReadBase;
 
 		ringBuffer.ringWalker.nextWorkingTail = ringBuffer.ringWalker.holdingNextWorkingTail;
 		//NOTE while replay is in effect the head can be moved by the other (writing) thread.
@@ -526,25 +528,25 @@ public final class Pipe {
 //cas: naming -- a couple of things, neither new.  Obviously the name of the buffer, bytes.  Also the use of base in
 // the variable buffer, but not in the fixed.  Otoh, by now, maybe the interested reader would already understand.
     public static int bytesWriteBase(Pipe rb) {
-    	return rb.unstructuredLayoutWriteBase;
+    	return rb.blobWriteBase;
     }
 
     public static void markBytesWriteBase(Pipe rb) {
-    	rb.unstructuredLayoutWriteBase = rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+    	rb.blobWriteBase = rb.blobRingHead.byteWorkingHeadPos.value;
     }
 
     public static int bytesReadBase(Pipe rb) {
-    	return rb.unstructuredLayoutReadBase;
+    	return rb.blobReadBase;
     }
         
     
     public static void markBytesReadBase(Pipe rb, int bytesConsumed) {
-        rb.unstructuredLayoutReadBase = Pipe.BYTES_WRAP_MASK & (rb.unstructuredLayoutReadBase+bytesConsumed);
+        rb.blobReadBase = Pipe.BYTES_WRAP_MASK & (rb.blobReadBase+bytesConsumed);
     }
     
     public static void markBytesReadBase(Pipe pipe) {
-        int value = PaddedInt.get(pipe.unstructuredLayoutRingTail.byteWorkingTailPos);        
-        pipe.unstructuredLayoutReadBase = Pipe.BYTES_WRAP_MASK & value;
+        int value = PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);        
+        pipe.blobReadBase = Pipe.BYTES_WRAP_MASK & value;
     }
     
     //;
@@ -557,15 +559,15 @@ public final class Pipe {
 
     	StringBuilder result = new StringBuilder();
     	result.append("RingId:").append(ringId);
-    	result.append(" tailPos ").append(structuredLayoutRingTail.tailPos.get());
-    	result.append(" wrkTailPos ").append(structuredLayoutRingTail.workingTailPos.value);
-    	result.append(" headPos ").append(structuredLayoutRingBufferHead.headPos.get());
-    	result.append(" wrkHeadPos ").append(structuredLayoutRingBufferHead.workingHeadPos.value);
-    	result.append("  ").append(structuredLayoutRingBufferHead.headPos.get()-structuredLayoutRingTail.tailPos.get()).append("/").append(sizeOfStructuredLayoutRingBuffer);
-    	result.append("  bytesTailPos ").append(PaddedInt.get(unstructuredLayoutRingTail.bytesTailPos));
-    	result.append(" bytesWrkTailPos ").append(unstructuredLayoutRingTail.byteWorkingTailPos.value);
-    	result.append(" bytesHeadPos ").append(PaddedInt.get(unstructuredLayoutRingBufferHead.bytesHeadPos));
-    	result.append(" bytesWrkHeadPos ").append(unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value);
+    	result.append(" slabTailPos ").append(slabRingTail.tailPos.get());
+    	result.append(" slabWrkTailPos ").append(slabRingTail.workingTailPos.value);
+    	result.append(" slabHeadPos ").append(slabRingHead.headPos.get());
+    	result.append(" slabWrkHeadPos ").append(slabRingHead.workingHeadPos.value);
+    	result.append("  ").append(slabRingHead.headPos.get()-slabRingTail.tailPos.get()).append("/").append(sizeOfSlabRing);
+    	result.append("  blobTailPos ").append(PaddedInt.get(blobRingTail.bytesTailPos));
+    	result.append(" blobWrkTailPos ").append(blobRingTail.byteWorkingTailPos.value);
+    	result.append(" blobHeadPos ").append(PaddedInt.get(blobRingHead.bytesHeadPos));
+    	result.append(" blobWrkHeadPos ").append(blobRingHead.byteWorkingHeadPos.value);
 
     	return result.toString();
     }
@@ -577,7 +579,7 @@ public final class Pipe {
      */
     public PipeConfig config() {
         //TODO:M, this creates garbage and we should just hold the config object instead of copying the values out.  Then return the same instance here.
-        return new PipeConfig(bitsOfStructuredLayoutRingBuffer,bitsOfUntructuredLayoutRingBuffer,unstructuredLayoutConstBuffer,ringWalker.from);
+        return new PipeConfig(bitsOfSlabRing,bitsOfBlogRing,blobConstBuffer,ringWalker.from);
     }
 
 
@@ -595,35 +597,35 @@ public final class Pipe {
     	//these values are required to keep track of all ring buffers when graphs are built
         this.ringId = ringCounter.getAndIncrement();
 
-    	this.bitsOfStructuredLayoutRingBuffer = primaryBits;
-    	this.bitsOfUntructuredLayoutRingBuffer = byteBits;
+    	this.bitsOfSlabRing = primaryBits;
+    	this.bitsOfBlogRing = byteBits;
 
         assert (primaryBits >= 0); //zero is a special case for a mock ring
 
 //cas: naming.  This should be consistent with the maxByteSize, i.e., maxFixedSize or whatever.
         //single buffer size for every nested set of groups, must be set to support the largest need.
-        this.sizeOfStructuredLayoutRingBuffer = 1 << primaryBits;
-        this.mask = sizeOfStructuredLayoutRingBuffer - 1;
+        this.sizeOfSlabRing = 1 << primaryBits;
+        this.mask = sizeOfSlabRing - 1;
 
         //single text and byte buffers because this is where the variable-length data will go.
 
-        this.sizeOfUntructuredLayoutRingBuffer =  1 << byteBits;
-        this.byteMask = sizeOfUntructuredLayoutRingBuffer - 1;
+        this.sizeOfBlobRing =  1 << byteBits;
+        this.byteMask = sizeOfBlobRing - 1;
 
         FieldReferenceOffsetManager from = config.from;
         this.ringWalker = new StackStateWalker(from);
-        this.unstructuredLayoutConstBuffer = byteConstants;
+        this.blobConstBuffer = byteConstants;
 
 
         if (0 == from.maxVarFieldPerUnit || 0==primaryBits) { //zero bits is for the dummy mock case
         	maxAvgVarLen = 0; //no fragments had any variable-length fields so we never allow any
         } else {
         	//given outer ring buffer this is the maximum number of var fields that can exist at the same time.
-        	int mx = sizeOfStructuredLayoutRingBuffer;
+        	int mx = sizeOfSlabRing;
         	int maxVarCount = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, mx);
         	//to allow more almost 2x more flexibility in variable-length bytes we track pairs of writes and ensure the
         	//two together are below the threshold rather than each alone
-        	maxAvgVarLen = sizeOfUntructuredLayoutRingBuffer/maxVarCount;
+        	maxAvgVarLen = sizeOfBlobRing/maxVarCount;
         }
     }
 
@@ -643,34 +645,34 @@ public final class Pipe {
 
 	private void buildBuffers() {
 
-        assert(structuredLayoutRingBufferHead.workingHeadPos.value == structuredLayoutRingBufferHead.headPos.get());
-        assert(structuredLayoutRingTail.workingTailPos.value == structuredLayoutRingTail.tailPos.get());
-        assert(structuredLayoutRingBufferHead.workingHeadPos.value == structuredLayoutRingTail.workingTailPos.value);
-        assert(structuredLayoutRingTail.tailPos.get()==structuredLayoutRingBufferHead.headPos.get());
+        assert(slabRingHead.workingHeadPos.value == slabRingHead.headPos.get());
+        assert(slabRingTail.workingTailPos.value == slabRingTail.tailPos.get());
+        assert(slabRingHead.workingHeadPos.value == slabRingTail.workingTailPos.value);
+        assert(slabRingTail.tailPos.get()==slabRingHead.headPos.get());
 
-        long toPos = structuredLayoutRingBufferHead.workingHeadPos.value;//can use this now that we have confirmed they all match.
+        long toPos = slabRingHead.workingHeadPos.value;//can use this now that we have confirmed they all match.
 
         this.llRead = new LowLevelAPIReadPositionCache();
         this.llWrite = new LowLevelAPIWritePositionCache();
 
         //This init must be the same as what is done in reset()
         //This target is a counter that marks if there is room to write more data into the ring without overwriting other data.
-        this.llRead.llwConfirmedReadPosition = 0-this.sizeOfStructuredLayoutRingBuffer;
+        this.llRead.llwConfirmedReadPosition = 0-this.sizeOfSlabRing;
         llWrite.llwHeadPosCache = toPos;
         llRead.llrTailPosCache = toPos;
-        llRead.llwConfirmedReadPosition = toPos - sizeOfStructuredLayoutRingBuffer;
+        llRead.llwConfirmedReadPosition = toPos - sizeOfSlabRing;
         llWrite.llwConfirmedWrittenPosition = toPos;
 
-        this.unstructuredLayoutRingBuffer = new byte[sizeOfUntructuredLayoutRingBuffer];
-        this.structuredLayoutRingBuffer = new int[sizeOfStructuredLayoutRingBuffer];
-        this.bufferLookup = new byte[][] {unstructuredLayoutRingBuffer,unstructuredLayoutConstBuffer};
+        this.blobRing = new byte[sizeOfBlobRing];
+        this.slabRing = new int[sizeOfSlabRing];
+        this.blobRingLookup = new byte[][] {blobRing,blobConstBuffer};
 
-        this.wrappedStructuredLayoutRingBuffer = IntBuffer.wrap(this.structuredLayoutRingBuffer);
-        this.wrappedUnstructuredLayoutRingBufferA = ByteBuffer.wrap(this.unstructuredLayoutRingBuffer);
-        this.wrappedUnstructuredLayoutRingBufferB = ByteBuffer.wrap(this.unstructuredLayoutRingBuffer);
-        this.wrappedUnstructuredLayoutConstBuffer = null==this.unstructuredLayoutConstBuffer?null:ByteBuffer.wrap(this.unstructuredLayoutConstBuffer);
+        this.wrappedSlabRing = IntBuffer.wrap(this.slabRing);
+        this.wrappedBlobRingA = ByteBuffer.wrap(this.blobRing);
+        this.wrappedBlobRingB = ByteBuffer.wrap(this.blobRing);
+        this.wrappedBlobConstBuffer = null==this.blobConstBuffer?null:ByteBuffer.wrap(this.blobConstBuffer);
 
-        assert(0==wrappedUnstructuredLayoutRingBufferA.position() && wrappedUnstructuredLayoutRingBufferA.capacity()==wrappedUnstructuredLayoutRingBufferA.limit()) : "The ByteBuffer is not clear.";
+        assert(0==wrappedBlobRingA.position() && wrappedBlobRingA.capacity()==wrappedBlobRingA.limit()) : "The ByteBuffer is not clear.";
 
 	}
 
@@ -678,11 +680,11 @@ public final class Pipe {
 	    //Due to the fact that no locks are used it becomes necessary to check
 	    //every single field to ensure the full initialization of the object
 	    //this is done as part of graph set up and as such is called rarely.
-		return null!=ring.unstructuredLayoutRingBuffer &&
-			   null!=ring.structuredLayoutRingBuffer &&
-			   null!=ring.bufferLookup &&
-			   null!=ring.wrappedStructuredLayoutRingBuffer &&
-			   null!=ring.wrappedUnstructuredLayoutRingBufferA &&
+		return null!=ring.blobRing &&
+			   null!=ring.slabRing &&
+			   null!=ring.blobRingLookup &&
+			   null!=ring.wrappedSlabRing &&
+			   null!=ring.wrappedBlobRingA &&
 			   null!=ring.llRead &&
 			   null!=ring.llWrite;
 	}
@@ -696,7 +698,7 @@ public final class Pipe {
 
         	throw new UnsupportedOperationException("Can not write byte array of length "+length+
         	                                        ". The dif between primary and byte bits should be at least "+bitsDif+
-        	                                        ". "+rb.bitsOfStructuredLayoutRingBuffer+","+rb.bitsOfUntructuredLayoutRingBuffer+
+        	                                        ". "+rb.bitsOfSlabRing+","+rb.bitsOfBlogRing+
         	                                        ". The limit is "+rb.maxAvgVarLen+" for pipe "+rb);
         }
         rb.varLenMovingAverage = newAvg;
@@ -717,33 +719,33 @@ public final class Pipe {
      */
     public void reset(int structuredPos, int unstructuredPos) {
 
-    	structuredLayoutRingBufferHead.workingHeadPos.value = structuredPos;
-        structuredLayoutRingTail.workingTailPos.value = structuredPos;
-        structuredLayoutRingTail.tailPos.set(structuredPos);
-        structuredLayoutRingBufferHead.headPos.set(structuredPos);
+    	slabRingHead.workingHeadPos.value = structuredPos;
+        slabRingTail.workingTailPos.value = structuredPos;
+        slabRingTail.tailPos.set(structuredPos);
+        slabRingHead.headPos.set(structuredPos);
 
         if (null!=llWrite) {
             llWrite.llwHeadPosCache = structuredPos;
             llRead.llrTailPosCache = structuredPos;
-            llRead.llwConfirmedReadPosition = structuredPos - sizeOfStructuredLayoutRingBuffer;
+            llRead.llwConfirmedReadPosition = structuredPos - sizeOfSlabRing;
             llWrite.llwConfirmedWrittenPosition = structuredPos;
         }
 
-        unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = unstructuredPos;
-        PaddedInt.set(unstructuredLayoutRingBufferHead.bytesHeadPos,unstructuredPos);
+        blobRingHead.byteWorkingHeadPos.value = unstructuredPos;
+        PaddedInt.set(blobRingHead.bytesHeadPos,unstructuredPos);
 
-        unstructuredLayoutWriteBase = unstructuredPos;
-        unstructuredLayoutReadBase = unstructuredPos;
-        unstructuredWriteLastConsumedBytePos = unstructuredPos;
+        blobWriteBase = unstructuredPos;
+        blobReadBase = unstructuredPos;
+        blobWriteLastConsumedPos = unstructuredPos;
         
 
-        unstructuredLayoutRingTail.byteWorkingTailPos.value = unstructuredPos;
-        PaddedInt.set(unstructuredLayoutRingTail.bytesTailPos,unstructuredPos);
+        blobRingTail.byteWorkingTailPos.value = unstructuredPos;
+        PaddedInt.set(blobRingTail.bytesTailPos,unstructuredPos);
         StackStateWalker.reset(ringWalker, structuredPos);
     }
 
 
-    public static ByteBuffer wrappedUnstructuredLayoutBufferB(Pipe ring, int meta, int len) {
+    public static ByteBuffer wrappedBlobRingB(Pipe ring, int meta, int len) {
         ByteBuffer buffer;
         if (meta < 0) {
         	//always zero because constant array never wraps
@@ -756,7 +758,7 @@ public final class Pipe {
         	buffer.clear();
             //position is zero
         	int endPos = position+len;
-        	if (endPos>ring.sizeOfUntructuredLayoutRingBuffer) {
+        	if (endPos>ring.sizeOfBlobRing) {
         		buffer.limit(ring.byteMask & endPos);
         	} else {
         		buffer.limit(0);
@@ -765,7 +767,7 @@ public final class Pipe {
     	return buffer;
     }
 
-    public static ByteBuffer wrappedUnstructuredLayoutBufferA(Pipe ring, int meta, int len) {
+    public static ByteBuffer wrappedBlobRingA(Pipe ring, int meta, int len) {
         ByteBuffer buffer;
         if (meta < 0) {
         	buffer = wrappedUnstructuredLayoutConstBuffer(ring);
@@ -778,7 +780,7 @@ public final class Pipe {
         	buffer.clear();
         	buffer.position(position);
         	//use the end of the buffer if the lengh runs past it.
-        	buffer.limit(Math.min(ring.sizeOfUntructuredLayoutRingBuffer, position+len));
+        	buffer.limit(Math.min(ring.sizeOfBlobRing, position+len));
         }
         return buffer;
     }
@@ -954,15 +956,15 @@ public final class Pipe {
     public static void readBytes(Pipe ring, byte[] target, int targetIdx, int targetMask, int meta, int len) {
 		if (meta < 0) {
 			//NOTE: constByteBuffer does not wrap so we do not need the mask
-			copyBytesFromToRing(ring.unstructuredLayoutConstBuffer, PipeReader.POS_CONST_MASK & meta, 0xFFFFFFFF, target, targetIdx, targetMask, len);
+			copyBytesFromToRing(ring.blobConstBuffer, PipeReader.POS_CONST_MASK & meta, 0xFFFFFFFF, target, targetIdx, targetMask, len);
 	    } else {
-			copyBytesFromToRing(ring.unstructuredLayoutRingBuffer,restorePosition(ring,meta),ring.byteMask,target,targetIdx,targetMask,len);
+			copyBytesFromToRing(ring.blobRing,restorePosition(ring,meta),ring.byteMask,target,targetIdx,targetMask,len);
 	    }
 	}
 
 	private static ByteBuffer readBytesRing(Pipe ring, int len, ByteBuffer target, int pos) {
 		int mask = ring.byteMask;
-		byte[] buffer = ring.unstructuredLayoutRingBuffer;
+		byte[] buffer = ring.blobRing;
 
         int tStart = pos & mask;
         int len1 = 1+mask - tStart;
@@ -978,7 +980,7 @@ public final class Pipe {
 	}
 
 	private static ByteBuffer readBytesConst(Pipe ring, int len, ByteBuffer target, int pos) {
-	    	target.put(ring.unstructuredLayoutConstBuffer, pos, len);
+	    	target.put(ring.blobConstBuffer, pos, len);
 	        return target;
 	    }
 
@@ -998,7 +1000,7 @@ public final class Pipe {
 
 			int pos = PipeReader.POS_CONST_MASK & meta;
 
-	    	byte[] buffer = ring.unstructuredLayoutConstBuffer;
+	    	byte[] buffer = ring.blobConstBuffer;
 	    	assert(null!=buffer) : "If constants are used the constByteBuffer was not initialized. Otherwise corruption in the stream has been discovered";
 	    	while (--len >= 0) {
 	    		if (charSeq.charAt(len)!=buffer[pos+len]) {
@@ -1008,7 +1010,7 @@ public final class Pipe {
 
 		} else {
 
-			byte[] buffer = ring.unstructuredLayoutRingBuffer;
+			byte[] buffer = ring.blobRing;
 			int mask = ring.byteMask;
 			int pos = restorePosition(ring, meta);
 
@@ -1024,7 +1026,7 @@ public final class Pipe {
 	}
 
 	private static Appendable readASCIIRing(Pipe ring, int len, Appendable target, int pos) {
-		byte[] buffer = ring.unstructuredLayoutRingBuffer;
+		byte[] buffer = ring.blobRing;
 		int mask = ring.byteMask;
 
 	    try {
@@ -1039,7 +1041,7 @@ public final class Pipe {
 
 	private static Appendable readASCIIConst(Pipe ring, int len, Appendable target, int pos) {
 	    try {
-	    	byte[] buffer = ring.unstructuredLayoutConstBuffer;
+	    	byte[] buffer = ring.blobConstBuffer;
 	    	assert(null!=buffer) : "If constants are used the constByteBuffer was not initialized. Otherwise corruption in the stream has been discovered";
 	    	while (--len >= 0) {
 	            target.append((char)buffer[pos++]);
@@ -1064,7 +1066,7 @@ public final class Pipe {
 			  long limit = ((long)ringPos+bytesLen)<<32;
 
 			  while (charAndPos<limit) {
-			      charAndPos = decodeUTF8Fast(ring.unstructuredLayoutConstBuffer, charAndPos, 0xFFFFFFFF); //constants do not wrap
+			      charAndPos = decodeUTF8Fast(ring.blobConstBuffer, charAndPos, 0xFFFFFFFF); //constants do not wrap
 			      target.append((char)charAndPos);
 			  }
 		  } catch (IOException e) {
@@ -1079,7 +1081,7 @@ public final class Pipe {
 			  long limit = ((long)ringPos+bytesLen)<<32;
 
 			  while (charAndPos<limit) {
-			      charAndPos = decodeUTF8Fast(ring.unstructuredLayoutRingBuffer, charAndPos, ring.byteMask);
+			      charAndPos = decodeUTF8Fast(ring.blobRing, charAndPos, ring.byteMask);
 			      target.append((char)charAndPos);
 			  }
 		  } catch (IOException e) {
@@ -1091,18 +1093,18 @@ public final class Pipe {
 	public static void addDecimalAsASCII(int readDecimalExponent,	long readDecimalMantissa, Pipe outputRing) {
 		long ones = (long)(readDecimalMantissa*PipeReader.powdi[64 + readDecimalExponent]);
 		validateVarLength(outputRing, 21);
-		int max = 21 + outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+		int max = 21 + outputRing.blobRingHead.byteWorkingHeadPos.value;
 		int len = leftConvertLongToASCII(outputRing, ones, max);
-		outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(len + outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value);
+		outputRing.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(len + outputRing.blobRingHead.byteWorkingHeadPos.value);
 
 		copyASCIIToBytes(".", outputRing);
 
 		long frac = Math.abs(readDecimalMantissa - (long)(ones/PipeReader.powdi[64 + readDecimalExponent]));
 
 		validateVarLength(outputRing, 21);
-		int max1 = 21 + outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+		int max1 = 21 + outputRing.blobRingHead.byteWorkingHeadPos.value;
 		int len1 = leftConvertLongWithLeadingZerosToASCII(outputRing, readDecimalExponent, frac, max1);
-		outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = Pipe.BYTES_WRAP_MASK&(len1 + outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value);
+		outputRing.blobRingHead.byteWorkingHeadPos.value = Pipe.BYTES_WRAP_MASK&(len1 + outputRing.blobRingHead.byteWorkingHeadPos.value);
 
 		//may require trailing zeros
 		while (len1<readDecimalExponent) {
@@ -1115,18 +1117,18 @@ public final class Pipe {
 
 	public static void addLongAsASCII(Pipe outputRing, long value) {
 		validateVarLength(outputRing, 21);
-		int max = 21 + outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+		int max = 21 + outputRing.blobRingHead.byteWorkingHeadPos.value;
 		int len = leftConvertLongToASCII(outputRing, value, max);
-		addBytePosAndLen(outputRing, outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value, len);
-		outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(len + outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value);
+		addBytePosAndLen(outputRing, outputRing.blobRingHead.byteWorkingHeadPos.value, len);
+		outputRing.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(len + outputRing.blobRingHead.byteWorkingHeadPos.value);
 	}
 
 	public static void addIntAsASCII(Pipe outputRing, int value) {
 		validateVarLength(outputRing, 12);
-		int max = 12 + outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+		int max = 12 + outputRing.blobRingHead.byteWorkingHeadPos.value;
 		int len = leftConvertIntToASCII(outputRing, value, max);
-		addBytePosAndLen(outputRing, outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value, len);
-		outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = Pipe.BYTES_WRAP_MASK&(len + outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value);
+		addBytePosAndLen(outputRing, outputRing.blobRingHead.byteWorkingHeadPos.value, len);
+		outputRing.blobRingHead.byteWorkingHeadPos.value = Pipe.BYTES_WRAP_MASK&(len + outputRing.blobRingHead.byteWorkingHeadPos.value);
 	}
 
 	/**
@@ -1136,8 +1138,8 @@ public final class Pipe {
      * @return
      */
 	public static int bytesOfContent(Pipe ringBuffer) {
-		int dif = (ringBuffer.byteMask&ringBuffer.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value) - (ringBuffer.byteMask&PaddedInt.get(ringBuffer.unstructuredLayoutRingTail.bytesTailPos));
-		return ((dif>>31)<<ringBuffer.bitsOfUntructuredLayoutRingBuffer)+dif;
+		int dif = (ringBuffer.byteMask&ringBuffer.blobRingHead.byteWorkingHeadPos.value) - (ringBuffer.byteMask&PaddedInt.get(ringBuffer.blobRingTail.bytesTailPos));
+		return ((dif>>31)<<ringBuffer.bitsOfBlogRing)+dif;
 	}
 
 	public static void validateBatchSize(Pipe rb, int size) {
@@ -1153,21 +1155,21 @@ public final class Pipe {
 
 	public static int computeMaxBatchSize(Pipe rb, int mustFit) {
 		assert(mustFit>=1);
-		int maxBatchFromBytes = rb.maxAvgVarLen==0?Integer.MAX_VALUE:(rb.sizeOfUntructuredLayoutRingBuffer/rb.maxAvgVarLen)/mustFit;
-		int maxBatchFromPrimary = (rb.sizeOfStructuredLayoutRingBuffer/FieldReferenceOffsetManager.maxFragmentSize(from(rb)))/mustFit;
+		int maxBatchFromBytes = rb.maxAvgVarLen==0?Integer.MAX_VALUE:(rb.sizeOfBlobRing/rb.maxAvgVarLen)/mustFit;
+		int maxBatchFromPrimary = (rb.sizeOfSlabRing/FieldReferenceOffsetManager.maxFragmentSize(from(rb)))/mustFit;
 		return Math.min(maxBatchFromBytes, maxBatchFromPrimary);
 	}
 
 	@Deprecated
 	public static void publishEOF(Pipe ring) {
 
-		assert(ring.structuredLayoutRingTail.tailPos.get()+ring.sizeOfStructuredLayoutRingBuffer>=ring.structuredLayoutRingBufferHead.headPos.get()+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
+		assert(ring.slabRingTail.tailPos.get()+ring.sizeOfSlabRing>=ring.slabRingHead.headPos.get()+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 
-		PaddedInt.set(ring.unstructuredLayoutRingBufferHead.bytesHeadPos,ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value);
-		ring.structuredLayoutRingBuffer[ring.mask &((int)ring.structuredLayoutRingBufferHead.workingHeadPos.value +  from(ring).templateOffset)]    = -1;
-		ring.structuredLayoutRingBuffer[ring.mask &((int)ring.structuredLayoutRingBufferHead.workingHeadPos.value +1 +  from(ring).templateOffset)] = 0;
+		PaddedInt.set(ring.blobRingHead.bytesHeadPos,ring.blobRingHead.byteWorkingHeadPos.value);
+		ring.slabRing[ring.mask &((int)ring.slabRingHead.workingHeadPos.value +  from(ring).templateOffset)]    = -1;
+		ring.slabRing[ring.mask &((int)ring.slabRingHead.workingHeadPos.value +1 +  from(ring).templateOffset)] = 0;
 
-		ring.structuredLayoutRingBufferHead.headPos.lazySet(ring.structuredLayoutRingBufferHead.workingHeadPos.value = ring.structuredLayoutRingBufferHead.workingHeadPos.value + Pipe.EOF_SIZE);
+		ring.slabRingHead.headPos.lazySet(ring.slabRingHead.workingHeadPos.value = ring.slabRingHead.workingHeadPos.value + Pipe.EOF_SIZE);
 
 	}
 
@@ -1294,7 +1296,7 @@ public final class Pipe {
 	public static int leftConvertIntToASCII(Pipe rb, int value, int idx) {
 		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
 		//this will leave a gap but that is not a problem.
-		byte[] target = rb.unstructuredLayoutRingBuffer;
+		byte[] target = rb.blobRing;
 		int tmp = Math.abs(value);
 		int max = idx;
 		do {
@@ -1310,10 +1312,10 @@ public final class Pipe {
 
 		//shift it down to the head
 		int length = max-idx;
-		if (idx!=rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value) {
+		if (idx!=rb.blobRingHead.byteWorkingHeadPos.value) {
 			int s = 0;
 			while (s<length) {
-				target[rb.byteMask & (s+rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value)] = target[rb.byteMask & (s+idx)];
+				target[rb.byteMask & (s+rb.blobRingHead.byteWorkingHeadPos.value)] = target[rb.byteMask & (s+idx)];
 				s++;
 			}
 		}
@@ -1323,7 +1325,7 @@ public final class Pipe {
 	public static int leftConvertLongToASCII(Pipe rb, long value,	int idx) {
 		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
 		//this will leave a gap but that is not a problem.
-		byte[] target = rb.unstructuredLayoutRingBuffer;
+		byte[] target = rb.blobRing;
 		long tmp = Math.abs(value);
 		int max = idx;
 		do {
@@ -1339,10 +1341,10 @@ public final class Pipe {
 
 		int length = max-idx;
 		//shift it down to the head
-		if (idx!=rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value) {
+		if (idx!=rb.blobRingHead.byteWorkingHeadPos.value) {
 			int s = 0;
 			while (s<length) {
-				target[rb.byteMask & (s+rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value)] = target[rb.byteMask & (s+idx)];
+				target[rb.byteMask & (s+rb.blobRingHead.byteWorkingHeadPos.value)] = target[rb.byteMask & (s+idx)];
 				s++;
 			}
 		}
@@ -1352,7 +1354,7 @@ public final class Pipe {
    public static int leftConvertLongWithLeadingZerosToASCII(Pipe rb, int chars, long value, int idx) {
         //max places is value for -2B therefore its 11 places so we start out that far and work backwards.
         //this will leave a gap but that is not a problem.
-        byte[] target = rb.unstructuredLayoutRingBuffer;
+        byte[] target = rb.blobRing;
         long tmp = Math.abs(value);
         int max = idx;
 
@@ -1374,10 +1376,10 @@ public final class Pipe {
 
         int length = max-idx;
         //shift it down to the head
-        if (idx!=rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value) {
+        if (idx!=rb.blobRingHead.byteWorkingHeadPos.value) {
             int s = 0;
             while (s<length) {
-                target[rb.byteMask & (s+rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value)] = target[rb.byteMask & (s+idx)];
+                target[rb.byteMask & (s+rb.blobRingHead.byteWorkingHeadPos.value)] = target[rb.byteMask & (s+idx)];
                 s++;
             }
         }
@@ -1516,11 +1518,11 @@ public final class Pipe {
 	}
 
 	public static int copyASCIIToBytes(CharSequence source, int sourceIdx, final int sourceLen, Pipe rbRingBuffer) {
-		final int p = rbRingBuffer.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+		final int p = rbRingBuffer.blobRingHead.byteWorkingHeadPos.value;
 		//TODO: revisit this not sure this conditional is required
 	    if (sourceLen > 0) {
 	    	int tStart = p & rbRingBuffer.byteMask;
-	        copyASCIIToBytes2(source, sourceIdx, sourceLen, rbRingBuffer, p, rbRingBuffer.unstructuredLayoutRingBuffer, tStart, 1+rbRingBuffer.byteMask - tStart);
+	        copyASCIIToBytes2(source, sourceIdx, sourceLen, rbRingBuffer, p, rbRingBuffer.blobRing, tStart, 1+rbRingBuffer.byteMask - tStart);
 	    }
 		return p;
 	}
@@ -1535,14 +1537,14 @@ public final class Pipe {
 		    Pipe.copyASCIIToByte(source, sourceIdx, target, tStart, len1);
 		    Pipe.copyASCIIToByte(source, sourceIdx + len1, target, 0, sourceLen - len1);
 		}
-		rbRingBuffer.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(p + sourceLen);
+		rbRingBuffer.blobRingHead.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(p + sourceLen);
 	}
 
     public static int copyASCIIToBytes(char[] source, int sourceIdx, final int sourceLen, Pipe rbRingBuffer) {
-		final int p = rbRingBuffer.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+		final int p = rbRingBuffer.blobRingHead.byteWorkingHeadPos.value;
 	    if (sourceLen > 0) {
 	    	int targetMask = rbRingBuffer.byteMask;
-	    	byte[] target = rbRingBuffer.unstructuredLayoutRingBuffer;
+	    	byte[] target = rbRingBuffer.blobRing;
 
 	        int tStart = p & targetMask;
 	        int len1 = 1+targetMask - tStart;
@@ -1554,7 +1556,7 @@ public final class Pipe {
 			    copyASCIIToByte(source, sourceIdx, target, tStart, 1+ targetMask - tStart);
 			    copyASCIIToByte(source, sourceIdx + len1, target, 0, sourceLen - len1);
 			}
-	        rbRingBuffer.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(p + sourceLen);
+	        rbRingBuffer.blobRingHead.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(p + sourceLen);
 	    }
 		return p;
 	}
@@ -1578,11 +1580,11 @@ public final class Pipe {
 	}
 
 	public static void addUTF8(CharSequence source, int sourceCharCount, Pipe rb) {
-		addBytePosAndLen(rb, rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceCharCount,rb));
+		addBytePosAndLen(rb, rb.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceCharCount,rb));
 	}
 
 	public static void addUTF8(char[] source, int sourceCharCount, Pipe rb) {
-		addBytePosAndLen(rb, rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceCharCount,rb));
+		addBytePosAndLen(rb, rb.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceCharCount,rb));
 	}
 
 	/**
@@ -1590,8 +1592,8 @@ public final class Pipe {
 	 */
 	public static int copyUTF8ToByte(CharSequence source, int sourceCharCount, Pipe rb) {
 	    if (sourceCharCount>0) {
-    		int byteLength = Pipe.copyUTF8ToByte(source, 0, rb.unstructuredLayoutRingBuffer, rb.byteMask, rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value, sourceCharCount);
-    		rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value+byteLength);
+    		int byteLength = Pipe.copyUTF8ToByte(source, 0, rb.blobRing, rb.byteMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
+    		rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
     		return byteLength;
 	    } else {
 	        return 0;
@@ -1600,8 +1602,8 @@ public final class Pipe {
 
    public static int copyUTF8ToByte(CharSequence source, int sourceOffset, int sourceCharCount, Pipe rb) {
         if (sourceCharCount>0) {
-            int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, rb.unstructuredLayoutRingBuffer, rb.byteMask, rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value, sourceCharCount);
-            rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value+byteLength);
+            int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, rb.blobRing, rb.byteMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
+            rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
             return byteLength;
         } else {
             return 0;
@@ -1621,14 +1623,14 @@ public final class Pipe {
 	 * WARNING: unlike the ASCII version this method returns bytes written and not the position
 	 */
 	public static int copyUTF8ToByte(char[] source, int sourceCharCount, Pipe rb) {
-		int byteLength = Pipe.copyUTF8ToByte(source, 0, rb.unstructuredLayoutRingBuffer, rb.byteMask, rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value, sourceCharCount);
-		rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value+byteLength);
+		int byteLength = Pipe.copyUTF8ToByte(source, 0, rb.blobRing, rb.byteMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
+		rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
 		return byteLength;
 	}
 
 	public static int copyUTF8ToByte(char[] source, int sourceOffset, int sourceCharCount, Pipe rb) {
-	    int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, rb.unstructuredLayoutRingBuffer, rb.byteMask, rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value, sourceCharCount);
-	    rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value+byteLength);
+	    int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, rb.blobRing, rb.byteMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
+	    rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
 	    return byteLength;
 	}
 
@@ -1700,7 +1702,7 @@ public final class Pipe {
 	}
 
 	public static void addByteBuffer(ByteBuffer source, Pipe pipe) {
-	    int bytePos = pipe.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+	    int bytePos = pipe.blobRingHead.byteWorkingHeadPos.value;
 	    int len = -1;
 	    if (null!=source && source.hasRemaining()) {
 	        len = source.remaining();
@@ -1712,7 +1714,7 @@ public final class Pipe {
 	}
 
    public static void addByteBuffer(ByteBuffer source, int length, Pipe rb) {
-        int bytePos = rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+        int bytePos = rb.blobRingHead.byteWorkingHeadPos.value;
         int len = -1;
         if (null!=source && length>0) {
             len = length;
@@ -1723,24 +1725,24 @@ public final class Pipe {
 	   
 	public static void copyByteBuffer(ByteBuffer source, int length, Pipe rb) {
 		validateVarLength(rb, length);
-		int idx = rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value & rb.byteMask;
+		int idx = rb.blobRingHead.byteWorkingHeadPos.value & rb.byteMask;
 		int partialLength = 1 + rb.byteMask - idx;
 		//may need to wrap around ringBuffer so this may need to be two copies
 		if (partialLength>=length) {
-		    source.get(rb.unstructuredLayoutRingBuffer, idx, length);
+		    source.get(rb.blobRing, idx, length);
 		} else {
 		    //read from source and write into byteBuffer
-		    source.get(rb.unstructuredLayoutRingBuffer, idx, partialLength);
-		    source.get(rb.unstructuredLayoutRingBuffer, 0, length - partialLength);
+		    source.get(rb.blobRing, idx, partialLength);
+		    source.get(rb.blobRing, 0, length - partialLength);
 		}
-		rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value + length);
+		rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value + length);
 	}
 
 	public static void addByteArrayWithMask(final Pipe outputRing, int mask, int len, byte[] data, int offset) {
 		validateVarLength(outputRing, len);
-		copyBytesFromToRing(data,offset,mask,outputRing.unstructuredLayoutRingBuffer,outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value,outputRing.byteMask, len);
-		addBytePosAndLen(outputRing, outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value, len);
-		outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(outputRing.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value + len);
+		copyBytesFromToRing(data,offset,mask,outputRing.blobRing,outputRing.blobRingHead.byteWorkingHeadPos.value,outputRing.byteMask, len);
+		addBytePosAndLen(outputRing, outputRing.blobRingHead.byteWorkingHeadPos.value, len);
+		outputRing.blobRingHead.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(outputRing.blobRingHead.byteWorkingHeadPos.value + len);
 	}
 
 	public static int peek(int[] buf, long pos, int mask) {
@@ -1769,28 +1771,28 @@ public final class Pipe {
     	assert(sourceLen>=0);
     	validateVarLength(rbRingBuffer, sourceLen);
 
-    	copyBytesFromToRing(source, sourceIdx, Integer.MAX_VALUE, rbRingBuffer.unstructuredLayoutRingBuffer, rbRingBuffer.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value, rbRingBuffer.byteMask, sourceLen);
+    	copyBytesFromToRing(source, sourceIdx, Integer.MAX_VALUE, rbRingBuffer.blobRing, rbRingBuffer.blobRingHead.byteWorkingHeadPos.value, rbRingBuffer.byteMask, sourceLen);
 
-    	addBytePosAndLen(rbRingBuffer, rbRingBuffer.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value, sourceLen);
-        rbRingBuffer.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rbRingBuffer.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value + sourceLen);
+    	addBytePosAndLen(rbRingBuffer, rbRingBuffer.blobRingHead.byteWorkingHeadPos.value, sourceLen);
+        rbRingBuffer.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rbRingBuffer.blobRingHead.byteWorkingHeadPos.value + sourceLen);
 
     }
 
     public static void addNullByteArray(Pipe rbRingBuffer) {
-        addBytePosAndLen(rbRingBuffer, rbRingBuffer.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value, -1);
+        addBytePosAndLen(rbRingBuffer, rbRingBuffer.blobRingHead.byteWorkingHeadPos.value, -1);
     }
 
 
     public static void addIntValue(int value, Pipe rb) {
-         assert(rb.structuredLayoutRingBufferHead.workingHeadPos.value <= rb.mask+Pipe.tailPosition(rb));
-		 setValue(rb.structuredLayoutRingBuffer,rb.mask,rb.structuredLayoutRingBufferHead.workingHeadPos.value++,value);
+         assert(rb.slabRingHead.workingHeadPos.value <= rb.mask+Pipe.tailPosition(rb));
+		 setValue(rb.slabRing,rb.mask,rb.slabRingHead.workingHeadPos.value++,value);
 	}
 
 	//TODO: B, need to update build server to ensure this runs on both Java6 and Java ME 8
 
     //must be called by low-level API when starting a new message
     public static void addMsgIdx(Pipe rb, int msgIdx) {
-        assert(rb.structuredLayoutRingBufferHead.workingHeadPos.value <= rb.mask+Pipe.tailPosition(rb));
+        assert(rb.slabRingHead.workingHeadPos.value <= rb.mask+Pipe.tailPosition(rb));
     	assert(msgIdx>=0) : "Call publishEOF() instead of this method";
 
      	//this MUST be done here at the START of a message so all its internal fragments work with the same base position
@@ -1798,7 +1800,7 @@ public final class Pipe {
 
    // 	 assert(rb.llwNextHeadTarget<=rb.headPos.get() || rb.workingHeadPos.value<=rb.llwNextHeadTarget) : "Unsupported mix of high and low level API.";
 
-		 rb.structuredLayoutRingBuffer[rb.mask & (int)rb.structuredLayoutRingBufferHead.workingHeadPos.value++] = msgIdx;
+		 rb.slabRing[rb.mask & (int)rb.slabRingHead.workingHeadPos.value++] = msgIdx;
 	}
 
 	public static void setValue(int[] buffer, int rbMask, long offset, int value) {
@@ -1807,9 +1809,9 @@ public final class Pipe {
 
 
     public static void addBytePosAndLen(Pipe ring, int position, int length) {
-        assert(ring.structuredLayoutRingBufferHead.workingHeadPos.value <= ring.mask+Pipe.tailPosition(ring));
-		setBytePosAndLen(ring.structuredLayoutRingBuffer, ring.mask, ring.structuredLayoutRingBufferHead.workingHeadPos.value, position, length, Pipe.bytesWriteBase(ring));
-		ring.structuredLayoutRingBufferHead.workingHeadPos.value+=2;
+        assert(ring.slabRingHead.workingHeadPos.value <= ring.mask+Pipe.tailPosition(ring));
+		setBytePosAndLen(ring.slabRing, ring.mask, ring.slabRingHead.workingHeadPos.value, position, length, Pipe.bytesWriteBase(ring));
+		ring.slabRingHead.workingHeadPos.value+=2;
     }
 
     public static void addBytePosAndLenSpecial(Pipe targetOutput, final int startBytePos, int bytesLength) {
@@ -1835,18 +1837,14 @@ public final class Pipe {
 
 	}
 
-	//TOOD: AAAAAA urgent inline??
     public static int bytePosition(int meta, Pipe ring, int len) {
-    	int pos =  restorePosition(ring, meta & RELATIVE_POS_MASK);
-    	
+    	int pos =  restorePosition(ring, meta & RELATIVE_POS_MASK);    	
         if (len>=0) {
-            ring.unstructuredLayoutRingTail.byteWorkingTailPos.value =  BYTES_WRAP_MASK&(len+ring.unstructuredLayoutRingTail.byteWorkingTailPos.value);
-        }
-        
+            ring.blobRingTail.byteWorkingTailPos.value =  BYTES_WRAP_MASK&(len+ring.blobRingTail.byteWorkingTailPos.value);
+        }        
         return pos;
     }
 
-  //TOOD: AAAAAA urgent inline??
     public static int bytePositionGen(int meta, Pipe ring) {
     	return restorePosition(ring, meta & RELATIVE_POS_MASK);
     }
@@ -1870,7 +1868,7 @@ public final class Pipe {
     }
 
     public static void addDecimal(int exponent, long mantissa, Pipe ring) {
-        ring.structuredLayoutRingBufferHead.workingHeadPos.value = setValues(ring.structuredLayoutRingBuffer, ring.mask, ring.structuredLayoutRingBufferHead.workingHeadPos.value, exponent, mantissa);
+        ring.slabRingHead.workingHeadPos.value = setValues(ring.slabRing, ring.mask, ring.slabRingHead.workingHeadPos.value, exponent, mantissa);
     }
 
 
@@ -1887,7 +1885,7 @@ public final class Pipe {
 	}
 
 	public static void addLongValue(long value, Pipe rb) {
-		 addLongValue(rb.structuredLayoutRingBuffer, rb.mask, rb.structuredLayoutRingBufferHead.workingHeadPos, value);
+		 addLongValue(rb.slabRing, rb.mask, rb.slabRingHead.workingHeadPos, value);
 	}
 
     public static void addLongValue(int[] buffer, int rbMask, PaddedLong headCache, long value) {
@@ -1904,28 +1902,28 @@ public final class Pipe {
     }
 
 	public static int readRingByteLen(int idx, Pipe ring) {
-		return readRingByteLen(idx,ring.structuredLayoutRingBuffer, ring.mask, ring.structuredLayoutRingTail.workingTailPos.value);
+		return readRingByteLen(idx,ring.slabRing, ring.mask, ring.slabRingTail.workingTailPos.value);
 	}
 
 	public static int takeRingByteLen(Pipe ring) {
 	//    assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
-		return ring.structuredLayoutRingBuffer[(int)(ring.mask & (ring.structuredLayoutRingTail.workingTailPos.value++))];// second int is always the length
+		return ring.slabRing[(int)(ring.mask & (ring.slabRingTail.workingTailPos.value++))];// second int is always the length
 	}
 
 
 
     public static byte[] byteBackingArray(int meta, Pipe rbRingBuffer) {
-        return rbRingBuffer.bufferLookup[meta>>>31];
+        return rbRingBuffer.blobRingLookup[meta>>>31];
     }
 
 	public static int readRingByteMetaData(int pos, Pipe rb) {
-		return readValue(pos,rb.structuredLayoutRingBuffer,rb.mask,rb.structuredLayoutRingTail.workingTailPos.value);
+		return readValue(pos,rb.slabRing,rb.mask,rb.slabRingTail.workingTailPos.value);
 	}
 
 	//TODO: must always read metadata before length, easy mistake to make, need assert to ensure this is caught if happens.
 	public static int takeRingByteMetaData(Pipe ring) {
 	//    assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
-		return readValue(0,ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value++);
+		return readValue(0,ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value++);
 	}
 
     public static int readValue(int fieldPos, int[] rbB, int rbMask, long rbPos) {
@@ -1933,22 +1931,22 @@ public final class Pipe {
     }
 
     public static int readValue(int idx, Pipe ring) {
-    	return readValue(idx, ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value);
+    	return readValue(idx, ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value);
     }
 
     public static int takeValue(Pipe ring) {
-    	return readValue(0, ring.structuredLayoutRingBuffer, ring.mask, ring.structuredLayoutRingTail.workingTailPos.value++);
+    	return readValue(0, ring.slabRing, ring.mask, ring.slabRingTail.workingTailPos.value++);
     }
 
     public static long takeLong(Pipe ring) {
-        assert(ring.structuredLayoutRingTail.workingTailPos.value<Pipe.workingHeadPosition(ring)) : "working tail "+ring.structuredLayoutRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(ring);
-    	long result = readLong(ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value);
-    	ring.structuredLayoutRingTail.workingTailPos.value+=2;
+        assert(ring.slabRingTail.workingTailPos.value<Pipe.workingHeadPosition(ring)) : "working tail "+ring.slabRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(ring);
+    	long result = readLong(ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value);
+    	ring.slabRingTail.workingTailPos.value+=2;
     	return result;
     }
 
     public static long readLong(int idx, Pipe ring) {
-    	return readLong(ring.structuredLayoutRingBuffer,ring.mask,idx+ring.structuredLayoutRingTail.workingTailPos.value);
+    	return readLong(ring.slabRing,ring.mask,idx+ring.slabRingTail.workingTailPos.value);
 
     }
 
@@ -1965,25 +1963,25 @@ public final class Pipe {
          */
         
         
-        assert(ring.structuredLayoutRingTail.workingTailPos.value<Pipe.workingHeadPosition(ring)) : " tail is "+ring.structuredLayoutRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(ring);
-    	return readValue(0, ring.structuredLayoutRingBuffer, ring.mask, ring. structuredLayoutRingTail.workingTailPos.value++);
+        assert(ring.slabRingTail.workingTailPos.value<Pipe.workingHeadPosition(ring)) : " tail is "+ring.slabRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(ring);
+    	return readValue(0, ring.slabRing, ring.mask, ring.slabRingTail.workingTailPos.value++);
     }
 
     public static int peekInt(Pipe ring) {
-        return readValue(0, ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value);
+        return readValue(0, ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value);
     }
     
     public static int peekInt(Pipe ring, int offset) {
-        return readValue(0, ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value+offset);
+        return readValue(0, ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value+offset);
     }
    
     public static long peekLong(Pipe ring, int offset) {
-        return readLong(ring.structuredLayoutRingBuffer,ring.mask,ring.structuredLayoutRingTail.workingTailPos.value+offset);
+        return readLong(ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value+offset);
     }
     
     
     public static int contentRemaining(Pipe rb) {
-        return (int)(rb.structuredLayoutRingBufferHead.headPos.get() - rb.structuredLayoutRingTail.tailPos.get()); //must not go past add count because it is not release yet.
+        return (int)(rb.slabRingHead.headPos.get() - rb.slabRingTail.tailPos.get()); //must not go past add count because it is not release yet.
     }
 
 
@@ -1998,7 +1996,7 @@ public final class Pipe {
 
     public static void batchedReleasePublish(Pipe ring) {
         assert(Pipe.contentRemaining(ring)>=0);
-        batchedReleasePublish(ring, ring.unstructuredLayoutRingTail.byteWorkingTailPos.value, ring.structuredLayoutRingTail.workingTailPos.value);
+        batchedReleasePublish(ring, ring.blobRingTail.byteWorkingTailPos.value, ring.slabRingTail.workingTailPos.value);
     }
 
     public static void batchedReleasePublish(Pipe ring, int byteWorkingTailPos, long workingTailPos) {
@@ -2007,7 +2005,7 @@ public final class Pipe {
     	    assert(ring.ringWalker.cursor<=0 && !PipeReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
 
     	    Pipe.setBytesTail(ring,byteWorkingTailPos);
-    	    ring.structuredLayoutRingTail.tailPos.lazySet(workingTailPos);
+    	    ring.slabRingTail.tailPos.lazySet(workingTailPos);
     	    
     	    ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
 
@@ -2018,15 +2016,15 @@ public final class Pipe {
 
 
     static void storeUnpublishedTail(Pipe ring, long workingTailPos, int byteWorkingTailPos) {
-        ring.lastReleasedBytesTail = byteWorkingTailPos;
-        ring.lastReleasedTail = workingTailPos;
+        ring.lastReleasedBlobTail = byteWorkingTailPos;
+        ring.lastReleasedSlabTail = workingTailPos;
     }
     
     static void releaseReadLockForHighLevelAPI(Pipe ring) {
 
         
         assert(Pipe.isReplaying(ring) || ring.ringWalker.nextWorkingTail!=Pipe.getWorkingTailPosition(ring)) : "Only call release once per message";
-        assert(Pipe.isReplaying(ring) || ring.lastReleasedTail != ring.ringWalker.nextWorkingTail) : "Only call release once per message";
+        assert(Pipe.isReplaying(ring) || ring.lastReleasedSlabTail != ring.ringWalker.nextWorkingTail) : "Only call release once per message";
 
         //take new tail position and make it the base because we are about to start a new message.        
         Pipe.markBytesReadBase(ring);
@@ -2038,8 +2036,8 @@ public final class Pipe {
 
                  ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
         } else {
-                 ring.lastReleasedBytesTail = ring.unstructuredLayoutRingTail.byteWorkingTailPos.value;
-                 ring.lastReleasedTail = ring.ringWalker.nextWorkingTail;// ring.primaryBufferTail.workingTailPos.value;
+                 ring.lastReleasedBlobTail = ring.blobRingTail.byteWorkingTailPos.value;
+                 ring.lastReleasedSlabTail = ring.ringWalker.nextWorkingTail;// ring.primaryBufferTail.workingTailPos.value;
         }
     }
 
@@ -2071,9 +2069,9 @@ public final class Pipe {
      */
     public static void releaseAllBatchedReads(Pipe ring) {
 
-        if (ring.lastReleasedTail > ring.structuredLayoutRingTail.tailPos.get()) {
-            PaddedInt.set(ring.unstructuredLayoutRingTail.bytesTailPos,ring.lastReleasedBytesTail);
-            ring.structuredLayoutRingTail.tailPos.lazySet(ring.lastReleasedTail);
+        if (ring.lastReleasedSlabTail > ring.slabRingTail.tailPos.get()) {
+            PaddedInt.set(ring.blobRingTail.bytesTailPos,ring.lastReleasedBlobTail);
+            ring.slabRingTail.tailPos.lazySet(ring.lastReleasedSlabTail);
             ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
         }
 
@@ -2092,8 +2090,8 @@ public final class Pipe {
     }
 
     public static void releaseBatchedReadReleasesUpToPosition(Pipe ring, long newTailToPublish,  int newTailBytesToPublish) {
-        assert(newTailToPublish<=ring.lastReleasedTail) : "This new value is forward of the next Release call, eg its too large";
-        assert(newTailToPublish>=ring.structuredLayoutRingTail.tailPos.get()) : "This new value is behind the existing published Tail, eg its too small ";
+        assert(newTailToPublish<=ring.lastReleasedSlabTail) : "This new value is forward of the next Release call, eg its too large";
+        assert(newTailToPublish>=ring.slabRingTail.tailPos.get()) : "This new value is behind the existing published Tail, eg its too small ";
         
 //        //TODO: These two asserts would be nice to have but the int of bytePos wraps every 2 gig causing false positives, these need more mask logic to be right
 //        assert(newTailBytesToPublish<=ring.lastReleasedBytesTail) : "This new value is forward of the next Release call, eg its too large";
@@ -2102,17 +2100,17 @@ public final class Pipe {
 //        assert(newTailBytesToPublish<=ring.bytesHeadPosition(ring)) : "Out of bounds should never be above head";
         
         
-        PaddedInt.set(ring.unstructuredLayoutRingTail.bytesTailPos, newTailBytesToPublish);
-        ring.structuredLayoutRingTail.tailPos.lazySet(newTailToPublish);
+        PaddedInt.set(ring.blobRingTail.bytesTailPos, newTailBytesToPublish);
+        ring.slabRingTail.tailPos.lazySet(newTailToPublish);
         ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
     }
 
     @Deprecated
 	public static void releaseAll(Pipe ring) {
 
-			int i = ring.unstructuredLayoutRingTail.byteWorkingTailPos.value= ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
-            PaddedInt.set(ring.unstructuredLayoutRingTail.bytesTailPos,i);
-			ring.structuredLayoutRingTail.tailPos.lazySet(ring.structuredLayoutRingTail.workingTailPos.value= ring.structuredLayoutRingBufferHead.workingHeadPos.value);
+			int i = ring.blobRingTail.byteWorkingTailPos.value= ring.blobRingHead.byteWorkingHeadPos.value;
+            PaddedInt.set(ring.blobRingTail.bytesTailPos,i);
+			ring.slabRingTail.tailPos.lazySet(ring.slabRingTail.workingTailPos.value= ring.slabRingHead.workingHeadPos.value);
 
     }
 
@@ -2121,7 +2119,7 @@ public final class Pipe {
 
         // move the removePosition up to the addPosition
         // new Exception("WARNING THIS IS NO LONGER COMPATIBLE WITH PUMP CALLS").printStackTrace();
-        rb.structuredLayoutRingTail.tailPos.lazySet(rb.structuredLayoutRingTail.workingTailPos.value = rb.structuredLayoutRingBufferHead.workingHeadPos.value);
+        rb.slabRingTail.tailPos.lazySet(rb.slabRingTail.workingTailPos.value = rb.slabRingHead.workingHeadPos.value);
     }
 
 
@@ -2132,17 +2130,17 @@ public final class Pipe {
     public static void publishWrites(Pipe ring) {
     	//new Exception("publish trialing byte").printStackTrace();
     	//happens at the end of every fragment
-        writeTrailingCountOfBytesConsumed(ring, ring.structuredLayoutRingBufferHead.workingHeadPos.value++); //increment because this is the low-level API calling
+        writeTrailingCountOfBytesConsumed(ring, ring.slabRingHead.workingHeadPos.value++); //increment because this is the low-level API calling
 
 		publishWritesBatched(ring);
     }
 
     public static void publishWritesBatched(Pipe ring) {
         //single length field still needs to move this value up, so this is always done
-		ring.unstructuredWriteLastConsumedBytePos = ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+		ring.blobWriteLastConsumedPos = ring.blobRingHead.byteWorkingHeadPos.value;
 
-    	assert(ring.structuredLayoutRingBufferHead.workingHeadPos.value >= Pipe.headPosition(ring));
-    	assert(ring.llWrite.llwConfirmedWrittenPosition<=Pipe.headPosition(ring) || ring.structuredLayoutRingBufferHead.workingHeadPos.value<=ring.llWrite.llwConfirmedWrittenPosition) : "Unsupported mix of high and low level API. NextHead>head and workingHead>nextHead";
+    	assert(ring.slabRingHead.workingHeadPos.value >= Pipe.headPosition(ring));
+    	assert(ring.llWrite.llwConfirmedWrittenPosition<=Pipe.headPosition(ring) || ring.slabRingHead.workingHeadPos.value<=ring.llWrite.llwConfirmedWrittenPosition) : "Unsupported mix of high and low level API. NextHead>head and workingHead>nextHead";
 
     	publishHeadPositions(ring);
     }
@@ -2153,9 +2151,9 @@ public final class Pipe {
      */
     public static void publishAllBatchedWrites(Pipe ring) {
 
-    	if (ring.lastPublishedStructuredLayoutRingBufferHead>ring.structuredLayoutRingBufferHead.headPos.get()) {
-    		PaddedInt.set(ring.unstructuredLayoutRingBufferHead.bytesHeadPos,ring.lastPublishedUnstructuredLayoutRingBufferHead);
-    		ring.structuredLayoutRingBufferHead.headPos.lazySet(ring.lastPublishedStructuredLayoutRingBufferHead);
+    	if (ring.lastPublishedSlabRingHead>ring.slabRingHead.headPos.get()) {
+    		PaddedInt.set(ring.blobRingHead.bytesHeadPos,ring.lastPublishedBlobRingHead);
+    		ring.slabRingHead.headPos.lazySet(ring.lastPublishedSlabRingHead);
     	}
 
 		assert(debugHeadAssignment(ring));
@@ -2166,7 +2164,7 @@ public final class Pipe {
 	private static boolean debugHeadAssignment(Pipe ring) {
 
 		if (0!=(PipeConfig.SHOW_HEAD_PUBLISH&ring.debugFlags) ) {
-			new Exception("Debug stack for assignment of published head positition"+ring.structuredLayoutRingBufferHead.headPos.get()).printStackTrace();
+			new Exception("Debug stack for assignment of published head positition"+ring.slabRingHead.headPos.get()).printStackTrace();
 		}
 		return true;
 	}
@@ -2176,8 +2174,8 @@ public final class Pipe {
 
 	    //TODO: need way to test if publish was called on an input ? may be much easer to detect missing publish. or extra release.
 	    if ((--ring.batchPublishCountDown<=0)) {
-	        PaddedInt.set(ring.unstructuredLayoutRingBufferHead.bytesHeadPos,ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value);
-	        ring.structuredLayoutRingBufferHead.headPos.lazySet(ring.structuredLayoutRingBufferHead.workingHeadPos.value);
+	        PaddedInt.set(ring.blobRingHead.bytesHeadPos,ring.blobRingHead.byteWorkingHeadPos.value);
+	        ring.slabRingHead.headPos.lazySet(ring.slabRingHead.workingHeadPos.value);
 	        assert(debugHeadAssignment(ring));
 	        ring.batchPublishCountDown = ring.batchPublishCountDownInit;
 	    } else {
@@ -2186,14 +2184,14 @@ public final class Pipe {
 	}
 
 	static void storeUnpublishedHead(Pipe ring) {
-		ring.lastPublishedUnstructuredLayoutRingBufferHead = ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
-		ring.lastPublishedStructuredLayoutRingBufferHead = ring.structuredLayoutRingBufferHead.workingHeadPos.value;
+		ring.lastPublishedBlobRingHead = ring.blobRingHead.byteWorkingHeadPos.value;
+		ring.lastPublishedSlabRingHead = ring.slabRingHead.workingHeadPos.value;
 	}
 
     public static void abandonWrites(Pipe ring) {
         //ignore the fact that any of this was written to the ring buffer
-    	ring.structuredLayoutRingBufferHead.workingHeadPos.value = ring.structuredLayoutRingBufferHead.headPos.longValue();
-    	ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value = PaddedInt.get(ring.unstructuredLayoutRingBufferHead.bytesHeadPos);
+    	ring.slabRingHead.workingHeadPos.value = ring.slabRingHead.headPos.longValue();
+    	ring.blobRingHead.byteWorkingHeadPos.value = PaddedInt.get(ring.blobRingHead.bytesHeadPos);
     	storeUnpublishedHead(ring);
     }
 
@@ -2214,22 +2212,22 @@ public final class Pipe {
     //where these spin locks are commonly used.
 
     public static void spinBlockForRoom(Pipe ringBuffer, int size) {
-        while (!roomToLowLevelWrite(ringBuffer, size)) {
+        while (!hasRoomForWrite(ringBuffer, size)) {
             spinWork(ringBuffer);
         }
     }
 
     @Deprecated //use spinBlockForRoom then confirm the write afterwords
     public static long spinBlockOnTail(long lastCheckedValue, long targetValue, Pipe ringBuffer) {
-    	while (null==ringBuffer.structuredLayoutRingBuffer || lastCheckedValue < targetValue) {
+    	while (null==ringBuffer.slabRing || lastCheckedValue < targetValue) {
     		spinWork(ringBuffer);
-		    lastCheckedValue = ringBuffer.structuredLayoutRingTail.tailPos.longValue();
+		    lastCheckedValue = ringBuffer.slabRingTail.tailPos.longValue();
 		}
 		return lastCheckedValue;
     }
 
     public static void spinBlockForContent(Pipe ringBuffer) {
-        while (!contentToLowLevelRead(ringBuffer, 1)) {
+        while (!hasContentToRead(ringBuffer)) {
             spinWork(ringBuffer);
         }
     }
@@ -2238,7 +2236,7 @@ public final class Pipe {
     public static long spinBlockOnHead(long lastCheckedValue, long targetValue, Pipe ringBuffer) {
     	while ( lastCheckedValue < targetValue) {
     		spinWork(ringBuffer);
-		    lastCheckedValue = ringBuffer.structuredLayoutRingBufferHead.headPos.get();
+		    lastCheckedValue = ringBuffer.slabRingHead.headPos.get();
 		}
 		return lastCheckedValue;
     }
@@ -2255,31 +2253,31 @@ public final class Pipe {
 	}
 
 	public static long headPosition(Pipe ring) {
-		 return ring.structuredLayoutRingBufferHead.headPos.get();
+		 return ring.slabRingHead.headPos.get();
 	}
 
     public static long workingHeadPosition(Pipe ring) {
-        return PaddedLong.get(ring.structuredLayoutRingBufferHead.workingHeadPos);
+        return PaddedLong.get(ring.slabRingHead.workingHeadPos);
     }
 
     public static void setWorkingHead(Pipe ring, long value) {
-        PaddedLong.set(ring.structuredLayoutRingBufferHead.workingHeadPos, value);
+        PaddedLong.set(ring.slabRingHead.workingHeadPos, value);
     }
 
     public static long addAndGetWorkingHead(Pipe ring, int inc) {
-        return PaddedLong.add(ring.structuredLayoutRingBufferHead.workingHeadPos, inc);
+        return PaddedLong.add(ring.slabRingHead.workingHeadPos, inc);
     }
 
     public static long getWorkingTailPosition(Pipe ring) {
-        return PaddedLong.get(ring.structuredLayoutRingTail.workingTailPos);
+        return PaddedLong.get(ring.slabRingTail.workingTailPos);
     }
 
     public static void setWorkingTailPosition(Pipe ring, long value) {
-        PaddedLong.set(ring.structuredLayoutRingTail.workingTailPos, value);
+        PaddedLong.set(ring.slabRingTail.workingTailPos, value);
     }
 
     public static long addAndGetWorkingTail(Pipe ring, int inc) {
-        return PaddedLong.add(ring.structuredLayoutRingTail.workingTailPos, inc);
+        return PaddedLong.add(ring.slabRingTail.workingTailPos, inc);
     }
 
 
@@ -2290,11 +2288,11 @@ public final class Pipe {
 	 * @param workingHeadPos
 	 */
 	public static void publishWorkingHeadPosition(Pipe ring, long workingHeadPos) {
-		ring.structuredLayoutRingBufferHead.headPos.lazySet(ring.structuredLayoutRingBufferHead.workingHeadPos.value = workingHeadPos);
+		ring.slabRingHead.headPos.lazySet(ring.slabRingHead.workingHeadPos.value = workingHeadPos);
 	}
 
 	public static long tailPosition(Pipe ring) {
-		return ring.structuredLayoutRingTail.tailPos.get();
+		return ring.slabRingTail.tailPos.get();
 	}
 
 
@@ -2306,12 +2304,12 @@ public final class Pipe {
 	 * @param workingTailPos
 	 */
 	public static void publishWorkingTailPosition(Pipe ring, long workingTailPos) {
-		ring.structuredLayoutRingTail.tailPos.lazySet(ring.structuredLayoutRingTail.workingTailPos.value = workingTailPos);
+		ring.slabRingTail.tailPos.lazySet(ring.slabRingTail.workingTailPos.value = workingTailPos);
 	}
 
 	@Deprecated
 	public static int primarySize(Pipe ring) {
-		return ring.sizeOfStructuredLayoutRingBuffer;
+		return ring.sizeOfSlabRing;
 	}
 
 	public static FieldReferenceOffsetManager from(Pipe ring) {
@@ -2325,27 +2323,27 @@ public final class Pipe {
 
 	public static void writeTrailingCountOfBytesConsumed(Pipe ring, long pos) {
 
-		int consumed = ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value - ring.unstructuredWriteLastConsumedBytePos;
+		int consumed = ring.blobRingHead.byteWorkingHeadPos.value - ring.blobWriteLastConsumedPos;
 		//log.trace("wrote {} bytes consumed to position {}",consumed,pos);
-		ring.structuredLayoutRingBuffer[ring.mask & (int)pos] = consumed>=0 ? consumed : consumed&BYTES_WRAP_MASK ;
-		ring.unstructuredWriteLastConsumedBytePos = ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos.value;
+		ring.slabRing[ring.mask & (int)pos] = consumed>=0 ? consumed : consumed&BYTES_WRAP_MASK ;
+		ring.blobWriteLastConsumedPos = ring.blobRingHead.byteWorkingHeadPos.value;
 
 	}
 
 	public static IntBuffer wrappedStructuredLayoutRingBuffer(Pipe ring) {
-		return ring.wrappedStructuredLayoutRingBuffer;
+		return ring.wrappedSlabRing;
 	}
 
 	public static ByteBuffer wrappedUnstructuredLayoutRingBufferA(Pipe ring) {
-		return ring.wrappedUnstructuredLayoutRingBufferA;
+		return ring.wrappedBlobRingA;
 	}
 
     public static ByteBuffer wrappedUnstructuredLayoutRingBufferB(Pipe ring) {
-        return ring.wrappedUnstructuredLayoutRingBufferB;
+        return ring.wrappedBlobRingB;
     }
 
 	public static ByteBuffer wrappedUnstructuredLayoutConstBuffer(Pipe ring) {
-		return ring.wrappedUnstructuredLayoutConstBuffer;
+		return ring.wrappedBlobConstBuffer;
 	}
 
 	/////////////
@@ -2372,7 +2370,7 @@ public final class Pipe {
 	}
 
 	private static boolean roomToLowLevelWriteSlow(Pipe output, long target) {
-		return (output.llRead.llrTailPosCache = output.structuredLayoutRingTail.tailPos.get()) >= target;
+		return (output.llRead.llrTailPosCache = output.slabRingTail.tailPos.get()) >= target;
 	}
 
 	public static long confirmLowLevelWrite(Pipe output, int size) { //TOOD: rename
@@ -2398,13 +2396,13 @@ public final class Pipe {
 	}
 
 	private static boolean contentToLowLevelReadSlow(Pipe input, long target) {
-		return (input.llWrite.llwHeadPosCache = input.structuredLayoutRingBufferHead.headPos.get()) >= target;
+		return (input.llWrite.llwHeadPosCache = input.slabRingHead.headPos.get()) >= target;
 	}
 
 	public static long confirmLowLevelRead(Pipe input, long size) {
 	    assert(size>0) : "Must have read something.";
-	    assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.structuredLayoutRingBufferHead.workingHeadPos.value) : "size was too large, past known data";
-	    assert(input.llWrite.llwConfirmedWrittenPosition + size >= input.structuredLayoutRingTail.tailPos.get()) : "size was too small, under known data";        
+	    assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value) : "size was too large, past known data";
+	    assert(input.llWrite.llwConfirmedWrittenPosition + size >= input.slabRingTail.tailPos.get()) : "size was too small, under known data";        
 		return (input.llWrite.llwConfirmedWrittenPosition += size);
 	}
 
@@ -2417,7 +2415,7 @@ public final class Pipe {
 	}
 
 	public static int getUnstructuredLayoutRingTailPosition(Pipe ring) {
-	    return PaddedInt.get(ring.unstructuredLayoutRingTail.bytesTailPos);
+	    return PaddedInt.get(ring.blobRingTail.bytesTailPos);
 	}
 
 	@Deprecated
@@ -2426,23 +2424,23 @@ public final class Pipe {
     }
 
     public static void setBytesTail(Pipe ring, int value) {
-        PaddedInt.set(ring.unstructuredLayoutRingTail.bytesTailPos, value);
+        PaddedInt.set(ring.blobRingTail.bytesTailPos, value);
     }
 
     public static int bytesHeadPosition(Pipe ring) {
-        return PaddedInt.get(ring.unstructuredLayoutRingBufferHead.bytesHeadPos);
+        return PaddedInt.get(ring.blobRingHead.bytesHeadPos);
     }
 
     public static void setBytesHead(Pipe ring, int value) {
-        PaddedInt.set(ring.unstructuredLayoutRingBufferHead.bytesHeadPos, value);
+        PaddedInt.set(ring.blobRingHead.bytesHeadPos, value);
     }
 
     public static int addAndGetBytesHead(Pipe ring, int inc) {
-        return PaddedInt.add(ring.unstructuredLayoutRingBufferHead.bytesHeadPos, inc);
+        return PaddedInt.add(ring.blobRingHead.bytesHeadPos, inc);
     }
 
     public static int getWorkingUnstructuredLayoutRingTailPosition(Pipe ring) {
-        return PaddedInt.get(ring.unstructuredLayoutRingTail.byteWorkingTailPos);
+        return PaddedInt.get(ring.blobRingTail.byteWorkingTailPos);
     }
 
     @Deprecated
@@ -2451,23 +2449,23 @@ public final class Pipe {
     }
 
     public static int addAndGetBytesWorkingTailPosition(Pipe ring, int inc) {
-        return PaddedInt.maskedAdd(ring.unstructuredLayoutRingTail.byteWorkingTailPos, inc, Pipe.BYTES_WRAP_MASK);
+        return PaddedInt.maskedAdd(ring.blobRingTail.byteWorkingTailPos, inc, Pipe.BYTES_WRAP_MASK);
     }
 
     public static void setBytesWorkingTail(Pipe ring, int value) {
-        PaddedInt.set(ring.unstructuredLayoutRingTail.byteWorkingTailPos, value);
+        PaddedInt.set(ring.blobRingTail.byteWorkingTailPos, value);
     }
 
     public static int bytesWorkingHeadPosition(Pipe ring) {
-        return PaddedInt.get(ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos);
+        return PaddedInt.get(ring.blobRingHead.byteWorkingHeadPos);
     }
 
     public static int addAndGetBytesWorkingHeadPosition(Pipe ring, int inc) {
-        return PaddedInt.maskedAdd(ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos, inc, Pipe.BYTES_WRAP_MASK);
+        return PaddedInt.maskedAdd(ring.blobRingHead.byteWorkingHeadPos, inc, Pipe.BYTES_WRAP_MASK);
     }
 
     public static void setBytesWorkingHead(Pipe ring, int value) {
-        PaddedInt.set(ring.unstructuredLayoutRingBufferHead.byteWorkingHeadPos, value);
+        PaddedInt.set(ring.blobRingHead.byteWorkingHeadPos, value);
     }
 
     public static int decBatchRelease(Pipe rb) {
@@ -2487,22 +2485,22 @@ public final class Pipe {
     }
 
     public static byte[] byteBuffer(Pipe rb) {
-        return rb.unstructuredLayoutRingBuffer;
+        return rb.blobRing;
     }
 
     public static int[] primaryBuffer(Pipe rb) {
-        return rb.structuredLayoutRingBuffer;
+        return rb.slabRing;
     }
 
     public static void updateBytesWriteLastConsumedPos(Pipe rb) {
-        rb.unstructuredWriteLastConsumedBytePos = Pipe.bytesWorkingHeadPosition(rb);
+        rb.blobWriteLastConsumedPos = Pipe.bytesWorkingHeadPosition(rb);
     }
 
     public static PaddedLong getWorkingTailPositionObject(Pipe rb) {
-        return rb.structuredLayoutRingTail.workingTailPos;
+        return rb.slabRingTail.workingTailPos;
     }
 
     public static PaddedLong getWorkingHeadPositionObject(Pipe rb) {
-        return rb.structuredLayoutRingBufferHead.workingHeadPos;
+        return rb.slabRingHead.workingHeadPos;
     }
 }

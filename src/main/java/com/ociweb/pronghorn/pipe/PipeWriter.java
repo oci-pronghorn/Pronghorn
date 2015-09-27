@@ -241,9 +241,9 @@ public class PipeWriter {
 	public static void publishEOF(Pipe ring) {
 		
 		assert(Pipe.workingHeadPosition(ring)<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
-		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfStructuredLayoutRingBuffer - Pipe.EOF_SIZE), ring);
+		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfSlabRing - Pipe.EOF_SIZE), ring);
 		
-		assert(Pipe.tailPosition(ring)+ring.sizeOfStructuredLayoutRingBuffer>=Pipe.headPosition(ring)+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
+		assert(Pipe.tailPosition(ring)+ring.sizeOfSlabRing>=Pipe.headPosition(ring)+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 		Pipe.setBytesHead(ring, Pipe.bytesWorkingHeadPosition(ring));
 		Pipe.primaryBuffer(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +  Pipe.from(ring).templateOffset)]    = -1;	
 		Pipe.primaryBuffer(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  Pipe.from(ring).templateOffset)] = 0;
@@ -288,7 +288,7 @@ public class PipeWriter {
 		
 		StackStateWalker consumerData = ring.ringWalker;
 		int fragSize = from.fragDataSize[messageTemplateLOC];
-		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, consumerData.nextWorkingHead - (ring.sizeOfStructuredLayoutRingBuffer - fragSize), ring);
+		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, consumerData.nextWorkingHead - (ring.sizeOfSlabRing - fragSize), ring);
 	
 		StackStateWalker.prepWriteFragment(ring, messageTemplateLOC, from, fragSize);
 	}
@@ -301,12 +301,12 @@ public class PipeWriter {
 	public static boolean tryWriteFragment(Pipe ring, int cursorPosition) {
 	    assert(null!=ring);
 		int fragSize = Pipe.from(ring).fragDataSize[cursorPosition];
-		long target = ring.ringWalker.nextWorkingHead - (ring.sizeOfStructuredLayoutRingBuffer - fragSize);
+		long target = ring.ringWalker.nextWorkingHead - (ring.sizeOfSlabRing - fragSize);
 		return StackStateWalker.tryWriteFragment1(ring, cursorPosition, Pipe.from(ring), fragSize, target, ring.llRead.llrTailPosCache >=  target);
 	}
 	
 	public static boolean hasRoomForFragmentOfSize(Pipe ring, int fragSize) {
-	    long limit = ring.ringWalker.nextWorkingHead - (ring.sizeOfStructuredLayoutRingBuffer - fragSize);
+	    long limit = ring.ringWalker.nextWorkingHead - (ring.sizeOfSlabRing - fragSize);
 	    if (!(ring.llRead.llrTailPosCache >= limit)) {
 	        return (ring.llRead.llrTailPosCache =  Pipe.tailPosition(ring)) >= limit;
 	    } else {

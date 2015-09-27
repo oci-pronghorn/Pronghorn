@@ -472,7 +472,7 @@ class StackStateWalker {
 
 	private static boolean copyFragment1(Pipe inputRing, Pipe outputRing, long start, int spaceNeeded, int bytesToCopy) {
 		
-		if ((spaceNeeded >  outputRing.sizeOfStructuredLayoutRingBuffer-(int)(Pipe.workingHeadPosition(outputRing) - Pipe.tailPosition(outputRing)) )) {
+		if ((spaceNeeded >  outputRing.sizeOfSlabRing-(int)(Pipe.workingHeadPosition(outputRing) - Pipe.tailPosition(outputRing)) )) {
 			return false;
 		}
 		copyFragment2(inputRing, outputRing, (int)start, spaceNeeded, bytesToCopy);		

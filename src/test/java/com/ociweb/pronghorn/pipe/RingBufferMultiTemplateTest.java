@@ -383,7 +383,7 @@ public class RingBufferMultiTemplateTest {
         while (true) {
         	
         	if (j == 0) {
-        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfStructuredLayoutRingBuffer - 1), ring);
+        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfSlabRing - 1), ring);
         		Pipe.publishEOF(ring);
         		return;//done
         	}
@@ -395,7 +395,7 @@ public class RingBufferMultiTemplateTest {
         	
         	switch(selectedTemplateId) {
 	        	case 2: //boxes
-	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfStructuredLayoutRingBuffer - 4), ring);
+	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfSlabRing - 4), ring);
 	        		
 	        		j--;
 	        		Pipe.addMsgIdx(ring, MSG_BOXES_LOC);
@@ -405,7 +405,7 @@ public class RingBufferMultiTemplateTest {
 	        		Pipe.publishWrites(ring);
 	        		break;
 	        	case 1: //samples
-	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfStructuredLayoutRingBuffer - 8), ring);
+	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfSlabRing - 8), ring);
 	        		
 	        		j--;
 	        		Pipe.addMsgIdx(ring, MSG_SAMPLE_LOC);
@@ -419,7 +419,7 @@ public class RingBufferMultiTemplateTest {
 	        		Pipe.publishWrites(ring);
 	        		break;
 	        	case 4: //reset
-	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfStructuredLayoutRingBuffer - 3), ring);
+	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfSlabRing - 3), ring);
 	        		
 	        		j--;
 	        		Pipe.addMsgIdx(ring, MSG_RESET_LOC);
