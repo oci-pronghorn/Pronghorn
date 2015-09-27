@@ -330,13 +330,13 @@ public class FieldSplitterStage extends PronghornStage {
 	public static void writeBytesSplit(byte[] data, int offset1, int length1,
 			int offset2, int length2, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_BYTEARRAY_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_BYTEARRAY_LOC]), output);
 		
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_BYTEARRAY_LOC);
 			
 		int	bytePosition = Pipe.bytesWorkingHeadPosition(output);		    	
-		Pipe.copyBytesFromToRing(data, offset1, Integer.MAX_VALUE, output.unstructuredLayoutRingBuffer, bytePosition, output.byteMask, length1);
-		Pipe.copyBytesFromToRing(data, offset2, Integer.MAX_VALUE, output.unstructuredLayoutRingBuffer, bytePosition+length1, output.byteMask, length2);
+		Pipe.copyBytesFromToRing(data, offset1, Integer.MAX_VALUE, output.blobRing, bytePosition, output.byteMask, length1);
+		Pipe.copyBytesFromToRing(data, offset2, Integer.MAX_VALUE, output.blobRing, bytePosition+length1, output.byteMask, length2);
 		int length3 = length1+length2;
 			
 		Pipe.validateVarLength(output, length3);
@@ -347,13 +347,13 @@ public class FieldSplitterStage extends PronghornStage {
 	public static void writeASCIISplit(byte[] data, int offset1, int length1,
 			int offset2, int length2, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_ASCII_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_ASCII_LOC]), output);
 		
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_ASCII_LOC);
 			
 		int bytePosition = Pipe.bytesWorkingHeadPosition(output);
-		Pipe.copyBytesFromToRing(data, offset1, Integer.MAX_VALUE, output.unstructuredLayoutRingBuffer, bytePosition, output.byteMask, length1);
-		Pipe.copyBytesFromToRing(data, offset2, Integer.MAX_VALUE, output.unstructuredLayoutRingBuffer, bytePosition+length1, output.byteMask, length2);
+		Pipe.copyBytesFromToRing(data, offset1, Integer.MAX_VALUE, output.blobRing, bytePosition, output.byteMask, length1);
+		Pipe.copyBytesFromToRing(data, offset2, Integer.MAX_VALUE, output.blobRing, bytePosition+length1, output.byteMask, length2);
 		int length = length1+length2;
 
 		Pipe.validateVarLength(output, length);
@@ -363,7 +363,7 @@ public class FieldSplitterStage extends PronghornStage {
 
 	public static void writeNull(Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_NULL_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_NULL_LOC]), output);
 		
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_NULL_LOC);
 	}
@@ -371,7 +371,7 @@ public class FieldSplitterStage extends PronghornStage {
 	public static void writeDecimal(TypeExtractor typeExtractor,
 			Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_DECIMAL_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_DECIMAL_LOC]), output);
 		
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_DECIMAL_LOC);	
 		Pipe.addDecimal(TypeExtractor.decimalPlaces(typeExtractor), typeExtractor.activeFieldLong*TypeExtractor.signMult(typeExtractor), output);
@@ -380,7 +380,7 @@ public class FieldSplitterStage extends PronghornStage {
 	public static void writeBytes(byte[] data, int offset, int length,
 			Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_BYTEARRAY_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_BYTEARRAY_LOC]), output);
 		
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_BYTEARRAY_LOC);
 		Pipe.addByteArray(data, offset, length, output);
@@ -389,7 +389,7 @@ public class FieldSplitterStage extends PronghornStage {
 	public static void writeASCII(byte[] data, int offset, int length, Pipe output) {
 
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_ASCII_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_ASCII_LOC]), output);
 		
 		Pipe.addMsgIdx(output,MetaMessageDefs.MSG_ASCII_LOC);
 		
@@ -399,26 +399,26 @@ public class FieldSplitterStage extends PronghornStage {
 
 	public static void writeLong(TypeExtractor typeExtractor, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_INT64_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_INT64_LOC]), output);
 		
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_INT64_LOC);
-		Pipe.addLongValue(output.structuredLayoutRingBuffer, output.mask, Pipe.getWorkingHeadPositionObject(output), typeExtractor.activeFieldLong*(long)TypeExtractor.signMult(typeExtractor));
+		Pipe.addLongValue(output.slabRing, output.mask, Pipe.getWorkingHeadPositionObject(output), typeExtractor.activeFieldLong*(long)TypeExtractor.signMult(typeExtractor));
 	}
 
 	public static void writeULong(TypeExtractor typeExtractor, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_UINT64_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_UINT64_LOC]), output);
 		
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_UINT64_LOC);
-		Pipe.addLongValue(output.structuredLayoutRingBuffer, output.mask, Pipe.getWorkingHeadPositionObject(output), typeExtractor.activeFieldLong);
+		Pipe.addLongValue(output.slabRing, output.mask, Pipe.getWorkingHeadPositionObject(output), typeExtractor.activeFieldLong);
 	}
 
 	public static void writeInt(TypeExtractor typeExtractor, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_INT32_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_INT32_LOC]), output);
 		
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_INT32_LOC);
-		Pipe.setValue(output.structuredLayoutRingBuffer,output.mask,Pipe.getWorkingHeadPositionObject(output).value++,((int)typeExtractor.activeFieldLong)*TypeExtractor.signMult(typeExtractor));		
+		Pipe.setValue(output.slabRing,output.mask,Pipe.getWorkingHeadPositionObject(output).value++,((int)typeExtractor.activeFieldLong)*TypeExtractor.signMult(typeExtractor));		
 			
 			TypeExtractor.signMult(typeExtractor);
 	}
@@ -426,17 +426,17 @@ public class FieldSplitterStage extends PronghornStage {
 	public static void writeUInt(TypeExtractor typeExtractor,
 			Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfStructuredLayoutRingBuffer-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_UINT32_LOC]), output);
+		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_UINT32_LOC]), output);
 		
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_UINT32_LOC);
-		Pipe.setValue(output.structuredLayoutRingBuffer,output.mask,Pipe.getWorkingHeadPositionObject(output).value++,(int)typeExtractor.activeFieldLong);
+		Pipe.setValue(output.slabRing,output.mask,Pipe.getWorkingHeadPositionObject(output).value++,(int)typeExtractor.activeFieldLong);
 	}
 	
 	
 	private static void endOfData(Pipe ring) {
 		
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(ring), Pipe.workingHeadPosition(ring)-(ring.sizeOfStructuredLayoutRingBuffer-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_FLUSH]), ring);
+		spinBlockOnTail(Pipe.tailPosition(ring), Pipe.workingHeadPosition(ring)-(ring.sizeOfSlabRing-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_FLUSH]), ring);
 		
 		Pipe.addMsgIdx(ring, MetaMessageDefs.MSG_FLUSH);
 		Pipe.publishWrites(ring);
@@ -445,7 +445,7 @@ public class FieldSplitterStage extends PronghornStage {
 
 	private static void beginningOfLine(Pipe ring) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(ring), Pipe.workingHeadPosition(ring)-(ring.sizeOfStructuredLayoutRingBuffer-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_MESSAGE_BEGIN_LOC]), ring);
+		spinBlockOnTail(Pipe.tailPosition(ring), Pipe.workingHeadPosition(ring)-(ring.sizeOfSlabRing-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_MESSAGE_BEGIN_LOC]), ring);
 		
 		Pipe.addMsgIdx(ring, MetaMessageDefs.MSG_MESSAGE_BEGIN_LOC);
 		Pipe.publishWrites(ring);
@@ -453,7 +453,7 @@ public class FieldSplitterStage extends PronghornStage {
 	
 	private static void endOfLine(Pipe ring) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(ring), Pipe.workingHeadPosition(ring)-(ring.sizeOfStructuredLayoutRingBuffer-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_MESSAGE_END_LOC]), ring);
+		spinBlockOnTail(Pipe.tailPosition(ring), Pipe.workingHeadPosition(ring)-(ring.sizeOfSlabRing-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_MESSAGE_END_LOC]), ring);
 		
 		Pipe.addMsgIdx(ring, MetaMessageDefs.MSG_MESSAGE_END_LOC);
 		Pipe.publishWrites(ring);

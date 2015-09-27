@@ -31,7 +31,7 @@ public class LineSplitterFileChannelStage extends LineSplitterByteBufferStage {
 	    }
 		log.info("running line splitter now");
 		try{
-			long maxStep = Math.max(1<<27, 1<<outputRing.bitsOfUntructuredLayoutRingBuffer);
+			long maxStep = Math.max(1<<27, 1<<outputRing.bitsOfBlogRing);
 			final long fileSize = fileChannel.size();
 			
 			long pos = 0;

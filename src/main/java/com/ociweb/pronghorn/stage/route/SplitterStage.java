@@ -58,20 +58,20 @@ public class SplitterStage extends PronghornStage {
 			//      therefore if that target is full and needs one more fragment we may have a problem if the batch it has grabbed is 
 			//      nearly has large as the target ring.  To resolve this we only need to ensure that the target ring is 2x the source.
 			
-			int reqTargetSize = source.bitsOfStructuredLayoutRingBuffer+1; //target ring must be 2x bigger than source
-			if (targets[i].bitsOfStructuredLayoutRingBuffer < reqTargetSize) {
-				throw new UnsupportedOperationException("The target ring "+i+" primary bit size must be at least "+reqTargetSize+" but it was "+targets[i].bitsOfStructuredLayoutRingBuffer+
+			int reqTargetSize = source.bitsOfSlabRing+1; //target ring must be 2x bigger than source
+			if (targets[i].bitsOfSlabRing < reqTargetSize) {
+				throw new UnsupportedOperationException("The target ring "+i+" primary bit size must be at least "+reqTargetSize+" but it was "+targets[i].bitsOfSlabRing+
 						           ". To avoid blocking hang behavior the target rings must always be 2x larger than the source ring.");
 			}
 			
-			reqTargetSize = source.bitsOfUntructuredLayoutRingBuffer+1;
-			if (targets[i].bitsOfUntructuredLayoutRingBuffer < reqTargetSize) {
-				throw new UnsupportedOperationException("The target ring "+i+" byte bit size must be at least "+reqTargetSize+" but it was "+targets[i].bitsOfUntructuredLayoutRingBuffer+
+			reqTargetSize = source.bitsOfBlogRing+1;
+			if (targets[i].bitsOfBlogRing < reqTargetSize) {
+				throw new UnsupportedOperationException("The target ring "+i+" byte bit size must be at least "+reqTargetSize+" but it was "+targets[i].bitsOfBlogRing+
 									". To avoid blocking hang behavior the target rings must always be 2x larger than the source ring.");
 			}
 			
-			int minDif = source.bitsOfUntructuredLayoutRingBuffer     -    source.bitsOfStructuredLayoutRingBuffer;
-			int targDif = targets[i].bitsOfUntructuredLayoutRingBuffer - targets[i].bitsOfStructuredLayoutRingBuffer;
+			int minDif = source.bitsOfBlogRing     -    source.bitsOfSlabRing;
+			int targDif = targets[i].bitsOfBlogRing - targets[i].bitsOfSlabRing;
 			if (targDif<minDif) {
 				throw new UnsupportedOperationException("The target ring "+i+" bit dif must be at least "+minDif+" but it was "+targDif);
 			}

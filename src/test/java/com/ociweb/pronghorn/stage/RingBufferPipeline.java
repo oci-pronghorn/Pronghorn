@@ -542,7 +542,7 @@ public class RingBufferPipeline {
 
 			 
 			 //test by starting at different location in the ring to force roll over.
-			 rings[j].reset(rings[j].sizeOfStructuredLayoutRingBuffer-13,rings[j].sizeOfUntructuredLayoutRingBuffer-101);
+			 rings[j].reset(rings[j].sizeOfSlabRing-13,rings[j].sizeOfBlobRing-101);
 	  		 
 			 if (monitor) {
 				 monitorRings[j] = new Pipe(new PipeConfig((byte)16, (byte)2, null, montorFROM));
@@ -576,7 +576,7 @@ public class RingBufferPipeline {
 				 
 				 Pipe[] splitsBuffers = new Pipe[splits];
 				 splitsBuffers[0] = rings[j+1];//must jump ahead because we are setting this early
-				 assert(splitsBuffers[0].bitsOfStructuredLayoutRingBuffer == ex+primaryBits);
+				 assert(splitsBuffers[0].bitsOfSlabRing == ex+primaryBits);
 				 if (splits>1) {
 					 int k = splits;
 					 while (--k>0) {

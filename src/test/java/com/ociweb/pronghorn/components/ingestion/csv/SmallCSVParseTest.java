@@ -117,8 +117,8 @@ public class SmallCSVParseTest {
 		Pipe linesRing = new Pipe(linesRingConfig);
 		
 		//start near the end to force the rollover to happen.
-		long start = linesRing.sizeOfStructuredLayoutRingBuffer-15;
-		int startBytes = linesRing.sizeOfUntructuredLayoutRingBuffer-15;
+		long start = linesRing.sizeOfSlabRing-15;
+		int startBytes = linesRing.sizeOfBlobRing-15;
 		
 		linesRing.initBuffers();
 		

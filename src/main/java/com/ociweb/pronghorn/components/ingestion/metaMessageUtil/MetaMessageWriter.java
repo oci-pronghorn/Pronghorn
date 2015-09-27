@@ -21,7 +21,7 @@ public class MetaMessageWriter  {
 				final int p = Pipe.copyASCIIToBytes(columnName, 0, sourceLen, ring); 
 				Pipe.addBytePosAndLen(ring, p, sourceLen);
             }
-            Pipe.setValue(ring.structuredLayoutRingBuffer,ring.mask,Pipe.getWorkingHeadPositionObject(ring).value++,(value != null) ? 1 : 0); // true if not null
+            Pipe.setValue(ring.slabRing,ring.mask,Pipe.getWorkingHeadPositionObject(ring).value++,(value != null) ? 1 : 0); // true if not null
             Pipe.publishWrites(ring);
         }
     }
@@ -43,7 +43,7 @@ public class MetaMessageWriter  {
 			final int p = Pipe.copyASCIIToBytes(columnName, 0, sourceLen, ring); 
 			Pipe.addBytePosAndLen(ring, p, sourceLen);
         }
-        Pipe.setValue(ring.structuredLayoutRingBuffer,ring.mask,Pipe.getWorkingHeadPositionObject(ring).value++,value);
+        Pipe.setValue(ring.slabRing,ring.mask,Pipe.getWorkingHeadPositionObject(ring).value++,value);
         Pipe.publishWrites(ring);
     }
 
@@ -78,7 +78,7 @@ public class MetaMessageWriter  {
 				final int p = Pipe.copyASCIIToBytes(columnName, 0, sourceLen, ring); 
 				Pipe.addBytePosAndLen(ring, p, sourceLen);
             }
-            Pipe.setValue(ring.structuredLayoutRingBuffer,ring.mask,Pipe.getWorkingHeadPositionObject(ring).value++,((Boolean) value).booleanValue() ? 1 : 0);
+            Pipe.setValue(ring.slabRing,ring.mask,Pipe.getWorkingHeadPositionObject(ring).value++,((Boolean) value).booleanValue() ? 1 : 0);
             Pipe.publishWrites(ring);
         }
     }
@@ -98,7 +98,7 @@ public class MetaMessageWriter  {
 				final int p = Pipe.copyASCIIToBytes(columnName, 0, sourceLen, ring); 
 				Pipe.addBytePosAndLen(ring, p, sourceLen);
             }
-            Pipe.addLongValue(ring.structuredLayoutRingBuffer, ring.mask, Pipe.getWorkingHeadPositionObject(ring), ((Number)value).longValue());
+            Pipe.addLongValue(ring.slabRing, ring.mask, Pipe.getWorkingHeadPositionObject(ring), ((Number)value).longValue());
             Pipe.publishWrites(ring);
         }
     }
@@ -137,7 +137,7 @@ public class MetaMessageWriter  {
 				Pipe.addBytePosAndLen(ring, p, sourceLen);
             }
             long bits = Double.doubleToLongBits( ((Number)value).doubleValue());
-            Pipe.addLongValue(ring.structuredLayoutRingBuffer, ring.mask, Pipe.getWorkingHeadPositionObject(ring), bits);
+            Pipe.addLongValue(ring.slabRing, ring.mask, Pipe.getWorkingHeadPositionObject(ring), bits);
             Pipe.publishWrites(ring);
         }
     }
@@ -156,7 +156,7 @@ public class MetaMessageWriter  {
 				Pipe.addBytePosAndLen(ring, p, sourceLen);
             }
             int bits = Float.floatToIntBits( ((Number)value).floatValue());
-            Pipe.setValue(ring.structuredLayoutRingBuffer,ring.mask,Pipe.getWorkingHeadPositionObject(ring).value++,bits);
+            Pipe.setValue(ring.slabRing,ring.mask,Pipe.getWorkingHeadPositionObject(ring).value++,bits);
             Pipe.publishWrites(ring);
         }
     }
@@ -177,7 +177,7 @@ public class MetaMessageWriter  {
             }
             long millisecondsSinceEpoch = ((java.util.Date) value).getTime(); // java.sql.Date, java.sql.Time,
                                                                               // java.sql.Timestamp
-            Pipe.addLongValue(ring.structuredLayoutRingBuffer, ring.mask, Pipe.getWorkingHeadPositionObject(ring), millisecondsSinceEpoch);
+            Pipe.addLongValue(ring.slabRing, ring.mask, Pipe.getWorkingHeadPositionObject(ring), millisecondsSinceEpoch);
             Pipe.publishWrites(ring);
         }
     }
@@ -194,9 +194,9 @@ public class MetaMessageWriter  {
 				Pipe.addBytePosAndLen(ring, p, sourceLen);
             }
             long millisecondsSinceEpoch = timestamp.getTime();
-            Pipe.addLongValue(ring.structuredLayoutRingBuffer, ring.mask, Pipe.getWorkingHeadPositionObject(ring), millisecondsSinceEpoch);
-            Pipe.setValue(ring.structuredLayoutRingBuffer,ring.mask,Pipe.getWorkingHeadPositionObject(ring).value++,timestamp.getNanos());
-            Pipe.setValue(ring.structuredLayoutRingBuffer,ring.mask,Pipe.getWorkingHeadPositionObject(ring).value++,tzOffset);
+            Pipe.addLongValue(ring.slabRing, ring.mask, Pipe.getWorkingHeadPositionObject(ring), millisecondsSinceEpoch);
+            Pipe.setValue(ring.slabRing,ring.mask,Pipe.getWorkingHeadPositionObject(ring).value++,timestamp.getNanos());
+            Pipe.setValue(ring.slabRing,ring.mask,Pipe.getWorkingHeadPositionObject(ring).value++,tzOffset);
             Pipe.publishWrites(ring);
         }
     }
