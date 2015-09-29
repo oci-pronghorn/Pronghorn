@@ -667,11 +667,11 @@ public final class Pipe {
         this.slabRing = new int[sizeOfSlabRing];
         this.blobRingLookup = new byte[][] {blobRing,blobConstBuffer};
 
-        this.wrappedSlabRing = IntBuffer.wrap(this.slabRing);
+        this.wrappedSlabRing = IntBuffer.wrap(this.slabRing);        
         this.wrappedBlobRingA = ByteBuffer.wrap(this.blobRing);
         this.wrappedBlobRingB = ByteBuffer.wrap(this.blobRing);
         this.wrappedBlobConstBuffer = null==this.blobConstBuffer?null:ByteBuffer.wrap(this.blobConstBuffer);
-
+        
         assert(0==wrappedBlobRingA.position() && wrappedBlobRingA.capacity()==wrappedBlobRingA.limit()) : "The ByteBuffer is not clear.";
 
 	}

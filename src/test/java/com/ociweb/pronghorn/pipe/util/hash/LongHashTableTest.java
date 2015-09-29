@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.pipe.util;
+package com.ociweb.pronghorn.pipe.util.hash;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
