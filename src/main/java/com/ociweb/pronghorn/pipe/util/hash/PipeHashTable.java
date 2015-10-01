@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.pipe.util.hash;
 
 
 /**
+ * Lower bound range limited value hash table 
  * 
  * @author Nathan Tippy
  *
@@ -27,8 +28,8 @@ public class PipeHashTable {
 
 	}
 	
-	public void setLowerBounds(long value) {
-	    this.lowerBounds = value;
+	public static void setLowerBounds(PipeHashTable ht, long value) {
+	    ht.lowerBounds = value;
 	}
 		
 	public static boolean setItem(PipeHashTable ht, long key, long value)
@@ -76,22 +77,21 @@ public class PipeHashTable {
 		//if value is greater than the lower then the dif will be negative
 		//we take the high bit and fill all 64 then and it with the response
 		//if the top is zero then we will return zero, eg not found response.
-		return value&((ht.lowerBounds-value)>>63);
+		return value&((ht.lowerBounds-(1+value))>>63);
 		
 	}
 	    
 	public static boolean hasItem(PipeHashTable ht, long key) {
 
-		int mask = ht.mask;
-		
+		int mask = ht.mask;		
 		int hash = MurmurHash.hash64finalizer(key);
 		
 		long keyAtIdx = ht.keys[hash&mask];
 		while (keyAtIdx != key && keyAtIdx != 0) { 			
 			keyAtIdx = ht.keys[++hash&mask];
 		}
-				
-		return 0 == (keyAtIdx&((ht.lowerBounds-keyAtIdx)>>63));
+		long value = ht.values[hash&mask];		
+		return 0 != (value&((ht.lowerBounds-(1+value))>>63));
 	}
 	
 	public static boolean replaceItem(PipeHashTable ht, long key, long newValue) {

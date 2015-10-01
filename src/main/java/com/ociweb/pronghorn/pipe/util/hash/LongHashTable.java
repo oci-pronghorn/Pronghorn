@@ -85,7 +85,7 @@ public class LongHashTable {
 			keyAtIdx = ht.keys[++hash&mask];
 		}
 				
-		return 0 == keyAtIdx;
+		return 0 != keyAtIdx;
 	}
 	
 	public static boolean replaceItem(LongHashTable ht, long key, int newValue) {
