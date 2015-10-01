@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.pipe.Pipe.PaddedInt;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
@@ -59,7 +58,7 @@ import com.ociweb.pronghorn.pipe.util.PaddedAtomicLong;
  * @since 0.1
  *
  */
-public final class Pipe {
+public final class Pipe<T extends MessageSchema> {
 
     private static final AtomicInteger ringCounter = new AtomicInteger();
     
@@ -426,8 +425,53 @@ public final class Pipe {
 	private int  holdingBlobWorkingTail;
 	private int holdingBlobReadBase;
 
+    public Pipe(PipeConfig<T> config) {
 
-	public static void replayUnReleased(Pipe ringBuffer) {
+        byte primaryBits = config.primaryBits;
+        byte byteBits = config.byteBits;
+        byte[] byteConstants = config.byteConst;
+
+
+        debugFlags = config.debugFlags;
+
+        //Assign the immutable universal id value for this specific instance
+        //these values are required to keep track of all ring buffers when graphs are built
+        this.ringId = ringCounter.getAndIncrement();
+
+        this.bitsOfSlabRing = primaryBits;
+        this.bitsOfBlogRing = byteBits;
+
+        assert (primaryBits >= 0); //zero is a special case for a mock ring
+
+//cas: naming.  This should be consistent with the maxByteSize, i.e., maxFixedSize or whatever.
+        //single buffer size for every nested set of groups, must be set to support the largest need.
+        this.sizeOfSlabRing = 1 << primaryBits;
+        this.mask = sizeOfSlabRing - 1;
+
+        //single text and byte buffers because this is where the variable-length data will go.
+
+        this.sizeOfBlobRing =  1 << byteBits;
+        this.byteMask = sizeOfBlobRing - 1;
+
+        FieldReferenceOffsetManager from = config.from;
+        this.ringWalker = new StackStateWalker(from);
+        this.blobConstBuffer = byteConstants;
+
+
+        if (0 == from.maxVarFieldPerUnit || 0==primaryBits) { //zero bits is for the dummy mock case
+            maxAvgVarLen = 0; //no fragments had any variable-length fields so we never allow any
+        } else {
+            //given outer ring buffer this is the maximum number of var fields that can exist at the same time.
+            int mx = sizeOfSlabRing;
+            int maxVarCount = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, mx);
+            //to allow more almost 2x more flexibility in variable-length bytes we track pairs of writes and ensure the
+            //two together are below the threshold rather than each alone
+            maxAvgVarLen = sizeOfBlobRing/maxVarCount;
+        }
+    }
+    
+    
+	public static <S extends MessageSchema> void replayUnReleased(Pipe<S> ringBuffer) {
 
 //We must enforce this but we have a few unit tests that are in violation which need to be fixed first
 //	    if (!RingBuffer.from(ringBuffer).hasSimpleMessagesOnly) {
@@ -461,11 +505,11 @@ public final class Pipe {
  * @param ringBuffer  the ringBuffer to check.
  * @return            <code>true</code> if the ringBuffer is replaying, <code>false</code> if it is not.
  */
-	public static boolean isReplaying(Pipe ringBuffer) {
+	public static <S extends MessageSchema> boolean isReplaying(Pipe<S> ringBuffer) {
 		return Pipe.getWorkingTailPosition(ringBuffer)<ringBuffer.holdingSlabWorkingTail;
 	}
 
-	public static void cancelReplay(Pipe ringBuffer) {
+	public static <S extends MessageSchema> void cancelReplay(Pipe<S> ringBuffer) {
 		ringBuffer.slabRingTail.workingTailPos.value = ringBuffer.holdingSlabWorkingTail;
 		ringBuffer.blobRingTail.byteWorkingTailPos.value = ringBuffer.holdingBlobWorkingTail;
 
@@ -477,13 +521,13 @@ public final class Pipe {
 
 	////
 	////
-	public static void batchAllReleases(Pipe rb) {
+	public static <S extends MessageSchema> void batchAllReleases(Pipe<S> rb) {
 	       rb.batchReleaseCountDownInit = Integer.MAX_VALUE;
 	       rb.batchReleaseCountDown = Integer.MAX_VALUE;
 	}
 
 
-    public static void setReleaseBatchSize(Pipe rb, int size) {
+    public static <S extends MessageSchema> void setReleaseBatchSize(Pipe<S> rb, int size) {
 
     	validateBatchSize(rb, size);
 
@@ -491,7 +535,7 @@ public final class Pipe {
     	rb.batchReleaseCountDown = size;
     }
 
-    public static void setPublishBatchSize(Pipe rb, int size) {
+    public static <S extends MessageSchema> void setPublishBatchSize(Pipe<S> rb, int size) {
 
     	validateBatchSize(rb, size);
 
@@ -499,15 +543,15 @@ public final class Pipe {
     	rb.batchPublishCountDown = size;
     }
     
-    public static int getPublishBatchSize(Pipe pipe) {
+    public static <S extends MessageSchema> int getPublishBatchSize(Pipe<S> pipe) {
         return pipe.batchPublishCountDownInit;
     }
     
-    public static int getReleaseBatchSize(Pipe pipe) {
+    public static <S extends MessageSchema> int getReleaseBatchSize(Pipe<S> pipe) {
         return pipe.batchReleaseCountDownInit;
     }
 
-    public static void setMaxPublishBatchSize(Pipe rb) {
+    public static <S extends MessageSchema> void setMaxPublishBatchSize(Pipe<S> rb) {
 
     	int size = computeMaxBatchSize(rb, 3);
 
@@ -516,7 +560,7 @@ public final class Pipe {
 
     }
 
-    public static void setMaxReleaseBatchSize(Pipe rb) {
+    public static <S extends MessageSchema> void setMaxReleaseBatchSize(Pipe<S> rb) {
 
     	int size = computeMaxBatchSize(rb, 3);
     	rb.batchReleaseCountDownInit = size;
@@ -527,24 +571,24 @@ public final class Pipe {
 
 //cas: naming -- a couple of things, neither new.  Obviously the name of the buffer, bytes.  Also the use of base in
 // the variable buffer, but not in the fixed.  Otoh, by now, maybe the interested reader would already understand.
-    public static int bytesWriteBase(Pipe rb) {
+    public static <S extends MessageSchema> int bytesWriteBase(Pipe<S> rb) {
     	return rb.blobWriteBase;
     }
 
-    public static void markBytesWriteBase(Pipe rb) {
+    public static <S extends MessageSchema> void markBytesWriteBase(Pipe<S> rb) {
     	rb.blobWriteBase = rb.blobRingHead.byteWorkingHeadPos.value;
     }
 
-    public static int bytesReadBase(Pipe rb) {
+    public static <S extends MessageSchema> int bytesReadBase(Pipe<S> rb) {
     	return rb.blobReadBase;
     }
         
     
-    public static void markBytesReadBase(Pipe rb, int bytesConsumed) {
+    public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> rb, int bytesConsumed) {
         rb.blobReadBase = Pipe.BYTES_WRAP_MASK & (rb.blobReadBase+bytesConsumed);
     }
     
-    public static void markBytesReadBase(Pipe pipe) {
+    public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> pipe) {
         int value = PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);        
         pipe.blobReadBase = Pipe.BYTES_WRAP_MASK & value;
     }
@@ -577,63 +621,19 @@ public final class Pipe {
      * Return the configuration used for this ring buffer, Helpful when we need to make clones of the ring which will hold same message types.
      * @return
      */
-    public PipeConfig config() {
+    public PipeConfig<T> config() {
         //TODO:M, this creates garbage and we should just hold the config object instead of copying the values out.  Then return the same instance here.
-        return new PipeConfig(bitsOfSlabRing,bitsOfBlogRing,blobConstBuffer,ringWalker.from);
+        return new PipeConfig<T>(bitsOfSlabRing,bitsOfBlogRing,blobConstBuffer,ringWalker.from);
     }
 
 
-// cas: comment -- sort of curious to have a constructor way down here.
-    public Pipe(PipeConfig config) {
-
-    	byte primaryBits = config.primaryBits;
-    	byte byteBits = config.byteBits;
-    	byte[] byteConstants = config.byteConst;
 
 
-    	debugFlags = config.debugFlags;
-
-        //Assign the immutable universal id value for this specific instance
-    	//these values are required to keep track of all ring buffers when graphs are built
-        this.ringId = ringCounter.getAndIncrement();
-
-    	this.bitsOfSlabRing = primaryBits;
-    	this.bitsOfBlogRing = byteBits;
-
-        assert (primaryBits >= 0); //zero is a special case for a mock ring
-
-//cas: naming.  This should be consistent with the maxByteSize, i.e., maxFixedSize or whatever.
-        //single buffer size for every nested set of groups, must be set to support the largest need.
-        this.sizeOfSlabRing = 1 << primaryBits;
-        this.mask = sizeOfSlabRing - 1;
-
-        //single text and byte buffers because this is where the variable-length data will go.
-
-        this.sizeOfBlobRing =  1 << byteBits;
-        this.byteMask = sizeOfBlobRing - 1;
-
-        FieldReferenceOffsetManager from = config.from;
-        this.ringWalker = new StackStateWalker(from);
-        this.blobConstBuffer = byteConstants;
-
-
-        if (0 == from.maxVarFieldPerUnit || 0==primaryBits) { //zero bits is for the dummy mock case
-        	maxAvgVarLen = 0; //no fragments had any variable-length fields so we never allow any
-        } else {
-        	//given outer ring buffer this is the maximum number of var fields that can exist at the same time.
-        	int mx = sizeOfSlabRing;
-        	int maxVarCount = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, mx);
-        	//to allow more almost 2x more flexibility in variable-length bytes we track pairs of writes and ensure the
-        	//two together are below the threshold rather than each alone
-        	maxAvgVarLen = sizeOfBlobRing/maxVarCount;
-        }
-    }
-
-    public static int totalRings() {
+    public static <S extends MessageSchema> int totalRings() {
         return ringCounter.get();
     }
 
-	public Pipe initBuffers() {
+	public Pipe<T> initBuffers() {
 		assert(!isInit(this)) : "RingBuffer was already initialized";
 		if (!isInit(this)) {
 			buildBuffers();
@@ -676,7 +676,7 @@ public final class Pipe {
 
 	}
 
-	public static boolean isInit(Pipe ring) {
+	public static <S extends MessageSchema> boolean isInit(Pipe<S> ring) {
 	    //Due to the fact that no locks are used it becomes necessary to check
 	    //every single field to ensure the full initialization of the object
 	    //this is done as part of graph set up and as such is called rarely.
@@ -689,7 +689,7 @@ public final class Pipe {
 			   null!=ring.llWrite;
 	}
 
-	public static void validateVarLength(Pipe rb, int length) {
+	public static <S extends MessageSchema> void validateVarLength(Pipe<S> rb, int length) {
 		int newAvg = (length+rb.varLenMovingAverage)>>1;
         if (newAvg>rb.maxAvgVarLen)	{
             //compute some helpful information to add to the exception
@@ -745,7 +745,7 @@ public final class Pipe {
     }
 
 
-    public static ByteBuffer wrappedBlobRingB(Pipe ring, int meta, int len) {
+    public static <S extends MessageSchema> ByteBuffer wrappedBlobRingB(Pipe<S> ring, int meta, int len) {
         ByteBuffer buffer;
         if (meta < 0) {
         	//always zero because constant array never wraps
@@ -767,7 +767,7 @@ public final class Pipe {
     	return buffer;
     }
 
-    public static ByteBuffer wrappedBlobRingA(Pipe ring, int meta, int len) {
+    public static <S extends MessageSchema> ByteBuffer wrappedBlobRingA(Pipe<S> ring, int meta, int len) {
         ByteBuffer buffer;
         if (meta < 0) {
         	buffer = wrappedUnstructuredLayoutConstBuffer(ring);
@@ -819,7 +819,7 @@ public final class Pipe {
         return target-targetIdx;//length;
     }
 
-    public static void appendFragment(Pipe input, Appendable target, int cursor) {
+    public static <S extends MessageSchema> void appendFragment(Pipe<S> input, Appendable target, int cursor) {
         try {
 
             FieldReferenceOffsetManager from = from(input);
@@ -945,7 +945,7 @@ public final class Pipe {
         }
     }
 
-    public static ByteBuffer readBytes(Pipe ring, ByteBuffer target, int meta, int len) {
+    public static <S extends MessageSchema> ByteBuffer readBytes(Pipe<S> ring, ByteBuffer target, int meta, int len) {
 		if (meta < 0) {
 	        return readBytesConst(ring,len,target,PipeReader.POS_CONST_MASK & meta);
 	    } else {
@@ -953,7 +953,7 @@ public final class Pipe {
 	    }
 	}
 
-    public static void readBytes(Pipe ring, byte[] target, int targetIdx, int targetMask, int meta, int len) {
+    public static <S extends MessageSchema> void readBytes(Pipe<S> ring, byte[] target, int targetIdx, int targetMask, int meta, int len) {
 		if (meta < 0) {
 			//NOTE: constByteBuffer does not wrap so we do not need the mask
 			copyBytesFromToRing(ring.blobConstBuffer, PipeReader.POS_CONST_MASK & meta, 0xFFFFFFFF, target, targetIdx, targetMask, len);
@@ -962,7 +962,7 @@ public final class Pipe {
 	    }
 	}
 
-	private static ByteBuffer readBytesRing(Pipe ring, int len, ByteBuffer target, int pos) {
+	private static <S extends MessageSchema> ByteBuffer readBytesRing(Pipe<S> ring, int len, ByteBuffer target, int pos) {
 		int mask = ring.byteMask;
 		byte[] buffer = ring.blobRing;
 
@@ -979,12 +979,12 @@ public final class Pipe {
 	    return target;
 	}
 
-	private static ByteBuffer readBytesConst(Pipe ring, int len, ByteBuffer target, int pos) {
+	private static <S extends MessageSchema> ByteBuffer readBytesConst(Pipe<S> ring, int len, ByteBuffer target, int pos) {
 	    	target.put(ring.blobConstBuffer, pos, len);
 	        return target;
 	    }
 
-	public static Appendable readASCII(Pipe ring, Appendable target,	int meta, int len) {
+	public static <S extends MessageSchema> Appendable readASCII(Pipe<S> ring, Appendable target,	int meta, int len) {
 		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
 	        return readASCIIConst(ring,len,target,PipeReader.POS_CONST_MASK & meta);
 	    } else {
@@ -992,7 +992,7 @@ public final class Pipe {
 	    }
 	}
 
-	public static boolean isEqual(Pipe ring, CharSequence charSeq, int meta, int len) {
+	public static <S extends MessageSchema> boolean isEqual(Pipe<S> ring, CharSequence charSeq, int meta, int len) {
 		if (len!=charSeq.length()) {
 			return false;
 		}
@@ -1025,7 +1025,7 @@ public final class Pipe {
 		return true;
 	}
 
-	private static Appendable readASCIIRing(Pipe ring, int len, Appendable target, int pos) {
+	private static <S extends MessageSchema> Appendable readASCIIRing(Pipe<S> ring, int len, Appendable target, int pos) {
 		byte[] buffer = ring.blobRing;
 		int mask = ring.byteMask;
 
@@ -1039,7 +1039,7 @@ public final class Pipe {
 	    return target;
 	}
 
-	private static Appendable readASCIIConst(Pipe ring, int len, Appendable target, int pos) {
+	private static <S extends MessageSchema> Appendable readASCIIConst(Pipe<S> ring, int len, Appendable target, int pos) {
 	    try {
 	    	byte[] buffer = ring.blobConstBuffer;
 	    	assert(null!=buffer) : "If constants are used the constByteBuffer was not initialized. Otherwise corruption in the stream has been discovered";
@@ -1052,7 +1052,7 @@ public final class Pipe {
 	    return target;
 	}
 
-	public static Appendable readUTF8(Pipe ring, Appendable target, int meta, int len) { //TODO: update to use generics
+	public static <S extends MessageSchema> Appendable readUTF8(Pipe<S> ring, Appendable target, int meta, int len) { //TODO: update to use generics
 		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
 	        return readUTF8Const(ring,len,target,PipeReader.POS_CONST_MASK & meta);
 	    } else {
@@ -1060,7 +1060,7 @@ public final class Pipe {
 	    }
 	}
 
-	private static Appendable readUTF8Const(Pipe ring, int bytesLen, Appendable target, int ringPos) {
+	private static <S extends MessageSchema> Appendable readUTF8Const(Pipe<S> ring, int bytesLen, Appendable target, int ringPos) {
 		  try{
 			  long charAndPos = ((long)ringPos)<<32;
 			  long limit = ((long)ringPos+bytesLen)<<32;
@@ -1075,7 +1075,7 @@ public final class Pipe {
 		  return target;
 	}
 
-	private static Appendable readUTF8Ring(Pipe ring, int bytesLen, Appendable target, int ringPos) {
+	private static <S extends MessageSchema> Appendable readUTF8Ring(Pipe<S> ring, int bytesLen, Appendable target, int ringPos) {
 		  try{
 			  long charAndPos = ((long)ringPos)<<32;
 			  long limit = ((long)ringPos+bytesLen)<<32;
@@ -1090,7 +1090,7 @@ public final class Pipe {
 		  return target;
 	}
 
-	public static void addDecimalAsASCII(int readDecimalExponent,	long readDecimalMantissa, Pipe outputRing) {
+	public static <S extends MessageSchema> void addDecimalAsASCII(int readDecimalExponent,	long readDecimalMantissa, Pipe<S> outputRing) {
 		long ones = (long)(readDecimalMantissa*PipeReader.powdi[64 + readDecimalExponent]);
 		validateVarLength(outputRing, 21);
 		int max = 21 + outputRing.blobRingHead.byteWorkingHeadPos.value;
@@ -1115,7 +1115,7 @@ public final class Pipe {
 
 	}
 
-	public static void addLongAsASCII(Pipe outputRing, long value) {
+	public static <S extends MessageSchema> void addLongAsASCII(Pipe<S> outputRing, long value) {
 		validateVarLength(outputRing, 21);
 		int max = 21 + outputRing.blobRingHead.byteWorkingHeadPos.value;
 		int len = leftConvertLongToASCII(outputRing, value, max);
@@ -1123,7 +1123,7 @@ public final class Pipe {
 		outputRing.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(len + outputRing.blobRingHead.byteWorkingHeadPos.value);
 	}
 
-	public static void addIntAsASCII(Pipe outputRing, int value) {
+	public static <S extends MessageSchema> void addIntAsASCII(Pipe<S> outputRing, int value) {
 		validateVarLength(outputRing, 12);
 		int max = 12 + outputRing.blobRingHead.byteWorkingHeadPos.value;
 		int len = leftConvertIntToASCII(outputRing, value, max);
@@ -1137,23 +1137,23 @@ public final class Pipe {
      * @param ringBuffer
      * @return
      */
-	public static int bytesOfContent(Pipe ringBuffer) {
+	public static <S extends MessageSchema> int bytesOfContent(Pipe<S> ringBuffer) {
 		int dif = (ringBuffer.byteMask&ringBuffer.blobRingHead.byteWorkingHeadPos.value) - (ringBuffer.byteMask&PaddedInt.get(ringBuffer.blobRingTail.bytesTailPos));
 		return ((dif>>31)<<ringBuffer.bitsOfBlogRing)+dif;
 	}
 
-	public static void validateBatchSize(Pipe rb, int size) {
+	public static <S extends MessageSchema> void validateBatchSize(Pipe<S> rb, int size) {
 		int maxBatch = computeMaxBatchSize(rb);
 		if (size>maxBatch) {
 			throw new UnsupportedOperationException("For the configured ring buffer the batch size can be no larger than "+maxBatch);
 		}
 	}
 
-	public static int computeMaxBatchSize(Pipe rb) {
+	public static <S extends MessageSchema> int computeMaxBatchSize(Pipe<S> rb) {
 		return computeMaxBatchSize(rb,2);//default mustFit of 2
 	}
 
-	public static int computeMaxBatchSize(Pipe rb, int mustFit) {
+	public static <S extends MessageSchema> int computeMaxBatchSize(Pipe<S> rb, int mustFit) {
 		assert(mustFit>=1);
 		int maxBatchFromBytes = rb.maxAvgVarLen==0?Integer.MAX_VALUE:(rb.sizeOfBlobRing/rb.maxAvgVarLen)/mustFit;
 		int maxBatchFromPrimary = (rb.sizeOfSlabRing/FieldReferenceOffsetManager.maxFragmentSize(from(rb)))/mustFit;
@@ -1161,7 +1161,7 @@ public final class Pipe {
 	}
 
 	@Deprecated
-	public static void publishEOF(Pipe ring) {
+	public static <S extends MessageSchema> void publishEOF(Pipe<S> ring) {
 
 		assert(ring.slabRingTail.tailPos.get()+ring.sizeOfSlabRing>=ring.slabRingHead.headPos.get()+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 
@@ -1293,7 +1293,7 @@ public final class Pipe {
 		}
 	}
 
-	public static int leftConvertIntToASCII(Pipe rb, int value, int idx) {
+	public static <S extends MessageSchema> int leftConvertIntToASCII(Pipe<S> rb, int value, int idx) {
 		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
 		//this will leave a gap but that is not a problem.
 		byte[] target = rb.blobRing;
@@ -1322,7 +1322,7 @@ public final class Pipe {
 		return length;
 	}
 
-	public static int leftConvertLongToASCII(Pipe rb, long value,	int idx) {
+	public static <S extends MessageSchema> int leftConvertLongToASCII(Pipe<S> rb, long value,	int idx) {
 		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
 		//this will leave a gap but that is not a problem.
 		byte[] target = rb.blobRing;
@@ -1351,7 +1351,7 @@ public final class Pipe {
 		return length;
 	}
 
-   public static int leftConvertLongWithLeadingZerosToASCII(Pipe rb, int chars, long value, int idx) {
+   public static <S extends MessageSchema> int leftConvertLongWithLeadingZerosToASCII(Pipe<S> rb, int chars, long value, int idx) {
         //max places is value for -2B therefore its 11 places so we start out that far and work backwards.
         //this will leave a gap but that is not a problem.
         byte[] target = rb.blobRing;
@@ -1501,23 +1501,23 @@ public final class Pipe {
 	    return (((long)sourcePos)<<32) | chr;
 	  }
 
-	public static int copyASCIIToBytes(CharSequence source, Pipe rbRingBuffer) {
+	public static <S extends MessageSchema> int copyASCIIToBytes(CharSequence source, Pipe<S> rbRingBuffer) {
 		return copyASCIIToBytes(source, 0, source.length(), rbRingBuffer);
 	}
 
-	public static void addASCII(CharSequence source, Pipe rb) {
+	public static <S extends MessageSchema> void addASCII(CharSequence source, Pipe<S> rb) {
 	    addASCII(source, 0, null==source ? -1 : source.length(), rb);
 	}
 
-	public static void addASCII(CharSequence source, int sourceIdx, int sourceCharCount, Pipe rb) {
+	public static <S extends MessageSchema> void addASCII(CharSequence source, int sourceIdx, int sourceCharCount, Pipe<S> rb) {
 		addBytePosAndLen(rb, copyASCIIToBytes(source, sourceIdx, sourceCharCount, rb), sourceCharCount);
 	}
 
-	public static void addASCII(char[] source, int sourceIdx, int sourceCharCount, Pipe rb) {
+	public static <S extends MessageSchema> void addASCII(char[] source, int sourceIdx, int sourceCharCount, Pipe<S> rb) {
 		addBytePosAndLen(rb, copyASCIIToBytes(source, sourceIdx, sourceCharCount, rb), sourceCharCount);
 	}
 
-	public static int copyASCIIToBytes(CharSequence source, int sourceIdx, final int sourceLen, Pipe rbRingBuffer) {
+	public static <S extends MessageSchema> int copyASCIIToBytes(CharSequence source, int sourceIdx, final int sourceLen, Pipe<S> rbRingBuffer) {
 		final int p = rbRingBuffer.blobRingHead.byteWorkingHeadPos.value;
 		//TODO: revisit this not sure this conditional is required
 	    if (sourceLen > 0) {
@@ -1527,8 +1527,8 @@ public final class Pipe {
 		return p;
 	}
 
-	private static void copyASCIIToBytes2(CharSequence source, int sourceIdx,
-			final int sourceLen, Pipe rbRingBuffer, final int p,
+	private static <S extends MessageSchema> void copyASCIIToBytes2(CharSequence source, int sourceIdx,
+			final int sourceLen, Pipe<S> rbRingBuffer, final int p,
 			byte[] target, int tStart, int len1) {
 		if (len1>=sourceLen) {
 			Pipe.copyASCIIToByte(source, sourceIdx, target, tStart, sourceLen);
@@ -1540,7 +1540,7 @@ public final class Pipe {
 		rbRingBuffer.blobRingHead.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(p + sourceLen);
 	}
 
-    public static int copyASCIIToBytes(char[] source, int sourceIdx, final int sourceLen, Pipe rbRingBuffer) {
+    public static <S extends MessageSchema> int copyASCIIToBytes(char[] source, int sourceIdx, final int sourceLen, Pipe<S> rbRingBuffer) {
 		final int p = rbRingBuffer.blobRingHead.byteWorkingHeadPos.value;
 	    if (sourceLen > 0) {
 	    	int targetMask = rbRingBuffer.byteMask;
@@ -1575,22 +1575,22 @@ public final class Pipe {
 		}
 	}
 
-	public static void addUTF8(CharSequence source, Pipe rb) {
+	public static <S extends MessageSchema> void addUTF8(CharSequence source, Pipe<S> rb) {
 	    addUTF8(source, null==source? -1 : source.length(), rb);
 	}
 
-	public static void addUTF8(CharSequence source, int sourceCharCount, Pipe rb) {
+	public static <S extends MessageSchema> void addUTF8(CharSequence source, int sourceCharCount, Pipe<S> rb) {
 		addBytePosAndLen(rb, rb.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceCharCount,rb));
 	}
 
-	public static void addUTF8(char[] source, int sourceCharCount, Pipe rb) {
+	public static <S extends MessageSchema> void addUTF8(char[] source, int sourceCharCount, Pipe<S> rb) {
 		addBytePosAndLen(rb, rb.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceCharCount,rb));
 	}
 
 	/**
 	 * WARNING: unlike the ASCII version this method returns bytes written and not the position
 	 */
-	public static int copyUTF8ToByte(CharSequence source, int sourceCharCount, Pipe rb) {
+	public static <S extends MessageSchema> int copyUTF8ToByte(CharSequence source, int sourceCharCount, Pipe<S> rb) {
 	    if (sourceCharCount>0) {
     		int byteLength = Pipe.copyUTF8ToByte(source, 0, rb.blobRing, rb.byteMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
     		rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
@@ -1600,7 +1600,7 @@ public final class Pipe {
 	    }
 	}
 
-   public static int copyUTF8ToByte(CharSequence source, int sourceOffset, int sourceCharCount, Pipe rb) {
+   public static <S extends MessageSchema> int copyUTF8ToByte(CharSequence source, int sourceOffset, int sourceCharCount, Pipe<S> rb) {
         if (sourceCharCount>0) {
             int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, rb.blobRing, rb.byteMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
             rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
@@ -1622,19 +1622,19 @@ public final class Pipe {
 	/**
 	 * WARNING: unlike the ASCII version this method returns bytes written and not the position
 	 */
-	public static int copyUTF8ToByte(char[] source, int sourceCharCount, Pipe rb) {
+	public static <S extends MessageSchema> int copyUTF8ToByte(char[] source, int sourceCharCount, Pipe<S> rb) {
 		int byteLength = Pipe.copyUTF8ToByte(source, 0, rb.blobRing, rb.byteMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
 		rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
 		return byteLength;
 	}
 
-	public static int copyUTF8ToByte(char[] source, int sourceOffset, int sourceCharCount, Pipe rb) {
+	public static <S extends MessageSchema> int copyUTF8ToByte(char[] source, int sourceOffset, int sourceCharCount, Pipe<S> rb) {
 	    int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, rb.blobRing, rb.byteMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
 	    rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
 	    return byteLength;
 	}
 
-	private static int copyUTF8ToByte(char[] source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {
+	private static <S extends MessageSchema> int copyUTF8ToByte(char[] source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {
 
 	    int pos = targetIdx;
 	    int c = 0;
@@ -1647,7 +1647,7 @@ public final class Pipe {
 
 
 
-	public static int encodeSingleChar(int c, byte[] buffer,int mask, int pos) {
+	public static <S extends MessageSchema> int encodeSingleChar(int c, byte[] buffer,int mask, int pos) {
 
 	    if (c <= 0x007F) { // less than or equal to 7 bits or 127
 	        // code point 7
@@ -1678,7 +1678,7 @@ public final class Pipe {
 	    return pos;
 	}
 
-	private static int rareEncodeCase(int c, byte[] buffer, int mask, int pos) {
+	private static <S extends MessageSchema> int rareEncodeCase(int c, byte[] buffer, int mask, int pos) {
 		if (c < 0x1FFFFF) {
 		    // code point 21
 		    buffer[mask&pos++] = (byte) (0xF0 | ((c >> 18) & 0x07));
@@ -1701,7 +1701,7 @@ public final class Pipe {
 		return pos;
 	}
 
-	public static void addByteBuffer(ByteBuffer source, Pipe pipe) {
+	public static <S extends MessageSchema> void addByteBuffer(ByteBuffer source, Pipe<S> pipe) {
 	    int bytePos = pipe.blobRingHead.byteWorkingHeadPos.value;
 	    int len = -1;
 	    if (null!=source && source.hasRemaining()) {
@@ -1713,7 +1713,7 @@ public final class Pipe {
 	    Pipe.addBytePosAndLen(pipe, bytePos, len);
 	}
 
-   public static void addByteBuffer(ByteBuffer source, int length, Pipe rb) {
+   public static <S extends MessageSchema> void addByteBuffer(ByteBuffer source, int length, Pipe<S> rb) {
         int bytePos = rb.blobRingHead.byteWorkingHeadPos.value;
         int len = -1;
         if (null!=source && length>0) {
@@ -1723,7 +1723,7 @@ public final class Pipe {
         Pipe.addBytePosAndLen(rb, bytePos, len);
     }
 	   
-	public static void copyByteBuffer(ByteBuffer source, int length, Pipe rb) {
+	public static <S extends MessageSchema> void copyByteBuffer(ByteBuffer source, int length, Pipe<S> rb) {
 		validateVarLength(rb, length);
 		int idx = rb.blobRingHead.byteWorkingHeadPos.value & rb.byteMask;
 		int partialLength = 1 + rb.byteMask - idx;
@@ -1738,35 +1738,35 @@ public final class Pipe {
 		rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value + length);
 	}
 
-	public static void addByteArrayWithMask(final Pipe outputRing, int mask, int len, byte[] data, int offset) {
+	public static <S extends MessageSchema> void addByteArrayWithMask(final Pipe<S> outputRing, int mask, int len, byte[] data, int offset) {
 		validateVarLength(outputRing, len);
 		copyBytesFromToRing(data,offset,mask,outputRing.blobRing,outputRing.blobRingHead.byteWorkingHeadPos.value,outputRing.byteMask, len);
 		addBytePosAndLen(outputRing, outputRing.blobRingHead.byteWorkingHeadPos.value, len);
 		outputRing.blobRingHead.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(outputRing.blobRingHead.byteWorkingHeadPos.value + len);
 	}
 
-	public static int peek(int[] buf, long pos, int mask) {
+	public static <S extends MessageSchema> int peek(int[] buf, long pos, int mask) {
         return buf[mask & (int)pos];
     }
 
-    public static long peekLong(int[] buf, long pos, int mask) {
+    public static <S extends MessageSchema> long peekLong(int[] buf, long pos, int mask) {
 
         return (((long) buf[mask & (int)pos]) << 32) | (((long) buf[mask & (int)(pos + 1)]) & 0xFFFFFFFFl);
 
     }
 
-    public static boolean isShutdown(Pipe ring) {
+    public static <S extends MessageSchema> boolean isShutdown(Pipe<S> ring) {
     	return ring.imperativeShutDown.get();
     }
 
-    public static void shutdown(Pipe ring) {
+    public static <S extends MessageSchema> void shutdown(Pipe<S> ring) {
     	if (!ring.imperativeShutDown.getAndSet(true)) {
     		ring.firstShutdownCaller = new PipeException("Shutdown called");
     	}
 
     }
 
-    public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, Pipe rbRingBuffer) {
+    public static <S extends MessageSchema> void addByteArray(byte[] source, int sourceIdx, int sourceLen, Pipe<S> rbRingBuffer) {
 
     	assert(sourceLen>=0);
     	validateVarLength(rbRingBuffer, sourceLen);
@@ -1778,12 +1778,12 @@ public final class Pipe {
 
     }
 
-    public static void addNullByteArray(Pipe rbRingBuffer) {
+    public static <S extends MessageSchema> void addNullByteArray(Pipe<S> rbRingBuffer) {
         addBytePosAndLen(rbRingBuffer, rbRingBuffer.blobRingHead.byteWorkingHeadPos.value, -1);
     }
 
 
-    public static void addIntValue(int value, Pipe rb) {
+    public static <S extends MessageSchema> void addIntValue(int value, Pipe<S> rb) {
          assert(rb.slabRingHead.workingHeadPos.value <= rb.mask+Pipe.tailPosition(rb));
 		 setValue(rb.slabRing,rb.mask,rb.slabRingHead.workingHeadPos.value++,value);
 	}
@@ -1791,7 +1791,7 @@ public final class Pipe {
 	//TODO: B, need to update build server to ensure this runs on both Java6 and Java ME 8
 
     //must be called by low-level API when starting a new message
-    public static void addMsgIdx(Pipe rb, int msgIdx) {
+    public static <S extends MessageSchema> void addMsgIdx(Pipe<S> rb, int msgIdx) {
         assert(rb.slabRingHead.workingHeadPos.value <= rb.mask+Pipe.tailPosition(rb));
     	assert(msgIdx>=0) : "Call publishEOF() instead of this method";
 
@@ -1803,24 +1803,24 @@ public final class Pipe {
 		 rb.slabRing[rb.mask & (int)rb.slabRingHead.workingHeadPos.value++] = msgIdx;
 	}
 
-	public static void setValue(int[] buffer, int rbMask, long offset, int value) {
+	public static <S extends MessageSchema> void setValue(int[] buffer, int rbMask, long offset, int value) {
         buffer[rbMask & (int)offset] = value;
     }
 
 
-    public static void addBytePosAndLen(Pipe ring, int position, int length) {
+    public static <S extends MessageSchema> void addBytePosAndLen(Pipe<S> ring, int position, int length) {
         assert(ring.slabRingHead.workingHeadPos.value <= ring.mask+Pipe.tailPosition(ring));
 		setBytePosAndLen(ring.slabRing, ring.mask, ring.slabRingHead.workingHeadPos.value, position, length, Pipe.bytesWriteBase(ring));
 		ring.slabRingHead.workingHeadPos.value+=2;
     }
 
-    public static void addBytePosAndLenSpecial(Pipe targetOutput, final int startBytePos, int bytesLength) {
+    public static <S extends MessageSchema> void addBytePosAndLenSpecial(Pipe<S> targetOutput, final int startBytePos, int bytesLength) {
         PaddedLong workingHeadPos = getWorkingHeadPositionObject(targetOutput);
         setBytePosAndLen(primaryBuffer(targetOutput), targetOutput.mask, workingHeadPos.value, startBytePos, bytesLength, bytesWriteBase(targetOutput));
         PaddedLong.add(workingHeadPos, 2);
     }
 
-	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat, int baseBytePos) {
+	public static <S extends MessageSchema> void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat, int baseBytePos) {
 	   	//negative position is written as is because the internal array does not have any offset (but it could some day)
     	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
     	if (positionDat>=0) {
@@ -1831,13 +1831,13 @@ public final class Pipe {
         buffer[rbMask & (int)(ringPos+1)] = lengthDat;
 	}
 
-	public static int restorePosition(Pipe ring, int pos) {
+	public static <S extends MessageSchema> int restorePosition(Pipe<S> ring, int pos) {
 		assert(pos>=0);
 		return pos + Pipe.bytesReadBase(ring);
 
 	}
 
-    public static int bytePosition(int meta, Pipe ring, int len) {
+    public static <S extends MessageSchema> int bytePosition(int meta, Pipe<S> ring, int len) {
     	int pos =  restorePosition(ring, meta & RELATIVE_POS_MASK);    	
         if (len>=0) {
             ring.blobRingTail.byteWorkingTailPos.value =  BYTES_WRAP_MASK&(len+ring.blobRingTail.byteWorkingTailPos.value);
@@ -1845,12 +1845,12 @@ public final class Pipe {
         return pos;
     }
 
-    public static int bytePositionGen(int meta, Pipe ring) {
+    public static <S extends MessageSchema> int bytePositionGen(int meta, Pipe<S> ring) {
     	return restorePosition(ring, meta & RELATIVE_POS_MASK);
     }
 
 
-    public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2, int value3) {
+    public static <S extends MessageSchema> void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2, int value3) {
 
         long p = headCache.value;
         buffer[rbMask & (int)p++] = value1;
@@ -1861,18 +1861,18 @@ public final class Pipe {
     }
 
     @Deprecated
-    public static void addValues(int[] buffer, int rbMask, PaddedLong headCache, int value1, long value2) {
+    public static <S extends MessageSchema> void addValues(int[] buffer, int rbMask, PaddedLong headCache, int value1, long value2) {
 
         headCache.value = setValues(buffer, rbMask, headCache.value, value1, value2);
 
     }
 
-    public static void addDecimal(int exponent, long mantissa, Pipe ring) {
+    public static <S extends MessageSchema> void addDecimal(int exponent, long mantissa, Pipe<S> ring) {
         ring.slabRingHead.workingHeadPos.value = setValues(ring.slabRing, ring.mask, ring.slabRingHead.workingHeadPos.value, exponent, mantissa);
     }
 
 
-	public static long setValues(int[] buffer, int rbMask, long pos, int value1, long value2) {
+	public static <S extends MessageSchema> long setValues(int[] buffer, int rbMask, long pos, int value1, long value2) {
 		buffer[rbMask & (int)pos++] = value1;
         buffer[rbMask & (int)pos++] = (int)(value2 >>> 32);
         buffer[rbMask & (int)pos++] = (int)(value2 & 0xFFFFFFFF);
@@ -1880,15 +1880,15 @@ public final class Pipe {
 	}
 
 	@Deprecated //use addLongVlue(value, rb)
-    public static void addLongValue(Pipe rb, long value) {
+    public static <S extends MessageSchema> void addLongValue(Pipe<S> rb, long value) {
 		 addLongValue(value, rb);
 	}
 
-	public static void addLongValue(long value, Pipe rb) {
+	public static <S extends MessageSchema> void addLongValue(long value, Pipe<S> rb) {
 		 addLongValue(rb.slabRing, rb.mask, rb.slabRingHead.workingHeadPos, value);
 	}
 
-    public static void addLongValue(int[] buffer, int rbMask, PaddedLong headCache, long value) {
+    public static <S extends MessageSchema> void addLongValue(int[] buffer, int rbMask, PaddedLong headCache, long value) {
 
         long p = headCache.value;
         buffer[rbMask & (int)p] = (int)(value >>> 32);
@@ -1897,60 +1897,60 @@ public final class Pipe {
 
     }
 
-    public static int readRingByteLen(int fieldPos, int[] rbB, int rbMask, long rbPos) {
+    public static <S extends MessageSchema> int readRingByteLen(int fieldPos, int[] rbB, int rbMask, long rbPos) {
         return rbB[(int) (rbMask & (rbPos + fieldPos + 1))];// second int is always the length
     }
 
-	public static int readRingByteLen(int idx, Pipe ring) {
+	public static <S extends MessageSchema> int readRingByteLen(int idx, Pipe<S> ring) {
 		return readRingByteLen(idx,ring.slabRing, ring.mask, ring.slabRingTail.workingTailPos.value);
 	}
 
-	public static int takeRingByteLen(Pipe ring) {
+	public static <S extends MessageSchema> int takeRingByteLen(Pipe<S> ring) {
 	//    assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
 		return ring.slabRing[(int)(ring.mask & (ring.slabRingTail.workingTailPos.value++))];// second int is always the length
 	}
 
 
 
-    public static byte[] byteBackingArray(int meta, Pipe rbRingBuffer) {
+    public static <S extends MessageSchema> byte[] byteBackingArray(int meta, Pipe<S> rbRingBuffer) {
         return rbRingBuffer.blobRingLookup[meta>>>31];
     }
 
-	public static int readRingByteMetaData(int pos, Pipe rb) {
+	public static <S extends MessageSchema> int readRingByteMetaData(int pos, Pipe<S> rb) {
 		return readValue(pos,rb.slabRing,rb.mask,rb.slabRingTail.workingTailPos.value);
 	}
 
 	//TODO: must always read metadata before length, easy mistake to make, need assert to ensure this is caught if happens.
-	public static int takeRingByteMetaData(Pipe ring) {
+	public static <S extends MessageSchema> int takeRingByteMetaData(Pipe<S> ring) {
 	//    assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
 		return readValue(0,ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value++);
 	}
 
-    public static int readValue(int fieldPos, int[] rbB, int rbMask, long rbPos) {
+    public static <S extends MessageSchema> int readValue(int fieldPos, int[] rbB, int rbMask, long rbPos) {
         return rbB[(int)(rbMask & (rbPos + fieldPos))];
     }
 
-    public static int readValue(int idx, Pipe ring) {
+    public static <S extends MessageSchema> int readValue(int idx, Pipe<S> ring) {
     	return readValue(idx, ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value);
     }
 
-    public static int takeValue(Pipe ring) {
+    public static <S extends MessageSchema> int takeValue(Pipe<S> ring) {
     	return readValue(0, ring.slabRing, ring.mask, ring.slabRingTail.workingTailPos.value++);
     }
 
-    public static long takeLong(Pipe ring) {
+    public static <S extends MessageSchema> long takeLong(Pipe<S> ring) {
         assert(ring.slabRingTail.workingTailPos.value<Pipe.workingHeadPosition(ring)) : "working tail "+ring.slabRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(ring);
     	long result = readLong(ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value);
     	ring.slabRingTail.workingTailPos.value+=2;
     	return result;
     }
 
-    public static long readLong(int idx, Pipe ring) {
+    public static <S extends MessageSchema> long readLong(int idx, Pipe<S> ring) {
     	return readLong(ring.slabRing,ring.mask,idx+ring.slabRingTail.workingTailPos.value);
 
     }
 
-    public static int takeMsgIdx(Pipe ring) {
+    public static <S extends MessageSchema> int takeMsgIdx(Pipe<S> ring) {
         
         /**
          * TODO: mask the result int to only the bits which contain the msgId.
@@ -1967,26 +1967,26 @@ public final class Pipe {
     	return readValue(0, ring.slabRing, ring.mask, ring.slabRingTail.workingTailPos.value++);
     }
 
-    public static int peekInt(Pipe ring) {
+    public static <S extends MessageSchema> int peekInt(Pipe<S> ring) {
         return readValue(0, ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value);
     }
     
-    public static int peekInt(Pipe ring, int offset) {
+    public static <S extends MessageSchema> int peekInt(Pipe<S> ring, int offset) {
         return readValue(0, ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value+offset);
     }
    
-    public static long peekLong(Pipe ring, int offset) {
+    public static <S extends MessageSchema> long peekLong(Pipe<S> ring, int offset) {
         return readLong(ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value+offset);
     }
     
     
-    public static int contentRemaining(Pipe rb) {
+    public static <S extends MessageSchema> int contentRemaining(Pipe<S> rb) {
         return (int)(rb.slabRingHead.headPos.get() - rb.slabRingTail.tailPos.get()); //must not go past add count because it is not release yet.
     }
 
 
     //TODO: AAA rename as releaseReadLock
-    public static int releaseReads(Pipe ring) {
+    public static <S extends MessageSchema> int releaseReads(Pipe<S> ring) {
         int len = takeValue(ring);
         Pipe.markBytesReadBase(ring, len);
     	batchedReleasePublish(ring);
@@ -1994,12 +1994,12 @@ public final class Pipe {
     }
 
 
-    public static void batchedReleasePublish(Pipe ring) {
+    public static <S extends MessageSchema> void batchedReleasePublish(Pipe<S> ring) {
         assert(Pipe.contentRemaining(ring)>=0);
         batchedReleasePublish(ring, ring.blobRingTail.byteWorkingTailPos.value, ring.slabRingTail.workingTailPos.value);
     }
 
-    public static void batchedReleasePublish(Pipe ring, int byteWorkingTailPos, long workingTailPos) {
+    public static <S extends MessageSchema> void batchedReleasePublish(Pipe<S> ring, int byteWorkingTailPos, long workingTailPos) {
         if ((--ring.batchReleaseCountDown<=0) ) {
 
     	    assert(ring.ringWalker.cursor<=0 && !PipeReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
@@ -2015,12 +2015,12 @@ public final class Pipe {
     }
 
 
-    static void storeUnpublishedTail(Pipe ring, long workingTailPos, int byteWorkingTailPos) {
+    static <S extends MessageSchema> void storeUnpublishedTail(Pipe<S> ring, long workingTailPos, int byteWorkingTailPos) {
         ring.lastReleasedBlobTail = byteWorkingTailPos;
         ring.lastReleasedSlabTail = workingTailPos;
     }
     
-    static void releaseReadLockForHighLevelAPI(Pipe ring) {
+    static <S extends MessageSchema> void releaseReadLockForHighLevelAPI(Pipe<S> ring) {
 
         
         assert(Pipe.isReplaying(ring) || ring.ringWalker.nextWorkingTail!=Pipe.getWorkingTailPosition(ring)) : "Only call release once per message";
@@ -2067,7 +2067,7 @@ public final class Pipe {
      * Release any reads that were held back due to batching.
      * @param ring
      */
-    public static void releaseAllBatchedReads(Pipe ring) {
+    public static <S extends MessageSchema> void releaseAllBatchedReads(Pipe<S> ring) {
 
         if (ring.lastReleasedSlabTail > ring.slabRingTail.tailPos.get()) {
             PaddedInt.set(ring.blobRingTail.bytesTailPos,ring.lastReleasedBlobTail);
@@ -2078,7 +2078,7 @@ public final class Pipe {
         assert(debugHeadAssignment(ring));
     }
     
-    public static void releaseBatchedReadReleasesUpToThisPosition(Pipe ring) {
+    public static <S extends MessageSchema> void releaseBatchedReadReleasesUpToThisPosition(Pipe<S> ring) {
         
         long newTailToPublish = Pipe.getWorkingTailPosition(ring);
         int newTailBytesToPublish = Pipe.bytesWorkingTailPosition(ring);
@@ -2089,7 +2089,7 @@ public final class Pipe {
                 
     }
 
-    public static void releaseBatchedReadReleasesUpToPosition(Pipe ring, long newTailToPublish,  int newTailBytesToPublish) {
+    public static <S extends MessageSchema> void releaseBatchedReadReleasesUpToPosition(Pipe<S> ring, long newTailToPublish,  int newTailBytesToPublish) {
         assert(newTailToPublish<=ring.lastReleasedSlabTail) : "This new value is forward of the next Release call, eg its too large";
         assert(newTailToPublish>=ring.slabRingTail.tailPos.get()) : "This new value is behind the existing published Tail, eg its too small ";
         
@@ -2106,7 +2106,7 @@ public final class Pipe {
     }
 
     @Deprecated
-	public static void releaseAll(Pipe ring) {
+	public static <S extends MessageSchema> void releaseAll(Pipe<S> ring) {
 
 			int i = ring.blobRingTail.byteWorkingTailPos.value= ring.blobRingHead.byteWorkingHeadPos.value;
             PaddedInt.set(ring.blobRingTail.bytesTailPos,i);
@@ -2115,7 +2115,7 @@ public final class Pipe {
     }
 
     @Deprecated
-    public static void dump(Pipe rb) {
+    public static <S extends MessageSchema> void dump(Pipe<S> rb) {
 
         // move the removePosition up to the addPosition
         // new Exception("WARNING THIS IS NO LONGER COMPATIBLE WITH PUMP CALLS").printStackTrace();
@@ -2127,7 +2127,7 @@ public final class Pipe {
      * Low level API for publish
      * @param ring
      */
-    public static void publishWrites(Pipe ring) {
+    public static <S extends MessageSchema> void publishWrites(Pipe<S> ring) {
     	//new Exception("publish trialing byte").printStackTrace();
     	//happens at the end of every fragment
         writeTrailingCountOfBytesConsumed(ring, ring.slabRingHead.workingHeadPos.value++); //increment because this is the low-level API calling
@@ -2135,7 +2135,7 @@ public final class Pipe {
 		publishWritesBatched(ring);
     }
 
-    public static void publishWritesBatched(Pipe ring) {
+    public static <S extends MessageSchema> void publishWritesBatched(Pipe<S> ring) {
         //single length field still needs to move this value up, so this is always done
 		ring.blobWriteLastConsumedPos = ring.blobRingHead.byteWorkingHeadPos.value;
 
@@ -2149,7 +2149,7 @@ public final class Pipe {
      * Publish any writes that were held back due to batching.
      * @param ring
      */
-    public static void publishAllBatchedWrites(Pipe ring) {
+    public static <S extends MessageSchema> void publishAllBatchedWrites(Pipe<S> ring) {
 
     	if (ring.lastPublishedSlabRingHead>ring.slabRingHead.headPos.get()) {
     		PaddedInt.set(ring.blobRingHead.bytesHeadPos,ring.lastPublishedBlobRingHead);
@@ -2161,7 +2161,7 @@ public final class Pipe {
     }
 
 
-	private static boolean debugHeadAssignment(Pipe ring) {
+	private static <S extends MessageSchema> boolean debugHeadAssignment(Pipe<S> ring) {
 
 		if (0!=(PipeConfig.SHOW_HEAD_PUBLISH&ring.debugFlags) ) {
 			new Exception("Debug stack for assignment of published head positition"+ring.slabRingHead.headPos.get()).printStackTrace();
@@ -2170,7 +2170,7 @@ public final class Pipe {
 	}
 
 
-	public static void publishHeadPositions(Pipe ring) {
+	public static <S extends MessageSchema> void publishHeadPositions(Pipe<S> ring) {
 
 	    //TODO: need way to test if publish was called on an input ? may be much easer to detect missing publish. or extra release.
 	    if ((--ring.batchPublishCountDown<=0)) {
@@ -2183,12 +2183,12 @@ public final class Pipe {
 	    }
 	}
 
-	static void storeUnpublishedHead(Pipe ring) {
+	static <S extends MessageSchema> void storeUnpublishedHead(Pipe<S> ring) {
 		ring.lastPublishedBlobRingHead = ring.blobRingHead.byteWorkingHeadPos.value;
 		ring.lastPublishedSlabRingHead = ring.slabRingHead.workingHeadPos.value;
 	}
 
-    public static void abandonWrites(Pipe ring) {
+    public static <S extends MessageSchema> void abandonWrites(Pipe<S> ring) {
         //ignore the fact that any of this was written to the ring buffer
     	ring.slabRingHead.workingHeadPos.value = ring.slabRingHead.headPos.longValue();
     	ring.blobRingHead.byteWorkingHeadPos.value = PaddedInt.get(ring.blobRingHead.bytesHeadPos);
@@ -2200,7 +2200,7 @@ public final class Pipe {
      * @param ring
      * @param msgIdx
      */
-	public static void blockWriteMessage(Pipe ring, int msgIdx) {
+	public static <S extends MessageSchema> void blockWriteMessage(Pipe<S> ring, int msgIdx) {
 		//before write make sure the tail is moved ahead so we have room to write
 	    spinBlockForRoom(ring, Pipe.from(ring).fragDataSize[msgIdx]);
 		Pipe.addMsgIdx(ring, msgIdx);
@@ -2211,14 +2211,14 @@ public final class Pipe {
     //a common implementation because the extra method jump degrades the performance in tight loops
     //where these spin locks are commonly used.
 
-    public static void spinBlockForRoom(Pipe ringBuffer, int size) {
+    public static <S extends MessageSchema> void spinBlockForRoom(Pipe<S> ringBuffer, int size) {
         while (!hasRoomForWrite(ringBuffer, size)) {
             spinWork(ringBuffer);
         }
     }
 
     @Deprecated //use spinBlockForRoom then confirm the write afterwords
-    public static long spinBlockOnTail(long lastCheckedValue, long targetValue, Pipe ringBuffer) {
+    public static <S extends MessageSchema> long spinBlockOnTail(long lastCheckedValue, long targetValue, Pipe<S> ringBuffer) {
     	while (null==ringBuffer.slabRing || lastCheckedValue < targetValue) {
     		spinWork(ringBuffer);
 		    lastCheckedValue = ringBuffer.slabRingTail.tailPos.longValue();
@@ -2226,14 +2226,14 @@ public final class Pipe {
 		return lastCheckedValue;
     }
 
-    public static void spinBlockForContent(Pipe ringBuffer) {
+    public static <S extends MessageSchema> void spinBlockForContent(Pipe<S> ringBuffer) {
         while (!hasContentToRead(ringBuffer)) {
             spinWork(ringBuffer);
         }
     }
 
     //Used by RingInputStream to duplicate contract behavior,  TODO: AA rename to waitForAvailableContent or blockUntilContentReady?
-    public static long spinBlockOnHead(long lastCheckedValue, long targetValue, Pipe ringBuffer) {
+    public static <S extends MessageSchema> long spinBlockOnHead(long lastCheckedValue, long targetValue, Pipe<S> ringBuffer) {
     	while ( lastCheckedValue < targetValue) {
     		spinWork(ringBuffer);
 		    lastCheckedValue = ringBuffer.slabRingHead.headPos.get();
@@ -2241,42 +2241,42 @@ public final class Pipe {
 		return lastCheckedValue;
     }
 
-	private static void spinWork(Pipe ringBuffer) {
+	private static <S extends MessageSchema> void spinWork(Pipe<S> ringBuffer) {
 		Thread.yield();//needed for now but re-evaluate performance impact
 		if (isShutdown(ringBuffer) || Thread.currentThread().isInterrupted()) {
 			throw null!=ringBuffer.firstShutdownCaller ? ringBuffer.firstShutdownCaller : new PipeException("Unexpected shutdown");
 		}
 	}
 
-	public static int byteMask(Pipe ring) {
+	public static <S extends MessageSchema> int byteMask(Pipe<S> ring) {
 		return ring.byteMask;
 	}
 
-	public static long headPosition(Pipe ring) {
+	public static <S extends MessageSchema> long headPosition(Pipe<S> ring) {
 		 return ring.slabRingHead.headPos.get();
 	}
 
-    public static long workingHeadPosition(Pipe ring) {
+    public static <S extends MessageSchema> long workingHeadPosition(Pipe<S> ring) {
         return PaddedLong.get(ring.slabRingHead.workingHeadPos);
     }
 
-    public static void setWorkingHead(Pipe ring, long value) {
+    public static <S extends MessageSchema> void setWorkingHead(Pipe<S> ring, long value) {
         PaddedLong.set(ring.slabRingHead.workingHeadPos, value);
     }
 
-    public static long addAndGetWorkingHead(Pipe ring, int inc) {
+    public static <S extends MessageSchema> long addAndGetWorkingHead(Pipe<S> ring, int inc) {
         return PaddedLong.add(ring.slabRingHead.workingHeadPos, inc);
     }
 
-    public static long getWorkingTailPosition(Pipe ring) {
+    public static <S extends MessageSchema> long getWorkingTailPosition(Pipe<S> ring) {
         return PaddedLong.get(ring.slabRingTail.workingTailPos);
     }
 
-    public static void setWorkingTailPosition(Pipe ring, long value) {
+    public static <S extends MessageSchema> void setWorkingTailPosition(Pipe<S> ring, long value) {
         PaddedLong.set(ring.slabRingTail.workingTailPos, value);
     }
 
-    public static long addAndGetWorkingTail(Pipe ring, int inc) {
+    public static <S extends MessageSchema> long addAndGetWorkingTail(Pipe<S> ring, int inc) {
         return PaddedLong.add(ring.slabRingTail.workingTailPos, inc);
     }
 
@@ -2287,11 +2287,11 @@ public final class Pipe {
 	 * @param ring
 	 * @param workingHeadPos
 	 */
-	public static void publishWorkingHeadPosition(Pipe ring, long workingHeadPos) {
+	public static <S extends MessageSchema> void publishWorkingHeadPosition(Pipe<S> ring, long workingHeadPos) {
 		ring.slabRingHead.headPos.lazySet(ring.slabRingHead.workingHeadPos.value = workingHeadPos);
 	}
 
-	public static long tailPosition(Pipe ring) {
+	public static <S extends MessageSchema> long tailPosition(Pipe<S> ring) {
 		return ring.slabRingTail.tailPos.get();
 	}
 
@@ -2303,25 +2303,25 @@ public final class Pipe {
 	 * @param ring
 	 * @param workingTailPos
 	 */
-	public static void publishWorkingTailPosition(Pipe ring, long workingTailPos) {
+	public static <S extends MessageSchema> void publishWorkingTailPosition(Pipe<S> ring, long workingTailPos) {
 		ring.slabRingTail.tailPos.lazySet(ring.slabRingTail.workingTailPos.value = workingTailPos);
 	}
 
 	@Deprecated
-	public static int primarySize(Pipe ring) {
+	public static <S extends MessageSchema> int primarySize(Pipe<S> ring) {
 		return ring.sizeOfSlabRing;
 	}
 
-	public static FieldReferenceOffsetManager from(Pipe ring) {
+	public static <S extends MessageSchema> FieldReferenceOffsetManager from(Pipe<S> ring) {
 	    assert(null!=ring);
 		return ring.ringWalker.from;
 	}
 
-	public static int cursor(Pipe ring) {
+	public static <S extends MessageSchema> int cursor(Pipe<S> ring) {
         return ring.ringWalker.cursor;
     }
 
-	public static void writeTrailingCountOfBytesConsumed(Pipe ring, long pos) {
+	public static <S extends MessageSchema> void writeTrailingCountOfBytesConsumed(Pipe<S> ring, long pos) {
 
 		int consumed = ring.blobRingHead.byteWorkingHeadPos.value - ring.blobWriteLastConsumedPos;
 		//log.trace("wrote {} bytes consumed to position {}",consumed,pos);
@@ -2330,19 +2330,19 @@ public final class Pipe {
 
 	}
 
-	public static IntBuffer wrappedStructuredLayoutRingBuffer(Pipe ring) {
+	public static <S extends MessageSchema> IntBuffer wrappedStructuredLayoutRingBuffer(Pipe<S> ring) {
 		return ring.wrappedSlabRing;
 	}
 
-	public static ByteBuffer wrappedUnstructuredLayoutRingBufferA(Pipe ring) {
+	public static <S extends MessageSchema> ByteBuffer wrappedUnstructuredLayoutRingBufferA(Pipe<S> ring) {
 		return ring.wrappedBlobRingA;
 	}
 
-    public static ByteBuffer wrappedUnstructuredLayoutRingBufferB(Pipe ring) {
+    public static <S extends MessageSchema> ByteBuffer wrappedUnstructuredLayoutRingBufferB(Pipe<S> ring) {
         return ring.wrappedBlobRingB;
     }
 
-	public static ByteBuffer wrappedUnstructuredLayoutConstBuffer(Pipe ring) {
+	public static <S extends MessageSchema> ByteBuffer wrappedUnstructuredLayoutConstBuffer(Pipe<S> ring) {
 		return ring.wrappedBlobConstBuffer;
 	}
 
@@ -2353,154 +2353,154 @@ public final class Pipe {
 
 
 	@Deprecated
-	public static boolean roomToLowLevelWrite(Pipe output, int size) {
+	public static <S extends MessageSchema> boolean roomToLowLevelWrite(Pipe<S> output, int size) {
 		return hasRoomForWrite(output, size);
 	}
 
 	//This holds the last known state of the tail position, if its sufficiently far ahead it indicates that
 	//we do not need to fetch it again and this reduces contention on the CAS with the reader.
 	//This is an important performance feature of the low level API and should not be modified.
-    public static boolean hasRoomForWrite(Pipe output, int size) {
+    public static <S extends MessageSchema> boolean hasRoomForWrite(Pipe<S> output, int size) {
         return roomToLowLevelWrite(output, output.llRead.llwConfirmedReadPosition+size);
     }
 
-	private static boolean roomToLowLevelWrite(Pipe output, long target) {
+	private static <S extends MessageSchema> boolean roomToLowLevelWrite(Pipe<S> output, long target) {
 		//only does second part if the first does not pass
 		return (output.llRead.llrTailPosCache >= target) || roomToLowLevelWriteSlow(output, target);
 	}
 
-	private static boolean roomToLowLevelWriteSlow(Pipe output, long target) {
+	private static <S extends MessageSchema> boolean roomToLowLevelWriteSlow(Pipe<S> output, long target) {
 		return (output.llRead.llrTailPosCache = output.slabRingTail.tailPos.get()) >= target;
 	}
 
-	public static long confirmLowLevelWrite(Pipe output, int size) { //TOOD: rename
+	public static <S extends MessageSchema> long confirmLowLevelWrite(Pipe<S> output, int size) { //TOOD: rename
 		return output.llRead.llwConfirmedReadPosition += size; //TODO: add check if this size does not match how many written we have a problem.
 	}
 
 	@Deprecated
-	public static boolean contentToLowLevelRead(Pipe input, int size) {
+	public static <S extends MessageSchema> boolean contentToLowLevelRead(Pipe<S> input, int size) {
 		return hasContentToRead(input, size);
 	}
 
-    public static boolean hasContentToRead(Pipe input, int size) {
+    public static <S extends MessageSchema> boolean hasContentToRead(Pipe<S> input, int size) {
         return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition+size);
     }
     
-    public static boolean hasContentToRead(Pipe input) {
+    public static <S extends MessageSchema> boolean hasContentToRead(Pipe<S> input) {
         return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition+1);
     }
 
-	private static boolean contentToLowLevelRead2(Pipe input, long target) {
+	private static <S extends MessageSchema> boolean contentToLowLevelRead2(Pipe<S> input, long target) {
 		//only does second part if the first does not pass
 		return (input.llWrite.llwHeadPosCache >= target) || contentToLowLevelReadSlow(input, target);
 	}
 
-	private static boolean contentToLowLevelReadSlow(Pipe input, long target) {
+	private static <S extends MessageSchema> boolean contentToLowLevelReadSlow(Pipe<S> input, long target) {
 		return (input.llWrite.llwHeadPosCache = input.slabRingHead.headPos.get()) >= target;
 	}
 
-	public static long confirmLowLevelRead(Pipe input, long size) {
+	public static <S extends MessageSchema> long confirmLowLevelRead(Pipe<S> input, long size) {
 	    assert(size>0) : "Must have read something.";
 	    assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value) : "size was too large, past known data";
 	    assert(input.llWrite.llwConfirmedWrittenPosition + size >= input.slabRingTail.tailPos.get()) : "size was too small, under known data";        
 		return (input.llWrite.llwConfirmedWrittenPosition += size);
 	}
 
-    public static void setWorkingHeadTarget(Pipe input) {
+    public static <S extends MessageSchema> void setWorkingHeadTarget(Pipe<S> input) {
         input.llWrite.llwConfirmedWrittenPosition =  Pipe.getWorkingTailPosition(input);
     }
 
-	public static boolean hasReleasePending(Pipe ringBuffer) {
+	public static <S extends MessageSchema> boolean hasReleasePending(Pipe<S> ringBuffer) {
 		return ringBuffer.batchReleaseCountDown!=ringBuffer.batchReleaseCountDownInit;
 	}
 
-	public static int getUnstructuredLayoutRingTailPosition(Pipe ring) {
+	public static <S extends MessageSchema> int getUnstructuredLayoutRingTailPosition(Pipe<S> ring) {
 	    return PaddedInt.get(ring.blobRingTail.bytesTailPos);
 	}
 
 	@Deprecated
-    public static int bytesTailPosition(Pipe ring) {
+    public static <S extends MessageSchema> int bytesTailPosition(Pipe<S> ring) {
         return getUnstructuredLayoutRingTailPosition(ring);
     }
 
-    public static void setBytesTail(Pipe ring, int value) {
+    public static <S extends MessageSchema> void setBytesTail(Pipe<S> ring, int value) {
         PaddedInt.set(ring.blobRingTail.bytesTailPos, value);
     }
 
-    public static int bytesHeadPosition(Pipe ring) {
+    public static <S extends MessageSchema> int bytesHeadPosition(Pipe<S> ring) {
         return PaddedInt.get(ring.blobRingHead.bytesHeadPos);
     }
 
-    public static void setBytesHead(Pipe ring, int value) {
+    public static <S extends MessageSchema> void setBytesHead(Pipe<S> ring, int value) {
         PaddedInt.set(ring.blobRingHead.bytesHeadPos, value);
     }
 
-    public static int addAndGetBytesHead(Pipe ring, int inc) {
+    public static <S extends MessageSchema> int addAndGetBytesHead(Pipe<S> ring, int inc) {
         return PaddedInt.add(ring.blobRingHead.bytesHeadPos, inc);
     }
 
-    public static int getWorkingUnstructuredLayoutRingTailPosition(Pipe ring) {
+    public static <S extends MessageSchema> int getWorkingUnstructuredLayoutRingTailPosition(Pipe<S> ring) {
         return PaddedInt.get(ring.blobRingTail.byteWorkingTailPos);
     }
 
     @Deprecated
-    public static int bytesWorkingTailPosition(Pipe ring) {
+    public static <S extends MessageSchema> int bytesWorkingTailPosition(Pipe<S> ring) {
         return getWorkingUnstructuredLayoutRingTailPosition(ring);
     }
 
-    public static int addAndGetBytesWorkingTailPosition(Pipe ring, int inc) {
+    public static <S extends MessageSchema> int addAndGetBytesWorkingTailPosition(Pipe<S> ring, int inc) {
         return PaddedInt.maskedAdd(ring.blobRingTail.byteWorkingTailPos, inc, Pipe.BYTES_WRAP_MASK);
     }
 
-    public static void setBytesWorkingTail(Pipe ring, int value) {
+    public static <S extends MessageSchema> void setBytesWorkingTail(Pipe<S> ring, int value) {
         PaddedInt.set(ring.blobRingTail.byteWorkingTailPos, value);
     }
 
-    public static int bytesWorkingHeadPosition(Pipe ring) {
+    public static <S extends MessageSchema> int bytesWorkingHeadPosition(Pipe<S> ring) {
         return PaddedInt.get(ring.blobRingHead.byteWorkingHeadPos);
     }
 
-    public static int addAndGetBytesWorkingHeadPosition(Pipe ring, int inc) {
+    public static <S extends MessageSchema> int addAndGetBytesWorkingHeadPosition(Pipe<S> ring, int inc) {
         return PaddedInt.maskedAdd(ring.blobRingHead.byteWorkingHeadPos, inc, Pipe.BYTES_WRAP_MASK);
     }
 
-    public static void setBytesWorkingHead(Pipe ring, int value) {
+    public static <S extends MessageSchema> void setBytesWorkingHead(Pipe<S> ring, int value) {
         PaddedInt.set(ring.blobRingHead.byteWorkingHeadPos, value);
     }
 
-    public static int decBatchRelease(Pipe rb) {
+    public static <S extends MessageSchema> int decBatchRelease(Pipe<S> rb) {
         return --rb.batchReleaseCountDown;
     }
 
-    public static int decBatchPublish(Pipe rb) {
+    public static <S extends MessageSchema> int decBatchPublish(Pipe<S> rb) {
         return --rb.batchPublishCountDown;
     }
 
-    public static void beginNewReleaseBatch(Pipe rb) {
+    public static <S extends MessageSchema> void beginNewReleaseBatch(Pipe<S> rb) {
         rb.batchReleaseCountDown = rb.batchReleaseCountDownInit;
     }
 
-    public static void beginNewPublishBatch(Pipe rb) {
+    public static <S extends MessageSchema> void beginNewPublishBatch(Pipe<S> rb) {
         rb.batchPublishCountDown = rb.batchPublishCountDownInit;
     }
 
-    public static byte[] byteBuffer(Pipe rb) {
+    public static <S extends MessageSchema> byte[] byteBuffer(Pipe<S> rb) {
         return rb.blobRing;
     }
 
-    public static int[] primaryBuffer(Pipe rb) {
+    public static <S extends MessageSchema> int[] primaryBuffer(Pipe<S> rb) {
         return rb.slabRing;
     }
 
-    public static void updateBytesWriteLastConsumedPos(Pipe rb) {
+    public static <S extends MessageSchema> void updateBytesWriteLastConsumedPos(Pipe<S> rb) {
         rb.blobWriteLastConsumedPos = Pipe.bytesWorkingHeadPosition(rb);
     }
 
-    public static PaddedLong getWorkingTailPositionObject(Pipe rb) {
+    public static <S extends MessageSchema> PaddedLong getWorkingTailPositionObject(Pipe<S> rb) {
         return rb.slabRingTail.workingTailPos;
     }
 
-    public static PaddedLong getWorkingHeadPositionObject(Pipe rb) {
+    public static <S extends MessageSchema> PaddedLong getWorkingHeadPositionObject(Pipe<S> rb) {
         return rb.slabRingHead.workingHeadPos;
     }
 }
