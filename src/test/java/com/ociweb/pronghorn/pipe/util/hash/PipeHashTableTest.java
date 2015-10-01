@@ -2,9 +2,9 @@ package com.ociweb.pronghorn.pipe.util.hash;
 
 import static org.junit.Assert.*;
 
-import org.junit.Test;
+import java.util.HashMap;
 
-import com.ociweb.pronghorn.pipe.util.hash.PipeHashTable;
+import org.junit.Test;
 
 public class PipeHashTableTest {
 	
@@ -244,5 +244,87 @@ public class PipeHashTableTest {
                     PipeHashTable.getItem(ht, j));           
         }
     }
+    
+    
+    
+    @Test
+    public void addToHashTableSpeed() {
+        PipeHashTable ht = null;
+        HashMap<Long,Long> map = null;
+        
+        final int testBits = 14;
+        
+        final int testSize = 5*(1<<testBits)/8; //must keep space for hash
+        
+        final int extra = (1<<testBits)+1;
+        final int iterations = 1000;
+        
+        long start = System.currentTimeMillis();
+        int i = iterations;
+        while (--i>=0) {
+            ht = new PipeHashTable(testBits);            
+            int j = testSize;
+            while (--j>0) {         
+                PipeHashTable.setItem(ht, j, j*7);
+            }
+            
+            j = testSize;
+            while (--j>0) { 
+                if (!PipeHashTable.hasItem(ht, j)) {
+                    assertTrue(PipeHashTable.hasItem(ht, j));
+                }
+                if (0==PipeHashTable.getItem(ht, j)) {
+                    assertTrue(0!=PipeHashTable.getItem(ht, j));                    
+                }
+                if (j*7 != PipeHashTable.getItem(ht, j)) {
+                    assertEquals("at position "+j, j*7, PipeHashTable.getItem(ht, j));    
+                }
+            }
+        }
+        long hashTableDuration = System.currentTimeMillis()-start;
+        
+        start = System.currentTimeMillis();
+        i = iterations;
+        while (--i>=0) {            
+            map = new HashMap<Long,Long>((1<<testBits));
+                        
+            int j = testSize;
+            while (--j>0) {         
+                map.put((long) j, (long)j*7);
+            }
+            
+            j = testSize;
+            while (--j>0) { 
+                if (!map.containsKey((long)j)) {
+                    assertTrue( map.containsKey((long)j));
+                }
+                if (0==map.get((long)j)) {
+                    assertTrue(0!= map.get((long)j));
+                }
+                if ( j*7 != map.get((long)j).longValue() ) {
+                    assertEquals("at position "+j,
+                            (long)j*7, 
+                            map.get((long)j).longValue()); 
+                }
+            }
+        }
+        long mapDuration = System.currentTimeMillis()-start;
+        
+        assertNotNull(ht);
+        assertNotNull(map);
+        
+        long roughTableSize = (1<<testBits)*(8+8);
+        long roughtMapSize =  (4*(int)((1<<testBits)*0.75f))+(32*(1<<testBits))+testSize*(8+8+8+8);//key and value plus object headers
+        //plus 4*c for length of arrays not sure.
+
+        System.out.println("hash "+hashTableDuration+"ms "+roughTableSize+"bytes");
+        System.out.println("map  "+mapDuration      +"ms "+roughtMapSize+"bytes");
+        
+        //roughly one third the space, numbers for client.
+        //roughly 20% faster or 80% of the cpu
+        
+        
+    }
+    
 	
 }
