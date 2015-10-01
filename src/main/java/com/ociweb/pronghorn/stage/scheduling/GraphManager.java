@@ -1015,11 +1015,15 @@ public class GraphManager {
 
 	//when batching is used we need to flush outstanding writes before yield
 	public static void publishAllWrites(GraphManager m, PronghornStage stage) {
+	    
 		int ringId;
 		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
-		while (-1 != (ringId=m.multOutputIds[idx++])) {	 //TODO: could be unrolled an inlined
-			Pipe.publishAllBatchedWrites(m.ringIdToRing[ringId]);				
-		}		
+		while (-1 != (ringId=m.multOutputIds[idx++])) {
+		    if (Pipe.getPublishBatchSize(m.ringIdToRing[ringId])>0) {
+		        Pipe.publishAllBatchedWrites(m.ringIdToRing[ringId]);	
+		    }
+		}
+		
 	}
 	
 //TODO: B, integrate this into the schedulers	
