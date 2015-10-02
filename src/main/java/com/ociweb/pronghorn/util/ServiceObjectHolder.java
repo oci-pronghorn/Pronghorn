@@ -44,7 +44,7 @@ public class ServiceObjectHolder<T> {
         public int mask;
         public long[] serviceObjectKeys;
         public T[] serviceObjectValues;
-        public final Class<T> clazz;    
+        public final Class<T> clazz; 
 
         @SuppressWarnings("unchecked")
         public ServiceObjectData(int initialBits, Class<T> clazz) {
@@ -73,15 +73,16 @@ public class ServiceObjectHolder<T> {
                     serviceObjectValues[modIdx] = value;
                     serviceObjectKeys[modIdx] = data.serviceObjectKeys[modIdx];
                 }
-            }
-            
+            }            
         }
     }
     private static final int DEFAULT_BITS = 5;
 
     private ServiceObjectData<T> data;
-    private long  sequenceCounter;
     private final ServiceObjectValidator<T> validator;
+    
+    private long sequenceCounter;//goes up on every add
+    private long removalCounter;//goes down on every remove
     
     //for support of forever loop around the valid Objects
     private int loopPos = -1;
@@ -191,5 +192,14 @@ public class ServiceObjectHolder<T> {
         return index<=hardStop ? result : null;    
         
     }
+
+    public static long getSequenceCount(ServiceObjectHolder sho) {
+        return sho.sequenceCounter; 
+    }
+    
+    public static long getRemovalCount(ServiceObjectHolder sho) {
+        return sho.removalCounter; 
+    }
+    
     
 }

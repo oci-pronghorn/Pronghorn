@@ -134,8 +134,8 @@ public class MonitorConsoleStage extends PronghornStage {
 	 */
 	public static void attach(GraphManager gm, Long monitorRate, PipeConfig ringBufferMonitorConfig) {
 		MonitorConsoleStage stage = new MonitorConsoleStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig));
-        GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
-		GraphManager.addAnnotation(gm, GraphManager.MONITOR, "dummy", stage);
+        GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
+		GraphManager.addNota(gm, GraphManager.MONITOR, "dummy", stage);
 		
 	}
 

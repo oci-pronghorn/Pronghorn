@@ -25,13 +25,13 @@ public class GraphManager {
 		
 	}
 	
-
+    //Nota bene attachments
 	public final static String SCHEDULE_RATE = "SCHEDULE_RATE"; //in ns
 	public final static String MONITOR       = "MONITOR";
 	public final static String PRODUCER      = "PRODUCER";//explicit so it can be found even if it has feedback inputs.    
 	public final static String STAGE_NAME    = "STAGE_NAME";
-	public final static String UNSCHEDULED   = "UNSCHEDULED";//new annotation for stages that should never get a thread (experimental)
-	public final static String BLOCKING      = "BLOCKING";   //new annotation for stages that do not give threads back.
+	public final static String UNSCHEDULED   = "UNSCHEDULED";//new nota for stages that should never get a thread (experimental)
+	public final static String BLOCKING      = "BLOCKING";   //new nota for stages that do not give threads back.
 	
 	
 	private final static int INIT_RINGS = 32;
@@ -62,16 +62,16 @@ public class GraphManager {
 	//This object is shared with all clones
 	private final GraphManagerStageStateData stageStateData;
 	
-	//add the annotation to this list first so we have an Id associated with it
-	private Object[] annotationIdToKey = new Object[INIT_STAGES];
-	private Object[] annotationIdToValue = new Object[INIT_STAGES];
-	private int[] annotationIdToStageId = new int[INIT_STAGES];
-	private int totalAnnotationCount = 0;
+	//add the nota to this list first so we have an Id associated with it
+	private Object[] notaIdToKey = new Object[INIT_STAGES];
+	private Object[] notaIdToValue = new Object[INIT_STAGES];
+	private int[] notaIdToStageId = new int[INIT_STAGES];
+	private int totalNotaCount = 0;
 
-	//store the annotation ids here
-	private int[] stageIdToAnnotationsBeginIdx = new int[INIT_STAGES];
-	private int[] multAnnotationIds = new int[INIT_RINGS]; //a -1 marks the end of a run of values
-	private int topAnnotation = 0;
+	//store the notas ids here
+	private int[] stageIdToNotasBeginIdx = new int[INIT_STAGES];
+	private int[] multNotaIds = new int[INIT_RINGS]; //a -1 marks the end of a run of values
+	private int topNota = 0;
 	
 	//this is never used as a runtime but only as a construction lock
 	private Object lock = new Object();	
@@ -84,9 +84,9 @@ public class GraphManager {
 		Arrays.fill(multInputIds, -1);
 		Arrays.fill(stageIdToOutputsBeginIdx, -1);
 		Arrays.fill(multOutputIds, -1);
-		Arrays.fill(annotationIdToStageId, -1);
-		Arrays.fill(stageIdToAnnotationsBeginIdx, -1);
-		Arrays.fill(multAnnotationIds, -1);
+		Arrays.fill(notaIdToStageId, -1);
+		Arrays.fill(stageIdToNotasBeginIdx, -1);
+		Arrays.fill(multNotaIds, -1);
 		
 		stageStateData = new GraphManagerStageStateData();
 	}
@@ -97,9 +97,9 @@ public class GraphManager {
 		Arrays.fill(multInputIds, -1);
 		Arrays.fill(stageIdToOutputsBeginIdx, -1);
 		Arrays.fill(multOutputIds, -1);
-		Arrays.fill(annotationIdToStageId, -1);
-		Arrays.fill(stageIdToAnnotationsBeginIdx, -1);
-		Arrays.fill(multAnnotationIds, -1);
+		Arrays.fill(notaIdToStageId, -1);
+		Arrays.fill(stageIdToNotasBeginIdx, -1);
+		Arrays.fill(multNotaIds, -1);
 		
 		//enables single point of truth for the stages states, all clones  share this object
 		stageStateData = parentStageStateData;
@@ -113,13 +113,13 @@ public class GraphManager {
 			PronghornStage stage = m.stageIdToStage[i];
 			if (null!=stage) {
 				copyStage(m, clone, stage);
-				copyAnnotationsForStage(m, clone, stage);	
+				copyNotasForStage(m, clone, stage);	
 			}
 		}
 		return clone;
 	}
 	
-	public GraphManager cloneStagesWithAnnotationKey(GraphManager m, Object key) {
+	public GraphManager cloneStagesWithNotaKey(GraphManager m, Object key) {
 		GraphManager clone = new GraphManager();
 		//register each stage
 		int i = m.stageIdToStage.length;
@@ -127,9 +127,9 @@ public class GraphManager {
 			PronghornStage stage = m.stageIdToStage[i];
 			if (null!=stage) {
 				//copy this stage if it has the required key
-				if (this != getAnnotation(m, stage, key, this)) {
+				if (this != getNota(m, stage, key, this)) {
 					copyStage(m, clone, stage);
-					copyAnnotationsForStage(m, clone, stage);
+					copyNotasForStage(m, clone, stage);
 				}
 			}
 		}
@@ -158,7 +158,7 @@ public class GraphManager {
        return ringIds;
    }
 	
-   public static int countStagesWithAnnotationKey(GraphManager m, Object key) {
+   public static int countStagesWithNotaKey(GraphManager m, Object key) {
         
         int count = 0;
         int i = m.stageIdToStage.length;
@@ -166,7 +166,7 @@ public class GraphManager {
             PronghornStage stage = m.stageIdToStage[i];
             if (null!=stage) {
                 //count this stage if it has the required key
-                if (null != getAnnotation(m, stage, key, null)) {
+                if (null != getNota(m, stage, key, null)) {
                     count++;
                 }
             }
@@ -174,14 +174,14 @@ public class GraphManager {
         return count;
     }
 	
-    public static PronghornStage getStageWithAnnotationKey(GraphManager m, Object key, int ordinal) {
+    public static PronghornStage getStageWithNotaKey(GraphManager m, Object key, int ordinal) {
        
        int i = m.stageIdToStage.length;
        while (--i>=0) {
            PronghornStage stage = m.stageIdToStage[i];
            if (null!=stage) {
                //count this stage if it has the required key
-               if (null != getAnnotation(m, stage, key, null)) {
+               if (null != getNota(m, stage, key, null)) {
                    if (--ordinal<=0) {
                        return stage;
                    }
@@ -191,7 +191,7 @@ public class GraphManager {
        throw new UnsupportedOperationException("Invalid configuration. Unable to find requested ordinal "+ordinal);
     }
 	
-	public GraphManager cloneStagesWithAnnotationKeyValue(GraphManager m, Object key, Object value) {
+	public GraphManager cloneStagesWithNotaKeyValue(GraphManager m, Object key, Object value) {
 		GraphManager clone = new GraphManager();
 		//register each stage
 		int i = m.stageIdToStage.length;
@@ -199,9 +199,9 @@ public class GraphManager {
 			PronghornStage stage = m.stageIdToStage[i];
 			if (null!=stage) {
 				//copy this stage if it has the required key
-				if (value.equals(getAnnotation(m, stage, key, null))) {
+				if (value.equals(getNota(m, stage, key, null))) {
 					copyStage(m, clone, stage);
-					copyAnnotationsForStage(m, clone, stage);
+					copyNotasForStage(m, clone, stage);
 				}
 			}
 		}
@@ -268,16 +268,16 @@ public class GraphManager {
         }
     }
 
-	private static void copyAnnotationsForStage(GraphManager m,	GraphManager clone, PronghornStage stage) {
+	private static void copyNotasForStage(GraphManager m,	GraphManager clone, PronghornStage stage) {
 		int idx;
-		int annotationId;
+		int notaId;
 		int stageId = stage.stageId;
 		
-		idx = m.stageIdToAnnotationsBeginIdx[stageId];
-		while (-1 != (annotationId=m.multAnnotationIds[idx++])) {
-			Object key = m.annotationIdToKey[annotationId];
-			Object value = m.annotationIdToValue[annotationId];					
-			addAnnotation(clone, key, value, stage);									
+		idx = m.stageIdToNotasBeginIdx[stageId];
+		while (-1 != (notaId=m.multNotaIds[idx++])) {
+			Object key = m.notaIdToKey[notaId];
+			Object value = m.notaIdToValue[notaId];					
+			addNota(clone, key, value, stage);									
 		}
 	}
 
@@ -394,7 +394,7 @@ public class GraphManager {
 	private static void endStageRegister(GraphManager gm) {
 		gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, -1);
 		gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, -1);
-		gm.multAnnotationIds = setValue(gm.multAnnotationIds, gm.topAnnotation++, -1);
+		gm.multNotaIds = setValue(gm.multNotaIds, gm.topNota++, -1);
 	}
 
 	private static int beginStageRegister(GraphManager gm, PronghornStage stage) {
@@ -408,7 +408,7 @@ public class GraphManager {
 		gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
 		gm.stageIdToInputsBeginIdx = setValue(gm.stageIdToInputsBeginIdx, stageId, gm.topInput);
 		gm.stageIdToOutputsBeginIdx = setValue(gm.stageIdToOutputsBeginIdx, stageId, gm.topOutput);			
-		gm.stageIdToAnnotationsBeginIdx = setValue(gm.stageIdToAnnotationsBeginIdx, stageId, gm.topAnnotation);
+		gm.stageIdToNotasBeginIdx = setValue(gm.stageIdToNotasBeginIdx, stageId, gm.topNota);
 		return stageId;
 	}
 
@@ -532,6 +532,7 @@ public class GraphManager {
 			pm.multOutputIds = setValue(pm.multOutputIds, pm.topOutput++, outputId);
 		}
 	}
+	
 
 	private static void regInput(GraphManager pm, Pipe input,	int stageId) {
 		if (null!=input) {
@@ -543,46 +544,46 @@ public class GraphManager {
 	}
 
 
-	public static void addAnnotation(GraphManager graphManager, Object key, Object value, PronghornStage ... stages) {
+	public static void addNota(GraphManager graphManager, Object key, Object value, PronghornStage ... stages) {
 		int i = stages.length;
 		while (--i>=0) {
-			addAnnotation(graphManager, key, value, stages[i]);
+			addNota(graphManager, key, value, stages[i]);
 		}
 	}
 	
-	public static void addAnnotation(GraphManager m, Object key, Object value, PronghornStage stage) {
+	public static void addNota(GraphManager m, Object key, Object value, PronghornStage stage) {
 		synchronized(m.lock) {	
 			
-			//if Annotation key already exists then replace previous value
-			int annotationId = findAnnotationIdForKey(m, stage.stageId, key);
+			//if Nota key already exists then replace previous value
+			int notaId = findNotaIdForKey(m, stage.stageId, key);
 			
-			if (-1 != annotationId) {
+			if (-1 != notaId) {
 				//simple replace with new value
-				m.annotationIdToValue[annotationId] = value;				
+				m.notaIdToValue[notaId] = value;				
 			} else {
-				//extract as add annotation method.
+				//extract as add nota method.
 				//even if the same key/value is given to multiple stages we add it multiple times here
 				//this allows for direct lookup later for every instance found
-				m.annotationIdToKey = setValue(m.annotationIdToKey, m.totalAnnotationCount, key);
-				m.annotationIdToValue = setValue(m.annotationIdToValue, m.totalAnnotationCount, value);
-				m.annotationIdToStageId = setValue(m.annotationIdToStageId, m.totalAnnotationCount, stage.stageId);
+				m.notaIdToKey = setValue(m.notaIdToKey, m.totalNotaCount, key);
+				m.notaIdToValue = setValue(m.notaIdToValue, m.totalNotaCount, value);
+				m.notaIdToStageId = setValue(m.notaIdToStageId, m.totalNotaCount, stage.stageId);
 				
-				int beginIdx = m.stageIdToAnnotationsBeginIdx[stage.stageId];
-			    if (m.topAnnotation == m.multAnnotationIds.length) {
+				int beginIdx = m.stageIdToNotasBeginIdx[stage.stageId];
+			    if (m.topNota == m.multNotaIds.length) {
 			    	//create new larger array		    	
-			    	int[] newMultiAnnotationIdx = new int[m.multAnnotationIds.length*2];
-			    	System.arraycopy(m.multAnnotationIds, 0, newMultiAnnotationIdx, 0, beginIdx);
-			    	System.arraycopy(m.multAnnotationIds, beginIdx, newMultiAnnotationIdx, beginIdx+1, m.topAnnotation-(beginIdx));
-			    	m.multAnnotationIds = newMultiAnnotationIdx;		    	
+			    	int[] newMultiNotaIdx = new int[m.multNotaIds.length*2];
+			    	System.arraycopy(m.multNotaIds, 0, newMultiNotaIdx, 0, beginIdx);
+			    	System.arraycopy(m.multNotaIds, beginIdx, newMultiNotaIdx, beginIdx+1, m.topNota-(beginIdx));
+			    	m.multNotaIds = newMultiNotaIdx;		    	
 			    } else {
 			    	//move all the data down.
-			    	System.arraycopy(m.multAnnotationIds, beginIdx, m.multAnnotationIds, beginIdx+1, m.topAnnotation-(beginIdx));
+			    	System.arraycopy(m.multNotaIds, beginIdx, m.multNotaIds, beginIdx+1, m.topNota-(beginIdx));
 			    }
 			    
-			    m.multAnnotationIds[beginIdx] = m.totalAnnotationCount;//before we inc this value is the index to this key/value pair
+			    m.multNotaIds[beginIdx] = m.totalNotaCount;//before we inc this value is the index to this key/value pair
 			    
-				m.totalAnnotationCount++;
-				m.topAnnotation++;
+				m.totalNotaCount++;
+				m.topNota++;
 				
 			}
 			
@@ -591,12 +592,12 @@ public class GraphManager {
 	
 	//also add get regex of key string
 	
-	private static int findAnnotationIdForKey(GraphManager m, int stageId, Object key) {
-		int idx = m.stageIdToAnnotationsBeginIdx[stageId];
-		int annotationId;
-		while(-1 != (annotationId = m.multAnnotationIds[idx])) {
-			if (m.annotationIdToKey[annotationId].equals(key)) {
-				return annotationId;
+	private static int findNotaIdForKey(GraphManager m, int stageId, Object key) {
+		int idx = m.stageIdToNotasBeginIdx[stageId];
+		int notaId;
+		while(-1 != (notaId = m.multNotaIds[idx])) {
+			if (m.notaIdToKey[notaId].equals(key)) {
+				return notaId;
 			}
 			idx++;
 		}		
@@ -606,30 +607,30 @@ public class GraphManager {
 
 	
 	/**
-	 * Returns annotation if one is found by this key on this stage, if Annotation is not found it returns the defaultValue
+	 * Returns nota if one is found by this key on this stage, if nota is not found it returns the defaultValue
 	 * @param m
 	 * @param stage
 	 * @param key
 	 * @return
 	 */
-	public static Object getAnnotation(GraphManager m, PronghornStage stage, Object key, Object defaultValue) {
-		int idx = m.stageIdToAnnotationsBeginIdx[stage.stageId];
-		int annotationId;
-		while(-1 != (annotationId = m.multAnnotationIds[idx])) {
-			if (m.annotationIdToKey[annotationId].equals(key)) {
-				return m.annotationIdToValue[annotationId];
+	public static Object getNota(GraphManager m, PronghornStage stage, Object key, Object defaultValue) {
+		int idx = m.stageIdToNotasBeginIdx[stage.stageId];
+		int notaId;
+		while(-1 != (notaId = m.multNotaIds[idx])) {
+			if (m.notaIdToKey[notaId].equals(key)) {
+				return m.notaIdToValue[notaId];
 			}
 			idx++;
 		}		
 		return defaultValue;
 	}
 	
-	public static Object getAnnotation(GraphManager m, int stageId, Object key, Object defaultValue) {
-		int idx = m.stageIdToAnnotationsBeginIdx[stageId];
-		int annotationId;
-		while(-1 != (annotationId = m.multAnnotationIds[idx])) {
-			if (m.annotationIdToKey[annotationId].equals(key)) {
-				return m.annotationIdToValue[annotationId];
+	public static Object getNota(GraphManager m, int stageId, Object key, Object defaultValue) {
+		int idx = m.stageIdToNotasBeginIdx[stageId];
+		int notaId;
+		while(-1 != (notaId = m.multNotaIds[idx])) {
+			if (m.notaIdToKey[notaId].equals(key)) {
+				return m.notaIdToValue[notaId];
 			}
 			idx++;
 		}		
@@ -757,7 +758,7 @@ public class GraphManager {
 				if (-1 == m.multInputIds[m.stageIdToInputsBeginIdx[m.stageIdToStage[i].stageId]]) {
 					//terminate all stages without any inputs
 					m.stageIdToStage[i].requestShutdown();
-				} else if (null != getAnnotation(m, m.stageIdToStage[i], PRODUCER, null)) {
+				} else if (null != getNota(m, m.stageIdToStage[i], PRODUCER, null)) {
 					//also terminate all stages decorated as producers
 					m.stageIdToStage[i].requestShutdown();
 					//producers with inputs must be forced to terminate or the input queue will prevent shutdown
@@ -930,8 +931,8 @@ public class GraphManager {
 
 				monBuffers[monBufIdx] = new Pipe(ringBufferMonitorConfig);
 				RingBufferMonitorStage stage = new RingBufferMonitorStage(gm, ringBuffer,  monBuffers[monBufIdx]);
-				GraphManager.addAnnotation(gm, GraphManager.MONITOR, "dummy", stage);
-				GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
+				GraphManager.addNota(gm, GraphManager.MONITOR, "dummy", stage);
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
 				
 				monBufIdx++;
 				
@@ -941,11 +942,11 @@ public class GraphManager {
 	}
 
 	private static boolean ringHoldsMonitorData(GraphManager gm, Pipe ringBuffer) {
-		return null != GraphManager.getAnnotation(gm, GraphManager.getRingProducer(gm, ringBuffer.ringId), GraphManager.MONITOR, null);
+		return null != GraphManager.getNota(gm, GraphManager.getRingProducer(gm, ringBuffer.ringId), GraphManager.MONITOR, null);
 	}
 	
     private static boolean stageForMonitorData(GraphManager gm, PronghornStage stage) {
-        return null != GraphManager.getAnnotation(gm, stage, GraphManager.MONITOR, null);
+        return null != GraphManager.getNota(gm, stage, GraphManager.MONITOR, null);
     }
 
 	public static void enableBatching(GraphManager gm) {
@@ -974,8 +975,8 @@ public class GraphManager {
 		PronghornStage consumer = getRingConsumer(gm, ringBuffer.ringId);
 		PronghornStage producer = getRingProducer(gm, ringBuffer.ringId);
 		
-		String consumerName = getAnnotation(gm, consumer, STAGE_NAME, consumer.getClass().getSimpleName()).toString();
-		String producerName = getAnnotation(gm, producer, STAGE_NAME, producer.getClass().getSimpleName()).toString();
+		String consumerName = getNota(gm, consumer, STAGE_NAME, consumer.getClass().getSimpleName()).toString();
+		String producerName = getNota(gm, producer, STAGE_NAME, producer.getClass().getSimpleName()).toString();
 		
 		return producerName + "-"+Integer.toString(ringBuffer.ringId)+"-" + consumerName;
 	}

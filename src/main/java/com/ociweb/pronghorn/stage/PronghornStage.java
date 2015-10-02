@@ -87,7 +87,7 @@ public abstract class PronghornStage {
 		
 		//if this stage is a PRODUCER then we go directly to the shutdown state to ensure the thread ignores any incoming messages
 		//all other stages must wait for the queues to empy before the move into the shutdown state.		
-		if (null != GraphManager.getAnnotation(graphManager, stageId, GraphManager.PRODUCER, null)) {
+		if (null != GraphManager.getNota(graphManager, stageId, GraphManager.PRODUCER, null)) {
 		    GraphManager.setStateToShutdown(graphManager, stageId);
 		}
 		

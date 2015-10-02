@@ -554,10 +554,10 @@ public class RingBufferPipeline {
 				 
 				 //this is a bit complex may be better to move this inside on thread?
 				
-				 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(4100000), monitorStages[j]);
+				 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(4100000), monitorStages[j]);
 				 
 				 
-				 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(4700000), new DumpMonitorStage(gm, monRing));
+				 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(4700000), new DumpMonitorStage(gm, monRing));
 				 
 			 }
 		 }
@@ -568,7 +568,7 @@ public class RingBufferPipeline {
 		 j = 0;
 	 	 Pipe outputRing = rings[j];
 	
-		 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? new ProductionStageHighLevel(gm, outputRing) : new ProductionStageLowLevel(gm, outputRing));
+		 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? new ProductionStageHighLevel(gm, outputRing) : new ProductionStageLowLevel(gm, outputRing));
 				 
 		 int i = stagesBetweenSourceAndSink;
 		 while (--i>=0) {
@@ -584,7 +584,7 @@ public class RingBufferPipeline {
 						Pipe inputRing = splitsBuffers[k];
 						boolean useRoute = useTap&useRouter;
 						 ///
-						 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? 
+						 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? 
 						 //new DumpStageStreamingConsumer(gm, inputRing, useRoute):
 						 new DumpStageHighLevel(gm, inputRing, useRoute) :
 						 new DumpStageLowLevel(gm, inputRing, useRoute));
@@ -593,21 +593,21 @@ public class RingBufferPipeline {
 				 
 				 
 			     if (useRouter) {
-			    	 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), new RoundRobinRouteStage(gm, rings[j++], splitsBuffers));
+			    	 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), new RoundRobinRouteStage(gm, rings[j++], splitsBuffers));
 			     } else {
-			    	 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), new SplitterStage(gm, rings[j++], splitsBuffers)); 
+			    	 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), new SplitterStage(gm, rings[j++], splitsBuffers)); 
 			     }
 			 } else {			 
 				 Pipe inputRing = rings[j++];
 				Pipe outputRing1 = rings[j];
-				GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? new CopyStageHighLevel(gm, outputRing1, inputRing) : new CopyStageLowLevel(gm, outputRing1, inputRing));		
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? new CopyStageHighLevel(gm, outputRing1, inputRing) : new CopyStageLowLevel(gm, outputRing1, inputRing));		
 			 }
 			 
 		 }
 		 
 	  	 Pipe inputRing = rings[j];
 		 boolean useRoute = useTap&useRouter;
-		 GraphManager.addAnnotation(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? 
+		 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? 
 			//	new DumpStageStreamingConsumer(gm, inputRing, useRoute):
 			      new DumpStageHighLevel(gm, inputRing, useRoute) :
 			      new DumpStageLowLevel(gm, inputRing, useRoute));
