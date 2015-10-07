@@ -48,7 +48,7 @@ public class RingBufferPipeline {
 
 		@Override
 		public void run() {  
-			while (Pipe.contentToLowLevelRead(inputRing, monitorMessageSize)) {
+			while (Pipe.hasContentToRead(inputRing, monitorMessageSize)) {
 	        
 	            //read the message
 	            int msgId = Pipe.takeMsgIdx(inputRing);//readValue(0, inputRing.buffer,inputRing.mask,inputRing.workingTailPos.value); 
@@ -95,7 +95,7 @@ public class RingBufferPipeline {
 		@Override
 		public void run() {  
 		        	
-			while (Pipe.contentToLowLevelRead(inputRing, msgSize)) {
+			while (Pipe.hasContentToRead(inputRing, msgSize)) {
 		        	
 		            Pipe.takeMsgIdx(inputRing);
 		            Pipe.confirmLowLevelRead(inputRing, msgSize);
@@ -273,7 +273,7 @@ public class RingBufferPipeline {
 		@Override
 		public void run() {
 			
-			while (Pipe.contentToLowLevelRead(inputRing, msgSize) && Pipe.roomToLowLevelWrite(outputRing, msgSize)) {			
+			while (Pipe.hasContentToRead(inputRing, msgSize) && Pipe.roomToLowLevelWrite(outputRing, msgSize)) {			
 			        
 			        Pipe.confirmLowLevelRead(inputRing, msgSize);
 			        Pipe.confirmLowLevelWrite(outputRing, msgSize);

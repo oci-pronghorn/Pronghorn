@@ -45,7 +45,7 @@ public class ToOutputStreamStage extends PronghornStage {
 				int byteMask = inputRing.byteMask;
 				int byteSize = byteMask+1;								
 				
-				while (Pipe.contentToLowLevelRead(inputRing, step)) {
+				while (Pipe.hasContentToRead(inputRing, step)) {
 						
 					int msgId = Pipe.takeMsgIdx(inputRing);
   

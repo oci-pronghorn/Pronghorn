@@ -71,7 +71,7 @@ public class FieldSplitterStage extends PronghornStage {
 	public void readData(FieldSplitterStage stage, Pipe inputRing, Pipe outputRing) {
 	
 		//return if there is no data found
-		while (Pipe.contentToLowLevelRead(inputRing, step)) {
+		while (Pipe.hasContentToRead(inputRing, step)) {
 
 	    	int msgIdx = Pipe.takeMsgIdx(inputRing);
 	    				

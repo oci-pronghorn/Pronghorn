@@ -113,7 +113,7 @@ public class SplitterStage extends PronghornStage {
 				ss.working[i]=i;
 			}
 			//collect all the constant values needed for doing the copy
-			ss.tempByteTail = Pipe.bytesTailPosition(ss.source);
+			ss.tempByteTail = Pipe.getBlobRingTailPosition(ss.source);
 			ss.byteTailPos = ss.source.byteMask & ss.tempByteTail;
 			if ((ss.totalBytesCopy =      (ss.source.byteMask & ss.byteHeadPos) - ss.byteTailPos) < 0) {
 				ss.totalBytesCopy += (ss.source.byteMask+1);
