@@ -7,7 +7,7 @@ public class MemberHolder {
     private final ByteBuffer[] data; //pos remains at end ready for write.
 
     public MemberHolder(int maxSets) {
-        this(maxSets, 64);
+        this(maxSets, 64*10);
     }
     
     public MemberHolder(int maxLists, int initBytesPerSet) {
