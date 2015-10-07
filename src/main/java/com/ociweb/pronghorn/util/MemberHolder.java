@@ -81,10 +81,13 @@ public class MemberHolder {
     }
     
     public boolean isEmpty(int listId) {
-        return 0==data[listId].position();
+        return listId>=data.length ||  0==data[listId].position();
     }
     
     public int containsCount(int listId, long member) {
+        if (listId>=data.length) {
+            return 0;
+        }
         ByteBuffer buff = data[listId];
         buff.flip();
         int found = 0;
