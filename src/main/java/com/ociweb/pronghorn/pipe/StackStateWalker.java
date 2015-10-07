@@ -158,7 +158,7 @@ class StackStateWalker {
 		//save the index into these fragments so the reader will be able to find them.
 		ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] = tmpNextWokingTail;
 		
-		assert(Pipe.bytesWorkingTailPosition(ringBuffer) <= Pipe.bytesHeadPosition(ringBuffer)) : "expected to have data up to "+Pipe.bytesWorkingTailPosition(ringBuffer)+" but we only have "+Pipe.bytesHeadPosition(ringBuffer);
+		assert(Pipe.getWorkingBlobRingTailPosition(ringBuffer) <= Pipe.bytesHeadPosition(ringBuffer)) : "expected to have data up to "+Pipe.getWorkingBlobRingTailPosition(ringBuffer)+" but we only have "+Pipe.bytesHeadPosition(ringBuffer);
 
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1;
 		prepReadFragment2(ringBuffer, ringBufferConsumer, tmpNextWokingTail, target, lastScriptPos, ringBufferConsumer.from.tokens[lastScriptPos]);	
@@ -487,7 +487,7 @@ class StackStateWalker {
 				                      spaceNeeded);
 		Pipe.addAndGetWorkingHead(outputRing, spaceNeeded);
 		
-		Pipe.copyBytesFromToRing(Pipe.byteBuffer(inputRing), Pipe.bytesWorkingTailPosition(inputRing), inputRing.byteMask, 
+		Pipe.copyBytesFromToRing(Pipe.byteBuffer(inputRing), Pipe.getWorkingBlobRingTailPosition(inputRing), inputRing.byteMask, 
 		                               Pipe.byteBuffer(outputRing), Pipe.bytesWorkingHeadPosition(outputRing), outputRing.byteMask, 
 				                       bytesToCopy);
 

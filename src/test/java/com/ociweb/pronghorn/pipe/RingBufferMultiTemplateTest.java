@@ -222,7 +222,7 @@ public class RingBufferMultiTemplateTest {
         Pipe.setReleaseBatchSize(ring, 8);//Integer.MAX_VALUE);
         
         
-        while (Pipe.contentToLowLevelRead(ring, 1)) {
+        while (Pipe.hasContentToRead(ring, 1)) {
         	        	
     		--k;
     		int expectedLength = (ring.maxAvgVarLen*k)/testSize;	

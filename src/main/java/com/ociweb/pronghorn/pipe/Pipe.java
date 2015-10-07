@@ -482,7 +482,7 @@ public final class Pipe<T extends MessageSchema> {
 			//save all working values only once if we re-enter replaying multiple times.
 
 		    ringBuffer.holdingSlabWorkingTail = Pipe.getWorkingTailPosition(ringBuffer);
-			ringBuffer.holdingBlobWorkingTail = Pipe.bytesWorkingTailPosition(ringBuffer);
+			ringBuffer.holdingBlobWorkingTail = Pipe.getWorkingBlobRingTailPosition(ringBuffer);
 
 			//NOTE: we must never adjust the ringWalker.nextWorkingHead because this is replay and must not modify write position!
 			ringBuffer.ringWalker.holdingNextWorkingTail = ringBuffer.ringWalker.nextWorkingTail;
@@ -2031,7 +2031,7 @@ public final class Pipe<T extends MessageSchema> {
         
         if (decBatchRelease(ring)<=0) {
 
-                 Pipe.setBytesTail(ring,Pipe.bytesWorkingTailPosition(ring));
+                 Pipe.setBytesTail(ring,Pipe.getWorkingBlobRingTailPosition(ring));
                  Pipe.publishWorkingTailPosition(ring, ring.ringWalker.nextWorkingTail);
 
                  ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
@@ -2081,7 +2081,7 @@ public final class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> void releaseBatchedReadReleasesUpToThisPosition(Pipe<S> ring) {
         
         long newTailToPublish = Pipe.getWorkingTailPosition(ring);
-        int newTailBytesToPublish = Pipe.bytesWorkingTailPosition(ring);
+        int newTailBytesToPublish = Pipe.getWorkingBlobRingTailPosition(ring);
         
         //int newTailBytesToPublish = RingBuffer.bytesReadBase(ring);
         
@@ -2377,6 +2377,7 @@ public final class Pipe<T extends MessageSchema> {
 		return output.llRead.llwConfirmedReadPosition += size; //TODO: add check if this size does not match how many written we have a problem.
 	}
 
+	//delete nov 2015
 	@Deprecated
 	public static <S extends MessageSchema> boolean contentToLowLevelRead(Pipe<S> input, int size) {
 		return hasContentToRead(input, size);
@@ -2414,13 +2415,14 @@ public final class Pipe<T extends MessageSchema> {
 		return ringBuffer.batchReleaseCountDown!=ringBuffer.batchReleaseCountDownInit;
 	}
 
-	public static <S extends MessageSchema> int getUnstructuredLayoutRingTailPosition(Pipe<S> ring) {
+	public static <S extends MessageSchema> int getBlobRingTailPosition(Pipe<S> ring) {
 	    return PaddedInt.get(ring.blobRingTail.bytesTailPos);
 	}
 
+	//Delete Nov 2015
 	@Deprecated
     public static <S extends MessageSchema> int bytesTailPosition(Pipe<S> ring) {
-        return getUnstructuredLayoutRingTailPosition(ring);
+        return getBlobRingTailPosition(ring);
     }
 
     public static <S extends MessageSchema> void setBytesTail(Pipe<S> ring, int value) {
@@ -2439,13 +2441,14 @@ public final class Pipe<T extends MessageSchema> {
         return PaddedInt.add(ring.blobRingHead.bytesHeadPos, inc);
     }
 
-    public static <S extends MessageSchema> int getWorkingUnstructuredLayoutRingTailPosition(Pipe<S> ring) {
+    public static <S extends MessageSchema> int getWorkingBlobRingTailPosition(Pipe<S> ring) {
         return PaddedInt.get(ring.blobRingTail.byteWorkingTailPos);
     }
 
+   //Delete Nov 2015
     @Deprecated
     public static <S extends MessageSchema> int bytesWorkingTailPosition(Pipe<S> ring) {
-        return getWorkingUnstructuredLayoutRingTailPosition(ring);
+        return getWorkingBlobRingTailPosition(ring);
     }
 
     public static <S extends MessageSchema> int addAndGetBytesWorkingTailPosition(Pipe<S> ring, int inc) {

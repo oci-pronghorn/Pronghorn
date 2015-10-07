@@ -25,7 +25,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
     @Override
     public boolean paused() {
-        return !Pipe.contentToLowLevelRead(expectedInput, 1);
+        return !Pipe.hasContentToRead(expectedInput, 1);
     }
 
     @Override
