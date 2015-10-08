@@ -18,10 +18,13 @@ public class TapeReadStage<T extends MessageSchema> extends PronghornStage {
     private IntBuferWritableByteChannel INT_BUFFER_WRAPPER = new IntBuferWritableByteChannel();
     private final Pipe<T> target;    
     
-    protected TapeReadStage(GraphManager graphManager, FileChannel fileChannel, Pipe<T> target) {
+    protected TapeReadStage(GraphManager graphManager, Pipe<T> target, FileChannel fileChannel) {
         super(graphManager, NONE, target);
         this.fileChannel = fileChannel;
         this.target = target;
+        
+        //TODO: add command pipe for reading from multiple channels
+        
     }
 
     @Override
@@ -78,9 +81,17 @@ public class TapeReadStage<T extends MessageSchema> extends PronghornStage {
         
         @Override
         public int write(ByteBuffer src) throws IOException {            
-            int result = src.remaining();
-            buffer.put(src.asIntBuffer());
-            return result;
+            int result = Math.min(src.remaining()>>2, buffer.remaining());
+            
+            int i = result;
+            while (--i>=0) {
+                int value = buffer.get();
+                src.put((byte)(value>>24));
+                src.put((byte)(value>>16));
+                src.put((byte)(value>>8));
+                src.put((byte)(value>>0));
+            }
+            return result<<2;
         }
         
     }
@@ -114,6 +125,7 @@ public class TapeReadStage<T extends MessageSchema> extends PronghornStage {
                 return -1;
             }
             
+            //only read if the full head is available
             if (src.remaining()<(2*4)) {
                 return 0;
             }
@@ -121,6 +133,7 @@ public class TapeReadStage<T extends MessageSchema> extends PronghornStage {
             IntBuffer intBuffer = src.asIntBuffer();
             blobBytes = intBuffer.get();
             slabBytes = intBuffer.get();
+                        
             close();
             return 2*4;            
         }

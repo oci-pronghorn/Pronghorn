@@ -33,8 +33,12 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
 	
 	public int moreToCopy=-2;
 	
+	///TODO: add second pipe with commands eg (write N fields to X file then close)
+	
 	public TapeWriteStage(GraphManager gm, Pipe<T> source, FileChannel fileChannel) {
 		super(gm,source,NONE);
+		
+		//TODO: Add command pipe to write so many then change channels etc.
 		
 		//NOTE when writing ring ring size must be set to half the size of the reader to ensure there is no blocking.		
 		//when reading if we ever have a block that is bigger than 1/2 ring size we can detect the failure on that end.
