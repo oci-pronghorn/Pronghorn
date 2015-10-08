@@ -134,8 +134,8 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
                                 			                   int totalBytesCopy) {
 
 		
-		IntBuffer primaryInts = Pipe.wrappedStructuredLayoutRingBuffer(ss.source);
-		ByteBuffer secondaryBytes = Pipe.wrappedUnstructuredLayoutRingBufferA(ss.source);
+		IntBuffer primaryInts = Pipe.wrappedSlabRing(ss.source);
+		ByteBuffer secondaryBytes = Pipe.wrappedBlobRingA(ss.source);
 
 		primaryInts.position(primaryTailPos);
 		primaryInts.limit(primaryTailPos+totalPrimaryCopy); //TODO: AA, this will not work on the wrap, we must mask and do muliple copies

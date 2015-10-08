@@ -65,7 +65,7 @@ public class FileWriteStage extends PronghornStage {
 	        	int pos = bytePosition(meta, inputRing, len);//has side effect of moving the byte pointer!!
 	        	int mask = byteMask(inputRing);
 	        	
-	        	ByteBuffer inputByteBuffer= Pipe.wrappedUnstructuredLayoutRingBufferA(inputRing); //TODO: A, should this take into account constants?
+	        	ByteBuffer inputByteBuffer= Pipe.wrappedBlobRingA(inputRing); //TODO: A, should this take into account constants?
 	        	
 	        	int idx = (pos&mask);
                 int len1 = (mask+1)-idx;

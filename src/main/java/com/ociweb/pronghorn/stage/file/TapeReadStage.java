@@ -18,6 +18,10 @@ public class TapeReadStage<T extends MessageSchema> extends PronghornStage {
     private IntBuferWritableByteChannel INT_BUFFER_WRAPPER = new IntBuferWritableByteChannel();
     private final Pipe<T> target;    
     
+    private int blobToRead=0;
+    private int slabToRead=0;
+    private ByteBuffer blobByteBuffer;
+    
     protected TapeReadStage(GraphManager graphManager, Pipe<T> target, FileChannel fileChannel) {
         super(graphManager, NONE, target);
         this.fileChannel = fileChannel;
@@ -38,25 +42,84 @@ public class TapeReadStage<T extends MessageSchema> extends PronghornStage {
     private boolean processAvailData(TapeReadStage<T> tapeReadStage) {
         try {
             
-            fileChannel.transferTo(0, HEADER_WRAPPER.init(), HEADER_WRAPPER);                     
-            
-            int blobBytes = HEADER_WRAPPER.blobBytes;
-            int slabBytes = HEADER_WRAPPER.slabBytes;            
-            
-            fileChannel.transferTo(0,  INT_BUFFER_WRAPPER.init(Pipe.wrappedStructuredLayoutRingBuffer(tapeReadStage.target)), INT_BUFFER_WRAPPER);
+            if (0==slabToRead && 0==blobToRead) {
+                if (0==fileChannel.transferTo(0, HEADER_WRAPPER.init(), HEADER_WRAPPER)) {
+                    //no data ready to read
+                    return false;
+                    
+                } else {
+                    //NOTE: there is no validation on length because the blob data here is multiple messages all run together.
+                    //      the general ratio however would still be respected.
+                    blobToRead = HEADER_WRAPPER.blobBytes;
+                    slabToRead = HEADER_WRAPPER.slabBytes;
 
-            //TODO: point to right block for write.
-            int off =0;
-            int len = 0;
-            fileChannel.read(Pipe.wrappedUnstructuredLayoutRingBufferA(tapeReadStage.target));
+                    
+                    //
+                    
+                    //what about looping?
+                    
+                    //TODO: do these both need to be set to the right positoin?
+                    IntBuffer wrappedStructuredLayoutRingBuffer = Pipe.wrappedSlabRing(tapeReadStage.target);
+                    blobByteBuffer = Pipe.wrappedBlobRingA(tapeReadStage.target);
+                    //TODO: this buffer limit MUST be set.
+                    
+                    
+                    
+                    
+                    INT_BUFFER_WRAPPER.init(wrappedStructuredLayoutRingBuffer);                    
+                }
+            }
+            
+            if (!Pipe.hasRoomForWrite(tapeReadStage.target, slabToRead)) {
+                return false;                
+            }
+            
+            
+            long slabsRead = 0;
+            if (slabToRead>0) {
+                slabsRead = fileChannel.transferTo(0, slabToRead, INT_BUFFER_WRAPPER);
+            }
+            
+            if (slabsRead < 0) {
+                //error unexpected end of stream
+                blobToRead = 0;
+                slabToRead = 0;
+                return false;
+            }            
+            slabToRead -= slabsRead;
+            
+            if (slabToRead > 0) {
+                //did not get all the bytes try again later
+                return false;
+            }
+            //all the slab data has been read now we must pick up the blob data
+            
+            if (blobToRead>0) {
+                
+                int blobsRead = fileChannel.read(blobByteBuffer);
+                
+                if (blobsRead<0) {
+                    //end of file, we may have been expecting this one if blobToRead and slabToRead are already zero.
+                    blobToRead = 0;
+                    slabToRead = 0;
+                    return false;
+                } else {
+                    blobToRead -= blobsRead;                    
+                    if (blobToRead>0) {
+                        //did not get all the bytes try again later
+                        return false;
+                    }
+                }           
+                
+            }
             
         } catch (IOException e) {
             e.printStackTrace();
+            
+            return false;
         }
         
-        
-        // TODO Auto-generated method stub
-        return false;
+        return true;
         
     }
 
