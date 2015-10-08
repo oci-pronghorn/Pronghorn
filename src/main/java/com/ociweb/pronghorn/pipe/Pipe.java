@@ -744,16 +744,19 @@ public final class Pipe<T extends MessageSchema> {
         StackStateWalker.reset(ringWalker, structuredPos);
     }
 
-
     public static <S extends MessageSchema> ByteBuffer wrappedBlobRingB(Pipe<S> ring, int meta, int len) {
+        return wrappedBlobReadingRingB(ring,meta,len);
+    }
+
+    public static <S extends MessageSchema> ByteBuffer wrappedBlobReadingRingB(Pipe<S> ring, int meta, int len) {
         ByteBuffer buffer;
         if (meta < 0) {
         	//always zero because constant array never wraps
-        	buffer = wrappedUnstructuredLayoutConstBuffer(ring);
+        	buffer = wrappedBlobConstBuffer(ring);
         	buffer.position(0);
         	buffer.limit(0);
         } else {
-        	buffer = wrappedUnstructuredLayoutRingBufferB(ring);
+        	buffer = wrappedBlobRingB(ring);
         	int position = ring.byteMask & restorePosition(ring,meta);
         	buffer.clear();
             //position is zero
@@ -768,14 +771,18 @@ public final class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> ByteBuffer wrappedBlobRingA(Pipe<S> ring, int meta, int len) {
+        return wrappedBlobReadingRingA(ring, meta, len);
+    }
+    
+    public static <S extends MessageSchema> ByteBuffer wrappedBlobReadingRingA(Pipe<S> ring, int meta, int len) {
         ByteBuffer buffer;
         if (meta < 0) {
-        	buffer = wrappedUnstructuredLayoutConstBuffer(ring);
+        	buffer = wrappedBlobConstBuffer(ring);
         	int position = PipeReader.POS_CONST_MASK & meta;    
         	buffer.position(position);
         	buffer.limit(position+len);        	
         } else {
-        	buffer = wrappedUnstructuredLayoutRingBufferA(ring);
+        	buffer = wrappedBlobRingA(ring);
         	int position = ring.byteMask & restorePosition(ring,meta);
         	buffer.clear();
         	buffer.position(position);
@@ -2325,24 +2332,24 @@ public final class Pipe<T extends MessageSchema> {
 
 		int consumed = ring.blobRingHead.byteWorkingHeadPos.value - ring.blobWriteLastConsumedPos;
 		//log.trace("wrote {} bytes consumed to position {}",consumed,pos);
-		ring.slabRing[ring.mask & (int)pos] = consumed>=0 ? consumed : consumed&BYTES_WRAP_MASK ;
+		ring.slabRing[ring.mask & (int)pos] = consumed>=0 ? consumed : consumed&BYTES_WRAP_MASK;
 		ring.blobWriteLastConsumedPos = ring.blobRingHead.byteWorkingHeadPos.value;
 
 	}
 
-	public static <S extends MessageSchema> IntBuffer wrappedStructuredLayoutRingBuffer(Pipe<S> ring) {
+	public static <S extends MessageSchema> IntBuffer wrappedSlabRing(Pipe<S> ring) {
 		return ring.wrappedSlabRing;
 	}
 
-	public static <S extends MessageSchema> ByteBuffer wrappedUnstructuredLayoutRingBufferA(Pipe<S> ring) {
+	public static <S extends MessageSchema> ByteBuffer wrappedBlobRingA(Pipe<S> ring) {
 		return ring.wrappedBlobRingA;
 	}
 
-    public static <S extends MessageSchema> ByteBuffer wrappedUnstructuredLayoutRingBufferB(Pipe<S> ring) {
+    public static <S extends MessageSchema> ByteBuffer wrappedBlobRingB(Pipe<S> ring) {
         return ring.wrappedBlobRingB;
     }
 
-	public static <S extends MessageSchema> ByteBuffer wrappedUnstructuredLayoutConstBuffer(Pipe<S> ring) {
+	public static <S extends MessageSchema> ByteBuffer wrappedBlobConstBuffer(Pipe<S> ring) {
 		return ring.wrappedBlobConstBuffer;
 	}
 

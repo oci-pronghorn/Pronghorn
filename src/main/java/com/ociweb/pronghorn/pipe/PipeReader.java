@@ -374,14 +374,14 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     	long pos = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
         int meta = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos)];
         int len = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos + 1)];
-        return Pipe.wrappedBlobRingA(ring, meta, len);
+        return Pipe.wrappedBlobReadingRingA(ring, meta, len);
 	}
 
     public static ByteBuffer wrappedUnstructuredLayoutBufferB(Pipe ring, int loc) {
     	long pos = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
         int meta = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos)];
         int len = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos + 1)];
-        return Pipe.wrappedBlobRingB(ring, meta, len);
+        return Pipe.wrappedBlobReadingRingB(ring,meta,len);
 	}
 
     public static int readBytes(Pipe ring, int loc, byte[] target, int targetOffset) {
