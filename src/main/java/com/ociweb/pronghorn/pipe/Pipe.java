@@ -2370,7 +2370,13 @@ public final class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> boolean hasRoomForWrite(Pipe<S> output, int size) {
         return roomToLowLevelWrite(output, output.llRead.llwConfirmedReadPosition+size);
     }
+    
+    public static <S extends MessageSchema> boolean hasRoomForWrite(Pipe<S> output) {
+        return roomToLowLevelWrite(output, output.llRead.llwConfirmedReadPosition+FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(output)));
+    }
 
+    
+    
 	private static <S extends MessageSchema> boolean roomToLowLevelWrite(Pipe<S> output, long target) {
 		//only does second part if the first does not pass
 		return (output.llRead.llrTailPosCache >= target) || roomToLowLevelWriteSlow(output, target);
