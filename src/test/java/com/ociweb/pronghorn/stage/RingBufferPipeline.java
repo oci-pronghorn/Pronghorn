@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.stage;
 
 import static com.ociweb.pronghorn.pipe.Pipe.addByteArray;
 import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
-import static com.ociweb.pronghorn.pipe.Pipe.byteMask;
+import static com.ociweb.pronghorn.pipe.Pipe.blobMask;
 import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
 import static com.ociweb.pronghorn.pipe.Pipe.publishWrites;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
@@ -111,7 +111,7 @@ public class RingBufferPipeline {
 					lastPos = pos;
 											
 					byte[] data = byteBackingArray(meta, inputRing);
-					int mask = byteMask(inputRing);
+					int mask = blobMask(inputRing);
 				
 					if (deepTest) {
 						//This block causes a dramatic slow down of the work!!
@@ -263,7 +263,7 @@ public class RingBufferPipeline {
 			Pipe.setReleaseBatchSize(inputRing, 8);
 			Pipe.setPublishBatchSize(outputRing, 8);
 			
-			this.mask = byteMask(outputRing); // data often loops around end of array so this mask is required
+			this.mask = blobMask(outputRing); // data often loops around end of array so this mask is required
 		}
 
 		@Override

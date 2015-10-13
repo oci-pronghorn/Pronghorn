@@ -1,7 +1,7 @@
 package com.ociweb.pronghorn.components.ingestion.csv;
 
 import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
-import static com.ociweb.pronghorn.pipe.Pipe.byteMask;
+import static com.ociweb.pronghorn.pipe.Pipe.blobMask;
 import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
 import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnTail;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
@@ -83,7 +83,7 @@ public class FieldSplitterStage extends PronghornStage {
 	    		
 	    		int meta = takeRingByteMetaData(inputRing);
 	        	int len = takeRingByteLen(inputRing);
-	        	int mask = byteMask(inputRing);	
+	        	int mask = blobMask(inputRing);	
 	        	int pos = bytePosition(meta, inputRing, len)&mask;     		
 				byte[] data = byteBackingArray(meta, inputRing);
 				   						    		

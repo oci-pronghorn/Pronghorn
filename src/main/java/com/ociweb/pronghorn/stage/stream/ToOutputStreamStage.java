@@ -9,28 +9,26 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class ToOutputStreamStage extends PronghornStage {
 
-	private final Pipe inputRing;
+	private final Pipe<RawDataSchema> inputRing;
 	private final OutputStream outputStream;
 	private final int step;
 	private final boolean eol;
 	
-	public ToOutputStreamStage(GraphManager gm, Pipe inputRing, OutputStream outputStream, boolean eol) {
+	public ToOutputStreamStage(GraphManager gm, Pipe<RawDataSchema> inputRing, OutputStream outputStream, boolean eol) {
 		super(gm,inputRing,NONE);
 		this.inputRing = inputRing;
 		
 		
 		this.outputStream = outputStream;
 		this.step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
-		//this blind byte copy only works for this simple message type, it is not appropriate for other complex types
-		if (Pipe.from(inputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
-			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
-		}
 		this.eol = eol;
 	}
 

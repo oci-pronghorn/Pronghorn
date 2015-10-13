@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.stage.test;
 
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitor;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitorMatcher;
@@ -7,14 +8,14 @@ import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class TestValidator extends PronghornStage {
+public class TestValidator<T extends MessageSchema> extends PronghornStage {
     
-    private final Pipe expectedInput;
-    private final Pipe checkedInput;
+    private final Pipe<T> expectedInput;
+    private final Pipe<T> checkedInput;
     
     private final StreamingVisitorReader reader;
     
-    public TestValidator(GraphManager gm, Pipe ... input) {
+    public TestValidator(GraphManager gm, @SuppressWarnings("unchecked") Pipe<T> ... input) {
         super(gm, input, NONE);
         
         this.expectedInput = input[0];

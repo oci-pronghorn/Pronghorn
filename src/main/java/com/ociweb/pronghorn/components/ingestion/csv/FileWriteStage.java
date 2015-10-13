@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.components.ingestion.csv;
 
-import static com.ociweb.pronghorn.pipe.Pipe.byteMask;
+import static com.ociweb.pronghorn.pipe.Pipe.blobMask;
 import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
@@ -63,7 +63,7 @@ public class FileWriteStage extends PronghornStage {
 
 	        	//converting this to the position will cause the byte posistion to increment.
 	        	int pos = bytePosition(meta, inputRing, len);//has side effect of moving the byte pointer!!
-	        	int mask = byteMask(inputRing);
+	        	int mask = blobMask(inputRing);
 	        	
 	        	ByteBuffer inputByteBuffer= Pipe.wrappedBlobRingA(inputRing); //TODO: A, should this take into account constants?
 	        	

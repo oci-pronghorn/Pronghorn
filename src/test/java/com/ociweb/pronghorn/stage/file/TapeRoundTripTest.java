@@ -18,7 +18,7 @@ public class TapeRoundTripTest {
     @Test
     public void roundTripTest() {
         
-        assertTrue(true);
+        //assertTrue(true);
         
         //TODO: AAAA, Finish round trip testing of the TapeRead and TapeWrite
         

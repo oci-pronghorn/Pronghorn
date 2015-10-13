@@ -20,16 +20,15 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  */
 public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
 
-	private Pipe<T> source;
+	private Pipe<T> sourcePipe;
 	private FileChannel fileChannel;
 	
 	//Header between each chunk must define 
 	//           (4)    total bytes of the following block  (both primary and secondary together, to enable skipping)
 	//           (4)    byte count of primary (this is always checked first for space when reading)
 	
-	private ByteBuffer header = ByteBuffer.allocate(8);
-	private IntBuffer  headerAsInts = header.asIntBuffer();
 	private IntBuferReadableByteChannel INT_BUFFER_WRAPPER = new IntBuferReadableByteChannel();
+	private HeaderReadableByteChannel   HEADER_WRAPER = new HeaderReadableByteChannel();
 	
 	public int moreToCopy=-2;
 	
@@ -45,7 +44,7 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
 		//these restrictions are also in keeping with optimal usage of SSD/Spindle drives that prefer to read/write larger blocks
 		//when consuming stage of the reading ring can pull as little as it wants but that first ring should be large for optimal IO.
 		
-		this.source = source;
+		this.sourcePipe = source;
         this.fileChannel = fileChannel;
 	}
 	
@@ -82,11 +81,11 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
         long headPos;
 		       
         //get the new head position
-        byteHeadPos = Pipe.bytesHeadPosition(ss.source);
-		headPos = Pipe.headPosition(ss.source);		
-		while(byteHeadPos != Pipe.bytesHeadPosition(ss.source) || headPos != Pipe.headPosition(ss.source) ) {
-			byteHeadPos = Pipe.bytesHeadPosition(ss.source);
-			headPos = Pipe.headPosition(ss.source);
+        byteHeadPos = Pipe.bytesHeadPosition(ss.sourcePipe);
+		headPos = Pipe.headPosition(ss.sourcePipe);		
+		while(byteHeadPos != Pipe.bytesHeadPosition(ss.sourcePipe) || headPos != Pipe.headPosition(ss.sourcePipe) ) {
+			byteHeadPos = Pipe.bytesHeadPosition(ss.sourcePipe);
+			headPos = Pipe.headPosition(ss.sourcePipe);
 		}	
 			
 		
@@ -94,8 +93,8 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
 						
 		//get the start and stop locations for the copy
 		//now find the point to start reading from, this is moved forward with each new read.		
-		int pMask = ss.source.mask;
-		long tempTail = Pipe.tailPosition(ss.source);
+		int pMask = ss.sourcePipe.mask;
+		long tempTail = Pipe.tailPosition(ss.sourcePipe);
 		int primaryTailPos = pMask & (int)tempTail;				
 		long totalPrimaryCopy = (headPos - tempTail);
 		if (totalPrimaryCopy <= 0) {
@@ -103,8 +102,8 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
 			return false; //nothing to copy so come back later
 		}
 			
-		int bMask = ss.source.byteMask;		
-		int tempByteTail = Pipe.getBlobRingTailPosition(ss.source);
+		int bMask = ss.sourcePipe.byteMask;		
+		int tempByteTail = Pipe.getBlobRingTailPosition(ss.sourcePipe);
 		int byteTailPos = bMask & tempByteTail;
 		int totalBytesCopy =      (bMask & byteHeadPos) - byteTailPos; 
 		if (totalBytesCopy < 0) {
@@ -116,9 +115,9 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
 
 			//release tail so data can be written
 			int i = Pipe.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
-			Pipe.setBytesWorkingTail(ss.source, i);
-			Pipe.setBytesTail(ss.source,i);		
-			Pipe.publishWorkingTailPosition(ss.source,tempTail + totalPrimaryCopy);
+			Pipe.setBytesWorkingTail(ss.sourcePipe, i);
+			Pipe.setBytesTail(ss.sourcePipe,i);		
+			Pipe.publishWorkingTailPosition(ss.sourcePipe,tempTail + totalPrimaryCopy);
 			
 			return true;
 		}
@@ -133,26 +132,44 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
                                 			                   int totalPrimaryCopy, 
                                 			                   int totalBytesCopy) {
 
+	    //TODO: ensure this block is reentrant ok.
 		
-		IntBuffer primaryInts = Pipe.wrappedSlabRing(ss.source);
-		ByteBuffer secondaryBytes = Pipe.wrappedBlobRingA(ss.source);
-
+	    
+		IntBuffer primaryInts = Pipe.wrappedSlabRing(ss.sourcePipe);
+		ByteBuffer secondaryBytes = Pipe.wrappedBlobRingA(ss.sourcePipe);
 		primaryInts.position(primaryTailPos);
-		primaryInts.limit(primaryTailPos+totalPrimaryCopy); //TODO: AA, this will not work on the wrap, we must mask and do muliple copies
+		int newLimit = primaryTailPos+totalPrimaryCopy;
+		
+		
+		//ss.sourcePipe.mask
+		
+        primaryInts.limit(newLimit); //TODO: AA, this will not work on the wrap, we must mask and do muliple copies
 		
 		secondaryBytes.position(byteTailPos);
-		secondaryBytes.limit(byteTailPos+totalBytesCopy);
-				
-		ss.header.clear();
-		ss.headerAsInts.put(totalBytesCopy+(totalPrimaryCopy<<2)); //build own INT_BUFFER_WRAPPER ??
-		ss.headerAsInts.put(totalPrimaryCopy<<2);
+		secondaryBytes.limit(byteTailPos+totalBytesCopy);//TODO: what about wrapped bytes? we need ringB
+
+		ss.HEADER_WRAPER.init(totalBytesCopy+(totalPrimaryCopy<<2), totalPrimaryCopy<<2);
+		int slabCount = ss.INT_BUFFER_WRAPPER.init(primaryInts);
 				
 		
 		try {
 		    
 		    //TODO: must return false if there is no room to write.
-            long bytesWritten1 = ss.fileChannel.write(ss.header);
-            long bytesWritten2 = ss.fileChannel.transferFrom(ss.INT_BUFFER_WRAPPER, 0, ss.INT_BUFFER_WRAPPER.init(primaryInts));
+            long bytesWritten1 = ss.fileChannel.transferFrom(ss.HEADER_WRAPER, 0, 8);
+            
+            if (bytesWritten1<0) {
+                //unexpected end of file
+                return false;
+            }
+            if (0==bytesWritten1) {
+                //try again later;
+                return false;
+            }
+            
+            
+            
+            long bytesWritten2 = ss.fileChannel.transferFrom(ss.INT_BUFFER_WRAPPER, 0, slabCount);
+            
             long bytesWritten3 = ss.fileChannel.write(secondaryBytes);
             		
 		} catch (IOException e) {
@@ -185,7 +202,7 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
 	}
 
 	public String toString() {
-		return getClass().getSimpleName()+ (-2==moreToCopy ? " not running ": " moreToCopy:"+moreToCopy)+" source content "+Pipe.contentRemaining(source);
+		return getClass().getSimpleName()+ (-2==moreToCopy ? " not running ": " moreToCopy:"+moreToCopy)+" source content "+Pipe.contentRemaining(sourcePipe);
 	}
 	
 	//NOTE: this trick may be worth tweeting about.
@@ -229,4 +246,48 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
             return chunkSize;
         }	    
 	}
+	
+	private class HeaderReadableByteChannel implements ReadableByteChannel {
+
+	    private boolean isOpen;
+	    private int a;
+	    private int b;
+	    
+	    public int init(int a, int b) {
+	        this.isOpen = true;
+	        this.a = a;
+	        this.b = b;
+	        return 8;
+	    }
+	    
+        @Override
+        public boolean isOpen() {
+            return isOpen;
+        }
+
+        @Override
+        public void close() throws IOException {
+           isOpen = false;
+        }
+
+        @Override
+        public int read(ByteBuffer dst) throws IOException {
+            if (!isOpen()) {
+                return -1;
+            }
+            //important to ensure atomic write of this full block
+            if (dst.remaining()<8) {
+                return 0;
+            }
+            dst.putInt(a);
+            dst.putInt(b);
+            close();
+            return 8;
+            
+        }
+	    
+        
+	}
+	
+	
 }

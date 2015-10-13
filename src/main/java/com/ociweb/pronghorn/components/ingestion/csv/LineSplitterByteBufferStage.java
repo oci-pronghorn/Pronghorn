@@ -90,7 +90,7 @@ public class LineSplitterByteBufferStage extends PronghornStage {
 		 int limit = sourceByteBuffer.limit();
 		 
 		 
-		 if (!Pipe.roomToLowLevelWrite(stage.outputRing, stage.stepSize)) {
+		 if (!Pipe.hasRoomForWrite(stage.outputRing, stage.stepSize)) {
 			 return position;
 		 }
 		 	    
