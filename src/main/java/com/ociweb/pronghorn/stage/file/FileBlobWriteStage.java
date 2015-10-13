@@ -112,7 +112,6 @@ public class FileBlobWriteStage extends PronghornStage{
         if (releaseRead) {
             //only done after we have consumed the bytes
             Pipe.releaseReads(input);
-            Pipe.confirmLowLevelRead(input, SIZE);
         }
         
         try {
