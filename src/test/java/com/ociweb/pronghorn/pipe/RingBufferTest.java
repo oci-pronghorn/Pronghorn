@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.pipe;
 
 import static com.ociweb.pronghorn.pipe.Pipe.addByteArray;
 import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
-import static com.ociweb.pronghorn.pipe.Pipe.byteMask;
+import static com.ociweb.pronghorn.pipe.Pipe.blobMask;
 import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
 import static com.ociweb.pronghorn.pipe.Pipe.dump;
 import static com.ociweb.pronghorn.pipe.Pipe.headPosition;
@@ -71,7 +71,7 @@ public class RingBufferTest {
         assertEquals(testArray.length, len); //MUST take this one second after the meta they come in order    
         
         //read back the array and confirm it matches
-        int mask = byteMask(ring); //data often loops around end of array so this mask is required
+        int mask = blobMask(ring); //data often loops around end of array so this mask is required
         byte[] data = byteBackingArray(meta, ring);
         int offset = bytePosition(meta, ring, len);
         int c = testArray.length;
@@ -389,7 +389,7 @@ public class RingBufferTest {
 			// this test
 			if (0 == (messageFieldCount & 0x3F)) {
 				// read back the array and confirm it matches
-				int mask = byteMask(ring); // data often loops around end of
+				int mask = blobMask(ring); // data often loops around end of
 											// array so this mask is required
 
 				byte[] data = byteBackingArray(meta, ring);

@@ -744,6 +744,21 @@ public final class Pipe<T extends MessageSchema> {
         StackStateWalker.reset(ringWalker, structuredPos);
     }
 
+    public static <S extends MessageSchema> ByteBuffer wrappedBlobForWriting(int originalBlobPosition, Pipe<S> output) {
+        ByteBuffer target = Pipe.wrappedBlobRingA(output);  //Get the blob array as a wrapped byte buffer     
+        int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
+        target.position(writeToPos);   
+        target.limit(Math.min(target.capacity(), writeToPos+output.maxAvgVarLen )); //ensure we stop at end of wrap or max var length 
+        return target;
+    }
+
+
+    public static <S extends MessageSchema> void moveBlobPointerAndRecordPosAndLength(int originalBlobPosition, int len, Pipe<S> output) {
+        Pipe.addAndGetBytesWorkingHeadPosition(output, len);
+        Pipe.addBytePosAndLen(output, originalBlobPosition, len);
+    }
+
+
     public static <S extends MessageSchema> ByteBuffer wrappedBlobRingB(Pipe<S> ring, int meta, int len) {
         return wrappedBlobReadingRingB(ring,meta,len);
     }
@@ -2255,7 +2270,7 @@ public final class Pipe<T extends MessageSchema> {
 		}
 	}
 
-	public static <S extends MessageSchema> int byteMask(Pipe<S> ring) {
+	public static <S extends MessageSchema> int blobMask(Pipe<S> ring) {
 		return ring.byteMask;
 	}
 

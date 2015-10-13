@@ -1,7 +1,7 @@
 package com.ociweb.pronghorn.pipe.stream;
 
 import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
-import static com.ociweb.pronghorn.pipe.Pipe.byteMask;
+import static com.ociweb.pronghorn.pipe.Pipe.blobMask;
 import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
@@ -135,7 +135,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         int len = takeRingByteLen(expectedInput);
         int pos = bytePosition(meta, expectedInput, len);               
         byte[] data = byteBackingArray(meta, expectedInput);
-        int mask = byteMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
+        int mask = blobMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
         
         //ascii so the bytes will match the chars
         CharSequence seq = (CharSequence)value;
@@ -164,7 +164,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         int len = takeRingByteLen(expectedInput);
         int pos = bytePosition(meta, expectedInput, len);               
         byte[] data = byteBackingArray(meta, expectedInput);
-        int mask = byteMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
+        int mask = blobMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
         
         CharSequence seq = (CharSequence)value;
         int seqPos = 0;
@@ -189,7 +189,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         int len = takeRingByteLen(expectedInput);
         int pos = bytePosition(meta, expectedInput, len);               
         byte[] data = byteBackingArray(meta, expectedInput);
-        int mask = byteMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
+        int mask = blobMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
         
         if (value.remaining() != len) {
             throw new AssertionError("expected bytes length: "+Long.toHexString(len)+" but got "+Long.toHexString(value.remaining()));
