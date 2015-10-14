@@ -1813,9 +1813,9 @@ public final class Pipe<T extends MessageSchema> {
 	//TODO: B, need to update build server to ensure this runs on both Java6 and Java ME 8
 
     //must be called by low-level API when starting a new message
-    public static <S extends MessageSchema> void addMsgIdx(Pipe<S> rb, int msgIdx) {
-        assert(rb.slabRingHead.workingHeadPos.value <= rb.mask+Pipe.tailPosition(rb));
-    	assert(msgIdx>=0) : "Call publishEOF() instead of this method";
+    public static <S extends MessageSchema> int addMsgIdx(Pipe<S> rb, int msgIdx) {
+         assert(rb.slabRingHead.workingHeadPos.value <= rb.mask+Pipe.tailPosition(rb));
+    	 assert(msgIdx>=0) : "Call publishEOF() instead of this method";
 
      	//this MUST be done here at the START of a message so all its internal fragments work with the same base position
      	 markBytesWriteBase(rb);
@@ -1823,6 +1823,8 @@ public final class Pipe<T extends MessageSchema> {
    // 	 assert(rb.llwNextHeadTarget<=rb.headPos.get() || rb.workingHeadPos.value<=rb.llwNextHeadTarget) : "Unsupported mix of high and low level API.";
 
 		 rb.slabRing[rb.mask & (int)rb.slabRingHead.workingHeadPos.value++] = msgIdx;
+		 return Pipe.from(rb).fragDataSize[msgIdx];
+		 
 	}
 
 	public static <S extends MessageSchema> void setValue(int[] buffer, int rbMask, long offset, int value) {
@@ -2335,7 +2337,6 @@ public final class Pipe<T extends MessageSchema> {
 	}
 
 	public static <S extends MessageSchema> FieldReferenceOffsetManager from(Pipe<S> ring) {
-	    assert(null!=ring);
 		return ring.ringWalker.from;
 	}
 
