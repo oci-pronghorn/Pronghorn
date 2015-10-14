@@ -27,6 +27,8 @@ public class FileBlobWriteStage extends PronghornStage{
         this.outputFile = outputFile;
         this.input = input;
     }
+    
+    //TODO: add second constructor and logic to enable toggle of write between two files
 
     @Override
     public void startup() {
@@ -49,7 +51,8 @@ public class FileBlobWriteStage extends PronghornStage{
             if (Pipe.hasContentToRead(input)) {
                 releaseRead = true;
                 int msgId      = Pipe.takeMsgIdx(input);   
-                if (msgId<0) {
+                if (msgId < 0) {
+                    Pipe.confirmLowLevelRead(input, Pipe.EOF_SIZE);
                     requestShutdown();
                     return;
                 }
@@ -57,7 +60,8 @@ public class FileBlobWriteStage extends PronghornStage{
                 int meta       = Pipe.takeValue(input);
                 int len        = Pipe.takeValue(input);
                 
-                if (len<0) {
+                if (len < 0) {
+                    Pipe.confirmLowLevelRead(input, SIZE);
                     requestShutdown();
                     return;
                 }

@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.stage.file;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.MappedByteBuffer;
@@ -10,6 +11,7 @@ import java.nio.channels.ReadableByteChannel;
 
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -18,9 +20,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  * @author Nathan Tippy
  *
  */
-public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
+public class TapeWriteStage extends PronghornStage {
 
-	private Pipe<T> sourcePipe;
+	private Pipe<RawDataSchema> sourcePipe;
 	private FileChannel fileChannel;
 	
 	//Header between each chunk must define 
@@ -31,11 +33,12 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
 	private HeaderReadableByteChannel   HEADER_WRAPER = new HeaderReadableByteChannel();
 	
 	public int moreToCopy=-2;
+	private final RandomAccessFile outputFile;
 	
 	///TODO: add second pipe with commands eg (write N fields to X file then close)
 	
-	public TapeWriteStage(GraphManager gm, Pipe<T> source, FileChannel fileChannel) {
-		super(gm,source,NONE);
+	public TapeWriteStage(GraphManager gm, Pipe<RawDataSchema> input, RandomAccessFile outputFile) {
+		super(gm,input,NONE);
 		
 		//TODO: Add command pipe to write so many then change channels etc.
 		
@@ -44,14 +47,15 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
 		//these restrictions are also in keeping with optimal usage of SSD/Spindle drives that prefer to read/write larger blocks
 		//when consuming stage of the reading ring can pull as little as it wants but that first ring should be large for optimal IO.
 		
-		this.sourcePipe = source;
-        this.fileChannel = fileChannel;
+		this.sourcePipe = input;
+        this.outputFile = outputFile;
 	}
 	
 	
 	@Override
 	public void startup() {	
 		try {
+		    fileChannel = outputFile.getChannel();
 			fileChannel.position(fileChannel.size());//start at the end of the file so we always append to the end.
 		} catch (IOException e) {
 			throw new RuntimeException(e);
@@ -76,7 +80,7 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
 		}
 	}
 
-	private static <S extends MessageSchema> boolean processAvailData(TapeWriteStage<S> ss) {
+	private static boolean processAvailData(TapeWriteStage ss) {
 		int byteHeadPos;
         long headPos;
 		       
@@ -126,12 +130,18 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
 
 	//single pass attempt to copy if any can not accept the data then they are skipped
 	//and true will be returned instead of false.
-	private static <S extends MessageSchema> boolean doingCopy(TapeWriteStage<S> ss, 
-                                			                   int byteTailPos, 
-                                			                   int primaryTailPos, 
-                                			                   int totalPrimaryCopy, 
-                                			                   int totalBytesCopy) {
+	private static boolean doingCopy(TapeWriteStage ss, 
+                                          int byteTailPos, 
+            			                   int primaryTailPos, 
+            			                   int totalPrimaryCopy, 
+            			                   int totalBytesCopy) {
 
+	    
+	     
+	    
+	    
+	    
+	    
 	    //TODO: ensure this block is reentrant ok.
 		
 	    

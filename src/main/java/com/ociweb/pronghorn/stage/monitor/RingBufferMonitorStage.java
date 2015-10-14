@@ -1,11 +1,11 @@
 package com.ociweb.pronghorn.stage.monitor;
 
-import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_HEAD_LOC;
-import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_LOC;
-import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_MSG_LOC;
-import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_SIZE_LOC;
-import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_TAIL_LOC;
-import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_TIME_LOC;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_HEAD_LOC;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_LOC;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_MSG_LOC;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_SIZE_LOC;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_TAIL_LOC;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_TIME_LOC;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;

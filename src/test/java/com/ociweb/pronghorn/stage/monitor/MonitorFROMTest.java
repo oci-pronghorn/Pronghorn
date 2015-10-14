@@ -15,7 +15,7 @@ public class MonitorFROMTest {
 	public void testThis() {
 		String templateFile = "/ringMonitor.xml";
 		String varName = "monitorFROM";	
-		testForMatchingFROMs(templateFile, varName, MonitorFROM.FROM); 
+		testForMatchingFROMs(templateFile, varName, PipeMonitorSchema.FROM); 
 	};
 	
 	

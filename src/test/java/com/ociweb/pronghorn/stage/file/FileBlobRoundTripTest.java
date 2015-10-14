@@ -25,12 +25,11 @@ import com.ociweb.pronghorn.stage.stream.ToOutputStreamStage;
 
 public class FileBlobRoundTripTest {
 
-    int testSize = 1000000; //TODO: urgent, at 1000000, this has an out of bounds error where some code creates an primary length longer than ring.
+    int testSize = 1000000; 
     
     @Test
     public void roundTripTest() {
         
-        //assertTrue(true);
          
         Random r = new Random(42);
         

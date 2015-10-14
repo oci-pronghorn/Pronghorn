@@ -1,11 +1,11 @@
 package com.ociweb.pronghorn.stage.monitor;
 
-import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_HEAD_LOC;
-import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_LOC;
-import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_MSG_LOC;
-import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_SIZE_LOC;
-import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_TAIL_LOC;
-import static com.ociweb.pronghorn.stage.monitor.MonitorFROM.TEMPLATE_TIME_LOC;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_HEAD_LOC;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_LOC;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_MSG_LOC;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_SIZE_LOC;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_TAIL_LOC;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_TIME_LOC;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -116,7 +116,7 @@ public class MonitorConsoleStage extends PronghornStage {
 	}
 
 	private static final Long defaultMonitorRate = Long.valueOf(50000000);
-	private static final PipeConfig defaultMonitorRingConfig = new PipeConfig(MonitorFROM.buildFROM(), 30, 0);
+	private static final PipeConfig defaultMonitorRingConfig = new PipeConfig(PipeMonitorSchema.buildFROM(), 30, 0);
 	
 	public static void attach(GraphManager gm) {
 		attach(gm,defaultMonitorRate,defaultMonitorRingConfig);

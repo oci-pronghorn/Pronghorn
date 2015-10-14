@@ -25,7 +25,7 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitor;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitorAdapter;
 import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
-import com.ociweb.pronghorn.stage.monitor.MonitorFROM;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
 import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
 import com.ociweb.pronghorn.stage.route.RoundRobinRouteStage;
 import com.ociweb.pronghorn.stage.route.SplitterStage;
@@ -526,7 +526,7 @@ public class RingBufferPipeline {
 		 if (monitor) {
 			monitorStages = new PronghornStage[j];
 		 	monitorRings = new Pipe[j];
-		 	montorFROM = MonitorFROM.buildFROM();
+		 	montorFROM = PipeMonitorSchema.buildFROM();
 		 }
 		 
 		 byte ex = (byte)(useRouter ? 0 : 1);

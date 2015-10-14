@@ -1,117 +1,129 @@
 package com.ociweb.pronghorn.stage.file;
 
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.WritableByteChannel;
 
-import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class TapeReadStage<T extends MessageSchema> extends PronghornStage {
+public class TapeReadStage extends PronghornStage {
 
-    private final FileChannel fileChannel;
-    private HeaderWritableByteChannel   HEADER_WRAPPER = new HeaderWritableByteChannel();    
+    private final RandomAccessFile inputFile;
+    private FileChannel fileChannel;
+
+    //    private HeaderWritableByteChannel   HEADER_WRAPPER = new HeaderWritableByteChannel();    
+    
     private IntBuferWritableByteChannel INT_BUFFER_WRAPPER = new IntBuferWritableByteChannel();
-    private final Pipe<T> target;    
+    private final Pipe<RawDataSchema> target;    
     
     private int blobToRead=0;
     private int slabToRead=0;
-    private ByteBuffer blobByteBuffer;
-    
-    protected TapeReadStage(GraphManager graphManager, Pipe<T> target, FileChannel fileChannel) {
-        super(graphManager, NONE, target);
-        this.fileChannel = fileChannel;
-        this.target = target;
+    private long targetSlabPos;
+    private int targetBlobPos;
+        
+    protected TapeReadStage(GraphManager graphManager, RandomAccessFile inputFile, Pipe<RawDataSchema> output) {
+        super(graphManager, NONE, output);
+        this.inputFile = inputFile;
+        this.target = output;
         
         //TODO: add command pipe for reading from multiple channels
         
     }
 
     @Override
+    public void startup() {
+        fileChannel = inputFile.getChannel();
+    }
+    
+    @Override
     public void run() {
         while (processAvailData(this)) {
             //keeps going while there is data to read and room to write it.
         }
-
     }
 
-    private boolean processAvailData(TapeReadStage<T> tapeReadStage) {
+    ByteBuffer header = ByteBuffer.allocate(8);
+    IntBuffer intHeader = header.asIntBuffer();
+    
+    private boolean processAvailData(TapeReadStage tapeReadStage) {
         try {
+            //read blob count int  (in bytes)
+            //read slab count int  (in bytes)
+            //read slab ints
+            //read blob bytes
             
             if (0==slabToRead && 0==blobToRead) {
-                if (0==fileChannel.transferTo(0, HEADER_WRAPPER.init(), HEADER_WRAPPER)) {
-                    //no data ready to read
-                    return false;
-                    
-                } else {
-                    //NOTE: there is no validation on length because the blob data here is multiple messages all run together.
-                    //      the general ratio however would still be respected.
-                    blobToRead = HEADER_WRAPPER.blobBytes;
-                    slabToRead = HEADER_WRAPPER.slabBytes;
 
-                    
-                    //
-                    
-                    //what about looping?
-                    
-                    //TODO: do these both need to be set to the right positoin?
-                    IntBuffer wrappedStructuredLayoutRingBuffer = Pipe.wrappedSlabRing(tapeReadStage.target);
-                    blobByteBuffer = Pipe.wrappedBlobRingA(tapeReadStage.target);
-                    //TODO: this buffer limit MUST be set.
-                    
-                    
-                    
-                    
-                    INT_BUFFER_WRAPPER.init(wrappedStructuredLayoutRingBuffer);                    
+                int len = fileChannel.read(header);
+                if (len<0) {
+                    fileChannel.close();
+                    requestShutdown();
+                }                
+                if (header.hasRemaining()) {
+                    //try again we did not get all 8 bytes.
+                    return false;
+                }
+                
+                header.flip();
+                
+                blobToRead = intHeader.get();
+                slabToRead = intHeader.get();                
+                targetSlabPos = Pipe.workingHeadPosition(target);            
+                targetBlobPos = Pipe.bytesWorkingHeadPosition(target);
+                
+                if (slabToRead>>2 > target.sizeOfSlabRing) {
+                    throw new UnsupportedOperationException("Unable to read file into short target pipe.");
+                }                
+            }
+            
+            //try later if there is not enough room for this entire block
+            if (!Pipe.hasRoomForWrite(target, slabToRead>>2)) {
+                return false;
+            }
+            
+            if (slabToRead>0) {
+                
+                int spaceLeftOnRing = target.sizeOfSlabRing - Pipe.contentRemaining(target);
+                int spaceLeftBeforeRollover =   (int)(target.sizeOfSlabRing - (targetSlabPos&target.mask));
+                int maxLength = Math.min(Math.min(slabToRead, spaceLeftOnRing), spaceLeftBeforeRollover);
+                
+                IntBuffer slabBuffer = Pipe.wrappedSlabRing(target);
+                slabBuffer.position( (int)targetSlabPos&target.mask );
+                slabBuffer.limit(slabBuffer.position() + maxLength);
+                
+                INT_BUFFER_WRAPPER.init(slabBuffer);
+                long filePos = fileChannel.position();  
+                long size = fileChannel.transferTo(filePos, slabToRead, INT_BUFFER_WRAPPER);
+                targetSlabPos += size;
+                if ((slabToRead -= size)>0) {
+                    return false;
                 }
             }
-            
-            if (!Pipe.hasRoomForWrite(tapeReadStage.target, slabToRead)) {
-                return false;                
-            }
-            
-            
-            long slabsRead = 0;
-            if (slabToRead>0) {
-                slabsRead = fileChannel.transferTo(0, slabToRead, INT_BUFFER_WRAPPER);
-            }
-            
-            if (slabsRead < 0) {
-                //error unexpected end of stream
-                blobToRead = 0;
-                slabToRead = 0;
-                return false;
-            }            
-            slabToRead -= slabsRead;
-            
-            if (slabToRead > 0) {
-                //did not get all the bytes try again later
-                return false;
-            }
-            //all the slab data has been read now we must pick up the blob data
-            
-            if (blobToRead>0) {
+            if (0==slabToRead && blobToRead>0) {
+                                                         
+                ByteBuffer byteBuff = Pipe.wrappedBlobForWriting(targetBlobPos, target);                
+                byteBuff.limit(Math.min(byteBuff.limit(), byteBuff.position()+blobToRead));
                 
-                int blobsRead = fileChannel.read(blobByteBuffer);
-                
-                if (blobsRead<0) {
-                    //end of file, we may have been expecting this one if blobToRead and slabToRead are already zero.
-                    blobToRead = 0;
-                    slabToRead = 0;
+                int count = fileChannel.write(byteBuff);
+                targetBlobPos += count;
+                if ((blobToRead -= count)>0) {
                     return false;
-                } else {
-                    blobToRead -= blobsRead;                    
-                    if (blobToRead>0) {
-                        //did not get all the bytes try again later
-                        return false;
-                    }
-                }           
-                
+                }
+                 
             }
+            
+            if (0==slabToRead && 0==blobToRead) {
+                Pipe.setBytesWorkingHead(target, targetBlobPos);
+                Pipe.setBytesHead(target, targetBlobPos);
+                Pipe.publishWorkingHeadPosition(target, targetSlabPos);
+            }
+             
             
         } catch (IOException e) {
             e.printStackTrace();
@@ -127,9 +139,8 @@ public class TapeReadStage<T extends MessageSchema> extends PronghornStage {
 
         private IntBuffer buffer;
         
-        public int init(IntBuffer intBuffer) {
+        public void init(IntBuffer intBuffer) {
             buffer = intBuffer;
-            return intBuffer.remaining()*4;
         }
         
         @Override
@@ -143,63 +154,21 @@ public class TapeReadStage<T extends MessageSchema> extends PronghornStage {
         }
         
         @Override
-        public int write(ByteBuffer src) throws IOException {            
-            int result = Math.min(src.remaining()>>2, buffer.remaining());
+        public int write(ByteBuffer src) throws IOException {  
             
-            int i = result;
-            while (--i>=0) {
-                int value = buffer.get();
-                src.put((byte)(value>>24));
-                src.put((byte)(value>>16));
-                src.put((byte)(value>>8));
-                src.put((byte)(value>>0));
+            int count = (int)(src.remaining())>>2;
+            while (--count>=0) {
+                int value = src.get()<<24;
+                value |= 0xFF&src.get()<<16;
+                value |= 0xFF&src.get()<<8;
+                value |= 0xFF&src.get();
+                
+                buffer.put(value);
+                
             }
-            return result<<2;
+            return count<<2;
         }
         
     }
-    
-    private class HeaderWritableByteChannel implements WritableByteChannel {
 
-        private int blobBytes;
-        private int slabBytes;
-        private boolean isOpen;
-        
-        public int init() {
-            blobBytes = -1;
-            slabBytes = -1;
-            isOpen = true;
-            return 2*4;
-        }
-        
-        @Override
-        public boolean isOpen() {
-            return isOpen;
-        }
-
-        @Override
-        public void close() throws IOException {
-            isOpen = false;
-        }
-        
-        @Override
-        public int write(ByteBuffer src) throws IOException {
-            if (!isOpen()) {
-                return -1;
-            }
-            
-            //only read if the full head is available
-            if (src.remaining()<(2*4)) {
-                return 0;
-            }
-                       
-            IntBuffer intBuffer = src.asIntBuffer();
-            blobBytes = intBuffer.get();
-            slabBytes = intBuffer.get();
-                        
-            close();
-            return 2*4;            
-        }
-        
-    }
 }
