@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.stage.route;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -12,10 +13,10 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  * @author Nathan Tippy
  *
  */
-public class SplitterStage extends PronghornStage {
+public class SplitterStage<T extends MessageSchema> extends PronghornStage {
 
-	private Pipe source;
-	private Pipe[] targets;
+	private Pipe<T> source;
+	private Pipe<T>[] targets;
 	
 	private int byteHeadPos;
     private long headPos;
@@ -28,7 +29,7 @@ public class SplitterStage extends PronghornStage {
 	int byteTailPos;
 	int totalBytesCopy;
 	
-	public SplitterStage(GraphManager gm, Pipe source, Pipe ... targets) {
+	public SplitterStage(GraphManager gm, Pipe<T> source, Pipe<T> ... targets) {
 		super(gm,source,targets);
 		
 		this.source = source;
@@ -94,7 +95,7 @@ public class SplitterStage extends PronghornStage {
 		}
 	}
 	
-	private static void processAvailData(SplitterStage ss) {
+	private static <S extends MessageSchema> void processAvailData(SplitterStage<S> ss) {
 
 		if (0==ss.totalPrimaryCopy) {
 	        findStableCutPoint(ss);			
@@ -128,7 +129,7 @@ public class SplitterStage extends PronghornStage {
 		return; //finished all the copy  for now
 	}
 
-	private static void recordCopyComplete(SplitterStage ss, int tempByteTail, int totalBytesCopy) {
+	private static <S extends MessageSchema> void recordCopyComplete(SplitterStage<S> ss, int tempByteTail, int totalBytesCopy) {
 		//release tail so data can be written
 		
 		int i = Pipe.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
@@ -140,7 +141,7 @@ public class SplitterStage extends PronghornStage {
 
 
 
-	private static void findStableCutPoint(SplitterStage ss) {
+	private static <S extends MessageSchema> void findStableCutPoint(SplitterStage<S> ss) {
 		ss.byteHeadPos = Pipe.bytesHeadPosition(ss.source);
         ss.headPos = Pipe.headPosition(ss.source);		
 		while(ss.byteHeadPos != Pipe.bytesHeadPosition(ss.source) || ss.headPos != Pipe.headPosition(ss.source) ) {
@@ -152,7 +153,7 @@ public class SplitterStage extends PronghornStage {
 	
 	//single pass attempt to copy if any can not accept the data then they are skipped
 	//and true will be returned instead of false.
-	private static boolean doneCopy(SplitterStage ss, 
+	private static <S extends MessageSchema> boolean doneCopy(SplitterStage<S> ss, 
 			                   int byteTailPos, int primaryTailPos, 
 			                   int totalPrimaryCopy, 
 			                   int totalBytesCopy) {
@@ -163,10 +164,10 @@ public class SplitterStage extends PronghornStage {
 		int limit = ss.workingPos;
 		while (j<limit) {
 			
-			if (!Pipe.roomToLowLevelWrite(ss.targets[working[j]], totalPrimaryCopy)) {
+			if (!Pipe.hasRoomForWrite(ss.targets[working[j]], totalPrimaryCopy)) {
 			 	working[c++] = working[j];
 			} else {
-				Pipe ringBuffer = ss.targets[working[j]];					
+				Pipe<S> ringBuffer = ss.targets[working[j]];					
 				copyData(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);				
 				Pipe.confirmLowLevelWrite(ringBuffer, totalPrimaryCopy);	
 			}
@@ -182,9 +183,9 @@ public class SplitterStage extends PronghornStage {
 		return getClass().getSimpleName()+ " source content "+Pipe.contentRemaining(source);
 	}
 
-	private static void copyData(SplitterStage ss, int byteTailPos,
+	private static <S extends MessageSchema> void copyData(SplitterStage<S> ss, int byteTailPos,
 								int totalBytesCopy, int primaryTailPos, int totalPrimaryCopy,
-								Pipe ringBuffer) {
+								Pipe<S> ringBuffer) {
 		
 		//copy the bytes
 		Pipe.copyBytesFromToRing(Pipe.byteBuffer(ss.source),                   byteTailPos, ss.source.byteMask, 
