@@ -1047,6 +1047,39 @@ public final class Pipe<T extends MessageSchema> {
 		return true;
 	}
 
+	   public static <S extends MessageSchema> boolean isEqual(Pipe<S> ring, byte[] expected, int expectedPos, int meta, int len) {
+	        if (len>(expected.length-expectedPos)) {
+	            return false;
+	        }
+	        if (meta < 0) {
+
+	            int pos = PipeReader.POS_CONST_MASK & meta;
+
+	            byte[] buffer = ring.blobConstBuffer;
+	            assert(null!=buffer) : "If constants are used the constByteBuffer was not initialized. Otherwise corruption in the stream has been discovered";
+	            while (--len >= 0) {
+	                if (expected[expectedPos+len]!=buffer[pos+len]) {
+	                    return false;
+	                }
+	            }
+
+	        } else {
+
+	            byte[] buffer = ring.blobRing;
+	            int mask = ring.byteMask;
+	            int pos = restorePosition(ring, meta);
+
+	            while (--len >= 0) {
+	                if (expected[expectedPos+len]!=buffer[mask&(pos+len)]) {
+	                    return false;
+	                }
+	            }
+
+	        }
+
+	        return true;
+	    }
+	
 	private static <S extends MessageSchema> Appendable readASCIIRing(Pipe<S> ring, int len, Appendable target, int pos) {
 		byte[] buffer = ring.blobRing;
 		int mask = ring.byteMask;
@@ -1182,16 +1215,16 @@ public final class Pipe<T extends MessageSchema> {
 		return Math.min(maxBatchFromBytes, maxBatchFromPrimary);
 	}
 
-	@Deprecated
-	public static <S extends MessageSchema> void publishEOF(Pipe<S> ring) {
 
-		assert(ring.slabRingTail.tailPos.get()+ring.sizeOfSlabRing>=ring.slabRingHead.headPos.get()+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
+	public static <S extends MessageSchema> void publishEOF(Pipe<S> pipe) {
 
-		PaddedInt.set(ring.blobRingHead.bytesHeadPos,ring.blobRingHead.byteWorkingHeadPos.value);
-		ring.slabRing[ring.mask &((int)ring.slabRingHead.workingHeadPos.value +  from(ring).templateOffset)]    = -1;
-		ring.slabRing[ring.mask &((int)ring.slabRingHead.workingHeadPos.value +1 +  from(ring).templateOffset)] = 0;
+		assert(pipe.slabRingTail.tailPos.get()+pipe.sizeOfSlabRing>=pipe.slabRingHead.headPos.get()+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 
-		ring.slabRingHead.headPos.lazySet(ring.slabRingHead.workingHeadPos.value = ring.slabRingHead.workingHeadPos.value + Pipe.EOF_SIZE);
+		PaddedInt.set(pipe.blobRingHead.bytesHeadPos,pipe.blobRingHead.byteWorkingHeadPos.value);
+		pipe.slabRing[pipe.mask &((int)pipe.slabRingHead.workingHeadPos.value +  from(pipe).templateOffset)]    = -1;
+		pipe.slabRing[pipe.mask &((int)pipe.slabRingHead.workingHeadPos.value +1 +  from(pipe).templateOffset)] = 0;
+
+		pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value = pipe.slabRingHead.workingHeadPos.value + Pipe.EOF_SIZE);
 
 	}
 
@@ -2166,6 +2199,10 @@ public final class Pipe<T extends MessageSchema> {
     	assert(ring.slabRingHead.workingHeadPos.value >= Pipe.headPosition(ring));
     	assert(ring.llWrite.llwConfirmedWrittenPosition<=Pipe.headPosition(ring) || ring.slabRingHead.workingHeadPos.value<=ring.llWrite.llwConfirmedWrittenPosition) : "Unsupported mix of high and low level API. NextHead>head and workingHead>nextHead";
 
+    	//TODO: uncomment and add this new check!!
+    	//assert(ring.llRead.llwConfirmedReadPosition == Pipe.workingHeadPosition(ring));
+    	
+    	
     	publishHeadPositions(ring);
     }
 
