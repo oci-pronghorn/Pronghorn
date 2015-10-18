@@ -584,8 +584,9 @@ public final class Pipe<T extends MessageSchema> {
     }
         
     
-    public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> rb, int bytesConsumed) {
-        rb.blobReadBase = Pipe.BYTES_WRAP_MASK & (rb.blobReadBase+bytesConsumed);
+    public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> pipe, int bytesConsumed) {
+        pipe.blobReadBase = Pipe.BYTES_WRAP_MASK & (pipe.blobReadBase+bytesConsumed);
+        assert(0==bytesConsumed || pipe.blobReadBase <= Pipe.bytesHeadPosition(pipe));
     }
     
     public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> pipe) {
@@ -1057,6 +1058,7 @@ public final class Pipe<T extends MessageSchema> {
 
 	            byte[] buffer = ring.blobConstBuffer;
 	            assert(null!=buffer) : "If constants are used the constByteBuffer was not initialized. Otherwise corruption in the stream has been discovered";
+	            
 	            while (--len >= 0) {
 	                if (expected[expectedPos+len]!=buffer[pos+len]) {
 	                    return false;
@@ -2310,8 +2312,12 @@ public final class Pipe<T extends MessageSchema> {
 		}
 	}
 
-	public static <S extends MessageSchema> int blobMask(Pipe<S> ring) {
-		return ring.byteMask;
+	public static <S extends MessageSchema> int blobMask(Pipe<S> pipe) {
+		return pipe.byteMask;
+	}
+	
+	public static <S extends MessageSchema> int slabMask(Pipe<S> pipe) {
+	    return pipe.mask;
 	}
 
 	public static <S extends MessageSchema> long headPosition(Pipe<S> ring) {
@@ -2470,7 +2476,7 @@ public final class Pipe<T extends MessageSchema> {
 	public static <S extends MessageSchema> long confirmLowLevelRead(Pipe<S> input, long size) {
 	    assert(size>0) : "Must have read something.";
 	     //not sure if this assert is true in all cases
-	    // assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value) : "size was too large, past known data";
+	    assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value+Pipe.EOF_SIZE) : "size was far too large, past known data";
 	    assert(input.llWrite.llwConfirmedWrittenPosition + size >= input.slabRingTail.tailPos.get()) : "size was too small, under known data";        
 		return (input.llWrite.llwConfirmedWrittenPosition += size);
 	}
