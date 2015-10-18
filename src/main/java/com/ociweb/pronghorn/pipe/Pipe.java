@@ -2081,7 +2081,8 @@ public final class Pipe<T extends MessageSchema> {
 
         
         assert(Pipe.isReplaying(ring) || ring.ringWalker.nextWorkingTail!=Pipe.getWorkingTailPosition(ring)) : "Only call release once per message";
-        assert(Pipe.isReplaying(ring) || ring.lastReleasedSlabTail != ring.ringWalker.nextWorkingTail) : "Only call release once per message";
+        //not sure if this is always true must check.
+ //       assert(Pipe.isReplaying(ring) || ring.lastReleasedSlabTail != ring.ringWalker.nextWorkingTail) : "Only call release once per message";
 
         //take new tail position and make it the base because we are about to start a new message.        
         Pipe.markBytesReadBase(ring);
@@ -2468,7 +2469,8 @@ public final class Pipe<T extends MessageSchema> {
 
 	public static <S extends MessageSchema> long confirmLowLevelRead(Pipe<S> input, long size) {
 	    assert(size>0) : "Must have read something.";
-	    assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value) : "size was too large, past known data";
+	     //not sure if this assert is true in all cases
+	    // assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value) : "size was too large, past known data";
 	    assert(input.llWrite.llwConfirmedWrittenPosition + size >= input.slabRingTail.tailPos.get()) : "size was too small, under known data";        
 		return (input.llWrite.llwConfirmedWrittenPosition += size);
 	}
