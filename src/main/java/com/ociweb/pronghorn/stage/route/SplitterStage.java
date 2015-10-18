@@ -114,11 +114,10 @@ public class SplitterStage<T extends MessageSchema> extends PronghornStage {
 				ss.working[i]=i;
 			}
 			//collect all the constant values needed for doing the copy
-			ss.tempByteTail = Pipe.getBlobRingTailPosition(ss.source);
-			ss.byteTailPos = ss.source.byteMask & ss.tempByteTail;
-			if ((ss.totalBytesCopy =      (ss.source.byteMask & ss.byteHeadPos) - ss.byteTailPos) < 0) {
-				ss.totalBytesCopy += (ss.source.byteMask+1);
-			}			
+            ss.tempByteTail = Pipe.getBlobRingTailPosition(ss.source);
+            ss.totalBytesCopy =   ss.byteHeadPos -ss.tempByteTail;
+            ss.byteTailPos = ss.source.byteMask & ss.tempByteTail;
+		
 		}
 
 		//if all the copies are done then record it as complete, does as much work as possible each time its called.

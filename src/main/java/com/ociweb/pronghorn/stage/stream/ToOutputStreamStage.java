@@ -7,6 +7,7 @@ import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Arrays;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
@@ -43,11 +44,16 @@ public class ToOutputStreamStage extends PronghornStage {
 				int byteMask = inputRing.byteMask;
 				int byteSize = byteMask+1;								
 				
-				while (Pipe.hasContentToRead(inputRing, step)) {
+				while (Pipe.hasContentToRead(inputRing)) {
 						
 					int msgId = Pipe.takeMsgIdx(inputRing);
+					if (msgId<0) {
+					    Pipe.releaseReads(inputRing);
+					    Pipe.confirmLowLevelRead(inputRing, Pipe.EOF_SIZE);
+					    requestShutdown();
+					    return;
+					}
   
-					Pipe.confirmLowLevelRead(inputRing, step);
 			    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
 	    					    			
 			    	int len = takeRingByteLen(inputRing);
@@ -68,9 +74,15 @@ public class ToOutputStreamStage extends PronghornStage {
 							outputStream.write('\n');
 						}
 						outputStream.flush();
+			    	} else if (len<0) {
+			    	    Pipe.releaseReads(inputRing);
+	                    Pipe.confirmLowLevelRead(inputRing, step);
+			    	    requestShutdown();
+			    	    return;
 			    	}
 			    	Pipe.releaseReads(inputRing);
-			    
+			    	Pipe.confirmLowLevelRead(inputRing, step);
+ 
 				}			
 				
 			} catch (IOException e) {

@@ -17,7 +17,7 @@ public class FileBlobReadStage extends PronghornStage {
     private FileChannel openChannel;
     private final Pipe<RawDataSchema> output;
     
-    protected FileBlobReadStage(GraphManager graphManager, RandomAccessFile inputFile, Pipe<RawDataSchema> output) {
+    public FileBlobReadStage(GraphManager graphManager, RandomAccessFile inputFile, Pipe<RawDataSchema> output) {
         super(graphManager, NONE, output);
         this.inputFile = inputFile;
         this.output = output;

@@ -113,6 +113,8 @@ public class ConsoleStage extends PronghornStage {
 			if (PipeReader.isNewMessage(inputRing)) {
 				msgIdx = PipeReader.getMsgIdx(inputRing);
 				if (msgIdx<0) {
+				    PipeReader.releaseReadLock(inputRing);
+				    requestShutdown();
 					break;
 				} else {
 					counts[msgIdx]++;
