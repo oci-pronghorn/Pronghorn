@@ -402,7 +402,7 @@ public class FieldSplitterStage extends PronghornStage {
 		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_INT64_LOC]), output);
 		
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_INT64_LOC);
-		Pipe.addLongValue(output.slabRing, output.mask, Pipe.getWorkingHeadPositionObject(output), typeExtractor.activeFieldLong*(long)TypeExtractor.signMult(typeExtractor));
+		Pipe.addLongValue(typeExtractor.activeFieldLong*(long)TypeExtractor.signMult(typeExtractor), output);
 	}
 
 	public static void writeULong(TypeExtractor typeExtractor, Pipe output) {
@@ -410,7 +410,7 @@ public class FieldSplitterStage extends PronghornStage {
 		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_UINT64_LOC]), output);
 		
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_UINT64_LOC);
-		Pipe.addLongValue(output.slabRing, output.mask, Pipe.getWorkingHeadPositionObject(output), typeExtractor.activeFieldLong);
+		Pipe.addLongValue(typeExtractor.activeFieldLong, output);
 	}
 
 	public static void writeInt(TypeExtractor typeExtractor, Pipe output) {
@@ -418,9 +418,8 @@ public class FieldSplitterStage extends PronghornStage {
 		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_INT32_LOC]), output);
 		
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_INT32_LOC);
-		Pipe.setValue(output.slabRing,output.mask,Pipe.getWorkingHeadPositionObject(output).value++,((int)typeExtractor.activeFieldLong)*TypeExtractor.signMult(typeExtractor));		
-			
-			TypeExtractor.signMult(typeExtractor);
+		Pipe.addIntValue((int)typeExtractor.activeFieldLong*TypeExtractor.signMult(typeExtractor), output);	
+		TypeExtractor.signMult(typeExtractor);
 	}
 
 	public static void writeUInt(TypeExtractor typeExtractor,
@@ -429,7 +428,7 @@ public class FieldSplitterStage extends PronghornStage {
 		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_UINT32_LOC]), output);
 		
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_UINT32_LOC);
-		Pipe.setValue(output.slabRing,output.mask,Pipe.getWorkingHeadPositionObject(output).value++,(int)typeExtractor.activeFieldLong);
+		Pipe.addIntValue((int)typeExtractor.activeFieldLong, output);
 	}
 	
 	
