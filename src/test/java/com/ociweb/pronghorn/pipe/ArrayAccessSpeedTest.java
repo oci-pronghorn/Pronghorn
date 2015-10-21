@@ -115,8 +115,8 @@ public class ArrayAccessSpeedTest {
         System.out.println("LongArray Time:  "+arrayDuration+"  Value: "+arrayResult);
         System.out.println("LongBuffer Time: "+byteBufferDuration+" Value: "+byteBufferResult);
     }
-   
-    private long byteBufferLoop() {
+
+    private long byteArrayLoop() {
         long pos = 1;
         byteArray[0] = 1;
         byteArray[1] = 2;
@@ -128,7 +128,7 @@ public class ArrayAccessSpeedTest {
         return byteArray[(int)(pos-2)&mask] + byteArray[(int)(pos-1)&mask];
     }
 
-    private long byteArrayLoop() {
+    private long byteBufferLoop() {
         long pos = 1;
         byteBuffer.put(0,(byte)1);
         byteBuffer.put(1,(byte)2);
@@ -140,7 +140,7 @@ public class ArrayAccessSpeedTest {
         return byteBuffer.get((int)(pos-2)&mask) + byteBuffer.get((int)(pos-1)&mask);
     }
     
-    private long shortBufferLoop() {
+    private long shortArrayLoop() {
         long pos = 1;
         shortArray[0] = 1;
         shortArray[1] = 2;
@@ -152,7 +152,7 @@ public class ArrayAccessSpeedTest {
         return shortArray[(int)(pos-2)&mask] + shortArray[(int)(pos-1)&mask];
     }
 
-    private long shortArrayLoop() {
+    private long shortBufferLoop() {
         long pos = 1;
         shortBuffer.put(0,(short)1);
         shortBuffer.put(1,(short)2);
@@ -163,9 +163,8 @@ public class ArrayAccessSpeedTest {
         }
         return shortBuffer.get((int)(pos-2)&mask) + shortBuffer.get((int)(pos-1)&mask);
     }
-    
-    
-    private long intBufferLoop() {
+
+    private long intArrayLoop() {
         long pos = 1;
         intArray[0] = 1;
         intArray[1] = 2;
@@ -177,7 +176,7 @@ public class ArrayAccessSpeedTest {
         return intArray[(int)(pos-2)&mask] + intArray[(int)(pos-1)&mask];
     }
 
-    private long intArrayLoop() {
+    private long intBufferLoop() {
         long pos = 1;
         intBuffer.put(0,1);
         intBuffer.put(1,2);
@@ -189,7 +188,7 @@ public class ArrayAccessSpeedTest {
         return intBuffer.get((int)(pos-2)&mask) + intBuffer.get((int)(pos-1)&mask);
     }
     
-    private long longBufferLoop() {
+    private long longArrayLoop() {
         long pos = 1;
         longArray[0] = 1;
         longArray[1] = 2;
@@ -201,7 +200,7 @@ public class ArrayAccessSpeedTest {
         return longArray[(int)(pos-2)&mask] + longArray[(int)(pos-1)&mask];
     }
 
-    private long longArrayLoop() {
+    private long longBufferLoop() {
         long pos = 1;
         longBuffer.put(0,1);
         longBuffer.put(1,2);
