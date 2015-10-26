@@ -526,7 +526,7 @@ public class RingBufferPipeline {
 		 if (monitor) {
 			monitorStages = new PronghornStage[j];
 		 	monitorRings = new Pipe[j];
-		 	montorFROM = PipeMonitorSchema.buildFROM();
+		 	montorFROM = PipeMonitorSchema.FROM;
 		 }
 		 
 		 byte ex = (byte)(useRouter ? 0 : 1);

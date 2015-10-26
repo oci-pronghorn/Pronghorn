@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
   
-   <template name="RingStatSample" id="1" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   <template name="RingStatSample" id="100" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
         <uInt64 name="MS"   id="1">
             <delta/>
         </uInt64>
@@ -18,7 +18,7 @@
         
     </template>
     
-    <template name="RingStatEnhancedSample" id="2" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+    <template name="RingStatEnhancedSample" id="200" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
         <uInt64 name="MS"   id="1">
             <delta/>
         </uInt64>

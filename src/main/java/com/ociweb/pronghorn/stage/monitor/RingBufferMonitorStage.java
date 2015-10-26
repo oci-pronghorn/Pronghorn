@@ -1,11 +1,11 @@
 package com.ociweb.pronghorn.stage.monitor;
 
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_HEAD_LOC;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_LOC;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_MSG_LOC;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_SIZE_LOC;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_TAIL_LOC;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.TEMPLATE_TIME_LOC;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_1;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_1_FIELD_BUFFERSIZE_5;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_1_FIELD_HEAD_2;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_1_FIELD_MS_1;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_1_FIELD_TAIL_3;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_1_FIELD_TEMPLATEID_4;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -46,13 +46,13 @@ public class RingBufferMonitorStage extends PronghornStage {
 	public void run() {
 		
 		//if we can't write then do it again on the next cycle, and skip this data point.
-		if (PipeWriter.tryWriteFragment(notifyRingBuffer,TEMPLATE_LOC)) {
+		if (PipeWriter.tryWriteFragment(notifyRingBuffer,MSG_RINGSTATSAMPLE_1)) {
 			
-			PipeWriter.writeLong(notifyRingBuffer, TEMPLATE_TIME_LOC, System.currentTimeMillis());
-			PipeWriter.writeLong(notifyRingBuffer, TEMPLATE_HEAD_LOC, Pipe.headPosition(observedRingBuffer));
-			PipeWriter.writeLong(notifyRingBuffer, TEMPLATE_TAIL_LOC, Pipe.tailPosition(observedRingBuffer));
-			PipeWriter.writeInt(notifyRingBuffer, TEMPLATE_MSG_LOC, PipeReader.getMsgIdx(observedRingBuffer));	
-			PipeWriter.writeInt(notifyRingBuffer, TEMPLATE_SIZE_LOC, observedRingBuffer.sizeOfSlabRing);
+			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_1_FIELD_MS_1, System.currentTimeMillis());
+			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_1_FIELD_HEAD_2, Pipe.headPosition(observedRingBuffer));
+			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_1_FIELD_TAIL_3, Pipe.tailPosition(observedRingBuffer));
+			PipeWriter.writeInt(notifyRingBuffer, MSG_RINGSTATSAMPLE_1_FIELD_TEMPLATEID_4, PipeReader.getMsgIdx(observedRingBuffer));	
+			PipeWriter.writeInt(notifyRingBuffer, MSG_RINGSTATSAMPLE_1_FIELD_BUFFERSIZE_5, observedRingBuffer.sizeOfSlabRing);
 			
 			PipeWriter.publishWrites(notifyRingBuffer);	
 		}

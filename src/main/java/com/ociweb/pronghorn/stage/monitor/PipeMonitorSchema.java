@@ -13,34 +13,44 @@ public class PipeMonitorSchema extends MessageSchema{
             new String[]{"global",null,null,null,null,null,null,"global",null,null,null,null,null,null,null,null},
             "ringMonitor.xml");
     
-    public static final int TEMPLATE_LOC;
     
-    public static final int TEMPLATE_TIME_LOC;
-    public static final int TEMPLATE_HEAD_LOC;
-    public static final int TEMPLATE_TAIL_LOC;
-    public static final int TEMPLATE_MSG_LOC;
-    public static final int TEMPLATE_SIZE_LOC;
+    public static final int MSG_RINGSTATSAMPLE_1 = 0x0;
+    public static final int MSG_RINGSTATSAMPLE_1_FIELD_MS_1 = 0x2000001;
+    public static final int MSG_RINGSTATSAMPLE_1_FIELD_HEAD_2 = 0x2000003;
+    public static final int MSG_RINGSTATSAMPLE_1_FIELD_TAIL_3 = 0x2000005;
+    public static final int MSG_RINGSTATSAMPLE_1_FIELD_TEMPLATEID_4 = 0x7;
+    public static final int MSG_RINGSTATSAMPLE_1_FIELD_BUFFERSIZE_5 = 0x8;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_2 = 0x7;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_2_FIELD_MS_1 = 0x2000001;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_2_FIELD_HEAD_2 = 0x2000003;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_2_FIELD_TAIL_3 = 0x2000005;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_2_FIELD_TEMPLATEID_4 = 0x7;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_2_FIELD_BUFFERSIZE_5 = 0x8;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_2_FIELD_STACKDEPTH_21 = 0x9;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_2_FIELD_LATENCY_22 = 0xa;
+
+    @Deprecated
+    public static final int TEMPLATE_LOC = MSG_RINGSTATSAMPLE_1;
+ 
+    @Deprecated
+    public static final int TEMPLATE_TIME_LOC = MSG_RINGSTATSAMPLE_1_FIELD_MS_1;
+    @Deprecated
+    public static final int TEMPLATE_HEAD_LOC = MSG_RINGSTATSAMPLE_1_FIELD_HEAD_2;
+    @Deprecated
+    public static final int TEMPLATE_TAIL_LOC = MSG_RINGSTATSAMPLE_1_FIELD_TAIL_3;
+    @Deprecated
+    public static final int TEMPLATE_MSG_LOC = MSG_RINGSTATSAMPLE_1_FIELD_TEMPLATEID_4;
+    @Deprecated
+    public static final int TEMPLATE_SIZE_LOC = MSG_RINGSTATSAMPLE_1_FIELD_BUFFERSIZE_5;
+
+    public static MessageSchema instance = new PipeMonitorSchema();
 
     
     private PipeMonitorSchema() {
         super(FROM);
     }
-
 	
-	
-	static {
-				
-	    ///TODO: convert to unit test.			
-		TEMPLATE_LOC = FieldReferenceOffsetManager.lookupTemplateLocator("RingStatSample", FROM);
-		
-		TEMPLATE_TIME_LOC = FieldReferenceOffsetManager.lookupFieldLocator("MS", TEMPLATE_LOC, FROM);
-		TEMPLATE_HEAD_LOC = FieldReferenceOffsetManager.lookupFieldLocator("Head", TEMPLATE_LOC, FROM);
-		TEMPLATE_TAIL_LOC = FieldReferenceOffsetManager.lookupFieldLocator("Tail", TEMPLATE_LOC, FROM);
-		TEMPLATE_MSG_LOC = FieldReferenceOffsetManager.lookupFieldLocator("TemplateId", TEMPLATE_LOC, FROM);
-		TEMPLATE_SIZE_LOC = FieldReferenceOffsetManager.lookupFieldLocator("BufferSize", TEMPLATE_LOC, FROM);
-		
-	}
-	
+    @Deprecated
 	public static FieldReferenceOffsetManager buildFROM() {
 		return FROM;
 	}
