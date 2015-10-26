@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.pipe.util.build;
 import java.lang.reflect.Field;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 
 public class FROMValidation {
@@ -39,53 +40,119 @@ public class FROMValidation {
 	 * @param encodedFrom
 	 * @return
 	 */
-	public static boolean testForMatchingLocators(Class testTarget, FieldReferenceOffsetManager encodedFrom) {
+	public static <S extends MessageSchema> boolean testForMatchingLocators(S schema) {
 	    
-	    Field[] fields = testTarget.getFields();
+	    FieldReferenceOffsetManager encodedFrom = MessageSchema.from(schema);
 	    
-	    //confirm that every field accessor is found
-	    //if not report single error and full source as it should be.
-	    
-	    //TODO: walk.
+	    Field[] fields = schema.getClass().getFields();
 	    
 	    int[] msgStart = encodedFrom.messageStarts;
 	    
-	    boolean ok = true;
+	    StringBuilder generatedSource = new StringBuilder();
 	    
-	    int i = msgStart.length;
-	    while (--i>=0) {
+	    
+	    boolean success = true;
+	    for(int i = 0 ; i<msgStart.length; i++) {
+	        
 	        int expectedMsgIdx = msgStart[i];
-	        String name = encodedFrom.fieldNameScript[i];	      
-	        long id = encodedFrom.fieldIdScript[i];
-	        int lookedUpMsgIdx = encodedFrom.lookupTemplateLocator(name, encodedFrom);
-	        assert(expectedMsgIdx == lookedUpMsgIdx) : "The same FROM object does not agree with its self";
+	        String name = encodedFrom.fieldNameScript[expectedMsgIdx];	
+	        //only generate constatns for named fields.
+	        if (null!=name) {
+    	        long id = encodedFrom.fieldIdScript[expectedMsgIdx];
+    	        
+    	        String messageConstantName = "MSG_"+name.toUpperCase()+"_"+id;
+    	        
+    	        appendAssignmentCode(generatedSource, messageConstantName, expectedMsgIdx);
+    	            	        
+    	        boolean found = false;
+    	        int j = fields.length;
+    	        while (--j>=0 && !found) {
+    	            String schemaFieldName = fields[j].getName();
+    	            if (schemaFieldName.equals(messageConstantName)) {
+    	                found = true;    	                
+    	                try {
+                            int assignedValue = fields[j].getInt(null);
+                            if (expectedMsgIdx != assignedValue) {
+                                success = false;
+                                System.err.println("//wrong expected value: "+messageConstantName);
+                            }                            
+    	                } catch (IllegalArgumentException e) {                           
+                            e.printStackTrace();
+                            found = false;
+                        } catch (IllegalAccessException e) {                            
+                            e.printStackTrace();
+                            found = false;
+                        }
+    	            }
+    	        }
+    	        if (!found) {
+    	            success = false;
+    	            System.err.println("//unable to find: "+messageConstantName);
+    	        }
+    	        
+    	        
+    	        int fieldLimit;
+    	        if (i+1>=msgStart.length) {
+    	            fieldLimit = encodedFrom.fieldIdScript.length;
+    	        } else {
+    	            fieldLimit = msgStart[i+1];
+    	        }
+    	            
+    	        
+    	        for(int fieldIdx = msgStart[i]+1; fieldIdx<fieldLimit; fieldIdx++) {
+    	            String msgFieldName = encodedFrom.fieldNameScript[fieldIdx]; 
+    	            if (null!=msgFieldName) {
+    	                long imsgFieldId = encodedFrom.fieldIdScript[fieldIdx];
+    	                
+    	                
+    	                int fieldLOC = FieldReferenceOffsetManager.paranoidLookupFieldLocator(imsgFieldId, msgFieldName, expectedMsgIdx, encodedFrom);
+    	                String messageFieldConstantName = messageConstantName+"_FIELD_"+msgFieldName.toUpperCase()+"_"+imsgFieldId;
+    	                
+    	                appendAssignmentCode(generatedSource, messageFieldConstantName, fieldLOC);
+    	                    	                
+    	                found = false;
+    	                j = fields.length;
+    	                while (--j>=0 && !found) {
+    	                    String schemaFieldName = fields[j].getName();
+    	                    if (schemaFieldName.equals(messageFieldConstantName)) {
+    	                        found = true;                       
+    	                        try {
+    	                            int assignedValue = fields[j].getInt(null);
+    	                            if (fieldLOC != assignedValue) {
+    	                                success = false;
+    	                                System.err.println("//wrong expected value: "+messageFieldConstantName);
+    	                            }                            
+    	                        } catch (IllegalArgumentException e) {                           
+    	                            e.printStackTrace();
+    	                            found = false;
+    	                        } catch (IllegalAccessException e) {                            
+    	                            e.printStackTrace();
+    	                            found = false;
+    	                        }
+    	                    }
+    	                }
+    	                if (!found) {
+    	                    success = false;
+    	                    System.err.println("//unable to find: "+messageFieldConstantName);
+    	                }    	                
+    	               
+    	            }
+    	        }
+    	        
 	        
-	        
-	        String constantName = "MSG_"+name.toUpperCase()+"_"+id;
-	        boolean found = false;
-	        int j = fields.length;
-	        while (--j>=0 && !found) {
-	            String fieldName = fields[j].getName();
-	            if (fieldName.equals(constantName)) {
-	                found = true;
-	                //now check for value.
-	                //TODO: print this value does not match.
-	                
-	            }
 	        }
-	        if (!found) {
-	            //TODO: print this constant is missing
-	            
-	        }
-	        
-	        
 	    }
 	    
-	    
-	    
-	    
-	    
-	    return true;
+	    if (!success) {
+	        System.err.println(generatedSource);
+	    }
+	    return success;
 	}
+
+    private static void appendAssignmentCode(StringBuilder result, String constantName, int value) {
+       
+        result.append("public static final int ").append(constantName).append(" = 0x").append(Integer.toHexString(value)).append(";\n");
+        
+    }
 
 }

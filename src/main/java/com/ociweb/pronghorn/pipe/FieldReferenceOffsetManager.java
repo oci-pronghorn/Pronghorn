@@ -18,10 +18,10 @@ public class FieldReferenceOffsetManager {
     public int templateOffset;
     
     public int tokensLen;
-    public int[] fragDataSize;
-    public int[] fragScriptSize;
-    public int[] tokens;
-    public int[] messageStarts;
+    public final int[] fragDataSize;
+    public final int[] fragScriptSize;
+    public final int[] tokens;
+    public final int[] messageStarts;
     
     //NOTE: these two arrays could be combined with a mask to simplify this in the future.
     public int[] fragDepth;
@@ -447,13 +447,7 @@ public class FieldReferenceOffsetManager {
             	return buildFieldLoc(from, framentStart, x);                
             }
             
-            int token = from.tokens[x];
-            int type = TokenBuilder.extractType(token);
-            boolean isGroupClosed = TypeMask.Group == type &&
-            		                (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) &&
-            		                (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
-           
-            if (isGroupClosed) {
+            if (exitSearch(from, x)) {
             	break;
             }
             
@@ -462,23 +456,26 @@ public class FieldReferenceOffsetManager {
         throw new UnsupportedOperationException("Unable to find field name: "+name+" in "+Arrays.toString(from.fieldNameScript));
 	}
 
-    public static int lookupFieldLocator(long id, int framentStart, FieldReferenceOffsetManager from) {
+    private static boolean exitSearch(FieldReferenceOffsetManager from, int x) {
+        int token = from.tokens[x];
+        int type = TokenBuilder.extractType(token);
+        boolean isGroupClosed = TypeMask.Group == type &&
+        		                (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) &&
+        		                (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
+        return isGroupClosed;
+    }
+
+    public static int paranoidLookupFieldLocator(long id, String name, int framentStart, FieldReferenceOffsetManager from) {
 		int x = framentStart;
         		
 		//upper bits is 4 bits of information
 
         while (x < from.fieldNameScript.length) {
-            if (id == from.fieldIdScript[x]) {            	
+            if (id == from.fieldIdScript[x] && name.equalsIgnoreCase(from.fieldNameScript[x])) {            	
             	return buildFieldLoc(from, framentStart, x);                
             }
             
-            int token = from.tokens[x];
-            int type = TokenBuilder.extractType(token);
-            boolean isGroupClosed = TypeMask.Group == type &&
-            		                (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) &&
-            		                (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
-           
-            if (isGroupClosed) {
+            if (exitSearch(from, x)) {
             	break;
             }
             
@@ -486,6 +483,25 @@ public class FieldReferenceOffsetManager {
         }
         throw new UnsupportedOperationException("Unable to find field id: "+id+" in "+Arrays.toString(from.fieldNameScript));
 	}
+    
+    public static int lookupFieldLocator(long id, int framentStart, FieldReferenceOffsetManager from) {
+        int x = framentStart;
+                
+        //upper bits is 4 bits of information
+
+        while (x < from.fieldNameScript.length) {
+            if (id == from.fieldIdScript[x]) {              
+                return buildFieldLoc(from, framentStart, x);                
+            }
+            
+            if (exitSearch(from, x)) {
+                break;
+            }
+            
+            x++;
+        }
+        throw new UnsupportedOperationException("Unable to find field id: "+id+" in "+Arrays.toString(from.fieldNameScript));
+    }
     
 	private static int buildFieldLoc(FieldReferenceOffsetManager from,
 			int framentStart, int fieldCursor) {
@@ -519,11 +535,7 @@ public class FieldReferenceOffsetManager {
             	return x;
             }
             
-            int token = from.tokens[x];
-            int type = TokenBuilder.extractType(token);
-            boolean isGroupClosed = TypeMask.Group == type &&
-            		                (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) &&
-            		                (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
+            boolean isGroupClosed = exitSearch(from, x);
            
             if (isGroupClosed) {
             	break;
@@ -542,11 +554,7 @@ public class FieldReferenceOffsetManager {
             	return x;
             }
             
-            int token = from.tokens[x];
-            int type = TokenBuilder.extractType(token);
-            boolean isGroupClosed = TypeMask.Group == type &&
-            		                (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) &&
-            		                (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
+            boolean isGroupClosed = exitSearch(from, x);
            
             if (isGroupClosed) {
             	break;
