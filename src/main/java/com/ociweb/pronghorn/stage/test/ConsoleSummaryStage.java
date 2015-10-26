@@ -1,14 +1,15 @@
-package com.ociweb.pronghorn.stage;
+package com.ociweb.pronghorn.stage.test;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
+import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-@Deprecated
-public class ConsoleStage extends PronghornStage {
+public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage {
 
-	private final Pipe inputRing;
+	private final Pipe<T> inputRing;
 	private final StringBuilder console = new StringBuilder();
 	
 	private final long[] totalCounts;
@@ -19,7 +20,7 @@ public class ConsoleStage extends PronghornStage {
 		
 	//TODO: AA, need validation stage to confirm values are in range and text is not too long
 
-	public ConsoleStage(GraphManager gm, Pipe inputRing) {
+	public ConsoleSummaryStage(GraphManager gm, Pipe<T> inputRing) {
 		super(gm, inputRing, NONE);
 		this.inputRing = inputRing;
 
