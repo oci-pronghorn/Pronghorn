@@ -13,9 +13,9 @@ import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class ConsoleDataDumpStage extends PronghornStage {
+public class ConsoleJSONDumpStage extends PronghornStage {
 
-    private static Logger log = LoggerFactory.getLogger(ConsoleDataDumpStage.class);
+    private static Logger log = LoggerFactory.getLogger(ConsoleJSONDumpStage.class);
     
 	private final Pipe input;
 	
@@ -24,7 +24,7 @@ public class ConsoleDataDumpStage extends PronghornStage {
 	private FieldReferenceOffsetManager from;
 	private final int maxString;
 
-	public ConsoleDataDumpStage(GraphManager graphManager, Pipe input) {
+	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe input) {
 		super(graphManager, input, NONE);
 		this.input = input;
 		this.maxString = input.maxAvgVarLen;
