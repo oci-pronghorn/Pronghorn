@@ -66,9 +66,6 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
         this.source = source;        
         this.cachedTail = Pipe.tailPosition(source);
     
-        this.supportsBatchedPublish = false;
-        this.supportsBatchedRelease = false;        
-        
     }
 	
 	@Override

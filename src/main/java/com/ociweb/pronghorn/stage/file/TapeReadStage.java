@@ -37,14 +37,10 @@ public class TapeReadStage extends PronghornStage {
     protected TapeReadStage(GraphManager graphManager, RandomAccessFile inputFile, Pipe<RawDataSchema> output) {
         super(graphManager, NONE, output);
         this.inputFile = inputFile;
-        this.target = output;
-        
-        
-        
-        //these two are defensive until testing is complete.
-        this.supportsBatchedPublish = false;
-        this.supportsBatchedRelease = false;
-        
+        this.target = output;       
+
+        this.supportsBatchedRelease=false;
+        this.supportsBatchedPublish=false;
     }
 
     @Override
@@ -76,18 +72,19 @@ public class TapeReadStage extends PronghornStage {
  
     private boolean processAvailData(TapeReadStage tapeReadStage) {
         try {
+                        
             //read blob count int  (in bytes)
             //read slab count int  (in bytes)
             //read blob bytes
             //read slab ints
             
-            //System.out.println("pos:"+    fileChannel.position()+" "+slabToRead+" "+blobToRead+" "+target);
             if (0==slabToRead && 0==blobToRead) {
 
                 int len = fileChannel.read(header);
                                 
                 if (len<0) {
                     fileChannel.close();
+                    Pipe.publishAllBatchedWrites(target);
                     requestShutdown(); //must return after calling request shutdown, need to find a good way to catch this and prevent this code mistake.
                     return false;
                 }                
@@ -104,10 +101,10 @@ public class TapeReadStage extends PronghornStage {
 
                 header.clear();                      
                 
-                if ((slabToRead>>2) > target.sizeOfSlabRing) {
+                if ((slabToRead>>2) >= target.sizeOfSlabRing) {
                     throw new UnsupportedOperationException("Unable to read file into short target pipe. The file chunks are larger than the pipe, please define a pipe to hold at least "+(slabToRead>>2)+" messages.");
                 }      
-                if (blobToRead > target.sizeOfBlobRing) {
+                if (blobToRead >= target.sizeOfBlobRing) {
                     throw new UnsupportedOperationException("Unable to read file into short target pipe. The file chunks are larger than the pipe, please define a pipe to hold at least "+((int)Math.ceil(blobToRead /(float)target.sizeOfBlobRing)  )+"x longer varable data.");
                 }      
 

@@ -32,7 +32,7 @@ public class SpeedTest {
     private static int testSize = 200*1024*1024;// 200MB
     private static final Random r = new Random(42);
     private static final byte[] rawData = new byte[testSize];
-    private static final int timeoutSeconds = 15;
+    private static final int timeoutSeconds = 30;
     private static int largestPipe = 500;
     
     static {
@@ -109,7 +109,7 @@ public class SpeedTest {
     }
 
     private static long fileBlobReadTest() throws IOException {
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(testSize);
+        final ZeroCopyByteArrayOutputStream outputStream = new ZeroCopyByteArrayOutputStream(testSize);
         
         File tempFile = fileFullOfTestData();
         
@@ -190,7 +190,9 @@ public class SpeedTest {
     
     private static long fileTapeReadTest() throws IOException {
                
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(testSize);
+        
+        
+        final ZeroCopyByteArrayOutputStream outputStream = new ZeroCopyByteArrayOutputStream(testSize);
         
         int largestBlock = testSize;
         
@@ -202,35 +204,37 @@ public class SpeedTest {
         while (p>=2) {           
             
             int blockSize = largestBlock/p;
-            
-            ////////////////////
-            //must create a readable file of this size
-            ////////////////////
-            PipeConfig<RawDataSchema> config = new PipeConfig<RawDataSchema>(RawDataSchema.instance, p, blockSize);
-            Pipe<RawDataSchema> inputPipe = new Pipe<RawDataSchema>(config);        
-            File tapeFile = TapeRoundTripTest.writeTapeToFileUsingPipe(inputPipe, rawData);
-            
-            
-            
-            GraphManager gm = new GraphManager();
-            
-            Pipe<RawDataSchema> loadedDataPipe = new Pipe<RawDataSchema>(config.grow2x());
-            new TapeReadStage(gm, new RandomAccessFile(tapeFile, "r"), loadedDataPipe);
-            
-            outputStream.reset();
-            new ToOutputStreamStage(gm, loadedDataPipe, outputStream, false);
-            
-            GraphManager.enableBatching(gm);//lower contention over head and tail            
-          //  MonitorConsoleStage.attach(gm);
-            
-            ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
-            
-            long startTime = System.currentTimeMillis();
-            scheduler.startup();        
-            
-            scheduler.awaitTermination(timeoutSeconds, TimeUnit.SECONDS);
-            long duration = System.currentTimeMillis()-startTime;
-            
+            int blobRingSize;
+            long duration;
+            {
+                ////////////////////
+                //must create a readable file of this size
+                ////////////////////
+                PipeConfig<RawDataSchema> config = new PipeConfig<RawDataSchema>(RawDataSchema.instance, p, blockSize);
+                Pipe<RawDataSchema> inputPipe = new Pipe<RawDataSchema>(config);        
+                File tapeFile = TapeRoundTripTest.writeTapeToFileUsingPipe(inputPipe, rawData);
+                                
+                
+                GraphManager gm = new GraphManager();
+                
+                Pipe<RawDataSchema> loadedDataPipe = new Pipe<RawDataSchema>(config.grow2x());
+                blobRingSize = loadedDataPipe.sizeOfBlobRing;
+                new TapeReadStage(gm, new RandomAccessFile(tapeFile, "r"), loadedDataPipe); //TODO: Must check that loading pipe is large enough
+                
+                outputStream.reset();
+                new ToOutputStreamStage(gm, loadedDataPipe, outputStream, false);
+                
+                GraphManager.enableBatching(gm);//lower contention over head and tail            
+              //  MonitorConsoleStage.attach(gm);
+                
+                ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
+                
+                long startTime = System.currentTimeMillis();
+                scheduler.startup();        
+                
+                scheduler.awaitTermination(timeoutSeconds, TimeUnit.SECONDS);
+                duration = System.currentTimeMillis()-startTime;
+            }
             validateReadData(outputStream);
             
             times[timeIdx++] = duration;
@@ -239,7 +243,7 @@ public class SpeedTest {
                 System.err.println("unable to get duration, timedout");
             } else {                
                 int mbytesPerSecond = mBytesPerSecond(duration);                
-                System.out.println("TAPE READ: pipeLength:"+p+" blockSize:"+(blockSize/1024)+"k  duration:"+duration+" totalBlobRingSize:"+loadedDataPipe.sizeOfBlobRing+" MB/S:"+mbytesPerSecond);               
+                System.out.println("TAPE READ: pipeLength:"+p+" blockSize:"+(blockSize/1024)+"k  duration:"+duration+" totalBlobRingSize:"+blobRingSize+" MB/S:"+mbytesPerSecond);               
             }
             if (p>200) {
                 p-=100;
@@ -258,22 +262,21 @@ public class SpeedTest {
         
     }
 
-    private static void validateReadData(final ByteArrayOutputStream outputStream) {
-        byte[] capturedArray = outputStream.toByteArray();
-        if (!Arrays.equals(rawData, capturedArray)) {
-            System.err.println("data loaded did not match expected");
-            int i = 0;
-            while (i<rawData.length && i<capturedArray[i]) {
-                if (rawData[i]!=capturedArray[i]) {
-                    System.err.println("Arrays do not match starting at index "+i);
-                    break;
-                }   
-                i++;
-            }                
-            if (rawData.length!=capturedArray.length) {
-                System.err.println("Expected length of "+rawData.length+" but captured array was "+capturedArray.length);
-            }
+    private static void validateReadData(final ZeroCopyByteArrayOutputStream outputStream) {
+
+        byte[] capturedArray = outputStream.backingArray();
+        int i = 0;
+        while (i<rawData.length && i<outputStream.backingArrayCount()) {
+            if (rawData[i]!=capturedArray[i]) {
+                System.err.println("Arrays do not match starting at index "+i);
+                break;
+            }   
+            i++;
+        }                
+        if (rawData.length!=outputStream.backingArrayCount()) {
+            System.err.println("Expected length of "+rawData.length+" but captured array was "+outputStream.backingArrayCount());
         }
+
     }
     
     

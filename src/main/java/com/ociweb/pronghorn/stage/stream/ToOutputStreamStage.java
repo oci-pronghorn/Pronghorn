@@ -14,6 +14,7 @@ import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.file.ZeroCopyByteArrayOutputStream;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class ToOutputStreamStage extends PronghornStage {
@@ -26,13 +27,12 @@ public class ToOutputStreamStage extends PronghornStage {
 	public ToOutputStreamStage(GraphManager gm, Pipe<RawDataSchema> inputRing, OutputStream outputStream, boolean eol) {
 		super(gm,inputRing,NONE);
 		this.inputRing = inputRing;
-		
-		
+				
 		this.outputStream = outputStream;
 		this.step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		this.eol = eol;
+		
 	}
-
 
 	    @Override
 		public void run() {
@@ -50,6 +50,7 @@ public class ToOutputStreamStage extends PronghornStage {
 					if (msgId<0) {
 					    Pipe.releaseReads(inputRing);
 					    Pipe.confirmLowLevelRead(inputRing, Pipe.EOF_SIZE);
+					    Pipe.releaseAllBatchedReads(inputRing);
 					    requestShutdown();
 					    return;
 					}
@@ -59,10 +60,11 @@ public class ToOutputStreamStage extends PronghornStage {
 			    	int len = takeRingByteLen(inputRing);
 			    	int off = bytePosition(meta,inputRing,len)&byteMask; 			
 			    	
-			    	if (len>0) {            	
+			    	if (len>=0) { 
+			    	    
 						byte[] data = byteBackingArray(meta, inputRing);
-						int len1 = byteSize-off;
-						if (len1>=len) {
+						int len1 = byteSize - off;
+						if (len1 >= len) {
 							//simple add bytes
 							outputStream.write(data, off, len); 
 						} else {		
@@ -77,14 +79,15 @@ public class ToOutputStreamStage extends PronghornStage {
 			    	} else if (len<0) {
 			    	    Pipe.releaseReads(inputRing);
 	                    Pipe.confirmLowLevelRead(inputRing, step);
+	                    Pipe.releaseAllBatchedReads(inputRing);
 			    	    requestShutdown();
 			    	    return;
 			    	}
-			    	Pipe.releaseReads(inputRing);
-			    	Pipe.confirmLowLevelRead(inputRing, step);
+			        Pipe.releaseReads(inputRing);
+			    	Pipe.confirmLowLevelRead(inputRing, step);		    	
  
 				}			
-				
+				Pipe.releaseAllBatchedReads(inputRing);
 			} catch (IOException e) {
 				throw new RuntimeException(e);			
 			} 	
@@ -94,7 +97,7 @@ public class ToOutputStreamStage extends PronghornStage {
 		@Override
 		public void shutdown() {
 			try {
-				outputStream.close();
+				outputStream.flush();
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}

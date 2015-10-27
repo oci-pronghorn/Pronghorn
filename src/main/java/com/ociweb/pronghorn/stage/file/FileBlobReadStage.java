@@ -21,17 +21,18 @@ public class FileBlobReadStage extends PronghornStage {
         super(graphManager, NONE, output);
         this.inputFile = inputFile;
         this.output = output;
+        
     }
 
     @Override
     public void startup() {
         openChannel = inputFile.getChannel();
     }
-    
+
     @Override
     public void run() {
             
-        if (Pipe.hasRoomForWrite(output)) {
+        while (Pipe.hasRoomForWrite(output)) {
         
             int originalBlobPosition = Pipe.bytesWorkingHeadPosition(output);      
             try {            
@@ -40,12 +41,14 @@ public class FileBlobReadStage extends PronghornStage {
                 //attempt to read this many bytes but may read less
                 int len = openChannel.read(Pipe.wrappedBlobForWriting(originalBlobPosition, output));
                 if (len<0) {
+                    Pipe.publishAllBatchedWrites(output);
                     requestShutdown();
                     return;
-                }            
+                }       
                 Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, len, output);  
                 Pipe.confirmLowLevelWrite(output, SIZE);
-                Pipe.publishWrites(output);            
+                Pipe.publishWrites(output);    
+                
             } catch (IOException e) {
                throw new RuntimeException(e);
             }
