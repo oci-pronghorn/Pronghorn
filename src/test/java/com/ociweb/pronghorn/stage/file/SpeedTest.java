@@ -21,6 +21,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.stream.ToOutputStreamStage;
 import com.ociweb.pronghorn.stage.test.ByteArrayProducerStage;
+import com.ociweb.pronghorn.util.ZeroCopyByteArrayOutputStream;
 
 public class SpeedTest {
 

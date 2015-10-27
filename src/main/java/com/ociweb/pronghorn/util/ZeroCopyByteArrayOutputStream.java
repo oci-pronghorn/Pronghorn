@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.stage.file;
+package com.ociweb.pronghorn.util;
 
 import java.io.ByteArrayOutputStream;
 
