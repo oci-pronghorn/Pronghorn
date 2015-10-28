@@ -2188,7 +2188,7 @@ public final class Pipe<T extends MessageSchema> {
      * @param ring
      */
     public static <S extends MessageSchema> void publishWrites(Pipe<S> ring) {
-    	//new Exception("publish trialing byte").printStackTrace();
+    
     	//happens at the end of every fragment
         writeTrailingCountOfBytesConsumed(ring, ring.slabRingHead.workingHeadPos.value++); //increment because this is the low-level API calling
 
@@ -2201,12 +2201,25 @@ public final class Pipe<T extends MessageSchema> {
 
     	assert(ring.slabRingHead.workingHeadPos.value >= Pipe.headPosition(ring));
     	assert(ring.llWrite.llwConfirmedWrittenPosition<=Pipe.headPosition(ring) || ring.slabRingHead.workingHeadPos.value<=ring.llWrite.llwConfirmedWrittenPosition) : "Unsupported mix of high and low level API. NextHead>head and workingHead>nextHead";
+    	assert(validateFieldCount(ring)) : "No fragment could be found with this field count, check for missing or extra fields.";
 
-    	//TODO: uncomment and add this new check!!
-    	//assert(ring.llRead.llwConfirmedReadPosition == Pipe.workingHeadPosition(ring));
-    	
-    	
     	publishHeadPositions(ring);
+    }
+
+
+    private static <S extends MessageSchema> boolean validateFieldCount(Pipe<S> ring) {
+        long lastHead = Math.max(ring.lastPublishedSlabRingHead,  Pipe.headPosition(ring));    	
+    	int len = (int)(Pipe.workingHeadPosition(ring)-lastHead);    	
+    	int[] fragDataSize = Pipe.from(ring).fragDataSize;
+        int i = fragDataSize.length;
+        boolean found = false;
+    	while (--i>=0) {
+    	    found |= (len==fragDataSize[i]);
+    	}    	
+    	if (!found) {
+    	    System.err.println("there is no fragment of size "+len+" check for missing fields");
+    	}
+        return found;
     }
 
     /**

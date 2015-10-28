@@ -43,7 +43,7 @@ public class StreamingVisitorWriter {
 		
 		//write as long as its not posed and we have room to write any possible known fragment
 	    
-		while (!visitor.paused() && Pipe.roomToLowLevelWrite(outputRing, maxFragmentSize) ) {	
+		while (!visitor.paused() && Pipe.hasRoomForWrite(outputRing, maxFragmentSize) ) {	
 			    	        
 		        int startPos;
 		        int cursor;

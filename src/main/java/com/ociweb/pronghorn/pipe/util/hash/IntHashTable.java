@@ -28,6 +28,10 @@ public class IntHashTable {
 		
 	}
 		
+	public long memoryConsumed() {
+	    return 4 + 4 + (data.length*8);
+	}
+	
 	public static boolean setItem(IntHashTable ht, int key, int value)
 	{
 		if (0==key || 0==ht.space) { 
