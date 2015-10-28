@@ -1,11 +1,6 @@
 package com.ociweb.pronghorn.stage.monitor;
 
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_1;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_1_FIELD_BUFFERSIZE_5;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_1_FIELD_HEAD_2;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_1_FIELD_MS_1;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_1_FIELD_TAIL_3;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_1_FIELD_TEMPLATEID_4;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.*;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -65,16 +60,16 @@ public class MonitorConsoleStage extends PronghornStage {
 			while (PipeReader.tryReadFragment(ring)) {
 
 				
-				assert(MSG_RINGSTATSAMPLE_1 == PipeReader.getMsgIdx(ring)) : "Only supporting the single monitor message type";
+				assert(MSG_RINGSTATSAMPLE_100 == PipeReader.getMsgIdx(ring)) : "Only supporting the single monitor message type";
 				
 
-				long time = PipeReader.readLong(ring, MSG_RINGSTATSAMPLE_1_FIELD_MS_1);
+				long time = PipeReader.readLong(ring, MSG_RINGSTATSAMPLE_100_FIELD_MS_1);
 		
-				long head = PipeReader.readLong(ring, MSG_RINGSTATSAMPLE_1_FIELD_HEAD_2);
-				long tail = PipeReader.readLong(ring, MSG_RINGSTATSAMPLE_1_FIELD_TAIL_3);
+				long head = PipeReader.readLong(ring, MSG_RINGSTATSAMPLE_100_FIELD_HEAD_2);
+				long tail = PipeReader.readLong(ring, MSG_RINGSTATSAMPLE_100_FIELD_TAIL_3);
 				
-				int lastMsgIdx = PipeReader.readInt(ring, MSG_RINGSTATSAMPLE_1_FIELD_TEMPLATEID_4);
-				int ringSize = PipeReader.readInt(ring, MSG_RINGSTATSAMPLE_1_FIELD_BUFFERSIZE_5);
+				int lastMsgIdx = PipeReader.readInt(ring, MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4);
+				int ringSize = PipeReader.readInt(ring, MSG_RINGSTATSAMPLE_100_FIELD_BUFFERSIZE_5);
 				
 				long pctFull = (100*(head-tail))/ringSize;
 				//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				

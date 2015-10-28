@@ -6,13 +6,11 @@ import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
 
-public class MonitorFROMTest {
+public class PipeMonitorSchemaTest {
 	
 	@Test
 	public void testFROMMatchesXML() {
-		String templateFile = "/ringMonitor.xml";
-		String varName = "monitorFROM";	
-		assertTrue(FROMValidation.testForMatchingFROMs(templateFile, varName, PipeMonitorSchema.FROM));
+		assertTrue(FROMValidation.testForMatchingFROMs("/ringMonitor.xml", "FROM", PipeMonitorSchema.FROM));
 	};
 	
 	@Test
