@@ -294,8 +294,8 @@ public class BackingDataTest {
     @Test
     public void writeReadDataTest() {
        
-       int testSize = 10;
-       int loops = 10;
+       final int testSize = 10;
+       final int loops = 10;
        
        BackingData<?> bd = new BackingData(TestLongFields.class, TestIntFields.class, TestShortFields.class, TestByteFields.class, testSize); 
        
@@ -317,7 +317,7 @@ public class BackingDataTest {
                DataOutputStream out = new DataOutputStream(baost); 
                
                 try {
-                   bd.write(0, testSize, bd, out);
+                   bd.write(0, testSize, out);
                 } catch (IOException e) {
                     e.printStackTrace();
                     fail();
@@ -327,7 +327,7 @@ public class BackingDataTest {
                 DataInputStream in = new DataInputStream(baist);
                 BackingData<?> newbd = new BackingData(TestLongFields.class, TestIntFields.class, TestShortFields.class, TestByteFields.class, testSize); 
                 try {
-                    newbd.read(0, newbd, in);
+                    newbd.read(0, testSize, in);
                 } catch (IOException e) {
                     e.printStackTrace();
                     fail();
