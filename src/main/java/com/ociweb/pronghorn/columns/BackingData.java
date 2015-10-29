@@ -311,9 +311,9 @@ public class BackingData<T> {
         int result = 0;
         
         result +=  MurmurHash.hash32(backing.byteData, byteBase(recordIdx, backing), backing.bytesPerRecord, HASH_SEED);
-        result +=  MurmurHash.hash32(backing.shortData, byteBase(recordIdx, backing), backing.shortsPerRecord, HASH_SEED);
-        result +=  MurmurHash.hash32(backing.intData, byteBase(recordIdx, backing), backing.intsPerRecord, HASH_SEED);
-        result +=  MurmurHash.hash32(backing.longData, byteBase(recordIdx, backing), backing.longsPerRecord, HASH_SEED);
+        result +=  MurmurHash.hash32(backing.shortData, shortBase(recordIdx, backing), backing.shortsPerRecord, HASH_SEED);
+        result +=  MurmurHash.hash32(backing.intData, intBase(recordIdx, backing), backing.intsPerRecord, HASH_SEED);
+        result +=  MurmurHash.hash32(backing.longData, longBase(recordIdx, backing), backing.longsPerRecord, HASH_SEED);
         
         return result;
     }
