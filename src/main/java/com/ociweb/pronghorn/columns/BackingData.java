@@ -9,7 +9,7 @@ import java.util.Set;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.MurmurHash;
 
-public class BackingData<T> {
+public  class  BackingData<T> {
 
     private final long[]  longData;  //for serialization may want to store deltas as variable length values.
     private final int[]   intData;
@@ -20,9 +20,9 @@ public class BackingData<T> {
     public final int intsPerRecord;
     public final int shortsPerRecord;
     public final int bytesPerRecord;
-    public final int recordCount;
     
-
+    public final int recordCount;
+  
     private final static int HASH_SEED = 12345;
     
     //TODO - may want to add variable length vars
@@ -35,6 +35,7 @@ public class BackingData<T> {
             S extends Enum<S> & FieldsOf16Bits,
             B extends Enum<B> & FieldsOf8Bits> 
            BackingData( Class<L> longsEnum, Class<I> intsEnum, Class<S> shortsEnum, Class<B> bytesEnum, int recordCount) {
+                
         
         this.longsPerRecord = null==longsEnum ? 0 : longsEnum.getEnumConstants().length;
         this.intsPerRecord = null==intsEnum ? 0 : intsEnum.getEnumConstants().length;
@@ -112,22 +113,18 @@ public class BackingData<T> {
     }
     
         
-    private static int longBase(int recordIdx, BackingData block) {
+    private static int longBase(int recordIdx, BackingData<?> block) {
         return recordIdx*block.longsPerRecord;
-    }
-    
-    private static int intBase(int recordIdx, BackingData block) {
+    }    
+    private static int intBase(int recordIdx, BackingData<?> block) {
         return recordIdx*block.intsPerRecord;
-    }
-    
-    private static int shortBase(int recordIdx, BackingData block) {
+    }    
+    private static int shortBase(int recordIdx, BackingData<?> block) {
         return recordIdx*block.shortsPerRecord;
-    }
-    
-    private static int byteBase(int recordIdx, BackingData block) {
+    }    
+    private static int byteBase(int recordIdx, BackingData<?> block) {
         return recordIdx*block.bytesPerRecord;
     }
-
 
     public static <T extends Enum<T>, F extends Enum<F> & FieldsOf8Bits> T getEnumBytes(F field, int recordIdx, BackingData<?> holder,  Class<T> clazz) {        
         return getEnumBytes(holder, clazz, byteBase(recordIdx, holder) + field.ordinal());
@@ -364,6 +361,7 @@ public class BackingData<T> {
     }
     
     //TODO: Perhaps we should hold these so this is neverneeded again.
+    
     public static  <L extends Enum<L> & FieldsOf64Bits,
                     I extends Enum<I> & FieldsOf32Bits,
                     S extends Enum<S> & FieldsOf16Bits,
