@@ -315,13 +315,23 @@ public  class  BackingData<T> {
         return result;
     }
     
-    public static boolean equals(int recordIdxA, int recordIdxB, BackingData<?> backing) {
+    public static int hash(int recordIdx, int recordCount, BackingData<?> backing) {
+        int result = 0;
+        
+        int i = recordCount;
+        while (--i>=0) {
+            result += hash(recordIdx++,backing);
+        }
+        return result;
+    }
+    
+    public static boolean equals(int recordIdxA, int recordIdxB, int count, BackingData<?> backing) {
         if (recordIdxA != recordIdxB) {
             int i; 
             int baseA;
             int baseB;
             
-            i = backing.bytesPerRecord;
+            i = (backing.bytesPerRecord*count);
             baseA = byteBase(recordIdxA,backing);
             baseB = byteBase(recordIdxB,backing);
             while (--i>=0) {
@@ -330,7 +340,7 @@ public  class  BackingData<T> {
                 }
             }
             
-            i = backing.shortsPerRecord;
+            i = (backing.shortsPerRecord*count);
             baseA = shortBase(recordIdxA,backing);
             baseB = shortBase(recordIdxB,backing);
             while (--i>=0) {
@@ -339,7 +349,7 @@ public  class  BackingData<T> {
                 }
             }
             
-            i = backing.intsPerRecord;
+            i = (backing.intsPerRecord*count);
             baseA = intBase(recordIdxA,backing);
             baseB = intBase(recordIdxB,backing);
             while (--i>=0) {
@@ -348,7 +358,7 @@ public  class  BackingData<T> {
                 }
             }
             
-            i = backing.longsPerRecord;
+            i = (backing.longsPerRecord*count);
             baseA = longBase(recordIdxA,backing);
             baseB = longBase(recordIdxB,backing);
             while (--i>=0) {
