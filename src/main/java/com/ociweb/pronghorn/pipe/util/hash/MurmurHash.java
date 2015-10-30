@@ -63,6 +63,146 @@ public class MurmurHash {
     }
     
     
+    private static int getByte(long[] array, int byteIdx) {
+        return 0xFF & (int)(array[byteIdx>>3] >> ((byteIdx&0x7)<<3));
+    }
+    private static int getByte(int[] array, int byteIdx) {
+        return 0xFF & (int)(array[byteIdx>>2] >> ((byteIdx&0x3)<<2));
+    }
+    private static int getByte(short[] array, int byteIdx) {
+        return 0xFF & (int)(array[byteIdx>>1] >> ((byteIdx&0x1)<<1));
+    }
+    
+    
+    public static int hash32(long[] inputArray, int inputOffset, int inputLength, int seed) {
+        int offset = inputOffset*8;
+        int length = inputLength*8;
+                
+        // Initialize the hash to a 'random' value
+        int h = seed ^ length;
+
+        int i = offset;
+        int len = length;
+        while (len >= 4) {
+            int k = getByte(inputArray,i + 0);
+            k |= (getByte(inputArray,i + 1)) << 8;
+            k |= (getByte(inputArray,i + 2)) << 16;
+            k |= (getByte(inputArray,i + 3)) << 24;
+
+            k *= MURMUR2_MAGIC;
+            k ^= k >>> MURMUR2_R;
+            k *= MURMUR2_MAGIC;
+
+            h *= MURMUR2_MAGIC;
+            h ^= k;
+
+            i += 4;
+            len -= 4;
+        }
+
+        switch (len) {
+        case 3:
+            h ^= (getByte(inputArray,i + 2)) << 16;
+        case 2:
+            h ^= (getByte(inputArray,i + 1)) << 8;
+        case 1:
+            h ^= (getByte(inputArray,i + 0));
+            h *= MURMUR2_MAGIC;
+        }
+
+        h ^= h >>> 13;
+        h *= MURMUR2_MAGIC;
+        h ^= h >>> 15;
+
+        return h;
+    }
+    
+    public static int hash32(int[] inputArray, int inputOffset, int inputLength, int seed) {
+        int offset = inputOffset*4;
+        int length = inputLength*4;
+                
+        // Initialize the hash to a 'random' value
+        int h = seed ^ length;
+
+        int i = offset;
+        int len = length;
+        while (len >= 4) {
+            int k = getByte(inputArray,i + 0);
+            k |= (getByte(inputArray,i + 1)) << 8;
+            k |= (getByte(inputArray,i + 2)) << 16;
+            k |= (getByte(inputArray,i + 3)) << 24;
+
+            k *= MURMUR2_MAGIC;
+            k ^= k >>> MURMUR2_R;
+            k *= MURMUR2_MAGIC;
+
+            h *= MURMUR2_MAGIC;
+            h ^= k;
+
+            i += 4;
+            len -= 4;
+        }
+
+        switch (len) {
+        case 3:
+            h ^= (getByte(inputArray,i + 2)) << 16;
+        case 2:
+            h ^= (getByte(inputArray,i + 1)) << 8;
+        case 1:
+            h ^= (getByte(inputArray,i + 0));
+            h *= MURMUR2_MAGIC;
+        }
+
+        h ^= h >>> 13;
+        h *= MURMUR2_MAGIC;
+        h ^= h >>> 15;
+
+        return h;
+    }
+    
+    public static int hash32(short[] inputArray, int inputOffset, int inputLength, int seed) {
+        int offset = inputOffset*2;
+        int length = inputLength*2;
+                
+        // Initialize the hash to a 'random' value
+        int h = seed ^ length;
+
+        int i = offset;
+        int len = length;
+        while (len >= 4) {
+            int k = getByte(inputArray,i + 0);
+            k |= (getByte(inputArray,i + 1)) << 8;
+            k |= (getByte(inputArray,i + 2)) << 16;
+            k |= (getByte(inputArray,i + 3)) << 24;
+
+            k *= MURMUR2_MAGIC;
+            k ^= k >>> MURMUR2_R;
+            k *= MURMUR2_MAGIC;
+
+            h *= MURMUR2_MAGIC;
+            h ^= k;
+
+            i += 4;
+            len -= 4;
+        }
+
+        switch (len) {
+        case 3:
+            h ^= (getByte(inputArray,i + 2)) << 16;
+        case 2:
+            h ^= (getByte(inputArray,i + 1)) << 8;
+        case 1:
+            h ^= (getByte(inputArray,i + 0));
+            h *= MURMUR2_MAGIC;
+        }
+
+        h ^= h >>> 13;
+        h *= MURMUR2_MAGIC;
+        h ^= h >>> 15;
+
+        return h;
+    }
+    
     //ByteBuffer
     @SuppressWarnings("fallthrough")
     public static int hash32(ByteBuffer src, int offset, int length, int seed) {
