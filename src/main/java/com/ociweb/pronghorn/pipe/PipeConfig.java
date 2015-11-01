@@ -94,6 +94,9 @@ public class PipeConfig<T extends MessageSchema> {
 		this.from = from;
 	}
 	
+	public PipeConfig(T messageSchema, int minimumFragmentsOnRing) {
+	    this(messageSchema, minimumFragmentsOnRing, 0);
+	}
     public PipeConfig(T messageSchema, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
         
         int biggestFragment = FieldReferenceOffsetManager.maxFragmentSize(MessageSchema.from(messageSchema));
