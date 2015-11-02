@@ -7,7 +7,7 @@ public class RawDataSchema extends MessageSchema {
     public static final FieldReferenceOffsetManager FROM = FieldReferenceOffsetManager.RAW_BYTES;
     public static final RawDataSchema instance = new RawDataSchema();
     
-    private RawDataSchema() {
+    protected RawDataSchema() {
         super(FROM);
     }
         
