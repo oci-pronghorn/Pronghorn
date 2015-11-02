@@ -50,10 +50,35 @@
             <argLine>-Xmx2048m</argLine>
         </configuration>
       </plugin>
+      
+      <plugin>
+	      <groupId>org.apache.maven.plugins</groupId>
+	      <artifactId>maven-enforcer-plugin</artifactId>
+	      <executions>
+	        <execution>
+	          <id>enforce-versions</id>
+	          <goals>
+	            <goal>enforce</goal>
+	          </goals>
+	          <configuration>
+	            <rules>
+	              <requireJavaVersion>
+	                <version>1.8</version>
+	              </requireJavaVersion>
+	            </rules>
+	          </configuration>
+	        </execution>
+	      </executions>
+      </plugin>
+      
 	   <plugin>
 	        <artifactId>maven-compiler-plugin</artifactId>
 	        <version>3.0</version>
 	        <configuration>
+	            <compilerArguments>
+			    	<profile>compact1</profile>
+				</compilerArguments>
+	        	<fork>true</fork>
 	            <source>1.7</source>
 	            <target>1.7</target>
 	        </configuration>
