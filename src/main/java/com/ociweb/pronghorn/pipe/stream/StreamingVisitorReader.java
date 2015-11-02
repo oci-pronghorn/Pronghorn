@@ -52,7 +52,7 @@ public class StreamingVisitorReader {
 
 	public void run() {
 		
-		while (!visitor.paused() && Pipe.hasContentToRead(inputRing, 1)) {
+		while (!visitor.paused() && Pipe.hasContentToRead(inputRing)) {
 	        
 		        int startPos;
 		        int cursor;
