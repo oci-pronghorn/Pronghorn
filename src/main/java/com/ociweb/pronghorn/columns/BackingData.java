@@ -49,7 +49,27 @@ public  class  BackingData<T> {
         
         this.recordCount = recordCount;
         
-    }    
+    } 
+    
+    public <L extends Enum<L> & FieldsOf64Bits,
+            I extends Enum<I> & FieldsOf32Bits,
+            S extends Enum<S> & FieldsOf16Bits,
+            B extends Enum<B> & FieldsOf8Bits> BackingData(TypeDef<L,I,S,B> typeDef, int recordCount) {
+        
+
+        this.longsPerRecord = null==typeDef.longFields ? 0 : typeDef.longFields.getEnumConstants().length;
+        this.intsPerRecord = null==typeDef.intFields ? 0 : typeDef.intFields.getEnumConstants().length;
+        this.shortsPerRecord = null==typeDef.shortFields ? 0 : typeDef.shortFields.getEnumConstants().length;
+        this.bytesPerRecord = null==typeDef.byteFields ? 0 : typeDef.byteFields.getEnumConstants().length;
+        
+        this.longData  = new long[longsPerRecord*recordCount];
+        this.intData   = new int[intsPerRecord*recordCount];
+        this.shortData = new short[shortsPerRecord*recordCount];
+        this.byteData  = new byte[bytesPerRecord*recordCount];
+        
+        this.recordCount = recordCount;
+        
+        } 
     
     public long memoryConsumed() {        
         return (longData.length*8l) + (intData.length*4l) + (shortData.length*2l) + (byteData.length) + (5*4) + (8*4);
@@ -212,11 +232,10 @@ public  class  BackingData<T> {
         byte result = 0;
         Iterator<T> i = enumSet.iterator();
         while (i.hasNext()) {
-            result |=   (1<<i.next().ordinal());
+            result |= (1<<i.next().ordinal());
         }
         holder.byteData[absoluteOffset] = result;
-    }
-    
+    }    
 
     public static <T extends Enum<T>, F extends Enum<F> & FieldsOf8Bits> boolean isEnumBitSetByte(F field, int recordIdx, BackingData<?> holder, T enumItem) {
         return 0 != (holder.byteData[byteBase(recordIdx, holder) + field.ordinal() ] & (1<<enumItem.ordinal()) );
@@ -376,20 +395,18 @@ public  class  BackingData<T> {
                     I extends Enum<I> & FieldsOf32Bits,
                     S extends Enum<S> & FieldsOf16Bits,
                     B extends Enum<B> & FieldsOf8Bits> 
-                                    String toString(Class<L> longsEnum, Class<I> intsEnum, Class<S> shortsEnum, Class<B> bytesEnum, 
-                                    int recordIdx,
-                                    BackingData<?> backing) {
+                                    String toString(TypeDef<L,I,S,B> typeDef, int recordIdx, BackingData<?> backing) {
         StringBuilder builder = new StringBuilder();
-        for(L item: longsEnum.getEnumConstants()) {
+        for(L item: typeDef.longFields.getEnumConstants()) {
             builder.append(item).append('=').append(backing.longData[longBase(recordIdx, backing)+item.ordinal()]).append("\n");            
         }
-        for(I item: intsEnum.getEnumConstants()) {
+        for(I item: typeDef.intFields.getEnumConstants()) {
             builder.append(item).append('=').append(backing.intData[intBase(recordIdx, backing)+item.ordinal()]).append("\n");            
         }
-        for(S item: shortsEnum.getEnumConstants()) {
+        for(S item: typeDef.shortFields.getEnumConstants()) {
             builder.append(item).append('=').append(backing.shortData[shortBase(recordIdx, backing)+item.ordinal()]).append("\n");            
         }
-        for(B item: bytesEnum.getEnumConstants()) {
+        for(B item: typeDef.byteFields.getEnumConstants()) {
             builder.append(item).append('=').append(backing.byteData[shortBase(recordIdx, backing)+item.ordinal()]).append("\n");            
         }
         return builder.toString();
