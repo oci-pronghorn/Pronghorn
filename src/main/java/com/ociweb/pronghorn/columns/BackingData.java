@@ -244,28 +244,38 @@ public  class  BackingData<T> {
 
 
     public final void write(int recordIdx, int recordCount, DataOutput out) throws IOException {
-                
-        writeLongs(out, longBase(recordIdx, this), longsPerRecord*recordCount, longData);
-        writeInts(out, intBase(recordIdx, this), intsPerRecord*recordCount, intData);
-        writeShorts(out, shortBase(recordIdx, this), shortsPerRecord*recordCount, shortData);
-        writeBytes(out, byteBase(recordIdx, this), bytesPerRecord*recordCount, byteData);
-        
+        if (longsPerRecord>0){        
+            writeLongs(out, longBase(recordIdx, this), longsPerRecord*recordCount, longData);
+        }
+        if (intsPerRecord>0) {
+            writeInts(out, intBase(recordIdx, this), intsPerRecord*recordCount, intData);
+        }
+        if (shortsPerRecord>0) {
+            writeShorts(out, shortBase(recordIdx, this), shortsPerRecord*recordCount, shortData);
+        }
+        if (bytesPerRecord>0) {
+            writeBytes(out, byteBase(recordIdx, this), bytesPerRecord*recordCount, byteData);
+        }
     }
     
     public final void read(int recordIdx, int exepectedRecordCount, DataInput in) throws IOException {
-        
-        readLongs(in, longBase(recordIdx, this), longsPerRecord*exepectedRecordCount, longData);
-        readInts(in, intBase(recordIdx, this), intsPerRecord*exepectedRecordCount, intData);
-        readShorts(in, shortBase(recordIdx, this), shortsPerRecord*exepectedRecordCount, shortData);
-        readBytes(in, byteBase(recordIdx, this), bytesPerRecord*exepectedRecordCount, byteData);
-        
+        if (longsPerRecord>0) { 
+            readLongs(in, longBase(recordIdx, this), longsPerRecord*exepectedRecordCount, longData);
+        }
+        if (intsPerRecord>0) {
+            readInts(in, intBase(recordIdx, this), intsPerRecord*exepectedRecordCount, intData);
+        }
+        if (shortsPerRecord>0) {
+            readShorts(in, shortBase(recordIdx, this), shortsPerRecord*exepectedRecordCount, shortData);
+        }
+        if (bytesPerRecord>0) {
+            readBytes(in, byteBase(recordIdx, this), bytesPerRecord*exepectedRecordCount, byteData);
+        }
     }
 
     protected void writeBytes(DataOutput out, int base, int count, byte[] byteData) throws IOException {
         out.writeInt(count);
-        while (--count>=0) {            
-            out.writeByte(byteData[base++]);            
-        }
+        out.write(byteData, base, count);
     }
 
     protected void writeShorts(DataOutput out, int base, int count, short[] shortData) throws IOException {
@@ -293,7 +303,7 @@ public  class  BackingData<T> {
         int count = in.readInt();
         assert(count == expectedByteCount) : "expected different count of records";
         while (--count>=0) {            
-            byteData[base++] = in.readByte();          
+            byteData[base++] = in.readByte();           
         }
     }
 
