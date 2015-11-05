@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.Set;
 
-import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.MurmurHash;
 
 public  class  BackingData<T> {
@@ -56,11 +55,10 @@ public  class  BackingData<T> {
             S extends Enum<S> & FieldsOf16Bits,
             B extends Enum<B> & FieldsOf8Bits> BackingData(TypeDef<L,I,S,B> typeDef, int recordCount) {
         
-
-        this.longsPerRecord = null==typeDef.longFields ? 0 : typeDef.longFields.getEnumConstants().length;
-        this.intsPerRecord = null==typeDef.intFields ? 0 : typeDef.intFields.getEnumConstants().length;
-        this.shortsPerRecord = null==typeDef.shortFields ? 0 : typeDef.shortFields.getEnumConstants().length;
-        this.bytesPerRecord = null==typeDef.byteFields ? 0 : typeDef.byteFields.getEnumConstants().length;
+        this.longsPerRecord = typeDef.longFields.getEnumConstants().length;
+        this.intsPerRecord = typeDef.intFields.getEnumConstants().length;
+        this.shortsPerRecord = typeDef.shortFields.getEnumConstants().length;
+        this.bytesPerRecord = typeDef.byteFields.getEnumConstants().length;
         
         this.longData  = new long[longsPerRecord*recordCount];
         this.intData   = new int[intsPerRecord*recordCount];
@@ -103,6 +101,17 @@ public  class  BackingData<T> {
     public static <F extends Enum<F> & FieldsOf16Bits> short getShort(F field, int recordIdx, BackingData<?> block) {
         return block.shortData[shortBase(recordIdx, block)+field.ordinal()];
     }
+    
+    public static <F extends Enum<F> & FieldsOf16Bits> boolean isAllZeroShorts(int recordIdx, BackingData<?> block) {
+        int offset = shortBase(recordIdx, block);
+        int count = block.shortsPerRecord;
+        short[] temp = block.shortData;
+        int accum = 0;
+        while (--count>=0) {
+            accum |= temp[offset++];
+        }
+        return 0==accum;
+    }    
     
     public static <F extends Enum<F> & FieldsOf32Bits> void setInt(F field, int value, int recordIdx, BackingData<?> block) {
         block.intData[intBase(recordIdx, block)+field.ordinal()] = value;
@@ -421,25 +430,5 @@ public  class  BackingData<T> {
     }
 
 
-    //TODO: call var length encoder and use deltas to compress as we write?  Or is the part of the jFast stage logic?
-    
-    public static void write(int recordIdx, int recordCount, BackingData<?> holder, Pipe<?> output) throws IOException {
-        
-        //How to map the enum to the from??
-        //find the enum names that match the from names in output and have same type?
-        //this is a slow linear search we only want to do once.
-        
-        //piped signagure adds method to get this constant. this will ?? slow the usages that are now inlined?
-//        enum LongFields extends FieldsOf64bitsPiped {
-//              MyTimeField(0xFFF),       //this enum is auto generated in the schema?     
-//              MyOtherTimeField(0xFFF);
-//            
-//        }
-        
-        //convrts columns into messages, each message must be done in full before moving on, this can not make use of the fast access.
-        
-        
-        
-    }
     
 }
