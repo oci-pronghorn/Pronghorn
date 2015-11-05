@@ -302,9 +302,7 @@ public  class  BackingData<T> {
     protected void readBytes(DataInput in, int base, int expectedByteCount, byte[] byteData) throws IOException {
         int count = in.readInt();
         assert(count == expectedByteCount) : "expected different count of records";
-        while (--count>=0) {            
-            byteData[base++] = in.readByte();           
-        }
+        in.readFully(byteData, base, expectedByteCount);
     }
 
     protected void readShorts(DataInput in, int base, int expectedShortCount, short[] shortData) throws IOException {
