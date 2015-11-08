@@ -9,40 +9,17 @@ public class PipeConfig<T extends MessageSchema> {
 	public final byte primaryBits;
 	public final byte byteBits;
 	public final byte[] byteConst;
-	public final FieldReferenceOffsetManager from;
+	public final T schema; 
 	public int debugFlags = 0;
-
-	/**
-	 * This is not the constructor you are looking for.
-	 * @param from
-	 */
-	@Deprecated
-	public PipeConfig(byte primaryBits, byte byteBits, byte[] byteConst, FieldReferenceOffsetManager from) {
-		this.primaryBits = primaryBits;
-		this.byteBits = byteBits;
-		this.byteConst = byteConst;
-		this.from = from;
-	}
-	
-	@Deprecated
-	public PipeConfig(FieldReferenceOffsetManager from) {
-		//default size which is smaller than half of 64K because this is the L1 cache size on intel haswell.
-		this.primaryBits = 6;
-		this.byteBits = 15;
-		this.byteConst = null;
-		this.from = from;
-		//validate
-    	FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, 1<<primaryBits);
-	}
 	
    /**
      * This is NOT the constructor you are looking for.
      */
-    PipeConfig(byte primaryBits, byte byteBits, byte[] byteConst, T messageSchema) {
+    public PipeConfig(byte primaryBits, byte byteBits, byte[] byteConst, T messageSchema) {
         this.primaryBits = primaryBits;
         this.byteBits = byteBits;
         this.byteConst = byteConst;
-        this.from = MessageSchema.from(messageSchema);
+        this.schema = messageSchema;
      }
     
      public PipeConfig(T messageSchema) {
@@ -50,11 +27,12 @@ public class PipeConfig<T extends MessageSchema> {
         this.primaryBits = 6;
         this.byteBits = 15;
         this.byteConst = null;
-        this.from = MessageSchema.from(messageSchema);
+        this.schema = messageSchema;
         //validate
-        FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, 1<<primaryBits);
+        FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<primaryBits);
      }
-		
+		     
+     
     public static <S extends MessageSchema> Pipe<S> pipe(PipeConfig<S> config) {
         return new Pipe<S>(config);
     }
@@ -79,20 +57,6 @@ public class PipeConfig<T extends MessageSchema> {
 	 * @param minimumFragmentsOnRing The minimum number of fragments/messages that the application must be able to put on the ring.
 	 * @param maximumLenghOfVariableLengthFields
 	 */
-	@Deprecated
-	public PipeConfig(FieldReferenceOffsetManager from, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
-		
-		int biggestFragment = FieldReferenceOffsetManager.maxFragmentSize(from);
-		int primaryMinSize = minimumFragmentsOnRing*biggestFragment;		
-		this.primaryBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1));
-		
-		int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, 1<<primaryBits);
-        int secondaryMinSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
-        this.byteBits = (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
-
-		this.byteConst = null;
-		this.from = from;
-	}
 	
 	public PipeConfig(T messageSchema, int minimumFragmentsOnRing) {
 	    this(messageSchema, minimumFragmentsOnRing, 0);
@@ -108,23 +72,8 @@ public class PipeConfig<T extends MessageSchema> {
         this.byteBits = (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
 
         this.byteConst = null;
-        this.from = MessageSchema.from(messageSchema);
+        this.schema = messageSchema;
     }
-	
-	@Deprecated
-    public PipeConfig(FieldReferenceOffsetManager from, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields, byte[] byteConst) {
-        
-        int biggestFragment = FieldReferenceOffsetManager.maxFragmentSize(from);
-        int primaryMinSize = minimumFragmentsOnRing*biggestFragment;        
-        this.primaryBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1));
-        
-        int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, 1<<primaryBits);
-        int secondaryMinSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
-        this.byteBits = (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
-
-        this.byteConst = byteConst;
-        this.from = from;
-     }
     
     public PipeConfig(T messageSchema, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields, byte[] byteConst) {
         
@@ -137,15 +86,15 @@ public class PipeConfig<T extends MessageSchema> {
         this.byteBits = (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
 
         this.byteConst = byteConst;
-        this.from = MessageSchema.from(messageSchema);
+        this.schema = messageSchema;
      }
 	
 	public PipeConfig<T> grow2x(){
-		return new PipeConfig<T>((byte)(1+primaryBits), (byte)(1+byteBits), byteConst, from);
+		return new PipeConfig<T>((byte)(1+primaryBits), (byte)(1+byteBits), byteConst, schema);
 	}
 	
 	public PipeConfig<T> debug(int debugFlags){
-		PipeConfig<T> result = new PipeConfig<T>((byte)(primaryBits), (byte)(byteBits), byteConst, from);
+		PipeConfig<T> result = new PipeConfig<T>((byte)(primaryBits), (byte)(byteBits), byteConst, schema);
 		result.debugFlags = debugFlags;
 		return result;
 	}

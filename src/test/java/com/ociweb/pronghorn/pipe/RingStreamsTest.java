@@ -24,7 +24,7 @@ public class RingStreamsTest {
 	@Test
 	public void testWriteToOutputStream() {
 		
-		Pipe testRing = new Pipe(new PipeConfig((byte)4, (byte)13, null,  FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe testRing = new Pipe(new PipeConfig((byte)4, (byte)13, null,   RawDataSchema.instance));
 		testRing.initBuffers();
 		
 		StringBuilder builder = new StringBuilder();
@@ -64,7 +64,7 @@ public class RingStreamsTest {
 		
 		int lenMask = (1<<(testBits-2))-1;
 		
-		Pipe testRing = new Pipe(new PipeConfig((byte)6, (byte)17, null,  FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe testRing = new Pipe(new PipeConfig((byte)6, (byte)17, null,   RawDataSchema.instance));
 		testRing.initBuffers();
 		
 		byte[] testData = new byte[testSize];
@@ -113,11 +113,11 @@ public class RingStreamsTest {
 	@Test
 	public void testRingToRingOutputStream() {
 		
-		Pipe testRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe testRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  RawDataSchema.instance));
 		testRing.initBuffers();
 		int blockSize = testRing.maxAvgVarLen;
 		
-		Pipe targetRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe targetRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  RawDataSchema.instance));
 		targetRing.initBuffers();
 		RingOutputStream ringOutputStream = new RingOutputStream(targetRing);
 		
@@ -175,7 +175,7 @@ public class RingStreamsTest {
 	public void testRingToRingOutputStreamByte() {
 		
 		
-		Pipe targetRing = new Pipe(new PipeConfig((byte)10, (byte)15, null,  FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe targetRing = new Pipe(new PipeConfig((byte)10, (byte)15, null,  RawDataSchema.instance));
 		targetRing.initBuffers();
 		
 		targetRing.reset((1<<10)-3, 1<<14);			
@@ -233,13 +233,13 @@ public class RingStreamsTest {
 	@Test
 	public void testRingToRingInputStream() {
 		
-		Pipe testRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe testRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  RawDataSchema.instance));
 		testRing.initBuffers();
 		
 		int blockSize = testRing.maxAvgVarLen;
 		RingInputStream ringInputStream = new RingInputStream(testRing);
 		
-		Pipe targetRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe targetRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  RawDataSchema.instance));
 		targetRing.initBuffers();
 		
 		int testSize = 3000;
@@ -289,7 +289,7 @@ public class RingStreamsTest {
 	@Test
 	public void testRingToRingInputStreamBytes() {
 		
-		Pipe testRing = new Pipe(new PipeConfig((byte)4, (byte)12, null,  FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe testRing = new Pipe(new PipeConfig((byte)4, (byte)12, null,  RawDataSchema.instance));
 		testRing.initBuffers();
 		
 		int blockSize = testRing.maxAvgVarLen;
@@ -339,7 +339,7 @@ public class RingStreamsTest {
 	@Test
 	public void testRingToRingInputStreamToggleMethods() {
 		
-		Pipe testRing = new Pipe(new PipeConfig((byte)4, (byte)12, null,  FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe testRing = new Pipe(new PipeConfig((byte)4, (byte)12, null,  RawDataSchema.instance));
 		testRing.initBuffers();
 		
 		int blockSize = testRing.maxAvgVarLen;

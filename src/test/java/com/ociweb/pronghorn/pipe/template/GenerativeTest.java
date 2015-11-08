@@ -12,6 +12,7 @@ import java.util.Random;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeReader;
@@ -46,7 +47,7 @@ public class GenerativeTest {
        generateCoveringTestSchema(schema);
            
        FieldReferenceOffsetManager from = loadFrom(schema.toString());
-       PipeConfig rbConfig = new PipeConfig(from, messages, varLength);
+       PipeConfig rbConfig = new PipeConfig(new MessageSchemaDynamic(from), messages, varLength);
        
        int commonSeed = 300;   
        int iterations = 2;

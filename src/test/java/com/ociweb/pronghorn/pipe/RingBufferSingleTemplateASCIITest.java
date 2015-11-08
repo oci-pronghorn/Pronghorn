@@ -25,7 +25,7 @@ public class RingBufferSingleTemplateASCIITest {
     	byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
     	byte byteRingSizeInBits = 16;
     	
-		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
     	ring.initBuffers();
     	
         int messageSize = FROM.fragDataSize[FRAG_LOC];
@@ -115,7 +115,7 @@ public class RingBufferSingleTemplateASCIITest {
     
     	final byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
     	final byte byteRingSizeInBits = 16;
-    	final Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+    	final Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
     	ring.initBuffers();
     	
         final int messageSize = FROM.fragDataSize[FRAG_LOC];

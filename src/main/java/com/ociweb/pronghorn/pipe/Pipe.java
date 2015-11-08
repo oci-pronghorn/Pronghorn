@@ -343,7 +343,7 @@ public final class Pipe<T extends MessageSchema> {
     public final byte bitsOfSlabRing;
     public final byte bitsOfBlogRing;
     public final int maxAvgVarLen;
-
+    private final T schema;
 
     //TODO: B, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
     //            the time slices of the graph will need to be kept for all rings to reconstruct history later.
@@ -430,7 +430,7 @@ public final class Pipe<T extends MessageSchema> {
         byte primaryBits = config.primaryBits;
         byte byteBits = config.byteBits;
         byte[] byteConstants = config.byteConst;
-
+        this.schema = config.schema;
 
         debugFlags = config.debugFlags;
 
@@ -453,7 +453,7 @@ public final class Pipe<T extends MessageSchema> {
         this.sizeOfBlobRing =  1 << byteBits;
         this.byteMask = sizeOfBlobRing - 1;
 
-        FieldReferenceOffsetManager from = config.from;
+        FieldReferenceOffsetManager from = MessageSchema.from(config.schema); 
         this.ringWalker = new StackStateWalker(from);
         this.blobConstBuffer = byteConstants;
 
@@ -470,6 +470,9 @@ public final class Pipe<T extends MessageSchema> {
         }
     }
     
+    public static <S extends MessageSchema> String schemaName(Pipe<S> pipe) {
+        return null==pipe.schema? "NoSchemaFor "+Pipe.from(pipe).name  :pipe.schema.getClass().getSimpleName();
+    }
     
 	public static <S extends MessageSchema> void replayUnReleased(Pipe<S> ringBuffer) {
 
@@ -624,7 +627,7 @@ public final class Pipe<T extends MessageSchema> {
      */
     public PipeConfig<T> config() {
         //TODO:M, this creates garbage and we should just hold the config object instead of copying the values out.  Then return the same instance here.
-        return new PipeConfig<T>(bitsOfSlabRing,bitsOfBlogRing,blobConstBuffer,ringWalker.from);
+        return new PipeConfig<T>(bitsOfSlabRing, bitsOfBlogRing, blobConstBuffer, schema);
     }
 
 

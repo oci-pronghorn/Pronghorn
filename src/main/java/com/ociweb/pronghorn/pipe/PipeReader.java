@@ -525,7 +525,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		return rb.ringWalker.msgIdx;
 	}
 
-	public static int getMsgIdx(StackStateWalker rw) {
+	static int getMsgIdx(StackStateWalker rw) {
 		return rw.msgIdx;
 	}
 

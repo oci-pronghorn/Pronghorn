@@ -22,7 +22,7 @@ public class RingBufferConverterTest {
         byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
         byte byteRingSizeInBits = 16;
         
-        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, RawDataSchema.instance));
         ring.initBuffers();
                 
         Pipe.validateVarLength(ring, 10);
@@ -46,7 +46,7 @@ public class RingBufferConverterTest {
         byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
         byte byteRingSizeInBits = 16;
         
-        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
         ring.initBuffers();
         ring.reset(0,0);
         
@@ -71,7 +71,7 @@ public class RingBufferConverterTest {
         byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
         byte byteRingSizeInBits = 16;
         
-        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
         ring.initBuffers();
         
         Pipe.validateVarLength(ring, 7);
@@ -133,7 +133,7 @@ public class RingBufferConverterTest {
         byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
         byte byteRingSizeInBits = 16;
         
-        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
         ring.initBuffers();
         ring.reset(0,0);
         

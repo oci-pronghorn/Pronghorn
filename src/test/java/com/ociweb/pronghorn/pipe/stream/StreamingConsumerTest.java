@@ -18,9 +18,11 @@ import org.junit.Test;
 import org.xml.sax.SAXException;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeWriter;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitor;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitorMatcher;
@@ -82,10 +84,9 @@ public class StreamingConsumerTest {
 	}
 	
 	@Test
-	public void sequenceFragmentWriteRead() {
-    
+	public void sequenceFragmentWriteRead() {    
     	
-		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  new MessageSchemaDynamic(FROM)));
 		ring.initBuffers();
 		int testSize = 5;
 		
@@ -121,7 +122,7 @@ public class StreamingConsumerTest {
 	    final int aNegIntValue = -29;//hard coded value that comes from this seed 2
         
 	    
-	       Pipe ring = new Pipe(new PipeConfig(FROM, 50, 30));
+	       Pipe ring = new Pipe(new PipeConfig( new MessageSchemaDynamic(FROM), 50, 30));
 	       ring.initBuffers();
 	       
 	       
@@ -163,8 +164,8 @@ public class StreamingConsumerTest {
 	@Test
 	public void matchingTestPositive() {
 	    
-        Pipe ring1 = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
-        Pipe ring2 = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+        Pipe ring1 = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  new MessageSchemaDynamic(FROM)));
+        Pipe ring2 = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
         
         ring1.initBuffers();
         ring2.initBuffers();
@@ -214,8 +215,8 @@ public class StreamingConsumerTest {
     @Test
     public void matchingTestNegative() {
         
-        Pipe ring1 = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
-        Pipe ring2 = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+        Pipe ring1 = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  new MessageSchemaDynamic(FROM)));
+        Pipe ring2 = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  new MessageSchemaDynamic(FROM)));
         
         ring1.initBuffers();
         ring2.initBuffers();

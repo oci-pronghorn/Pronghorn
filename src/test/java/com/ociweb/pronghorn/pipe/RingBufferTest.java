@@ -42,7 +42,7 @@ public class RingBufferTest {
     	byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
     	byte byteRingSizeInBits = 16;
     	
-        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
+        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
         ring.initBuffers();
         
         byte[] testArray = new byte[]{(byte)1,(byte)2,(byte)3,(byte)4,(byte)5};
@@ -148,7 +148,7 @@ public class RingBufferTest {
         	 
             long start = System.nanoTime();
             
-            final Pipe ring = new Pipe(new PipeConfig(primaryBits, charBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
+            final Pipe ring = new Pipe(new PipeConfig(primaryBits, charBits, null,  RawDataSchema.instance));
             //creating an anonymous inner class that implements runnable so we can hand this
             //off to the execution service to be run on another thread while this thread does the writing.
             Runnable reader = new Runnable() {
@@ -285,7 +285,7 @@ public class RingBufferTest {
 
             long start = System.nanoTime();
             
-            final Pipe ring = new Pipe(new PipeConfig(primaryBits, charBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
+            final Pipe ring = new Pipe(new PipeConfig(primaryBits, charBits, null,  RawDataSchema.instance));
             //creating an anonymous inner class that implements runnable so we can hand this
             //off to the execution service to be run on another thread while this thread does the writing.
             Runnable reader = new Runnable() {

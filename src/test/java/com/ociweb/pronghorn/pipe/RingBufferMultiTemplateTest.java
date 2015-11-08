@@ -108,7 +108,7 @@ public class RingBufferMultiTemplateTest {
     	
     	boolean testReplayFeature = true;
     	
-		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
 		ring.initBuffers();
 		//Setup the test data sizes derived from the templates used
 		byte[] target = new byte[ring.maxAvgVarLen];
@@ -200,7 +200,7 @@ public class RingBufferMultiTemplateTest {
     	
     	boolean testReplayFeature = true;
     	
-		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
 		ring.initBuffers();
 		//Setup the test data sizes derived from the templates used
 		byte[] target = new byte[ring.maxAvgVarLen];
@@ -453,7 +453,7 @@ public class RingBufferMultiTemplateTest {
     	byte byteRingSizeInBits = 16;
     
     	
-		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, FROM));
+		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
 		ring.initBuffers();
 		int testSize = 5;
 		
@@ -547,7 +547,7 @@ public class RingBufferMultiTemplateTest {
 	@Test
 	public void zeroSequenceFragmentWriteRead() {
     	
-		Pipe ring = new Pipe(new PipeConfig(FROM, 60, 60));
+		Pipe ring = new Pipe(new PipeConfig(new MessageSchemaDynamic(FROM), 60, 60));
 		ring.initBuffers();
 		int testSize = 25;
 		
@@ -635,7 +635,7 @@ public class RingBufferMultiTemplateTest {
         final int testSize = 830;//81;//30000;
         int seed = 42;        
         
-        Pipe ring = buildPopulatedRing(FROM, new PipeConfig(FROM, 20000, 40), seed, testSize, 40);
+        Pipe ring = buildPopulatedRing(FROM, new PipeConfig(new MessageSchemaDynamic(FROM), 20000, 40), seed, testSize, 40);
                         
         StringBuilder target = new StringBuilder();
         
