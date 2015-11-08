@@ -27,9 +27,11 @@ import org.junit.Test;
 
 import com.ociweb.pronghorn.components.ingestion.metaMessageUtil.MetaMessageDefs;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeReader;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.stream.ByteVisitor;
 import com.ociweb.pronghorn.pipe.stream.RingStreams;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -96,10 +98,10 @@ public class SmallCSVParseTest {
 	    
 	    sourceBuffer = ByteBuffer.wrap(baos.toByteArray());
 				
-	    linesRingConfig = new PipeConfig((byte)7,(byte)20,null, FieldReferenceOffsetManager.RAW_BYTES);
-	    fieldsRingConfig = new PipeConfig((byte)9,(byte)19,null, MetaMessageDefs.FROM);
-	    fieldsRingConfig2 = new PipeConfig((byte)10,(byte)20,null, MetaMessageDefs.FROM);
-	    flatFileRingConfig = new PipeConfig((byte)14,(byte)22,null, FieldReferenceOffsetManager.RAW_BYTES);
+	    linesRingConfig = new PipeConfig((byte)7,(byte)20,null, RawDataSchema.instance);
+	    fieldsRingConfig = new PipeConfig((byte)9,(byte)19,null, new MessageSchemaDynamic(MetaMessageDefs.FROM));
+	    fieldsRingConfig2 = new PipeConfig((byte)10,(byte)20,null, new MessageSchemaDynamic(MetaMessageDefs.FROM));
+	    flatFileRingConfig = new PipeConfig((byte)14,(byte)22,null, RawDataSchema.instance);
 	    
 	}
 	
@@ -165,7 +167,7 @@ public class SmallCSVParseTest {
 			data.position(0);
 			data.limit(dataSize);
 			
-			PipeConfig linesRingConfigLocal = new PipeConfig((byte)t,(byte)20,null, FieldReferenceOffsetManager.RAW_BYTES);	
+			PipeConfig linesRingConfigLocal = new PipeConfig((byte)t,(byte)20,null, RawDataSchema.instance);	
 			
 			final Pipe linesRing = new Pipe(linesRingConfigLocal);		
 			GraphManager gm = new GraphManager();

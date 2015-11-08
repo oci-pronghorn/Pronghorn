@@ -15,6 +15,7 @@ import org.junit.Test;
 import org.xml.sax.SAXException;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
@@ -50,7 +51,7 @@ public class GeneratorValidatorTest {
         FieldReferenceOffsetManager from = buildFROM();        
         assertTrue(null!=from);
         
-        PipeConfig busConfig = new PipeConfig(from, 10, 64);
+        PipeConfig busConfig = new PipeConfig(new MessageSchemaDynamic(from), 10, 64);
         
         GraphManager gm = new GraphManager();
         
@@ -110,7 +111,7 @@ public class GeneratorValidatorTest {
         FieldReferenceOffsetManager from = buildFROM();        
         assertTrue(null!=from);
         
-        PipeConfig busConfig = new PipeConfig(from, 10, 64);
+        PipeConfig busConfig = new PipeConfig(new MessageSchemaDynamic(from), 10, 64);
         
         GraphManager gm = new GraphManager();
         
@@ -149,7 +150,7 @@ public class GeneratorValidatorTest {
         FieldReferenceOffsetManager from = buildFROM();        
         assertTrue(null!=from);
         
-        PipeConfig busConfig = new PipeConfig(from, 10, 64);
+        PipeConfig busConfig = new PipeConfig(new MessageSchemaDynamic(from), 10, 64);
         
         GraphManager gm = new GraphManager();
         

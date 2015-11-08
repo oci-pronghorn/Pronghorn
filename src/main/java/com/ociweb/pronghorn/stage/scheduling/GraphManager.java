@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -7,6 +9,7 @@ import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -802,11 +805,12 @@ public class GraphManager {
 	        throw new UnsupportedOperationException("Invalid configuration. Unable to find requested output ordinal "+ordinal);
 	    }
 
-	public static Pipe getOutputPipe(GraphManager m, PronghornStage stage) {
+	public static <S extends MessageSchema> Pipe<S> getOutputPipe(GraphManager m, PronghornStage stage) {
 		return getOutputPipe(m, stage, 1);
 	}
 	
-	public static Pipe getOutputPipe(GraphManager m, PronghornStage stage, int ordinalOutput) {
+	@SuppressWarnings("unchecked")
+    public static <S extends MessageSchema> Pipe<S> getOutputPipe(GraphManager m, PronghornStage stage, int ordinalOutput) {
 		
 		int ringId;
 		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
@@ -829,11 +833,12 @@ public class GraphManager {
 		return count;
 	}
 
-	public static Pipe getInputPipe(GraphManager m, PronghornStage stage) {
+	public static <S extends MessageSchema> Pipe<S> getInputPipe(GraphManager m, PronghornStage stage) {
 		return getInputPipe(m, stage, 1);
 	}
 	
-	public static Pipe getInputPipe(GraphManager m,	PronghornStage stage, int ordinalInput) {
+	@SuppressWarnings("unchecked")
+    public static <S extends MessageSchema> Pipe<S> getInputPipe(GraphManager m,	PronghornStage stage, int ordinalInput) {
 		int ringId;
 		int idx = m.stageIdToInputsBeginIdx[stage.stageId];
 		while (-1 != (ringId=m.multInputIds[idx++])) {	
@@ -853,6 +858,48 @@ public class GraphManager {
 		}				
 		return count;
 	}
+	
+	
+	public static void writeAsDOT(GraphManager m, Appendable target) {
+	    try {
+	    
+	        target.append("digraph {\n");
+	        target.append("rankdir = LR\n");
+	        
+	        
+	        int i = -1;
+	        while (++i<m.stageIdToStage.length) {
+	            PronghornStage stage = m.stageIdToStage[i];
+	            if (null!=stage) {       
+	                
+	                target.append("\"Stage").append(Integer.toString(i)).append("\"[label=\"").append(stage.getClass().getSimpleName().replace("Stage","")).append("\"]\n");
+	                	                
+	            }
+	        }
+	        
+	        int j = m.ringIdToRing.length;
+	        while (--j>=0) {
+	            Pipe pipe = m.ringIdToRing[j];	            
+	            if (null!=pipe) {
+	                
+	                int producer = m.ringIdToStages[j*2];
+	                int consumer = m.ringIdToStages[(j*2)+1];
+	                
+	                target.append("\"Stage").append(Integer.toString(producer)).append("\" -> \"Stage").append(Integer.toString(consumer)).
+	                       append("\"[label=\"").append(Pipe.schemaName(pipe).replace("Schema", "")).append("\"]\n");
+	                
+	          
+	            }
+	        }
+	        
+	    
+            target.append("}\n");
+            
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+	}
+	
 	
 	public static void logOutputs(Logger log, GraphManager m, PronghornStage stage) {
 		int ringId;

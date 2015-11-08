@@ -55,10 +55,10 @@ public  class  BackingData<T> {
             S extends Enum<S> & FieldsOf16Bits,
             B extends Enum<B> & FieldsOf8Bits> BackingData(TypeDef<L,I,S,B> typeDef, int recordCount) {
         
-        this.longsPerRecord = typeDef.longFields.getEnumConstants().length;
-        this.intsPerRecord = typeDef.intFields.getEnumConstants().length;
-        this.shortsPerRecord = typeDef.shortFields.getEnumConstants().length;
-        this.bytesPerRecord = typeDef.byteFields.getEnumConstants().length;
+        this.longsPerRecord = typeDef.longFieldCount;
+        this.intsPerRecord = typeDef.intFieldCount;
+        this.shortsPerRecord = typeDef.shortFieldCount;
+        this.bytesPerRecord = typeDef.byteFieldCount;
         
         this.longData  = new long[longsPerRecord*recordCount];
         this.intData   = new int[intsPerRecord*recordCount];
@@ -414,16 +414,16 @@ public  class  BackingData<T> {
                     B extends Enum<B> & FieldsOf8Bits> 
                                     String toString(TypeDef<L,I,S,B> typeDef, int recordIdx, BackingData<?> backing) {
         StringBuilder builder = new StringBuilder();
-        for(L item: typeDef.longFields.getEnumConstants()) {
+        for(L item: typeDef.longFields) {
             builder.append(item).append('=').append(backing.longData[longBase(recordIdx, backing)+item.ordinal()]).append("\n");            
         }
-        for(I item: typeDef.intFields.getEnumConstants()) {
+        for(I item: typeDef.intFields) {
             builder.append(item).append('=').append(backing.intData[intBase(recordIdx, backing)+item.ordinal()]).append("\n");            
         }
-        for(S item: typeDef.shortFields.getEnumConstants()) {
+        for(S item: typeDef.shortFields) {
             builder.append(item).append('=').append(backing.shortData[shortBase(recordIdx, backing)+item.ordinal()]).append("\n");            
         }
-        for(B item: typeDef.byteFields.getEnumConstants()) {
+        for(B item: typeDef.byteFields) {
             builder.append(item).append('=').append(backing.byteData[shortBase(recordIdx, backing)+item.ordinal()]).append("\n");            
         }
         return builder.toString();

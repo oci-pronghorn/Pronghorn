@@ -111,7 +111,7 @@ public class MonitorConsoleStage extends PronghornStage {
 	}
 
 	private static final Long defaultMonitorRate = Long.valueOf(50000000);
-	private static final PipeConfig defaultMonitorRingConfig = new PipeConfig(PipeMonitorSchema.FROM, 30, 0);
+	private static final PipeConfig defaultMonitorRingConfig = new PipeConfig(PipeMonitorSchema.instance, 30, 0);
 	
 	public static void attach(GraphManager gm) {
 		attach(gm,defaultMonitorRate,defaultMonitorRingConfig);

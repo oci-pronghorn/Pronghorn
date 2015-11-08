@@ -7,6 +7,7 @@ import org.junit.Test;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -19,10 +20,10 @@ public class GraphManagerTest {
 		
 		GraphManager gm = new GraphManager();
 		
-		Pipe rb1 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb1 = new Pipe(new PipeConfig(RawDataSchema.instance));
 		rb1.initBuffers();
 		
-		Pipe rb2 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb2 = new Pipe(new PipeConfig(RawDataSchema.instance));
 		rb2.initBuffers();
 		
 		PronghornStage a = new SimpleOut(gm,rb1); 
@@ -71,17 +72,17 @@ public class GraphManagerTest {
 		
 		GraphManager gm = new GraphManager();
 		
-		Pipe rb1 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb1 = new Pipe(new PipeConfig(RawDataSchema.instance));
 		rb1.initBuffers();
-		Pipe rb21 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb21 = new Pipe(new PipeConfig(RawDataSchema.instance));
 		rb21.initBuffers();
-		Pipe rb22 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb22 = new Pipe(new PipeConfig(RawDataSchema.instance));
 		rb22.initBuffers();
 		
-		Pipe rb211 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb211 = new Pipe(new PipeConfig(RawDataSchema.instance));
 		rb211.initBuffers();
 		
-		Pipe rb221 = new Pipe(new PipeConfig(FieldReferenceOffsetManager.RAW_BYTES));
+		Pipe rb221 = new Pipe(new PipeConfig(RawDataSchema.instance));
 		rb221.initBuffers();
 		
 		PronghornStage a = new SimpleOut(gm,rb1); 

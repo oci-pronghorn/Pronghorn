@@ -22,6 +22,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitor;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitorAdapter;
 import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
@@ -535,9 +536,9 @@ public class RingBufferPipeline {
 			 
 			 if (stages-2==j) {
 				 //need to make this ring bigger when the splitter is used
-				 rings[j] = new Pipe(new PipeConfig((byte)(primaryBits+ex), (byte)(secondaryBits+ex), null,  FieldReferenceOffsetManager.RAW_BYTES));
+				 rings[j] = new Pipe(new PipeConfig((byte)(primaryBits+ex), (byte)(secondaryBits+ex), null,  RawDataSchema.instance));
 			 }  else {
-				 rings[j] = new Pipe(new PipeConfig(primaryBits, secondaryBits, null,  FieldReferenceOffsetManager.RAW_BYTES));
+				 rings[j] = new Pipe(new PipeConfig(primaryBits, secondaryBits, null, RawDataSchema.instance));
 			 } 
 
 			 
@@ -545,7 +546,7 @@ public class RingBufferPipeline {
 			 rings[j].reset(rings[j].sizeOfSlabRing-13,rings[j].sizeOfBlobRing-101);
 	  		 
 			 if (monitor) {
-				 monitorRings[j] = new Pipe(new PipeConfig((byte)16, (byte)2, null, montorFROM));
+				 monitorRings[j] = new Pipe(new PipeConfig((byte)16, (byte)2, null, PipeMonitorSchema.instance));
 				 final Pipe monRing = monitorRings[j];
 
 				 monitorStages[j] = new RingBufferMonitorStage(gm, rings[j], monRing);	
@@ -580,7 +581,7 @@ public class RingBufferPipeline {
 				 if (splits>1) {
 					 int k = splits;
 					 while (--k>0) {
-						 splitsBuffers[k] = new Pipe(new PipeConfig((byte)(primaryBits+ex), (byte)(secondaryBits+ex), null,  FieldReferenceOffsetManager.RAW_BYTES));
+						 splitsBuffers[k] = new Pipe(new PipeConfig((byte)(primaryBits+ex), (byte)(secondaryBits+ex), null, RawDataSchema.instance));
 						Pipe inputRing = splitsBuffers[k];
 						boolean useRoute = useTap&useRouter;
 						 ///
