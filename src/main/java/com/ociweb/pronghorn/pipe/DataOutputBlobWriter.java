@@ -2,12 +2,13 @@ package com.ociweb.pronghorn.pipe;
 
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.OutputStream;
 
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
-public class DataOutputBlobWriter<S extends MessageSchema> implements DataOutput {
+public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream implements DataOutput {
 
     private final Pipe<S> p;
     private final byte[] byteBuffer;
