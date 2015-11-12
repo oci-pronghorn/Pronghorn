@@ -479,7 +479,20 @@ public final class Pipe<T extends MessageSchema> {
         }
     }
  
+    private AtomicBoolean isInBlobFieldWrite = new AtomicBoolean(false);
+    
+    public void openBlobFieldWrite() {        
+        if (!isInBlobFieldWrite.compareAndSet(false, true)) {
+            throw new UnsupportedOperationException("only one open write against the blob at a time.");
+        }        
+    }
 
+    public void closeBlobFieldWrite() {
+        if (!isInBlobFieldWrite.compareAndSet(true, false)) {
+            throw new UnsupportedOperationException("only one open write against the blob at a time.");
+        }
+    }
+    
     //NOTE: can we compute the speed limit based on destination CPU Usage?
     //TODO: add checking mode where it can communicate back that regulation is too big or too small?
     
@@ -2624,4 +2637,7 @@ public final class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> PaddedLong getWorkingHeadPositionObject(Pipe<S> rb) {
         return rb.slabRingHead.workingHeadPos;
     }
+
+
+
 }
