@@ -355,7 +355,7 @@ public final class Pipe<T extends MessageSchema> {
     LowLevelAPIWritePositionCache llWrite; //low level write head pos cache and target
     LowLevelAPIReadPositionCache llRead; //low level read tail pos cache and target
 
-    final StackStateWalker ringWalker;
+    StackStateWalker ringWalker;//only needed for high level API
 
     private final SlabRingTail slabRingTail = new SlabRingTail(); //primary working and public
     private final BlobRingTail blobRingTail = new BlobRingTail(); //primary working and public
@@ -425,6 +425,14 @@ public final class Pipe<T extends MessageSchema> {
 	private int  holdingBlobWorkingTail;
 	private int holdingBlobReadBase;
 
+    private PipeRegulator regulatorConsumer; //disabled by default
+    private PipeRegulator regulatorProducer; //disabled by default
+
+    //for monitoring only
+    public int lastMsgIdx;
+    
+
+	
     public Pipe(PipeConfig<T> config) {
 
         byte primaryBits = config.primaryBits;
@@ -433,6 +441,7 @@ public final class Pipe<T extends MessageSchema> {
         this.schema = config.schema;
 
         debugFlags = config.debugFlags;
+                
 
         //Assign the immutable universal id value for this specific instance
         //these values are required to keep track of all ring buffers when graphs are built
@@ -454,7 +463,7 @@ public final class Pipe<T extends MessageSchema> {
         this.byteMask = sizeOfBlobRing - 1;
 
         FieldReferenceOffsetManager from = MessageSchema.from(config.schema); 
-        this.ringWalker = new StackStateWalker(from);
+
         this.blobConstBuffer = byteConstants;
 
 
@@ -469,6 +478,35 @@ public final class Pipe<T extends MessageSchema> {
             maxAvgVarLen = sizeOfBlobRing/maxVarCount;
         }
     }
+ 
+
+    //NOTE: can we compute the speed limit based on destination CPU Usage?
+    //TODO: add checking mode where it can communicate back that regulation is too big or too small?
+    
+    public static <S extends MessageSchema> boolean isRateLimitedConsumer(Pipe<S> pipe) {
+        return null!=pipe.regulatorConsumer;
+    }
+    
+    public static <S extends MessageSchema> boolean isRateLimitedProducer(Pipe<S> pipe) {
+        return null!=pipe.regulatorProducer;
+    }
+    
+    /**
+     * Returns mili-second count of how much time should pass before consuming more data 
+     * from this pipe.  This is based on the rate configuration.  
+     */
+    public static <S extends MessageSchema> long computeRateLimitConsumerDelay(Pipe<S> pipe) {        
+        return PipeRegulator.computeRateLimitDelay(pipe, Pipe.getWorkingTailPosition(pipe), System.currentTimeMillis(), pipe.regulatorConsumer);
+    }
+
+    /**
+     * Returns mili-second count of how much time should pass before producing more data 
+     * into this pipe.  This is based on the rate configuration.  
+     */
+    public static <S extends MessageSchema> long computeRateLimitProduerDelay(Pipe<S> pipe) {        
+        return PipeRegulator.computeRateLimitDelay(pipe, Pipe.getWorkingTailPosition(pipe), System.currentTimeMillis(), pipe.regulatorProducer);
+    }
+    
     
     public static <S extends MessageSchema> String schemaName(Pipe<S> pipe) {
         return null==pipe.schema? "NoSchemaFor "+Pipe.from(pipe).name  :pipe.schema.getClass().getSimpleName();
@@ -525,8 +563,8 @@ public final class Pipe<T extends MessageSchema> {
 	////
 	////
 	public static <S extends MessageSchema> void batchAllReleases(Pipe<S> rb) {
-	       rb.batchReleaseCountDownInit = Integer.MAX_VALUE;
-	       rb.batchReleaseCountDown = Integer.MAX_VALUE;
+	   rb.batchReleaseCountDownInit = Integer.MAX_VALUE;
+	   rb.batchReleaseCountDown = Integer.MAX_VALUE;
 	}
 
 
@@ -593,8 +631,7 @@ public final class Pipe<T extends MessageSchema> {
     }
     
     public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> pipe) {
-        int value = PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);        
-        pipe.blobReadBase = Pipe.BYTES_WRAP_MASK & value;
+        pipe.blobReadBase = Pipe.BYTES_WRAP_MASK & PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);
     }
     
     //;
@@ -646,9 +683,27 @@ public final class Pipe<T extends MessageSchema> {
 		}
 		return this;
     }
-
+    
+    public static <S extends MessageSchema> void setConsumerRegulation(Pipe<S> pipe, int msgPerMs) {
+        assert(null==pipe.regulatorConsumer) : "regulator must only be set once";
+        assert(!isInit(pipe)) : "regular may only be set before scheduler has intitailized the pipe";
+        pipe.regulatorConsumer = new PipeRegulator(msgPerMs);
+    }
+  
+    public static <S extends MessageSchema> void setProducerRegulation(Pipe<S> pipe, int msgPerMs) {
+        assert(null==pipe.regulatorProducer) : "regulator must only be set once";
+        assert(!isInit(pipe)) : "regular may only be set before scheduler has intitailized the pipe";
+        pipe.regulatorProducer = new PipeRegulator(msgPerMs);
+    } 
+    
 	private void buildBuffers() {
 
+	    
+	    
+	    
+	    //NOTE: this is only needed for high level API, if only low level is in use it would be nice to not create this 
+        this.ringWalker = new StackStateWalker(MessageSchema.from(schema), sizeOfSlabRing);
+	    
         assert(slabRingHead.workingHeadPos.value == slabRingHead.headPos.get());
         assert(slabRingTail.workingTailPos.value == slabRingTail.tailPos.get());
         assert(slabRingHead.workingHeadPos.value == slabRingTail.workingTailPos.value);
@@ -2012,7 +2067,7 @@ public final class Pipe<T extends MessageSchema> {
 
     }
 
-    public static <S extends MessageSchema> int takeMsgIdx(Pipe<S> ring) {
+    public static <S extends MessageSchema> int takeMsgIdx(Pipe<S> pipe) {
         
         /**
          * TODO: mask the result int to only the bits which contain the msgId.
@@ -2025,8 +2080,8 @@ public final class Pipe<T extends MessageSchema> {
          */
         
         
-        assert(ring.slabRingTail.workingTailPos.value<Pipe.workingHeadPosition(ring)) : " tail is "+ring.slabRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(ring);
-    	return readValue(0, ring.slabRing, ring.mask, ring.slabRingTail.workingTailPos.value++);
+        assert(pipe.slabRingTail.workingTailPos.value<Pipe.workingHeadPosition(pipe)) : " tail is "+pipe.slabRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(pipe);
+    	return pipe.lastMsgIdx = readValue(0, pipe.slabRing, pipe.mask, pipe.slabRingTail.workingTailPos.value++);
     }
 
     public static <S extends MessageSchema> int peekInt(Pipe<S> ring) {
@@ -2051,59 +2106,32 @@ public final class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> int releaseReads(Pipe<S> ring) {
         int len = takeValue(ring);
         Pipe.markBytesReadBase(ring, len);
-    	batchedReleasePublish(ring);
+    	assert(Pipe.contentRemaining(ring)>=0);
+        batchedReleasePublish(ring, ring.blobRingTail.byteWorkingTailPos.value, ring.slabRingTail.workingTailPos.value);
     	return len;
     }
 
-
-    public static <S extends MessageSchema> void batchedReleasePublish(Pipe<S> ring) {
-        assert(Pipe.contentRemaining(ring)>=0);
-        batchedReleasePublish(ring, ring.blobRingTail.byteWorkingTailPos.value, ring.slabRingTail.workingTailPos.value);
-    }
-
-    public static <S extends MessageSchema> void batchedReleasePublish(Pipe<S> ring, int byteWorkingTailPos, long workingTailPos) {
-        if ((--ring.batchReleaseCountDown<=0) ) {
+    public static <S extends MessageSchema> void batchedReleasePublish(Pipe<S> ring, int blobTail, long slabTail) {
+        if (decBatchRelease(ring)<=0) {
 
     	    assert(ring.ringWalker.cursor<=0 && !PipeReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
 
-    	    Pipe.setBytesTail(ring,byteWorkingTailPos);
-    	    ring.slabRingTail.tailPos.lazySet(workingTailPos);
+    	    Pipe.setBytesTail(ring,blobTail);
+    	    ring.slabRingTail.tailPos.lazySet(slabTail);
     	    
     	    ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
 
     	} else {
-    	    storeUnpublishedTail(ring, workingTailPos, byteWorkingTailPos);
+    	    storeUnpublishedTail(ring, slabTail, blobTail);
     	}
     }
-
 
     static <S extends MessageSchema> void storeUnpublishedTail(Pipe<S> ring, long workingTailPos, int byteWorkingTailPos) {
         ring.lastReleasedBlobTail = byteWorkingTailPos;
         ring.lastReleasedSlabTail = workingTailPos;
     }
     
-    static <S extends MessageSchema> void releaseReadLockForHighLevelAPI(Pipe<S> ring) {
-
         
-        assert(Pipe.isReplaying(ring) || ring.ringWalker.nextWorkingTail!=Pipe.getWorkingTailPosition(ring)) : "Only call release once per message";
-        //not sure if this is always true must check.
- //       assert(Pipe.isReplaying(ring) || ring.lastReleasedSlabTail != ring.ringWalker.nextWorkingTail) : "Only call release once per message";
-
-        //take new tail position and make it the base because we are about to start a new message.        
-        Pipe.markBytesReadBase(ring);
-        
-        if (decBatchRelease(ring)<=0) {
-
-                 Pipe.setBytesTail(ring,Pipe.getWorkingBlobRingTailPosition(ring));
-                 Pipe.publishWorkingTailPosition(ring, ring.ringWalker.nextWorkingTail);
-
-                 ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
-        } else {
-                 ring.lastReleasedBlobTail = ring.blobRingTail.byteWorkingTailPos.value;
-                 ring.lastReleasedSlabTail = ring.ringWalker.nextWorkingTail;// ring.primaryBufferTail.workingTailPos.value;
-        }
-    }
-
     
 
     // value in lastReleased moves forward to the point for release up to
@@ -2397,7 +2425,7 @@ public final class Pipe<T extends MessageSchema> {
 	}
 
 	public static <S extends MessageSchema> FieldReferenceOffsetManager from(Pipe<S> ring) {
-		return ring.ringWalker.from;
+		return ring.schema.from;
 	}
 
 	public static <S extends MessageSchema> int cursor(Pipe<S> ring) {

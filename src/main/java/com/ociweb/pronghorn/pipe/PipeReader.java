@@ -522,7 +522,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	}
 
 	public static int getMsgIdx(Pipe rb) {
-		return rb.ringWalker.msgIdx;
+		return rb.lastMsgIdx = rb.ringWalker.msgIdx;
 	}
 
 	static int getMsgIdx(StackStateWalker rw) {
@@ -538,30 +538,66 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	public static boolean tryReadFragment(Pipe ringBuffer) {
 		
 		if (FieldReferenceOffsetManager.isTemplateStart(Pipe.from(ringBuffer), ringBuffer.ringWalker.nextCursor)) {    
-		    assert(ringBuffer.ringWalker.seqStackHead<0) : "Error the seqStack should be empty";
+		    assert(StackStateWalker.isSeqStackEmpty(ringBuffer.ringWalker)) : "Error the seqStack should be empty";
 			return StackStateWalker.prepReadMessage(ringBuffer, ringBuffer.ringWalker);			   
 	    } else {  
 			return StackStateWalker.prepReadFragment(ringBuffer, ringBuffer.ringWalker);
 	    }
 	}
 
-	
+	private static void collectConsumedCountOfBytes(Pipe pipe) {
+	    if (pipe.ringWalker.nextWorkingTail>0) { //first iteration it will not have a valid position
+	        //must grab this value now, its the last chance before we allow it to be written over.
+	        //these are all accumulated from every fragment, messages many have many fragments.
+	        int bytesConsumed = Pipe.primaryBuffer(pipe)[pipe.mask & (int)(pipe.ringWalker.nextWorkingTail-1)];
+	        Pipe.addAndGetBytesWorkingTailPosition(pipe, bytesConsumed);
+	    }
+	}
+
 	public static void releaseReadLock(Pipe pipe) {
 	    
-        if (pipe.ringWalker.nextWorkingTail>0) { //first iteration it will not have a valid position
-            //must grab this value now, its the last chance before we allow it to be written over.
-            //these are all accumulated from every fragment, messages many have many fragments.
-            int bytesConsumed = Pipe.primaryBuffer(pipe)[pipe.mask & (int)(pipe.ringWalker.nextWorkingTail-1)];
-            Pipe.addAndGetBytesWorkingTailPosition(pipe, bytesConsumed);
-        } 
+        collectConsumedCountOfBytes(pipe); 
 	    
 	    //ensure we only call for new templates.
 	    if (FieldReferenceOffsetManager.isTemplateStart(Pipe.from(pipe), pipe.ringWalker.nextCursor)) {
-    	    //NOTE: only for messages, for fragments release should not be called becauase this
-    	    //      method will change the byteBase which should not be done inside a sequence.
-    	    Pipe.releaseReadLockForHighLevelAPI(pipe);
+            assert(Pipe.isReplaying(pipe) || pipe.ringWalker.nextWorkingTail!=Pipe.getWorkingTailPosition(pipe)) : "Only call release once per message";
+            Pipe.markBytesReadBase(pipe); //moves us forward so we can read the next fragment/message
+            batchedReleasePublish(pipe, Pipe.getWorkingBlobRingTailPosition(pipe), pipe.ringWalker.nextWorkingTail);
 	    }
 	}
+
+	
+	
+	public static boolean readNextWithoutReleasingReadLock(Pipe pipe) {
+	    
+        collectConsumedCountOfBytes(pipe); 
+        
+        if (FieldReferenceOffsetManager.isTemplateStart(Pipe.from(pipe), pipe.ringWalker.nextCursor)) {
+            assert(Pipe.isReplaying(pipe) || pipe.ringWalker.nextWorkingTail!=Pipe.getWorkingTailPosition(pipe)) : "Only call release once per message";
+            Pipe.markBytesReadBase(pipe); //moves us forward so we can read the next fragment/message
+            long slabTail = pipe.ringWalker.nextWorkingTail;
+            int blobTail = Pipe.getWorkingBlobRingTailPosition(pipe);
+            
+            StackStateWalker.appendPendingReadRelease(pipe, slabTail, blobTail);
+            return true;
+        } else {
+            return false;
+        }
+	}
+	
+	public static void releasePendingReadLock(Pipe pipe) {
+	    StackStateWalker.releasePendingReadRelease(pipe);
+	}
+
+    static void batchedReleasePublish(Pipe pipe, int workingBlobRingTailPosition, long nextWorkingTail) {
+        if (Pipe.decBatchRelease(pipe)<=0) {                 
+                 Pipe.setBytesTail(pipe,workingBlobRingTailPosition);
+                 Pipe.publishWorkingTailPosition(pipe, nextWorkingTail);
+                 Pipe.beginNewReleaseBatch(pipe);        
+        } else {
+                 Pipe.storeUnpublishedTail(pipe, nextWorkingTail, workingBlobRingTailPosition);            
+        }
+    }
 
     public static void printFragment(Pipe input, Appendable target) {
         int cursor = input.ringWalker.cursor;

@@ -198,18 +198,21 @@ public class FieldReferenceOffsetManager {
                 if (debug) {
                     System.err.println();
                 }
+                int lastFragTotalSize = 0;
                 //only save this at the end of each fragment, not on the first pass.
                 if (i>fragmentStartIdx) {
                 	//NOTE: this size can not be changed up without reason, any place the low level API is used it will need
                 	//to know about the full size and append the right fields of the right size
                 	fragDataSize[fragmentStartIdx]++;//Add one for trailing byte count on end of every fragment
+
+                	lastFragTotalSize = fragDataSize[fragmentStartIdx];
+                	assert(lastFragTotalSize<65536) : "Fragments larger than this are possible but unlikely, You do not want to do this";
+                	assert(lastFragTotalSize>0) : "All fragments must be 1 or larger";
+                	
+                	maxFragmentDataSize = Math.max(maxFragmentDataSize, lastFragTotalSize);
+                	minFragmentDataSize = Math.min(minFragmentDataSize, lastFragTotalSize);
                 }
                 
-                int lastFragTotalSize = fragDataSize[fragmentStartIdx];
-                assert(lastFragTotalSize<65536) : "Fragments larger than this are possible but unlikely, You do not want to do this";
-                
-                maxFragmentDataSize = Math.max(maxFragmentDataSize, lastFragTotalSize);
-                minFragmentDataSize = Math.min(minFragmentDataSize, lastFragTotalSize);
 
                 if (varLenFieldCount>0) {
                 	//Caution: do not modify this logic unless you take into account the fact that

@@ -33,13 +33,19 @@ class StackStateWalker {
 	public final long[] activeWriteFragmentStack; 
 	private final int[] seqStack;
 	private final int[] seqCursors;
-	int seqStackHead; //TODO: convert to private
-	
-		
+	private int seqStackHead; //TODO: convert to private
+			
 	int nextCursor = -1;
     
+	private final int    pendingReleaseSize;
+	private final int    pendingReleaseMask;	
+	private int          pendingReleaseHead;
+	private int          pendingReleaseTail;
+	private int          pendingReleaseCount;	
+	private final int[]  pendingBlobReleaseRing;
+	private final long[] pendingSlabReleaseRing;
 	
-	StackStateWalker(FieldReferenceOffsetManager from) {
+	StackStateWalker(FieldReferenceOffsetManager from, int slabSize) {
 		
 		    if (null==from) {
 	            throw new UnsupportedOperationException();
@@ -53,9 +59,36 @@ class StackStateWalker {
 	        this.from = from;
 	        this.activeWriteFragmentStack = new long[from.maximumFragmentStackDepth];
 	        this.activeReadFragmentStack = new long[from.maximumFragmentStackDepth];
+	        
+	        int maxFragsInPipe = slabSize/FieldReferenceOffsetManager.minFragmentSize(from);	        
+	        int maxFragsAsBits = (int)Math.ceil(Math.log(maxFragsInPipe)/Math.log(2));
+	        	        
+	        pendingReleaseSize = 1<<maxFragsAsBits;
+	        pendingReleaseMask = pendingReleaseSize-1;
+	        pendingBlobReleaseRing = new int[pendingReleaseSize];
+	        pendingSlabReleaseRing = new long[pendingReleaseSize];	        
 	}
-	
 
+    public static void appendPendingReadRelease(Pipe pipe, long slabTail, int blobTail) {
+        StackStateWalker that = pipe.ringWalker;
+        int idx = that.pendingReleaseMask & that.pendingReleaseHead++;
+        that.pendingBlobReleaseRing[idx] = blobTail;
+        that.pendingSlabReleaseRing[idx] = slabTail;
+        that.pendingReleaseCount++;
+    }
+
+    public static void releasePendingReadRelease(Pipe pipe) {
+        StackStateWalker that = pipe.ringWalker;
+        if (that.pendingReleaseCount>0) {
+            int idx = that.pendingReleaseMask & that.pendingReleaseTail++;
+            PipeReader.batchedReleasePublish(pipe, 
+                                             that.pendingBlobReleaseRing[idx], 
+                                             that.pendingSlabReleaseRing[idx]);
+            that.pendingReleaseCount--;
+        }
+    }
+    
+    
 
     static void setMsgIdx(StackStateWalker rw, int idx, long llwHeadPosCache) {
 		rw.msgIdxPrev = rw.msgIdx;
@@ -70,8 +103,7 @@ class StackStateWalker {
 					errorMessageForMessageStartValidation(rw, llwHeadPosCache);
 		assert(-1 ==idx || (rw.from.hasSimpleMessagesOnly && 0==rw.msgIdx && rw.from.messageStarts.length==1)  ||
 				(OperatorMask.Group_Bit_Close&TokenBuilder.extractOper(rw.from.tokens[rw.msgIdx])) == 0) :
-					errorMessageForMessageStartValidation(rw, llwHeadPosCache);
-			
+					errorMessageForMessageStartValidation(rw, llwHeadPosCache);			
 		
 	}
 
@@ -82,6 +114,9 @@ class StackStateWalker {
         " readBase "+rw.activeReadFragmentStack[0] + " nextWorkingTail:"+rw.nextWorkingTail+" headPosCache:"+llwHeadPosCache;
     }
 
+    public static boolean isSeqStackEmpty(StackStateWalker stackState) {
+        return stackState.seqStackHead<0;
+    }
 
     //TODO: may want to move preamble to after the ID, it may be easier to reason about.
     
@@ -499,8 +534,8 @@ class StackStateWalker {
 		//NOTE: writes are using low-level calls and we must publish them.
 		Pipe.publishHeadPositions(outputRing); //we use the working head pos so batching still works here.
 	}
-	
-	
+
+
 	
 
    
