@@ -135,6 +135,22 @@ public class StreamingReadVisitorToJSON implements StreamingReadVisitor {
 
 	@Override
 	public void visitBytes(String name, long id, ByteBuffer value) {
+	    writeTab();
+        out.print("{\""+name+"\":\"");
+        value.flip();
+        
+        while (value.hasRemaining()) {//TODO: needs clean up !!
+            String tmp = "00"+Integer.toHexString(value.get());
+            out.print("0x");
+            out.print(tmp.substring(tmp.length()-2)  );
+            if (value.hasRemaining()) {
+                out.print(",");
+            }
+
+        }
+        out.println("\"}");
+        
+        
 		//undefined how we should send a binary block to JSON
 	}
 
