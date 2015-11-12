@@ -45,7 +45,7 @@ public class RingBufferMonitorStage extends PronghornStage {
 			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_MS_1, System.currentTimeMillis());
 			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_HEAD_2, Pipe.headPosition(observedRingBuffer));
 			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_TAIL_3, Pipe.tailPosition(observedRingBuffer));
-			PipeWriter.writeInt(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4, PipeReader.getMsgIdx(observedRingBuffer));	
+			PipeWriter.writeInt(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4, observedRingBuffer.lastMsgIdx);	
 			PipeWriter.writeInt(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_BUFFERSIZE_5, observedRingBuffer.sizeOfSlabRing);
 			
 			PipeWriter.publishWrites(notifyRingBuffer);	

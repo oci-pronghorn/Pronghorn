@@ -122,10 +122,22 @@ public  class  BackingData<T> {
     public static <F extends Enum<F> & FieldsOf32Bits> void decInt(F field, int value, int recordIdx, BackingData<?> block) {
         block.intData[intBase(recordIdx, block)+field.ordinal()] -= value;
     }
-
     public static <F extends Enum<F> & FieldsOf32Bits> int getInt(F field, int recordIdx, BackingData<?> block) {
         return block.intData[intBase(recordIdx, block)+field.ordinal()];
     }
+    
+    public static <F extends Enum<F> & FieldsOf32Bits> int getIntSum(F field, int[] recordIdxs, int base, BackingData<?> block) {
+        
+        int[] intDataLocal = block.intData;
+        int off = field.ordinal();
+        int sum = 0;
+        int j = recordIdxs.length;
+        while (--j>=0) {           
+            sum += intDataLocal[intBase(base + recordIdxs[j],block)+off];
+        }
+        return sum;
+    }
+    
     
     public static <F extends Enum<F> & FieldsOf64Bits> void setLong(F field, long value, int recordIdx, BackingData<?> block) {
         block.longData[longBase(recordIdx, block)+field.ordinal()] = value;

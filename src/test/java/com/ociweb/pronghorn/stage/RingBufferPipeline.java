@@ -540,10 +540,6 @@ public class RingBufferPipeline {
 			 }  else {
 				 rings[j] = new Pipe(new PipeConfig(primaryBits, secondaryBits, null, RawDataSchema.instance));
 			 } 
-
-			 
-			 //test by starting at different location in the ring to force roll over.
-			 rings[j].reset(rings[j].sizeOfSlabRing-13,rings[j].sizeOfBlobRing-101);
 	  		 
 			 if (monitor) {
 				 monitorRings[j] = new Pipe(new PipeConfig((byte)16, (byte)2, null, PipeMonitorSchema.instance));
@@ -551,9 +547,6 @@ public class RingBufferPipeline {
 
 				 monitorStages[j] = new RingBufferMonitorStage(gm, rings[j], monRing);	
 				 
-				 
-				 
-				 //this is a bit complex may be better to move this inside on thread?
 				
 				 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(4100000), monitorStages[j]);
 				 

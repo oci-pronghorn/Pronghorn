@@ -30,11 +30,13 @@ public class GraphManager {
 	
     //Nota bene attachments
 	public final static String SCHEDULE_RATE = "SCHEDULE_RATE"; //in ns
-	public final static String MONITOR       = "MONITOR";
-	public final static String PRODUCER      = "PRODUCER";//explicit so it can be found even if it has feedback inputs.    
+	public final static String MONITOR       = "MONITOR"; //this stage is not part of business logic but part of internal monitoring.
+	public final static String PRODUCER      = "PRODUCER";//explicit so it can be found even if it has feedback inputs.
 	public final static String STAGE_NAME    = "STAGE_NAME";
+	
+	//do not use thise they are under development
 	public final static String UNSCHEDULED   = "UNSCHEDULED";//new nota for stages that should never get a thread (experimental)
-	public final static String BLOCKING      = "BLOCKING";   //new nota for stages that do not give threads back.
+	public final static String BLOCKING      = "BLOCKING";   //new nota for stages that do not give threads back (experimental)
 	
 	
 	private final static int INIT_RINGS = 32;
