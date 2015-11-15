@@ -90,7 +90,12 @@ public  class  BackingData<T> {
     }
     
     public static <F extends Enum<F> & FieldsOf16Bits> void setShort(F field, short value, int recordIdx, BackingData<?> block) {
-        block.shortData[shortBase(recordIdx, block)+field.ordinal()] = value;
+        int off = field.ordinal();
+        setShort(off, value, recordIdx, block);
+    }
+
+    private static void setShort(int off, short value, int recordIdx, BackingData<?> block) {
+        block.shortData[shortBase(recordIdx, block)+off] = value;
     }
     public static <F extends Enum<F> & FieldsOf16Bits> void incShort(F field, short value, int recordIdx, BackingData<?> block) {
         block.shortData[shortBase(recordIdx, block)+field.ordinal()] += value;
@@ -130,10 +135,11 @@ public  class  BackingData<T> {
         
         int[] intDataLocal = block.intData;
         int off = field.ordinal();
+        int intsPer = block.intsPerRecord;
         int sum = 0;
         int j = recordIdxs.length;
         while (--j>=0) {           
-            sum += intDataLocal[intBase(base + recordIdxs[j],block)+off];
+            sum += intDataLocal[((base + recordIdxs[j])*intsPer)+off];
         }
         return sum;
     }

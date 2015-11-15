@@ -430,7 +430,7 @@ public class RingBufferPipeline {
 	private final byte primaryBits   = 6; 
 	private final byte secondaryBits = 15;
     
-	private final int msgSize = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+	private final int msgSize = RawDataSchema.FROM.fragDataSize[0];
 
 	
 	@Test

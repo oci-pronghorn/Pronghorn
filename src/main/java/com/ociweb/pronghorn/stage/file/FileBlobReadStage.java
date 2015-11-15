@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -12,7 +11,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class FileBlobReadStage extends PronghornStage {
 
-    private static final int SIZE = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+    private static final int SIZE = RawDataSchema.FROM.fragDataSize[0];
     private final RandomAccessFile inputFile;
     private FileChannel openChannel;
     private final Pipe<RawDataSchema> output;

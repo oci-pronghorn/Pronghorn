@@ -9,8 +9,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -19,13 +19,13 @@ public class FileWriteStage extends PronghornStage {
 	private final Pipe inputRing;
 	private final FileChannel channel;
 
-	private final int msgSize = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+	private final int msgSize = RawDataSchema.FROM.fragDataSize[0];
 	
 	public FileWriteStage(GraphManager gm, Pipe input, FileChannel channel) {
 		super(gm,input,NONE);
 		this.inputRing = input;
 		this.channel = channel;
-		assert(Pipe.from(input) == FieldReferenceOffsetManager.RAW_BYTES);
+		assert(Pipe.from(input) == RawDataSchema.FROM);
 
 	}
 

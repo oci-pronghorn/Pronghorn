@@ -29,7 +29,8 @@ public class GraphManager {
 	}
 	
     //Nota bene attachments
-	public final static String SCHEDULE_RATE = "SCHEDULE_RATE"; //in ns
+	public final static String SCHEDULE_RATE = "SCHEDULE_RATE"; //in ns - this is the delay between calls regardless of how long call takes
+	                                                        //If dependable/regular clock is required run should not return and do it internally.
 	public final static String MONITOR       = "MONITOR"; //this stage is not part of business logic but part of internal monitoring.
 	public final static String PRODUCER      = "PRODUCER";//explicit so it can be found even if it has feedback inputs.
 	public final static String STAGE_NAME    = "STAGE_NAME";
@@ -59,7 +60,7 @@ public class GraphManager {
 	private int topOutput = 0;
 	
 	//for lookup of RingBuffer from RingBuffer id
-	private Pipe[] ringIdToRing = new Pipe[INIT_RINGS];
+	private Pipe[] pipeIdToPipe = new Pipe[INIT_RINGS];
 	
 	//for lookup of Stage from Stage id
 	private PronghornStage[]  stageIdToStage = new PronghornStage[INIT_STAGES];
@@ -294,14 +295,14 @@ public class GraphManager {
 		
 		idx = m.stageIdToInputsBeginIdx[stageId];
 		while (-1 != (ringId=m.multInputIds[idx++])) {	
-			assert(0==Pipe.contentRemaining(m.ringIdToRing[ringId]));
-			regInput(clone, m.ringIdToRing[ringId], stageId);					
+			assert(0==Pipe.contentRemaining(m.pipeIdToPipe[ringId]));
+			regInput(clone, m.pipeIdToPipe[ringId], stageId);					
 		}				
 		
 		idx = m.stageIdToOutputsBeginIdx[stageId];
 		while (-1 != (ringId=m.multOutputIds[idx++])) {					
-			assert(0==Pipe.contentRemaining(m.ringIdToRing[ringId]));
-			regOutput(clone, m.ringIdToRing[ringId], stageId);					
+			assert(0==Pipe.contentRemaining(m.pipeIdToPipe[ringId]));
+			regOutput(clone, m.pipeIdToPipe[ringId], stageId);					
 		}		
 		
 		endStageRegister(clone);
@@ -533,7 +534,7 @@ public class GraphManager {
 		if (null!=output) {
 			int outputId = output.ringId;
 			pm.ringIdToStages = setValue(pm.ringIdToStages, (outputId*2) , stageId); //source +0 then target +1
-			pm.ringIdToRing = setValue(pm.ringIdToRing, outputId, output);				
+			pm.pipeIdToPipe = setValue(pm.pipeIdToPipe, outputId, output);				
 			pm.multOutputIds = setValue(pm.multOutputIds, pm.topOutput++, outputId);
 		}
 	}
@@ -543,7 +544,7 @@ public class GraphManager {
 		if (null!=input) {
 			int inputId = input.ringId;
 			pm.ringIdToStages = setValue(pm.ringIdToStages, (inputId*2)+1, stageId); //source +0 then target +1
-			pm.ringIdToRing = setValue(pm.ringIdToRing, inputId, input);
+			pm.pipeIdToPipe = setValue(pm.pipeIdToPipe, inputId, input);
 			pm.multInputIds = setValue(pm.multInputIds, pm.topInput++, inputId);
 		}
 	}
@@ -650,11 +651,11 @@ public class GraphManager {
 	    int ringId;
 	    
 	    while ((ringId = pm.multInputIds[inputPos++])>=0) {
-	    	Pipe.shutdown(pm.ringIdToRing[ringId]);	
+	    	Pipe.shutdown(pm.pipeIdToPipe[ringId]);	
 	    }
 	    
 	    while ((ringId = pm.multOutputIds[outputPos++])>=0) {
-		    Pipe.shutdown(pm.ringIdToRing[ringId]);	
+		    Pipe.shutdown(pm.pipeIdToPipe[ringId]);	
 		}
 	}
 
@@ -663,7 +664,7 @@ public class GraphManager {
 	}
 	
 	public static Pipe getRing(GraphManager gm, int ringId) {
-		return gm.ringIdToRing[ringId];
+		return gm.pipeIdToPipe[ringId];
 	}
 	
 	public static PronghornStage getRingProducer(GraphManager gm, int ringId) {
@@ -675,6 +676,34 @@ public class GraphManager {
 	}
 	
 
+	public static long delayRequiredMS(GraphManager m, int stageId) {
+	    int pipeIdx;  
+        int pipeId;
+        long waitTime = 0;
+        
+        pipeIdx = m.stageIdToInputsBeginIdx[stageId];
+        while ((pipeId = m.multInputIds[pipeIdx++])>=0) {            
+            if (Pipe.isRateLimitedConsumer(m.pipeIdToPipe[pipeId])) {
+                long t = Pipe.computeRateLimitConsumerDelay(m.pipeIdToPipe[pipeId]);
+                if (t>0) {
+                    waitTime = Math.max(waitTime,t);
+                }
+            }
+        }	
+        
+        pipeIdx = m.stageIdToOutputsBeginIdx[stageId];
+        while ((pipeId = m.multOutputIds[pipeIdx++])>=0) {            
+            if (Pipe.isRateLimitedProducer(m.pipeIdToPipe[pipeId])) {
+                long t = Pipe.computeRateLimitProducerDelay(m.pipeIdToPipe[pipeId]);
+                if (t>0) {
+                    waitTime = Math.max(waitTime,t);
+                }
+            }
+        }   
+        
+        
+	    return waitTime;
+	}
 	
 	/**
 	 * Return false only when every path is checked so every ring is empty and every stage is terminated.
@@ -685,16 +714,16 @@ public class GraphManager {
 			return false;
 		}		
 				
-		int ringId;
+		int pipeId;
 				
 		//if all the output targets have terminated return false because this data will never be consumed
 		//using this back pressure the shutdown of all stages can be done		
 		int outputPos  = m.stageIdToOutputsBeginIdx[stageId];
 		boolean noConsumers = true;
 		int count = 0;
-		while ((ringId = m.multOutputIds[outputPos++])>=0) {
+		while ((pipeId = m.multOutputIds[outputPos++])>=0) {
 			count++;
-			noConsumers = noConsumers & isStageTerminated(m,GraphManager.getRingConsumer(m, ringId).stageId);						
+			noConsumers = noConsumers & isStageTerminated(m,GraphManager.getRingConsumer(m, pipeId).stageId);						
 		}				
 		if (count>0 && noConsumers) {
 			//ignore input because all the consumers have already shut down
@@ -705,22 +734,22 @@ public class GraphManager {
 		int inputPos  = m.stageIdToInputsBeginIdx[stageId];
 		int inputCounts=0;
 		    
-		while ((ringId = m.multInputIds[inputPos++])>=0) {
+		while ((pipeId = m.multInputIds[inputPos++])>=0) {
 							
 				++inputCounts;
 				
 				//check that producer is terminated first.
-				if (isProducerTerminated(m, ringId)) {
+				if (isProducerTerminated(m, pipeId)) {
 					
 					//ensure that we do not have any old data still on the ring from the consumer batching releases
     
 					//splitter should never have release pending to release because it does not use the release counters	
-					if (Pipe.hasReleasePending(m.ringIdToRing[ringId])) {
-						Pipe.releaseAll(m.ringIdToRing[ringId]);
+					if (Pipe.hasReleasePending(m.pipeIdToPipe[pipeId])) {
+						Pipe.releaseAll(m.pipeIdToPipe[pipeId]);
 					}						
 					
 					//if producer is terminated check input ring, if not empty return true
-			    	if (Pipe.contentRemaining( m.ringIdToRing[ringId])>0) {
+			    	if (Pipe.contentRemaining( m.pipeIdToPipe[pipeId])>0) {
 			    		return true;
 			    	}
 				} else {
@@ -818,7 +847,7 @@ public class GraphManager {
 		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
 		while (-1 != (ringId=m.multOutputIds[idx++])) {		
 			if (--ordinalOutput<=0) {
-				return m.ringIdToRing[ringId];
+				return m.pipeIdToPipe[ringId];
 			}
 		}	
 		throw new UnsupportedOperationException("Invalid configuration. Unable to find requested output ordinal "+ordinalOutput);
@@ -845,7 +874,7 @@ public class GraphManager {
 		int idx = m.stageIdToInputsBeginIdx[stage.stageId];
 		while (-1 != (ringId=m.multInputIds[idx++])) {	
 			if (--ordinalInput<=0) {
-				return m.ringIdToRing[ringId];
+				return m.pipeIdToPipe[ringId];
 			}				
 		}				
 		throw new UnsupportedOperationException("Invalid configuration. Unable to find requested input ordinal "+ordinalInput);
@@ -879,9 +908,9 @@ public class GraphManager {
 	            }
 	        }
 	        
-	        int j = m.ringIdToRing.length;
+	        int j = m.pipeIdToPipe.length;
 	        while (--j>=0) {
-	            Pipe pipe = m.ringIdToRing[j];	            
+	            Pipe pipe = m.pipeIdToPipe[j];	            
 	            if (null!=pipe) {
 	                
 	                int producer = m.ringIdToStages[j*2];
@@ -907,7 +936,7 @@ public class GraphManager {
 		int ringId;
 		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
 		while (-1 != (ringId=m.multOutputIds[idx++])) {					
-			log.error("Output Queue :{}",m.ringIdToRing[ringId]);				
+			log.error("Output Queue :{}",m.pipeIdToPipe[ringId]);				
 		}	
 	}
 
@@ -915,7 +944,7 @@ public class GraphManager {
 		int ringId;
 		int idx = m.stageIdToInputsBeginIdx[stage.stageId];
 		while (-1 != (ringId=m.multInputIds[idx++])) {	
-			log.error("Input Queue :{}",m.ringIdToRing[ringId]);					
+			log.error("Input Queue :{}",m.pipeIdToPipe[ringId]);					
 		}				
 		
 	}
@@ -931,7 +960,7 @@ public class GraphManager {
 		int ringId;
 		int idx = m.stageIdToInputsBeginIdx[stageId];
 		while (-1 != (ringId=m.multInputIds[idx++])) {
-			m.ringIdToRing[ringId].initBuffers();				
+			m.pipeIdToPipe[ringId].initBuffers();				
 		}
 		//Does not return until some other stage has initialized the output rings
 		idx = m.stageIdToOutputsBeginIdx[stageId];
@@ -950,7 +979,7 @@ public class GraphManager {
 		        }
 		    }
 		    
-			while (!Pipe.isInit(m.ringIdToRing[ringId])) {
+			while (!Pipe.isInit(m.pipeIdToPipe[ringId])) {
 				Thread.yield();
 			}				
 		}	
@@ -959,10 +988,10 @@ public class GraphManager {
 	
 	public static Pipe[] attachMonitorsToGraph(GraphManager gm, Long monitorRate, PipeConfig ringBufferMonitorConfig) {
 
-		int j = gm.ringIdToRing.length;
+		int j = gm.pipeIdToPipe.length;
 		int count = 0;
 		while (--j>=0) {
-			if (null!=gm.ringIdToRing[j]) {
+			if (null!=gm.pipeIdToPipe[j]) {
 				count++;
 			}
 		}
@@ -971,10 +1000,10 @@ public class GraphManager {
 		}
 		Pipe[] monBuffers = new Pipe[count];
 		int monBufIdx = 0;
-		j = gm.ringIdToRing.length;
+		j = gm.pipeIdToPipe.length;
 		while (--j>=0) {
 			
-			Pipe ringBuffer = gm.ringIdToRing[j];
+			Pipe ringBuffer = gm.pipeIdToPipe[j];
 			//Do not monitor those rings that are part of other monitoring networks.
 			if (null!=ringBuffer && !ringHoldsMonitorData(gm, ringBuffer) ) {
 
@@ -999,9 +1028,9 @@ public class GraphManager {
     }
 
 	public static void enableBatching(GraphManager gm) {
-		int j = gm.ringIdToRing.length;
+		int j = gm.pipeIdToPipe.length;
 		while (--j>=0) {
-			Pipe ring = gm.ringIdToRing[j];
+			Pipe ring = gm.pipeIdToPipe[j];
 			//never enable batching on the monitor rings
 			if (null!=ring && !ringHoldsMonitorData(gm, ring) ) {
 				
@@ -1069,8 +1098,8 @@ public class GraphManager {
 		int ringId;
 		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
 		while (-1 != (ringId=m.multOutputIds[idx++])) {
-		    if (Pipe.getPublishBatchSize(m.ringIdToRing[ringId])>0) {
-		        Pipe.publishAllBatchedWrites(m.ringIdToRing[ringId]);	
+		    if (Pipe.getPublishBatchSize(m.pipeIdToPipe[ringId])>0) {
+		        Pipe.publishAllBatchedWrites(m.pipeIdToPipe[ringId]);	
 		    }
 		}
 		

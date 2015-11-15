@@ -12,8 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.components.ingestion.metaMessageUtil.MetaMessageDefs;
 import com.ociweb.pronghorn.components.ingestion.metaMessageUtil.TypeExtractor;
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -30,7 +30,7 @@ public class FieldSplitterStage extends PronghornStage {
 	private final Logger log = LoggerFactory.getLogger(FieldSplitterStage.class);
 	
 	 
-	private static final int step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+	private static final int step =  RawDataSchema.FROM.fragDataSize[0];
 	
     private static final byte[] quoter;
     static {
@@ -43,7 +43,7 @@ public class FieldSplitterStage extends PronghornStage {
 		this.inputRing = inputRing;
 		this.outputRing = outputRing;
 		
-		if (Pipe.from(inputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (Pipe.from(inputRing) != RawDataSchema.FROM) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages for input.");
 		}
 		

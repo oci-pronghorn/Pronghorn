@@ -95,7 +95,8 @@ public class MonitorConsoleStage extends PronghornStage {
 			
 			long value = hists[i].valueAtPercent(.5);
 			
-			if ((value>80 || value < 1 ) && (Histogram.sampleCount(hists[i])>2)) {
+			boolean inBounds = true;//value>80 || value < 1;
+            if (inBounds && (Histogram.sampleCount(hists[i])>2)) {
 				PronghornStage producer = GraphManager.getRingProducer(graphManager,  inputs[i].ringId);
 				//NOTE: may need to walk up tree till we find this object, (future feature)
 				String ringName;

@@ -5,8 +5,8 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -33,11 +33,11 @@ public class LineSplitterByteBufferStage extends PronghornStage {
     	
     	this.outputRing=outputRing;
         
-		if (Pipe.from(outputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (Pipe.from(outputRing) != RawDataSchema.FROM) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		
-		stepSize = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+		stepSize = RawDataSchema.FROM.fragDataSize[0];
 		
 	    //NOTE: this block has constants that could be moved up and out
 	    quoter = new byte[256]; //these are all zeros

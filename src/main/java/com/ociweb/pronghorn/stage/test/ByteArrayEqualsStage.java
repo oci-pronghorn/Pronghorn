@@ -1,6 +1,5 @@
 package com.ociweb.pronghorn.stage.test;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -11,7 +10,7 @@ public class ByteArrayEqualsStage extends PronghornStage {
     private Pipe<RawDataSchema> input;
     private byte[] expected;
     private int expectedPos;
-    private static final int SIZE = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+    private static final int SIZE = RawDataSchema.FROM.fragDataSize[0];
     boolean isEqual;
     
     public ByteArrayEqualsStage(GraphManager gm, Pipe<RawDataSchema> input, byte[] expected) {

@@ -16,7 +16,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	private ExecutorService executorService; 
 	private volatile boolean isShuttingDown = false;
     private volatile Throwable firstException;//will remain null if nothing is wrong
-	
+	public boolean playNice = true;
 	//TODO: add low priority to the periodic threads? 
 	//TODO: check for Thread.yedld() want to phase that out and use parkNano
 	//TODO: Generative testing, end to end match and each stage confirmed against schema, bounds, behavior, relationship
@@ -215,7 +215,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					Thread.currentThread().setName(stage.getClass().getSimpleName());
 					stage.startup();
 					
-					runPeriodicLoop(nsScheduleRate, stage);	
+					runPeriodicLoop(nsScheduleRate/1000000l, (int)(nsScheduleRate%1000000l), stage);	
 			
 					stage.shutdown();
 					GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
@@ -241,17 +241,26 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		int i = 0;
 
 		do {
+		    long delay =  GraphManager.delayRequiredMS(graphManager,stage.stageId);
+		    if (delay>0) {
+                try {
+                    Thread.sleep(delay);
+                } catch (InterruptedException e) {
+                    break;
+                }
+		    }
+		    
 			stage.run();			
 					
-			//before doing yield must push any batched up writes & reads
-			GraphManager.publishAllWrites(graphManager, stage);
-			//GraphManager.releaseAllReads(graphManager, stage);
 			
 			//one out of every 8 passes we will yield to play nice since we may end up with a lot of threads
-			if (0==(0x3&i++)){
+			if (playNice && 0==(0x3&i++)){
+			    //before doing yield must push any batched up writes & reads
+			    GraphManager.publishAllWrites(graphManager, stage);
 				LockSupport.parkNanos(1);
+				//GraphManager.releaseAllReads(graphManager, stage);
 			}
-		} while ( continueRunning(this, stage));
+		} while (continueRunning(this, stage));
 		
 //	    boolean debug = false;
 //	    if (debug) {
@@ -268,24 +277,20 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				GraphManager.mayHaveUpstreamData(tpss.graphManager, stage.stageId);
 	}
 
-	private void runPeriodicLoop(final long nsScheduleRate, final PronghornStage stage) {
+	private void runPeriodicLoop(final long msSleep, final int nsSleep, final PronghornStage stage) {
 		do {
-			long start = System.nanoTime();
-			
+		    //NOTE: This implementation is depended upon to run no faster than the requested rate. (eg i2c stage and others)
+		    //      Regardless of how long or short is spend inside run the same delay between calls is always enforced.
+		    
+		    try {
+		        Thread.sleep(msSleep, nsSleep);
+		    } catch (InterruptedException e) {
+		       Thread.currentThread().interrupt();
+		       return;
+		    }
+		    
 			stage.run();
 			
-			long sleepFor = nsScheduleRate - (long)(System.nanoTime()-start);
-						
-			if (sleepFor>0) {
-			    long sleepMs = sleepFor/1000000l;
-			    int sleepNs = (int)(sleepFor%1000000l);
-				try {
-					Thread.sleep(sleepMs, sleepNs);
-				} catch (InterruptedException e) {
-					break;
-				}
-			}
-									
 		} while (!isShuttingDown);
 	}
 }

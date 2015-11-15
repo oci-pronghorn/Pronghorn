@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
@@ -29,7 +28,7 @@ public class ToOutputStreamStage extends PronghornStage {
 		this.inputRing = inputRing;
 				
 		this.outputStream = outputStream;
-		this.step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+		this.step =  RawDataSchema.FROM.fragDataSize[0];
 		this.eol = eol;
 		
 	}
