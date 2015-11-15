@@ -13,8 +13,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 
 public class RingStreams {
 	
@@ -33,10 +33,10 @@ public class RingStreams {
 	 */
 	public static void writeToOutputStream(Pipe inputRing, OutputStream outputStream) throws IOException {
 				
-		long step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+		long step =  RawDataSchema.FROM.fragDataSize[0];
 		
 		 //this blind byte copy only works for this simple message type, it is not appropriate for other complex types
-		if (Pipe.from(inputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (Pipe.from(inputRing) != RawDataSchema.FROM) {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		
@@ -106,10 +106,10 @@ public class RingStreams {
 	 */
 	public static void writeToOutputStreams(Pipe inputRing, OutputStream... outputStreams) throws IOException {
 						
-		long step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+		long step =  RawDataSchema.FROM.fragDataSize[0];
 		
 		 //this blind byte copy only works for this simple message type, it is not appropriate for other complex types
-		if (Pipe.from(inputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (Pipe.from(inputRing) != RawDataSchema.FROM) {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		
@@ -180,8 +180,8 @@ public class RingStreams {
 	 * @throws IOException
 	 */
 	public static void readFromInputStream(InputStream inputStream, Pipe outputRing) throws IOException {
-		assert (Pipe.from(outputRing) == FieldReferenceOffsetManager.RAW_BYTES);
-		int step = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+		assert (Pipe.from(outputRing) == RawDataSchema.FROM);
+		int step = RawDataSchema.FROM.fragDataSize[0];
 		int fill =  1 + outputRing.mask - step;
 		int maxBlockSize = outputRing.maxAvgVarLen;
 		
@@ -228,9 +228,9 @@ public class RingStreams {
 	 * @param blockSize
 	 */
 	public static void writeBytesToRing(byte[] data, int dataOffset, int dataLength,  Pipe output, int blockSize) {
-		assert (Pipe.from(output) == FieldReferenceOffsetManager.RAW_BYTES);
+		assert (Pipe.from(output) == RawDataSchema.FROM);
 		
-	 	int fill = 1 + output.mask - FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+	 	int fill = 1 + output.mask - RawDataSchema.FROM.fragDataSize[0];
 		   
 		long tailPosCache = tailPosition(output);    
 		 
@@ -260,10 +260,10 @@ public class RingStreams {
 
 	public static void visitBytes(Pipe inputRing, ByteVisitor visitor) {
 		
-		long step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+		long step =  RawDataSchema.FROM.fragDataSize[0];
 		
 		 //this blind byte copy only works for this simple message type, it is not appropriate for other complex types
-		if (Pipe.from(inputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (Pipe.from(inputRing) != RawDataSchema.FROM) {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		

@@ -217,6 +217,13 @@ public class TemplateHandler extends DefaultHandler {
                         Long.parseLong(templateIdString.substring(2), 16) :    
                         Long.parseLong(templateIdString);
 
+                if (0==templateId) {
+                    throw new SAXException("TemplateId may not be set to zero, this value is reserved");
+                }
+                if (templateId<0) {
+                    throw new SAXException("TemplateId may not be negative, the value must be positive");
+                }
+                        
                 if (!LongHashTable.setItem(templateToOffset, templateId, templateOffset)) {
                 	throw new SAXException("Error in XML file, Duplicate template id: " + templateId+"(0x"+Long.toHexString(templateId)+")");
                 }

@@ -28,11 +28,13 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         startPosition = activePosition = Pipe.bytesWorkingHeadPosition(p);
     }
     
-    public void closeField(int targetFieldLoc) {
+    public int closeField(int targetFieldLoc) {
         //this method will also validate the length was in bound and throw unsupported operation if the pipe was not large enough
         //instead of fail fast as soon as one field goes over we wait to the end and only check once.
-        PipeWriter.writeSpecialBytesPosAndLen(p, targetFieldLoc, length(), startPosition);
+        int len = length();
+        PipeWriter.writeSpecialBytesPosAndLen(p, targetFieldLoc, len, startPosition);
         p.closeBlobFieldWrite();
+        return len;
     }
     
     public int length() {

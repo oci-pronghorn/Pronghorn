@@ -11,14 +11,14 @@ import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
 import java.io.IOException;
 import java.io.InputStream;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 
 public class RingInputStream extends InputStream implements AutoCloseable {
 
 	private final Pipe ring;
 	private final int sourceByteMask;
-	private final int recordSize = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+	private final int recordSize = RawDataSchema.FROM.fragDataSize[0];
 	
 	private int remainingSourceLength = -1;
 	private int remainingSourceMeta;
@@ -32,7 +32,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 	public RingInputStream(Pipe ring) {
 		this.ring = ring;
 		this.sourceByteMask = ring.byteMask;
-		if (Pipe.from(ring) != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (Pipe.from(ring) != RawDataSchema.FROM) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 	}

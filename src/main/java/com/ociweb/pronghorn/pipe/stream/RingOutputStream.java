@@ -6,8 +6,8 @@ import static com.ociweb.pronghorn.pipe.Pipe.tailPosition;
 
 import java.io.OutputStream;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 
 public class RingOutputStream extends OutputStream implements AutoCloseable {
 
@@ -19,7 +19,7 @@ public class RingOutputStream extends OutputStream implements AutoCloseable {
 		this.ring = ring;
 		blockSize = ring.maxAvgVarLen;
 		
-		if (Pipe.from(ring) != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (Pipe.from(ring) != RawDataSchema.FROM) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 	}

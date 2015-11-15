@@ -4,8 +4,7 @@ public class PipeRegulator {
     
     private long regulatorTimeBase = System.currentTimeMillis();
     private long regulatorPositionBase = 0;
-    
-    private final int regulatorMsgPerMsBase2;
+    private long divisor;
     
     /**
      * Helper method so the scheduler can get the number of MS that this stage should wait before reschedule.
@@ -14,20 +13,17 @@ public class PipeRegulator {
      * 
      * @param maxMsgPerMs
      */
-    public PipeRegulator(int maxMsgPerMs) {
-        this.regulatorMsgPerMsBase2 = (int)Math.ceil(Math.log(maxMsgPerMs)/Math.log(2));        
+    public PipeRegulator(int maxMsgPerMs, int avgMsgSize) {
+        this.divisor = (long)avgMsgSize*(long)maxMsgPerMs;
     }    
     
-    public static <S extends MessageSchema> long computeRateLimitDelay(Pipe<S> pipe, long position, long now, PipeRegulator regulator) {
-        long expectedNow = regulator.regulatorTimeBase + ((position-regulator.regulatorPositionBase) >> regulator.regulatorMsgPerMsBase2);
-        if (expectedNow>now) {
-            return expectedNow-now;
-        } else {
-            //restart the clock to prevent "banking of events" when nothing is getting passed.
-            regulator.regulatorTimeBase = now;
-            regulator.regulatorPositionBase = position;
-            return 0;
-        }
+    public static <S extends MessageSchema> long computeRateLimitDelay(Pipe<S> pipe, long position, PipeRegulator regulator) {
+        long expectedNow = regulator.regulatorTimeBase + ((position-regulator.regulatorPositionBase)/regulator.divisor);
+        long dif = expectedNow-System.currentTimeMillis();
+        
+      //  System.out.println(dif+"  "+regulator.divisor);
+        
+        return dif;
     }
     
 }

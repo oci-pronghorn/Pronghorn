@@ -509,15 +509,15 @@ public final class Pipe<T extends MessageSchema> {
      * from this pipe.  This is based on the rate configuration.  
      */
     public static <S extends MessageSchema> long computeRateLimitConsumerDelay(Pipe<S> pipe) {        
-        return PipeRegulator.computeRateLimitDelay(pipe, Pipe.getWorkingTailPosition(pipe), System.currentTimeMillis(), pipe.regulatorConsumer);
+        return PipeRegulator.computeRateLimitDelay(pipe, Pipe.getWorkingTailPosition(pipe), pipe.regulatorConsumer);
     }
 
     /**
      * Returns mili-second count of how much time should pass before producing more data 
      * into this pipe.  This is based on the rate configuration.  
      */
-    public static <S extends MessageSchema> long computeRateLimitProduerDelay(Pipe<S> pipe) {        
-        return PipeRegulator.computeRateLimitDelay(pipe, Pipe.getWorkingTailPosition(pipe), System.currentTimeMillis(), pipe.regulatorProducer);
+    public static <S extends MessageSchema> long computeRateLimitProducerDelay(Pipe<S> pipe) {        
+        return PipeRegulator.computeRateLimitDelay(pipe, Pipe.workingHeadPosition(pipe), pipe.regulatorProducer);
     }
     
     
@@ -697,16 +697,16 @@ public final class Pipe<T extends MessageSchema> {
 		return this;
     }
     
-    public static <S extends MessageSchema> void setConsumerRegulation(Pipe<S> pipe, int msgPerMs) {
+    public static <S extends MessageSchema> void setConsumerRegulation(Pipe<S> pipe, int msgPerMs, int msgSize) {
         assert(null==pipe.regulatorConsumer) : "regulator must only be set once";
         assert(!isInit(pipe)) : "regular may only be set before scheduler has intitailized the pipe";
-        pipe.regulatorConsumer = new PipeRegulator(msgPerMs);
+        pipe.regulatorConsumer = new PipeRegulator(msgPerMs, msgSize);
     }
   
-    public static <S extends MessageSchema> void setProducerRegulation(Pipe<S> pipe, int msgPerMs) {
+    public static <S extends MessageSchema> void setProducerRegulation(Pipe<S> pipe, int msgPerMs, int msgSize) {
         assert(null==pipe.regulatorProducer) : "regulator must only be set once";
         assert(!isInit(pipe)) : "regular may only be set before scheduler has intitailized the pipe";
-        pipe.regulatorProducer = new PipeRegulator(msgPerMs);
+        pipe.regulatorProducer = new PipeRegulator(msgPerMs, msgSize);
     } 
     
 	private void buildBuffers() {
@@ -2636,6 +2636,10 @@ public final class Pipe<T extends MessageSchema> {
 
     public static <S extends MessageSchema> PaddedLong getWorkingHeadPositionObject(Pipe<S> rb) {
         return rb.slabRingHead.workingHeadPos;
+    }
+
+    public static <S extends MessageSchema> int sizeOf(Pipe<S> pipe, int msgIdx) {
+        return pipe.schema.from.fragDataSize[msgIdx];
     }
 
 

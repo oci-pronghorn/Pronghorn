@@ -8,9 +8,6 @@ import com.ociweb.pronghorn.pipe.token.TypeMask;
 
 public class FieldReferenceOffsetManager {
 	
-	private static final String NAME_BYTE_ARRAY = "ByteArray";
-	private static final String NAME_CHUNKED_STREAM = "Chunked Stream";
-	
 	public static final int SEQ     = 0x10000000;
 	public static final int MSG_END = 0x80000000;
 	
@@ -39,23 +36,8 @@ public class FieldReferenceOffsetManager {
 	private final int absentInt = TokenBuilder.absentValue32(TokenBuilder.MASK_ABSENT_DEFAULT);
 	private final long absentLong = TokenBuilder.absentValue64(TokenBuilder.MASK_ABSENT_DEFAULT); 
 	
-    
-    private static int[] SINGLE_MESSAGE_BYTEARRAY_TOKENS = new int[]{
-    																TokenBuilder.buildToken(TypeMask.Group, 0, 0),
-    																TokenBuilder.buildToken(TypeMask.ByteArray, OperatorMask.Field_None, 1),
-						                                            TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Close, 0)
-    };
-	private static String[] SINGLE_MESSAGE_BYTEARRAY_NAMES = new String[]{NAME_CHUNKED_STREAM,NAME_BYTE_ARRAY,null};
-	private static long[] SINGLE_MESSAGE_BYTEARRAY_IDS = new long[]{0,1,0};
-	private static final short ZERO_PREMABLE = 0;
-	public static final FieldReferenceOffsetManager RAW_BYTES = new FieldReferenceOffsetManager(SINGLE_MESSAGE_BYTEARRAY_TOKENS, 
-			                                                                                    ZERO_PREMABLE, 
-			                                                                                    SINGLE_MESSAGE_BYTEARRAY_NAMES, 
-			                                                                                    SINGLE_MESSAGE_BYTEARRAY_IDS,
-			                                                                                    NAME_CHUNKED_STREAM);
-		
-	public static int LOC_CHUNKED_STREAM = 0;
-	public static int LOC_CHUNKED_STREAM_FIELD = FieldReferenceOffsetManager.lookupFieldLocator(FieldReferenceOffsetManager.NAME_BYTE_ARRAY, LOC_CHUNKED_STREAM, FieldReferenceOffsetManager.RAW_BYTES);
+	public static int LOC_CHUNKED_STREAM = RawDataSchema.MSG_CHUNKEDSTREAM_1;
+	public static int LOC_CHUNKED_STREAM_FIELD = RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2;
 	
 	
 	private final static int[] EMPTY = new int[0];

@@ -16,7 +16,7 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 
 public class RingBufferSingleTemplateUTF8Test {
 
-	final FieldReferenceOffsetManager FROM = FieldReferenceOffsetManager.RAW_BYTES;
+	final FieldReferenceOffsetManager FROM = RawDataSchema.FROM;
 	final int FRAG_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
 	
 	final byte primaryRingSizeInBits = 3; 

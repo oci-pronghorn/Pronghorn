@@ -106,10 +106,17 @@ public class FROMValidation {
     	                
     	                
     	                int fieldLOC = FieldReferenceOffsetManager.paranoidLookupFieldLocator(imsgFieldId, msgFieldName, expectedMsgIdx, encodedFrom);
+    	                
+    	                //TODO: if two fields are the same need to build a single constant that can be used for either
+    	                //      check if fieldLoc matches and fieldname and fieldid all match
+                        //       
+    	                
+    	                
     	                String messageFieldConstantName = messageConstantName+"_FIELD_"+msgFieldName.toUpperCase()+"_"+imsgFieldId;
     	                
     	                appendAssignmentCode(generatedSource, messageFieldConstantName, fieldLOC);
-    	                    	                
+    	                
+    	                
     	                found = false;
     	                j = fields.length;
     	                while (--j>=0 && !found) {

@@ -5,8 +5,8 @@ import static com.ociweb.pronghorn.pipe.Pipe.tailPosition;
 
 import java.io.IOException;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 
 public class AppendableUTF8Ring implements Appendable {
 
@@ -15,12 +15,12 @@ public class AppendableUTF8Ring implements Appendable {
 	private long outputTarget;
 	private long tailPosCache;
 	
-	private final static int step = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+	private final static int step = RawDataSchema.FROM.fragDataSize[0];
 	
 	public AppendableUTF8Ring(Pipe ringBuffer) {
 
 		this.ringBuffer = ringBuffer;
-		if (Pipe.from(ringBuffer) != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (Pipe.from(ringBuffer) != RawDataSchema.FROM) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		int messagesPerRing = (1<<(ringBuffer.bitsOfSlabRing-1));
