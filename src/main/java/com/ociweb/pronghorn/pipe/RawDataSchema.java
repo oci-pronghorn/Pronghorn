@@ -17,6 +17,10 @@ public class RawDataSchema extends MessageSchema {
     public static final int MSG_CHUNKEDSTREAM_1 = 0x0;
     public static final int MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2 = 0x7000001;
     
+    protected RawDataSchema(FieldReferenceOffsetManager from) {
+        super(from);
+    }
+    
     protected RawDataSchema() {
         super(FROM);
     }
