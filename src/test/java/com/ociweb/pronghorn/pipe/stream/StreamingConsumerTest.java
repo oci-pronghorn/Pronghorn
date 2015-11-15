@@ -86,7 +86,7 @@ public class StreamingConsumerTest {
 	@Test
 	public void sequenceFragmentWriteRead() {    
     	
-		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  new MessageSchemaDynamic(FROM)));
+		Pipe<MessageSchemaDynamic> ring = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(primaryRingSizeInBits, byteRingSizeInBits, null,  new MessageSchemaDynamic(FROM)));
 		ring.initBuffers();
 		int testSize = 5;
 		
@@ -122,7 +122,7 @@ public class StreamingConsumerTest {
 	    final int aNegIntValue = -29;//hard coded value that comes from this seed 2
         
 	    
-	       Pipe ring = new Pipe(new PipeConfig( new MessageSchemaDynamic(FROM), 50, 30));
+	       Pipe<MessageSchemaDynamic> ring = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>( new MessageSchemaDynamic(FROM), 50, 30));
 	       ring.initBuffers();
 	       
 	       
@@ -164,8 +164,8 @@ public class StreamingConsumerTest {
 	@Test
 	public void matchingTestPositive() {
 	    
-        Pipe ring1 = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  new MessageSchemaDynamic(FROM)));
-        Pipe ring2 = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
+        Pipe<MessageSchemaDynamic> ring1 = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(primaryRingSizeInBits, byteRingSizeInBits, null,  new MessageSchemaDynamic(FROM)));
+        Pipe<MessageSchemaDynamic> ring2 = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
         
         ring1.initBuffers();
         ring2.initBuffers();
@@ -215,8 +215,8 @@ public class StreamingConsumerTest {
     @Test
     public void matchingTestNegative() {
         
-        Pipe ring1 = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  new MessageSchemaDynamic(FROM)));
-        Pipe ring2 = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  new MessageSchemaDynamic(FROM)));
+        Pipe<MessageSchemaDynamic> ring1 = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(primaryRingSizeInBits, byteRingSizeInBits, null,  new MessageSchemaDynamic(FROM)));
+        Pipe<MessageSchemaDynamic> ring2 = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(primaryRingSizeInBits, byteRingSizeInBits, null,  new MessageSchemaDynamic(FROM)));
         
         ring1.initBuffers();
         ring2.initBuffers();
@@ -260,7 +260,7 @@ public class StreamingConsumerTest {
         
     }
 	
-	private void populateRingBufferWithSequence(Pipe ring, int testSize) {
+	private void populateRingBufferWithSequence(Pipe<MessageSchemaDynamic> ring, int testSize) {
 		
 	    
 	    

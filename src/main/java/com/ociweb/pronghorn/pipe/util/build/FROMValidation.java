@@ -60,7 +60,7 @@ public class FROMValidation {
 	        if (null!=name) {
     	        long id = encodedFrom.fieldIdScript[expectedMsgIdx];
     	        
-    	        String messageConstantName = "MSG_"+name.toUpperCase()+"_"+id;
+    	        String messageConstantName = "MSG_"+name.toUpperCase().replace(' ','_')+"_"+id;
     	        
     	        appendAssignmentCode(generatedSource, messageConstantName, expectedMsgIdx);
     	            	        
@@ -112,7 +112,7 @@ public class FROMValidation {
                         //       
     	                
     	                
-    	                String messageFieldConstantName = messageConstantName+"_FIELD_"+msgFieldName.toUpperCase()+"_"+imsgFieldId;
+    	                String messageFieldConstantName = messageConstantName+"_FIELD_"+msgFieldName.toUpperCase().replace(' ','_')+"_"+imsgFieldId;
     	                
     	                appendAssignmentCode(generatedSource, messageFieldConstantName, fieldLOC);
     	                

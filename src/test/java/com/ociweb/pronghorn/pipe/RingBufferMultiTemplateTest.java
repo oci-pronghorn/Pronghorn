@@ -453,7 +453,7 @@ public class RingBufferMultiTemplateTest {
     	byte byteRingSizeInBits = 16;
     
     	
-		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
+		Pipe<MessageSchemaDynamic> ring = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
 		ring.initBuffers();
 		int testSize = 5;
 		
