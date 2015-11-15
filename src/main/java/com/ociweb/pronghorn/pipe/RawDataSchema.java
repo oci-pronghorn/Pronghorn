@@ -18,6 +18,7 @@ public class RawDataSchema extends MessageSchema {
     public static final int MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2 = 0x7000001;
     
     protected RawDataSchema(FieldReferenceOffsetManager from) {
+        //TODO: confirm that from is a superset of FROM, Names need not match but IDs must.
         super(from);
     }
     
