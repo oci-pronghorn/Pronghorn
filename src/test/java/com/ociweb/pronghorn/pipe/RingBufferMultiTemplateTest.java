@@ -108,7 +108,7 @@ public class RingBufferMultiTemplateTest {
     	
     	boolean testReplayFeature = true;
     	
-		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
+		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
 		ring.initBuffers();
 		//Setup the test data sizes derived from the templates used
 		byte[] target = new byte[ring.maxAvgVarLen];
@@ -200,7 +200,7 @@ public class RingBufferMultiTemplateTest {
     	
     	boolean testReplayFeature = true;
     	
-		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
+		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
 		ring.initBuffers();
 		//Setup the test data sizes derived from the templates used
 		byte[] target = new byte[ring.maxAvgVarLen];
@@ -311,7 +311,7 @@ public class RingBufferMultiTemplateTest {
 	}
 	
 	
-	private void populateRingBufferHighLevel(Pipe ring, int blockSize, int testSize) {
+	private void populateRingBufferHighLevel(Pipe<RawDataSchema> ring, int blockSize, int testSize) {
 		
 		int[] templateIds = new int[] {2,1,4};
 		int j = testSize;
@@ -376,7 +376,7 @@ public class RingBufferMultiTemplateTest {
         }
 	}
 
-	private void populateRingBufferLowLevel(Pipe ring, int blockSize, int testSize) {
+	private void populateRingBufferLowLevel(Pipe<RawDataSchema> ring, int blockSize, int testSize) {
 		
 		int[] templateIds = new int[] {2,1,4};
 		int j = testSize;
@@ -453,7 +453,7 @@ public class RingBufferMultiTemplateTest {
     	byte byteRingSizeInBits = 16;
     
     	
-		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
+		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
 		ring.initBuffers();
 		int testSize = 5;
 		
@@ -547,7 +547,7 @@ public class RingBufferMultiTemplateTest {
 	@Test
 	public void zeroSequenceFragmentWriteRead() {
     	
-		Pipe ring = new Pipe(new PipeConfig(new MessageSchemaDynamic(FROM), 60, 60));
+		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(new MessageSchemaDynamic(FROM), 60, 60));
 		ring.initBuffers();
 		int testSize = 25;
 		
@@ -593,7 +593,7 @@ public class RingBufferMultiTemplateTest {
 		
 	}
 
-	private void populateRingBufferWithZeroSequence(Pipe ring, int testSize) {
+	private void populateRingBufferWithZeroSequence(Pipe<RawDataSchema> ring, int testSize) {
 		
 		int j = testSize;
         while (--j>=0) {

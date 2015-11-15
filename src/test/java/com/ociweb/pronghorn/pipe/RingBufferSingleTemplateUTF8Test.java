@@ -25,7 +25,7 @@ public class RingBufferSingleTemplateUTF8Test {
     @Test
     public void simpleBytesWriteRead() {
         	
-		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
+		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
 		ring.initBuffers();
     	        
         int varDataMax = ring.maxAvgVarLen / 5; //fewer chars for UTF8        
@@ -128,7 +128,7 @@ public class RingBufferSingleTemplateUTF8Test {
     public void simpleBytesWriteReadThreaded() {
     
 
-    	final Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
+    	final Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
     	ring.initBuffers();
     	
         final int varDataMax = ring.maxAvgVarLen >> 3; //fewer chars for UTF8        

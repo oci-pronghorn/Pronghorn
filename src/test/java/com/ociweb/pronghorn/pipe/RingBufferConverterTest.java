@@ -11,10 +11,6 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 
 public class RingBufferConverterTest {
-
-    final FieldReferenceOffsetManager FROM = RawDataSchema.FROM;
-    final int FRAG_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
-    final int FRAG_FIELD = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD;
     
     @Test
     public void longToASCIITest() {
@@ -22,7 +18,7 @@ public class RingBufferConverterTest {
         byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
         byte byteRingSizeInBits = 16;
         
-        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, RawDataSchema.instance));
+        Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, RawDataSchema.instance));
         ring.initBuffers();
                 
         Pipe.validateVarLength(ring, 10);
@@ -46,7 +42,7 @@ public class RingBufferConverterTest {
         byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
         byte byteRingSizeInBits = 16;
         
-        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
+        Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
         ring.initBuffers();
         ring.reset(0,0);
         
@@ -71,7 +67,7 @@ public class RingBufferConverterTest {
         byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
         byte byteRingSizeInBits = 16;
         
-        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
+        Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
         ring.initBuffers();
         
         Pipe.validateVarLength(ring, 7);
@@ -133,7 +129,7 @@ public class RingBufferConverterTest {
         byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
         byte byteRingSizeInBits = 16;
         
-        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
+        Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
         ring.initBuffers();
         ring.reset(0,0);
         
