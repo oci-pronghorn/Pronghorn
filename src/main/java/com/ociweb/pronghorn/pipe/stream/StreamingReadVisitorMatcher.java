@@ -17,7 +17,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     private final Pipe expectedInput;
     private final FieldReferenceOffsetManager expectedFrom;
     private boolean needsClose = false;
-    
+
     public StreamingReadVisitorMatcher(Pipe expectedInput) {
         this.expectedInput = expectedInput;
         this.expectedFrom = Pipe.from(expectedInput);
@@ -31,14 +31,14 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     @Override
     public void visitTemplateOpen(String name, long id) {
         needsClose = true;
-        
+
         int msgIdx = Pipe.takeMsgIdx(expectedInput);
-        
+
         if (id != expectedFrom.fieldIdScript[msgIdx]) {
             throw new AssertionError("expected message id: "+expectedFrom.fieldIdScript[msgIdx]+" was given "+id);
         }
-        
-        
+
+
     }
 
     @Override
@@ -47,7 +47,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
             needsClose = false;
             Pipe.releaseReads(expectedInput);
         }
-        
+
     }
 
 
@@ -59,12 +59,12 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     @Override
     public void visitFragmentClose(String name, long id) {
         if (needsClose) {
-            needsClose = false;            
+            needsClose = false;
             Pipe.releaseReads(expectedInput);
-        }  
+        }
     }
 
-        
+
     @Override
     public void visitSequenceOpen(String name, long id, int length) {
 
@@ -81,7 +81,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     }
 
     @Override
-    public void visitSignedInteger(String name, long id, int value) { 
+    public void visitSignedInteger(String name, long id, int value) {
         needsClose = true;
         if (Pipe.takeValue(expectedInput) != value) {
             throw new AssertionError();
@@ -108,7 +108,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     @Override
     public void visitUnsignedLong(String name, long id, long value) {
         needsClose = true;
-        
+
         long temp;
         if ((temp=Pipe.takeLong(expectedInput)) != value) {
             throw new AssertionError("expected long: "+Long.toHexString(temp)+" but got "+Long.toHexString(value));
@@ -133,28 +133,28 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         needsClose = true;
         int meta = takeRingByteMetaData(expectedInput);
         int len = takeRingByteLen(expectedInput);
-        int pos = bytePosition(meta, expectedInput, len);               
+        int pos = bytePosition(meta, expectedInput, len);
         byte[] data = byteBackingArray(meta, expectedInput);
         int mask = blobMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
-        
+
         //ascii so the bytes will match the chars
         CharSequence seq = (CharSequence)value;
-        
+
         if (seq.length() != len) {
             throw new AssertionError("expected ASCII length: "+Long.toHexString(len)+" but got "+Long.toHexString(seq.length()));
         }
-        
+
         int i = 0;
         while (i<len) {
             byte actual = (byte)seq.charAt(i);
             byte expected = data[mask&(i+pos)];
             if (actual != expected) {
                 throw new AssertionError("ASCII does not match at index "+i+" of length "+len);
-                
+
             }
             i++;
         }
-        
+
     }
 
     @Override
@@ -162,14 +162,14 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         needsClose = true;
         int meta = takeRingByteMetaData(expectedInput);
         int len = takeRingByteLen(expectedInput);
-        int pos = bytePosition(meta, expectedInput, len);               
+        int pos = bytePosition(meta, expectedInput, len);
         byte[] data = byteBackingArray(meta, expectedInput);
         int mask = blobMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
-        
+
         CharSequence seq = (CharSequence)value;
         int seqPos = 0;
-        
-        //we must check that seq equals the text encoded in data and if they do not match throw an AssertionError.        
+
+        //we must check that seq equals the text encoded in data and if they do not match throw an AssertionError.
         long charAndPos = ((long)pos)<<32;
         long limit = ((long)pos+len)<<32;
 
@@ -184,24 +184,25 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
 
     @Override
     public void visitBytes(String name, long id, ByteBuffer value) {
+        value.flip();
         needsClose = true;
         int meta = takeRingByteMetaData(expectedInput);
         int len = takeRingByteLen(expectedInput);
-        int pos = bytePosition(meta, expectedInput, len);               
+        int pos = bytePosition(meta, expectedInput, len);
         byte[] data = byteBackingArray(meta, expectedInput);
         int mask = blobMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
-        
+
         if (value.remaining() != len) {
             throw new AssertionError("expected bytes length: "+Long.toHexString(len)+" but got "+Long.toHexString(value.remaining()));
         }
-        
+
         int i = 0;
         while (i<len) {
             byte actual = value.get(i+value.position());
             byte expected = data[mask&(i+pos)];
             if (actual != expected) {
                 throw new AssertionError("ASCII does not match at index "+i+" of length "+len);
-                
+
             }
             i++;
         }
