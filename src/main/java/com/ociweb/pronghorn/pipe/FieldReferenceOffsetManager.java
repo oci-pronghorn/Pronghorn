@@ -356,6 +356,12 @@ public class FieldReferenceOffsetManager {
 			j++;
 		}
 	}
+    
+    public static int extractTypeFromLoc(int fieldLoc) {
+        
+        return ( RW_FIELD_OFF_BITS >> fieldLoc ) & TokenBuilder.MASK_TYPE;
+
+    }
 
 	public static boolean isGroupSequence(FieldReferenceOffsetManager from, int cursor) {
 		return 0 != (OperatorMask.Group_Bit_Seq&TokenBuilder.extractOper(from.tokens[cursor]));
@@ -668,5 +674,7 @@ public class FieldReferenceOffsetManager {
         }
         return true;
     }
+
+
     
 }

@@ -116,7 +116,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     }
 
 	public static Appendable readUTF8(Pipe ring, int loc, Appendable target) {
-		assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+		assert(TypeMask.isOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)) : "Expected to read some type of UTF8/BYTE but found "+TokenBuilder.tokenToString(loc);
 		
         int pos = Pipe.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         return Pipe.readUTF8(ring, target, pos, PipeReader.readDataLength(ring, loc));

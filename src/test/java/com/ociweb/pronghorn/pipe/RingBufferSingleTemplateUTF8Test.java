@@ -13,6 +13,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
+import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 
 public class RingBufferSingleTemplateUTF8Test {
 
@@ -48,12 +49,14 @@ public class RingBufferSingleTemplateUTF8Test {
 	        	String testString = buildTestString(expectedCharLength);
 	        	assert(testString.length()==expectedCharLength);
 	        	
+	        	
+	        	
 	        	if (0==(k&1)) {
-		        	int actualLength = ((StringBuilder)PipeReader.readUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, target)).length();
+		        	int actualLength = ((StringBuilder)PipeReader.readUTF8(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, target)).length();
 		        	assertEquals(expectedCharLength,actualLength);
 		        	assertEquals(testString,target.toString());
 	        	} else {
-		        	int actualLength = PipeReader.readUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, target2, 0);
+		        	int actualLength = PipeReader.readUTF8(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, target2, 0);
 		        	assertEquals(expectedCharLength,actualLength);
 		        	
 		        	int j = expectedCharLength;

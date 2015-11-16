@@ -4,7 +4,9 @@ import java.lang.reflect.Field;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
+import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 
 public class FROMValidation {
 
@@ -110,13 +112,10 @@ public class FROMValidation {
     	                //TODO: if two fields are the same need to build a single constant that can be used for either
     	                //      check if fieldLoc matches and fieldname and fieldid all match
                         //       
-    	                
-    	                
-    	                String messageFieldConstantName = messageConstantName+"_FIELD_"+msgFieldName.toUpperCase().replace(' ','_')+"_"+imsgFieldId;
-    	                
+    	                    	                
+    	                String messageFieldConstantName = messageConstantName+"_FIELD_"+msgFieldName.toUpperCase().replace(' ','_')+"_"+imsgFieldId;    	                
     	                appendAssignmentCode(generatedSource, messageFieldConstantName, fieldLOC);
-    	                
-    	                
+    	        
     	                found = false;
     	                j = fields.length;
     	                while (--j>=0 && !found) {

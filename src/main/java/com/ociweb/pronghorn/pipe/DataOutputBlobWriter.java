@@ -2,17 +2,16 @@ package com.ociweb.pronghorn.pipe;
 
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-
-import com.ociweb.pronghorn.pipe.MessageSchema;
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeWriter;
 
 public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream implements DataOutput {
 
     private final Pipe<S> p;
     private final byte[] byteBuffer;
     private final int byteMask;
+    
+    private ObjectOutputStream oos;
     
     private int startPosition;
     private int activePosition;
@@ -51,6 +50,14 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return result;
     }
     
+    public void writeObject(Object object) throws IOException {
+            if (null==oos) {
+                oos = new ObjectOutputStream(this);
+            }            
+            oos.writeObject(object); //TODO:: this needs testing
+            oos.flush();
+    }
+    
     @Override
     public void write(int b) throws IOException {
         byteBuffer[byteMask & activePosition++] = (byte)b;
@@ -83,7 +90,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
 
     @Override
     public void writeChar(int v) throws IOException {
-        activePosition = write32(byteBuffer, byteMask, activePosition, v); 
+        activePosition = write16(byteBuffer, byteMask, activePosition, v); 
     }
 
     @Override
@@ -125,7 +132,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         int pos = activePosition;
         int len = s.length();
         for (int i = 0; i < len; i ++) {
-            pos = write32(localBuf, mask, pos, (int) s.charAt(i));
+            pos = write16(localBuf, mask, pos, (int) s.charAt(i));
         }
         activePosition = pos;
         
@@ -197,7 +204,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     private int writeCharArray(char[] chars, int len, byte[] bufLocal, int mask, int pos) {
         pos = write32(bufLocal, mask, pos, len);
         for(int i=0;i<len;i++) {
-            pos = write32(bufLocal, mask, pos, (int) chars[i]);
+            pos = write16(bufLocal, mask, pos, (int) chars[i]);
         }
         return pos;
     }

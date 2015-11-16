@@ -3,6 +3,8 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.pronghorn.pipe.token;
 
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+
 public final class TypeMask {
 
     // each group of "similar" types must stay together as a block.
@@ -129,4 +131,78 @@ public final class TypeMask {
 
     }
 
+    public static boolean isOfAnyType(int fieldLoc, int type1) {        
+        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
+        return extractedType==type1;
+    }
+    
+    public static boolean isOfAnyType(int fieldLoc, int type1, int type2) {
+        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
+        return extractedType==type1 || 
+               extractedType==type2;
+    }
+    
+    public static boolean isOfAnyType(int fieldLoc, int type1, int type2, int type3) {
+        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
+        return extractedType==type1 || 
+               extractedType==type2 ||
+               extractedType==type3;
+    }
+    
+    public static boolean isOfAnyType(int fieldLoc, int type1, int type2, int type3, int type4) {
+        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
+        return extractedType==type1 || 
+               extractedType==type2 ||
+               extractedType==type3 ||
+               extractedType==type4;
+    }
+    
+    public static boolean isOfAnyType(int fieldLoc, int type1, int type2, int type3, int type4, int type5) {
+        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
+        return extractedType==type1 || 
+               extractedType==type2 ||
+               extractedType==type3 ||
+               extractedType==type4 ||
+               extractedType==type5; 
+    }
+
+    public static boolean isOfAnyType(int fieldLoc, int type1, int type2, int type3, int type4, int type5, int type6) {
+        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
+        return extractedType==type1 || 
+               extractedType==type2 ||
+               extractedType==type3 ||
+               extractedType==type4 ||
+               extractedType==type5 ||
+               extractedType==type6;
+    }
+ 
+    public static boolean isOfAnyType(int fieldLoc, int type1, int type2, int type3, int type4, int type5, int type6, int type7) {
+        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
+        return extractedType==type1 || 
+               extractedType==type2 ||
+               extractedType==type3 ||
+               extractedType==type4 ||
+               extractedType==type5 ||
+               extractedType==type6 ||
+               extractedType==type7;
+    }
+
+    public static boolean isOfAnyType(int fieldLoc, int type1, int type2, int type3, int type4, int type5, int type6, int type7, int type8) {
+        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
+        return extractedType==type1 || 
+               extractedType==type2 ||
+               extractedType==type3 ||
+               extractedType==type4 ||
+               extractedType==type5 ||
+               extractedType==type6 ||
+               extractedType==type7 ||
+               extractedType==type8;
+    }
+    
+    
+    
+    
+    
+    
+    
 }
