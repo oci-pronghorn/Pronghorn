@@ -534,6 +534,10 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		return ringBuffer.ringWalker.nextWorkingTail>0 ? Pipe.primaryBuffer(ringBuffer)[ringBuffer.mask & (int)(ringBuffer.ringWalker.nextWorkingTail-1)] : 0;
 	}
 	
+	public static boolean hasContentToRead(Pipe pipe) {
+	    return StackStateWalker.hasContentToRead(pipe);
+	}
+	
 	//this impl only works for simple case where every message is one fragment. 
 	public static boolean tryReadFragment(Pipe ringBuffer) {
 		

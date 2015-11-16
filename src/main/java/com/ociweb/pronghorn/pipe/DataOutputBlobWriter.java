@@ -138,6 +138,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         
     }
 
+
     @Override
     public void writeUTF(String s) throws IOException {
         activePosition = encodeAsUTF8(s, s.length(), byteMask, byteBuffer, activePosition);
@@ -183,6 +184,17 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     
     public void writeUTF(CharSequence s) throws IOException {
         activePosition = encodeAsUTF8(s, s.length(), byteMask, byteBuffer, activePosition);
+    }    
+    
+    public void writeASCII(CharSequence s) {
+        byte[] localBuf = byteBuffer;
+        int mask = byteMask;
+        int pos = activePosition;
+        int len = s.length();        
+        for (int i = 0; i < len; i ++) {
+            localBuf[mask & pos++] = (byte)s.charAt(i);
+        }
+        activePosition = pos;
     }
     
     public void writeByteArray(byte[] bytes) throws IOException {

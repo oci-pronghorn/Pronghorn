@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.pipe;
 
-import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnTail;
-
 import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
@@ -238,21 +236,13 @@ public class PipeWriter {
         Pipe.addAndGetBytesWorkingHeadPosition(rb,len);   	
 	}
 
-	public static void publishEOF(Pipe ring) {
-		
-		assert(Pipe.workingHeadPosition(ring)<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
-		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfSlabRing - Pipe.EOF_SIZE), ring);
-		
-		assert(Pipe.tailPosition(ring)+ring.sizeOfSlabRing>=Pipe.headPosition(ring)+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
-		Pipe.setBytesHead(ring, Pipe.bytesWorkingHeadPosition(ring));
-		Pipe.primaryBuffer(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +  Pipe.from(ring).templateOffset)]    = -1;	
-		Pipe.primaryBuffer(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  Pipe.from(ring).templateOffset)] = 0;
-		
+	public static void publishEOF(Pipe ring) {		
+		StackStateWalker.writeEOF(ring);		
 		Pipe.publishWorkingHeadPosition(ring, ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + Pipe.EOF_SIZE);	
 		
 	}
 
-	public static void publishWrites(Pipe outputRing) {
+    public static void publishWrites(Pipe outputRing) {
 	
 	    Pipe.writeTrailingCountOfBytesConsumed(outputRing, outputRing.ringWalker.nextWorkingHead -1 ); 
 
@@ -282,39 +272,29 @@ public class PipeWriter {
 	 */
 	public static void blockWriteFragment(Pipe ring, int messageTemplateLOC) {
 	
-	    Pipe.writeTrailingCountOfBytesConsumed(ring, ring.ringWalker.nextWorkingHead -1 ); 
-	       
-		FieldReferenceOffsetManager from = Pipe.from(ring);
-		
-		StackStateWalker consumerData = ring.ringWalker;
-		int fragSize = from.fragDataSize[messageTemplateLOC];
-		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, consumerData.nextWorkingHead - (ring.sizeOfSlabRing - fragSize), ring);
-	
-		StackStateWalker.prepWriteFragment(ring, messageTemplateLOC, from, fragSize);
+	    Pipe.writeTrailingCountOfBytesConsumed(ring, ring.ringWalker.nextWorkingHead -1 ); 	       
+		StackStateWalker.blockWriteFragment0(ring, messageTemplateLOC, Pipe.from(ring), ring.ringWalker);
 	}
 
-	/*
+    /*
 	 * Return true if there is room for the desired fragment in the output buffer.
 	 * Places working head in place for the first field to be written (eg after the template Id, which is written by this method)
 	 * 
 	 */
 	public static boolean tryWriteFragment(Pipe ring, int cursorPosition) {
 	    assert(null!=ring);
-		int fragSize = Pipe.from(ring).fragDataSize[cursorPosition];
-		long target = ring.ringWalker.nextWorkingHead - (ring.sizeOfSlabRing - fragSize);
-		return StackStateWalker.tryWriteFragment1(ring, cursorPosition, Pipe.from(ring), fragSize, target, ring.llRead.llrTailPosCache >=  target);
-	}
-	
-	public static boolean hasRoomForFragmentOfSize(Pipe ring, int fragSize) {
-	    long limit = ring.ringWalker.nextWorkingHead - (ring.sizeOfSlabRing - fragSize);
-	    if (!(ring.llRead.llrTailPosCache >= limit)) {
-	        return (ring.llRead.llrTailPosCache =  Pipe.tailPosition(ring)) >= limit;
-	    } else {
-	        return true;
-	    }
+		return StackStateWalker.tryWriteFragment0(ring, cursorPosition, Pipe.from(ring).fragDataSize[cursorPosition], ring.ringWalker.nextWorkingHead - (ring.sizeOfSlabRing - Pipe.from(ring).fragDataSize[cursorPosition]));
 	}
 
-	public static void setPublishBatchSize(Pipe rb, int size) {
+    public static boolean hasRoomForWrite(Pipe ring) {
+        return StackStateWalker.hasRoomForFragmentOfSizeX(ring, ring.ringWalker.nextWorkingHead - (ring.sizeOfSlabRing - FieldReferenceOffsetManager.maxFragmentSize( Pipe.from(ring))));
+    }
+	
+    public static boolean hasRoomForFragmentOfSize(Pipe ring, int fragSize) {
+	    return StackStateWalker.hasRoomForFragmentOfSizeX(ring, ring.ringWalker.nextWorkingHead - (ring.sizeOfSlabRing - fragSize));
+	}
+
+    public static void setPublishBatchSize(Pipe rb, int size) {
 		Pipe.setPublishBatchSize(rb, size);
 	}
 	

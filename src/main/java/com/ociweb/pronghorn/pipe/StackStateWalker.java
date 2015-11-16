@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.pipe;
 
+import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnTail;
+
 import java.util.Arrays;
 
 import org.slf4j.Logger;
@@ -445,21 +447,7 @@ class StackStateWalker {
     }
 
 	
-	static boolean tryWriteFragment1(Pipe ring, int cursorPosition, FieldReferenceOffsetManager from, int fragSize,
-											long target, boolean hasRoom) {
-		//try again and update the cache with the newest value
-		if (hasRoom) {
-			prepWriteFragment(ring, cursorPosition, from, fragSize);
-		} else {
-			//only if there is no room should we hit the CAS tailPos and then try again.
-			hasRoom = (ring.llRead.llrTailPosCache = Pipe.tailPosition(ring)) >=  target;		
-			if (hasRoom) {		
-				prepWriteFragment(ring, cursorPosition, from, fragSize);
-			}
-		}
-			
-		return hasRoom;
-	}
+
 	
 	static void prepWriteFragment(Pipe ring, int cursorPosition,	FieldReferenceOffsetManager from, int fragSize) {
 		//NOTE: this is called by both blockWrite and tryWrite.  It must not call publish because we need to support
@@ -534,6 +522,59 @@ class StackStateWalker {
 		//NOTE: writes are using low-level calls and we must publish them.
 		Pipe.publishHeadPositions(outputRing); //we use the working head pos so batching still works here.
 	}
+	
+    static boolean hasContentToRead(Pipe pipe) {
+        if (!(pipe.llWrite.llwHeadPosCache > 1+pipe.ringWalker.nextWorkingTail)) {
+            return (pipe.llRead.llrTailPosCache =  Pipe.headPosition(pipe)) > 1+pipe.ringWalker.nextWorkingTail;
+        } else {
+            return true;
+        }
+    }
+	
+    static boolean hasRoomForFragmentOfSizeX(Pipe pipe, long limit) {
+        if (!(pipe.llRead.llrTailPosCache >= limit)) {
+            return (pipe.llRead.llrTailPosCache =  Pipe.tailPosition(pipe)) >= limit;
+        } else {
+            return true;
+        }
+    }
+
+    static boolean tryWriteFragment0(Pipe pipe, int cursorPosition, int fragSize, long target) {
+        return tryWriteFragment1(pipe, cursorPosition, Pipe.from(pipe), fragSize, target, pipe.llRead.llrTailPosCache >=  target);
+    }
+    
+    static boolean tryWriteFragment1(Pipe pipe, int cursorPosition, FieldReferenceOffsetManager from, int fragSize, long target, boolean hasRoom) {
+        //try again and update the cache with the newest value
+        if (hasRoom) {
+            prepWriteFragment(pipe, cursorPosition, from, fragSize);
+        } else {
+            //only if there is no room should we hit the CAS tailPos and then try again.
+            hasRoom = (pipe.llRead.llrTailPosCache = Pipe.tailPosition(pipe)) >=  target;       
+            if (hasRoom) {      
+                prepWriteFragment(pipe, cursorPosition, from, fragSize);
+            }
+        }
+    
+    return hasRoom;
+    }
+
+    static void blockWriteFragment0(Pipe ring, int messageTemplateLOC, FieldReferenceOffsetManager from,
+            StackStateWalker consumerData) {
+        int fragSize = from.fragDataSize[messageTemplateLOC];
+    	ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, consumerData.nextWorkingHead - (ring.sizeOfSlabRing - fragSize), ring);
+    
+    	prepWriteFragment(ring, messageTemplateLOC, from, fragSize);
+    }
+
+    static void writeEOF(Pipe ring) {
+        assert(Pipe.workingHeadPosition(ring)<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
+    	ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfSlabRing - Pipe.EOF_SIZE), ring);
+    	
+    	assert(Pipe.tailPosition(ring)+ring.sizeOfSlabRing>=Pipe.headPosition(ring)+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
+    	Pipe.setBytesHead(ring, Pipe.bytesWorkingHeadPosition(ring));
+    	Pipe.primaryBuffer(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +  Pipe.from(ring).templateOffset)]    = -1;	
+    	Pipe.primaryBuffer(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  Pipe.from(ring).templateOffset)] = 0;
+    }
 
 
 	
