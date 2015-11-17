@@ -4,6 +4,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream implements DataOutput {
 
@@ -305,5 +306,173 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////
+    //Support for packed values
+    //////////////////////////////////////////////////////////////////////////////////
+    //Write signed using variable length encoding as defined in FAST 1.1 specification
+    //////////////////////////////////////////////////////////////////////////////////
+    
+    public final void writePackedLong(long value) {
+        if (value >=0) {
+            activePosition = writeLongSignedPos(value, byteBuffer, byteMask, activePosition);
+        } else {
+            activePosition = writeLongSignedNeg(value, byteBuffer, byteMask, activePosition);
+        }
+    }
+    
+    public final void writePackedInt(int value) {
+        if (value >=0) {
+            activePosition = writeIntSignedPos(value, byteBuffer, byteMask, activePosition);
+        } else {
+            activePosition = writeIntSignedNeg(value, byteBuffer, byteMask, activePosition);
+        }
+    }
+    
+    public final void writePackedShort(short value) {
+        if (value >=0) {
+            activePosition = writeIntSignedPos(value, byteBuffer, byteMask, activePosition);
+        } else {
+            activePosition = writeIntSignedNeg(value, byteBuffer, byteMask, activePosition);
+        }
+    }
+    
+    private static final int writeLongSignedNeg(long value, byte[] buf, int mask, int pos) {
+        // using absolute value avoids tricky word length issues
+        long absv = -value;
 
+        if (absv <= 0x0000000000000040l) {
+        } else {
+            if (absv <= 0x0000000000002000l) {
+            } else {
+                if (absv <= 0x0000000000100000l) {
+                } else {
+                    if (absv <= 0x0000000008000000l) {
+                    } else {
+                        if (absv <= 0x0000000400000000l) {
+                        } else {
+                            if (absv <= 0x0000020000000000l) {
+                            } else {
+                                if (absv <= 0x0001000000000000l) {
+                                } else {
+                                    if (absv <= 0x0080000000000000l) { 
+                                    } else {
+                                        long lastBit = value>>>63;
+                                        if (0 != lastBit) {
+                                            buf[mask & pos++] =  (byte) lastBit;
+                                        } 
+                                       buf[mask & pos++] =  (byte) (( ((int)(value >>> 56)) & 0x7F));
+                                    }
+                                    buf[mask & pos++] = (byte) (( ((int)(value >>> 49)) & 0x7F));
+                                }
+                                buf[mask & pos++] = (byte) (( ((int)(value >>> 42)) & 0x7F));
+                            }
+                            buf[mask & pos++] = (byte) (( ((int)(value >>> 35)) & 0x7F));
+                        }
+                        buf[mask & pos++] = (byte) (( ((int)(value >>> 28)) & 0x7F));
+                    }
+                    buf[mask & pos++] = (byte) (( ((int)(value >>> 21)) & 0x7F));
+                }
+                buf[mask & pos++] = (byte) (( ((int)(value >>> 14)) & 0x7F));
+            }
+            buf[mask & pos++] = (byte) (( ((int)(value >>> 7)) & 0x7F));
+        }
+        buf[mask & pos++] = (byte) (( ((int)(value & 0x7F)) | 0x80));
+        return pos;
+    }
+
+    
+    private static final int writeIntSignedNeg(int value, byte[] buf, int mask, int pos) {
+        // using absolute value avoids tricky word length issues
+        long absv = -value;
+
+        if (absv <= 0x0000000000000040) {
+        } else {
+            if (absv <= 0x0000000000002000) {
+            } else {
+                if (absv <= 0x0000000000100000) {
+                } else {
+                    if (absv <= 0x0000000008000000) {
+                    } else {
+                        buf[mask & pos++] = (byte) (((value >>> 28) & 0x7F));
+                    }
+                    buf[mask & pos++] = (byte) (((value >>> 21) & 0x7F));
+                }
+                buf[mask & pos++] = (byte) (((value >>> 14) & 0x7F));
+            }
+            buf[mask & pos++] = (byte) (((value >>> 7) & 0x7F));
+        }
+        buf[mask & pos++] = (byte) (((value & 0x7F) | 0x80));
+        return pos;
+    }
+        
+    
+    
+
+    private static final int writeLongSignedPos(long value, byte[] buf, int mask, int pos) {
+
+        if (value < 0x0000000000000040l) {
+        } else {
+            if (value < 0x0000000000002000l) {
+            } else {
+                if (value < 0x0000000000100000l) {
+                } else {
+                    if (value < 0x0000000008000000l) {
+                    } else {
+                        if (value < 0x0000000400000000l) {
+                        } else {
+                            if (value < 0x0000020000000000l) {
+                            } else {
+                                if (value < 0x0001000000000000l) {
+                                } else {
+                                    if (value < 0x0080000000000000l) {
+                                    } else {
+                                        if (value < 0x4000000000000000l) {
+                                        } else {
+                                            buf[mask & pos++] = (byte) (( ((int)(value >>> 63)) & 0x7F));
+                                        }
+                                        buf[mask & pos++] = (byte) (( ((int)(value >>> 56)) & 0x7F));
+                                    }
+                                    buf[mask & pos++] = (byte) (( ((int)(value >>> 49)) & 0x7F));
+                                }
+                                buf[mask & pos++] = (byte) (( ((int)(value >>> 42)) & 0x7F));
+                            }
+                            buf[mask & pos++] =(byte) (( ((int)(value >>> 35)) & 0x7F));
+                        }
+                        buf[mask & pos++] = (byte) (( ((int)(value >>> 28)) & 0x7F));
+                    }
+                    buf[mask & pos++] = (byte) (( ((int)(value >>> 21)) & 0x7F));
+                }
+                buf[mask & pos++] = (byte) (( ((int)(value >>> 14)) & 0x7F));
+            }
+            buf[mask & pos++] = (byte) (( ((int)(value >>> 7)) & 0x7F));
+        }
+        buf[mask & pos++] = (byte) (( ((int)(value & 0x7F)) | 0x80));
+        return pos;
+    }
+    
+
+    private static final int writeIntSignedPos(int value, byte[] buf, int mask, int pos) {
+
+        if (value < 0x0000000000000040) {
+        } else {
+            if (value < 0x0000000000002000) {
+            } else {
+                if (value < 0x0000000000100000) {
+                } else {
+                    if (value < 0x0000000008000000) {
+                    } else {                        
+                        buf[mask & pos++] = (byte) (((value >>> 28) & 0x7F));
+                    }
+                    buf[mask & pos++] = (byte) (((value >>> 21) & 0x7F));
+                }
+                buf[mask & pos++] = (byte) (((value >>> 14) & 0x7F));
+            }
+            buf[mask & pos++] = (byte) (((value >>> 7) & 0x7F));
+        }
+        buf[mask & pos++] = (byte) (((value & 0x7F) | 0x80));
+        return pos;
+    }
+    
+    
+    
 }
