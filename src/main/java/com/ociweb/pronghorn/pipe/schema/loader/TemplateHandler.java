@@ -27,6 +27,7 @@ import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
+import com.ociweb.pronghorn.pipe.util.RLESparseArray;
 import com.ociweb.pronghorn.pipe.util.hash.LongHashTable;
 
 interface SAXEvent
@@ -982,14 +983,18 @@ public class TemplateHandler extends DefaultHandler {
         return from(handler, preambleBytes,"Catalog");
     }
     
-    public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes, String name) {                
-    	return  new FieldReferenceOffsetManager(
+    
+    public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes, String name) {    
+        
+        return  new FieldReferenceOffsetManager(
     			  Arrays.copyOfRange(handler.catalogScriptTokens,0,handler.catalogTemplateScriptIdx), 
        		      preambleBytes, 
        		      Arrays.copyOfRange(handler.catalogScriptFieldNames,0,handler.catalogTemplateScriptIdx),
        		      Arrays.copyOfRange(handler.catalogScriptFieldIds,0,handler.catalogTemplateScriptIdx),
        		      Arrays.copyOfRange(handler.catalogScriptDictionaryNames,0,handler.catalogTemplateScriptIdx),
-       		      name);
+       		      name, 
+       		      RLESparseArray.rlEncodeSparseArray(handler.defaultConstValues.longDictionary()), 
+       		      RLESparseArray.rlEncodeSparseArray(handler.defaultConstValues.integerDictionary()));
     }
     
     public static FieldReferenceOffsetManager loadFrom(String source) throws ParserConfigurationException, SAXException, IOException {
@@ -1077,8 +1082,15 @@ public class TemplateHandler extends DefaultHandler {
         }
         target.setLength(target.length()-1);
         target.append("},\n");
+        target.append("    \"").append(fromName).append("\",\n");
+        target.append("    ");
+        expectedFrom.appendLongDefaults(target); 
+        target.append(",\n");
+        target.append("    ");
+        expectedFrom.appendIntDefaults(target);
         
-        target.append("    \""+fromName+"\");");
+        target.append(");\n");
+        
     }
     
 

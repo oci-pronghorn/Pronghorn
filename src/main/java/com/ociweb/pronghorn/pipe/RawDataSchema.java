@@ -10,7 +10,9 @@ public class RawDataSchema extends MessageSchema {
             new String[]{"ChunkedStream","ByteArray",null},
             new long[]{1, 2, 0},
             new String[]{"global",null,null},
-            "rawDataSchema.xml");
+            "rawDataSchema.xml",
+            new long[]{2, 2, 0},
+            new int[]{2, 2, 0});
     
     public static final RawDataSchema instance = new RawDataSchema();
     

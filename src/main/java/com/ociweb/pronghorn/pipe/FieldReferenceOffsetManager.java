@@ -1,10 +1,12 @@
 package com.ociweb.pronghorn.pipe;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
+import com.ociweb.pronghorn.pipe.util.RLESparseArray;
 
 public class FieldReferenceOffsetManager {
 	
@@ -19,6 +21,8 @@ public class FieldReferenceOffsetManager {
     public final int[] fragScriptSize;
     public final int[] tokens;
     public final int[] messageStarts;
+    private final long[] longDefaults; 
+    private int[] intDefaults;
     
     //NOTE: these two arrays could be combined with a mask to simplify this in the future.
     public int[] fragDepth;
@@ -41,6 +45,9 @@ public class FieldReferenceOffsetManager {
 	
 	
 	private final static int[] EMPTY = new int[0];
+	public final static long[] RLE_LONG_NOTHING = new long[]{2,2,0};
+	public final static int[] RLE_INT_NOTHING = new int[]{2,2,0};
+    	
 	public final String name;
 	public final boolean hasSimpleMessagesOnly;
 	
@@ -66,8 +73,16 @@ public class FieldReferenceOffsetManager {
     	//dictionary names provide a back channel to pass information that relates to template choices when decoding/encoding object    	
     }
     
+    public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds, String[] scriptDictionaryNames, String name) {        
+        this(scriptTokens, preableBytes, scriptNames, scriptIds, scriptDictionaryNames, name, RLE_LONG_NOTHING, RLE_INT_NOTHING);
+    }
+    
     //NOTE: message fragments start at startsLocal values however they end when they hit end of group, sequence length or end the the array.
-	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds, String[] scriptDictionaryNames, String name) {
+	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds, String[] scriptDictionaryNames, String name, long[] longDefaults, int[] intDefaults) {
+	    //These are mostly zeros
+	    this.longDefaults = longDefaults == RLE_LONG_NOTHING ? RLE_LONG_NOTHING : longDefaults;
+	    this.intDefaults = intDefaults == RLE_INT_NOTHING ? RLE_INT_NOTHING : intDefaults;	    
+	    
 		this.preableBytes = preableBytes;
 		this.name = name;
 		//TODO: B, clientConfig must be able to skip reading the preamble,
@@ -672,9 +687,45 @@ public class FieldReferenceOffsetManager {
         if (!Arrays.equals(tokens, other.tokens)) {
             return false;
         }
+        
+        //TODO: Tippy, new feature not rolled out yet but soon.
+        boolean doIt = true;
+        
+        if (doIt) {
+            if (!Arrays.equals(longDefaults, other.longDefaults)) {
+                return false;
+            }
+            if (!Arrays.equals(intDefaults, other.intDefaults)) {
+                return false;
+            }
+        }
+        
+        
         return true;
     }
 
-
+    public long[] newLongDefaultsDictionary() {
+        return RLESparseArray.rlDecodeSparseArray(longDefaults);
+    }
+    
+    public int[] newIntDefaultsDictionary() {
+        return RLESparseArray.rlDecodeSparseArray(intDefaults);
+    }
+    
+    public void appendLongDefaults(Appendable target) {
+        try {
+            target.append("new long[]").append(Arrays.toString(longDefaults).replaceAll("\\[","\\{").replaceAll("\\]","\\}"));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
+    public void appendIntDefaults(Appendable target)  {
+        try{
+            target.append("new int[]").append(Arrays.toString(intDefaults).replaceAll("\\[","\\{").replaceAll("\\]","\\}"));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
     
 }

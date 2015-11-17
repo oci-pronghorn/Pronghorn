@@ -148,8 +148,15 @@ public class DictionaryFactory {
     }
 
     public int[] integerDictionary() {
-        int[] array = new int[nextPowerOfTwo(integerCount)];
-        int i = integerInitCount;
+        int i;
+        int max = integerCount;
+        i = integerInitCount;
+        while (--i >= 0) {
+            max = Math.max(max, integerInitIndex[i]);
+        }
+        
+        int[] array = new int[nextPowerOfTwo(max+1)];
+        i = integerInitCount;
         while (--i >= 0) {
             array[integerInitIndex[i]] = integerInitValue[i];
         }
@@ -157,8 +164,15 @@ public class DictionaryFactory {
     }
 
     public long[] longDictionary() {
-        long[] array = new long[nextPowerOfTwo(longCount)];
-        int i = longInitCount;
+        int i;
+        int max = longCount;
+        i = integerInitCount;
+        while (--i >= 0) {
+            max = Math.max(max, integerInitIndex[i]);
+        }
+        
+        long[] array = new long[nextPowerOfTwo(max+1)];
+        i = longInitCount;
         while (--i >= 0) {
             array[longInitIndex[i]] = longInitValue[i];
         }

@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.pipe.util;
 
 
 //Needs work to clean it up and make it more efficient but it gets the job done in general.
-
+@Deprecated
 public class Histogram {
 
     private final long[] buckets;

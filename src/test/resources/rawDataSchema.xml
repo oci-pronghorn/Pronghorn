@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
 
-   <template name="ChunkedStream" id="1" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+   <template name="ChunkedStream" id="1">
      <byteVector name="ByteArray" id="2"/>
    </template>
   
