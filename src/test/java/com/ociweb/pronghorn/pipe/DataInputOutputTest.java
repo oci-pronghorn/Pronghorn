@@ -77,7 +77,7 @@ public class DataInputOutputTest {
         assertTrue(PipeReader.tryReadFragment(testPipe));
 
         
-        in.openField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+        in.openHighLevelAPIField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
 
         r = new Random(101);
         start = System.nanoTime();
@@ -141,7 +141,7 @@ public class DataInputOutputTest {
         assertTrue(PipeReader.tryReadFragment(testPipe));
 
         
-        in.openField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+        in.openHighLevelAPIField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
 
         r = new Random(101);
         start = System.nanoTime();

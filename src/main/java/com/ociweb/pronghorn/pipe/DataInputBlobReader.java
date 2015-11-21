@@ -27,13 +27,28 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         this.workspace = new StringBuilder(64);
     }
     
-    public void openField(int loc) {
+    public void openHighLevelAPIField(int loc) {
         
         this.length    = PipeReader.readBytesLength(pipe, loc);
         this.position  = PipeReader.readBytesPosition(pipe, loc);
         this.backing   = PipeReader.readBytesBackingArray(pipe, loc);        
         this.charLimit = position + length;
         
+    }
+    
+    public void openLowLevelAPIField() {
+        
+        int meta = Pipe.takeRingByteMetaData(pipe);
+        this.length    = Pipe.takeRingByteLen(pipe);
+        this.position = Pipe.bytePosition(meta, pipe, this.length);
+        this.backing   = Pipe.byteBackingArray(meta, pipe);               
+        this.charLimit = position + length;
+        
+    }
+    
+    
+    public DataInput nullable() {
+        return length<0 ? null : this;
     }
     
     @Override
@@ -170,9 +185,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
             charAndPos = Pipe.decodeUTF8Fast(backing, charAndPos, byteMask);
             workspace.append((char)charAndPos);
         }
-        return new String(workspace);  
-        
-        
+        return new String(workspace);
     }
         
     public Object readObject() throws IOException, ClassNotFoundException  {

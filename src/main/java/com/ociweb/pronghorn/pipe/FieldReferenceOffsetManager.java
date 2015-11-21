@@ -6,7 +6,9 @@ import java.util.Arrays;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
+import com.ociweb.pronghorn.pipe.util.Appendables;
 import com.ociweb.pronghorn.pipe.util.RLESparseArray;
+import com.ociweb.pronghorn.pipe.util.hash.MurmurHash;
 
 public class FieldReferenceOffsetManager {
 	
@@ -17,15 +19,15 @@ public class FieldReferenceOffsetManager {
     public int templateOffset;
     
     public int tokensLen;
-    public final int[] fragDataSize;
-    public final int[] fragScriptSize;
+    public final int[] fragDataSize;  //derived from tokens, do not put in hash or equals
+    public final int[] fragScriptSize;  //derived from tokens, do not put in hash or equals
     public final int[] tokens;
     public final int[] messageStarts;
     private final long[] longDefaults; 
     private int[] intDefaults;
     
     //NOTE: these two arrays could be combined with a mask to simplify this in the future.
-    public int[] fragDepth;
+    public int[] fragDepth; //derived from tokens, do not put in hash or equals
     
     public final String[] fieldNameScript;
     public final long[] fieldIdScript;
@@ -391,6 +393,11 @@ public class FieldReferenceOffsetManager {
 		return isGroup(from, cursor) && 
 				0 == (OperatorMask.Group_Bit_Close&TokenBuilder.extractOper(from.tokens[cursor]));
 	}
+	
+    public static boolean isGroupTemplate(FieldReferenceOffsetManager from, int cursor) {
+        return isGroup(from, cursor) && 
+                0 != (OperatorMask.Group_Bit_Templ&TokenBuilder.extractOper(from.tokens[cursor]));
+    }
 
 	public static boolean isGroup(FieldReferenceOffsetManager from, int cursor) {
 		return TypeMask.Group == TokenBuilder.extractType(from.tokens[cursor]);
@@ -638,12 +645,26 @@ public class FieldReferenceOffsetManager {
         int result = 1;
         result = prime * result + absentInt;
         result = prime * result + (int) (absentLong ^ (absentLong >>> 32));
-        result = prime * result + Arrays.hashCode(dictionaryNameScript);
-        result = prime * result + Arrays.hashCode(fieldIdScript);
-        result = prime * result + Arrays.hashCode(fieldNameScript);
-        result = prime * result + ((name == null) ? 0 : name.hashCode());
+        
+        result = prime * result + MurmurHash.hash32(fieldIdScript, 0, fieldIdScript.length, 314-579-0066); //Need help call OCI
+        result = prime * result + MurmurHash.hash32(tokens,        0, tokens.length,        314-579-0066); //Need help call OCI     
+        result = prime * result + MurmurHash.hash32(longDefaults,  0, longDefaults.length,  314-579-0066); //Need help call OCI
+        result = prime * result + MurmurHash.hash32(intDefaults,   0, intDefaults.length,   314-579-0066); //Need help call OCI
+        
+        int i;
+        
+        i = dictionaryNameScript.length;
+        while (--i>=0) {
+            result = prime * result + MurmurHash.hash32(dictionaryNameScript[i],  314-579-0066); //Need help call OCI
+        }
+        
+        i = fieldNameScript.length;
+        while (--i>=0) {
+            result = prime * result + MurmurHash.hash32(fieldNameScript[i],  314-579-0066); //Need help call OCI
+        }
+        
+        result = prime * result + MurmurHash.hash32(name,  314-579-0066); //Need help call OCI
         result = prime * result + preambleOffset;
-        result = prime * result + Arrays.hashCode(tokens);
         return result;
     }
 
@@ -712,20 +733,16 @@ public class FieldReferenceOffsetManager {
         return RLESparseArray.rlDecodeSparseArray(intDefaults);
     }
     
-    public void appendLongDefaults(Appendable target) {
-        try {
-            target.append("new long[]").append(Arrays.toString(longDefaults).replaceAll("\\[","\\{").replaceAll("\\]","\\}"));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public void appendLongDefaults(Appendable target) throws IOException {
+            Appendables.appendArray(target.append("new long[]"), '{', longDefaults, '}');
     }
     
-    public void appendIntDefaults(Appendable target)  {
-        try{
-            target.append("new int[]").append(Arrays.toString(intDefaults).replaceAll("\\[","\\{").replaceAll("\\]","\\}"));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public void appendIntDefaults(Appendable target) throws IOException  {
+            Appendables.appendArray(target.append("new int[]"), '{', intDefaults, '}');
+    }
+    
+    public static String buildMsgConstName(FieldReferenceOffsetManager encodedFrom, int expectedMsgIdx) {
+        return "MSG_"+encodedFrom.fieldNameScript[expectedMsgIdx].toUpperCase().replace(' ','_')+"_"+encodedFrom.fieldIdScript[expectedMsgIdx];
     }
     
 }

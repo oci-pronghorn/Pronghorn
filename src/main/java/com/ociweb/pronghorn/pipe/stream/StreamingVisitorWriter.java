@@ -4,6 +4,7 @@ import static com.ociweb.pronghorn.pipe.Pipe.publishAllBatchedWrites;
 import static com.ociweb.pronghorn.pipe.Pipe.publishWrites;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
@@ -15,10 +16,8 @@ public class StreamingVisitorWriter {
 	private FieldReferenceOffsetManager from;
 	private int maxFragmentSize;
 	
-	private int nestedFragmentDepth;
-	private int[] cursorStack;
-	private int[] sequenceCounters;
-	
+	private final LowLevelStateManager navState;
+		
 	
 	public StreamingVisitorWriter(Pipe outputRing, StreamingWriteVisitor visitor) {
 		this.visitor = visitor;
@@ -28,15 +27,11 @@ public class StreamingVisitorWriter {
 		
 		this.maxFragmentSize = FieldReferenceOffsetManager.maxFragmentSize(this.from);
 	
-		
-		this.cursorStack = new int[this.from.maximumFragmentStackDepth];
-		this.sequenceCounters = new int[this.from.maximumFragmentStackDepth];
-		
-		this.nestedFragmentDepth = -1;
+		this.navState = new LowLevelStateManager(outputRing);
 	}
 	
 	public boolean isAtBreakPoint() {
-	    return nestedFragmentDepth<0;
+	    return LowLevelStateManager.isStartNewMessage(navState);
 	}
 
 	public void run() {
@@ -48,7 +43,7 @@ public class StreamingVisitorWriter {
 		        int startPos;
 		        int cursor;
 
-		        if (nestedFragmentDepth<0) {	
+		        if (LowLevelStateManager.isStartNewMessage(navState)) {	
 		        	
 		        	//start new message, visitor returns this new id to be written.
 		        	cursor = visitor.pullMessageIdx();
@@ -74,8 +69,7 @@ public class StreamingVisitorWriter {
 
 		        } else {
         	
-		            
-		        	cursor = cursorStack[nestedFragmentDepth];
+		            cursor = LowLevelStateManager.activeCursor(navState);
 		        	startPos = 0;//this is not a new message so there is no id to jump over.
 			    
 		        }
@@ -109,197 +103,246 @@ public class StreamingVisitorWriter {
 	        this.visitor.shutdown();
 	    }
 	    
-	private void processFragment(int startPos, int cursor) {
-		int fieldsInFragment = from.fragScriptSize[cursor];
+	private void processFragment(int startPos, int fragmentCursor) {
+		int fieldsInFragment = from.fragScriptSize[fragmentCursor];
 		int i = startPos;
+		
+	    final String[] fieldNameScript = from.fieldNameScript;
+	    final long[] fieldIdScript = from.fieldIdScript;
+	    final int[] depth = from.fragDepth;
 		
 		//System.err.println("begin write of fragment "+from.fieldNameScript[cursor]+" "+cursor);
 		while (i<fieldsInFragment) {
-			int j = cursor+i++;
+			int fieldCursor = fragmentCursor+i++;
 			
-			switch (TokenBuilder.extractType(from.tokens[j])) {
+			switch (TokenBuilder.extractType(from.tokens[fieldCursor])) {
 				case TypeMask.Group:
-					if (FieldReferenceOffsetManager.isGroupOpen(from, j)) {
-						visitor.fragmentOpen(from.fieldNameScript[j],from.fieldIdScript[j]);
-					} else {				
+					if (FieldReferenceOffsetManager.isGroupOpen(from, fieldCursor)) {
+					    processFragmentOpen(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
+					} else {	
+					    //process group close
+					    final int fieldLimit = fieldCursor+(fieldsInFragment-i); 
+					    final int len = from.tokens.length;
+					    
 						do {//close this member of the sequence or template
-							String name = from.fieldNameScript[j];
-							long id = from.fieldIdScript[j];
+							String name = fieldNameScript[fieldCursor];
+							long id = fieldIdScript[fieldCursor];
 							
 							//if this was a close of sequence count down so we now when to close it.
-							if (FieldReferenceOffsetManager.isGroupSequence(from, j)) {
-								visitor.fragmentClose(name,id);
-								
-								//close of one sequence member
-								if (--sequenceCounters[nestedFragmentDepth]<=0) {
-									//close of the sequence
-									visitor.sequenceClose(name,id);
-									nestedFragmentDepth--; //will become zero so we start a new message
-								
-								} else {
-									break;
+							if (FieldReferenceOffsetManager.isGroupSequence(from, fieldCursor)) {							    
+							    if (processSequenceInstanceClose(name, id)) {
+							        //jump out if we need to process one more fragment
+								   return;
 								}
+							  //else this is the end of the sequence and close the nested groups as needed.
 							} else {
-							    visitor.templateClose(name,id);
-								
-							    assert(nestedFragmentDepth<=0) : "bad "+nestedFragmentDepth;
-							    
-								//this close was not a sequence so it must be the end of the message
-								nestedFragmentDepth = -1;
-								return;//must exit so we do not pick up any more fields
+							    //group close that is not a sequence.
+							    if (fieldCursor<=fieldLimit) {
+							        processMessageClose(name, id, depth[fieldCursor]>0);
+							    }
 							}
-						} while (++j<from.tokens.length && FieldReferenceOffsetManager.isGroupClosed(from, j) );
+						} while (++fieldCursor<len && FieldReferenceOffsetManager.isGroupClosed(from, fieldCursor) );
+						
 						//if the stack is empty set the continuation for fields that appear after the sequence
-						if (j<from.tokens.length && !FieldReferenceOffsetManager.isGroup(from, j)) {
-							cursorStack[++nestedFragmentDepth] = j;
+						if (fieldCursor<len && !FieldReferenceOffsetManager.isGroup(from, fieldCursor)) {
+							postProcessSequence(fieldCursor);
 						}
-					//	 System.err.println("close nested fragments, next starts at "+(1+outputRing.workingHeadPos.value));
 						return;//this is always the end of a fragment
 					}					
 					break;
-				case TypeMask.GroupLength:				    
-    				{
-    				    
-    				    int seqLen = visitor.pullSequenceLength(from.fieldNameScript[j],from.fieldIdScript[j]);
-                        Pipe.addIntValue(seqLen, outputRing);    
-
-                        assert(i==fieldsInFragment) :" this should be the last field";
-                        sequenceCounters[++nestedFragmentDepth] = seqLen;
-                        cursorStack[nestedFragmentDepth] = cursor+fieldsInFragment;
-  
-    				}
+				case TypeMask.GroupLength:			 
+    				    assert(i==fieldsInFragment) :" this should be the last field";
+                        processSequenceOpen(fragmentCursor, fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);  
 					return; 					
 				case TypeMask.IntegerSigned:
-				    Pipe.addIntValue(visitor.pullSignedInt(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);    
-
+                    processIntegerSigned(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);   
 					break;
 				case TypeMask.IntegerUnsigned: //Java does not support unsigned int so we pass it as a long being careful not to get it signed.
-                    Pipe.addIntValue(visitor.pullUnsignedInt(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);    
-
+                    processIntegerUnsigned(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);    
 					break;
 				case TypeMask.IntegerSignedOptional:
-					{
-                       if (visitor.isAbsent(from.fieldNameScript[j],from.fieldIdScript[j])) {
-                            Pipe.addIntValue(FieldReferenceOffsetManager.getAbsent32Value(from), outputRing);
-                        } else {
-                            Pipe.addIntValue(visitor.pullSignedInt(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing); 
-                        }
-
-					}
+	                      processIntegerSignedOptional(fieldNameScript, fieldIdScript, fieldCursor, fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 					break;
 				case TypeMask.IntegerUnsignedOptional:
-					{
-                        if (visitor.isAbsent(from.fieldNameScript[j],from.fieldIdScript[j])) {
-                            Pipe.addIntValue(FieldReferenceOffsetManager.getAbsent32Value(from), outputRing);
-                        } else {
-                            Pipe.addIntValue(visitor.pullUnsignedInt(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing); 
-                        }
-
-					}
+	                      processIntegerUnsignedOptional(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 					break;
 				case TypeMask.LongSigned:
-					{
-						Pipe.addLongValue(visitor.pullSignedLong(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);						
-
-					}	
+	                      processLongSigned(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);	
 					break;	
 				case TypeMask.LongUnsigned:
-					{
-						Pipe.addLongValue(visitor.pullUnsignedLong(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
-
-					}	
+	                      processLongUnsigned(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 					break;	
 				case TypeMask.LongSignedOptional:
-					{
-						if (visitor.isAbsent(from.fieldNameScript[j],from.fieldIdScript[j])) {
-							Pipe.addLongValue(FieldReferenceOffsetManager.getAbsent64Value(from), outputRing);
-						} else {
-							Pipe.addLongValue(visitor.pullSignedLong(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
-						}
-
-					}	
+	                       processLongSignedOptional(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 					break;		
 				case TypeMask.LongUnsignedOptional:
-					{
-		                if (visitor.isAbsent(from.fieldNameScript[j],from.fieldIdScript[j])) {
-                            Pipe.addLongValue(FieldReferenceOffsetManager.getAbsent64Value(from), outputRing);
-                        } else {
-                            Pipe.addLongValue(visitor.pullUnsignedLong(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
-                        }
-
-					}	
+	                       processLongUnsignedOptional(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);	
 					break;
 				case TypeMask.Decimal:
-					{					    
-					    int pullDecimalExponent = visitor.pullDecimalExponent(from.fieldNameScript[j],from.fieldIdScript[j]);
-					    
-                        Pipe.addIntValue(pullDecimalExponent, outputRing);
-					    Pipe.addLongValue(visitor.pullDecimalMantissa(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
-
+	                    processDecimal(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 						i++;//add 1 extra because decimal takes up 2 slots in the script
-					}
 					break;	
 				case TypeMask.DecimalOptional:
-					{
-					    
-					    if (visitor.isAbsent(from.fieldNameScript[j],from.fieldIdScript[j])) {
-	                       Pipe.addIntValue(FieldReferenceOffsetManager.getAbsent32Value(from), outputRing);
-	                       Pipe.addLongValue(FieldReferenceOffsetManager.getAbsent64Value(from), outputRing); 
-					    } else {
-					       Pipe.addIntValue(visitor.pullDecimalExponent(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
-                           Pipe.addLongValue(visitor.pullDecimalMantissa(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
-					    }
-
-                       i++;//add 1 extra because decimal takes up 2 slots in the script
-					   
-					}
+					    processDecimalOptional(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
+					i++;//add 1 extra because decimal takes up 2 slots in the script
 					break;	
-				case TypeMask.TextASCII:
-					{		
-					    Pipe.addASCII(visitor.pullASCII(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
-
-					}
+				case TypeMask.TextASCII:		
+					    processTextASCII(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 					break;
-				case TypeMask.TextASCIIOptional:
-					{				
+				case TypeMask.TextASCIIOptional:					
 					    //a null char sequence can be returned by vistASCII
-					    Pipe.addASCII(visitor.pullASCII(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
-
-					}
+					    processTextASCIIOptional(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 					break;
-				case TypeMask.TextUTF8:
-					{			
-                        Pipe.addUTF8(visitor.pullUTF8(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
-
-					}
+				case TypeMask.TextUTF8:				
+                        processTextUTF8(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 					break;						
-				case TypeMask.TextUTF8Optional:
-					{						
-                        Pipe.addUTF8(visitor.pullUTF8(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
-
-					}
+				case TypeMask.TextUTF8Optional:					
+                        processTextUTF8Optional(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 					break;
-				case TypeMask.ByteArray:
-					{					
-					    Pipe.addByteBuffer(visitor.pullByteBuffer(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
-				    
-					}
+				case TypeMask.ByteArray:				
+					    processByteArray(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 					break;	
 				case TypeMask.ByteArrayOptional:
-					{						
-                        Pipe.addByteBuffer(visitor.pullByteBuffer(from.fieldNameScript[j],from.fieldIdScript[j]), outputRing);
-                        
-					}
+                    processByteArrayOptional(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 					break;
-		    	default: System.err.println("unknown "+TokenBuilder.tokenToString(from.tokens[j]));
+		    	default: System.err.println("unknown "+TokenBuilder.tokenToString(from.tokens[fieldCursor]));
 			}
 		}
 		
-		
 		//we are here because it did not exit early with close group or group length therefore this
 		//fragment is one of those that is not wrapped by a group open/close and we should do the close logic.
-		nestedFragmentDepth--; 
+		processFragmentClose(); 
 		
 	}
+
+    private void processFragmentClose() {
+        LowLevelStateManager.closeFragment(navState);
+    }
+
+    private void postProcessSequence(int fieldCursor) {
+        LowLevelStateManager.continueAtThisCursor(navState, fieldCursor);
+    }
+
+    private void processMessageClose(String name, long id, boolean needsToCloseFragment) {
+        visitor.templateClose(name,id);
+           
+        if (needsToCloseFragment) {
+            LowLevelStateManager.closeFragment(navState);
+        }
+    }
+
+    private void processFragmentOpen(String name, long id) {
+        visitor.fragmentOpen(name,id);
+    }
+
+    private boolean processSequenceInstanceClose(String name, long id) {
+
+        visitor.fragmentClose(name,id);
+        
+        //close of one sequence member
+        if (LowLevelStateManager.closeSequenceIteration(navState)) {
+        	//close of the sequence
+        	visitor.sequenceClose(name,id);
+        	LowLevelStateManager.closeFragment(navState);  //will become zero so we start a new message
+        	return false;
+        }
+        return true;
+    }
+
+    private void processSequenceOpen(int fragmentCursor, String name, long id) {
+        int seqLen = visitor.pullSequenceLength(name,id);
+        Pipe.addIntValue(seqLen, outputRing);     
+        LowLevelStateManager.processGroupLength(navState, fragmentCursor, seqLen);
+    }
+
+    private void processIntegerSigned(String name, long id) {
+        Pipe.addIntValue(visitor.pullSignedInt(name,id), outputRing);
+    }
+
+    private void processIntegerUnsigned(String name, long id) {
+        Pipe.addIntValue(visitor.pullUnsignedInt(name,id), outputRing);
+    }
+
+    private void processIntegerSignedOptional(final String[] fieldNameScript, final long[] fieldIdScript,
+            int fieldCursor, String name, long id) {
+        if (visitor.isAbsent(fieldNameScript[fieldCursor],fieldIdScript[fieldCursor])) {
+                Pipe.addIntValue(FieldReferenceOffsetManager.getAbsent32Value(from), outputRing);
+            } else {
+                Pipe.addIntValue(visitor.pullSignedInt(name,id), outputRing); 
+            }
+    }
+
+    private void processIntegerUnsignedOptional(String name, long id) {
+        if (visitor.isAbsent(name,id)) {
+            Pipe.addIntValue(FieldReferenceOffsetManager.getAbsent32Value(from), outputRing);
+        } else {
+            Pipe.addIntValue(visitor.pullUnsignedInt(name,id), outputRing); 
+        }
+    }
+
+    private void processLongSigned(String name, long id) {
+        Pipe.addLongValue(visitor.pullSignedLong(name,id), outputRing);
+    }
+
+    private void processLongUnsigned(String name, long id) {
+        Pipe.addLongValue(visitor.pullUnsignedLong(name,id), outputRing);
+    }
+
+    private void processLongSignedOptional(String name, long id) {
+        if (visitor.isAbsent(name,id)) {
+        	Pipe.addLongValue(FieldReferenceOffsetManager.getAbsent64Value(from), outputRing);
+        } else {
+        	processLongSigned(name, id);
+        }
+    }
+
+    private void processLongUnsignedOptional(String name, long id) {
+        if (visitor.isAbsent(name,id)) {
+            Pipe.addLongValue(FieldReferenceOffsetManager.getAbsent64Value(from), outputRing);
+        } else {
+            processLongUnsigned(name, id);
+        }
+    }
+
+    private void processDecimal(String name, long id) {
+        int pullDecimalExponent = visitor.pullDecimalExponent(name,id);
+        
+        Pipe.addIntValue(pullDecimalExponent, outputRing);
+        Pipe.addLongValue(visitor.pullDecimalMantissa(name,id), outputRing);
+    }
+
+    private void processDecimalOptional(String name, long id) {
+        if (visitor.isAbsent(name,id)) {
+           Pipe.addIntValue(FieldReferenceOffsetManager.getAbsent32Value(from), outputRing);
+           Pipe.addLongValue(FieldReferenceOffsetManager.getAbsent64Value(from), outputRing); 
+        } else {
+           Pipe.addIntValue(visitor.pullDecimalExponent(name,id), outputRing);
+           Pipe.addLongValue(visitor.pullDecimalMantissa(name,id), outputRing);
+        }
+    }
+
+    private void processTextASCII(String name, long id) {
+        Pipe.addASCII(visitor.pullASCII(name,id), outputRing);
+    }
+
+    private void processTextASCIIOptional(String name, long id) {
+        Pipe.addASCII(visitor.pullASCII(name,id), outputRing);
+    }
+
+    private void processTextUTF8(String name, long id) {
+        Pipe.addUTF8(visitor.pullUTF8(name,id), outputRing);
+    }
+	
+    private void processTextUTF8Optional(String name, long id) {
+        Pipe.addUTF8(visitor.pullUTF8(name,id), outputRing);
+    }
+
+    private void processByteArray(String name, long id) {
+        Pipe.addByteBuffer(visitor.pullByteBuffer(name,id), outputRing);
+    }
+
+    private void processByteArrayOptional(String name, long id) {
+        processByteArray(name, id);
+    }
 	
 }

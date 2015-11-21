@@ -67,10 +67,13 @@ public class MurmurHash {
         return 0xFF & (int)(array[byteIdx>>3] >> ((byteIdx&0x7)<<3));
     }
     private static int getByte(int[] array, int byteIdx) {
-        return 0xFF & (int)(array[byteIdx>>2] >> ((byteIdx&0x3)<<2));
+        return 0xFF & (int)(array[byteIdx>>2] >> ((byteIdx&0x3)<<3));
     }
     private static int getByte(short[] array, int byteIdx) {
-        return 0xFF & (int)(array[byteIdx>>1] >> ((byteIdx&0x1)<<1));
+        return 0xFF & (int)(array[byteIdx>>1] >> ((byteIdx&0x1)<<3));
+    }
+    private static int getByte(CharSequence csq, int byteIdx) {
+        return 0xFF & (int)(csq.charAt(byteIdx>>1) >> ((byteIdx&0x1)<<3));
     }
     
     
@@ -202,6 +205,54 @@ public class MurmurHash {
 
         return h;
     }
+    
+    public static int hash32(CharSequence charSequence, int seed) {
+        return null==charSequence? seed : hash32(charSequence, 0, charSequence.length(), seed);
+    }
+    
+    public static int hash32(CharSequence charSequence, int inputOffset, int inputLength, int seed) {
+        int offset = inputOffset*2;
+        int length = inputLength*2;
+                
+        // Initialize the hash to a 'random' value
+        int h = seed ^ length;
+
+        int i = offset;
+        int len = length;
+        while (len >= 4) {
+            int k = getByte(charSequence,i + 0);
+            k |= (getByte(charSequence,i + 1)) << 8;
+            k |= (getByte(charSequence,i + 2)) << 16;
+            k |= (getByte(charSequence,i + 3)) << 24;
+
+            k *= MURMUR2_MAGIC;
+            k ^= k >>> MURMUR2_R;
+            k *= MURMUR2_MAGIC;
+
+            h *= MURMUR2_MAGIC;
+            h ^= k;
+
+            i += 4;
+            len -= 4;
+        }
+
+        switch (len) {
+        case 3:
+            h ^= (getByte(charSequence,i + 2)) << 16;
+        case 2:
+            h ^= (getByte(charSequence,i + 1)) << 8;
+        case 1:
+            h ^= (getByte(charSequence,i + 0));
+            h *= MURMUR2_MAGIC;
+        }
+
+        h ^= h >>> 13;
+        h *= MURMUR2_MAGIC;
+        h ^= h >>> 15;
+
+        return h;
+    }
+    
     
     //ByteBuffer
     @SuppressWarnings("fallthrough")

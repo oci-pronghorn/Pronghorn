@@ -27,6 +27,7 @@ import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
+import com.ociweb.pronghorn.pipe.util.Appendables;
 import com.ociweb.pronghorn.pipe.util.RLESparseArray;
 import com.ociweb.pronghorn.pipe.util.hash.LongHashTable;
 
@@ -1070,7 +1071,11 @@ public class TemplateHandler extends DefaultHandler {
         target.setLength(target.length()-1);
         target.append("},\n");
 
-        target.append("    new long[]").append(Arrays.toString(expectedFrom.fieldIdScript).replaceAll("\\[","\\{").replaceAll("\\]","\\}")).append(",\n");
+        try {
+            Appendables.appendArray( target.append("    new long[]"), '{', expectedFrom.fieldIdScript, '}').append(",\n");
+        } catch (IOException e1) {
+            throw new RuntimeException(e1);
+        }
         
         target.append("    new String[]{");
         for(String tmp:expectedFrom.dictionaryNameScript) {
@@ -1084,10 +1089,18 @@ public class TemplateHandler extends DefaultHandler {
         target.append("},\n");
         target.append("    \"").append(fromName).append("\",\n");
         target.append("    ");
-        expectedFrom.appendLongDefaults(target); 
+        try {
+            expectedFrom.appendLongDefaults(target);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } 
         target.append(",\n");
         target.append("    ");
-        expectedFrom.appendIntDefaults(target);
+        try {
+            expectedFrom.appendIntDefaults(target);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         
         target.append(");\n");
         

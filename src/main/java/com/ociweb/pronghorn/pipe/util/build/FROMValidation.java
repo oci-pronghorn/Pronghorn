@@ -60,9 +60,8 @@ public class FROMValidation {
 	        String name = encodedFrom.fieldNameScript[expectedMsgIdx];	
 	        //only generate constatns for named fields.
 	        if (null!=name) {
-    	        long id = encodedFrom.fieldIdScript[expectedMsgIdx];
-    	        
-    	        String messageConstantName = "MSG_"+name.toUpperCase().replace(' ','_')+"_"+id;
+	            
+    	        String messageConstantName = FieldReferenceOffsetManager.buildMsgConstName(encodedFrom, expectedMsgIdx);
     	        
     	        appendAssignmentCode(generatedSource, messageConstantName, expectedMsgIdx);
     	            	        

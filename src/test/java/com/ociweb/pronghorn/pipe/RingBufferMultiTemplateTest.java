@@ -629,7 +629,7 @@ public class RingBufferMultiTemplateTest {
 	}
 	
 
-	@Test // Work in progress need to get shutdown working.
+	@Test
     public void generatedTest() {
         
         final int testSize = 830;//81;//30000;

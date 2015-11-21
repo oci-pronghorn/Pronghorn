@@ -1078,13 +1078,24 @@ public final class Pipe<T extends MessageSchema> {
 	        return target;
 	    }
 
-	public static <S extends MessageSchema> Appendable readASCII(Pipe<S> ring, Appendable target,	int meta, int len) {
+	public static <S extends MessageSchema, A extends Appendable> A readASCII(Pipe<S> ring, A target, int meta, int len) {
 		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
-	        return readASCIIConst(ring,len,target,PipeReader.POS_CONST_MASK & meta);
+	        return (A) readASCIIConst(ring,len,target,PipeReader.POS_CONST_MASK & meta);
 	    } else {
-	        return readASCIIRing(ring,len,target,restorePosition(ring, meta));
+	        return (A) readASCIIRing(ring,len,target,restorePosition(ring, meta));
 	    }
 	}
+	
+   public static <S extends MessageSchema> Appendable readOptionalASCII(Pipe<S> ring, Appendable target, int meta, int len) {
+        if (len<0) {
+            return null;
+        }
+        if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
+            return readASCIIConst(ring,len,target,PipeReader.POS_CONST_MASK & meta);
+        } else {
+            return readASCIIRing(ring,len,target,restorePosition(ring, meta));
+        }
+    }
 
 	public static <S extends MessageSchema> boolean isEqual(Pipe<S> ring, CharSequence charSeq, int meta, int len) {
 		if (len!=charSeq.length()) {
@@ -1180,13 +1191,28 @@ public final class Pipe<T extends MessageSchema> {
 	    return target;
 	}
 
-	public static <S extends MessageSchema> Appendable readUTF8(Pipe<S> ring, Appendable target, int meta, int len) { //TODO: update to use generics
-		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
-	        return readUTF8Const(ring,len,target,PipeReader.POS_CONST_MASK & meta);
-	    } else {
-	        return readUTF8Ring(ring,len,target,restorePosition(ring,meta));
-	    }
+	
+
+	public static <S extends MessageSchema, A extends Appendable> A readUTF8(Pipe<S> ring, A target, int meta, int len) { 
+    		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
+    	        return (A) readUTF8Const(ring,len,target,PipeReader.POS_CONST_MASK & meta);
+    	    } else {
+    	        return (A) readUTF8Ring(ring,len,target,restorePosition(ring,meta));
+    	    }
 	}
+	
+	   public static <S extends MessageSchema> Appendable readOptionalUTF8(Pipe<S> ring, Appendable target, int meta, int len) {
+	       
+    	     if (len<0) {
+    	         return null;
+    	     }
+	        if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
+	            return readUTF8Const(ring,len,target,PipeReader.POS_CONST_MASK & meta);
+	        } else {
+	            return readUTF8Ring(ring,len,target,restorePosition(ring,meta));
+	        }
+	        
+	    }
 
 	private static <S extends MessageSchema> Appendable readUTF8Const(Pipe<S> ring, int bytesLen, Appendable target, int ringPos) {
 		  try{
@@ -1967,6 +1993,9 @@ public final class Pipe<T extends MessageSchema> {
 
 	}
 
+	/*
+	 * WARNING: this method has side effect of moving byte pointer.
+	 */
     public static <S extends MessageSchema> int bytePosition(int meta, Pipe<S> ring, int len) {
     	int pos =  restorePosition(ring, meta & RELATIVE_POS_MASK);    	
         if (len>=0) {
@@ -2067,6 +2096,11 @@ public final class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> int takeValue(Pipe<S> ring) {
     	return readValue(0, ring.slabRing, ring.mask, ring.slabRingTail.workingTailPos.value++);
     }
+    
+    public static <S extends MessageSchema> Integer takeOptionalValue(Pipe<S> ring) {
+        int temp = readValue(0, ring.slabRing, ring.mask, ring.slabRingTail.workingTailPos.value++);
+        return FieldReferenceOffsetManager.getAbsent32Value(Pipe.from(ring))!=temp ? new Integer(temp) : null;
+    }
 
     public static <S extends MessageSchema> long takeLong(Pipe<S> ring) {
         assert(ring.slabRingTail.workingTailPos.value<Pipe.workingHeadPosition(ring)) : "working tail "+ring.slabRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(ring);
@@ -2074,6 +2108,14 @@ public final class Pipe<T extends MessageSchema> {
     	ring.slabRingTail.workingTailPos.value+=2;
     	return result;
     }
+    
+    public static <S extends MessageSchema> Long takeOptionalLong(Pipe<S> ring) {
+        assert(ring.slabRingTail.workingTailPos.value<Pipe.workingHeadPosition(ring)) : "working tail "+ring.slabRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(ring);
+        long result = readLong(ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value);
+        ring.slabRingTail.workingTailPos.value+=2;
+        return FieldReferenceOffsetManager.getAbsent64Value(Pipe.from(ring))!=result ? new Long(result) : null;
+    }
+    
 
     public static <S extends MessageSchema> long readLong(int idx, Pipe<S> ring) {
     	return readLong(ring.slabRing,ring.mask,idx+ring.slabRingTail.workingTailPos.value);

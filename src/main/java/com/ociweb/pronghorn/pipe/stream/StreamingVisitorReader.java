@@ -14,29 +14,18 @@ public class StreamingVisitorReader {
     
 	private final StreamingReadVisitor visitor;
 	private final Pipe inputRing;
-	private final FieldReferenceOffsetManager from;
+	final FieldReferenceOffsetManager from;
 	
-	private final int[] cursorStack;
-	private final int[] sequenceCounters;
-
-	private int nestedFragmentDepth;
+	private final LowLevelStateManager navState;
+    
 	
 	//TODO: B, this does not work with preamble of any size. is preamble a feature we really want to continue supporting in all case?
 	
 	public StreamingVisitorReader(Pipe inputRing, StreamingReadVisitor visitor) {
 		this.visitor = visitor;
-		this.inputRing = inputRing;
-		
-		this.from = Pipe.from(inputRing);	
-		
-		this.cursorStack = new int[this.from.maximumFragmentStackDepth];
-		this.sequenceCounters = new int[this.from.maximumFragmentStackDepth];
-		
-
-		//publish only happens on fragment boundary therefore we can assume that if 
-		//we can read 1 then we can read the full fragment
-		
-		this.nestedFragmentDepth = -1;		
+		this.inputRing = inputRing;		
+		this.navState = new LowLevelStateManager(inputRing);
+		this.from = Pipe.from(inputRing);
 		
 	}
 	
@@ -57,7 +46,7 @@ public class StreamingVisitorReader {
 		        int startPos;
 		        int cursor;
 
-		        if (nestedFragmentDepth<0) {	
+		        if (LowLevelStateManager.isStartNewMessage(navState)) {	
 		        	//start new message
 		        	
 		        	cursor = Pipe.takeMsgIdx(inputRing);
@@ -70,11 +59,11 @@ public class StreamingVisitorReader {
 		        	visitor.visitTemplateOpen(from.fieldNameScript[cursor], from.fieldIdScript[cursor]);
 		        				        		        	
 		        } else {
-		        	cursor = cursorStack[nestedFragmentDepth];
+		        	cursor = LowLevelStateManager.activeCursor(navState);
 		        	startPos = 0;//this is not a new message so there is no id to jump over.			        
 		        	
 		        }
-		        int dataSize = from.fragDataSize[cursor];
+		        int dataSize = Pipe.sizeOf(inputRing, cursor);
 		        
 		        //must the next read position forward by the size of this fragment so next time we confirm that there is a fragment to read.
 				Pipe.confirmLowLevelRead(inputRing, dataSize);
@@ -99,219 +88,293 @@ public class StreamingVisitorReader {
 		return;
 	}
 
-	//TODO: this method is way way to big.
-	private void processFragment(int startPos, int cursor) {
+	private void processFragment(int startPos, final int fragmentCursor) {
 
-		int fieldsInScript = from.fragScriptSize[cursor];
-		String[] fieldNameScript = from.fieldNameScript;
+		final int fieldsInFragment = from.fragScriptSize[fragmentCursor];
+		final String[] fieldNameScript = from.fieldNameScript;
+        final long[] fieldIdScript = from.fieldIdScript;
+        final int[] depth = from.fragDepth;
+        
 		int i = startPos;
-		int idx = 0;
-		while (i<fieldsInScript) {
-			int j = cursor+i++;
+		int idx = 0; //TODO: remove this and use the standard low level take methods.
+		while (i<fieldsInFragment) {
+			int fieldCursor = fragmentCursor+i++;
 			
-			switch (TokenBuilder.extractType(from.tokens[j])) {
+			switch (TokenBuilder.extractType(from.tokens[fieldCursor])) {
 				case TypeMask.Group:
-					if (FieldReferenceOffsetManager.isGroupOpen(from, j)) {
-						visitor.visitFragmentOpen(fieldNameScript[j],from.fieldIdScript[j], j);
+					if (FieldReferenceOffsetManager.isGroupOpen(from, fieldCursor)) {
+						processFragmentOpen(fieldNameScript[fieldCursor], fieldCursor, fieldIdScript[fieldCursor]);
 					} else {
+					    //process group close
+					    final int fieldLimit = fieldCursor+(fieldsInFragment-i); 
+					    final int len = from.tokens.length;
+					    
 						do {//close this member of the sequence or template
-							String name = fieldNameScript[j];
-							long id = from.fieldIdScript[j];
+							final String name = fieldNameScript[fieldCursor];
+							final long id = fieldIdScript[fieldCursor];
 							
 							//if this was a close of sequence count down so we now when to close it.
-							if (FieldReferenceOffsetManager.isGroupSequence(from, j)) {
-							    visitor.visitFragmentClose(name,id);
-								//close of one sequence member
-								if (--sequenceCounters[nestedFragmentDepth]<=0) {
-									//close of the sequence
-									visitor.visitSequenceClose(name,id);
-									nestedFragmentDepth--; //will become zero so we start a new message
-								} else {
-									break;
-								}
+							if (FieldReferenceOffsetManager.isGroupSequence(from, fieldCursor)) {
+							    if (processSequenceInstanceClose(name, id)) {
+							       //jump out if we need to process one more fragment
+							        return;
+								}			
+							  //else this is the end of the sequence and close the nested groups as needed.
 							} else {
-							    assert(nestedFragmentDepth<=0) : " nested depth "+nestedFragmentDepth;
-								visitor.visitTemplateClose(name,id);
-								//this close was not a sequence so it must be the end of the message
-								nestedFragmentDepth = -1;
-								return;//must exit so we do not pick up any more fields
+							    //group close that is not a sequence.
+							    if (fieldCursor<=fieldLimit) { //fixed count of closes.
+							        processMessageClose(name, id, depth[fieldCursor]>0);
+							    }
 							}
-						} while (++j<from.tokens.length && FieldReferenceOffsetManager.isGroupClosed(from, j) );
+						} while (++fieldCursor<len && FieldReferenceOffsetManager.isGroupClosed(from, fieldCursor) );
+						
 						//if the stack is empty set the continuation for fields that appear after the sequence
-						if (j<from.tokens.length && !FieldReferenceOffsetManager.isGroup(from, j)) {
-							cursorStack[++nestedFragmentDepth] = j;
+						if (fieldCursor<len && !FieldReferenceOffsetManager.isGroup(from, fieldCursor)) {
+							postProcessSequence(fieldCursor);
 						}
 						return;//this is always the end of a fragment
 					}					
 					break;
-				case TypeMask.GroupLength:
-		
-					assert(i==fieldsInScript) :" this should be the last field";
-					int seqLen = Pipe.readValue(idx, inputRing);
-					idx++;
-					nestedFragmentDepth++;
-					sequenceCounters[nestedFragmentDepth]= seqLen;
-					cursorStack[nestedFragmentDepth] = cursor+fieldsInScript;									
-				
-			    	visitor.visitSequenceOpen(fieldNameScript[j+1],from.fieldIdScript[j+1],seqLen);
-					//do not pick up the nestedFragmentDepth adjustment, exit now because we know 
-					//group length is always the end of a fragment
+				case TypeMask.GroupLength:		
+					assert(i==fieldsInFragment) :" this should be the last field";
+   
+                    processSequenceOpen(fragmentCursor, fieldNameScript[fieldCursor+1], idx, fieldCursor, fieldIdScript[fieldCursor+1]);									
+			    	idx++;
 					return; 					
 				case TypeMask.IntegerSigned:
-					visitor.visitSignedInteger(fieldNameScript[j],from.fieldIdScript[j],Pipe.readValue(idx++, inputRing));
+				    pronghornIntegerSigned(fieldNameScript[fieldCursor], idx++, fieldCursor, fieldIdScript[fieldCursor]);
 					break;
 				case TypeMask.IntegerUnsigned: //Java does not support unsigned int so we pass it as a long being careful not to get it signed.
-					visitor.visitUnsignedInteger(fieldNameScript[j],from.fieldIdScript[j],  0xFFFFFFFFl&(long)Pipe.readValue(idx++, inputRing));
+				    processIntegerUnsigned(fieldNameScript[fieldCursor], idx++, fieldCursor, fieldIdScript[fieldCursor]);
 					break;
 				case TypeMask.IntegerSignedOptional:
-					{
-						int value = Pipe.readValue(idx++, inputRing);
-						if (FieldReferenceOffsetManager.getAbsent32Value(from)!=value) {
-							visitor.visitSignedInteger(fieldNameScript[j],from.fieldIdScript[j],value);
-						}
-					}
+				    processIntegerSignedOptional(fieldNameScript[fieldCursor], idx++, fieldCursor, fieldIdScript[fieldCursor]);
 					break;
 				case TypeMask.IntegerUnsignedOptional:
-					{
-						int value = Pipe.readValue(idx++, inputRing);
-						if (FieldReferenceOffsetManager.getAbsent32Value(from)!=value) {
-							visitor.visitUnsignedInteger(fieldNameScript[j],0xFFFFFFFFl&(long)from.fieldIdScript[j],value);
-						}
-					}
+				    processIntegerUnsignedOptional(fieldNameScript[fieldCursor], idx++, fieldCursor, fieldIdScript[fieldCursor]);
 					break;
 				case TypeMask.LongSigned:
-					{
-						visitor.visitSignedLong(fieldNameScript[j],from.fieldIdScript[j],Pipe.readLong(idx, inputRing));
-						idx+=2;
-					}	
+				    processLongSigned(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);	
+				    idx+=2;
 					break;	
 				case TypeMask.LongUnsigned:
-					{
-						visitor.visitUnsignedLong(fieldNameScript[j],from.fieldIdScript[j],Pipe.readLong(idx, inputRing));
-						idx+=2;
-					}	
+				    processLongUnsigned(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);	
+				    idx+=2;
 					break;	
 				case TypeMask.LongSignedOptional:
-					{
-						long value = Pipe.readLong(idx, inputRing);
-						idx+=2;
-						if (FieldReferenceOffsetManager.getAbsent64Value(from)!=value) {
-							visitor.visitSignedLong(fieldNameScript[j],from.fieldIdScript[j],value);
-						}
-					}	
+				    processLongSignedOptional(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);	
+				    idx+=2;
 					break;		
 				case TypeMask.LongUnsignedOptional:
-					{
-						long value = Pipe.readLong(idx, inputRing);
-						idx+=2;
-						if (FieldReferenceOffsetManager.getAbsent64Value(from)!=value) {
-							visitor.visitUnsignedLong(fieldNameScript[j],from.fieldIdScript[j],Pipe.readLong(idx, inputRing));
-						}
-					}	
-					break;
+				    processLongUnsignedOptional(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);	
+					idx+=2;
+				    break;
 				case TypeMask.Decimal:
-					{
-						int exp = Pipe.readValue(idx++, inputRing);
-						long mant = Pipe.readLong(idx, inputRing);
-						idx+=2;
-						visitor.visitDecimal(fieldNameScript[j],from.fieldIdScript[j],exp,mant);
-						i++;//add 1 extra because decimal takes up 2 slots in the script
-					}
+					processDecimal(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);
+					idx+=3;
+					i++;//add 1 extra because decimal takes up 2 slots in the script
 					break;	
 				case TypeMask.DecimalOptional:
-					{
-						int exp = Pipe.readValue(idx++, inputRing);
-						long mant = Pipe.readLong(idx, inputRing);
-						idx+=2;
-						if (FieldReferenceOffsetManager.getAbsent32Value(from)!=exp) {
-							visitor.visitDecimal(fieldNameScript[j],from.fieldIdScript[j],exp,mant);
-						}
-						i++;//add 1 extra because decimal takes up 2 slots in the script
-					}
+					processDecimalOptional(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);
+					idx+=3;
+					i++;//add 1 extra because decimal takes up 2 slots in the script
 					break;	
 				case TypeMask.TextASCII:
-					{					
-						int meta = Pipe.readRingByteMetaData(idx, inputRing);
-						int len =  Pipe.readRingByteLen(idx, inputRing);
-						idx+=2;
-						assert(len>=0) : "Optional strings are NOT supported for this type";	
-						
-						String name = fieldNameScript[j];
-						long id = from.fieldIdScript[j];
-						visitor.visitASCII(name, id, Pipe.readASCII(inputRing, visitor.targetASCII(name, id), meta, len));
-					}
+                    processTextASCII(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);
+                    idx+=2;
 					break;
 				case TypeMask.TextASCIIOptional:
-					{						
-						int meta = Pipe.readRingByteMetaData(idx, inputRing);
-						int len =  Pipe.readRingByteLen(idx, inputRing);
-						idx+=2;
-						if (len>0) { //a negative length is a null and zero there is no work to do
-							String name = fieldNameScript[j];
-							long id = from.fieldIdScript[j];
-							visitor.visitASCII(name, id, Pipe.readASCII(inputRing, visitor.targetASCII(name, id), meta, len));
-						}
-					}
+                    processTextASCIIOptional(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);
+                    idx+=2;
 					break;
 				case TypeMask.TextUTF8:
-					{						
-						int meta = Pipe.readRingByteMetaData(idx, inputRing);
-						int len =  Pipe.readRingByteLen(idx, inputRing);
-						idx+=2;
-						assert(len>=0) : "Optional strings are NOT supported for this type";	
-						String name = fieldNameScript[j];
-						long id = from.fieldIdScript[j];
-						visitor.visitUTF8(name, id, Pipe.readUTF8(inputRing, visitor.targetUTF8(name, id), meta, len));
-					}
-					break;						
+                    processTextUTF8(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);
+                    idx+=2;
+                    break;						
 				case TypeMask.TextUTF8Optional:
-					{						
-						int meta = Pipe.readRingByteMetaData(idx, inputRing);
-						int len =  Pipe.readRingByteLen(idx, inputRing);
-						idx+=2;
-						if (len>0) { //a negative length is a null and zero there is no work to do
-							String name = fieldNameScript[j];
-							long id = from.fieldIdScript[j];
-							visitor.visitUTF8(name, id, Pipe.readUTF8(inputRing, visitor.targetUTF8(name, id), meta, len));
-						}
-					}
-					break;
+				    processTextUTF8Optional(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);
+				    idx+=2;
+				    break;
 				case TypeMask.ByteArray:
-					{						
-						int meta = Pipe.readRingByteMetaData(idx, inputRing);
-						int len =  Pipe.readRingByteLen(idx, inputRing);
-						idx+=2;
-						assert(len>=0) : "Optional strings are NOT supported for this type";	
-						String name = fieldNameScript[j];
-						long id = from.fieldIdScript[j];
-						visitor.visitBytes(name, id, Pipe.readBytes(inputRing, visitor.targetBytes(name, id, len), meta, len));
-					}
-					break;	
+                    processByteArray(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);
+                    idx+=2;
+                    break;	
 				case TypeMask.ByteArrayOptional:
-					{						
-						int meta = Pipe.readRingByteMetaData(idx, inputRing);
-						int len =  Pipe.readRingByteLen(idx, inputRing);
-						idx+=2;
-						if (len>0) { //a negative length is a null and zero there is no work to do 		
-							String name = fieldNameScript[j];
-							long id = from.fieldIdScript[j];
-							visitor.visitBytes(name, id, Pipe.readBytes(inputRing, visitor.targetBytes(name, id, len), meta, len));
-						}
-					}
-					break;
+				    processByteArrayOptional(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);
+				    idx+=2;
+				    break;
 				case TypeMask.Dictionary:
-				    {
-				        log.debug("dictionary operation discovered, TODO: add this to the vistor to be supported");
-				    }
+				    processDictionary();
+				    idx++;
 				    break;	
-		    	default: log.error("unknown token type:"+TokenBuilder.tokenToString(from.tokens[j]));
+		    	default: log.error("unknown token type:"+TokenBuilder.tokenToString(from.tokens[fieldCursor]));
 			}
 		}
 		
 		//we are here because it did not exit early with close group or group length therefore this
 		//fragment is one of those that is not wrapped by a group open/close and we should do the close logic.
-		nestedFragmentDepth--; 
+		processFragmentClose(); 
 		
 	}
+
+    private void processFragmentClose() {
+        LowLevelStateManager.closeFragment(navState);
+    }
+
+    private boolean processSequenceInstanceClose(final String name, final long id) {
+        visitor.visitFragmentClose(name,id);  //close of one sequence member
+        if (LowLevelStateManager.closeSequenceIteration(navState)) {        	
+            visitor.visitSequenceClose(name,id);//close of the sequence
+            LowLevelStateManager.closeFragment(navState); //will become zero so we start a new message
+            return false;
+        }
+        return true;
+    }
+
+    private void postProcessSequence(int fieldCursor) {
+        LowLevelStateManager.continueAtThisCursor(navState, fieldCursor);
+    }
+
+    private void processSequenceOpen(final int fragmentCursor, String name, int idx, int fieldCursor, long id) {
+        int seqLength = Pipe.readValue(idx, inputRing);
+        visitor.visitSequenceOpen(name, id, seqLength);	 
+        LowLevelStateManager.processGroupLength(navState, fragmentCursor, seqLength);
+    }
+
+    private void processMessageClose(final String name, final long id, boolean needsToCloseFragment) {
+        visitor.visitTemplateClose(name,id);
+        //this close was not a sequence so it must be the end of the message
+        if (needsToCloseFragment) {
+            LowLevelStateManager.closeFragment(navState);
+        }
+    }
+
+    private void processFragmentOpen(String name, int fieldCursor, long id) {
+        visitor.visitFragmentOpen(name,id, fieldCursor);
+    }
+
+    private void processDecimalOptional(String name, int idx, int fieldCursor, long id) {
+        int exp = Pipe.readValue(idx, inputRing);
+        long mant = Pipe.readLong(idx, inputRing);
+        if (FieldReferenceOffsetManager.getAbsent32Value(from)!=exp) {
+        	visitor.visitDecimal(name,id,exp,mant);
+        }
+    }
+
+    private void processDecimal(String name, int idx, int fieldCursor, long id) {
+        int exp = Pipe.readValue(idx, inputRing);
+        long mant = Pipe.readLong(idx, inputRing);
+        visitor.visitDecimal(name,id,exp,mant);
+    }
+
+    private void pronghornIntegerSigned(String name, final int idx, int fieldCursor, long id) {
+        visitor.visitSignedInteger(name,id, Pipe.readValue(idx, inputRing));
+    }
+
+    private void processIntegerUnsigned(String name, final int idx, int fieldCursor, long id) {
+        visitor.visitUnsignedInteger(name,id,  0xFFFFFFFFl&(long)Pipe.readValue(idx, inputRing));
+    }
+
+    private void processIntegerSignedOptional(String name, final int idx, int fieldCursor, long id) {
+    	int value = Pipe.readValue(idx, inputRing);
+    	if (FieldReferenceOffsetManager.getAbsent32Value(from)!=value) {
+    		visitor.visitSignedInteger(name,id,value);
+    	}
+    }
+
+    private void processIntegerUnsignedOptional(String name, final int idx, int fieldCursor, long id) {
+    	int value = Pipe.readValue(idx, inputRing);
+    	if (FieldReferenceOffsetManager.getAbsent32Value(from)!=value) {
+    		visitor.visitUnsignedInteger(name, id, 0xFFFFFFFFl&(long)value);
+    	}
+    }
+
+    private void processLongSigned(String name, final int idx, int fieldCursor, long id) {
+       	visitor.visitSignedLong(name,id,Pipe.readLong(idx, inputRing));
+    }
+
+    private void processLongUnsigned(String name, final int idx, int fieldCursor, long id) {
+       	visitor.visitUnsignedLong(name,from.fieldIdScript[fieldCursor],Pipe.readLong(idx, inputRing));
+    }
+
+    private void processLongSignedOptional(String name, final int idx, int fieldCursor, long id) {
+       	long value = Pipe.readLong(idx, inputRing);
+       	if (FieldReferenceOffsetManager.getAbsent64Value(from)!=value) {
+        		visitor.visitSignedLong(name,id,value);
+       	}
+    }
+
+    private void processLongUnsignedOptional(String name, final int idx, int fieldCursor, long id) {
+        	long value = Pipe.readLong(idx, inputRing);
+        	if (FieldReferenceOffsetManager.getAbsent64Value(from)!=value) {
+        		visitor.visitUnsignedLong(name,id,Pipe.readLong(idx, inputRing));
+        	}
+    }
+
+    private void processTextASCII(String name, final int idx, int fieldCursor, long id) {				
+        	int meta = Pipe.readRingByteMetaData(idx, inputRing);
+        	int len =  Pipe.readRingByteLen(idx, inputRing);
+        	assert(len>=0) : "Optional strings are NOT supported for this type";	
+        	
+        	visitor.visitASCII(name, id, Pipe.readASCII(inputRing, visitor.targetASCII(name, id), meta, len));
+
+    }
+
+    private void processTextASCIIOptional(String name, final int idx, int fieldCursor, long id) {
+						
+        	int meta = Pipe.readRingByteMetaData(idx, inputRing);
+        	int len =  Pipe.readRingByteLen(idx, inputRing);
+
+        	if (len>0) { //a negative length is a null and zero there is no work to do
+        		visitor.visitASCII(name, id, Pipe.readASCII(inputRing, visitor.targetASCII(name, id), meta, len));
+        	}
+
+    }
+
+    private void processTextUTF8(String name, final int idx, int fieldCursor, long id) {
+					
+        	int meta = Pipe.readRingByteMetaData(idx, inputRing);
+        	int len =  Pipe.readRingByteLen(idx, inputRing);
+
+        	assert(len>=0) : "Optional strings are NOT supported for this type";	
+        	visitor.visitUTF8(name, id, Pipe.readUTF8(inputRing, visitor.targetUTF8(name, id), meta, len));
+
+    }
+
+    private void processTextUTF8Optional(String name, final int idx, int fieldCursor, long id) {
+						
+        	int meta = Pipe.readRingByteMetaData(idx, inputRing);
+        	int len =  Pipe.readRingByteLen(idx, inputRing);
+
+        	if (len>0) { //a negative length is a null and zero there is no work to do
+        		visitor.visitUTF8(name, id, Pipe.readUTF8(inputRing, visitor.targetUTF8(name, id), meta, len));
+        	}
+
+    }
+
+    private void processByteArray(String name,final int idx, int fieldCursor, long id) {
+					
+        	int meta = Pipe.readRingByteMetaData(idx, inputRing);
+        	int len =  Pipe.readRingByteLen(idx, inputRing);
+
+        	assert(len>=0) : "Optional strings are NOT supported for this type";
+        	visitor.visitBytes(name, id, Pipe.readBytes(inputRing, visitor.targetBytes(name, id, len), meta, len));
+
+    }
+
+    private void processByteArrayOptional(String name, int idx, int fieldCursor, long id) {		
+        	int meta = Pipe.readRingByteMetaData(idx, inputRing);
+        	int len =  Pipe.readRingByteLen(idx, inputRing);
+
+        	if (len>0) { //a negative length is a null and zero there is no work to do 	
+        		visitor.visitBytes(name, id, Pipe.readBytes(inputRing, visitor.targetBytes(name, id, len), meta, len));
+        	}
+    }
+
+    private void processDictionary() {
+        {
+            log.debug("dictionary operation discovered, TODO: add this to the vistor to be supported");
+        }
+    }
 	
 }
