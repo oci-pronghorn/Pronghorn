@@ -34,7 +34,7 @@ public class TapeReadStage extends PronghornStage {
     //TODO: add command pipe for reading from multiple channels
     //TODO: Unrelated: build stage with executor service as arg for map reduce using new random access to pipe
         
-    protected TapeReadStage(GraphManager graphManager, RandomAccessFile inputFile, Pipe<RawDataSchema> output) {
+    public TapeReadStage(GraphManager graphManager, RandomAccessFile inputFile, Pipe<RawDataSchema> output) {
         super(graphManager, NONE, output);
         this.inputFile = inputFile;
         this.target = output;       

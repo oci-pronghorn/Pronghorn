@@ -24,8 +24,7 @@ public class ConsoleJSONDumpStage<T extends MessageSchema> extends PronghornStag
 	}
 
 	@Override
-	public void startup() {
-		super.startup();		
+	public void startup() {			
 		
 		try{			
             visitor = new StreamingReadVisitorToJSON(out) {

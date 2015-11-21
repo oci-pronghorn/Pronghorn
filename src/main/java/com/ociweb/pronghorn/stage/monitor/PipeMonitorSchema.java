@@ -11,7 +11,9 @@ public class PipeMonitorSchema extends MessageSchema{
             new String[]{"RingStatSample","MS","Head","Tail","TemplateId","BufferSize",null,"RingStatEnhancedSample","MS","Head","Tail","TemplateId","BufferSize","StackDepth","Latency",null},
             new long[]{100, 1, 2, 3, 4, 5, 0, 200, 1, 2, 3, 4, 5, 21, 22, 0},
             new String[]{"global",null,null,null,null,null,null,"global",null,null,null,null,null,null,null,null},
-            "ringMonitor.xml");
+            "ringMonitor.xml",
+            new long[]{2, 2, 0},
+            new int[]{2, 2, 0});
     
     public static final int MSG_RINGSTATSAMPLE_100 = 0x0;
     public static final int MSG_RINGSTATSAMPLE_100_FIELD_MS_1 = 0x2000001;
