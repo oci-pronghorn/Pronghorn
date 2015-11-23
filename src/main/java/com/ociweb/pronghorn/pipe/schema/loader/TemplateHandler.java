@@ -95,7 +95,7 @@ public class TemplateHandler extends DefaultHandler {
     public String[] catalogScriptDictionaryNames = new String[MAX_SCRIPT_LENGTH];
 
     final List<SAXEvent> templateEvents = new ArrayList<SAXEvent>();
-    
+
     Map<String,List<SAXEvent>> templateMap = new HashMap<String, List<SAXEvent>>();
 
     public int catalogTemplateScriptIdx = 0;
@@ -200,7 +200,7 @@ public class TemplateHandler extends DefaultHandler {
 
 
     public TemplateHandler() {
-       
+
         this.dictionaryNames.add(globalDictionaryName);
         this.activeDictionary = dictionaryNames.indexOf(globalDictionaryName);
 
@@ -215,8 +215,8 @@ public class TemplateHandler extends DefaultHandler {
             String templateIdString = attributes.getValue("id");
             if (templateIdString != null ) {
                 //numeric value of template id can be in hex and start with 0x or can be decimal.
-                templateId = templateIdString.startsWith("0x") ? 
-                        Long.parseLong(templateIdString.substring(2), 16) :    
+                templateId = templateIdString.startsWith("0x") ?
+                        Long.parseLong(templateIdString.substring(2), 16) :
                         Long.parseLong(templateIdString);
 
                 if (0==templateId) {
@@ -225,7 +225,7 @@ public class TemplateHandler extends DefaultHandler {
                 if (templateId<0) {
                     throw new SAXException("TemplateId may not be negative, the value must be positive");
                 }
-                        
+
                 if (!LongHashTable.setItem(templateToOffset, templateId, templateOffset)) {
                 	throw new SAXException("Error in XML file, Duplicate template id: " + templateId+"(0x"+Long.toHexString(templateId)+")");
                 }
@@ -390,8 +390,7 @@ public class TemplateHandler extends DefaultHandler {
             } else if (qName.equalsIgnoreCase("bytevector")) {
                 fieldOperator = OperatorMask.Field_None;
                 fieldType = TypeMask.ByteArray;
-                fieldId = Integer.parseInt(attributes.getValue("id"));
-                fieldName = attributes.getValue("name");
+                commonIdAttributes(attributes);
 
             } else if (qName.equalsIgnoreCase("copy")) {
                 setActiveDictionary(attributes);
@@ -817,7 +816,7 @@ public class TemplateHandler extends DefaultHandler {
 	}
 
     private int buildToken(AtomicInteger count) throws SAXException {
-                
+
         int intFieldId = (int)fieldId; //TODO: Fix design limitation, Use new LongHashMap to map into ordal int of this matrix,  dictionaryMap is an array and limited to the lenght of an int not log
         if (((long)intFieldId) != fieldId) {
             throw new UnsupportedOperationException("Can not loop up, the field ID is too large.");
@@ -979,29 +978,29 @@ public class TemplateHandler extends DefaultHandler {
 			                               byteGap,
 			                               maxByteLength);
 	}
-    
-    public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes) {   
+
+    public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes) {
         return from(handler, preambleBytes,"Catalog");
     }
-    
-    
-    public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes, String name) {    
-        
+
+
+    public static FieldReferenceOffsetManager from(TemplateHandler handler, short preambleBytes, String name) {
+
         return  new FieldReferenceOffsetManager(
-    			  Arrays.copyOfRange(handler.catalogScriptTokens,0,handler.catalogTemplateScriptIdx), 
-       		      preambleBytes, 
+    			  Arrays.copyOfRange(handler.catalogScriptTokens,0,handler.catalogTemplateScriptIdx),
+       		      preambleBytes,
        		      Arrays.copyOfRange(handler.catalogScriptFieldNames,0,handler.catalogTemplateScriptIdx),
        		      Arrays.copyOfRange(handler.catalogScriptFieldIds,0,handler.catalogTemplateScriptIdx),
        		      Arrays.copyOfRange(handler.catalogScriptDictionaryNames,0,handler.catalogTemplateScriptIdx),
-       		      name, 
-       		      RLESparseArray.rlEncodeSparseArray(handler.defaultConstValues.longDictionary()), 
+       		      name,
+       		      RLESparseArray.rlEncodeSparseArray(handler.defaultConstValues.longDictionary()),
        		      RLESparseArray.rlEncodeSparseArray(handler.defaultConstValues.integerDictionary()));
     }
-    
+
     public static FieldReferenceOffsetManager loadFrom(String source) throws ParserConfigurationException, SAXException, IOException {
     	return loadFrom(source,(short)0);
     }
-    
+
 	public static FieldReferenceOffsetManager loadFrom(String source, short preamble) throws ParserConfigurationException, SAXException, IOException {
 
 		InputStream sourceInputStream = TemplateHandler.class.getResourceAsStream(source);
@@ -1013,9 +1012,9 @@ public class TemplateHandler extends DefaultHandler {
         		sourceInputStream = new FileInputStream(source);
         	}
         }
-        
+
         TemplateHandler handler = new TemplateHandler();
-        
+
         SAXParserFactory spfac = SAXParserFactory.newInstance();
         SAXParser sp = spfac.newSAXParser();
         if (null != sourceInputStream) {
@@ -1027,7 +1026,7 @@ public class TemplateHandler extends DefaultHandler {
         		}
         	}
         }
-        
+
         return TemplateHandler.from(handler,preamble, simpleName(source));
 	}
 
@@ -1036,13 +1035,13 @@ public class TemplateHandler extends DefaultHandler {
     }
 
     public static FieldReferenceOffsetManager loadFrom(InputStream sourceInputStream) throws ParserConfigurationException, SAXException, IOException {
-        
+
         TemplateHandler handler = new TemplateHandler();
-        
+
         SAXParserFactory spfac = SAXParserFactory.newInstance();
         SAXParser sp = spfac.newSAXParser();
         sp.parse(sourceInputStream, handler);
-        
+
         return TemplateHandler.from(handler,(short)0);
     }
 
@@ -1057,9 +1056,9 @@ public class TemplateHandler extends DefaultHandler {
             }
         target.setLength(target.length()-1);
         target.append("},\n    ");
-        
+
         target.append("(short)").append(0).append(",\n");// expectedFrom.preambleBytes;//TODO: swap in
-        
+
         target.append("    new String[]{");
         for(String tmp:expectedFrom.fieldNameScript) {
             if (null==tmp) {
@@ -1076,7 +1075,7 @@ public class TemplateHandler extends DefaultHandler {
         } catch (IOException e1) {
             throw new RuntimeException(e1);
         }
-        
+
         target.append("    new String[]{");
         for(String tmp:expectedFrom.dictionaryNameScript) {
             if (null==tmp) {
@@ -1093,7 +1092,7 @@ public class TemplateHandler extends DefaultHandler {
             expectedFrom.appendLongDefaults(target);
         } catch (IOException e) {
             throw new RuntimeException(e);
-        } 
+        }
         target.append(",\n");
         target.append("    ");
         try {
@@ -1101,10 +1100,10 @@ public class TemplateHandler extends DefaultHandler {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        
+
         target.append(");\n");
-        
+
     }
-    
+
 
 }
