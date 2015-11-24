@@ -341,7 +341,7 @@ public class StreamingVisitorWriter {
 
     private void processByteArray(String name, long id) {
         ByteBuffer bb = visitor.pullByteBuffer(name,id);
-        bb.flip();
+//        bb.flip();
         Pipe.addByteBuffer(bb, outputRing);
     }
 
