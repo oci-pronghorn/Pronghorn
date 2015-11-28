@@ -1046,29 +1046,38 @@ public class TemplateHandler extends DefaultHandler {
         return TemplateHandler.from(handler,(short)0);
     }
 
-    public static void buildFROMConstructionSource(StringBuilder target, FieldReferenceOffsetManager expectedFrom, String varName, String fromName) {
+    public static void buildFROMConstructionSource(Appendable target, FieldReferenceOffsetManager expectedFrom, String varName, String fromName) throws IOException {
         //write out the expected source.
         target.append("public final static FieldReferenceOffsetManager ");
         target.append(varName).append(" = new ").append(FieldReferenceOffsetManager.class.getSimpleName()).append("(\n");
 
         target.append("    new int[]{");
-            for(int token:expectedFrom.tokens) {
-                target.append("0x").append(Integer.toHexString(token)).append(',');
+        
+        boolean isFirst = true;
+        for(int token:expectedFrom.tokens) {
+            if (!isFirst) {
+                target.append(',');
             }
-        target.setLength(target.length()-1);
+            target.append("0x").append(Integer.toHexString(token));
+            isFirst = false;
+        }
         target.append("},\n    ");
         
-        target.append("(short)").append(0).append(",\n");// expectedFrom.preambleBytes;//TODO: swap in
+        target.append("(short)").append('0').append(",\n");// expectedFrom.preambleBytes;//TODO: swap in
         
         target.append("    new String[]{");
+        isFirst = true;
         for(String tmp:expectedFrom.fieldNameScript) {
+            if (!isFirst) {
+                target.append(',');
+            } 
             if (null==tmp) {
-                target.append("null,");
+                target.append("null");
             } else {
-                target.append('"').append(tmp).append("\",");
+                target.append('"').append(tmp).append('\"');
             }
+            isFirst = false;
         }
-        target.setLength(target.length()-1);
         target.append("},\n");
 
         try {
@@ -1078,14 +1087,18 @@ public class TemplateHandler extends DefaultHandler {
         }
         
         target.append("    new String[]{");
+        isFirst = true;
         for(String tmp:expectedFrom.dictionaryNameScript) {
+            if (!isFirst) {
+                target.append(',');
+            } 
             if (null==tmp) {
-                target.append("null,");
+                target.append("null");
             } else {
-                target.append('"').append(tmp).append("\",");
+                target.append('"').append(tmp).append('\"');
             }
+            isFirst = false;
         }
-        target.setLength(target.length()-1);
         target.append("},\n");
         target.append("    \"").append(fromName).append("\",\n");
         target.append("    ");

@@ -134,7 +134,6 @@ public class Appendables {
     public static <A extends Appendable> A appendHexDigits(A target, long value) throws IOException {
 
         
-        
         int bits = 64-Long.numberOfLeadingZeros(value);
         
         target.append("0x");
@@ -198,6 +197,15 @@ public class Appendables {
     
     public static <A extends Appendable> A appendClass(A target, Class clazz, Class clazzParam) throws IOException {
         return (A) target.append(clazz.getSimpleName()).append('<').append(clazzParam.getSimpleName()).append("> ");
+    }
+    
+    public static <A extends Appendable> A appendStaticCall(A target, Class clazz, String method) throws IOException {
+        return (A) target.append(clazz.getSimpleName()).append('.').append(method).append('(');
+    }
+    
+    public static StringBuilder truncate(StringBuilder builder) {
+        builder.setLength(0);
+        return builder;
     }
     
 }

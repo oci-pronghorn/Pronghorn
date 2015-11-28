@@ -2098,8 +2098,13 @@ public final class Pipe<T extends MessageSchema> {
     }
     
     public static <S extends MessageSchema> Integer takeOptionalValue(Pipe<S> ring) {
+        int absent32Value = FieldReferenceOffsetManager.getAbsent32Value(Pipe.from(ring));
+        return takeOptionalValue(ring, absent32Value);
+    }
+
+    public static <S extends MessageSchema> Integer takeOptionalValue(Pipe<S> ring, int absent32Value) {
         int temp = readValue(0, ring.slabRing, ring.mask, ring.slabRingTail.workingTailPos.value++);
-        return FieldReferenceOffsetManager.getAbsent32Value(Pipe.from(ring))!=temp ? new Integer(temp) : null;
+        return absent32Value!=temp ? new Integer(temp) : null;
     }
 
     public static <S extends MessageSchema> long takeLong(Pipe<S> ring) {
@@ -2110,10 +2115,15 @@ public final class Pipe<T extends MessageSchema> {
     }
     
     public static <S extends MessageSchema> Long takeOptionalLong(Pipe<S> ring) {
+        long absent64Value = FieldReferenceOffsetManager.getAbsent64Value(Pipe.from(ring));
+        return takeOptionalLong(ring, absent64Value);
+    }
+
+    public static <S extends MessageSchema> Long takeOptionalLong(Pipe<S> ring, long absent64Value) {
         assert(ring.slabRingTail.workingTailPos.value<Pipe.workingHeadPosition(ring)) : "working tail "+ring.slabRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(ring);
         long result = readLong(ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value);
         ring.slabRingTail.workingTailPos.value+=2;
-        return FieldReferenceOffsetManager.getAbsent64Value(Pipe.from(ring))!=result ? new Long(result) : null;
+        return absent64Value!=result ? new Long(result) : null;
     }
     
 

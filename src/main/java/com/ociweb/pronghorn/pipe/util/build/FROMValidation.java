@@ -10,7 +10,41 @@ import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 
 public class FROMValidation {
 
+    public static boolean testForMatchingFROMs(String templateFile, MessageSchema schema) {
+        try {
+            FieldReferenceOffsetManager encodedFrom = MessageSchema.from(schema);
+            FieldReferenceOffsetManager expectedFrom = TemplateHandler.loadFrom(templateFile);
+            if (null==expectedFrom) {
+                System.err.println("Unable to find: "+templateFile);
+                return false;
+            }
+            if (!expectedFrom.equals(encodedFrom)) {
+                System.err.println("Encoded source:"+expectedFrom);
+                System.err.println("Template file:"+encodedFrom);
+                
+                System.err.println("//replacement source");
+                StringBuilder target = new StringBuilder();
+                String nameOfFROM = templateFile.substring(1+templateFile.lastIndexOf('/') );
+                TemplateHandler.buildFROMConstructionSource(target, expectedFrom, "FROM", nameOfFROM);                                             
+                System.err.println(target);
+
+                return false;
+            }           
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+    
+    @Deprecated 
 	public static boolean testForMatchingFROMs(String templateFile, String varName, FieldReferenceOffsetManager encodedFrom) {
+        if (!"FROM".equals(varName)) {
+            System.err.println("var name can onlyh be FROM");
+            return false;
+        }
+        
 		try {
 			FieldReferenceOffsetManager expectedFrom = TemplateHandler.loadFrom(templateFile);
 			if (null==expectedFrom) {
@@ -23,7 +57,8 @@ public class FROMValidation {
 				
 				System.err.println("//replacement source");
 				StringBuilder target = new StringBuilder();
-				TemplateHandler.buildFROMConstructionSource(target, expectedFrom, varName, templateFile.substring(1+templateFile.lastIndexOf('/') ));												
+				String nameOfFROM = templateFile.substring(1+templateFile.lastIndexOf('/') );
+                TemplateHandler.buildFROMConstructionSource(target, expectedFrom, varName, nameOfFROM);												
 				System.err.println(target);
 
 				return false;

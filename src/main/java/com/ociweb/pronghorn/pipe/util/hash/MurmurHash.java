@@ -46,13 +46,13 @@ public class MurmurHash {
         }
 
         switch (len) {
-        case 3:
-            h ^= (src[i + 2] & 0xFF) << 16;
-        case 2:
-            h ^= (src[i + 1] & 0xFF) << 8;
-        case 1:
-            h ^= (src[i + 0] & 0xFF);
-            h *= MURMUR2_MAGIC;
+            case 3:
+                h ^= (src[i + 2] & 0xFF) << 16;
+            case 2:
+                h ^= (src[i + 1] & 0xFF) << 8;
+            case 1:
+                h ^= (src[i + 0] & 0xFF);
+                h *= MURMUR2_MAGIC;
         }
 
         h ^= h >>> 13;
@@ -103,16 +103,6 @@ public class MurmurHash {
             len -= 4;
         }
 
-        switch (len) {
-        case 3:
-            h ^= (getByte(inputArray,i + 2)) << 16;
-        case 2:
-            h ^= (getByte(inputArray,i + 1)) << 8;
-        case 1:
-            h ^= (getByte(inputArray,i + 0));
-            h *= MURMUR2_MAGIC;
-        }
-
         h ^= h >>> 13;
         h *= MURMUR2_MAGIC;
         h ^= h >>> 15;
@@ -121,20 +111,15 @@ public class MurmurHash {
     }
     
     public static int hash32(int[] inputArray, int inputOffset, int inputLength, int seed) {
-        int offset = inputOffset*4;
-        int length = inputLength*4;
-                
         // Initialize the hash to a 'random' value
-        int h = seed ^ length;
+        int h = seed ^ (inputLength*4);
 
-        int i = offset;
-        int len = length;
-        while (len >= 4) {
-            int k = getByte(inputArray,i + 0);
-            k |= (getByte(inputArray,i + 1)) << 8;
-            k |= (getByte(inputArray,i + 2)) << 16;
-            k |= (getByte(inputArray,i + 3)) << 24;
-
+        int i = inputOffset;
+        int len = inputLength;
+        while (--len >= 0) {
+                        
+            int k = inputArray[i++];
+            
             k *= MURMUR2_MAGIC;
             k ^= k >>> MURMUR2_R;
             k *= MURMUR2_MAGIC;
@@ -142,18 +127,6 @@ public class MurmurHash {
             h *= MURMUR2_MAGIC;
             h ^= k;
 
-            i += 4;
-            len -= 4;
-        }
-
-        switch (len) {
-        case 3:
-            h ^= (getByte(inputArray,i + 2)) << 16;
-        case 2:
-            h ^= (getByte(inputArray,i + 1)) << 8;
-        case 1:
-            h ^= (getByte(inputArray,i + 0));
-            h *= MURMUR2_MAGIC;
         }
 
         h ^= h >>> 13;
@@ -161,7 +134,38 @@ public class MurmurHash {
         h ^= h >>> 15;
 
         return h;
+    }    
+    
+    public static <C extends CharSequence> int hash32(C[] inputArray, int seed) {
+        return hash32(inputArray, 0, inputArray.length, seed);
     }
+    
+    public static <C extends CharSequence> int hash32(C[] inputArray, int inputOffset, int inputLength, int seed) {
+        // Initialize the hash to a 'random' value
+        int h = seed ^ (inputLength*4);
+
+        int i = inputOffset;
+        int len = inputLength;
+        while (--len >= 0) {
+                        
+            int k = hash32(inputArray[i++], seed);
+                        
+            k *= MURMUR2_MAGIC;
+            k ^= k >>> MURMUR2_R;
+            k *= MURMUR2_MAGIC;
+
+            h *= MURMUR2_MAGIC;
+            h ^= k;
+
+        }
+
+        h ^= h >>> 13;
+        h *= MURMUR2_MAGIC;
+        h ^= h >>> 15;
+
+        return h;
+    } 
+    
     
     public static int hash32(short[] inputArray, int inputOffset, int inputLength, int seed) {
         int offset = inputOffset*2;

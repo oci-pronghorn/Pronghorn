@@ -10,7 +10,7 @@ public class SchemaValidation {
     
     @Test
     public void groveResponseFROMTest() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/rawDataSchema.xml", "FROM", RawDataSchema.FROM));
+        assertTrue(FROMValidation.testForMatchingFROMs("/rawDataSchema.xml", RawDataSchema.instance));
         assertTrue(FROMValidation.testForMatchingLocators(RawDataSchema.instance));
     }
     

@@ -61,6 +61,11 @@ public class FieldReferenceOffsetManager {
     public final static int RW_FIELD_OFF_MASK = (1<<RW_FIELD_OFF_BITS)-1;
     public final short preableBytes;
 	
+    
+    private int[] guid = new int[8];
+
+
+    
 
     public FieldReferenceOffsetManager(int[] scriptTokens, String[] scriptNames, long[] scriptIds) {
     	this(scriptTokens,(short)0,scriptNames,scriptIds);
@@ -77,7 +82,7 @@ public class FieldReferenceOffsetManager {
     
     public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds, String[] scriptDictionaryNames, String name) {        
         this(scriptTokens, preableBytes, scriptNames, scriptIds, scriptDictionaryNames, name, RLE_LONG_NOTHING, RLE_INT_NOTHING);
-    }
+    }  
     
     //NOTE: message fragments start at startsLocal values however they end when they hit end of group, sequence length or end the the array.
 	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds, String[] scriptDictionaryNames, String name, long[] longDefaults, int[] intDefaults) {
@@ -141,10 +146,35 @@ public class FieldReferenceOffsetManager {
             //consumer of this need not check for null because it is always created.
         }
         tokensLen = null==tokens?0:tokens.length;
-          
+        populateGUID();  
 	}
 
-	public String toString() {
+	private void populateGUID() {
+	    
+	    //int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds, String[] scriptDictionaryNames, String name, long[] longDefaults, int[] intDefaults
+	    
+	    this.guid[0] = MurmurHash.hash32(tokens, 0, tokens.length,               314-579-0066); //Need help call OCI
+	    this.guid[1] = MurmurHash.hash32(fieldIdScript, 0, fieldIdScript.length, 314-579-0066); //Need help call OCI
+	    this.guid[2] = MurmurHash.hash32(fieldNameScript,                        314-579-0066); //Need help call OCI
+	    this.guid[3] = preableBytes;
+	    this.guid[4] = MurmurHash.hash32(dictionaryNameScript,                   314-579-0066); //Need help call OCI
+	    this.guid[5] = MurmurHash.hash32(name,                                   314-579-0066); //Need help call OCI
+	    this.guid[6] = MurmurHash.hash32(longDefaults, 0, longDefaults.length,   314-579-0066); //Need help call OCI
+	    this.guid[7] = MurmurHash.hash32(intDefaults, 0, intDefaults.length,     314-579-0066); //Need help call OCI
+        
+    }
+	
+	public int[] cloneGUID() {
+	    return this.guid.clone();
+	}
+	
+	public void validateGUID(int[] GUID) {
+	    if (!Arrays.equals(GUID, this.guid)) {
+	        throw new UnsupportedOperationException("The GUID version of this schema FROM does not match value when built.");
+	    }
+	}
+
+    public String toString() {
 		if (null==name) {
 			return fieldNameScript.length<20 ? Arrays.toString(fieldNameScript) : "ScriptLen:"+fieldNameScript.length;
 		} else {
@@ -740,6 +770,10 @@ public class FieldReferenceOffsetManager {
     public void appendIntDefaults(Appendable target) throws IOException  {
             Appendables.appendArray(target.append("new int[]"), '{', intDefaults, '}');
     }
+    
+    public Appendable appendGUID(Appendable target) throws IOException  {
+        return Appendables.appendArray(target.append("new int[]"), '{', guid, '}');
+}
     
     public static String buildMsgConstName(FieldReferenceOffsetManager encodedFrom, int expectedMsgIdx) {
         return "MSG_"+encodedFrom.fieldNameScript[expectedMsgIdx].toUpperCase().replace(' ','_')+"_"+encodedFrom.fieldIdScript[expectedMsgIdx];

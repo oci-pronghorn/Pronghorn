@@ -251,7 +251,7 @@ public class StreamingVisitorWriter {
 
     private void processSequenceOpen(int fragmentCursor, String name, long id) {
         int seqLen = visitor.pullSequenceLength(name,id);
-        Pipe.addIntValue(seqLen, outputRing);     
+        Pipe.addIntValue(seqLen, outputRing);
         LowLevelStateManager.processGroupLength(navState, fragmentCursor, seqLen);
     }
 

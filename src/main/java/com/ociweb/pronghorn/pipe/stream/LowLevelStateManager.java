@@ -20,10 +20,11 @@ public class LowLevelStateManager {
         this.nestedFragmentDepth = -1; 
     }
 
-    public static void processGroupLength(LowLevelStateManager that, final int cursor, int seqLen) {
+    public static int processGroupLength(LowLevelStateManager that, final int cursor, int seqLen) {
         that.nestedFragmentDepth++;
         that.sequenceCounters[that.nestedFragmentDepth]= seqLen;
         that.cursorStack[that.nestedFragmentDepth] = cursor+that.from.fragScriptSize[cursor];
+        return seqLen;
     }
 
     public static int activeCursor(LowLevelStateManager that) {

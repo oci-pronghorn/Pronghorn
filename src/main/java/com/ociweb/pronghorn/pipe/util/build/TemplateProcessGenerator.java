@@ -23,31 +23,8 @@ public abstract class TemplateProcessGenerator {
 
 
     public void processSchema() throws IOException {
-        
-        
+                
         final FieldReferenceOffsetManager from = MessageSchema.from(schema);
-        
-        //Build temp working vars
-        for(int cursor =0; cursor<from.tokens.length; cursor++) {
-            String name = from.fieldNameScript[cursor];
-            long id = from.fieldIdScript[cursor];
-            int token = from.tokens[cursor];
-            int type = TokenBuilder.extractType(token);
-            if (TypeMask.TextASCII==type |
-                TypeMask.TextASCIIOptional==type |
-                TypeMask.TextUTF8==type |
-                TypeMask.TextUTF8Optional==type) {
-                
-                preprocessTextfields(name,id);
-                 
-            } else if (TypeMask.ByteArray==type | 
-                       TypeMask.ByteArrayOptional==type) {
-                
-                preprocessBytefields(name, id);
-
-            }   
-        }
-        
         
         //Build top level entry point
         processCallerPrep();
@@ -74,6 +51,7 @@ public abstract class TemplateProcessGenerator {
                 } else {
                     processFragment(0, cursor, from);
                 }
+                
                 processCalleeClose(cursor);
             }
         }
@@ -212,20 +190,16 @@ public abstract class TemplateProcessGenerator {
         //we are here because it did not exit early with close group or group length therefore this
         //fragment is one of those that is not wrapped by a group open/close and we should do the close logic.
         //LowLevelStateManager.closeFragment(navState); 
-        processFragmentClose();
+        processFragmentClose(fragmentCursor);
         
     }
 
-
-
-    protected abstract void preprocessTextfields(String name, long id) throws IOException;
-    protected abstract void preprocessBytefields(String name, long id) throws IOException;
-    
+        
     protected abstract void processCallerPrep() throws IOException;
     protected abstract void processCaller(int cursor) throws IOException;
     protected abstract void processCallerPost() throws IOException;
     
-    protected abstract void processFragmentClose() throws IOException;
+    protected abstract void processFragmentClose(int fragmentCursor) throws IOException;
     protected abstract void processDictionary() throws IOException;
     protected abstract void processByteArrayOptional(String name, int idx, int fieldCursor, long id) throws IOException;
     protected abstract void processByteArray(String name, int idx, int fieldCursor, long id) throws IOException;
