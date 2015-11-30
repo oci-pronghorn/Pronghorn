@@ -85,15 +85,22 @@ public class Appendables {
     }
     
     public static <A extends Appendable> A appendHexDigits(A target, int value) throws IOException {
+        return appendHexDigits("0x",target,value);
+    }
+    
+    public static <A extends Appendable> A appendHexDigits(CharSequence prefix, A target, int value) throws IOException {
 
         int bits = 32 - Integer.numberOfLeadingZeros(value);
         
-        target.append("0x");
+        //round up to next group of 4
+        bits = ((bits+3)>>2)<<2;
+        
+        target.append(prefix);
         int nextValue = value;
         int orAll = 0; //this is to remove the leading zeros
         while (bits>4) {
             bits -= 4;            
-            int digit = nextValue>>bits;
+            int digit = nextValue>>>bits;
             orAll |= digit;
             if (0!=orAll) {
                 target.append(hBase[digit]);            
@@ -101,7 +108,7 @@ public class Appendables {
             nextValue =  ((1<<bits)-1) & nextValue;
         }
         bits -= 4;
-        target.append(hBase[nextValue>>bits]);
+        target.append(hBase[nextValue>>>bits]);
         
         return target;
     }
@@ -136,12 +143,15 @@ public class Appendables {
         
         int bits = 64-Long.numberOfLeadingZeros(value);
         
+        //round up to next group of 4
+        bits = ((bits+3)>>2)<<2;
+        
         target.append("0x");
         long nextValue = value;
         int orAll = 0; //this is to remove the leading zeros
         while (bits>4) {
             bits -= 4;            
-            int digit = (int)nextValue>>bits;
+            int digit = (int)nextValue>>>bits;
             orAll |= digit;
             if (0!=orAll) {
                 target.append(hBase[digit]);            
@@ -149,7 +159,7 @@ public class Appendables {
             nextValue =  ((1<<bits)-1) & nextValue;
         }
         bits -= 4;
-        target.append(hBase[(int)(nextValue>>bits)]);
+        target.append(hBase[(int)(nextValue>>>bits)]);
         
         return target;
     }
@@ -182,15 +192,18 @@ public class Appendables {
      */
     public static <A extends Appendable> A appendFixedHexDigits(A target, int value, int bits) throws IOException {
 
+        //round up to next group of 4
+        bits = ((bits+3)>>2)<<2;
+        
         target.append("0x");
         int nextValue = value;
         while (bits>4) {            
             bits -= 4;
-            target.append(hBase[nextValue>>bits]);            
+            target.append(hBase[nextValue>>>bits]);            
             nextValue =  ((1<<bits)-1) & nextValue;
         }
         bits -= 4;
-        target.append(hBase[nextValue>>bits]);
+        target.append(hBase[nextValue>>>bits]);
         
         return target;
     }

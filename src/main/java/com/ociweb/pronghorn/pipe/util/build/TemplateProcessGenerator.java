@@ -21,9 +21,16 @@ public abstract class TemplateProcessGenerator {
         this.schema = schema;
     }
 
+    
+    
 
     public void processSchema() throws IOException {
+        
+        headerConstruction();
                 
+        defineMembers();
+               
+        
         final FieldReferenceOffsetManager from = MessageSchema.from(schema);
         
         //Build top level entry point
@@ -55,9 +62,11 @@ public abstract class TemplateProcessGenerator {
                 processCalleeClose(cursor);
             }
         }
+        
+        footerConstruction();
+        
     }
     
-
 
 
 
@@ -195,6 +204,12 @@ public abstract class TemplateProcessGenerator {
     }
 
         
+
+
+    protected abstract void headerConstruction() throws IOException;
+    protected abstract void defineMembers() throws IOException;
+    protected abstract void footerConstruction() throws IOException;
+    
     protected abstract void processCallerPrep() throws IOException;
     protected abstract void processCaller(int cursor) throws IOException;
     protected abstract void processCallerPost() throws IOException;

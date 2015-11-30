@@ -1,7 +1,8 @@
 package com.ociweb.pronghorn.pipe.build;
 
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -25,9 +26,7 @@ import org.xml.sax.SAXException;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
-import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
-import com.ociweb.pronghorn.pipe.stream.LowLevelStateManager;
 import com.ociweb.pronghorn.pipe.util.build.SimpleSourceFileObject;
 import com.ociweb.pronghorn.pipe.util.build.TemplateProcessGeneratorLowLevelReader;
 import com.ociweb.pronghorn.pipe.util.build.TemplateProcessGeneratorLowLevelWriter;
@@ -140,16 +139,14 @@ public class TemplateProcessGeneratorTest {
             FieldReferenceOffsetManager from = TemplateHandler.loadFrom("/template/smallExample.xml");
             MessageSchema schema = new MessageSchemaDynamic(from);
                         
-            String className = "TestLowLevelReader";
-            String pipeName = "input";
+            String className = "LowLevelReader";
             
-            StringBuilder target = buildDummyHeader(className);
+            StringBuilder target = new StringBuilder();
                         
-            TemplateProcessGeneratorLowLevelReader simple = new TemplateProcessGeneratorLowLevelReader(schema, target, pipeName);
+            TemplateProcessGeneratorLowLevelReader simple = new TemplateProcessGeneratorLowLevelReader(schema, target);
             
             simple.processSchema();
             
-            target.append("}\n");
     //        System.out.println(target);
             
             validateCleanCompile(className, target);
@@ -174,17 +171,16 @@ public class TemplateProcessGeneratorTest {
             FieldReferenceOffsetManager from = TemplateHandler.loadFrom("/template/smallExample.xml");
             MessageSchema schema = new MessageSchemaDynamic(from);
                         
-            String className = "TestLowLevelWriter";
-            String pipeName = "output";
+            String className = "LowLevelWriter";
             
-            StringBuilder target = buildDummyHeader(className);
+            StringBuilder target = new StringBuilder();
                         
-            TemplateProcessGeneratorLowLevelWriter simple = new TemplateProcessGeneratorLowLevelWriter(schema, target, pipeName);
+            TemplateProcessGeneratorLowLevelWriter simple = new TemplateProcessGeneratorLowLevelWriter(schema, target);
             
             simple.processSchema();
             
-            target.append("}\n");
-    //        System.out.println(target);
+            
+            System.out.println(target);
             
             validateCleanCompile(className, target);
             
@@ -199,23 +195,7 @@ public class TemplateProcessGeneratorTest {
             fail();
         }
     }
-    
-    
-    private StringBuilder buildDummyHeader(String className) {
-        StringBuilder target = new StringBuilder();
-        
-        target.append("package com.ociweb.pronghorn.pipe.build;\n");
-        target.append("import com.ociweb.pronghorn.pipe.stream.LowLevelStateManager;\n");
-        target.append("import com.ociweb.pronghorn.pipe.Pipe;\n");
-        target.append("import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;\n");
-        target.append("import com.ociweb.pronghorn.pipe.util.Appendables;\n");
-        target.append("import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;\n");
-        target.append("public class ").append(className).append(" implements Runnable {\n");
 
-        target.append("\n");
-        target.append("private void requestShutdown() {};\n"); //only here so generated code passes compile.
-        return target;
-    }
 
     private void validateCleanCompile(String className, StringBuilder target) {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();

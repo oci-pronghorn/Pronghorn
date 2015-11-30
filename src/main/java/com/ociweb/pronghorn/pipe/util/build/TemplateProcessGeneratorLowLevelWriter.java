@@ -18,13 +18,15 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     
     private final Appendable bodyTarget;
     
-    private final String tab = "    ";
+    protected final String tab = "    ";
     private final boolean hasSimpleMessagesOnly; //for simple messages there is no LowLevelStateManager
     private final String stageMgrClassName = LowLevelStateManager.class.getSimpleName();
     private final String stageMgrVarName = "navState"; 
     private final String pipeVarName;
     private final Class pipeClass;
     private final StringBuilder businessExampleWorkspace = new StringBuilder();
+    private int businessFieldCount;
+    private int businessFirstField;
     private final StringBuilder writeToPipeSignatureWorkspace = new StringBuilder();
     private final StringBuilder writeToPipeBodyWorkspace = new StringBuilder();
     private static final String SeqCountSuffix = "Count";
@@ -34,30 +36,30 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     private final String doNothingConstant = "DO_NOTHING";
     
     private boolean firstField = true;
+        
     
-    
-    public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target, String pipeVarName) {
+    public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target) {
         super(schema);
 
         this.pipeId = "1";
-        this.pipeVarName = pipeVarName;
+        this.pipeVarName = "output";
         this.pipeClass = Pipe.class;
         this.bodyTarget = target;
         this.hasSimpleMessagesOnly = MessageSchema.from(schema).hasSimpleMessagesOnly;
-        
+       
     }
-    
-    public void processSchema() throws IOException {
-        
+
+    protected void defineMembers() throws IOException {
         final FieldReferenceOffsetManager from = MessageSchema.from(schema);
      
         if (!from.hasSimpleMessagesOnly) {
             bodyTarget.append("private LowLevelStateManager navState;\n");
         }
         appendClass(bodyTarget.append("private "), pipeClass, schema.getClass()).append(pipeVarName).append(";\n");
-        
-        
-        super.processSchema();
+        additionalMembers(bodyTarget);
+    }
+
+    protected void additionalMembers(Appendable target) throws IOException {  
     }
 
     @Override
@@ -73,9 +75,9 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         
         
         bodyTarget.append("\n");
-        bodyTarget.append("protected int nextMessageIdx() {\n");
-        bodyTarget.append(tab).append("/* Override as needed and put your business specific logic here */\n");
-        bodyTarget.append(tab).append("return ").append(doNothingConstant).append(";\n");
+        
+        bodyTarget.append("protected int nextMessageIdx() {\n");        
+        bodyOfNextMessageIdx(bodyTarget);        
         bodyTarget.append("}\n");
         
         bodyTarget.append("\n");
@@ -124,9 +126,6 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         //switch(cursor)) {
         bodyTarget.append(tab).append("switch(").append(cursorVarName).append(") {\n");
         
-        
-        
-        
     }
 
     
@@ -161,7 +160,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
 
        bodyTarget.append("/*");
-       appendInternalWriteMethodName(bodyTarget, cursor);
+       appendWriteMethodName(bodyTarget, cursor);
        bodyTarget.append("*/");
        
         if (schema instanceof MessageSchemaDynamic || null==from.fieldNameScript[cursor]) {
@@ -214,7 +213,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     @Override
     protected void processByteArrayOptional(String name, int idx, int fieldCursor, long id) throws IOException {
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "null");
+        appendArgumentForBusinessCall(name, "null", "ByteBuffer", fieldCursor);
 
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "ByteBuffer"); 
@@ -228,7 +227,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     @Override
     protected void processByteArray(String name, int idx, int fieldCursor, long id) throws IOException {
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "ByteBuffer.allocate(0)");
+        appendArgumentForBusinessCall(name, "ByteBuffer.allocate(0)", "ByteBuffer", fieldCursor);
 
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "ByteBuffer"); 
@@ -244,7 +243,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     protected void processTextUTF8Optional(String name, int idx, int fieldCursor, long id) throws IOException {
         
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "\"\"");
+        appendArgumentForBusinessCall(name, "\"\"", "CharSequence", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "CharSequence"); 
@@ -260,7 +259,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     protected void processTextUTF8(String name, int idx, int fieldCursor, long id) throws IOException {
         
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "\"\"");
+        appendArgumentForBusinessCall(name, "\"\"", "CharSequence", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "CharSequence"); 
@@ -275,7 +274,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     protected void processTextASCIIOptional(String name, int idx, int fieldCursor, long id) throws IOException {
         
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "\"\"");
+        appendArgumentForBusinessCall(name, "\"\"", "CharSequence", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "CharSequence"); 
@@ -291,7 +290,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     protected void processTextASCII(String name, int idx, int fieldCursor, long id) throws IOException {
         
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "\"\"");
+        appendArgumentForBusinessCall(name, "\"\"", "CharSequence", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "CharSequence"); 
@@ -312,8 +311,8 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         String m = name+"M";
                
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(e, "0");
-        appendArgumentForBusinessCall(m, "0");
+        appendArgumentForBusinessCall(e, "0", "int", fieldCursor);
+        appendArgumentForBusinessCall(m, "0", "long", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(e, "int");
@@ -334,8 +333,8 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         String m = name+"M";
         
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(e, "0");
-        appendArgumentForBusinessCall(m, "0");
+        appendArgumentForBusinessCall(e, "0", "int", fieldCursor);
+        appendArgumentForBusinessCall(m, "0", "long", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(e, "int");
@@ -354,7 +353,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         long nullLiteral = FieldReferenceOffsetManager.getAbsent64Value(MessageSchema.from(schema));
 
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "null");
+        appendArgumentForBusinessCall(name, "null", "Long", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "Long");
@@ -371,7 +370,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         long nullLiteral = FieldReferenceOffsetManager.getAbsent64Value(MessageSchema.from(schema));
 
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "null");
+        appendArgumentForBusinessCall(name, "null", "Long", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "Long");
@@ -387,7 +386,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     protected void processLongUnsigned(String name, int idx, int fieldCursor, long id) throws IOException {
 
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "0");
+        appendArgumentForBusinessCall(name, "0", "long", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "long");
@@ -402,7 +401,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     protected void processLongSigned(String name, int idx, int fieldCursor, long id) throws IOException {
 
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "0");
+        appendArgumentForBusinessCall(name, "0", "long", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "long");   
@@ -419,7 +418,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         int nullLiteral = FieldReferenceOffsetManager.getAbsent32Value(MessageSchema.from(schema));
 
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "null");
+        appendArgumentForBusinessCall(name, "null", "Integer", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "Integer"); 
@@ -437,7 +436,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         int nullLiteral = FieldReferenceOffsetManager.getAbsent32Value(MessageSchema.from(schema));
 
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "null");
+        appendArgumentForBusinessCall(name, "null", "Integer", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "Integer");  
@@ -453,7 +452,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     protected void processIntegerUnsigned(String name, int i, int fieldCursor, long id) throws IOException {
         
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "0");
+        appendArgumentForBusinessCall(name, "0", "int", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "int");
@@ -468,7 +467,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     protected void pronghornIntegerSigned(String name, int i, int fieldCursor, long id) throws IOException {
         
         //build the argument for calling, this will be modified for specific business logic.
-        appendArgumentForBusinessCall(name, "0");
+        appendArgumentForBusinessCall(name, "0", "int", fieldCursor);
         
         //build arg list for method signature
         appendTypeSignatureForPipeWriter(name, "int");        
@@ -480,7 +479,11 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     }
 
 
-    private void appendArgumentForBusinessCall(String name, String defaultValue) throws IOException {
+    private void appendArgumentForBusinessCall(String name, String defaultValue, String type, int fieldCursor) throws IOException {
+        businessFieldCount++;
+        if (businessFirstField<0) {
+            businessFirstField = fieldCursor;
+        }
         appendVar(appendComma(businessExampleWorkspace.append(tab).append(tab).append(tab)).append(defaultValue).append(" /*"),name).append("*/\n");
     }
 
@@ -515,7 +518,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         return (A)target.append('p').append(name.replace(' ', '_')); //TODO: this replacement code should be doen in Appendable.
     }
     
-    private Appendable appendInternalWriteMethodName(Appendable target, int cursor) throws IOException {
+    protected Appendable appendWriteMethodName(Appendable target, int cursor) throws IOException {
         return appendFragmentName(target.append("processPipe").append(pipeId).append("Write"), cursor);
     }
     
@@ -569,7 +572,10 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
             
         } else {
                CharSequence varName = appendVar(new StringBuilder(), name);  
-
+               businessFieldCount++;
+               if (businessFirstField<0) {
+                   businessFirstField = fieldCursor;
+               }
                appendSequenceCounterVar(appendComma(businessExampleWorkspace.append(tab).append(tab).append(tab)).append("0").append(" /*"),varName).append("*/\n");
                
                appendSequenceCounterVar(appendComma(writeToPipeSignatureWorkspace).append("int").append(' '),varName);            
@@ -601,7 +607,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         } else {        
             writeToPipeBodyWorkspace.append(tab).append(stageMgrClassName).append(".continueAtThisCursor(").append(stageMgrVarName).append(", ");
             writeToPipeBodyWorkspace.append("/*");
-            appendInternalWriteMethodName(writeToPipeBodyWorkspace, fieldCursor);
+            appendWriteMethodName(writeToPipeBodyWorkspace, fieldCursor);
             writeToPipeBodyWorkspace.append("*/");
             writeToPipeBodyWorkspace.append(Integer.toString(fieldCursor)).append(");\n");
         }
@@ -651,6 +657,8 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         writeToPipeSignatureWorkspace.setLength(0);
         writeToPipeBodyWorkspace.setLength(0);
         businessExampleWorkspace.setLength(0);
+        businessFieldCount = 0;
+        businessFirstField = -1;
         
     }
     
@@ -661,25 +669,60 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         bodyTarget.append("protected void ");
         appendBusinessMethodName(cursor).append("() {\n");
         
-        bodyTarget.append('\n');
-        bodyTarget.append(tab).append("/* Override as needed and put your business specific logic here */\n");
-        bodyTarget.append('\n');
-        
-        bodyTarget.append(tab);
-        appendInternalWriteMethodName(bodyTarget, cursor).append("(\n");        
-        bodyTarget.append(businessExampleWorkspace).append(tab).append(");\n");
+        bodyOfBusinessProcess(bodyTarget, cursor, businessFirstField, businessFieldCount);
         
         bodyTarget.append("}\n");
         bodyTarget.append('\n');
         
         
         bodyTarget.append("protected void ");
-        appendInternalWriteMethodName(bodyTarget, cursor).append("(").append(writeToPipeSignatureWorkspace).append(") {\n");
+        appendWriteMethodName(bodyTarget, cursor).append("(").append(writeToPipeSignatureWorkspace).append(") {\n");
         bodyTarget.append(writeToPipeBodyWorkspace);
         bodyTarget.append("}\n");
         bodyTarget.append('\n');
         
     }
+
+    @Override
+    protected void headerConstruction() throws IOException {
+        bodyTarget.append("package com.ociweb.pronghorn.pipe.build;\n");
+        
+        bodyTarget.append("import com.ociweb.pronghorn.pipe.stream.LowLevelStateManager;\n");
+        bodyTarget.append("import com.ociweb.pronghorn.pipe.Pipe;\n");
+        bodyTarget.append("import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;\n");
+        bodyTarget.append("import com.ociweb.pronghorn.pipe.util.Appendables;\n");
+        bodyTarget.append("import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;\n");
+        additionalImports(bodyTarget);
+        
+        bodyTarget.append("public class LowLevelWriter implements Runnable {\n");
+        bodyTarget.append("\n");
+    }
     
+    protected void additionalImports(Appendable target) throws IOException {
+    }
+
+    @Override
+    protected void footerConstruction() throws IOException {
+        bodyTarget.append("private void requestShutdown() {};\n"); //only here so generated code passes compile.
+        bodyTarget.append("};\n");
+    }   
+
+    protected void bodyOfNextMessageIdx(Appendable target) throws IOException {
+        target.append(tab).append("/* Override as needed and put your business specific logic here */\n");                
+        target.append(tab).append("return ").append(doNothingConstant).append(";\n");
+    }
+    
+    protected void bodyOfBusinessProcess(Appendable target, int cursor, int firstField, int fieldCount) throws IOException {
+        target.append('\n');
+        target.append(tab).append("/* Override as needed and put your business specific logic here */\n");
+        target.append('\n');
+
+        appendWriteMethodName(target.append(tab), cursor).append("(\n");        
+        
+        target.append(businessExampleWorkspace);//needs to be exposed for write
+        
+        target.append(tab).append(");\n");
+    }
+
     
 }

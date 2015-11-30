@@ -53,13 +53,13 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
     private StringBuilder workspace1;
     
     
-    public TemplateProcessGeneratorLowLevelReader(MessageSchema schema, Appendable bodyTarget, String pipeVarName) {
+    public TemplateProcessGeneratorLowLevelReader(MessageSchema schema, Appendable bodyTarget) {
         super(schema);
         
         this.hasSimpleMessagesOnly = MessageSchema.from(schema).hasSimpleMessagesOnly;        
         this.bodyTarget = bodyTarget;
         this.schemaClass = schema.getClass();
-        this.pipeVarName = pipeVarName;
+        this.pipeVarName = "input";
         
         int maxFieldCount = FieldReferenceOffsetManager.maxFragmentSize(MessageSchema.from(schema));
         
@@ -83,39 +83,21 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
     
     public void processSchema() throws IOException {
     
+
+        
         final FieldReferenceOffsetManager from = MessageSchema.from(schema);
         
-        workspace1 = new StringBuilder();
-                
-        //TODO added logic for building the startup();
-   
-        for(int cursor = 0; cursor<from.tokens.length; cursor++) {
-            String name = from.fieldNameScript[cursor];
-            long id = from.fieldIdScript[cursor];
-            int token = from.tokens[cursor];
-            int type = TokenBuilder.extractType(token);
-            if (TypeMask.TextASCII==type |
-                TypeMask.TextASCIIOptional==type |
-                TypeMask.TextUTF8==type |
-                TypeMask.TextUTF8Optional==type) {
-                
-                preprocessTextfieldsDef(name, id);
-                 
-            } else if (TypeMask.ByteArray==type | 
-                       TypeMask.ByteArrayOptional==type) {
-                
-                preprocessBytefieldsDef(name, id);
-
-            } 
-        }
-        if (!from.hasSimpleMessagesOnly) {
-            bodyTarget.append("private LowLevelStateManager navState;\n");
-        }
-        appendClass(bodyTarget.append("private "), pipeClass, schema.getClass()).append(pipeVarName).append(";\n");
-        
-        //bodyTarget.append("private ")
-        
         workspacesDefinedCount = 0;
+       
+                        
+        super.processSchema();
+        
+        //place at the end the business methods which are overridden
+        bodyTarget.append('\n').append('\n').append(workspace1);
+        
+    }
+
+    protected void helperMethods(final FieldReferenceOffsetManager from) throws IOException {
         bodyTarget.append("\n");
         bodyTarget.append("public void startup() {\n");
         
@@ -149,12 +131,6 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         }
         
         bodyTarget.append("}\n");
-                        
-        super.processSchema();
-        
-        //place at the end the business methods which are overridden
-        bodyTarget.append('\n').append('\n').append(workspace1);
-        
     }
     
     private void preprocessTextfieldsDef(String name, long id) throws IOException {    
@@ -216,29 +192,10 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
     @Override
     protected void processCallerPrep() throws IOException {
                         
-        //research question for CS - can we use the name of the method to capture refactoring.
-        //System.out.println("helllo "+LowLevelStateManager::activeCursor);
-        //LowLevelStateManager.class.getMethods()[0].
-        
-        bodyTarget.append("\n");
-        bodyTarget.append("// GENERATED LOW LEVEL READER \n");
-        bodyTarget.append("// # Low level API is the fastest way of reading from a pipe in a business semantic way. \n");
-        bodyTarget.append("// # Do not change the order that fields are read, this is fixed when using low level. \n");
-        bodyTarget.append("// # Do not remove any field reading, every field must be consumed when using low level. \n");
-        bodyTarget.append("\n");
-        bodyTarget.append("// Details to keep in mind when you expect the schema to change over time\n");
-        bodyTarget.append("// # Low level API is CAN be extensiable in the sense which means ignore unrecognized messages. \n");
-        bodyTarget.append("// # Low level API is CAN NOT be extensiable in the sense of dealing with mising or extra/new fields. \n");
-        bodyTarget.append("// # Low level API is CAN NOT be extensiable in the sense of dealing with fields encoded with different types. \n"); 
-        
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
-               
-        from.appendGUID( bodyTarget.append("private static final int[] FROM_GUID = ")).append(";\n");
-        bodyTarget.append("private static final long BUILD_TIME = ");
-        Appendables.appendValue(bodyTarget, System.currentTimeMillis()).append("L;\n");
-        //TODO: fix hexDigits it is out of bounds.
+
         
-        //TODO: add second appendable for the methods to be overriden and put them on the end.
+        helperMethods(from);
         
         bodyTarget.append("\n");
         bodyTarget.append("@Override\n");
@@ -913,6 +870,85 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
 
 
     protected void processEndOfSequence(String name, long id) {
+    }
+
+    @Override
+    protected void footerConstruction() throws IOException {
+       bodyTarget.append("}\n");
+    }
+
+    @Override
+    protected void headerConstruction() throws IOException {
+        bodyTarget.append("package com.ociweb.pronghorn.pipe.build;\n");
+        bodyTarget.append("import com.ociweb.pronghorn.pipe.stream.LowLevelStateManager;\n");
+        bodyTarget.append("import com.ociweb.pronghorn.pipe.Pipe;\n");
+        bodyTarget.append("import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;\n");
+        bodyTarget.append("import com.ociweb.pronghorn.pipe.util.Appendables;\n");
+        bodyTarget.append("import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;\n");
+        additionalImports(schema, bodyTarget);
+        
+        bodyTarget.append("public class LowLevelReader implements Runnable {\n");
+
+        bodyTarget.append("\n");
+        bodyTarget.append("private void requestShutdown() {};\n"); //only here so generated code passes compile.
+    }
+
+    protected void additionalImports(MessageSchema schema, Appendable target) {
+    }
+    
+    @Override
+    protected void defineMembers() throws IOException {
+        final FieldReferenceOffsetManager from = MessageSchema.from(schema);
+        
+        workspace1 = new StringBuilder();
+                
+        //TODO added logic for building the startup();
+   
+        for(int cursor = 0; cursor<from.tokens.length; cursor++) {
+            String name = from.fieldNameScript[cursor];
+            long id = from.fieldIdScript[cursor];
+            int token = from.tokens[cursor];
+            int type = TokenBuilder.extractType(token);
+            if (TypeMask.TextASCII==type |
+                TypeMask.TextASCIIOptional==type |
+                TypeMask.TextUTF8==type |
+                TypeMask.TextUTF8Optional==type) {
+                
+                preprocessTextfieldsDef(name, id);
+                 
+            } else if (TypeMask.ByteArray==type | 
+                       TypeMask.ByteArrayOptional==type) {
+                
+                preprocessBytefieldsDef(name, id);
+
+            } 
+        }
+        if (!from.hasSimpleMessagesOnly) {
+            bodyTarget.append("private LowLevelStateManager navState;\n");
+        }
+        appendClass(bodyTarget.append("private "), pipeClass, schema.getClass()).append(pipeVarName).append(";\n");
+        
+        
+        
+        bodyTarget.append("\n");
+        bodyTarget.append("// GENERATED LOW LEVEL READER \n");
+        bodyTarget.append("// # Low level API is the fastest way of reading from a pipe in a business semantic way. \n");
+        bodyTarget.append("// # Do not change the order that fields are read, this is fixed when using low level. \n");
+        bodyTarget.append("// # Do not remove any field reading, every field must be consumed when using low level. \n");
+        bodyTarget.append("\n");
+        bodyTarget.append("// Details to keep in mind when you expect the schema to change over time\n");
+        bodyTarget.append("// # Low level API is CAN be extensiable in the sense which means ignore unrecognized messages. \n");
+        bodyTarget.append("// # Low level API is CAN NOT be extensiable in the sense of dealing with mising or extra/new fields. \n");
+        bodyTarget.append("// # Low level API is CAN NOT be extensiable in the sense of dealing with fields encoded with different types. \n"); 
+        
+               
+        from.appendGUID( bodyTarget.append("private static final int[] FROM_GUID = ")).append(";\n");
+        bodyTarget.append("private static final long BUILD_TIME = ");
+        Appendables.appendValue(bodyTarget, System.currentTimeMillis()).append("L;\n");
+        //TODO: fix hexDigits it is out of bounds.
+
+        
+        
     }
 
 
