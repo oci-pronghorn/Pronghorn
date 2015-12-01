@@ -220,12 +220,12 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 	        	        
 	        		case 16: //beginMessage 
 	        			
-	        			Pipe.blockWriteMessage(stage.outputRing, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM);        			
+	        			Pipe.blockWriteMessage(stage.outputRing, RawDataSchema.MSG_CHUNKEDSTREAM_1);        			
 	        			stage.activeFieldIdx = 0;
 	        			stage.activeByteBase = Pipe.bytesWorkingHeadPosition(stage.outputRing);
 	        			break;
 	        		case 80: //beginMessage Named
-	        			Pipe.blockWriteMessage(stage.outputRing, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM);	  //?? begin message named?
+	        			Pipe.blockWriteMessage(stage.outputRing, RawDataSchema.MSG_CHUNKEDSTREAM_1);	  //?? begin message named?
 	        			stage.activeFieldIdx = 0;
 	        			stage.activeByteBase = Pipe.bytesWorkingHeadPosition(stage.outputRing);
 	        			break;

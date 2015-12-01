@@ -1,9 +1,12 @@
 package com.ociweb.pronghorn.stage.test;
 
+import java.io.IOException;
+
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
+import com.ociweb.pronghorn.pipe.util.Appendables;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -31,21 +34,29 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
 
 	@Override
 	public void shutdown() {
-		processCounts("Final:",counts,totalCounts);
+		try {
+            processCounts("Final:",counts,totalCounts);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
 		processTotal("Totals:",totalCounts, Pipe.from(inputRing));
 	}
 
 	@Override
 	public void run() {
+	    try {
 		boolean foundData = dataToRead(counts);
 		long now = System.currentTimeMillis();
 		if (foundData || now>nextOutTime) {
 			nextOutTime = now+stepTime;			
-			if (!processCounts("Running:",counts,totalCounts)) {
-				return;
-			}
+                if (!processCounts("Running:",counts,totalCounts)) {
+                	return;
+                }
 		}
 
+	    } catch (IOException e) {
+	        throw new RuntimeException(e);            
+	   }
 
 	}
 	
@@ -58,28 +69,37 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
 		return sum;
 	}
 
-	private boolean processCounts(String label, long[] counts,	long[] totalCounts) {
+	private boolean processCounts(String label, long[] counts,	long[] totalCounts) throws IOException {
 		
 		console.setLength(0);
-		int i = 0;
-		long newMessages = 0;
-		long totalMessages = 0;
-		while (i<counts.length) {
+		return processCountsLoop(label, counts, totalCounts, 0, 0, 0, counts.length);
+	}
+
+    private boolean processCountsLoop(String label, long[] counts, long[] totalCounts, int i, long newMessages, long totalMessages, int limit) throws IOException {
+        while (i<limit) {
 			newMessages += counts[i];
-			if (counts[i]>0) {
-				totalCounts[i] += counts[i];
-				console.append('[').append(i).append(']').append(counts[i]).append(" ");
-				counts[i]=0;
-			}
+			writeToConsole(counts, totalCounts, i);
 			totalMessages += totalCounts[i];
 			i++;
 		}
-		if (newMessages>0) {
-			console.append(" total:").append(totalMessages);
+		return cleanupReport(label, newMessages, totalMessages);
+    }
+
+    private boolean cleanupReport(String label, long newMessages, long totalMessages) throws IOException {
+        if (newMessages>0) {
+			Appendables.appendValue(console.append(" total:"), totalMessages);
 			System.out.println(label+console);
 		}
 		return newMessages>0;
-	}
+    }
+
+    private void writeToConsole(long[] counts, long[] totalCounts, int i) throws IOException {
+        if (counts[i]>0) {
+        	totalCounts[i] += counts[i];
+        	Appendables.appendValue(Appendables.appendValue(console.append('['), i).append(']'), counts[i]).append(' ');
+        	counts[i]=0;
+        }
+    }
 
 	private boolean processTotal(String label, long[] totalCounts, FieldReferenceOffsetManager from) {
 		

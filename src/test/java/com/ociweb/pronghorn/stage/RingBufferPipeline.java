@@ -186,8 +186,8 @@ public class RingBufferPipeline {
 	private final class DumpStageHighLevel extends PronghornStage {
 		private final Pipe inputRing;
 		private final boolean useRoute;
-		final int MSG_ID = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
-		final int FIELD_ID = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD;
+		final int MSG_ID = RawDataSchema.MSG_CHUNKEDSTREAM_1;
+		final int FIELD_ID = RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2;
 		int msgCount=0;
 
 		private DumpStageHighLevel(GraphManager gm,Pipe inputRing, boolean useRoute) {
@@ -302,8 +302,8 @@ public class RingBufferPipeline {
 	private final class CopyStageHighLevel extends PronghornStage {
 		private final Pipe outputRing;
 		private final Pipe inputRing;
-		final int MSG_ID = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
-		final int FIELD_ID = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD;
+		final int MSG_ID = RawDataSchema.MSG_CHUNKEDSTREAM_1;
+		final int FIELD_ID = RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2;
 		int msgId=-2;
 
 		private CopyStageHighLevel(GraphManager gm, Pipe outputRing, Pipe inputRing) {
@@ -387,8 +387,8 @@ public class RingBufferPipeline {
 
 	private final class ProductionStageHighLevel extends PronghornStage {
 		private final Pipe outputRing;
-		private final int MESSAGE_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
-		private final int FIELD_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD;
+		private final int MESSAGE_LOC = RawDataSchema.MSG_CHUNKEDSTREAM_1;
+		private final int FIELD_LOC = RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2;
 		private long messageCount = testMessages; 
 
 		private ProductionStageHighLevel(GraphManager gm, Pipe outputRing) {

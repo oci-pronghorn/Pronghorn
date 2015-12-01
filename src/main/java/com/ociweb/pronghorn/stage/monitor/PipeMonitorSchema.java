@@ -15,23 +15,23 @@ public class PipeMonitorSchema extends MessageSchema{
             new long[]{2, 2, 0},
             new int[]{2, 2, 0});
     
-    public static final int MSG_RINGSTATSAMPLE_100 = 0x0;
-    public static final int MSG_RINGSTATSAMPLE_100_FIELD_MS_1 = 0x2000001;
-    public static final int MSG_RINGSTATSAMPLE_100_FIELD_HEAD_2 = 0x2000003;
-    public static final int MSG_RINGSTATSAMPLE_100_FIELD_TAIL_3 = 0x2000005;
-    public static final int MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4 = 0x7;
-    public static final int MSG_RINGSTATSAMPLE_100_FIELD_BUFFERSIZE_5 = 0x8;
-    public static final int MSG_RINGSTATENHANCEDSAMPLE_200 = 0x7;
-    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_MS_1 = 0x2000001;
-    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_HEAD_2 = 0x2000003;
-    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_TAIL_3 = 0x2000005;
-    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_TEMPLATEID_4 = 0x7;
-    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_BUFFERSIZE_5 = 0x8;
-    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_STACKDEPTH_21 = 0x9;
-    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_LATENCY_22 = 0xa;
+    public static final int MSG_RINGSTATSAMPLE_100 = 0x00000000;
+    public static final int MSG_RINGSTATSAMPLE_100_FIELD_MS_1 = 0x00800001;
+    public static final int MSG_RINGSTATSAMPLE_100_FIELD_HEAD_2 = 0x00800003;
+    public static final int MSG_RINGSTATSAMPLE_100_FIELD_TAIL_3 = 0x00800005;
+    public static final int MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4 = 0x00000007;
+    public static final int MSG_RINGSTATSAMPLE_100_FIELD_BUFFERSIZE_5 = 0x00000008;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_200 = 0x00000007;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_MS_1 = 0x00800001;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_HEAD_2 = 0x00800003;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_TAIL_3 = 0x00800005;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_TEMPLATEID_4 = 0x00000007;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_BUFFERSIZE_5 = 0x00000008;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_STACKDEPTH_21 = 0x00000009;
+    public static final int MSG_RINGSTATENHANCEDSAMPLE_200_FIELD_LATENCY_22 = 0x0000000A;
 
 
-    public static MessageSchema instance = new PipeMonitorSchema();
+    public static PipeMonitorSchema instance = new PipeMonitorSchema();
 
     
     private PipeMonitorSchema() {
