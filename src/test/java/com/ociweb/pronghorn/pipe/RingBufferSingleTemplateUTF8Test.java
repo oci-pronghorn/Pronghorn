@@ -18,7 +18,7 @@ import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 public class RingBufferSingleTemplateUTF8Test {
 
 	final FieldReferenceOffsetManager FROM = RawDataSchema.FROM;
-	final int FRAG_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
+	final int FRAG_LOC = RawDataSchema.MSG_CHUNKEDSTREAM_1;
 	
 	final byte primaryRingSizeInBits = 3; 
 	final byte byteRingSizeInBits = 22;
@@ -97,14 +97,14 @@ public class RingBufferSingleTemplateUTF8Test {
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message
         		if (0 == (j&1)) {
-        			PipeWriter.writeUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, testString);
+        			PipeWriter.writeUTF8(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testString);
       
         		} else {
         			if (0 == (j&2)) {
-        				PipeWriter.writeUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, testChars);
+        				PipeWriter.writeUTF8(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testChars);
       
         			} else {
-        				PipeWriter.writeUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, testChars, 0, stringSize);
+        				PipeWriter.writeUTF8(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testChars, 0, stringSize);
     
         			}
         		}
@@ -169,7 +169,7 @@ public class RingBufferSingleTemplateUTF8Test {
 	        	String testString = buildTestString(expectedLength);
 	        	
 	        	if (0==(k&2)) {
-		        	int actualLength = ((StringBuilder)PipeReader.readUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, target)).length();
+		        	int actualLength = ((StringBuilder)PipeReader.readUTF8(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, target)).length();
 		        	assertEquals(expectedLength,actualLength);	
 		        	int j = expectedLength;
 		        	while (--j>=0) {
@@ -186,7 +186,7 @@ public class RingBufferSingleTemplateUTF8Test {
 		        		}		        		
 		        	}
 	        	}  else {
-	        		int actualLength = PipeReader.readUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, target2, 0);
+	        		int actualLength = PipeReader.readUTF8(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, target2, 0);
 		        	assertEquals(expectedLength,actualLength);
 		        	
 		        	int j = expectedLength;

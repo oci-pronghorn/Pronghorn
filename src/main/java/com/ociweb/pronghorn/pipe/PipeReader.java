@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.pipe.token.LOCUtil;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 
@@ -41,29 +42,32 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     };
        
 	public static int readInt(Pipe ring, int loc) {
-		//allow all types of int and length
-		assert((loc&0x1C<<OFF_BITS)==0 || (loc&0x1F<<OFF_BITS)==(0x14<<OFF_BITS)) : "Expected to read some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
+
         return Pipe.readInt(Pipe.primaryBuffer(ring), ring.mask, ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
     }
 	
 	public static int readIntSecure(Pipe ring, int loc, int clearValue) {
-        //allow all types of int and length
-        assert((loc&0x1C<<OFF_BITS)==0 || (loc&0x1F<<OFF_BITS)==(0x14<<OFF_BITS)) : "Expected to read some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
+
         return Pipe.readIntSecure(Pipe.primaryBuffer(ring), ring.mask, ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc),clearValue);
     }
     	
 	public static short readShort(Pipe ring, int loc) {
-		assert((loc&0x1C<<OFF_BITS)==0) : "Expected to read some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
         return (short)Pipe.readInt(Pipe.primaryBuffer(ring), ring.mask, ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
     }
 	
 	public static byte readByte(Pipe ring, int loc) {
-		assert((loc&0x1C<<OFF_BITS)==0) : "Expected to read some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
         return (byte)Pipe.readInt(Pipe.primaryBuffer(ring), ring.mask, ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
     }
 
 	public static long readLong(Pipe ring, int loc) {
-		assert((loc&0x1C<<OFF_BITS)==(0x4<<OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);   
+	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.LongSigned, TypeMask.LongSignedOptional, TypeMask.LongUnsigned, TypeMask.LongUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
+	    
         return Pipe.readLong(Pipe.primaryBuffer(ring), ring.mask, ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] +(OFF_MASK&loc));
     }
 
@@ -83,7 +87,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     }
     
     public static float readIntBitsToFloat(Pipe ring, int loc) {
-    	assert((loc&0x1C<<OFF_BITS)==0) : "Expected to read some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
         return Float.intBitsToFloat(readInt(ring,loc));
     }    
 
@@ -98,7 +103,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     }
     
     public static int readDataLength(Pipe ring, int loc) {
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
         return Pipe.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc) + 1)];// second int is always the length
     }
@@ -109,21 +114,22 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     }
     
     public static Appendable readASCII(Pipe ring, int loc, Appendable target) {
-    	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        
         int pos = Pipe.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         int len = PipeReader.readDataLength(ring, loc);
         return Pipe.readASCII(ring, target, pos, len);
     }
 
 	public static Appendable readUTF8(Pipe ring, int loc, Appendable target) {
-		assert(TypeMask.isOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)) : "Expected to read some type of UTF8/BYTE but found "+TokenBuilder.tokenToString(loc);
+		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
         int pos = Pipe.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         return Pipe.readUTF8(ring, target, pos, PipeReader.readDataLength(ring, loc));
     }
 
 	public static int readUTF8(Pipe ring, int loc, char[] target, int targetOffset) {
-		assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
         int pos = Pipe.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         int bytesLength = PipeReader.readDataLength(ring, loc);
@@ -165,8 +171,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	
 	
     public static int readASCII(Pipe ring, int loc, char[] target, int targetOffset) {
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+	
         long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		int pos = Pipe.primaryBuffer(ring)[ring.mask & (int)(tmp)];
         int len = Pipe.primaryBuffer(ring)[ring.mask & (int)(tmp + 1)];
@@ -210,7 +216,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
    
     
   public static boolean eqUTF8(Pipe ring, int loc, CharSequence seq) {
-		assert( (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
         int len = PipeReader.readDataLength(ring, loc);
         if (0==len && seq.length()==0) {
@@ -229,7 +235,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     
     
     public static boolean eqASCII(Pipe ring, int loc, CharSequence seq) {
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
 	
 		long idx = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
         int len = Pipe.primaryBuffer(ring)[ring.mask & (int)(idx + 1)];
@@ -334,9 +340,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     //Bytes
     
     public static int readBytesLength(Pipe ring, int loc) {
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS ||  //  11110   001011   TODO: revis these rules they dont pick up utf8 optionals? 01011 B
-			   (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || 
-			   (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
         return Pipe.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc) + 1)];// second int is always the length
     }
@@ -347,22 +351,22 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     }
     
     public static int readBytesPosition(Pipe ring, int loc) {
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
         int tmp = Pipe.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc) )];
 		return tmp<0 ? POS_CONST_MASK & tmp : Pipe.restorePosition(ring,tmp);// first int is always the length
     }
 
     public static byte[] readBytesBackingArray(Pipe ring, int loc) {
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
     	 int pos = Pipe.primaryBuffer(ring)[ring.mask & (int)(ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc))];
     	 return pos<0 ? ring.blobConstBuffer :  Pipe.byteBuffer(ring);
     }
     
     public static ByteBuffer readBytes(Pipe ring, int loc, ByteBuffer target) {
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
         long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		int pos = Pipe.primaryBuffer(ring)[ring.mask & (int)(tmp)];
         int len = Pipe.primaryBuffer(ring)[ring.mask & (int)(tmp + 1)];
@@ -371,6 +375,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 
 
 	public static ByteBuffer wrappedUnstructuredLayoutBufferA(Pipe ring, int loc) {
+	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
     	long pos = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
         int meta = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos)];
         int len = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos + 1)];
@@ -378,6 +384,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	}
 
     public static ByteBuffer wrappedUnstructuredLayoutBufferB(Pipe ring, int loc) {
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
     	long pos = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
         int meta = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos)];
         int len = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos + 1)];
@@ -385,8 +393,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	}
 
     public static int readBytes(Pipe ring, int loc, byte[] target, int targetOffset) {
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc)+"  b"+Integer.toBinaryString(loc);
+
     	long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 
         int pos = Pipe.primaryBuffer(ring)[ring.mask & (int)(tmp)];
@@ -416,8 +424,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     }
     
     public static int readBytes(Pipe ring, int loc, byte[] target, int targetOffset, int targetMask) {
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
         long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 		int pos = Pipe.primaryBuffer(ring)[ring.mask & (int)(tmp)];
         int len = Pipe.primaryBuffer(ring)[ring.mask & (int)(tmp + 1)];
@@ -432,8 +440,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     
     
     public static void copyInt(final Pipe sourceRing,	final Pipe targetRing, int sourceLOC, int targetLOC) {
-		assert((sourceLOC&0x1C<<OFF_BITS)==0) : "Expected to read some type of int but found "+TypeMask.toString((sourceLOC>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		assert((targetLOC&0x1C<<PipeWriter.OFF_BITS)==0) : "Expected to write some type of int but found "+TypeMask.toString((targetLOC>>PipeWriter.OFF_BITS)&TokenBuilder.MASK_TYPE);
+        assert(LOCUtil.isLocOfAnyType(sourceLOC, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(sourceLOC);
+        assert(LOCUtil.isLocOfAnyType(targetLOC, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(targetLOC);
         
 		Pipe.primaryBuffer(targetRing)[targetRing.mask &((int)targetRing.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(targetLOC>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&targetLOC))] =
 		     Pipe.primaryBuffer(sourceRing)[sourceRing.mask & (int)(sourceRing.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(sourceLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&sourceLOC))];
@@ -462,14 +470,17 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     }
         
 	public static int copyBytes(final Pipe sourceRing,	final Pipe targetRing, int sourceLOC, int targetLOC) {
-		assert((sourceLOC&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (sourceLOC&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (sourceLOC&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((sourceLOC>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		assert((targetLOC&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (targetLOC&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (targetLOC&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((targetLOC>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-				
+        assert(LOCUtil.isLocOfAnyType(sourceLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(sourceLOC);
+        assert(LOCUtil.isLocOfAnyType(targetLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(targetLOC);
+	
 		//High level API example of reading bytes from one ring buffer into another array that wraps with a mask w
 		return copyBytes(targetRing, targetLOC, readBytes(sourceRing, sourceLOC, Pipe.byteBuffer(targetRing),  Pipe.bytesWorkingHeadPosition(targetRing), targetRing.byteMask));
 	}
 
 	private static int copyBytes(final Pipe targetRing, int targetLOC, int length) {
+	    assert(LOCUtil.isLocOfAnyType(targetLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(targetLOC);
+
+
 	    int byteWrkHdPos = Pipe.bytesWorkingHeadPosition(targetRing);
 	    
 		Pipe.validateVarLength(targetRing, length);	

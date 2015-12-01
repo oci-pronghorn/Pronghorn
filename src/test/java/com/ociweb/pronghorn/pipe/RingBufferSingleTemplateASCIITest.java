@@ -15,10 +15,6 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 
 public class RingBufferSingleTemplateASCIITest {
 
-	final FieldReferenceOffsetManager FROM = RawDataSchema.FROM;
-	final int FRAG_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
-	final int FRAG_FIELD = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD;
-	
     @Test
     public void simpleBytesWriteRead() {
     
@@ -28,7 +24,7 @@ public class RingBufferSingleTemplateASCIITest {
 		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
     	ring.initBuffers();
     	
-        int messageSize = FROM.fragDataSize[FRAG_LOC];
+        int messageSize = RawDataSchema.FROM.fragDataSize[RawDataSchema.MSG_CHUNKEDSTREAM_1];
         
         int varDataMax = (ring.byteMask/(ring.mask>>1))/messageSize;        
         int testSize = (1<<primaryRingSizeInBits)/messageSize;
@@ -48,11 +44,11 @@ public class RingBufferSingleTemplateASCIITest {
 	        	String testString = buildTestString(expectedLength);
 	        	
 	        	if (0==(k&1)) {
-		        	int actualLength = ((StringBuilder)PipeReader.readASCII(ring, FRAG_FIELD, target)).length();
+		        	int actualLength = ((StringBuilder)PipeReader.readASCII(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, target)).length();
 		        	assertEquals(expectedLength,actualLength);
 		        	assertEquals(testString,target.toString());
 	        	} else {
-		        	int actualLength = PipeReader.readASCII(ring, FRAG_FIELD, target2, 0);
+		        	int actualLength = PipeReader.readASCII(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, target2, 0);
 		        	assertEquals(expectedLength,actualLength);
 		        	assertTrue(testString+" vs "+new String(target2, 0, actualLength),		        			    
 		        			    Arrays.equals(testString.toCharArray(), 
@@ -73,8 +69,8 @@ public class RingBufferSingleTemplateASCIITest {
         		return;//done
         	}
         
-        	if (PipeWriter.tryWriteFragment(ring,FRAG_LOC)) { //returns true if there is room to write this fragment
-        	    Pipe.writeTrailingCountOfBytesConsumed(ring, FRAG_LOC);
+        	if (PipeWriter.tryWriteFragment(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1)) { //returns true if there is room to write this fragment
+        	    Pipe.writeTrailingCountOfBytesConsumed(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1);
         	    
         		int stringSize = (--j*blockSize)/testSize;
         		String testString = buildTestString(stringSize);
@@ -82,13 +78,13 @@ public class RingBufferSingleTemplateASCIITest {
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message
         		if (0 == (j&1)) {
-        			PipeWriter.writeASCII(ring, FRAG_FIELD, testString);
+        			PipeWriter.writeASCII(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testString);
         		} else {
         			if (0 == (j&2)) {
         				char[] source = testString.toCharArray();
-        				PipeWriter.writeASCII(ring, FRAG_FIELD, source);
+        				PipeWriter.writeASCII(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, source);
         			} else {
-        				PipeWriter.writeASCII(ring, FRAG_FIELD, testString.toCharArray(), 0, stringSize);
+        				PipeWriter.writeASCII(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testString.toCharArray(), 0, stringSize);
         			}
         		}
         		Pipe.publishWritesBatched(ring); //must always publish the writes if message or fragment
@@ -118,7 +114,7 @@ public class RingBufferSingleTemplateASCIITest {
     	final Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
     	ring.initBuffers();
     	
-        final int messageSize = FROM.fragDataSize[FRAG_LOC];
+        final int messageSize = RawDataSchema.FROM.fragDataSize[RawDataSchema.MSG_CHUNKEDSTREAM_1];
         
         final int varDataMax = (ring.byteMask/(ring.mask>>1))/messageSize;        
         final int testSize = (1<<primaryRingSizeInBits)/messageSize;
@@ -154,11 +150,11 @@ public class RingBufferSingleTemplateASCIITest {
 	        	String testString = buildTestString(expectedLength);
 	        	
 	        	if (0==(k&2)) {
-		        	int actualLength = ((StringBuilder)PipeReader.readASCII(ring, FRAG_FIELD, target)).length();
+		        	int actualLength = ((StringBuilder)PipeReader.readASCII(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, target)).length();
 		        	assertEquals(expectedLength,actualLength);	
 		        	assertEquals(testString,target.toString());
 	        	}  else {
-	        		int actualLength = PipeReader.readASCII(ring, FRAG_FIELD, target2, 0);
+	        		int actualLength = PipeReader.readASCII(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, target2, 0);
 		        	assertEquals(expectedLength,actualLength);
 		        	assertTrue(testString+" vs "+new String(target2, 0, actualLength),		        			    
 		        			    Arrays.equals(testString.toCharArray(), 

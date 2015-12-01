@@ -33,10 +33,6 @@ import com.ociweb.pronghorn.pipe.util.build.TemplateProcessGeneratorLowLevelWrit
 
 public class TemplateProcessGeneratorTest {
 
-    static final File workingFolder = new File(new File(System.getProperty("java.io.tmpdir")),"jFAST");
-    static {
-        workingFolder.mkdirs();
-    }
     
     
     private void reportCompileError(List<Diagnostic<? extends JavaFileObject>> diagnosticList)
@@ -198,6 +194,11 @@ public class TemplateProcessGeneratorTest {
 
 
     private void validateCleanCompile(String className, StringBuilder target) {
+
+        File workingFolder = new File(new File(System.getProperty("java.io.tmpdir")),"jFAST");
+        workingFolder.mkdirs();
+        
+        
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         
         List<String> optionList = new ArrayList<String>();

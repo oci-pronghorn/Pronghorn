@@ -42,10 +42,6 @@ public class FieldReferenceOffsetManager {
 	private final int absentInt = TokenBuilder.absentValue32(TokenBuilder.MASK_ABSENT_DEFAULT);
 	private final long absentLong = TokenBuilder.absentValue64(TokenBuilder.MASK_ABSENT_DEFAULT); 
 	
-	public static int LOC_CHUNKED_STREAM = RawDataSchema.MSG_CHUNKEDSTREAM_1;
-	public static int LOC_CHUNKED_STREAM_FIELD = RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2;
-	
-	
 	private final static int[] EMPTY = new int[0];
 	public final static long[] RLE_LONG_NOTHING = new long[]{2,2,0};
 	public final static int[] RLE_INT_NOTHING = new int[]{2,2,0};
@@ -53,7 +49,11 @@ public class FieldReferenceOffsetManager {
 	public final String name;
 	public final boolean hasSimpleMessagesOnly;
 	
-    private static final int STACK_OFF_BITS = 4; //Maximum stack depth of nested groups is 16, this can be increased if needed.
+	
+	//Maximum stack depth of nested groups is 32.
+	//NOTE: we also keep the top top bit as zero
+	//NOTE: the top bit is always ZERO to confirm that LOC values do NOT look like tokens which have the high bit on.
+    private static final int STACK_OFF_BITS = 6; 
     
     public static final int RW_FIELD_OFF_BITS = (32-(STACK_OFF_BITS+TokenBuilder.BITS_TYPE));
     public final static int RW_STACK_OFF_MASK = (1<<STACK_OFF_BITS)-1;
@@ -405,8 +405,8 @@ public class FieldReferenceOffsetManager {
 	}
     
     public static int extractTypeFromLoc(int fieldLoc) {
-        
-        return ( RW_FIELD_OFF_BITS >> fieldLoc ) & TokenBuilder.MASK_TYPE;
+        assert(0==(fieldLoc>>31)) : "This is not a LOC";
+        return (fieldLoc >> RW_FIELD_OFF_BITS ) & TokenBuilder.MASK_TYPE;
 
     }
 
@@ -558,6 +558,9 @@ public class FieldReferenceOffsetManager {
 		assert(fieldOff>=0);
 		assert(fieldOff < (1<<RW_FIELD_OFF_BITS)) : "Fixed portion of a fragment can not be larger than "+(1<<RW_FIELD_OFF_BITS)+" bytes";
 		return stackOff | fieldType | fieldOff;
+		//      6bits       5bits       21bit 
+		// high bit is going to be zero for stacks less than 32
+		// low 21 is always going to be a small number offset from front of fragment.
 	}
 
     public static int lookupToken(String target, int framentStart, FieldReferenceOffsetManager from) {

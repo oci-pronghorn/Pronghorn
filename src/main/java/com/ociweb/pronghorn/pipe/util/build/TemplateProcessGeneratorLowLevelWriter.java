@@ -22,8 +22,8 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     private final boolean hasSimpleMessagesOnly; //for simple messages there is no LowLevelStateManager
     private final String stageMgrClassName = LowLevelStateManager.class.getSimpleName();
     private final String stageMgrVarName = "navState"; 
-    private final String pipeVarName;
-    private final Class pipeClass;
+    protected final String pipeVarName;
+    private final Class pipeClass = Pipe.class;
     private final StringBuilder businessExampleWorkspace = new StringBuilder();
     private int businessFieldCount;
     private int businessFirstField;
@@ -35,18 +35,41 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     private final String doNothingConstantValue = "-3";
     private final String doNothingConstant = "DO_NOTHING";
     
+
+    String methodScope = "private"; //set to protected if you plan to extend this vs generate this.
     private boolean firstField = true;
-        
     
-    public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target) {
+    
+    private final String packageName = "com.ociweb.pronghorn.pipe.build";
+
+    private final String className;
+    private final String baseText;
+    
+    
+    public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target, String className, String baseClassName) {
         super(schema);
 
-        this.pipeId = "1";
-        this.pipeVarName = "output";
-        this.pipeClass = Pipe.class;
+        this.pipeId = "1"; //NOTE: for future development when we need to merge two writers
+        this.pipeVarName = "output"; //NOTE: for future development when we need to merge two writers
+        
+        this.className = className;
+        this.baseText = baseClassName;
         this.bodyTarget = target;
         this.hasSimpleMessagesOnly = MessageSchema.from(schema).hasSimpleMessagesOnly;
+    }
+    
+    public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target) {
+        this(schema, target, "LowLevelWriter", "implements Runnable");
        
+    }
+    
+    public String getClassName() {
+        return className;
+    }
+    
+    public String getPackageName() {
+        return packageName;
+        
     }
 
     protected void defineMembers() throws IOException {
@@ -98,17 +121,12 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         bodyTarget.append("\n");
         
         if (hasSimpleMessagesOnly) {
-            
-            appendStaticCall(bodyTarget.append("if ("), pipeClass,"hasContentToRead").append(pipeVarName).append(")) {\n");            
-            appendStaticCall(bodyTarget.append(cursorVarName).append(" = "), pipeClass, "takeMsgIdx").append(pipeVarName).append(");\n");
-            
-            
+                     
+            bodyTarget.append(tab).append(tab).append(cursorVarName).append(" = nextMessageIdx();\n");
+                        
         } else {
             //if (LowLevelStateManager.isStartNewMessage(navState)) {
             bodyTarget.append(tab).append("if (").append(stageMgrClassName).append(".isStartNewMessage(").append(stageMgrVarName).append(")) {\n");
-            //    cursor = Pipe.takeMsgIdx(input);            
-            //appendStaticCall(bodyTarget.append(tab).append(tab).append(cursorVarName).append(" = "), pipeClass, "takeMsgIdx").append(pipeVarName).append(");\n");
-            
             
             bodyTarget.append(tab).append(tab).append(cursorVarName).append(" = nextMessageIdx();\n");
 
@@ -143,6 +161,12 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         appendCaseMsgIdConstant(cursor, schema);
         
         bodyTarget.append(":\n");
+
+        if ( FieldReferenceOffsetManager.isTemplateStart(from, cursor) ) {
+            appendStaticCall(bodyTarget.append(tab).append(tab),pipeClass,"addMsgIdx").append(pipeVarName).append(',');
+            Appendables.appendValue(bodyTarget, cursor).append(");\n");
+        }
+        
         bodyTarget.append(tab).append(tab).append(tab);
         appendBusinessMethodName(cursor).append("();\n");
                                        
@@ -662,11 +686,12 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         
     }
     
+    
     @Override //this is the end of a fragment
     protected void processCalleeClose(int cursor) throws IOException {
         
         
-        bodyTarget.append("protected void ");
+        bodyTarget.append(methodScope).append(" void ");
         appendBusinessMethodName(cursor).append("() {\n");
         
         bodyOfBusinessProcess(bodyTarget, cursor, businessFirstField, businessFieldCount);
@@ -675,7 +700,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         bodyTarget.append('\n');
         
         
-        bodyTarget.append("protected void ");
+        bodyTarget.append(methodScope).append(" void ");
         appendWriteMethodName(bodyTarget, cursor).append("(").append(writeToPipeSignatureWorkspace).append(") {\n");
         bodyTarget.append(writeToPipeBodyWorkspace);
         bodyTarget.append("}\n");
@@ -685,7 +710,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
 
     @Override
     protected void headerConstruction() throws IOException {
-        bodyTarget.append("package com.ociweb.pronghorn.pipe.build;\n");
+        bodyTarget.append("package ").append(packageName).append(";\n");
         
         bodyTarget.append("import com.ociweb.pronghorn.pipe.stream.LowLevelStateManager;\n");
         bodyTarget.append("import com.ociweb.pronghorn.pipe.Pipe;\n");
@@ -694,19 +719,33 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         bodyTarget.append("import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;\n");
         additionalImports(bodyTarget);
         
-        bodyTarget.append("public class LowLevelWriter implements Runnable {\n");
-        bodyTarget.append("\n");
+        defineClassAndConstructor();
     }
     
+    private void defineClassAndConstructor() throws IOException {
+        bodyTarget.append("public class ").append(className).append(" ").append(baseText).append(" {\n");
+        bodyTarget.append("\n");
+        
+        buildConstructors(bodyTarget, className);
+        
+    }
+    
+    protected void buildConstructors(Appendable target, String className) throws IOException {
+    }
+
     protected void additionalImports(Appendable target) throws IOException {
     }
 
     @Override
     protected void footerConstruction() throws IOException {
-        bodyTarget.append("private void requestShutdown() {};\n"); //only here so generated code passes compile.
+        additionalMethods(bodyTarget);
         bodyTarget.append("};\n");
     }   
 
+    protected void additionalMethods(Appendable target) throws IOException {
+        target.append("private void requestShutdown() {};\n"); //only here so generated code passes compile.
+    }
+    
     protected void bodyOfNextMessageIdx(Appendable target) throws IOException {
         target.append(tab).append("/* Override as needed and put your business specific logic here */\n");                
         target.append(tab).append("return ").append(doNothingConstant).append(";\n");

@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.pipe;
 
 import java.nio.ByteBuffer;
 
+import com.ociweb.pronghorn.pipe.token.LOCUtil;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 
@@ -35,22 +36,26 @@ public class PipeWriter {
     
     public static void writeInt(Pipe rb, int loc, int value) {
     	//allow for all types of int and for length
-    	assert((loc&0x1C<<OFF_BITS)==0 || (loc&0x1F<<OFF_BITS)==(0x14<<OFF_BITS)) : "Expected to write some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
+
 		Pipe.primaryBuffer(rb)[rb.mask &((int)rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))] = value;         
     }
     
     public static void writeShort(Pipe rb, int loc, short value) {
-    	assert((loc&0x1C<<OFF_BITS)==0) : "Expected to write some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
     	Pipe.primaryBuffer(rb)[rb.mask &((int)rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))] = value;         
     }
 
     public static void writeByte(Pipe rb, int loc, byte value) {
-    	assert((loc&0x1C<<OFF_BITS)==0) : "Expected to write some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
 		Pipe.primaryBuffer(rb)[rb.mask &((int)rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))] = value;         
     }
 
     public static void writeLong(Pipe rb, int loc, long value) {
-    	assert((loc&0x1C<<OFF_BITS)==(0x4<<OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);   	
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.LongSigned, TypeMask.LongSignedOptional, TypeMask.LongUnsigned, TypeMask.LongUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
+  	
         int[] buffer = Pipe.primaryBuffer(rb);
 		int rbMask = rb.mask;	
 		
@@ -86,27 +91,28 @@ public class PipeWriter {
     }
     
     public static void writeFloatAsIntBits(Pipe rb, int loc, float value) {
-    	assert((loc&0x1C<<OFF_BITS)==0) : "Expected to write some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
     	writeInt(rb, loc, Float.floatToIntBits(value));
     }
     
     public static void writeDoubleAsLongBits(Pipe rb, int loc,  double value) {
-    	assert((loc&0x1C<<OFF_BITS)==(0x4<<OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.LongSigned, TypeMask.LongSignedOptional, TypeMask.LongUnsigned, TypeMask.LongUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc); 
     	writeLong(rb, loc, Double.doubleToLongBits(value));
     }    
           //<<OFF_BITS
     private static void finishWriteBytesAlreadyStarted(Pipe rb, int loc, int length) {
         int p = Pipe.bytesWorkingHeadPosition(rb);
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
     	Pipe.validateVarLength(rb, length);
 		writeSpecialBytesPosAndLen(rb, loc, length, p);
 		
     }
     
     public static void writeBytes(Pipe rb, int loc, byte[] source, int offset, int length, int mask) {
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
     	assert(length>=0);
 		Pipe.copyBytesFromToRing(source, offset, mask, Pipe.byteBuffer(rb), Pipe.bytesWorkingHeadPosition(rb), rb.byteMask, length);		
 		Pipe.setBytePosAndLen(Pipe.primaryBuffer(rb), rb.mask, rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), Pipe.bytesWorkingHeadPosition(rb), length, Pipe.bytesWriteBase(rb));
@@ -114,8 +120,8 @@ public class PipeWriter {
     }
         
     public static void writeBytes(Pipe rb, int loc, byte[] source) { // 01000
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
     	int sourceLen = source.length;
     	Pipe.validateVarLength(rb, sourceLen);
 		
@@ -127,8 +133,8 @@ public class PipeWriter {
         
     public static void writeBytes(Pipe rb, int loc, ByteBuffer source) {  
         int length = source.remaining();
-        assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==TypeMask.ByteArray<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-        
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+ 
         assert(length>=0);
         int bytePos = Pipe.bytesWorkingHeadPosition(rb);
         Pipe.copyByteBuffer(source, length, rb);
@@ -136,8 +142,8 @@ public class PipeWriter {
     }
     
 	public static void writeBytes(Pipe rb, int loc, ByteBuffer source, int length) {		
-		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==TypeMask.ByteArray<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-		
+	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
     	assert(length>=0);
     	int bytePos = Pipe.bytesWorkingHeadPosition(rb);
     	Pipe.copyByteBuffer(source, length, rb);
@@ -145,14 +151,17 @@ public class PipeWriter {
     }
 
 	public static void writeSpecialBytesPosAndLen(Pipe rb, int loc, int length, int bytePos) {
+	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
+
 	    Pipe.validateVarLength(rb,length);
 		Pipe.setBytePosAndLen(Pipe.primaryBuffer(rb), rb.mask, rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), bytePos, length, Pipe.bytesWriteBase(rb));
 		Pipe.addAndGetBytesWorkingHeadPosition(rb, length);        
 	}
     
     public static void writeUTF8(Pipe rb, int loc, CharSequence source) {
-    	assert((loc&0x1E<<OFF_BITS)==TypeMask.TextUTF8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==TypeMask.ByteArray<<OFF_BITS) : "Expected to write some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        
     	Pipe.validateVarLength(rb, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
 		Pipe.setBytePosAndLen(Pipe.primaryBuffer(rb), rb.mask,
 				rb.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc),				
@@ -160,23 +169,22 @@ public class PipeWriter {
     }
 
     public static void writeUTF8(Pipe rb, int loc, CharSequence source, int offset, int length) {
-    	assert((loc&0x1E<<OFF_BITS)==TypeMask.TextUTF8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==TypeMask.ByteArray<<OFF_BITS) : "Expected to write some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        
     	Pipe.validateVarLength(rb, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
 		Pipe.setBytePosAndLen(Pipe.primaryBuffer(rb), rb.mask, rb.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), Pipe.bytesWorkingHeadPosition(rb), Pipe.copyUTF8ToByte(source, offset, length, rb), Pipe.bytesWriteBase(rb));
     }
         
     public static void writeUTF8(Pipe rb, int loc, char[] source) {
-    	assert((loc&0x1E<<OFF_BITS)==TypeMask.TextUTF8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==TypeMask.ByteArray<<OFF_BITS) : "Expected to write some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-    	
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+
     	Pipe.validateVarLength(rb, source.length<<3); //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)      
 		Pipe.setBytePosAndLen(Pipe.primaryBuffer(rb), rb.mask, rb.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), Pipe.bytesWorkingHeadPosition(rb), Pipe.copyUTF8ToByte(source, source.length, rb), Pipe.bytesWriteBase(rb));
     }
       
     public static void writeUTF8(Pipe rb, int loc, char[] source, int offset, int length) {
-    	
-    	assert((loc&0x1E<<OFF_BITS)==TypeMask.TextUTF8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==TypeMask.ByteArray<<OFF_BITS) : "Expected to write some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-    	
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        
     	Pipe.validateVarLength(rb, length<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)     
 		Pipe.setBytePosAndLen(Pipe.primaryBuffer(rb), rb.mask, rb.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), 
 		        Pipe.bytesWorkingHeadPosition(rb), 
@@ -185,8 +193,8 @@ public class PipeWriter {
     }
 
     public static void writeASCII(Pipe rb, int loc, char[] source) {
-    	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        
     	Pipe.validateVarLength(rb,source.length);
 		int sourceLen = source.length;
         final int p = Pipe.copyASCIIToBytes(source, 0, sourceLen,	rb);
@@ -194,16 +202,16 @@ public class PipeWriter {
     }
     
     public static void writeASCII(Pipe rb, int loc, char[] source, int offset, int length) {
-    	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc)+" b"+Integer.toBinaryString(loc);
+ 
     	Pipe.validateVarLength(rb,length);
         final int p = Pipe.copyASCIIToBytes(source, offset, length,	rb);
 		Pipe.setBytePosAndLen(Pipe.primaryBuffer(rb), rb.mask, rb.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), p, length, Pipe.bytesWriteBase(rb));
     }   
     
     public static void writeASCII(Pipe rb, int loc, CharSequence source) {
-    	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        
     	Pipe.validateVarLength(rb, source.length());
 		int sourceLen = source.length();
         final int p = Pipe.copyASCIIToBytes(source, 0, sourceLen, rb);
@@ -211,16 +219,16 @@ public class PipeWriter {
     }
     
     public static void writeASCII(Pipe rb, int loc, CharSequence source, int offset, int length) {
-    	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        
     	Pipe.validateVarLength(rb, length);
         final int p = Pipe.copyASCIIToBytes(source, offset, length, rb);
 		Pipe.setBytePosAndLen(Pipe.primaryBuffer(rb), rb.mask, rb.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), p, length, Pipe.bytesWriteBase(rb));
     }
     
     public static void writeIntAsText(Pipe rb, int loc, int value) {
-    	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        
     	int max = 12+ Pipe.bytesWorkingHeadPosition(rb);
     	int len = Pipe.leftConvertIntToASCII(rb, value, max);    	
     	finishWriteBytesAlreadyStarted(rb, loc, len);
@@ -228,8 +236,8 @@ public class PipeWriter {
 	}
 
     public static void writeLongAsText(Pipe rb, int loc, long value) { 
-    	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
-  
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        
     	int max = 21+Pipe.bytesWorkingHeadPosition(rb);
     	int len = Pipe.leftConvertLongToASCII(rb, value, max);
     	finishWriteBytesAlreadyStarted(rb, loc, len);

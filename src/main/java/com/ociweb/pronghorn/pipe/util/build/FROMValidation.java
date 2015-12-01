@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.pipe.util.build;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
@@ -7,6 +8,7 @@ import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
+import com.ociweb.pronghorn.pipe.util.Appendables;
 
 public class FROMValidation {
 
@@ -191,7 +193,12 @@ public class FROMValidation {
 
     private static void appendAssignmentCode(StringBuilder result, String constantName, int value) {
        
-        result.append("public static final int ").append(constantName).append(" = 0x").append(Integer.toHexString(value)).append(";\n");
+        result.append("public static final int ").append(constantName).append(" = ");
+        try {
+            Appendables.appendFixedHexDigits(result, value, 32).append(";\n");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         
     }
 

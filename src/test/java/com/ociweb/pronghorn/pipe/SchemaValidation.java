@@ -9,7 +9,7 @@ import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
 public class SchemaValidation {
     
     @Test
-    public void groveResponseFROMTest() {
+    public void rawDataFROMTest() {
         assertTrue(FROMValidation.testForMatchingFROMs("/rawDataSchema.xml", RawDataSchema.instance));
         assertTrue(FROMValidation.testForMatchingLocators(RawDataSchema.instance));
     }

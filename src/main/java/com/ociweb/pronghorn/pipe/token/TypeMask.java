@@ -3,8 +3,6 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.pronghorn.pipe.token;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
-
 public final class TypeMask {
 
     // each group of "similar" types must stay together as a block.
@@ -122,81 +120,56 @@ public final class TypeMask {
         return builder.toString();
 
     }
-
+    
+    public static boolean isLong(int type) {
+        
+        return type==TypeMask.LongSigned ||
+               type==TypeMask.LongSignedOptional ||
+               type==TypeMask.LongUnsigned ||
+               type==TypeMask.LongUnsignedOptional;
+                
+    }
+    
+    public static boolean isInt(int type) {
+        
+        return type==TypeMask.IntegerSigned ||
+               type==TypeMask.IntegerSignedOptional ||
+               type==TypeMask.IntegerUnsigned ||
+               type==TypeMask.IntegerUnsignedOptional;
+                
+    }
+    
+    public static boolean isText(int type) {
+        
+        return type==TypeMask.TextASCII ||
+               type==TypeMask.TextASCIIOptional ||
+               type==TypeMask.TextUTF8 ||
+               type==TypeMask.TextUTF8Optional;
+                
+    }
+    
+    public static boolean isUnsigned(int type) {
+        
+        return type==TypeMask.LongUnsigned ||
+               type==TypeMask.LongUnsignedOptional ||
+               type==TypeMask.IntegerUnsigned ||
+               type==TypeMask.IntegerUnsignedOptional;
+                
+    }
+    
+    public static boolean isOptional(int type) {
+        
+        return 0!=(1&type);
+                
+    }
+    
+    
     // This method for debugging and therefore can produce garbage.
     public static String toString(int typeMask) {
 
         return methodTypeName[typeMask] + methodTypeSuffix[typeMask] + ":"
                 + prefix(6, '0', Integer.toBinaryString(typeMask));
 
-    }
-
-    public static boolean isOfAnyType(int fieldLoc, int type1) {        
-        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
-        return extractedType==type1;
-    }
-    
-    public static boolean isOfAnyType(int fieldLoc, int type1, int type2) {
-        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
-        return extractedType==type1 || 
-               extractedType==type2;
-    }
-    
-    public static boolean isOfAnyType(int fieldLoc, int type1, int type2, int type3) {
-        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
-        return extractedType==type1 || 
-               extractedType==type2 ||
-               extractedType==type3;
-    }
-    
-    public static boolean isOfAnyType(int fieldLoc, int type1, int type2, int type3, int type4) {
-        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
-        return extractedType==type1 || 
-               extractedType==type2 ||
-               extractedType==type3 ||
-               extractedType==type4;
-    }
-    
-    public static boolean isOfAnyType(int fieldLoc, int type1, int type2, int type3, int type4, int type5) {
-        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
-        return extractedType==type1 || 
-               extractedType==type2 ||
-               extractedType==type3 ||
-               extractedType==type4 ||
-               extractedType==type5; 
-    }
-
-    public static boolean isOfAnyType(int fieldLoc, int type1, int type2, int type3, int type4, int type5, int type6) {
-        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
-        return extractedType==type1 || 
-               extractedType==type2 ||
-               extractedType==type3 ||
-               extractedType==type4 ||
-               extractedType==type5 ||
-               extractedType==type6;
-    }
- 
-    public static boolean isOfAnyType(int fieldLoc, int type1, int type2, int type3, int type4, int type5, int type6, int type7) {
-        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
-        return extractedType==type1 || 
-               extractedType==type2 ||
-               extractedType==type3 ||
-               extractedType==type4 ||
-               extractedType==type5 ||
-               extractedType==type6 ||
-               extractedType==type7;
-    }
-
-    public static boolean isOfAnyType(int fieldLoc, int type1, int type2, int type3, int type4, int type5, int type6, int type7, int type8) {
-        int extractedType = FieldReferenceOffsetManager.extractTypeFromLoc(fieldLoc);
-        return extractedType==type1 || 
-               extractedType==type2 ||
-               extractedType==type3 ||
-               extractedType==type4 ||
-               extractedType==type5 ||
-               extractedType==type6 ||
-               extractedType==type7 ||
-               extractedType==type8;
     }
     
     

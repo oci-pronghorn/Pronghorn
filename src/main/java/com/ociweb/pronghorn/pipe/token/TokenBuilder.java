@@ -52,18 +52,22 @@ public class TokenBuilder {
     // operator.
 
     public static int extractType(int token) {
+        assert(token<0) : "This is not a token";
         return (token >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE;
     }
 
     public static int extractOper(int token) {
+        assert(token<0) : "This is not a token";
         return (token >>> TokenBuilder.SHIFT_OPER) & TokenBuilder.MASK_OPER;
     }
 
     public static int extractId(int token) {
+        assert(token<0) : "This is not a token";
     	return token & TokenBuilder.MAX_FIELD_ID_VALUE;
     }
 
     public static boolean isOptional(int token) {
+        assert(token<0) : "This is not a token";
         return (0 != (token & (1 << TokenBuilder.SHIFT_TYPE)));
     }
 
@@ -94,10 +98,12 @@ public class TokenBuilder {
     }
 
     public static boolean isOpperator(int token, int operator) {
+        assert(token<0) : "This is not a token";
         return ((token >> TokenBuilder.SHIFT_OPER) & TokenBuilder.MASK_OPER) == operator;
     }
 
     public static String tokenToString(int token) {
+        assert(token<0) : "This is not a token";
         if (token == -1) {
             return "Unknown";
         }
