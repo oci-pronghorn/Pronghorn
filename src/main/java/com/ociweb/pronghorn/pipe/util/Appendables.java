@@ -145,18 +145,18 @@ public class Appendables {
         
         //round up to next group of 4
         bits = ((bits+3)>>2)<<2;
-        
+
         target.append("0x");
         long nextValue = value;
         int orAll = 0; //this is to remove the leading zeros
         while (bits>4) {
             bits -= 4;            
-            int digit = (int)nextValue>>>bits;
+            int digit = (int)(0xF&(nextValue>>>bits));
             orAll |= digit;
             if (0!=orAll) {
                 target.append(hBase[digit]);            
             }
-            nextValue =  ((1<<bits)-1) & nextValue;
+            nextValue =  ((1L<<bits)-1L) & nextValue;
         }
         bits -= 4;
         target.append(hBase[(int)(nextValue>>>bits)]);

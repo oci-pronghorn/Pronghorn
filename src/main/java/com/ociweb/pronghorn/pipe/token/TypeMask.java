@@ -132,7 +132,8 @@ public final class TypeMask {
     
     public static boolean isInt(int type) {
         
-        return type==TypeMask.IntegerSigned ||
+        return type==TypeMask.GroupLength ||
+               type==TypeMask.IntegerSigned ||
                type==TypeMask.IntegerSignedOptional ||
                type==TypeMask.IntegerUnsigned ||
                type==TypeMask.IntegerUnsignedOptional;

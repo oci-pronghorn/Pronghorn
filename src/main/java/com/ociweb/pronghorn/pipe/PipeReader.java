@@ -542,7 +542,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 
 	
 	public static int bytesConsumedByFragment(Pipe ringBuffer) {
-		return ringBuffer.ringWalker.nextWorkingTail>0 ? Pipe.primaryBuffer(ringBuffer)[ringBuffer.mask & (int)(ringBuffer.ringWalker.nextWorkingTail-1)] : 0;
+		return ringBuffer.ringWalker.nextWorkingTail>0 ? bytesConsumed(ringBuffer) : 0;
 	}
 	
 	public static boolean hasContentToRead(Pipe pipe) {
@@ -564,10 +564,13 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	    if (pipe.ringWalker.nextWorkingTail>0) { //first iteration it will not have a valid position
 	        //must grab this value now, its the last chance before we allow it to be written over.
 	        //these are all accumulated from every fragment, messages many have many fragments.
-	        int bytesConsumed = Pipe.primaryBuffer(pipe)[pipe.mask & (int)(pipe.ringWalker.nextWorkingTail-1)];
-	        Pipe.addAndGetBytesWorkingTailPosition(pipe, bytesConsumed);
+	        Pipe.addAndGetBytesWorkingTailPosition(pipe, bytesConsumed(pipe));
 	    }
 	}
+
+    private static int bytesConsumed(Pipe pipe) {
+        return Pipe.primaryBuffer(pipe)[pipe.mask & (int)(pipe.ringWalker.nextWorkingTail-1)];
+    }
 
 	public static void releaseReadLock(Pipe pipe) {
 	    
@@ -614,6 +617,10 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         }
     }
 
+    public static int sizeOfFragment(Pipe input) {
+        return Pipe.from(input).fragDataSize[input.ringWalker.cursor];
+    }
+    
     public static void printFragment(Pipe input, Appendable target) {
         int cursor = input.ringWalker.cursor;
         try {
