@@ -100,7 +100,7 @@ public class LoaderUtil {
                 
         List<String> optionList = new ArrayList<String>();
         optionList.addAll(Arrays.asList("-classpath", System.getProperty("java.class.path"),
-                                 //       "-d", classesFolder.toString(),
+                                        "-d", classesFolder.toString(),
                                         "-target","1.7",
                                         "-source","1.7"
                                         ));                
