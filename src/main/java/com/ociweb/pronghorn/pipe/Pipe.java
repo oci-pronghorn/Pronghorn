@@ -1942,8 +1942,11 @@ public final class Pipe<T extends MessageSchema> {
 		 setValue(rb.slabRing,rb.mask,rb.slabRingHead.workingHeadPos.value++,value);
 	}
 
-	//TODO: B, need to update build server to ensure this runs on both Java6 and Java ME 8
-
+    //
+    //TODO: URGENT, A, It may be much nicer to add a method called 'beginMessage' which does only the base work and then moves the cursor forward one.
+    //         Then we can take the confirm write and it can go back and set the id. Also add asserts on all fiels that this happens first !!!
+    //
+    
     //must be called by low-level API when starting a new message
     public static <S extends MessageSchema> int addMsgIdx(Pipe<S> rb, int msgIdx) {
          assert(rb.slabRingHead.workingHeadPos.value <= rb.mask+Pipe.tailPosition(rb));

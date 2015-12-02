@@ -117,14 +117,16 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         ///
         ///
         
-        bodyTarget.append(tab).append("int ").append(cursorVarName).append(";\n");
-        bodyTarget.append("\n");
         
         if (hasSimpleMessagesOnly) {
-                     
-            bodyTarget.append(tab).append(tab).append(cursorVarName).append(" = nextMessageIdx();\n");
-                        
+            
+            //switch(cursor)) {
+            bodyTarget.append(tab).append("switch(").append("nextMessageIdx()").append(") {\n");
+            
+            
         } else {
+            bodyTarget.append(tab).append("int ").append(cursorVarName).append(";\n");
+            bodyTarget.append("\n");
             //if (LowLevelStateManager.isStartNewMessage(navState)) {
             bodyTarget.append(tab).append("if (").append(stageMgrClassName).append(".isStartNewMessage(").append(stageMgrVarName).append(")) {\n");
             
@@ -137,12 +139,12 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
             //}
             bodyTarget.append(tab).append("}\n");
             
+            bodyTarget.append("\n");
+            
+            
+            //switch(cursor)) {
+            bodyTarget.append(tab).append("switch(").append(cursorVarName).append(") {\n");
         }
-        bodyTarget.append("\n");
-        
-        
-        //switch(cursor)) {
-        bodyTarget.append(tab).append("switch(").append(cursorVarName).append(") {\n");
         
     }
 
