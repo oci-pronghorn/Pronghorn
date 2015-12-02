@@ -13,14 +13,16 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage {
 
 	private final Pipe<T> inputRing;
-	private final StringBuilder console = new StringBuilder();
+	private final StringBuilder console = new StringBuilder(512);
 	
 	private final long[] totalCounts;
 	private final long[] counts;
+	private long totalBytes;
 	
 	private long stepTime = 2000;//2 sec
 	private long nextOutTime = System.currentTimeMillis()+stepTime;
-		
+	private long startTime;
+	
 	//TODO: AA, need validation stage to confirm values are in range and text is not too long
 
 	public ConsoleSummaryStage(GraphManager gm, Pipe<T> inputRing) {
@@ -33,13 +35,19 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
 	}
 
 	@Override
+	public void startup() {
+	    startTime = System.currentTimeMillis();
+	}
+	
+	@Override
 	public void shutdown() {
 		try {
             processCounts("Final:",counts,totalCounts);
         } catch (IOException e) {
           throw new RuntimeException(e);
         }
-		processTotal("Totals:",totalCounts, Pipe.from(inputRing));
+		long duration = System.currentTimeMillis()-startTime;
+		processTotal("Totals:",totalCounts, Pipe.from(inputRing), duration);
 	}
 
 	@Override
@@ -88,7 +96,8 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
     private boolean cleanupReport(String label, long newMessages, long totalMessages) throws IOException {
         if (newMessages>0) {
 			Appendables.appendValue(console.append(" total:"), totalMessages);
-			System.out.println(label+console);
+			System.out.print(label);
+			System.out.println(console);
 		}
 		return newMessages>0;
     }
@@ -101,29 +110,41 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
         }
     }
 
-	private boolean processTotal(String label, long[] totalCounts, FieldReferenceOffsetManager from) {
-		
-		console.setLength(0);
-		int i = 0;
-		long totalMsg = 0;
-		while (i<totalCounts.length) {
-			totalMsg += totalCounts[i];
-			if (totalCounts[i]>0) {
-				console.append('[').append(i).append(']').append(totalCounts[i]);
-				if (null!=from.fieldNameScript) {
-					if (null!=from.fieldNameScript[i]) {
-						console.append(" Name:").append(from.fieldNameScript[i]);
-					}
-					console.append(" Id:").append(from.fieldIdScript[i]);					
-				}
-				console.append("\n ");
-			}
-			i++;
+	private boolean processTotal(String label, long[] totalCounts, FieldReferenceOffsetManager from, long duration) {
+		try {
+    		console.setLength(0);
+    		int i = 0;
+    		long totalMsg = 0;
+    		while (i<totalCounts.length) {
+    			totalMsg += totalCounts[i];
+    			if (totalCounts[i]>0) {
+    				console.append('[').append(i).append(']');
+    				Appendables.appendValue(console, totalCounts[i]);
+    				if (null!=from.fieldNameScript) {
+    					if (null!=from.fieldNameScript[i]) {
+    						console.append(" Name:").append(from.fieldNameScript[i]);
+    					}
+    					console.append(" Id:");
+    					Appendables.appendValue(console, from.fieldIdScript[i]);					
+    				}
+    				console.append("\n");
+    			}
+    			i++;
+    		}
+    		System.out.println(label);
+    		System.out.println(console);
+    		System.out.println("Total Messages:"+totalMsg);
+    		System.out.println("Total Bytes:"+totalBytes+ " (slab and blob)");
+    		System.out.println("total Duration:"+duration+" ms");
+    		
+    		long msgPerMs = totalMsg/duration;
+    		long bitsPerMs = (8*totalBytes)/(duration*1000);
+    		System.out.println("MsgPerMs:"+msgPerMs+"    MBitsPerSec:"+bitsPerMs);
+    		
+    		return totalMsg>0;
+		} catch (IOException e) {
+		    throw new RuntimeException(e);
 		}
-		System.out.println(label);
-		System.out.println(console);
-		System.out.println("Total:"+totalMsg);
-		return totalMsg>0;
 	}
 	
 	private boolean dataToRead(long[] counts) {
@@ -143,6 +164,9 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
 					data = true;
 				}
 			}
+			
+			totalBytes += (PipeReader.sizeOfFragment(inputRing)*4) + PipeReader.bytesConsumedByFragment(inputRing);
+		
 			PipeReader.releaseReadLock(inputRing);
 		}		
 		return data;

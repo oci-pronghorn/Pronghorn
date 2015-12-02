@@ -677,33 +677,66 @@ public class GraphManager {
 	
 
 	public static long delayRequiredMS(GraphManager m, int stageId) {
-	    int pipeIdx;  
+        Pipe[] pipeIdToPipe2 = m.pipeIdToPipe;
+        long waitTime = computeDelayForConsumer(m.stageIdToInputsBeginIdx[stageId], pipeIdToPipe2, m.multInputIds);
+        return addDelayForProducer(m.stageIdToOutputsBeginIdx[stageId], waitTime, pipeIdToPipe2, m.multOutputIds);
+	}
+	
+   public static boolean isRateLimited(GraphManager m, int stageId) {
+        Pipe[] pipeIdToPipe2 = m.pipeIdToPipe;
+        
+        return isRateLimitedConsumer(m.stageIdToInputsBeginIdx[stageId], pipeIdToPipe2, m.multInputIds) ||
+               isRateLimitedProducer(m.stageIdToOutputsBeginIdx[stageId], pipeIdToPipe2, m.multOutputIds);
+    }
+
+    private static long computeDelayForConsumer(int pipeIdx, Pipe[] pipeIdToPipe2, int[] multInputIds2) {
+
         int pipeId;
         long waitTime = 0;
-        
-        pipeIdx = m.stageIdToInputsBeginIdx[stageId];
-        while ((pipeId = m.multInputIds[pipeIdx++])>=0) {            
-            if (Pipe.isRateLimitedConsumer(m.pipeIdToPipe[pipeId])) {
-                long t = Pipe.computeRateLimitConsumerDelay(m.pipeIdToPipe[pipeId]);
-                if (t>0) {
-                    waitTime = Math.max(waitTime,t);
+        while ((pipeId = multInputIds2[pipeIdx++])>=0) {            
+            if (Pipe.isRateLimitedConsumer(pipeIdToPipe2[pipeId])) {
+                long t = Pipe.computeRateLimitConsumerDelay(pipeIdToPipe2[pipeId]);
+                if (t>waitTime) {
+                    waitTime = t;
                 }
             }
         }	
-        
-        pipeIdx = m.stageIdToOutputsBeginIdx[stageId];
-        while ((pipeId = m.multOutputIds[pipeIdx++])>=0) {            
-            if (Pipe.isRateLimitedProducer(m.pipeIdToPipe[pipeId])) {
-                long t = Pipe.computeRateLimitProducerDelay(m.pipeIdToPipe[pipeId]);
-                if (t>0) {
-                    waitTime = Math.max(waitTime,t);
+        return waitTime;
+    }
+
+    private static boolean isRateLimitedConsumer(int pipeIdx, Pipe[] pipeIdToPipe2, int[] multInputIds2) {
+
+        int pipeId;
+        while ((pipeId = multInputIds2[pipeIdx++])>=0) {            
+            if (Pipe.isRateLimitedConsumer(pipeIdToPipe2[pipeId])) {
+                return true;
+            }
+        }   
+        return false;
+    }
+    
+    private static long addDelayForProducer(int pipeIdx, long waitTime, Pipe[] pipeIdToPipe2, int[] multOutputIds2) {
+        int pipeId;
+        while ((pipeId = multOutputIds2[pipeIdx++])>=0) {            
+            if (Pipe.isRateLimitedProducer(pipeIdToPipe2[pipeId])) {
+                long t = Pipe.computeRateLimitProducerDelay(pipeIdToPipe2[pipeId]);
+                if (t>waitTime) {
+                    waitTime = t;
                 }
             }
         }   
-        
-        
 	    return waitTime;
-	}
+    }
+    
+    private static boolean isRateLimitedProducer(int pipeIdx, Pipe[] pipeIdToPipe2, int[] multOutputIds2) {
+        int pipeId;
+        while ((pipeId = multOutputIds2[pipeIdx++])>=0) {            
+            if (Pipe.isRateLimitedProducer(pipeIdToPipe2[pipeId])) {
+                return true;
+            }
+        }   
+        return false;
+    }
 	
 	/**
 	 * Return false only when every path is checked so every ring is empty and every stage is terminated.

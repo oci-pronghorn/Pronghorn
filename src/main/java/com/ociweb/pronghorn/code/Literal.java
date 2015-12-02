@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import com.ociweb.pronghorn.pipe.util.Appendables;
 
-public class Literal extends Code {
+public class Literal extends Code implements SingleResult {
 
     private final CharSequence literal;
     

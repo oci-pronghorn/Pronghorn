@@ -17,28 +17,77 @@ public class FuzzValueGenerator extends Code implements SingleResult {
     //TODO: generate code into resources folder,  maven, where to put generated. 
     //TODO: must reset back to zero when we get to large.
     
-    
+    private final String tab = "    ";
     private final int varId;
     private final boolean isLong;
-    private final boolean isSigned;
-    private final long minimumInclusive;
-    private final long maximumExclusive;
     private final boolean isNullable;
     private final boolean isChars;
         
+    private final long longMask;
+    private final long longFloor;
+
+    private final int  intMask;
+    private final int  intFloor;
+    private final boolean isFullRange;
+    
+    private static final int[] primes = new int[]{ 137,    3,      5,      7,     11,     13,     17,     19,     23,     29,
+                                                   31,     37,     41,     43,     47,     53,     59,     61,     67,     71, 
+                                                   73,     79,     83,     89,     97,    101,    103,    107,    109,    113,
+                                                   127,    131}; //32 primes as seeds
+    private static final AtomicInteger genSeed = new AtomicInteger(); 
+    private static final int genSeedMask = (1<<5)-1;
+    
+    private final int localSeed;    
+    
+    
     public FuzzValueGenerator(AtomicInteger varIdGen, boolean isLong, boolean isSigned, boolean isNullable) {
-        this(varIdGen,isLong,isSigned,Long.MIN_VALUE,Long.MAX_VALUE, isNullable, false);
+        this(varIdGen,isLong,isSigned, isNullable, false);
     }
     
-    public FuzzValueGenerator(AtomicInteger varIdGen, boolean isLong, boolean isSigned, long minimum, long maximum, boolean isNullable, boolean isChars) {
+    public FuzzValueGenerator(AtomicInteger varIdGen, boolean isLong, boolean isSigned, boolean isNullable, boolean isChars) {
         super(varIdGen,1,true);
+        
+        this.localSeed = primes[genSeedMask&genSeed.incrementAndGet()];
         this.varId = varIdGen.incrementAndGet();
-        this.isLong = isLong;
-        this.isSigned = isSigned;
-        this.minimumInclusive = minimum;
-        this.maximumExclusive = maximum;
+        this.isLong = isLong;       
         this.isNullable = isNullable;
         this.isChars = isChars;
+        
+        int bits;
+        if (isSigned) {
+            isFullRange = true;
+            if (isLong) {
+                bits = 64;     
+                longFloor = Long.MIN_VALUE;            
+                intFloor = 0;       
+            } else {
+                bits = 32;  
+                longFloor = 0;    
+                intFloor = Integer.MIN_VALUE;       
+            }
+        } else {
+            isFullRange = false;
+            if (isLong) {
+                bits = 63;          
+                longFloor = 0;            
+                intFloor = 0;       
+            } else {
+                bits = 31;  
+                longFloor = 0;            
+                intFloor = 0;       
+            }
+        }
+        
+        if (isLong) {
+            longMask = (1L<<bits)-1L;
+            intMask = 0;                
+        } else {
+            intMask = (1<<bits)-1;
+            longMask = 0;
+        }
+        
+        
+        
     }
     
     //TODO: must test interesting numbers then use random.  use prime number to pick unique number generator.
@@ -46,7 +95,7 @@ public class FuzzValueGenerator extends Code implements SingleResult {
     @Override
     public void defineMembers(Appendable target) throws IOException {
         
-        appendMemberVar(target.append(isLong ? "long " : "int "), varId).append(";\n");
+        appendMemberVar(target.append(tab).append(isLong ? "private long " : "private int "), varId).append(";\n");
     
     }
     
@@ -61,14 +110,6 @@ public class FuzzValueGenerator extends Code implements SingleResult {
         
         nullableBoxedValues(target);
         
-    }
-    
-    public static int intGenerator(int key) {
-        return key < 0xFFFFF ? key : Integer.reverse(key);
-    }
-    
-    public static long longGenerator(long key) {
-        return key < 0xFFFFF ? key : Long.reverse(key);
     }
         
     public static CharSequence stringGenerator(long key) {
@@ -111,55 +152,36 @@ public class FuzzValueGenerator extends Code implements SingleResult {
             }
         }
         
-        boundedLowEnd(target);
+        coreValue(target);
                 
         if (isNullable || isChars) {
             target.append("))");
         }
     }
 
-    private void boundedLowEnd(Appendable target) throws IOException {
-        if (Long.MIN_VALUE!=minimumInclusive) {
-            Appendables.appendValue(target.append("Math.max("),minimumInclusive).append(',');
-        }   
-        
-        boundedHighEnd(target);
-        
-        if (Long.MIN_VALUE!=minimumInclusive) {
-            target.append(")");
-        }
-    }
-
-    private void boundedHighEnd(Appendable target) throws IOException {
-        if (Long.MAX_VALUE!=maximumExclusive) {
-            Appendables.appendValue(target.append("Math.min("),maximumExclusive-1).append(',');
-        }        
-        
-        absOrSignedValue(target);
-
-        if (Long.MAX_VALUE!=maximumExclusive) {
-            target.append(")");
-        }
-    }
-
-    private void absOrSignedValue(Appendable target) throws IOException {
-        if (!isSigned) {
-            target.append("Math.abs(");
-        }
-        
-        coreValue(target);        
-        
-        if (!isSigned) {
-            target.append(")");
-        }
-    }
 
     private void coreValue(Appendable target) throws IOException {
         //only reverse when > FF FF FF
         if (isLong) {
-            appendMemberVar(target.append(FuzzValueGenerator.class.getCanonicalName()).append(".longGenerator("),varId).append("++) ");
+            if (0!=longFloor) {
+                Appendables.appendValue(target, longFloor).append("+");
+            }
+            target.append("(");
+            if (!isFullRange) {
+                Appendables.appendHexDigits(target, longMask).append("L & ");
+            }
+            appendMemberVar(target.append("("),varId);
+            Appendables.appendValue(target.append(" += "), localSeed).append("))");
         } else {
-            appendMemberVar(target.append(FuzzValueGenerator.class.getCanonicalName()).append(".intGenerator("),varId).append("++) ");
+            if (0!=intFloor) {
+                Appendables.appendValue(target, intFloor).append("+");
+            }
+            target.append("(");
+            if (!isFullRange) {
+                Appendables.appendHexDigits(target, intMask).append(" & ");
+            }
+            appendMemberVar(target.append("("),varId);
+            Appendables.appendValue(target.append(" += "), localSeed).append("))");
         }
     }
 

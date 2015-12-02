@@ -237,38 +237,42 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		};
 	}
 
+	private final void runLoopNotNice(final PronghornStage stage) {
+	    assert(!playNice);
+	    assert(!GraphManager.isRateLimited(graphManager,  stage.stageId));
+        do {
+            stage.run();
+        } while (continueRunning(this, stage));
+	    
+	}
+	
 	private final void runLoop(final PronghornStage stage) {
-		int i = 0;
-
-		do {
-		    long delay =  GraphManager.delayRequiredMS(graphManager,stage.stageId);
-		    if (delay>0) {
-                try {
-                    Thread.sleep(delay);
-                } catch (InterruptedException e) {
-                    break;
-                }
-		    }
-		    
-			stage.run();			
-					
-			
-			//one out of every 8 passes we will yield to play nice since we may end up with a lot of threads
-			if (playNice && 0==(0x3&i++)){
-			    //before doing yield must push any batched up writes & reads
-			    GraphManager.publishAllWrites(graphManager, stage);
-				LockSupport.parkNanos(1);
-				//GraphManager.releaseAllReads(graphManager, stage);
-			}
-		} while (continueRunning(this, stage));
-		
-//	    boolean debug = false;
-//	    if (debug) {
-//	        System.err.println(stage+" shutdown because shutdown:"+isShuttingDown+" or stageShutingDown:"+GraphManager.isStageShuttingDown(graphManager, stage.stageId));
-//	       
-//	        
-//	    }
-		
+	    if (!playNice && !GraphManager.isRateLimited(graphManager,  stage.stageId) ) {
+	        runLoopNotNice(stage);
+	    } else {
+    		int i = 0;
+    		do {
+    		    long delay =  GraphManager.delayRequiredMS(graphManager,stage.stageId);
+    		    if (delay>0) {
+                    try {
+                        GraphManager.publishAllWrites(graphManager, stage);
+                        Thread.sleep(delay);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+    		    } else if (playNice && 0==(0x3&i++)){
+    		            //one out of every 8 passes we will yield to play nice since we may end up with a lot of threads
+    		            //before doing yield must push any batched up writes & reads
+    		            GraphManager.publishAllWrites(graphManager, stage);
+    		            LockSupport.parkNanos(1);
+    		            //GraphManager.releaseAllReads(graphManager, stage);
+    		    }
+    		    
+    			stage.run();			
+    					
+    			
+    		} while (continueRunning(this, stage));	
+	    }
 	}
 
 	private static boolean continueRunning(ThreadPerStageScheduler tpss, final PronghornStage stage) {

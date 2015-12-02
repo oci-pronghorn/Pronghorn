@@ -6,6 +6,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.pronghorn.code.Code;
 import com.ociweb.pronghorn.code.FuzzValueGenerator;
+import com.ociweb.pronghorn.code.Literal;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
@@ -25,11 +27,17 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     //Simple random generator stage generated for a given Schema
     
     private static AtomicInteger id = new AtomicInteger();
-    Code[] generators = new FuzzValueGenerator[MessageSchema.from(schema).tokens.length];
-    Code msgGenerator = new FuzzValueGenerator(id, false, false, 0, MessageSchema.from(schema).messageStarts.length, false, false);
-        
+    private Code[] generators = new Code[MessageSchema.from(schema).tokens.length];
+    private Code msgGenerator = new FuzzValueGenerator(id, false, false, false, false);
+        //0, MessageSchema.from(schema).messageStarts.length, 
+    private long latencyTimeFieldId = -1;//undefined
+    
     public FuzzGeneratorGenerator(MessageSchema schema, Appendable target) {
         super(schema, target, schema.getClass().getSimpleName()+"FuzzGenerator", "extends PronghornStage");
+    }
+    
+    public void setTimeFieldId(long id) {
+        latencyTimeFieldId = id;
     }
     
     @Override
@@ -53,23 +61,30 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
         msgGenerator.incUsesCount();
         
         //need one generator for each, but we may not use them all.
-        int[] tokens = MessageSchema.from(schema).tokens;
+        FieldReferenceOffsetManager from = MessageSchema.from(schema);
+        int[] tokens = from.tokens;
+        long[] scriptIds = from.fieldIdScript;                
+        
         int i = tokens.length;
         while (--i>=0) {
             
             int type = TokenBuilder.extractType(tokens[i]);
-                        
-            boolean isLong =TypeMask.isLong(type);
-            boolean isSigned = !TypeMask.isUnsigned(type); 
-            long minimum = Long.MIN_VALUE; 
-            long maximum = Long.MAX_VALUE; 
-            boolean isNullable = TypeMask.isOptional(type); 
-            boolean isChars = TypeMask.isText(type);
             
-            generators[i] = new FuzzValueGenerator(id,isLong,isSigned,minimum,maximum,isNullable,isChars);
-            generators[i].defineMembers(target);
-            generators[i].incUsesCount();
-                        
+            if (TypeMask.isLong(type) || TypeMask.isInt(type) || TypeMask.isText(type)) {                        
+                boolean isLong =TypeMask.isLong(type);
+                boolean isSigned = !TypeMask.isUnsigned(type);
+                boolean isNullable = TypeMask.isOptional(type); 
+                boolean isChars = TypeMask.isText(type);
+                                
+                if (isLong && (scriptIds[i]==latencyTimeFieldId)) {
+                    //Do not generate fuzz but generate send time time on the fly instead
+                    generators[i] = new Literal("System.currentTimeMillis()");
+                } else {
+                    generators[i] = new FuzzValueGenerator(id,isLong,isSigned,isNullable,isChars);
+                }
+                generators[i].defineMembers(target);
+                generators[i].incUsesCount();
+            }
         }
     }
     
@@ -85,8 +100,12 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     @Override
     protected void bodyOfNextMessageIdx(Appendable target) throws IOException {
         msgGenerator.preCall(target);
-        target.append(tab).append("return Pipe.from(output).messageStarts[");
-        msgGenerator.result(target).append("];\n");
+        
+        int startsCount = MessageSchema.from(schema).messageStarts().length;
+        
+        target.append(tab).append("return Pipe.from(output).messageStarts[(");
+        msgGenerator.result(target).append(")%");
+        Appendables.appendValue(target, startsCount).append("];\n");
         
     }
 

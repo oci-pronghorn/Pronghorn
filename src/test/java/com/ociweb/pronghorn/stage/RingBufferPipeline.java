@@ -612,8 +612,8 @@ public class RingBufferPipeline {
 		 final long start = System.currentTimeMillis();
 		 
 		 GraphManager.enableBatching(gm);
-		 StageScheduler scheduler = new ThreadPerStageScheduler(GraphManager.cloneAll(gm));
-		 
+		 ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(GraphManager.cloneAll(gm));
+		 scheduler.playNice = false;
 		 scheduler.startup();
 		 
 		 
