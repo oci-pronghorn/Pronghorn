@@ -170,7 +170,7 @@ public class FieldReferenceOffsetManager {
 	
 	public void validateGUID(int[] GUID) {
 	    if (!Arrays.equals(GUID, this.guid)) {
-	        throw new UnsupportedOperationException("The GUID version of this schema FROM does not match value when built.");
+	        throw new UnsupportedOperationException("The GUID version of this schema FROM does not match value when built. May need to regenerate from source OR Pipe Schema does not match expected Stage Schema.");
 	    }
 	}
 

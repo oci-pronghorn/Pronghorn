@@ -36,7 +36,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     private final String doNothingConstant = "DO_NOTHING";
     
 
-    String methodScope = "private"; //set to protected if you plan to extend this vs generate this.
+    private final String methodScope;
     private boolean firstField = true;
     
     
@@ -56,6 +56,8 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         this.baseText = baseClassName;
         this.bodyTarget = target;
         this.hasSimpleMessagesOnly = MessageSchema.from(schema).hasSimpleMessagesOnly;
+        
+        this.methodScope = "private"; //set to protected if you plan to extend this vs generate this.
     }
     
     public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target) {
@@ -76,13 +78,15 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         final FieldReferenceOffsetManager from = MessageSchema.from(schema);
      
         if (!from.hasSimpleMessagesOnly) {
-            bodyTarget.append("private LowLevelStateManager navState;\n");
+            bodyTarget.append("private ").append(LowLevelStateManager.class.getSimpleName()).append(" navState;\n");
         }
         appendClass(bodyTarget.append("private "), pipeClass, schema.getClass()).append(pipeVarName).append(";\n");
+
         additionalMembers(bodyTarget);
     }
 
     protected void additionalMembers(Appendable target) throws IOException {  
+        final FieldReferenceOffsetManager from = MessageSchema.from(schema);
     }
 
     @Override
@@ -110,10 +114,8 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         //      if (!Pipe.hasRoomForWrite(input)) {
         //      return;
         //  }
-        appendStaticCall(bodyTarget.append(tab).append("if (!"), pipeClass, "hasRoomForWrite").append(pipeVarName).append(")) {\n");
-        bodyTarget.append(tab).append(tab).append("return;\n");
-        bodyTarget.append(tab).append("}\n");
-
+        appendStaticCall(bodyTarget.append(tab).append("while ("), pipeClass, "hasRoomForWrite").append(pipeVarName).append(")) {\n");
+        
         ///
         ///
         
@@ -140,7 +142,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
             bodyTarget.append(tab).append("}\n");
             
             bodyTarget.append("\n");
-            
+     //       bodyTarget.append("System.out.println(cursor);//WHYHAPPEN\n");
             
             //switch(cursor)) {
             bodyTarget.append(tab).append("switch(").append(cursorVarName).append(") {\n");
@@ -158,11 +160,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         
-        bodyTarget.append(tab).append(tab).append("case ");
-        
-        appendCaseMsgIdConstant(cursor, schema);
-        
-        bodyTarget.append(":\n");
+        appendCaseMsgIdConstant(bodyTarget.append(tab).append(tab).append("case "), cursor, schema).append(":\n");
 
         if ( FieldReferenceOffsetManager.isTemplateStart(from, cursor) ) {
             appendStaticCall(bodyTarget.append(tab).append(tab),pipeClass,"addMsgIdx").append(pipeVarName).append(',');
@@ -173,29 +171,34 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         appendBusinessMethodName(cursor).append("();\n");
                                        
                                        
-        //Pipe.confirmLowLevelRead(input, 8);
+        //Pipe.confirmLowLevelWrite(input, 8);
         int fragmentSizeLiteral = from.fragDataSize[cursor];
         
-        appendStaticCall(bodyTarget.append(tab).append(tab).append(tab), pipeClass, "confirmLowLevelWrite").append(pipeVarName).append(", ").append(Integer.toString(fragmentSizeLiteral)).append(" /* fragment size */);\n");
+        appendStaticCall(bodyTarget.append(tab).append(tab).append(tab), pipeClass, "confirmLowLevelWrite").append(pipeVarName).append(", ");
+        Appendables.appendValue(bodyTarget, fragmentSizeLiteral);
+        bodyTarget.append("/* fragment ");
+        Appendables.appendValue(bodyTarget, cursor).append("  size ");
+        Appendables.appendValue(bodyTarget, from.fragScriptSize[cursor]);
+        bodyTarget.append("*/);\n");
                                       
         bodyTarget.append(tab).append(tab).append("break;\n");        
 
     }
     
-    private void appendCaseMsgIdConstant(int cursor, MessageSchema schema) throws IOException {
+    private Appendable appendCaseMsgIdConstant(Appendable target, int cursor, MessageSchema schema) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
 
-       bodyTarget.append("/*");
-       appendWriteMethodName(bodyTarget, cursor);
-       bodyTarget.append("*/");
+        target.append("/*");
+       appendWriteMethodName(target, cursor);
+       target.append("*/");
        
         if (schema instanceof MessageSchemaDynamic || null==from.fieldNameScript[cursor]) {
-            bodyTarget.append(Integer.toString(cursor));
+            Appendables.appendValue(target, cursor);
         } else {
-            bodyTarget.append(schema.getClass().getSimpleName()).append(".");
-            bodyTarget.append(FieldReferenceOffsetManager.buildMsgConstName(from, cursor));
+            target.append(schema.getClass().getSimpleName()).append(".");
+            target.append(FieldReferenceOffsetManager.buildMsgConstName(from, cursor));
         }
-        
+        return target;
     }
 
     @Override
@@ -207,13 +210,21 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         bodyTarget.append(tab).append(tab).append(tab).append("return;\n");
         
         bodyTarget.append(tab).append(tab).append("default:\n");
-        bodyTarget.append(tab).append(tab).append(tab).append("throw new UnsupportedOperationException(\"Unknown message type, rebuid with the new schema.\");\n");
+        
+        bodyTarget.append(tab).append(tab).append(tab).append("throw new UnsupportedOperationException(\"Unknown message type ");
+        if (!hasSimpleMessagesOnly) {
+            bodyTarget.append("\"+").append(cursorVarName).append("+\"");
+        }
+        bodyTarget.append(", rebuid with the new schema.\");\n");
+        
                 
         bodyTarget.append(tab).append("}\n"); //close of the switch statement
                
         //Pipe.releaseReads{input);
         appendStaticCall(bodyTarget.append(tab), pipeClass, "publishWrites").append(pipeVarName).append(");\n");
                   
+        bodyTarget.append(tab).append("}\n");
+        
         bodyTarget.append("}\n");
         bodyTarget.append("\n"); 
         
@@ -611,8 +622,11 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
                     writeToPipeBodyWorkspace.append("  */");
                 }
                 writeToPipeBodyWorkspace.append("\n");
-                                
-                writeToPipeBodyWorkspace.append(tab).append(stageMgrClassName).append(".processGroupLength(").append(stageMgrVarName).append(", ").append(Integer.toString(fragmentCursor)).append(", ");
+                
+                appendSequenceCounterVar(appendStaticCall(writeToPipeBodyWorkspace.append(tab), pipeClass, "addIntValue"), varName).append(',').append(pipeVarName).append(");\n"); //hacktest.
+                
+                writeToPipeBodyWorkspace.append(tab).append(stageMgrClassName).append(".processGroupLength(").append(stageMgrVarName);                
+                Appendables.appendValue(writeToPipeBodyWorkspace.append(", "), fragmentCursor).append(", ");
                 appendSequenceCounterVar(writeToPipeBodyWorkspace, varName).append(");\n");
 
             firstField = false;
@@ -740,6 +754,18 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
 
     @Override
     protected void footerConstruction() throws IOException {
+        
+        final FieldReferenceOffsetManager from = MessageSchema.from(schema);
+        if (!from.hasSimpleMessagesOnly) {
+            if (!baseText.contains("Runnable")) {
+                bodyTarget.append("@Override\n");
+            }
+            bodyTarget.append("public void startup() {\n");
+            bodyTarget.append(tab).append("navState").append(" = new ");
+            bodyTarget.append(LowLevelStateManager.class.getSimpleName()).append("(").append(pipeVarName).append(");\n");
+            bodyTarget.append("}\n");
+        }
+        
         additionalMethods(bodyTarget);
         bodyTarget.append("};\n");
     }   

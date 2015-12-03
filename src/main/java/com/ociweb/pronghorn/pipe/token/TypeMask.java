@@ -163,7 +163,8 @@ public final class TypeMask {
     
     public static boolean isUnsigned(int type) {
         
-        return type==TypeMask.LongUnsigned ||
+        return type==TypeMask.GroupLength ||
+               type==TypeMask.LongUnsigned ||
                type==TypeMask.LongUnsignedOptional ||
                type==TypeMask.IntegerUnsigned ||
                type==TypeMask.IntegerUnsignedOptional;

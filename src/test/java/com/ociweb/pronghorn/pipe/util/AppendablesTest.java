@@ -22,6 +22,9 @@ public class AppendablesTest {
             try {
                 String actual = Appendables.appendValue(new StringBuilder(), value).toString();
                 String expected = Integer.toString(value);
+                if (value<0) {
+                    expected = "("+expected+")";
+                }
                 assertEquals(expected, actual);
                 
                 

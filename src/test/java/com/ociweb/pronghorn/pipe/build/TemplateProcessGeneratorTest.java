@@ -143,7 +143,7 @@ public class TemplateProcessGeneratorTest {
             
             simple.processSchema();
             
-    //        System.out.println(target);
+           // System.out.println(target);
             
             validateCleanCompile(className, target);
             
@@ -176,7 +176,7 @@ public class TemplateProcessGeneratorTest {
             simple.processSchema();
             
             
-            System.out.println(target);
+          //  System.out.println(target);
             
             validateCleanCompile(className, target);
             

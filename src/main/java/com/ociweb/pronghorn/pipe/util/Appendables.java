@@ -63,8 +63,14 @@ public class Appendables {
 
         int tens = 1000000000;
         
-        if (value<0) {
-            target.append('-');
+        boolean isNegative = value<0;
+        if (isNegative) {
+            //special case which can not be rendered here.
+            if (value==Integer.MIN_VALUE) {
+                return appendValue(target,(long)value);
+            }
+            
+            target.append("(-");
             value = -value;
         }
         
@@ -80,7 +86,9 @@ public class Appendables {
             tens /= 10;
         }
         target.append((char)('0'+nextValue));
-        
+        if (isNegative) {
+            target.append(")");
+        }
         return target;
     }
     
@@ -117,8 +125,9 @@ public class Appendables {
 
         long tens = 1000000000000000000L;
         
-        if (value<0) {
-            target.append('-');
+        boolean isNegative = value<0;
+        if (isNegative) {
+            target.append("(-");
             value = -value;
         }
         
@@ -134,7 +143,9 @@ public class Appendables {
             tens /= 10;
         }
         target.append((char)('0'+nextValue));
-        
+        if (isNegative) {
+            target.append(')');
+        }
         return target;
     }
     

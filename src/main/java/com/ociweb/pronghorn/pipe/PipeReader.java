@@ -581,6 +581,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
             assert(Pipe.isReplaying(pipe) || pipe.ringWalker.nextWorkingTail!=Pipe.getWorkingTailPosition(pipe)) : "Only call release once per message";
             Pipe.markBytesReadBase(pipe); //moves us forward so we can read the next fragment/message
             batchedReleasePublish(pipe, Pipe.getWorkingBlobRingTailPosition(pipe), pipe.ringWalker.nextWorkingTail);
+	    } else {
+	        Pipe.decBatchRelease(pipe);//sequence fragments must cause this number to move
 	    }
 	}
 

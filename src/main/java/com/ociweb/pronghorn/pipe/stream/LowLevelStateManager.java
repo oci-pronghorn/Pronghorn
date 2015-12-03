@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.pipe.stream;
 
+import java.util.Arrays;
+
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 
