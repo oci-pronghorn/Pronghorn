@@ -32,6 +32,7 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
 		FieldReferenceOffsetManager from = Pipe.from(inputRing);		
 		totalCounts = new long[from.tokensLen];
 		counts = new long[from.tokensLen];
+		
 	}
 
 	@Override
@@ -137,6 +138,8 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
     		System.out.println("Total Bytes:"+totalBytes+ " (slab and blob)");
     		System.out.println("total Duration:"+duration+" ms");
     		
+    		long avgMsgSize = totalBytes/totalMsg;
+    		System.out.println("Avg msg size:"+avgMsgSize);
     		long msgPerMs = totalMsg/duration;
     		long bitsPerMs = (8*totalBytes)/(duration*1000);
     		System.out.println("MsgPerMs:"+msgPerMs+"    MBitsPerSec:"+bitsPerMs);
@@ -164,11 +167,12 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
 					data = true;
 				}
 			}
-			
 			totalBytes += (PipeReader.sizeOfFragment(inputRing)*4) + PipeReader.bytesConsumedByFragment(inputRing);
 		
 			PipeReader.releaseReadLock(inputRing);
-		}		
+			
+
+		}	
 		return data;
 	}
 }

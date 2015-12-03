@@ -138,20 +138,12 @@ public class LoaderUtil {
                     
         if (compiler.getTask(null, null, diagnostics, optionList, null, toCompile).call()) {
                 File classFile = new File(classesFolder, cannonicalName+".class");
-                
-                try {
-                    System.out.println("WROTE CLASS FILE to : "+classFile.getCanonicalPath());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                };
-                
+
                 String name = packageName+"."+className;
                 byte[] classData = readClassBytes(classFile);
                 
                 Class generatedClass = new TestClassLoader(name, classData).loadClass(name);
-                
-               // System.out.println("source : "+        generatedClass.getProtectionDomain().getCodeSource());
-                
+
                 return generatedClass.getConstructor(GraphManager.class, Pipe.class);
                  
         } else {

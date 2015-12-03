@@ -174,6 +174,7 @@ public class FuzzValueGenerator extends Code implements SingleResult {
             Appendables.appendValue(target.append(" += "), localSeed).append("))");
         } else {
             if (0!=intFloor) {
+                System.out.println("appending the intFloor of "+intFloor);
                 Appendables.appendValue(target, intFloor).append("+");
             }
             target.append("(");

@@ -9,6 +9,7 @@ import com.ociweb.pronghorn.code.FuzzValueGenerator;
 import com.ociweb.pronghorn.code.Literal;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
+import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.pipe.util.Appendables;
@@ -30,14 +31,34 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     private Code[] generators = new Code[MessageSchema.from(schema).tokens.length];
     private Code msgGenerator = new FuzzValueGenerator(id, false, false, false, false);
         //0, MessageSchema.from(schema).messageStarts.length, 
+    
     private long latencyTimeFieldId = -1;//undefined
+    private int maximumSequenceMask = Integer.MAX_VALUE; //TODO: A should be max fragments on pipe and validated with assert.
     
     public FuzzGeneratorGenerator(MessageSchema schema, Appendable target) {
-        super(schema, target, schema.getClass().getSimpleName()+"FuzzGenerator", "extends PronghornStage");
+        super(schema, target, generateClassName(schema), "extends PronghornStage");
+    }
+
+    private static String generateClassName(MessageSchema schema) {
+        if (schema instanceof MessageSchemaDynamic) {
+            String name = MessageSchema.from(schema).name.replaceAll("/", "").replaceAll(".xml", "")+"FuzzGenerator";
+            if (Character.isLowerCase(name.charAt(0))) {
+                return Character.toUpperCase(name.charAt(0))+name.substring(1);
+            }
+            return name;
+        } else {
+            return schema.getClass().getSimpleName()+"FuzzGenerator";
+        }
     }
     
     public void setTimeFieldId(long id) {
         latencyTimeFieldId = id;
+    }
+    
+    public void setMaxSequenceLengthInBits(int saneBits) {
+        assert(saneBits>0);
+        assert(saneBits<=32);
+        maximumSequenceMask = (1<<saneBits)-1;
     }
     
     @Override
@@ -49,6 +70,7 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
         
         target.append("super(gm,NONE,").append(pipeVarName).append(");\n");
         target.append("this.").append(pipeVarName).append(" = ").append(pipeVarName).append(";\n"); 
+        Appendables.appendStaticCall(target, Pipe.class, "from").append(pipeVarName).append(").validateGUID(FROM_GUID);\n");
         
         target.append("}\n\n");
                 
@@ -70,11 +92,11 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
             
             int type = TokenBuilder.extractType(tokens[i]);
             
-            if (TypeMask.isLong(type) || TypeMask.isInt(type) || TypeMask.isText(type)) {                        
+            if (TypeMask.isLong(type) || TypeMask.isInt(type) || TypeMask.isText(type) || TypeMask.isByteVector(type)) {                        
                 boolean isLong =TypeMask.isLong(type);
                 boolean isSigned = !TypeMask.isUnsigned(type);
                 boolean isNullable = TypeMask.isOptional(type); 
-                boolean isChars = TypeMask.isText(type);
+                boolean isChars = TypeMask.isText(type) || TypeMask.isByteVector(type);
                                 
                 if (isLong && (scriptIds[i]==latencyTimeFieldId)) {
                     //Do not generate fuzz but generate send time time on the fly instead
@@ -103,16 +125,23 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
         
         int startsCount = MessageSchema.from(schema).messageStarts().length;
         
-        target.append(tab).append("return Pipe.from(output).messageStarts[(");
-        msgGenerator.result(target).append(")%");
-        Appendables.appendValue(target, startsCount).append("];\n");
-        
+        if (startsCount==1) {
+            target.append(tab).append("return ");
+            Appendables.appendValue(target, MessageSchema.from(schema).messageStarts()[0]).append(";\n");
+        } else {
+            target.append(tab).append("return ").append("Pipe.from(").append("output).messageStarts[(");
+            msgGenerator.result(target).append(")%");
+            Appendables.appendValue(target, startsCount).append("];\n");
+        }
     }
 
     @Override
     protected void bodyOfBusinessProcess(Appendable target, int cursor, int firstField, int fieldCount) throws IOException {
         
         for(int f = firstField; f<(firstField+fieldCount); f++) { 
+            if (null==generators[f]) {
+                throw new UnsupportedOperationException("Unsupported Type "+TokenBuilder.tokenToString(MessageSchema.from(schema).tokens[f]));
+            }
             generators[f].preCall(target);
         }
         
@@ -121,6 +150,12 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
         for(int f = firstField; f<(firstField+fieldCount); f++) { 
             if (f > firstField) {
                 target.append(",\n");
+            }
+            
+            target.append(tab).append(tab);
+            if (Integer.MAX_VALUE != maximumSequenceMask &&
+                TypeMask.GroupLength == TokenBuilder.extractType(MessageSchema.from(schema).tokens[f]) ) {
+                Appendables.appendHexDigits(target, maximumSequenceMask).append("&");
             }
             
             generators[f].result(target);
