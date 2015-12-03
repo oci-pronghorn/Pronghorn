@@ -133,11 +133,9 @@ class StackStateWalker {
 		ringBufferConsumer.cursor = ringBufferConsumer.nextCursor; //TODO: for nested example nextCursor must be 35 NOT 26 when we reach the end of the sequence.
 		
 		assert(isValidFragmentStart(ringBuffer, ringBufferConsumer.nextWorkingTail)) : "last assigned fragment start is invalid, should have been detected far before this point.";
-		
-		final long target = ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor] + ringBufferConsumer.nextWorkingTail; //One for the template ID NOTE: Caution, this simple implementation does NOT support preamble
-		
-		assert(isValidFragmentStart(ringBuffer, target)) : invalidFragmentStartMessage(ringBufferConsumer, target);
 				
+		final long target = ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor] + ringBufferConsumer.nextWorkingTail; //One for the template ID NOTE: Caution, this simple implementation does NOT support preamble
+						
 		if (ringBuffer.llWrite.llwHeadPosCache >= target) {
 			prepReadFragment(ringBuffer, ringBufferConsumer, ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor], ringBufferConsumer.nextWorkingTail, target);
 		} else {
