@@ -80,7 +80,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         if (!from.hasSimpleMessagesOnly) {
             bodyTarget.append("private ").append(LowLevelStateManager.class.getSimpleName()).append(" navState;\n");
         }
-        if (null!=pipeVarName) {
+        if (buildFullStageWritingToPipe()) {
             appendClass(bodyTarget.append("private "), pipeClass, schema.getClass()).append(pipeVarName).append(";\n");
         }
         additionalMembers(bodyTarget);
@@ -96,13 +96,13 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         
-        if (null==pipeVarName) {
+        if (buildFullStageWritingToPipe()) {
+            from.appendGUID( bodyTarget.append("private final int[] FROM_GUID = ")).append(";\n");
+        } else {
             
             from.appendConstuctionSource(bodyTarget);
             bodyTarget.append("\n");
             
-        } else {
-            from.appendGUID( bodyTarget.append("private final int[] FROM_GUID = ")).append(";\n");
         }
         
         
@@ -121,11 +121,13 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         bodyTarget.append("@Override\n");
         bodyTarget.append("public void run() {\n");
 
-        //      if (!Pipe.hasRoomForWrite(input)) {
-        //      return;
-        //  }
-        appendStaticCall(bodyTarget.append(tab).append("while ("), pipeClass, "hasRoomForWrite").append(pipeVarName).append(")) {\n");
         
+        if (buildFullStageWritingToPipe()) {
+            //      if (!Pipe.hasRoomForWrite(input)) {
+            //      return;
+            //  }
+            appendStaticCall(bodyTarget.append(tab).append("while ("), pipeClass, "hasRoomForWrite").append(pipeVarName).append(")) {\n");
+        }
         ///
         ///
         
@@ -160,6 +162,10 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         
     }
 
+    private boolean buildFullStageWritingToPipe() {
+        return null!=pipeVarName;
+    }
+
     
     //TODO: Solution to mutation of method names,
     //      Add annotation to every method we wish to use, have annotation record method name in lookup table with immutable constant id
@@ -172,7 +178,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         
         appendCaseMsgIdConstant(bodyTarget.append(tab).append(tab).append("case "), cursor, schema).append(":\n");
 
-        if ( FieldReferenceOffsetManager.isTemplateStart(from, cursor) && null!=pipeVarName ) {
+        if ( FieldReferenceOffsetManager.isTemplateStart(from, cursor) && buildFullStageWritingToPipe() ) {
             appendStaticCall(bodyTarget.append(tab).append(tab),pipeClass,"addMsgIdx").append(pipeVarName).append(',');
             Appendables.appendValue(bodyTarget, cursor).append(");\n");
         }
@@ -184,7 +190,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         //Pipe.confirmLowLevelWrite(input, 8);
         int fragmentSizeLiteral = from.fragDataSize[cursor];
         
-        if (null!=pipeVarName) {
+        if (buildFullStageWritingToPipe()) {
             appendStaticCall(bodyTarget.append(tab).append(tab).append(tab), pipeClass, "confirmLowLevelWrite").append(pipeVarName).append(", ");
             Appendables.appendValue(bodyTarget, fragmentSizeLiteral);
             bodyTarget.append("/* fragment ");
@@ -233,13 +239,14 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
                 
         bodyTarget.append(tab).append("}\n"); //close of the switch statement
                
-        if (null!=pipeVarName) {
+        if (buildFullStageWritingToPipe()) {
             //Pipe.releaseReads{input);
             appendStaticCall(bodyTarget.append(tab), pipeClass, "publishWrites").append(pipeVarName).append(");\n");
         }
         
-        bodyTarget.append(tab).append("}\n");
-        
+        if (buildFullStageWritingToPipe()) {
+            bodyTarget.append(tab).append("}\n");
+        }
         bodyTarget.append("}\n");
         bodyTarget.append("\n"); 
         
@@ -540,7 +547,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     }
 
     private void appendWriteToPipe(String name, String method) throws IOException {
-        if (null!=pipeVarName) {
+        if (buildFullStageWritingToPipe()) {
             appendVar(appendStaticCall(writeToPipeBodyWorkspace.append(tab), pipeClass, method), name).append(',').append(pipeVarName).append(");\n");
         }
     }
@@ -550,7 +557,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     }
 
     private void appendWirteOptionalToPipe(String name, long nullLiteral, String methodName) throws IOException {
-        if (null!=pipeVarName) {
+        if (buildFullStageWritingToPipe()) {
             appendVar(               
                     appendValue( 
                             appendVar(
@@ -642,7 +649,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
                 }
                 writeToPipeBodyWorkspace.append("\n");
                 
-                if (null!=pipeVarName) {
+                if (buildFullStageWritingToPipe()) {
                     appendSequenceCounterVar(appendStaticCall(writeToPipeBodyWorkspace.append(tab), pipeClass, "addIntValue"), varName).append(',').append(pipeVarName).append(");\n"); 
                 }
                 writeToPipeBodyWorkspace.append(tab).append(stageMgrClassName).append(".processGroupLength(").append(stageMgrVarName);                
@@ -782,7 +789,14 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
             }
             bodyTarget.append("public void startup() {\n");
             bodyTarget.append(tab).append("navState").append(" = new ");
-            bodyTarget.append(LowLevelStateManager.class.getSimpleName()).append("(").append(pipeClass.getSimpleName()).append(".from(").append(pipeVarName).append("));\n");
+            bodyTarget.append(LowLevelStateManager.class.getSimpleName()).append("(");
+            if (buildFullStageWritingToPipe()) {
+                bodyTarget.append(pipeClass.getSimpleName()).append(".from(").append(pipeVarName).append(")");
+            } else {
+                bodyTarget.append("FROM");
+            }
+            
+            bodyTarget.append(");\n");
             bodyTarget.append("}\n");
         }
         
