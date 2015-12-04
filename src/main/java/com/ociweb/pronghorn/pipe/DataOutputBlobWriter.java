@@ -4,7 +4,6 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 
 public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream implements DataOutput {
 
@@ -25,14 +24,22 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     
     public void openField() {
         p.openBlobFieldWrite();
+        //NOTE: this method works with both high and low APIs.
         startPosition = activePosition = Pipe.bytesWorkingHeadPosition(p);
     }
     
-    public int closeField(int targetFieldLoc) {
+    public int closeHighLevelField(int targetFieldLoc) {
         //this method will also validate the length was in bound and throw unsupported operation if the pipe was not large enough
         //instead of fail fast as soon as one field goes over we wait to the end and only check once.
         int len = length();
         PipeWriter.writeSpecialBytesPosAndLen(p, targetFieldLoc, len, startPosition);
+        p.closeBlobFieldWrite();
+        return len;
+    }
+    
+    public int closeLowLevelField() {
+        int len = length();
+        Pipe.addBytePosAndLenSpecial(p,startPosition,len);
         p.closeBlobFieldWrite();
         return len;
     }
@@ -67,11 +74,13 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     @Override
     public void write(byte[] b) throws IOException { 
         Pipe.copyBytesFromToRing(b, 0, Integer.MAX_VALUE, byteBuffer, activePosition, byteMask, b.length);  
+        activePosition+=b.length;
     }
 
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
         Pipe.copyBytesFromToRing(b, off, Integer.MAX_VALUE, byteBuffer, activePosition, byteMask, len); 
+        activePosition+=len;
     }
 
     @Override

@@ -481,6 +481,10 @@ public final class Pipe<T extends MessageSchema> {
  
     private AtomicBoolean isInBlobFieldWrite = new AtomicBoolean(false);
     
+    public static <S extends MessageSchema> boolean isInBlobFieldWrite(Pipe<S> pipe) {
+        return pipe.isInBlobFieldWrite.get();
+    }
+    
     public void openBlobFieldWrite() {        
         if (!isInBlobFieldWrite.compareAndSet(false, true)) {
             throw new UnsupportedOperationException("only one open write against the blob at a time.");

@@ -4,8 +4,6 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.nio.ByteBuffer;
 
 public class DataInputBlobReader<S extends MessageSchema>  extends InputStream implements DataInput {
 
@@ -17,7 +15,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     private ObjectInputStream ois;
     
     private int length;
-    private int charLimit;
+    private int bytesLimit;
     private int position;
     
     public DataInputBlobReader(Pipe<S> pipe) {
@@ -32,23 +30,52 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         this.length    = PipeReader.readBytesLength(pipe, loc);
         this.position  = PipeReader.readBytesPosition(pipe, loc);
         this.backing   = PipeReader.readBytesBackingArray(pipe, loc);        
-        this.charLimit = position + length;
+        this.bytesLimit = position + length;
         
     }
     
-    public void openLowLevelAPIField() {
+    public int openLowLevelAPIField() {
         
         int meta = Pipe.takeRingByteMetaData(pipe);
         this.length    = Pipe.takeRingByteLen(pipe);
         this.position = Pipe.bytePosition(meta, pipe, this.length);
         this.backing   = Pipe.byteBackingArray(meta, pipe);               
-        this.charLimit = position + length;
+        this.bytesLimit = position + length;
+        return this.length;
+    }
         
+    public boolean hasRemainingBytes() {
+        return position < bytesLimit;
     }
     
-    
+    @Override
+    public int available() throws IOException {
+        assert(position<=bytesLimit);
+        return bytesLimit - position;
+    }
+
     public DataInput nullable() {
         return length<0 ? null : this;
+    }
+   
+    @Override
+    public int read(byte[] b) throws IOException {
+        int max = bytesLimit-position;
+        int len = b.length>max? max : b.length;      
+        Pipe.copyBytesFromToRing(backing, position, byteMask, b, 0, Integer.MAX_VALUE, len);
+        position += b.length;
+        return b.length;
+    }
+    
+    @Override
+    public int read(byte[] b, int off, int len) throws IOException {
+        int max = bytesLimit-position;
+        if (len>max) {
+            len = max;
+        }
+        Pipe.copyBytesFromToRing(backing, position, byteMask, b, off, Integer.MAX_VALUE, len);
+        position += len;
+        return len;
     }
     
     @Override
@@ -158,10 +185,10 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     public String readLine() throws IOException {
         
         workspace.setLength(0);        
-        if (position < charLimit) {
+        if (position < bytesLimit) {
             char c = (char)read16(backing,byteMask,this);
             while (
-                    (position < charLimit) &&  //hard stop for EOF but this is really end of field.
+                    (position < bytesLimit) &&  //hard stop for EOF but this is really end of field.
                     c != '\n'
                   ) {
                 if (c!='\r') {

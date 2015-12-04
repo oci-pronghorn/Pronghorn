@@ -65,7 +65,7 @@ public class DataInputOutputTest {
         long duration = System.nanoTime()-start;
         long nsPerWrite = duration/testSize;
         
-        int length = out.closeField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+        int length = out.closeHighLevelField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
         
         float compression = 1f-(length/(float)(testSize*8));
         
@@ -131,7 +131,7 @@ public class DataInputOutputTest {
         
         
         
-        int length = out.closeField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+        int length = out.closeHighLevelField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
         
         float compression = 1f-(length/(float)(testSize*4));
         System.out.println(nsPerWrite+"ns per written int, ints per second "+(1000l*1000l*1000l/nsPerWrite)+" compression "+compression);

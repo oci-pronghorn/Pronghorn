@@ -19,11 +19,7 @@ public class PipeRegulator {
     
     public static <S extends MessageSchema> long computeRateLimitDelay(Pipe<S> pipe, long position, PipeRegulator regulator) {
         long expectedNow = regulator.regulatorTimeBase + ((position-regulator.regulatorPositionBase)/regulator.divisor);
-        long dif = expectedNow-System.currentTimeMillis();
-        
-      //  System.out.println(dif+"  "+regulator.divisor);
-        
-        return dif;
+        return expectedNow-System.currentTimeMillis();
     }
     
 }
