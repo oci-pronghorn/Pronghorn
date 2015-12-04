@@ -14,17 +14,12 @@ import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.pipe.util.Appendables;
 import com.ociweb.pronghorn.pipe.util.build.TemplateProcessGeneratorLowLevelWriter;
-
+import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWriter{
 
-    
-    //TODO: unit test must use this to generate class then use it
-    //TPDP: still need constructor 
-    //TOOD: still need startup, shutdown
-    //TODO: generated classes need to be used and deloverd but not checked in? How
-    
+        
     //Simple random generator stage generated for a given Schema
     
     private static AtomicInteger id = new AtomicInteger();
@@ -35,8 +30,23 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     private long latencyTimeFieldId = -1;//undefined
     private int maximumSequenceMask = Integer.MAX_VALUE; //TODO: A should be max fragments on pipe and validated with assert.
     
+    private static boolean generateAbstractRunnable = false;
+    
+    //TODO: Add support for building runnable    - 30 min 
+    //TODO: Add fixed length for sequences support - 5 min
+    //TODO: Add sparse population of sequences support. - 10 min
+    
+    //TODO: Add generator to build Objects as iterator? 10 hours may be helpful to grove work.
+    
     public FuzzGeneratorGenerator(MessageSchema schema, Appendable target) {
-        super(schema, target, generateClassName(schema), "extends PronghornStage");
+        this(schema, target, false);
+    }
+    
+    public FuzzGeneratorGenerator(MessageSchema schema, Appendable target, boolean generateRunnable) {
+        super(schema, target, generateClassName(schema),  generateRunnable ? "implements Runnable" : "extends PronghornStage",
+                                                          generateRunnable ? null : "output",
+                                                          generateRunnable ? "protected" : "private");
+        this.generateAbstractRunnable = generateRunnable;
     }
 
     private static String generateClassName(MessageSchema schema) {
@@ -65,12 +75,23 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     protected void buildConstructors(Appendable target, String className) throws IOException {
         
         target.append("public ").append(className).append("(");
-        target.append(GraphManager.class.getCanonicalName()).append(" gm, ");
-        Appendables.appendClass(target, Pipe.class, schema.getClass()).append(" ").append(pipeVarName).append(") {\n");
         
-        target.append("super(gm,NONE,").append(pipeVarName).append(");\n");
-        target.append("this.").append(pipeVarName).append(" = ").append(pipeVarName).append(";\n"); 
-        Appendables.appendStaticCall(target, Pipe.class, "from").append(pipeVarName).append(").validateGUID(FROM_GUID);\n");
+        if (generateAbstractRunnable) {
+            target.append(") { \n");
+            
+            FieldReferenceOffsetManager from = MessageSchema.from(schema);
+            if (!from.hasSimpleMessagesOnly) {
+                target.append(tab).append("startup();\n");
+            }
+            
+        } else {        
+            target.append(GraphManager.class.getCanonicalName()).append(" gm, ");
+            Appendables.appendClass(target, Pipe.class, schema.getClass()).append(" ").append(pipeVarName).append(") {\n");
+            
+            target.append("super(gm,NONE,").append(pipeVarName).append(");\n");
+            target.append("this.").append(pipeVarName).append(" = ").append(pipeVarName).append(";\n"); 
+            Appendables.appendStaticCall(target, Pipe.class, "from").append(pipeVarName).append(").validateGUID(FROM_GUID);\n");
+        }
         
         target.append("}\n\n");
                 
@@ -115,7 +136,7 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     
     @Override
     protected void additionalImports(Appendable target) throws IOException {
-       target.append("import com.ociweb.pronghorn.stage.PronghornStage;");       
+       target.append("import ").append(PronghornStage.class.getCanonicalName()).append(";\n");       
        target.append("import ").append(schema.getClass().getCanonicalName()).append(";\n");
     }
 
@@ -129,9 +150,19 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
             target.append(tab).append("return ");
             Appendables.appendValue(target, MessageSchema.from(schema).messageStarts()[0]).append(";\n");
         } else {
-            target.append(tab).append("return ").append("Pipe.from(").append("output).messageStarts[(");
+            target.append(tab).append("return ");
+            
+            if (null==pipeVarName) {
+                target.append("FROM");
+            } else {
+                Appendables.appendStaticCall(target, Pipe.class, "from").append(pipeVarName).append(")");
+            }
+            
+            target.append(".messageStarts[(");
             msgGenerator.result(target).append(")%");
             Appendables.appendValue(target, startsCount).append("];\n");
+            
+            
         }
     }
 

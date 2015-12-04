@@ -101,13 +101,11 @@ public class FileBlobRoundTripTest {
             new FileBlobWriteStage(gm, outputPipe, new RandomAccessFile(f2,"rws"));
                         
             MonitorConsoleStage.attach(gm);
-            
-            System.out.println("running test");
+
             ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
             scheduler.startup();
             
             scheduler.awaitTermination(30, TimeUnit.SECONDS);
-            System.out.println("finished running test");
             
             //when done check the captured bytes from teh middle to ensure they match
             assertArrayEquals(rawData, outputStream.toByteArray());

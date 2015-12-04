@@ -22,17 +22,22 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
 	private long stepTime = 2000;//2 sec
 	private long nextOutTime = System.currentTimeMillis()+stepTime;
 	private long startTime;
+	private Appendable target;
 	
 	//TODO: AA, need validation stage to confirm values are in range and text is not too long
 
 	public ConsoleSummaryStage(GraphManager gm, Pipe<T> inputRing) {
+	    this(gm, inputRing, System.out);
+	}
+	
+	public ConsoleSummaryStage(GraphManager gm, Pipe<T> inputRing, Appendable target) {
 		super(gm, inputRing, NONE);
 		this.inputRing = inputRing;
 
 		FieldReferenceOffsetManager from = Pipe.from(inputRing);		
-		totalCounts = new long[from.tokensLen];
-		counts = new long[from.tokensLen];
-		
+		this.totalCounts = new long[from.tokensLen];
+		this.counts = new long[from.tokensLen];
+		this.target = target;
 	}
 
 	@Override
@@ -97,8 +102,10 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
     private boolean cleanupReport(String label, long newMessages, long totalMessages) throws IOException {
         if (newMessages>0) {
 			Appendables.appendValue(console.append(" total:"), totalMessages);
-			System.out.print(label);
-			System.out.println(console);
+			
+			target.append(label);			
+			target.append(console).append("\n");
+			
 		}
 		return newMessages>0;
     }
@@ -132,17 +139,20 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
     			}
     			i++;
     		}
-    		System.out.println(label);
-    		System.out.println(console);
-    		System.out.println("Total Messages:"+totalMsg);
-    		System.out.println("Total Bytes:"+totalBytes+ " (slab and blob)");
-    		System.out.println("total Duration:"+duration+" ms");
     		
-    		long avgMsgSize = totalBytes/totalMsg;
-    		System.out.println("Avg msg size:"+avgMsgSize);
+    		target.append(label).append("\n");
+    		target.append(console).append("\n");
+    		
+    		Appendables.appendValue(target,"Total Messages:",totalMsg,"\n");    		
+    		Appendables.appendValue(target,"Total Bytes:",totalBytes," (slab and blob)\n");
+    		Appendables.appendValue(target,"Total Duration:",duration," ms\n");       
+    		    		
+    		
+    		Appendables.appendValue(target,"Avg msg size:",totalBytes/totalMsg,"\n");
     		long msgPerMs = totalMsg/duration;
     		long bitsPerMs = (8*totalBytes)/(duration*1000);
-    		System.out.println("MsgPerMs:"+msgPerMs+"    MBitsPerSec:"+bitsPerMs);
+    		Appendables.appendValue(target, "MsgPerMs:",msgPerMs);
+    		Appendables.appendValue(target, " MBitsPerSec:",bitsPerMs,"\n");
     		
     		return totalMsg>0;
 		} catch (IOException e) {

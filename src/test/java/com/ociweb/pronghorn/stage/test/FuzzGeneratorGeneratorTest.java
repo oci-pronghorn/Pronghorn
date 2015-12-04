@@ -4,8 +4,10 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
@@ -26,6 +28,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
+import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -43,11 +46,50 @@ public class FuzzGeneratorGeneratorTest {
         try {
             ew.processSchema();
         } catch (IOException e) {
+            System.out.println(target);
             e.printStackTrace();
             fail();
         }
         
-    //    System.out.println(target);
+        
+        validateCleanCompile(ew.getPackageName(), ew.getClassName(), target);
+
+    }
+    
+    @Test
+    public void fuzzGeneratorBuildRunnableTest() {
+
+        StringBuilder target = new StringBuilder();
+        FuzzGeneratorGenerator ew = new FuzzGeneratorGenerator(PipeMonitorSchema.instance, target, true);
+
+        try {
+            ew.processSchema();
+        } catch (IOException e) {
+            System.out.println(target);
+            e.printStackTrace();
+            fail();
+        }        
+        
+        
+        validateCleanCompile(ew.getPackageName(), ew.getClassName(), target);
+
+    }
+    
+    
+    @Test
+    public void fuzzGeneratorBuildRunnable2Test() {
+        MessageSchemaDynamic schema = sequenceExampleSchema();               
+        
+        StringBuilder target = new StringBuilder();
+        FuzzGeneratorGenerator ew = new FuzzGeneratorGenerator(schema, target, true);
+
+        try {
+            ew.processSchema();
+        } catch (IOException e) {
+            System.out.println(target);
+            e.printStackTrace();
+            fail();
+        }
         
         validateCleanCompile(ew.getPackageName(), ew.getClassName(), target);
 
@@ -69,11 +111,8 @@ public class FuzzGeneratorGeneratorTest {
     
     @Test
     public void fuzzGeneratorUsageTestSequenceExample() {
-        
-        try {
-        
-            FieldReferenceOffsetManager from = TemplateHandler.loadFrom("/template/sequenceExample.xml");
-            MessageSchemaDynamic schema = new MessageSchemaDynamic(from);
+
+            MessageSchemaDynamic schema = sequenceExampleSchema();
         
             
             //Fuzz time test,  what ranges are the best?
@@ -88,6 +127,14 @@ public class FuzzGeneratorGeneratorTest {
             
             runtimeTestingOfFuzzGenerator(target, schema, ew, durationMS, 8000);
 
+        
+    }
+
+    private MessageSchemaDynamic sequenceExampleSchema() {
+        try {
+            MessageSchemaDynamic schema;
+            schema = new MessageSchemaDynamic(TemplateHandler.loadFrom("/template/sequenceExample.xml"));
+            return schema;
         } catch (ParserConfigurationException e) {
             e.printStackTrace();
             fail();
@@ -98,7 +145,7 @@ public class FuzzGeneratorGeneratorTest {
             e.printStackTrace();
             fail();
         }
-        
+        return null;
     }
     
     @Ignore
@@ -137,7 +184,8 @@ public class FuzzGeneratorGeneratorTest {
             Pipe<?> pipe = new Pipe<>(new PipeConfig<>(schema, pipeLength));           
             
             constructor.newInstance(gm, pipe);
-            ConsoleSummaryStage dump = new ConsoleSummaryStage(gm, pipe);
+            Appendable out = new PrintWriter(new ByteArrayOutputStream());
+            ConsoleSummaryStage dump = new ConsoleSummaryStage(gm, pipe, out );
             
             GraphManager.enableBatching(gm);
        //     MonitorConsoleStage.attach(gm);
@@ -173,17 +221,23 @@ public class FuzzGeneratorGeneratorTest {
     private static void validateCleanCompile(String packageName, String className, StringBuilder target) {
         try {
 
-        Constructor constructor =  LoaderUtil.generateClassConstructor(packageName, className, target, FuzzGeneratorGenerator.class);
-        assertNotNull(constructor);
+        Class generateClass = LoaderUtil.generateClass(packageName, className, target, FuzzGeneratorGenerator.class);
         
+        if (generateClass.isAssignableFrom(PronghornStage.class)) {
+            Constructor constructor =  generateClass.getConstructor(GraphManager.class, Pipe.class);
+            assertNotNull(constructor);
+        }
         
         } catch (ClassNotFoundException e) {
+            System.out.println(target);
             e.printStackTrace();
             fail();
         } catch (NoSuchMethodException e) {
+            System.out.println(target);
             e.printStackTrace();
             fail();
         } catch (SecurityException e) {
+            System.out.println(target);
             e.printStackTrace();
             fail();
         }

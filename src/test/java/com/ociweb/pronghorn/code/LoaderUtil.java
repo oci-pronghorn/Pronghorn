@@ -93,6 +93,13 @@ public class LoaderUtil {
     }
 
     public static Constructor generateClassConstructor(String packageName, String className, StringBuilder target, Class clazz) throws ClassNotFoundException, NoSuchMethodException {
+        
+        return generateClass(packageName, className, target, clazz).getConstructor(GraphManager.class, Pipe.class);
+                 
+
+    }
+
+    public static Class generateClass(String packageName, String className, StringBuilder target, Class clazz) throws ClassNotFoundException, NoSuchMethodException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         
         File baseFolder = genSourceFolder(clazz,"pronghorn");
@@ -142,9 +149,8 @@ public class LoaderUtil {
                 String name = packageName+"."+className;
                 byte[] classData = readClassBytes(classFile);
                 
-                Class generatedClass = new TestClassLoader(name, classData).loadClass(name);
+                return new TestClassLoader(name, classData).loadClass(name);
 
-                return generatedClass.getConstructor(GraphManager.class, Pipe.class);
                  
         } else {
             
@@ -163,4 +169,5 @@ public class LoaderUtil {
         }
     }
 
+    
 }
