@@ -27,7 +27,7 @@ public class FROMValidation {
                 System.err.println("//replacement source");
                 StringBuilder target = new StringBuilder();
                 String nameOfFROM = templateFile.substring(1+templateFile.lastIndexOf('/') );
-                TemplateHandler.buildFROMConstructionSource(target, expectedFrom, "FROM", nameOfFROM);                                             
+                FieldReferenceOffsetManager.buildFROMConstructionSource(target, expectedFrom, "FROM", nameOfFROM);                                             
                 System.err.println(target);
 
                 return false;
@@ -60,7 +60,7 @@ public class FROMValidation {
 				System.err.println("//replacement source");
 				StringBuilder target = new StringBuilder();
 				String nameOfFROM = templateFile.substring(1+templateFile.lastIndexOf('/') );
-                TemplateHandler.buildFROMConstructionSource(target, expectedFrom, varName, nameOfFROM);												
+                FieldReferenceOffsetManager.buildFROMConstructionSource(target, expectedFrom, varName, nameOfFROM);												
 				System.err.println(target);
 
 				return false;

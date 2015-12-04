@@ -776,8 +776,86 @@ public class FieldReferenceOffsetManager {
     
     public Appendable appendGUID(Appendable target) throws IOException  {
         return Appendables.appendArray(target.append("new int[]"), '{', guid, '}');
-}
+    }
     
+    public Appendable appendConstuctionSource(Appendable target) throws IOException  {
+        buildFROMConstructionSource(target, this, "FROM", name);
+        return target;
+    }
+    
+    public static void buildFROMConstructionSource(Appendable target, FieldReferenceOffsetManager expectedFrom, String varName, String fromName) throws IOException {
+        //write out the expected source.
+        target.append("public final static FieldReferenceOffsetManager ");
+        target.append(varName).append(" = new ").append(FieldReferenceOffsetManager.class.getSimpleName()).append("(\n");
+    
+        target.append("    new int[]{");
+        
+        boolean isFirst = true;
+        for(int token:expectedFrom.tokens) {
+            if (!isFirst) {
+                target.append(',');
+            }
+            target.append("0x").append(Integer.toHexString(token));
+            isFirst = false;
+        }
+        target.append("},\n    ");
+        target.append("(short)").append('0').append(",\n");// expectedFrom.preambleBytes;//TODO: swap in
+    
+    
+        target.append("    new String[]{");
+        isFirst = true;
+        for(String tmp:expectedFrom.fieldNameScript) {
+            if (!isFirst) {
+                target.append(',');
+            } 
+            if (null==tmp) {
+                target.append("null");
+            } else {
+                target.append('"').append(tmp).append('\"');
+            }
+            isFirst = false;
+        }
+        target.append("},\n");
+    
+        try {
+            Appendables.appendArray( target.append("    new long[]"), '{', expectedFrom.fieldIdScript, '}').append(",\n");
+        } catch (IOException e1) {
+            throw new RuntimeException(e1);
+        }
+    
+        target.append("    new String[]{");
+        isFirst = true;
+        for(String tmp:expectedFrom.dictionaryNameScript) {
+            if (!isFirst) {
+                target.append(',');
+            } 
+            if (null==tmp) {
+                target.append("null");
+            } else {
+                target.append('"').append(tmp).append('\"');
+            }
+            isFirst = false;
+        }
+        target.append("},\n");
+        target.append("    \"").append(fromName).append("\",\n");
+        target.append("    ");
+        try {
+            expectedFrom.appendLongDefaults(target);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        target.append(",\n");
+        target.append("    ");
+        try {
+            expectedFrom.appendIntDefaults(target);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    
+        target.append(");\n");
+    
+    }
+
     public static String buildMsgConstName(FieldReferenceOffsetManager encodedFrom, int expectedMsgIdx) {
         return "MSG_"+encodedFrom.fieldNameScript[expectedMsgIdx].toUpperCase().replace(' ','_')+"_"+encodedFrom.fieldIdScript[expectedMsgIdx];
     }

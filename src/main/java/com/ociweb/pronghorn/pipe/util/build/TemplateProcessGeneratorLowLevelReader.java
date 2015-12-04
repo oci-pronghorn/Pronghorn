@@ -107,7 +107,7 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         
         
         if (!from.hasSimpleMessagesOnly) {
-          bodyTarget.append(tab).append("navState = new ").append(LowLevelStateManager.class.getSimpleName()).append("(").append(pipeVarName).append(");\n"); 
+          bodyTarget.append(tab).append("navState = new ").append(LowLevelStateManager.class.getSimpleName()).append("(").append(pipeClass.getSimpleName()).append(".from(").append(pipeVarName).append("));\n"); 
         }  
         
         for(int cursor = 0; cursor<from.tokens.length; cursor++) {

@@ -24,8 +24,8 @@ public class StreamingVisitorReader {
 	public StreamingVisitorReader(Pipe inputRing, StreamingReadVisitor visitor) {
 		this.visitor = visitor;
 		this.inputRing = inputRing;		
-		this.navState = new LowLevelStateManager(inputRing);
 		this.from = Pipe.from(inputRing);
+		this.navState = new LowLevelStateManager(from);
 		
 	}
 	

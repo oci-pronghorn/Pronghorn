@@ -1,21 +1,18 @@
 package com.ociweb.pronghorn.pipe.stream;
 
-import java.util.Arrays;
-
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.pipe.Pipe;
 
 public class LowLevelStateManager {
     final int[] cursorStack;
     private final int[] sequenceCounters;
     int nestedFragmentDepth;
-    private FieldReferenceOffsetManager from;
+    private final int[] fragScriptSize;
 
-    public LowLevelStateManager(Pipe inputRing) {
-        this.from = Pipe.from(inputRing);
+    public LowLevelStateManager(FieldReferenceOffsetManager from) {
         this.cursorStack = new int[from.maximumFragmentStackDepth];
         this.sequenceCounters = new int[from.maximumFragmentStackDepth];        
-
+        this.fragScriptSize = from.fragScriptSize;
+        
         //publish only happens on fragment boundary therefore we can assume that if 
         //we can read 1 then we can read the full fragment
         
@@ -25,7 +22,7 @@ public class LowLevelStateManager {
     public static int processGroupLength(LowLevelStateManager that, final int cursor, int seqLen) {
         that.nestedFragmentDepth++;
         that.sequenceCounters[that.nestedFragmentDepth]= seqLen;
-        that.cursorStack[that.nestedFragmentDepth] = cursor+that.from.fragScriptSize[cursor];
+        that.cursorStack[that.nestedFragmentDepth] = cursor+that.fragScriptSize[cursor];
         return seqLen;
     }
 
