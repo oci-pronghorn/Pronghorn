@@ -27,7 +27,6 @@ import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
-import com.ociweb.pronghorn.pipe.util.Appendables;
 import com.ociweb.pronghorn.pipe.util.RLESparseArray;
 import com.ociweb.pronghorn.pipe.util.hash.LongHashTable;
 
@@ -1043,79 +1042,6 @@ public class TemplateHandler extends DefaultHandler {
         sp.parse(sourceInputStream, handler);
 
         return TemplateHandler.from(handler,(short)0);
-    }
-
-    public static void buildFROMConstructionSource(Appendable target, FieldReferenceOffsetManager expectedFrom, String varName, String fromName) throws IOException {
-        //write out the expected source.
-        target.append("public final static FieldReferenceOffsetManager ");
-        target.append(varName).append(" = new ").append(FieldReferenceOffsetManager.class.getSimpleName()).append("(\n");
-
-        target.append("    new int[]{");
-        
-        boolean isFirst = true;
-        for(int token:expectedFrom.tokens) {
-            if (!isFirst) {
-                target.append(',');
-            }
-            target.append("0x").append(Integer.toHexString(token));
-            isFirst = false;
-        }
-        target.append("},\n    ");
-        target.append("(short)").append('0').append(",\n");// expectedFrom.preambleBytes;//TODO: swap in
-     
-
-        target.append("    new String[]{");
-        isFirst = true;
-        for(String tmp:expectedFrom.fieldNameScript) {
-            if (!isFirst) {
-                target.append(',');
-            } 
-            if (null==tmp) {
-                target.append("null");
-            } else {
-                target.append('"').append(tmp).append('\"');
-            }
-            isFirst = false;
-        }
-        target.append("},\n");
-
-        try {
-            Appendables.appendArray( target.append("    new long[]"), '{', expectedFrom.fieldIdScript, '}').append(",\n");
-        } catch (IOException e1) {
-            throw new RuntimeException(e1);
-        }
-
-        target.append("    new String[]{");
-        isFirst = true;
-        for(String tmp:expectedFrom.dictionaryNameScript) {
-            if (!isFirst) {
-                target.append(',');
-            } 
-            if (null==tmp) {
-                target.append("null");
-            } else {
-                target.append('"').append(tmp).append('\"');
-            }
-            isFirst = false;
-        }
-        target.append("},\n");
-        target.append("    \"").append(fromName).append("\",\n");
-        target.append("    ");
-        try {
-            expectedFrom.appendLongDefaults(target);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        target.append(",\n");
-        target.append("    ");
-        try {
-            expectedFrom.appendIntDefaults(target);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        target.append(");\n");
-
     }
 
 

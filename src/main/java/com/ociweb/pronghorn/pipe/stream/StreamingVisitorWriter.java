@@ -29,7 +29,7 @@ public class StreamingVisitorWriter {
 
 		this.maxFragmentSize = FieldReferenceOffsetManager.maxFragmentSize(this.from);
 
-		this.navState = new LowLevelStateManager(outputRing);
+		this.navState = new LowLevelStateManager(from);
 	}
 
 	public boolean isAtBreakPoint() {

@@ -141,6 +141,8 @@ public class StreamRegulator {
         return outputStreamFlyweight;
     }
     
+    //TODO: add support for WHY there is no room, return sleep duration?
+    
     
     /**
      * Blocks until the desired time as passed to ensure this stream conforms to the requested bits per second.

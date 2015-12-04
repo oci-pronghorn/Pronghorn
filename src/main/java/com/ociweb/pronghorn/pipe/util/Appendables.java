@@ -58,6 +58,18 @@ public class Appendables {
         }
         return target;
     }
+    
+    public static <A extends Appendable> A appendValue(A target, CharSequence label, int value, CharSequence suffix) throws IOException {
+        appendValue(target,label, value);
+        target.append(suffix);
+        return target;
+    }
+    
+    
+    public static <A extends Appendable> A appendValue(A target, CharSequence label, int value) throws IOException {
+        target.append(label);
+        return appendValue(target,value);
+    }
 
     public static <A extends Appendable> A appendValue(A target, int value) throws IOException {
 
@@ -121,6 +133,19 @@ public class Appendables {
         return target;
     }
     
+    public static <A extends Appendable> A appendValue(A target, CharSequence label, long value, CharSequence suffix) throws IOException {
+        appendValue(target,label, value);
+        target.append(suffix);
+        return target;
+    }
+    
+    
+    public static <A extends Appendable> A appendValue(A target, CharSequence label, long value) throws IOException {
+        target.append(label);
+        return appendValue(target,value);
+    }
+    
+    
     public static <A extends Appendable> A appendValue(A target, long value) throws IOException {
 
         long tens = 1000000000000000000L;
@@ -150,7 +175,6 @@ public class Appendables {
     }
     
     public static <A extends Appendable> A appendHexDigits(A target, long value) throws IOException {
-
         
         int bits = 64-Long.numberOfLeadingZeros(value);
         
