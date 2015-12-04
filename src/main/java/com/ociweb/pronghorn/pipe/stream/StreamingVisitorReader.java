@@ -26,8 +26,8 @@ public class StreamingVisitorReader {
 		this.inputRing = inputRing;
         this.visitor = visitor;
         this.processUTF8 = processUTF8;
-		this.navState = new LowLevelStateManager(inputRing);
-		this.from = Pipe.from(inputRing);
+        this.from = Pipe.from(inputRing);
+		this.navState = new LowLevelStateManager(from);
 	}
 
 	public StreamingVisitorReader(Pipe inputRing, StreamingReadVisitor visitor) {
