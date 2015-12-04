@@ -12,7 +12,7 @@ public class StreamingReadVisitorToJSON implements StreamingReadVisitor {
 	int depth = 0;
 	int step = 2;
 	
-	public StreamingReadVisitorToJSON(PrintStream out) {
+	public StreamingReadVisitorToJSON(PrintStream out) { //TODO: this should have been Appendable not PrintStream.
 		this.out = out;
 	}
 	
