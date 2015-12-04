@@ -13,20 +13,25 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public class ConsoleJSONDumpStage<T extends MessageSchema> extends PronghornStage {
 
 	private final Pipe<T> input;
-	
+
 	private StreamingReadVisitor visitor;
 	private StreamingVisitorReader reader;
-	private final PrintStream out = System.out;
+	private PrintStream out = System.out;
 
 	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input) {
 		super(graphManager, input, NONE);
 		this.input = input;
 	}
 
+	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input, PrintStream out) {
+		this(graphManager, input);
+		this.out = out;
+	}
+
 	@Override
-	public void startup() {			
-		
-		try{			
+	public void startup() {
+
+		try{
             visitor = new StreamingReadVisitorToJSON(out) {
 				@Override
 				public void visitASCII(String name, long id, Appendable value) {
@@ -39,29 +44,29 @@ public class ConsoleJSONDumpStage<T extends MessageSchema> extends PronghornStag
 					super.visitUTF8(name, id, value);
 				}
 			};
-						
+
 			reader = new StreamingVisitorReader(input, visitor );
 
 			reader.startup();
-								
+
 		} catch (Throwable t) {
 			throw new RuntimeException(t);
 		}
-	}	
-	
+	}
+
 	@Override
 	public void run() {
 		reader.run();
-	}	
+	}
 
 	@Override
 	public void shutdown() {
-		
+
 		try{
-			reader.shutdown();			
+			reader.shutdown();
 		} catch (Throwable t) {
 			throw new RuntimeException(t);
-		} 
+		}
 	}
 
 }
