@@ -35,18 +35,19 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     private final String doNothingConstantValue = "-3";
     private final String doNothingConstant = "DO_NOTHING";
     
+    private boolean isAbstract;
 
     private final String methodScope;
     private boolean firstField = true;
-    
-    
+        
     private final String packageName = "com.ociweb.pronghorn.pipe.build";
 
     private final String className;
     private final String baseText;
     
     
-    public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target, String className, String baseClassName, String outputPipeName, String methodScope) {
+    public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target, String className,
+                                                  String baseClassName, String outputPipeName, String methodScope, boolean isAbstract) {
         super(schema);
 
         this.pipeId = "1"; //NOTE: for future development when we need to merge two writers
@@ -58,11 +59,16 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         this.hasSimpleMessagesOnly = MessageSchema.from(schema).hasSimpleMessagesOnly;
         
         this.methodScope = methodScope; //set to protected if you plan to extend this vs generate this.
+        
+        this.isAbstract = isAbstract;
     }
     
     public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target) {
-        this(schema, target, "LowLevelWriter", "implements Runnable", "output", "private");
-       
+        this(schema, target, "LowLevelWriter", "implements Runnable", "output", "private", false);       
+    }
+    
+    public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target, boolean isAbstract) {
+        this(schema, target, "LowLevelWriter", "implements Runnable", "output", isAbstract ? "protected" : "private", isAbstract);       
     }
     
     public String getClassName() {
@@ -733,13 +739,21 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     @Override //this is the end of a fragment
     protected void processCalleeClose(int cursor) throws IOException {
         
+        if (isAbstract) {
+         
+            bodyTarget.append("protected abstract").append(" void ");
+            appendBusinessMethodName(cursor).append("();\n");
+            
+        } else {
+                
+            bodyTarget.append(methodScope).append(" void ");
+            appendBusinessMethodName(cursor).append("() {\n");
+            bodyOfBusinessProcess(bodyTarget, cursor, businessFirstField, businessFieldCount);
+            bodyTarget.append("}\n");
         
-        bodyTarget.append(methodScope).append(" void ");
-        appendBusinessMethodName(cursor).append("() {\n");
+        }
         
-        bodyOfBusinessProcess(bodyTarget, cursor, businessFirstField, businessFieldCount);
         
-        bodyTarget.append("}\n");
         bodyTarget.append('\n');
         
         
@@ -755,18 +769,23 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     protected void headerConstruction() throws IOException {
         bodyTarget.append("package ").append(packageName).append(";\n");
         
-        bodyTarget.append("import com.ociweb.pronghorn.pipe.stream.LowLevelStateManager;\n");
-        bodyTarget.append("import com.ociweb.pronghorn.pipe.Pipe;\n");
-        bodyTarget.append("import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;\n");
-        bodyTarget.append("import com.ociweb.pronghorn.pipe.util.Appendables;\n");
-        bodyTarget.append("import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;\n");
+        bodyTarget.append("import ").append(LowLevelStateManager.class.getCanonicalName()).append(";\n");
+        bodyTarget.append("import ").append(Pipe.class.getCanonicalName()).append(";\n");
+        bodyTarget.append("import ").append(FieldReferenceOffsetManager.class.getCanonicalName()).append(";\n");
+        bodyTarget.append("import ").append(Appendables.class.getCanonicalName()).append(";\n");
+        bodyTarget.append("import ").append(MessageSchemaDynamic.class.getCanonicalName()).append(";\n");
         additionalImports(bodyTarget);
         
         defineClassAndConstructor();
     }
     
+    
     private void defineClassAndConstructor() throws IOException {
-        bodyTarget.append("public class ").append(className).append(" ").append(baseText).append(" {\n");
+        bodyTarget.append("public ");
+        if (isAbstract) {
+            bodyTarget.append("abstract ");
+        }
+        bodyTarget.append("class ").append(className).append(" ").append(baseText).append(" {\n");
         bodyTarget.append("\n");
         
         buildConstructors(bodyTarget, className);

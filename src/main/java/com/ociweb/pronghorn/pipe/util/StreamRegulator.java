@@ -79,9 +79,9 @@ public class StreamRegulator {
         if (readStartTime==now) {
             return;
         }
-        long bitsRead = 8 * totalBytesRead;
+        long bitsRead = 8L * totalBytesRead;
 
-        long expectedTime = readStartTime+ (bitsRead*1000/bitPerSecond);
+        long expectedTime = readStartTime+ (bitsRead*1000L/bitPerSecond);
         if (expectedTime>now) {
             try {
                 Thread.sleep(expectedTime-now);
@@ -162,9 +162,9 @@ public class StreamRegulator {
         if (writeStartTime==now) {
             return;
         }
-        long bitsWritten = 8 * totalBytesWritten;
+        long bitsWritten = 8L * totalBytesWritten;
 
-        long expectedTime = writeStartTime+ (bitsWritten*1000/bitPerSecond);
+        long expectedTime = writeStartTime+ (bitsWritten*1000L/bitPerSecond);
         if (expectedTime>now) {
             try {
                 Thread.sleep(expectedTime-now);
