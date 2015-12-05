@@ -22,7 +22,10 @@ import org.slf4j.LoggerFactory;
  *  4. Take the histogram and export the results. 
  *     Use CPUMonitor.UNIT_SCALING_RATIO for the outputPercentile methods
  * 
- * Nathan Tippy
+ * Nathan Tippy 
+ * 
+ * ociweb.com 
+ * We are software engineers.
  */
 public class CPUMonitor {
     
