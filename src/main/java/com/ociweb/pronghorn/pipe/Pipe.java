@@ -2573,20 +2573,21 @@ public final class Pipe<T extends MessageSchema> {
 	}
 
     public static <S extends MessageSchema> boolean hasContentToRead(Pipe<S> input, int size) {
-        return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition+size);
+        //optimized for the other method without size. this is why the -1 is there and we use > for target comparison.
+        return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition+size-1, input.llWrite); 
     }
     
     public static <S extends MessageSchema> boolean hasContentToRead(Pipe<S> input) {
-        return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition+1);
+        return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition, input.llWrite);
     }
 
-	private static <S extends MessageSchema> boolean contentToLowLevelRead2(Pipe<S> input, long target) {
+	private static <S extends MessageSchema> boolean contentToLowLevelRead2(Pipe<S> input, long target, LowLevelAPIWritePositionCache llWrite) {
 		//only does second part if the first does not pass
-		return (input.llWrite.llwHeadPosCache >= target) || contentToLowLevelReadSlow(input, target);
+		return (llWrite.llwHeadPosCache > target) || contentToLowLevelReadSlow(input, target, llWrite);
 	}
 
-	private static <S extends MessageSchema> boolean contentToLowLevelReadSlow(Pipe<S> input, long target) {
-		return (input.llWrite.llwHeadPosCache = input.slabRingHead.headPos.get()) >= target;
+	private static <S extends MessageSchema> boolean contentToLowLevelReadSlow(Pipe<S> input, long target, LowLevelAPIWritePositionCache llWrite) {
+		return (llWrite.llwHeadPosCache = input.slabRingHead.headPos.get()) > target; 
 	}
 
 	public static <S extends MessageSchema> long confirmLowLevelRead(Pipe<S> input, long size) {

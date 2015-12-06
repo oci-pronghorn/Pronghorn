@@ -26,6 +26,7 @@ public class StreamRegulator {
     private final long bitPerSecond;
 
     private boolean hasOpenRead;
+    private boolean hasOpenWrite;
     
     private long readStartTime;
     private long writeStartTime;
@@ -66,7 +67,7 @@ public class StreamRegulator {
      * Blocks until the desired time as passed to ensure this stream conforms to the requested bits per second.
      * Once the time has passed it returns so the InputStream can read the next chunk.
      */
-    public boolean hasNextChunk() {
+    public final boolean hasNextChunk() {
         if (!readChunk()) {
             return false; //No chunk now try again
         }
@@ -92,19 +93,14 @@ public class StreamRegulator {
     }
 
     private boolean readChunk() {
-        if (0 == readStartTime) {
-            readStartTime = System.currentTimeMillis();
-        }
-        if (hasOpenRead) {
-            //log.trace("release block");
-            Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
-            Pipe.releaseReads(pipe);
-            hasOpenRead = false;
-        }
-        if (!Pipe.hasContentToRead(pipe)) {
-            return false;
+        readPrep();
+        if (Pipe.hasContentToRead(pipe)) {
+            return beginNewRead();
         }   
-        
+        return false;
+    }
+
+    private boolean beginNewRead() {
         int msgIdx = Pipe.takeMsgIdx(pipe);
         if (RawDataSchema.MSG_CHUNKEDSTREAM_1 == msgIdx) {
             totalBytesRead = totalBytesRead+(inputStreamFlyweight.openLowLevelAPIField());
@@ -114,6 +110,21 @@ public class StreamRegulator {
             shutdown("EOF Message detected.");
         }
         return false;
+    }
+
+    private void readPrep() {
+        if (hasOpenRead) {
+            releaseOpenRead();
+        } else if (0 == readStartTime) {
+                readStartTime = System.currentTimeMillis();
+        }
+    }
+
+    private void releaseOpenRead() {
+        //log.trace("release block");
+        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        Pipe.releaseReads(pipe);
+        hasOpenRead = false;
     }
         
     public void shutdown() {
@@ -148,8 +159,7 @@ public class StreamRegulator {
      * Blocks until the desired time as passed to ensure this stream conforms to the requested bits per second.
      * Once the time has passed the output stream buffer will send its data and be ready for more writes.
      */ 
-    public boolean hasRoomForChunk() {
-        
+    public final boolean hasRoomForChunk() {        
         if (!openForWrite()) {
             return false;
         };
@@ -175,23 +185,34 @@ public class StreamRegulator {
     }
 
     private boolean openForWrite() {
-        if (0 == writeStartTime) {
-            writeStartTime = System.currentTimeMillis();
+        writePrep();        
+        if (Pipe.hasRoomForWrite(pipe)) {
+            return beginNewWrite();
         }
-        
-        if (Pipe.isInBlobFieldWrite(pipe)) {
-            //log.trace("write block");
-            totalBytesWritten = totalBytesWritten + (outputStreamFlyweight.closeLowLevelField());
-            Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
-            Pipe.publishWrites(pipe);
-        }
-        
-        if (!Pipe.hasRoomForWrite(pipe)) {
-            return false;
-        }
+        return false;
+    }
+
+    private boolean beginNewWrite() {
         Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
         outputStreamFlyweight.openField();
+        hasOpenWrite = true;
         return true;
+    }
+
+    private void writePrep() {        
+        if (hasOpenWrite) {
+            publishOpenWrite();
+        } else if (0 == writeStartTime) {
+            writeStartTime = System.currentTimeMillis();
+        }
+    }
+
+    private void publishOpenWrite() {
+        //log.trace("write block");
+        totalBytesWritten = totalBytesWritten + (outputStreamFlyweight.closeLowLevelField());
+        Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        Pipe.publishWrites(pipe);
+        hasOpenWrite = false;
     }
 
     public long getBytesWritten() {

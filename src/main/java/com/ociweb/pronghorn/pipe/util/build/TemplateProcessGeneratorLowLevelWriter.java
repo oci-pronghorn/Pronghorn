@@ -211,19 +211,9 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     }
     
     private Appendable appendCaseMsgIdConstant(Appendable target, int cursor, MessageSchema schema) throws IOException {
-        FieldReferenceOffsetManager from = MessageSchema.from(schema);
 
-        target.append("/*");
-       appendWriteMethodName(target, cursor);
-       target.append("*/");
-       
-        if (schema instanceof MessageSchemaDynamic || null==from.fieldNameScript[cursor]) {
-            Appendables.appendValue(target, cursor);
-        } else {
-            target.append(schema.getClass().getSimpleName()).append(".");
-            target.append(FieldReferenceOffsetManager.buildMsgConstName(from, cursor));
-        }
-        return target;
+        appendWriteMethodName(target.append("/*"), cursor).append("*/");
+        return Appendables.appendValue(target, cursor);
     }
 
     @Override
