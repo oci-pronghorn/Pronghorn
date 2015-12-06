@@ -91,6 +91,8 @@ public class FuzzGeneratorGeneratorTest {
             fail();
         }
         
+        System.out.println(target);
+        
         validateCleanCompile(ew.getPackageName(), ew.getClassName(), target);
 
     }

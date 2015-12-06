@@ -2,6 +2,7 @@
 <templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
 
    <template name="DaySummary" id="1">
+ 
 	     <uInt32 name="Year" id="101">
 	         <copy value="1"/>
 	     </uInt32>
@@ -17,6 +18,7 @@
 	        <uInt32 name="Id" id="203">
 	        	<inc value="10"/>
 	        </uInt32>
+	        
 	        <uInt64 name="Time" id="204">
 	        	<delta/>
 	        </uInt64>	        	        

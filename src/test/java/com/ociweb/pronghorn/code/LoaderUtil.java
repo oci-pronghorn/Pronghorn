@@ -107,9 +107,9 @@ public class LoaderUtil {
                 
         List<String> optionList = new ArrayList<String>();
         optionList.addAll(Arrays.asList("-classpath", System.getProperty("java.class.path"),
-                                        "-d", classesFolder.toString(),
-                                        "-target","1.7",
-                                        "-source","1.7"
+                                        "-d", classesFolder.toString()
+                                     //   "-target","1.7",
+                                     //   "-source","1.7"
                                         ));                
     
         List<JavaFileObject> toCompile = new ArrayList<JavaFileObject>();
@@ -137,7 +137,7 @@ public class LoaderUtil {
             }
             
             
-           // System.out.println("write to :"+sourceFile);
+            System.err.println("write source to :"+sourceFile);
         
         }
     
@@ -146,6 +146,8 @@ public class LoaderUtil {
         if (compiler.getTask(null, null, diagnostics, optionList, null, toCompile).call()) {
                 File classFile = new File(classesFolder, cannonicalName+".class");
 
+                System.err.println("write class to :"+ classFile);
+                
                 String name = packageName+"."+className;
                 byte[] classData = readClassBytes(classFile);
                 

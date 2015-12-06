@@ -32,9 +32,8 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     
     private static boolean generateAbstractRunnable = false;
     
-    //TODO: Add support for building runnable    - 30 min 
-    //TODO: Add fixed length for sequences support - 5 min
-    //TODO: Add sparse population of sequences support. - 10 min
+    //TODO: Add fixed length for sequences support - 20 min
+    //TODO: Add sparse population of sequences support. - 40 min
     
     //TODO: Add generator to build Objects as iterator? 10 hours may be helpful to grove work.
     
@@ -45,7 +44,8 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     public FuzzGeneratorGenerator(MessageSchema schema, Appendable target, boolean generateRunnable) {
         super(schema, target, generateClassName(schema),  generateRunnable ? "implements Runnable" : "extends PronghornStage",
                                                           generateRunnable ? null : "output",
-                                                          generateRunnable ? "protected" : "private");
+                                                          generateRunnable ? "protected" : "private",
+                                                          generateRunnable ? true: false);
         this.generateAbstractRunnable = generateRunnable;
     }
 
