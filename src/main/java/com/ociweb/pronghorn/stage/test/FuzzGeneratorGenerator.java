@@ -45,7 +45,7 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
         super(schema, target, generateClassName(schema),  generateRunnable ? "implements Runnable" : "extends PronghornStage",
                                                           generateRunnable ? null : "output",
                                                           generateRunnable ? "protected" : "private",
-                                                          generateRunnable ? true: false);
+                                                          false);
         this.generateAbstractRunnable = generateRunnable;
     }
 
