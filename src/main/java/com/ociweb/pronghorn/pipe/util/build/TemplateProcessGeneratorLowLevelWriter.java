@@ -21,8 +21,8 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     protected final String tab = "    ";
     private final boolean hasSimpleMessagesOnly; //for simple messages there is no LowLevelStateManager
     private final String stageMgrClassName = LowLevelStateManager.class.getSimpleName();
-    private final String stageMgrVarName = "navState"; 
-    protected final String pipeVarName;
+    protected final String stageMgrVarName = "navState"; 
+    protected final String pipeVarName;//IF Null none of the pipe write logic is added.
     private final Class pipeClass = Pipe.class;
     private final StringBuilder businessExampleWorkspace = new StringBuilder();
     private int businessFieldCount;
@@ -93,7 +93,6 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     }
 
     protected void additionalMembers(Appendable target) throws IOException {  
-        final FieldReferenceOffsetManager from = MessageSchema.from(schema);
     }
 
     @Override
@@ -104,12 +103,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         
         if (buildFullStageWritingToPipe()) {
             from.appendGUID( bodyTarget.append("private final int[] FROM_GUID = ")).append(";\n");
-        } else {
-            
-            from.appendConstuctionSource(bodyTarget);
-            bodyTarget.append("\n");
-            
-        }
+        } 
         
         
         bodyTarget.append("private final long BUILD_TIME = ");
@@ -168,6 +162,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         
     }
 
+    
     private boolean buildFullStageWritingToPipe() {
         return null!=pipeVarName;
     }
@@ -184,9 +179,8 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         
         appendCaseMsgIdConstant(bodyTarget.append(tab).append(tab).append("case "), cursor, schema).append(":\n");
 
-        if ( FieldReferenceOffsetManager.isTemplateStart(from, cursor) && buildFullStageWritingToPipe() ) {
-            appendStaticCall(bodyTarget.append(tab).append(tab),pipeClass,"addMsgIdx").append(pipeVarName).append(',');
-            Appendables.appendValue(bodyTarget, cursor).append(");\n");
+        if ( FieldReferenceOffsetManager.isTemplateStart(from, cursor) ) {
+            beginMessage(bodyTarget, cursor);
         }
         
         bodyTarget.append(tab).append(tab).append(tab);
@@ -208,6 +202,13 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
                                       
         bodyTarget.append(tab).append(tab).append("break;\n");        
 
+    }
+
+    protected void beginMessage(Appendable t, int cursor) throws IOException {
+        if (buildFullStageWritingToPipe()) {
+            appendStaticCall(t.append(tab).append(tab),pipeClass,"addMsgIdx").append(pipeVarName).append(',');
+            Appendables.appendValue(t, cursor).append(");\n");
+        }
     }
     
     private Appendable appendCaseMsgIdConstant(Appendable target, int cursor, MessageSchema schema) throws IOException {
@@ -235,10 +236,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
                 
         bodyTarget.append(tab).append("}\n"); //close of the switch statement
                
-        if (buildFullStageWritingToPipe()) {
-            //Pipe.releaseReads{input);
-            appendStaticCall(bodyTarget.append(tab), pipeClass, "publishWrites").append(pipeVarName).append(");\n");
-        }
+        publishMessage(bodyTarget);
         
         if (buildFullStageWritingToPipe()) {
             bodyTarget.append(tab).append("}\n");
@@ -246,6 +244,13 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         bodyTarget.append("}\n");
         bodyTarget.append("\n"); 
         
+    }
+
+    protected void publishMessage(Appendable t) throws IOException {
+        if (buildFullStageWritingToPipe()) {
+            //Pipe.releaseReads{input);
+            appendStaticCall(t.append(tab), pipeClass, "publishWrites").append(pipeVarName).append(");\n");
+        }
     }
     
 
@@ -729,30 +734,40 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     @Override //this is the end of a fragment
     protected void processCalleeClose(int cursor) throws IOException {
         
+        Appendable t = bodyTarget;
         if (isAbstract) {
          
-            bodyTarget.append("protected abstract").append(" void ");
+            t.append("protected abstract").append(" void ");
             appendBusinessMethodName(cursor).append("();\n");
             
         } else {
                 
-            bodyTarget.append(methodScope).append(" void ");
+            t.append(methodScope).append(" void ");
             appendBusinessMethodName(cursor).append("() {\n");
-            bodyOfBusinessProcess(bodyTarget, cursor, businessFirstField, businessFieldCount);
-            bodyTarget.append("}\n");
+            bodyOfBusinessProcess(t, cursor, businessFirstField, businessFieldCount);
+            t.append("}\n");
         
         }
         
         
-        bodyTarget.append('\n');
+        t.append('\n');
+        appendWriteFragmentLogic(t, cursor);
+        t.append('\n');
         
+    }
+
+    protected void appendWriteFragmentLogic(Appendable t, int cursor) throws IOException {
+        appendWriteMethodName(t.append(methodScope).append(" void "), cursor).append("(").append(writeToPipeSignatureWorkspace).append(") {\n");
         
-        bodyTarget.append(methodScope).append(" void ");
-        appendWriteMethodName(bodyTarget, cursor).append("(").append(writeToPipeSignatureWorkspace).append(") {\n");
-        bodyTarget.append(writeToPipeBodyWorkspace);
-        bodyTarget.append("}\n");
-        bodyTarget.append('\n');
+        appendAdditionalWriteLogic(t, cursor, writeToPipeSignatureWorkspace, businessFieldCount, businessFirstField);
+                
+        t.append(writeToPipeBodyWorkspace);//body was accumulated as each field was walked.
         
+        t.append("}\n");
+    }
+
+    protected void appendAdditionalWriteLogic(Appendable t, int cursor, CharSequence argSignature, int fieldCount, int firstFieldIdx) throws IOException {
+        t.append("/* override appendAdditionalWriteLogic(...) to add custom write logic here */ \n");
     }
 
     @Override
@@ -802,7 +817,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
             if (buildFullStageWritingToPipe()) {
                 bodyTarget.append(pipeClass.getSimpleName()).append(".from(").append(pipeVarName).append(")");
             } else {
-                bodyTarget.append("FROM");
+                bodyTarget.append(schema.getClass().getSimpleName()).append(".FROM");
             }
             
             bodyTarget.append(");\n");

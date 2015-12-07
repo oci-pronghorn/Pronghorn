@@ -255,5 +255,31 @@ public class Appendables {
         builder.setLength(0);
         return builder;
     }
+
+    //copy the sequence but skip every instance of the provided skip chars
+    public static <A extends Appendable> A appendAndSkip(A target, CharSequence source, CharSequence skip) throws IOException {
+        return appendAndSkipImpl(target, source, skip, skip.length(), source.length(), 0, 0);    
+    }
+
+    private static <A extends Appendable> A appendAndSkipImpl(A target, CharSequence source, CharSequence skip, int skipLen, int sourceLen, int j, int i) throws IOException {
+        for(; i<sourceLen; i++) {            
+            if (source.charAt(i)!=skip.charAt(j)) {
+                copyChars(target, source, j, 0, i-j);
+                j=0;
+            } else {
+                if (skipLen == ++j) {
+                    j=0;
+                }
+            }
+        
+        }
+        return target;
+    }
+
+    private static void copyChars(Appendable target, CharSequence source, int j, int k, int base) throws IOException {
+        for(; k<=j ; k++) {                    
+            target.append(source.charAt(base+k));
+        }
+    }
     
 }

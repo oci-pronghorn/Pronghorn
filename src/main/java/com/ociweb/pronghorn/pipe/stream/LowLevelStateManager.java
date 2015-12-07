@@ -38,6 +38,10 @@ public class LowLevelStateManager {
         return that.nestedFragmentDepth--;
     }
 
+    public static int interationIndex(LowLevelStateManager that) {
+        return Math.max(0, that.sequenceCounters[that.nestedFragmentDepth]-1);
+    }
+    
     public static boolean closeSequenceIteration(LowLevelStateManager that) {
         return --that.sequenceCounters[that.nestedFragmentDepth]<=0;
     }

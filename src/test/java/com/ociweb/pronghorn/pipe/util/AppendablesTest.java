@@ -67,11 +67,11 @@ public class AppendablesTest {
             int value = r.nextInt();
             
             try {
+                
                 String actual = Appendables.appendFixedHexDigits(new StringBuilder(), value, 32).toString().toLowerCase();
                 String temp = "00000000"+Integer.toHexString(value);
                 String expected = "0x"+temp.substring(temp.length()-8);
-                assertEquals(""+i,expected, actual);
-                
+                assertEquals(""+i,expected, actual);                
                 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -79,6 +79,26 @@ public class AppendablesTest {
             }           
         }
     }  
+    
+    @Test
+    public void appendSkipValue() {
+        
+        String originalText = "abcXYZdefXYyghiXklXYZ";
+        String skipText = "XYZ";
+        
+        StringBuilder target = new StringBuilder();
+        try {
+            Appendables.appendAndSkip(target, originalText, skipText);
+        } catch (IOException e) {
+            e.printStackTrace();
+            fail();
+        }
+        
+        String expected = originalText.replace(skipText,"");
+        
+        assertEquals(expected, target.toString());
+                
+    }
     
     
     

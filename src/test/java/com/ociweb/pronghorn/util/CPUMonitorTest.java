@@ -18,7 +18,6 @@ public class CPUMonitorTest {
         
         monitor.start();
         
-        //do you work here
         try {
             Thread.sleep(900);
         } catch (InterruptedException e) {
