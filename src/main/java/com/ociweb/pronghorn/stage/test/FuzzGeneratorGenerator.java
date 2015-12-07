@@ -30,7 +30,7 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     private long latencyTimeFieldId = -1;//undefined
     private int maximumSequenceMask = Integer.MAX_VALUE; //TODO: A should be max fragments on pipe and validated with assert.
     
-    private static boolean generateAbstractRunnable = false;
+    private final boolean generateRunnable;
     
     //TODO: Add fixed length for sequences support - 20 min
     //TODO: Add sparse population of sequences support. - 40 min
@@ -41,12 +41,17 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
         this(schema, target, false);
     }
     
-    public FuzzGeneratorGenerator(MessageSchema schema, Appendable target, boolean generateRunnable) {
+    
+    public FuzzGeneratorGenerator(MessageSchema schema, Appendable target, boolean generateRunnable, boolean scopeProtected) {
         super(schema, target, generateClassName(schema),  generateRunnable ? "implements Runnable" : "extends PronghornStage",
                                                           generateRunnable ? null : "output",
-                                                          generateRunnable ? "protected" : "private",
+                                                          scopeProtected ? "protected" : "private",
                                                           false);
-        this.generateAbstractRunnable = generateRunnable;
+        this.generateRunnable = generateRunnable;
+    }
+    
+    public FuzzGeneratorGenerator(MessageSchema schema, Appendable target, boolean generateRunnable) {
+        this(schema, target, generateRunnable, generateRunnable);
     }
 
     private static String generateClassName(MessageSchema schema) {
@@ -57,7 +62,7 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
             }
             return name;
         } else {
-            return schema.getClass().getSimpleName()+"FuzzGenerator";
+            return (schema.getClass().getSimpleName().replace("Schema", ""))+"FuzzGenerator";
         }
     }
     
@@ -76,7 +81,7 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
         
         target.append("public ").append(className).append("(");
         
-        if (generateAbstractRunnable) {
+        if (generateRunnable) {
             target.append(") { \n");
             
             FieldReferenceOffsetManager from = MessageSchema.from(schema);
@@ -153,6 +158,10 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
             target.append(tab).append("return ");
             
             if (null==pipeVarName) {
+                if (!(schema instanceof MessageSchemaDynamic)) {
+                    target.append(schema.getClass().getSimpleName()).append(".");
+                }
+                
                 target.append("FROM");
             } else {
                 Appendables.appendStaticCall(target, Pipe.class, "from").append(pipeVarName).append(")");
