@@ -61,6 +61,11 @@ public class StreamRegulator {
     public DataInput getDataInput() {        
         return inputStreamFlyweight;
     }
+    
+    public DataInputBlobReader<RawDataSchema> getBlobReader() {
+        return inputStreamFlyweight;
+    }
+
         
     
     /**
@@ -222,7 +227,9 @@ public class StreamRegulator {
     public long getBytesRead() {
         return totalBytesWritten;
     }
-    
-    
+        
+    public DataOutputBlobWriter<RawDataSchema> getBlobWriter() {
+        return outputStreamFlyweight;
+    }
     
 }
