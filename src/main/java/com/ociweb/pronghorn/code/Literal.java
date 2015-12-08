@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.code;
 
 import java.io.IOException;
 
-import com.ociweb.pronghorn.pipe.util.Appendables;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class Literal extends Code implements SingleResult {
 

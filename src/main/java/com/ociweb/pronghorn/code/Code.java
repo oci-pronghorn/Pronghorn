@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.code;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.ociweb.pronghorn.pipe.util.Appendables;
+import com.ociweb.pronghorn.util.Appendables;
 
 public abstract class Code {
 

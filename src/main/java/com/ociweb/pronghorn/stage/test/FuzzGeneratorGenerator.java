@@ -12,10 +12,10 @@ import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
-import com.ociweb.pronghorn.pipe.util.Appendables;
 import com.ociweb.pronghorn.pipe.util.build.TemplateProcessGeneratorLowLevelWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWriter{
 
@@ -46,7 +46,7 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
         super(schema, target, generateClassName(schema),  generateRunnable ? "implements Runnable" : "extends PronghornStage",
                                                           generateRunnable ? null : "output",
                                                           scopeProtected ? "protected" : "private",
-                                                          false);
+                                                          false, schema.getClass().getPackage().getName()+".build");
         this.generateRunnable = generateRunnable;
     }
     

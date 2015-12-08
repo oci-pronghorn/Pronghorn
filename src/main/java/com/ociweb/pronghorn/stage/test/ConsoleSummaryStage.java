@@ -6,9 +6,9 @@ import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
-import com.ociweb.pronghorn.pipe.util.Appendables;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage {
 
@@ -53,7 +53,7 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
           throw new RuntimeException(e);
         }
 		long duration = System.currentTimeMillis()-startTime;
-		processTotal("Totals:",totalCounts, Pipe.from(inputRing), duration);
+		processTotal("Totals:", totalCounts, Pipe.from(inputRing), duration);
 	}
 
 	@Override
@@ -72,6 +72,10 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
 	        throw new RuntimeException(e);            
 	   }
 
+	}
+	
+	public long totalBytes() {
+	    return totalBytes;
 	}
 	
 	public long totalMessages() {
