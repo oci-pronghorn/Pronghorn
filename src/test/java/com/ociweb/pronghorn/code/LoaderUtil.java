@@ -84,6 +84,8 @@ public class LoaderUtil {
                 f.mkdirs();
                 
                 return f;
+            } else {
+                new Exception("unable to recognize location: "+location).printStackTrace();
             }
             
         } catch (URISyntaxException e) {
