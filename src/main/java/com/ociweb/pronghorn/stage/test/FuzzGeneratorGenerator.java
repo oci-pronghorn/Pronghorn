@@ -43,11 +43,20 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     
     
     public FuzzGeneratorGenerator(MessageSchema schema, Appendable target, boolean generateRunnable, boolean scopeProtected) {
-        super(schema, target, generateClassName(schema),  generateRunnable ? "implements Runnable" : "extends PronghornStage",
+        super(schema, target, generateClassName(schema)+(generateRunnable ? "" : "Stage"),
+                                                          generateRunnable ? "implements Runnable" : "extends PronghornStage",
                                                           generateRunnable ? null : "output",
                                                           scopeProtected ? "protected" : "private",
                                                           false, schema.getClass().getPackage().getName()+".build");
         this.generateRunnable = generateRunnable;
+    }
+    
+    
+    public FuzzGeneratorGenerator(MessageSchema schema, Appendable target, String interitance, boolean scopeProtected) {
+        super(schema, target, generateClassName(schema),  interitance,null,
+                                                          scopeProtected ? "protected" : "private",
+                                                          false, schema.getClass().getPackage().getName()+".build");
+        this.generateRunnable = true;
     }
     
     public FuzzGeneratorGenerator(MessageSchema schema, Appendable target, boolean generateRunnable) {
