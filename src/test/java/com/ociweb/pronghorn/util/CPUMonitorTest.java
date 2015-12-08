@@ -6,11 +6,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
 import org.HdrHistogram.Histogram;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class CPUMonitorTest {
 
-    @Test
+    @Ignore
     public void exmapleUsageTest() {
        
         
