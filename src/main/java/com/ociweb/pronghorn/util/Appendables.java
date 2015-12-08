@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.pipe.util;
+package com.ociweb.pronghorn.util;
 
 import java.io.IOException;
 

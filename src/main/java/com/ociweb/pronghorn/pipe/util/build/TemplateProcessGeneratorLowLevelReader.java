@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.pipe.util.build;
 
+import static com.ociweb.pronghorn.util.Appendables.*;
+
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -11,9 +13,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.stream.LowLevelStateManager;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
-import com.ociweb.pronghorn.pipe.util.Appendables;
-
-import static com.ociweb.pronghorn.pipe.util.Appendables.*;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGenerator {
 
@@ -880,11 +880,11 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
     @Override
     protected void headerConstruction() throws IOException {
         bodyTarget.append("package com.ociweb.pronghorn.pipe.build;\n");
-        bodyTarget.append("import com.ociweb.pronghorn.pipe.stream.LowLevelStateManager;\n");
-        bodyTarget.append("import com.ociweb.pronghorn.pipe.Pipe;\n");
-        bodyTarget.append("import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;\n");
-        bodyTarget.append("import com.ociweb.pronghorn.pipe.util.Appendables;\n");
-        bodyTarget.append("import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;\n");
+        bodyTarget.append("import ").append(LowLevelStateManager.class.getCanonicalName()).append(";\n");
+        bodyTarget.append("import ").append(Pipe.class.getCanonicalName()).append(";\n");
+        bodyTarget.append("import ").append(FieldReferenceOffsetManager.class.getCanonicalName()).append(";\n");
+        bodyTarget.append("import ").append(Appendables.class.getCanonicalName()).append(";\n");
+        bodyTarget.append("import ").append(MessageSchemaDynamic.class.getCanonicalName()).append(";\n");
         additionalImports(schema, bodyTarget);
         
         bodyTarget.append("public class LowLevelReader implements Runnable {\n");

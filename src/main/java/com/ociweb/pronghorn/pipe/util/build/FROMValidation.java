@@ -8,7 +8,7 @@ import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
-import com.ociweb.pronghorn.pipe.util.Appendables;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class FROMValidation {
 

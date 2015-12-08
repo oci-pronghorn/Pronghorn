@@ -1,8 +1,8 @@
 package com.ociweb.pronghorn.pipe.util.build;
 
-import static com.ociweb.pronghorn.pipe.util.Appendables.appendClass;
-import static com.ociweb.pronghorn.pipe.util.Appendables.appendStaticCall;
-import static com.ociweb.pronghorn.pipe.util.Appendables.appendValue;
+import static com.ociweb.pronghorn.util.Appendables.appendClass;
+import static com.ociweb.pronghorn.util.Appendables.appendStaticCall;
+import static com.ociweb.pronghorn.util.Appendables.appendValue;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -12,7 +12,7 @@ import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.stream.LowLevelStateManager;
-import com.ociweb.pronghorn.pipe.util.Appendables;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGenerator {
     
@@ -40,14 +40,14 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     private final String methodScope;
     private boolean firstField = true;
         
-    private final String packageName = "com.ociweb.pronghorn.pipe.build";
+    private final String packageName;
 
     private final String className;
     private final String baseText;
     
     
     public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target, String className,
-                                                  String baseClassName, String outputPipeName, String methodScope, boolean isAbstract) {
+                                                  String baseClassName, String outputPipeName, String methodScope, boolean isAbstract, String packageName) {
         super(schema);
 
         this.pipeId = "1"; //NOTE: for future development when we need to merge two writers
@@ -61,14 +61,16 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         this.methodScope = methodScope; //set to protected if you plan to extend this vs generate this.
         
         this.isAbstract = isAbstract;
+        
+        this.packageName = packageName;
     }
     
-    public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target) {
-        this(schema, target, "LowLevelWriter", "implements Runnable", "output", "private", false);       
+    public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target, String packageName) {
+        this(schema, target, "LowLevelWriter", "implements Runnable", "output", "private", false, packageName);       
     }
     
-    public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target, boolean isAbstract) {
-        this(schema, target, "LowLevelWriter", "implements Runnable", "output", isAbstract ? "protected" : "private", isAbstract);       
+    public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target, boolean isAbstract, String packageName) {
+        this(schema, target, "LowLevelWriter", "implements Runnable", "output", isAbstract ? "protected" : "private", isAbstract, packageName);       
     }
     
     public String getClassName() {

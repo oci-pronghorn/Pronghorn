@@ -171,12 +171,12 @@ public class TemplateProcessGeneratorTest {
             
             StringBuilder target = new StringBuilder();
                         
-            TemplateProcessGeneratorLowLevelWriter simple = new TemplateProcessGeneratorLowLevelWriter(schema, target, true);
+            TemplateProcessGeneratorLowLevelWriter simple = new TemplateProcessGeneratorLowLevelWriter(schema, target, true, "com.ociweb.pronghorn.pipe.build");
             
             simple.processSchema();
             
             
-            System.out.println(target);
+            //System.out.println(target);
             
             validateCleanCompile(className, target);
             

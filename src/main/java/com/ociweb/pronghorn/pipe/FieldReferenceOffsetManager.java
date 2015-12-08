@@ -6,9 +6,9 @@ import java.util.Arrays;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
-import com.ociweb.pronghorn.pipe.util.Appendables;
 import com.ociweb.pronghorn.pipe.util.RLESparseArray;
 import com.ociweb.pronghorn.pipe.util.hash.MurmurHash;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class FieldReferenceOffsetManager {
 	
