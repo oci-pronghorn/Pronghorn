@@ -34,19 +34,19 @@ public class StreamRegulator {
     private long totalBytesRead;
     private long totalBytesWritten;
     
+    private static final int MSG_SIZE = RawDataSchema.FROM.fragDataSize[RawDataSchema.MSG_CHUNKEDSTREAM_1];
     
     public StreamRegulator(long bitPerSecond, int maxWrittenChunksInFlight, int maxWrittenChunkSizeInBytes) {
         PipeConfig<RawDataSchema> pipeConfig = new PipeConfig<RawDataSchema>(RawDataSchema.instance, maxWrittenChunksInFlight, maxWrittenChunkSizeInBytes);
         this.pipe = new Pipe<RawDataSchema>(pipeConfig);
         this.pipe.initBuffers();
-        Pipe.setPublishBatchSize(pipe, 0); //TODO: why can this not batch publish?
+        Pipe.setPublishBatchSize(pipe, 0); 
         Pipe.setReleaseBatchSize(pipe, maxWrittenChunksInFlight/3);
         
         this.inputStreamFlyweight = new DataInputBlobReader<RawDataSchema>(pipe);
         this.outputStreamFlyweight = new DataOutputBlobWriter<RawDataSchema>(pipe);
         this.bitPerSecond = bitPerSecond;
         //TODO: may want to add latency per chunk, per startup, or per N bytes.
-        
     }
     
     public String toString() {
@@ -125,9 +125,10 @@ public class StreamRegulator {
         }
     }
 
+    
     private void releaseOpenRead() {
         //log.trace("release block");
-        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        Pipe.confirmLowLevelRead(pipe, MSG_SIZE);
         Pipe.releaseReads(pipe);
         hasOpenRead = false;
     }
