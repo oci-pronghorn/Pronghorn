@@ -184,8 +184,9 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
             } catch (Exception e) {
                 
                 e.printStackTrace();
-                System.err.println("pos now :"+(POS_CONST_MASK & pos)+" len "+len);                
-                System.exit(0);
+                System.err.println("pos now :"+(POS_CONST_MASK & pos)+" len "+len); 
+                throw new RuntimeException(e);
+                
                 
             }
         } else {

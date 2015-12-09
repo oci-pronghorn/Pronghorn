@@ -936,7 +936,7 @@ public final class Pipe<T extends MessageSchema> {
             if (0==fields && cursor==from.tokensLen-1) { //this is an odd case and should not happen
                 //TODO: AA length is too long and we need to detect cursor out of bounds!
                 System.err.println("total tokens:"+from.tokens.length);//Arrays.toString(from.fieldNameScript));
-                System.exit(-1);
+                throw new RuntimeException("unable to convert fragment to text");
             }
 
 
