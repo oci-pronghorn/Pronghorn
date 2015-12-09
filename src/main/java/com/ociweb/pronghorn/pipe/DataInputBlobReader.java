@@ -41,8 +41,10 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         this.position = Pipe.bytePosition(meta, pipe, this.length);
         this.backing   = Pipe.byteBackingArray(meta, pipe);               
         this.bytesLimit = position + length;
+                
         return this.length;
     }
+    
         
     public boolean hasRemainingBytes() {
         return position < bytesLimit;

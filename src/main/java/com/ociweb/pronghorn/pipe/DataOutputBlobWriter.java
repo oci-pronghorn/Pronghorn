@@ -39,6 +39,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     
     public int closeLowLevelField() {
         int len = length();
+        Pipe.addAndGetBytesWorkingHeadPosition(p, len);
         Pipe.addBytePosAndLenSpecial(p,startPosition,len);
         p.closeBlobFieldWrite();
         return len;
@@ -155,10 +156,13 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
 
     private int encodeAsUTF8(CharSequence s, int len, int mask, byte[] localBuf, int pos) {
+        int origPos = pos;
+        pos+=2;
         int c = 0;
         while (c < len) {
             pos = Pipe.encodeSingleChar((int) s.charAt(c++), localBuf, mask, pos);
         }
+        write16(localBuf,mask,origPos, (pos-origPos)-2); //writes bytes count up front
         return pos;
     }
     

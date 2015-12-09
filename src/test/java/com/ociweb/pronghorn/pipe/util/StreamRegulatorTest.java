@@ -9,11 +9,104 @@ import java.util.Arrays;
 
 import org.junit.Test;
 
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
+
 public class StreamRegulatorTest {
 
     
     @Test
-    public void simpleStreamTest() {
+    public void simpleStreamWriteReadTest() {
+        
+        long mbps = 100L*1024L*1024L*1024L;
+        
+        {            
+        
+            int testSize = 10000;  //at 1MB per write we can hit 100Gbps
+            int inFlight = 300;
+            int iterations = 1000;//Integer.MAX_VALUE;//10000;
+            
+            
+            byte[] testdata = new byte[testSize];
+            int i = testSize;
+            while (--i>=0) {
+                testdata[i]=(byte)i;
+            }
+                       
+            long mega = 1024*1024;
+            long bitPerSecond = mbps*mega; //Go no faster than this
+            int maxWrittenChunksInFlight   = inFlight;
+            int maxWrittenChunkSizeInBytes = testSize;
+            StreamRegulator sr = new StreamRegulator(bitPerSecond, maxWrittenChunksInFlight, maxWrittenChunkSizeInBytes);
+            
+            
+            byte[] target = new byte[testSize];
+            DataOutputBlobWriter<RawDataSchema> out = sr.getBlobWriter();
+            DataInputBlobReader<RawDataSchema> in = sr.getBlobReader();
+            int a = iterations;
+            int b = iterations;
+            
+            long writeCount = 0;
+            long readCount = 0;
+            
+            long startTime = System.currentTimeMillis();
+            while (a>0 || b>0) {
+                boolean isStuck = true;
+                while (sr.hasRoomForChunk() && --a>=0) {          
+                    isStuck = false;
+                    try {
+                      //  System.out.println("write "+writeCount);
+                       
+                        // out.write(testdata);
+                        
+                        out.writeLong(writeCount);
+                        out.writeShort((short)writeCount);
+                        out.writeByte((byte)writeCount);
+                        
+                        out.writePackedLong(writeCount);
+                        out.writePackedInt((int)writeCount);
+                        
+                        out.writeUTF(Long.toHexString(writeCount));
+                        
+                        writeCount++;
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                
+                while (sr.hasNextChunk() && --b>=0) {    
+                    isStuck = false;
+                    try {                    
+                        
+                      //  int length = in.read(target);
+                        long actualLongCount = in.readLong();
+                        assertEquals(readCount, actualLongCount);
+                        assertEquals((short)readCount, in.readShort());
+                        assertEquals((byte)readCount, in.readByte());
+                        
+                        assertEquals(readCount, in.readPackedLong());
+                        assertEquals((int)readCount, in.readPackedInt());
+                        
+                        assertEquals(Long.toHexString(readCount), in.readUTF());
+                        
+                        
+                        readCount++;
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                if (isStuck) {
+                    System.err.println(sr);
+                    fail();
+                }
+            }
+           
+        } 
+    }
+    
+    @Test
+    public void simpleStreamSpeedLimitTest() {
         
         long topMbps = 2000;
         long step = 100;  
@@ -39,10 +132,13 @@ public class StreamRegulatorTest {
             
             
             byte[] target = new byte[testSize];
-            OutputStream out =  sr.getOutputStream();
-            InputStream in = sr.getInputStream();
+            DataOutputBlobWriter<RawDataSchema> out = sr.getBlobWriter();
+            DataInputBlobReader<RawDataSchema> in = sr.getBlobReader();
             int a = iterations;
             int b = iterations;
+            
+            long writeCount = 0;
+            long readCount = 0;
             
             long startTime = System.currentTimeMillis();
             while (a>0 || b>0) {
@@ -50,7 +146,7 @@ public class StreamRegulatorTest {
                 while (sr.hasRoomForChunk() && --a>=0) {          
                     isStuck = false;
                     try {
-                        out.write(testdata);
+                        out.write(testdata);                        
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -61,8 +157,7 @@ public class StreamRegulatorTest {
                     try {                    
                         
                         int length = in.read(target);
-                        
-                        
+
                         if (length != testSize) {
                             System.err.println("Length read:"+length);
                             System.err.println(sr);
@@ -98,6 +193,7 @@ public class StreamRegulatorTest {
             assertTrue("Expected "+measuredMbps+"<"+mbps,measuredMbps < mbps);            
         } 
     }
+    
     
     
 }

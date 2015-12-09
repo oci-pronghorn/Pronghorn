@@ -214,7 +214,7 @@ public class StreamRegulator {
 
     private void publishOpenWrite() {
         //log.trace("write block");
-        totalBytesWritten = totalBytesWritten + (outputStreamFlyweight.closeLowLevelField());
+        totalBytesWritten = totalBytesWritten + (outputStreamFlyweight.closeLowLevelField());        
         Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
         Pipe.publishWrites(pipe);
         hasOpenWrite = false;
