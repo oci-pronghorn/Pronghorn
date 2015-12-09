@@ -30,6 +30,8 @@ public class FuzzValueGenerator extends Code implements SingleResult {
     private final int  intFloor;
     private final boolean isFullRange;
     
+    private final long startValueLiteral;
+    
     private static final int[] primes = new int[]{ 137,    3,      5,      7,     11,     13,     17,     19,     23,     29,
                                                    31,     37,     41,     43,     47,     53,     59,     61,     67,     71, 
                                                    73,     79,     83,     89,     97,    101,    103,    107,    109,    113,
@@ -37,7 +39,7 @@ public class FuzzValueGenerator extends Code implements SingleResult {
     private static final AtomicInteger genSeed = new AtomicInteger(); 
     private static final int genSeedMask = (1<<5)-1;
     
-    private final int localSeed;    
+    private final int stepSize;    
     
     
     public FuzzValueGenerator(AtomicInteger varIdGen, boolean isLong, boolean isSigned, boolean isNullable) {
@@ -45,9 +47,15 @@ public class FuzzValueGenerator extends Code implements SingleResult {
     }
     
     public FuzzValueGenerator(AtomicInteger varIdGen, boolean isLong, boolean isSigned, boolean isNullable, boolean isChars) {
+        this(varIdGen,isLong,isSigned,isNullable,isChars,primes[genSeedMask&genSeed.incrementAndGet()], Long.MIN_VALUE);
+                
+    }
+    
+    public FuzzValueGenerator(AtomicInteger varIdGen, boolean isLong, boolean isSigned, boolean isNullable, boolean isChars, int step, long startLiteral) {
         super(varIdGen,1,true);
         
-        this.localSeed = primes[genSeedMask&genSeed.incrementAndGet()];
+        this.startValueLiteral = startLiteral;
+        this.stepSize = step;
         this.varId = varIdGen.incrementAndGet();
         this.isLong = isLong;       
         this.isNullable = isNullable;
@@ -86,17 +94,56 @@ public class FuzzValueGenerator extends Code implements SingleResult {
             longMask = 0;
         }
         
+    }
+    
+    public FuzzValueGenerator(AtomicInteger varIdGen, boolean isLong, boolean isNullable, boolean isChars, int positiveRangeMask) {
+        super(varIdGen,1,true);
+        
+        this.startValueLiteral = Long.MIN_VALUE;
+        this.stepSize = primes[genSeedMask&genSeed.incrementAndGet()];
+        this.varId = varIdGen.incrementAndGet();
+        this.isLong = isLong;       
+        this.isNullable = isNullable;
+        this.isChars = isChars;
+        
+        isFullRange = false;
+        if (isLong) {        
+            longFloor = 0;            
+            intFloor = 0;       
+        } else {
+            longFloor = 0;            
+            intFloor = 0;       
+        }
+
+        assert(positiveRangeMask< Integer.MAX_VALUE);
+      
+        
+        if (isLong) {
+            longMask = positiveRangeMask;
+            intMask = 0;                
+        } else {
+            intMask = positiveRangeMask;
+            longMask = 0;
+        }
+        
         
         
     }
+    
     
     //TODO: must test interesting numbers then use random.  use prime number to pick unique number generator.
     
     @Override
     public void defineMembers(Appendable target) throws IOException {
         
-        appendMemberVar(target.append(tab).append(isLong ? "private long " : "private int "), varId).append(";\n");
-    
+        appendMemberVar(target.append(tab).append(isLong ? "private long " : "private int "), varId);
+        if (Long.MIN_VALUE!=startValueLiteral) {
+            Appendables.appendValue(target, " = ", startValueLiteral);
+            if (isLong) {
+                target.append('L');
+            }
+        }
+        target.append(";\n");
     }
     
     
@@ -171,7 +218,7 @@ public class FuzzValueGenerator extends Code implements SingleResult {
                 Appendables.appendHexDigits(target, longMask).append("L & ");
             }
             appendMemberVar(target.append("("),varId);
-            Appendables.appendValue(target.append(" += "), localSeed).append("))");
+            Appendables.appendValue(target.append(" += "), stepSize).append("))");
         } else {
             if (0!=intFloor) {
                 System.out.println("appending the intFloor of "+intFloor);
@@ -182,7 +229,7 @@ public class FuzzValueGenerator extends Code implements SingleResult {
                 Appendables.appendHexDigits(target, intMask).append(" & ");
             }
             appendMemberVar(target.append("("),varId);
-            Appendables.appendValue(target.append(" += "), localSeed).append("))");
+            Appendables.appendValue(target.append(" += "), stepSize).append("))");
         }
     }
 

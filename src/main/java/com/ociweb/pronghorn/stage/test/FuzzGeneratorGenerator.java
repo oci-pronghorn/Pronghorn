@@ -28,7 +28,10 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
         //0, MessageSchema.from(schema).messageStarts.length, 
     
     private long latencyTimeFieldId = -1;//undefined
+    private long incFieldId = -1;
+    
     private int maximumSequenceMask = Integer.MAX_VALUE; //TODO: A should be max fragments on pipe and validated with assert.
+    private int fixedSequenceLength = -1;
     
     private final boolean generateRunnable;
     
@@ -79,11 +82,20 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
         latencyTimeFieldId = id;
     }
     
+    public void setIncFieldId(long id) {
+        incFieldId = id;
+    }
+    
     public void setMaxSequenceLengthInBits(int saneBits) {
         assert(saneBits>0);
         assert(saneBits<=32);
         maximumSequenceMask = (1<<saneBits)-1;
     }
+    
+    public void setFixedSequenceLength(int value) {
+        fixedSequenceLength = value;
+    }
+    
     
     @Override
     protected void buildConstructors(Appendable target, String className) throws IOException {
@@ -133,11 +145,30 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
                 boolean isNullable = TypeMask.isOptional(type); 
                 boolean isChars = TypeMask.isText(type) || TypeMask.isByteVector(type);
                                 
-                if (isLong && (scriptIds[i]==latencyTimeFieldId)) {
-                    //Do not generate fuzz but generate send time time on the fly instead
-                    generators[i] = new Literal("System.currentTimeMillis()");
-                } else {
-                    generators[i] = new FuzzValueGenerator(id,isLong,isSigned,isNullable,isChars);
+                
+                if (scriptIds[i]==incFieldId) {
+                    generators[i] = new FuzzValueGenerator(id,isLong,isSigned,isNullable,isChars,1,0);
+                } else {                
+                    if (isLong && (scriptIds[i]==latencyTimeFieldId)) {
+                        
+                        generators[i] = new FuzzValueGenerator(id,true,false,isNullable,false,1,System.currentTimeMillis());
+                        
+                        //Do not generate fuzz but generate send time time on the fly instead
+                        //generators[i] = new Literal("System.currentTimeMillis()"); //this is slow trying new idea.
+                    } else {
+                        if (!isSigned) {
+                            
+                            
+                            int mask;
+    
+                            mask = 0xFFF;//TODO: how can we know this mask?
+                                
+                            generators[i] = new FuzzValueGenerator(id,isLong,isNullable,isChars, mask);
+    
+                        } else {
+                            generators[i] = new FuzzValueGenerator(id,isLong,isSigned,isNullable,isChars);
+                        }
+                    }
                 }
                 generators[i].defineMembers(target);
                 generators[i].incUsesCount();
@@ -202,12 +233,18 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
             }
             
             target.append(tab).append(tab);
-            if (Integer.MAX_VALUE != maximumSequenceMask &&
-                TypeMask.GroupLength == TokenBuilder.extractType(MessageSchema.from(schema).tokens[f]) ) {
-                Appendables.appendHexDigits(target, maximumSequenceMask).append("&");
-            }
             
-            generators[f].result(target);
+            if (fixedSequenceLength>0 && TypeMask.GroupLength == TokenBuilder.extractType(MessageSchema.from(schema).tokens[f])) {
+               Appendables.appendHexDigits(target, fixedSequenceLength);
+            } else {
+            
+                if (Integer.MAX_VALUE != maximumSequenceMask &&
+                    TypeMask.GroupLength == TokenBuilder.extractType(MessageSchema.from(schema).tokens[f]) ) {
+                    Appendables.appendHexDigits(target, maximumSequenceMask).append("&");
+                }
+                
+                generators[f].result(target);
+            }
         }
         target.append("\n");
         target.append(tab).append(");\n");
