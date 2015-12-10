@@ -5,7 +5,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +42,10 @@ public class StreamRegulator {
         this.pipe.initBuffers();
         Pipe.setPublishBatchSize(pipe, 0); 
         Pipe.setReleaseBatchSize(pipe, maxWrittenChunksInFlight/3);
+        
+        if (this.pipe.byteMask<=0) {
+            throw new UnsupportedOperationException("Pipe must have room to send blob data. Found size:"+ this.pipe.sizeOfBlobRing+" config: "+pipeConfig);
+        }
         
         this.inputStreamFlyweight = new DataInputBlobReader<RawDataSchema>(pipe);
         this.outputStreamFlyweight = new DataOutputBlobWriter<RawDataSchema>(pipe);

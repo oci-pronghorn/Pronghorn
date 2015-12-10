@@ -198,7 +198,25 @@ public class Appendables {
         
         return target;
     }
+    
+    public static <A extends Appendable> A appendFixedHexDigits(A target, long value, int bits) throws IOException {
 
+        //round up to next group of 4
+        bits = ((bits+3)>>2)<<2;
+        
+        target.append("0x");
+        long nextValue = value;
+        while (bits>4) {            
+            bits -= 4;
+            target.append(hBase[(int)(0xF&(nextValue>>>bits))]);            
+            nextValue =  ((1L<<bits)-1L) & nextValue;
+        }
+        bits -= 4;
+        target.append(hBase[(int)(0xF&(nextValue>>>bits))]);
+        
+        return target;
+    }
+    
     /*
      * 
      * In order to render a number like 42 with exactly 2 places the tests argument must be set to 10, likewise 042 would require 100
@@ -242,6 +260,7 @@ public class Appendables {
         
         return target;
     }
+
     
     public static <A extends Appendable> A appendClass(A target, Class clazz, Class clazzParam) throws IOException {
         return (A) target.append(clazz.getSimpleName()).append('<').append(clazzParam.getSimpleName()).append("> ");

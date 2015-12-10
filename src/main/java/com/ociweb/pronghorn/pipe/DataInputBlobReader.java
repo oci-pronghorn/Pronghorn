@@ -49,7 +49,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     public boolean hasRemainingBytes() {
         return position < bytesLimit;
     }
-    
+
     @Override
     public int available() throws IOException {
         assert(position<=bytesLimit);

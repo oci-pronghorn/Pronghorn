@@ -19,7 +19,8 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     public DataOutputBlobWriter(Pipe<S> p) {
         this.p = p;
         this.byteBuffer = Pipe.byteBuffer(p);
-        this.byteMask = Pipe.blobMask(p);        
+        this.byteMask = Pipe.blobMask(p);      
+        assert(byteMask!=0);
     }
     
     public void openField() {

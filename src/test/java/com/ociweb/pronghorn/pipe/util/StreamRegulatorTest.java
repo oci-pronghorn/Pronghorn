@@ -50,6 +50,8 @@ public class StreamRegulatorTest {
             long writeCount = 0;
             long readCount = 0;
             
+            final long specialLongValue = 13951599373648L;
+            
             long startTime = System.currentTimeMillis();
             while (a>0 || b>0) {
                 boolean isStuck = true;
@@ -66,6 +68,8 @@ public class StreamRegulatorTest {
                         
                         out.writePackedLong(writeCount);
                         out.writePackedInt((int)writeCount);
+                        
+                        out.writePackedLong(specialLongValue);
                         
                         out.writeUTF(Long.toHexString(writeCount));
                         
@@ -87,6 +91,8 @@ public class StreamRegulatorTest {
                         
                         assertEquals(readCount, in.readPackedLong());
                         assertEquals((int)readCount, in.readPackedInt());
+                        
+                        assertEquals(specialLongValue, in.readPackedLong());
                         
                         assertEquals(Long.toHexString(readCount), in.readUTF());
                         

@@ -73,8 +73,21 @@ public class PipeConfig<T extends MessageSchema> {
 
         this.byteConst = null;
         this.schema = messageSchema;
+        
+        validate();
     }
     
+    private void validate() {
+        if (byteBits>31) {
+            throw new UnsupportedOperationException("Unable to support blob data larger than 2gb, Reduce either the data size or count of desired message");
+        }
+        
+        if (primaryBits>31) {
+            throw new UnsupportedOperationException("Unable to support slab data larger than 2gb, Reduce the count of desired message");
+        }
+        
+    }
+
     public PipeConfig(T messageSchema, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields, byte[] byteConst) {
         
         int biggestFragment = FieldReferenceOffsetManager.maxFragmentSize(MessageSchema.from(messageSchema));
@@ -87,6 +100,7 @@ public class PipeConfig<T extends MessageSchema> {
 
         this.byteConst = byteConst;
         this.schema = messageSchema;
+        validate();
      }
 	
 	public PipeConfig<T> grow2x(){
