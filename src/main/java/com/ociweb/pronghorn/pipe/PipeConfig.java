@@ -79,11 +79,11 @@ public class PipeConfig<T extends MessageSchema> {
     
     private void validate() {
         if (byteBits>31) {
-            throw new UnsupportedOperationException("Unable to support blob data larger than 2gb, Reduce either the data size or count of desired message");
+            throw new UnsupportedOperationException("Unable to support blob data larger than 1GB Reduce either the data size or count of desired message");
         }
         
         if (primaryBits>31) {
-            throw new UnsupportedOperationException("Unable to support slab data larger than 2gb, Reduce the count of desired message");
+            throw new UnsupportedOperationException("Unable to support slab data larger than 1GB, Reduce the count of desired message");
         }
         
     }
