@@ -69,8 +69,8 @@ public class PipeConfig<T extends MessageSchema> {
         
         int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<primaryBits);
         int secondaryMinSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
-        this.byteBits = (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
-
+        this.byteBits = 0==maximumLenghOfVariableLengthFields? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
+                
         this.byteConst = null;
         this.schema = messageSchema;
         
@@ -96,7 +96,7 @@ public class PipeConfig<T extends MessageSchema> {
         
         int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<primaryBits);
         int secondaryMinSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
-        this.byteBits = (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
+        this.byteBits = 0==maximumLenghOfVariableLengthFields? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
 
         this.byteConst = byteConst;
         this.schema = messageSchema;
