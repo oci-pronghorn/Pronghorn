@@ -108,7 +108,7 @@ public class FuzzGeneratorGeneratorTest {
         
         int durationMS = 200;
         
-        runtimeTestingOfFuzzGenerator(target, PipeMonitorSchema.instance, ew, durationMS,200);
+        runtimeTestingOfFuzzGenerator(target, PipeMonitorSchema.instance, ew, durationMS, 200);
     }
     
     @Test
