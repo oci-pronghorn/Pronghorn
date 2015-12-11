@@ -1,12 +1,11 @@
 package com.ociweb.pronghorn.pipe.stream;
 
-import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
 import static com.ociweb.pronghorn.pipe.Pipe.blobMask;
+import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
 import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
@@ -188,6 +187,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     @Override
     public void visitBytes(String name, long id, ByteBuffer value) {
         value.flip();
+        
         needsClose = true;
         int meta = takeRingByteMetaData(expectedInput);
         int len = takeRingByteLen(expectedInput);
@@ -196,7 +196,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         int mask = blobMask(expectedInput);//NOTE: the consumer must do their own ASCII conversion
 
         if (value.remaining() != len) {
-            throw new AssertionError("expected bytes length: "+Long.toHexString(len)+" but got "+Long.toHexString(value.remaining()));
+            throw new AssertionError("expected bytes length: "+len+" but got "+value.remaining());
         }
 
         int i = 0;
@@ -204,7 +204,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
             byte actual = value.get(i+value.position());
             byte expected = data[mask&(i+pos)];
             if (actual != expected) {
-                throw new AssertionError("ASCII does not match at index "+i+" of length "+len);
+                throw new AssertionError("Byte does not match at index "+i+" of length "+len);
 
             }
             i++;
