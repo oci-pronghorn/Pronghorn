@@ -8,7 +8,7 @@ import org.junit.Test;
 
 public class DataInputOutputTest {
 
-    private static final int testSpace = 100000000;
+    private static final int testSpace = 100000;//100000000;
     
     private static final PipeConfig<RawDataSchema> config = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 5, testSpace);
         
@@ -69,7 +69,7 @@ public class DataInputOutputTest {
         
         float compression = 1f-(length/(float)(testSize*8));
         
-        System.out.println(nsPerWrite+"ns per written long, longs per second "+(1000l*1000l*1000l/nsPerWrite)+" compression "+compression);
+       // System.out.println(nsPerWrite+"ns per written long, longs per second "+(1000l*1000l*1000l/nsPerWrite)+" compression "+compression);
         
         
         PipeWriter.publishWrites(testPipe);
@@ -91,14 +91,14 @@ public class DataInputOutputTest {
                     actBinaryString = '0'+actBinaryString;
                 }
                 
-                System.err.println("Expected:"+expBinaryString);
-                System.err.println("Actual  :"+actBinaryString);                
+       //         System.err.println("Expected:"+expBinaryString);
+      //          System.err.println("Actual  :"+actBinaryString);                
                 assertEquals(expected, actual);
             }
         }
         duration = System.nanoTime()-start;
         long nsPerRead = duration/testSize;
-        System.out.println(nsPerRead+"ns per read long, longs per second "+(1000l*1000l*1000l/nsPerRead));
+     //   System.out.println(nsPerRead+"ns per read long, longs per second "+(1000l*1000l*1000l/nsPerRead));
        
         
     }
@@ -134,7 +134,7 @@ public class DataInputOutputTest {
         int length = out.closeHighLevelField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
         
         float compression = 1f-(length/(float)(testSize*4));
-        System.out.println(nsPerWrite+"ns per written int, ints per second "+(1000l*1000l*1000l/nsPerWrite)+" compression "+compression);
+   //     System.out.println(nsPerWrite+"ns per written int, ints per second "+(1000l*1000l*1000l/nsPerWrite)+" compression "+compression);
         
         PipeWriter.publishWrites(testPipe);
         
@@ -155,14 +155,14 @@ public class DataInputOutputTest {
                     actBinaryString = '0'+actBinaryString;
                 }
                 
-                System.err.println("Expected:"+expBinaryString);
-                System.err.println("Actual  :"+actBinaryString);                
+     //           System.err.println("Expected:"+expBinaryString);
+     //           System.err.println("Actual  :"+actBinaryString);                
                 assertEquals(expected, actual);
             }
         }
         duration = System.nanoTime()-start;
         long nsPerRead = duration/testSize;
-        System.out.println(nsPerRead+"ns per read int, ints per second "+(1000l*1000l*1000l/nsPerRead));
+  //      System.out.println(nsPerRead+"ns per read int, ints per second "+(1000l*1000l*1000l/nsPerRead));
        
         
     }
