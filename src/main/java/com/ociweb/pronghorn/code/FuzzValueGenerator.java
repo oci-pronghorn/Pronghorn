@@ -97,10 +97,14 @@ public class FuzzValueGenerator extends Code implements SingleResult {
     }
     
     public FuzzValueGenerator(AtomicInteger varIdGen, boolean isLong, boolean isNullable, boolean isChars, int positiveRangeMask) {
+        this(varIdGen,isLong,isNullable,isChars,positiveRangeMask,primes[genSeedMask&genSeed.incrementAndGet()],Long.MIN_VALUE);
+    }
+    
+    public FuzzValueGenerator(AtomicInteger varIdGen, boolean isLong, boolean isNullable, boolean isChars, int positiveRangeMask, int step, long startLiteral) {
         super(varIdGen,1,true);
         
-        this.startValueLiteral = Long.MIN_VALUE;
-        this.stepSize = primes[genSeedMask&genSeed.incrementAndGet()];
+        this.startValueLiteral = startLiteral;
+        this.stepSize = step;
         this.varId = varIdGen.incrementAndGet();
         this.isLong = isLong;       
         this.isNullable = isNullable;
@@ -115,7 +119,7 @@ public class FuzzValueGenerator extends Code implements SingleResult {
             intFloor = 0;       
         }
 
-        assert(positiveRangeMask< Integer.MAX_VALUE);
+        assert(positiveRangeMask<= Integer.MAX_VALUE);
       
         
         if (isLong) {

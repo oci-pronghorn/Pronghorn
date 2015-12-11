@@ -27,11 +27,19 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     private Code msgGenerator = new FuzzValueGenerator(id, false, false, false, false);
         //0, MessageSchema.from(schema).messageStarts.length, 
     
+    private Code sparseObject = new FuzzValueGenerator(id, false, false, false, 0x3);
+    
     private long latencyTimeFieldId = -1;//undefined
-    private long incFieldId = -1;
+    private long incFieldId = -1; //TODO: make a collection
+    private int  intFieldMask = 0x7FF;//Integer.MAX_VALUE;//0x7FF; //TODO: make configurable
+    
+    private long  rareFieldId = -1; //TODO: make a map of masks per fields.
+    private int  rareFieldMask = 0x07;
     
     private int maximumSequenceMask = Integer.MAX_VALUE; //TODO: A should be max fragments on pipe and validated with assert.
     private int fixedSequenceLength = -1;
+    
+    private int sparseCursor = 6; //TODO: pass in argument for which cursor will be sparse.
     
     private final boolean generateRunnable;
     
@@ -86,6 +94,10 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
         incFieldId = id;
     }
     
+    public void setSmallFieldId(long id) {
+        rareFieldId = id;
+    }
+    
     public void setMaxSequenceLengthInBits(int saneBits) {
         assert(saneBits>0);
         assert(saneBits<=32);
@@ -129,6 +141,9 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
         msgGenerator.defineMembers(target);
         msgGenerator.incUsesCount();
         
+        sparseObject.defineMembers(target);
+        sparseObject.incUsesCount();
+        
         //need one generator for each, but we may not use them all.
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         int[] tokens = from.tokens;
@@ -145,13 +160,14 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
                 boolean isNullable = TypeMask.isOptional(type); 
                 boolean isChars = TypeMask.isText(type) || TypeMask.isByteVector(type);
                                 
-                
-                if (scriptIds[i]==incFieldId) {
-                    generators[i] = new FuzzValueGenerator(id,isLong,isSigned,isNullable,isChars,1,0);
+                if (scriptIds[i]==rareFieldId) {
+                    generators[i] = new FuzzValueGenerator(id,isLong,isNullable,isChars,rareFieldMask);                    
+                } else if (scriptIds[i]==incFieldId) {
+                    generators[i] = new FuzzValueGenerator(id,isLong,isNullable,isChars,intFieldMask,1,-1);//starts at -1 so first value will be zero
                 } else {                
                     if (isLong && (scriptIds[i]==latencyTimeFieldId)) {
                         
-                        generators[i] = new FuzzValueGenerator(id,true,false,isNullable,false,1,System.currentTimeMillis());
+                        generators[i] = new FuzzValueGenerator(id,true,false,isNullable,false,  1000*60*60*12 ,System.currentTimeMillis());
                         
                         //Do not generate fuzz but generate send time time on the fly instead
                         //generators[i] = new Literal("System.currentTimeMillis()"); //this is slow trying new idea.
@@ -217,7 +233,50 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
 
     @Override
     protected void bodyOfBusinessProcess(Appendable target, int cursor, int firstField, int fieldCount) throws IOException {
+               
+       // Appendables.appendValue(target, "////", cursor,"\n");
         
+        if (cursor == sparseCursor) {
+            
+            sparseObject.preCall(target);
+            //write wrapping logic to fill with zeros.
+            
+            target.append("if (0!=(");
+            sparseObject.result(target);
+            target.append(")) {\n");
+            
+            
+            appendWriteMethodName(target.append(tab), cursor).append("(\n");
+            for(int f = firstField; f<(firstField+fieldCount); f++) { 
+                if (f > firstField) {
+                    target.append(",\n");
+                }                
+                target.append(tab).append(tab).append("0");
+            }
+            target.append("\n");
+            target.append(tab).append(");\n");
+            
+            
+            
+            target.append("} else {\n");
+            
+        }
+        
+        
+            bodyOfBusinessProcessInternal(target, cursor, firstField, fieldCount);
+        
+        
+        if (cursor == sparseCursor) {            
+            target.append("};\n");            
+        }       
+        
+        
+        
+    }
+
+
+    private void bodyOfBusinessProcessInternal(Appendable target, int cursor, int firstField, int fieldCount)
+            throws IOException {
         for(int f = firstField; f<(firstField+fieldCount); f++) { 
             if (null==generators[f]) {
                 throw new UnsupportedOperationException("Unsupported Type "+TokenBuilder.tokenToString(MessageSchema.from(schema).tokens[f]));
@@ -248,7 +307,6 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
         }
         target.append("\n");
         target.append(tab).append(");\n");
-        
     }
 
 
