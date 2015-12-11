@@ -62,6 +62,11 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
    
     @Override
     public int read(byte[] b) throws IOException {
+        
+        if (position > bytesLimit) {
+            return -1;
+        }       
+        
         int max = bytesLimit-position;
         int len = b.length>max? max : b.length;      
         Pipe.copyBytesFromToRing(backing, position, byteMask, b, 0, Integer.MAX_VALUE, len);
@@ -71,6 +76,11 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
+
+        if (position > bytesLimit) {
+            return -1;
+        }
+        
         int max = bytesLimit-position;
         if (len>max) {
             len = max;
@@ -180,7 +190,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
 
     @Override
     public int read() throws IOException {
-        return backing[byteMask & position++];
+        return position < bytesLimit ? backing[byteMask & position++] : -1;
     }
 
     @Override
