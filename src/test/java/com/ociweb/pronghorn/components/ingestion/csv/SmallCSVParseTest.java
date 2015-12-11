@@ -98,10 +98,12 @@ public class SmallCSVParseTest {
 	    
 	    sourceBuffer = ByteBuffer.wrap(baos.toByteArray());
 				
-	    linesRingConfig = new PipeConfig((byte)7,(byte)20,null, RawDataSchema.instance);
-	    fieldsRingConfig = new PipeConfig((byte)9,(byte)19,null, new MessageSchemaDynamic(MetaMessageDefs.FROM));
-	    fieldsRingConfig2 = new PipeConfig((byte)10,(byte)20,null, new MessageSchemaDynamic(MetaMessageDefs.FROM));
-	    flatFileRingConfig = new PipeConfig((byte)14,(byte)22,null, RawDataSchema.instance);
+	    
+	    linesRingConfig = new PipeConfig(RawDataSchema.instance, 128, 512);
+	    fieldsRingConfig = new PipeConfig( new MessageSchemaDynamic(MetaMessageDefs.FROM), 512, 512);
+	    fieldsRingConfig = fieldsRingConfig;
+	    fieldsRingConfig2 = fieldsRingConfig.grow2x();
+	    flatFileRingConfig = new PipeConfig(RawDataSchema.instance, 1024, 512);
 	    
 	}
 	
