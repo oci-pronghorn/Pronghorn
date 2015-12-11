@@ -39,7 +39,7 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     private int maximumSequenceMask = Integer.MAX_VALUE; //TODO: A should be max fragments on pipe and validated with assert.
     private int fixedSequenceLength = -1;
     
-    private int sparseCursor = 6; //TODO: pass in argument for which cursor will be sparse.
+    private int sparseCursor = -6; //TODO: pass in argument for which cursor will be sparse.
     
     private final boolean generateRunnable;
     
