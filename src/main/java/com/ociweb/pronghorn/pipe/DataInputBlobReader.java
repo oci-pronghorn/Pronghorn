@@ -63,7 +63,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     @Override
     public int read(byte[] b) throws IOException {
         
-        if (position > bytesLimit) {
+        if (position >= bytesLimit) {
             return -1;
         }       
         
@@ -77,7 +77,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
 
-        if (position > bytesLimit) {
+        if (position >= bytesLimit) {
             return -1;
         }
         
