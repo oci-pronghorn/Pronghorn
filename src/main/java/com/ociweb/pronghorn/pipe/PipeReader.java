@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.pipe;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 import org.slf4j.Logger;
@@ -639,6 +640,26 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         }
         
         Pipe.appendFragment(input, target, cursor);
+    }
+
+    public static void readFieldIntoOutputStream(int loc, Pipe pipe, OutputStream out) throws IOException {    
+        int length    = readBytesLength(pipe, loc);
+        if (length>0) {                
+            int off = readBytesPosition(pipe, loc) & Pipe.blobMask(pipe);
+            copyFieldToOutputStream(out, length, readBytesBackingArray(pipe, loc), off, pipe.sizeOfBlobRing-off);
+        }
+    }
+
+    private static void copyFieldToOutputStream(OutputStream out, int length, byte[] backing, int off, int len1)
+            throws IOException {
+        if (len1>=length) {
+            //simple add bytes
+            out.write(backing, off, length); 
+        } else {                        
+            //rolled over the end of the buffer
+            out.write(backing, off, len1);
+            out.write(backing, 0, length-len1);
+        }
     }
 
 

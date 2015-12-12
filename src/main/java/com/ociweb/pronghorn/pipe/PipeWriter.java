@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.pipe;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.pipe.token.LOCUtil;
@@ -305,6 +307,27 @@ public class PipeWriter {
     public static void setPublishBatchSize(Pipe rb, int size) {
 		Pipe.setPublishBatchSize(rb, size);
 	}
+        
+    public static void writeFieldFromInputStream(Pipe pipe, int loc, InputStream inputStream, final int byteCount) throws IOException { 
+        buildFieldFromInputStream(pipe, loc, inputStream, byteCount, PipeReader.readBytesPosition(pipe, loc), PipeReader.readBytesMask(pipe, loc), PipeReader.readBytesBackingArray(pipe, loc), pipe.sizeOfBlobRing, PipeReader.readBytesPosition(pipe, loc), byteCount, 0);
+    }
+
+    private static void buildFieldFromInputStream(Pipe pipe, final int loc, InputStream inputStream, final int byteCount,
+            int position, int byteMask, byte[] buffer, int sizeOfBlobRing, final int startPosition, int remaining, int size) throws IOException {
+        
+        while ( (remaining>0) && (size=Pipe.safeRead(inputStream, position&byteMask, buffer, sizeOfBlobRing, remaining))>=0 ) { 
+            if (size>0) {
+                remaining -= size;                    
+                position += size;
+            } else {
+                Thread.yield();
+            }
+        }
+        
+        PipeWriter.writeSpecialBytesPosAndLen(pipe, loc, byteCount, startPosition);
+    }
+    
+    
 	
     
 }

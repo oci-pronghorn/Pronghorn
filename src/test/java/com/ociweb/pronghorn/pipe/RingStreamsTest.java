@@ -9,6 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
@@ -56,7 +57,8 @@ public class RingStreamsTest {
 		assertEquals(testString,rebuiltMessage);
 	}
 	
-	@Test
+	//TODO: RingStreams needs to be deleted and no longer used.
+	@Ignore
 	public void testReadFromInputStream() {
 				
 		int testBits = 14;
@@ -230,7 +232,8 @@ public class RingStreamsTest {
 	}
 	
 	
-	@Test
+    //TODO: RingStreams needs to be deleted and no longer used.
+    @Ignore
 	public void testRingToRingInputStream() {
 		
 		Pipe testRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  RawDataSchema.instance));

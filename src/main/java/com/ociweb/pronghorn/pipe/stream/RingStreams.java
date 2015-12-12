@@ -16,6 +16,7 @@ import java.io.OutputStream;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 
+@Deprecated //Consider using the newer DataInputBlobReader or DataOutputBlobWriter or the fieldWrite methods in PipeReader Pipe or PipeWriter
 public class RingStreams {
 	
 	/**
@@ -179,6 +180,7 @@ public class RingStreams {
 	 * @param outputRing
 	 * @throws IOException
 	 */
+	@Deprecated
 	public static void readFromInputStream(InputStream inputStream, Pipe outputRing) throws IOException {
 		assert (Pipe.from(outputRing) == RawDataSchema.FROM);
 		int step = RawDataSchema.FROM.fragDataSize[0];
@@ -195,6 +197,7 @@ public class RingStreams {
 
 		int size = 0;	
 		try{
+		    new Exception("this does not support wrapping of blob data and any usages should be changed over to the new stream apis int PipeReader, Pipe and PipeWriter").printStackTrace();
 			while ( (size=inputStream.read(buffer,position&byteMask,((position&byteMask) > ((position+maxBlockSize-1) & byteMask)) ? 1+byteMask-(position&byteMask) : maxBlockSize))>=0 ) {	
 				if (size>0) {
 					//block until there is a slot to write into

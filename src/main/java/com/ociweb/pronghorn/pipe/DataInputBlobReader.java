@@ -44,7 +44,6 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         
         return this.length;
     }
-    
         
     public boolean hasRemainingBytes() {
         return (byteMask & position) != bytesLimit;

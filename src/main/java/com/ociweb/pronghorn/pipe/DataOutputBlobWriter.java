@@ -45,7 +45,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         p.closeBlobFieldWrite();
         return len;
     }
-    
+ 
     public int length() {
         if (activePosition>=startPosition) {
             return activePosition-startPosition;            
