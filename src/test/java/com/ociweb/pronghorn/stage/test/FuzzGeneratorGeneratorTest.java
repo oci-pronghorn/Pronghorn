@@ -125,7 +125,7 @@ public class FuzzGeneratorGeneratorTest {
             FuzzGeneratorGenerator ew = new FuzzGeneratorGenerator(schema, target);
             ew.setMaxSequenceLengthInBits(9);
             
-            int durationMS = 1000; 
+            int durationMS = 100; 
             
             runtimeTestingOfFuzzGenerator(target, schema, ew, durationMS, 8000);
 
@@ -223,12 +223,12 @@ public class FuzzGeneratorGeneratorTest {
     private static void validateCleanCompile(String packageName, String className, StringBuilder target) {
         try {
 
-        Class generateClass = LoaderUtil.generateClass(packageName, className, target, FuzzGeneratorGenerator.class);
-        
-        if (generateClass.isAssignableFrom(PronghornStage.class)) {
-            Constructor constructor =  generateClass.getConstructor(GraphManager.class, Pipe.class);
-            assertNotNull(constructor);
-        }
+            Class generateClass = LoaderUtil.generateClass(packageName, className, target, FuzzGeneratorGenerator.class);
+            
+            if (generateClass.isAssignableFrom(PronghornStage.class)) {
+                Constructor constructor =  generateClass.getConstructor(GraphManager.class, Pipe.class);
+                assertNotNull(constructor);
+            }
         
         } catch (ClassNotFoundException e) {
             System.out.println(target);
