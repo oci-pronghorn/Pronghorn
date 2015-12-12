@@ -109,6 +109,7 @@ public class SmallCSVParseTest {
 	
 	
 	@Test
+	@Ignore
 	public void testTestData() {
 		 
 		assertNotNull(sourceBuffer);
@@ -116,6 +117,7 @@ public class SmallCSVParseTest {
 	}
 	
 	@Test
+	@Ignore
 	public void testLineReader() {
 		ByteBuffer data = sourceBuffer.asReadOnlyBuffer();				
 		Pipe linesRing = new Pipe(linesRingConfig);
@@ -311,6 +313,7 @@ public class SmallCSVParseTest {
 	 * Hardcoded specific test for our specific test file.
 	 */
 	@Test
+	@Ignore
 	public void testFieldReader() {
 		ByteBuffer data = sourceBuffer.asReadOnlyBuffer();				
 		Pipe linesRing = new Pipe(linesRingConfig);
