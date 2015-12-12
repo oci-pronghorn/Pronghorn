@@ -85,10 +85,9 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         }
         
         int max = bytesRemaining(this);
-        if (len>max) {
+        if (len > max) {
             len = max;
         }
-        System.out.println(position+"  "+(byteMask&position)+"  "+len);
         Pipe.copyBytesFromToRing(backing, position, byteMask, b, off, Integer.MAX_VALUE, len);
         position += len;
         return len;
