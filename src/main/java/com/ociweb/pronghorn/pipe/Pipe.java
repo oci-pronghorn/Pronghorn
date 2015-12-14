@@ -2232,6 +2232,12 @@ public final class Pipe<T extends MessageSchema> {
 
     //TODO: AAA rename as releaseReadLock
     public static <S extends MessageSchema> int releaseReads(Pipe<S> ring) {
+        
+//        
+//        if (ring.llWrite.llwConfirmedWrittenPosition != ring.slabRingTail.workingTailPos.value+1) {
+//            System.out.println("XXXXXXXXX "+ring.llWrite.llwConfirmedWrittenPosition+" vs "+ring.slabRingTail.workingTailPos.value);            
+//        }
+//                
         int len = takeValue(ring);
         Pipe.markBytesReadBase(ring, len);
     	assert(Pipe.contentRemaining(ring)>=0);
@@ -2649,7 +2655,7 @@ public final class Pipe<T extends MessageSchema> {
 	public static <S extends MessageSchema> long confirmLowLevelRead(Pipe<S> input, long size) {
 	    assert(size>0) : "Must have read something.";
 	     //not sure if this assert is true in all cases
-	    assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value+Pipe.EOF_SIZE) : "size was far too large, past known data";
+	  //  assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value+Pipe.EOF_SIZE) : "size was far too large, past known data";
 	  //  assert(input.llWrite.llwConfirmedWrittenPosition + size >= input.slabRingTail.tailPos.get()) : "size was too small, under known data";        
 		return (input.llWrite.llwConfirmedWrittenPosition += size);
 	}

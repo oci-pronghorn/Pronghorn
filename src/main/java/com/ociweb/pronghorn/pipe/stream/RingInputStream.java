@@ -18,7 +18,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 
 	private final Pipe ring;
 	private final int sourceByteMask;
-	private final int recordSize = RawDataSchema.FROM.fragDataSize[0];
+	private final int recordSize = RawDataSchema.FROM.fragDataSize[RawDataSchema.MSG_CHUNKEDSTREAM_1];
 	
 	private int remainingSourceLength = -1;
 	private int remainingSourceMeta;
@@ -118,6 +118,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 			int sourceLength = takeRingByteLen(ring);
 			return beginNewContent(targetData, targetOffset, targetLength, meta, sourceLength);
 		} else { 
+		    Pipe.confirmLowLevelRead(ring, recordSize);
 			Pipe.releaseReads(ring); //TOOD: bad idea needs more elegant solution.
 		//	closed = true;
 			return -1;			
@@ -131,6 +132,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 		if (sourceLength<=targetLength) {
 			//the entire block can be sent
 			copyData(targetData, targetOffset, sourceLength, sourceData, sourceOffset);
+			Pipe.confirmLowLevelRead(ring, recordSize);
 			Pipe.releaseReads(ring);
 			return sourceLength;
 		} else {
@@ -172,6 +174,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 		//the entire remaining part of the block can be sent
 		int len = remainingSourceLength;
 		copyData(targetData, targetOffset, len, byteBackingArray(remainingSourceMeta, ring), remainingSourceOffset);
+		Pipe.confirmLowLevelRead(ring, recordSize);
 		Pipe.releaseReads(ring);
 		remainingSourceLength = -1; //clear because we are now done with the remaining content
 		return len;

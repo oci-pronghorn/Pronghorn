@@ -209,6 +209,7 @@ public class RingStreams {
 					Pipe.addBytePosAndLen(outputRing, position, size);
 			        Pipe.addAndGetBytesWorkingHeadPosition(outputRing, size);
 			        
+			        Pipe.confirmLowLevelWrite(outputRing, RawDataSchema.FROM.fragDataSize[0]);
 					Pipe.publishWrites(outputRing);
 					position += size;
 				} else {
@@ -248,6 +249,7 @@ public class RingStreams {
 			    Pipe.addMsgIdx(output, 0);
 			    
 		    	Pipe.addByteArray(data, position, fragmentLength, output);
+		    	Pipe.confirmLowLevelWrite(output, RawDataSchema.FROM.fragDataSize[0]);
 		    	Pipe.publishWrites(output);
 		        
 		    	position+=fragmentLength;
@@ -293,6 +295,7 @@ public class RingStreams {
 	    		int bytesCount = Pipe.takeValue(inputRing);
 		    	assert(0==bytesCount);
 		    	
+		    	Pipe.confirmLowLevelRead(inputRing, RawDataSchema.FROM.fragDataSize[0]);
 		    	Pipe.releaseReads(inputRing);
 	    		visitor.close();
 	      		return;
@@ -312,6 +315,7 @@ public class RingStreams {
 					 //simple add bytes
 					 visitor.visit(data, offset&byteMask, len); 
 				}
+				Pipe.confirmLowLevelRead(inputRing, RawDataSchema.FROM.fragDataSize[0]);
 				Pipe.releaseReads(inputRing);
 	    	}
 	    	
