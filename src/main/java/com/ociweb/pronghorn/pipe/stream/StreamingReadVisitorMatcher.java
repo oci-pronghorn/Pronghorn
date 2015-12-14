@@ -16,7 +16,8 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     private final Pipe expectedInput;
     private final FieldReferenceOffsetManager expectedFrom;
     private boolean needsClose = false;
-
+    private int activeCursor;
+    
     public StreamingReadVisitorMatcher(Pipe expectedInput) {
         this.expectedInput = expectedInput;
         this.expectedFrom = Pipe.from(expectedInput);
@@ -32,7 +33,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         needsClose = true;
 
         int msgIdx = Pipe.takeMsgIdx(expectedInput);
-
+        activeCursor = msgIdx;
         if (id != expectedFrom.fieldIdScript[msgIdx]) {
             throw new AssertionError("expected message id: "+expectedFrom.fieldIdScript[msgIdx]+" was given "+id);
         }
@@ -44,6 +45,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     public void visitTemplateClose(String name, long id) {
         if (needsClose) {
             needsClose = false;
+            Pipe.confirmLowLevelRead(expectedInput, Pipe.sizeOf(expectedInput, activeCursor));
             Pipe.releaseReads(expectedInput);
         }
 
@@ -59,6 +61,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     public void visitFragmentClose(String name, long id) {
         if (needsClose) {
             needsClose = false;
+            Pipe.confirmLowLevelRead(expectedInput, Pipe.sizeOf(expectedInput, activeCursor));
             Pipe.releaseReads(expectedInput);
         }
     }
@@ -72,6 +75,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
             throw new AssertionError("expected length: "+Long.toHexString(tempLen)+" but got "+Long.toHexString(length));
         }
         needsClose = false;
+        Pipe.confirmLowLevelRead(expectedInput, Pipe.sizeOf(expectedInput, activeCursor));
         Pipe.releaseReads(expectedInput);
     }
 
