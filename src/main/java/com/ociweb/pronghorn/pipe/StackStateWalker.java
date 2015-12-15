@@ -259,21 +259,26 @@ class StackStateWalker {
 		//this is a group or groupLength that has appeared while inside a fragment that does not start a message
 
 		 //this single bit on indicates that this starts a sequence length  00100
-		 if ( (lastTokenOfFragment &  ( 0x04 <<TokenBuilder.SHIFT_TYPE)) != 0 ) {
-			 //this is a groupLength Sequence that starts inside of a fragment 
-			 int seqLength = Pipe.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask];
-			 //now start new sequence
-             ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
-             ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead] = ringBufferConsumer.nextCursor;
+		 if ( (lastTokenOfFragment &  ( 0x04 <<TokenBuilder.SHIFT_TYPE)) == 0 ) {
+		     if (//if this is a closing sequence group.
+		             (lastTokenOfFragment & ( (OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close) <<TokenBuilder.SHIFT_OPER)) == ((OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close)<<TokenBuilder.SHIFT_OPER)          
+		             ) {    	         
+		         continueSequence(ringBufferConsumer);
+		     }
 		 } else {
-    	     if (//if this is a closing sequence group.
-    				 (lastTokenOfFragment & ( (OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close) <<TokenBuilder.SHIFT_OPER)) == ((OperatorMask.Group_Bit_Seq|OperatorMask.Group_Bit_Close)<<TokenBuilder.SHIFT_OPER)          
-    	            ) {    	         
-    	                continueSequence(ringBufferConsumer);
-    		        }
+		     openSequenceWhileInsideFragment(ringBuffer, ringBufferConsumer, tmpNextWokingTail, lastScriptPos);
 		 }
 		 
 	}
+
+    private static void openSequenceWhileInsideFragment(Pipe ringBuffer, final StackStateWalker ringBufferConsumer,
+            long tmpNextWokingTail, int lastScriptPos) {
+        //this is a groupLength Sequence that starts inside of a fragment 
+         int seqLength = Pipe.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask];
+         //now start new sequence
+         ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
+         ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead] = ringBufferConsumer.nextCursor;
+    }
 
 
     private static boolean isClosingSequence(int token) {
@@ -284,14 +289,17 @@ class StackStateWalker {
 
 	//only called when a closing sequence group is hit.
 	private static void continueSequence(final StackStateWalker ringBufferConsumer) {
-		//check top of the stack	    
-	    
-		if (--ringBufferConsumer.seqStack[ringBufferConsumer.seqStackHead]>0) {		            	
+		//check top of the stack	   
+	    int stackHead = ringBufferConsumer.seqStackHead;
+	    int seq;
+		if ( (seq = ringBufferConsumer.seqStack[stackHead]-1) >0) {		            	
+		    ringBufferConsumer.seqStack[stackHead] = seq;
 			//stay on cursor location we are counting down.
-		    ringBufferConsumer.nextCursor = ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead];
+		    ringBufferConsumer.nextCursor = ringBufferConsumer.seqCursors[stackHead];
 		   // System.err.println("ENDING WITHsss :"+ringBufferConsumer.nextCursor);
 		    
 		} else {
+		    ringBufferConsumer.seqStack[stackHead] = seq;
 			closeSequence(ringBufferConsumer);
 		}
 	}
@@ -303,7 +311,7 @@ class StackStateWalker {
                     ringBufferConsumer.nextCursor = ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead];
                 } else {
                     --ringBufferConsumer.seqStackHead;//this dec is the same as the one in the above conditional
-                    //TODO:M, Note this repeating pattern above, this supports 2 nested sequences, Rewrite as while loop to support any number of nested sequences.
+                    //TODO:BB, Note this repeating pattern above, this supports 2 nested sequences, Rewrite as while loop to support any number of nested sequences.
                     ringBufferConsumer.nextCursor++;
                 }
             }

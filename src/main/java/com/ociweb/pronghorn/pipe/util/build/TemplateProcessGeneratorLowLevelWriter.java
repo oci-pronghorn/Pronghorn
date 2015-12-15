@@ -115,7 +115,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         
         bodyTarget.append("\n");
         
-        bodyTarget.append("protected int nextMessageIdx() {\n");        
+        bodyTarget.append(methodScope).append(" int nextMessageIdx() {\n");        
         bodyOfNextMessageIdx(bodyTarget);        
         bodyTarget.append("}\n");
         

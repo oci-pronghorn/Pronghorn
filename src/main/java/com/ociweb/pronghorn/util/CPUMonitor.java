@@ -124,7 +124,7 @@ public class CPUMonitor {
                     return;  // usually takes a couple of seconds before we get real values
                 } else {
                     long longValue = (long)(ONE_HUNDRED_PERCENT * value.doubleValue());
-                    that.histogram.recordValue(longValue);   
+                    that.histogram.recordValue(longValue);
                 }
             } catch (Exception e) {
                 log.warn("unable to fetch CPU usage", e);

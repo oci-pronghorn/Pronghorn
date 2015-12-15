@@ -8,7 +8,7 @@ import org.junit.Test;
 
 public class DataInputOutputTest {
 
-    private static final int testSpace = 100000;//100000000;
+    private static final int testSpace = 100000000;
     
     private static final PipeConfig<RawDataSchema> config = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 5, testSpace);
         
@@ -29,13 +29,14 @@ public class DataInputOutputTest {
     
     private int testIntValueGenerator(Random r, int seed) {
         
-        int powOf2 = seed & 0x1F;
-        int range = (1<<powOf2);
-        int maskValue = range-1;
-                
-        int testValue =   ((r.nextInt()&maskValue) | range );
+//        int powOf2 = seed & 0x1F;
+//        int range = (1<<powOf2);
+//        int maskValue = range-1;
+//                
+//        int testValue =   ((r.nextInt()&maskValue) | range );
         
-        //System.out.println(testValue);
+        int testValue = r.nextInt();
+       // System.out.println(testValue);
         return testValue;
     }
     
