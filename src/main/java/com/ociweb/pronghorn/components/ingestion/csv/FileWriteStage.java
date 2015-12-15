@@ -47,7 +47,8 @@ public class FileWriteStage extends PronghornStage {
 	            if (msgId<0) {  	
 	                //Pipe.releaseReads(inputRing);
 	                //Pipe.confirmLowLevelRead(inputRing, msgSize);
-                    Pipe.dump(inputRing);
+	                Pipe.publishWorkingTailPosition(inputRing, Pipe.headPosition(inputRing));
+	                
 	                Pipe.releaseAllBatchedReads(inputRing);
 	            	assert(Pipe.contentRemaining(inputRing)==0) : "still has content to write";
 	            	requestShutdown();
