@@ -1,10 +1,9 @@
 package com.ociweb.pronghorn.pipe;
 
 import static com.ociweb.pronghorn.pipe.Pipe.addByteArray;
-import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
 import static com.ociweb.pronghorn.pipe.Pipe.blobMask;
+import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
 import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
-import static com.ociweb.pronghorn.pipe.Pipe.dump;
 import static com.ociweb.pronghorn.pipe.Pipe.headPosition;
 import static com.ociweb.pronghorn.pipe.Pipe.publishWrites;
 import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnHead;
@@ -24,10 +23,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Ignore;
 import org.junit.Test;
-
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeConfig;
 
 public class RingBufferTest {
 
@@ -49,7 +44,7 @@ public class RingBufferTest {
         int testInt = 7;
         
         //clear out the ring buffer
-        dump(ring);
+        Pipe.publishWorkingTailPosition(ring, Pipe.headPosition(ring));
         
         //write one integer to the ring buffer
         Pipe.addIntValue(testInt, ring);       

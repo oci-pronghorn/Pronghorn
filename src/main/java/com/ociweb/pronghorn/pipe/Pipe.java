@@ -2232,12 +2232,7 @@ public final class Pipe<T extends MessageSchema> {
 
     //TODO: AAA rename as releaseReadLock
     public static <S extends MessageSchema> int releaseReads(Pipe<S> ring) {
-        
-//        
-//        if (ring.llWrite.llwConfirmedWrittenPosition != ring.slabRingTail.workingTailPos.value+1) {
-//            System.out.println("XXXXXXXXX "+ring.llWrite.llwConfirmedWrittenPosition+" vs "+ring.slabRingTail.workingTailPos.value);            
-//        }
-//                
+             
         int len = takeValue(ring);
         Pipe.markBytesReadBase(ring, len);
     	assert(Pipe.contentRemaining(ring)>=0);
@@ -2338,15 +2333,6 @@ public final class Pipe<T extends MessageSchema> {
 			ring.slabRingTail.tailPos.lazySet(ring.slabRingTail.workingTailPos.value= ring.slabRingHead.workingHeadPos.value);
 
     }
-
-    @Deprecated
-    public static <S extends MessageSchema> void dump(Pipe<S> rb) {
-
-        // move the removePosition up to the addPosition
-        // new Exception("WARNING THIS IS NO LONGER COMPATIBLE WITH PUMP CALLS").printStackTrace();
-        rb.slabRingTail.tailPos.lazySet(rb.slabRingTail.workingTailPos.value = rb.slabRingHead.workingHeadPos.value);
-    }
-
 
     /**
      * Low level API for publish
@@ -2552,7 +2538,11 @@ public final class Pipe<T extends MessageSchema> {
 	public static <S extends MessageSchema> void publishWorkingTailPosition(Pipe<S> ring, long workingTailPos) {
 		ring.slabRingTail.tailPos.lazySet(ring.slabRingTail.workingTailPos.value = workingTailPos);
 	}
-
+    
+	public static <S extends MessageSchema> void publishBlobWorkingTailPosition(Pipe<S> ring, int blobWorkingTailPos) {
+        ring.blobRingTail.bytesTailPos.value = (ring.blobRingTail.byteWorkingTailPos.value = blobWorkingTailPos);
+    }
+	
 	@Deprecated
 	public static <S extends MessageSchema> int primarySize(Pipe<S> ring) {
 		return ring.sizeOfSlabRing;
@@ -2682,8 +2672,13 @@ public final class Pipe<T extends MessageSchema> {
         PaddedInt.set(ring.blobRingTail.bytesTailPos, value);
     }
 
+    public static <S extends MessageSchema> int getBlobRingHeadPosition(Pipe<S> ring) {
+        return PaddedInt.get(ring.blobRingHead.bytesHeadPos);        
+    }
+    
+    @Deprecated
     public static <S extends MessageSchema> int bytesHeadPosition(Pipe<S> ring) {
-        return PaddedInt.get(ring.blobRingHead.bytesHeadPos);
+        return getBlobRingHeadPosition(ring);
     }
 
     public static <S extends MessageSchema> void setBytesHead(Pipe<S> ring, int value) {
