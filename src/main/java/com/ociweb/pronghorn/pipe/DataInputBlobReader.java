@@ -252,22 +252,28 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
      * @return
      */
     public long readPackedLong() {   
-            byte v = backing[byteMask & position++];
-            long accumulator = (~((long)(((v>>6)&1)-1)))&0xFFFFFFFFFFFFFF80l; 
-            return (v < 0) ? accumulator |(v & 0x7F) : readPackedLong((accumulator | v) << 7,backing,byteMask,this);
-    }
-    //TODO: may want to add an assert to ensure the position did not move further than we expected.
-    public int readPackedInt() {   
-        byte v = backing[byteMask & position++];
-        int accumulator = (~((int)(((v>>6)&1)-1)))&0xFFFFFF80; 
-        return (v < 0) ? accumulator |(v & 0x7F) : readPackedInt((accumulator | v) << 7,backing,byteMask,this);
+            return readPackedLong(this);
     }
 
-    public short readPackedShort() {
-        return (short)readPackedInt();
+    public int readPackedInt() {   
+        return readPackedInt(this);
     }
     
-    
+    public short readPackedShort() {
+        return (short)readPackedInt(this);
+    }
+
+    public static <S extends MessageSchema> long readPackedLong(DataInputBlobReader<S> that) {
+        byte v = that.backing[that.byteMask & that.position++];
+        long accumulator = (~((long)(((v>>6)&1)-1)))&0xFFFFFFFFFFFFFF80l; 
+        return (v < 0) ? accumulator |(v & 0x7F) : readPackedLong((accumulator | v) << 7,that.backing,that.byteMask,that);
+    }
+
+    public static <S extends MessageSchema> int readPackedInt(DataInputBlobReader<S> that) {
+        byte v = that.backing[that.byteMask & that.position++];
+        int accumulator = (~((int)(((v>>6)&1)-1)))&0xFFFFFF80; 
+        return (v < 0) ? accumulator |(v & 0x7F) : readPackedInt((accumulator | v) << 7,that.backing,that.byteMask,that);
+    }
     
     //recursive use of the stack turns out to be a good way to unroll this loop.
     private static <S extends MessageSchema> long readPackedLong(long a, byte[] buf, int mask, DataInputBlobReader<S> that) {

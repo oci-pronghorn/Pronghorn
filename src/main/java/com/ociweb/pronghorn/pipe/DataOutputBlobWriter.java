@@ -380,8 +380,8 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     
     private static final int writeIntSignedNeg(int value, byte[] buf, int mask, int pos) {
         // using absolute value avoids tricky word length issues
-        long absv = -value;
-
+        long absv = -(long)value;
+        final byte low7 = 0x7F;
         if (absv <= 0x0000000000000040) {
         } else {
             if (absv <= 0x0000000000002000) {
@@ -390,21 +390,21 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
                 } else {
                     if (absv <= 0x0000000008000000) {
                     } else {
-                        buf[mask & pos++] = (byte) (((value >>> 28) & 0x7F));
+                        buf[mask & pos++] = (byte) (((value >>> 28) & low7));
                     }
-                    buf[mask & pos++] = (byte) (((value >>> 21) & 0x7F));
+                    buf[mask & pos++] = (byte) (((value >>> 21) & low7));
                 }
-                buf[mask & pos++] = (byte) (((value >>> 14) & 0x7F));
+                buf[mask & pos++] = (byte) (((value >>> 14) & low7));
             }
-            buf[mask & pos++] = (byte) (((value >>> 7) & 0x7F));
+            buf[mask & pos++] = (byte) (((value >>> 7) & low7));
         }
-        buf[mask & pos++] = (byte) (((value & 0x7F) | 0x80));
+        buf[mask & pos++] = (byte) (((value & low7) | 0x80));
         return pos;
     }
        
     
     private static final int writeIntSignedPos(int value, byte[] buf, int mask, int pos) {
-
+        final byte low7 = 0x7F;
         if (value < 0x0000000000000040) {
         } else {
             if (value < 0x0000000000002000) {
@@ -413,22 +413,22 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
                 } else {
                     if (value < 0x0000000008000000) {
                     } else {                        
-                        buf[mask & pos++] = (byte) (((value >>> 28) & 0x7F));
+                        buf[mask & pos++] = (byte) (((value >>> 28) & low7));
                     }
-                    buf[mask & pos++] = (byte) (((value >>> 21) & 0x7F));
+                    buf[mask & pos++] = (byte) (((value >>> 21) & low7));
                 }
-                buf[mask & pos++] = (byte) (((value >>> 14) & 0x7F));
+                buf[mask & pos++] = (byte) (((value >>> 14) & low7));
             }
-            buf[mask & pos++] = (byte) (((value >>> 7) & 0x7F));
+            buf[mask & pos++] = (byte) (((value >>> 7) & low7));
         }
-        buf[mask & pos++] = (byte) (((value & 0x7F) | 0x80));
+        buf[mask & pos++] = (byte) (((value & low7) | 0x80));
         return pos;
     }
         
     private static final int writeLongSignedNeg(long value, byte[] buf, int mask, int pos) {
         // using absolute value avoids tricky word length issues
         long absv = -value;
-
+        final byte low7 = 0x7F;
         if (absv <= 0x0000000000000040l) {
         } else {
             if (absv <= 0x0000000000002000l) {
@@ -449,28 +449,28 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
                                         if (0 != lastBit) {
                                             buf[mask & pos++] =  (byte) lastBit;
                                         } 
-                                       buf[mask & pos++] =  (byte) (( ((int)(value >>> 56)) & 0x7F));
+                                       buf[mask & pos++] =  (byte) (( ((int)(value >>> 56)) & low7));
                                     }
-                                    buf[mask & pos++] = (byte) (( ((int)(value >>> 49)) & 0x7F));
+                                    buf[mask & pos++] = (byte) (( ((int)(value >>> 49)) & low7));
                                 }
-                                buf[mask & pos++] = (byte) (( ((int)(value >>> 42)) & 0x7F));
+                                buf[mask & pos++] = (byte) (( ((int)(value >>> 42)) & low7));
                             }
-                            buf[mask & pos++] = (byte) (( ((int)(value >>> 35)) & 0x7F));
+                            buf[mask & pos++] = (byte) (( ((int)(value >>> 35)) & low7));
                         }
-                        buf[mask & pos++] = (byte) (( ((int)(value >>> 28)) & 0x7F));
+                        buf[mask & pos++] = (byte) (( ((int)(value >>> 28)) & low7));
                     }
-                    buf[mask & pos++] = (byte) (( ((int)(value >>> 21)) & 0x7F));
+                    buf[mask & pos++] = (byte) (( ((int)(value >>> 21)) & low7));
                 }
-                buf[mask & pos++] = (byte) (( ((int)(value >>> 14)) & 0x7F));
+                buf[mask & pos++] = (byte) (( ((int)(value >>> 14)) & low7));
             }
-            buf[mask & pos++] = (byte) (( ((int)(value >>> 7)) & 0x7F));
+            buf[mask & pos++] = (byte) (( ((int)(value >>> 7)) & low7));
         }
-        buf[mask & pos++] = (byte) (( ((int)(value & 0x7F)) | 0x80));
+        buf[mask & pos++] = (byte) (( ((int)(value & low7)) | 0x80));
         return pos;
     }
 
     private static final int writeLongSignedPos(long value, byte[] buf, int mask, int pos) {
-
+        final byte low7 = 0x7F;
         if (value < 0x0000000000000040l) {
         } else {
             if (value < 0x0000000000002000l) {
@@ -489,25 +489,25 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
                                     } else {
                                         if (value < 0x4000000000000000l) {
                                         } else {
-                                            buf[mask & pos++] = (byte) (( ((int)(value >>> 63)) & 0x7F));
+                                            buf[mask & pos++] = (byte) (( ((int)(value >>> 63)) & low7));
                                         }
-                                        buf[mask & pos++] = (byte) (( ((int)(value >>> 56)) & 0x7F));
+                                        buf[mask & pos++] = (byte) (( ((int)(value >>> 56)) & low7));
                                     }
-                                    buf[mask & pos++] = (byte) (( ((int)(value >>> 49)) & 0x7F));
+                                    buf[mask & pos++] = (byte) (( ((int)(value >>> 49)) & low7));
                                 }
-                                buf[mask & pos++] = (byte) (( ((int)(value >>> 42)) & 0x7F));
+                                buf[mask & pos++] = (byte) (( ((int)(value >>> 42)) & low7));
                             }
-                            buf[mask & pos++] =(byte) (( ((int)(value >>> 35)) & 0x7F));
+                            buf[mask & pos++] =(byte) (( ((int)(value >>> 35)) & low7));
                         }
-                        buf[mask & pos++] = (byte) (( ((int)(value >>> 28)) & 0x7F));
+                        buf[mask & pos++] = (byte) (( ((int)(value >>> 28)) & low7));
                     }
-                    buf[mask & pos++] = (byte) (( ((int)(value >>> 21)) & 0x7F));
+                    buf[mask & pos++] = (byte) (( ((int)(value >>> 21)) & low7));
                 }
-                buf[mask & pos++] = (byte) (( ((int)(value >>> 14)) & 0x7F));
+                buf[mask & pos++] = (byte) (( ((int)(value >>> 14)) & low7));
             }
-            buf[mask & pos++] = (byte) (( ((int)(value >>> 7)) & 0x7F));
+            buf[mask & pos++] = (byte) (( ((int)(value >>> 7)) & low7));
         }
-        buf[mask & pos++] = (byte) (( ((int)(value & 0x7F)) | 0x80));
+        buf[mask & pos++] = (byte) (( ((int)(value & low7)) | 0x80));
         return pos;
     }
     
