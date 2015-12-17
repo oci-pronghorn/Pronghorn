@@ -2006,7 +2006,7 @@ public final class Pipe<T extends MessageSchema> {
     
     //must be called by low-level API when starting a new message
     public static <S extends MessageSchema> int addMsgIdx(Pipe<S> rb, int msgIdx) {
-         assert(rb.slabRingHead.workingHeadPos.value <= ((long)rb.mask)+Pipe.tailPosition(rb)) : 
+         assert(rb.slabRingHead.workingHeadPos.value <= ((long)rb.sizeOfSlabRing)+Pipe.tailPosition(rb)) : 
                 "Tail is at: "+Pipe.tailPosition(rb)+" and Head at: "+rb.slabRingHead.workingHeadPos.value+" but they are too far apart because the ring is only of size: "+rb.sizeOfSlabRing+
                 "\n Double check the calls to confirmLowLevelWrite that the right size is used, and confirm that hasRoomForWrite is called.  ";
          
