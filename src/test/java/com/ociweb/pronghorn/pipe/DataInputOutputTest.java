@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.pipe;
 
 import static org.junit.Assert.*;
 
+import java.io.IOException;
 import java.util.Random;
 
 import org.junit.Test;
@@ -152,6 +153,75 @@ public class DataInputOutputTest {
             if (expected!=actual) {
                 String expBinaryString = Long.toBinaryString(expected);
                 String actBinaryString = Long.toBinaryString(actual);
+                while (actBinaryString.length()<expBinaryString.length()) {
+                    actBinaryString = '0'+actBinaryString;
+                }
+                
+     //           System.err.println("Expected:"+expBinaryString);
+     //           System.err.println("Actual  :"+actBinaryString);                
+                assertEquals(expected, actual);
+            }
+        }
+        duration = System.nanoTime()-start;
+        long nsPerRead = duration/testSize;
+  //      System.out.println(nsPerRead+"ns per read int, ints per second "+(1000l*1000l*1000l/nsPerRead));
+       
+        
+    }
+    
+    @Test
+    public void testPackedChars() {
+        int testSize = testSpace/50;
+        Random r;
+        Pipe<RawDataSchema> testPipe = new Pipe<RawDataSchema>(config);        
+        
+        testPipe.initBuffers();
+        
+        DataOutputBlobWriter<RawDataSchema> out = new DataOutputBlobWriter<>(testPipe);
+        DataInputBlobReader<RawDataSchema> in = new DataInputBlobReader<>(testPipe);
+        
+        
+        assertTrue(PipeWriter.tryWriteFragment(testPipe, 0));
+        
+         
+        out.openField();
+        
+        r = new Random(101);
+        long start = System.nanoTime();
+        for(int i = 0; i<testSize; i++) {
+            out.writePackedString(Integer.toHexString(testIntValueGenerator(r,i)));
+        }
+        long duration = System.nanoTime()-start;
+        long nsPerWrite = duration/testSize;
+                
+        
+        int length = out.closeHighLevelField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+        
+        float compression = 1f-(length/(float)(testSize*4));
+   //     System.out.println(nsPerWrite+"ns per written int, ints per second "+(1000l*1000l*1000l/nsPerWrite)+" compression "+compression);
+        
+        PipeWriter.publishWrites(testPipe);
+        
+        assertTrue(PipeReader.tryReadFragment(testPipe));
+
+        
+        in.openHighLevelAPIField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+
+        r = new Random(101);
+        start = System.nanoTime();
+        for(int i = 0; i<testSize; i++) {
+            String expected = Integer.toHexString(testIntValueGenerator(r,i));
+            String actual = null;
+            try {
+                actual = in.readPackedChars(new StringBuilder()).toString();
+            } catch (IOException e) {
+                e.printStackTrace();
+                fail();
+            }
+            
+            if (!expected.equals(actual)) {
+                String expBinaryString = expected;
+                String actBinaryString = actual;
                 while (actBinaryString.length()<expBinaryString.length()) {
                     actBinaryString = '0'+actBinaryString;
                 }

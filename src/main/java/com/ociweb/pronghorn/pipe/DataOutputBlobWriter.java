@@ -320,6 +320,39 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
 
+    ///////////////////////////////////////////////
+    ///New idea: Packed char sequences
+    ///////////////////////////////////////////////
+    
+    public final void writePackedString(CharSequence text) {
+        writePackedChars(this,text);
+    }
+    
+    public static void writePackedChars(DataOutputBlobWriter that, CharSequence s) {
+        that.activePosition = writePackedCharsImpl(that, s, s.length(), 0, that.activePosition, that.byteBuffer, that.byteMask);
+    }
+
+    private static int writePackedCharsImpl(DataOutputBlobWriter that, CharSequence source, int sourceLength, int sourcePos, int targetPos, byte[] target, int targetMask) {     
+        targetPos = writeIntSignedPos(sourceLength, target, targetMask, targetPos);   
+        while (sourcePos < sourceLength) {// 7, 14, 21
+            targetPos = writeIntSignedPos((int) 0x7FFF & source.charAt(sourcePos++), target, targetMask, targetPos);            
+        }
+        return targetPos;
+    } 
+    
+    public static void writePackedChars(DataOutputBlobWriter that, byte[] source, int sourceMask, int sourceLength, int sourcePos) {
+        that.activePosition = writePackedCharsImpl(that, source, sourceMask, sourceLength, sourcePos, that.activePosition, that.byteBuffer, that.byteMask);
+    }
+    
+    private static int writePackedCharsImpl(DataOutputBlobWriter that, byte[] source, int sourceMask, int sourceLength, int sourcePos, int targetPos, byte[] target, int targetMask) {
+        targetPos = writeIntSignedPos(sourceLength, target, targetMask, targetPos);        
+        while (sourcePos < sourceLength) {
+            targetPos = writeIntSignedPos((int) source[sourceMask & sourcePos++], target, targetMask, targetPos);            
+        }
+        return targetPos;
+    } 
+    
+    
     ///////////////////////////////////////////////////////////////////////////////////
     //Support for packed values
     //////////////////////////////////////////////////////////////////////////////////
@@ -340,9 +373,9 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     
     public static final void writePackedLong(DataOutputBlobWriter that, long value) {
         if (value >=0) {
-            that.activePosition = writeLongSignedPos(value, that.byteBuffer, that.byteMask, that.activePosition);
+            that.activePosition = writeLongSignedPos(value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
         } else {
-            that.activePosition = writeLongSignedNeg(value, that.byteBuffer, that.byteMask, that.activePosition);
+            that.activePosition = writeLongSignedNeg(value, -value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
         }
     }
     
@@ -364,7 +397,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     
     public static final void writePackedULong(DataOutputBlobWriter that, long value) {
         assert(value>=0);
-        that.activePosition = writeLongSignedPos(value, that.byteBuffer, that.byteMask, that.activePosition);
+        that.activePosition = writeLongSignedPos(value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
     }
     
     public static final void writePackedUInt(DataOutputBlobWriter that, int value) {
@@ -425,25 +458,25 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
         
-    private static final int writeLongSignedNeg(long value, byte[] buf, int mask, int pos) {
+    private static final int writeLongSignedNeg(long value, long absv, byte[] buf, int mask, int pos, byte low7) {
         // using absolute value avoids tricky word length issues
-        long absv = -value;
-        final byte low7 = 0x7F;
-        if (absv <= 0x0000000000000040l) {
+        //long absv = -value;
+        //final byte low7 = 0x7F;
+        if (absv <= 0x0000000000000040) {
         } else {
-            if (absv <= 0x0000000000002000l) {
+            if (absv <= 0x0000000000002000) {
             } else {
-                if (absv <= 0x0000000000100000l) {
+                if (absv <= 0x0000000000100000) {
                 } else {
-                    if (absv <= 0x0000000008000000l) {
+                    if (absv <= 0x0000000008000000) {
                     } else {
-                        if (absv <= 0x0000000400000000l) {
+                        if (absv <= 0x0000000400000000L) {
                         } else {
-                            if (absv <= 0x0000020000000000l) {
+                            if (absv <= 0x0000020000000000L) {
                             } else {
-                                if (absv <= 0x0001000000000000l) {
+                                if (absv <= 0x0001000000000000L) {
                                 } else {
-                                    if (absv <= 0x0080000000000000l) { 
+                                    if (absv <= 0x0080000000000000L) { 
                                     } else {
                                         long lastBit = value>>>63;
                                         if (0 != lastBit) {
@@ -469,25 +502,25 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
 
-    private static final int writeLongSignedPos(long value, byte[] buf, int mask, int pos) {
-        final byte low7 = 0x7F;
-        if (value < 0x0000000000000040l) {
+    private static final int writeLongSignedPos(long value, byte[] buf, int mask, int pos, final byte low7) {
+
+        if (value < 0x0000000000000040) {
         } else {
-            if (value < 0x0000000000002000l) {
+            if (value < 0x0000000000002000) {
             } else {
-                if (value < 0x0000000000100000l) {
+                if (value < 0x0000000000100000) {
                 } else {
-                    if (value < 0x0000000008000000l) {
+                    if (value < 0x0000000008000000) {
                     } else {
-                        if (value < 0x0000000400000000l) {
+                        if (value < 0x0000000400000000L) {
                         } else {
-                            if (value < 0x0000020000000000l) {
+                            if (value < 0x0000020000000000L) {
                             } else {
-                                if (value < 0x0001000000000000l) {
+                                if (value < 0x0001000000000000L) {
                                 } else {
-                                    if (value < 0x0080000000000000l) {
+                                    if (value < 0x0080000000000000L) {
                                     } else {
-                                        if (value < 0x4000000000000000l) {
+                                        if (value < 0x4000000000000000L) {
                                         } else {
                                             buf[mask & pos++] = (byte) (( ((int)(value >>> 63)) & low7));
                                         }
