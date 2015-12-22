@@ -69,17 +69,18 @@ public class PipeConfig<T extends MessageSchema> {
         
         int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<primaryBits);
         int secondaryMinSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
-        this.byteBits = 0==maximumLenghOfVariableLengthFields? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
+        this.byteBits = ((0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce))? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
                 
         this.byteConst = null;
         this.schema = messageSchema;
         
-        validate();
+        validate(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields);
     }
     
-    private void validate() {
+    private void validate(int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
         if (byteBits>31) {
-            throw new UnsupportedOperationException("Unable to support blob data larger than 1GB Reduce either the data size or count of desired message");
+            throw new UnsupportedOperationException("Unable to support blob data larger than 1GB Reduce either the data size or count of desired message msgs:"+
+                    minimumFragmentsOnRing+" varLen:"+maximumLenghOfVariableLengthFields);
         }
         
         if (primaryBits>31) {
@@ -96,11 +97,11 @@ public class PipeConfig<T extends MessageSchema> {
         
         int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<primaryBits);
         int secondaryMinSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
-        this.byteBits = 0==maximumLenghOfVariableLengthFields? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
+        this.byteBits = ((0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce))? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
 
         this.byteConst = byteConst;
         this.schema = messageSchema;
-        validate();
+        validate(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields );
      }
 	
 	public PipeConfig<T> grow2x(){
