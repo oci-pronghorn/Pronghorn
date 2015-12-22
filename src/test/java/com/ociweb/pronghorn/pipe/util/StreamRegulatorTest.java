@@ -50,7 +50,10 @@ public class StreamRegulatorTest {
             long writeCount = 0;
             long readCount = 0;
             
-            final long specialLongValue = 13951599373648L;
+            final long specialLongValue = Long.MIN_VALUE;
+            final int specialIntValue = Integer.MIN_VALUE;
+            assertEquals(Integer.MIN_VALUE, 0-Integer.MIN_VALUE);
+            assertEquals(Long.MIN_VALUE, 0-Long.MIN_VALUE);
             
             long startTime = System.currentTimeMillis();
             while (a>0 || b>0) {
@@ -70,6 +73,7 @@ public class StreamRegulatorTest {
                         out.writePackedInt((int)writeCount);
                         
                         out.writePackedLong(specialLongValue);
+                        out.writePackedInt(specialIntValue);
                         
                         out.writeUTF(Long.toHexString(writeCount));
                         
@@ -93,6 +97,7 @@ public class StreamRegulatorTest {
                         assertEquals((int)readCount, in.readPackedInt());
                         
                         assertEquals(specialLongValue, in.readPackedLong());
+                        assertEquals(specialIntValue, in.readPackedInt());
                         
                         assertEquals(Long.toHexString(readCount), in.readUTF());
                         

@@ -1998,6 +1998,11 @@ public final class Pipe<T extends MessageSchema> {
          assert(rb.slabRingHead.workingHeadPos.value <= rb.mask+Pipe.tailPosition(rb));
 		 setValue(rb.slabRing,rb.mask,rb.slabRingHead.workingHeadPos.value++,value);
 	}
+    
+    public static <S extends MessageSchema> void setIntValue(int value, Pipe<S> rb, long position) {
+        assert(rb.slabRingHead.workingHeadPos.value <= rb.mask+Pipe.tailPosition(rb));
+        setValue(rb.slabRing,rb.mask,position,value);
+   }
 
     //
     //TODO: URGENT, A, It may be much nicer to add a method called 'beginMessage' which does only the base work and then moves the cursor forward one.
