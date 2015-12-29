@@ -142,8 +142,8 @@ public class GraphManager {
 		return clone;
 	}
 	
-   //TODO: We may want to deprecate this	
-   public static PronghornStage[] getStages(GraphManager m) {
+   @Deprecated	
+   static PronghornStage[] getStages(GraphManager m) {
         return m.stageIdToStage;
     }
    
@@ -197,7 +197,7 @@ public class GraphManager {
        throw new UnsupportedOperationException("Invalid configuration. Unable to find requested ordinal "+ordinal);
     }
 	
-	public GraphManager cloneStagesWithNotaKeyValue(GraphManager m, Object key, Object value) {
+	public static GraphManager cloneStagesWithNotaKeyValue(GraphManager m, Object key, Object value) {
 		GraphManager clone = new GraphManager();
 		//register each stage
 		int i = m.stageIdToStage.length;
@@ -322,7 +322,7 @@ public class GraphManager {
 		if (idx>=target.length) {
 			int limit = (1+idx)*2;
 			result = Arrays.copyOf(target, limit); //double the array
-			Arrays.fill(result, target.length, limit-1, -1);
+			Arrays.fill(result, target.length, limit, -1);
 		}
 		assert(-1==result[idx]) : "duplicate assignment detected, see stack and double check all the stages added to the graph.";
 		

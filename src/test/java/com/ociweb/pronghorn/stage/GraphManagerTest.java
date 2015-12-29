@@ -13,7 +13,39 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class GraphManagerTest {
 
-	
+    @Test
+    public void notaTests() {
+    
+        GraphManager gm = new GraphManager();
+        
+        Pipe rb1 = new Pipe(new PipeConfig(RawDataSchema.instance));
+        rb1.initBuffers();
+        
+        Pipe rb2 = new Pipe(new PipeConfig(RawDataSchema.instance));
+        rb2.initBuffers();
+        
+        PronghornStage a = new SimpleOut(gm,rb1); 
+        GraphManager.addNota(gm, GraphManager.UNSCHEDULED, GraphManager.UNSCHEDULED, a);
+        PronghornStage b = new SimpleInOut(gm,rb1,rb2); 
+        GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 20000, b);
+        PronghornStage c = new SimpleIn(gm,rb2); 
+        GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 10000, c);
+        
+        
+        assertEquals(a, GraphManager.getStageWithNotaKey(gm, GraphManager.UNSCHEDULED, 1));
+        
+        try{
+         GraphManager.getStageWithNotaKey(gm, GraphManager.UNSCHEDULED, 2);
+         fail("should not have found");
+        } catch (UnsupportedOperationException uoe) {
+            //ok
+        }
+                
+        assertEquals(2, GraphManager.countStagesWithNotaKey(gm, GraphManager.SCHEDULE_RATE));
+        GraphManager graph = GraphManager.cloneStagesWithNotaKeyValue(gm, GraphManager.SCHEDULE_RATE, 20000);
+        assertEquals(1, GraphManager.countStagesWithNotaKey(graph, GraphManager.SCHEDULE_RATE));
+        
+    }
 	
 	@Test
 	public void constructionOfSimpleGraph() {
@@ -58,7 +90,7 @@ public class GraphManagerTest {
 		
 		assertTrue(GraphManager.mayHaveUpstreamData(gm, c.stageId)); //this is true because the first ring buffer has 1 integer
 				
-		Pipe.releaseReads(rb1);
+		Pipe.releaseReadLock(rb1);
 		GraphManager.setStateToStopping(gm, a.stageId);
 		GraphManager.setStateToStopping(gm, b.stageId);
 
