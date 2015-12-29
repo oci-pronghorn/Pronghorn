@@ -1,0 +1,561 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+  
+   <template name="001" id="10001">
+        <int64 name="value001"  id="1"/>
+   </template>
+   
+   <template name="002" id="10002">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+   </template>
+   
+   <template name="003" id="10003">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+   </template>
+      
+   <template name="004" id="10004">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+   </template>
+      
+   <template name="005" id="10005">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+   </template>
+      
+   <template name="006" id="10006">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+   </template>
+      
+   <template name="007" id="10007">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+   </template>
+         
+   <template name="008" id="10008">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+   </template>
+         
+   <template name="009" id="10009">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>        
+   </template>
+         
+   <template name="010" id="10010">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        
+   </template>
+         
+   <template name="011" id="10011">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>        
+   </template>
+   
+      <template name="012" id="10012">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>     
+        <int64 name="value012"  id="12"/>       
+   </template>  
+   
+      <template name="013" id="10013">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/>     
+   </template>  
+   
+      <template name="014" id="10014">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>      
+   </template>  
+      
+   <template name="015" id="10015">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+   </template>  
+         
+   <template name="016" id="10016">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+   </template>  
+         
+   <template name="017" id="10017">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+   </template>  
+         
+   <template name="018" id="10018">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+        <int64 name="value018"  id="18"/>
+   </template>  
+         
+   <template name="019" id="10019">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+        <int64 name="value018"  id="18"/>
+        <int64 name="value019"  id="19"/>
+   </template>  
+         
+   <template name="020" id="10020">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+        <int64 name="value018"  id="18"/>
+        <int64 name="value019"  id="19"/>
+        <int64 name="value020"  id="20"/>
+   </template>  
+         
+   <template name="021" id="10021">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+        <int64 name="value018"  id="18"/>
+        <int64 name="value019"  id="19"/>
+        <int64 name="value020"  id="20"/>
+        <int64 name="value021"  id="21"/>
+   </template>  
+         
+   <template name="022" id="10022">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+        <int64 name="value018"  id="18"/>
+        <int64 name="value019"  id="19"/>
+        <int64 name="value020"  id="20"/>
+        <int64 name="value021"  id="21"/>
+        <int64 name="value022"  id="22"/>
+   </template>  
+         
+   <template name="023" id="10023">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+        <int64 name="value018"  id="18"/>
+        <int64 name="value019"  id="19"/>
+        <int64 name="value020"  id="20"/>
+        <int64 name="value021"  id="21"/>
+        <int64 name="value022"  id="22"/>
+        <int64 name="value023"  id="23"/>
+   </template>  
+         
+   <template name="024" id="10024">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+        <int64 name="value018"  id="18"/>
+        <int64 name="value019"  id="19"/>
+        <int64 name="value020"  id="20"/>
+        <int64 name="value021"  id="21"/>
+        <int64 name="value022"  id="22"/>
+        <int64 name="value023"  id="23"/>
+        <int64 name="value024"  id="24"/>
+   </template>  
+         
+   <template name="025" id="10025">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+        <int64 name="value018"  id="18"/>
+        <int64 name="value019"  id="19"/>
+        <int64 name="value020"  id="20"/>
+        <int64 name="value021"  id="21"/>
+        <int64 name="value022"  id="22"/>
+        <int64 name="value023"  id="23"/>
+        <int64 name="value024"  id="24"/>
+        <int64 name="value025"  id="25"/> 
+   </template>  
+         
+   <template name="026" id="10026">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+        <int64 name="value018"  id="18"/>
+        <int64 name="value019"  id="19"/>
+        <int64 name="value020"  id="20"/>
+        <int64 name="value021"  id="21"/>
+        <int64 name="value022"  id="22"/>
+        <int64 name="value023"  id="23"/>
+        <int64 name="value024"  id="24"/>
+        <int64 name="value025"  id="25"/>   
+        <int64 name="value026"  id="26"/>
+   </template>  
+         
+   <template name="027" id="10027">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+        <int64 name="value018"  id="18"/>
+        <int64 name="value019"  id="19"/>
+        <int64 name="value020"  id="20"/>
+        <int64 name="value021"  id="21"/>
+        <int64 name="value022"  id="22"/>
+        <int64 name="value023"  id="23"/>
+        <int64 name="value024"  id="24"/>
+        <int64 name="value025"  id="25"/>   
+        <int64 name="value026"  id="26"/> 
+        <int64 name="value027"  id="27"/>
+   </template>  
+         
+   <template name="028" id="10028">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+        <int64 name="value018"  id="18"/>
+        <int64 name="value019"  id="19"/>
+        <int64 name="value020"  id="20"/>
+        <int64 name="value021"  id="21"/>
+        <int64 name="value022"  id="22"/>
+        <int64 name="value023"  id="23"/>
+        <int64 name="value024"  id="24"/>
+        <int64 name="value025"  id="25"/>   
+        <int64 name="value026"  id="26"/> 
+        <int64 name="value027"  id="27"/> 
+        <int64 name="value028"  id="28"/>
+   </template>  
+         
+   <template name="029" id="10029">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+        <int64 name="value018"  id="18"/>
+        <int64 name="value019"  id="19"/>
+        <int64 name="value020"  id="20"/>
+        <int64 name="value021"  id="21"/>
+        <int64 name="value022"  id="22"/>
+        <int64 name="value023"  id="23"/>
+        <int64 name="value024"  id="24"/>
+        <int64 name="value025"  id="25"/>   
+        <int64 name="value026"  id="26"/> 
+        <int64 name="value027"  id="27"/> 
+        <int64 name="value028"  id="28"/>   
+        <int64 name="value029"  id="29"/>
+   </template>  
+         
+   <template name="030" id="10030">
+        <int64 name="value001"  id="1"/>
+        <int64 name="value002"  id="2"/>
+        <int64 name="value003"  id="3"/>
+        <int64 name="value004"  id="4"/>
+        <int64 name="value005"  id="5"/>
+        <int64 name="value006"  id="6"/>
+        <int64 name="value007"  id="7"/>
+        <int64 name="value008"  id="8"/>
+        <int64 name="value009"  id="9"/>
+        <int64 name="value010"  id="10"/>
+        <int64 name="value011"  id="11"/>   
+        <int64 name="value012"  id="12"/> 
+        <int64 name="value013"  id="13"/> 
+        <int64 name="value014"  id="14"/>   
+        <int64 name="value015"  id="15"/>
+        <int64 name="value016"  id="16"/>
+        <int64 name="value017"  id="17"/>
+        <int64 name="value018"  id="18"/>
+        <int64 name="value019"  id="19"/>
+        <int64 name="value020"  id="20"/>
+        <int64 name="value021"  id="21"/>
+        <int64 name="value022"  id="22"/>
+        <int64 name="value023"  id="23"/>
+        <int64 name="value024"  id="24"/>
+        <int64 name="value025"  id="25"/>   
+        <int64 name="value026"  id="26"/> 
+        <int64 name="value027"  id="27"/> 
+        <int64 name="value028"  id="28"/>   
+        <int64 name="value029"  id="29"/> 
+        <int64 name="value030"  id="30"/>
+   </template>  
+ 
+   
+</templates>

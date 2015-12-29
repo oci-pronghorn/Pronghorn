@@ -151,11 +151,13 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
     		Appendables.appendValue(target,"Total Bytes:",totalBytes," (slab and blob)\n");
     		Appendables.appendValue(target,"Total Duration:",duration," ms\n");       
     		    		
+    		if (0!=totalMsg) {
+        		Appendables.appendValue(target,"Avg msg size:",totalBytes/totalMsg,"\n");
+        		long msgPerMs = totalMsg/duration;
+        		Appendables.appendValue(target, "MsgPerMs:",msgPerMs);
+    		}
     		
-    		Appendables.appendValue(target,"Avg msg size:",totalBytes/totalMsg,"\n");
-    		long msgPerMs = totalMsg/duration;
     		long bitsPerMs = (8*totalBytes)/(duration*1000);
-    		Appendables.appendValue(target, "MsgPerMs:",msgPerMs);
     		Appendables.appendValue(target, " MBitsPerSec:",bitsPerMs,"\n");
     		
     		return totalMsg>0;

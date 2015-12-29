@@ -293,7 +293,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		       return;
 		    }
 		    
-			stage.run();
+		    stage.run();
 			
 		} while (!isShuttingDown);
 	}
