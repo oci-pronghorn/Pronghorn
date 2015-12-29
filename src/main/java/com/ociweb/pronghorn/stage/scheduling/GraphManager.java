@@ -363,7 +363,7 @@ public class GraphManager {
 		if (idx>=target.length) {
 			int limit = (1+idx)*2;
 			result = Arrays.copyOf(target, limit); //double the array
-			Arrays.fill(result, target.length, limit-1, (byte)-1);
+			Arrays.fill(result, target.length, limit, (byte)-1);
 		}
 		
 		assert(value >= result[idx]) : "byte values are only allowed to move forward, check the state rules. Found "+result[idx]+" expected "+(value-1);
