@@ -622,26 +622,20 @@ public class GraphManager {
 	 * @return
 	 */
 	public static Object getNota(GraphManager m, PronghornStage stage, Object key, Object defaultValue) {
-		int idx = m.stageIdToNotasBeginIdx[stage.stageId];
-		int notaId;
-		while(-1 != (notaId = m.multNotaIds[idx])) {
-			if (m.notaIdToKey[notaId].equals(key)) {
-				return m.notaIdToValue[notaId];
-			}
-			idx++;
-		}		
-		return defaultValue;
+	    return (null==stage) ? defaultValue : getNota(m, stage.stageId, key, defaultValue);
 	}
 	
 	public static Object getNota(GraphManager m, int stageId, Object key, Object defaultValue) {
-		int idx = m.stageIdToNotasBeginIdx[stageId];
-		int notaId;
-		while(-1 != (notaId = m.multNotaIds[idx])) {
-			if (m.notaIdToKey[notaId].equals(key)) {
-				return m.notaIdToValue[notaId];
-			}
-			idx++;
-		}		
+	    if (stageId>=0) {
+    		int idx = m.stageIdToNotasBeginIdx[stageId];
+    		int notaId;
+    		while(-1 != (notaId = m.multNotaIds[idx])) {
+    			if (m.notaIdToKey[notaId].equals(key)) {
+    				return m.notaIdToValue[notaId];
+    			}
+    			idx++;
+    		}
+	    }
 		return defaultValue;
 	}
 	
@@ -670,11 +664,23 @@ public class GraphManager {
 	}
 	
 	public static PronghornStage getRingProducer(GraphManager gm, int ringId) {
-		return  gm.stageIdToStage[gm.ringIdToStages[ringId*2]];
+		int stageId = gm.ringIdToStages[ringId*2];
+		if (stageId<0) {
+		    throw new UnsupportedOperationException("Can not find input stage writing to pipe "+ringId+". Check graph construction.");
+		}
+        return  gm.stageIdToStage[stageId];
 	}
 	
+   public static int getRingProducerStageId(GraphManager gm, int ringId) {
+        return gm.ringIdToStages[ringId*2];
+    }
+	
 	public static PronghornStage getRingConsumer(GraphManager gm, int ringId) {
-		return  gm.stageIdToStage[gm.ringIdToStages[(ringId*2)+1]];
+		int stageId = gm.ringIdToStages[(ringId*2)+1];
+	    if (stageId<0) {
+	            throw new UnsupportedOperationException("Can not find output stage reading from  "+ringId+" Check graph construction.");
+	    }
+        return  gm.stageIdToStage[stageId];
 	}
 	
 
@@ -1055,7 +1061,7 @@ public class GraphManager {
 	}
 
 	private static boolean ringHoldsMonitorData(GraphManager gm, Pipe ringBuffer) {
-		return null != GraphManager.getNota(gm, GraphManager.getRingProducer(gm, ringBuffer.ringId), GraphManager.MONITOR, null);
+		return null != GraphManager.getNota(gm, GraphManager.getRingProducerStageId(gm, ringBuffer.ringId), GraphManager.MONITOR, null);
 	}
 	
     private static boolean stageForMonitorData(GraphManager gm, PronghornStage stage) {
