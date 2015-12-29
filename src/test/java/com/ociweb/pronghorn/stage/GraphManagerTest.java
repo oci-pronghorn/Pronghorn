@@ -42,8 +42,22 @@ public class GraphManagerTest {
         }
                 
         assertEquals(2, GraphManager.countStagesWithNotaKey(gm, GraphManager.SCHEDULE_RATE));
-        GraphManager graph = GraphManager.cloneStagesWithNotaKeyValue(gm, GraphManager.SCHEDULE_RATE, 20000);
-        assertEquals(1, GraphManager.countStagesWithNotaKey(graph, GraphManager.SCHEDULE_RATE));
+        assertEquals(1, GraphManager.countStagesWithNotaKey(GraphManager.cloneStagesWithNotaKeyValue(gm, GraphManager.SCHEDULE_RATE, 20000), GraphManager.SCHEDULE_RATE));
+        assertEquals(2, GraphManager.countStagesWithNotaKey(GraphManager.cloneStagesWithNotaKey(gm, GraphManager.SCHEDULE_RATE), GraphManager.SCHEDULE_RATE));
+        
+        
+        GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 30000, b); //change value
+        assertEquals(0, GraphManager.countStagesWithNotaKey(GraphManager.cloneStagesWithNotaKeyValue(gm, GraphManager.SCHEDULE_RATE, 20000), GraphManager.SCHEDULE_RATE));
+        
+        //force Nota array growth, must be larger than 34
+        int j = 34;
+        while (--j>=0) {
+            GraphManager.addNota(gm, Integer.toHexString(j), j, a);
+        }
+        
+        //add same nota to all 3
+        GraphManager.addNota(gm, "ANota", 70000, a, b, c);
+        assertEquals(3, GraphManager.countStagesWithNotaKey(gm, "ANota"));
         
     }
 	

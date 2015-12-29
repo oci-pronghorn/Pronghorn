@@ -125,7 +125,7 @@ public class GraphManager {
 		return clone;
 	}
 	
-	public GraphManager cloneStagesWithNotaKey(GraphManager m, Object key) {
+	public static GraphManager cloneStagesWithNotaKey(GraphManager m, Object key) {
 		GraphManager clone = new GraphManager();
 		//register each stage
 		int i = m.stageIdToStage.length;
@@ -133,7 +133,7 @@ public class GraphManager {
 			PronghornStage stage = m.stageIdToStage[i];
 			if (null!=stage) {
 				//copy this stage if it has the required key
-				if (this != getNota(m, stage, key, this)) {
+				if (m != getNota(m, stage, key, m)) {
 					copyStage(m, clone, stage);
 					copyNotasForStage(m, clone, stage);
 				}
@@ -147,8 +147,8 @@ public class GraphManager {
         return m.stageIdToStage;
     }
    
-   //TODO: We may want to deprecate this    
-   public static int[] getInputRingIdsForStage(GraphManager gm, int stageId) {
+   @Deprecated    
+   static int[] getInputRingIdsForStage(GraphManager gm, int stageId) {
 
        int[] ringIds = new int[INIT_RINGS];
        int index = gm.stageIdToInputsBeginIdx[stageId];
