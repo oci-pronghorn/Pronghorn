@@ -562,16 +562,19 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	    }
 	}
 
-	private static void collectConsumedCountOfBytes(Pipe pipe) {
+	private static int collectConsumedCountOfBytes(Pipe pipe) {
 	    if (pipe.ringWalker.nextWorkingTail>0) { //first iteration it will not have a valid position
 	        //must grab this value now, its the last chance before we allow it to be written over.
 	        //these are all accumulated from every fragment, messages many have many fragments.
-	        Pipe.addAndGetBytesWorkingTailPosition(pipe, bytesConsumed(pipe));
-	    }
+	        int bytesConsumed = bytesConsumed(pipe);
+	        Pipe.addAndGetBytesWorkingTailPosition(pipe, bytesConsumed);
+	        return bytesConsumed;
+	    } 
+	    return 0;
 	}
 
     private static int bytesConsumed(Pipe pipe) {
-        return Pipe.primaryBuffer(pipe)[pipe.mask & (int)(pipe.ringWalker.nextWorkingTail-1)];
+        return Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.nextWorkingTail-1)];
     }
 
 	public static void releaseReadLock(Pipe pipe) {
@@ -582,7 +585,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	    if (FieldReferenceOffsetManager.isTemplateStart(Pipe.from(pipe), pipe.ringWalker.nextCursor)) {
             assert(Pipe.isReplaying(pipe) || pipe.ringWalker.nextWorkingTail!=Pipe.getWorkingTailPosition(pipe)) : "Only call release once per message";
             Pipe.markBytesReadBase(pipe); //moves us forward so we can read the next fragment/message
-            batchedReleasePublish(pipe, Pipe.getWorkingBlobRingTailPosition(pipe), pipe.ringWalker.nextWorkingTail);
+            Pipe.releaseBatchedReads(pipe, Pipe.getWorkingBlobRingTailPosition(pipe), pipe.ringWalker.nextWorkingTail);
 	    } else {
 	        Pipe.decBatchRelease(pipe);//sequence fragments must cause this number to move
 	    }
@@ -592,7 +595,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	
 	public static boolean readNextWithoutReleasingReadLock(Pipe pipe) {
 	    
-        collectConsumedCountOfBytes(pipe); 
+        int bytesConsumed = collectConsumedCountOfBytes(pipe); 
         
         if (FieldReferenceOffsetManager.isTemplateStart(Pipe.from(pipe), pipe.ringWalker.nextCursor)) {
             assert(Pipe.isReplaying(pipe) || pipe.ringWalker.nextWorkingTail!=Pipe.getWorkingTailPosition(pipe)) : "Only call release once per message";
@@ -600,7 +603,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
             long slabTail = pipe.ringWalker.nextWorkingTail;
             int blobTail = Pipe.getWorkingBlobRingTailPosition(pipe);
             
-            StackStateWalker.appendPendingReadRelease(pipe, slabTail, blobTail);
+            PendingReleaseData.appendPendingReadRelease(pipe.pendingReleases, slabTail, blobTail, bytesConsumed);
             return true;
         } else {
             return false;
@@ -608,18 +611,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	}
 	
 	public static void releasePendingReadLock(Pipe pipe) {
-	    StackStateWalker.releasePendingReadRelease(pipe);
+	    Pipe.releasePendingReadLock(pipe);
 	}
-
-    static void batchedReleasePublish(Pipe pipe, int workingBlobRingTailPosition, long nextWorkingTail) {
-        if (Pipe.decBatchRelease(pipe)<=0) {                 
-                 Pipe.setBytesTail(pipe,workingBlobRingTailPosition);
-                 Pipe.publishWorkingTailPosition(pipe, nextWorkingTail);
-                 Pipe.beginNewReleaseBatch(pipe);        
-        } else {
-                 Pipe.storeUnpublishedTail(pipe, nextWorkingTail, workingBlobRingTailPosition);            
-        }
-    }
 
     public static int sizeOfFragment(Pipe input) {
         return Pipe.from(input).fragDataSize[input.ringWalker.cursor];

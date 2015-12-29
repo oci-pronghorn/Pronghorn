@@ -56,8 +56,6 @@ public class StreamingVisitorWriter {
 		        		return;
 		        	}
 
-		        	//System.err.println("new message Idx "+cursor+" writen to "+(outputRing.workingHeadPos.value));
-
 		        	Pipe.addMsgIdx(outputRing,  cursor);
 
 		        	startPos = 1;//new message so skip over this messageId field

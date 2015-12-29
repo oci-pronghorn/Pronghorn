@@ -71,15 +71,12 @@ public class PipeInvokeHandler {
 			Method method1 = methods[m];			
 			if (null!=method1.getAnnotation(ProngTemplateField.class)) {
 				String methodName = method1.getName();
-				//System.err.println(methodName);
-				
 				//scan all the method names down from this one to check for another with the same length
 				int k = m;
 				while (--k>=0) {
 					Method method2 = methods[k];			
 					if (null!=method2.getAnnotation(ProngTemplateField.class)) {
 						String methodName2 = method2.getName();		
-						//System.err.println("   "+methodName2);
 						
 						if (namesBuildSameKey(methodName2, methodName, tempC1, tempC2, tempC3, cursor)) {
 							//throws if nothing can be done	

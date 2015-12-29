@@ -142,8 +142,6 @@ public class DictionaryFactory {
             temp = temp >> 1;
             result++;
         }
-        // System.err.println(value+" -> "+(1<<result));
-
         return 1 << result;
     }
 
@@ -217,9 +215,7 @@ public class DictionaryFactory {
         if (null!=dcr) {
             LocalHeap byteHeap = dcr.byteDictionary();
             if (null!=byteHeap) {
-                          
                 return LocalHeap.rawInitAccess(byteHeap);  
-                //System.err.println("constByteBufferLen:"+this.constByteBuffer.length);
                 
             } else {
                 return null;

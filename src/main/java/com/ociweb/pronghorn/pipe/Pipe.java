@@ -357,7 +357,12 @@ public final class Pipe<T extends MessageSchema> {
     LowLevelAPIWritePositionCache llWrite; //low level write head pos cache and target
     LowLevelAPIReadPositionCache llRead; //low level read tail pos cache and target
 
+    //TODO: C, add a configuration to disable this construction when we know it s not used.
     StackStateWalker ringWalker;//only needed for high level API
+    
+    //TODO: C, add a configuration to disable this construction when we know it s not used.
+    PendingReleaseData pendingReleases;//only used when we want to release blob data async from our walking of each fragment
+    
 
     private final SlabRingTail slabRingTail = new SlabRingTail(); //primary working and public
     private final BlobRingTail blobRingTail = new BlobRingTail(); //primary working and public
@@ -367,7 +372,7 @@ public final class Pipe<T extends MessageSchema> {
     private int lastReleasedBlobTail;
     long lastReleasedSlabTail;
 
-    private int blobWriteLastConsumedPos = 0;
+    int blobWriteLastConsumedPos = 0;
 
     //All references found in the messages/fragments to variable-length content are relative.  These members hold the current
     //base offset to which the relative value is added to find the absolute position in the ring.
@@ -717,7 +722,7 @@ public final class Pipe<T extends MessageSchema> {
     
 	private void buildBuffers() {
 
-	    
+	    this.pendingReleases = new PendingReleaseData(sizeOfSlabRing/FieldReferenceOffsetManager.minFragmentSize(MessageSchema.from(schema)));
 	    
 	    
 	    //NOTE: this is only needed for high level API, if only low level is in use it would be nice to not create this 
@@ -822,6 +827,8 @@ public final class Pipe<T extends MessageSchema> {
         PaddedInt.set(blobRingTail.bytesTailPos,unstructuredPos);
         StackStateWalker.reset(ringWalker, structuredPos);
     }
+
+
 
     public static void writeFieldToOutputStream(Pipe pipe, OutputStream out) throws IOException {
         int meta = Pipe.takeRingByteMetaData(pipe);
@@ -2043,7 +2050,7 @@ public final class Pipe<T extends MessageSchema> {
 
     public static <S extends MessageSchema> void addBytePosAndLenSpecial(Pipe<S> targetOutput, final int startBytePos, int bytesLength) {
         PaddedLong workingHeadPos = getWorkingHeadPositionObject(targetOutput);
-        setBytePosAndLen(primaryBuffer(targetOutput), targetOutput.mask, workingHeadPos.value, startBytePos, bytesLength, bytesWriteBase(targetOutput));
+        setBytePosAndLen(slab(targetOutput), targetOutput.mask, workingHeadPos.value, startBytePos, bytesLength, bytesWriteBase(targetOutput));
         PaddedLong.add(workingHeadPos, 2);
     }
 
@@ -2160,12 +2167,17 @@ public final class Pipe<T extends MessageSchema> {
         return rbB[(int)(rbMask & (rbPos + fieldPos))];
     }
 
+    //TODO: may want to deprecate this interface
     public static <S extends MessageSchema> int readValue(int idx, Pipe<S> ring) {
     	return readValue(idx, ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value);
     }
 
     public static <S extends MessageSchema> int takeValue(Pipe<S> ring) {
-    	return readValue(0, ring.slabRing, ring.mask, ring.slabRingTail.workingTailPos.value++);
+    	return readValue(ring.slabRing, ring.mask, ring.slabRingTail.workingTailPos.value++);
+    }
+    
+    public static <S extends MessageSchema> int readValue(int[] rbB, int rbMask, long rbPos) {
+        return rbB[(int)(rbMask & rbPos)];
     }
     
     public static <S extends MessageSchema> Integer takeOptionalValue(Pipe<S> ring) {
@@ -2217,15 +2229,15 @@ public final class Pipe<T extends MessageSchema> {
         
         
         assert(pipe.slabRingTail.workingTailPos.value<Pipe.workingHeadPosition(pipe)) : " tail is "+pipe.slabRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(pipe);
-    	return pipe.lastMsgIdx = readValue(0, pipe.slabRing, pipe.mask, pipe.slabRingTail.workingTailPos.value++);
+    	return pipe.lastMsgIdx = readValue(pipe.slabRing, pipe.mask, pipe.slabRingTail.workingTailPos.value++);
     }
 
     public static <S extends MessageSchema> int peekInt(Pipe<S> ring) {
-        return readValue(0, ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value);
+        return readValue(ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value);
     }
     
     public static <S extends MessageSchema> int peekInt(Pipe<S> ring, int offset) {
-        return readValue(0, ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value+offset);
+        return readValue(ring.slabRing,ring.mask,ring.slabRingTail.workingTailPos.value+offset);
     }
    
     public static <S extends MessageSchema> long peekLong(Pipe<S> ring, int offset) {
@@ -2237,30 +2249,44 @@ public final class Pipe<T extends MessageSchema> {
         return (int)(rb.slabRingHead.headPos.get() - rb.slabRingTail.tailPos.get()); //must not go past add count because it is not release yet.
     }
 
+    public static <S extends MessageSchema> int releaseReadLock(Pipe<S> pipe) {
+        int len = takeValue(pipe);
+        Pipe.markBytesReadBase(pipe, len);
+        assert(Pipe.contentRemaining(pipe)>=0);
+        batchedReleasePublish(pipe, pipe.blobRingTail.byteWorkingTailPos.value, pipe.slabRingTail.workingTailPos.value);
+        return len;        
+    }
+    
+    public static <S extends MessageSchema> int readNextWithoutReleasingReadLock(Pipe<S> pipe) {
+        int len = takeValue(pipe);
+        Pipe.markBytesReadBase(pipe, len);
+        assert(Pipe.contentRemaining(pipe)>=0);
+        PendingReleaseData.appendPendingReadRelease(pipe.pendingReleases,
+                                                    pipe.slabRingTail.workingTailPos.value, 
+                                                    pipe.blobRingTail.byteWorkingTailPos.value, 
+                                                    len);
+        return len;   
+    }
+    
 
-    //TODO: AAA rename as releaseReadLock
-    public static <S extends MessageSchema> int releaseReads(Pipe<S> ring) {
-             
-        int len = takeValue(ring);
-        Pipe.markBytesReadBase(ring, len);
-    	assert(Pipe.contentRemaining(ring)>=0);
-        batchedReleasePublish(ring, ring.blobRingTail.byteWorkingTailPos.value, ring.slabRingTail.workingTailPos.value);
-    	return len;
+    @Deprecated //inline and use releaseReadLock(pipe)
+    public static <S extends MessageSchema> int releaseReads(Pipe<S> pipe) {
+        return releaseReadLock(pipe);     
     }
 
-    public static <S extends MessageSchema> void batchedReleasePublish(Pipe<S> ring, int blobTail, long slabTail) {
-        if (decBatchRelease(ring)<=0) {
-
-    	    assert(ring.ringWalker.cursor<=0 && !PipeReader.isNewMessage(ring.ringWalker)) : "Unsupported mix of high and low level API.  ";
-
-    	    Pipe.setBytesTail(ring,blobTail);
-    	    ring.slabRingTail.tailPos.lazySet(slabTail);
-    	    
-    	    ring.batchReleaseCountDown = ring.batchReleaseCountDownInit;
-
-    	} else {
-    	    storeUnpublishedTail(ring, slabTail, blobTail);
-    	}
+    public static <S extends MessageSchema> void batchedReleasePublish(Pipe<S> pipe, int blobTail, long slabTail) {
+        assert(pipe.ringWalker.cursor<=0 && !PipeReader.isNewMessage(pipe.ringWalker)) : "Unsupported mix of high and low level API.  ";
+        releaseBatchedReads(pipe, blobTail, slabTail);
+    }
+    
+    static <S extends MessageSchema> void releaseBatchedReads(Pipe<S> pipe, int workingBlobRingTailPosition, long nextWorkingTail) {
+        if (decBatchRelease(pipe)<=0) { 
+           setBytesTail(pipe,workingBlobRingTailPosition);
+           publishWorkingTailPosition(pipe, nextWorkingTail);
+           beginNewReleaseBatch(pipe);        
+        } else {
+           storeUnpublishedTail(pipe, nextWorkingTail, workingBlobRingTailPosition);            
+        }
     }
 
     static <S extends MessageSchema> void storeUnpublishedTail(Pipe<S> ring, long workingTailPos, int byteWorkingTailPos) {
@@ -2697,76 +2723,93 @@ public final class Pipe<T extends MessageSchema> {
         return PaddedInt.add(ring.blobRingHead.bytesHeadPos, inc);
     }
 
-    public static <S extends MessageSchema> int getWorkingBlobRingTailPosition(Pipe<S> ring) {
-        return PaddedInt.get(ring.blobRingTail.byteWorkingTailPos);
+    public static <S extends MessageSchema> int getWorkingBlobRingTailPosition(Pipe<S> pipe) {
+        return PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);
     }
 
    //Delete Nov 2015
     @Deprecated
-    public static <S extends MessageSchema> int bytesWorkingTailPosition(Pipe<S> ring) {
-        return getWorkingBlobRingTailPosition(ring);
+    public static <S extends MessageSchema> int bytesWorkingTailPosition(Pipe<S> pipe) {
+        return getWorkingBlobRingTailPosition(pipe);
     }
 
-    public static <S extends MessageSchema> int addAndGetBytesWorkingTailPosition(Pipe<S> ring, int inc) {
-        return PaddedInt.maskedAdd(ring.blobRingTail.byteWorkingTailPos, inc, Pipe.BYTES_WRAP_MASK);
+    public static <S extends MessageSchema> int addAndGetBytesWorkingTailPosition(Pipe<S> pipe, int inc) {
+        return PaddedInt.maskedAdd(pipe.blobRingTail.byteWorkingTailPos, inc, Pipe.BYTES_WRAP_MASK);
     }
 
-    public static <S extends MessageSchema> void setBytesWorkingTail(Pipe<S> ring, int value) {
-        PaddedInt.set(ring.blobRingTail.byteWorkingTailPos, value);
+    public static <S extends MessageSchema> void setBytesWorkingTail(Pipe<S> pipe, int value) {
+        PaddedInt.set(pipe.blobRingTail.byteWorkingTailPos, value);
     }
 
-    public static <S extends MessageSchema> int bytesWorkingHeadPosition(Pipe<S> ring) {
-        return PaddedInt.get(ring.blobRingHead.byteWorkingHeadPos);
+    public static <S extends MessageSchema> int bytesWorkingHeadPosition(Pipe<S> pipe) {
+        return PaddedInt.get(pipe.blobRingHead.byteWorkingHeadPos);
     }
 
-    public static <S extends MessageSchema> int addAndGetBytesWorkingHeadPosition(Pipe<S> ring, int inc) {
-        return PaddedInt.maskedAdd(ring.blobRingHead.byteWorkingHeadPos, inc, Pipe.BYTES_WRAP_MASK);
+    public static <S extends MessageSchema> int addAndGetBytesWorkingHeadPosition(Pipe<S> pipe, int inc) {
+        return PaddedInt.maskedAdd(pipe.blobRingHead.byteWorkingHeadPos, inc, Pipe.BYTES_WRAP_MASK);
     }
 
-    public static <S extends MessageSchema> void setBytesWorkingHead(Pipe<S> ring, int value) {
-        PaddedInt.set(ring.blobRingHead.byteWorkingHeadPos, value);
+    public static <S extends MessageSchema> void setBytesWorkingHead(Pipe<S> pipe, int value) {
+        PaddedInt.set(pipe.blobRingHead.byteWorkingHeadPos, value);
     }
 
-    public static <S extends MessageSchema> int decBatchRelease(Pipe<S> rb) {
-        return --rb.batchReleaseCountDown;
+    public static <S extends MessageSchema> int decBatchRelease(Pipe<S> pipe) {
+        return --pipe.batchReleaseCountDown;
     }
 
-    public static <S extends MessageSchema> int decBatchPublish(Pipe<S> rb) {
-        return --rb.batchPublishCountDown;
+    public static <S extends MessageSchema> int decBatchPublish(Pipe<S> pipe) {
+        return --pipe.batchPublishCountDown;
     }
 
-    public static <S extends MessageSchema> void beginNewReleaseBatch(Pipe<S> rb) {
-        rb.batchReleaseCountDown = rb.batchReleaseCountDownInit;
+    public static <S extends MessageSchema> void beginNewReleaseBatch(Pipe<S> pipe) {
+        pipe.batchReleaseCountDown = pipe.batchReleaseCountDownInit;
     }
 
-    public static <S extends MessageSchema> void beginNewPublishBatch(Pipe<S> rb) {
-        rb.batchPublishCountDown = rb.batchPublishCountDownInit;
+    public static <S extends MessageSchema> void beginNewPublishBatch(Pipe<S> pipe) {
+        pipe.batchPublishCountDown = pipe.batchPublishCountDownInit;
     }
 
-    public static <S extends MessageSchema> byte[] byteBuffer(Pipe<S> rb) {
-        return rb.blobRing;
+    public static <S extends MessageSchema> byte[] blob(Pipe<S> pipe) {        
+        return pipe.blobRing;
+    }
+    
+    public static <S extends MessageSchema> int[] slab(Pipe<S> pipe) {
+        return pipe.slabRing;
+    }
+    
+    @Deprecated
+    public static <S extends MessageSchema> byte[] byteBuffer(Pipe<S> pipe) {        
+        return blob(pipe);
     }
 
-    public static <S extends MessageSchema> int[] primaryBuffer(Pipe<S> rb) {
-        return rb.slabRing;
+    @Deprecated
+    public static <S extends MessageSchema> int[] primaryBuffer(Pipe<S> pipe) {
+        return slab(pipe);
     }
 
-    public static <S extends MessageSchema> void updateBytesWriteLastConsumedPos(Pipe<S> rb) {
-        rb.blobWriteLastConsumedPos = Pipe.bytesWorkingHeadPosition(rb);
+    public static <S extends MessageSchema> void updateBytesWriteLastConsumedPos(Pipe<S> pipe) {
+        pipe.blobWriteLastConsumedPos = Pipe.bytesWorkingHeadPosition(pipe);
     }
 
-    public static <S extends MessageSchema> PaddedLong getWorkingTailPositionObject(Pipe<S> rb) {
-        return rb.slabRingTail.workingTailPos;
+    public static <S extends MessageSchema> PaddedLong getWorkingTailPositionObject(Pipe<S> pipe) {
+        return pipe.slabRingTail.workingTailPos;
     }
 
-    public static <S extends MessageSchema> PaddedLong getWorkingHeadPositionObject(Pipe<S> rb) {
-        return rb.slabRingHead.workingHeadPos;
+    public static <S extends MessageSchema> PaddedLong getWorkingHeadPositionObject(Pipe<S> pipe) {
+        return pipe.slabRingHead.workingHeadPos;
     }
 
     public static <S extends MessageSchema> int sizeOf(Pipe<S> pipe, int msgIdx) {
         return pipe.schema.from.fragDataSize[msgIdx];
     }
 
+    public static <S extends MessageSchema> void releasePendingReadLock(Pipe<S> pipe) {
+        PendingReleaseData.releasePendingReadRelease(pipe.pendingReleases, pipe);
+    }
+    
+    public static <S extends MessageSchema> void releasePendingAsReadLock(Pipe<S> pipe, int consumed) {
+        PendingReleaseData.releasePendingAsReadRelease(pipe.pendingReleases, pipe, consumed);
+    }
 
 
 }

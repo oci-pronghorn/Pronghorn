@@ -74,15 +74,13 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
 
     @Override
-    public void write(byte[] b) throws IOException { 
-        Pipe.copyBytesFromToRing(b, 0, Integer.MAX_VALUE, byteBuffer, activePosition, byteMask, b.length);  
-        activePosition+=b.length;
+    public void write(byte[] b) throws IOException {
+        write(this,b,0,b.length,Integer.MAX_VALUE);
     }
 
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
-        Pipe.copyBytesFromToRing(b, off, Integer.MAX_VALUE, byteBuffer, activePosition, byteMask, len); 
-        activePosition+=len;
+        write(this,b,off,len,Integer.MAX_VALUE);
     }
 
     @Override
@@ -318,6 +316,11 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
             pos = encodeAsUTF8(utfs[i], utfs[i].length(), mask, bufLocal, pos);
         }
         return pos;
+    }    
+    
+    public static void write(DataOutputBlobWriter writer, byte[] source, int sourceOff, int sourceLen, int sourceMask) throws IOException {
+        Pipe.copyBytesFromToRing(source, sourceOff, sourceMask, writer.byteBuffer, writer.activePosition, writer.byteMask, sourceLen); 
+        writer.activePosition+=sourceLen;
     }
 
     ///////////////////////////////////////////////
@@ -375,8 +378,12 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         if (value >=0) {
             that.activePosition = writeLongSignedPos(value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
         } else {
-            that.activePosition = writeLongSignedNeg(value, -value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
+            that.activePosition = writePackedNegativeLong(value, -value, that.byteBuffer, that.byteMask, that.activePosition);
         }
+    }
+
+    private static int writePackedNegativeLong(long value, long absv, byte[] buf, int mask, int pos) {
+        return (absv >= 0) ? writeLongSignedNeg(value, absv, buf, mask, pos, (byte)0x7F) : writeLongSignedNegSpecial(value, absv, buf, mask, pos, (byte)0x7F);
     }
     
     public static final void writePackedInt(DataOutputBlobWriter that, int value) {
@@ -459,28 +466,27 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         
     private static final int writeLongSignedNeg(long value, long absv, byte[] buf, int mask, int pos, byte low7) {
         // using absolute value avoids tricky word length issues
-        //long absv = -value;
-        //final byte low7 = 0x7F;
-        if (absv <= 0x0000000000000040 && absv >= 0) {
+        //NOTE: do not modify this is designed to work best with Intel branch prediction which favors true
+        if (absv <= 0x0000000000000040) {
         } else {
-            if (absv <= 0x0000000000002000 && absv >= 0) {
+            if (absv <= 0x0000000000002000) {
             } else {
-                if (absv <= 0x0000000000100000 && absv >= 0) {
+                if (absv <= 0x0000000000100000) {
                 } else {
-                    if (absv <= 0x0000000008000000 && absv >= 0) {
+                    if (absv <= 0x0000000008000000) {
                     } else {
-                        if (absv <= 0x0000000400000000L && absv >= 0) {
+                        if (absv <= 0x0000000400000000L) {
                         } else {
-                            if (absv <= 0x0000020000000000L && absv >= 0) {
+                            if (absv <= 0x0000020000000000L) {
                             } else {
-                                if (absv <= 0x0001000000000000L && absv >= 0) {
+                                if (absv <= 0x0001000000000000L) {
                                 } else {
-                                    if (absv <= 0x0080000000000000L && absv >= 0) { 
+                                    if (absv <= 0x0080000000000000L) { 
                                     } else {
-                                        long lastBit = value>>>63;
-                                        if (0 != lastBit) {
+                                       long lastBit = value>>>63;
+                                       if (0 != lastBit) {                                           
                                             buf[mask & pos++] =  (byte) lastBit;
-                                        } 
+                                       } 
                                        buf[mask & pos++] =  (byte) (( ((int)(value >>> 56)) & low7));
                                     }
                                     buf[mask & pos++] = (byte) (( ((int)(value >>> 49)) & low7));
@@ -500,9 +506,23 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         buf[mask & pos++] = (byte) (( ((int)(value & low7)) | 0x80));
         return pos;
     }
+    
+    private static final int writeLongSignedNegSpecial(long value, long absv, byte[] buf, int mask, int pos, byte low7) {
+        buf[mask & pos++] = (byte) (value >>> 63);
+        buf[mask & pos++] = (byte) ((((int) (value >>> 56)) & low7));
+        buf[mask & pos++] = (byte) ((((int) (value >>> 49)) & low7));
+        buf[mask & pos++] = (byte) ((((int) (value >>> 42)) & low7));
+        buf[mask & pos++] = (byte) ((((int) (value >>> 35)) & low7));
+        buf[mask & pos++] = (byte) ((((int) (value >>> 28)) & low7));
+        buf[mask & pos++] = (byte) ((((int) (value >>> 21)) & low7));
+        buf[mask & pos++] = (byte) ((((int) (value >>> 14)) & low7));
+        buf[mask & pos++] = (byte) ((((int) (value >>> 7)) & low7));
+        buf[mask & pos++] = (byte) ((((int) (value & low7)) | 0x80));
+        return pos;
+    }
 
     private static final int writeLongSignedPos(long value, byte[] buf, int mask, int pos, final byte low7) {
-
+        //NOTE: do not modify this is designed to work best with Intel branch prediction which favors true
         if (value < 0x0000000000000040) {
         } else {
             if (value < 0x0000000000002000) {
@@ -521,7 +541,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
                                     } else {
                                         if (value < 0x4000000000000000L) {
                                         } else {
-                                            buf[mask & pos++] = (byte) (( ((int)(value >>> 63)) & low7));
+                                            buf[mask & pos++] = (byte)(value >>> 63);
                                         }
                                         buf[mask & pos++] = (byte) (( ((int)(value >>> 56)) & low7));
                                     }
