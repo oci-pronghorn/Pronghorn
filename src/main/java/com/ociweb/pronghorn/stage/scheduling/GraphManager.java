@@ -577,9 +577,11 @@ public class GraphManager {
 				int beginIdx = m.stageIdToNotasBeginIdx[stage.stageId];
 			    if (m.topNota == m.multNotaIds.length) {
 			    	//create new larger array		    	
-			    	int[] newMultiNotaIdx = new int[m.multNotaIds.length*2];
+			    	int[] newMultiNotaIdx = new int[m.multNotaIds.length*2];			    	
+			    	Arrays.fill(newMultiNotaIdx, -1);
 			    	System.arraycopy(m.multNotaIds, 0, newMultiNotaIdx, 0, beginIdx);
-			    	System.arraycopy(m.multNotaIds, beginIdx, newMultiNotaIdx, beginIdx+1, m.topNota-(beginIdx));
+			    	System.arraycopy(m.multNotaIds, beginIdx, newMultiNotaIdx, beginIdx, m.topNota-(beginIdx));
+			    	
 			    	m.multNotaIds = newMultiNotaIdx;		    	
 			    } else {
 			    	//move all the data down.
