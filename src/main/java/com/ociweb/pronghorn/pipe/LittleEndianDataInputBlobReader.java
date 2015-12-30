@@ -273,7 +273,7 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema>  extends I
         return ois.readObject();
     }
 
-    public void readInto(Pipe<RawDataSchema> selectedPipe, int len) {        
+    public void readInto(Pipe<?> selectedPipe, int len) {        
         Pipe.addByteArrayWithMask(selectedPipe, byteMask, len, backing, position);
         position += len;
     }
