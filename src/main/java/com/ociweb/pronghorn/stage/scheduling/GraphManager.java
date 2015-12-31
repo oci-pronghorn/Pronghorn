@@ -785,9 +785,10 @@ public class GraphManager {
 					//ensure that we do not have any old data still on the ring from the consumer batching releases
     
 					//splitter should never have release pending to release because it does not use the release counters	
-					if (Pipe.hasReleasePending(m.pipeIdToPipe[pipeId])) {
-						Pipe.releaseAll(m.pipeIdToPipe[pipeId]);
-					}						
+				//	if (Pipe.hasReleasePending(m.pipeIdToPipe[pipeId])) {
+					    Pipe.releaseAllBatchedReads(m.pipeIdToPipe[pipeId]);
+			//			Pipe.releaseAll(m.pipeIdToPipe[pipeId]);
+				///	}						
 					
 					//if producer is terminated check input ring, if not empty return true
 			    	if (Pipe.contentRemaining( m.pipeIdToPipe[pipeId])>0) {

@@ -25,19 +25,28 @@ public abstract class PronghornStage {
 	
 	//in the constructor us a zero length array if there are no values.
 	protected PronghornStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs) {
-		this.stageId = stageCounter.getAndIncrement();	
+	    assert(null!=inputs) : "Use NONE";
+	    assert(null!=outputs) : "Use NONE";
+		
+	    this.stageId = stageCounter.getAndIncrement();	
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, inputs, outputs);
 	}
 	
 	protected PronghornStage(GraphManager graphManager, Pipe input, Pipe[] outputs) {
-		this.stageId = stageCounter.getAndIncrement();	
+	    assert(null!=input) : "Use NONE";
+	    assert(null!=outputs) : "Use NONE";
+		
+	    this.stageId = stageCounter.getAndIncrement();	
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, input, outputs);
 	}
     
 	protected PronghornStage(GraphManager graphManager, Pipe[] inputs, Pipe output) {
-		this.stageId = stageCounter.getAndIncrement();	
+	    assert(null!=inputs) : "Use NONE";
+	    assert(null!=output) : "Use NONE";
+	    
+	    this.stageId = stageCounter.getAndIncrement();	
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, inputs, output);
 	}

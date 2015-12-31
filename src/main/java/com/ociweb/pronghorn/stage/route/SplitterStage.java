@@ -141,10 +141,10 @@ public class SplitterStage<T extends MessageSchema> extends PronghornStage {
 
 
 	private static <S extends MessageSchema> void findStableCutPoint(SplitterStage<S> ss) {
-		ss.byteHeadPos = Pipe.bytesHeadPosition(ss.source);
+		ss.byteHeadPos = Pipe.getBlobRingHeadPosition(ss.source);
         ss.headPos = Pipe.headPosition(ss.source);		
-		while(ss.byteHeadPos != Pipe.bytesHeadPosition(ss.source) || ss.headPos != Pipe.headPosition(ss.source) ) {
-			ss.byteHeadPos = Pipe.bytesHeadPosition(ss.source);
+		while(ss.byteHeadPos != Pipe.getBlobRingHeadPosition(ss.source) || ss.headPos != Pipe.headPosition(ss.source) ) {
+			ss.byteHeadPos = Pipe.getBlobRingHeadPosition(ss.source);
 			ss.headPos = Pipe.headPosition(ss.source);
 		}
 	}
@@ -188,7 +188,7 @@ public class SplitterStage<T extends MessageSchema> extends PronghornStage {
 		
 		//copy the bytes
 		Pipe.copyBytesFromToRing(Pipe.byteBuffer(ss.source),                   byteTailPos, ss.source.byteMask, 
-		        Pipe.byteBuffer(ringBuffer), Pipe.bytesHeadPosition(ringBuffer), ringBuffer.byteMask, 
+		        Pipe.byteBuffer(ringBuffer), Pipe.getBlobRingHeadPosition(ringBuffer), ringBuffer.byteMask, 
 									  totalBytesCopy);
 		
 		Pipe.setBytesWorkingHead(ringBuffer, Pipe.addAndGetBytesHead(ringBuffer, totalBytesCopy));

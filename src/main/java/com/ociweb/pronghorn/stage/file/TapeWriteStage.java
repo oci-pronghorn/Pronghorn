@@ -234,10 +234,10 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
 
 
     private static <S extends MessageSchema> void findStableCutPoint(TapeWriteStage<S> ss) {
-        ss.byteHeadPos = Pipe.bytesHeadPosition(ss.source);
+        ss.byteHeadPos = Pipe.getBlobRingHeadPosition(ss.source);
         ss.headPos = Pipe.headPosition(ss.source);      
-        while(ss.byteHeadPos != Pipe.bytesHeadPosition(ss.source) || ss.headPos != Pipe.headPosition(ss.source) ) {
-            ss.byteHeadPos = Pipe.bytesHeadPosition(ss.source);
+        while(ss.byteHeadPos != Pipe.getBlobRingHeadPosition(ss.source) || ss.headPos != Pipe.headPosition(ss.source) ) {
+            ss.byteHeadPos = Pipe.getBlobRingHeadPosition(ss.source);
             ss.headPos = Pipe.headPosition(ss.source);
         }
     }
