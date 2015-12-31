@@ -26,9 +26,19 @@ public class PendingReleaseData {
         that.pendingLength[idx] = fragBytesLen;
         that.pendingReleaseCount++;
     }
-
+    
     public static <S extends MessageSchema> void releasePendingReadRelease(PendingReleaseData that, Pipe<S> pipe) {
         if (that.pendingReleaseCount>0) {
+            int idx = that.pendingReleaseMask & that.pendingReleaseTail++;
+            Pipe.releaseBatchedReads(pipe, 
+                                             that.pendingBlobReleaseRing[idx], 
+                                             that.pendingSlabReleaseRing[idx]);
+            that.pendingReleaseCount--;
+        }
+    }
+
+    public static <S extends MessageSchema> void releaseAllPendingReadRelease(PendingReleaseData that, Pipe<S> pipe) {
+        while (that.pendingReleaseCount>0) {
             int idx = that.pendingReleaseMask & that.pendingReleaseTail++;
             Pipe.releaseBatchedReads(pipe, 
                                              that.pendingBlobReleaseRing[idx], 

@@ -2688,31 +2688,16 @@ public final class Pipe<T extends MessageSchema> {
         input.llWrite.llwConfirmedWrittenPosition =  Pipe.getWorkingTailPosition(input);
     }
 
-	public static <S extends MessageSchema> boolean hasReleasePending(Pipe<S> ringBuffer) {
-		return ringBuffer.batchReleaseCountDown!=ringBuffer.batchReleaseCountDownInit;
-	}
-
 	public static <S extends MessageSchema> int getBlobRingTailPosition(Pipe<S> ring) {
 	    return PaddedInt.get(ring.blobRingTail.bytesTailPos);
 	}
 
-	//Delete Nov 2015
-	@Deprecated
-    public static <S extends MessageSchema> int bytesTailPosition(Pipe<S> ring) {
-        return getBlobRingTailPosition(ring);
-    }
-
-    public static <S extends MessageSchema> void setBytesTail(Pipe<S> ring, int value) {
+	public static <S extends MessageSchema> void setBytesTail(Pipe<S> ring, int value) {
         PaddedInt.set(ring.blobRingTail.bytesTailPos, value);
     }
 
     public static <S extends MessageSchema> int getBlobRingHeadPosition(Pipe<S> ring) {
         return PaddedInt.get(ring.blobRingHead.bytesHeadPos);        
-    }
-    
-    @Deprecated
-    public static <S extends MessageSchema> int bytesHeadPosition(Pipe<S> ring) {
-        return getBlobRingHeadPosition(ring);
     }
 
     public static <S extends MessageSchema> void setBytesHead(Pipe<S> ring, int value) {
@@ -2810,6 +2795,10 @@ public final class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> void releasePendingAsReadLock(Pipe<S> pipe, int consumed) {
         PendingReleaseData.releasePendingAsReadRelease(pipe.pendingReleases, pipe, consumed);
     }
-
+    
+    public static <S extends MessageSchema> void releaseAllPendingReadLock(Pipe<S> pipe) {
+        PendingReleaseData.releaseAllPendingReadRelease(pipe.pendingReleases, pipe);
+    }
+        
 
 }

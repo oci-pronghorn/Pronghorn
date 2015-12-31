@@ -157,7 +157,7 @@ class StackStateWalker {
 		//save the index into these fragments so the reader will be able to find them.
 		ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] = tmpNextWokingTail;
 		
-		assert(Pipe.getWorkingBlobRingTailPosition(ringBuffer) <= Pipe.bytesHeadPosition(ringBuffer)) : "expected to have data up to "+Pipe.getWorkingBlobRingTailPosition(ringBuffer)+" but we only have "+Pipe.bytesHeadPosition(ringBuffer);
+		assert(Pipe.getWorkingBlobRingTailPosition(ringBuffer) <= Pipe.getBlobRingHeadPosition(ringBuffer)) : "expected to have data up to "+Pipe.getWorkingBlobRingTailPosition(ringBuffer)+" but we only have "+Pipe.getBlobRingHeadPosition(ringBuffer);
 
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + scriptFragSize) -1;
 		prepReadFragment2(ringBuffer, ringBufferConsumer, tmpNextWokingTail, target, lastScriptPos, ringBufferConsumer.from.tokens[lastScriptPos]);	
