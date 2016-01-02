@@ -235,11 +235,11 @@ public class PhastCodecSchemaTest {
 	        
 	        Pipe<PhastCodecSchema> inputPipe1 = new Pipe<PhastCodecSchema>(phastCodeConfig);
 	        Pipe<PhastCodecSchema> inputPipe2 = new Pipe<PhastCodecSchema>(phastCodeConfig);
-	       Pipe<PhastCodecSchema> inputPipe3 = new Pipe<PhastCodecSchema>(phastCodeConfig);
+	    //   Pipe<PhastCodecSchema> inputPipe3 = new Pipe<PhastCodecSchema>(phastCodeConfig);
 	        
 	        Pipe<RawDataSchema> packedDataPipe1 = new Pipe<RawDataSchema>(rawDataConfig);
 	        Pipe<RawDataSchema> packedDataPipe2 = new Pipe<RawDataSchema>(rawDataConfig);
-	        Pipe<RawDataSchema> packedDataPipe3 = new Pipe<RawDataSchema>(rawDataConfig);
+	     //   Pipe<RawDataSchema> packedDataPipe3 = new Pipe<RawDataSchema>(rawDataConfig);
 	        
 	        Pipe<RawDataSchema> packedDataPipeFinal = new Pipe<RawDataSchema>(rawDataConfig);
             
@@ -251,11 +251,11 @@ public class PhastCodecSchemaTest {
 	        
 	        //Add production stage?
 	        int iterations = 10000000;//*1000;
-	        LongDataGenStage  genStage = new LongDataGenStage(gm, new Pipe[]{inputPipe1, inputPipe2, inputPipe3}, iterations, chunkSize);      
+	        LongDataGenStage  genStage = new LongDataGenStage(gm, new Pipe[]{inputPipe1, inputPipe2}, iterations, chunkSize);      
 	        
 	        PhastEncodeStage encodeStage1 = new PhastEncodeStage(gm, inputPipe1, packedDataPipe1, chunkSize);       
 	        PhastEncodeStage encodeStage2 = new PhastEncodeStage(gm, inputPipe2, packedDataPipe2, chunkSize);       
-	        PhastEncodeStage encodeStage3 = new PhastEncodeStage(gm, inputPipe3, packedDataPipe3, chunkSize);  
+	      //  PhastEncodeStage encodeStage3 = new PhastEncodeStage(gm, inputPipe3, packedDataPipe3, chunkSize);  
 	        
 	    //    PhastDecodeStage decodeStage = new PhastDecodeStage(gm, packedDataPipe, outputPipe );   
 	  //      PhastEncodeStage encodeStage2 = new PhastEncodeStage(gm, outputPipe, rePackedDataPipe );  
@@ -264,15 +264,16 @@ public class PhastCodecSchemaTest {
 //	      PipeCleanerStage<PhastCodecSchema> dumpStage = new PipeCleanerStage<PhastCodecSchema>(gm, outputPipe);
 	        
 	        
-	        MergeRawDataSchemaStage mergeStage = new MergeRawDataSchemaStage(gm, new Pipe[]{packedDataPipe1, packedDataPipe2, packedDataPipe3},packedDataPipeFinal);
+	        MergeRawDataSchemaStage mergeStage = new MergeRawDataSchemaStage(gm, new Pipe[]{packedDataPipe1, packedDataPipe2},packedDataPipeFinal);
+	  //      PhastDecodeStage decodeStage = new PhastDecodeStage(gm, packedDataPipeFinal, outputPipe );   
 	        
-	        PipeCleanerStage<RawDataSchema> dumpStage0 = new PipeCleanerStage<RawDataSchema>(gm, packedDataPipeFinal);
+	       PipeCleanerStage<RawDataSchema> dumpStage0 = new PipeCleanerStage<RawDataSchema>(gm, packedDataPipeFinal);
 	        
 //	        PipeCleanerStage<RawDataSchema> dumpStage1 = new PipeCleanerStage<RawDataSchema>(gm, packedDataPipe1);
 //	        PipeCleanerStage<RawDataSchema> dumpStage2 = new PipeCleanerStage<RawDataSchema>(gm, packedDataPipe2);
 	  //    PipeCleanerStage<RawDataSchema> dumpStage3 = new PipeCleanerStage<RawDataSchema>(gm, packedDataPipe3);
 	      
-//	      PipeCleanerStage<PhastCodecSchema> dumpStage = new PipeCleanerStage<PhastCodecSchema>(gm, inputPipe);
+	//      PipeCleanerStage<PhastCodecSchema> dumpStage = new PipeCleanerStage<PhastCodecSchema>(gm, outputPipe);
 	        
 	  //      GraphManager.enableBatching(gm); //due to internal batching nature of stages this does not help 
 	        

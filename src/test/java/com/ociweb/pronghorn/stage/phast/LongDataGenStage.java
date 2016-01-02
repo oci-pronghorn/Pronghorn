@@ -60,7 +60,7 @@ public class LongDataGenStage extends PronghornStage{
                     int j = 30;
                     while (--j>=0) {
                         
-                        long value = (((long)j)<<13);
+                        long value =  (((long)j)<<13);
                         
                         slab[mask & pos++] = (int)(value >>> 32);
                         slab[mask & pos++] = ((int)value);
