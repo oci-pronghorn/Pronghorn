@@ -37,7 +37,7 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     private int  rareFieldMask = 0x07;
     
     private int maximumSequenceMask = Integer.MAX_VALUE; //TODO: A should be max fragments on pipe and validated with assert.
-    private int fixedSequenceLength = -1;
+    private int fixedSequenceLength = 0;
     
     private int sparseCursor = -6; //TODO: pass in argument for which cursor will be sparse.
     
@@ -177,7 +177,10 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
                             
                             int mask;
     
-                            mask = 0xFFF;//TODO: how can we know this mask?
+                            mask = fixedSequenceLength-1;
+                            if (mask<0) {
+                                mask = 0;
+                            }
                                 
                             generators[i] = new FuzzValueGenerator(id,isLong,isNullable,isChars, mask);
     
