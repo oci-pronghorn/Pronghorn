@@ -701,6 +701,10 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
          //   businessMethodCall(); //DO we need this hook?
             
             writeToPipeBodyWorkspace.append(tab).append("if (!").append(stageMgrClassName).append(".closeSequenceIteration(").append(stageMgrVarName).append(")) {\n");
+           
+            //New location for the custom logic to process zero rightly
+            appendAdditionalWriteLogic(writeToPipeBodyWorkspace, fieldCursor, writeToPipeSignatureWorkspace, businessFieldCount, businessFirstField);
+            
             writeToPipeBodyWorkspace.append(tab).append(tab).append("return; /* Repeat this fragment*/\n");
             writeToPipeBodyWorkspace.append(tab).append("}\n");
             
@@ -760,9 +764,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
 
     protected void appendWriteFragmentLogic(Appendable t, int cursor) throws IOException {
         appendWriteMethodName(t.append(methodScope).append(" void "), cursor).append("(").append(writeToPipeSignatureWorkspace).append(") {\n");
-        
-        appendAdditionalWriteLogic(t, cursor, writeToPipeSignatureWorkspace, businessFieldCount, businessFirstField);
-                
+         
         t.append(writeToPipeBodyWorkspace);//body was accumulated as each field was walked.
         
         t.append("}\n");

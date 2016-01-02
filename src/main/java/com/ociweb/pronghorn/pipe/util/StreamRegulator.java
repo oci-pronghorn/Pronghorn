@@ -112,7 +112,7 @@ public class StreamRegulator {
     private boolean beginNewRead() {
         int msgIdx = Pipe.takeMsgIdx(pipe);
         if (RawDataSchema.MSG_CHUNKEDSTREAM_1 == msgIdx) {
-            totalBytesRead = totalBytesRead+(inputStreamFlyweight.openLowLevelAPIField());
+            totalBytesRead = totalBytesRead+inputStreamFlyweight.openLowLevelAPIField();
             hasOpenRead = true;
             return true;
         } else {
