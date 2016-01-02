@@ -15,9 +15,25 @@ public class DataInputOutputTest {
         
     
     
-    private long testLongValueGenerator(Random r, int seed) {
+    private long testLongValueGenerator(Random r, int iter) {
         
-        int powOf2 = seed & 0x3F;
+        if (iter<2000) {
+            int value = iter>>1;
+            if (0==(iter&1)) {
+                return value;
+            } else {
+                return -value;
+            }
+        }
+        if (iter==2001) {
+            return Long.MIN_VALUE;
+        }
+        if (iter==2002) {
+            return Long.MAX_VALUE;
+        }
+        
+        
+        int powOf2 = iter & 0x3F;
         long range = (1l<<powOf2);
         long maskValue = range-1l;
         

@@ -375,15 +375,30 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
     
     public static final void writePackedLong(DataOutputBlobWriter that, long value) {
-        if (value >=0) {
-            that.activePosition = writeLongSignedPos(value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
-        } else {
-            that.activePosition = writePackedNegativeLong(value, -value, that.byteBuffer, that.byteMask, that.activePosition);
-        }
+        
+//        if (value >=0) {
+//            that.activePosition = writeLongUnified(value, value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
+//        } else {
+//            that.activePosition = writePackedNegativeLong(value, -value, that.byteBuffer, that.byteMask, that.activePosition);
+//        }
+        
+        //New branchless implementation we are testing
+        
+        long mask = (value>>63);         // FFFFF  or 000000
+        long check = (mask^value)-mask;  //absolute value
+        int bit = (int)(check>>>63);     //is this the special value?
+        
+        //    Result of the special MIN_VALUE after abs logic   //8000000000000000
+        //    In order to get the right result we must pass something larger than //0x4000000000000000L;
+       
+        that.activePosition = writeLongUnified(value, (check>>>bit)+bit, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
+
     }
 
     private static int writePackedNegativeLong(long value, long absv, byte[] buf, int mask, int pos) {
+      //  return (absv >= 0) ? writeLongUnified(value, absv, buf, mask, pos, (byte)0x7F) : writeLongSignedNegSpecial(value, absv, buf, mask, pos, (byte)0x7F);
         return (absv >= 0) ? writeLongSignedNeg(value, absv, buf, mask, pos, (byte)0x7F) : writeLongSignedNegSpecial(value, absv, buf, mask, pos, (byte)0x7F);
+        
     }
     
     public static final void writePackedInt(DataOutputBlobWriter that, int value) {
@@ -404,7 +419,11 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     
     public static final void writePackedULong(DataOutputBlobWriter that, long value) {
         assert(value>=0);
-        that.activePosition = writeLongSignedPos(value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
+        //New branchless implementation we are testing
+        that.activePosition = writeLongUnified(value, value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
+        
+        
+       // that.activePosition = writeLongSignedPos(value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
     }
     
     public static final void writePackedUInt(DataOutputBlobWriter that, int value) {
@@ -465,23 +484,27 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
         
     private static final int writeLongSignedNeg(long value, long absv, byte[] buf, int mask, int pos, byte low7) {
+//        System.out.println("tested "+absv);
+//        if (true) {
+//            throw new UnsupportedOperationException();
+//        }
         // using absolute value avoids tricky word length issues
         //NOTE: do not modify this is designed to work best with Intel branch prediction which favors true
-        if (absv <= 0x0000000000000040) {
+        if (absv < 0x0000000000000040) {
         } else {
-            if (absv <= 0x0000000000002000) {
+            if (absv < 0x0000000000002000) {
             } else {
-                if (absv <= 0x0000000000100000) {
+                if (absv < 0x0000000000100000) {
                 } else {
-                    if (absv <= 0x0000000008000000) {
+                    if (absv < 0x0000000008000000) {
                     } else {
-                        if (absv <= 0x0000000400000000L) {
+                        if (absv < 0x0000000400000000L) {
                         } else {
-                            if (absv <= 0x0000020000000000L) {
+                            if (absv < 0x0000020000000000L) {
                             } else {
-                                if (absv <= 0x0001000000000000L) {
+                                if (absv < 0x0001000000000000L) {
                                 } else {
-                                    if (absv <= 0x0080000000000000L) { 
+                                    if (absv < 0x0080000000000000L) { 
                                     } else {
                                        long lastBit = value>>>63;
                                        if (0 != lastBit) {                                           
@@ -564,7 +587,47 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
     
 
-    
+    private static final int writeLongUnified(final long value, final long check, final byte[] buf, final int mask, int pos, final byte low7) {
+        //NOTE: do not modify this is designed to work best with Intel branch prediction which favors true
+        if (check < 0x0000000000000040) {
+        } else {
+            if (check < 0x0000000000002000) {
+            } else {
+                if (check < 0x0000000000100000) {
+                } else {
+                    if (check < 0x0000000008000000) {
+                    } else {
+                        if (check < 0x0000000400000000L) {
+                        } else {
+                            if (check < 0x0000020000000000L) {
+                            } else {
+                                if (check < 0x0001000000000000L) {
+                                } else {
+                                    if (check < 0x0080000000000000L) {
+                                    } else {
+                                        if (check < 0x4000000000000000L) {
+                                        } else {
+                                            buf[mask & pos++] = (byte)(value >>> 63);
+                                        }
+                                        buf[mask & pos++] = (byte) (( ((int)(value >>> 56)) & low7));
+                                    }
+                                    buf[mask & pos++] = (byte) (( ((int)(value >>> 49)) & low7));
+                                }
+                                buf[mask & pos++] = (byte) (( ((int)(value >>> 42)) & low7));
+                            }
+                            buf[mask & pos++] =(byte) (( ((int)(value >>> 35)) & low7));
+                        }
+                        buf[mask & pos++] = (byte) (( ((int)(value >>> 28)) & low7));
+                    }
+                    buf[mask & pos++] = (byte) (( ((int)(value >>> 21)) & low7));
+                }
+                buf[mask & pos++] = (byte) (( ((int)(value >>> 14)) & low7));
+            }
+            buf[mask & pos++] = (byte) (( ((int)(value >>> 7)) & low7));
+        }
+        buf[mask & pos++] = (byte) (( ((int)(value & low7)) | 0x80));
+        return pos;
+    }
     
     
 }

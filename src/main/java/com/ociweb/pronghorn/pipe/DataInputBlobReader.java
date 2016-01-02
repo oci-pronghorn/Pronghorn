@@ -84,6 +84,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     @Override
     public int read(byte[] b) throws IOException {
         if ((byteMask & position) == bytesLimit) {
+         //   System.err.println("returned EOF A");
             return -1;
         }       
         
@@ -97,7 +98,8 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
         if ((byteMask & position) == bytesLimit) {
-            return -1;
+           // System.err.println("returned EOF B");
+            return -1;//-1;  //TODO: need to turn off this feature when we are spanning fields since we do not know the bytes limit.
         }
         
         int max = bytesRemaining(this);
@@ -209,6 +211,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
 
     @Override
     public int read() throws IOException {
+        //TODO: need to turn off at times.
         return (byteMask & position) != bytesLimit ? backing[byteMask & position++] : -1;
     }
 
