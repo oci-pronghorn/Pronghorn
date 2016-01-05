@@ -780,7 +780,7 @@ public final class Pipe<T extends MessageSchema> {
         	int bitsDif = 32 - Integer.numberOfLeadingZeros(bytesPerInt - 1);
 
         	throw new UnsupportedOperationException("Can not write byte array of length "+length+
-        	                                        ". The dif between primary and byte bits should be at least "+bitsDif+
+        	                                        ". The dif between slab and byte blob should be at least "+bitsDif+
         	                                        ". "+rb.bitsOfSlabRing+","+rb.bitsOfBlogRing+
         	                                        ". The limit is "+rb.maxAvgVarLen+" for pipe "+rb);
         }

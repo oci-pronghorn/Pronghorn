@@ -72,6 +72,9 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema>  extends I
         
     }
     
+    public int length() {
+        return length<0?0:length;
+    }
         
     public boolean hasRemainingBytes() {
         return (byteMask & position) != bytesLimit;
@@ -264,13 +267,17 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema>  extends I
         return new String(workspace);
     }
         
-    public Object readObject() throws IOException, ClassNotFoundException  {
+    public <T> T readObject() throws IOException {
         
         if (null==ois) {
             ois = new ObjectInputStream(this);
         }            
         //do we need to reset this before use?
-        return ois.readObject();
+        try {
+            return (T)ois.readObject();
+        } catch (ClassNotFoundException e) {
+           throw new IOException(e);
+        }
     }
 
     public void readInto(Pipe<?> selectedPipe, int len) {        
