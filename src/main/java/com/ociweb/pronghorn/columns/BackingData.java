@@ -67,7 +67,7 @@ public  class  BackingData<T> {
         
         this.recordCount = recordCount;
         
-        } 
+    } 
     
     public long memoryConsumed() {        
         return (longData.length*8l) + (intData.length*4l) + (shortData.length*2l) + (byteData.length) + (5*4) + (8*4);

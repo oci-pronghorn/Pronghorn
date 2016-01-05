@@ -50,7 +50,14 @@ public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
             totalSlabCount += contentRemaining;
             
             int byteHead = Pipe.getBlobRingHeadPosition(input);
-            totalBlobCount+=(long) ((byteHead >= byteTail) ? byteHead-byteTail : input.sizeOfBlobRing - (byteTail-byteHead));
+            
+            if (byteHead >= byteTail) {
+                totalBlobCount += byteHead-byteTail;
+            } else {
+                totalBlobCount += (long) (Pipe.blobMask(input)&byteHead);
+                totalBlobCount += (long)(input.sizeOfBlobRing-(Pipe.blobMask(input)&byteTail));
+            }
+            
             Pipe.publishBlobWorkingTailPosition(input, byteTail = byteHead);
             Pipe.publishWorkingTailPosition(input, tail = head);            
         }        
@@ -69,16 +76,18 @@ public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
     }
 
     public long totalBytes() {
-        return (4*totalSlabCount)+totalBlobCount;
+        return (4L*totalSlabCount)+totalBlobCount;
     }
     
     public <A extends Appendable> A appendReport(A target) throws IOException {
         
         Appendables.appendValue(target, "Duration :",duration,"ms\n");
+        Appendables.appendValue(target, "TotalBytes :",totalBytes(),"\n");
+        
         if (0!=duration) {
             long kbps = (totalBytes()*8L)/duration;
             if (kbps>16000) {
-                Appendables.appendValue(target, "mbps :",(kbps/1000),"\n");        
+                Appendables.appendValue(target, "mbps :",(kbps/1000L),"\n");        
             } else {
                 Appendables.appendValue(target, "kbps :",(kbps),"\n");     
             }

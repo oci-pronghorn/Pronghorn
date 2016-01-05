@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
   
+   <template name="BlobChunk" id="1000">
+   		<byteVector name="ByteArray" id="1001"/>
+   </template>
+  
    <template name="001" id="10001">
         <int64 name="value001"  id="1"/>
    </template>

@@ -24,6 +24,7 @@ public class PhastEncodeStage extends PronghornStage {
     private long outputHead;
     private static final int MAX_BYTES_PER_VALUE = 10;
     private static final int INPUT_MAX_MSG_SIZE = FieldReferenceOffsetManager.maxFragmentSize(PhastCodecSchema.FROM);
+    private long startup;
     
     protected PhastEncodeStage(GraphManager graphManager, Pipe<PhastCodecSchema> input, Pipe<RawDataSchema> output, int chunkSize) {
         super(graphManager, input, output);
@@ -46,7 +47,6 @@ public class PhastEncodeStage extends PronghornStage {
         
     }
     
-    long startup;
     
     @Override
     public void startup() {
@@ -60,8 +60,7 @@ public class PhastEncodeStage extends PronghornStage {
             lengthLookup[i] = (short) (PhastCodecSchema.FROM.fieldIdScript[i]-10000);
             sizeLookup[i] = PhastCodecSchema.FROM.fragDataSize[i];
         }
-        outputHead = Pipe.headPosition(output);
-        
+        outputHead = Pipe.headPosition(output);        
         
     }
     
@@ -74,65 +73,104 @@ public class PhastEncodeStage extends PronghornStage {
         System.out.println("encoder bytes read:"+(8*sum)+" mbps "+mpbs);
     }
 
+    long toConsume;
+    long outputRoom;
+    
     @Override
     public void run() {
-
+        long escape = Long.MIN_VALUE+1; //TODO: find a 21 bit prime to use as escape
         
         //how much room is there for writing?
         DataOutputBlobWriter<RawDataSchema> localWriter = writer;
     
-        long head = Pipe.headPosition(input);               
-               
         long localInputTail = inputTail;
-        int count = (int) Math.min((output.sizeOfSlabRing-(outputHead-Pipe.tailPosition(output)))/OUTPUT_MAX_MSG_SIZE, (head-localInputTail)/INPUT_MAX_MSG_SIZE);
-        if (0==count) {
-            return;
+        
+        if (toConsume == 0) {
+           toConsume = (Pipe.headPosition(input)-localInputTail)/INPUT_MAX_MSG_SIZE;       
+        }
+        if (outputRoom == 0) {
+            outputRoom = (packedBatches* (output.sizeOfSlabRing-(outputHead-Pipe.tailPosition(output)))) /OUTPUT_MAX_MSG_SIZE;
         }
         
-        int[] inputSlab = Pipe.slab(input);     
-        int inputMask = Pipe.slabMask(input);
-        short[] localLookup = lengthLookup;
-
-        int[] outputSlab = Pipe.slab(output);
-        int outputMask = Pipe.slabMask(output);
-        
-        int localSum = 0;
-        PaddedLong wrkHheadPos = Pipe.getWorkingHeadPositionObject(output);
-
-        int i = count;
-        while (--i>=0) {
+        int count = (int) Math.min(outputRoom, toConsume);
+        if (count>0) {
+            int[] inputSlab = Pipe.slab(input);     
+            int inputMask = Pipe.slabMask(input);
+            short[] localLookup = lengthLookup;
             
-            int msgIdx = inputSlab[(int)(inputMask & localInputTail++)];
-            int localFieldCount = (int) localLookup[msgIdx];
-            localSum += localFieldCount;
-                        
-            writeChunk(inputSlab, inputMask, localWriter, outputSlab, outputMask, localInputTail, wrkHheadPos, localFieldCount);
-                        
-            localInputTail = localInputTail + (localFieldCount<<1) + 1L; //one to skip the byte count
- 
+            int[] outputSlab = Pipe.slab(output);
+            int outputMask = Pipe.slabMask(output);
+            
+            int localSum = 0;
+            PaddedLong wrkHheadPos = Pipe.getWorkingHeadPositionObject(output);
+            
+            toConsume -=count;
+            outputRoom -=count;
+            int i = count;
+            while (--i>=0) {
+                
+                int msgIdx = inputSlab[(int)(inputMask & localInputTail++)];
+                if (PhastCodecSchema.MSG_BLOBCHUNK_1000 != msgIdx) {
+                    
+                    int localFieldCount = (int) localLookup[msgIdx];
+                    localSum += localFieldCount;
+                    
+                    writeChunk(inputSlab, inputMask, localWriter, outputSlab, outputMask, localInputTail, wrkHheadPos, localFieldCount, escape);
+                    
+                    localInputTail = localInputTail + (localFieldCount<<1) + 1L; //one to skip the byte count
+                    
+                    
+                } else {
+                    int meta = inputSlab[(int)(inputMask & localInputTail++)];
+                    int length = inputSlab[(int)(inputMask & localInputTail++)];
+                    
+                    localSum += (length>>2);
+                    
+                    int pos = Pipe.bytePosition(meta, input, length);
+                    
+                    if (0 == batchCount) {
+                        Pipe.markBytesWriteBase(output);            
+                        outputSlab[outputMask & (int) wrkHheadPos.value++] = RawDataSchema.MSG_CHUNKEDSTREAM_1;
+                        localWriter.openField();
+                    }
+                    
+                    //Need write with mask
+                    //byte[] source = Pipe.blob(input);                    
+                    //localWriter.write
+                    //TODO: copy bytes directly
+                    
+                    if (++batchCount >= packedBatches) {            
+                        int len = localWriter.closeLowLevelField(); //side effect it writes pos and len before the final byte count.
+                        outputSlab[outputMask & (int) wrkHheadPos.value++] = len;
+                        batchCount = 0;
+                    }
+                    
+                }
+                
+            }
+            
+            inputTail = localInputTail;
+            outputHead = wrkHheadPos.value;
+            //avoid direct modification of head or tail because it will contend with other end and slow the throughput.
+            Pipe.publishHeadPositions(output);         
+            Pipe.batchedReleasePublish(input, 0 , localInputTail);
+            
+            sum += localSum;
         }
-
-        inputTail = localInputTail;
-        outputHead = wrkHheadPos.value;
-        //avoid direct modification of head or tail because it will contend with other end and slow the throughput.
-        Pipe.publishHeadPositions(output);         
-        Pipe.batchedReleasePublish(input, 0 , localInputTail);
-
-        sum += localSum;
+        
        
     }
 
     private void writeChunk(int[] inputSlab, int inputMask, DataOutputBlobWriter<RawDataSchema> localWriter,
-            int[] outputSlab, int outputMask, long localInputTail, PaddedLong wrkHheadPos, int localFieldCount) {
+            int[] outputSlab, int outputMask, long localInputTail, PaddedLong wrkHheadPos, int localFieldCount, long escape) {
         
         if (0 == batchCount) {
             Pipe.markBytesWriteBase(output);            
             outputSlab[outputMask & (int) wrkHheadPos.value++] = RawDataSchema.MSG_CHUNKEDSTREAM_1;
             localWriter.openField();
-            
         }
         
-        packAllFields(localWriter, (int)localInputTail, localFieldCount, inputSlab, inputMask);
+        packAllFields(localWriter, (int)localInputTail, localFieldCount, inputSlab, inputMask, escape);
         
         if (++batchCount >= packedBatches) {            
             int len = localWriter.closeLowLevelField(); //side effect it writes pos and len before the final byte count.
@@ -144,14 +182,21 @@ public class PhastEncodeStage extends PronghornStage {
     
     //TODO: convert to use longs instead.
 
-    private void packAllFields(DataOutputBlobWriter<RawDataSchema> localWriter, 
+    private void packAllFields(final DataOutputBlobWriter<RawDataSchema> localWriter, 
                                int pos,
-                               int i, int[] slab, int mask) {
+                               int i, final int[] slab, final int mask, final long escape) {
             while (--i >= 0) {
                     
                     long value = (((long) slab[mask & pos]) << 32) | (((long) slab[mask & (1+pos)]) & 0xFFFFFFFFl);
                     pos+=2;
-                    DataOutputBlobWriter.writePackedLong(localWriter, value);
+                    if (escape != value) {
+                        DataOutputBlobWriter.writePackedLong(localWriter, value);
+                    } else {
+                        //TODO: have escape prebuilt as an array of bytes to copy
+                        DataOutputBlobWriter.writePackedLong(localWriter, escape);
+                        DataOutputBlobWriter.writePackedLong(localWriter, escape);
+                    }
+                    
             }
 
     }

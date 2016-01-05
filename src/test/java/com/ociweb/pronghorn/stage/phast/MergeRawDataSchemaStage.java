@@ -17,6 +17,9 @@ public class MergeRawDataSchemaStage extends PronghornStage {
     private PaddedLong outputHead;
     private PaddedLong[] inputTail;
     
+    long outputCount;
+    long[] inputCount;
+    
     protected MergeRawDataSchemaStage(GraphManager graphManager, Pipe<RawDataSchema>[] inputs, Pipe<RawDataSchema> output) {
         super(graphManager, inputs, output);
         this.inputs = inputs;
@@ -32,62 +35,76 @@ public class MergeRawDataSchemaStage extends PronghornStage {
         this.outputHead = Pipe.getWorkingHeadPositionObject(output);
         
         int i = inputs.length;
+        this.inputCount = new long[i];
         this.inputTail = new PaddedLong[i];
         while (--i >= 0) {
             inputTail[i] = Pipe.getWorkingTailPositionObject(inputs[i]);
         }
         
     }
-
-    long outputCount;
     
     @Override
     public void run() {
         
+        int[] outputSlab = Pipe.slab(output);
+        int outputMask = Pipe.slabMask(output);
+        PaddedLong localHead = outputHead;
+        Pipe<RawDataSchema> localOutput = output;
         
-        if (outputCount<=0) {
-            outputCount = output.sizeOfSlabRing-(outputHead.value-Pipe.tailPosition(output));
+        if (outputCount <= 0) {
+            outputCount = localOutput.sizeOfSlabRing-(localHead.value-Pipe.tailPosition(localOutput));
         }
         
-        int[] outputSlab = Pipe.slab(output);
-        int outputMask = Pipe.slabMask(output);                     
-        
+        int inputsCount = inputs.length;
         Pipe<RawDataSchema> activeInput = inputs[pipeIdx];
         PaddedLong localTail = inputTail[pipeIdx];
-        long inputCount = activeInput.sizeOfSlabRing-(localTail.value-Pipe.headPosition(activeInput));
+        int localPipeIdx = pipeIdx;
         
-        
-        while ((outputCount-=OUTPUT_MAX_MSG_SIZE) >= 0  && (inputCount>=OUTPUT_MAX_MSG_SIZE) ) {
+        if (inputCount[localPipeIdx] < OUTPUT_MAX_MSG_SIZE) {
+            inputCount[localPipeIdx] = activeInput.sizeOfSlabRing-(localTail.value-Pipe.headPosition(activeInput));
+        }
+                
+        while ((outputCount >= OUTPUT_MAX_MSG_SIZE) && (inputCount[localPipeIdx] >= OUTPUT_MAX_MSG_SIZE) ) {
                                
+                outputCount -= OUTPUT_MAX_MSG_SIZE;            
+                inputCount[localPipeIdx] -= OUTPUT_MAX_MSG_SIZE;
+                    
                 int inputMask = Pipe.slabMask(activeInput); 
                 int[] inputSlab = Pipe.slab(activeInput);
                 int inputMsgIdx = inputSlab[inputMask & (int) localTail.value++];    
                 
-                if (inputMsgIdx<0) {
-                    requestShutdown();
-                    return;
-                }
+//                if (inputMsgIdx<0) {
+//                    requestShutdown();
+//                    return;
+//                }
                             
-                Pipe.markBytesWriteBase(output);            
-                outputSlab[outputMask & (int) outputHead.value++] = RawDataSchema.MSG_CHUNKEDSTREAM_1;      
+                Pipe.markBytesWriteBase(localOutput);            
+                outputSlab[outputMask & (int) localHead.value++] = RawDataSchema.MSG_CHUNKEDSTREAM_1;      
                 
                 int inputMeta = Pipe.takeRingByteMetaData(activeInput);
                 int inputLength    = Pipe.takeRingByteLen(activeInput);
-                Pipe.addByteArrayWithMask(output,Pipe.blobMask(activeInput), inputLength, Pipe.blob(activeInput), Pipe.bytePosition(inputMeta, activeInput, inputLength));                  
+                Pipe.addByteArrayWithMask(localOutput, Pipe.blobMask(activeInput), inputLength, Pipe.blob(activeInput), Pipe.bytePosition(inputMeta, activeInput, inputLength));                  
                                 
-                outputSlab[outputMask & (int) outputHead.value++] = inputLength;
+                outputSlab[outputMask & (int) localHead.value++] = inputLength;
                 
-                Pipe.publishHeadPositions(output);
+                Pipe.publishHeadPositions(localOutput);
                 Pipe.markBytesReadBase(activeInput, inputSlab[inputMask & (int) localTail.value++]);
                 Pipe.batchedReleasePublish(activeInput, Pipe.getWorkingBlobRingTailPosition(activeInput), localTail.value);
                 
-                if (++pipeIdx >= inputs.length) {
-                    pipeIdx = 0;
+                if (++localPipeIdx >= inputsCount) {
+                    localPipeIdx = 0;
                 }
-                activeInput = inputs[pipeIdx];
-                localTail = inputTail[pipeIdx];
-                inputCount = activeInput.sizeOfSlabRing-(localTail.value-Pipe.headPosition(activeInput));
+                activeInput = inputs[localPipeIdx];
+                localTail = inputTail[localPipeIdx];
+                
+                if (inputCount[localPipeIdx] < OUTPUT_MAX_MSG_SIZE) {
+                    inputCount[localPipeIdx] = activeInput.sizeOfSlabRing-(localTail.value-Pipe.headPosition(activeInput));
+                }
+                if (outputCount < OUTPUT_MAX_MSG_SIZE) {
+                    outputCount = localOutput.sizeOfSlabRing-(localHead.value-Pipe.tailPosition(localOutput));
+                }
         }
+        pipeIdx = localPipeIdx;
         
     }
 
