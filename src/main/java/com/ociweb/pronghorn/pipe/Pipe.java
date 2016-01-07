@@ -830,7 +830,7 @@ public final class Pipe<T extends MessageSchema> {
 
 
 
-    public static void writeFieldToOutputStream(Pipe pipe, OutputStream out) throws IOException {
+    public static <S extends MessageSchema> void writeFieldToOutputStream(Pipe<S> pipe, OutputStream out) throws IOException {
         int meta = Pipe.takeRingByteMetaData(pipe);
         int length    = Pipe.takeRingByteLen(pipe);    
         if (length>0) {                
@@ -839,26 +839,27 @@ public final class Pipe<T extends MessageSchema> {
         }
     }
 
-    private static void copyFieldToOutputStream(OutputStream out, int length, byte[] backing, int off, int len1)
+    private static void copyFieldToOutputStream(OutputStream out, int length, byte[] backing, int off, int lenFromOffsetToEnd)
             throws IOException {
-        if (len1>=length) {
+        if (lenFromOffsetToEnd>=length) {
             //simple add bytes
             out.write(backing, off, length); 
         } else {                        
             //rolled over the end of the buffer
-            out.write(backing, off, len1);
-            out.write(backing, 0, length-len1);
+            out.write(backing, off, lenFromOffsetToEnd);
+            out.write(backing, 0, length-lenFromOffsetToEnd);
         }
     }
     
     public static void readFieldFromInputStream(Pipe pipe, InputStream inputStream, final int byteCount) throws IOException {
-        buildFieldFromInputStream(pipe, inputStream, byteCount, Pipe.bytesWorkingHeadPosition(pipe), Pipe.blobMask(pipe), Pipe.byteBuffer(pipe), pipe.sizeOfBlobRing);
+        buildFieldFromInputStream(pipe, inputStream, byteCount, Pipe.bytesWorkingHeadPosition(pipe), Pipe.blobMask(pipe), Pipe.blob(pipe), pipe.sizeOfBlobRing);
     }
 
     private static void buildFieldFromInputStream(Pipe pipe, InputStream inputStream, final int byteCount, int startPosition, int byteMask, byte[] buffer, int sizeOfBlobRing) throws IOException {
         copyFromInputStreamLoop(inputStream, byteCount, startPosition, byteMask, buffer, sizeOfBlobRing, 0);        
         Pipe.addBytePosAndLen(pipe, startPosition, byteCount);
         Pipe.addAndGetBytesWorkingHeadPosition(pipe, byteCount);
+        assert(Pipe.validateVarLength(pipe, byteCount));
     }
 
     private static void copyFromInputStreamLoop(InputStream inputStream, int remaining, int position, int byteMask, byte[] buffer, int sizeOfBlobRing, int size) throws IOException {
@@ -2042,10 +2043,6 @@ public final class Pipe<T extends MessageSchema> {
 	
     public static <S extends MessageSchema> void addBytePosAndLen(Pipe<S> ring, int position, int length) {
         addBytePosAndLenSpecial(ring,position,length);
-//        
-//        assert(ring.slabRingHead.workingHeadPos.value <= ring.mask+Pipe.tailPosition(ring));
-//		setBytePosAndLen(ring.slabRing, ring.mask, ring.slabRingHead.workingHeadPos.value, position, length, Pipe.bytesWriteBase(ring));
-//		ring.slabRingHead.workingHeadPos.value+=2;
     }
 
     public static <S extends MessageSchema> void addBytePosAndLenSpecial(Pipe<S> targetOutput, final int startBytePos, int bytesLength) {

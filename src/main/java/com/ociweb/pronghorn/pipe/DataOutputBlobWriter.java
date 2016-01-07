@@ -14,11 +14,11 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     private ObjectOutputStream oos;
     
     private int startPosition;
-    private int activePosition;
+    public int activePosition;
     
     public DataOutputBlobWriter(Pipe<S> p) {
         this.p = p;
-        this.byteBuffer = Pipe.byteBuffer(p);
+        this.byteBuffer = Pipe.blob(p);
         this.byteMask = Pipe.blobMask(p);      
         assert(byteMask!=0);
     }
@@ -42,6 +42,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         int len = length();
         Pipe.addAndGetBytesWorkingHeadPosition(p, len);
         Pipe.addBytePosAndLenSpecial(p,startPosition,len);
+        assert(Pipe.validateVarLength(p, len));
         p.closeBlobFieldWrite();
         return len;
     }
@@ -336,9 +337,10 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
 
     private static int writePackedCharsImpl(DataOutputBlobWriter that, CharSequence source, int sourceLength, int sourcePos, int targetPos, byte[] target, int targetMask) {     
-        targetPos = writeIntSignedPos(sourceLength, target, targetMask, targetPos, (byte)0x7F);   
+        targetPos = writeIntUnified(sourceLength, sourceLength, target, targetMask, targetPos, (byte)0x7F);   
         while (sourcePos < sourceLength) {// 7, 14, 21
-            targetPos = writeIntSignedPos((int) 0x7FFF & source.charAt(sourcePos++), target, targetMask, targetPos, (byte)0x7F);            
+            int value = (int) 0x7FFF & source.charAt(sourcePos++);
+            targetPos = writeIntUnified(value, value, target, targetMask, targetPos, (byte)0x7F);            
         }
         return targetPos;
     } 
@@ -348,9 +350,10 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
     
     private static int writePackedCharsImpl(DataOutputBlobWriter that, byte[] source, int sourceMask, int sourceLength, int sourcePos, int targetPos, byte[] target, int targetMask) {
-        targetPos = writeIntSignedPos(sourceLength, target, targetMask, targetPos, (byte)0x7F);        
+        targetPos = writeIntUnified(sourceLength, sourceLength, target, targetMask, targetPos, (byte)0x7F);        
         while (sourcePos < sourceLength) {
-            targetPos = writeIntSignedPos((int) source[sourceMask & sourcePos++], target, targetMask, targetPos, (byte)0x7F);            
+            int value = (int) source[sourceMask & sourcePos++];
+            targetPos = writeIntUnified(value, value, target, targetMask, targetPos, (byte)0x7F);            
         }
         return targetPos;
     } 
@@ -375,101 +378,63 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
     
     public static final void writePackedLong(DataOutputBlobWriter that, long value) {
-        
-//        if (value >=0) {
-//            that.activePosition = writeLongUnified(value, value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
-//        } else {
-//            that.activePosition = writePackedNegativeLong(value, -value, that.byteBuffer, that.byteMask, that.activePosition);
-//        }
-        
-        //New branchless implementation we are testing
-        
+
         long mask = (value>>63);         // FFFFF  or 000000
         long check = (mask^value)-mask;  //absolute value
         int bit = (int)(check>>>63);     //is this the special value?
         
-        //    Result of the special MIN_VALUE after abs logic   //8000000000000000
+        //    Result of the special MIN_VALUE after abs logic                     //8000000000000000
         //    In order to get the right result we must pass something larger than //0x4000000000000000L;
        
         that.activePosition = writeLongUnified(value, (check>>>bit)+bit, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
 
     }
 
-    private static int writePackedNegativeLong(long value, long absv, byte[] buf, int mask, int pos) {
-      //  return (absv >= 0) ? writeLongUnified(value, absv, buf, mask, pos, (byte)0x7F) : writeLongSignedNegSpecial(value, absv, buf, mask, pos, (byte)0x7F);
-        return (absv >= 0) ? writeLongSignedNeg(value, absv, buf, mask, pos, (byte)0x7F) : writeLongSignedNegSpecial(value, absv, buf, mask, pos, (byte)0x7F);
-        
-    }
-    
     public static final void writePackedInt(DataOutputBlobWriter that, int value) {
-        if (value >=0) {
-            that.activePosition = writeIntSignedPos(value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
-        } else {
-            that.activePosition = writeIntSignedNeg(value, -value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
-        }
+
+        int mask = (value>>31);         // FFFFF  or 000000
+        int check = (mask^value)-mask;  //absolute value
+        int bit = (int)(check>>>31);     //is this the special value?
+        
+        that.activePosition = writeIntUnified(value, (check>>>bit)+bit, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
+
     }
     
     public static final void writePackedShort(DataOutputBlobWriter that, short value) {
-        if (value >=0) {
-            that.activePosition = writeIntSignedPos(value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
-        } else {
-            that.activePosition = writeIntSignedNeg(value, -value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
-        }
+        
+        int mask = (value>>31);         // FFFFF  or 000000
+        int check = (mask^value)-mask;  //absolute value
+        int bit = (int)(check>>>31);     //is this the special value?
+        
+        that.activePosition = writeIntUnified(value, (check>>>bit)+bit, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
+
     }
     
     public static final void writePackedULong(DataOutputBlobWriter that, long value) {
         assert(value>=0);
         //New branchless implementation we are testing
         that.activePosition = writeLongUnified(value, value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
-        
-        
-       // that.activePosition = writeLongSignedPos(value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
     }
     
     public static final void writePackedUInt(DataOutputBlobWriter that, int value) {
         assert(value>=0);
-        that.activePosition = writeIntSignedPos(value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
+        that.activePosition = writeIntUnified(value, value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
     }
     
     public static final void writePackedUShort(DataOutputBlobWriter that, short value) {
         assert(value>=0);
-        that.activePosition = writeIntSignedPos(value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
+        that.activePosition = writeIntUnified(value, value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
     }
-
     
-    private static final int writeIntSignedNeg(int value,final int absv, byte[] buf, int mask, int pos, final byte low7) {
-        // using absolute value avoids tricky word length issues
-        //int absv = -value;
-        if (absv <= 0x0000000000000040 && absv >= 0) {
-        } else {
-            if (absv <= 0x0000000000002000 && absv >= 0) {
-            } else {
-                if (absv <= 0x0000000000100000 && absv >= 0) {
-                } else {
-                    if (absv <= 0x0000000008000000 && absv >= 0) {
-                    } else {
-                        buf[mask & pos++] = (byte) (((value >>> 28) & low7));
-                    }
-                    buf[mask & pos++] = (byte) (((value >>> 21) & low7));
-                }
-                buf[mask & pos++] = (byte) (((value >>> 14) & low7));
-            }
-            buf[mask & pos++] = (byte) (((value >>> 7) & low7));
-        }
-        buf[mask & pos++] = (byte) (((value & low7) | 0x80));
-        return pos;
-    }
-       
-    
-    private static final int writeIntSignedPos(int value, byte[] buf, int mask, int pos, byte low7) {
+    private static final int writeIntUnified(final int value,final int check, final byte[] buf, final int mask, int pos, final byte low7) {
    
-        if (value < 0x0000000000000040) {
+        if (check < 0x0000000000000040) {
         } else {
-            if (value < 0x0000000000002000) {
+            if (check < 0x0000000000002000) {
             } else {
-                if (value < 0x0000000000100000) {
+                if (check < 0x0000000000100000) {
                 } else {
-                    if (value < 0x0000000008000000) {
+                    if (check < 0x0000000008000000) {
                     } else {                        
                         buf[mask & pos++] = (byte) (((value >>> 28) & low7));
                     }
@@ -480,109 +445,6 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
             buf[mask & pos++] = (byte) (((value >>> 7) & low7));
         }
         buf[mask & pos++] = (byte) (((value & low7) | 0x80));
-        return pos;
-    }
-        
-    private static final int writeLongSignedNeg(long value, long absv, byte[] buf, int mask, int pos, byte low7) {
-//        System.out.println("tested "+absv);
-//        if (true) {
-//            throw new UnsupportedOperationException();
-//        }
-        // using absolute value avoids tricky word length issues
-        //NOTE: do not modify this is designed to work best with Intel branch prediction which favors true
-        if (absv < 0x0000000000000040) {
-        } else {
-            if (absv < 0x0000000000002000) {
-            } else {
-                if (absv < 0x0000000000100000) {
-                } else {
-                    if (absv < 0x0000000008000000) {
-                    } else {
-                        if (absv < 0x0000000400000000L) {
-                        } else {
-                            if (absv < 0x0000020000000000L) {
-                            } else {
-                                if (absv < 0x0001000000000000L) {
-                                } else {
-                                    if (absv < 0x0080000000000000L) { 
-                                    } else {
-                                       long lastBit = value>>>63;
-                                       if (0 != lastBit) {                                           
-                                            buf[mask & pos++] =  (byte) lastBit;
-                                       } 
-                                       buf[mask & pos++] =  (byte) (( ((int)(value >>> 56)) & low7));
-                                    }
-                                    buf[mask & pos++] = (byte) (( ((int)(value >>> 49)) & low7));
-                                }
-                                buf[mask & pos++] = (byte) (( ((int)(value >>> 42)) & low7));
-                            }
-                            buf[mask & pos++] = (byte) (( ((int)(value >>> 35)) & low7));
-                        }
-                        buf[mask & pos++] = (byte) (( ((int)(value >>> 28)) & low7));
-                    }
-                    buf[mask & pos++] = (byte) (( ((int)(value >>> 21)) & low7));
-                }
-                buf[mask & pos++] = (byte) (( ((int)(value >>> 14)) & low7));
-            }
-            buf[mask & pos++] = (byte) (( ((int)(value >>> 7)) & low7));
-        }
-        buf[mask & pos++] = (byte) (( ((int)(value & low7)) | 0x80));
-        return pos;
-    }
-    
-    private static final int writeLongSignedNegSpecial(long value, long absv, byte[] buf, int mask, int pos, byte low7) {
-        buf[mask & pos++] = (byte) (value >>> 63);
-        buf[mask & pos++] = (byte) ((((int) (value >>> 56)) & low7));
-        buf[mask & pos++] = (byte) ((((int) (value >>> 49)) & low7));
-        buf[mask & pos++] = (byte) ((((int) (value >>> 42)) & low7));
-        buf[mask & pos++] = (byte) ((((int) (value >>> 35)) & low7));
-        buf[mask & pos++] = (byte) ((((int) (value >>> 28)) & low7));
-        buf[mask & pos++] = (byte) ((((int) (value >>> 21)) & low7));
-        buf[mask & pos++] = (byte) ((((int) (value >>> 14)) & low7));
-        buf[mask & pos++] = (byte) ((((int) (value >>> 7)) & low7));
-        buf[mask & pos++] = (byte) ((((int) (value & low7)) | 0x80));
-        return pos;
-    }
-
-    private static final int writeLongSignedPos(long value, byte[] buf, int mask, int pos, final byte low7) {
-        //NOTE: do not modify this is designed to work best with Intel branch prediction which favors true
-        if (value < 0x0000000000000040) {
-        } else {
-            if (value < 0x0000000000002000) {
-            } else {
-                if (value < 0x0000000000100000) {
-                } else {
-                    if (value < 0x0000000008000000) {
-                    } else {
-                        if (value < 0x0000000400000000L) {
-                        } else {
-                            if (value < 0x0000020000000000L) {
-                            } else {
-                                if (value < 0x0001000000000000L) {
-                                } else {
-                                    if (value < 0x0080000000000000L) {
-                                    } else {
-                                        if (value < 0x4000000000000000L) {
-                                        } else {
-                                            buf[mask & pos++] = (byte)(value >>> 63);
-                                        }
-                                        buf[mask & pos++] = (byte) (( ((int)(value >>> 56)) & low7));
-                                    }
-                                    buf[mask & pos++] = (byte) (( ((int)(value >>> 49)) & low7));
-                                }
-                                buf[mask & pos++] = (byte) (( ((int)(value >>> 42)) & low7));
-                            }
-                            buf[mask & pos++] =(byte) (( ((int)(value >>> 35)) & low7));
-                        }
-                        buf[mask & pos++] = (byte) (( ((int)(value >>> 28)) & low7));
-                    }
-                    buf[mask & pos++] = (byte) (( ((int)(value >>> 21)) & low7));
-                }
-                buf[mask & pos++] = (byte) (( ((int)(value >>> 14)) & low7));
-            }
-            buf[mask & pos++] = (byte) (( ((int)(value >>> 7)) & low7));
-        }
-        buf[mask & pos++] = (byte) (( ((int)(value & low7)) | 0x80));
         return pos;
     }
     

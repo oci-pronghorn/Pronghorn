@@ -44,17 +44,24 @@ public class DataInputOutputTest {
         return testValue;
     }
     
-    private int testIntValueGenerator(Random r, int seed) {
+    private int testIntValueGenerator(Random r, int iter) {
         
-//        int powOf2 = seed & 0x1F;
-//        int range = (1<<powOf2);
-//        int maskValue = range-1;
-//                
-//        int testValue =   ((r.nextInt()&maskValue) | range );
+        if (iter<2000) {
+            int value = iter>>1;
+            if (0==(iter&1)) {
+                return value;
+            } else {
+                return -value;
+            }
+        }
+        if (iter==2001) {
+            return Integer.MIN_VALUE;
+        }
+        if (iter==2002) {
+            return Integer.MAX_VALUE;
+        }
         
-        int testValue = r.nextInt();
-       // System.out.println(testValue);
-        return testValue;
+        return r.nextInt();
     }
     
     
@@ -138,6 +145,7 @@ public class DataInputOutputTest {
         
          
         out.openField();
+              
         
         r = new Random(101);
         long start = System.nanoTime();

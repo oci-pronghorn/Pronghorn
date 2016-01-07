@@ -31,7 +31,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         this.position  = PipeReader.readBytesPosition(pipe, loc);
         this.backing   = PipeReader.readBytesBackingArray(pipe, loc);        
         this.bytesLimit = pipe.byteMask & (position + length);
-        
+
     }
     
     public int openLowLevelAPIField() {
@@ -41,9 +41,10 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         this.position = Pipe.bytePosition(meta, pipe, this.length);
         this.backing   = Pipe.byteBackingArray(meta, pipe);               
         this.bytesLimit = pipe.byteMask & (position + length);
+        
         return this.length;
     }
-    
+
     public int accumLowLevelAPIField() {
         
         if (0==this.length) {
@@ -84,12 +85,12 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     @Override
     public int read(byte[] b) throws IOException {
         if ((byteMask & position) == bytesLimit) {
-         //   System.err.println("returned EOF A");
+            new Exception().printStackTrace();
             return -1;
         }       
         
         int max = bytesRemaining(this);
-        int len = b.length>max? max : b.length;      
+        int len = b.length > max? max : b.length;      
         Pipe.copyBytesFromToRing(backing, position, byteMask, b, 0, Integer.MAX_VALUE, len);
         position += b.length;
         return b.length;
@@ -98,8 +99,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
         if ((byteMask & position) == bytesLimit) {
-           // System.err.println("returned EOF B");
-            return -1;//-1;  //TODO: need to turn off this feature when we are spanning fields since we do not know the bytes limit.
+            return -1;
         }
         
         int max = bytesRemaining(this);
@@ -212,7 +212,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     @Override
     public int read() throws IOException {
         //TODO: need to turn off at times.
-        return (byteMask & position) != bytesLimit ? backing[byteMask & position++] : -1;
+        return (byteMask & position) != bytesLimit ? backing[byteMask & position++] : -1;//isOpen?0:-1;
     }
 
     @Override
