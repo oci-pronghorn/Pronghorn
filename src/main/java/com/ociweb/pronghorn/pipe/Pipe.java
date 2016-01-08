@@ -442,8 +442,8 @@ public final class Pipe<T extends MessageSchema> {
 	
     public Pipe(PipeConfig<T> config) {
 
-        byte primaryBits = config.primaryBits;
-        byte byteBits = config.byteBits;
+        byte primaryBits = config.slabBits;
+        byte byteBits = config.blobBits;
         byte[] byteConstants = config.byteConst;
         this.schema = config.schema;
 

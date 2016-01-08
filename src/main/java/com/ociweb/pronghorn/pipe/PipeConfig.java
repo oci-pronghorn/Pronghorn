@@ -6,30 +6,30 @@ package com.ociweb.pronghorn.pipe;
 public class PipeConfig<T extends MessageSchema> {
 	
 	//try to keep all this under 20MB and 1 RB under 64K if possible under 256K is highly encouraged
-	public final byte primaryBits;
-	public final byte byteBits;
-	public final byte[] byteConst;
-	public final T schema; 
-	public int debugFlags = 0;
+	final byte slabBits;
+	final byte blobBits;
+	final byte[] byteConst;
+	final T schema; 
+	int debugFlags = 0;
 	
    /**
      * This is NOT the constructor you are looking for.
      */
     public PipeConfig(byte primaryBits, byte byteBits, byte[] byteConst, T messageSchema) {
-        this.primaryBits = primaryBits;
-        this.byteBits = byteBits;
+        this.slabBits = primaryBits;
+        this.blobBits = byteBits;
         this.byteConst = byteConst;
         this.schema = messageSchema;
      }
     
      public PipeConfig(T messageSchema) {
         //default size which is smaller than half of 64K because this is the L1 cache size on intel haswell.
-        this.primaryBits = 6;
-        this.byteBits = 15;
+        this.slabBits = 6;
+        this.blobBits = 15;
         this.byteConst = null;
         this.schema = messageSchema;
         //validate
-        FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<primaryBits);
+        FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<slabBits);
      }
 		     
      
@@ -38,7 +38,7 @@ public class PipeConfig<T extends MessageSchema> {
     }
 	
 	public String toString() {
-		return "Primary:"+primaryBits+" Secondary:"+byteBits;
+		return "Primary:"+slabBits+" Secondary:"+blobBits;
 	}
 	/**
 	 * This is the constructor you are looking for.
@@ -65,11 +65,11 @@ public class PipeConfig<T extends MessageSchema> {
         
         int biggestFragment = FieldReferenceOffsetManager.maxFragmentSize(MessageSchema.from(messageSchema));
         int primaryMinSize = minimumFragmentsOnRing*biggestFragment;        
-        this.primaryBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1));
+        this.slabBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1));
         
-        int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<primaryBits);
+        int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<slabBits);
         int secondaryMinSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
-        this.byteBits = ((0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce))? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
+        this.blobBits = ((0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce))? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
                 
         this.byteConst = null;
         this.schema = messageSchema;
@@ -78,12 +78,12 @@ public class PipeConfig<T extends MessageSchema> {
     }
     
     private void validate(int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
-        if (byteBits>31) {
+        if (blobBits>31) {
             throw new UnsupportedOperationException("Unable to support blob data larger than 1GB Reduce either the data size or count of desired message msgs:"+
                     minimumFragmentsOnRing+" varLen:"+maximumLenghOfVariableLengthFields);
         }
         
-        if (primaryBits>31) {
+        if (slabBits>31) {
             throw new UnsupportedOperationException("Unable to support slab data larger than 1GB, Reduce the count of desired message");
         }
         
@@ -93,11 +93,11 @@ public class PipeConfig<T extends MessageSchema> {
         
         int biggestFragment = FieldReferenceOffsetManager.maxFragmentSize(MessageSchema.from(messageSchema));
         int primaryMinSize = minimumFragmentsOnRing*biggestFragment;        
-        this.primaryBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1));
+        this.slabBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1));
         
-        int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<primaryBits);
+        int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<slabBits);
         int secondaryMinSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
-        this.byteBits = ((0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce))? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
+        this.blobBits = ((0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce))? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
 
         this.byteConst = byteConst;
         this.schema = messageSchema;
@@ -105,15 +105,31 @@ public class PipeConfig<T extends MessageSchema> {
      }
 	
 	public PipeConfig<T> grow2x(){
-		return new PipeConfig<T>((byte)(1+primaryBits), (byte)(1+byteBits), byteConst, schema);
+		return new PipeConfig<T>((byte)(1+slabBits), (byte)(1+blobBits), byteConst, schema);
 	}
 	
 	public PipeConfig<T> debug(int debugFlags){
-		PipeConfig<T> result = new PipeConfig<T>((byte)(primaryBits), (byte)(byteBits), byteConst, schema);
+		PipeConfig<T> result = new PipeConfig<T>((byte)(slabBits), (byte)(blobBits), byteConst, schema);
 		result.debugFlags = debugFlags;
 		return result;
 	}
 	
 	public static final int SHOW_HEAD_PUBLISH = 1;
+
+	/**
+	 * Returns true if this configuration is of the same schema and is larger or equal to the source config.
+	 */
+    public boolean canConsume(PipeConfig<T> sourceConfig) {
+        if (this.schema == sourceConfig.schema) {
+            if (this.blobBits>=sourceConfig.blobBits) {
+                if (this.slabBits>=sourceConfig.slabBits) {
+                    //NOTE: proably also want to check the ratio.
+                    return true;
+                }
+            }
+        }
+        return false;
+        
+    }
 	
 }
