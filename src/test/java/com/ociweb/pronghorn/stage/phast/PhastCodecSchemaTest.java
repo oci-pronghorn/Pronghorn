@@ -11,6 +11,7 @@ import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
@@ -31,8 +32,8 @@ public class PhastCodecSchemaTest {
 	};
 	
 	@Test
-	public void testConstantFields() {
-	    assertTrue(FROMValidation.testForMatchingLocators(PhastCodecSchema.instance));
+	public void testConstantFields() { //too many unused constants.
+	    assertEquals(PhastCodecSchema.MSG_MAX_FIELDS, FieldReferenceOffsetManager.lookupTemplateLocator(10063, PhastCodecSchema.FROM));
 	}
 	
 	@Test
@@ -40,22 +41,28 @@ public class PhastCodecSchemaTest {
 	    	    
 	    GraphManager gm = new GraphManager();
 	    
-        PipeConfig<RawDataSchema> outputConfig = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 400);
-        PipeConfig<PhastCodecSchema> inputConfig = new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 100);
+        PipeConfig<RawDataSchema> outputConfig    = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 300, 800);
+        PipeConfig<PhastCodecSchema> inputConfig  = new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 300);
+        PipeConfig<RawDataSchema>    inputConfig2 = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 10, 1024);
         
-        Pipe<PhastCodecSchema> testValuesToEncode = new Pipe<PhastCodecSchema>(inputConfig);
+        
+        Pipe<PhastCodecSchema> testValuesToEncode  = new Pipe<PhastCodecSchema>(inputConfig);
+        Pipe<RawDataSchema>    testValuesToEncode2 = new Pipe<RawDataSchema>(inputConfig2);
+        
         Pipe<RawDataSchema> encodedValuesToValidate = new Pipe<RawDataSchema>(outputConfig);
-        
-        PhastEncodeStage stage = new PhastEncodeStage(gm, testValuesToEncode, encodedValuesToValidate, 1 );
+                
+        PhastEncodeStage stage = new PhastEncodeStage(gm, testValuesToEncode, testValuesToEncode2, encodedValuesToValidate, 1 );
 	    
         testValuesToEncode.initBuffers();
+        testValuesToEncode2.initBuffers();
+        
         encodedValuesToValidate.initBuffers();
         
         int j = 10;
         while (--j>=0) {
-            Pipe.addMsgIdx(testValuesToEncode, PhastCodecSchema.MSG_030_10030);
+            Pipe.addMsgIdx(testValuesToEncode, PhastCodecSchema.MSG_MAX_FIELDS);
         
-            int k = 30;
+            int k = 63;
             while (--k>=0) {
                 
                 long value = 1000L * k * j;
@@ -80,7 +87,7 @@ public class PhastCodecSchemaTest {
             assertEquals(RawDataSchema.MSG_CHUNKEDSTREAM_1, msgIdx);
             reader.openLowLevelAPIField();
             
-            int k = 30;
+            int k = 63;
             while (--k>=0) {
                 
                 assertTrue(reader.hasRemainingBytes());
@@ -104,8 +111,8 @@ public class PhastCodecSchemaTest {
 	    
 	       GraphManager gm = new GraphManager();
 	        
-	       PipeConfig<RawDataSchema> inputConfig = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 400);
-	       PipeConfig<PhastCodecSchema> outputConfig = new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 100, 400);
+	       PipeConfig<RawDataSchema> inputConfig = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 1000);
+	       PipeConfig<PhastCodecSchema> outputConfig = new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 300, 8000);
 	     
 	       Pipe<PhastCodecSchema> decodedDataToValidate = new Pipe<PhastCodecSchema>(outputConfig);
 	       Pipe<RawDataSchema> testDataToDecode = new Pipe<RawDataSchema>(inputConfig);
@@ -128,10 +135,10 @@ public class PhastCodecSchemaTest {
 	            	            
 	            writer.openField();
 	            
-	            int k = 30;
+	            int k = 63;
 	            while (--k>=0) {
 	                
-	                long value = 1000 * k*j;	                
+	                long value = 1000 * k * j;
 	                DataOutputBlobWriter.writePackedLong(writer, value);
 	            }
 	            
@@ -151,18 +158,17 @@ public class PhastCodecSchemaTest {
 	            
 	            int msgIdx = Pipe.takeMsgIdx(decodedDataToValidate);
 	            
-	            assertEquals(PhastCodecSchema.MSG_030_10030, msgIdx);
+	            assertEquals(PhastCodecSchema.MSG_MAX_FIELDS, msgIdx);
 	            
 	            int count = (int)PhastCodecSchema.FROM.fieldIdScript[msgIdx]-10000;
-	            assertEquals(30, count);
+	            assertEquals(63, count);
 	            	            
 	            int k = count;
 	            while (--k>=0) {
-	                
-	                long value = 1000 * k*j;
+	                long value = 1000 * k * j;
 	                
 	                long value2 = Pipe.takeLong(decodedDataToValidate);
-	                assertEquals(value,value2);
+	                assertEquals("at "+j+","+k,value,value2);
 	                
 	            }
 	            
@@ -185,28 +191,37 @@ public class PhastCodecSchemaTest {
 
         GraphManager gm = new GraphManager();
          
-        PipeConfig<RawDataSchema> rawDataConfig = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 80, 30*10*100);
-        PipeConfig<PhastCodecSchema> phastCodeConfig = new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 100000); //TODO: AA, must optimize queue size based on load. Build tool for this.
+        PipeConfig<PhastCodecSchema> phastCodeConfig = new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 128); //TODO: AA, must optimize queue size based on load. Build tool for this.
+        PipeConfig<RawDataSchema>    phastCodeConfig2 = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 20);
         
+        int chunkSize = 32;
+        PipeConfig<RawDataSchema> rawDataConfig = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 16, 63*10*chunkSize);
+
         Pipe<PhastCodecSchema> inputPipe = new Pipe<PhastCodecSchema>(phastCodeConfig);
+        Pipe<RawDataSchema> inputPipe2 = new Pipe<RawDataSchema>(phastCodeConfig2);
+        
         Pipe<RawDataSchema> packedDataPipe = new Pipe<RawDataSchema>(rawDataConfig);
         Pipe<PhastCodecSchema> outputPipe = new Pipe<PhastCodecSchema>(phastCodeConfig);
         Pipe<RawDataSchema> rePackedDataPipe = new Pipe<RawDataSchema>(rawDataConfig);
         
 	    
         //Add production stage?
-        int iterations = 20000000;// * 1000;
-        LongDataGenStage  genStage = new LongDataGenStage(gm, new Pipe[]{inputPipe}, iterations, 64);        
-        PhastEncodeStage encodeStage = new PhastEncodeStage(gm, inputPipe, packedDataPipe, 64 );       
+        int iterations = 10000000;// * 1000;
+        LongDataGenStage  genStage = new LongDataGenStage(gm, new Pipe[]{inputPipe}, iterations, chunkSize);        
+        //PipeCleanerStage<PhastCodecSchema> dumpStage = new PipeCleanerStage<PhastCodecSchema>(gm, inputPipe); //21-36 Gbps
+
+        PhastEncodeStage encodeStage = new PhastEncodeStage(gm, inputPipe, inputPipe2, packedDataPipe, chunkSize );
+        PipeCleanerStage<RawDataSchema> dumpStage = new PipeCleanerStage<RawDataSchema>(gm, packedDataPipe); //consumes 6-8 but writes 3
+        
+        
   //      PhastDecodeStage decodeStage = new PhastDecodeStage(gm, packedDataPipe, outputPipe );   
     //    PhastEncodeStage encodeStage2 = new PhastEncodeStage(gm, outputPipe, rePackedDataPipe, 16 );  
 
      // PipeCleanerStage<RawDataSchema> dumpStage = new PipeCleanerStage<RawDataSchema>(gm, rePackedDataPipe);      
 //      PipeCleanerStage<PhastCodecSchema> dumpStage = new PipeCleanerStage<PhastCodecSchema>(gm, outputPipe);        
-      PipeCleanerStage<RawDataSchema> dumpStage = new PipeCleanerStage<RawDataSchema>(gm, packedDataPipe);
-//      PipeCleanerStage<PhastCodecSchema> dumpStage = new PipeCleanerStage<PhastCodecSchema>(gm, inputPipe);
+
         
-        //GraphManager.enableBatching(gm); //due to internal batching nature of stages this does not help 
+    //   GraphManager.enableBatching(gm); //due to internal batching nature of stages this does not help 
         
         MonitorConsoleStage monitor = MonitorConsoleStage.attach(gm,20000000);//TODO: only gets triggered on shutdown call, TODO: need to fix this.
         final ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
@@ -230,31 +245,38 @@ public class PhastCodecSchemaTest {
 
 	        GraphManager gm = new GraphManager();
 	         
-	        PipeConfig<RawDataSchema> rawDataConfig = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 64, 30*10*64);
-	        PipeConfig<PhastCodecSchema> phastCodeConfig = new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 1000); //TODO: AA, must optimize queue size based on load. Build tool for this.
+	        
+	        PipeConfig<PhastCodecSchema> phastCodeConfig = new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 256); //TODO: AA, must optimize queue size based on load. Build tool for this.
+	        PipeConfig<RawDataSchema>    phastCodeConfig2 = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 10,1000); //TODO: AA, must optimize queue size based on load. Build tool for this.
+            
+	        int chunkSize = 32;
+	        PipeConfig<RawDataSchema> rawDataConfig = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 4,10*63*chunkSize);
 	        
 	        Pipe<PhastCodecSchema> inputPipe1 = new Pipe<PhastCodecSchema>(phastCodeConfig);
+	        Pipe<RawDataSchema> inputPipe1B = new Pipe<RawDataSchema>(phastCodeConfig2);
+	        
 	        Pipe<PhastCodecSchema> inputPipe2 = new Pipe<PhastCodecSchema>(phastCodeConfig);
+	        Pipe<RawDataSchema> inputPipe2B = new Pipe<RawDataSchema>(phastCodeConfig2);
+	        
 	       // Pipe<PhastCodecSchema> inputPipe3 = new Pipe<PhastCodecSchema>(phastCodeConfig);
 	        
 	        Pipe<RawDataSchema> packedDataPipe1 = new Pipe<RawDataSchema>(rawDataConfig);
 	        Pipe<RawDataSchema> packedDataPipe2 = new Pipe<RawDataSchema>(rawDataConfig);
 	       // Pipe<RawDataSchema> packedDataPipe3 = new Pipe<RawDataSchema>(rawDataConfig);
 	        
-	        Pipe<RawDataSchema> packedDataPipeFinal = new Pipe<RawDataSchema>(rawDataConfig.grow2x());
+	        Pipe<RawDataSchema> packedDataPipeFinal = new Pipe<RawDataSchema>(rawDataConfig);
             
 	        
 	        Pipe<PhastCodecSchema> outputPipe = new Pipe<PhastCodecSchema>(phastCodeConfig);
 	        Pipe<RawDataSchema> rePackedDataPipe = new Pipe<RawDataSchema>(rawDataConfig);
 	        
-	        int chunkSize = 64;
 	        
 	        //Add production stage?
-	        int iterations = 30000000;//*1000;
+	        int iterations = 3000000;//*1000;
 	        LongDataGenStage  genStage = new LongDataGenStage(gm, new Pipe[]{inputPipe1, inputPipe2}, iterations, chunkSize);      
 	        
-	        PhastEncodeStage encodeStage1 = new PhastEncodeStage(gm, inputPipe1, packedDataPipe1, chunkSize);       
-	        PhastEncodeStage encodeStage2 = new PhastEncodeStage(gm, inputPipe2, packedDataPipe2, chunkSize);       
+	        PhastEncodeStage encodeStage1 = new PhastEncodeStage(gm, inputPipe1, inputPipe1B, packedDataPipe1, chunkSize);       
+	        PhastEncodeStage encodeStage2 = new PhastEncodeStage(gm, inputPipe2, inputPipe2B, packedDataPipe2, chunkSize);       
 	      //  PhastEncodeStage encodeStage3 = new PhastEncodeStage(gm, inputPipe3, packedDataPipe3, chunkSize);  
 	        
 	    //    PhastDecodeStage decodeStage = new PhastDecodeStage(gm, packedDataPipe, outputPipe );   

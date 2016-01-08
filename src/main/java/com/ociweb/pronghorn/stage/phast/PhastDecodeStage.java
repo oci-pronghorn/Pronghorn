@@ -23,6 +23,7 @@ public class PhastDecodeStage extends PronghornStage {
     private int inputBlobWorkingTail;
     private PaddedLong outputWorkingHead;
     private static final int MAX_FIELD_SIZE = FieldReferenceOffsetManager.maxFragmentSize(PhastCodecSchema.FROM);
+    private int MAX_INT_FIELDS = 63; //TODO: SSET FROM SCHEMA.
     
     protected PhastDecodeStage(GraphManager graphManager, Pipe<RawDataSchema> input, Pipe<PhastCodecSchema> output) {
         super(graphManager, input, output);
@@ -85,7 +86,7 @@ public class PhastDecodeStage extends PronghornStage {
                       //  Pipe.markBytesWriteBase(output);
                         //start new message
                         int mPos = outputMask & pos++;
-                        outputSlab[mPos] = PhastCodecSchema.MSG_030_10030;
+                        outputSlab[mPos] = PhastCodecSchema.MSG_MAX_FIELDS;
                         recentMsgIdxPos = mPos;
                         
                     }
@@ -100,7 +101,7 @@ public class PhastDecodeStage extends PronghornStage {
                     outputSlab[outputMask & pos++] = ((int)value);
 
                 
-                    if (++localFieldCount == 30) {      
+                    if (++localFieldCount == MAX_INT_FIELDS) {      
                         outputWorkingHead.value += MAX_FIELD_SIZE;
                         
                        //publish message

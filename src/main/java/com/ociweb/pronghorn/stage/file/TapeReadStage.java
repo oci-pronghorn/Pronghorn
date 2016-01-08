@@ -8,6 +8,8 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -232,13 +234,35 @@ public class TapeReadStage extends PronghornStage {
         @Override
         public int write(ByteBuffer src) throws IOException {  
             
-            int count = Math.min( src.remaining()>>2, buffer.remaining()  );
+            IntBuffer localBuffer = buffer;
+            int count = Math.min( src.remaining()>>2, localBuffer.remaining()  );
             int i = count;
             while (--i>=0) {
-                buffer.put(src.getInt());
+                //old
+                localBuffer.put(src.getInt());
+                
+                //new
+                //localBuffer.put(readPackedInt(src));
             }
             return count<<2;
         }
+        
+        public static <S extends MessageSchema> int readPackedInt(ByteBuffer src) {
+            byte v = src.get();
+            int accumulator = (~((int)(((v>>6)&1)-1)))&0xFFFFFF80; 
+            return (v >= 0) ? readPackedInt((accumulator | v) << 7,src) : accumulator |(v & 0x7F);
+        }
+        
+        private static <S extends MessageSchema> int readPackedInt(int a, ByteBuffer src) {
+            return readPackedIntB(a, src, src.get());
+        }
+
+        private static <S extends MessageSchema> int readPackedIntB(int a, ByteBuffer src, byte v) {
+            assert(a!=0 || v!=0) : "malformed data";
+            return (v >= 0) ? readPackedInt((a | v) << 7, src) : a | (v & 0x7F);
+        }
+        
+        
         
     }
 

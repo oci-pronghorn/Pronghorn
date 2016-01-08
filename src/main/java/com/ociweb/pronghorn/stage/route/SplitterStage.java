@@ -46,7 +46,6 @@ public class SplitterStage<T extends MessageSchema> extends PronghornStage {
 		working = new int[i];
 		while(--i>=0) {
 			
-			
 					
 			//confirm this target is large enough for the needed data.
 			FieldReferenceOffsetManager targetFrom = Pipe.from(targets[i]);

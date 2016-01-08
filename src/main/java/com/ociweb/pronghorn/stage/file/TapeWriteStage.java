@@ -160,7 +160,7 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
                 
         ss.headerInt.clear();
         ss.headerInt.put(ss.totalBytesCopy);
-        ss.headerInt.put((int)ss.totalPrimaryCopy<<2);
+        ss.headerInt.put((int)ss.totalPrimaryCopy<<2); //TODO: this value x4 is not right when we use packed values, TODO: how to determine this?
         
         ss.header.clear();
     }
@@ -249,6 +249,7 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
     private static class IntBufferAdapter implements ReadableByteChannel {
 
         IntBuffer sourceBuffer; 
+        byte[] workspace = new byte[5];
         
         @Override
         public boolean isOpen() {
@@ -269,10 +270,50 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
             
             int count = Math.min(dst.remaining()>>2,sourceBuffer.remaining());
             int i = count;
+            //byte[] localWorkspace = workspace;
+            IntBuffer localSource = sourceBuffer;
+            
             while (--i>=0) {
-                dst.putInt(sourceBuffer.get());
+                
+                //old  459ms  435MB/s    797ms  250MB/s
+                dst.putInt(localSource.get());
+
+                //TODO: new way works nice however we must go back and write the byte count now that it has been packed !! Retest and check speed.
+                //new   Median Tape write duration: 354ms  564MB/s
+//                int value = localSource.get();
+//                int mask = (value>>31);         // FFFFF  or 000000
+//                int check = (mask^value)-mask;  //absolute value
+//                int bit = (int)(check>>>31);     //is this the special value?
+//                //writeIntUnified(value, (check>>>bit)+bit, dst, (byte)0x7F);
+//                
+//                int len = writeIntUnified(value, (check>>>bit)+bit, localWorkspace, 0, (byte)0x7F);
+//                dst.put(localWorkspace,  0,  len);
+                
+                
             }            
             return count<<2;
+        }
+        
+        private static final int writeIntUnified(final int value,final int check, final byte[] buf, int pos, final byte low7) {
+            
+            if (check < 0x0000000000000040) {
+            } else {
+                if (check < 0x0000000000002000) {
+                } else {
+                    if (check < 0x0000000000100000) {
+                    } else {
+                        if (check < 0x0000000008000000) {
+                        } else {                        
+                            buf[pos++] = (byte) (((value >>> 28) & low7));
+                        }
+                        buf[pos++] = (byte) (((value >>> 21) & low7));
+                    }
+                    buf[pos++] = (byte) (((value >>> 14) & low7));
+                }
+                buf[pos++] = (byte) (((value >>> 7) & low7));
+            }
+            buf[pos++] = (byte) (((value & low7) | 0x80));
+            return pos;
         }
         
     }

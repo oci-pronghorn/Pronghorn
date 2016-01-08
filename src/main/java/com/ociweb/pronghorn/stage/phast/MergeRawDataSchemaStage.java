@@ -8,6 +8,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class MergeRawDataSchemaStage extends PronghornStage {
 
+    //TODO: modify to take any simple schema, nothing with nested messages.
+    
     private final Pipe<RawDataSchema>[] inputs;
     private final Pipe<RawDataSchema> output;
     private int pipeIdx = 0;
@@ -46,6 +48,8 @@ public class MergeRawDataSchemaStage extends PronghornStage {
     @Override
     public void run() {
         
+        //TODO: refactor back to normal low level calls and check the performance changes.
+        
         int[] outputSlab = Pipe.slab(output);
         int outputMask = Pipe.slabMask(output);
         PaddedLong localHead = outputHead;
@@ -73,10 +77,10 @@ public class MergeRawDataSchemaStage extends PronghornStage {
                 int[] inputSlab = Pipe.slab(activeInput);
                 int inputMsgIdx = inputSlab[inputMask & (int) localTail.value++];    
                 
-//                if (inputMsgIdx<0) {
-//                    requestShutdown();
-//                    return;
-//                }
+                if (inputMsgIdx<0) {
+                    requestShutdown();
+                    return;
+                }
                             
                 Pipe.markBytesWriteBase(localOutput);            
                 outputSlab[outputMask & (int) localHead.value++] = RawDataSchema.MSG_CHUNKEDSTREAM_1;      
