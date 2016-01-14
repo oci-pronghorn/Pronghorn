@@ -254,7 +254,13 @@ public class GraphManager {
                 //These are common to all of Java and normal ways to block a thread
                 ignore |= ste[j].toString().contains("getAllStackTraces");					        
                 ignore |= ste[j].toString().contains("java.lang.Object.wait");
-                ignore |= ste[j].toString().contains("java.util.concurrent.locks.LockSupport.parkNanos");		
+                ignore |= ste[j].toString().contains("java.util.concurrent.locks.LockSupport.parkNanos");	
+                ignore |= ste[j].toString().contains("junit.runner");
+                
+                //This is common from hazelcast
+                ignore |= ste[j].toString().contains("com.hazelcast");  
+               
+                
             }
             
             j = ste.length;
