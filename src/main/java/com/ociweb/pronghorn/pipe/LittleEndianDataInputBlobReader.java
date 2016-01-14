@@ -36,14 +36,17 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema>  extends I
     }
     
     public int openLowLevelAPIField() {
+        return openLowLevelAPIField(this);
+    }
+
+    private static int openLowLevelAPIField(LittleEndianDataInputBlobReader that) {
+        int meta = Pipe.takeRingByteMetaData(that.pipe);
+        that.length    = Pipe.takeRingByteLen(that.pipe);
+        that.position  = Pipe.bytePosition(meta, that.pipe, that.length);
+        that.backing   = Pipe.byteBackingArray(meta, that.pipe);      
         
-        int meta = Pipe.takeRingByteMetaData(pipe);
-        this.length    = Pipe.takeRingByteLen(pipe);
-        this.position  = Pipe.bytePosition(meta, pipe, this.length);
-        this.backing   = Pipe.byteBackingArray(meta, pipe);      
-        
-        this.bytesLimit = pipe.byteMask & (position + length);
-        return this.length;
+        that.bytesLimit = that.pipe.byteMask & (that.position + that.length);
+        return that.length;
     }
     
     public static void openRawRead(LittleEndianDataInputBlobReader reader, int position, int length) {
@@ -56,20 +59,23 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema>  extends I
     
     
     public int accumLowLevelAPIField() {
+        return accumLowLevelAPIField(this);
         
-        if (0==this.length) {
-            return openLowLevelAPIField();
+    }
+
+    private static int accumLowLevelAPIField(LittleEndianDataInputBlobReader that) {
+        if (0==that.length) {
+            return openLowLevelAPIField(that);
         } else {        
         
-            int meta = Pipe.takeRingByteMetaData(pipe);
-            int len = Pipe.takeRingByteLen(pipe);
+            int meta = Pipe.takeRingByteMetaData(that.pipe);
+            int len = Pipe.takeRingByteLen(that.pipe);
             
-            this.length += len;
-            this.bytesLimit = pipe.byteMask & (bytesLimit + len);
+            that.length += len;
+            that.bytesLimit = that.pipe.byteMask & (that.bytesLimit + len);
             
             return len;
         }
-        
     }
     
     public int length() {
@@ -212,6 +218,13 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema>  extends I
     public int readInt() throws IOException {
         return read32(backing,byteMask,this);
     }
+    
+    public int peekInt() throws IOException {
+        int result = read32(backing,byteMask,this);
+        position -= 4;
+        return result;
+    }
+    
 
     @Override
     public long readLong() throws IOException {
@@ -285,6 +298,15 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema>  extends I
         position += len;
     }
     
+    public static void appendNextFieldToReader(LittleEndianDataInputBlobReader reader, Pipe<RawDataSchema> targetPipe) {
+        while (Pipe.hasContentToRead(targetPipe) && Pipe.peekInt(targetPipe) >=0) {
+            Pipe.takeMsgIdx(targetPipe);
+            accumLowLevelAPIField(reader);
+            Pipe.readNextWithoutReleasingReadLock(targetPipe);
+            Pipe.confirmLowLevelRead(targetPipe, Pipe.sizeOf(targetPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        }
+    }
+
     public static <A extends Appendable> int readUTF(LittleEndianDataInputBlobReader reader, A target, int bytesCount) throws IOException {
         long charAndPos = ((long)reader.position)<<32;
         long limit = ((long)reader.position+bytesCount)<<32;
