@@ -551,7 +551,11 @@ public class GraphManager {
 
 
 	public static void addNota(GraphManager graphManager, Object key, Object value, PronghornStage ... stages) {
+	    
 		int i = stages.length;
+		if (0==i) {
+		    throw new UnsupportedOperationException("Must have at least 1 stage to assign this to");
+		}
 		while (--i>=0) {
 			addNota(graphManager, key, value, stages[i]);
 		}
