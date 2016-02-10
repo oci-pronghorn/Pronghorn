@@ -3,7 +3,19 @@ package com.ociweb.pronghorn.stage.file;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.channels.FileChannel;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.spi.FileSystemProvider;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
@@ -15,15 +27,21 @@ public class FileBlobWriteStage extends PronghornStage{
     private static final int SIZE = RawDataSchema.FROM.fragDataSize[0];
     private final RandomAccessFile outputFile;
     private final Pipe<RawDataSchema> input;
-    private FileChannel openChannel;
+    private ByteChannel openChannel;
     
     private ByteBuffer buffA;
     private ByteBuffer buffB;
     private boolean releaseRead = false;
     
-    public FileBlobWriteStage(GraphManager graphManager, Pipe<RawDataSchema> input, RandomAccessFile outputFile) {
+    private FileSystemProvider provider;
+    private FileSystem fileSystem;
+    private Set<OpenOption> writeOptions;
+    private String outputPathString;
+    
+    public FileBlobWriteStage(GraphManager graphManager, Pipe<RawDataSchema> input, RandomAccessFile outputFile, String outputPathString) {
         super(graphManager, input, NONE);
         this.outputFile = outputFile;
+        this.outputPathString = outputPathString;
         this.input = input;
         
         //can not batch up releases of consumed blocks.  (TODO: Not sure why this is true)
@@ -35,11 +53,39 @@ public class FileBlobWriteStage extends PronghornStage{
     @Override
     public void startup() {
         openChannel = outputFile.getChannel();
+
+//        //TODO: investigate why the above getChannel() is so much faster than the below .
+//        
+//        this.fileSystem = FileSystems.getDefault();
+//        this.provider = fileSystem.provider();
+//        this.writeOptions = new HashSet<OpenOption>();
+//
+//        this.writeOptions.add(StandardOpenOption.CREATE);
+//        this.writeOptions.add(StandardOpenOption.TRUNCATE_EXISTING);
+//        this.writeOptions.add(StandardOpenOption.WRITE);
+//        
+//        Path path = fileSystem.getPath(outputPathString);
+//       
+//        try {
+//            //openChannel = provider.newByteChannel(path, writeOptions);
+//          //  ExecutorService executor = Executors.newFixedThreadPool(2);
+//            //openChannel = provider.newAsynchronousFileChannel(path, writeOptions, executor);
+//            openChannel = provider.newFileChannel(path, writeOptions);
+////            openChannel.position(0);
+////            openChannel.force(false);
+//            
+//        } catch (IOException e) {
+//           throw new RuntimeException(e);
+//        } 
+//        
+        
     }
         
     @Override
     public void run() {
-                
+             
+        do {
+        
         if (null==buffA && 
             null==buffB) {
             //read the next block
@@ -47,7 +93,7 @@ public class FileBlobWriteStage extends PronghornStage{
             if (releaseRead) {
                 //only done after we have consumed the bytes
                 Pipe.confirmLowLevelRead(input, SIZE);
-                Pipe.releaseReads(input);
+                Pipe.releaseReadLock(input);
                 releaseRead = false;
             }
 
@@ -55,7 +101,7 @@ public class FileBlobWriteStage extends PronghornStage{
                 int msgId      = Pipe.takeMsgIdx(input);   
                 if (msgId < 0) {
                     Pipe.confirmLowLevelRead(input, Pipe.EOF_SIZE);
-                    Pipe.releaseReads(input);
+                    Pipe.releaseReadLock(input);
                     requestShutdown();
                     return;
                 }
@@ -65,7 +111,7 @@ public class FileBlobWriteStage extends PronghornStage{
                                 
                 if (len < 0) {
                     Pipe.confirmLowLevelRead(input, SIZE);
-                    Pipe.releaseReads(input);
+                    Pipe.releaseReadLock(input);
                     requestShutdown();
                     return;
                 }
@@ -114,13 +160,15 @@ public class FileBlobWriteStage extends PronghornStage{
             }
         }
         
+        } while (null == buffA && null == buffB);
+        
     }
 
     @Override
     public void shutdown() {
         if (releaseRead) {
             //only done after we have consumed the bytes
-            Pipe.releaseReads(input);
+            Pipe.releaseReadLock(input);
         }
         
         try {

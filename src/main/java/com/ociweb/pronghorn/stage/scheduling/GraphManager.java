@@ -5,6 +5,7 @@ import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.locks.LockSupport;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1168,6 +1169,21 @@ public class GraphManager {
 		}
 		
 	}
+
+    public static void blockUntilStageBeginsShutdown(GraphManager gm, PronghornStage stageToWatch) {
+        //keep waiting until this stage starts it shut down or completed its shutdown, 
+        //eg return on leading edge as soon as we detect shutdown in progress..
+        while (!  (isStageShuttingDown(gm, stageToWatch.stageId)||isStageTerminated(gm, stageToWatch.stageId)) ) { 
+            LockSupport.parkNanos(100_000);
+            
+            //TODO: delete the folloing code after this is tested on the Edison, not trusting parkNanos yet.
+//            try {
+//                Thread.sleep(100);
+//            } catch (InterruptedException e) {
+//                throw new RuntimeException(e);
+//            }
+        }
+    }
 	
 //TODO: B, integrate this into the schedulers	
 //    public static void releaseAllReads(GraphManager m, PronghornStage stage) {

@@ -5,9 +5,11 @@ import java.nio.ByteBuffer;
 public class MemberHolder {
 
     private final ByteBuffer[] data; //pos remains at end ready for write.
-
+    private static final int SIZE_OF_MAX_PACKED_LONG = 10;
+    private static final int DEFAULT_MAX_MEMBERS = 64;
+    
     public MemberHolder(int maxSets) {
-        this(maxSets, 64*10);
+        this(maxSets, DEFAULT_MAX_MEMBERS * SIZE_OF_MAX_PACKED_LONG);
     }
     
     public MemberHolder(int maxLists, int initBytesPerSet) {

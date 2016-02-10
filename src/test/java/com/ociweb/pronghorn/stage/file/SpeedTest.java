@@ -91,15 +91,15 @@ public class SpeedTest {
         try {
 
                 long medBlobReadDuration = fileBlobReadTest();
-                long medTapeReadDuration = fileTapeReadTest();
+             //   long medTapeReadDuration = fileTapeReadTest();
                 long medBlobWriteDuration = fileBlobWriteTest(); //faster than tape but to use this a serialize stage wlll be required.
-                long medTapeWriteDuration = fileTapeWriteTest(); //slower than blob write but can write any schema as-is
+           //     long medTapeWriteDuration = fileTapeWriteTest(); //slower than blob write but can write any schema as-is
                             
                 System.out.println("Test Data size "+(testSize/(1024*1024))+"MB");
                 System.out.println("Median BLOB read duration: "+medBlobReadDuration+"ms  "+mBytesPerSecond(medBlobReadDuration)+"MB/s");
-                System.out.println("Median Tape read duration: "+medTapeReadDuration+"ms  "+mBytesPerSecond(medTapeReadDuration)+"MB/s");
+           //     System.out.println("Median Tape read duration: "+medTapeReadDuration+"ms  "+mBytesPerSecond(medTapeReadDuration)+"MB/s");
                 System.out.println("Median BLOB write duration: "+medBlobWriteDuration+"ms  "+mBytesPerSecond(medBlobWriteDuration)+"MB/s");
-                System.out.println("Median Tape write duration: "+medTapeWriteDuration+"ms  "+mBytesPerSecond(medTapeWriteDuration)+"MB/s");
+           //     System.out.println("Median Tape write duration: "+medTapeWriteDuration+"ms  "+mBytesPerSecond(medTapeWriteDuration)+"MB/s");
 
             
         } catch (IOException e) {
@@ -131,7 +131,7 @@ public class SpeedTest {
             Pipe<RawDataSchema> loadedDataPipe = new Pipe<RawDataSchema>(config);
                                     
             
-            new FileBlobReadStage(gm, new RandomAccessFile(tempFile, "r"), loadedDataPipe);            
+            new FileBlobReadStage(gm, new RandomAccessFile(tempFile, "r"),tempFile.getAbsolutePath(), loadedDataPipe);            
             outputStream.reset();
             new ToOutputStreamStage(gm, loadedDataPipe, outputStream, false);
             
@@ -305,7 +305,7 @@ public class SpeedTest {
             tempFile.deleteOnExit();
             
             PronghornStage s1 = new ByteArrayProducerStage(gm, rawData, loadedDataPipe);        
-            PronghornStage s2 = new FileBlobWriteStage(gm, loadedDataPipe, new RandomAccessFile(tempFile,"rw"));  //NOTE: use rwd/rws to sync flush with every write (much slower)
+            PronghornStage s2 = new FileBlobWriteStage(gm, loadedDataPipe, new RandomAccessFile(tempFile,"rw"), tempFile.getAbsolutePath());  //NOTE: use rwd/rws to sync flush with every write (much slower)
             
             GraphManager.enableBatching(gm);//lower contention over head and tail
          //   MonitorConsoleStage.attach(gm);

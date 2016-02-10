@@ -50,7 +50,7 @@ public class FileBlobRoundTripTest {
             f2.deleteOnExit();
             
             new ByteArrayProducerStage(gm, rawData, inputPipe);
-            new FileBlobWriteStage(gm, inputPipe, new RandomAccessFile(f2,"rws")); //TODO: need a FileBlobRead that can tail a file
+            new FileBlobWriteStage(gm, inputPipe, new RandomAccessFile(f2,"rws"), f2.getAbsolutePath()); //TODO: need a FileBlobRead that can tail a file
                         
             GraphManager.enableBatching(gm);
             
@@ -90,7 +90,7 @@ public class FileBlobRoundTripTest {
             Pipe<RawDataSchema> midCheckPipe = new Pipe<RawDataSchema>(config.grow2x());
             Pipe<RawDataSchema> outputPipe = new Pipe<RawDataSchema>(config.grow2x());
             
-            new FileBlobReadStage(gm, new RandomAccessFile(f,"r"), inputPipe);
+            new FileBlobReadStage(gm, new RandomAccessFile(f,"r"),f.getAbsolutePath(), inputPipe);
             new SplitterStage(gm, inputPipe, midCheckPipe, outputPipe);
             
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream(testSize);
@@ -98,7 +98,7 @@ public class FileBlobRoundTripTest {
             
            // ConsoleStage cs = new ConsoleStage(gm, midCheckPipe);
             
-            new FileBlobWriteStage(gm, outputPipe, new RandomAccessFile(f2,"rws"));
+            new FileBlobWriteStage(gm, outputPipe, new RandomAccessFile(f2,"rws"), f2.getAbsolutePath());
                         
             MonitorConsoleStage.attach(gm);
 
