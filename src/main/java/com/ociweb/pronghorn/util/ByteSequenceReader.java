@@ -9,6 +9,14 @@ public class ByteSequenceReader {
     
     int length = 0;
     int value = 0;
+
+    private byte numericSign;
+    private long numericValue;
+    private byte numericLength;
+    private byte numericBase;
+
+    private int bytesPos;
+    private int bytesLen;
     
     
     public ByteSequenceReader() {
@@ -65,9 +73,9 @@ public class ByteSequenceReader {
                     //close bytes
                     
                     break;
-                case ByteSequenceMap.TYPE_VALUE_INT:
+                case ByteSequenceMap.TYPE_VALUE_NUMERIC:
                     
-                    
+                   
                     //take all the bytes that are ASCII numbers
                     //is no body here so i + 1 is next
                     //open int
@@ -102,12 +110,23 @@ public class ByteSequenceReader {
         //TODO: store values in stack
         //TODO: store text as pos & length in source?
         
+        //TODO: need new SAFE point TYPE: keep where we are and return last safe point upon branched failure.
+        
+        
         int type = data[pos++];
         while (type != ByteSequenceMap.TYPE_END) {
         
         
+            
             if (type==ByteSequenceMap.TYPE_BRANCH_VALUE) {
-                pos = ByteSequenceMap.jumpEQ(pos, data, (short) source[mask & offset]);            
+                //TODO: urgent split on bit.
+                pos = ByteSequenceMap.jumpEQ(pos, data, (short) source[mask & offset]);
+                
+                //TODO: new default jump
+                //      store pos of jump and choice
+                //      if run does not match check other side (requires run check)
+                
+                
             } else if (type == ByteSequenceMap.TYPE_RUN) {
                 //run
                 int run = data[pos++];
@@ -128,28 +147,18 @@ public class ByteSequenceReader {
                 
             } else {
                 if (type == ByteSequenceMap.TYPE_BRANCH_LENGTH) {
-                   
-                    pos = ByteSequenceMap.jumpNEQ(pos, data, (short) length);
-        
+                    pos = ByteSequenceMap.jumpNEQ(pos, data, (short) length); ////TODO: source length can not be used since it will will go to the end of the file not route.
                 } else {
-                    
-                    if (type == ByteSequenceMap.TYPE_VALUE_INT) {
-                        //TODO
-                        
-                        
+                    if (type == ByteSequenceMap.TYPE_VALUE_NUMERIC) {
+                        parseNumeric(this,source,offset, length-runLength, mask, data[pos++]);
                     } else if (type == ByteSequenceMap.TYPE_VALUE_BYTES) {
-                        //TODO
-                        
-                        
+                        parseBytes(this,source,offset, length-runLength, mask, data[pos++]);
                     } else {
                         
                         System.out.println(that);
                         throw new UnsupportedOperationException("Bad jump length now at position "+(pos-1)+" type found "+type);
                         
                     }
-                    
-                    
-                    
                 }
             } 
             
@@ -170,5 +179,104 @@ public class ByteSequenceReader {
         
         
     }
+
+    
+    private static int parseBytes(ByteSequenceReader reader, byte[] source, int sourcePos, int sourceLenght, int sourceMask, int stopValue) {
+        
+        int len = 0;
+        int bytesPos = sourcePos;
+        
+        short c = 0;
+        do {
+            c = source[sourceMask & sourcePos++];                    
+            if (stopValue != c) {
+                len++;
+                continue;
+            } else {
+                break;
+            }
+        }  while (true);
+        
+        reader.bytesLen = len;
+        reader.bytesPos = bytesPos;
+        
+        return sourcePos;
+    }
+    
+    private static int parseNumeric(ByteSequenceReader reader, byte[] source, int sourcePos, int sourceLenght, int sourceMask, int numType) {
+        
+        byte sign = 1;
+        long intValue = 0;
+        byte intLength = 0;
+        byte base=10;
+
+        //NOTE: these Numeric Flags are invariants consuming runtime resources, this tree could be pre-compiled to remove them if neded.
+        if (0!=(ByteSequenceMap.NUMERIC_FLAG_SIGN&numType)) {
+            final short c = source[sourceMask & sourcePos];
+            if (c=='-') { //NOTE: check ASCII table there may be a fater way to do this.
+                sign = -1;
+            }
+            if (c=='+') {
+                sourcePos++;
+            }
+        }
+
+        if (sourceLenght > 20) { //TODO: change to nonbranching.
+            sourceLenght = 20;
+        }
+        
+        if (0==(ByteSequenceMap.NUMERIC_FLAG_HEX&numType) | ('0'!=source[sourceMask & sourcePos+1])| ('x'!=source[sourceMask & sourcePos+2])  ) {                            
+            base = 10;
+            short c = 0;
+            do {
+                c = source[sourceMask & sourcePos++];                    
+                if ((c>='0') && (c<='9') && intLength<sourceLenght) {
+                    intValue = (intValue * 10)+(c-'0');
+                    intLength++;
+                    continue;
+                } else {
+                    break;
+                }
+            }  while (true);
+            if (intLength>19) {
+                //ERROR
+                
+            }
+        } else {
+            base = 16;
+            sourcePos+=2;//skipping over the 0x checked above
+            short c = 0;
+            do {
+                c = source[sourceMask & sourcePos++];
+                
+                if ((c>='0') && (c<='9') && intLength<sourceLenght) {
+                    intValue = (intValue<<4)+(c-'0');
+                    intLength++;
+                    continue;
+                } else  if ((c>='a') && (c<='f') && intLength<sourceLenght) {
+                    intValue = (intValue<<4)+(10+(c-'a'));
+                    intLength++;
+                    continue;
+                } else {
+                    break;
+                }
+            }  while (true);
+            
+            if (intLength>16) {
+                //ERROR
+            }
+            
+        }
+        
+        
+        //assign all values back
+        reader.numericSign = sign;
+        reader.numericValue = intValue;
+        reader.numericLength = intLength;
+        reader.numericBase = base;
+
+        return sourcePos;
+    }
+    
 
 }

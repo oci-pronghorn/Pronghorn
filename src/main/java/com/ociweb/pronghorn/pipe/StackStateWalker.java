@@ -542,8 +542,8 @@ class StackStateWalker {
     	
     	assert(Pipe.tailPosition(ring)+ring.sizeOfSlabRing>=Pipe.headPosition(ring)+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
     	Pipe.setBytesHead(ring, Pipe.bytesWorkingHeadPosition(ring));
-    	Pipe.primaryBuffer(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +  Pipe.from(ring).templateOffset)]    = -1;	
-    	Pipe.primaryBuffer(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  Pipe.from(ring).templateOffset)] = 0;
+    	Pipe.slab(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +  Pipe.from(ring).templateOffset)]    = -1;	
+    	Pipe.slab(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  Pipe.from(ring).templateOffset)] = 0;
     }
 
 

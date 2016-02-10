@@ -12,26 +12,47 @@ import org.slf4j.LoggerFactory;
  */
 public class ByteSequenceMap {
     
+    //%bX - where X is the excluded stop byte
+    //%i  - signed int decimal
+    //%u  - unsigned int decimal
+    //%f  - fixed place (finance)
+    // 123  -123 +123  23.23 , hex and base 10? bult in support for 0x prefx?
+    //NOTE: real fraction could be supported by sending both number and denominator
+    
+    
     private static final Logger logger = LoggerFactory.getLogger(ByteSequenceMap.class);
 
-    static final byte TYPE_BRANCH_VALUE    = 0x01; //followed by mask & 2 short jump  
-    static final byte TYPE_BRANCH_LENGTH   = 0x02; //followed by mask & 2 short jump
-    static final byte TYPE_RUN             = 0x03; //followed by length
+    static final byte TYPE_SAFE_END            = 0X00; //TODO: AAAA, urgent feature for safe point.
+    static final byte TYPE_BRANCH_VALUE        = 0x01; //followed by mask & 2 short jump  
+    static final byte TYPE_BRANCH_LENGTH       = 0x02; //followed by mask & 2 short jump
+    static final byte TYPE_RUN                 = 0x03; //followed by length
     
-    static final byte TYPE_VALUE_INT       = 0x04; //take all ascii ints until end or not int incountered
-    static final byte TYPE_VALUE_BYTES     = 0x05; //followed by stop byte, take all until stop byte encountered (AKA Wild Card)
-
-    static final byte TYPE_END             = 0x07; //followed by 4 bytes
+    static final byte TYPE_VALUE_NUMERIC       = 0x04; //followed by type, parse right kind of number
+    static final byte TYPE_VALUE_BYTES         = 0x05; //followed by stop byte, take all until stop byte encountered (AKA Wild Card)
+    
+    static final byte TYPE_VALUE_COND_NUMERIC  = 0x06; //followed by trigger value and kind of number
+    ///TODO: new numeric type, if short X '.' or '/' THEN parse number ELSE  default short
+    
+    static final byte TYPE_END                 = 0x07; //followed by 4 bytes
     
     
-    static final int SIZE_OF_BRANCH      = 1+1+1;//2; //TODO: make branches 1 short only, now in testing may root this change back.
-    static final int SIZE_OF_RUN         = 1+1;
-    static final int SIZE_OF_END         = 1+2;
-    static final int SIZE_OF_VALUE_INT   = 1;
-    static final int SIZE_OF_VALUE_BYTES = 1+1;
+    static final int SIZE_OF_BRANCH               = 1+1+1;//2; //TODO: make branches 1 short only, now in testing may root this change back.
+    static final int SIZE_OF_RUN                  = 1+1;
+    static final int SIZE_OF_END                  = 1+2;
+    static final int SIZE_OF_VALUE_NUMERIC        = 1+1;
+    static final int SIZE_OF_VALUE_COND_NUMERIC   = 1+2;
+    
+    static final int SIZE_OF_VALUE_BYTES          = 1+1;
     
     static final boolean skipDeepChecks = true;//these runs are not significant and do not provide any consumed data.
     //humans require long readable URLs but the machine can split them into categories on just a few key bytes
+    
+    
+    //numeric type bits:
+    //   leading sign (only in front)
+    static final byte NUMERIC_FLAG_SIGN  =  1;
+    //   hex values can start with 0x, hex is all lower case abcdef
+    static final byte NUMERIC_FLAG_HEX   =  2;
     
     
     private final int size;
@@ -67,8 +88,8 @@ public class ByteSequenceMap {
                 case TYPE_BRANCH_LENGTH:
                     i = toStringBranchLength(builder, i);
                     break;
-                case TYPE_VALUE_INT:
-                    i = toStringInt(builder, i);
+                case TYPE_VALUE_NUMERIC:
+                    i = toStringNumeric(builder, i);
                     break;
                 case TYPE_VALUE_BYTES:
                     i = toStringBytes(builder, i);
@@ -86,10 +107,13 @@ public class ByteSequenceMap {
         return builder;
     }
 
-    private int toStringInt(StringBuilder builder, int i) {
+    private int toStringNumeric(StringBuilder builder, int i) {
         builder.append("Int");
+        builder.append(data[i]).append("[").append(i++).append("], ");
+        
         builder.append(data[i]).append("[").append(i++).append("], \n");
         return i;
+        
     }
     
     private int toStringBytes(StringBuilder builder, int i) {
@@ -146,6 +170,19 @@ public class ByteSequenceMap {
         return i;
     }
     
+    //TODO: add case insinsitve jump and match.
+    
+    //TODO: change to jump if >= so that we divide the space more evenly.
+    //  if   this one bit is ON then branch 
+    //       it can never be the case bit unless it is the only one different.
+    //       insert speed can be slow to find this bit  
+    //       do not use bit 6 unless told to on startup.
+    
+    
+    
+    
+    //char a and char b  pick char between them and jump if >=
+    
     static int jumpEQ(int pos, short[] data, short branchOn) {
         //NOTE: negative values are causing a problem. so we mask to FFFF
         return (( ( ( (0xFFFF)& (branchOn^data[pos++])))  -1)>>31 & ((((int)data[pos++]) /*<< 16*/) /*|(0xFFFF&data[pos++])*/)) + pos;
@@ -175,21 +212,13 @@ public class ByteSequenceMap {
                         pos = jumpEQ(pos, data, (short) source[sourceMask & sourcePos]);
                         break;
                     case TYPE_BRANCH_LENGTH:
-                        pos = jumpNEQ(pos, data, (short)sourceLength);
+                        pos = jumpNEQ(pos, data, (short)sourceLength); //TODO: source length can not be used since it will not be known.
                         break;
-                    case TYPE_VALUE_INT:
-                        short c = 0;
-                        do {
-                            c = source[sourceMask & sourcePos++];
-                        }  while ((c>='0') && (c<='9'));
-                        
+                    case TYPE_VALUE_NUMERIC:                        
+                        sourcePos = stepOverNumeric(source, sourcePos, sourceMask, (int) data[pos++]);
                         break;
                     case TYPE_VALUE_BYTES:
-                        final short stop = data[pos++];
-                        short t = 0;
-                        do {
-                            t = source[sourceMask & sourcePos++];
-                        }  while (stop!=t);
+                        sourcePos = stepOverBytes(source, sourcePos, sourceMask, data[pos++]);
                         break;
                     case TYPE_RUN:
                         //run
@@ -208,20 +237,7 @@ public class ByteSequenceMap {
                         int r = run;
                         while (--r >= 0) {
                             if (data[pos++] != source[sourceMask & sourcePos++]) {
-                                int r1 = r;
-                                int sourceCharPos = sourcePos-1;
-                                            
-                                
-                                r1++;//remaining
-                                if (r1 == run) {
-                                    r1 = 0; //keep entire run and do not split it.
-                                    insertAtBranchValue(r1, data, pos-3, source, sourceCharPos, sourceLength-length, sourceMask, value);
-                                } else {
-                                    int dataPos = pos-1;                                       
-                                    data[runPos] = (short)(dataPos-runPos-1);
-                                   // System.out.println("some matched but remaining "+r+" did not new run is  "+data[runPos]+" remaining length is "+((sourceLength-(length+data[runPos]))));
-                                    insertAtBranchValue(r1, data, dataPos, source, sourceCharPos, (sourceLength-(length+data[runPos])) , sourceMask, value);
-                                }
+                                insertAtBranchValue(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r, sourcePos-1);
                                 return;
                             }
                         }
@@ -252,6 +268,57 @@ public class ByteSequenceMap {
             pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);
             limit = writeEnd(data, pos, value);
         }
+    }
+
+
+    private void insertAtBranchValue(int pos, short[] data, byte[] source, int sourceLength, int sourceMask, int value,
+            int length, int runPos, int run, int r1, int sourceCharPos) {
+        r1++;//remaining
+        if (r1 == run) {
+            r1 = 0; //keep entire run and do not split it.
+            insertAtBranchValue(r1, data, pos-3, source, sourceCharPos, sourceLength-length, sourceMask, value);
+        } else {
+            int dataPos = pos-1;                                       
+            data[runPos] = (short)(dataPos-runPos-1);
+           // System.out.println("some matched but remaining "+r+" did not new run is  "+data[runPos]+" remaining length is "+((sourceLength-(length+data[runPos]))));
+            insertAtBranchValue(r1, data, dataPos, source, sourceCharPos, (sourceLength-(length+data[runPos])) , sourceMask, value);
+        }
+    }
+
+
+    private int stepOverBytes(byte[] source, int sourcePos, int sourceMask, final short stop) {
+        short t = 0;
+        do {
+            t = source[sourceMask & sourcePos++];
+        }  while (stop!=t);
+        return sourcePos;
+    }
+
+
+    private int stepOverNumeric(byte[] source, int sourcePos, int sourceMask, int numType) {
+
+        //NOTE: these Numeric Flags are invariants consuming runtime resources, this tree could be pre-compiled to remove them if neded.
+        if (0!=(NUMERIC_FLAG_SIGN&numType)) {
+            final short c = source[sourceMask & sourcePos];
+            if (c=='-' || c=='+') {
+                sourcePos++;
+            }                         
+        }
+                         
+        if (0==(NUMERIC_FLAG_HEX&numType) | ('0'!=source[sourceMask & sourcePos+1])| ('x'!=source[sourceMask & sourcePos+2])  ) {                            
+            short c = 0;
+            do {
+                c = source[sourceMask & sourcePos++];
+            }  while ((c>='0') && (c<='9'));
+        } else {
+            sourcePos+=2;//skipping over the 0x checked above
+            short c = 0;
+            do {
+                c = source[sourceMask & sourcePos++];
+            }  while (((c>='0') && (c<='9')) | ((c>='a') && (c<='f'))  );
+        }
+
+        return sourcePos;
     }
 
 
@@ -333,8 +400,8 @@ public class ByteSequenceMap {
                     }
                     i += SIZE_OF_BRANCH;
                     break;                    
-                case TYPE_VALUE_INT:
-                    i += SIZE_OF_VALUE_INT;
+                case TYPE_VALUE_NUMERIC:
+                    i += SIZE_OF_VALUE_NUMERIC;
                     break;
                 case TYPE_VALUE_BYTES:
                     i += SIZE_OF_VALUE_BYTES;
