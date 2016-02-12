@@ -214,8 +214,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					
 					Thread.currentThread().setName(stage.getClass().getSimpleName());
 					stage.startup();
-					
-					runPeriodicLoop(nsScheduleRate/1000000l, (int)(nsScheduleRate%1000000l), stage);	
+										
+					runPeriodicLoop(nsScheduleRate/1_000_000l, (int)(nsScheduleRate%1_000_000l), stage);	
 			
 					stage.shutdown();
 					GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
@@ -252,11 +252,14 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	    } else {
     		int i = 0;
     		do {
-    		    long delay =  GraphManager.delayRequiredMS(graphManager,stage.stageId);
-    		    if (delay>0) {
+    		    long nsDelay =  GraphManager.delayRequiredNS(graphManager,stage.stageId);
+    		   
+    		    if (nsDelay>0) {
                     try {
                         GraphManager.publishAllWrites(graphManager, stage);
-                        Thread.sleep(delay);
+                        
+                        Thread.sleep(nsDelay/1_000_000,(int)(nsDelay%1_000_000));
+                                                
                     } catch (InterruptedException e) {
                         break;
                     }
@@ -267,7 +270,6 @@ public class ThreadPerStageScheduler extends StageScheduler {
     		            LockSupport.parkNanos(1);
     		            //GraphManager.releaseAllReads(graphManager, stage);
     		    }
-    		    
     			stage.run();			
     					
     			
@@ -282,19 +284,45 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	}
 
 	private void runPeriodicLoop(final long msSleep, final int nsSleep, final PronghornStage stage) {
-		do {
-		    //NOTE: This implementation is depended upon to run no faster than the requested rate. (eg i2c stage and others)
-		    //      Regardless of how long or short is spend inside run the same delay between calls is always enforced.
-		    
-		    try {
-		        Thread.sleep(msSleep, nsSleep);
-		    } catch (InterruptedException e) {
-		       Thread.currentThread().interrupt();
-		       return;
-		    }
-		    
-		    stage.run();
-			
-		} while (!isShuttingDown);
+		
+	    if (0==msSleep) {
+	           do {
+	                //NOTE: This implementation is depended upon to run no faster than the requested rate. (eg i2c stage and others)
+	                //      Regardless of how long or short is spend inside run the same delay between calls is always enforced.
+
+	                long next = System.nanoTime()+nsSleep;
+	                long hardStop = System.currentTimeMillis()+2;
+	                while (System.nanoTime()<next) {
+	                   Thread.yield();
+	                   if (System.currentTimeMillis()>=hardStop) {
+	                       break;
+	                   }
+	                }
+	                
+	                stage.run();
+	                
+	            } while (!isShuttingDown);
+	        
+	    } else {
+	    
+	    
+    	    do {
+    		    //NOTE: This implementation is depended upon to run no faster than the requested rate. (eg i2c stage and others)
+    		    //      Regardless of how long or short is spend inside run the same delay between calls is always enforced.
+	    
+        	    try {
+        		        Thread.sleep(msSleep, nsSleep);
+        	    } catch (InterruptedException e) {
+        		       Thread.currentThread().interrupt();
+        		       return;
+        	    }
+
+    		    
+    		    stage.run();
+    			
+    		} while (!isShuttingDown);
+	    }
+		
+		
 	}
 }

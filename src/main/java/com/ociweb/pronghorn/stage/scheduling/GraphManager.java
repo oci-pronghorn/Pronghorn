@@ -695,10 +695,9 @@ public class GraphManager {
 	}
 	
 
-	public static long delayRequiredMS(GraphManager m, int stageId) {
-        Pipe[] pipeIdToPipe2 = m.pipeIdToPipe;
-        long waitTime = computeDelayForConsumer(m.stageIdToInputsBeginIdx[stageId], pipeIdToPipe2, m.multInputIds);
-        return addDelayForProducer(m.stageIdToOutputsBeginIdx[stageId], waitTime, pipeIdToPipe2, m.multOutputIds);
+	public static long delayRequiredNS(GraphManager m, int stageId) {
+        long waitTime = computeDelayForConsumer(m.stageIdToInputsBeginIdx[stageId], m.pipeIdToPipe, m.multInputIds);
+        return addDelayForProducer(m.stageIdToOutputsBeginIdx[stageId], waitTime, m.pipeIdToPipe, m.multOutputIds);
 	}
 	
    public static boolean isRateLimited(GraphManager m, int stageId) {
@@ -734,17 +733,18 @@ public class GraphManager {
         return false;
     }
     
-    private static long addDelayForProducer(int pipeIdx, long waitTime, Pipe[] pipeIdToPipe2, int[] multOutputIds2) {
+    private static long addDelayForProducer(int pipeIdx, long waitTimeNS, Pipe[] pipeIdToPipe2, int[] multOutputIds2) {
         int pipeId;
         while ((pipeId = multOutputIds2[pipeIdx++])>=0) {            
             if (Pipe.isRateLimitedProducer(pipeIdToPipe2[pipeId])) {
-                long t = Pipe.computeRateLimitProducerDelay(pipeIdToPipe2[pipeId]);
-                if (t>waitTime) {
-                    waitTime = t;
+
+                long nsTime = Pipe.computeRateLimitProducerDelay(pipeIdToPipe2[pipeId]);
+                if (nsTime > waitTimeNS) {
+                    waitTimeNS = nsTime;
                 }
             }
         }   
-	    return waitTime;
+	    return waitTimeNS;
     }
     
     private static boolean isRateLimitedProducer(int pipeIdx, Pipe[] pipeIdToPipe2, int[] multOutputIds2) {
@@ -1170,6 +1170,10 @@ public class GraphManager {
 		
 	}
 
+    public void blockUntilStageBeginsShutdown(PronghornStage stageToWatch) {
+        blockUntilStageBeginsShutdown(this,stageToWatch);
+    }
+	
     public static void blockUntilStageBeginsShutdown(GraphManager gm, PronghornStage stageToWatch) {
         //keep waiting until this stage starts it shut down or completed its shutdown, 
         //eg return on leading edge as soon as we detect shutdown in progress..
