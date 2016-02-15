@@ -516,7 +516,7 @@ public final class Pipe<T extends MessageSchema> {
     }
     
     /**
-     * Returns mili-second count of how much time should pass before consuming more data 
+     * Returns nano-second count of how much time should pass before consuming more data 
      * from this pipe.  This is based on the rate configuration.  
      */
     public static <S extends MessageSchema> long computeRateLimitConsumerDelay(Pipe<S> pipe) {        
@@ -524,7 +524,7 @@ public final class Pipe<T extends MessageSchema> {
     }
 
     /**
-     * Returns mili-second count of how much time should pass before producing more data 
+     * Returns nano-second count of how much time should pass before producing more data 
      * into this pipe.  This is based on the rate configuration.  
      */
     public static <S extends MessageSchema> long computeRateLimitProducerDelay(Pipe<S> pipe) {        
