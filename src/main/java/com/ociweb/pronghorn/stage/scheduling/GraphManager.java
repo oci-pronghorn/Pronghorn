@@ -1179,7 +1179,8 @@ public class GraphManager {
         //eg return on leading edge as soon as we detect shutdown in progress..
         while (!  (isStageShuttingDown(gm, stageToWatch.stageId)||isStageTerminated(gm, stageToWatch.stageId)) ) { 
             LockSupport.parkNanos(100_000);
-            
+           //Thread.yield(); 
+          // LockSupport.parkNanos(100);
             //TODO: delete the folloing code after this is tested on the Edison, not trusting parkNanos yet.
 //            try {
 //                Thread.sleep(100);

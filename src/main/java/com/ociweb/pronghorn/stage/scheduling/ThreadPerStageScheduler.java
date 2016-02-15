@@ -1,9 +1,13 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +21,10 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	private volatile boolean isShuttingDown = false;
     private volatile Throwable firstException;//will remain null if nothing is wrong
 	public boolean playNice = true;
+	
+	private ReentrantLock unscheduledLock = new ReentrantLock();
+	private CyclicBarrier allStagesLatch;
+	
 	//TODO: add low priority to the periodic threads? 
 	//TODO: check for Thread.yedld() want to phase that out and use parkNano
 	//TODO: Generative testing, end to end match and each stage confirmed against schema, bounds, behavior, relationship
@@ -26,27 +34,59 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	}
 	
 	public void startup() {
+	    
+	    unscheduledLock.lock();//stop any non-runnable stages from running until shutdown is started.
 				
 		int i = PronghornStage.totalStages();
+		
 		this.executorService = Executors.newFixedThreadPool(i);
+		
+		int realStageCount = 0;
+		int j = i;
+		while (--j>=0) {
+		    if (null != GraphManager.getStage(graphManager, j)) {
+		        realStageCount++;
+		    }
+		}
+		allStagesLatch = new CyclicBarrier(realStageCount+1);
+		
+		
 		while (--i>=0) {
 			PronghornStage stage = GraphManager.getStage(graphManager, i);
 			if (null != stage) {
-			    Object value = GraphManager.getNota(graphManager, stage, GraphManager.SCHEDULE_RATE, Long.valueOf(0));			    
-				long rate = value instanceof Number ? ((Number)value).longValue() : null==value ? 0 : Long.parseLong(value.toString());
-				
-				if (0==rate) {
-					executorService.execute(buildRunnable(stage)); 	
-				} else {
-					executorService.execute(buildRunnable(rate, stage));
-				}
+			    
+			    if (null == GraphManager.getNota(graphManager, stage, GraphManager.UNSCHEDULED, null)) {			        
+    			    Object value = GraphManager.getNota(graphManager, stage, GraphManager.SCHEDULE_RATE, Long.valueOf(0));			    
+    				long rate = value instanceof Number ? ((Number)value).longValue() : null==value ? 0 : Long.parseLong(value.toString());
+    				
+    				if (0==rate) {
+    					executorService.execute(buildRunnable(allStagesLatch, stage)); 	
+    				} else {
+    					executorService.execute(buildRunnable(allStagesLatch, rate, stage));
+    				}
+			    } else {
+			        
+			        executorService.execute(buildNonRunnable(allStagesLatch,stage));
+			        
+			    }
 			}
 		}		
+		
+		//force wait for all stages to complete startup before this method returns.
+		try {
+		    allStagesLatch.await();
+        } catch (InterruptedException e) {
+        } catch (BrokenBarrierException e) {
+        }
+		
 		
 	}
 	
 	public void shutdown(){	
-		
+		try {
+		    unscheduledLock.unlock();
+		} catch (Throwable t) {
+		}
 		GraphManager.terminateInputStages(graphManager);
 		isShuttingDown = true;
 				
@@ -61,9 +101,10 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	 */
 	public boolean awaitTermination(long timeout, TimeUnit unit) {
 		
-		
-		///TOOD: for simplicity this needs to terminate the inputs AND the inputs can block if needed.??
-		
+	    try {
+	        unscheduledLock.unlock();
+	    } catch (Throwable t) {
+	    }
 		isShuttingDown = true;
 		executorService.shutdown();
 		
@@ -110,11 +151,91 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		}		
 		return true;
 	}	
-	
 
 	
+    protected Runnable buildNonRunnable(final CyclicBarrier allstages, final PronghornStage stage) {
+
+        return new Runnable() {
+            //once we get a thread we never give it back
+            //because this is true we can name the thread as the name of the stage
+
+            @Override
+            public String toString() {
+                //must pass stage name so thread knows name
+                return stage.toString();
+            }
+            
+            @Override
+            public void run() {
+                try {
+                    
+                    //TODO: need to record state so we know the failure point
+                    log.trace("block on initRings:"+stage.getClass().getSimpleName());                  
+                    GraphManager.initInputRings(graphManager, stage.stageId);                   
+                    log.trace("finished on initRings:"+stage.getClass().getSimpleName());
+                    
+                    Thread.currentThread().setName(stage.getClass().getSimpleName());
+                    stage.startup();
+                    
+                    try {
+                        allStagesLatch.await();
+                    } catch (InterruptedException e) {
+                    } catch (BrokenBarrierException e) {
+                    }
+                    
+                    //block here until shutdown is started
+                    unscheduledLock.lock();
+                    unscheduledLock.unlock();
+                    
+                    
+                } catch (Throwable t) {                 
+                    recordTheException(stage, t);
+                } finally {
+                    //shutdown will always be called no matter how the stage was exited.
+                    try {
+                        if (null!=stage) {
+                            stage.shutdown();   
+                        }
+                    } catch(Throwable t) {
+                        recordTheException(stage, t);
+                    } finally {
+                        if (null!=stage) {
+                            GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
+                        }
+                    }
+                }
+            }
+
+            private void recordTheException(final PronghornStage stage, Throwable t) {
+                synchronized(this) {
+                    if (null==firstException) {                     
+                        firstException = t;
+                    }
+                }                       
+                log.error("Stacktrace",t);
+                
+                if (null==stage) {
+                    log.error("Stage was never initialized");
+                } else {
+                
+                    int inputcount = GraphManager.getInputPipeCount(graphManager, stage);
+                    log.error("Unexpected error in stage "+stage.stageId+" "+stage.getClass().getSimpleName()+" inputs:"+inputcount);
+                    
+                    int i = inputcount;
+                    while (--i>=0) {
+                        
+                        log.error("left input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
+                        
+                    }
+                    
+                    GraphManager.shutdownNeighborRings(graphManager, stage);
+                }
+            }           
+        };
+    }
 	
-	protected Runnable buildRunnable(final PronghornStage stage) {
+	
+	protected Runnable buildRunnable(final CyclicBarrier allstages, final PronghornStage stage) {
 
 		return new Runnable() {
 			//once we get a thread we never give it back
@@ -137,6 +258,12 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					
 					Thread.currentThread().setName(stage.getClass().getSimpleName());
 					stage.startup();
+					
+				       try {
+				            allStagesLatch.await();
+				        } catch (InterruptedException e) {
+				        } catch (BrokenBarrierException e) {
+				        }
 					
 					runLoop(stage);	
 			
@@ -186,7 +313,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		};
 	}
 	
-	protected Runnable buildRunnable(final long nsScheduleRate, final PronghornStage stage) {
+	protected Runnable buildRunnable(final CyclicBarrier allstages, final long nsScheduleRate, final PronghornStage stage) {
 
 		return new Runnable() {
 			//once we get a thread we never give it back
@@ -214,6 +341,12 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					
 					Thread.currentThread().setName(stage.getClass().getSimpleName());
 					stage.startup();
+				       
+					try {
+				            allStagesLatch.await();
+				        } catch (InterruptedException e) {
+				        } catch (BrokenBarrierException e) {
+				        }
 										
 					runPeriodicLoop(nsScheduleRate/1_000_000l, (int)(nsScheduleRate%1_000_000l), stage);	
 			
@@ -267,7 +400,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
     		            //one out of every 8 passes we will yield to play nice since we may end up with a lot of threads
     		            //before doing yield must push any batched up writes & reads
     		            GraphManager.publishAllWrites(graphManager, stage);
-    		            LockSupport.parkNanos(1);
+    		            Thread.yield(); //TODO: is there a race condition causing JUnit failures that happens when this is used?
+    		            //nsSleep(1);
+    		            //LockSupport.parkNanos(1); //may be longer than 1ns
     		            //GraphManager.releaseAllReads(graphManager, stage);
     		    }
     			stage.run();			
@@ -290,14 +425,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	                //NOTE: This implementation is depended upon to run no faster than the requested rate. (eg i2c stage and others)
 	                //      Regardless of how long or short is spend inside run the same delay between calls is always enforced.
 
-	                long next = System.nanoTime()+nsSleep;
-	                long hardStop = System.currentTimeMillis()+2;
-	                while (System.nanoTime()<next) {
-	                   Thread.yield();
-	                   if (System.currentTimeMillis()>=hardStop) {
-	                       break;
-	                   }
-	                }
+	                nsSleep(nsSleep);
 	                
 	                stage.run();
 	                
@@ -325,4 +453,15 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		
 		
 	}
+
+    private void nsSleep(final int nsSleep) {
+        long next = System.nanoTime()+nsSleep;
+        long hardStop = System.currentTimeMillis()+2;
+        while (System.nanoTime()<next) {
+           Thread.yield();
+           if (System.currentTimeMillis()>=hardStop) {
+               break;
+           }
+        }
+    }
 }
