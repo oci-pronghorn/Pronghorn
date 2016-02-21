@@ -10,7 +10,7 @@ import java.util.Random;
 import org.junit.Ignore;
 import org.junit.Test;
 
-public class ByteSequenceMapTest {
+public class SequentialTrieParserTest {
 
     byte[] data1 = new byte[]{101,102,103,104,105,106,107,108};
     
@@ -39,8 +39,8 @@ public class ByteSequenceMapTest {
     @Test
     public void testSimpleValueReplace() {
         
-        ByteSequenceReader reader = new ByteSequenceReader();
-        ByteSequenceMap map = new ByteSequenceMap(1000);
+        SequentialTrieParserReader reader = new SequentialTrieParserReader();
+        SequentialTrieParser map = new SequentialTrieParser(1000);
                 
         map.setValue(data1, 0, 3, 7, value1);        
         assertEquals(value1, reader.query(map,data1, 0, 3, 7));
@@ -53,8 +53,8 @@ public class ByteSequenceMapTest {
     @Test
     public void testSimpleValueReplaceWrapping() {
         
-        ByteSequenceReader reader = new ByteSequenceReader();
-        ByteSequenceMap map = new ByteSequenceMap(1000);
+        SequentialTrieParserReader reader = new SequentialTrieParserReader();
+        SequentialTrieParser map = new SequentialTrieParser(1000);
         
         
         map.setValue(data1, 5, 5, 7, value1);        
@@ -68,8 +68,8 @@ public class ByteSequenceMapTest {
     @Test
     public void testTwoNonOverlapValuesWithReplace() {
         
-        ByteSequenceReader reader = new ByteSequenceReader();
-        ByteSequenceMap map = new ByteSequenceMap(1000);        
+        SequentialTrieParserReader reader = new SequentialTrieParserReader();
+        SequentialTrieParser map = new SequentialTrieParser(1000);        
         
         map.setValue(data1, 1, 3, 7, value1);
         map.setValue(data2, 1, 3, 7, value2);
@@ -89,8 +89,8 @@ public class ByteSequenceMapTest {
     @Test
     public void testTwoNonOverlapValuesWrappingWithReplace() {
         
-        ByteSequenceReader reader = new ByteSequenceReader();
-        ByteSequenceMap map = new ByteSequenceMap(1000);        
+        SequentialTrieParserReader reader = new SequentialTrieParserReader();
+        SequentialTrieParser map = new SequentialTrieParser(1000);        
         
         map.setValue(data1, 5, 5, 7, value1);
         map.setValue(data2, 5, 5, 7, value2);
@@ -111,8 +111,8 @@ public class ByteSequenceMapTest {
     @Test
     public void testTwoOverlapValues() {
         
-        ByteSequenceReader reader = new ByteSequenceReader();
-        ByteSequenceMap map = new ByteSequenceMap(1000);        
+        SequentialTrieParserReader reader = new SequentialTrieParserReader();
+        SequentialTrieParser map = new SequentialTrieParser(1000);        
         
         map.setValue(data2, 2, 5, 7, value1);
         map.setValue(data3, 2, 5, 7, value2);
@@ -132,8 +132,8 @@ public class ByteSequenceMapTest {
     @Test
     public void testThreeOverlapValues() {
         
-        ByteSequenceReader reader = new ByteSequenceReader();
-        ByteSequenceMap map = new ByteSequenceMap(1000);        
+        SequentialTrieParserReader reader = new SequentialTrieParserReader();
+        SequentialTrieParser map = new SequentialTrieParser(1000);        
         
         map.setValue(data3, 2, 5, 7, value2);
         map.setValue(data4, 2, 5, 7, value3);
@@ -157,8 +157,8 @@ public class ByteSequenceMapTest {
     @Test
     public void testInsertBeforeBranch() {
         
-        ByteSequenceReader reader = new ByteSequenceReader();
-        ByteSequenceMap map = new ByteSequenceMap(1000);        
+        SequentialTrieParserReader reader = new SequentialTrieParserReader();
+        SequentialTrieParser map = new SequentialTrieParser(1000);        
         
         map.setValue(data3, 0, 6, 7, value1);
         map.setValue(data4, 0, 6, 7, value2);
@@ -183,8 +183,8 @@ public class ByteSequenceMapTest {
     @Test
     public void testInsertAfterBothBranchs() {
         
-        ByteSequenceReader reader = new ByteSequenceReader();
-        ByteSequenceMap map = new ByteSequenceMap(1000);        
+        SequentialTrieParserReader reader = new SequentialTrieParserReader();
+        SequentialTrieParser map = new SequentialTrieParser(1000);        
         
         map.setValue(data2,  1, 7, 7, value1);
         map.setValue(data3,  1, 7, 7, value2);
@@ -213,14 +213,18 @@ public class ByteSequenceMapTest {
     @Test
     public void testLongInsertThenShortRootInsert() {
         
-        ByteSequenceReader reader = new ByteSequenceReader();
-        ByteSequenceMap map = new ByteSequenceMap(1000);        
+        SequentialTrieParserReader reader = new SequentialTrieParserReader();
+        SequentialTrieParser map = new SequentialTrieParser(1000);        
         
         map.setValue(data1, 0, 8, 7, value1);
-       // System.out.println(map);
+        
+      //  System.out.println(map);
+       
         map.setValue(data1, 0, 3, 7, value2);
-                
-        assertEquals("\n"+map.toString(),value1, reader.query(map,data1, 0, 8, 7));
+        
+      //  System.out.println(map);
+        
+        assertEquals(value1, reader.query(map,data1, 0, 8, 7));
         assertEquals(value2, reader.query(map,data1, 0, 3, 7));
         
         //swap values
@@ -236,12 +240,17 @@ public class ByteSequenceMapTest {
     @Test
     public void testShortRootInsertThenLongInsert() {
         
-        ByteSequenceReader reader = new ByteSequenceReader();
-        ByteSequenceMap map = new ByteSequenceMap(1000);        
+        SequentialTrieParserReader reader = new SequentialTrieParserReader();
+        SequentialTrieParser map = new SequentialTrieParser(1000);        
         
         map.setValue(data1, 0, 3, 7, value2);
+        
+     //   System.err.println(map);
+        
         map.setValue(data1, 0, 8, 7, value1);
                 
+      //  System.err.println(map);
+        
         assertEquals(value1, reader.query(map,data1, 0, 8, 7));
         assertEquals(value2, reader.query(map,data1, 0, 3, 7));
         
@@ -259,7 +268,7 @@ public class ByteSequenceMapTest {
     @Test
     public void testToString() {
         
-        ByteSequenceMap map = new ByteSequenceMap(1000);        
+        SequentialTrieParser map = new SequentialTrieParser(1000);        
         
         map.setValue(data1, 0, 3, 7, value2);
         map.setValue(data1, 0, 8, 7, value1);
@@ -271,26 +280,25 @@ public class ByteSequenceMapTest {
         
         String actual = map.toString();
         
-        String expected =   "BRANCH_VALUE1[0], 101[1], 50[2], \n"+
+        String expected = "BRANCH_VALUE1[0], -248[1], 46[2], \n"+
                 "RUN3[3], 3[4], 107[5], 108[6], 109[7], \n"+
-                "BRANCH_VALUE1[8], 110[9], 21[10], \n"+
+                "BRANCH_VALUE1[8], -240[9], 19[10], \n"+
                 "RUN3[11], 2[12], 120[13], 121[14], \n"+
-                "BRANCH_VALUE1[15], 122[16], 7[17], \n"+
+                "BRANCH_VALUE1[15], -128[16], 6[17], \n"+
                 "RUN3[18], 2[19], -128[20], -127[21], \n"+
-                "END7[22], 0[23], 57[24], \n"+
-                "RUN3[25], 2[26], 122[27], 123[28], \n"+
-                "END7[29], 0[30], 23[31], \n"+
-                "RUN3[32], 2[33], 110[34], 111[35], \n"+
-                "BRANCH_VALUE1[36], 112[37], 7[38], \n"+
-                "RUN3[39], 2[40], 118[41], 119[42], \n"+
-                "END7[43], 0[44], 41[45], \n"+
-                "RUN3[46], 2[47], 112[48], 113[49], \n"+
-                "END7[50], 0[51], 10[52], \n"+
-                "RUN3[53], 3[54], 101[55], 102[56], 103[57], \n"+
-                "BRANCH_LENGTH2[58], 8[59], 10[60], \n"+
-                "RUN3[61], 5[62], 104[63], 105[64], 106[65], 107[66], 108[67], \n"+
-                "END7[68], 0[69], 10[70], \n"+
-                "END7[71], 0[72], 23[73], \n";
+                "END7[22], 57[23], \n"+
+                "RUN3[24], 2[25], 122[26], 123[27], \n"+
+                "END7[28], 23[29], \n"+
+                "RUN3[30], 2[31], 110[32], 111[33], \n"+
+                "BRANCH_VALUE1[34], -252[35], 6[36], \n"+
+                "RUN3[37], 2[38], 118[39], 119[40], \n"+
+                "END7[41], 41[42], \n"+
+                "RUN3[43], 2[44], 112[45], 113[46], \n"+
+                "END7[47], 10[48], \n"+
+                "RUN3[49], 3[50], 101[51], 102[52], 103[53], \n"+
+                "SAFE0[54], 23[55], \n"+
+                "RUN3[56], 5[57], 104[58], 105[59], 106[60], 107[61], 108[62], \n"+
+                "END7[63], 10[64], \n";
         
         if (!expected.equals(actual)) {
             System.out.println("String expected = \""+(actual.replace("\n", "\\n\"+\n\"")));
@@ -300,7 +308,7 @@ public class ByteSequenceMapTest {
         
         
         int actualLimit = map.getLimit();
-        assertEquals(74, actualLimit);
+        assertEquals(65, actualLimit);
         
     }
     
@@ -312,7 +320,7 @@ public class ByteSequenceMapTest {
     
     public static void speedReadTest() {
         
-        ByteSequenceReader reader = new ByteSequenceReader();
+        SequentialTrieParserReader reader = new SequentialTrieParserReader();
         
         //Different values give very different results, for most small sets of URLS however it does look like the trie will be almost 2x faster than the hash.
         short testSize        = 21;//700;
@@ -326,7 +334,7 @@ public class ByteSequenceMapTest {
         
         //Build up the ByteSequenceMap
         int maxSize = 5*testSize*(baseSeqLen+maxSeqLenFromBase);
-        ByteSequenceMap bsm = new ByteSequenceMap(maxSize);
+        SequentialTrieParser bsm = new SequentialTrieParser(maxSize);
         int i;
         
         i = testSize;
@@ -336,6 +344,10 @@ public class ByteSequenceMapTest {
             
             bsm.setValue(testData, testPos[i], testLen[i], 0x7FFF_FFFF, i);
             expectedSum += i;
+            
+//            System.out.println("");
+//            System.out.println("");
+//            System.out.println(bsm);
             
             int result = reader.query(bsm,testData, testPos[i], testLen[i], 0x7FFF_FFFF);
             if (i!=result) {

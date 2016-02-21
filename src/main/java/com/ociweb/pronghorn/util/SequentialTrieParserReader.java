@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.util;
 
-public class ByteSequenceReader {
+public class SequentialTrieParserReader {
 
     final int maxValues = 16;
     
@@ -19,7 +19,7 @@ public class ByteSequenceReader {
     private int bytesLen;
     
     
-    public ByteSequenceReader() {
+    public SequentialTrieParserReader() {
         
     }
     
@@ -39,23 +39,34 @@ public class ByteSequenceReader {
      *  
      * 
      */
-    public void visit(ByteSequenceMap that, int i, ByteSquenceVisitor visitor) {
+    public void visit(SequentialTrieParser that, int i, ByteSquenceVisitor visitor) {
         
             switch (that.data[i]) {
-                case ByteSequenceMap.TYPE_BRANCH_VALUE:
-                case ByteSequenceMap.TYPE_BRANCH_LENGTH:
+                case SequentialTrieParser.TYPE_SAFE_END:
+                    if (SequentialTrieParser.SIZE_OF_RESULT ==1){
+                        visitor.end(
+                                (0XFFFF&that.data[i+1])
+                               ); 
+                    } else {
+                        visitor.end(
+                                ((that.data[i+1]<<16) | (0xFFFF&that.data[i+2]))
+                               );
+                    }
+                    break;
+                case SequentialTrieParser.TYPE_BRANCH_VALUE:
+//                case SequentialTrieParser.TYPE_BRANCH_LENGTH:
                     
-                    int localJump = i + ByteSequenceMap.SIZE_OF_BRANCH;
+                    int localJump = i + SequentialTrieParser.SIZE_OF_BRANCH;
                     int farJump   = i + ((that.data[i+2]<<16) | (0xFFFF&that.data[i+3])); 
                     
                     visit(that, localJump, visitor);
                     visit(that, farJump, visitor);
                     
                     break;
-                case ByteSequenceMap.TYPE_RUN:
+                case SequentialTrieParser.TYPE_RUN:
                     
                     final int run = that.data[i+1];
-                    final int idx = i + ByteSequenceMap.SIZE_OF_RUN;
+                    final int idx = i + SequentialTrieParser.SIZE_OF_RUN;
                     
                     if (visitor.open(that.data, idx, run)) {
                     
@@ -64,7 +75,7 @@ public class ByteSequenceReader {
                     }
                     
                     break;
-                case ByteSequenceMap.TYPE_VALUE_BYTES:
+                case SequentialTrieParser.TYPE_VALUE_BYTES:
                     
                     //take all the bytes until we read the stop byte.
                     //is no body here so i + 2 is next
@@ -73,7 +84,7 @@ public class ByteSequenceReader {
                     //close bytes
                     
                     break;
-                case ByteSequenceMap.TYPE_VALUE_NUMERIC:
+                case SequentialTrieParser.TYPE_VALUE_NUMERIC:
                     
                    
                     //take all the bytes that are ASCII numbers
@@ -84,12 +95,16 @@ public class ByteSequenceReader {
                     
                     
                     break;
-                case ByteSequenceMap.TYPE_END:
-                    
-                    visitor.end(
-                                ((that.data[i+1]<<16) | (0xFFFF&that.data[i+2]))
-                               );
-                    
+                case SequentialTrieParser.TYPE_END:
+                    if (SequentialTrieParser.SIZE_OF_RESULT ==1){
+                        visitor.end(
+                                (0XFFFF&that.data[i+1])
+                               ); 
+                    } else {
+                        visitor.end(
+                                    ((that.data[i+1]<<16) | (0xFFFF&that.data[i+2]))
+                                   );
+                    }
                     break;
                 default:
                     throw new UnsupportedOperationException("ERROR Unrecognized value\n");
@@ -99,7 +114,7 @@ public class ByteSequenceReader {
         
     }
     
-    public int query(ByteSequenceMap that, 
+    public int query(SequentialTrieParser that, 
                      byte[] source, int offset, int length, int mask) {
         
         int pos = 0;
@@ -110,28 +125,21 @@ public class ByteSequenceReader {
         //TODO: store values in stack
         //TODO: store text as pos & length in source?
         
-        //TODO: need new SAFE point TYPE: keep where we are and return last safe point upon branched failure.
-        
+        boolean hasSafePoint = false;
+        int     safeReturnValue = -1;
         
         int type = data[pos++];
-        while (type != ByteSequenceMap.TYPE_END) {
-        
-        
+        while (type != SequentialTrieParser.TYPE_END) {
+               
             
-            if (type==ByteSequenceMap.TYPE_BRANCH_VALUE) {
-                //TODO: urgent split on bit.
-                pos = ByteSequenceMap.jumpEQ(pos, data, (short) source[mask & offset]);
+            if (type==SequentialTrieParser.TYPE_BRANCH_VALUE) {
+                pos = SequentialTrieParser.jumpOnBit(pos, data, (short) source[mask & offset]);
                 
-                //TODO: new default jump
-                //      store pos of jump and choice
-                //      if run does not match check other side (requires run check)
-                
-                
-            } else if (type == ByteSequenceMap.TYPE_RUN) {
+            } else if (type == SequentialTrieParser.TYPE_RUN) {
                 //run
                 int run = data[pos++];
         
-                if (ByteSequenceMap.skipDeepChecks) {
+                if (SequentialTrieParser.skipDeepChecks && !hasSafePoint) {
                     pos += run;
                     offset += run;
                 } else {
@@ -139,19 +147,36 @@ public class ByteSequenceReader {
                     int r = run;
                     while (--r >= 0) {
                         if (data[pos++] != source[mask & offset++]) {
+                            if (hasSafePoint) {                                
+                                return this.value = safeReturnValue;
+                            }
+                            
                             throw new RuntimeException("check prev branch, no match at pos "+pos+"  \n"+that);
+                                                        
                         }
                     }                        
                 }
                 runLength+=run;
                 
             } else {
-                if (type == ByteSequenceMap.TYPE_BRANCH_LENGTH) {
-                    pos = ByteSequenceMap.jumpNEQ(pos, data, (short) length); ////TODO: source length can not be used since it will will go to the end of the file not route.
+                if (type == SequentialTrieParser.TYPE_SAFE_END) {
+                    
+                    hasSafePoint = true;
+                    safeReturnValue = SequentialTrieParser.readEndValue(data,pos);
+                    pos += SequentialTrieParser.SIZE_OF_RESULT;
+                    //if the following does not match we will return this safe value.
+                    //we do not yet have enough info to decide if this is the end or not.
+                    
+                    if (length==runLength) {
+                        //hard stop passed in forces us to use the safe point
+                        return this.value = safeReturnValue;
+                    }
+                    
+
                 } else {
-                    if (type == ByteSequenceMap.TYPE_VALUE_NUMERIC) {
+                    if (type == SequentialTrieParser.TYPE_VALUE_NUMERIC) {
                         parseNumeric(this,source,offset, length-runLength, mask, data[pos++]);
-                    } else if (type == ByteSequenceMap.TYPE_VALUE_BYTES) {
+                    } else if (type == SequentialTrieParser.TYPE_VALUE_BYTES) {
                         parseBytes(this,source,offset, length-runLength, mask, data[pos++]);
                     } else {
                         
@@ -165,23 +190,14 @@ public class ByteSequenceReader {
             type = data[pos++]; 
         }
         
-        //end
-        
-        length = runLength;                  
-        
-        // return ((0xFFFF & data[pos++])<<16) | ((0xFFFF & data[pos++]));
-         
-        value = runLength<=length ? 
-                ByteSequenceMap.readEndValue(data,pos) : 
-                Integer.MIN_VALUE;
-               
-        return value; 
+
+        return value = SequentialTrieParser.readEndValue(data,pos);
         
         
     }
 
     
-    private static int parseBytes(ByteSequenceReader reader, byte[] source, int sourcePos, int sourceLenght, int sourceMask, int stopValue) {
+    private static int parseBytes(SequentialTrieParserReader reader, byte[] source, int sourcePos, int sourceLenght, int sourceMask, int stopValue) {
         
         int len = 0;
         int bytesPos = sourcePos;
@@ -203,7 +219,7 @@ public class ByteSequenceReader {
         return sourcePos;
     }
     
-    private static int parseNumeric(ByteSequenceReader reader, byte[] source, int sourcePos, int sourceLenght, int sourceMask, int numType) {
+    private static int parseNumeric(SequentialTrieParserReader reader, byte[] source, int sourcePos, int sourceLength, int sourceMask, int numType) {
         
         byte sign = 1;
         long intValue = 0;
@@ -211,7 +227,7 @@ public class ByteSequenceReader {
         byte base=10;
 
         //NOTE: these Numeric Flags are invariants consuming runtime resources, this tree could be pre-compiled to remove them if neded.
-        if (0!=(ByteSequenceMap.NUMERIC_FLAG_SIGN&numType)) {
+        if (0!=(SequentialTrieParser.NUMERIC_FLAG_SIGN&numType)) {
             final short c = source[sourceMask & sourcePos];
             if (c=='-') { //NOTE: check ASCII table there may be a fater way to do this.
                 sign = -1;
@@ -220,17 +236,16 @@ public class ByteSequenceReader {
                 sourcePos++;
             }
         }
-
-        if (sourceLenght > 20) { //TODO: change to nonbranching.
-            sourceLenght = 20;
-        }
         
-        if (0==(ByteSequenceMap.NUMERIC_FLAG_HEX&numType) | ('0'!=source[sourceMask & sourcePos+1])| ('x'!=source[sourceMask & sourcePos+2])  ) {                            
+        //just to keep it from spinning on values that are way out of bounds
+        sourceLength = 0x1F & sourceLength; //never scan over 32
+        
+        if (0==(SequentialTrieParser.NUMERIC_FLAG_HEX&numType) | ('0'!=source[sourceMask & sourcePos+1])| ('x'!=source[sourceMask & sourcePos+2])  ) {                            
             base = 10;
             short c = 0;
             do {
                 c = source[sourceMask & sourcePos++];                    
-                if ((c>='0') && (c<='9') && intLength<sourceLenght) {
+                if ((c>='0') && (c<='9') && intLength<sourceLength) {
                     intValue = (intValue * 10)+(c-'0');
                     intLength++;
                     continue;
@@ -249,11 +264,11 @@ public class ByteSequenceReader {
             do {
                 c = source[sourceMask & sourcePos++];
                 
-                if ((c>='0') && (c<='9') && intLength<sourceLenght) {
+                if ((c>='0') && (c<='9') && intLength<sourceLength) {
                     intValue = (intValue<<4)+(c-'0');
                     intLength++;
                     continue;
-                } else  if ((c>='a') && (c<='f') && intLength<sourceLenght) {
+                } else  if ((c>='a') && (c<='f') && intLength<sourceLength) {
                     intValue = (intValue<<4)+(10+(c-'a'));
                     intLength++;
                     continue;

@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
  * @author Nathan Tippy
  *
  */
-public class ByteSequenceMap {
+public class SequentialTrieParser {
     
     //%bX - where X is the excluded stop byte
     //%i  - signed int decimal
@@ -20,28 +20,29 @@ public class ByteSequenceMap {
     //NOTE: real fraction could be supported by sending both number and denominator
     
     
-    private static final Logger logger = LoggerFactory.getLogger(ByteSequenceMap.class);
+    private static final Logger logger = LoggerFactory.getLogger(SequentialTrieParser.class);
 
-    static final byte TYPE_SAFE_END            = 0X00; //TODO: AAAA, urgent feature for safe point.
+    static final byte TYPE_SAFE_END            = 0X00; 
     static final byte TYPE_BRANCH_VALUE        = 0x01; //followed by mask & 2 short jump  
-    static final byte TYPE_BRANCH_LENGTH       = 0x02; //followed by mask & 2 short jump
     static final byte TYPE_RUN                 = 0x03; //followed by length
     
     static final byte TYPE_VALUE_NUMERIC       = 0x04; //followed by type, parse right kind of number
     static final byte TYPE_VALUE_BYTES         = 0x05; //followed by stop byte, take all until stop byte encountered (AKA Wild Card)
     
     static final byte TYPE_VALUE_COND_NUMERIC  = 0x06; //followed by trigger value and kind of number
+    
     ///TODO: new numeric type, if short X '.' or '/' THEN parse number ELSE  default short
     
     static final byte TYPE_END                 = 0x07; //followed by 4 bytes
     
-    
-    static final int SIZE_OF_BRANCH               = 1+1+1;//2; //TODO: make branches 1 short only, now in testing may root this change back.
+    static final int SIZE_OF_RESULT               = 1;//2;//TODO: make values 1 short
+        
+    static final int SIZE_OF_BRANCH               = 1+1+1;
     static final int SIZE_OF_RUN                  = 1+1;
-    static final int SIZE_OF_END                  = 1+2;
+    static final int SIZE_OF_END                  = 1+SIZE_OF_RESULT;
     static final int SIZE_OF_VALUE_NUMERIC        = 1+1;
     static final int SIZE_OF_VALUE_COND_NUMERIC   = 1+2;
-    
+    static final int SIZE_OF_SAFE_END             = 1+SIZE_OF_RESULT;//Same as end except we keep going and store this
     static final int SIZE_OF_VALUE_BYTES          = 1+1;
     
     static final boolean skipDeepChecks = true;//these runs are not significant and do not provide any consumed data.
@@ -55,12 +56,10 @@ public class ByteSequenceMap {
     static final byte NUMERIC_FLAG_HEX   =  2;
     
     
-    private final int size;
     final short[] data;
     private int limit = 0;
     
-    public ByteSequenceMap(int size) {
-        this.size = size;
+    public SequentialTrieParser(int size) {
         this.data = new short[size];
     }
     
@@ -82,11 +81,11 @@ public class ByteSequenceMap {
         int i = 0;
         while (i<limit) {
             switch (data[i]) {
+                case TYPE_SAFE_END:
+                    i = toStringSafe(builder, i);
+                    break;
                 case TYPE_BRANCH_VALUE:
                     i = toStringBranchValue(builder, i);
-                    break;
-                case TYPE_BRANCH_LENGTH:
-                    i = toStringBranchLength(builder, i);
                     break;
                 case TYPE_VALUE_NUMERIC:
                     i = toStringNumeric(builder, i);
@@ -101,10 +100,20 @@ public class ByteSequenceMap {
                     i = toStringEnd(builder, i);
                     break;
                 default:
-                    return builder.append("ERROR Unrecognized value\n");
+                    return builder.append("ERROR Unrecognized value, remaining "+(limit-i)+"\n");
             }            
         }
         return builder;
+    }
+    
+    private int toStringSafe(StringBuilder builder, int i) {
+        builder.append("SAFE");
+        builder.append(data[i]).append("[").append(i++).append("], ");
+        if (SIZE_OF_RESULT>1) {
+            builder.append(data[i]).append("[").append(i++).append("], ");
+        }
+        builder.append(data[i]).append("[").append(i++).append("], \n");
+        return i;
     }
 
     private int toStringNumeric(StringBuilder builder, int i) {
@@ -128,8 +137,9 @@ public class ByteSequenceMap {
     private int toStringEnd(StringBuilder builder, int i) {
         builder.append("END");
         builder.append(data[i]).append("[").append(i++).append("], ");
-        
-        builder.append(data[i]).append("[").append(i++).append("], ");
+        if (SIZE_OF_RESULT>1) {
+            builder.append(data[i]).append("[").append(i++).append("], ");
+        }
         builder.append(data[i]).append("[").append(i++).append("], \n");
         return i;
     }
@@ -158,48 +168,20 @@ public class ByteSequenceMap {
         builder.append(data[i]).append("[").append(i++).append("], \n");//JUMP
         return i;
     }
+
     
-    private int toStringBranchLength(StringBuilder builder, int i) {
-        builder.append("BRANCH_LENGTH");
-        builder.append(data[i]).append("[").append(i++).append("], "); //TYPE
-        
-        builder.append(data[i]).append("[").append(i++).append("], "); //MASK FOR LENGTH
-        
-       // builder.append(data[i]).append("[").append(i++).append("], "); //JUMP
-        builder.append(data[i]).append("[").append(i++).append("], \n");//JUMP
-        return i;
+    static int jumpOnBit(int pos, short[] data, short source) {                
+        short critera  = data[pos++];//high 8 is left or right, low 8 is the magic bit to mask
+        int jumpBit = ((source & (0xFF&critera))-1)>>>8;
+        return (((short)0xFFFF&(~jumpBit ^ critera>>>8)) & (int) data[pos++]) + pos;
     }
-    
-    //TODO: add case insinsitve jump and match.
-    
-    //TODO: change to jump if >= so that we divide the space more evenly.
-    //  if   this one bit is ON then branch 
-    //       it can never be the case bit unless it is the only one different.
-    //       insert speed can be slow to find this bit  
-    //       do not use bit 6 unless told to on startup.
-    
-    
-    
-    
-    //char a and char b  pick char between them and jump if >=
-    
-    static int jumpEQ(int pos, short[] data, short branchOn) {
-        //NOTE: negative values are causing a problem. so we mask to FFFF
-        return (( ( ( (0xFFFF)& (branchOn^data[pos++])))  -1)>>31 & ((((int)data[pos++]) /*<< 16*/) /*|(0xFFFF&data[pos++])*/)) + pos;
-    }
-    
-    static int jumpNEQ(int pos, short[] data, short branchOn) {
-         //NOTE: negative values are causing a problem. so we mask to FFFF
-        return ((~((( (0xFFFF)& (branchOn^data[pos++])))  -1))>>31 & ((((int)data[pos++]) /*<< 16*/)/*|(0xFFFF&data[pos++])*/)) + pos;
-    }
-    
 
     private void setValue(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, int value) {
         
         assert(value >= 0);
         assert(value <= 0x7FFF_FFFF); 
         
-        boolean noVarLengthContent = true; //set to false if 'value int' or 'value bytes' is encountered
+//        boolean noVarLengthContent = true; //set to false if 'value int' or 'value bytes' is encountered
 
         if (0!=limit) {
             int length = 0;
@@ -209,10 +191,7 @@ public class ByteSequenceMap {
                 int type = 0xFF & data[pos++];
                 switch(type) {
                     case TYPE_BRANCH_VALUE:
-                        pos = jumpEQ(pos, data, (short) source[sourceMask & sourcePos]);
-                        break;
-                    case TYPE_BRANCH_LENGTH:
-                        pos = jumpNEQ(pos, data, (short)sourceLength); //TODO: source length can not be used since it will not be known.
+                        pos = jumpOnBit(pos, data, (short) source[sourceMask & sourcePos]);
                         break;
                     case TYPE_VALUE_NUMERIC:                        
                         sourcePos = stepOverNumeric(source, sourcePos, sourceMask, (int) data[pos++]);
@@ -225,19 +204,35 @@ public class ByteSequenceMap {
                         int runPos = pos++;
                         int run = data[runPos];
                               
-                        if (noVarLengthContent && (sourceLength < run+length)) {
-                            //branch on length, since we know this length is shorter than the run
-                            //this is faster and provides support for identical values where one of a different length                            
-                            insertAtBranchLength(0, data, pos-2, source, sourcePos, sourceLength-length, sourceMask, value, length, sourceLength);
-
+                        if (sourceLength < run+length) {
+                            
+                            int r = sourceLength-length;
+                            if (r>=run) {
+                                throw new UnsupportedOperationException();
+                            }
+                            int afterWhileLength = length+r;
+                            int afterWhileRun    = run-r;
+                            while (--r >= 0) {
+                                if (data[pos++] != source[sourceMask & sourcePos++]) {
+                          //          String before = validateTree(type);
+                          //          System.err.println("before:"+before);
+                                    insertAtBranchValue(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun, sourcePos-1);
+                        //            System.err.println("insert branch at "+pos);
+                       //             validateTree(type);
+                                    return;
+                                }
+                            }
+                            length = afterWhileLength;
+                            //matched up to this point but this was shorter than the run so insert a safe point
+                            insertNewSafePoint(pos, data, source, sourcePos, afterWhileRun, sourceMask, value, runPos);     
                             return;
-                        }
-                        
+                        }                        
                         
                         int r = run;
                         while (--r >= 0) {
                             if (data[pos++] != source[sourceMask & sourcePos++]) {
                                 insertAtBranchValue(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r, sourcePos-1);
+                  //              validateTree(type);
                                 return;
                             }
                         }
@@ -248,20 +243,31 @@ public class ByteSequenceMap {
                     case TYPE_END:
                         
                         if (sourceLength>length) {
-                            //if we still have data left add a branch instead of changing the value                            
-                            insertAtBranchLength(0, data, pos-1, source, sourcePos, sourceLength-length, sourceMask, value, length, sourceLength);
-                            return;
-                            
+                            convertEndToNewSafePoint(pos, data, source, sourcePos, sourceLength-length, sourceMask, value);  
+                    //        validateTree(type);
                         } else {
-                            pos = writeEndValue(data, pos, value);
+                            writeEndValue(data, pos, value);
+                       //     validateTree(type);
                         }
                         return;
+                        
+                        
+                    case TYPE_SAFE_END:
+                        if (sourceLength>length) {
+                            ///jump over the safe end values and continue on
+                            pos += SIZE_OF_RESULT;
+                            break;                            
+                        } else {
+                            pos = writeEndValue(data, pos, value);
+                    //        validateTree(type);
+                            return;
+                        }
                     default:
                         System.out.println(this);
                         throw new UnsupportedOperationException("unknown op "+type);
                 }
                 
-                
+             //   validateTree(type);                
 
             }
         } else {
@@ -271,8 +277,46 @@ public class ByteSequenceMap {
     }
 
 
-    private void insertAtBranchValue(int pos, short[] data, byte[] source, int sourceLength, int sourceMask, int value,
-            int length, int runPos, int run, int r1, int sourceCharPos) {
+//    private String validateTree(int type) {
+//        String temp = this.toString();
+//        if (temp.contains("ERROR")) {
+//            System.err.println(temp);
+//            new Exception("failure on last type "+type).printStackTrace();;
+//            System.exit(0);
+//        }
+//        return temp;
+//    }
+
+
+    private void convertEndToNewSafePoint(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, int value) {
+        //convert end to safe
+        
+        if (data[pos-1] != TYPE_END) {
+            throw new UnsupportedOperationException();
+        }
+        data[--pos] = TYPE_SAFE_END; //change to a safe
+        pos += SIZE_OF_SAFE_END;
+
+        //now insert the needed run
+        makeRoomForInsert(sourceLength, data, pos, SIZE_OF_END + sourceLength);        
+        pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);        
+        pos = writeEnd(data, pos, value);
+    }
+
+    private int insertNewSafePoint(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, int value, int runLenPos) {
+        //convert end to safe
+        
+        makeRoomForInsert(sourceLength, data, pos, SIZE_OF_SAFE_END);
+        
+        data[pos++] = TYPE_SAFE_END;
+        pos = writeEndValue(data, pos, value);
+        pos = writeRunHeader(data, pos, sourceLength);
+        data[runLenPos] -= sourceLength;//previous run is shortened buy the length of this new run
+        return pos;
+    }
+    
+
+    private void insertAtBranchValue(int pos, short[] data, byte[] source, int sourceLength, int sourceMask, int value, int length, int runPos, int run, int r1, int sourceCharPos) {
         r1++;//remaining
         if (r1 == run) {
             r1 = 0; //keep entire run and do not split it.
@@ -280,8 +324,17 @@ public class ByteSequenceMap {
         } else {
             int dataPos = pos-1;                                       
             data[runPos] = (short)(dataPos-runPos-1);
-           // System.out.println("some matched but remaining "+r+" did not new run is  "+data[runPos]+" remaining length is "+((sourceLength-(length+data[runPos]))));
-            insertAtBranchValue(r1, data, dataPos, source, sourceCharPos, (sourceLength-(length+data[runPos])) , sourceMask, value);
+           
+          //  System.out.println("some matched but remaining "+r1+" did not new run is  "+data[runPos]+" remaining length is "+((sourceLength-(length+data[runPos]))));
+           
+            
+            int computedRemainingLength = sourceLength-(length+data[runPos]);
+            if (computedRemainingLength<0) {
+                throw new UnsupportedOperationException("len:"+computedRemainingLength+"  srcLen:"+sourceLength+" len1:"+length+" posRun:"+data[runPos]);
+            }
+         //   System.err.println("rem: "+computedRemainingLength+" vs "+r1);
+            
+            insertAtBranchValue(r1, data, dataPos, source, sourceCharPos, computedRemainingLength , sourceMask, value);
         }
     }
 
@@ -322,43 +375,55 @@ public class ByteSequenceMap {
     }
 
 
-    private void insertAtBranchValue(int danglingByteCount, short[] data, int pos, byte[] source, int sourcePos, int sourceLength, int sourceMask, int value) {
+    private void insertAtBranchValue(int danglingByteCount, short[] data, int pos, byte[] source, int sourcePos,final int sourceLength, int sourceMask, int value) {
+        
+        if (sourceLength > 0x7FFF || sourceLength < 1) {
+            throw new UnsupportedOperationException("does not support strings beyond this length "+0x7FFF+" value was "+sourceLength);
+        }
         
         final int requiredRoom = SIZE_OF_END + SIZE_OF_BRANCH +  (((~(sourceLength-1))>>31)&SIZE_OF_RUN)+ sourceLength;
         
         int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
 
-        pos = writeBranch(TYPE_BRANCH_VALUE, data, pos, requiredRoom, /*source[sourcePos & sourceMask]);//*/ data[oldValueIdx]);
+        short a = source[sourcePos & sourceMask];
+        short b = data[oldValueIdx];
+        short jumpData = findSingleBitMask(a, b);
+        
+        pos = writeBranch(TYPE_BRANCH_VALUE, data, pos, requiredRoom, jumpData);
         pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);
 
         writeEnd(data, pos, value);
         
     }
-    
-    private void insertAtBranchLength(int danglingByteCount, short[] data, int pos, byte[] source, int sourcePos, int sourceLength, int sourceMask, int value, int runningLength, int totalLength) {
-        
-        final int requiredRoom = SIZE_OF_END + SIZE_OF_BRANCH +   (((~(sourceLength-1))>>31)&SIZE_OF_RUN)+ sourceLength;
-        
-        makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
-        
-        //System.err.println("write len branch "+runningLength+" new insert length of "+totalLength);
-        
-        pos = writeBranch(TYPE_BRANCH_LENGTH, data, pos, requiredRoom, (short)totalLength);//can not use runningLength, is often zero when splittin at begginning);
-        pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);
-        writeEnd(data, pos, value);
-        
-    }
 
+
+    private short findSingleBitMask(short a, short b) {
+        int mask = 1<<5; //default of sign bit, only used when nothing replaces it.
+        
+        int i = 8; 
+        while (--i>=0) {            
+            if (5!=i) { //sign bit, we do not use it unless all the others are tested first                
+                mask = 1 << i;
+                if ((mask&a) != (mask&b)) {
+                    break;
+                }
+            }          
+        }        
+        return (short)(( 0xFF00&((mask&b)-1) ) | mask); //high byte is on when A matches mask
+    }
 
     private int makeRoomForInsert(int danglingByteCount, short[] data, int pos, int requiredRoom) {
                 
         int len = limit-pos;
-        
         if (danglingByteCount>0) {
             requiredRoom+=SIZE_OF_RUN; //added because we will prepend this with a TYPE_RUN header to close the dangling bytes
         }
-        limit+=requiredRoom;
+        limit+=requiredRoom;      
         
+        if (len<0) {
+            return pos;//nothing to be moved
+        }
+                
         updatePreviousJumpDistances(0, data, pos, requiredRoom);        
         
         int newPos = pos+requiredRoom;
@@ -382,8 +447,10 @@ public class ByteSequenceMap {
         
         while (i<limit) {
             switch (data[i]) {
+                case TYPE_SAFE_END:
+                    i += SIZE_OF_SAFE_END;
+                    break;
                 case TYPE_BRANCH_VALUE:
-                case TYPE_BRANCH_LENGTH:
                                       
                     int jmp = data[i+2];//(((int)data[i+2]) << 16)|(0xFFFF&data[i+3]);
                     int newPos = i+jmp;
@@ -395,8 +462,8 @@ public class ByteSequenceMap {
                             throw new UnsupportedOperationException("This content is too large, use shorter content or modify this code to make multiple jumps.");
                         }
                                                 
-                        data[i+2] = (short)(0xFFFF&(jmp/*>>16*/));
-                      //  data[i+3] = (short)(0xFFFF&jmp);
+                        data[i+2] = (short)(0xFFFF&(jmp));
+                        
                     }
                     i += SIZE_OF_BRANCH;
                     break;                    
@@ -420,17 +487,18 @@ public class ByteSequenceMap {
     }
 
 
-    private int writeBranch(byte type, short[] data, int pos, int requiredRoom, short comparison) {
+    private int writeBranch(byte type, short[] data, int pos, int requiredRoom, short criteria) {
         
         if (requiredRoom > 0x7FFF) {
             throw new UnsupportedOperationException("This content is too large, use shorter content or modify this code to make multiple jumps.");
         }
         
+       // System.err.println("wrote type "+type+" into "+pos);
+        
         requiredRoom -= SIZE_OF_BRANCH;//subtract the size of the branch operator
         data[pos++] = type;
-        data[pos++] = comparison;
+        data[pos++] = criteria;
         
-       // data[pos++] = (short)(0xFFFF&(requiredRoom>>16));
         data[pos++] = (short)(0xFFFF&requiredRoom);
         
         return pos;
@@ -444,32 +512,42 @@ public class ByteSequenceMap {
 
 
     private int writeEndValue(short[] data, int pos, int value) {
-       // data[pos++] = (short)(0xFFFF&value);
-        data[pos++] = (short)(0xFFFF&(value>>16));
-        data[pos++] = (short)(0xFFFF&value);
+        if (1==SIZE_OF_RESULT) {
+            data[pos++] = (short)(0xFFFF&value);
+        } else {
+            data[pos++] = (short)(0xFFFF&(value>>16));
+            data[pos++] = (short)(0xFFFF&value);
+        }
         return pos;
     }
     
     static int readEndValue(short[] data, int pos) {
-        //return data[pos];
-        return ((0xFFFF & data[pos++])<<16) | ((0xFFFF & data[pos++]));
-        
-    }
-    
-    //TODO: review how to merge jumps to limit the number of conditionals
-    
-    
-    private int writeRuns(short[] data, int pos, byte[] source, int sourcePos, int sourceLength, int sourceMask) {
-        if (sourceLength>0x7FFF || sourceLength<1) {
-            throw new UnsupportedOperationException("does not support strings beyond this length "+0x7FFF);
+        if (1==SIZE_OF_RESULT) {
+            return 0xFFFF & data[pos];
+        } else {
+            return ((0xFFFF & data[pos++])<<16) | ((0xFFFF & data[pos++]));
         }
+    }
+ 
+    private int writeRuns(short[] data, int pos, byte[] source, int sourcePos, int sourceLength, int sourceMask) {
+        pos = writeRunHeader(data, pos, sourceLength);
         int runLeft = sourceLength;
-        data[pos++] = TYPE_RUN;
-        data[pos++] = (short)runLeft;
         while (--runLeft >= 0) {
                 data[pos++] = source[sourceMask & sourcePos++];
        }
        return pos;
+    }
+
+
+    private int writeRunHeader(short[] data, int pos, int sourceLength) {
+        
+        if (sourceLength > 0x7FFF || sourceLength < 1) {
+            throw new UnsupportedOperationException("does not support strings beyond this length "+0x7FFF+" value was "+sourceLength);
+        }
+        
+        data[pos++] = TYPE_RUN;
+        data[pos++] = (short)sourceLength;
+        return pos;
     }
 
     
