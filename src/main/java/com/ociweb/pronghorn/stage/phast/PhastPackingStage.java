@@ -8,7 +8,7 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class PhastEncodeStage extends PronghornStage {
+public class PhastPackingStage extends PronghornStage {
     
     private final Pipe<PhastCodecSchema> input1;
     private final Pipe<RawDataSchema>    input2;
@@ -29,7 +29,7 @@ public class PhastEncodeStage extends PronghornStage {
     private static final int INPUT_MAX_MSG_SIZE = FieldReferenceOffsetManager.maxFragmentSize(PhastCodecSchema.FROM);
     private long startup;
     
-    protected PhastEncodeStage(GraphManager graphManager, Pipe<PhastCodecSchema> input1, Pipe<RawDataSchema> input2, Pipe<RawDataSchema> output, int chunkSize) {
+    protected PhastPackingStage(GraphManager graphManager, Pipe<PhastCodecSchema> input1, Pipe<RawDataSchema> input2, Pipe<RawDataSchema> output, int chunkSize) {
         super(graphManager, input1, output);
         this.input1 = input1;
         this.input2 = input2;

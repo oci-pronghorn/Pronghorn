@@ -51,7 +51,7 @@ public class PhastCodecSchemaTest {
         
         Pipe<RawDataSchema> encodedValuesToValidate = new Pipe<RawDataSchema>(outputConfig);
                 
-        PhastEncodeStage stage = new PhastEncodeStage(gm, testValuesToEncode, testValuesToEncode2, encodedValuesToValidate, 1 );
+        PhastPackingStage stage = new PhastPackingStage(gm, testValuesToEncode, testValuesToEncode2, encodedValuesToValidate, 1 );
 	    
         testValuesToEncode.initBuffers();
         testValuesToEncode2.initBuffers();
@@ -117,7 +117,7 @@ public class PhastCodecSchemaTest {
 	       Pipe<PhastCodecSchema> decodedDataToValidate = new Pipe<PhastCodecSchema>(outputConfig);
 	       Pipe<RawDataSchema> testDataToDecode = new Pipe<RawDataSchema>(inputConfig);
 	      
-	       PhastDecodeStage stage = new PhastDecodeStage(gm, testDataToDecode, decodedDataToValidate );
+	       PhastUnpackingStage stage = new PhastUnpackingStage(gm, testDataToDecode, decodedDataToValidate );
 	        
 	       Pipe.setPublishBatchSize(testDataToDecode, 0);
 	       
@@ -210,7 +210,7 @@ public class PhastCodecSchemaTest {
         LongDataGenStage  genStage = new LongDataGenStage(gm, new Pipe[]{inputPipe}, iterations, chunkSize);        
         //PipeCleanerStage<PhastCodecSchema> dumpStage = new PipeCleanerStage<PhastCodecSchema>(gm, inputPipe); //21-36 Gbps
 
-        PhastEncodeStage encodeStage = new PhastEncodeStage(gm, inputPipe, inputPipe2, packedDataPipe, chunkSize );
+        PhastPackingStage encodeStage = new PhastPackingStage(gm, inputPipe, inputPipe2, packedDataPipe, chunkSize );
         PipeCleanerStage<RawDataSchema> dumpStage = new PipeCleanerStage<RawDataSchema>(gm, packedDataPipe); //consumes 6-8 but writes 3
         
         
@@ -275,8 +275,8 @@ public class PhastCodecSchemaTest {
 	        int iterations = 3000000;//*1000;
 	        LongDataGenStage  genStage = new LongDataGenStage(gm, new Pipe[]{inputPipe1, inputPipe2}, iterations, chunkSize);      
 	        
-	        PhastEncodeStage encodeStage1 = new PhastEncodeStage(gm, inputPipe1, inputPipe1B, packedDataPipe1, chunkSize);       
-	        PhastEncodeStage encodeStage2 = new PhastEncodeStage(gm, inputPipe2, inputPipe2B, packedDataPipe2, chunkSize);       
+	        PhastPackingStage encodeStage1 = new PhastPackingStage(gm, inputPipe1, inputPipe1B, packedDataPipe1, chunkSize);       
+	        PhastPackingStage encodeStage2 = new PhastPackingStage(gm, inputPipe2, inputPipe2B, packedDataPipe2, chunkSize);       
 	      //  PhastEncodeStage encodeStage3 = new PhastEncodeStage(gm, inputPipe3, packedDataPipe3, chunkSize);  
 	        
 	    //    PhastDecodeStage decodeStage = new PhastDecodeStage(gm, packedDataPipe, outputPipe );   

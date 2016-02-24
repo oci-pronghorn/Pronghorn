@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.stage.test;
+package com.ociweb.pronghorn.stage.generator;
 
 import java.io.IOException;
 import java.nio.channels.Pipe;
@@ -17,7 +17,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
-public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWriter{
+public class FuzzDataStageGenerator extends TemplateProcessGeneratorLowLevelWriter{
 
         
     //Simple random generator stage generated for a given Schema
@@ -48,12 +48,12 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     
     //TODO: Add generator to build Objects as iterator? 10 hours may be helpful to grove work.
     
-    public FuzzGeneratorGenerator(MessageSchema schema, Appendable target) {
+    public FuzzDataStageGenerator(MessageSchema schema, Appendable target) {
         this(schema, target, false);
     }
     
     
-    public FuzzGeneratorGenerator(MessageSchema schema, Appendable target, boolean generateRunnable, boolean scopeProtected) {
+    public FuzzDataStageGenerator(MessageSchema schema, Appendable target, boolean generateRunnable, boolean scopeProtected) {
         super(schema, target, generateClassName(schema)+(generateRunnable ? "" : "Stage"),
                                                           generateRunnable ? "implements Runnable" : "extends PronghornStage",
                                                           generateRunnable ? null : "output",
@@ -63,14 +63,14 @@ public class FuzzGeneratorGenerator extends TemplateProcessGeneratorLowLevelWrit
     }
     
     
-    public FuzzGeneratorGenerator(MessageSchema schema, Appendable target, String interitance, boolean scopeProtected) {
+    public FuzzDataStageGenerator(MessageSchema schema, Appendable target, String interitance, boolean scopeProtected) {
         super(schema, target, generateClassName(schema),  interitance,null,
                                                           scopeProtected ? "protected" : "private",
                                                           false, schema.getClass().getPackage().getName()+".build");
         this.generateRunnable = true;
     }
     
-    public FuzzGeneratorGenerator(MessageSchema schema, Appendable target, boolean generateRunnable) {
+    public FuzzDataStageGenerator(MessageSchema schema, Appendable target, boolean generateRunnable) {
         this(schema, target, generateRunnable, generateRunnable);
     }
 

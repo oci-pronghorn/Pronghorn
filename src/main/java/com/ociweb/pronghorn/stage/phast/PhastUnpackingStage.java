@@ -10,7 +10,7 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class PhastDecodeStage extends PronghornStage {
+public class PhastUnpackingStage extends PronghornStage {
 
     private final Pipe<RawDataSchema> input;
     private final Pipe<PhastCodecSchema> output;
@@ -25,7 +25,7 @@ public class PhastDecodeStage extends PronghornStage {
     private static final int MAX_FIELD_SIZE = FieldReferenceOffsetManager.maxFragmentSize(PhastCodecSchema.FROM);
     private int MAX_INT_FIELDS = 63; //TODO: SSET FROM SCHEMA.
     
-    protected PhastDecodeStage(GraphManager graphManager, Pipe<RawDataSchema> input, Pipe<PhastCodecSchema> output) {
+    protected PhastUnpackingStage(GraphManager graphManager, Pipe<RawDataSchema> input, Pipe<PhastCodecSchema> output) {
         super(graphManager, input, output);
         this.input = input;
         this.output = output;

@@ -29,6 +29,7 @@ import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.generator.FuzzDataStageGenerator;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -41,7 +42,7 @@ public class FuzzGeneratorGeneratorTest {
     public void fuzzGeneratorBuildTest() {
         
         StringBuilder target = new StringBuilder();
-        FuzzGeneratorGenerator ew = new FuzzGeneratorGenerator(PipeMonitorSchema.instance, target);
+        FuzzDataStageGenerator ew = new FuzzDataStageGenerator(PipeMonitorSchema.instance, target);
 
         try {
             ew.processSchema();
@@ -60,7 +61,7 @@ public class FuzzGeneratorGeneratorTest {
     public void fuzzGeneratorBuildRunnableTest() {
 
         StringBuilder target = new StringBuilder();
-        FuzzGeneratorGenerator ew = new FuzzGeneratorGenerator(PipeMonitorSchema.instance, target, true);
+        FuzzDataStageGenerator ew = new FuzzDataStageGenerator(PipeMonitorSchema.instance, target, true);
 
         try {
             ew.processSchema();
@@ -81,7 +82,7 @@ public class FuzzGeneratorGeneratorTest {
         MessageSchemaDynamic schema = sequenceExampleSchema();               
         
         StringBuilder target = new StringBuilder();
-        FuzzGeneratorGenerator ew = new FuzzGeneratorGenerator(schema, target, true);
+        FuzzDataStageGenerator ew = new FuzzDataStageGenerator(schema, target, true);
 
         try {
             ew.processSchema();
@@ -102,7 +103,7 @@ public class FuzzGeneratorGeneratorTest {
         
         StringBuilder target = new StringBuilder();
         
-        FuzzGeneratorGenerator ew = new FuzzGeneratorGenerator(PipeMonitorSchema.instance, target);
+        FuzzDataStageGenerator ew = new FuzzDataStageGenerator(PipeMonitorSchema.instance, target);
         // //set the field to use for latency
         ew.setTimeFieldId(1); //use the MS field from the monitor schema to put the time into.
         
@@ -122,7 +123,7 @@ public class FuzzGeneratorGeneratorTest {
             
             StringBuilder target = new StringBuilder();
             
-            FuzzGeneratorGenerator ew = new FuzzGeneratorGenerator(schema, target);
+            FuzzDataStageGenerator ew = new FuzzDataStageGenerator(schema, target);
             ew.setMaxSequenceLengthInBits(9);
             
             int durationMS = 100; 
@@ -156,7 +157,7 @@ public class FuzzGeneratorGeneratorTest {
         StringBuilder target = new StringBuilder();
                 
         //TODO: Rewrite for ByteVector, DO NOT use ByteBuffer instead use the easier DataOutput object.
-        FuzzGeneratorGenerator ew = new FuzzGeneratorGenerator(RawDataSchema.instance, target);
+        FuzzDataStageGenerator ew = new FuzzDataStageGenerator(RawDataSchema.instance, target);
         
         
         int durationMS = 300;
@@ -164,7 +165,7 @@ public class FuzzGeneratorGeneratorTest {
         runtimeTestingOfFuzzGenerator(target, RawDataSchema.instance, ew, durationMS,1000);
     }
 
-    private void runtimeTestingOfFuzzGenerator(StringBuilder target, MessageSchema schema, FuzzGeneratorGenerator ew, int durationMS, int pipeLength) {
+    private void runtimeTestingOfFuzzGenerator(StringBuilder target, MessageSchema schema, FuzzDataStageGenerator ew, int durationMS, int pipeLength) {
         try {
             ew.processSchema();
         } catch (IOException e) {
@@ -176,7 +177,7 @@ public class FuzzGeneratorGeneratorTest {
              
         
         try {
-            Constructor constructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClassName(), target, FuzzGeneratorGenerator.class);
+            Constructor constructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClassName(), target, FuzzDataStageGenerator.class);
             
             
             GraphManager gm = new GraphManager();
@@ -223,7 +224,7 @@ public class FuzzGeneratorGeneratorTest {
     private static void validateCleanCompile(String packageName, String className, StringBuilder target) {
         try {
 
-            Class generateClass = LoaderUtil.generateClass(packageName, className, target, FuzzGeneratorGenerator.class);
+            Class generateClass = LoaderUtil.generateClass(packageName, className, target, FuzzDataStageGenerator.class);
             
             if (generateClass.isAssignableFrom(PronghornStage.class)) {
                 Constructor constructor =  generateClass.getConstructor(GraphManager.class, Pipe.class);

@@ -406,7 +406,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
     		            //GraphManager.releaseAllReads(graphManager, stage);
     		    }
     			stage.run();			
-    					
+    			
     			
     		} while (continueRunning(this, stage));	
 	    }
@@ -426,7 +426,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	                //      Regardless of how long or short is spend inside run the same delay between calls is always enforced.
 
 	                nsSleep(nsSleep);
-	                
+	                	                
 	                stage.run();
 	                
 	            } while (!isShuttingDown);
