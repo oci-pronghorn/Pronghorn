@@ -12,35 +12,25 @@ import org.slf4j.LoggerFactory;
  */
 public class SequentialTrieParser {
     
-    //%bX - where X is the excluded stop byte
-    //%i  - signed int decimal
-    //%u  - unsigned int decimal
-    //%f  - fixed place (finance)
-    // 123  -123 +123  23.23 , hex and base 10? bult in support for 0x prefx?
-    //NOTE: real fraction could be supported by sending both number and denominator
     
     
     private static final Logger logger = LoggerFactory.getLogger(SequentialTrieParser.class);
 
-    static final byte TYPE_SAFE_END            = 0X00; 
     static final byte TYPE_BRANCH_VALUE        = 0x01; //followed by mask & 2 short jump  
     static final byte TYPE_RUN                 = 0x03; //followed by length
     
     static final byte TYPE_VALUE_NUMERIC       = 0x04; //followed by type, parse right kind of number
     static final byte TYPE_VALUE_BYTES         = 0x05; //followed by stop byte, take all until stop byte encountered (AKA Wild Card)
-    
-    static final byte TYPE_VALUE_COND_NUMERIC  = 0x06; //followed by trigger value and kind of number
-    
-    ///TODO: new numeric type, if short X '.' or '/' THEN parse number ELSE  default short
-    
-    static final byte TYPE_END                 = 0x07; //followed by 4 bytes
+            
+    static final byte TYPE_SAFE_END            = 0X06; 
+    static final byte TYPE_END                 = 0x07; 
     
     static final int SIZE_OF_RESULT               = 1;//2;//TODO: make values 1 short
         
     static final int SIZE_OF_BRANCH               = 1+1+1;
     static final int SIZE_OF_RUN                  = 1+1;
     static final int SIZE_OF_END                  = 1+SIZE_OF_RESULT;
-    static final int SIZE_OF_VALUE_NUMERIC        = 1+1;
+    static final int SIZE_OF_VALUE_NUMERIC        = 1+1; //second value matches escape type values.
     static final int SIZE_OF_VALUE_COND_NUMERIC   = 1+2;
     static final int SIZE_OF_SAFE_END             = 1+SIZE_OF_RESULT;//Same as end except we keep going and store this
     static final int SIZE_OF_VALUE_BYTES          = 1+1;
@@ -48,12 +38,39 @@ public class SequentialTrieParser {
     static final boolean skipDeepChecks = true;//these runs are not significant and do not provide any consumed data.
     //humans require long readable URLs but the machine can split them into categories on just a few key bytes
     
+    private static final byte ESCAPE_BYTE = '%';
+    //EXTRACT VALUE
+    static final byte ESCAPE_CMD_SIGNED_DEC    = 'i'; //signedInt
+    static final byte ESCAPE_CMD_UNSIGNED_DEC  = 'u'; //unsignedInt
+    static final byte ESCAPE_CMD_SIGNED_HEX    = 'I'; //signedInt (can be hex or decimal)
+    static final byte ESCAPE_CMD_UNSIGNED_HEX  = 'U'; //unsignedInt (can be hex or decimal)
+    static final byte ESCAPE_CMD_DECIMAL       = '.'; //if found capture u and places else captures zero and 1 place
+    static final byte ESCAPE_CMD_RATIONAL      = '/'; //if found capture i else captures 1
+    //EXTRACTED BYTES
+    static final byte ESCAPE_CMD_BYTES         = 'b';
+    //PATH CONSTANT
+    static final byte ESCAPE_CMD_NUMBER        = 'n';
+    
+    //////////////////////////////////////////////////////////////////////
+    ///Every pattern is unaware of any context and can be mixed an any way.
+    //////////////////////////////////////////////////////////////////////    
+    // %%        a literal %
+    // %i%.      unsigned value after dot in decimal and zero if not found   eg  3.75
+    // %i%/      signed value after dot in hex and 1 if not found            eg  3/-4
+    // %i%.%/%.  a rational number made up of two decimals                   eg  2.3/-1.7 
+    // %bX       where X is the excluded stop short
+    // %nX       where X is a value to hold as though it were extracted from the path
+    //////////////////////////////////////////////////////////////////////
     
     //numeric type bits:
     //   leading sign (only in front)
-    static final byte NUMERIC_FLAG_SIGN  =  1;
+    static final byte NUMERIC_FLAG_SIGN     =  1;
     //   hex values can start with 0x, hex is all lower case abcdef
-    static final byte NUMERIC_FLAG_HEX   =  2;
+    static final byte NUMERIC_FLAG_HEX      =  2;
+    //   starts with . if not return zero
+    static final byte NUMERIC_FLAG_DECIMAL  =  4;
+    //   starts with / if not return 1
+    static final byte NUMERIC_FLAG_RATIONAL =  8;
     
     
     final short[] data;
@@ -109,9 +126,6 @@ public class SequentialTrieParser {
     private int toStringSafe(StringBuilder builder, int i) {
         builder.append("SAFE");
         builder.append(data[i]).append("[").append(i++).append("], ");
-        if (SIZE_OF_RESULT>1) {
-            builder.append(data[i]).append("[").append(i++).append("], ");
-        }
         builder.append(data[i]).append("[").append(i++).append("], \n");
         return i;
     }
@@ -137,9 +151,6 @@ public class SequentialTrieParser {
     private int toStringEnd(StringBuilder builder, int i) {
         builder.append("END");
         builder.append(data[i]).append("[").append(i++).append("], ");
-        if (SIZE_OF_RESULT>1) {
-            builder.append(data[i]).append("[").append(i++).append("], ");
-        }
         builder.append(data[i]).append("[").append(i++).append("], \n");
         return i;
     }
@@ -164,24 +175,25 @@ public class SequentialTrieParser {
         
         builder.append(data[i]).append("[").append(i++).append("], "); //MASK FOR CHAR
         
-       // builder.append(data[i]).append("[").append(i++).append("], "); //JUMP
         builder.append(data[i]).append("[").append(i++).append("], \n");//JUMP
         return i;
     }
 
     
-    static int jumpOnBit(int pos, short[] data, short source) {                
-        short critera  = data[pos++];//high 8 is left or right, low 8 is the magic bit to mask
-        int jumpBit = ((source & (0xFF&critera))-1)>>>8;
-        return (((short)0xFFFF&(~jumpBit ^ critera>>>8)) & (int) data[pos++]) + pos;
+    static int jumpOnBit(short source, int pos, short[] data) {                
+        //high 8 is left or right, low 8 is the magic bit to mask
+        return jumpOnBit(source, data[pos++], 0xFFFF&data[pos], pos);
+    }
+
+
+    private static int jumpOnBit(short source, short critera, int jump, int pos) {
+        return (((short)0xFFFF&(~(((source & (0xFF&critera))-1)>>>8) ^ critera>>>8)) & jump) + 1+pos;
     }
 
     private void setValue(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, int value) {
         
         assert(value >= 0);
         assert(value <= 0x7FFF_FFFF); 
-        
-//        boolean noVarLengthContent = true; //set to false if 'value int' or 'value bytes' is encountered
 
         if (0!=limit) {
             int length = 0;
@@ -191,7 +203,7 @@ public class SequentialTrieParser {
                 int type = 0xFF & data[pos++];
                 switch(type) {
                     case TYPE_BRANCH_VALUE:
-                        pos = jumpOnBit(pos, data, (short) source[sourceMask & sourcePos]);
+                        pos = jumpOnBit(source[sourceMask & sourcePos], pos, data);
                         break;
                     case TYPE_VALUE_NUMERIC:                        
                         sourcePos = stepOverNumeric(source, sourcePos, sourceMask, (int) data[pos++]);
@@ -207,18 +219,26 @@ public class SequentialTrieParser {
                         if (sourceLength < run+length) {
                             
                             int r = sourceLength-length;
-                            if (r>=run) {
-                                throw new UnsupportedOperationException();
-                            }
+                            assert(r<run);
                             int afterWhileLength = length+r;
                             int afterWhileRun    = run-r;
                             while (--r >= 0) {
-                                if (data[pos++] != source[sourceMask & sourcePos++]) {
-                          //          String before = validateTree(type);
-                          //          System.err.println("before:"+before);
+                                
+                                byte sourceByte = source[sourceMask & sourcePos++];
+                                if (ESCAPE_BYTE == sourceByte) {
+                                    sourceByte = source[sourceMask & sourcePos++];
+                                    if (ESCAPE_BYTE != sourceByte) {
+                                        //sourceByte holds the specific command
+                                        
+                                        //TODO: ss
+                                        
+                                        
+                                    }
+                                    //else we have two escapes in a row therefore this is a literal
+                                }                                
+                                
+                                if (data[pos++] != sourceByte) {
                                     insertAtBranchValue(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun, sourcePos-1);
-                        //            System.err.println("insert branch at "+pos);
-                       //             validateTree(type);
                                     return;
                                 }
                             }
@@ -230,9 +250,22 @@ public class SequentialTrieParser {
                         
                         int r = run;
                         while (--r >= 0) {
-                            if (data[pos++] != source[sourceMask & sourcePos++]) {
+                            
+                            byte sourceByte = source[sourceMask & sourcePos++];
+                            if (ESCAPE_BYTE == sourceByte) {
+                                sourceByte = source[sourceMask & sourcePos++];
+                                if (ESCAPE_BYTE != sourceByte) {
+                                    //sourceByte holds the specific command
+                                    
+                                    //TODO: ss
+                                    
+                                    
+                                }
+                                //else we have two escapes in a row therefore this is a literal
+                            }                            
+                            
+                            if (data[pos++] != sourceByte) {
                                 insertAtBranchValue(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r, sourcePos-1);
-                  //              validateTree(type);
                                 return;
                             }
                         }
@@ -244,10 +277,10 @@ public class SequentialTrieParser {
                         
                         if (sourceLength>length) {
                             convertEndToNewSafePoint(pos, data, source, sourcePos, sourceLength-length, sourceMask, value);  
-                    //        validateTree(type);
+              
                         } else {
                             writeEndValue(data, pos, value);
-                       //     validateTree(type);
+                 
                         }
                         return;
                         
@@ -259,33 +292,24 @@ public class SequentialTrieParser {
                             break;                            
                         } else {
                             pos = writeEndValue(data, pos, value);
-                    //        validateTree(type);
+                    
                             return;
                         }
                     default:
                         System.out.println(this);
                         throw new UnsupportedOperationException("unknown op "+type);
                 }
-                
-             //   validateTree(type);                
-
+               
             }
         } else {
+            
+            //TODO: can not write run if we have an extractor in the middle.
+            
+            
             pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);
             limit = writeEnd(data, pos, value);
         }
     }
-
-
-//    private String validateTree(int type) {
-//        String temp = this.toString();
-//        if (temp.contains("ERROR")) {
-//            System.err.println(temp);
-//            new Exception("failure on last type "+type).printStackTrace();;
-//            System.exit(0);
-//        }
-//        return temp;
-//    }
 
 
     private void convertEndToNewSafePoint(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, int value) {
@@ -298,10 +322,48 @@ public class SequentialTrieParser {
         pos += SIZE_OF_SAFE_END;
 
         //now insert the needed run
-        makeRoomForInsert(sourceLength, data, pos, SIZE_OF_END + sourceLength);        
+        makeRoomForInsert(sourceLength, data, pos, SIZE_OF_END + sourceLength + midRunEscapeValuesSize(source, sourcePos, sourceLength, sourceMask));    
+        
+        //TODO: can not write run if we have an extractor in the middle.
+        
         pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);        
         pos = writeEnd(data, pos, value);
     }
+
+    /**
+     * Compute the additional space needed for any value extraction meta command found in the middle of a run.
+     */
+    private int midRunEscapeValuesSize(byte[] source, int sourcePos, int sourceLength, int sourceMask) {
+        
+        int adjustment = 0;
+        
+        for(int i=0;i<sourceLength;i++) {
+            
+            byte value = source[sourceMask & (sourcePos+i)];
+            
+            if (ESCAPE_BYTE == value) {
+                i++;
+                value = source[sourceMask & (sourcePos+i)];
+                if (ESCAPE_BYTE != value) {
+                    
+                   //TODO:  types? 
+                    
+                    
+                } else {
+                   adjustment--; // we do not store double escape in the trie data
+                }
+                
+            }
+            
+            
+            
+            
+        }
+        
+        
+        return adjustment;
+    }
+
 
     private int insertNewSafePoint(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, int value, int runLenPos) {
         //convert end to safe
@@ -329,9 +391,9 @@ public class SequentialTrieParser {
            
             
             int computedRemainingLength = sourceLength-(length+data[runPos]);
-            if (computedRemainingLength<0) {
-                throw new UnsupportedOperationException("len:"+computedRemainingLength+"  srcLen:"+sourceLength+" len1:"+length+" posRun:"+data[runPos]);
-            }
+        //    if (computedRemainingLength<0) {
+          //      throw new UnsupportedOperationException("len:"+computedRemainingLength+"  srcLen:"+sourceLength+" len1:"+length+" posRun:"+data[runPos]);
+         //   }
          //   System.err.println("rem: "+computedRemainingLength+" vs "+r1);
             
             insertAtBranchValue(r1, data, dataPos, source, sourceCharPos, computedRemainingLength , sourceMask, value);
@@ -381,15 +443,13 @@ public class SequentialTrieParser {
             throw new UnsupportedOperationException("does not support strings beyond this length "+0x7FFF+" value was "+sourceLength);
         }
         
-        final int requiredRoom = SIZE_OF_END + SIZE_OF_BRANCH +  (((~(sourceLength-1))>>31)&SIZE_OF_RUN)+ sourceLength;
+        final int requiredRoom = SIZE_OF_END + SIZE_OF_BRANCH + SIZE_OF_RUN + sourceLength+ midRunEscapeValuesSize(source, sourcePos, sourceLength, sourceMask);
         
-        int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
+        final int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
 
-        short a = source[sourcePos & sourceMask];
-        short b = data[oldValueIdx];
-        short jumpData = findSingleBitMask(a, b);
+        pos = writeBranch(TYPE_BRANCH_VALUE, data, pos, requiredRoom, findSingleBitMask((short) source[sourcePos & sourceMask], data[oldValueIdx]));
         
-        pos = writeBranch(TYPE_BRANCH_VALUE, data, pos, requiredRoom, jumpData);
+        //TODO: can not write run if we have an extractor in the middle.
         pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);
 
         writeEnd(data, pos, value);
@@ -512,21 +572,12 @@ public class SequentialTrieParser {
 
 
     private int writeEndValue(short[] data, int pos, int value) {
-        if (1==SIZE_OF_RESULT) {
-            data[pos++] = (short)(0xFFFF&value);
-        } else {
-            data[pos++] = (short)(0xFFFF&(value>>16));
-            data[pos++] = (short)(0xFFFF&value);
-        }
+        data[pos++] = (short)(0xFFFF&value);
         return pos;
     }
     
     static int readEndValue(short[] data, int pos) {
-        if (1==SIZE_OF_RESULT) {
             return 0xFFFF & data[pos];
-        } else {
-            return ((0xFFFF & data[pos++])<<16) | ((0xFFFF & data[pos++]));
-        }
     }
  
     private int writeRuns(short[] data, int pos, byte[] source, int sourcePos, int sourceLength, int sourceMask) {

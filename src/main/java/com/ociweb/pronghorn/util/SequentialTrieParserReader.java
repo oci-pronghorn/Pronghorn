@@ -43,18 +43,13 @@ public class SequentialTrieParserReader {
         
             switch (that.data[i]) {
                 case SequentialTrieParser.TYPE_SAFE_END:
-                    if (SequentialTrieParser.SIZE_OF_RESULT ==1){
+
                         visitor.end(
                                 (0XFFFF&that.data[i+1])
                                ); 
-                    } else {
-                        visitor.end(
-                                ((that.data[i+1]<<16) | (0xFFFF&that.data[i+2]))
-                               );
-                    }
+
                     break;
                 case SequentialTrieParser.TYPE_BRANCH_VALUE:
-//                case SequentialTrieParser.TYPE_BRANCH_LENGTH:
                     
                     int localJump = i + SequentialTrieParser.SIZE_OF_BRANCH;
                     int farJump   = i + ((that.data[i+2]<<16) | (0xFFFF&that.data[i+3])); 
@@ -96,15 +91,11 @@ public class SequentialTrieParserReader {
                     
                     break;
                 case SequentialTrieParser.TYPE_END:
-                    if (SequentialTrieParser.SIZE_OF_RESULT ==1){
+
                         visitor.end(
                                 (0XFFFF&that.data[i+1])
                                ); 
-                    } else {
-                        visitor.end(
-                                    ((that.data[i+1]<<16) | (0xFFFF&that.data[i+2]))
-                                   );
-                    }
+
                     break;
                 default:
                     throw new UnsupportedOperationException("ERROR Unrecognized value\n");
@@ -133,7 +124,7 @@ public class SequentialTrieParserReader {
                
             
             if (type==SequentialTrieParser.TYPE_BRANCH_VALUE) {
-                pos = SequentialTrieParser.jumpOnBit(pos, data, (short) source[mask & offset]);
+                pos = SequentialTrieParser.jumpOnBit((short) source[mask & offset], pos, data);
                 
             } else if (type == SequentialTrieParser.TYPE_RUN) {
                 //run
@@ -175,7 +166,40 @@ public class SequentialTrieParserReader {
 
                 } else {
                     if (type == SequentialTrieParser.TYPE_VALUE_NUMERIC) {
-                        parseNumeric(this,source,offset, length-runLength, mask, data[pos++]);
+                        
+                        int templateId = data[pos++];
+                        
+                        //TODO: move this conditional to insert so this code just pulls flags
+                        switch(templateId) {
+                                case SequentialTrieParser.ESCAPE_CMD_SIGNED_DEC:
+                                    templateId = SequentialTrieParser.NUMERIC_FLAG_SIGN;
+                                    
+                                break;
+                                case SequentialTrieParser.ESCAPE_CMD_UNSIGNED_DEC:
+                                    templateId = 0;//SequentialTrieParser.NUMERIC_FLAG_SIGN;
+                                
+                                break;
+                                case SequentialTrieParser.ESCAPE_CMD_SIGNED_HEX:
+                                    templateId = SequentialTrieParser.NUMERIC_FLAG_SIGN;
+                                    templateId |= SequentialTrieParser.NUMERIC_FLAG_HEX;
+                                    
+                                break;
+                                case SequentialTrieParser.ESCAPE_CMD_UNSIGNED_HEX:
+                                    templateId = 0;//SequentialTrieParser.NUMERIC_FLAG_SIGN;
+                                    templateId |= SequentialTrieParser.NUMERIC_FLAG_HEX;
+                                
+                                break;
+                                case SequentialTrieParser.ESCAPE_CMD_DECIMAL:
+                                    templateId = 0;//SequentialTrieParser.NUMERIC_FLAG_SIGN;
+                                    templateId |= SequentialTrieParser.NUMERIC_FLAG_DECIMAL;                                  
+                                break;
+                                case SequentialTrieParser.ESCAPE_CMD_RATIONAL:
+                                    templateId = SequentialTrieParser.NUMERIC_FLAG_SIGN;
+                                    templateId |= SequentialTrieParser.NUMERIC_FLAG_RATIONAL;
+                                break;
+                        }
+
+                        parseNumeric(this,source,offset, length-runLength, mask, templateId);
                     } else if (type == SequentialTrieParser.TYPE_VALUE_BYTES) {
                         parseBytes(this,source,offset, length-runLength, mask, data[pos++]);
                     } else {
@@ -226,11 +250,43 @@ public class SequentialTrieParserReader {
         byte intLength = 0;
         byte base=10;
 
+        
+        
+        
+        if (0!= (SequentialTrieParser.NUMERIC_FLAG_DECIMAL&numType)) {
+            final short c = source[sourceMask & sourcePos];
+            if ('.'!=c) {
+                reader.numericSign = 1;
+                reader.numericValue = 0;
+                reader.numericLength = 1;
+                reader.numericBase = 10;
+                //do not parse numeric
+                return sourcePos;
+            } else {
+                sourcePos++;
+            }
+            
+        } else if (0!= (SequentialTrieParser.NUMERIC_FLAG_RATIONAL&numType)) {
+            final short c = source[sourceMask & sourcePos];
+            if ('/'!=c) {
+                reader.numericSign = 1;
+                reader.numericValue = 1;
+                reader.numericLength = 1;
+                reader.numericBase = 10;
+                //do not parse numeric
+                return sourcePos;
+            } else {
+                sourcePos++;
+            }
+            
+        }
+        
         //NOTE: these Numeric Flags are invariants consuming runtime resources, this tree could be pre-compiled to remove them if neded.
         if (0!=(SequentialTrieParser.NUMERIC_FLAG_SIGN&numType)) {
             final short c = source[sourceMask & sourcePos];
             if (c=='-') { //NOTE: check ASCII table there may be a fater way to do this.
                 sign = -1;
+                sourcePos++;
             }
             if (c=='+') {
                 sourcePos++;

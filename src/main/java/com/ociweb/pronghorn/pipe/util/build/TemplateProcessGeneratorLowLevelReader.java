@@ -52,6 +52,8 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
     private boolean inLinedMethod = true;
     private StringBuilder workspace1;
     
+    private final String packageName;
+    private final String className;
     
     public TemplateProcessGeneratorLowLevelReader(MessageSchema schema, Appendable bodyTarget) {
         super(schema);
@@ -68,6 +70,8 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         this.fragmentParaSuff = new CharSequence[maxFieldCount];
         this.workspacesDefined = new long[maxFieldCount];
         
+        this.className = "LowLevelReader";//TODO: should be passed in 
+        this.packageName = "com.ociweb.pronghorn.pipe.build";//TODO: shuld be passed in/
         //Startup Method
         /// only create navstate if needed
         //  create workspace objects
@@ -80,6 +84,14 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         return appendHexDigits(target.append(WORKSPACE), id);
     }
 
+    public String getClassName() {
+        return className;
+    }
+    
+    public String getPackageName() {
+        return packageName;
+        
+    }
     
     public void processSchema() throws IOException {
     
@@ -879,7 +891,7 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
 
     @Override
     protected void headerConstruction() throws IOException {
-        bodyTarget.append("package com.ociweb.pronghorn.pipe.build;\n");
+        bodyTarget.append("package ").append(packageName).append(";\n");
         bodyTarget.append("import ").append(LowLevelStateManager.class.getCanonicalName()).append(";\n");
         bodyTarget.append("import ").append(Pipe.class.getCanonicalName()).append(";\n");
         bodyTarget.append("import ").append(FieldReferenceOffsetManager.class.getCanonicalName()).append(";\n");
@@ -887,7 +899,7 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         bodyTarget.append("import ").append(MessageSchemaDynamic.class.getCanonicalName()).append(";\n");
         additionalImports(schema, bodyTarget);
         
-        bodyTarget.append("public class LowLevelReader implements Runnable {\n");
+        bodyTarget.append("public class ").append(className).append(" implements Runnable {\n");
 
         bodyTarget.append("\n");
         bodyTarget.append("private void requestShutdown() {};\n"); //only here so generated code passes compile.

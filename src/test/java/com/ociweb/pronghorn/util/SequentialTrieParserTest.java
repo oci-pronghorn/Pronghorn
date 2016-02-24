@@ -296,7 +296,7 @@ public class SequentialTrieParserTest {
                 "RUN3[43], 2[44], 112[45], 113[46], \n"+
                 "END7[47], 10[48], \n"+
                 "RUN3[49], 3[50], 101[51], 102[52], 103[53], \n"+
-                "SAFE0[54], 23[55], \n"+
+                "SAFE6[54], 23[55], \n"+
                 "RUN3[56], 5[57], 104[58], 105[59], 106[60], 107[61], 108[62], \n"+
                 "END7[63], 10[64], \n";
         
@@ -324,7 +324,7 @@ public class SequentialTrieParserTest {
         
         //Different values give very different results, for most small sets of URLS however it does look like the trie will be almost 2x faster than the hash.
         short testSize        = 21;//700;
-        int baseSeqLen        = 60;//10;
+        int baseSeqLen        = 40;//10;
         int maxSeqLenFromBase = 30;//180;
         int iterations        = 2000000;
         
