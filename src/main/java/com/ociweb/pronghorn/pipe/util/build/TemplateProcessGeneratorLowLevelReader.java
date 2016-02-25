@@ -359,6 +359,9 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         appendStaticCall(bodyTarget.append(tab), pipeClass, "releaseReads").append(pipeVarName).append(");\n");
                   
         bodyTarget.append("}\n");
+        if (hasSimpleMessagesOnly) {
+            bodyTarget.append("}\n");
+        }
         bodyTarget.append("\n");        
     }
         

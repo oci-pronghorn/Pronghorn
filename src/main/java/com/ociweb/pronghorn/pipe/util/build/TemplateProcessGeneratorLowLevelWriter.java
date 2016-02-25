@@ -81,6 +81,9 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         return packageName;
         
     }
+    
+    protected void additionalImports(MessageSchema schema, Appendable target) {
+    }
 
     protected void defineMembers() throws IOException {
         final FieldReferenceOffsetManager from = MessageSchema.from(schema);
@@ -783,7 +786,8 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         bodyTarget.append("import ").append(FieldReferenceOffsetManager.class.getCanonicalName()).append(";\n");
         bodyTarget.append("import ").append(Appendables.class.getCanonicalName()).append(";\n");
         bodyTarget.append("import ").append(MessageSchemaDynamic.class.getCanonicalName()).append(";\n");
-        additionalImports(bodyTarget);
+
+        additionalImports(schema, bodyTarget);
         
         defineClassAndConstructor();
     }
@@ -802,9 +806,6 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     }
     
     protected void buildConstructors(Appendable target, String className) throws IOException {
-    }
-
-    protected void additionalImports(Appendable target) throws IOException {
     }
 
     @Override
