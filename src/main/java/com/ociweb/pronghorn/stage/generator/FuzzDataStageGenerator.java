@@ -199,9 +199,13 @@ public class FuzzDataStageGenerator extends TemplateProcessGeneratorLowLevelWrit
     }
     
     @Override
-    protected void additionalImports(Appendable target) throws IOException {
-       target.append("import ").append(PronghornStage.class.getCanonicalName()).append(";\n");       
-       target.append("import ").append(schema.getClass().getCanonicalName()).append(";\n");
+    protected void additionalImports(MessageSchema schema, Appendable target) {
+        try {
+           target.append("import ").append(PronghornStage.class.getCanonicalName()).append(";\n");       
+           target.append("import ").append(schema.getClass().getCanonicalName()).append(";\n");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
