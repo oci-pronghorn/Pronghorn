@@ -16,9 +16,10 @@ public class SequentialTrieParser {
     
     private static final Logger logger = LoggerFactory.getLogger(SequentialTrieParser.class);
 
+    static final byte TYPE_RUN                 = 0x00; //followed by length
     static final byte TYPE_BRANCH_VALUE        = 0x01; //followed by mask & 2 short jump  
-    static final byte TYPE_RUN                 = 0x03; //followed by length
     
+    static final byte TYPE_VALUE_NUMERIC_CONST = 0x03;
     static final byte TYPE_VALUE_NUMERIC       = 0x04; //followed by type, parse right kind of number
     static final byte TYPE_VALUE_BYTES         = 0x05; //followed by stop byte, take all until stop byte encountered (AKA Wild Card)
             
@@ -30,26 +31,27 @@ public class SequentialTrieParser {
     static final int SIZE_OF_BRANCH               = 1+1+1;
     static final int SIZE_OF_RUN                  = 1+1;
     static final int SIZE_OF_END                  = 1+SIZE_OF_RESULT;
-    static final int SIZE_OF_VALUE_NUMERIC        = 1+1; //second value matches escape type values.
-    static final int SIZE_OF_VALUE_COND_NUMERIC   = 1+2;
+    static final int SIZE_OF_VALUE_NUMERIC        = 1+1; //second value is type mask
+    static final int SIZE_OF_VALUE_COND_NUMERIC   = 1+SIZE_OF_RESULT; //second value is constant
     static final int SIZE_OF_SAFE_END             = 1+SIZE_OF_RESULT;//Same as end except we keep going and store this
-    static final int SIZE_OF_VALUE_BYTES          = 1+1;
+    static final int SIZE_OF_VALUE_BYTES          = 1+1; //second value is stop marker
     
     static final boolean skipDeepChecks = true;//these runs are not significant and do not provide any consumed data.
     //humans require long readable URLs but the machine can split them into categories on just a few key bytes
     
-    private static final byte ESCAPE_BYTE = '%';
+    public static final byte ESCAPE_BYTE = '%';
     //EXTRACT VALUE
-    static final byte ESCAPE_CMD_SIGNED_DEC    = 'i'; //signedInt
-    static final byte ESCAPE_CMD_UNSIGNED_DEC  = 'u'; //unsignedInt
-    static final byte ESCAPE_CMD_SIGNED_HEX    = 'I'; //signedInt (can be hex or decimal)
-    static final byte ESCAPE_CMD_UNSIGNED_HEX  = 'U'; //unsignedInt (can be hex or decimal)
-    static final byte ESCAPE_CMD_DECIMAL       = '.'; //if found capture u and places else captures zero and 1 place
-    static final byte ESCAPE_CMD_RATIONAL      = '/'; //if found capture i else captures 1
+    public static final byte ESCAPE_CMD_SIGNED_DEC    = 'i'; //signedInt
+    public static final byte ESCAPE_CMD_UNSIGNED_DEC  = 'u'; //unsignedInt
+    public static final byte ESCAPE_CMD_SIGNED_HEX    = 'I'; //signedInt (can be hex or decimal)
+    public static final byte ESCAPE_CMD_UNSIGNED_HEX  = 'U'; //unsignedInt (can be hex or decimal)
+    public static final byte ESCAPE_CMD_DECIMAL       = '.'; //if found capture u and places else captures zero and 1 place
+    public static final byte ESCAPE_CMD_RATIONAL      = '/'; //if found capture i else captures 1
     //EXTRACTED BYTES
-    static final byte ESCAPE_CMD_BYTES         = 'b';
+    public static final byte ESCAPE_CMD_BYTES         = 'b';
+  
     //PATH CONSTANT
-    static final byte ESCAPE_CMD_NUMBER        = 'n';
+    public static final byte ESCAPE_CMD_NUMBER        = 'n';
     
     //////////////////////////////////////////////////////////////////////
     ///Every pattern is unaware of any context and can be mixed an any way.
@@ -230,7 +232,31 @@ public class SequentialTrieParser {
                                     if (ESCAPE_BYTE != sourceByte) {
                                         //sourceByte holds the specific command
                                         
+                                        
+                                        if (ESCAPE_CMD_BYTES == sourceByte) {
+                                            //bytes to send
+                                            data[pos++] =  TYPE_VALUE_BYTES;
+                                            data[pos++] =  12; //BYTE STOP
+                                            
+                                            
+                                        } else if (ESCAPE_CMD_NUMBER == sourceByte) { 
+                                                  //constant numerics
+                                            data[pos++] =  TYPE_VALUE_NUMERIC_CONST;
+                                            data[pos++] =  12; //CONSTANT NUMBER
+                                                  
+                                            
+                                        } else {
+                                            data[pos++] = TYPE_VALUE_NUMERIC;                                     
+                                            data[pos++] =  buildNumberBits(sourceByte);   
+                                                                                        
+                                            
+                                        }
+                                                                            
+                                        
+                                        
                                         //TODO: ss
+                                        
+                                                    
                                         
                                         
                                     }
@@ -309,6 +335,27 @@ public class SequentialTrieParser {
             pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);
             limit = writeEnd(data, pos, value);
         }
+    }
+
+
+    private byte buildNumberBits(byte sourceByte) {
+        
+        switch(sourceByte) {
+            case ESCAPE_CMD_SIGNED_DEC:
+                return SequentialTrieParser.NUMERIC_FLAG_SIGN;
+            case ESCAPE_CMD_UNSIGNED_DEC:
+                return 0;
+            case ESCAPE_CMD_SIGNED_HEX:
+                return SequentialTrieParser.NUMERIC_FLAG_HEX | SequentialTrieParser.NUMERIC_FLAG_SIGN;
+            case ESCAPE_CMD_UNSIGNED_HEX:
+                return SequentialTrieParser.NUMERIC_FLAG_HEX;
+            case ESCAPE_CMD_DECIMAL:
+                return SequentialTrieParser.NUMERIC_FLAG_DECIMAL;
+            case ESCAPE_CMD_RATIONAL:
+                return SequentialTrieParser.NUMERIC_FLAG_SIGN | SequentialTrieParser.NUMERIC_FLAG_RATIONAL;
+        }
+        
+        return 0;
     }
 
 
@@ -450,6 +497,7 @@ public class SequentialTrieParser {
         pos = writeBranch(TYPE_BRANCH_VALUE, data, pos, requiredRoom, findSingleBitMask((short) source[sourcePos & sourceMask], data[oldValueIdx]));
         
         //TODO: can not write run if we have an extractor in the middle.
+        
         pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);
 
         writeEnd(data, pos, value);
@@ -512,7 +560,9 @@ public class SequentialTrieParser {
                     break;
                 case TYPE_BRANCH_VALUE:
                                       
-                    int jmp = data[i+2];//(((int)data[i+2]) << 16)|(0xFFFF&data[i+3]);
+                    int jmp = data[i+2];
+                             //Old Jump length,     (((int)data[i+2]) << 16)|(0xFFFF&data[i+3]);
+                    
                     int newPos = i+jmp;
                     if (newPos >= limit) {
                         //adjust this value because it jumps over the new inserted block
@@ -589,7 +639,6 @@ public class SequentialTrieParser {
        return pos;
     }
 
-
     private int writeRunHeader(short[] data, int pos, int sourceLength) {
         
         if (sourceLength > 0x7FFF || sourceLength < 1) {
@@ -600,6 +649,5 @@ public class SequentialTrieParser {
         data[pos++] = (short)sourceLength;
         return pos;
     }
-
     
 }

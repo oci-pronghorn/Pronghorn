@@ -35,14 +35,18 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     }
     
     public int openLowLevelAPIField() {
+        return openLowLevelAPIField(this);
+    }
+    
+    public static int openLowLevelAPIField(DataInputBlobReader that) {
         
-        int meta = Pipe.takeRingByteMetaData(pipe);
-        this.length    = Pipe.takeRingByteLen(pipe);
-        this.position = Pipe.bytePosition(meta, pipe, this.length);
-        this.backing   = Pipe.byteBackingArray(meta, pipe);               
-        this.bytesLimit = pipe.byteMask & (position + length);
+        int meta = Pipe.takeRingByteMetaData(that.pipe);
+        that.length    = Pipe.takeRingByteLen(that.pipe);
+        that.position = Pipe.bytePosition(meta, that.pipe, that.length);
+        that.backing   = Pipe.byteBackingArray(meta, that.pipe);               
+        that.bytesLimit = that.pipe.byteMask & (that.position + that.length);
         
-        return this.length;
+        return that.length;
     }
 
     public int accumLowLevelAPIField() {

@@ -4,19 +4,19 @@ public class SequentialTrieParserReader {
 
     final int maxValues = 16;
     
-    int[] pos = new int[maxValues];
-    int posIdx = 0;
+    private int[] pos = new int[maxValues];
+    private int posIdx = 0;
     
-    int length = 0;
-    int value = 0;
+    private int value = 0;
 
     private byte numericSign;
     private long numericValue;
     private byte numericLength;
     private byte numericBase;
 
-    private int bytesPos;
-    private int bytesLen;
+//    
+//    private int bytesPos;
+//    private int bytesLen;
     
     
     public SequentialTrieParserReader() {
@@ -101,9 +101,37 @@ public class SequentialTrieParserReader {
                     throw new UnsupportedOperationException("ERROR Unrecognized value\n");
             }            
         
+    }
+    
+    
+    private byte[] sourceBacking;
+    private int    sourcePos;
+    private int    sourceLen;
+    private int    sourceMask;
+    
+    
+    public static void parseSetup(SequentialTrieParserReader that, byte[] source, int offset, int length, int mask) {
         
+        that.sourceBacking = source;
+        that.sourcePos     = offset;
+        that.sourceLen     = length;
+        that.sourceMask    = mask;        
         
     }
+    
+    public static int parseNext(SequentialTrieParserReader reader, SequentialTrieParser that) {
+                
+        return reader.query(that, reader.sourceBacking, reader.sourcePos, reader.sourceLen, reader.sourceMask);
+                
+    }
+    
+    public static void psrseSkip(SequentialTrieParserReader reader, SequentialTrieParser that, int count) {
+        reader.sourcePos += count;
+        reader.sourceLen -= count;
+    }
+    
+    //TODO: if we stop at one parse how do we continue to the next?
+    
     
     public int query(SequentialTrieParser that, 
                      byte[] source, int offset, int length, int mask) {
@@ -158,7 +186,7 @@ public class SequentialTrieParserReader {
                     //if the following does not match we will return this safe value.
                     //we do not yet have enough info to decide if this is the end or not.
                     
-                    if (length==runLength) {
+                    if (length == runLength) {
                         //hard stop passed in forces us to use the safe point
                         return this.value = safeReturnValue;
                     }
@@ -214,7 +242,10 @@ public class SequentialTrieParserReader {
             type = data[pos++]; 
         }
         
-
+        int lengthOfParse = offset-sourcePos; //TODO: store this?
+        sourceLen -= lengthOfParse;
+        sourcePos = offset;
+        
         return value = SequentialTrieParser.readEndValue(data,pos);
         
         
@@ -237,9 +268,6 @@ public class SequentialTrieParserReader {
             }
         }  while (true);
         
-        reader.bytesLen = len;
-        reader.bytesPos = bytesPos;
-        
         return sourcePos;
     }
     
@@ -249,8 +277,6 @@ public class SequentialTrieParserReader {
         long intValue = 0;
         byte intLength = 0;
         byte base=10;
-
-        
         
         
         if (0!= (SequentialTrieParser.NUMERIC_FLAG_DECIMAL&numType)) {
@@ -348,6 +374,7 @@ public class SequentialTrieParserReader {
 
         return sourcePos;
     }
+
     
 
 }
