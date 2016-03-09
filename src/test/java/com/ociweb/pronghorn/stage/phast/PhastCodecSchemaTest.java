@@ -29,7 +29,7 @@ public class PhastCodecSchemaTest {
     @Test
 	public void testFROMMatchesXML() {
 		assertTrue(FROMValidation.testForMatchingFROMs("/phastCodec.xml", PhastCodecSchema.instance));
-	};
+	}
 	
 	@Test
 	public void testConstantFields() { //too many unused constants.

@@ -429,7 +429,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	                	                
 	                stage.run();
 	                
-	            } while (!isShuttingDown);
+	            } while (!isShuttingDown && !GraphManager.isStageShuttingDown(graphManager, stage.stageId));
 	        
 	    } else {
 	    
@@ -448,7 +448,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
     		    
     		    stage.run();
     			
-    		} while (!isShuttingDown);
+    		} while (!isShuttingDown && !GraphManager.isStageShuttingDown(graphManager, stage.stageId));
 	    }
 		
 		
