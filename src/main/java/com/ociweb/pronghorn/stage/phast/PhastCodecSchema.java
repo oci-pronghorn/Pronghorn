@@ -18,7 +18,7 @@ public class PhastCodecSchema  extends MessageSchema{
     public final static PhastCodecSchema instance = new PhastCodecSchema(FROM);
     
     public static final int MSG_BLOBCHUNK_1000 = 0x00000000;
-    public static final int MSG_MAX_FIELDS = 0x0000081F;
+    public static final int MSG_MAX_FIELDS = 0x0000081F; //TODO: add unit test to confirm this value.
 
     
     private PhastCodecSchema(FieldReferenceOffsetManager from) {

@@ -68,38 +68,38 @@ public class PhastPackingStage extends PronghornStage {
     
     @Override
     public void run() {
-        pump(0, input1, input2, output, lengthLookup, writer);      
+        pump(input1, input2, output, lengthLookup, writer, input2Reader);      
     }
 
-    private void pump(int localSum, Pipe<PhastCodecSchema> localInput1,
+    private void pump(Pipe<PhastCodecSchema> localInput1,
                      Pipe<RawDataSchema> localInput2,
                      Pipe<RawDataSchema> localOutput, 
                      short[] lookup, 
-                     DataOutputBlobWriter<RawDataSchema> localWriter) {
+                     DataOutputBlobWriter<RawDataSchema> localWriter, DataInputBlobReader<RawDataSchema> input2Reader) {
 
-        if (Pipe.hasRoomForWrite(localOutput, OUTPUT_MAX_MSG_SIZE) && (Pipe.hasContentToRead(localInput1) || input2Reader.hasRemainingBytes()) ) {
+        while (Pipe.hasRoomForWrite(localOutput, OUTPUT_MAX_MSG_SIZE) && (Pipe.hasContentToRead(localInput1) || input2Reader.hasRemainingBytes()) ) {
             
             int size = Pipe.addMsgIdx(localOutput, RawDataSchema.MSG_CHUNKEDSTREAM_1);      
-            writer.openField();    
+            localWriter.openField();    
             
             //continue writing these bytes because we did not have enough room in the last chunk.
             if (input2Reader.hasRemainingBytes()) {
                int rem =  DataInputBlobReader.bytesRemaining(input2Reader);
                if (rem<=localOutput.maxAvgVarLen) {
-                   DataOutputBlobWriter.writeBytes(writer,input2Reader,rem);
+                   DataOutputBlobWriter.writeBytes(localWriter,input2Reader,rem);
                    Pipe.releaseReadLock(localInput2);                   
                } else {
-                   DataOutputBlobWriter.writeBytes(writer,input2Reader,localOutput.maxAvgVarLen);
+                   DataOutputBlobWriter.writeBytes(localWriter,input2Reader,localOutput.maxAvgVarLen);
                }
             }            
             
             //if there is room left in this open outgoing message and if there is new content to add keep going            
-            combineContentForSingleMessage(localSum, localInput1, localInput2, localOutput, 
+            combineContentForSingleMessage( localInput1, localInput2, localOutput, 
                                                       lookup, localWriter, size, 
                                                       maxBytesPerMessage, localOutput.maxAvgVarLen, 
-                                                      false, writer);
+                                                      false, localWriter);
             
-            writer.closeLowLevelField();
+            localWriter.closeLowLevelField();
             
             //publish the outgoing message
             Pipe.confirmLowLevelWrite(localOutput, size); 
@@ -112,12 +112,12 @@ public class PhastPackingStage extends PronghornStage {
         }              
     }
 
-    private void combineContentForSingleMessage(int localSum, Pipe<PhastCodecSchema> localInput1,
+    private void combineContentForSingleMessage(Pipe<PhastCodecSchema> localInput1,
             Pipe<RawDataSchema> localInput2, Pipe<RawDataSchema> localOutput, short[] lookup,
             DataOutputBlobWriter<RawDataSchema> localWriter, int size, int maxPerMsg, int outputMaxLen,
             boolean holdingReleaseReadLock, DataOutputBlobWriter<RawDataSchema> writer) {
         
-        
+        int localSum = 0;
         int avail = 0;
         while ( ( (avail = (outputMaxLen - writer.length())) >= maxPerMsg) && Pipe.hasContentToRead(localInput1)) {
                             

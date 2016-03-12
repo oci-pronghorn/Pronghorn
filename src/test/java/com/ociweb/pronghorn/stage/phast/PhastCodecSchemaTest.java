@@ -107,22 +107,25 @@ public class PhastCodecSchemaTest {
 	
 	@Test
 	public void testDecoderStage() {
-	    
-	    
+	    	    
 	       GraphManager gm = new GraphManager();
 	        
 	       PipeConfig<RawDataSchema> inputConfig = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 1000);
 	       PipeConfig<PhastCodecSchema> outputConfig = new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 300, 8000);
 	     
 	       Pipe<PhastCodecSchema> decodedDataToValidate = new Pipe<PhastCodecSchema>(outputConfig);
+	       Pipe<RawDataSchema> decodedDataToValidate2 = new Pipe<RawDataSchema>(inputConfig);
+           
+	       
 	       Pipe<RawDataSchema> testDataToDecode = new Pipe<RawDataSchema>(inputConfig);
 	      
-	       PhastUnpackingStage stage = new PhastUnpackingStage(gm, testDataToDecode, decodedDataToValidate );
+	       PhastUnpackingStage stage = new PhastUnpackingStage(gm, testDataToDecode, decodedDataToValidate, decodedDataToValidate2);
 	        
 	       Pipe.setPublishBatchSize(testDataToDecode, 0);
 	       
 	       testDataToDecode.initBuffers();
 	       decodedDataToValidate.initBuffers();
+	       decodedDataToValidate2.initBuffers();
 	       
 	       //prepopulate ring with known data
 	       
@@ -181,12 +184,12 @@ public class PhastCodecSchemaTest {
 	
 	public static void main(String[] args) {
 	    
-	    speedTestEncodeDecode();
+	    speedTestPackUnpacke();
 	    //speedTestEncodeDecodeParallel();
 	    
 	}
 	
-	private static void speedTestEncodeDecode() {
+	private static void speedTestPackUnpacke() {
 	    	    
 
         GraphManager gm = new GraphManager();
@@ -195,28 +198,22 @@ public class PhastCodecSchemaTest {
         Pipe<PhastCodecSchema> inputPipe = new Pipe<PhastCodecSchema>(new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 256));
         Pipe<RawDataSchema> inputPipe2 = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 20,1024));
         
-        Pipe<RawDataSchema> packedDataPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 8, 32*63*10));
-        Pipe<PhastCodecSchema> outputPipe = new Pipe<PhastCodecSchema>(new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 128));
-     //   Pipe<RawDataSchema> rePackedDataPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 16, 2*63*10));
-        
-	    
+        Pipe<RawDataSchema> packedDataPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 8, 64*63*10));
+        Pipe<PhastCodecSchema> outputPipe1 = new Pipe<PhastCodecSchema>(new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 256));
+        Pipe<RawDataSchema> outputPipe2 = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 20,1024));
+   
         //Add production stage?
-        int iterations = 10000000;// * 1000;
+        int iterations = 20000000;// * 1000;
         LongDataGenStage  genStage = new LongDataGenStage(gm, new Pipe[]{inputPipe}, iterations);        
         //PipeCleanerStage<PhastCodecSchema> dumpStage = new PipeCleanerStage<PhastCodecSchema>(gm, inputPipe); //21-36 Gbps
 
-        PhastPackingStage encodeStage = new PhastPackingStage(gm, inputPipe, inputPipe2, packedDataPipe);
-        PipeCleanerStage<RawDataSchema> dumpStage = new PipeCleanerStage<RawDataSchema>(gm, packedDataPipe); //consumes 6-8 but writes 3
-        
-        
-  //      PhastDecodeStage decodeStage = new PhastDecodeStage(gm, packedDataPipe, outputPipe );   
-    //    PhastEncodeStage encodeStage2 = new PhastEncodeStage(gm, outputPipe, rePackedDataPipe, 16 );  
-
-     // PipeCleanerStage<RawDataSchema> dumpStage = new PipeCleanerStage<RawDataSchema>(gm, rePackedDataPipe);      
-//      PipeCleanerStage<PhastCodecSchema> dumpStage = new PipeCleanerStage<PhastCodecSchema>(gm, outputPipe);        
+        PhastPackingStage packStage = new PhastPackingStage(gm, inputPipe, inputPipe2, packedDataPipe);
+        PhastUnpackingStage unPackStage = new PhastUnpackingStage(gm, packedDataPipe, outputPipe1, outputPipe2 );        
+        PipeCleanerStage<PhastCodecSchema> dumpStage1 = new PipeCleanerStage<PhastCodecSchema>(gm, outputPipe1);        
+        PipeCleanerStage<RawDataSchema> dumpStage2 = new PipeCleanerStage<RawDataSchema>(gm, outputPipe2);        
 
         
-    //   GraphManager.enableBatching(gm); //due to internal batching nature of stages this does not help 
+       //GraphManager.enableBatching(gm); //due to internal batching nature of stages this does not help 
         
         MonitorConsoleStage monitor = MonitorConsoleStage.attach(gm,20000000);//TODO: only gets triggered on shutdown call, TODO: need to fix this.
         final ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
