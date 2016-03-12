@@ -10,18 +10,17 @@ public class LongDataGenStage extends PronghornStage{
     private int iterCountDown;
     private long[] head;
     private int pipeIdx = 0;
-    private int chunkCountDown;
-    private final int chunkSize;
+    private int chunkCountDown = 1;
+    private final int chunkSize = 1;
     private int maxMsgSize;
     private int maxFields = 63;
     
-    public LongDataGenStage(GraphManager gm, Pipe<PhastCodecSchema>[] outputPipe, int iterations, int chunkSize) {
+    public LongDataGenStage(GraphManager gm, Pipe<PhastCodecSchema>[] outputPipe, int iterations) {
         super(gm, NONE, outputPipe);  
         this.outputPipe = outputPipe;
         this.iterCountDown = iterations;
         GraphManager.addNota(gm, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
         
-        this.chunkSize = chunkSize;
         this.chunkCountDown = chunkSize;
     }
     

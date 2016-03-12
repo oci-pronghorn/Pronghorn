@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.stage.phast;
 
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -12,44 +13,29 @@ public class PhastPackingStage extends PronghornStage {
     
     private final Pipe<PhastCodecSchema> input1;
     private final Pipe<RawDataSchema>    input2;
-    
-    
+        
     private final Pipe<RawDataSchema> output;
     
     private DataOutputBlobWriter<RawDataSchema> writer;
+    private DataInputBlobReader<RawDataSchema> input2Reader;    
+    
     private short[] lengthLookup;
     private int[] sizeLookup;
     private final static int OUTPUT_MAX_MSG_SIZE = RawDataSchema.FROM.fragDataSize[RawDataSchema.MSG_CHUNKEDSTREAM_1];
-    private final int packedBatches;
-    private int batchCount;
-    private long sum = 0;
-    private long inputTail;
-    private long outputHead;
-    private static final int MAX_BYTES_PER_VALUE = 10;
-    private static final int INPUT_MAX_MSG_SIZE = FieldReferenceOffsetManager.maxFragmentSize(PhastCodecSchema.FROM);
     private long startup;
+    private long totalLongs;
+    private int maxBytesPerMessage;
+    public static final int ESCAPE_VALUE = -63;//in packed encoding this is the biggest negative value which takes only 1 byte
     
-    protected PhastPackingStage(GraphManager graphManager, Pipe<PhastCodecSchema> input1, Pipe<RawDataSchema> input2, Pipe<RawDataSchema> output, int chunkSize) {
+    protected PhastPackingStage(GraphManager graphManager, Pipe<PhastCodecSchema> input1, Pipe<RawDataSchema> input2, Pipe<RawDataSchema> output) {
         super(graphManager, input1, output);
         this.input1 = input1;
         this.input2 = input2;
         this.output = output;
-        
-        int maxBat = output.maxAvgVarLen/(PhastCodecSchema.FROM.messageStarts.length*MAX_BYTES_PER_VALUE);
-        if (maxBat < chunkSize) {
-            throw new UnsupportedOperationException("Make var data bigger on output pipe by "+(chunkSize/(float)maxBat));
-        }       
-        
-        this.packedBatches = chunkSize;
-        System.out.println("chunk batch "+chunkSize);
-        this.inputTail = Pipe.tailPosition(input1);
-                
-        assert( packedBatches>=1) : "need room for 30 values"; 
-        
+
         //Does not need batching to be done by producer or consumer
         this.supportsBatchedPublish = false;
         this.supportsBatchedRelease = false;
-        
     }
     
     
@@ -57,6 +43,7 @@ public class PhastPackingStage extends PronghornStage {
     public void startup() {
         startup = System.currentTimeMillis();
         
+        input2Reader = new DataInputBlobReader<RawDataSchema>(input2);
         writer = new DataOutputBlobWriter<RawDataSchema>(output);
         int i = PhastCodecSchema.FROM.fieldIdScript.length;
         lengthLookup = new short[i];
@@ -64,162 +51,129 @@ public class PhastPackingStage extends PronghornStage {
         while (--i>=0) {
             lengthLookup[i] = (short) (PhastCodecSchema.FROM.fieldIdScript[i]-10000);
             sizeLookup[i] = PhastCodecSchema.FROM.fragDataSize[i];
-        }
-        outputHead = Pipe.headPosition(output);        
+        }     
+        
+        int maxFieldsPerMessage = PhastCodecSchema.FROM.messageStarts.length;
+        maxBytesPerMessage = maxFieldsPerMessage * 10;
+
         
     }
     
     @Override
     public void shutdown() {
-        long duration = System.currentTimeMillis() - startup;
-        
-        long mpbs = (8*8*sum)/(duration*1000);
-        
-        System.out.println("encoder bytes read:"+(8*sum)+" mbps "+mpbs);
+        long duration = System.currentTimeMillis() - startup;        
+        long mpbs = (8*8*totalLongs)/(duration*1000);        
+        System.out.println("encoder unpacked bytes read:"+(8*totalLongs)+" mbps "+mpbs);
     }
-
-    private long toConsume;
-    private long outputRoom;
-    public static final int ESCAPE_VALUE = -63;//in packed encoding this is the biggest negative value which takes only 1 byte
     
     @Override
     public void run() {
-        
-        //how much room is there for writing?
-        DataOutputBlobWriter<RawDataSchema> localWriter = writer;
-    
-        long localInputTail = inputTail;
-        
-        if (toConsume == 0) {
-           toConsume = (Pipe.headPosition(input1)-localInputTail)/INPUT_MAX_MSG_SIZE;       
-        }
-        if (outputRoom == 0) {
-            outputRoom = (packedBatches* (output.sizeOfSlabRing-(outputHead-Pipe.tailPosition(output)))) /OUTPUT_MAX_MSG_SIZE;
-        }
+        pump(0, input1, input2, output, lengthLookup, writer);      
+    }
 
-        int[] inputSlab = Pipe.slab(input1);     
-        int inputMask = Pipe.slabMask(input1);
-        short[] localLookup = lengthLookup;
-        
-        int[] outputSlab = Pipe.slab(output);
-        int outputMask = Pipe.slabMask(output);
-        PaddedLong wrkHheadPos = Pipe.getWorkingHeadPositionObject(output);
-        
-        int count = (int) Math.min(outputRoom, toConsume);
-        while (count>0) {
-            
-            int localSum = 0;
-            
-            toConsume -=count;
-            outputRoom -=count;
-           // System.out.println("count block "+count);
-            int i = count;
-            while (--i>=0) {
-                
-                int msgIdx = inputSlab[(int)(inputMask & localInputTail++)];
-                if (PhastCodecSchema.MSG_BLOBCHUNK_1000 != msgIdx) {
-                    
-                    int localFieldCount = (int) localLookup[msgIdx]; //this should be 63 or so
+    private void pump(int localSum, Pipe<PhastCodecSchema> localInput1,
+                     Pipe<RawDataSchema> localInput2,
+                     Pipe<RawDataSchema> localOutput, 
+                     short[] lookup, 
+                     DataOutputBlobWriter<RawDataSchema> localWriter) {
 
-                    localSum += localFieldCount;
-                    
-                    writeChunk(inputSlab, inputMask, localWriter, outputSlab, outputMask, localInputTail, wrkHheadPos, localFieldCount);
-                    
-                    localInputTail = localInputTail + (localFieldCount<<1) + 1L; //one to skip the byte count
-                    
-                    
-                } else {
-                    ///TODO: pull from new pipe
-                    
-//                    int meta = inputSlab[(int)(inputMask & localInputTail++)];
-//                    int length = inputSlab[(int)(inputMask & localInputTail++)];
-//                    
-//                    localSum += (length>>2);
-//                    
-//                    int pos = Pipe.bytePosition(meta, input1, length);
-//                    
-//                    if (0 == batchCount) {
-//                        Pipe.markBytesWriteBase(output);            
-//                        outputSlab[outputMask & (int) wrkHheadPos.value++] = RawDataSchema.MSG_CHUNKEDSTREAM_1;
-//                        localWriter.openField();
-//                    }
-//                    
-//                    //Need write with mask
-//                    //byte[] source = Pipe.blob(input);                    
-//                    //localWriter.write
-//                    //TODO: copy bytes directly
-//                    
-//                    if (++batchCount >= packedBatches) {            
-//                        int len = localWriter.closeLowLevelField(); //side effect it writes pos and len before the final byte count.
-//                        outputSlab[outputMask & (int) wrkHheadPos.value++] = len;
-//                        batchCount = 0;
-//                    }
-                    
-                }
-                
+        if (Pipe.hasRoomForWrite(localOutput, OUTPUT_MAX_MSG_SIZE) && (Pipe.hasContentToRead(localInput1) || input2Reader.hasRemainingBytes()) ) {
+            
+            int size = Pipe.addMsgIdx(localOutput, RawDataSchema.MSG_CHUNKEDSTREAM_1);      
+            writer.openField();    
+            
+            //continue writing these bytes because we did not have enough room in the last chunk.
+            if (input2Reader.hasRemainingBytes()) {
+               int rem =  DataInputBlobReader.bytesRemaining(input2Reader);
+               if (rem<=localOutput.maxAvgVarLen) {
+                   DataOutputBlobWriter.writeBytes(writer,input2Reader,rem);
+                   Pipe.releaseReadLock(localInput2);                   
+               } else {
+                   DataOutputBlobWriter.writeBytes(writer,input2Reader,localOutput.maxAvgVarLen);
+               }
+            }            
+            
+            //if there is room left in this open outgoing message and if there is new content to add keep going            
+            combineContentForSingleMessage(localSum, localInput1, localInput2, localOutput, 
+                                                      lookup, localWriter, size, 
+                                                      maxBytesPerMessage, localOutput.maxAvgVarLen, 
+                                                      false, writer);
+            
+            writer.closeLowLevelField();
+            
+            //publish the outgoing message
+            Pipe.confirmLowLevelWrite(localOutput, size); 
+            Pipe.publishWrites(localOutput);
+            
+            //The very last read lock must only be released after the write publish, this is to ensure the
+            //schedulers do no loose track of this data.
+            Pipe.releaseReadLock(localInput1);            
+                       
+        }              
+    }
+
+    private void combineContentForSingleMessage(int localSum, Pipe<PhastCodecSchema> localInput1,
+            Pipe<RawDataSchema> localInput2, Pipe<RawDataSchema> localOutput, short[] lookup,
+            DataOutputBlobWriter<RawDataSchema> localWriter, int size, int maxPerMsg, int outputMaxLen,
+            boolean holdingReleaseReadLock, DataOutputBlobWriter<RawDataSchema> writer) {
+        
+        
+        int avail = 0;
+        while ( ( (avail = (outputMaxLen - writer.length())) >= maxPerMsg) && Pipe.hasContentToRead(localInput1)) {
+                            
+            if (holdingReleaseReadLock) {
+                Pipe.releaseReadLock(localInput1);
+                holdingReleaseReadLock = false;
             }
             
-            inputTail = localInputTail;
-            outputHead = wrkHheadPos.value;
-            //avoid direct modification of head or tail because it will contend with other end and slow the throughput.
-            Pipe.publishHeadPositions(output);         
-            Pipe.batchedReleasePublish(input1, 0 , localInputTail);
-            
-            sum += localSum;
-            
-             if (toConsume == 0) {
-                toConsume = (Pipe.headPosition(input1)-localInputTail)/INPUT_MAX_MSG_SIZE;       
-             }
-             if (outputRoom == 0) {
-                 outputRoom = (packedBatches* (output.sizeOfSlabRing-(outputHead-Pipe.tailPosition(output)))) /OUTPUT_MAX_MSG_SIZE;
-             }
-             
-             count = (int) Math.min(outputRoom, toConsume);
-            
-        }
-        
+           int msgIdx = Pipe.takeMsgIdx(localInput1);
+           
+           if (PhastCodecSchema.MSG_BLOBCHUNK_1000 != msgIdx) {                   
+               localSum = writePackedFields(localSum, localInput1, localWriter, msgIdx, (int) lookup[msgIdx]);   
+           }  else {
+               localSum = writeByteData(localSum, localInput2, avail);                   
+           }               
+           Pipe.confirmLowLevelRead(localInput1, Pipe.sizeOf(localInput1, msgIdx));
+           holdingReleaseReadLock = true;                            
+        }    
+        assert(holdingReleaseReadLock);
+        totalLongs += localSum;
+                
+    }
+
+    private int writeByteData(int localSum, Pipe<RawDataSchema> localInput2, int roomAvail) {
+        //we were told there was content.
+           assert (Pipe.hasContentToRead(localInput2));
+           
+           int msgIdx2 = Pipe.takeMsgIdx(localInput2);
+           int length = DataInputBlobReader.openLowLevelAPIField(input2Reader);
+           localSum += (length>>3);
+           
+           writer.writePackedInt(ESCAPE_VALUE);
+           writer.writePackedInt(length);           
+
+           if (length > roomAvail) {
+               DataOutputBlobWriter.writeBytes(writer,input2Reader,roomAvail);
+           } else {        
+               DataOutputBlobWriter.writeBytes(writer,input2Reader,length);
+               //only release when we are fully done
+               Pipe.releaseReadLock(localInput2);
+           }
+           Pipe.confirmLowLevelRead(localInput2, Pipe.sizeOf(localInput2, msgIdx2));
+                     
+           return localSum;
+    }
+
+    private int writePackedFields(int localSum, Pipe<PhastCodecSchema> localInput1,
+           DataOutputBlobWriter<RawDataSchema> localWriter, int msgIdx, int localFieldCount) {
        
-    }
-
-    private void writeChunk(int[] inputSlab, int inputMask, DataOutputBlobWriter<RawDataSchema> localWriter,
-            int[] outputSlab, int outputMask, long localInputTail, PaddedLong wrkHheadPos, int localFieldCount) {
-        
-        if (0 != batchCount) {
-        } else {
-            openMessage(localWriter, outputSlab, outputMask, wrkHheadPos);
-        }
-        
-        packAllFields(localWriter, (int)localInputTail, localFieldCount, inputSlab, inputMask);
-        
-        if (++batchCount < packedBatches) {
-        } else {
-            closeMessage(localWriter, outputSlab, outputMask, wrkHheadPos);
-        }
-        
-    }
-
-
-    private void openMessage(DataOutputBlobWriter<RawDataSchema> localWriter, int[] outputSlab, int outputMask,
-            PaddedLong wrkHheadPos) {
-        Pipe.markBytesWriteBase(output);            
-        outputSlab[outputMask & (int) wrkHheadPos.value++] = RawDataSchema.MSG_CHUNKEDSTREAM_1;
-        localWriter.openField();
-    }
-
-
-    private void closeMessage(DataOutputBlobWriter<RawDataSchema> localWriter, int[] outputSlab, int outputMask,
-            PaddedLong wrkHheadPos) {
-        int len = localWriter.closeLowLevelField(); //side effect it writes pos and len before the final byte count.
-        outputSlab[outputMask & (int) wrkHheadPos.value++] = len;
-        batchCount = 0;
-    }
-    
-    private void packAllFields(final DataOutputBlobWriter<RawDataSchema> localWriter, 
-                               int pos,
-                               int i, final int[] slab, final int mask) {
-            while (--i >= 0) {
-                    packField(localWriter, (((long) slab[mask & pos++]) << 32) | (((long) slab[mask & +pos++]) & 0xFFFFFFFFL));                    
-            }
+           int i = localFieldCount;
+           //System.err.println("field count "+i);
+           while (--i >= 0) {
+                packField(localWriter, Pipe.takeLong(localInput1));                    
+           }         
+           localSum += localFieldCount;
+           return localSum;
     }
 
 

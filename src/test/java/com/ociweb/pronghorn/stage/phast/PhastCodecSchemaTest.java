@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
@@ -36,39 +37,36 @@ public class PhastCodecSchemaTest {
 	    assertEquals(PhastCodecSchema.MSG_MAX_FIELDS, FieldReferenceOffsetManager.lookupTemplateLocator(10063, PhastCodecSchema.FROM));
 	}
 	
+	//TODO: add a test to test the bytes sent as a block.
+	
 	@Test
 	public void testEncoderStage() {
 	    	    
 	    GraphManager gm = new GraphManager();
 	    
-        PipeConfig<RawDataSchema> outputConfig    = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 300, 800);
-        PipeConfig<PhastCodecSchema> inputConfig  = new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 300);
-        PipeConfig<RawDataSchema>    inputConfig2 = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 10, 1024);
-        
-        
-        Pipe<PhastCodecSchema> testValuesToEncode  = new Pipe<PhastCodecSchema>(inputConfig);
-        Pipe<RawDataSchema>    testValuesToEncode2 = new Pipe<RawDataSchema>(inputConfig2);
-        
-        Pipe<RawDataSchema> encodedValuesToValidate = new Pipe<RawDataSchema>(outputConfig);
+        Pipe<PhastCodecSchema> testValuesToEncode  = new Pipe<PhastCodecSchema>(new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 300));
+        Pipe<RawDataSchema>    testValuesToEncode2 = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 10, 500));        
+        Pipe<RawDataSchema> encodedValuesToValidate = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 4000));
                 
-        PhastPackingStage stage = new PhastPackingStage(gm, testValuesToEncode, testValuesToEncode2, encodedValuesToValidate, 1 );
+        PhastPackingStage stage = new PhastPackingStage(gm, testValuesToEncode, testValuesToEncode2, encodedValuesToValidate);
 	    
         testValuesToEncode.initBuffers();
         testValuesToEncode2.initBuffers();
-        
         encodedValuesToValidate.initBuffers();
         
         int j = 10;
         while (--j>=0) {
-            Pipe.addMsgIdx(testValuesToEncode, PhastCodecSchema.MSG_MAX_FIELDS);
+            int size = Pipe.addMsgIdx(testValuesToEncode, PhastCodecSchema.MSG_MAX_FIELDS);
         
             int k = 63;
             while (--k>=0) {
                 
                 long value = 1000L * k * j;
+                                
                 Pipe.addLongValue(value, testValuesToEncode);              
                
             }
+            Pipe.confirmLowLevelWrite(testValuesToEncode, size);
         
             Pipe.publishWrites(testValuesToEncode);
         }
@@ -80,28 +78,30 @@ public class PhastCodecSchemaTest {
         Pipe.publishAllBatchedWrites(encodedValuesToValidate);
         
         DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
-        
+                        
         j = 10;
         while (--j>=0) {
-            int msgIdx = Pipe.takeMsgIdx(encodedValuesToValidate);            
-            assertEquals(RawDataSchema.MSG_CHUNKEDSTREAM_1, msgIdx);
-            reader.openLowLevelAPIField();
+            
+            if (!reader.hasRemainingBytes()) {
+                int msgIdx = Pipe.takeMsgIdx(encodedValuesToValidate);            
+                assertEquals(RawDataSchema.MSG_CHUNKEDSTREAM_1, msgIdx);
+                reader.openLowLevelAPIField();
+            }
             
             int k = 63;
             while (--k>=0) {
                 
-                assertTrue(reader.hasRemainingBytes());
+                assertTrue(reader.hasRemainingBytes());                
+                long value = 1000L * k * j;                
+                long value2 = reader.readPackedLong();                                         
                 
-                long value = 1000L * k*j;
-                long value2 = reader.readPackedLong();
-                                
                 assertEquals(value,value2);
                 
+            }          
+            
+            if (!reader.hasRemainingBytes()) {
+                Pipe.releaseReadLock(encodedValuesToValidate);
             }
-            assertTrue(!reader.hasRemainingBytes());
-            
-            Pipe.releaseReadLock(encodedValuesToValidate);
-            
         }
 	}
 	
@@ -191,26 +191,21 @@ public class PhastCodecSchemaTest {
 
         GraphManager gm = new GraphManager();
          
-        PipeConfig<PhastCodecSchema> phastCodeConfig = new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 128); //TODO: AA, must optimize queue size based on load. Build tool for this.
-        PipeConfig<RawDataSchema>    phastCodeConfig2 = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 20);
+        //TODO: AA, must optimize queue size based on load. Build tool for this.
+        Pipe<PhastCodecSchema> inputPipe = new Pipe<PhastCodecSchema>(new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 256));
+        Pipe<RawDataSchema> inputPipe2 = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 20,1024));
         
-        int chunkSize = 32;
-        PipeConfig<RawDataSchema> rawDataConfig = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 16, 63*10*chunkSize);
-
-        Pipe<PhastCodecSchema> inputPipe = new Pipe<PhastCodecSchema>(phastCodeConfig);
-        Pipe<RawDataSchema> inputPipe2 = new Pipe<RawDataSchema>(phastCodeConfig2);
-        
-        Pipe<RawDataSchema> packedDataPipe = new Pipe<RawDataSchema>(rawDataConfig);
-        Pipe<PhastCodecSchema> outputPipe = new Pipe<PhastCodecSchema>(phastCodeConfig);
-        Pipe<RawDataSchema> rePackedDataPipe = new Pipe<RawDataSchema>(rawDataConfig);
+        Pipe<RawDataSchema> packedDataPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 8, 32*63*10));
+        Pipe<PhastCodecSchema> outputPipe = new Pipe<PhastCodecSchema>(new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 128));
+     //   Pipe<RawDataSchema> rePackedDataPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 16, 2*63*10));
         
 	    
         //Add production stage?
         int iterations = 10000000;// * 1000;
-        LongDataGenStage  genStage = new LongDataGenStage(gm, new Pipe[]{inputPipe}, iterations, chunkSize);        
+        LongDataGenStage  genStage = new LongDataGenStage(gm, new Pipe[]{inputPipe}, iterations);        
         //PipeCleanerStage<PhastCodecSchema> dumpStage = new PipeCleanerStage<PhastCodecSchema>(gm, inputPipe); //21-36 Gbps
 
-        PhastPackingStage encodeStage = new PhastPackingStage(gm, inputPipe, inputPipe2, packedDataPipe, chunkSize );
+        PhastPackingStage encodeStage = new PhastPackingStage(gm, inputPipe, inputPipe2, packedDataPipe);
         PipeCleanerStage<RawDataSchema> dumpStage = new PipeCleanerStage<RawDataSchema>(gm, packedDataPipe); //consumes 6-8 but writes 3
         
         
@@ -235,8 +230,6 @@ public class PhastCodecSchemaTest {
 
         scheduler.awaitTermination(500, TimeUnit.SECONDS);//blocks until genStage requests shutdown or timeout
 
-        
-        //TODO: the encoder is slow however must solve this with multiplex writer
 	    
 	}
 
@@ -249,8 +242,7 @@ public class PhastCodecSchemaTest {
 	        PipeConfig<PhastCodecSchema> phastCodeConfig = new PipeConfig<PhastCodecSchema>(PhastCodecSchema.instance, 256); //TODO: AA, must optimize queue size based on load. Build tool for this.
 	        PipeConfig<RawDataSchema>    phastCodeConfig2 = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 10,1000); //TODO: AA, must optimize queue size based on load. Build tool for this.
             
-	        int chunkSize = 32;
-	        PipeConfig<RawDataSchema> rawDataConfig = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 4,10*63*chunkSize);
+	        PipeConfig<RawDataSchema> rawDataConfig = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 4,10*63*1);
 	        
 	        Pipe<PhastCodecSchema> inputPipe1 = new Pipe<PhastCodecSchema>(phastCodeConfig);
 	        Pipe<RawDataSchema> inputPipe1B = new Pipe<RawDataSchema>(phastCodeConfig2);
@@ -273,10 +265,10 @@ public class PhastCodecSchemaTest {
 	        
 	        //Add production stage?
 	        int iterations = 3000000;//*1000;
-	        LongDataGenStage  genStage = new LongDataGenStage(gm, new Pipe[]{inputPipe1, inputPipe2}, iterations, chunkSize);      
+	        LongDataGenStage  genStage = new LongDataGenStage(gm, new Pipe[]{inputPipe1, inputPipe2}, iterations);      
 	        
-	        PhastPackingStage encodeStage1 = new PhastPackingStage(gm, inputPipe1, inputPipe1B, packedDataPipe1, chunkSize);       
-	        PhastPackingStage encodeStage2 = new PhastPackingStage(gm, inputPipe2, inputPipe2B, packedDataPipe2, chunkSize);       
+	        PhastPackingStage encodeStage1 = new PhastPackingStage(gm, inputPipe1, inputPipe1B, packedDataPipe1);       
+	        PhastPackingStage encodeStage2 = new PhastPackingStage(gm, inputPipe2, inputPipe2B, packedDataPipe2);       
 	      //  PhastEncodeStage encodeStage3 = new PhastEncodeStage(gm, inputPipe3, packedDataPipe3, chunkSize);  
 	        
 	    //    PhastDecodeStage decodeStage = new PhastDecodeStage(gm, packedDataPipe, outputPipe );   
@@ -311,8 +303,6 @@ public class PhastCodecSchemaTest {
 
 	        scheduler.awaitTermination(500, TimeUnit.SECONDS);//blocks until genStage requests shutdown or timeout
 
-	        
-	        //TODO: the encoder is slow however must solve this with multiplex writer
 	        
 	    }
 	
