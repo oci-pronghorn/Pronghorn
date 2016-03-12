@@ -139,8 +139,11 @@ public class PhastUnpackingStage extends PronghornStage {
         Pipe.confirmLowLevelWrite(output1, Pipe.sizeOf(output1, PhastCodecSchema.MSG_BLOBCHUNK_1000));
         
         Pipe.addMsgIdx(output2, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+        
         output2Writer.openField();                            
         DataOutputBlobWriter.writeBytes(output2Writer, reader, bytesRemainingToCopy);
+        output2Writer.closeLowLevelField();
+        
         bytesRemainingToCopy = 0;
         Pipe.confirmLowLevelWrite(output2, Pipe.sizeOf(output2, RawDataSchema.MSG_CHUNKEDSTREAM_1));
         

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
@@ -37,7 +38,6 @@ public class PhastCodecSchemaTest {
 	    assertEquals(PhastCodecSchema.MSG_MAX_FIELDS, FieldReferenceOffsetManager.lookupTemplateLocator(10063, PhastCodecSchema.FROM));
 	}
 	
-	//TODO: add a test to test the bytes sent as a block.
 	
 	@Test
 	public void testEncoderStage() {
@@ -50,6 +50,9 @@ public class PhastCodecSchemaTest {
                 
         PhastPackingStage stage = new PhastPackingStage(gm, testValuesToEncode, testValuesToEncode2, encodedValuesToValidate);
 	    
+        byte[] testBody       = new byte[] {1,2,3,4};
+        byte[] testBodyTarget = new byte[4];
+        
         testValuesToEncode.initBuffers();
         testValuesToEncode2.initBuffers();
         encodedValuesToValidate.initBuffers();
@@ -66,9 +69,22 @@ public class PhastCodecSchemaTest {
                 Pipe.addLongValue(value, testValuesToEncode);              
                
             }
-            Pipe.confirmLowLevelWrite(testValuesToEncode, size);
-        
+            Pipe.confirmLowLevelWrite(testValuesToEncode, size);        
             Pipe.publishWrites(testValuesToEncode);
+            
+            //adds testing of byte blocks on odd iterations.
+            if (1==(1&j)) {
+                Pipe.addMsgIdx(testValuesToEncode, PhastCodecSchema.MSG_BLOBCHUNK_1000);
+                Pipe.confirmLowLevelWrite(testValuesToEncode, size);        
+                Pipe.publishWrites(testValuesToEncode);
+                
+                Pipe.addMsgIdx(testValuesToEncode2, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+                Pipe.addByteArray(testBody, 0, testBody.length, testValuesToEncode2);
+                Pipe.confirmLowLevelWrite(testValuesToEncode2, size);        
+                Pipe.publishWrites(testValuesToEncode2);
+            }
+            
+            
         }
         Pipe.publishAllBatchedWrites(testValuesToEncode);
         
@@ -79,6 +95,8 @@ public class PhastCodecSchemaTest {
         
         DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
                         
+        int escape = -63;
+        
         j = 10;
         while (--j>=0) {
             
@@ -92,8 +110,30 @@ public class PhastCodecSchemaTest {
             while (--k>=0) {
                 
                 assertTrue(reader.hasRemainingBytes());                
+                long value2 = reader.readPackedLong();                               
+                if (escape==value2) {
+                    value2 = reader.readPackedLong();
+                    if (escape!=value2) {
+                        //value2 holds bytes to skip
+                        
+                        assertEquals(testBody.length, value2);
+                        
+                        try {
+                            reader.read(testBodyTarget,0,testBody.length);
+                            
+                            assertTrue(Arrays.equals(testBody, testBodyTarget));
+                            
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                        //now read the next real value
+                        value2 = reader.readPackedLong();
+                    }
+                    
+                }
+                
+                
                 long value = 1000L * k * j;                
-                long value2 = reader.readPackedLong();                                         
                 
                 assertEquals(value,value2);
                 
@@ -116,6 +156,7 @@ public class PhastCodecSchemaTest {
 	       Pipe<PhastCodecSchema> decodedDataToValidate = new Pipe<PhastCodecSchema>(outputConfig);
 	       Pipe<RawDataSchema> decodedDataToValidate2 = new Pipe<RawDataSchema>(inputConfig);
            
+	       DataInputBlobReader<RawDataSchema> decodedReader = new DataInputBlobReader<RawDataSchema>(decodedDataToValidate2);
 	       
 	       Pipe<RawDataSchema> testDataToDecode = new Pipe<RawDataSchema>(inputConfig);
 	      
@@ -126,6 +167,8 @@ public class PhastCodecSchemaTest {
 	       testDataToDecode.initBuffers();
 	       decodedDataToValidate.initBuffers();
 	       decodedDataToValidate2.initBuffers();
+	       
+	       int escape = -63;
 	       
 	       //prepopulate ring with known data
 	       
@@ -145,9 +188,27 @@ public class PhastCodecSchemaTest {
 	                DataOutputBlobWriter.writePackedLong(writer, value);
 	            }
 	            
-	            writer.closeLowLevelField();	            
+	            ///TODO: add test bytes array
 	            
+	            try {
+                    writer.writePackedLong(escape);
+                    writer.writePackedLong(4);
+                    writer.write(1);
+                    writer.write(2);
+                    writer.write(3);
+                    writer.write(4);
+	            } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+	            
+	            
+	            
+	            writer.closeLowLevelField();
 	            Pipe.publishWrites(testDataToDecode);
+	            
+	            
+	            
+	            
 	        }
 	        Pipe.publishAllBatchedWrites(testDataToDecode);
 	        assertEquals(Pipe.headPosition(testDataToDecode), Pipe.workingHeadPosition(testDataToDecode) );
@@ -160,6 +221,29 @@ public class PhastCodecSchemaTest {
 	        while (--j>=0) {
 	            
 	            int msgIdx = Pipe.takeMsgIdx(decodedDataToValidate);
+	            
+	            if (PhastCodecSchema.MSG_BLOBCHUNK_1000 == msgIdx) {
+	                
+	                Pipe.releaseReadLock(decodedDataToValidate);
+	                
+	                int msgIdx2 = Pipe.takeMsgIdx(decodedDataToValidate2);
+	                assertEquals(RawDataSchema.MSG_CHUNKEDSTREAM_1, msgIdx2); 
+	                decodedReader.openLowLevelAPIField();
+	                
+	                try {
+                        assertEquals(1, decodedReader.read());
+                        assertEquals(2, decodedReader.read());
+                        assertEquals(3, decodedReader.read());
+                        assertEquals(4, decodedReader.read());
+                        decodedReader.close();
+	                } catch (IOException e) {
+	                    throw new RuntimeException(e);
+	                }
+	                Pipe.releaseReadLock(decodedDataToValidate2);
+                    
+	                
+	                msgIdx = Pipe.takeMsgIdx(decodedDataToValidate); //read the next message
+	            }
 	            
 	            assertEquals(PhastCodecSchema.MSG_MAX_FIELDS, msgIdx);
 	            
@@ -178,6 +262,7 @@ public class PhastCodecSchemaTest {
 	            Pipe.releaseReadLock(decodedDataToValidate);
 	            
 	        }
+	      
 	    
 	}
 	
