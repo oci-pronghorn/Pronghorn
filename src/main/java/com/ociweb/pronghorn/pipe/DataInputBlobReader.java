@@ -76,7 +76,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         return bytesRemaining(this);
     }
 
-    private static int bytesRemaining(DataInputBlobReader that) {
+    public static int bytesRemaining(DataInputBlobReader that) {
                 
         return  that.bytesLimit >= (that.byteMask & that.position) ? that.bytesLimit- (that.byteMask & that.position) : (that.pipe.sizeOfBlobRing- (that.byteMask & that.position))+that.bytesLimit;
 
@@ -267,6 +267,23 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         return ois.readObject();
     }
 
+    ////
+    //support method for direct copy
+    ////
+    public static void read(DataInputBlobReader reader, byte[] b, int off, int len, int mask) {
+
+        int max = bytesRemaining(reader);
+        if (len > max) {
+            len = max;
+        }
+        Pipe.copyBytesFromToRing(reader.backing, reader.position, reader.byteMask, b, off, mask, len);
+        reader.position += len;
+
+    }
+    
+    
+    
+    
     ///////
     //Packed Chars
     //////

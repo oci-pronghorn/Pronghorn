@@ -324,6 +324,18 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         writer.activePosition+=sourceLen;
     }
 
+    ////////
+    //low level copy from reader to writer
+    ///////
+    
+    public static void writeBytes(DataOutputBlobWriter writer, DataInputBlobReader<RawDataSchema> reader, int length) {
+
+        DataInputBlobReader.read(reader, writer.byteBuffer, writer.activePosition, length, writer.byteMask);        
+        writer.activePosition+=length;
+        
+    }
+    
+    
     ///////////////////////////////////////////////
     ///New idea: Packed char sequences
     ///////////////////////////////////////////////
@@ -490,6 +502,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         buf[mask & pos++] = (byte) (( ((int)(value & low7)) | 0x80));
         return pos;
     }
-    
+
+
     
 }
