@@ -30,17 +30,23 @@ public class PhastEncoder {
     }
     
     //this method encodes a string
-    static void encodeString(DataOutputBlobWriter writer, long pmapHeader, int bitMask, String value) throws UnsupportedEncodingException{
-    	 if (0 == (pmapHeader&bitMask)) {
-         
-    		 //encode -63 so it knows it is variable length
-    		 DataOutputBlobWriter.writePackedUInt(writer, -63);
+    static void encodeString(DataOutputBlobWriter writer, String value) throws UnsupportedEncodingException{
+    	//encode -63 so it knows it is variable length
+    	DataOutputBlobWriter.writePackedUInt(writer, -63);
     		 
-    		 //calculate string length in bytes, then encode it
-    		 byte[] byteArray = value.getBytes("UTF-16BE");
-    		 DataOutputBlobWriter.writePackedUInt(writer, byteArray.length);
-    		 DataOutputBlobWriter.writePackedChars(writer, value);
-         }
+    	//calculate string length in bytes, then encode it
+    	byte[] byteArray = value.getBytes("UTF-16BE");
+    	DataOutputBlobWriter.writePackedInt(writer, byteArray.length);
+    	DataOutputBlobWriter.writePackedChars(writer, value);
+    }
+    
+    //this method increments a dictionary value by one, then writes it to the pipe
+    static void incrementInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
+    	if (0 == (pmapHeader&bitMask)) {
+    		intDictionary[idx]++;
+    		DataOutputBlobWriter.writePackedInt(writer, intDictionary[idx]);
+        
+    	}
     }
 
 }
