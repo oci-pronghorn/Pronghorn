@@ -56,17 +56,39 @@ public class PhastEncoderTest {
 		int[] intDictionary = new int[5];
 		Arrays.fill(intDictionary, 0);
 		intDictionary[2] = 5;
+		intDictionary[1] = 5;
 		
 		//make it increment 2 values 0 and 5
-		PhastEncoder.incrementInt(intDictionary, writer, 0, 0, 2);
-		PhastEncoder.incrementInt(intDictionary, writer, 0, 0, 1);
+		PhastEncoder.incrementInt(intDictionary, writer, 0, 1, 2);
+		PhastEncoder.incrementInt(intDictionary, writer, 1, 1, 1);
 		
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
-		//should be 6
+		//should be 5
 		int test1 = reader.readPackedInt();
-		//should be 1
+		//should be 6
 		int test2 = reader.readPackedInt();
 		
-		assertTrue((test1 == 6) && (test2==1));
+		assertTrue((test1 == 5) && (test2==6));
+	}
+	
+	@Test
+	public void copyIntTest(){
+		//create blob for test
+			Pipe<RawDataSchema> encodedValuesToValidate = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 4000));
+			encodedValuesToValidate.initBuffers();
+			DataOutputBlobWriter<RawDataSchema> writer = new DataOutputBlobWriter<RawDataSchema>(encodedValuesToValidate);
+			
+			//create int dictionary
+			int[] intDictionary = new int[5];
+			Arrays.fill(intDictionary, 0);
+			intDictionary[2] = 5;
+			
+			//make it increment 2 values 0 and 5
+			PhastEncoder.copyInt(intDictionary, writer, 0, 0, 2);
+			
+			DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
+			//should be 5
+			int test1 = reader.readPackedInt();
+			assertTrue(test1 == 5);
 	}
 }
