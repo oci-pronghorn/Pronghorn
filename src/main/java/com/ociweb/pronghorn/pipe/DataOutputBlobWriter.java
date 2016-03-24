@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 
-public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream implements DataOutput {
+public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream implements DataOutput, Appendable {
 
     private final Pipe<S> p;
     private final byte[] byteBuffer;
@@ -24,34 +24,50 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
     
     public void openField() {
-        p.openBlobFieldWrite();
+        openField(this);
+    }
+
+    public static <T extends MessageSchema> void openField(DataOutputBlobWriter<T> writer) {
+        writer.p.openBlobFieldWrite();
         //NOTE: this method works with both high and low APIs.
-        startPosition = activePosition = Pipe.bytesWorkingHeadPosition(p);
+        writer.startPosition = writer.activePosition = Pipe.bytesWorkingHeadPosition(writer.p);
     }
     
     public int closeHighLevelField(int targetFieldLoc) {
+        return closeHighLevelField(this, targetFieldLoc);
+    }
+
+    public static <T extends MessageSchema> int closeHighLevelField(DataOutputBlobWriter<T> writer, int targetFieldLoc) {
         //this method will also validate the length was in bound and throw unsupported operation if the pipe was not large enough
         //instead of fail fast as soon as one field goes over we wait to the end and only check once.
-        int len = length();
-        PipeWriter.writeSpecialBytesPosAndLen(p, targetFieldLoc, len, startPosition);
-        p.closeBlobFieldWrite();
+        int len = length(writer);
+        PipeWriter.writeSpecialBytesPosAndLen(writer.p, targetFieldLoc, len, writer.startPosition);
+        writer.p.closeBlobFieldWrite();
         return len;
     }
     
     public int closeLowLevelField() {
-        int len = length();
-        Pipe.addAndGetBytesWorkingHeadPosition(p, len);
-        Pipe.addBytePosAndLenSpecial(p,startPosition,len);
-        assert(Pipe.validateVarLength(p, len));
-        p.closeBlobFieldWrite();
+        return closeLowLevelField(this);
+    }
+
+    public static <T extends MessageSchema> int closeLowLevelField(DataOutputBlobWriter<T> writer) {
+        int len = length(writer);
+        Pipe.addAndGetBytesWorkingHeadPosition(writer.p, len);
+        Pipe.addBytePosAndLenSpecial(writer.p,writer.startPosition,len);
+        assert(Pipe.validateVarLength(writer.p, len));
+        writer.p.closeBlobFieldWrite();
         return len;
     }
  
     public int length() {
-        if (activePosition>=startPosition) {
-            return activePosition-startPosition;            
+        return length(this);
+    }
+
+    public static <T extends MessageSchema> int length(DataOutputBlobWriter<T> writer) {
+        if (writer.activePosition>=writer.startPosition) {
+            return writer.activePosition-writer.startPosition;            
         } else {        
-            return (activePosition-Integer.MIN_VALUE)+(1+Integer.MAX_VALUE-startPosition);
+            return (writer.activePosition-Integer.MIN_VALUE)+(1+Integer.MAX_VALUE-writer.startPosition);
         }
     }
     
@@ -152,17 +168,34 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
 
     @Override
     public void writeUTF(String s) throws IOException {
-        activePosition = encodeAsUTF8(s, s.length(), byteMask, byteBuffer, activePosition);
+        activePosition = writeUTF(s, s.length(), byteMask, byteBuffer, activePosition);
     }
 
-    private int encodeAsUTF8(CharSequence s, int len, int mask, byte[] localBuf, int pos) {
+    private int writeUTF(CharSequence s, int len, int mask, byte[] localBuf, int pos) {
         int origPos = pos;
         pos+=2;
+        pos = encodeAsUTF8(this, s, len, mask, localBuf, pos);
+        write16(localBuf,mask,origPos, (pos-origPos)-2); //writes bytes count up front
+        return pos;
+    }
+    
+    public static void encodeAsUTF8(DataOutputBlobWriter writer, CharSequence s) {
+        writer.activePosition = encodeAsUTF8(writer, s, 0, s.length(), writer.byteMask, writer.byteBuffer, writer.activePosition);
+    }
+
+    @Deprecated
+    public static int encodeAsUTF8(DataOutputBlobWriter writer, CharSequence s, int len, int mask, byte[] localBuf, int pos) {
         int c = 0;
         while (c < len) {
             pos = Pipe.encodeSingleChar((int) s.charAt(c++), localBuf, mask, pos);
         }
-        write16(localBuf,mask,origPos, (pos-origPos)-2); //writes bytes count up front
+        return pos;
+    }
+    
+    public static int encodeAsUTF8(DataOutputBlobWriter writer, CharSequence s, int sPos, int sLen, int mask, byte[] localBuf, int pos) {
+        while (sPos < sLen) {
+            pos = Pipe.encodeSingleChar((int) s.charAt(sPos++), localBuf, mask, pos);
+        }
         return pos;
     }
     
@@ -197,7 +230,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
     
     public void writeUTF(CharSequence s) throws IOException {
-        activePosition = encodeAsUTF8(s, s.length(), byteMask, byteBuffer, activePosition);
+        activePosition = writeUTF(s, s.length(), byteMask, byteBuffer, activePosition);
     }    
     
     public void writeASCII(CharSequence s) {
@@ -314,7 +347,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     private int writeUTFArray(String[] utfs, int len, byte[] bufLocal, int mask, int pos) {
         pos = write32(bufLocal, mask, pos, len);
         for(int i=0;i<len;i++) {
-            pos = encodeAsUTF8(utfs[i], utfs[i].length(), mask, bufLocal, pos);
+            pos = writeUTF(utfs[i], utfs[i].length(), mask, bufLocal, pos);
         }
         return pos;
     }    
@@ -501,6 +534,24 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         }
         buf[mask & pos++] = (byte) (( ((int)(value & low7)) | 0x80));
         return pos;
+    }
+
+    @Override
+    public Appendable append(CharSequence csq) {
+        encodeAsUTF8(this, csq);
+        return this;
+    }
+
+    @Override
+    public Appendable append(CharSequence csq, int start, int end) {
+        this.activePosition = encodeAsUTF8(this, csq, start, end-start, this.byteMask, this.byteBuffer, this.activePosition);
+        return this;
+    }
+
+    @Override
+    public Appendable append(char c) {
+        this.activePosition = Pipe.encodeSingleChar((int)c, this.byteBuffer, this.byteMask, this.activePosition);
+        return this;
     }
 
 

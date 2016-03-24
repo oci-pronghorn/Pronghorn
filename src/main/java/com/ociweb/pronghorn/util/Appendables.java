@@ -2,6 +2,8 @@ package com.ociweb.pronghorn.util;
 
 import java.io.IOException;
 
+import com.ociweb.pronghorn.pipe.Pipe;
+
 /**
  * 
  * Garbage free single pass utilities for building up text.
@@ -289,8 +291,7 @@ public class Appendables {
                 if (skipLen == ++j) {
                     j=0;
                 }
-            }
-        
+            }        
         }
         return target;
     }
@@ -299,6 +300,18 @@ public class Appendables {
         for(; k<=j ; k++) {                    
             target.append(source.charAt(base+k));
         }
+    }
+
+    public static <A extends Appendable> A appendUTF8(A target, byte[] backing, int pos, int len, int msk) throws IOException {
+        
+        long charAndPos = ((long)pos)<<32;
+        long limit = ((long)pos+len)<<32;
+
+        while (charAndPos<limit) {
+            charAndPos = Pipe.decodeUTF8Fast(backing, charAndPos, msk);
+            target.append((char)charAndPos);
+        }
+        return target;
     }
     
 }

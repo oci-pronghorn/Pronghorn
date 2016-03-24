@@ -59,10 +59,9 @@ public class SequentialTrieParserTest {
                 
         assertEquals(1, SequentialTrieParserReader.capturedFieldCount(reader));
                 
-        ByteArrayOutputStream byteArray = new ByteArrayOutputStream(100);
-        DataOutput out = new DataOutputStream(byteArray);
-        SequentialTrieParserReader.capturedFieldBytes(reader, 0, out);
-        assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(byteArray.toByteArray()) );
+        byte[] expected = new byte[]{0,0,0,0};        
+        SequentialTrieParserReader.capturedFieldBytes(reader, 0, expected, 0, 7);
+        assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(expected) );
    
     }
     
@@ -88,10 +87,9 @@ public class SequentialTrieParserTest {
                 
         assertEquals(1, SequentialTrieParserReader.capturedFieldCount(reader));
                 
-        ByteArrayOutputStream byteArray = new ByteArrayOutputStream(100);
-        DataOutput out = new DataOutputStream(byteArray);
-        SequentialTrieParserReader.capturedFieldBytes(reader, 0, out);
-        assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(byteArray.toByteArray()) );
+        byte[] expected = new byte[]{0,0,0,0};        
+        SequentialTrieParserReader.capturedFieldBytes(reader, 0, expected, 0, 7);
+        assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(expected) );
         
     }
     
@@ -101,31 +99,94 @@ public class SequentialTrieParserTest {
     //second one will modify the other 
     
     
-//    @Test //TODO: fix this test.
-//    public void testExtractBytesBeginning() {
-//        SequentialTrieParserReader reader = new SequentialTrieParserReader(3);
-//        SequentialTrieParser map = new SequentialTrieParser(1000);
-//        
-//        map.setValue(data1, 0, 3, 7, value1);
-//        
-//        map.setValue(dataBytesExtractBeginning, 0, dataBytesExtractBeginning.length, 7, value2);
-//        
-//        map.setValue(data1, 2, 3, 7, value3);
-//        
-//        assertEquals(value1, SequentialTrieParserReader.query(reader,map,data1, 0, 3, 7));
-//        assertEquals(value3, SequentialTrieParserReader.query(reader,map,data1, 2, 3, 7));
-//        
-//        
-//        assertEquals(value2, SequentialTrieParserReader.query(reader,map,toParseBeginning, 0, toParseBeginning.length, 7));
-//                
-//        assertEquals(1, SequentialTrieParserReader.capturedFieldCount(reader));
-//                
-//        ByteArrayOutputStream byteArray = new ByteArrayOutputStream(100);
-//        DataOutput out = new DataOutputStream(byteArray);
-//        SequentialTrieParserReader.capturedFieldBytes(reader, 0, out);
-//        assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(byteArray.toByteArray()) );
-//        
-//    }
+    @Test 
+    public void testExtractBytesBeginning() {
+        SequentialTrieParserReader reader = new SequentialTrieParserReader(3);
+        SequentialTrieParser map = new SequentialTrieParser(1000);
+        
+        map.setValue(data1, 0, 3, 7, value1);
+        
+        //System.out.println(map);
+        
+        map.setValue(dataBytesExtractBeginning, 0, dataBytesExtractBeginning.length, 7, value2);
+        
+        //System.out.println(map);
+        
+        map.setValue(data1, 2, 3, 7, value3);
+        
+        //System.out.println(map);
+        
+        assertEquals(value1, SequentialTrieParserReader.query(reader,map,data1, 0, 3, 7));
+        assertEquals(value3, SequentialTrieParserReader.query(reader,map,data1, 2, 3, 7));
+        
+        //never returns???  //TODO: fix this test, required for unkown headers.  needs to pop.
+        assertEquals(value2, SequentialTrieParserReader.query(reader,map,toParseBeginning, 0, toParseBeginning.length, 7));
+                
+        assertEquals(1, SequentialTrieParserReader.capturedFieldCount(reader));
+                
+        byte[] target = new byte[100];
+        int len = SequentialTrieParserReader.capturedFieldBytes(reader, 0, target, 0, 63);
+        assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(Arrays.copyOfRange(target,0,len)) );
+        
+    }
+    
+    
+    @Test
+    public void testSimpleMultipleParse() {
+    
+        SequentialTrieParserReader reader = new SequentialTrieParserReader();
+        SequentialTrieParser map = new SequentialTrieParser(1000);
+        
+        byte[] a = "StringA".getBytes();
+        byte[] b = "BytesB".getBytes();
+        
+        map.setValue(a, 0, a.length, 31, 1);
+        map.setValue(b, 0, b.length, 31, 8);
+        
+        byte[] testBytes = "BytesBStringA".getBytes();
+        
+        SequentialTrieParserReader.parseSetup(reader, testBytes, 0, testBytes.length, 31);
+                
+        long valueB = SequentialTrieParserReader.parseNext(reader, map);
+        assertEquals(8L, valueB);
+                
+        long valueA = SequentialTrieParserReader.parseNext(reader, map);
+        assertEquals(1L, valueA);        
+        
+    }
+    
+    @Test
+    public void testExtractMultipleParse() {
+    
+        SequentialTrieParserReader reader = new SequentialTrieParserReader(3);
+        SequentialTrieParser map = new SequentialTrieParser(1000);
+        
+        byte[] a = "StringA%b ".getBytes();
+        byte[] b = "BytesB%b ".getBytes();
+        
+        map.setValue(a, 0, a.length, 31, 1);
+        map.setValue(b, 0, b.length, 31, 8);
+        
+        byte[] testBytes = "BytesBCAPTURE StringACAPTURE ".getBytes();
+        
+        SequentialTrieParserReader.parseSetup(reader, testBytes, 0, testBytes.length, 31);
+                
+        long valueB = SequentialTrieParserReader.parseNext(reader, map);
+        assertEquals(8, valueB);
+        assertEquals(1,SequentialTrieParserReader.capturedFieldCount(reader));
+        
+        byte[] expected = new byte[]{0,0,0,0,0,0,0};        
+        SequentialTrieParserReader.capturedFieldBytes(reader, 0, expected, 0, 7);
+        assertEquals(Arrays.toString(new byte[]{'C','A','P','T','U','R','E'}), Arrays.toString(expected) );
+                
+        long valueA = SequentialTrieParserReader.parseNext(reader, map);
+        assertEquals(1, valueA);        
+        assertEquals(1,SequentialTrieParserReader.capturedFieldCount(reader));
+        
+        expected = new byte[]{0,0,0,0,0,0,0};        
+        SequentialTrieParserReader.capturedFieldBytes(reader, 0, expected, 0, 7);
+        assertEquals(Arrays.toString(new byte[]{'C','A','P','T','U','R','E'}), Arrays.toString(expected) );
+    }
     
     
     @Test
@@ -391,12 +452,9 @@ public class SequentialTrieParserTest {
         byte[] example = "X-Wap-Profile:ABCD\nHello".getBytes();
         assertEquals(1, SequentialTrieParserReader.query(reader,  map, example, 0, example.length, Integer.MAX_VALUE));
         
-        ByteArrayOutputStream byteArray = new ByteArrayOutputStream(100);
-        DataOutput out = new DataOutputStream(byteArray);
-        SequentialTrieParserReader.capturedFieldBytes(reader, 0, out);
-        
-        byte[] results = byteArray.toByteArray();
-        assertTrue(Arrays.toString(results), Arrays.equals("ABCD".getBytes(), results));
+        byte[] expected = new byte[]{0,0,0,0};        
+        SequentialTrieParserReader.capturedFieldBytes(reader, 0, expected, 0, 7);
+        assertEquals(Arrays.toString(new byte[]{'A','B','C','D'}),Arrays.toString(expected) );
                 
         
     }
@@ -483,7 +541,7 @@ public class SequentialTrieParserTest {
             bsm.setValue(testData, testPos[i], testLen[i], 0x7FFF_FFFF, i);
             expectedSum += i;
              
-            int result = SequentialTrieParserReader.query(reader,bsm,testData, testPos[i], testLen[i], 0x7FFF_FFFF);
+            long result = SequentialTrieParserReader.query(reader,bsm,testData, testPos[i], testLen[i], 0x7FFF_FFFF);
             if (i!=result) {
                 System.err.println("unable to build expected "+i+" but got "+result);
                 System.exit(0);

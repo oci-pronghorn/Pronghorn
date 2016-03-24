@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.util;
 
+import java.util.Arrays;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,23 +22,30 @@ public class SequentialTrieParser {
     private static final Logger logger = LoggerFactory.getLogger(SequentialTrieParser.class);
 
     static final byte TYPE_RUN                 = 0x00; //followed by length
-    static final byte TYPE_BRANCH_VALUE        = 0x01; //followed by mask & 2 short jump  
+    static final byte TYPE_BRANCH_VALUE        = 0x01; //followed by mask & short jump  
     static final byte TYPE_ALT_BRANCH          = 0X02; //followed by 2 short jump, try first upon falure use second.
     
     static final byte TYPE_VALUE_NUMERIC       = 0x04; //followed by type, parse right kind of number
     static final byte TYPE_VALUE_BYTES         = 0x05; //followed by stop byte, take all until stop byte encountered (AKA Wild Card)
             
-    static final byte TYPE_SAFE_END            = 0X06; 
-    static final byte TYPE_END                 = 0x07; //TODO: add new end which returns bigger int value and perhaps long.
+    static final byte TYPE_SAFE_END            = 0X06;
+    static final byte TYPE_END                 = 0x07;
+
+    //TODO: A, must fix prefix with byte capture
+         
     
-    static final int SIZE_OF_RESULT               = 1;        
-    static final int SIZE_OF_BRANCH               = 1+1+1;
-    static final int SIZE_OF_ALT_BRANCH           = 1+1+1;
+    
+    static final int SIZE_OF_BRANCH               = 1+1+1; //type, branchon, jumpvalue
+    static final int SIZE_OF_ALT_BRANCH           = 1+1;   //type, jumpvalue
     
     static final int SIZE_OF_RUN                  = 1+1;
-    static final int SIZE_OF_END                  = 1+SIZE_OF_RESULT;
+
+    final int SIZE_OF_RESULT;
+    final int SIZE_OF_END_1;
+    final int SIZE_OF_SAFE_END;
+        
+    
     static final int SIZE_OF_VALUE_NUMERIC        = 1+1; //second value is type mask
-    static final int SIZE_OF_SAFE_END             = 1+SIZE_OF_RESULT;//Same as end except we keep going and store this
     static final int SIZE_OF_VALUE_BYTES          = 1+1; //second value is stop marker
     
     static final boolean skipDeepChecks = true;//these runs are not significant and do not provide any consumed data.
@@ -83,8 +92,18 @@ public class SequentialTrieParser {
     
     
     public SequentialTrieParser(int size) {
+        this(size,1);
+        
+    }
+    
+    public SequentialTrieParser(int size, int resultSize) {
         this.data = new short[size];
         this.pipe.initBuffers();
+        
+        this.SIZE_OF_RESULT               = resultSize;        //custom result size for this instance
+        this.SIZE_OF_END_1                = 1+SIZE_OF_RESULT;
+        this.SIZE_OF_SAFE_END             = 1+SIZE_OF_RESULT;//Same as end except we keep going and store this
+        
     }
     
     
@@ -93,8 +112,7 @@ public class SequentialTrieParser {
     }
     
     public void setValue(byte[] source, int offset, int length, int mask, int value) {
-        setValue(0, data, source, offset, length, mask, value);  
-        
+        setValue(0, data, source, offset, length, mask, value);        
     }
     
     public int getMaxExtractedFields() {
@@ -112,6 +130,9 @@ public class SequentialTrieParser {
                 case TYPE_SAFE_END:
                     i = toStringSafe(builder, i);
                     break;
+                case TYPE_ALT_BRANCH:
+                    i = toStringAltBranch(builder, i);
+                    break;                    
                 case TYPE_BRANCH_VALUE:
                     i = toStringBranchValue(builder, i);
                     break;
@@ -128,7 +149,13 @@ public class SequentialTrieParser {
                     i = toStringEnd(builder, i);
                     break;
                 default:
-                    return builder.append("ERROR Unrecognized value, remaining "+(limit-i)+"\n");
+                    int remaining = limit-i;
+                    builder.append("ERROR Unrecognized value, remaining "+remaining+"\n");
+                    if (remaining<30) {
+                        builder.append("Remaining:"+Arrays.toString(Arrays.copyOfRange(data, i, limit))+"\n" );
+                    }
+                    
+                    return builder;
             }            
         }
         return builder;
@@ -137,7 +164,11 @@ public class SequentialTrieParser {
     private int toStringSafe(StringBuilder builder, int i) {
         builder.append("SAFE");
         builder.append(data[i]).append("[").append(i++).append("], ");
-        builder.append(data[i]).append("[").append(i++).append("], \n");
+        int s = SIZE_OF_RESULT;
+        while (--s >= 0) {        
+            builder.append(data[i]).append("[").append(i++).append("], ");
+        }
+        builder.append("\n");
         return i;
     }
 
@@ -162,7 +193,11 @@ public class SequentialTrieParser {
     private int toStringEnd(StringBuilder builder, int i) {
         builder.append("END");
         builder.append(data[i]).append("[").append(i++).append("], ");
-        builder.append(data[i]).append("[").append(i++).append("], \n");
+        int s = SIZE_OF_RESULT;
+        while (--s >= 0) {        
+            builder.append(data[i]).append("[").append(i++).append("], ");
+        }
+        builder.append("\n");
         return i;
     }
 
@@ -183,6 +218,13 @@ public class SequentialTrieParser {
         return i;
     }
 
+    private int toStringAltBranch(StringBuilder builder, int i) {
+        builder.append("ALT_BRANCH");
+        builder.append(data[i]).append("[").append(i++).append("], "); //TYPE
+                
+        builder.append(data[i]).append("[").append(i++).append("], \n");//JUMP
+        return i;
+    }
 
     private int toStringBranchValue(StringBuilder builder, int i) {
         builder.append("BRANCH_VALUE");
@@ -195,20 +237,63 @@ public class SequentialTrieParser {
     }
 
     
-    static int jumpOnBit(short source, int pos, short[] data) {                
+    static int jumpOnBit(short source, int pos, short[] data) {       
+//        if (0 != (data[pos]>>8)) {
+//            if (0 == (0xFF & data[pos++] & source)) {
+//                return 1 + pos + data[pos];
+//            } else {
+//                return 1 + pos;
+//            }
+//        } else {
+//            if (0 == (0xFF & data[pos++] & source)) {
+//                return 1 + pos;
+//            } else {
+//                return 1 + pos + data[pos];
+//            }
+//        }
+        
+        
         //high 8 is left or right, low 8 is the magic bit to mask
-        return jumpOnBit(source, data[pos++], 0xFFFF&data[pos], pos);
+        return jumpOnBit(source, data[pos++], data[pos], pos);
     }
 
-
     private static int jumpOnBit(short source, short critera, int jump, int pos) {
-        return (((short)0xFFFF&(~(((source & (0xFF&critera))-1)>>>8) ^ critera>>>8)) & jump) + 1+pos;
+        return 1 + (( /*(short)0xFFFF&*/(~(((source & (0xFF & critera))-1)>>>8) ^ critera>>>8)) & jump) + pos;
     }
 
     public void setUTF8Value(CharSequence cs, int value) {
         
         Pipe.addMsgIdx(pipe, 0);
+        
+        int len = Pipe.copyUTF8ToByte(cs, 0, cs.length(), pipe);
+        
+        //Pipe.copyUTF8ToByte(cs, 0, cs.length(), pipe);
+                
+        Pipe.addBytePosAndLen(pipe, Pipe.getBlobWorkingHeadPosition(pipe), len);
+        
+                
         Pipe.addUTF8(cs, pipe);
+        
+        Pipe.publishWrites(pipe);
+        
+        Pipe.takeMsgIdx(pipe);
+        setValue(pipe, value);        
+        Pipe.releaseReadLock(pipe);
+    }
+    
+    public void setUTF8Value(CharSequence cs, CharSequence suffix, int value) {
+        
+        Pipe.addMsgIdx(pipe, 0);
+        
+        int len = 0;
+        len += Pipe.copyUTF8ToByte(cs, 0, cs.length(), pipe);        
+        len += Pipe.copyUTF8ToByte(suffix, 0, suffix.length(), pipe);
+                
+        Pipe.addBytePosAndLen(pipe, Pipe.getBlobWorkingHeadPosition(pipe), len);
+        
+                
+        Pipe.addUTF8(cs, pipe);
+        
         Pipe.publishWrites(pipe);
         
         Pipe.takeMsgIdx(pipe);
@@ -217,20 +302,28 @@ public class SequentialTrieParser {
     }
 
 
-    public void setValue(Pipe p, int value) {
+    public void setValue(Pipe p, long value) {
         setValue(p, Pipe.takeRingByteMetaData(p), Pipe.takeRingByteLen(p), value);
     }
 
 
-    private void setValue(Pipe p, int meta, int length, int value) {
+    private void setValue(Pipe p, int meta, int length, long value) {
         setValue(0, data, Pipe.byteBackingArray(meta, p), Pipe.bytePosition(meta, p, length), length, Pipe.blobMask(p), value);
     }
     
-    private void setValue(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, int value) {
+    
+    private final static int MAX_ALT_DEPTH = 32;
+    private int altStackPos = 0;
+    private int[] altStackA = new int[MAX_ALT_DEPTH];
+    private int[] altStackB = new int[MAX_ALT_DEPTH];
+    
+    
+    private void setValue(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, long value) {
         
         assert(value >= 0);
         assert(value <= 0x7FFF_FFFF); 
 
+        altStackPos = 0;
         int fieldExtractionsCount = 0;
         
         if (0!=limit) {
@@ -242,6 +335,17 @@ public class SequentialTrieParser {
                 switch(type) {
                     case TYPE_BRANCH_VALUE:
                         pos = jumpOnBit(source[sourceMask & sourcePos], pos, data);
+                        break;
+                    case TYPE_ALT_BRANCH:
+                        
+                        //this selects the one to try first
+                        pos = altBranch(pos, sourcePos, data[pos++], data[pos]); //jump and peek, that is why second does not ++
+                        
+                        //TODO: must add logic to check and try other side on failure.
+                        
+                        //goes in run but where??
+                        ///if (reader.altStackPos > 0) {
+                        
                         break;
                     case TYPE_VALUE_NUMERIC:   
                         fieldExtractionsCount++;
@@ -271,7 +375,7 @@ public class SequentialTrieParser {
                                     //confirm second value is not also the escape byte so we do have a command
                                     if (ESCAPE_BYTE != sourceByte) {
                                         fieldExtractionsCount++; //this count can be off by burried extractions.
-                                        insertAtBranchValue(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun, sourcePos-2,false); //off by one??                                       
+                                        insertAtBranchValue(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun, sourcePos-2,false);                                    
                                         maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                                         return;
                                     }
@@ -353,6 +457,32 @@ public class SequentialTrieParser {
         }
     }
 
+    
+    private int altBranch(int pos, int sourcePos, int jump, int peekNextType) {
+        if (SequentialTrieParser.TYPE_VALUE_BYTES == peekNextType || SequentialTrieParser.TYPE_VALUE_NUMERIC==peekNextType) {
+            //Take the Jump value first, the local value has an extraction.
+            //push the LocalValue
+            pushAlt(pos, sourcePos);
+            pos+= (1+jump);            
+        } else {
+            //Take the Local value first
+            //push the JumpValue
+            pushAlt(pos+jump, sourcePos);
+        }
+        return pos;
+    }
+    
+    private void pushAlt(int pos, int sourcePos) {
+        altStackA[altStackPos] = pos;
+        altStackB[altStackPos++] = sourcePos;
+
+    }
+//
+//    private int popAlt() {
+//        pos       = altStackA[--altStackPos];
+//        sourcePos = altStackB[altStackPos];
+//        return localSourcePos;
+//    }
 
     private byte buildNumberBits(byte sourceByte) {  //TOOD: needs to be used somewhere??
         
@@ -375,7 +505,7 @@ public class SequentialTrieParser {
     }
 
 
-    private void convertEndToNewSafePoint(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, int value) {
+    private void convertEndToNewSafePoint(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, long value) {
         //convert end to safe
         
         if (data[pos-1] != TYPE_END) {
@@ -385,7 +515,7 @@ public class SequentialTrieParser {
         pos += SIZE_OF_SAFE_END;
 
         //now insert the needed run
-        makeRoomForInsert(sourceLength, data, pos, SIZE_OF_END + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask));    
+        makeRoomForInsert(sourceLength, data, pos, SIZE_OF_END_1 + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask));    
 
         pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);        
         pos = writeEnd(data, pos, value);
@@ -444,7 +574,7 @@ public class SequentialTrieParser {
     }
 
 
-    private int insertNewSafePoint(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, int value, int runLenPos) {
+    private int insertNewSafePoint(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, long value, int runLenPos) {
         //convert end to safe
         
         makeRoomForInsert(sourceLength, data, pos, SIZE_OF_SAFE_END);
@@ -454,17 +584,18 @@ public class SequentialTrieParser {
 
         pos = writeRunHeader(data, pos, sourceLength);
         data[runLenPos] -= sourceLength;//previous run is shortened buy the length of this new run
-        if (0 == data[runLenPos]) {
-            System.err.println("XXXXXXXXXX now zero ");
-        }
         return pos;
     }
     
 
-    private void insertAtBranchValue(final int pos, short[] data, byte[] source, int sourceLength, int sourceMask, int value, int length, int runPos, int run, int r1, final int sourceCharPos, boolean branchOnByte) {
+    private void insertAtBranchValue(final int pos, short[] data, byte[] source, int sourceLength, int sourceMask, long value, int length, int runPos, int run, int r1, final int sourceCharPos, boolean branchOnByte) {
         if (++r1 == run) {
+            int p = pos-3;
+            if (p < 0) {
+                p = 0;
+            }
             r1 = 0; //keep entire run and do not split it.
-            insertAtBranchValue(r1, data, pos-3, source, sourceCharPos, sourceLength-length, sourceMask, value, branchOnByte); 
+            insertAtBranchValue(r1, data, p, source, sourceCharPos, sourceLength-length, sourceMask, value, branchOnByte); 
         } else {
             short temp = (short)(run-r1);
             if (temp==0) {
@@ -513,20 +644,20 @@ public class SequentialTrieParser {
     }
 
 
-    private void insertAtBranchValue(int danglingByteCount, short[] data, int pos, byte[] source, final int sourcePos,final int sourceLength, int sourceMask, int value, boolean branchOnByte) {
+    private void insertAtBranchValue(int danglingByteCount, short[] data, int pos, byte[] source, final int sourcePos,final int sourceLength, int sourceMask, long value, boolean branchOnByte) {
         
         if (sourceLength > 0x7FFF || sourceLength < 1) {
             throw new UnsupportedOperationException("does not support strings beyond this length "+0x7FFF+" value was "+sourceLength);
         }
    
         if (branchOnByte) {        
-            final int requiredRoom = SIZE_OF_END + SIZE_OF_BRANCH + sourceLength+ midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);
+            final int requiredRoom = SIZE_OF_END_1 + SIZE_OF_BRANCH + sourceLength+ midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);
                         
             final int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
             pos = writeBranch(TYPE_BRANCH_VALUE, data, pos, requiredRoom, findSingleBitMask((short) source[sourcePos & sourceMask], data[oldValueIdx]));
         } else {
             
-            int requiredRoom = SIZE_OF_END + SIZE_OF_ALT_BRANCH + sourceLength+ midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);  
+            int requiredRoom = SIZE_OF_END_1 + SIZE_OF_ALT_BRANCH + sourceLength+ midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);  
             final int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
 
             if (requiredRoom > 0x7FFF) {
@@ -576,7 +707,7 @@ public class SequentialTrieParser {
         updatePreviousJumpDistances(0, data, pos, requiredRoom);        
         
         int newPos = pos + requiredRoom;
-                
+
         System.arraycopy(data, pos, data, newPos, len);
         
         if (danglingByteCount > 0) {//do the prepend because we now have room
@@ -600,27 +731,51 @@ public class SequentialTrieParser {
                     i += SIZE_OF_SAFE_END;
                     break;
                 case TYPE_BRANCH_VALUE:
-                                      
-                    int jmp = data[i+2];
-                             //Old Jump length,     (((int)data[i+2]) << 16)|(0xFFFF&data[i+3]);
-                    
-                    int newPos = i+jmp;
-                    if (newPos >= limit) {
-                        //adjust this value because it jumps over the new inserted block
-                        jmp += requiredRoom; 
+                    {
+                        int jmp = data[i+2];
+                                 //Old Jump length,     (((int)data[i+2]) << 16)|(0xFFFF&data[i+3]);
                         
-                        if (jmp > 0x7FFF) {
-                            throw new UnsupportedOperationException("This content is too large, use shorter content or modify this code to make multiple jumps.");
+                        int newPos = i+jmp;
+                        if (newPos >= limit) {
+                            //adjust this value because it jumps over the new inserted block
+                            jmp += requiredRoom; 
+                            
+                            if (jmp > 0x7FFF) {
+                                throw new UnsupportedOperationException("This content is too large, use shorter content or modify this code to make multiple jumps.");
+                            }
+                                                    
+                            data[i+2] = (short)(0xFFFF&(jmp));
+                            if (data[i+2]<1) {
+                                System.err.println("zero adj? reqroom"+requiredRoom);
+                            }
+                            
                         }
-                                                
-                        data[i+2] = (short)(0xFFFF&(jmp));
-                        if (data[i+2]<1) {
-                            System.err.println("zero adj? reqroom"+requiredRoom);
-                        }
-                        
+                        i += SIZE_OF_BRANCH;
                     }
-                    i += SIZE_OF_BRANCH;
-                    break;                    
+                    break;     
+                case TYPE_ALT_BRANCH:
+                    {
+                          int jmp = data[i+1]; //NOTE: the 1's are the change from the above.
+                         //Old Jump length,     (((int)data[i+2]) << 16)|(0xFFFF&data[i+3]);
+               
+                           int newPos = i+jmp;
+                           if (newPos >= limit) {
+                               //adjust this value because it jumps over the new inserted block
+                               jmp += requiredRoom; 
+                               
+                               if (jmp > 0x7FFF) {
+                                   throw new UnsupportedOperationException("This content is too large, use shorter content or modify this code to make multiple jumps.");
+                               }
+                                                       
+                               data[i+1] = (short)(0xFFFF&(jmp));
+                               if (data[i+1]<1) {
+                                   System.err.println("zero adj? reqroom"+requiredRoom);
+                               }
+                               
+                           }
+                           i += SIZE_OF_ALT_BRANCH;
+                    }
+                    break;
                 case TYPE_VALUE_NUMERIC:
                     i += SIZE_OF_VALUE_NUMERIC;
                     break;
@@ -631,7 +786,7 @@ public class SequentialTrieParser {
                     i = i+SIZE_OF_RUN+data[i+1];
                     break;
                 case TYPE_END:
-                    i += SIZE_OF_END;
+                    i += SIZE_OF_END_1;
                     break;
                 default:
                     System.out.println(this);
@@ -657,19 +812,30 @@ public class SequentialTrieParser {
     }
 
 
-    private int writeEnd(short[] data, int pos, int value) {
+    private int writeEnd(short[] data, int pos, long value) {
         data[pos++] = TYPE_END;
         return writeEndValue(data, pos, value);
     }
 
 
-    private int writeEndValue(short[] data, int pos, int value) {
-        data[pos++] = (short)(0xFFFF&value);
+    private int writeEndValue(short[] data, int pos, long value) {
+        
+        int s = SIZE_OF_RESULT;
+        while (--s >= 0) {        
+            data[pos++] = (short)(0xFFFF& (value>>(s<<4)));        
+        }
         return pos;
     }
     
-    static int readEndValue(short[] data, int pos) {
-            return 0xFFFF & data[pos];
+    static long readEndValue(short[] data, int pos, int resultSize) {
+        
+        long result = 0;
+        int s = resultSize;
+        while (--s >= 0) {            
+            result = (result<<16) | (0xFFFFL & data[pos++]);        
+        }
+        
+        return result;
     }
  
     private int writeBytesExtract(short[] data, int pos, short stop) {

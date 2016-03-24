@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -12,6 +13,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.pipe.Pipe.PaddedLong;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
@@ -1806,23 +1808,18 @@ public final class Pipe<T extends MessageSchema> {
 		addBytePosAndLen(rb, rb.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceCharCount,rb));
 	}
 
+	@Deprecated
+	public static <S extends MessageSchema> int copyUTF8ToByte(CharSequence source, int sourceCharCount, Pipe<S> rb) {
+	    return copyUTF8ToByte(source,0, sourceCharCount, rb);
+	}
+
 	/**
 	 * WARNING: unlike the ASCII version this method returns bytes written and not the position
 	 */
-	public static <S extends MessageSchema> int copyUTF8ToByte(CharSequence source, int sourceCharCount, Pipe<S> rb) {
-	    if (sourceCharCount>0) {
-    		int byteLength = Pipe.copyUTF8ToByte(source, 0, rb.blobRing, rb.byteMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
-    		rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
-    		return byteLength;
-	    } else {
-	        return 0;
-	    }
-	}
-
-   public static <S extends MessageSchema> int copyUTF8ToByte(CharSequence source, int sourceOffset, int sourceCharCount, Pipe<S> rb) {
+   public static <S extends MessageSchema> int copyUTF8ToByte(CharSequence source, int sourceOffset, int sourceCharCount, Pipe<S> pipe) {
         if (sourceCharCount>0) {
-            int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, rb.blobRing, rb.byteMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
-            rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
+            int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, pipe.blobRing, pipe.byteMask, pipe.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
+            pipe.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(pipe.blobRingHead.byteWorkingHeadPos.value+byteLength);
             return byteLength;
         } else {
             return 0;
@@ -1959,9 +1956,16 @@ public final class Pipe<T extends MessageSchema> {
 
 	public static <S extends MessageSchema> void addByteArrayWithMask(final Pipe<S> outputRing, int mask, int len, byte[] data, int offset) {
 		validateVarLength(outputRing, len);
-		copyBytesFromToRing(data,offset,mask,outputRing.blobRing,outputRing.blobRingHead.byteWorkingHeadPos.value,outputRing.byteMask, len);
-		addBytePosAndLen(outputRing, outputRing.blobRingHead.byteWorkingHeadPos.value, len);
-		outputRing.blobRingHead.byteWorkingHeadPos.value =  BYTES_WRAP_MASK&(outputRing.blobRingHead.byteWorkingHeadPos.value + len);
+		copyBytesFromToRing(data,offset,mask,outputRing.blobRing,PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos),outputRing.byteMask, len);
+		addBytePosAndLenSpecial(outputRing, PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos),len);
+		PaddedInt.set(outputRing.blobRingHead.byteWorkingHeadPos, BYTES_WRAP_MASK&(PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos) + len));
+	}
+	
+    public static <S extends MessageSchema> void setByteArrayWithMask(final Pipe<S> outputRing, int mask, int len, byte[] data, int offset, long slabPosition) {
+	        validateVarLength(outputRing, len);
+	        copyBytesFromToRing(data,offset,mask,outputRing.blobRing,PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos),outputRing.byteMask, len);
+            setBytePosAndLen(slab(outputRing), outputRing.mask, slabPosition, PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos), len, bytesWriteBase(outputRing));
+	        PaddedInt.set(outputRing.blobRingHead.byteWorkingHeadPos, BYTES_WRAP_MASK&(PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos) + len));
 	}
 
 	public static <S extends MessageSchema> int peek(int[] buf, long pos, int mask) {
@@ -2061,6 +2065,7 @@ public final class Pipe<T extends MessageSchema> {
     	}
         buffer[rbMask & (int)(ringPos+1)] = lengthDat;
 	}
+	
 
 	public static <S extends MessageSchema> int restorePosition(Pipe<S> ring, int pos) {
 		assert(pos>=0);
@@ -2726,8 +2731,13 @@ public final class Pipe<T extends MessageSchema> {
         PaddedInt.set(pipe.blobRingTail.byteWorkingTailPos, value);
     }
 
-    public static <S extends MessageSchema> int bytesWorkingHeadPosition(Pipe<S> pipe) {
+    public static <S extends MessageSchema> int getBlobWorkingHeadPosition(Pipe<S> pipe) {
         return PaddedInt.get(pipe.blobRingHead.byteWorkingHeadPos);
+    }
+    
+    @Deprecated
+    public static <S extends MessageSchema> int bytesWorkingHeadPosition(Pipe<S> pipe) {
+        return getBlobWorkingHeadPosition(pipe);
     }
 
     public static <S extends MessageSchema> int addAndGetBytesWorkingHeadPosition(Pipe<S> pipe, int inc) {
