@@ -101,5 +101,44 @@ public class PhastEncoder {
     	}
     }
     
-
+    //encodes short that is present in the pmap
+    static void encodeShortPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, short value) {
+        if (0 != (pmapHeader&bitMask)) {
+        	DataOutputBlobWriter.writePackedShort(writer, value);
+        }
+    }
+    
+    //this method increments a dictionary value by one, then writes it to the pipe
+    static void incrementShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
+    	if (0 != (pmapHeader&bitMask)) {
+    		shortDictionary[idx]++;
+    	}
+    		DataOutputBlobWriter.writePackedShort(writer, shortDictionary[idx]);
+    }
+    
+    //this method just uses the previous value that was sent
+    static void copyShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
+    	if (0 == (pmapHeader&bitMask)) {
+    		DataOutputBlobWriter.writePackedShort(writer, shortDictionary[idx]);
+    	}
+    }
+    
+    //encodes default value for a short
+    static void encodeDefaultShort(short[] defaultShortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitmask, int idx, short value){
+    	if (0 != (pmapHeader & bitmask)){
+    		DataOutputBlobWriter.writePackedShort(writer, defaultShortDictionary[idx]);
+    	}
+    	else{
+    		DataOutputBlobWriter.writePackedShort(writer, value);
+    	}
+    }
+    
+    //encodes the change in value of a short
+    static void encodeDeltaShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int idx, int bitMask, short value) {
+        if (0 != (pmapHeader&bitMask)) {
+            DataOutputBlobWriter.writePackedShort(writer, (short)(value-shortDictionary[idx]));
+            shortDictionary[idx] = value;             
+        }
+    }
+    
 }

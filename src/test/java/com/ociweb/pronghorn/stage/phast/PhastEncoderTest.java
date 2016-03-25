@@ -131,8 +131,8 @@ public class PhastEncoderTest {
 	
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	////////////////////////                    MASTER LONG ENCODE TEST INCLUDES ALL LONG TESTS                    /////////////////////////
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////                    MASTER LONG ENCODE TEST INCLUDES ALL LONG TESTS                    //////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Test
 	public void encodeLongTest() throws IOException{
 		//create slab to test
@@ -170,6 +170,48 @@ public class PhastEncoderTest {
 		assertTrue(reader.readPackedLong()==2835);
 		assertTrue(reader.readPackedLong()==3468);
 		assertTrue(reader.readPackedLong()==455);
+		reader.close();
+	}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////                    MASTER SHORT ENCODE TEST INCLUDES ALL LONG TESTS                    //////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	@Test
+	public void encodeShortTest() throws IOException{
+		//create slab to test
+		Pipe<RawDataSchema> encodedValuesToValidate = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 4000));
+		encodedValuesToValidate.initBuffers();
+		DataOutputBlobWriter<RawDataSchema> writer = new DataOutputBlobWriter<RawDataSchema>(encodedValuesToValidate);
+		
+		//set up dictionaries
+		short[] defaultShortDictionary = new short[5];
+		defaultShortDictionary[2] = 8239;
+		short[] shortDictionary = new short[5];
+		shortDictionary[4] = 347;
+		
+		
+		short defaultTest = 342;
+		
+		//should encode: 342
+		PhastEncoder.encodeShortPresent(writer, 1, 1, defaultTest);
+		//should encode: 347
+		PhastEncoder.incrementShort(shortDictionary, writer, 0, 1, 4);
+		//should encode: 348
+		PhastEncoder.incrementShort(shortDictionary, writer, 1, 1, 4);
+		//should encode: 348
+		PhastEncoder.copyShort(shortDictionary, writer, 1, 1, 4);
+		//should encode: 8239
+		PhastEncoder.encodeDefaultShort(defaultShortDictionary, writer, 1, 1, 2, defaultTest);
+		//should encode 342
+		PhastEncoder.encodeDefaultShort(defaultShortDictionary, writer, 0, 1, 2, defaultTest);
+		
+		writer.close();
+		
+		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
+		assertTrue(reader.readPackedLong()==342);
+		assertTrue(reader.readPackedLong()==347);
+		assertTrue(reader.readPackedLong()==348);
+		assertTrue(reader.readPackedLong()==8239);
+		assertTrue(reader.readPackedLong()==342);
 		reader.close();
 	}
 }
