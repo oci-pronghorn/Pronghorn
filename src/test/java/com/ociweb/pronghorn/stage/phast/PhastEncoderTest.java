@@ -20,26 +20,32 @@ public class PhastEncoderTest {
 	@Test
 	public void testEncodeString() throws IOException{
 		//create a new blob pipe to put a string on 
-		Pipe<RawDataSchema> encodedValuesToValidate = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 4000));
-		encodedValuesToValidate.initBuffers();
-		DataOutputBlobWriter<RawDataSchema> writer = new DataOutputBlobWriter<RawDataSchema>(encodedValuesToValidate);
+		Pipe<RawDataSchema> blob = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 4000));
+		Pipe<RawDataSchema> slab = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 4000));
+		blob.initBuffers();
+		slab.initBuffers();
+		DataOutputBlobWriter<RawDataSchema> writerBlob = new DataOutputBlobWriter<RawDataSchema>(blob);
+		DataOutputBlobWriter<RawDataSchema> writerSlab = new DataOutputBlobWriter<RawDataSchema>(slab);
 		
-		//encode a string on there using the static method
-		PhastEncoder.encodeString(writer, "This is a test");
-		Pipe.publishAllBatchedWrites(encodedValuesToValidate);
-		writer.close();
+		//encode a string on blolb using the static method
+		PhastEncoder.encodeString(writerSlab, writerBlob,  "This is a test");
+		
+		writerBlob.close();
+		writerSlab.close();
 		
 		//check what is on the pipe
-		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
+		DataInputBlobReader<RawDataSchema> readerBlob = new DataInputBlobReader<RawDataSchema>(blob);
+		DataInputBlobReader<RawDataSchema> readerSlab = new DataInputBlobReader<RawDataSchema>(slab);
 		//should be -63
-		int test = reader.readPackedInt();
+		int test = readerSlab.readPackedInt();
 		//char length is 14 so this should be 28
-		int lengthOfString = reader.readPackedInt();
+		int lengthOfString = readerSlab.readPackedInt();
 		//the string
 		StringBuilder value = new StringBuilder();
-		reader.readPackedChars(value);
+		readerBlob.readPackedChars(value);
 		
-		reader.close();
+		readerBlob.close();
+		readerSlab.close();
 		
 		String s = value.toString();
 		assertTrue((test==-63) && (lengthOfString==28) && (s.compareTo("This is a test")==0));
@@ -123,20 +129,47 @@ public class PhastEncoderTest {
 		assertTrue(test1==16 && test2==4);
 	}
 	
+	
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////                    MASTER LONG ENCODE TEST INCLUDES ALL LONG TESTS                    /////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Test
-	public void ecnodePresentLongTest() throws IOException{
-		//create a blob to test
+	public void encodeLongTest() throws IOException{
+		//create slab to test
 		Pipe<RawDataSchema> encodedValuesToValidate = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 4000));
 		encodedValuesToValidate.initBuffers();
 		DataOutputBlobWriter<RawDataSchema> writer = new DataOutputBlobWriter<RawDataSchema>(encodedValuesToValidate);
 		
-		//encode long
-		PhastEncoder.encodeLongPresent(writer, 1, 1, 5714);
+		//set up dictionaries
+		long[] defaultLongDictionary = new long[5];
+		defaultLongDictionary[2] = 3468;
+		long[] longDictionary = new long[5];
+		longDictionary[4] = 2834;
+		
+		
+		long defaultTest = 455;
+		
+		//should encode: 455
+		PhastEncoder.encodeLongPresent(writer, 1, 1, defaultTest);
+		//should encode: 2834
+		PhastEncoder.incrementLong(longDictionary, writer, 0, 1, 4);
+		//should encode: 2835
+		PhastEncoder.incrementLong(longDictionary, writer, 1, 1, 4);
+		//should encode: 2835
+		PhastEncoder.copyLong(longDictionary, writer, 1, 1, 4);
+		//should encode: 3468
+		PhastEncoder.encodeDefaultLong(defaultLongDictionary, writer, 1, 1, 2, defaultTest);
+		//should encode 455
+		PhastEncoder.encodeDefaultLong(defaultLongDictionary, writer, 0, 1, 2, defaultTest);
+		
 		writer.close();
 		
-		//check it
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
-		long test = reader.readPackedLong();
-		assertTrue(test == 5714);
+		assertTrue(reader.readPackedLong()==455);
+		assertTrue(reader.readPackedLong()==2834);
+		assertTrue(reader.readPackedLong()==2835);
+		assertTrue(reader.readPackedLong()==3468);
+		assertTrue(reader.readPackedLong()==455);
+		reader.close();
 	}
 }

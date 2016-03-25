@@ -14,7 +14,6 @@ public class PhastEncoder {
         }
     }
 
-    //i think this was backwards, applied fix
     static void encodeDeltaInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx, int value) {
         if (0 != (pmapHeader&bitMask)) {
             DataOutputBlobWriter.writePackedInt(writer, value-intDictionary[idx]);
@@ -35,14 +34,14 @@ public class PhastEncoder {
     }
     
     //this method encodes a string
-    static void encodeString(DataOutputBlobWriter writer, String value) throws UnsupportedEncodingException{
+    static void encodeString(DataOutputBlobWriter slab, DataOutputBlobWriter blob, String value) throws UnsupportedEncodingException{
     	//encode -63 so it knows it is variable length
-    	DataOutputBlobWriter.writePackedInt(writer, -63);
+    	DataOutputBlobWriter.writePackedInt(slab, -63);
     		 
     	//calculate string length in bytes, then encode it
     	byte[] byteArray = value.getBytes("UTF-16BE");
-    	DataOutputBlobWriter.writePackedInt(writer, byteArray.length);
-    	DataOutputBlobWriter.writePackedChars(writer, value);
+    	DataOutputBlobWriter.writePackedInt(slab, byteArray.length);
+    	DataOutputBlobWriter.writePackedChars(blob, value);
     }
     
     //this method increments a dictionary value by one, then writes it to the pipe
