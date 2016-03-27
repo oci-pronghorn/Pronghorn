@@ -31,4 +31,13 @@ public class PhastDecoder {
         return (0==(map&bitMask)) ? intDictionary[idx] : (intDictionary[idx] = DataInputBlobReader.readPackedInt(reader));
     }
     
+    //decodes an increment int
+    static int decodeIncrementInt(int[] intDictionary, long map, int idx, int bitMask){
+    	return (0==(map&bitMask))? intDictionary[idx]++ : intDictionary[idx];
+    }
+    
+    //decodes present int
+    static int decodePresentInt(DataInputBlobReader reader, long map, int bitMask){
+    	return(0==(map&bitMask))? DataInputBlobReader.readPackedInt(reader) : null;
+    }
 }
