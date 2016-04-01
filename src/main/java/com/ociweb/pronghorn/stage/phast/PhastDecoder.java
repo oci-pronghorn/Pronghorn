@@ -6,8 +6,8 @@ import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 
 public class PhastDecoder {
 
-    static long decodeDeltaLong(long[] longDictionary, DataInputBlobReader reader, long map, int idx, long defaultValue, int bitMask) {
-        return (0==(map&bitMask)) ? (longDictionary[idx] += DataInputBlobReader.readPackedLong(reader)) : defaultValue;        
+    static long decodeDeltaLong(long[] longDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
+        return (0==(map&bitMask)) ? (longDictionary[idx] += DataInputBlobReader.readPackedLong(reader)) : longDictionary[idx];        
     }
 
     static int decodeDefaultInt(DataInputBlobReader reader, long map, int[] defaultValues, int bitMask, int idx) {
@@ -50,9 +50,26 @@ public class PhastDecoder {
     		DataInputBlobReader.readPackedChars(blob, s);
     		return s.toString();
     	}
-    	else{
-    		return "FATALITY";
-    	}
-    	
+    	else 
+    		return null;
+    }
+    //longs
+    //decodes an increment long
+    static long decodeIncrementLong(long[] longDictionary, long map, int idx, int bitMask){
+    	return (0==(map&bitMask))? ++longDictionary[idx] : longDictionary[idx];
+    }
+    
+    //decodes present int
+    static long decodePresentLong(DataInputBlobReader reader, long map, int bitMask){
+    	return(0==(map&bitMask))? DataInputBlobReader.readPackedLong(reader) : null;
+    }
+    //decode default long
+    static long decodeDefaultLong(DataInputBlobReader reader, long map, long[] defaultValues, int bitMask, int idx) {
+        return (0==(map&bitMask)) ? defaultValues[idx] : DataInputBlobReader.readPackedLong(reader);
+     }
+    //decode copy long
+    static long decodeCopyLong(long[] longDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
+        //always favor the more common zero case
+        return (0==(map&bitMask)) ? longDictionary[idx] : (longDictionary[idx] = DataInputBlobReader.readPackedLong(reader));
     }
 }
