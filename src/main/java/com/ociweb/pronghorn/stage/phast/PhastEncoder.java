@@ -7,14 +7,14 @@ import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 
 public class PhastEncoder {
 
-    static void encodeIntPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, int value) {
+	public static void encodeIntPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, int value) {
         if (0 != (pmapHeader&bitMask)) {
             DataOutputBlobWriter.writePackedUInt(writer, value);
            // DataOutputBlobWriter.writePackedInt(writer, value); 
         }
     }
 
-    static void encodeDeltaInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx, int value) {
+	public static void encodeDeltaInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx, int value) {
         if (0 != (pmapHeader&bitMask)) {
             DataOutputBlobWriter.writePackedInt(writer, value-intDictionary[idx]);
             intDictionary[idx] = value;
@@ -25,7 +25,7 @@ public class PhastEncoder {
     }
 
     
-    static void encodeDeltaLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int idx, int bitMask, long value) {
+	public static void encodeDeltaLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int idx, int bitMask, long value) {
         if (0 != (pmapHeader&bitMask)) {
             
             DataOutputBlobWriter.writePackedLong(writer, value-longDictionary[idx]);
@@ -34,7 +34,7 @@ public class PhastEncoder {
     }
     
     //this method encodes a string
-    static void encodeString(DataOutputBlobWriter slab, DataOutputBlobWriter blob, String value) throws UnsupportedEncodingException{
+	public static void encodeString(DataOutputBlobWriter slab, DataOutputBlobWriter blob, String value) throws UnsupportedEncodingException{
     	//encode -63 so it knows it is variable length
     	DataOutputBlobWriter.writePackedInt(slab, -63);
     		 
@@ -45,7 +45,7 @@ public class PhastEncoder {
     }
     
     //this method increments a dictionary value by one, then writes it to the pipe
-    static void incrementInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
+	public static void incrementInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
     	if (0 != (pmapHeader&bitMask)) {
     		intDictionary[idx]++;
     	}
@@ -53,14 +53,14 @@ public class PhastEncoder {
     }
     
     //this method just uses the previous value that was sent
-    static void copyInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
+	public static void copyInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
     	if (0 == (pmapHeader&bitMask)) {
     		DataOutputBlobWriter.writePackedInt(writer, intDictionary[idx]);
     	}
     }
     
     //encodes the default value from the default value dictionary
-    static void encodeDefaultInt(int[] defaultIntDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitmask, int idx, int value){
+	public static void encodeDefaultInt(int[] defaultIntDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitmask, int idx, int value){
     	if (0 == (pmapHeader & bitmask)){
     		DataOutputBlobWriter.writePackedInt(writer, defaultIntDictionary[idx]);
     	}
@@ -70,14 +70,14 @@ public class PhastEncoder {
     }
     
     //encodes long that is present in the pmap
-    static void encodeLongPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, long value) {
+	public static void encodeLongPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, long value) {
         if (0 != (pmapHeader&bitMask)) {
         	DataOutputBlobWriter.writePackedLong(writer, value);
         }
     }
     
     //this method increments a dictionary value by one, then writes it to the pipe
-    static void incrementLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
+	public static void incrementLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
     	if (0 != (pmapHeader&bitMask)) {
     		longDictionary[idx]++;
     	}
@@ -85,14 +85,14 @@ public class PhastEncoder {
     }
     
     //this method just uses the previous value that was sent
-    static void copyLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
+	public static void copyLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
     	if (0 == (pmapHeader&bitMask)) {
     		DataOutputBlobWriter.writePackedLong(writer, longDictionary[idx]);
     	}
     }
     
     //encodes default value for a long
-    static void encodeDefaultLong(long[] defaultLongDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitmask, int idx, long value){
+	public static void encodeDefaultLong(long[] defaultLongDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitmask, int idx, long value){
     	if (0 != (pmapHeader & bitmask)){
     		DataOutputBlobWriter.writePackedLong(writer, defaultLongDictionary[idx]);
     	}
@@ -102,14 +102,14 @@ public class PhastEncoder {
     }
     
     //encodes short that is present in the pmap
-    static void encodeShortPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, short value) {
+	public static void encodeShortPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, short value) {
         if (0 != (pmapHeader&bitMask)) {
         	DataOutputBlobWriter.writePackedShort(writer, value);
         }
     }
     
     //this method increments a dictionary value by one, then writes it to the pipe
-    static void incrementShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
+	public static void incrementShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
     	if (0 != (pmapHeader&bitMask)) {
     		shortDictionary[idx]++;
     	}
@@ -117,14 +117,14 @@ public class PhastEncoder {
     }
     
     //this method just uses the previous value that was sent
-    static void copyShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
+	public static void copyShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
     	if (0 == (pmapHeader&bitMask)) {
     		DataOutputBlobWriter.writePackedShort(writer, shortDictionary[idx]);
     	}
     }
     
     //encodes default value for a short
-    static void encodeDefaultShort(short[] defaultShortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitmask, int idx, short value){
+	public static void encodeDefaultShort(short[] defaultShortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitmask, int idx, short value){
     	if (0 != (pmapHeader & bitmask)){
     		DataOutputBlobWriter.writePackedShort(writer, defaultShortDictionary[idx]);
     	}
@@ -134,7 +134,7 @@ public class PhastEncoder {
     }
     
     //encodes the change in value of a short
-    static void encodeDeltaShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int idx, int bitMask, short value) {
+	public static void encodeDeltaShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int idx, int bitMask, short value) {
         if (0 != (pmapHeader&bitMask)) {
             DataOutputBlobWriter.writePackedShort(writer, (short)(value-shortDictionary[idx]));
             shortDictionary[idx] = value;             

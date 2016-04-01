@@ -6,19 +6,19 @@ import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 
 public class PhastDecoder {
 
-    static long decodeDeltaLong(long[] longDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
+    public static long decodeDeltaLong(long[] longDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
         return (0==(map&bitMask)) ? (longDictionary[idx] += DataInputBlobReader.readPackedLong(reader)) : longDictionary[idx];        
     }
 
-    static int decodeDefaultInt(DataInputBlobReader reader, long map, int[] defaultValues, int bitMask, int idx) {
+    public static int decodeDefaultInt(DataInputBlobReader reader, long map, int[] defaultValues, int bitMask, int idx) {
        return (0==(map&bitMask)) ? defaultValues[idx] : DataInputBlobReader.readPackedInt(reader);
     }
 
-    static int decodeDeltaInt(int[] intDictionary, DataInputBlobReader reader, long map, int idx, int bitMask, int value) {
+    public static int decodeDeltaInt(int[] intDictionary, DataInputBlobReader reader, long map, int idx, int bitMask, int value) {
         return (0==(map&bitMask)) ? (intDictionary[idx] += DataInputBlobReader.readPackedInt(reader)) : intDictionary[idx];
     }
 
-    static int decodeIncInt(int[] intDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
+    public static int decodeIncInt(int[] intDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
         //always favor the more common zero case
         return (0==(map&bitMask)) ? intDictionary[idx]++ : decodeIncIntSlow(intDictionary, reader, idx);
     }
@@ -28,23 +28,23 @@ public class PhastDecoder {
         return intDictionary[idx]++;
     }
 
-    static int decodeCopyInt(int[] intDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
+    public static int decodeCopyInt(int[] intDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
         //always favor the more common zero case
         return (0==(map&bitMask)) ? intDictionary[idx] : (intDictionary[idx] = DataInputBlobReader.readPackedInt(reader));
     }
     
     //decodes an increment int
-    static int decodeIncrementInt(int[] intDictionary, long map, int idx, int bitMask){
+    public static int decodeIncrementInt(int[] intDictionary, long map, int idx, int bitMask){
     	return (0==(map&bitMask))? ++intDictionary[idx] : intDictionary[idx];
     }
     
     //decodes present int
-    static int decodePresentInt(DataInputBlobReader reader, long map, int bitMask){
+    public static int decodePresentInt(DataInputBlobReader reader, long map, int bitMask){
     	return(0==(map&bitMask))? DataInputBlobReader.readPackedInt(reader) : null;
     }
     
     //decodes string
-    static String decodeString(DataInputBlobReader slab, DataInputBlobReader blob) throws IOException{
+    public static String decodeString(DataInputBlobReader slab, DataInputBlobReader blob) throws IOException{
     	if (DataInputBlobReader.readPackedInt(slab) == -63){
     		StringBuilder s = new StringBuilder();
     		DataInputBlobReader.readPackedChars(blob, s);
@@ -55,20 +55,20 @@ public class PhastDecoder {
     }
     //longs
     //decodes an increment long
-    static long decodeIncrementLong(long[] longDictionary, long map, int idx, int bitMask){
+    public static long decodeIncrementLong(long[] longDictionary, long map, int idx, int bitMask){
     	return (0==(map&bitMask))? ++longDictionary[idx] : longDictionary[idx];
     }
     
     //decodes present int
-    static long decodePresentLong(DataInputBlobReader reader, long map, int bitMask){
+    public static long decodePresentLong(DataInputBlobReader reader, long map, int bitMask){
     	return(0==(map&bitMask))? DataInputBlobReader.readPackedLong(reader) : null;
     }
     //decode default long
-    static long decodeDefaultLong(DataInputBlobReader reader, long map, long[] defaultValues, int bitMask, int idx) {
+    public static long decodeDefaultLong(DataInputBlobReader reader, long map, long[] defaultValues, int bitMask, int idx) {
         return (0==(map&bitMask)) ? defaultValues[idx] : DataInputBlobReader.readPackedLong(reader);
      }
     //decode copy long
-    static long decodeCopyLong(long[] longDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
+    public static long decodeCopyLong(long[] longDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
         //always favor the more common zero case
         return (0==(map&bitMask)) ? longDictionary[idx] : (longDictionary[idx] = DataInputBlobReader.readPackedLong(reader));
     }
