@@ -41,7 +41,6 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }
     }
-    
     protected void additionalTokens(Appendable target) throws IOException { 
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         int[] tokens = from.tokens;
