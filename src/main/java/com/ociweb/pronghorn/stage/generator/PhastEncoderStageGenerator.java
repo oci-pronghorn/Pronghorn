@@ -13,9 +13,7 @@ import com.ociweb.pronghorn.pipe.util.build.TemplateProcessGeneratorLowLevelRead
 public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevelReader{
 
         private final Class encoder = PhastEncoder.class;    
-        private final Appendable bodyTarget;
-        private final String methodScope = "public";
-        
+        private final Appendable bodyTarget;        
         private final String longDictionaryName = "longDictionary";
         private final String intDictionaryName = "intDictiornary";
         private final String shortDictionaryName = "shortDictiornary";
