@@ -303,9 +303,10 @@ public class Appendables {
     }
 
     public static <A extends Appendable> A appendUTF8(A target, byte[] backing, int pos, int len, int msk) throws IOException {
-        
-        long charAndPos = ((long)pos)<<32;
-        long limit = ((long)pos+len)<<32;
+        //TODO: note with very long len plus pos we can still run into a problem. so assert len< maxInt-mask ???
+        long localPos = msk&pos;//to support streams longer than 32 bits
+        long charAndPos = ((long)localPos)<<32;
+        long limit = ((long)localPos+len)<<32;
 
         while (charAndPos<limit) {
             charAndPos = Pipe.decodeUTF8Fast(backing, charAndPos, msk);

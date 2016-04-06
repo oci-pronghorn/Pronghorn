@@ -2007,12 +2007,12 @@ public final class Pipe<T extends MessageSchema> {
 
 
     public static <S extends MessageSchema> void addIntValue(int value, Pipe<S> rb) {
-         assert(rb.slabRingHead.workingHeadPos.value <= rb.mask+Pipe.tailPosition(rb));
+         assert(rb.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(rb)+rb.sizeOfSlabRing);
 		 setValue(rb.slabRing,rb.mask,rb.slabRingHead.workingHeadPos.value++,value);
 	}
     
     public static <S extends MessageSchema> void setIntValue(int value, Pipe<S> rb, long position) {
-        assert(rb.slabRingHead.workingHeadPos.value <= rb.mask+Pipe.tailPosition(rb));
+        assert(rb.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(rb)+rb.sizeOfSlabRing);
         setValue(rb.slabRing,rb.mask,position,value);
    }
 

@@ -48,7 +48,7 @@ public class SequentialTrieParser {
     static final int SIZE_OF_VALUE_NUMERIC        = 1+1; //second value is type mask
     static final int SIZE_OF_VALUE_BYTES          = 1+1; //second value is stop marker
     
-    static final boolean skipDeepChecks = true;//these runs are not significant and do not provide any consumed data.
+    boolean skipDeepChecks;//these runs are not significant and do not provide any consumed data.
     //humans require long readable URLs but the machine can split them into categories on just a few key bytes
     
     public static final byte ESCAPE_BYTE = '%';
@@ -91,12 +91,21 @@ public class SequentialTrieParser {
     private int maxExtractedFields = 0;//out of all the byte patterns known what is the maximum # of extracted fields from any of them.
     
     
+    private final static int MAX_ALT_DEPTH = 32;
+    private int altStackPos = 0;
+    private int[] altStackA = new int[MAX_ALT_DEPTH];
+    private int[] altStackB = new int[MAX_ALT_DEPTH];
+    
+    
     public SequentialTrieParser(int size) {
-        this(size,1);
-        
+        this(size,1, true);
     }
     
-    public SequentialTrieParser(int size, int resultSize) {
+    public SequentialTrieParser(int size, boolean skipDeepChecks) {
+        this(size, 1, skipDeepChecks);
+        
+    }
+    public SequentialTrieParser(int size, int resultSize, boolean skipDeepChecks) {
         this.data = new short[size];
         this.pipe.initBuffers();
         
@@ -104,11 +113,21 @@ public class SequentialTrieParser {
         this.SIZE_OF_END_1                = 1+SIZE_OF_RESULT;
         this.SIZE_OF_SAFE_END             = 1+SIZE_OF_RESULT;//Same as end except we keep going and store this
         
+        this.skipDeepChecks = skipDeepChecks;
+        
     }
     
     
     public int getLimit() {
         return limit;
+    }
+    
+    public void setSkipDeepChecks(boolean value) {
+        skipDeepChecks = value;
+    }
+    
+    public boolean isSkipDeepChecks() {
+        return skipDeepChecks;
     }
     
     public void setValue(byte[] source, int offset, int length, int mask, int value) {
@@ -237,44 +256,19 @@ public class SequentialTrieParser {
     }
 
     
-    static int jumpOnBit(short source, int pos, short[] data) {       
-//        if (0 != (data[pos]>>8)) {
-//            if (0 == (0xFF & data[pos++] & source)) {
-//                return 1 + pos + data[pos];
-//            } else {
-//                return 1 + pos;
-//            }
-//        } else {
-//            if (0 == (0xFF & data[pos++] & source)) {
-//                return 1 + pos;
-//            } else {
-//                return 1 + pos + data[pos];
-//            }
-//        }
-        
-        
-        //high 8 is left or right, low 8 is the magic bit to mask
-        return jumpOnBit(source, data[pos++], data[pos], pos);
-    }
-
-    private static int jumpOnBit(short source, short critera, int jump, int pos) {
-        return 1 + (( /*(short)0xFFFF&*/(~(((source & (0xFF & critera))-1)>>>8) ^ critera>>>8)) & jump) + pos;
+    static int jumpOnBit(short source, short critera, int jump, int pos) {
+        return 1 + (( (~(((source & (0xFF & critera))-1)>>>8) ^ critera>>>8)) & jump) + pos;
     }
 
     public void setUTF8Value(CharSequence cs, int value) {
         
-        Pipe.addMsgIdx(pipe, 0);
+        Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
         
+        int origPos = Pipe.getBlobWorkingHeadPosition(pipe);
         int len = Pipe.copyUTF8ToByte(cs, 0, cs.length(), pipe);
-        
-        //Pipe.copyUTF8ToByte(cs, 0, cs.length(), pipe);
-                
-        Pipe.addBytePosAndLen(pipe, Pipe.getBlobWorkingHeadPosition(pipe), len);
-        
-                
-        Pipe.addUTF8(cs, pipe);
-        
+        Pipe.addBytePosAndLen(pipe, origPos, len);        
         Pipe.publishWrites(pipe);
+        Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
         
         Pipe.takeMsgIdx(pipe);
         setValue(pipe, value);        
@@ -285,11 +279,12 @@ public class SequentialTrieParser {
         
         Pipe.addMsgIdx(pipe, 0);
         
+        int origPos = Pipe.getBlobWorkingHeadPosition(pipe);
         int len = 0;
         len += Pipe.copyUTF8ToByte(cs, 0, cs.length(), pipe);        
         len += Pipe.copyUTF8ToByte(suffix, 0, suffix.length(), pipe);
                 
-        Pipe.addBytePosAndLen(pipe, Pipe.getBlobWorkingHeadPosition(pipe), len);
+        Pipe.addBytePosAndLen(pipe, origPos, len);
         
                 
         Pipe.addUTF8(cs, pipe);
@@ -311,11 +306,7 @@ public class SequentialTrieParser {
         setValue(0, data, Pipe.byteBackingArray(meta, p), Pipe.bytePosition(meta, p, length), length, Pipe.blobMask(p), value);
     }
     
-    
-    private final static int MAX_ALT_DEPTH = 32;
-    private int altStackPos = 0;
-    private int[] altStackA = new int[MAX_ALT_DEPTH];
-    private int[] altStackB = new int[MAX_ALT_DEPTH];
+
     
     
     private void setValue(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, long value) {
@@ -334,7 +325,8 @@ public class SequentialTrieParser {
                 int type = 0xFF & data[pos++];
                 switch(type) {
                     case TYPE_BRANCH_VALUE:
-                        pos = jumpOnBit(source[sourceMask & sourcePos], pos, data);
+                    int pos1 = pos;
+                        pos = jumpOnBit((short) source[sourceMask & sourcePos], data[pos1++], data[pos1], pos1);
                         break;
                     case TYPE_ALT_BRANCH:
                         
@@ -453,7 +445,7 @@ public class SequentialTrieParser {
         } else {
             //Start case where we insert the first run;
             pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);
-            limit = writeEnd(data, pos, value);
+            limit = Math.max(limit, writeEnd(data, pos, value));
         }
     }
 

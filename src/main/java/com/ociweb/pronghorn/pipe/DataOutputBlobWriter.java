@@ -30,7 +30,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     public static <T extends MessageSchema> void openField(DataOutputBlobWriter<T> writer) {
         writer.p.openBlobFieldWrite();
         //NOTE: this method works with both high and low APIs.
-        writer.startPosition = writer.activePosition = Pipe.bytesWorkingHeadPosition(writer.p);
+        writer.startPosition = writer.activePosition = Pipe.getBlobWorkingHeadPosition(writer.p);
     }
     
     public int closeHighLevelField(int targetFieldLoc) {

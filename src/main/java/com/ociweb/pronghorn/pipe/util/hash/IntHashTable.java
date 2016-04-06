@@ -44,7 +44,7 @@ public class IntHashTable {
 		int mask = ht.mask;
 		int hash = MurmurHash.hash32finalizer(key);
 		int temp = (int)ht.data[hash&mask];//just the lower int.
-		while (temp != key && temp != 0) { 			
+		while (temp != key && temp != 0) {
 			temp = (int)ht.data[++hash & mask];
 		}
 		
@@ -100,7 +100,7 @@ public class IntHashTable {
 	
    public static void visit(IntHashTable ht, IntHashTableVisitor visitor) {
 	   int j = ht.mask+1;
-	   while (--j>=0) {
+	   while (--j >= 0) {
 		   long block = ht.data[j];
 		   if (0!=block) {
 			   int key = (int)block;

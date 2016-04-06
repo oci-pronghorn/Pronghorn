@@ -3,6 +3,8 @@ package com.ociweb.pronghorn.util;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import javax.transaction.TransactionRequiredException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,7 +16,7 @@ public class SequentialTrieParserReader {
     
     private byte[] sourceBacking;
     private int    sourcePos;
-    private int    sourceLen;
+    public int    sourceLen;
     private int    sourceMask;
     
     
@@ -22,12 +24,11 @@ public class SequentialTrieParserReader {
     private int    capturedPos;
     private byte[] capturedBlobArray;
     
-    private boolean hasSafePoint = false;
+    
     private long    safeReturnValue = -1;
     private int     safeCapturedPos = -1;
     private int     safeSourcePos = -1;
     
-    private int pos = 0;
 
     private final static int MAX_ALT_DEPTH = 32;
     private int altStackPos = 0;
@@ -155,9 +156,7 @@ public class SequentialTrieParserReader {
     
     public static long parseNext(SequentialTrieParserReader reader, SequentialTrieParser trie) {
 
-        //logNextTextToParse(reader);
-        
-        return query(reader, trie, reader.sourceBacking, reader.sourcePos, reader.sourceLen, reader.sourceMask);
+        return query(reader, trie, reader.sourceBacking, reader.sourcePos, reader.sourceLen, reader.sourceMask, -1);
                 
     }
 
@@ -216,72 +215,102 @@ public class SequentialTrieParserReader {
         
     }    
 
-    public static long query(SequentialTrieParserReader trieReader, SequentialTrieParser trie, Pipe<?> input) {
+    public static long query(SequentialTrieParserReader trieReader, SequentialTrieParser trie, Pipe<?> input, final long unfoundResult) {
         int meta = Pipe.takeRingByteMetaData(input);
         int length    = Pipe.takeRingByteLen(input);
-        return query(trieReader, trie, Pipe.byteBackingArray(meta, input), Pipe.bytePosition(meta, input, length), length, Pipe.blobMask(input)  );  
+        return query(trieReader, trie, Pipe.byteBackingArray(meta, input), Pipe.bytePosition(meta, input, length), length, Pipe.blobMask(input), unfoundResult );  
     }
+    
     
     public static long query(SequentialTrieParserReader reader, SequentialTrieParser trie, 
                             byte[] source, int localSourcePos, int sourceLength, int sourceMask) {
+        return query(reader,trie,source,localSourcePos, sourceLength, sourceMask, -1);
+    }
+    
+    public static long query(SequentialTrieParserReader reader, SequentialTrieParser trie, 
+                            byte[] source, int localSourcePos, int sourceLength, int sourceMask, final long unfoundResult) {
+        
+        if (0==trie.getLimit()) {
+            return unfoundResult;
+        }
         
         reader.capturedPos = 0;
         reader.capturedBlobArray = source;
+        short[] localData = trie.data;
+        boolean hasSafePoint = false;
 
-        reader.pos = 0;
+         int pos = 0;
         
-        reader.hasSafePoint = false;
-        reader.safeReturnValue = -1;
-        reader.safeCapturedPos = -1;
         
         reader.altStackPos = 0;
           
-        short[] localData = trie.data;
+        
+        assert(trie.getLimit()>0) : "SequentialTrieParser must be setup up with data before use.";
+        
         int runLength = 0;
-        int type = localData[reader.pos++];
+        int type = localData[pos++];
                 
         top:
         while (type != SequentialTrieParser.TYPE_END) {
             
             if (type==SequentialTrieParser.TYPE_BRANCH_VALUE) {
                 
-                reader.pos = SequentialTrieParser.jumpOnBit((short) source[sourceMask & localSourcePos], reader.pos, localData);
+                pos = SequentialTrieParser.jumpOnBit((short) source[sourceMask & localSourcePos], localData[pos++], localData[pos], pos);
                 
             } else if (type == SequentialTrieParser.TYPE_RUN) {
                 
                 //run
-                int run = localData[reader.pos++];
+                int run = localData[pos++];
         
-                if (SequentialTrieParser.skipDeepChecks && !reader.hasSafePoint && 0==reader.altStackPos) {
-                    reader.pos += run;
+                if (trie.skipDeepChecks && !hasSafePoint && 0==reader.altStackPos) {
+                    pos += run;
                     localSourcePos += run;
                 } else {
                     
                     int r = run;
-                    int localP = reader.pos;
-                    while ((--r >= 0) && (localData[localP++] == source[sourceMask & localSourcePos++]) ) {
+                    while ((--r >= 0) && (localData[pos++] == source[sourceMask & localSourcePos++]) ) {
                     }
-                    reader.pos = localP;
                     if (r>=0) {
-                        if (reader.hasSafePoint) {     
-                            localSourcePos = restoreSafePoint(reader);
+                        if (hasSafePoint) {   
+                            
+                            localSourcePos  = reader.safeSourcePos;
+                            reader.capturedPos = reader.safeCapturedPos;
+                            assert((localSourcePos-reader.sourcePos)>0);
+                            reader.sourceLen -= (localSourcePos-reader.sourcePos); 
+                            reader.sourcePos =localSourcePos;
+                            
                             return reader.safeReturnValue;
                         } else {
                             if (reader.altStackPos > 0) {
                                 //try other path
                                 //reset all the values to the other path and continue from the top
-                                localSourcePos = popAlt(reader);
-                                type = localData[reader.pos++];
+                                
+                                localSourcePos     = reader.altStackA[--reader.altStackPos];
+                                reader.capturedPos = reader.altStackB[reader.altStackPos];
+                                pos         = reader.altStackC[reader.altStackPos];
+                                type = localData[pos++];
                                 continue top;
                                 
                             } else {
-                                throw new RuntimeException("check prev branch, no match at pos "+reader.pos+"  \n"+trie);
+                                return unfoundResult;
                             }
                         }
                     }    
                     
                 }
                 runLength += run;
+                
+            } else if (type == SequentialTrieParser.TYPE_SAFE_END) {                    
+                
+                recordSafePointEnd(reader, localSourcePos, pos, trie);  
+                hasSafePoint = true;
+                pos += trie.SIZE_OF_RESULT;
+                if (sourceLength == runLength) {
+                    //hard stop passed in forces us to use the safe point
+                    reader.sourceLen -= (localSourcePos-reader.sourcePos);
+                    reader.sourcePos = localSourcePos;
+                    return reader.safeReturnValue;
+                }   
                 
             } else if (type == SequentialTrieParser.TYPE_VALUE_BYTES) {
                 
@@ -295,63 +324,34 @@ public class SequentialTrieParserReader {
                 
                 //         System.out.println("Apos "+reader.sourcePos+"  "+reader.pos);
                 
-                localSourcePos = parseBytes(reader,source,localSourcePos, sourceLength-runLength, sourceMask, localData[reader.pos++]);
+                localSourcePos = parseBytes(reader,source,localSourcePos, sourceLength-runLength, sourceMask, localData[pos++]);
                 
                 //         System.out.println("Bpos "+reader.sourcePos+"  "+reader.pos);
                 
             } else if (type == SequentialTrieParser.TYPE_VALUE_NUMERIC) {
                 
-                parseNumeric(reader,source,localSourcePos, sourceLength-runLength, sourceMask, (int)localData[reader.pos++]);
+                parseNumeric(reader,source,localSourcePos, sourceLength-runLength, sourceMask, (int)localData[pos++]);
                 
-            } else if (type == SequentialTrieParser.TYPE_SAFE_END) {                    
-                
-                recordSafePointEnd(reader, trie);                    
-                if (sourceLength == runLength) {
-                    //hard stop passed in forces us to use the safe point
-                    reader.sourceLen -= (localSourcePos-reader.sourcePos);
-                    reader.sourcePos = localSourcePos;
-                    return reader.safeReturnValue;
-                }                    
+                  
 
             } else if (type == SequentialTrieParser.TYPE_ALT_BRANCH) {
 
-                reader.pos = altBranch(reader, localData, localSourcePos);                                   
+                pos = altBranch(reader, pos, localSourcePos, localData[pos++], localData[pos]);                                   
                 
-            } else  {
-                System.out.println(trie);
-                throw new UnsupportedOperationException("Bad jump length now at position "+(reader.pos-1)+" type found "+type);
+            } else  {                
+                logger.error(trie.toString());
+                throw new UnsupportedOperationException("Bad jump length now at position "+(pos-1)+" type found "+type);
             }
-            
-            type = localData[reader.pos++]; 
+           
+            type = localData[pos++]; 
         }
-        
+        assert((localSourcePos-reader.sourcePos)>=0);
         reader.sourceLen -= (localSourcePos-reader.sourcePos);
         reader.sourcePos = localSourcePos;
         
-        return SequentialTrieParser.readEndValue(localData,reader.pos, trie.SIZE_OF_RESULT);
+        return SequentialTrieParser.readEndValue(localData,pos, trie.SIZE_OF_RESULT);
         
         
-    }
-
-    private static int restoreSafePoint(SequentialTrieParserReader reader) {
-        int localSourcePos;
-        localSourcePos   = reader.safeSourcePos;
-        reader.capturedPos = reader.safeCapturedPos;
-        reader.sourceLen -= (localSourcePos-reader.sourcePos); 
-        reader.sourcePos = localSourcePos;
-        return localSourcePos;
-    }
-
-    private static int popAlt(SequentialTrieParserReader reader) {
-        int localSourcePos;
-        localSourcePos     = reader.altStackA[--reader.altStackPos];
-        reader.capturedPos = reader.altStackB[reader.altStackPos];
-        reader.pos         = reader.altStackC[reader.altStackPos];
-        return localSourcePos;
-    }
-
-    static int altBranch(SequentialTrieParserReader reader, short[] data, int offset) {
-        return altBranch(reader, reader.pos, offset, data[reader.pos++], data[reader.pos]);
     }
 
     static int altBranch(SequentialTrieParserReader reader, int pos, int offset, int jump, int peekNextType) {
@@ -376,14 +376,14 @@ public class SequentialTrieParserReader {
         reader.altStackC[reader.altStackPos++] = pos;        
     }
 
-    private static void recordSafePointEnd(SequentialTrieParserReader reader, SequentialTrieParser trie) {
-        reader.hasSafePoint = true;
-        reader.safeReturnValue = SequentialTrieParser.readEndValue(trie.data,reader.pos, trie.SIZE_OF_RESULT);
+    private static void recordSafePointEnd(SequentialTrieParserReader reader, int localSourcePos, int pos, SequentialTrieParser trie) {
+        
+        reader.safeReturnValue = SequentialTrieParser.readEndValue(trie.data, pos, trie.SIZE_OF_RESULT);
         reader.safeCapturedPos = reader.capturedPos;
         
-        reader.safeSourcePos = reader.sourcePos;        
+        reader.safeSourcePos = localSourcePos;        
         
-        reader.pos += trie.SIZE_OF_RESULT;
+        
         //if the following does not match we will return this safe value.
         //we do not yet have enough info to decide if this is the end or not.
     }
