@@ -20,35 +20,26 @@ public class PhastEncoderTest {
 	@Test
 	public void testEncodeString() throws IOException{
 		//create a new blob pipe to put a string on 
-		Pipe<RawDataSchema> blob = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 4000));
-		Pipe<RawDataSchema> slab = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 4000));
-		blob.initBuffers();
-		slab.initBuffers();
-		DataOutputBlobWriter<RawDataSchema> writerBlob = new DataOutputBlobWriter<RawDataSchema>(blob);
-		DataOutputBlobWriter<RawDataSchema> writerSlab = new DataOutputBlobWriter<RawDataSchema>(slab);
+		Pipe<RawDataSchema> pipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 4000));
+		pipe.initBuffers();
+		DataOutputBlobWriter<RawDataSchema> writer = new DataOutputBlobWriter<RawDataSchema>(pipe);
 		
-		//encode a string on blolb using the static method
-		PhastEncoder.encodeString(writerSlab, writerBlob,  "This is a test");
+		//encode a string on blob using the static method
+		PhastEncoder.encodeString(writer, "This is a test");
 		
-		writerBlob.close();
-		writerSlab.close();
+		writer.close();
 		
 		//check what is on the pipe
-		DataInputBlobReader<RawDataSchema> readerBlob = new DataInputBlobReader<RawDataSchema>(blob);
-		DataInputBlobReader<RawDataSchema> readerSlab = new DataInputBlobReader<RawDataSchema>(slab);
+		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(pipe);
 		//should be -63
-		int test = readerSlab.readPackedInt();
-		//char length is 14 so this should be 28
-		int lengthOfString = readerSlab.readPackedInt();
+		int test = reader.readPackedInt();
 		//the string
-		StringBuilder value = new StringBuilder();
-		readerBlob.readPackedChars(value);
+		String value = reader.readUTF();
 		
-		readerBlob.close();
-		readerSlab.close();
+		reader.close();
 		
 		String s = value.toString();
-		assertTrue((test==-63) && (lengthOfString==28) && (s.compareTo("This is a test")==0));
+		assertTrue((test==-63) && (s.compareTo("This is a test")==0));
 		
 	}
 	

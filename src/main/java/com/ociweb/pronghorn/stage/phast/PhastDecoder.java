@@ -5,6 +5,8 @@ import java.io.IOException;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 
 public class PhastDecoder {
+	
+	public static final int INCOMING_VARIABLE = -63;
 
     public static long decodeDeltaLong(long[] longDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
         return (0==(map&bitMask)) ? (longDictionary[idx] += DataInputBlobReader.readPackedLong(reader)) : longDictionary[idx];        
@@ -44,11 +46,9 @@ public class PhastDecoder {
     }
     
     //decodes string
-    public static String decodeString(DataInputBlobReader slab, DataInputBlobReader blob) throws IOException{
-    	if (DataInputBlobReader.readPackedInt(slab) == -63){
-    		StringBuilder s = new StringBuilder();
-    		DataInputBlobReader.readPackedChars(blob, s);
-    		return s.toString();
+    public static String decodeString(DataInputBlobReader writer) throws IOException{
+    	if (DataInputBlobReader.readPackedInt(writer) == INCOMING_VARIABLE){
+    		return writer.readUTF();
     	}
     	else 
     		return null;
@@ -59,7 +59,7 @@ public class PhastDecoder {
     	return (0==(map&bitMask))? ++longDictionary[idx] : longDictionary[idx];
     }
     
-    //decodes present int
+    //decodes present long
     public static long decodePresentLong(DataInputBlobReader reader, long map, int bitMask){
     	return(0==(map&bitMask))? DataInputBlobReader.readPackedLong(reader) : null;
     }
@@ -71,5 +71,29 @@ public class PhastDecoder {
     public static long decodeCopyLong(long[] longDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
         //always favor the more common zero case
         return (0==(map&bitMask)) ? longDictionary[idx] : (longDictionary[idx] = DataInputBlobReader.readPackedLong(reader));
+    }
+    
+    //shorts
+    //decodes an increment short
+    public static short decodeIncrementShort(short[] shortDictionary, long map, int idx, int bitMask){
+    	return (0==(map&bitMask))? ++shortDictionary[idx] : shortDictionary[idx];
+    }
+    
+    //decodes present short
+    public static short decodePresentShort(DataInputBlobReader reader, long map, int bitMask){
+    	return(0==(map&bitMask))? reader.readPackedShort() : null;
+    }
+    //decode default short
+    public static short decodeDefaultShort(DataInputBlobReader reader, long map, short[] defaultValues, int bitMask, int idx) {
+        return (0==(map&bitMask)) ? defaultValues[idx] : reader.readPackedShort();
+     }
+    //decode copy short
+    public static short decodeCopyShort(short[] shortDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
+        //always favor the more common zero case
+        return (0==(map&bitMask)) ? shortDictionary[idx] : (shortDictionary[idx] = reader.readPackedShort());
+    }
+    
+    public static short decodeDeltaShort(short[] shortDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
+        return (0==(map&bitMask)) ? (shortDictionary[idx] += reader.readPackedShort()) : shortDictionary[idx];        
     }
 }

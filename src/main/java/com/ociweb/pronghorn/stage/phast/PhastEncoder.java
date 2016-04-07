@@ -1,11 +1,15 @@
 package com.ociweb.pronghorn.stage.phast;
 
 import java.io.IOException;
+
 import java.io.UnsupportedEncodingException;
 
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 
 public class PhastEncoder {
+	
+	public static final int INCOMING_VARIABLE = -63;
+	
 
 	public static void encodeIntPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, int value) {
         if (0 != (pmapHeader&bitMask)) {
@@ -34,14 +38,13 @@ public class PhastEncoder {
     }
     
     //this method encodes a string
-	public static void encodeString(DataOutputBlobWriter slab, DataOutputBlobWriter blob, String value) throws UnsupportedEncodingException{
+	public static void encodeString(DataOutputBlobWriter writer, String value) throws IOException{
     	//encode -63 so it knows it is variable length
-    	DataOutputBlobWriter.writePackedInt(slab, -63);
+		//make constant -63
+    	DataOutputBlobWriter.writePackedInt(writer, INCOMING_VARIABLE);
     		 
-    	//calculate string length in bytes, then encode it
-    	byte[] byteArray = value.getBytes("UTF-16BE");
-    	DataOutputBlobWriter.writePackedInt(slab, byteArray.length);
-    	DataOutputBlobWriter.writePackedChars(blob, value);
+    	//write string using utf
+    	writer.writeUTF(value);
     }
     
     //this method increments a dictionary value by one, then writes it to the pipe
