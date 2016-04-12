@@ -479,18 +479,22 @@ public class SequentialTrieParserTest {
         SequentialTrieParser map = new SequentialTrieParser(1000);  
         
         byte[] b1 = "X-Wap-Profile:%b\r\n".getBytes();
-        byte[] b2 = "X-ATT-DeviceId:%b\r\n".getBytes();
-        byte[] b3 = "X-ATT-DeviceId:%b\n".getBytes(); //testing same text with different ending
-        byte[] b4 = "X-Online-Host:%b\r\n".getBytes();
+
+        //  byte[] b2= "X-Online-Host:%b\r\n".getBytes();
+        byte[] b2 = "Content-Length: %u\r\n".getBytes();
+                
+        byte[] b3 = "X-ATT-DeviceId:%b\r\n".getBytes();
+        byte[] b4 = "X-ATT-DeviceId:%b\n".getBytes(); //testing same text with different ending
+                
         byte[] b5 = "\r\n".getBytes(); //testing detection of empty line without capture.
-        byte[] b6 = "Z%b\r\n".getBytes(); //testing capture of unknown pattern from the beginning (TODO: sometimes works based on position!!) //TODO also add number exract test.
+        byte[] b6 = "%b\r\n".getBytes(); //testing capture of unknown pattern from the beginning
         
         int bits = 7;
         int mask = (1<<bits)-1;
         
         map.setValue(wrapping(b1,bits), 0, b1.length, mask, 1);
         assertFalse(map.toString(),map.toString().contains("ERROR"));
-        
+              
         map.setValue(wrapping(b2,bits), 0, b2.length, mask, 2);
         assertFalse(map.toString(),map.toString().contains("ERROR"));
         
@@ -513,6 +517,21 @@ public class SequentialTrieParserTest {
         SequentialTrieParserReader.capturedFieldBytes(reader, 0, expected, 0, 7);
         assertEquals(Arrays.toString(new byte[]{'A','B','C','D'}),Arrays.toString(expected) );
                
+        byte[] example1 = "Content-Length: 1234\r\n".getBytes();
+        assertEquals(2, SequentialTrieParserReader.query(reader, map, wrapping(example1,bits), 0, example.length, mask));
+        
+        int[] target = new int[]{0,0,0,0};
+        SequentialTrieParserReader.capturedFieldInts(reader, 0, target, 0);
+        assertEquals(1,target[0]); //positive
+        
+        //System.out.println(Arrays.toString(target));
+        
+        assertEquals(0,target[1]);//no high int        
+        assertEquals(1234,target[2]);
+        short base = (short)(target[3]>>16);
+        short digits = (short)(target[3]);
+        assertEquals(10, base);
+        assertEquals(4, digits);        
         
     }
     

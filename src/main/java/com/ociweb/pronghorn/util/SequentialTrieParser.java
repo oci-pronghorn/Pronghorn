@@ -170,7 +170,7 @@ public class SequentialTrieParser {
                 default:
                     int remaining = limit-i;
                     builder.append("ERROR Unrecognized value, remaining "+remaining+"\n");
-                    if (remaining<30) {
+                    if (remaining<100) {
                         builder.append("Remaining:"+Arrays.toString(Arrays.copyOfRange(data, i, limit))+"\n" );
                     }
                     
@@ -325,8 +325,20 @@ public class SequentialTrieParser {
                 int type = 0xFF & data[pos++];
                 switch(type) {
                     case TYPE_BRANCH_VALUE:
-                    int pos1 = pos;
-                        pos = jumpOnBit((short) source[sourceMask & sourcePos], data[pos1++], data[pos1], pos1);
+                        
+                        short v = (short) source[sourceMask & sourcePos];
+                        if ('%'==v && '%'!=source[sourceMask & (1+sourcePos)]) {
+                            //we have found an escape sequence so we must insert a branch here we cant branch on a value
+                            
+                            fieldExtractionsCount++; 
+                            insertAtBranchValue(0, data, pos-1, source, sourcePos, sourceLength-length, sourceMask, value, false); 
+                            maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
+                            return;
+                            
+                        } else {
+                            int pos1 = pos;
+                            pos = jumpOnBit((short) v, data[pos1++], data[pos1], pos1);
+                        }
                         break;
                     case TYPE_ALT_BRANCH:
                         
@@ -488,7 +500,7 @@ public class SequentialTrieParser {
 //        return localSourcePos;
 //    }
 
-    private byte buildNumberBits(byte sourceByte) {  //TOOD: needs to be used somewhere??
+    private byte buildNumberBits(byte sourceByte) { 
         
         switch(sourceByte) {
             case ESCAPE_CMD_SIGNED_DEC:
@@ -503,9 +515,9 @@ public class SequentialTrieParser {
                 return SequentialTrieParser.NUMERIC_FLAG_DECIMAL;
             case ESCAPE_CMD_RATIONAL:
                 return SequentialTrieParser.NUMERIC_FLAG_SIGN | SequentialTrieParser.NUMERIC_FLAG_RATIONAL;
+            default:
+                throw new UnsupportedOperationException("Unsupported % operator found '"+((char)sourceByte)+"'");
         }
-        
-        return 0;
     }
 
 
@@ -848,6 +860,12 @@ public class SequentialTrieParser {
         data[pos++] = stop;
         return pos;
     }
+    
+    private int writeNumericExtract(short[] data, int pos, int type) {
+        data[pos++] = TYPE_VALUE_NUMERIC;
+        data[pos++] = buildNumberBits((byte)type);
+        return pos;
+    }
  
     private int writeRuns(short[] data, int pos, byte[] source, int sourcePos, int sourceLength, int sourceMask) {
        if (0 == sourceLength) {
@@ -884,12 +902,15 @@ public class SequentialTrieParser {
                               if (remainingLength > 0) {
                                   pos = writeRuns(data, pos, source, sourcePos, remainingLength, sourceMask);
                               }
-                              return pos;
                           } else {
-                              //Numeric    //TODO; finish code. Expected Numeric found 
-                              System.err.println(this);
-                              throw new UnsupportedOperationException("Unsupported % operator found '"+((char)value)+"'");
+                              pos = writeNumericExtract(data, pos, value);
+                              
+                              int remainingLength = runLeft-1;
+                              if (remainingLength > 0) {
+                                  pos = writeRuns(data, pos, source, sourcePos, remainingLength, sourceMask);
+                              }
                           }
+                          return pos;
                       }
                   }
                   data[pos++] = value;

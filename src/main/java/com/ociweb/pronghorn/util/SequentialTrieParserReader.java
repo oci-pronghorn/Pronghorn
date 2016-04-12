@@ -311,28 +311,10 @@ public class SequentialTrieParserReader {
                 }   
                 
             } else if (type == SequentialTrieParser.TYPE_VALUE_BYTES) {
-                
-                //TODO: ERROR: when we inserted at front it should have started with an ALT not an extract.
-                
-//                EXTRACT_BYTES5[0], 10[1], 
-//                SAFE6[2], 31[3], 
-//                RUN0[4], 7[5], 0[6], 0[7], 0[8], 0[9], 0[10], 0[11], 0[12], 
-//                SAFE6[13], 18[14], 
-                //        System.out.println(trie);
-                
-                //         System.out.println("Apos "+reader.sourcePos+"  "+reader.pos);
-                
                 localSourcePos = parseBytes(reader,source,localSourcePos, sourceLength-runLength, sourceMask, localData[pos++]);
-                
-                //         System.out.println("Bpos "+reader.sourcePos+"  "+reader.pos);
-                
-            } else if (type == SequentialTrieParser.TYPE_VALUE_NUMERIC) {
-                
-                parseNumeric(reader,source,localSourcePos, sourceLength-runLength, sourceMask, (int)localData[pos++]);
-                
-                  
-
-            } else if (type == SequentialTrieParser.TYPE_ALT_BRANCH) {
+            } else if (type == SequentialTrieParser.TYPE_VALUE_NUMERIC) {                
+                localSourcePos = parseNumeric(reader,source,localSourcePos, sourceLength-runLength, sourceMask, (int)localData[pos++]);
+             } else if (type == SequentialTrieParser.TYPE_ALT_BRANCH) {
 
                 pos = altBranch(reader, pos, localSourcePos, localData[pos++], localData[pos]);                                   
                 
@@ -511,7 +493,7 @@ public class SequentialTrieParserReader {
 
         publish(reader, sign, intValue, intLength, base);
 
-        return sourcePos;
+        return sourcePos-1;
     }
 
     private static void publish(SequentialTrieParserReader reader, int sign, long numericValue, int intLength, int base) {
