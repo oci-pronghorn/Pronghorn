@@ -5,16 +5,24 @@ import java.nio.ByteBuffer;
 
 public class StreamingReadVisitorToJSON implements StreamingReadVisitor {
 
-	StringBuilder tempStringBuilder =  new StringBuilder(128); 
-	ByteBuffer tempByteBuffer = ByteBuffer.allocate(512);
+	final StringBuilder tempStringBuilder;
+	ByteBuffer tempByteBuffer;
 	
 	PrintStream out;
 	int depth = 0;
 	int step = 2;
 	
 	public StreamingReadVisitorToJSON(PrintStream out) { //TODO: this should have been Appendable not PrintStream.
-		this.out = out;
+		this(out,4096, 256);
 	}
+	
+	public StreamingReadVisitorToJSON(PrintStream out, int maxBytesSize, int maxStringSize) {
+	    this.out = out;
+	    this.tempByteBuffer = ByteBuffer.allocate(maxBytesSize);
+	    this.tempStringBuilder =  new StringBuilder(maxStringSize);
+	    
+	}
+	
 	
 	@Override
 	public boolean paused() {

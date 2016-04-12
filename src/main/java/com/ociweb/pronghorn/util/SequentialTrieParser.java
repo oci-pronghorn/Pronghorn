@@ -344,8 +344,20 @@ public class SequentialTrieParser {
                         sourcePos = stepOverNumeric(source, sourcePos, sourceMask, (int) data[pos++]);
                         break;
                     case TYPE_VALUE_BYTES:
-                        fieldExtractionsCount++;                       
-                        sourcePos = stepOverBytes(source, sourcePos, sourceMask, data[pos++]);
+                        fieldExtractionsCount++;       
+                        
+                        int newSourcePos = stepOverBytes(source, sourcePos, sourceMask, data[pos++]);
+                        
+                        if (newSourcePos>0) {
+                            sourcePos = newSourcePos;
+                        } else {
+                            fieldExtractionsCount++; 
+                            //rollback and insert this new pattern since we did not match the existing
+                            insertAtBranchValue(0, data, pos-2, source, sourcePos, sourceLength-length, sourceMask, value, false); 
+                            maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
+                            return;
+                        }                        
+                        
                         break;
                     case TYPE_RUN:
                         //run
@@ -366,7 +378,7 @@ public class SequentialTrieParser {
                                     sourceByte = source[sourceMask & sourcePos++];
                                     //confirm second value is not also the escape byte so we do have a command
                                     if (ESCAPE_BYTE != sourceByte) {
-                                        fieldExtractionsCount++; //this count can be off by burried extractions.
+                                        fieldExtractionsCount++; //this count can be off by buried extractions.
                                         insertAtBranchValue(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun, sourcePos-2,false);                                    
                                         maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                                         return;
@@ -590,7 +602,7 @@ public class SequentialTrieParser {
             insertAtBranchValue(r1, data, p, source, sourceCharPos, sourceLength-length, sourceMask, value, branchOnByte); 
         } else {
             short temp = (short)(run-r1);
-            if (temp==0) {
+            if (temp==0) {//Delete me
                 System.err.println("run of zero?");
             }
             data[runPos] = temp;
@@ -602,10 +614,11 @@ public class SequentialTrieParser {
 
     private int stepOverBytes(byte[] source, int sourcePos, int sourceMask, final short stop) {
         short t = 0;
+        int c = source.length;
         do {
             t = source[sourceMask & sourcePos++];
-        }  while (stop!=t);
-        return sourcePos;
+        }  while (stop!=t && --c>0);
+        return stop==t ? sourcePos : -1;
     }
 
 
@@ -867,7 +880,7 @@ public class SequentialTrieParser {
                               pos = writeBytesExtract(data, pos, stop);
                               
                               //Recursion used to complete the rest of the run.
-                              int remainingLength = sourceLength-sourcePos;
+                              int remainingLength = runLeft-2;
                               if (remainingLength > 0) {
                                   pos = writeRuns(data, pos, source, sourcePos, remainingLength, sourceMask);
                               }

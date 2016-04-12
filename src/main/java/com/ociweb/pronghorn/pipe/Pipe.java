@@ -647,13 +647,14 @@ public final class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> int bytesReadBase(Pipe<S> rb) {
+        assert(rb.blobReadBase<=Pipe.BYTES_WRAP_MASK);
     	return rb.blobReadBase;
     }
         
     
     public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> pipe, int bytesConsumed) {
+        assert(bytesConsumed>=0) : "Bytes consumed must be positive";
         pipe.blobReadBase = Pipe.BYTES_WRAP_MASK & (pipe.blobReadBase+bytesConsumed);
-     //   assert(0==bytesConsumed || pipe.blobReadBase <= Pipe.bytesHeadPosition(pipe)); //not true for some tests, must investigate jFAST usage.
     }
     
     public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> pipe) {
@@ -2070,14 +2071,13 @@ public final class Pipe<T extends MessageSchema> {
 	public static <S extends MessageSchema> int restorePosition(Pipe<S> ring, int pos) {
 		assert(pos>=0);
 		return pos + Pipe.bytesReadBase(ring);
-
 	}
 
 	/*
 	 * WARNING: this method has side effect of moving byte pointer.
 	 */
     public static <S extends MessageSchema> int bytePosition(int meta, Pipe<S> ring, int len) {
-    	int pos =  restorePosition(ring, meta & RELATIVE_POS_MASK);    	
+    	int pos =  restorePosition(ring, meta & RELATIVE_POS_MASK);
         if (len>=0) {
             ring.blobRingTail.byteWorkingTailPos.value =  BYTES_WRAP_MASK&(len+ring.blobRingTail.byteWorkingTailPos.value);
         }        
@@ -2255,11 +2255,12 @@ public final class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> int releaseReadLock(Pipe<S> pipe) {
-        int len = takeValue(pipe);
-        Pipe.markBytesReadBase(pipe, len);
+        int bytesConsumedByFragment = takeValue(pipe);
+        assert(bytesConsumedByFragment>=0) : "Bytes consumed by fragment must never be negative, was fragment written correctly?, is read positioned correctly?";
+        Pipe.markBytesReadBase(pipe, bytesConsumedByFragment);
        // assert(Pipe.contentRemaining(pipe)>=0); //not always valid, check the zero length sequence case.
         batchedReleasePublish(pipe, pipe.blobRingTail.byteWorkingTailPos.value, pipe.slabRingTail.workingTailPos.value);
-        return len;        
+        return bytesConsumedByFragment;        
     }
     
     public static <S extends MessageSchema> int readNextWithoutReleasingReadLock(Pipe<S> pipe) {
@@ -2377,12 +2378,13 @@ public final class Pipe<T extends MessageSchema> {
      * Low level API for publish
      * @param ring
      */
-    public static <S extends MessageSchema> void publishWrites(Pipe<S> ring) {
+    public static <S extends MessageSchema> int publishWrites(Pipe<S> ring) {
     
     	//happens at the end of every fragment
-        writeTrailingCountOfBytesConsumed(ring, ring.slabRingHead.workingHeadPos.value++); //increment because this is the low-level API calling
+        int consumed = writeTrailingCountOfBytesConsumed(ring, ring.slabRingHead.workingHeadPos.value++); //increment because this is the low-level API calling
 
 		publishWritesBatched(ring);
+		return consumed;
     }
 
     public static <S extends MessageSchema> void publishWritesBatched(Pipe<S> ring) {
@@ -2595,13 +2597,15 @@ public final class Pipe<T extends MessageSchema> {
         return ring.ringWalker.cursor;
     }
 
-	public static <S extends MessageSchema> void writeTrailingCountOfBytesConsumed(Pipe<S> ring, long pos) {
+	public static <S extends MessageSchema> int writeTrailingCountOfBytesConsumed(Pipe<S> ring, long pos) {
 
 		int consumed = ring.blobRingHead.byteWorkingHeadPos.value - ring.blobWriteLastConsumedPos;
+		
 		//log.trace("wrote {} bytes consumed to position {}",consumed,pos);
+		
 		ring.slabRing[ring.mask & (int)pos] = consumed>=0 ? consumed : consumed&BYTES_WRAP_MASK;
 		ring.blobWriteLastConsumedPos = ring.blobRingHead.byteWorkingHeadPos.value;
-
+		return consumed;
 	}
 
 	public static <S extends MessageSchema> IntBuffer wrappedSlabRing(Pipe<S> ring) {

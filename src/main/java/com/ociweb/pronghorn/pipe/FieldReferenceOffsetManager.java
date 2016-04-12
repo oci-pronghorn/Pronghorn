@@ -741,20 +741,14 @@ public class FieldReferenceOffsetManager {
         if (!Arrays.equals(tokens, other.tokens)) {
             return false;
         }
-        
-        //TODO: Tippy, new feature not rolled out yet but soon.
-        boolean doIt = true;
-        
-        if (doIt) {
-            if (!Arrays.equals(longDefaults, other.longDefaults)) {
-                return false;
-            }
-            if (!Arrays.equals(intDefaults, other.intDefaults)) {
-                return false;
-            }
+
+        if (!Arrays.equals(longDefaults, other.longDefaults)) {
+            return false;
         }
-        
-        
+        if (!Arrays.equals(intDefaults, other.intDefaults)) {
+            return false;
+        }
+          
         return true;
     }
 
@@ -859,5 +853,5 @@ public class FieldReferenceOffsetManager {
     public static String buildMsgConstName(FieldReferenceOffsetManager encodedFrom, int expectedMsgIdx) {
         return "MSG_"+encodedFrom.fieldNameScript[expectedMsgIdx].toUpperCase().replace(' ','_')+"_"+encodedFrom.fieldIdScript[expectedMsgIdx];
     }
-    
+     
 }

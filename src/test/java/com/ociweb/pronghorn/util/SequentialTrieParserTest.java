@@ -40,6 +40,67 @@ public class SequentialTrieParserTest {
     byte[] toParseMiddle    = new byte[]{100,101,10,11,12,13,127,102};
     byte[] toParseBeginning = new byte[]{10,11,12,13,127,100,101,102};
     
+    
+    //test for byte extract followed by different tails
+    byte[] dataBytesMultiBytes1 = new byte[]{100,102,'%','b','\r','\n',0,0};//wraps
+    byte[] dataBytesMultiBytes2 = new byte[]{100,103,'%','b','\r','\n'};
+    byte[] dataBytesMultiBytes3 = new byte[]{100,102,'%','b','\n',0,0,0};//wraps
+    
+    byte[] dataBytesMultiBytesValue1 = new byte[]{100,102,10,11,12,'\r','\n'};
+    byte[] dataBytesMultiBytesValue2 = new byte[]{100,103,20,21,22,23,'\r','\n'};
+    byte[] dataBytesMultiBytesValue3 = new byte[]{100,103,30,31,'\r','\n'};
+    
+    
+    @Test 
+    public void testExtractMultiBytes() {
+        SequentialTrieParserReader reader = new SequentialTrieParserReader(3);
+        SequentialTrieParser map = new SequentialTrieParser(1000);
+  
+                
+        map.setValue(toParseEnd, 0, toParseEnd.length, 15, value4);
+        map.setValue(toParseMiddle, 0, toParseMiddle.length, 15, value4);
+        map.setValue(toParseBeginning, 0, toParseBeginning.length, 15, value4);        
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
+        
+        map.setValue(dataBytesMultiBytes1, 0, 6, 7, value1);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
+        
+        assertEquals(value1, SequentialTrieParserReader.query(reader,map,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15));
+        
+        map.setValue(dataBytesMultiBytes2, 0, dataBytesMultiBytes2.length, 15, value2);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
+        
+        assertEquals(value2, SequentialTrieParserReader.query(reader,map,dataBytesMultiBytesValue2, 0, dataBytesMultiBytesValue2.length, 15));
+        
+        map.setValue(dataBytesMultiBytes3, 0, 5, 7, value3);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
+        
+        assertEquals(value1, SequentialTrieParserReader.query(reader,map,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15));
+        assertEquals(value2, SequentialTrieParserReader.query(reader,map,dataBytesMultiBytesValue2, 0, dataBytesMultiBytesValue2.length, 15));
+        assertEquals(value2, SequentialTrieParserReader.query(reader,map,dataBytesMultiBytesValue3, 0, dataBytesMultiBytesValue3.length, 15));
+                        
+    }
+    
+    @Test 
+    public void testExtractMultiBytes2() {
+        SequentialTrieParserReader reader = new SequentialTrieParserReader(3);
+        SequentialTrieParser map = new SequentialTrieParser(1000);
+  
+                
+        map.setValue(toParseEnd, 0, toParseEnd.length, 15, value4);
+        map.setValue(toParseMiddle, 0, toParseMiddle.length, 15, value4);
+        map.setValue(toParseBeginning, 0, toParseBeginning.length, 15, value4);        
+    
+        assertFalse(map.toString(),map.toString().contains("ERROR"));     
+        
+        map.setValue(dataBytesMultiBytes3, 0, dataBytesMultiBytes3.length, 15, value3);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
+        
+        map.setValue(dataBytesMultiBytes1, 0, 6, 7, value1);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
+    }
+    
+    
     @Test 
     public void testExtractBytesEnd() {
         SequentialTrieParserReader reader = new SequentialTrieParserReader(3);
@@ -71,13 +132,13 @@ public class SequentialTrieParserTest {
         SequentialTrieParser map = new SequentialTrieParser(1000);
         
         map.setValue(data1, 0, 3, Integer.MAX_VALUE, value1);
-        //System.out.println(map);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
         
         map.setValue(dataBytesExtractMiddle, 0, dataBytesExtractMiddle.length, Integer.MAX_VALUE, value2);
-        //System.out.println(map);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
         
         map.setValue(data1, 2, 3, Integer.MAX_VALUE, value3);
-        //System.out.println(map);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
         
         assertEquals(value1, SequentialTrieParserReader.query(reader,map,data1, 0, 3, Integer.MAX_VALUE));
         assertEquals(value3, SequentialTrieParserReader.query(reader,map,data1, 2, 3, Integer.MAX_VALUE));
@@ -92,13 +153,7 @@ public class SequentialTrieParserTest {
         assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(expected) );
         
     }
-    
-    //TOOD: think about later as to how.
-    //  abcdefg
-    //  abc%bxfg
-    //second one will modify the other 
-    
-    
+
     @Test 
     public void testExtractBytesBeginning() {
         SequentialTrieParserReader reader = new SequentialTrieParserReader(3);
@@ -106,20 +161,19 @@ public class SequentialTrieParserTest {
         
         map.setValue(data1, 0, 3, 7, value1);
         
-        //System.out.println(map);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
         
         map.setValue(dataBytesExtractBeginning, 0, dataBytesExtractBeginning.length, 7, value2);
         
-        //System.out.println(map);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
         
         map.setValue(data1, 2, 3, 7, value3);
         
-        //System.out.println(map);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
         
         assertEquals(value1, SequentialTrieParserReader.query(reader,map,data1, 0, 3, 7));
         assertEquals(value3, SequentialTrieParserReader.query(reader,map,data1, 2, 3, 7));
         
-        //never returns???  //TODO: fix this test, required for unkown headers.  needs to pop.
         assertEquals(value2, SequentialTrieParserReader.query(reader,map,toParseBeginning, 0, toParseBeginning.length, 7));
                 
         assertEquals(1, SequentialTrieParserReader.capturedFieldCount(reader));
@@ -371,11 +425,11 @@ public class SequentialTrieParserTest {
         
         map.setValue(data1, 0, 8, 7, value1);
         
-      //  System.out.println(map);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
        
         map.setValue(data1, 0, 3, 7, value2);
         
-      //  System.out.println(map);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
         
         assertEquals(value1, SequentialTrieParserReader.query(reader,map,data1, 0, 8, 7));
         assertEquals(value2, SequentialTrieParserReader.query(reader,map,data1, 0, 3, 7));
@@ -398,11 +452,11 @@ public class SequentialTrieParserTest {
         
         map.setValue(data1, 0, 3, 7, value2);
         
-     //   System.err.println(map);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
         
         map.setValue(data1, 0, 8, 7, value1);
                 
-      //  System.err.println(map);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
         
         assertEquals(value1, SequentialTrieParserReader.query(reader,map,data1, 0, 8, 7));
         assertEquals(value2, SequentialTrieParserReader.query(reader,map,data1, 0, 3, 7));
@@ -424,39 +478,50 @@ public class SequentialTrieParserTest {
         SequentialTrieParserReader reader = new SequentialTrieParserReader(10);
         SequentialTrieParser map = new SequentialTrieParser(1000);  
         
-        byte[] b1 = "X-Wap-Profile:%b\n".getBytes();
-        byte[] b2 = "X-ATT-DeviceId:%b\n".getBytes();
-        byte[] b3 = "Front-End-Https:%b\n".getBytes();
-        byte[] b4 = "X-Online-Host:%b\n".getBytes();
-        byte[] b5 = "X-Forwarded-Host:%b\n".getBytes();
-        byte[] b6 = "X-Forwarded-For:%b\n".getBytes();
+        byte[] b1 = "X-Wap-Profile:%b\r\n".getBytes();
+        byte[] b2 = "X-ATT-DeviceId:%b\r\n".getBytes();
+        byte[] b3 = "X-ATT-DeviceId:%b\n".getBytes(); //testing same text with different ending
+        byte[] b4 = "X-Online-Host:%b\r\n".getBytes();
+        byte[] b5 = "\r\n".getBytes(); //testing detection of empty line without capture.
+        byte[] b6 = "Z%b\r\n".getBytes(); //testing capture of unknown pattern from the beginning (TODO: sometimes works based on position!!) //TODO also add number exract test.
         
-        map.setValue(b1, 0, b1.length, Integer.MAX_VALUE, 1);
-        //System.out.println(map);
+        int bits = 7;
+        int mask = (1<<bits)-1;
         
-        map.setValue(b2, 0, b2.length, Integer.MAX_VALUE, 2);
-        //System.out.println(map);
+        map.setValue(wrapping(b1,bits), 0, b1.length, mask, 1);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
         
-        map.setValue(b3, 0, b3.length, Integer.MAX_VALUE, 3);
-        //System.out.println(map);
+        map.setValue(wrapping(b2,bits), 0, b2.length, mask, 2);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
         
-        map.setValue(b4, 0, b4.length, Integer.MAX_VALUE, 4); 
-        //System.out.println(map);
+        map.setValue(wrapping(b3,bits), 0, b3.length, mask, 3);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
         
-        map.setValue(b5, 0, b5.length, Integer.MAX_VALUE, 5);
-        //System.out.println(map);
+        map.setValue(wrapping(b4,bits), 0, b4.length, mask, 4); 
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
         
-        map.setValue(b6, 0, b6.length, Integer.MAX_VALUE, 6);
-        //System.out.println(map);
+        map.setValue(wrapping(b5,bits), 0, b5.length, mask, 5);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
+        
+        map.setValue(wrapping(b6,bits), 0, b6.length, mask, 6);
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
        
-        byte[] example = "X-Wap-Profile:ABCD\nHello".getBytes();
-        assertEquals(1, SequentialTrieParserReader.query(reader,  map, example, 0, example.length, Integer.MAX_VALUE));
+        byte[] example = "X-Wap-Profile:ABCD\r\nHello".getBytes();
+        assertEquals(1, SequentialTrieParserReader.query(reader,  map, wrapping(example,bits), 0, example.length, mask));
         
         byte[] expected = new byte[]{0,0,0,0};        
         SequentialTrieParserReader.capturedFieldBytes(reader, 0, expected, 0, 7);
         assertEquals(Arrays.toString(new byte[]{'A','B','C','D'}),Arrays.toString(expected) );
-                
+               
         
+    }
+    
+    
+    private byte[] wrapping(byte[] data, int bits) {
+        int len = 1<<bits;
+        byte[] result = new byte[len];
+        System.arraycopy(data, 0, result, 0, data.length);
+        return result;
     }
     
     

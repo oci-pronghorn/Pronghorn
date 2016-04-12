@@ -3,8 +3,6 @@ package com.ociweb.pronghorn.util;
 import java.io.DataOutput;
 import java.io.IOException;
 
-import javax.transaction.TransactionRequiredException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -345,7 +343,7 @@ public class SequentialTrieParserReader {
            
             type = localData[pos++]; 
         }
-        assert((localSourcePos-reader.sourcePos)>=0);
+
         reader.sourceLen -= (localSourcePos-reader.sourcePos);
         reader.sourcePos = localSourcePos;
         
@@ -603,11 +601,12 @@ public class SequentialTrieParserReader {
 
     }
    
-    public static void writeCapturedValuesToPipe(SequentialTrieParserReader reader, Pipe<?> target) {
+    public static int writeCapturedValuesToPipe(SequentialTrieParserReader reader, Pipe<?> target) {
         int limit = reader.capturedPos;
         int[] localCapturedValues = reader.capturedValues;
         
         
+        int totalBytes = 0;
         int i = 0;
         while (i < limit) {
             
@@ -618,6 +617,19 @@ public class SequentialTrieParserReader {
                 int p = localCapturedValues[i++];
                 int l = localCapturedValues[i++];
                 int m = localCapturedValues[i++];   
+                
+//               
+//                try {
+//                    System.out.println(p+" "+(m&p) +"  captured :"+    Appendables.appendUTF8(new StringBuilder(), reader.capturedBlobArray, p, l, m).toString());
+//                } catch (IOException e) {
+//                    // TODO Auto-generated catch block
+//                    e.printStackTrace();
+//                }
+//                
+//                
+//                System.out.println("wrote to ring pos:"+ Pipe.getBlobWorkingHeadPosition(target)+" len "+l);
+                
+                totalBytes += l;
                 Pipe.addByteArrayWithMask(target, m, l, reader.capturedBlobArray, p);
                 
             } else {
@@ -629,7 +641,7 @@ public class SequentialTrieParserReader {
                 
             }            
         }
-        
+        return totalBytes;
     }
     
     //this is only for single fields that appear out of order and need to be put back in order.
