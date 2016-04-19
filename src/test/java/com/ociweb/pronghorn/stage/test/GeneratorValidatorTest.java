@@ -29,7 +29,7 @@ public class GeneratorValidatorTest {
 
     private final int seed = 420;
     private final int iterations = 10;
-    private final long TIMEOUT_SECONDS = 4;
+    private final long TIMEOUT_SECONDS = 40;//set larger for cloud runs
 
     public static FieldReferenceOffsetManager buildFROM() {
         try {
