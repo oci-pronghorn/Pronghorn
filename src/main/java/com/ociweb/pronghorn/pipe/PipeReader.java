@@ -389,8 +389,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
     	long pos = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
-        int meta = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos)];
-        int len = Pipe.primaryBuffer(ring)[ring.mask & (int)(pos + 1)];
+        int meta = Pipe.slab(ring)[ring.mask & (int)(pos)];
+        int len = Pipe.slab(ring)[ring.mask & (int)(pos + 1)];
         return Pipe.wrappedBlobReadingRingB(ring,meta,len);
 	}
 
@@ -399,8 +399,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 
     	long tmp = ring.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 
-        int pos = Pipe.primaryBuffer(ring)[ring.mask & (int)(tmp)];
-        int len = Pipe.primaryBuffer(ring)[ring.mask & (int)(tmp + 1)];
+        int pos = Pipe.slab(ring)[ring.mask & (int)(tmp)];
+        int len = Pipe.slab(ring)[ring.mask & (int)(tmp + 1)];
                 
         if (pos < 0) {
             readBytesConst(ring,len,target,targetOffset,POS_CONST_MASK & pos);
