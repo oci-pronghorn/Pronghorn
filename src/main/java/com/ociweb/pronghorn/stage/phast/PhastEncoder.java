@@ -10,7 +10,13 @@ public class PhastEncoder {
 	
 	public static final int INCOMING_VARIABLE = -63;
 	
-
+	public static long pmapBuilder(long pmap, int type, boolean isNullable){
+		pmap = (pmap << 1) +1;
+		if (isNullable){
+			pmap = (pmap << 1) +1;
+		}
+		return pmap;
+	}
 	public static void encodeIntPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, int value) {
         if (0 != (pmapHeader&bitMask)) {
             DataOutputBlobWriter.writePackedUInt(writer, value);
