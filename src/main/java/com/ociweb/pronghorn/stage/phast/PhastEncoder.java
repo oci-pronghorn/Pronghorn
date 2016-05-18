@@ -5,14 +5,33 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.token.OperatorMask;
+import com.ociweb.pronghorn.pipe.token.TokenBuilder;
+import com.ociweb.pronghorn.pipe.token.TypeMask;
 
 public class PhastEncoder {
 	
 	public static final int INCOMING_VARIABLE = -63;
 	
-	public static long pmapBuilder(long pmap, int type, boolean isNullable){
-		pmap = (pmap << 1) +1;
-		if (isNullable){
+	//encodes pmap one number at a time
+	//takes the pmap (0 if it has not been started yet) and the token for the number
+	public static long pmapBuilder(long pmap, int token){
+		//gets the operation from the token
+		int oper = TokenBuilder.extractOper(token);
+		switch (oper) {
+        	case OperatorMask.Field_Copy:
+        		pmap = pmap << 1;
+        	case OperatorMask.Field_Constant:
+        		//Need to make methods for maybe
+        	case OperatorMask.Field_Default:
+        		pmap = (pmap << 1) + 1;
+        	case OperatorMask.Field_Delta:
+        		pmap = (pmap << 1) + 1;
+        	case OperatorMask.Field_Increment:
+        		pmap = (pmap << 1) + 1;
+		//get the type from the token
+		int type = TokenBuilder.extractType(token);
+		if (TypeMask.isOptional(type)){
 			pmap = (pmap << 1) +1;
 		}
 		return pmap;
