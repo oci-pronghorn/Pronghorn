@@ -441,6 +441,8 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
                 target.append(fragmentParaTypes[i]).append(' ').append(fragmentParaArgs[i]).append(fragmentParaSuff[i]);
             }
             target.append(") {\n");
+          
+            bodyBuilder(schema, fragmentBusinessCursor, fragmentParaCount,fragmentParaTypes,fragmentParaArgs,fragmentParaSuff);
             target.append("}\n");
             target.append("\n");
             
@@ -448,6 +450,49 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         }
     }
 
+
+    //override this method !!
+    protected void bodyBuilder(MessageSchema schema, int cursor, int fragmentParaCount, CharSequence[] fragmentParaTypes, CharSequence[] fragmentParaArgs, CharSequence[] fragmentParaSuff) {
+        //This is example code only to be tossed.
+        
+        //The runtime code should call this once,  this comment is code to be generated but NOT here.
+        //int[] intDictionary = from.newIntDefaultsDictionary()
+        //intp[ prevDictionary = ....
+        
+        FieldReferenceOffsetManager from = MessageSchema.from(schema);
+                
+        int curCursor = cursor;
+                
+        long activePmap = 0 ;
+        for(int paramIdx = 0; paramIdx<fragmentParaCount; paramIdx++) {
+            
+            String varName = new StringBuilder().append(fragmentParaArgs[paramIdx]).append(fragmentParaSuff[paramIdx]).toString();
+            String varType = new StringBuilder().append(fragmentParaTypes[paramIdx]).toString();
+            int token = from.tokens[curCursor];
+            
+            
+            
+            //Good stuff goes here.
+            //this comment is an example of what should be generated not executed here.
+            //  activePmap = pmapBuilding( activePmap,  token.  <varName> , initDictionary[curCursor], prev??
+             /// varName is the name of the variable that holds the cur value.
+            //Which pmap should be called??? switch on varType.
+            
+            
+            curCursor +=  TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
+            
+        }
+        
+        //now THE PMAP IS BUILT.
+        
+        
+        //NOW GENERATE WRITE IT CODE
+        
+        
+        
+        
+        
+    }
 
     @Override
     protected void processFragmentOpen(String string, int cursor, long id) throws IOException {
