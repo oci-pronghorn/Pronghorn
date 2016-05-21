@@ -15,27 +15,43 @@ public class PhastEncoder {
 	
 	//encodes pmap one number at a time
 	//takes the pmap (0 if it has not been started yet) and the token for the number
-	public static long pmapBuilder(long pmap, int token){
+	public static long pmapBuilderLong(long pmap, int token, long curValue, long prevValue, long initValue, boolean isNull){
 		//gets the operation from the token
+		//get the type from the token, to see if it is optional or not
+		int type = TokenBuilder.extractType(token);
+		if (TypeMask.isOptional(type)){
+			pmap = (pmap << 1) + (isNull? 1:0);
+		}
+		//build pmap according to operator
 		int oper = TokenBuilder.extractOper(token);
 		switch (oper) {
         	case OperatorMask.Field_Copy:
-        		pmap = pmap << 1;
+        		pmap = (pmap << 1) + (prevValue==curValue? 0:1);
+        		break;
         	case OperatorMask.Field_Constant:
-        		//Need to make methods for maybe
+        		//this intentionally left blank, does nothing if constant
+        		break;
         	case OperatorMask.Field_Default:
-        		pmap = (pmap << 1) + 1;
+        		pmap = (pmap << 1) + (curValue==initValue? 0:1);
+        		break;
         	case OperatorMask.Field_Delta:
-        		pmap = (pmap << 1) + 1;
+        		pmap = (pmap << 1) + (curValue==initValue? 1:0);
+        		break;
         	case OperatorMask.Field_Increment:
-        		pmap = (pmap << 1) + 1;
-		//get the type from the token
-		int type = TokenBuilder.extractType(token);
-		if (TypeMask.isOptional(type)){
-			pmap = (pmap << 1) +1;
+        		pmap = (pmap << 1) + ((1 + prevValue) == curValue? 1:0);
+        		break;
 		}
 		return pmap;
 	}
+	
+	public static long pmapBuilderInt(long pmap, int token){
+		return pmap;
+	}
+	
+	public static long pmapBuilderString(long pmap, int token){
+		return pmap;
+	}
+	
 	public static void encodeIntPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, int value) {
         if (0 != (pmapHeader&bitMask)) {
             DataOutputBlobWriter.writePackedUInt(writer, value);
