@@ -222,19 +222,22 @@ public class GraphManager {
 		int i = -1;
 		while (++i<m.stageIdToStage.length) {
 			if (null!=m.stageIdToStage[i]) {				
-				if (!isStageTerminated(m, i) ) { 				
-					PronghornStage stage = getStage(m,i);
-					StageScheduler.log.error("-------------------");//divide the log for better clarity
-					logInputs(StageScheduler.log, m, stage);
-					StageScheduler.log.error("  Expected stage {} to be stopped but it appears to be running. terminated:{}", stage, isStageTerminated(m, i));
-					logOutputs(StageScheduler.log, m, stage);
-					StageScheduler.log.error("-------------------");//divide the log for better clarity
+				if (!isStageTerminated(m, i) ) { 	
+				    PronghornStage stage = getStage(m,i);
+				    //if all the inputs are empty this is not where the stall will be found
+				    if (!isInputsEmpty(m,stage)) {
+				    
+    					StageScheduler.log.error("-------------------");//divide the log for better clarity
+    					logInputs(StageScheduler.log, m, stage);
+    					StageScheduler.log.error("  Expected stage {} to be stopped but it appears to be running. terminated:{}", stage, isStageTerminated(m, i));
+    					logOutputs(StageScheduler.log, m, stage);
+    					StageScheduler.log.error("-------------------");//divide the log for better clarity
+    					
+    					result = false;
+    					
+    					reportUnexpectedThreadStacks(m);
 					
-					result = false;
-					
-					reportUnexpectedThreadStacks();
-					
-					
+			        }
 				}				
 			}
 		}		
@@ -244,7 +247,7 @@ public class GraphManager {
 		return result;
 	}
 
-    private static void reportUnexpectedThreadStacks() {
+    private static void reportUnexpectedThreadStacks(GraphManager m) {
         Map<Thread, StackTraceElement[]> allTraces = Thread.getAllStackTraces();
         for(Entry<Thread, StackTraceElement[]> item: allTraces.entrySet()) {
             
@@ -269,8 +272,19 @@ public class GraphManager {
                 //These are very frequent at the bottom of Pronghorn stack.
         	    ignore |= ste[0].toString().contains("ThreadPerStageScheduler.continueRunning");
         	    ignore |= ste[0].toString().contains("com.ociweb.pronghorn.stage.scheduling.GraphManager");
-        	            					    
         	    if (!ignore) {
+        	            			
+        	        String threadName = item.getKey().getName();
+        	        
+        	        int idIdx = threadName.indexOf("id:");
+        	        if (idIdx>=0) {
+        	            int stageId = Integer.valueOf(threadName.substring(idIdx+3));
+        	            if (isInputsEmpty(m,getStage(m,stageId))) {
+        	                continue;//do next, this one has nothing blocking.
+        	            }
+        	        }
+        	    
+        	    
         		    System.err.println("");
         		    System.err.println(item.getKey().getName());
         		    while (--j>=0) {
@@ -1002,6 +1016,18 @@ public class GraphManager {
 		
 	}
 
+	public static boolean isInputsEmpty(GraphManager m,    PronghornStage stage) {
+	     int ringId;
+	     int idx = m.stageIdToInputsBeginIdx[stage.stageId];
+	     while (-1 != (ringId=m.multInputIds[idx++])) { 
+	         
+	         if (Pipe.contentRemaining(m.pipeIdToPipe[ringId])>0) {
+	             return false;
+	         }                
+	     }               
+	     return true;
+	}
+	
 	/**
 	 * Initialize the buffers for the input rings of this stage and
 	 * Block until some other code has initialized the output rings. 

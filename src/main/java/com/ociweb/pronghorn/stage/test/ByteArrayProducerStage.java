@@ -41,8 +41,8 @@ public class ByteArrayProducerStage extends PronghornStage{
             
             int size = Pipe.addMsgIdx(output, 0);
             Pipe.addByteArray(rawData, pos, length, output);
-            Pipe.publishWrites(output);
             Pipe.confirmLowLevelWrite(output, size);
+            Pipe.publishWrites(output);
             
             pos+=length;
             ++chunkCount;

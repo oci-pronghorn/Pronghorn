@@ -74,13 +74,13 @@ public class PhastCodecSchemaTest {
             
             //adds testing of byte blocks on odd iterations.
             if (1==(1&j)) {
-                Pipe.addMsgIdx(testValuesToEncode, PhastCodecSchema.MSG_BLOBCHUNK_1000);
-                Pipe.confirmLowLevelWrite(testValuesToEncode, size);        
+                int writeSize = Pipe.addMsgIdx(testValuesToEncode, PhastCodecSchema.MSG_BLOBCHUNK_1000);
+                Pipe.confirmLowLevelWrite(testValuesToEncode, writeSize);        
                 Pipe.publishWrites(testValuesToEncode);
                 
-                Pipe.addMsgIdx(testValuesToEncode2, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+                writeSize = Pipe.addMsgIdx(testValuesToEncode2, RawDataSchema.MSG_CHUNKEDSTREAM_1);
                 Pipe.addByteArray(testBody, 0, testBody.length, testValuesToEncode2);
-                Pipe.confirmLowLevelWrite(testValuesToEncode2, size);        
+                Pipe.confirmLowLevelWrite(testValuesToEncode2, writeSize);        
                 Pipe.publishWrites(testValuesToEncode2);
             }
             

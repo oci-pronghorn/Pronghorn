@@ -59,14 +59,14 @@ public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage
 	@Override
 	public void run() {
 	    try {
-		boolean foundData = dataToRead(counts);
-		long now = System.currentTimeMillis();
-		if (foundData || now>nextOutTime) {
-			nextOutTime = now+stepTime;			
-                if (!processCounts("Running:",counts,totalCounts)) {
-                	return;
-                }
-		}
+    		boolean foundData = dataToRead(counts);
+    		long now = System.currentTimeMillis();
+    		if (foundData || now>nextOutTime) {
+    			nextOutTime = now+stepTime;			
+                    if (!processCounts("Running:",counts,totalCounts)) {
+                    	return;
+                    }
+    		}
 
 	    } catch (IOException e) {
 	        throw new RuntimeException(e);            

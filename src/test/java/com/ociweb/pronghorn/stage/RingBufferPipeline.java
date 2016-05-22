@@ -394,7 +394,12 @@ public class RingBufferPipeline {
 		private ProductionStageHighLevel(GraphManager gm, Pipe outputRing) {
 			super(gm,NONE,outputRing);
 			this.outputRing = outputRing;
-			PipeWriter.setPublishBatchSize(outputRing, 8);
+		}
+		
+		@Override
+		public void startup() {
+		    PipeWriter.setPublishBatchSize(outputRing, 8);
+		    
 		}
 
 		@Override

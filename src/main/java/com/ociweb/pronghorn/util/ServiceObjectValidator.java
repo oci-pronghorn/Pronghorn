@@ -10,4 +10,10 @@ public interface ServiceObjectValidator<T> {
      */
     boolean isValid(T serviceObject);
 
+    /**
+     * Must be removed due to space issues
+     * @param t
+     */
+    void dispose(T t);
+
 }

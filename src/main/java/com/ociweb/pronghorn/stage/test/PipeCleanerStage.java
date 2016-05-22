@@ -19,6 +19,11 @@ public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
     private long tail;
     private int byteTail;
     
+
+    public static PipeCleanerStage newInstance(GraphManager gm, Pipe pipe) {
+        return new PipeCleanerStage(gm, pipe);
+    }
+    
     //NOTE: this should be extended to produce a diagnostic stage 
     
     public PipeCleanerStage(GraphManager graphManager, Pipe<T> input) {
@@ -53,10 +58,15 @@ public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
             
             if (byteHead >= byteTail) {
                 totalBlobCount += byteHead-byteTail;
+                
+                //System.out.println(byteHead-byteTail);
             } else {
                 totalBlobCount += (long) (Pipe.blobMask(input)&byteHead);
+             //   System.out.println((Pipe.blobMask(input)&byteHead)); //wrong!!!
+                
                 totalBlobCount += (long)(input.sizeOfBlobRing-(Pipe.blobMask(input)&byteTail));
-            }
+              //  System.out.println((input.sizeOfBlobRing-(Pipe.blobMask(input)&byteTail)) );  //wrong.
+            } 
             
             Pipe.publishBlobWorkingTailPosition(input, byteTail = byteHead);
             Pipe.publishWorkingTailPosition(input, tail = head);            
@@ -82,6 +92,7 @@ public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
     public <A extends Appendable> A appendReport(A target) throws IOException {
         
         Appendables.appendValue(target, "Duration :",duration,"ms\n");
+       // Appendables.appendValue(target, "BlobOnlyCount :",totalBlobCount,"\n");        
         Appendables.appendValue(target, "TotalBytes :",totalBytes(),"\n");
         
         if (0!=duration) {
@@ -94,4 +105,5 @@ public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
         }
         return target;
     }
+
 }

@@ -165,9 +165,8 @@ public class SplitterStage<T extends MessageSchema> extends PronghornStage {
 			if (!Pipe.hasRoomForWrite(ss.targets[working[j]], totalPrimaryCopy)) {
 			 	working[c++] = working[j];
 			} else {
-				Pipe<S> ringBuffer = ss.targets[working[j]];					
-				copyData(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);				
-				Pipe.confirmLowLevelWrite(ringBuffer, totalPrimaryCopy);	
+			    Pipe.confirmLowLevelWrite(ss.targets[working[j]], totalPrimaryCopy);	
+				copyData(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ss.targets[working[j]]);				
 			}
 			j++;
 		}

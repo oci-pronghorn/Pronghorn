@@ -174,7 +174,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
                     GraphManager.initInputRings(graphManager, stage.stageId);                   
                     log.trace("finished on initRings:"+stage.getClass().getSimpleName());
                     
-                    Thread.currentThread().setName(stage.getClass().getSimpleName());
+                    Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
                     stage.startup();
                     
                     try {
@@ -256,7 +256,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					GraphManager.initInputRings(graphManager, stage.stageId);					
 					log.trace("finished on initRings:"+stage.getClass().getSimpleName());
 					
-					Thread.currentThread().setName(stage.getClass().getSimpleName());
+					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
 					stage.startup();
 					
 				       try {
@@ -339,7 +339,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					GraphManager.initInputRings(graphManager, stage.stageId);
 					log.trace("finished on initRings:{}",stage.getClass().getSimpleName());
 					
-					Thread.currentThread().setName(stage.getClass().getSimpleName());
+					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
 					stage.startup();
 				       
 					try {
@@ -365,6 +365,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					log.error("Unexpected error in stage {}", stage);
 					GraphManager.shutdownNeighborRings(graphManager, stage);
 					Thread.currentThread().interrupt();
+					shutdown();//testing if this is a good idea here.
 				}
 			}			
 		};

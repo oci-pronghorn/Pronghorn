@@ -32,15 +32,17 @@ public class RingBufferMonitorStage extends PronghornStage {
 		if (!from.fieldNameScript[0].equals("RingStatSample")) {
 			throw new UnsupportedOperationException("Can only write to ring buffer that is expecting montior records.");
 		}
-		
-		PipeWriter.setPublishBatchSize(notifyRingBuffer, 0);
+	}
+	
+	@Override
+	public void startup() {
+	    PipeWriter.setPublishBatchSize(notifyRingBuffer, 0);//can not be done earlier 	    
 	}
 	
 	@Override
 	public void run() {
-		
 		//if we can't write then do it again on the next cycle, and skip this data point.
-		if (PipeWriter.tryWriteFragment(notifyRingBuffer,MSG_RINGSTATSAMPLE_100)) {
+		if (PipeWriter.tryWriteFragment(notifyRingBuffer, MSG_RINGSTATSAMPLE_100)) {
 			
 			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_MS_1, System.currentTimeMillis());
 			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_HEAD_2, Pipe.headPosition(observedRingBuffer));
@@ -48,7 +50,9 @@ public class RingBufferMonitorStage extends PronghornStage {
 			PipeWriter.writeInt(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4, observedRingBuffer.lastMsgIdx);	
 			PipeWriter.writeInt(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_BUFFERSIZE_5, observedRingBuffer.sizeOfSlabRing);
 			
-			PipeWriter.publishWrites(notifyRingBuffer);	
+			PipeWriter.publishWrites(notifyRingBuffer);
+			assert(Pipe.headPosition(notifyRingBuffer)==Pipe.workingHeadPosition(notifyRingBuffer)) : "publish did not clean up, is the publish batching? it should not.";
+			
 		}
 	}
 
