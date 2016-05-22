@@ -418,7 +418,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     }
 
     private static void readBytesRing(Pipe ring, int len, byte[] target, int targetloc, int pos) {
-            byte[] buffer = Pipe.byteBuffer(ring);
+            byte[] buffer = Pipe.blob(ring);
             int mask = ring.byteMask;
             while (--len >= 0) {
                 target[targetloc++]=buffer[mask & pos++]; //TODO:M replace with dual arrayCopy as seen elsewhere
@@ -508,6 +508,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	 * 
 	 * Once called must continue to retry until true is returned or the message will be left in a partial state.
 	 * 
+	 *  NEVER follow this with publish since it has already been done.
 	 * 
 	 * @param inputRing
 	 * @param outputRing

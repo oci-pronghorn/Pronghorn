@@ -23,7 +23,7 @@ import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.pipe.stream.StreamingVisitorWriter;
 import com.ociweb.pronghorn.pipe.stream.StreamingWriteVisitorGenerator;
 
-public class RingBufferMultiTemplateTest {
+public class PipeMultiTemplateTest {
 
 	private static final byte[] ASCII_VERSION = "1.0".getBytes();
 

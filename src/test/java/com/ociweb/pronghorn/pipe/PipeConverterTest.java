@@ -10,7 +10,7 @@ import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 
-public class RingBufferConverterTest {
+public class PipeConverterTest {
     
     @Test
     public void longToASCIITest() {

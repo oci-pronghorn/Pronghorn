@@ -255,7 +255,9 @@ public class PipeWriter {
 	}
 
     public static void publishWrites(Pipe pipe) {
-	
+	  
+        assert(Pipe.workingHeadPosition(pipe)!=Pipe.headPosition(pipe)) : "Fragment was already published, check the workflow logic and remove call to publishWrites(pipe)";
+        
 	    Pipe.writeTrailingCountOfBytesConsumed(pipe, pipe.ringWalker.nextWorkingHead -1 ); 
 
 		//single length field still needs to move this value up, so this is always done
@@ -272,7 +274,7 @@ public class PipeWriter {
 	private static void publishWrites2(Pipe pipe) {
 		assert(Pipe.workingHeadPosition(pipe)<=pipe.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
 		//publish writes			
-		Pipe.setBytesHead(pipe, Pipe.bytesWorkingHeadPosition(pipe));		
+		Pipe.setBytesHead(pipe, Pipe.getBlobWorkingHeadPosition(pipe));		
 		Pipe.publishWorkingHeadPosition(pipe, Pipe.workingHeadPosition(pipe));
 		
 		Pipe.beginNewPublishBatch(pipe);

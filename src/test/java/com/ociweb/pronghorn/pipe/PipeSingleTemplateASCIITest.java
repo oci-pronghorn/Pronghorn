@@ -13,7 +13,7 @@ import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
-public class RingBufferSingleTemplateASCIITest {
+public class PipeSingleTemplateASCIITest {
 
     @Test
     public void simpleBytesWriteRead() {

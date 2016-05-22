@@ -11,7 +11,7 @@ import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
-public class RingBufferSingleTemplateTest {
+public class PipeSingleTemplateTest {
 
 	final FieldReferenceOffsetManager FROM = RawDataSchema.FROM;
 	final int FRAG_LOC = RawDataSchema.MSG_CHUNKEDSTREAM_1;

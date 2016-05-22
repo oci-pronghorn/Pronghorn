@@ -98,7 +98,7 @@ public class LongHashTable {
 			keyAtIdx = ht.keys[++hash&mask];
 		}
 				
-		if (0 == keyAtIdx) {
+		if (0 == keyAtIdx) { //TODO: this seems wrong.
 			return false; //do not set item if it holds a previous value.
 		}
 		

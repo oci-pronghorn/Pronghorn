@@ -50,10 +50,9 @@ public class PendingReleaseData {
     //releases as the bytes are consumed, this can be called as many times as needed.
     public static <S extends MessageSchema> void releasePendingAsReadRelease(PendingReleaseData that, Pipe<S> pipe, int consumed) {
 
-        while (consumed>0 && that.pendingReleaseCount>0) {
-            int idx = that.pendingReleaseMask & that.pendingReleaseTail;
-    
-            int pLen = that.pendingLength[idx];
+        int idx;
+        while (that.pendingReleaseCount>0 && (consumed>0 || that.pendingLength[that.pendingReleaseMask & that.pendingReleaseTail]<=0) ) {
+            int pLen = Math.max(0, that.pendingLength[idx = that.pendingReleaseMask & that.pendingReleaseTail]);
             
             if (pLen>consumed) {
                 that.pendingLength[idx] = pLen-consumed;

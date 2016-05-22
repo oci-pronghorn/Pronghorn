@@ -386,7 +386,7 @@ class StackStateWalker {
 			int limit = (ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset))+1;
 			throw new UnsupportedOperationException("Bad msgId:"+ringBufferConsumer.msgIdx+
 					" encountered at last absolute position:"+(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)+
-					" recent primary ring context:"+Arrays.toString( Arrays.copyOfRange(Pipe.primaryBuffer(ringBuffer), Math.max(0, limit-10), limit )));
+					" recent primary ring context:"+Arrays.toString( Arrays.copyOfRange(Pipe.slab(ringBuffer), Math.max(0, limit-10), limit ))+"\n"+ringBuffer);
 		}		
 		
 		//this is commonly used as the end of file marker  
@@ -424,6 +424,7 @@ class StackStateWalker {
 		//      nested long sequences where we don't know the length until after they are all written.
 		
 		prepWriteFragmentSpecificProcessing(ring, cursorPosition, from);
+		
 		Pipe.addAndGetWorkingHead(ring, fragSize);
 		ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + fragSize;
 
@@ -452,14 +453,14 @@ class StackStateWalker {
 		
 		//Start new stack of fragments because this is a new message
 		ring.ringWalker.activeWriteFragmentStack[0] = Pipe.workingHeadPosition(ring);
-		Pipe.primaryBuffer(ring)[ring.mask &(int)(Pipe.workingHeadPosition(ring) + from.templateOffset)] = cursorPosition;
+		Pipe.slab(ring)[ring.mask &(int)(Pipe.workingHeadPosition(ring) + from.templateOffset)] = cursorPosition;
 	}
 
 	
 	
 	
 	static boolean copyFragment0(Pipe inputRing, Pipe outputRing, long start, long end) {
-		return copyFragment1(inputRing, outputRing, start, (int)(end-start), Pipe.primaryBuffer(inputRing)[inputRing.mask&(((int)end)-1)]);
+		return copyFragment1(inputRing, outputRing, start, (int)(end-start), Pipe.slab(inputRing)[inputRing.mask&(((int)end)-1)]);
 	}
 
 
@@ -475,13 +476,13 @@ class StackStateWalker {
 
 	private static void copyFragment2(Pipe inputRing,	Pipe outputRing, int start, int spaceNeeded, int bytesToCopy) {
 		
-		Pipe.copyIntsFromToRing(Pipe.primaryBuffer(inputRing), start, inputRing.mask, 
-		                              Pipe.primaryBuffer(outputRing), (int)Pipe.workingHeadPosition(outputRing), outputRing.mask, 
-				                      spaceNeeded);
+		Pipe.copyIntsFromToRing(Pipe.slab(inputRing), start, inputRing.mask, 
+		                        Pipe.slab(outputRing), (int)Pipe.workingHeadPosition(outputRing), outputRing.mask, 
+				                spaceNeeded);
 		Pipe.addAndGetWorkingHead(outputRing, spaceNeeded);
 		
-		Pipe.copyBytesFromToRing(Pipe.byteBuffer(inputRing), Pipe.getWorkingBlobRingTailPosition(inputRing), inputRing.byteMask, 
-		                               Pipe.byteBuffer(outputRing), Pipe.bytesWorkingHeadPosition(outputRing), outputRing.byteMask, 
+		Pipe.copyBytesFromToRing(Pipe.blob(inputRing), Pipe.getWorkingBlobRingTailPosition(inputRing), inputRing.byteMask, 
+		                               Pipe.blob(outputRing), Pipe.getBlobWorkingHeadPosition(outputRing), outputRing.byteMask, 
 				                       bytesToCopy);
 
         Pipe.addAndGetBytesWorkingHeadPosition(outputRing, bytesToCopy);		
@@ -514,6 +515,8 @@ class StackStateWalker {
     }
     
     static boolean tryWriteFragment1(Pipe pipe, int cursorPosition, FieldReferenceOffsetManager from, int fragSize, long target, boolean hasRoom) {
+                
+        assert(Pipe.getPublishBatchSize(pipe)>0 || Pipe.headPosition(pipe)==Pipe.workingHeadPosition(pipe)) : "Confirm that tryWrite is only called once per fragment written. OR setBatch publish to zero in startup.";
         //try again and update the cache with the newest value
         if (hasRoom) {
             prepWriteFragment(pipe, cursorPosition, from, fragSize);

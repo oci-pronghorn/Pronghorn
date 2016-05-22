@@ -8,7 +8,7 @@ import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 
-public class RingBufferDataCopy {
+public class PipeDataCopy {
 
 	static byte[] byteSource = new byte[] {(byte)1,(byte)2,(byte)3,(byte)4};
 	static int[] intSource = new int[] {1,2,3,4};

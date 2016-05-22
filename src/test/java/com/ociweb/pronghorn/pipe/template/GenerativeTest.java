@@ -135,8 +135,8 @@ public class GenerativeTest {
                        PipeReader.readDecimalExponent(ring1, fieldLOC);
                        PipeReader.readDecimalMantissa(ring1, fieldLOC);                       
                        break;
-                   case TypeMask.ByteArray:
-                   case TypeMask.ByteArrayOptional:
+                   case TypeMask.ByteVector:
+                   case TypeMask.ByteVectorOptional:
             //           RingReader.readBytes(ring1, fieldLOC, ByteBuffer.allocate(70));
                        break;
                }
@@ -145,9 +145,7 @@ public class GenerativeTest {
                if (TypeMask.Decimal==type || TypeMask.DecimalOptional==type) {
                    s++;//extra slot for the long
                }
-               
-               PipeWriter.publishWrites(ring1byReadWrite);
-  
+                 
            }
        }
        

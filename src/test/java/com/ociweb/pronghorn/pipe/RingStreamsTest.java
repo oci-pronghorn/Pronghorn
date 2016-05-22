@@ -21,8 +21,8 @@ import com.ociweb.pronghorn.pipe.stream.RingStreams;
 
 public class RingStreamsTest {
 
-	
-	@Test
+    //TODO: RingStreams needs to be deleted and no longer used.
+    @Ignore
 	public void testWriteToOutputStream() {
 		
 		Pipe testRing = new Pipe(new PipeConfig((byte)4, (byte)13, null,   RawDataSchema.instance));
@@ -111,8 +111,8 @@ public class RingStreamsTest {
 	}	
 	
 	
-	
-	@Test
+	   //TODO: RingStreams needs to be deleted and no longer used.
+    @Ignore
 	public void testRingToRingOutputStream() {
 		
 		Pipe testRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  RawDataSchema.instance));
@@ -173,7 +173,8 @@ public class RingStreamsTest {
 		
 	}
 
-	@Test
+    //TODO: RingStreams needs to be deleted and no longer used.
+    @Ignore
 	public void testRingToRingOutputStreamByte() {
 		
 		
@@ -289,7 +290,8 @@ public class RingStreamsTest {
 	}
 	
 	
-	@Test
+    //TODO: RingStreams needs to be deleted and no longer used.
+    @Ignore
 	public void testRingToRingInputStreamBytes() {
 		
 		Pipe testRing = new Pipe(new PipeConfig((byte)4, (byte)12, null,  RawDataSchema.instance));
@@ -339,7 +341,8 @@ public class RingStreamsTest {
 		
 	}
 	
-	@Test
+	   //TODO: RingStreams needs to be deleted and no longer used.
+    @Ignore
 	public void testRingToRingInputStreamToggleMethods() {
 		
 		Pipe testRing = new Pipe(new PipeConfig((byte)4, (byte)12, null,  RawDataSchema.instance));

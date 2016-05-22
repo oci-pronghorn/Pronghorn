@@ -4,6 +4,9 @@ package com.ociweb.pronghorn.pipe.util.hash;
 /**
  * Lower bound range limited value hash table 
  * 
+ * This hash table is used for direct index into values found in a pipe.
+ * When the lower bound is raised then values are no longer found in the pipe for use.
+ * 
  * @author Nathan Tippy
  *
  */
@@ -61,6 +64,26 @@ public class PipeHashTable {
 		return true;
 	}
 	
+    public static boolean replaceItem(PipeHashTable ht, long key, long newValue) {
+
+        int mask = ht.mask;
+        int hash = MurmurHash.hash64finalizer(key);
+        
+        long keyAtIdx = ht.keys[hash&mask];
+        while (keyAtIdx != key && keyAtIdx != 0) {          
+            keyAtIdx = ht.keys[++hash&mask];
+        }
+                
+        //if this is a new item
+        if (0 == keyAtIdx) {
+            ht.keys[hash&mask] = key;
+            ht.space--;
+        }
+        
+        ht.values[hash&mask] = newValue;
+        return true;
+    }
+	
 	public static long getItem(PipeHashTable ht, long key) {
 
 		int mask = ht.mask;
@@ -72,12 +95,12 @@ public class PipeHashTable {
 		}
 
 		long value = ht.values[hash&mask];
-		
+
 		//if value is greater than the lower bound then its ok.
 		//if value is greater than the lower then the dif will be negative
 		//we take the high bit and fill all 64 then and it with the response
 		//if the top is zero then we will return zero, eg not found response.
-		return value&((ht.lowerBounds-(1+value))>>63);
+		return value & ((ht.lowerBounds-(1+value))>>63);
 		
 	}
 	    
@@ -94,23 +117,6 @@ public class PipeHashTable {
 		return 0 != (value&((ht.lowerBounds-(1+value))>>63));
 	}
 	
-	public static boolean replaceItem(PipeHashTable ht, long key, long newValue) {
-
-		int mask = ht.mask;
-		int hash = MurmurHash.hash64finalizer(key);
-		
-		long keyAtIdx = ht.keys[hash&mask];
-		while (keyAtIdx != key && keyAtIdx != 0) { 			
-			keyAtIdx = ht.keys[++hash&mask];
-		}
-				
-		if (0 == keyAtIdx) {
-			return false; //do not set item if it holds a previous value.
-		}
-		
-		ht.values[hash&mask] = newValue;
-		return true;
-	}
 	
    public static void visit(PipeHashTable ht, PipeHashTableVisitor visitor) {
 	   int j = ht.mask+1;

@@ -1,10 +1,10 @@
 package com.ociweb.pronghorn.pipe;
 
+@Deprecated
 public class PipeBundle {
     
     public final Pipe[] buffers;
     private Pipe[] uniqueBuffers;
-    
     
     public PipeBundle(Pipe[] buffers) {
         this.buffers = buffers;

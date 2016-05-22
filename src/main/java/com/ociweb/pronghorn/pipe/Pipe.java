@@ -743,10 +743,9 @@ public final class Pipe<T extends MessageSchema> {
 
         //This init must be the same as what is done in reset()
         //This target is a counter that marks if there is room to write more data into the ring without overwriting other data.
-        this.llRead.llwConfirmedReadPosition = 0-this.sizeOfSlabRing;
         llWrite.llwHeadPosCache = toPos;
         llRead.llrTailPosCache = toPos;
-        llRead.llwConfirmedReadPosition = toPos - sizeOfSlabRing;
+        llRead.llwConfirmedReadPosition = toPos - mask;//must be mask to ensure zero case works.
         llWrite.llwConfirmedWrittenPosition = toPos;
 
         this.blobRing = new byte[sizeOfBlobRing];
@@ -814,7 +813,7 @@ public final class Pipe<T extends MessageSchema> {
         if (null!=llWrite) {
             llWrite.llwHeadPosCache = structuredPos;
             llRead.llrTailPosCache = structuredPos;
-            llRead.llwConfirmedReadPosition = structuredPos - sizeOfSlabRing;
+            llRead.llwConfirmedReadPosition = structuredPos -  mask;
             llWrite.llwConfirmedWrittenPosition = structuredPos;
         }
 
@@ -1333,10 +1332,12 @@ public final class Pipe<T extends MessageSchema> {
 			copyASCIIToBytes("0",outputRing);
 			len1++;
 		}
-
-
 	}
 
+	public static int safeBlobPosAdd(int pos, long value) {
+	    return (int)(Pipe.BYTES_WRAP_MASK&(pos+value));
+	}
+	
 	public static <S extends MessageSchema> void addLongAsASCII(Pipe<S> outputRing, long value) {
 		validateVarLength(outputRing, 21);
 		int max = 21 + outputRing.blobRingHead.byteWorkingHeadPos.value;
@@ -2024,6 +2025,9 @@ public final class Pipe<T extends MessageSchema> {
     
     //must be called by low-level API when starting a new message
     public static <S extends MessageSchema> int addMsgIdx(Pipe<S> rb, int msgIdx) {
+         assert(Pipe.workingHeadPosition(rb)<(Pipe.tailPosition(rb)+rb.mask)) : "Working position is now writing into published(unreleased) tail "+
+                Pipe.workingHeadPosition(rb)+"<"+Pipe.tailPosition(rb)+"+"+rb.mask+" total "+((Pipe.tailPosition(rb)+rb.mask));
+        
          assert(rb.slabRingHead.workingHeadPos.value <= ((long)rb.sizeOfSlabRing)+Pipe.tailPosition(rb)) : 
                 "Tail is at: "+Pipe.tailPosition(rb)+" and Head at: "+rb.slabRingHead.workingHeadPos.value+" but they are too far apart because the ring is only of size: "+rb.sizeOfSlabRing+
                 "\n Double check the calls to confirmLowLevelWrite that the right size is used, and confirm that hasRoomForWrite is called.  ";
@@ -2599,8 +2603,7 @@ public final class Pipe<T extends MessageSchema> {
 
 	public static <S extends MessageSchema> int writeTrailingCountOfBytesConsumed(Pipe<S> ring, long pos) {
 
-		int consumed = ring.blobRingHead.byteWorkingHeadPos.value - ring.blobWriteLastConsumedPos;
-		
+		int consumed = ring.blobRingHead.byteWorkingHeadPos.value - ring.blobWriteLastConsumedPos;	
 		//log.trace("wrote {} bytes consumed to position {}",consumed,pos);
 		
 		ring.slabRing[ring.mask & (int)pos] = consumed>=0 ? consumed : consumed&BYTES_WRAP_MASK;
@@ -2644,9 +2647,7 @@ public final class Pipe<T extends MessageSchema> {
     
     public static <S extends MessageSchema> boolean hasRoomForWrite(Pipe<S> output) {
         return roomToLowLevelWrite(output, output.llRead.llwConfirmedReadPosition+FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(output)));
-    }
-
-    
+    }    
     
 	private static <S extends MessageSchema> boolean roomToLowLevelWrite(Pipe<S> output, long target) {
 		//only does second part if the first does not pass
@@ -2654,20 +2655,22 @@ public final class Pipe<T extends MessageSchema> {
 	}
 
 	private static <S extends MessageSchema> boolean roomToLowLevelWriteSlow(Pipe<S> output, long target) {
-		return (output.llRead.llrTailPosCache = output.slabRingTail.tailPos.get()) >= target;
+        return (output.llRead.llrTailPosCache = output.slabRingTail.tailPos.get()  ) >= target;
 	}
 
-	public static <S extends MessageSchema> long confirmLowLevelWrite(Pipe<S> output, int size) { //TOOD: rename
-		return output.llRead.llwConfirmedReadPosition += size; //TODO: add check if this size does not match how many written we have a problem.
+	public static <S extends MessageSchema> long confirmLowLevelWrite(Pipe<S> output, int size) { 
+	 
+	    assert(size>=0) : "unsupported size "+size;
+	    assert((output.llRead.llwConfirmedReadPosition+output.mask) >= Pipe.tailPosition(output)) : " confirmed writes must be greater than the read tail writes:"
+	                                               +(output.llRead.llwConfirmedReadPosition+output.mask)+" tail:"+Pipe.tailPosition(output)+" \n CHECK that no low level writes have not been confirmed!";
+	    assert((output.llRead.llwConfirmedReadPosition+output.mask) <= Pipe.workingHeadPosition(output)) : " confirmed writes must be less than working head position writes:"
+	                                                +(output.llRead.llwConfirmedReadPosition+output.mask)+" workingHead:"+Pipe.workingHeadPosition(output)+" \n CHECK that Pipe is written same fields as message defines and skips none!";
+	   
+	    return  output.llRead.llwConfirmedReadPosition += size;
+
 	}
 
-	//delete nov 2015
-	@Deprecated
-	public static <S extends MessageSchema> boolean contentToLowLevelRead(Pipe<S> input, int size) {
-		return hasContentToRead(input, size);
-	}
-
-    public static <S extends MessageSchema> boolean hasContentToRead(Pipe<S> input, int size) {
+	public static <S extends MessageSchema> boolean hasContentToRead(Pipe<S> input, int size) {
         //optimized for the other method without size. this is why the -1 is there and we use > for target comparison.
         return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition+size-1, input.llWrite); 
     }
