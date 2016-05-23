@@ -25,7 +25,7 @@ public class PhastEncoderTest {
 		DataOutputBlobWriter<RawDataSchema> writer = new DataOutputBlobWriter<RawDataSchema>(pipe);
 		
 		//encode a string on blob using the static method
-		PhastEncoder.encodeString(writer, "This is a test");
+		PhastEncoder.encodeString(writer, "This is a test", 0, 0);
 		
 		writer.close();
 		
@@ -57,8 +57,8 @@ public class PhastEncoderTest {
 		intDictionary[1] = 5;
 		
 		//increment one and not the other
-		PhastEncoder.incrementInt(intDictionary, writer, 0, 1, 2);
-		PhastEncoder.incrementInt(intDictionary, writer, 1, 1, 1);
+		PhastEncoder.incrementInt(intDictionary, writer, 1, 1, 2);
+		PhastEncoder.incrementInt(intDictionary, writer, 0, 1, 1);
 		
 		writer.close();
 		
@@ -85,7 +85,7 @@ public class PhastEncoderTest {
 		intDictionary[2] = 5;
 		
 		//make it increment 2 values 0 and 5
-		PhastEncoder.copyInt(intDictionary, writer, 0, 0, 2);
+		PhastEncoder.copyInt(intDictionary, writer, 0, 0, 2, 0);
 		writer.close();
 		
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
@@ -141,23 +141,24 @@ public class PhastEncoderTest {
 		long defaultTest = 455;
 		
 		//should encode: 455
-		PhastEncoder.encodeLongPresent(writer, 1, 1, defaultTest);
+		PhastEncoder.encodeLongPresent(writer, 0, 1, defaultTest);
 		//should encode: 2834
-		PhastEncoder.incrementLong(longDictionary, writer, 0, 1, 4);
-		//should encode: 2835
 		PhastEncoder.incrementLong(longDictionary, writer, 1, 1, 4);
 		//should encode: 2835
-		PhastEncoder.copyLong(longDictionary, writer, 1, 1, 4);
+		PhastEncoder.incrementLong(longDictionary, writer, 0, 1, 4);
+		//should encode: 2835
+		PhastEncoder.copyLong(longDictionary, writer, 0, 1, 4, 0);
 		//should encode: 3468
-		PhastEncoder.encodeDefaultLong(defaultLongDictionary, writer, 1, 1, 2, defaultTest);
-		//should encode 455
 		PhastEncoder.encodeDefaultLong(defaultLongDictionary, writer, 0, 1, 2, defaultTest);
+		//should encode 455
+		PhastEncoder.encodeDefaultLong(defaultLongDictionary, writer, 1, 1, 2, defaultTest);
 		
 		writer.close();
 		
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
 		assertTrue(reader.readPackedLong()==455);
 		assertTrue(reader.readPackedLong()==2834);
+		assertTrue(reader.readPackedLong()==2835);
 		assertTrue(reader.readPackedLong()==2835);
 		assertTrue(reader.readPackedLong()==3468);
 		assertTrue(reader.readPackedLong()==455);
@@ -183,23 +184,24 @@ public class PhastEncoderTest {
 		short defaultTest = 342;
 		
 		//should encode: 342
-		PhastEncoder.encodeShortPresent(writer, 1, 1, defaultTest);
+		PhastEncoder.encodeShortPresent(writer, 0, 1, defaultTest);
 		//should encode: 347
-		PhastEncoder.incrementShort(shortDictionary, writer, 0, 1, 4);
-		//should encode: 348
 		PhastEncoder.incrementShort(shortDictionary, writer, 1, 1, 4);
 		//should encode: 348
-		PhastEncoder.copyShort(shortDictionary, writer, 1, 1, 4);
+		PhastEncoder.incrementShort(shortDictionary, writer, 0, 1, 4);
+		//should encode: 348
+		PhastEncoder.copyShort(shortDictionary, writer, 0, 1, 4, (short)0);
 		//should encode: 8239
-		PhastEncoder.encodeDefaultShort(defaultShortDictionary, writer, 1, 1, 2, defaultTest);
-		//should encode 342
 		PhastEncoder.encodeDefaultShort(defaultShortDictionary, writer, 0, 1, 2, defaultTest);
+		//should encode 342
+		PhastEncoder.encodeDefaultShort(defaultShortDictionary, writer, 1, 1, 2, defaultTest);
 		
 		writer.close();
 		
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
 		assertTrue(reader.readPackedLong()==342);
 		assertTrue(reader.readPackedLong()==347);
+		assertTrue(reader.readPackedLong()==348);
 		assertTrue(reader.readPackedLong()==348);
 		assertTrue(reader.readPackedLong()==8239);
 		assertTrue(reader.readPackedLong()==342);
