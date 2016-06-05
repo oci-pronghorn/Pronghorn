@@ -13,11 +13,14 @@ public class PoolTest {
        
         //build up test data
         int size = 10;
+        
+        
+        // add <size> keys and StringBuffer members
         StringBuilder[] members = new StringBuilder[size];
         int i = size;
         long[] keys = new long[size];
         while ( --i >= 0 ) {
-            members[i] = new StringBuilder();
+            members[i] = new StringBuilder(); //initial StringBuilder instance to be borrowed and returned when done.
             keys[i] = r.nextLong();
         }
                 
@@ -27,12 +30,12 @@ public class PoolTest {
         while (--j>=0) {
             
             StringBuilder b = p.get(keys[j]);
-            assertNotNull(b);
-            b.append(Long.toString(keys[j]));
+            assertNotNull(b); //this key must not be empty
+            b.append(Long.toString(keys[j]));//insert numeric value to this existing string builder
             
         }
         
-        //is no more room
+        //is no more room and this next value should not have been found
         assertNull(p.get(r.nextLong()));
         
         j = size;
@@ -40,13 +43,23 @@ public class PoolTest {
             
             StringBuilder b = p.get(keys[j]);
             assertNotNull(b);
-            assertEquals(Long.toString(keys[j]), b.toString());
-       
-            
+            assertEquals(Long.toString(keys[j]), b.toString()); //confirm we got the same one back with the same answer.
+                               
         }
+                
+        assertEquals(size, p.locks());
         
-        p.release(keys[0]);        
-        assertNotNull(p.get(r.nextLong()));
+        assertNull(p.get(r.nextLong()));
+        
+                
+        j = size;
+        while (--j>=0) {     //release all the keys       
+            p.release(keys[j]);
+            assertEquals(j, p.locks()); //should be one less lock for each iteration.
+        }
+
+        assertEquals(0, p.locks()); //all the locks have been released
+        
                
     }
     

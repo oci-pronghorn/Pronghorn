@@ -18,22 +18,30 @@ public class Pool<T>  {
     
     public T get(long key) {        
         int i = keys.length;
-        int temp = -1;
+        int idx = -1;
+        //linear search for this key. TODO: if member array is 100 or bigger we should consider hashTable
         while (--i>=0) {
-            if (1 == locked[i] && key == keys[i]) {
+            //found and returned member that matches key and was locked
+            if (key == keys[i] && 1 == locked[i]) {
                 return members[i];
             } else {
-                if (temp<0 && 0 == locked[i]) {
-                    temp = i;
+                //this slot was not locked so remember it
+                //we may want to use this slot if key is not found.
+                if (idx < 0 && 0 == locked[i]) {
+                    idx = i;
                 }
             }
         }
-        if (temp<0) {
-            return null;
+        return startNewLock(key, idx);
+    }
+
+    private T startNewLock(long key, int idx) {
+        if (idx>=0) {
+            locked[idx] = 1;
+            keys[idx] = key;
+            return members[idx];
         } else {
-            locked[temp] = 1;
-            keys[temp] = key;
-            return members[temp];
+            return null;
         }
     }
     
@@ -44,8 +52,18 @@ public class Pool<T>  {
                 locked[i] = 0;
                 return;
             }
-        }
-        
+        }        
     }
+    
+    public int locks() {
+        int count = 0;
+        int j = locked.length;
+        while (--j>=0) {
+            count += locked[j];
+        }
+        return count;
+    }
+    
+    
     
 }
