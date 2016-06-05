@@ -16,13 +16,13 @@ public class BloomFilterTest {
     String[] testMessages1 = new String[] {"Moe","Larry","Curley"};
     String[] testMessages2 = new String[] {"Shemp","Buster"};
     
-    @Test
+    @Ignore
     public void testSizes() {
         
         //30_000 items at .001 err 64K  2bytes each
         
         for(int items = 3; items<=300_000; items=items*10) {
-            for(int j = 1; j<=100_000 ; j=j*10) {
+            for(int j = 10; j<=1_000 ; j=j*10) {
                 float rate = 1f/((float)j);
                 BloomFilter filter = new BloomFilter(items,rate);
                 
