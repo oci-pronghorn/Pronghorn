@@ -61,7 +61,29 @@ public abstract class PronghornStage {
 		return stageCounter.get();
 	}
 
-	
+    public static Pipe[] join(Pipe[] ... pipes) {
+        
+        int totalCount = 0;
+        int j = pipes.length;
+        while (--j>=0) {
+            
+            Pipe[] localPipes = pipes[j];
+            totalCount += localPipes.length;
+            
+        }
+        
+        Pipe[] p = new Pipe[totalCount];
+        j = 0;
+        
+        for(int i = 0; i<pipes.length; i++) {
+            for(int k = 0; k<pipes[i].length; k++) {
+                p[j++] = pipes[i][k];
+            }
+        }
+        
+        return p;
+    }
+    
 	public void reset() {
 	    //TODO: build new error recovery into scheduler
 	    //      after exception position tail to re-read the same block an try again N times.
