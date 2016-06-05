@@ -777,7 +777,61 @@ public class FieldReferenceOffsetManager {
         return target;
     }
     
-    public static void buildFROMConstructionSource(Appendable target, FieldReferenceOffsetManager expectedFrom, String varName, String fromName) throws IOException {
+    
+    public static <A extends Appendable>void buildFROMInterfaces(A target, String schemaName, FieldReferenceOffsetManager from) throws IOException {
+        
+      for(int j = 0; j<from.messageStarts.length; j++)  {
+          buildFROMInterfacesSingleMessage(from.messageStarts[j], target, schemaName, from);
+      } 
+    }
+    
+    private static void buildFROMInterfacesSingleMessage(int msgIdx, Appendable target, String schemaName, 
+                                                        FieldReferenceOffsetManager from) {
+        
+        int fragmentSize = from.fragScriptSize[msgIdx];
+        String name =from.fieldNameScript[msgIdx];
+        
+        try {
+            target.append("public interface ").append(schemaName).append(name).append("Consumer {\n");
+        
+            target.append("    public void consume(");
+            
+            boolean needComma = false;
+            for(int i = 0; i<fragmentSize;i++) {
+               
+                
+                int token = from.tokens[msgIdx+i];
+            
+                int type = TokenBuilder.extractType(token);
+                if (type!=TypeMask.Group) {                
+                    if (type==TypeMask.GroupLength) {
+                        //break
+                        //ends this fragment //TODO: needs recursive decent to build these.
+                        //begins another nested fragment
+                        //TODO: if the message has muliple fragments we must continue to build interfaces for this other types
+                        throw new UnsupportedOperationException();
+                    }
+                                        
+                    String typeName = TypeMask.primitiveTypes[type];
+                    String paraName = from.fieldNameScript[msgIdx+1];
+                                     
+                    if (needComma) {
+                        target.append(",");
+                    }
+                    target.append(typeName).append(' ').append(paraName);
+                    needComma = true;
+                }
+            }
+            
+            target.append(");\n");
+            target.append("}\n");
+        
+        } catch (IOException e) {
+            e.printStackTrace();
+        } 
+    }
+
+    public static void buildFROMConstructionSource(Appendable target, FieldReferenceOffsetManager from, String varName, String fromName) throws IOException {
         //write out the expected source.
         target.append("public final static FieldReferenceOffsetManager ");
         target.append(varName).append(" = new ").append(FieldReferenceOffsetManager.class.getSimpleName()).append("(\n");
@@ -785,7 +839,7 @@ public class FieldReferenceOffsetManager {
         target.append("    new int[]{");
         
         boolean isFirst = true;
-        for(int token:expectedFrom.tokens) {
+        for(int token:from.tokens) {
             if (!isFirst) {
                 target.append(',');
             }
@@ -798,7 +852,7 @@ public class FieldReferenceOffsetManager {
     
         target.append("    new String[]{");
         isFirst = true;
-        for(String tmp:expectedFrom.fieldNameScript) {
+        for(String tmp:from.fieldNameScript) {
             if (!isFirst) {
                 target.append(',');
             } 
@@ -812,14 +866,14 @@ public class FieldReferenceOffsetManager {
         target.append("},\n");
     
         try {
-            Appendables.appendArray( target.append("    new long[]"), '{', expectedFrom.fieldIdScript, '}').append(",\n");
+            Appendables.appendArray( target.append("    new long[]"), '{', from.fieldIdScript, '}').append(",\n");
         } catch (IOException e1) {
             throw new RuntimeException(e1);
         }
     
         target.append("    new String[]{");
         isFirst = true;
-        for(String tmp:expectedFrom.dictionaryNameScript) {
+        for(String tmp:from.dictionaryNameScript) {
             if (!isFirst) {
                 target.append(',');
             } 
@@ -834,14 +888,14 @@ public class FieldReferenceOffsetManager {
         target.append("    \"").append(fromName).append("\",\n");
         target.append("    ");
         try {
-            expectedFrom.appendLongDefaults(target);
+            from.appendLongDefaults(target);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
         target.append(",\n");
         target.append("    ");
         try {
-            expectedFrom.appendIntDefaults(target);
+            from.appendIntDefaults(target);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

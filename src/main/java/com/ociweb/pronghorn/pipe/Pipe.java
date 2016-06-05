@@ -669,13 +669,16 @@ public final class Pipe<T extends MessageSchema> {
      */
     public String toString() {
 
+        int contentRem = Pipe.contentRemaining(this);
+        assert(contentRem <= sizeOfSlabRing) : "ERROR: can not have more content than the size of the pipe. content "+contentRem+" vs "+sizeOfSlabRing;
+        
     	StringBuilder result = new StringBuilder();
     	result.append("RingId:").append(ringId);
     	result.append(" slabTailPos ").append(slabRingTail.tailPos.get());
     	result.append(" slabWrkTailPos ").append(slabRingTail.workingTailPos.value);
     	result.append(" slabHeadPos ").append(slabRingHead.headPos.get());
     	result.append(" slabWrkHeadPos ").append(slabRingHead.workingHeadPos.value);
-    	result.append("  ").append(slabRingHead.headPos.get()-slabRingTail.tailPos.get()).append("/").append(sizeOfSlabRing);
+    	result.append("  ").append(contentRem).append("/").append(sizeOfSlabRing);
     	result.append("  blobTailPos ").append(PaddedInt.get(blobRingTail.bytesTailPos));
     	result.append(" blobWrkTailPos ").append(blobRingTail.byteWorkingTailPos.value);
     	result.append(" blobHeadPos ").append(PaddedInt.get(blobRingHead.bytesHeadPos));
@@ -1716,7 +1719,7 @@ public final class Pipe<T extends MessageSchema> {
 	        result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
 	    }
 	    if ((source[mask&sourcePos] & 0xC0) != 0x80) {
-	       System.err.println("Invalid encoding, low byte must have bits of 10xxxxxx but we find "+Integer.toBinaryString(source[mask&sourcePos]));
+	       log.error("Invalid encoding, low byte must have bits of 10xxxxxx but we find {} ",Integer.toBinaryString(source[mask&sourcePos]),new Exception("Check for pipe corruption"));
 	       sourcePos += 1;
 	       return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
 	    }
@@ -2661,10 +2664,14 @@ public final class Pipe<T extends MessageSchema> {
 	public static <S extends MessageSchema> long confirmLowLevelWrite(Pipe<S> output, int size) { 
 	 
 	    assert(size>=0) : "unsupported size "+size;
-	    assert((output.llRead.llwConfirmedReadPosition+output.mask) >= Pipe.tailPosition(output)) : " confirmed writes must be greater than the read tail writes:"
-	                                               +(output.llRead.llwConfirmedReadPosition+output.mask)+" tail:"+Pipe.tailPosition(output)+" \n CHECK that no low level writes have not been confirmed!";
+	    
+	    //NOTE: this checks the consumer which is on a different thread and may not work for dumpers like pipe cleaner.
+//	    assert((output.llRead.llwConfirmedReadPosition+output.mask) >= Pipe.tailPosition(output)) : " confirmed writes must be greater than the read tail writes:"
+//	                                               +(output.llRead.llwConfirmedReadPosition+output.mask)+" tailPos:"+Pipe.tailPosition(output)+
+//	                                               " \n CHECK that no low level writes have not been confirmed!";
 	    assert((output.llRead.llwConfirmedReadPosition+output.mask) <= Pipe.workingHeadPosition(output)) : " confirmed writes must be less than working head position writes:"
-	                                                +(output.llRead.llwConfirmedReadPosition+output.mask)+" workingHead:"+Pipe.workingHeadPosition(output)+" \n CHECK that Pipe is written same fields as message defines and skips none!";
+	                                                +(output.llRead.llwConfirmedReadPosition+output.mask)+" workingHead:"+Pipe.workingHeadPosition(output)+
+	                                                " \n CHECK that Pipe is written same fields as message defines and skips none!";
 	   
 	    return  output.llRead.llwConfirmedReadPosition += size;
 
@@ -2676,7 +2683,10 @@ public final class Pipe<T extends MessageSchema> {
     }
     
     public static <S extends MessageSchema> boolean hasContentToRead(Pipe<S> input) {
-        return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition, input.llWrite);
+        boolean result = contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition, input.llWrite);
+        //there are times when result can be false but we have data which relate to our holding the position for some other reason.
+        assert(!result || result ==  (Pipe.contentRemaining(input)>0) ) : result+" != "+Pipe.contentRemaining(input)+">0";
+        return result;
     }
 
 	private static <S extends MessageSchema> boolean contentToLowLevelRead2(Pipe<S> input, long target, LowLevelAPIWritePositionCache llWrite) {
@@ -2691,7 +2701,7 @@ public final class Pipe<T extends MessageSchema> {
 	public static <S extends MessageSchema> long confirmLowLevelRead(Pipe<S> input, long size) {
 	    assert(size>0) : "Must have read something.";
 	     //not sure if this assert is true in all cases
-	  //  assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value+Pipe.EOF_SIZE) : "size was far too large, past known data";
+	    assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value+Pipe.EOF_SIZE) : "size was far too large, past known data";
 	  //  assert(input.llWrite.llwConfirmedWrittenPosition + size >= input.slabRingTail.tailPos.get()) : "size was too small, under known data";        
 		return (input.llWrite.llwConfirmedWrittenPosition += size);
 	}

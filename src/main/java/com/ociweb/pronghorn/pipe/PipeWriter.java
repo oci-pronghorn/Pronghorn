@@ -164,10 +164,11 @@ public class PipeWriter {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
         
         int sourceLen = null==source? -1 : source.length();
-    	Pipe.validateVarLength(pipe, sourceLen<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
+        int actualByteCount;
 		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.mask,
 				pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc),				
-				Pipe.bytesWorkingHeadPosition(pipe), Pipe.copyUTF8ToByte(source, sourceLen, pipe), Pipe.bytesWriteBase(pipe));
+				Pipe.getBlobWorkingHeadPosition(pipe), actualByteCount = Pipe.copyUTF8ToByte(source,0, sourceLen, pipe), Pipe.bytesWriteBase(pipe));
+		Pipe.validateVarLength(pipe, actualByteCount); //throws if too many bytes were decoded, there is no recover for the data on the pipe.
     }
 
     public static void writeUTF8(Pipe pipe, int loc, CharSequence source, int offset, int length) {

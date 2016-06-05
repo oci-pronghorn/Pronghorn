@@ -1,13 +1,15 @@
 package com.ociweb.pronghorn.util;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+
+import javax.swing.text.WrappedPlainView;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -106,7 +108,7 @@ public class TrieParserTest {
         map.setValue(dataBytesMultiBytes3, 0, 5, 7, value3);
         assertFalse(map.toString(),map.toString().contains("ERROR"));
         
-        assertEquals(value3, TrieParserReader.query(reader,map,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15));
+        assertEquals(value1, TrieParserReader.query(reader,map,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15));
         assertEquals(value2, TrieParserReader.query(reader,map,dataBytesMultiBytesValue2, 0, dataBytesMultiBytesValue2.length, 15));
         assertEquals(value2, TrieParserReader.query(reader,map,dataBytesMultiBytesValue3, 0, dataBytesMultiBytesValue3.length, 15));
                         
@@ -878,6 +880,126 @@ public class TrieParserTest {
         assertEquals(value3, TrieParserReader.query(reader,map, wrapping(data2b,3), 1, 7, 7));
         assertEquals(value4, TrieParserReader.query(reader,map, wrapping(data3b,3), 1, 7, 7)); 
         assertEquals(value2, TrieParserReader.query(reader,map, wrapping(escapedEscape,3), 1, 7, 7));
+        
+    }
+    
+    @Test
+    public void testURLExtract() {
+        
+        TrieParser trie = new TrieParser(1000, 1, true, true);        
+        TrieParserReader reader = new TrieParserReader(3);
+       
+        
+         trie.setUTF8Value("#",  1);  //Ignores
+         trie.setUTF8Value(":",  1);  //Ignores
+         trie.setUTF8Value(";",  1);  //Ignores
+         trie.setUTF8Value(",",  1);  //Ignores
+         trie.setUTF8Value("!",  1);  //Ignores
+         trie.setUTF8Value("?",  1);  //Ignores
+         trie.setUTF8Value("\\", 1);  //Ignores
+         trie.setUTF8Value("/",  1);  //Ignores
+         trie.setUTF8Value(" ",  1);  //Ignores
+         trie.setUTF8Value("\"", 1);  //Ignores
+         trie.setUTF8Value(" ",  1);  //Ignores
+         trie.setUTF8Value("'",  1);  //Ignores
+         trie.setUTF8Value("&",  1);  //Ignores
+         trie.setUTF8Value("-",  1);  //Ignores
+         trie.setUTF8Value("+",  1);  //Ignores
+         trie.setUTF8Value("|",  1);  //Ignores
+         trie.setUTF8Value(">",  1);  //Ignores
+         trie.setUTF8Value("_",  1);  //Ignores
+         trie.setUTF8Value("^",  1);  //Ignores
+         trie.setUTF8Value(".",  1);  //Ignores
+         trie.setUTF8Value(")",  1);  //Ignores
+         trie.setUTF8Value("<",  1);  //Ignores
+         trie.setUTF8Value("[",  1);  //Ignores
+         trie.setUTF8Value("]",  1);  //Ignores
+         trie.setUTF8Value("$",  1);  //Ignores
+         trie.setUTF8Value("~",  1);  //Ignores
+         
+         trie.setUTF8Value("%b?",  2); //new word
+         trie.setUTF8Value("%b\"", 2); //new word
+         trie.setUTF8Value("%b ",  2); //new word
+         trie.setUTF8Value("%b.",  2); //new word
+         trie.setUTF8Value("%b,",  2); //new word
+         trie.setUTF8Value("%b!",  2); //new word
+         trie.setUTF8Value("%b:",  2); //new word //NOTE: this one is the second choice because http starts with literal chars.
+         trie.setUTF8Value("%b(",  2); //new word
+         trie.setUTF8Value("%b)",  2); //new word
+         trie.setUTF8Value("%b+",  2); //new word
+         trie.setUTF8Value("%b-",  2); //new word
+         trie.setUTF8Value("%b_",  2); //new word
+         trie.setUTF8Value("%b[",  2); //new word
+         trie.setUTF8Value("%b]",  2); //new word
+         trie.setUTF8Value("%b{",  2); //new word
+         trie.setUTF8Value("%b}",  2); //new word 
+        
+         //the : and s cause a branch so we must check for s://
+         trie.setUTF8Value("http://%b " ,3);//URL  //NOTE these are the first attempted to match due to their starting with litterals.
+         trie.setUTF8Value("https://%b ",4);//URL
+         
+         
+         assertFalse(trie.toString(),trie.toString().contains("ERROR"));
+         
+         
+         byte[] source = "& http://google.com/stuff $https://another.com/g➕g❤️%s #Hello ".getBytes(); //space is required to mark end of text.
+         
+         TrieParserReader.parseSetup(reader, source, 0, source.length, Integer.MAX_VALUE);
+        
+         assertEquals(1,TrieParserReader.parseNext(reader, trie));
+         assertEquals(1,TrieParserReader.parseNext(reader, trie));
+         assertEquals(3,TrieParserReader.parseNext(reader, trie));
+         
+         try {
+            URL url = new URL(TrieParserReader.capturedFieldBytesAsUTF8(reader, 0, new StringBuilder("http://")).toString());
+         } catch (MalformedURLException e) {
+            fail(e.getMessage());
+         }      
+                  
+         assertEquals(1,TrieParserReader.parseNext(reader, trie));
+         
+         //this URL has UTF8 odd chars and should not matter, we should still be able to parse and extract the value.
+         assertEquals(4,TrieParserReader.parseNext(reader, trie));
+         try {
+             URL url = new URL(TrieParserReader.capturedFieldBytesAsUTF8(reader, 0, new StringBuilder("https://")).toString());
+          } catch (MalformedURLException e) {
+             fail(e.getMessage());
+          }     
+         
+//         TrieParserReader.debugAsUTF8(reader, System.out);
+//         System.out.println();
+         
+         assertEquals(1,TrieParserReader.parseNext(reader, trie));
+         
+//         TrieParserReader.debugAsUTF8(reader, System.out);
+//         System.out.println();
+//         
+//         System.out.println(trie);
+         
+         assertEquals(2,TrieParserReader.parseNext(reader, trie));
+         
+         assertFalse(TrieParserReader.parseHasContent(reader));
+         
+         //byte[] realWorldSource = "https… ".getBytes();
+         byte[] realWorldSource ="RT @CITmagazine: From #CITAList today is Katherine Bell, CWT Meetings & Events: https://t.co/UYkOLYKkBE  #eventprofs @CWT_UKI @CWT_ME https… ".getBytes();
+       //  byte[] realWorldSource = "Antisocial Social Worker tweeting Freudian scripts...... Favs:https://t.co/6OWZw8D6CV Recents: https://t.co/zC4BYUhsR0 #EnvyDaStrength ".getBytes();
+         
+         //System.out.println("TRIE: \n"+trie);
+         
+         TrieParserReader.parseSetup(reader, wrapping(realWorldSource,10), 0, realWorldSource.length, 1023);
+         while (TrieParserReader.parseHasContent(reader)) {
+             int token = (int) TrieParserReader.parseNext(reader, trie);
+             
+             if (-1==token) {
+                 byte[] copyOfRange = Arrays.copyOfRange(realWorldSource, reader.sourcePos, realWorldSource.length);
+                 String value = new String(  copyOfRange );
+                 System.out.println("data '"+value+"'"+"  bytes "+Arrays.toString(copyOfRange));
+                 
+             }
+             
+             assertFalse(reader.sourceLen+" at "+reader.sourcePos+" len "+realWorldSource.length, -1 == token);
+         }
+         
         
     }
     

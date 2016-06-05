@@ -108,6 +108,12 @@ public final class TypeMask {
     public final static String[] methodTypeSuffix = new String[] { "", "Optional", "", "Optional", "", "Optional", "",
             "Optional", "", "Optional", "", "Optional", "", "Optional", "", "Optional", "", "", "", "", "", "", "", "",
             "" };
+    
+    
+    public final static String[] primitiveTypes = new String[] { "int", "int", "int", "int", "long", "long", "long", "long", "CharSequence", "CharSequence", "CharSequence",
+            "CharSequence", "Decimal", // need exponent and mantissa strings.
+            "Decimal", "DataInputBlobReader", "DataInputBlobReader", "Group", "Reserved1", "Reserved2", "Reserved3", "Length", "Reserved5",
+            "Reserved6", "Reserved7", "Dictionary" };
 
     // lots of room for the next revision, eg booleans and enums
 

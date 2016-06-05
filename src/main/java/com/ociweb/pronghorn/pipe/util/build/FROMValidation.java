@@ -27,7 +27,9 @@ public class FROMValidation {
                 System.err.println("//replacement source");
                 StringBuilder target = new StringBuilder();
                 String nameOfFROM = templateFile.substring(1+templateFile.lastIndexOf('/') );
-                FieldReferenceOffsetManager.buildFROMConstructionSource(target, expectedFrom, "FROM", nameOfFROM);                                             
+                
+                FieldReferenceOffsetManager.buildFROMConstructionSource(target, expectedFrom, "FROM", nameOfFROM);  
+                
                 System.err.println(target);
 
                 return false;
