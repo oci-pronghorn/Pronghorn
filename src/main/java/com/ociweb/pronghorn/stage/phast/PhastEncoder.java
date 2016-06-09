@@ -129,7 +129,6 @@ public class PhastEncoder {
     	if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
     		intDictionary[idx]++;
     	}
-    		DataOutputBlobWriter.writePackedInt(writer, intDictionary[idx]);
     }
     
     //this method just uses the previous value that was sent
@@ -164,7 +163,6 @@ public class PhastEncoder {
     	if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
     		longDictionary[idx]++;
     	}
-    		DataOutputBlobWriter.writePackedLong(writer, longDictionary[idx]);
     }
     
     //this method just uses the previous value that was sent
@@ -199,7 +197,6 @@ public class PhastEncoder {
     	if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
     		shortDictionary[idx]++;
     	}
-    		DataOutputBlobWriter.writePackedShort(writer, shortDictionary[idx]);
     }
     
     //this method just uses the previous value that was sent
