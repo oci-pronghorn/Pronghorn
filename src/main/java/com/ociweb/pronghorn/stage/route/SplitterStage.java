@@ -185,16 +185,16 @@ public class SplitterStage<T extends MessageSchema> extends PronghornStage {
 								Pipe<S> ringBuffer) {
 		
 		//copy the bytes
-		Pipe.copyBytesFromToRing(Pipe.byteBuffer(ss.source),                   byteTailPos, ss.source.byteMask, 
-		        Pipe.byteBuffer(ringBuffer), Pipe.getBlobRingHeadPosition(ringBuffer), ringBuffer.byteMask, 
+		Pipe.copyBytesFromToRing(Pipe.blob(ss.source),                   byteTailPos, ss.source.byteMask, 
+		        Pipe.blob(ringBuffer), Pipe.getBlobRingHeadPosition(ringBuffer), ringBuffer.byteMask, 
 									  totalBytesCopy);
 		
 		Pipe.setBytesWorkingHead(ringBuffer, Pipe.addAndGetBytesHead(ringBuffer, totalBytesCopy));
 								
 		//copy the primary data
 		int headPosition = (int)Pipe.headPosition(ringBuffer);
-		Pipe.copyIntsFromToRing(Pipe.primaryBuffer(ss.source), primaryTailPos, ss.source.mask, 
-		        Pipe.primaryBuffer(ringBuffer), headPosition, ringBuffer.mask, 
+		Pipe.copyIntsFromToRing(Pipe.slab(ss.source), primaryTailPos, ss.source.mask, 
+		        Pipe.slab(ringBuffer), headPosition, ringBuffer.mask, 
 									 totalPrimaryCopy);
 		
 		Pipe.publishWorkingHeadPosition(ringBuffer, headPosition + totalPrimaryCopy);
