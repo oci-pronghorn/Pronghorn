@@ -647,18 +647,20 @@ public final class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> int bytesReadBase(Pipe<S> rb) {
-        assert(rb.blobReadBase<=Pipe.BYTES_WRAP_MASK);
+        assert(rb.blobReadBase<=rb.byteMask);
     	return rb.blobReadBase;
     }
         
     
     public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> pipe, int bytesConsumed) {
         assert(bytesConsumed>=0) : "Bytes consumed must be positive";
-        pipe.blobReadBase = Pipe.BYTES_WRAP_MASK & (pipe.blobReadBase+bytesConsumed);
+        //base has future pos added to it so this value must be masked and kept as small as possible
+        pipe.blobReadBase = pipe.byteMask & (pipe.blobReadBase+bytesConsumed);
     }
     
     public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> pipe) {
-        pipe.blobReadBase = Pipe.BYTES_WRAP_MASK & PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);
+        //base has future pos added to it so this value must be masked and kept as small as possible
+        pipe.blobReadBase = pipe.byteMask & PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);
     }
     
     //;
@@ -2086,7 +2088,7 @@ public final class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> int bytePosition(int meta, Pipe<S> ring, int len) {
     	int pos =  restorePosition(ring, meta & RELATIVE_POS_MASK);
         if (len>=0) {
-            ring.blobRingTail.byteWorkingTailPos.value =  BYTES_WRAP_MASK&(len+ring.blobRingTail.byteWorkingTailPos.value);
+            ring.blobRingTail.byteWorkingTailPos.value =  ring.byteMask & (len+ring.blobRingTail.byteWorkingTailPos.value);
         }        
         return pos;
     }
@@ -2293,8 +2295,9 @@ public final class Pipe<T extends MessageSchema> {
     }
     
     static <S extends MessageSchema> void releaseBatchedReads(Pipe<S> pipe, int workingBlobRingTailPosition, long nextWorkingTail) {
+ 
         if (decBatchRelease(pipe)<=0) { 
-           setBytesTail(pipe,workingBlobRingTailPosition);
+           setBytesTail(pipe, workingBlobRingTailPosition);
            publishWorkingTailPosition(pipe, nextWorkingTail);
            beginNewReleaseBatch(pipe);        
         } else {
