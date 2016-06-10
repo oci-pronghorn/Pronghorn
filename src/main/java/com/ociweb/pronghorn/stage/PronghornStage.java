@@ -84,6 +84,10 @@ public abstract class PronghornStage {
         return p;
     }
     
+    public static Pipe[] join(Pipe ... pipes) {
+        return pipes;
+    }
+    
 	public void reset() {
 	    //TODO: build new error recovery into scheduler
 	    //      after exception position tail to re-read the same block an try again N times.
