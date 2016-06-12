@@ -7,7 +7,7 @@ import org.junit.Test;
 public class RunningStdDevTest {
 
     @Test
-    public void doTest() {
+    public void testSimpleSlopeStdDev() {
         
        RunningStdDev r = new RunningStdDev(); 
        
