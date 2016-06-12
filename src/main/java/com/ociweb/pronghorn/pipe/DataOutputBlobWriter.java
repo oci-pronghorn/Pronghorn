@@ -174,7 +174,10 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     private int writeUTF(CharSequence s, int len, int mask, byte[] localBuf, int pos) {
         int origPos = pos;
         pos+=2;
-        pos = encodeAsUTF8(this, s, len, mask, localBuf, pos);
+        int c = 0;
+        while (c < len) {
+            pos = Pipe.encodeSingleChar((int) s.charAt(c++), localBuf, mask, pos);
+        }
         write16(localBuf,mask,origPos, (pos-origPos)-2); //writes bytes count up front
         return pos;
     }
