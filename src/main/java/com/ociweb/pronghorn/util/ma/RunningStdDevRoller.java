@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.util;
+package com.ociweb.pronghorn.util.ma;
 
 public class RunningStdDevRoller {
 

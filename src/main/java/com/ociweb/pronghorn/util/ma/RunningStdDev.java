@@ -1,9 +1,11 @@
-package com.ociweb.pronghorn.util;
+package com.ociweb.pronghorn.util.ma;
 
 import java.io.IOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.ociweb.pronghorn.util.Appendables;
 
 //Algo taken from knuth, "the art of computer programming"
 public class RunningStdDev {
