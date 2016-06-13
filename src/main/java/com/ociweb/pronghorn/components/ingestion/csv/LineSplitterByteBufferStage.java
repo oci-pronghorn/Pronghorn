@@ -115,7 +115,7 @@ public class LineSplitterByteBufferStage extends PronghornStage {
 							
 							Pipe.addMsgIdx(outputRing, 0);
 							long temp = Pipe.workingHeadPosition(outputRing);
-							int bytePos = Pipe.bytesWorkingHeadPosition(outputRing);    	
+							int bytePos = Pipe.getBlobWorkingHeadPosition(outputRing);    	
 
 							//debug show the lines
 							boolean debug = false;
