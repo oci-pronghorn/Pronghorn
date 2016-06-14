@@ -6,7 +6,9 @@ public class Blocker {
 
     private final IntHashTable table;
     private final long[] untilTimes;
-    private int count;
+    private final int[] ids;
+    private int itemCount;
+    private int blockedCount;
     
     public enum BlockStatus {
         None,
@@ -18,6 +20,7 @@ public class Blocker {
         //we add extra padding to the hash table to avoid collisions which improves the speed.
         table = new IntHashTable( 2 + (int) Math.ceil(Math.log(maxUniqueValues)/Math.log(2)) );
         untilTimes = new long[maxUniqueValues];
+        ids = new int[maxUniqueValues];
     }
     
     /**
@@ -33,39 +36,54 @@ public class Blocker {
         int idx = IntHashTable.getItem(table, id);
         if (0==idx) {
             //new idx
-            idx = ++count;
+            idx = ++itemCount;
             IntHashTable.setItem(table, id, idx);
+            ids[idx-1] = id;
         }        
         if (0 != untilTimes[idx-1]) {
             return false;//can not set new time the old one has not been cleared
         }
         untilTimes[idx-1] = untilTime;
+        blockedCount++;
         return true;
     }
     
-    /**
-     * Reads and clears status of id.  
-     * 
-     * Warning this method has side effect.
-     * If Released is returned the stored time is also cleared.
-     * @param id
-     * @param now
-     * @return
-     */
-    public BlockStatus status(int id, long now) {        
-        int idx = IntHashTable.getItem(table, id);
-        long time = untilTimes[idx-1];
-        
-        if (0 == time) {
-            return BlockStatus.None;
-        } else {
-            if (time>now) {
-                return BlockStatus.Blocked;
-            } else {
-                untilTimes[idx-1]=0;
-                return BlockStatus.Released;
+    
+    public int nextReleased(long now, int none) {
+        //only scan if we know that something is blocked
+        if (0==blockedCount) {
+            return none;
+        }
+        int j = untilTimes.length;
+        long minTime = Long.MAX_VALUE;
+        int minIdx = -1;
+        //find the next lowest time to release
+        while (--j>=0) {
+            long time = untilTimes[j];
+            if (0!=time && time<now) {
+                if (time<=minTime) {
+                    minTime=time;
+                    minIdx = j;
+                }
             }
         }
+        
+        if (minIdx<0) {
+            return none;            
+        } else {
+            blockedCount--;                
+            untilTimes[minIdx] = 0;
+            return ids[minIdx];
+        }
+        
     }
+    
+
+    public boolean isBlocked(int id) {        
+        return 0!=untilTimes[IntHashTable.getItem(table, id)-1];
+    }
+    
+    
+    
     
 }
