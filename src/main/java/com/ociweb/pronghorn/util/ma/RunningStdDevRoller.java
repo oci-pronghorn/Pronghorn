@@ -32,13 +32,19 @@ public class RunningStdDevRoller {
         RunningStdDev.sample( buckets[activeIdx], value);
       
         if (++activeSampleCount == samplesPerBucket) {  
+    
+            processFinishedStdDev(buckets[activeSampleCount-1]);
             
             activeIdx = ++activeIdx & bucketMask;
             activeSampleCount = 0;
                         
         }
     }
-        
+    
+    protected void processFinishedStdDev(RunningStdDev runningStdDev) {
+        //NOTE; can be overridden by any class needing to know as each bucket is filled.
+    }
+
     public double mean(int bucketsBack) {
         return RunningStdDev.mean(buckets[bucketMask&(bucketCount+activeIdx-bucketsBack)]);
     }
