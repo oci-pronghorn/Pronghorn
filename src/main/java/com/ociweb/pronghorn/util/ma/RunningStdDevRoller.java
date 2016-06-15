@@ -11,6 +11,8 @@ public class RunningStdDevRoller {
     private final int bucketCount;
     private final int bucketMask;
     
+    private RunningStdDevListener listener;
+    
     public RunningStdDevRoller(int bucketsInBits, int samplesPerBucket) {
                
         this.bucketCount = 1<<(bucketsInBits);
@@ -41,8 +43,14 @@ public class RunningStdDevRoller {
         }
     }
     
+    public void setListener(RunningStdDevListener listener) {
+        this.listener = listener;
+    }
+    
     protected void processFinishedStdDev(RunningStdDev runningStdDev) {
-        //NOTE; can be overridden by any class needing to know as each bucket is filled.
+        if (null!=listener) {
+            listener.process(runningStdDev);
+        }
     }
 
     public double mean(int bucketsBack) {
