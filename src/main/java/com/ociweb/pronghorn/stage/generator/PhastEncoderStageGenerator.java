@@ -42,6 +42,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }
     }
+    // Additional Token method to append any longs, ins or string variables
     protected void additionalTokens(Appendable target) throws IOException { 
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         int[] tokens = from.tokens;
@@ -65,8 +66,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             }
         }        
     }
+    //  BuilderInt Factory
     protected void encodePmapBuilderInt(MessageSchema schema, Appendable target) {
-       //pmapBuilderInt(long pmap, int token, long curValue, long prevValue, long initValue, boolean isNull
        try {
             appendStaticCall(target, encoder , "pmapBuilderInt(")
                     .append(pmapName).append(", ")
@@ -80,8 +81,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }
     }
+    // builderLong Factory
     protected void encodePmapBuilderLong(MessageSchema schema, Appendable target) {
-       //pmapBuilderLong(long pmap, int token, long curValue, long prevValue, long initValue, boolean isNull
        try {
             appendStaticCall(target, encoder , "pmapBuilderLong(")
                     .append(pmapName).append(", ")
@@ -95,8 +96,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }
     }
+    // BuilderString Factory
     protected void encodePmapBuilderString(MessageSchema schema, Appendable target) {
-       //pmapBuilderSringlong pmap, int token, long curValue, long prevValue, long initValue, boolean isNull
        try {
             appendStaticCall(target, encoder , "pmapBuilderString(")
                     .append(pmapName).append(", ")
@@ -110,8 +111,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }
     }
+    // IntPresent Factory
     protected void encodeIntPresentGenerator(MessageSchema schema, Appendable target) {
-        //encodeIntPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, int value)
         try {
             appendStaticCall(target, encoder , "encodeIntPresent(")
                     .append(writerName).append(", ")
@@ -123,8 +124,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }
     }
+    // DeltaInt Factory
     protected void encodeDeltaIntGenerator(MessageSchema schema, Appendable target) {
-        //encodeDeltaInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx, int value)
         try {
             appendStaticCall(target, encoder , "encodeDeltaInt(")
                     .append(intDictionaryName).append(", ")
@@ -138,8 +139,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }
     }
+    // DeltaLong Factory
     protected void encodeDeltaLongGenerator(MessageSchema schema, Appendable target) {
-        //encodeDeltaLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int idx, int bitMask, long value)
         try {
             appendStaticCall(target, encoder , "encodeDeltaLong(")
                     .append(longDictionaryName).append(", ")
@@ -153,8 +154,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }
     }
+    // String Factory
     protected void encodeStringGenerator(MessageSchema schema, Appendable target) {
-        //encodeString(DataOutputBlobWriter slab, DataOutputBlobWriter blob, String value)
         try {
             appendStaticCall(target, encoder , "encodeString(")
                     .append(writerName).append(", ")
@@ -165,8 +166,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }
     }
+    // IncrementInt Factory
     protected void incrementIntGenerator(MessageSchema schema, Appendable target) {
-        //incrementInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx)
         try {
             appendStaticCall(target, encoder , "incrementInt(")
                     .append(intDictionaryName).append(", ")
@@ -179,9 +180,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }    
     }
+    // CopyInt Factory
     protected void copyIntGenerator(MessageSchema schema, Appendable target) {
-        //copyInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx)
-        //copyInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx, int value){
         try {
             appendStaticCall(target, encoder , "copyInt(")
                     .append(intDictionaryName).append(", ")
@@ -195,8 +195,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }    
     }
+    // DefaultInt Factory
     protected void encodeDefaultIntGenerator(MessageSchema schema, Appendable target) {
-        //encodeDefaultInt(int[] defaultIntDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitmask, int idx, int value)
         try {
             appendStaticCall(target, encoder , "encodeDefaultInt(")
                     .append(intDictionaryName).append(", ")
@@ -210,8 +210,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }    
     }
+    // LongPresent Factory
     protected void encodeLongPresentGenerator(MessageSchema schema, Appendable target) {
-        //encodeLongPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, long value)
         try {
             appendStaticCall(target, encoder , "encodeLongPresentGenerator(")
                     .append(writerName).append(", ")
@@ -223,8 +223,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }
     }
+    // IncrementLong Factory
     protected void incrementLongGenerator(MessageSchema schema, Appendable target) {
-        //incrementLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx)
         try {
             appendStaticCall(target, encoder , "incrementLong(")
                     .append(longDictionaryName).append(", ")
@@ -237,8 +237,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }    
     }
+    // CopyLong Factory
     protected void copyLongGenerator(MessageSchema schema, Appendable target) {
-        //copyLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx)
         try {
             appendStaticCall(target, encoder , "copyLong(")
                     .append(longDictionaryName).append(", ")
@@ -252,8 +252,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }   
     }
+    // DefaultLong Factory
     protected void encodeDefaultLongGenerator(MessageSchema schema, Appendable target) {
-        //encodeDefaultLong(long[] defaultLongDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitmask, int idx, long value)
         try {
             appendStaticCall(target, encoder , "encodeDefaultLong(")
                     .append(longDictionaryName).append(", ")
@@ -267,8 +267,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }   
     }
+    // ShortPresent Factory
     protected void encodeShortPresentGenerator(MessageSchema schema, Appendable target) {
-        //encodeShortPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, short value)
         try {
             appendStaticCall(target, encoder , "encodeShortPresent(")
                     .append(writerName).append(", ")
@@ -280,8 +280,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }
     }
+    // IncrementShort Factory
     protected void incrementShortGenerator(MessageSchema schema, Appendable target) {
-        //incrementShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx)
         try {
             appendStaticCall(target, encoder , "incrementShort(")
                     .append(shortDictionaryName).append(", ")
@@ -294,8 +294,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         } 
     }
+    // CopyShort Factory
     protected void copyShortGenerator(MessageSchema schema, Appendable target) {
-        //copyShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx)
         try {
             appendStaticCall(target, encoder , "copyShort")
                     .append(shortDictionaryName).append(", ")
@@ -309,8 +309,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }   
     }
+    // DefaultShort Factory
     protected void encodeDefaultShortGenerator(MessageSchema schema, Appendable target) {
-        //encodeDefaultShort(short[] defaultShortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitmask, int idx, short value)
         try {
             appendStaticCall(target, encoder , "encodeDefaultShort(")
                     .append(shortDictionaryName).append(", ")
@@ -324,8 +324,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }   
     }
+    // DeltaShort Factory
     protected void encodeDeltaShortGenerator(MessageSchema schema, Appendable target) {
-        //encodeDeltaShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int idx, int bitMask, short value)
          try {
             appendStaticCall(target, encoder , "encodeDeltaShort(")
                     .append(shortDictionaryName).append(", ")
@@ -340,6 +340,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
     
+    // BodyBuilder OverRide. Lots of Good stuff goes here
+    // Creates Pmap for encoding
     @Override
     protected void bodyBuilder(MessageSchema schema, int cursor, int fragmentParaCount, CharSequence[] fragmentParaTypes, CharSequence[] fragmentParaArgs, CharSequence[] fragmentParaSuff)  {
     
@@ -352,11 +354,11 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         int curCursor = cursor;
         int token = from.tokens[curCursor];
         int pmapType = TokenBuilder.extractType(token);
-        boolean pmapOptional;
+        boolean pmapOptional = false;
                 
-        long activePmap = 0;
+        //long activePmap = 0;
         try {
-            bodyTarget.append("long Pmap;");
+            bodyTarget.append("long activePmap = 0;");
          } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -370,7 +372,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
             if(TypeMask.isInt(pmapType) == true) {
                 try {
-                    bodyTarget.append("pmap = ");
+                    bodyTarget.append("activePmap = ");
                      } catch (IOException e) {
                         throw new RuntimeException(e);
                 }
@@ -378,7 +380,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
               
             }else if(TypeMask.isLong(pmapType) == true) {
                 try {
-                    bodyTarget.append("pmap = ");
+                    bodyTarget.append("activePmap = ");
                      } catch (IOException e) {
                         throw new RuntimeException(e);
                 }
@@ -386,7 +388,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
   
             }else if(TypeMask.isText(pmapType) == true) {
                 try {
-                    bodyTarget.append("pmap = ");
+                    bodyTarget.append("activePmap = ");
                      } catch (IOException e) {
                         throw new RuntimeException(e);
                 }
@@ -395,18 +397,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             }else if(TypeMask.isOptional(pmapType) == true) {
                pmapOptional = true;
             };
-
-            //Good stuff goes here.
-            //this comment is an example of what should be generated not executed here.
-            //  activePmap = pmapBuilding( activePmap,  token.  <varName> , initDictionary[curCursor], prev??
-             /// varName is the name of the variable that holds the cur value.
-            //Which pmap should be called??? switch on varType.
-
-            curCursor +=  TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
-            
-        }
-        
-        //now THE PMAP IS BUILT.
+            curCursor +=  TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];      
+        }  
         for(int paramIdx = 0; paramIdx<fragmentParaCount; paramIdx++) {
             if(TypeMask.isInt(pmapType) == true) {
                 int oper = TokenBuilder.extractOper(token);
@@ -446,11 +438,11 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                         incrementLongGenerator(schema, bodyTarget);
         		break;
 		}
-            } else if(TypeMask.isOptional(pmapType) == true) {
+            } //else if(TypeMask.isOptional(pmapType) == true) {
+                else if(pmapOptional = true) {
                  
             }   
         }
-        //NOW GENERATE WRITE IT CODE
     }
 }
             
