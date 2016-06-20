@@ -14,16 +14,22 @@ public class FROMValidation {
 
     public static boolean testForMatchingFROMs(String templateFile, MessageSchema schema) {
         try {
-            FieldReferenceOffsetManager encodedFrom = MessageSchema.from(schema);
+            FieldReferenceOffsetManager encodedFrom = null;
+            try {
+                encodedFrom = MessageSchema.from(schema); //TODO: new projects get null pointer here, fix so they are given correct source.
+            } catch (NullPointerException npe) {
+                //continue with no previous FROM
+            }
             FieldReferenceOffsetManager expectedFrom = TemplateHandler.loadFrom(templateFile);
             if (null==expectedFrom) {
                 System.err.println("Unable to find: "+templateFile);
                 return false;
             }
-            if (!expectedFrom.equals(encodedFrom)) {
+            if (null==encodedFrom || !expectedFrom.equals(encodedFrom)) {
                 System.err.println("Encoded source:"+expectedFrom);
-                System.err.println("Template file:"+encodedFrom);
-                
+                if (null!=encodedFrom) {
+                    System.err.println("Template file:"+encodedFrom);
+                }
                 System.err.println("//replacement source");
                 StringBuilder target = new StringBuilder();
                 String nameOfFROM = templateFile.substring(1+templateFile.lastIndexOf('/') );

@@ -476,14 +476,14 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(targetLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(targetLOC);
 	
 		//High level API example of reading bytes from one ring buffer into another array that wraps with a mask w
-		return copyBytes(targetRing, targetLOC, readBytes(sourceRing, sourceLOC, Pipe.byteBuffer(targetRing),  Pipe.bytesWorkingHeadPosition(targetRing), targetRing.byteMask));
+		return copyBytes(targetRing, targetLOC, readBytes(sourceRing, sourceLOC, Pipe.byteBuffer(targetRing),  Pipe.getBlobWorkingHeadPosition(targetRing), targetRing.byteMask));
 	}
 
 	private static int copyBytes(final Pipe targetRing, int targetLOC, int length) {
 	    assert(LOCUtil.isLocOfAnyType(targetLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(targetLOC);
 
 
-	    int byteWrkHdPos = Pipe.bytesWorkingHeadPosition(targetRing);
+	    int byteWrkHdPos = Pipe.getBlobWorkingHeadPosition(targetRing);
 	    
 		Pipe.validateVarLength(targetRing, length);	
 		Pipe.setBytePosAndLen(Pipe.primaryBuffer(targetRing), targetRing.mask, 

@@ -761,7 +761,7 @@ public class LocalHeap {
     }
 
 	public static void addLocalHeapValue(int heapId, int sourceLen, LocalHeap byteHeap, Pipe rbRingBuffer) {
-	    final int p = Pipe.bytesWorkingHeadPosition(rbRingBuffer);
+	    final int p = Pipe.getBlobWorkingHeadPosition(rbRingBuffer);
 	    if (sourceLen > 0) {
 	        final int offset = heapId << 2;
 			final int pos = byteHeap.tat[offset];

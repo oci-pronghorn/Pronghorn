@@ -19,15 +19,18 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     public DataOutputBlobWriter(Pipe<S> p) {
         this.p = p;
         this.byteBuffer = Pipe.blob(p);
-        this.byteMask = Pipe.blobMask(p);      
-        assert(byteMask!=0);
+        this.byteMask = Pipe.blobMask(p);  
+        assert(this.byteMask!=0);
+        assert(this.byteBuffer!=null);
     }
     
     public void openField() {
         openField(this);
+        
     }
 
     public static <T extends MessageSchema> void openField(DataOutputBlobWriter<T> writer) {
+        
         writer.p.openBlobFieldWrite();
         //NOTE: this method works with both high and low APIs.
         writer.startPosition = writer.activePosition = Pipe.getBlobWorkingHeadPosition(writer.p);

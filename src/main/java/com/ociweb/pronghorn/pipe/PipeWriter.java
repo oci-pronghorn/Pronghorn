@@ -104,7 +104,7 @@ public class PipeWriter {
     }    
           //<<OFF_BITS
     private static void finishWriteBytesAlreadyStarted(Pipe pipe, int loc, int length) {
-        int p = Pipe.bytesWorkingHeadPosition(pipe);
+        int p = Pipe.getBlobWorkingHeadPosition(pipe);
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
     	Pipe.validateVarLength(pipe, length);
@@ -116,8 +116,8 @@ public class PipeWriter {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
     	assert(length>=0);
-		Pipe.copyBytesFromToRing(source, offset, mask, Pipe.byteBuffer(pipe), Pipe.bytesWorkingHeadPosition(pipe), pipe.byteMask, length);		
-		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), Pipe.bytesWorkingHeadPosition(pipe), length, Pipe.bytesWriteBase(pipe));
+		Pipe.copyBytesFromToRing(source, offset, mask, Pipe.byteBuffer(pipe), Pipe.getBlobWorkingHeadPosition(pipe), pipe.byteMask, length);		
+		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), Pipe.getBlobWorkingHeadPosition(pipe), length, Pipe.bytesWriteBase(pipe));
         Pipe.addAndGetBytesWorkingHeadPosition(pipe, length);	
     }
         
@@ -128,8 +128,8 @@ public class PipeWriter {
     	Pipe.validateVarLength(pipe, sourceLen);
 		
         assert(sourceLen>=0);		
-        Pipe.copyBytesFromToRing(source, 0, Integer.MAX_VALUE, Pipe.blob(pipe), Pipe.bytesWorkingHeadPosition(pipe), pipe.byteMask, sourceLen);   	
-        Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), Pipe.bytesWorkingHeadPosition(pipe), sourceLen, Pipe.bytesWriteBase(pipe));
+        Pipe.copyBytesFromToRing(source, 0, Integer.MAX_VALUE, Pipe.blob(pipe), Pipe.getBlobWorkingHeadPosition( pipe), pipe.byteMask, sourceLen);   	
+        Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), Pipe.getBlobWorkingHeadPosition( pipe), sourceLen, Pipe.bytesWriteBase(pipe));
         Pipe.addAndGetBytesWorkingHeadPosition(pipe,sourceLen);
     }
         
@@ -138,7 +138,7 @@ public class PipeWriter {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
  
         assert(length>=0);
-        int bytePos = Pipe.bytesWorkingHeadPosition(pipe);
+        int bytePos = Pipe.getBlobWorkingHeadPosition( pipe);
         Pipe.copyByteBuffer(source, length, pipe);
         Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), bytePos, length, Pipe.bytesWriteBase(pipe));
     }
@@ -147,7 +147,7 @@ public class PipeWriter {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
     	assert(length>=0);
-    	int bytePos = Pipe.bytesWorkingHeadPosition(pipe);
+    	int bytePos = Pipe.getBlobWorkingHeadPosition(pipe);
     	Pipe.copyByteBuffer(source, length, pipe);
 		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), bytePos, length, Pipe.bytesWriteBase(pipe));
     }
@@ -176,7 +176,7 @@ public class PipeWriter {
         
         int sourceLen = null==source? -1 : source.length();
     	Pipe.validateVarLength(pipe, sourceLen<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), Pipe.bytesWorkingHeadPosition(pipe), Pipe.copyUTF8ToByte(source, offset, length, pipe), Pipe.bytesWriteBase(pipe));
+		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), Pipe.getBlobWorkingHeadPosition(pipe), Pipe.copyUTF8ToByte(source, offset, length, pipe), Pipe.bytesWriteBase(pipe));
     }
         
     public static void writeUTF8(Pipe pipe, int loc, char[] source) {
@@ -184,7 +184,7 @@ public class PipeWriter {
 
         int sourceLen = null==source? -1 : source.length;        
     	Pipe.validateVarLength(pipe, sourceLen<<3); //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)      
-		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), Pipe.bytesWorkingHeadPosition(pipe), Pipe.copyUTF8ToByte(source, sourceLen, pipe), Pipe.bytesWriteBase(pipe));
+		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), Pipe.getBlobWorkingHeadPosition(pipe), Pipe.copyUTF8ToByte(source, sourceLen, pipe), Pipe.bytesWriteBase(pipe));
     }
       
     public static void writeUTF8(Pipe pipe, int loc, char[] source, int offset, int length) {
@@ -192,7 +192,7 @@ public class PipeWriter {
         
     	Pipe.validateVarLength(pipe, length<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)     
 		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc), 
-		        Pipe.bytesWorkingHeadPosition(pipe), 
+		        Pipe.getBlobWorkingHeadPosition( pipe), 
 		        Pipe.copyUTF8ToByte(source, offset, length, pipe), 
 		        Pipe.bytesWriteBase(pipe));
     }
@@ -234,7 +234,7 @@ public class PipeWriter {
     public static void writeIntAsText(Pipe pipe, int loc, int value) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
         
-    	int max = 12+ Pipe.bytesWorkingHeadPosition(pipe);
+    	int max = 12+ Pipe.getBlobWorkingHeadPosition(pipe);
     	int len = Pipe.leftConvertIntToASCII(pipe, value, max);    	
     	finishWriteBytesAlreadyStarted(pipe, loc, len);
         Pipe.addAndGetBytesWorkingHeadPosition(pipe,len);  	
@@ -243,7 +243,7 @@ public class PipeWriter {
     public static void writeLongAsText(Pipe pipe, int loc, long value) { 
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
         
-    	int max = 21+Pipe.bytesWorkingHeadPosition(pipe);
+    	int max = 21+Pipe.getBlobWorkingHeadPosition(pipe);
     	int len = Pipe.leftConvertLongToASCII(pipe, value, max);
     	finishWriteBytesAlreadyStarted(pipe, loc, len);
         Pipe.addAndGetBytesWorkingHeadPosition(pipe,len);   	

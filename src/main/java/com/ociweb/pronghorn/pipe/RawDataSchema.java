@@ -19,6 +19,18 @@ public class RawDataSchema extends MessageSchema {
     public static final int MSG_CHUNKEDSTREAM_1 = 0x00000000;
     public static final int MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2 = 0x01C00001;
     
+    // ByteArray DataInputBlobReader DataOutputBlobWriter
+    // String    CharSequence        Appendable
+    // int       int                 int
+    
+    public interface RawDataConsumer {
+        void consume(DataInputBlobReader value);    
+    }
+    
+    public interface RawDataProducer {
+        void produce(DataOutputBlobWriter value);
+    }
+    
     protected RawDataSchema(FieldReferenceOffsetManager from) {
         //TODO: confirm that from is a superset of FROM, Names need not match but IDs must.
         super(from);
@@ -27,5 +39,6 @@ public class RawDataSchema extends MessageSchema {
     protected RawDataSchema() {
         super(FROM);
     }
+    
         
 }

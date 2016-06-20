@@ -193,7 +193,7 @@ public class RingStreams {
 		byte[] buffer = Pipe.byteBuffer(outputRing);
 		int byteMask = outputRing.byteMask;
 		
-		int position = Pipe.bytesWorkingHeadPosition(outputRing);
+		int position = Pipe.getBlobWorkingHeadPosition(outputRing);
 
 		int size = 0;	
 		try{

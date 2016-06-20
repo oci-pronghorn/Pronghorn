@@ -859,7 +859,7 @@ public final class Pipe<T extends MessageSchema> {
     }
     
     public static void readFieldFromInputStream(Pipe pipe, InputStream inputStream, final int byteCount) throws IOException {
-        buildFieldFromInputStream(pipe, inputStream, byteCount, Pipe.bytesWorkingHeadPosition(pipe), Pipe.blobMask(pipe), Pipe.blob(pipe), pipe.sizeOfBlobRing);
+        buildFieldFromInputStream(pipe, inputStream, byteCount, Pipe.getBlobWorkingHeadPosition(pipe), Pipe.blobMask(pipe), Pipe.blob(pipe), pipe.sizeOfBlobRing);
     }
 
     private static void buildFieldFromInputStream(Pipe pipe, InputStream inputStream, final int byteCount, int startPosition, int byteMask, byte[] buffer, int sizeOfBlobRing) throws IOException {
@@ -2267,7 +2267,7 @@ public final class Pipe<T extends MessageSchema> {
         int bytesConsumedByFragment = takeValue(pipe);
         assert(bytesConsumedByFragment>=0) : "Bytes consumed by fragment must never be negative, was fragment written correctly?, is read positioned correctly?";
         Pipe.markBytesReadBase(pipe, bytesConsumedByFragment);
-       // assert(Pipe.contentRemaining(pipe)>=0); //not always valid, check the zero length sequence case.
+        assert(Pipe.contentRemaining(pipe)>=0); 
         batchedReleasePublish(pipe, pipe.blobRingTail.byteWorkingTailPos.value, pipe.slabRingTail.workingTailPos.value);
         return bytesConsumedByFragment;        
     }
@@ -2309,29 +2309,8 @@ public final class Pipe<T extends MessageSchema> {
         ring.lastReleasedBlobTail = byteWorkingTailPos;
         ring.lastReleasedSlabTail = workingTailPos;
     }
-    
+   
         
-    
-
-    // value in lastReleased moves forward to the point for release up to
-    // tail position is where we start releasing from.
-    //
-    //
-    //  head
-    //
-    //
-    //  working tail - read from here
-    //
-    //  new last release
-    //
-    //         //scan this block for data to remove?
-    //
-    //  tail
-    //
-    //
-    //
-
-
 
     /**
      * Release any reads that were held back due to batching.
@@ -2668,10 +2647,6 @@ public final class Pipe<T extends MessageSchema> {
 	 
 	    assert(size>=0) : "unsupported size "+size;
 	    
-	    //NOTE: this checks the consumer which is on a different thread and may not work for dumpers like pipe cleaner.
-//	    assert((output.llRead.llwConfirmedReadPosition+output.mask) >= Pipe.tailPosition(output)) : " confirmed writes must be greater than the read tail writes:"
-//	                                               +(output.llRead.llwConfirmedReadPosition+output.mask)+" tailPos:"+Pipe.tailPosition(output)+
-//	                                               " \n CHECK that no low level writes have not been confirmed!";
 	    assert((output.llRead.llwConfirmedReadPosition+output.mask) <= Pipe.workingHeadPosition(output)) : " confirmed writes must be less than working head position writes:"
 	                                                +(output.llRead.llwConfirmedReadPosition+output.mask)+" workingHead:"+Pipe.workingHeadPosition(output)+
 	                                                " \n CHECK that Pipe is written same fields as message defines and skips none!";
@@ -2704,7 +2679,7 @@ public final class Pipe<T extends MessageSchema> {
 	public static <S extends MessageSchema> long confirmLowLevelRead(Pipe<S> input, long size) {
 	    assert(size>0) : "Must have read something.";
 	     //not sure if this assert is true in all cases
-	    assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value+Pipe.EOF_SIZE) : "size was far too large, past known data";
+	  //  assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value+Pipe.EOF_SIZE) : "size was far too large, past known data";
 	  //  assert(input.llWrite.llwConfirmedWrittenPosition + size >= input.slabRingTail.tailPos.get()) : "size was too small, under known data";        
 		return (input.llWrite.llwConfirmedWrittenPosition += size);
 	}
@@ -2737,13 +2712,7 @@ public final class Pipe<T extends MessageSchema> {
         return PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);
     }
 
-   //Delete Nov 2015
-    @Deprecated
-    public static <S extends MessageSchema> int bytesWorkingTailPosition(Pipe<S> pipe) {
-        return getWorkingBlobRingTailPosition(pipe);
-    }
-
-    public static <S extends MessageSchema> int addAndGetBytesWorkingTailPosition(Pipe<S> pipe, int inc) {
+   public static <S extends MessageSchema> int addAndGetBytesWorkingTailPosition(Pipe<S> pipe, int inc) {
         return PaddedInt.maskedAdd(pipe.blobRingTail.byteWorkingTailPos, inc, Pipe.BYTES_WRAP_MASK);
     }
 
@@ -2755,11 +2724,6 @@ public final class Pipe<T extends MessageSchema> {
         return PaddedInt.get(pipe.blobRingHead.byteWorkingHeadPos);
     }
     
-    @Deprecated
-    public static <S extends MessageSchema> int bytesWorkingHeadPosition(Pipe<S> pipe) {
-        return getBlobWorkingHeadPosition(pipe);
-    }
-
     public static <S extends MessageSchema> int addAndGetBytesWorkingHeadPosition(Pipe<S> pipe, int inc) {
         return PaddedInt.maskedAdd(pipe.blobRingHead.byteWorkingHeadPos, inc, Pipe.BYTES_WRAP_MASK);
     }
@@ -2803,7 +2767,7 @@ public final class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> void updateBytesWriteLastConsumedPos(Pipe<S> pipe) {
-        pipe.blobWriteLastConsumedPos = Pipe.bytesWorkingHeadPosition(pipe);
+        pipe.blobWriteLastConsumedPos = Pipe.getBlobWorkingHeadPosition(pipe);
     }
 
     public static <S extends MessageSchema> PaddedLong getWorkingTailPositionObject(Pipe<S> pipe) {

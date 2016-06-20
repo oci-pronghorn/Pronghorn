@@ -80,7 +80,8 @@ public class Blocker {
     
 
     public boolean isBlocked(int id) {        
-        return 0!=untilTimes[IntHashTable.getItem(table, id)-1];
+        int item = IntHashTable.getItem(table, id);
+        return (item<1) ? false : 0!=untilTimes[item-1];
     }
     
     

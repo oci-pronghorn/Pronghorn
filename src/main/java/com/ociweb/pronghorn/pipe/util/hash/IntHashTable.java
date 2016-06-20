@@ -58,6 +58,12 @@ public class IntHashTable {
 		return true;
 	}
 	
+	/**
+	 * returns zero if the value is not found otherwise it returns the value.
+	 * @param ht
+	 * @param key
+	 * @return
+	 */
 	public static int getItem(IntHashTable ht, int key) {
 
 		int mask = ht.mask;
@@ -89,7 +95,7 @@ public class IntHashTable {
 			temp = (int)ht.data[++hash & mask];
 		}
 		if (0 == temp) {
-			return false; //do not set item if it holds a previous value.
+			return false; //do not set item if it does not hold a previous value.
 		}
 		
 		long block = newValue;
