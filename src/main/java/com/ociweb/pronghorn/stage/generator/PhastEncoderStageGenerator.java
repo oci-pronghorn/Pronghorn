@@ -29,6 +29,15 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         private final String tokenName = "token";
         private final String booleanName = "boolean";
         
+    @Override
+    public void processSchema() throws IOException{
+        super.processSchema();
+        additionalImports(schema, bodyTarget);
+        additionalTokens(bodyTarget);
+        FieldReferenceOffsetManager from = MessageSchema.from(schema);
+        
+        //this.bodyBuilder(schema, 0, 0, from.tokens.length; , fragmentParaArgs, fragmentParaSuff);
+    }
     public PhastEncoderStageGenerator(MessageSchema schema, Appendable bodyTarget) {
         super(schema, bodyTarget); 
         this.bodyTarget = bodyTarget;
