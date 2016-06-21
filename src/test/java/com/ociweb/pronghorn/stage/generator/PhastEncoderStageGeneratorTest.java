@@ -67,7 +67,7 @@ public class PhastEncoderStageGeneratorTest {
     
     @Test
     public void testProject() throws IOException{
-        //File output = new File("text.txt");
+        //test build to see what is being printout out
         File output = new File("src/test/java/com/ociweb/pronghorn/stage/generator/testOutputs/test.java");
         PrintWriter target = new PrintWriter(output);
         PhastEncoderStageGenerator ew = new PhastEncoderStageGenerator(PipeMonitorSchema.instance, target);
