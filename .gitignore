@@ -3,4 +3,4 @@ target/
 /.classpath
 /.project
 /.attach_pid25440
-/src/test/java/com/ociweb/pronghorn/stage/generator/testOutputs/*
+/src/test/java/com/ociweb/pronghorn/stage/generator/testOutputs/*.java
