@@ -13,6 +13,8 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import java.io.File;
+import java.io.PrintWriter;
 
 public class PhastEncoderStageGeneratorTest {
 
@@ -60,6 +62,15 @@ public class PhastEncoderStageGeneratorTest {
             e.printStackTrace();
             fail();
         }
+        
+    }
+    
+    @Test
+    public void testProject() throws IOException{
+        //File output = new File("text.txt");
+        File output = new File("src/test/java/com/ociweb/pronghorn/stage/generator/testOutputs/test.java");
+        PrintWriter target = new PrintWriter(output);
+        PhastEncoderStageGenerator ew = new PhastEncoderStageGenerator(PipeMonitorSchema.instance, target);
         
     }
     
