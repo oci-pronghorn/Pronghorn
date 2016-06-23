@@ -35,16 +35,9 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         private final String stringValueName = "stringVal";
         private final String tokenName = "token";
         private final String booleanName = "boolean";
+        private int count;
         
-    @Override
-    public void processSchema() throws IOException{
-        super.processSchema();
-        additionalImports(schema, bodyTarget);
-        additionalTokens(bodyTarget);
-        FieldReferenceOffsetManager from = MessageSchema.from(schema);
-
-        bodyBuilder(schema, 0, fragmentParaCount, fragmentParaTypes, fragmentParaArgs,fragmentParaSuff);
-    }
+        
     public PhastEncoderStageGenerator(MessageSchema schema, Appendable bodyTarget) {
         super(schema, bodyTarget); 
         this.bodyTarget = bodyTarget;
@@ -73,12 +66,15 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             
             if (TypeMask.isLong(type)) {                
                 target.append("private long ").append(scriptNames[i]).append(";\n");
+                count++;
             }
             else if(TypeMask.isInt(type)) {
                 target.append("private int ").append(scriptNames[i]).append(";\n");
+                count++;
             }
             else if(TypeMask.isText(type)) {
                 target.append("private String ").append(scriptNames[i]).append(";\n");
+                count++;
             }
         }
     }
@@ -363,25 +359,22 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         
-        //int[] initDictionary = from.newIntDefaultsDictionary();
-        //int[] prevDictionary = from.newIntDefaultsDictionary();
-                // replace dictionary with  number 
-        
         int curCursor = cursor;
         int curCursor2 = cursor;
         boolean pmapOptional = false;
 
-        for(int paramIdx = 0; paramIdx < fragmentParaCount - 1; paramIdx++) {
+        for(int paramIdx = 0; paramIdx < fragmentParaCount; paramIdx++) {
             int token = from.tokens[curCursor];
             int pmapType = TokenBuilder.extractType(token);
         
             String varName = new StringBuilder().append(fragmentParaArgs[paramIdx]).append(fragmentParaSuff[paramIdx]).toString();
             String varType = new StringBuilder().append(fragmentParaTypes[paramIdx]).toString();
-            //int token = from.tokens[curCursor];
-            
-            //int pmapType = TokenBuilder.extractType(token);
 
-            if(TypeMask.isInt(pmapType) == true) {
+            
+            if(TypeMask.isOptional(pmapType) == true) {
+               pmapOptional = true;
+            }
+            if(varType.equals("int")) {
                 try {
                     bodyTarget.append("activePmap = ");
                      } catch (IOException e) {
@@ -389,7 +382,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 }
                 encodePmapBuilderInt(schema, bodyTarget);
               
-            }else if(TypeMask.isLong(pmapType) == true) {
+            }else if(varType.equals("long")) {
                 try {
                     bodyTarget.append("activePmap = ");
                      } catch (IOException e) {
@@ -397,7 +390,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 }
                 encodePmapBuilderLong(schema, bodyTarget);
   
-            }else if(TypeMask.isText(pmapType) == true) {
+            }else if(varType.equals("String")) {
                 try {
                     bodyTarget.append("activePmap = ");
                      } catch (IOException e) {
@@ -405,13 +398,6 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 }
                 encodePmapBuilderString(schema, bodyTarget);
                 
-            }else if(TypeMask.isOptional(pmapType) == true) {
-               pmapOptional = true;
-               try {
-                    bodyTarget.append("its optional");
-                     } catch (IOException e) {
-                        throw new RuntimeException(e);
-                }
             }
             else{
                 try {
@@ -423,8 +409,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             curCursor +=  TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];      
         }  
         
-      /*  for(int paramIdx = 0; paramIdx<fragmentParaCount; paramIdx++) {
-            int token = from.tokens[curCursor2];
+      for(int paramIdx = 0; paramIdx<fragmentParaCount; paramIdx++) {
+            int token = from.tokens[curCursor];
             int pmapType = TokenBuilder.extractType(token);
             if(TypeMask.isInt(pmapType) == true) {
                 int oper = TokenBuilder.extractOper(token);
@@ -469,7 +455,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                  
             }   
         }
-*/
+
     }
 }
             
