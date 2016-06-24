@@ -19,7 +19,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         private final Class encoder = PhastEncoder.class;    
         private final Appendable bodyTarget;        
         private final String defLongDictionaryName = "defLongDictionary";
-        private final String defIntDictionaryName = "defIntDictiornary";
+        private final String defIntDictionaryName = "defIntDictionary";
         //short not supported yet
         //private final String defShortDictionaryName = "defShortDictiornary";
         private final String longDictionaryName = "previousLongDictionary";
@@ -36,6 +36,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         private final String tokenName = "token";
         private final String booleanName = "boolean";
         private int count;
+        private static final String tab = "    ";
         
         
     public PhastEncoderStageGenerator(MessageSchema schema, Appendable bodyTarget) {
@@ -79,45 +80,42 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
     //  BuilderInt Factory
-    protected void encodePmapBuilderInt(MessageSchema schema, Appendable target, int token, int index, String isOptional) {
+    protected void encodePmapBuilderInt(MessageSchema schema, Appendable target, int token, int index, String valName) {
        try {
             appendStaticCall(target, encoder , "pmapBuilderInt")
                     .append(pmapName).append(", ")
                     .append(Integer.toString(token)).append(", ")
-                    .append(longValueName).append(", ")
+                    .append(valName).append(", ")
                     .append(intDictionaryName + "[" + index + "]").append(", ")
                     .append(defIntDictionaryName+ "[" + index + "]").append(", ")
-                    .append(isOptional)
+                    .append("(" + valName + " == null)")
                     .append(");\n");
         } catch (IOException e) {
            throw new RuntimeException(e);
         }
     }
     // builderLong Factory
-    protected void encodePmapBuilderLong(MessageSchema schema, Appendable target) {
+    protected void encodePmapBuilderLong(MessageSchema schema, Appendable target, int token, int index, String valName) {
        try {
             appendStaticCall(target, encoder , "pmapBuilderLong")
                     .append(pmapName).append(", ")
-                    .append(tokenName).append(", ")
-                    .append(longValueName).append(", ")
-                    .append(longValueName).append(", ")
-                    .append(longValueName).append(", ")
-                    .append(booleanName)
+                    .append(Integer.toString(token)).append(", ")
+                    .append(valName).append(", ")
+                    .append(longDictionaryName + "[" + index + "]").append(", ")
+                    .append(defLongDictionaryName+ "[" + index + "]").append(", ")
+                    .append("(" + valName + " == null)")
                     .append(");\n");
         } catch (IOException e) {
            throw new RuntimeException(e);
         }
     }
     // BuilderString Factory
-    protected void encodePmapBuilderString(MessageSchema schema, Appendable target) {
+    protected void encodePmapBuilderString(MessageSchema schema, Appendable target, int token, String valName) {
        try {
             appendStaticCall(target, encoder , "pmapBuilderString")
                     .append(pmapName).append(", ")
-                    .append(tokenName).append(", ")
-                    .append(longValueName).append(", ")
-                    .append(longValueName).append(", ")
-                    .append(longValueName).append(", ")
-                    .append(booleanName)
+                    .append(Integer.toString(token)).append(", ")
+                    .append("(" + valName + " == null)")
                     .append(");\n");
         } catch (IOException e) {
            throw new RuntimeException(e);
@@ -372,35 +370,35 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             String varName = new StringBuilder().append(fragmentParaArgs[paramIdx]).append(fragmentParaSuff[paramIdx]).toString();
             String varType = new StringBuilder().append(fragmentParaTypes[paramIdx]).toString();
             
-            String isOptional = "false";
+            String isNull = "false";
             
             if(TypeMask.isOptional(pmapType)){
-                isOptional = "true";
+                isNull = "true";
             }
             
             if(varType.equals("int")) {
                 try {
-                    bodyTarget.append("activePmap = ");
+                    bodyTarget.append(tab + "activePmap = ");
                      } catch (IOException e) {
                         throw new RuntimeException(e);
                 }
-                encodePmapBuilderInt(schema, bodyTarget, token, paramIdx, isOptional);
+                encodePmapBuilderInt(schema, bodyTarget, token, paramIdx, varName);
               
             }else if(varType.equals("long")) {
                 try {
-                    bodyTarget.append("activePmap = ");
+                    bodyTarget.append(tab + "activePmap = ");
                      } catch (IOException e) {
                         throw new RuntimeException(e);
                 }
-                encodePmapBuilderLong(schema, bodyTarget);
+                encodePmapBuilderLong(schema, bodyTarget, token, paramIdx, varName);
   
-            }else if(varType.equals("String")) {
+            }else if(varType.equals(tab + "String")) {
                 try {
                     bodyTarget.append("activePmap = ");
                      } catch (IOException e) {
                         throw new RuntimeException(e);
                 }
-                encodePmapBuilderString(schema, bodyTarget);
+                encodePmapBuilderString(schema, bodyTarget, token, varName);
                 
             }
             else{
