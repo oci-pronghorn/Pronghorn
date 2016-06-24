@@ -5,6 +5,7 @@ package com.ociweb.pronghorn.pipe.schema.loader;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -1019,6 +1020,9 @@ public class TemplateHandler extends DefaultHandler {
         if (null != sourceInputStream) {
         	sp.parse(sourceInputStream, handler);
         } else {
+            if (null == folder || null == folder.listFiles()) {
+                throw new FileNotFoundException(source);
+            }
         	for (File f : folder.listFiles()) {
         		if (f.isFile()) {
         			sp.parse(f, handler);
