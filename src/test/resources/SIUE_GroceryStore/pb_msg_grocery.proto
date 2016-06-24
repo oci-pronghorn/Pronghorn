@@ -1,0 +1,31 @@
+// See README.txt for information and build instructions.
+
+package pb_grocery;
+
+option java_package = "com.ociweb.protocoltest.protobuf.speed";
+option java_outer_classname = "PBSpeedQueryProvider";
+
+//optimize_for (file option):
+//Can be set to SPEED, CODE_SIZE, or LITE_RUNTIME
+option optimize_for = SPEED;
+
+message  {
+  optional int32 user = 1;
+  optional int32 year = 2;
+  optional int32 month = 3;
+  optional int32 date = 4;
+  optional int32 sample_count = 5;
+
+  message PBSample {
+    optional int32 id = 1;
+    optional int64 time = 2;
+    optional int32 measurement = 3;
+    optional int32 action = 4;
+  }
+
+  repeated PBSample samples = 6;
+}
+
+//message PBSpeedQueryProvider {
+//  repeated PBQuery queries = 1;
+//}
