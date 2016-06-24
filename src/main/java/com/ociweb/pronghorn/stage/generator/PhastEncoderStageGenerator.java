@@ -435,9 +435,9 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 }
                 encodePmapBuilderLong(schema, bodyTarget, token, paramIdx, varName);
   
-            }else if(varType.equals(tab + "String")) {
+            }else if(varType.equals("StringBuilder")) {
                 try {
-                    bodyTarget.append("activePmap = ");
+                    bodyTarget.append(tab + "activePmap = ");
                      } catch (IOException e) {
                         throw new RuntimeException(e);
                 }
