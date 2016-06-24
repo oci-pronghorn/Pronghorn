@@ -52,6 +52,49 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
            throw new RuntimeException(e);
         }
     }
+    
+    @Override
+    public void processSchema() throws IOException{
+        headerConstruction();
+        additionalImports(schema, bodyTarget);
+        
+        defineMembers();
+        additionalTokens(bodyTarget);
+        
+        final FieldReferenceOffsetManager from = MessageSchema.from(schema);
+        
+        //Build top level entry point
+        processCallerPrep();
+        for(int cursor =0; cursor<from.fragScriptSize.length; cursor++) {
+            boolean isFragmentStart = 0!=from.fragScriptSize[cursor];
+            if (isFragmentStart) {
+                processCaller(cursor);
+            }
+            
+        }
+        processCallerPost();
+        
+        //Build fragment consumption methods
+        for(int cursor = 0; cursor<from.fragScriptSize.length; cursor++) {
+            boolean isFragmentStart = 0!=from.fragScriptSize[cursor];
+            
+            if (isFragmentStart) {
+                processCalleeOpen(cursor);                    
+                
+                boolean isMessageStart = FieldReferenceOffsetManager.isTemplateStart(from, cursor);
+               
+                if (isMessageStart) {
+                    processFragment(1, cursor, from);
+                } else {
+                    processFragment(0, cursor, from);
+                }
+                
+                processCalleeClose(cursor);
+            }
+        }
+        
+        footerConstruction();
+    }
     // Additional Token method to append any longs, ins or string variables
     protected void additionalTokens(Appendable target) throws IOException { 
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
