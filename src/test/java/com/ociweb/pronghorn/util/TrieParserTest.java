@@ -359,6 +359,54 @@ public class TrieParserTest {
     }
     
     @Test
+    public void testMultipleTrysOfTrie() {
+        TrieParserReader reader = new TrieParserReader(3);
+        TrieParser map = new TrieParser(1000);
+        map.setUTF8Value("tuesday",   value2);
+        map.setUTF8Value("hello","2", value3);
+        map.setUTF8Value("helloworld",value1);
+        map.setUTF8Value("X%b","web", value4);
+        map.setUTF8Value("%b","web",  value5);
+                        
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
+                
+        
+        byte[] a = "he                             ".getBytes();
+        byte[] b = "hello                          ".getBytes();
+        byte[] c = "helloworldtuesday              ".getBytes();
+        
+        
+        TrieParserReader.parseSetup(reader, a, 0, 2,  15);
+        
+        assertEquals(0, reader.sourcePos);
+        assertEquals(2, reader.sourceLen);
+        assertEquals(2, TrieParserReader.parseHasContentLength(reader));
+        
+        assertEquals(-1, TrieParserReader.parseNext(reader, map));
+        
+        TrieParserReader.parseSetup(reader, b, 0, 5, 15);
+        
+        assertEquals(0, reader.sourcePos);
+        assertEquals(5, reader.sourceLen);
+        assertEquals(5, TrieParserReader.parseHasContentLength(reader));
+        
+        assertEquals(-1, TrieParserReader.parseNext(reader, map));
+                
+        
+        TrieParserReader.parseSetup(reader, c, 0, "helloworld".length(), 31);
+        
+        assertEquals(0, reader.sourcePos);
+        assertEquals("helloworld".length(), reader.sourceLen);
+        assertEquals("helloworld".length(), TrieParserReader.parseHasContentLength(reader));
+        
+        assertEquals(value1, TrieParserReader.parseNext(reader, map));
+        assertEquals(value2, TrieParserReader.parseNext(reader, map));
+        
+                
+    }
+    
+    
+    @Test
     public void testUTF8Set() {
         TrieParserReader reader = new TrieParserReader(3);
         TrieParser map = new TrieParser(1000);

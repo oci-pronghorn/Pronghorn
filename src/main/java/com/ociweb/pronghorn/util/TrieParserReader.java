@@ -183,6 +183,16 @@ public class TrieParserReader {
     }
     public static int debugAsUTF8(TrieParserReader that, Appendable target, int maxLen) {
         try {
+             if ((that.sourceBacking[that.sourcePos & that.sourceMask]<32) || (that.sourceBacking[(1+that.sourcePos) & that.sourceMask]<32)) {
+                 //we have a leading length
+                 target.append("[");
+                 Appendables.appendValue(target, that.sourceBacking[that.sourceMask&that.sourcePos++]);
+                 target.append(",");
+                 Appendables.appendValue(target, that.sourceBacking[that.sourceMask&that.sourcePos++]);
+                 target.append("]");
+                 that.sourceLen-=2;
+             }
+            
              Appendable a = Appendables.appendUTF8(target, that.sourceBacking, that.sourcePos, Math.min(maxLen, that.sourceLen), that.sourceMask);
              if (maxLen<that.sourceLen) {
                  a.append("...");
