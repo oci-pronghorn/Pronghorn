@@ -975,6 +975,7 @@ public class GraphManager {
 	            }
 	        }
 	        
+	        int undefIdx = 0;
 	        int j = m.pipeIdToPipe.length;
 	        while (--j>=0) {
 	            Pipe pipe = m.pipeIdToPipe[j];	            
@@ -983,8 +984,21 @@ public class GraphManager {
 	                int producer = m.ringIdToStages[j*2];
 	                int consumer = m.ringIdToStages[(j*2)+1];
 	                
-	                target.append("\"Stage").append(Integer.toString(producer)).append("\" -> \"Stage").append(Integer.toString(consumer)).
-	                       append("\"[label=\"").append(Pipe.schemaName(pipe).replace("Schema", "")).append("\"]\n");
+	                if (producer>=0) {
+	                    target.append("\"Stage").append(Integer.toString(producer));
+	                } else {
+	                    target.append("\"Undefined").append(Integer.toString(undefIdx++));	                    
+	                }
+	                
+	                target.append("\" -> ");
+	                
+	                if (consumer>=0) {
+	                    target.append("\"Stage").append(Integer.toString(consumer));
+	                } else {
+	                    target.append("\"Undefined").append(Integer.toString(undefIdx++));
+	                }
+	                
+	                target.append("\"[label=\"").append(Pipe.schemaName(pipe).replace("Schema", "")).append("\"]\n");
 	                
 	          
 	            }
@@ -1204,15 +1218,11 @@ public class GraphManager {
         //keep waiting until this stage starts it shut down or completed its shutdown, 
         //eg return on leading edge as soon as we detect shutdown in progress..
         while (!  (isStageShuttingDown(gm, stageToWatch.stageId)||isStageTerminated(gm, stageToWatch.stageId)) ) { 
-            LockSupport.parkNanos(100_000);
-           //Thread.yield(); 
-          // LockSupport.parkNanos(100);
-            //TODO: delete the folloing code after this is tested on the Edison, not trusting parkNanos yet.
-//            try {
-//                Thread.sleep(100);
-//            } catch (InterruptedException e) {
-//                throw new RuntimeException(e);
-//            }
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 	
