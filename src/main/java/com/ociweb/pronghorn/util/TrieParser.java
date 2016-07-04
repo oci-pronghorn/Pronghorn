@@ -279,7 +279,7 @@ public class TrieParser {
         return 1 + (( (~(((source & (0xFF & critera))-1)>>>8) ^ critera>>>8)) & jump) + pos;
     }
 
-    public void setUTF8Value(CharSequence cs, int value) {
+    public int setUTF8Value(CharSequence cs, int value) {
         
       //  pipe.reset();
         Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
@@ -296,10 +296,11 @@ public class TrieParser {
         
         //WARNING: this is not thread safe if set is called and we have not yet parsed!!
         Pipe.releaseReadLock(pipe);
+        return len;
         
     }
     
-    public void setUTF8Value(CharSequence cs, CharSequence suffix, int value) {
+    public int setUTF8Value(CharSequence cs, CharSequence suffix, int value) {
         
         Pipe.addMsgIdx(pipe, 0);
         
@@ -318,6 +319,7 @@ public class TrieParser {
         
         //WARNING: this is not thread safe if set is called and we have not yet parsed!!
         Pipe.releaseReadLock(pipe);
+        return len;
     }
 
 
@@ -360,21 +362,21 @@ public class TrieParser {
                         } else {
                             int pos1 = pos;
                             
-                            if (1==BRANCH_JUMP_SIZE) {
-                                pos = jumpOnBit((short) v, data[pos1++], data[pos1], pos1);                               
-                            } else {
+                       //     if (1==BRANCH_JUMP_SIZE) {
+                       //         pos = jumpOnBit((short) v, data[pos1++], data[pos1], pos1);                               
+                       //     } else {
                                 pos = jumpOnBit((short) v, data[pos1++], (((int)data[pos1++])<<15) | (0x7FFF&data[pos1]), pos1);   
-                            }
+                        //    }
                         }
                         break;
                     case TYPE_ALT_BRANCH:
                         
                         //this selects the one to try first
-                        if (1==BRANCH_JUMP_SIZE) {
-                            altBranch(data, pos, sourcePos, data[pos++], data[pos]); //jump and peek, that is why second does not ++
-                        } else {
+                      //  if (1==BRANCH_JUMP_SIZE) {
+                      //      altBranch(data, pos, sourcePos, data[pos++], data[pos]); //jump and peek, that is why second does not ++
+                       // } else {
                             altBranch(data, pos, sourcePos, (((int)data[pos++])<<15) | (0x7FFF&data[pos++]), data[pos]);
-                        }
+                      //  }
                         
                         pos       = altStackA[--altStackPos];
                         sourcePos = altStackB[altStackPos];
@@ -509,6 +511,8 @@ public class TrieParser {
             pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);
             limit = Math.max(limit, writeEnd(data, pos, value));
         }
+        
+        
     }
 
     void recurseAltBranch(short[] localData, int pos, int offset) {
@@ -916,15 +920,15 @@ public class TrieParser {
         data[pos++] = type;
         data[pos++] = criteria;
         
-        if (1==BRANCH_JUMP_SIZE ) {
-            if (requiredRoom > 0x7FFF) {
-                throw new UnsupportedOperationException("This content is too large, use shorter content or modify this code to make multiple jumps.");
-            }
-            data[pos++] = (short)(0x7FFF&requiredRoom);
-        } else {            
+//        if (1==BRANCH_JUMP_SIZE ) {
+//            if (requiredRoom > 0x7FFF) {
+//                throw new UnsupportedOperationException("This content is too large, use shorter content or modify this code to make multiple jumps.");
+//            }
+//            data[pos++] = (short)(0x7FFF&requiredRoom);
+//        } else {            
             data[pos++] = (short)(0x7FFF&(requiredRoom>>15));
             data[pos++] = (short)(0x7FFF&requiredRoom);
-        }
+ //       }
         return pos;
     }
 

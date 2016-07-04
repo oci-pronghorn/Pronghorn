@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -13,7 +12,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.pipe.Pipe.PaddedLong;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
@@ -2028,6 +2026,8 @@ public final class Pipe<T extends MessageSchema> {
     //         Then we can take the confirm write and it can go back and set the id. Also add asserts on all fiels that this happens first !!!
     //
     
+    //TODO: How can we test that the msgIdx that is passed in is only applicable to S ?? we need a way to check this.
+    
     //must be called by low-level API when starting a new message
     public static <S extends MessageSchema> int addMsgIdx(Pipe<S> rb, int msgIdx) {
          assert(Pipe.workingHeadPosition(rb)<(Pipe.tailPosition(rb)+rb.mask)) : "Working position is now writing into published(unreleased) tail "+
@@ -2043,7 +2043,9 @@ public final class Pipe<T extends MessageSchema> {
      	 markBytesWriteBase(rb);
 
    // 	 assert(rb.llwNextHeadTarget<=rb.headPos.get() || rb.workingHeadPos.value<=rb.llwNextHeadTarget) : "Unsupported mix of high and low level API.";
-
+            	 
+     	 assert(null != rb.slabRing) : "Pipe must be init before use";
+     	 
 		 rb.slabRing[rb.mask & (int)rb.slabRingHead.workingHeadPos.value++] = msgIdx;
 		 return Pipe.from(rb).fragDataSize[msgIdx];
 		 
@@ -2298,7 +2300,9 @@ public final class Pipe<T extends MessageSchema> {
  
         if (decBatchRelease(pipe)<=0) { 
            setBytesTail(pipe, workingBlobRingTailPosition);
-           publishWorkingTailPosition(pipe, nextWorkingTail);
+           //NOTE: the working tail is in use as part of the read and should not be modified
+           //      this method only modifies the externally visible tail to let writers see it.
+           pipe.slabRingTail.tailPos.lazySet(nextWorkingTail);
            beginNewReleaseBatch(pipe);        
         } else {
            storeUnpublishedTail(pipe, nextWorkingTail, workingBlobRingTailPosition);            
@@ -2398,7 +2402,7 @@ public final class Pipe<T extends MessageSchema> {
     	    found |= (len==fragDataSize[i]);
     	}    	
     	if (!found) {
-    	    System.err.println("there is no fragment of size "+len+" check for missing fields");
+    	    System.err.println("there is no fragment of size "+len+" check for missing fields. "+ring.schema.getClass().getSimpleName()); 
     	}
         return found;
     }
@@ -2631,6 +2635,7 @@ public final class Pipe<T extends MessageSchema> {
     }
     
     public static <S extends MessageSchema> boolean hasRoomForWrite(Pipe<S> output) {
+        assert(null != output.slabRing) : "Pipe must be init before use";
         return roomToLowLevelWrite(output, output.llRead.llwConfirmedReadPosition+FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(output)));
     }    
     
@@ -2661,6 +2666,7 @@ public final class Pipe<T extends MessageSchema> {
     }
     
     public static <S extends MessageSchema> boolean hasContentToRead(Pipe<S> input) {
+        assert(null != input.slabRing) : "Pipe must be init before use";
         boolean result = contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition, input.llWrite);
         //there are times when result can be false but we have data which relate to our holding the position for some other reason.
         assert(!result || result ==  (Pipe.contentRemaining(input)>0) ) : result+" != "+Pipe.contentRemaining(input)+">0";
@@ -2793,6 +2799,30 @@ public final class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> void releaseAllPendingReadLock(Pipe<S> pipe) {
         PendingReleaseData.releaseAllPendingReadRelease(pipe.pendingReleases, pipe);
     }
+
+    
+    private long markedHeadSlab;
+    private int marketHeadBlob;
+    
+    /**
+     * Hold this position in case we want to abandon what is written
+     * @param pipe
+     */
+    public static void markHead(Pipe pipe) {
+        pipe.markedHeadSlab = Pipe.workingHeadPosition(pipe);
+        pipe.marketHeadBlob = Pipe.getBlobWorkingHeadPosition(pipe);
+    }
+    
+    /**
+     * abandon what has been written in this fragment back to the markHead position.
+     * @param pipe
+     */
+    public static void resetHead(Pipe pipe) {
+        Pipe.setWorkingHead(pipe, pipe.markedHeadSlab);
+        Pipe.setBytesWorkingHead(pipe, pipe.marketHeadBlob);
+        
+    }
+    
         
 
 }

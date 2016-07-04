@@ -23,6 +23,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         this.backing = Pipe.blob(pipe);
         this.byteMask = Pipe.blobMask(pipe); 
         this.workspace = new StringBuilder(64);
+        assert(this.backing!=null) : "The pipe must be init before use.";
     }
     
     public void openHighLevelAPIField(int loc) {
@@ -89,7 +90,6 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     @Override
     public int read(byte[] b) throws IOException {
         if ((byteMask & position) == bytesLimit) {
-            new Exception().printStackTrace();
             return -1;
         }       
         
@@ -97,7 +97,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         int len = b.length > max? max : b.length;      
         Pipe.copyBytesFromToRing(backing, position, byteMask, b, 0, Integer.MAX_VALUE, len);
         position += b.length;
-        return b.length;
+        return len;
     }
     
     @Override
