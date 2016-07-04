@@ -78,7 +78,12 @@ public class Blocker {
         
     }
     
-
+    public void releaseBlocks(long now) {
+        while (-1 != nextReleased(now, -1)) {            
+        }        
+    }
+    
+    
     public boolean isBlocked(int id) {        
         int item = IntHashTable.getItem(table, id);
         return (item<1) ? false : 0!=untilTimes[item-1];
