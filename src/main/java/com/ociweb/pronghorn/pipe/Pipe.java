@@ -531,6 +531,9 @@ public final class Pipe<T extends MessageSchema> {
         return PipeRegulator.computeRateLimitDelay(pipe, Pipe.workingHeadPosition(pipe), pipe.regulatorProducer);
     }
     
+    public static <S extends MessageSchema> boolean isForSchema(Pipe<S> pipe, MessageSchema schema) {
+        return pipe.schema == schema;
+    }
     
     public static <S extends MessageSchema> String schemaName(Pipe<S> pipe) {
         return null==pipe.schema? "NoSchemaFor "+Pipe.from(pipe).name  :pipe.schema.getClass().getSimpleName();
