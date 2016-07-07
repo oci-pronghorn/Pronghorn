@@ -433,21 +433,20 @@ public class GraphManager {
 		int stageId = stage.stageId;
 		
 		assert(stageId>=gm.stageIdToStage.length || null==gm.stageIdToStage[stageId]) : "Can only register the same stage once";
-		
-		//add defaults if a value is not already present
-		int d = gm.defaultsCount;
-		while(--d >= 0) {		    
-		    if (null == GraphManager.getNota(gm, stageId, gm.defaultNotaKeys[d], null)) {
-		        //stage does not have the default value so set it
-		        GraphManager.addNota(gm, gm.defaultNotaKeys[d], gm.defaultNotaValues[d], stage);
-		    }
-		}
-		
+				
 		//now store the stage
 		gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
 		gm.stageIdToInputsBeginIdx = setValue(gm.stageIdToInputsBeginIdx, stageId, gm.topInput);
 		gm.stageIdToOutputsBeginIdx = setValue(gm.stageIdToOutputsBeginIdx, stageId, gm.topOutput);			
 		gm.stageIdToNotasBeginIdx = setValue(gm.stageIdToNotasBeginIdx, stageId, gm.topNota);
+		
+		//add defaults if a value is not already present
+		int d = gm.defaultsCount;
+		while(--d >= 0) {
+		    //stage does not have the default value so set it
+		    GraphManager.addNota(gm, gm.defaultNotaKeys[d], gm.defaultNotaValues[d], stage);
+		}
+		
 		return stageId;
 	}
 
