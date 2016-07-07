@@ -111,6 +111,8 @@ public class GraphManager {
 		//enables single point of truth for the stages states, all clones  share this object
 		stageStateData = parentStageStateData;
 	}
+	
+	
 
 	public static GraphManager cloneAll(GraphManager m) {
 		GraphManager clone = new GraphManager(m.stageStateData);
@@ -431,7 +433,17 @@ public class GraphManager {
 		int stageId = stage.stageId;
 		
 		assert(stageId>=gm.stageIdToStage.length || null==gm.stageIdToStage[stageId]) : "Can only register the same stage once";
-				
+		
+		//add defaults if a value is not already present
+		int d = gm.defaultsCount;
+		while(--d >= 0) {		    
+		    if (null == GraphManager.getNota(gm, stageId, gm.defaultNotaKeys[d], null)) {
+		        //stage does not have the default value so set it
+		        GraphManager.addNota(gm, gm.defaultNotaKeys[d], gm.defaultNotaValues[d], stage);
+		    }
+		}
+		
+		//now store the stage
 		gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
 		gm.stageIdToInputsBeginIdx = setValue(gm.stageIdToInputsBeginIdx, stageId, gm.topInput);
 		gm.stageIdToOutputsBeginIdx = setValue(gm.stageIdToOutputsBeginIdx, stageId, gm.topOutput);			
@@ -569,6 +581,19 @@ public class GraphManager {
 			pm.multInputIds = setValue(pm.multInputIds, pm.topInput++, inputId);
 		}
 	}
+	
+	private final int maxDefaults = 10;
+    private final Object[] defaultNotaKeys = new Object[maxDefaults];
+    private final Object[] defaultNotaValues = new Object[maxDefaults];
+    private int defaultsCount = 0;    
+	
+	
+    public static void addDefaultNota(GraphManager graphManager, Object key, Object value) {
+        
+        graphManager.defaultNotaKeys[graphManager.defaultsCount] = key;
+        graphManager.defaultNotaValues[graphManager.defaultsCount++] = value;
+        
+    }
 
 
 	public static void addNota(GraphManager graphManager, Object key, Object value, PronghornStage ... stages) {
