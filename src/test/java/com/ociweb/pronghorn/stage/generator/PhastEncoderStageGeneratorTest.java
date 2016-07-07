@@ -77,7 +77,7 @@ public class PhastEncoderStageGeneratorTest {
     public void testProject() throws IOException, SAXException, ParserConfigurationException{
         //test build to see what is being printout out
         File output = new File("src/test/java/com/ociweb/pronghorn/stage/generator/testOutputs/test.java");
-        FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/template/smallExample.xml");
+        FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
         MessageSchema schema = new MessageSchemaDynamic(from);
         
         PrintWriter target = new PrintWriter(output);
