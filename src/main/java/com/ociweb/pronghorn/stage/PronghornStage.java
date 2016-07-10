@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.stage;
 
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -7,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 
 
 public abstract class PronghornStage {
@@ -119,7 +121,11 @@ public abstract class PronghornStage {
 	}
 
 	public String toString() {
-		return getClass().getSimpleName()+"["+String.valueOf(stageId)+"]";
+	    try {
+            return Appendables.appendValue(new StringBuilder().append(getClass().getSimpleName()), " #", stageId).toString();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 	}
 	
 	public void shutdown() {

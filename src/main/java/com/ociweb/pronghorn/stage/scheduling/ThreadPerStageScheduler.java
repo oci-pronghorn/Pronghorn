@@ -176,6 +176,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
                     
                     Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
                     stage.startup();
+                    GraphManager.setStateToStarted(graphManager, stage.stageId);
                     
                     try {
                         allStagesLatch.await();
@@ -211,26 +212,11 @@ public class ThreadPerStageScheduler extends StageScheduler {
                     if (null==firstException) {                     
                         firstException = t;
                     }
-                }                       
-                log.error("Stacktrace",t);
+                }            
                 
-                if (null==stage) {
-                    log.error("Stage was never initialized");
-                } else {
-                
-                    int inputcount = GraphManager.getInputPipeCount(graphManager, stage);
-                    log.error("Unexpected error in stage "+stage.stageId+" "+stage.getClass().getSimpleName()+" inputs:"+inputcount);
-                    
-                    int i = inputcount;
-                    while (--i>=0) {
-                        
-                        log.error("left input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
-                        
-                    }
-                    
-                    GraphManager.shutdownNeighborRings(graphManager, stage);
-                }
-            }           
+                GraphManager.reportError(graphManager, stage, t, log);
+            }
+            
         };
     }
 	
@@ -258,13 +244,13 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					
 					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
 					stage.startup();
+					GraphManager.setStateToStarted(graphManager, stage.stageId);
 					
 				       try {
 				            allStagesLatch.await();
 				        } catch (InterruptedException e) {
 				        } catch (BrokenBarrierException e) {
 				        }
-					
 					runLoop(stage);	
 			
 				} catch (Throwable t) {				    
@@ -341,13 +327,14 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					
 					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
 					stage.startup();
+					GraphManager.setStateToStarted(graphManager, stage.stageId);					
 				       
 					try {
 				            allStagesLatch.await();
 				        } catch (InterruptedException e) {
 				        } catch (BrokenBarrierException e) {
 				        }
-										
+					
 					runPeriodicLoop(nsScheduleRate/1_000_000l, (int)(nsScheduleRate%1_000_000l), stage);	
 			
 					stage.shutdown();
@@ -361,11 +348,11 @@ public class ThreadPerStageScheduler extends StageScheduler {
     				    }
 				    }				    
 				    
-				    log.error("Stacktrace",t);
-					log.error("Unexpected error in stage {}", stage);
+				    GraphManager.reportError(graphManager, stage, t, log);
+				    
 					GraphManager.shutdownNeighborRings(graphManager, stage);
 					Thread.currentThread().interrupt();
-					shutdown();//testing if this is a good idea here.
+					shutdown();
 				}
 			}			
 		};

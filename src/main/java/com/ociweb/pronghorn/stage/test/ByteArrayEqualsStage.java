@@ -44,7 +44,7 @@ public class ByteArrayEqualsStage extends PronghornStage {
             }
             
             //a single false will make this false
-            isEqual |= Pipe.isEqual(input, expected, expectedPos, meta, len);
+            isEqual &= Pipe.isEqual(input, expected, expectedPos, meta, len);
             expectedPos += len;
             
             Pipe.confirmLowLevelRead(input, SIZE);

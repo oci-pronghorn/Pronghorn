@@ -1,24 +1,26 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.locks.LockSupport;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class GraphManager {
 	
-	private class GraphManagerStageStateData {
+	private static final String CHECK_GRAPH_CONSTRUCTION = "Check graph construction";
+
+    private class GraphManagerStageStateData {
 		private Object lock = new Object();	
 		private byte[] stageStateArray = new byte[0];
 		
@@ -419,6 +421,71 @@ public class GraphManager {
 		}
 		
 	}
+	
+	//Experimental idea, not yet in use,  what if stages did not need to pass in pipes but could grab the ones needed by type matching??
+	   private static void register(GraphManager gm, PronghornStage stage, MessageSchema inputSchema, MessageSchema outputSchema) {
+	        
+	        synchronized(gm.lock) {
+	            int stageId = beginStageRegister(gm, stage);
+	            setStateToNew(gm, stageId);
+	            
+	            if (null != inputSchema) {
+	                int p = gm.pipeIdToPipe.length;
+	                while (--p>=0) {
+	                    Pipe tp = gm.pipeIdToPipe[p];
+	                    if (null != tp) {
+	                        if (tp.isForSchema(tp, inputSchema)) {
+	                            regInput(gm, tp, stageId);
+	                        }
+	                    }
+	                }
+	            }
+	            
+	            if (null != outputSchema) {
+                    int p = gm.pipeIdToPipe.length;
+                    while (--p>=0) {
+                        Pipe tp = gm.pipeIdToPipe[p];
+                        if (null != tp) {
+                            if (tp.isForSchema(tp, outputSchema)) {
+                                regOutput(gm, tp, stageId);
+                            }
+                        }
+                    }
+                }
+	            
+	            endStageRegister(gm);
+	        }
+	}
+	
+	public static  <T extends MessageSchema> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema) {
+	    
+	    //pass one to count all the instances
+	    int count = 0;
+	    int p = gm.pipeIdToPipe.length;
+        while (--p>=0) {
+            Pipe tp = gm.pipeIdToPipe[p];
+            if (null != tp) {
+                if (tp.isForSchema(tp, targetSchema)) {
+                    count++;
+                }
+            }
+        }
+	    
+        //pass two to collect all the instances.
+        Pipe[] result = new Pipe[count];
+        p = gm.pipeIdToPipe.length; 
+        while (--p>=0) { //we are walking backwards over the pipes added
+            Pipe tp = gm.pipeIdToPipe[p];
+            if (null != tp) {
+                if (tp.isForSchema(tp, targetSchema)) {
+                    result[--count] = tp; //so we add them backwards to the input array
+                }
+            }
+        }
+	    //the order of this array will be the same order that the pipes were added to the graph.
+        return result;
+	}
+	   
 
 	private static void endStageRegister(GraphManager gm) {
 		gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, -1);
@@ -511,7 +578,6 @@ public class GraphManager {
 		synchronized(gm.stageStateData.lock) {
 			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_NEW);
 		}
-		setStateToStarted(gm,stageId);
 	}
 	
 	public static void setStateToStopping(GraphManager gm, int stageId) {
@@ -713,24 +779,32 @@ public class GraphManager {
 	}
 	
 	public static PronghornStage getRingProducer(GraphManager gm, int ringId) {
-		int stageId = gm.ringIdToStages[ringId*2];
+		int stageId = getRingProducerId(gm, ringId);
 		if (stageId<0) {
 		    throw new UnsupportedOperationException("Can not find input stage writing to pipe "+ringId+". Check graph construction.");
 		}
         return  gm.stageIdToStage[stageId];
 	}
-	
-   public static int getRingProducerStageId(GraphManager gm, int ringId) {
+
+    private static int getRingProducerId(GraphManager gm, int ringId) {
         return gm.ringIdToStages[ringId*2];
     }
 	
+   public static int getRingProducerStageId(GraphManager gm, int ringId) {
+        return getRingProducerId(gm, ringId);
+    }
+	
 	public static PronghornStage getRingConsumer(GraphManager gm, int ringId) {
-		int stageId = gm.ringIdToStages[(ringId*2)+1];
+		int stageId = getRingConsumerId(gm, ringId);
 	    if (stageId<0) {
-	            throw new UnsupportedOperationException("Can not find output stage reading from  "+ringId+" Check graph construction.");
+	            throw new UnsupportedOperationException("Can not find stage reading from pipe "+ringId+" Check graph construction.");
 	    }
         return  gm.stageIdToStage[stageId];
 	}
+
+    private static int getRingConsumerId(GraphManager gm, int ringId) {
+        return gm.ringIdToStages[(ringId*2)+1];
+    }
 	
 
 	public static long delayRequiredNS(GraphManager m, int stageId) {
@@ -854,7 +928,7 @@ public class GraphManager {
 	}
 	
 	public static boolean isProducerTerminated(GraphManager m, int ringId) {
-		int producerStageId = m.ringIdToStages[ringId*2];
+		int producerStageId = getRingProducerId(m, ringId);
 		if (producerStageId<0) {
 		    log.debug("No producer stage was found for ring {}, check the graph builder.",ringId);
 		    return true;
@@ -870,6 +944,10 @@ public class GraphManager {
 
     public static boolean isStageShuttingDown(GraphManager m, int stageId) {
     	return m.stageStateData.stageStateArray[stageId]>=GraphManagerStageStateData.STAGE_STOPPING; //or terminated
+    }
+    
+    public static boolean isStageStarted(GraphManager m, int stageId) {
+        return m.stageStateData.stageStateArray[stageId]>=GraphManagerStageStateData.STAGE_STARTED; //or running or shuttingdown or terminated
     }
     
     //TODO: AA must have blocking base stage to extend for blockers.
@@ -994,7 +1072,7 @@ public class GraphManager {
 	            PronghornStage stage = m.stageIdToStage[i];
 	            if (null!=stage) {       
 	                
-	                target.append("\"Stage").append(Integer.toString(i)).append("\"[label=\"").append(stage.getClass().getSimpleName().replace("Stage","")).append("\"]\n");
+	                target.append("\"Stage").append(Integer.toString(i)).append("\"[label=\"").append(stage.toString().replace("Stage","")).append("\"]\n");
 	                	                
 	            }
 	        }
@@ -1005,8 +1083,8 @@ public class GraphManager {
 	            Pipe pipe = m.pipeIdToPipe[j];	            
 	            if (null!=pipe) {
 	                
-	                int producer = m.ringIdToStages[j*2];
-	                int consumer = m.ringIdToStages[(j*2)+1];
+	                int producer = getRingProducerId(m, j);
+	                int consumer = getRingConsumerId(m, j);
 	                
 	                if (producer>=0) {
 	                    target.append("\"Stage").append(Integer.toString(producer));
@@ -1021,8 +1099,21 @@ public class GraphManager {
 	                } else {
 	                    target.append("\"Undefined").append(Integer.toString(undefIdx++));
 	                }
-	                
-	                target.append("\"[label=\"").append(Pipe.schemaName(pipe).replace("Schema", "")).append("\"]\n");
+	               
+	                //compute the min and max count of messages that can be on this pipe at any time
+                    int minFrag = FieldReferenceOffsetManager.minFragmentSize(Pipe.from(pipe));
+                    int maxFrag = FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe));                    
+                    int maxMessagesOnPipe = pipe.sizeOfSlabRing/minFrag;
+                    int minMessagesOnPipe = pipe.sizeOfSlabRing/maxFrag;           
+                   
+                    
+	                target.append("\"[label=\"").append(Pipe.schemaName(pipe).replace("Schema", ""));
+	                if (minMessagesOnPipe==maxMessagesOnPipe) {
+	                    Appendables.appendValue(target," [",minMessagesOnPipe,"]");
+	                } else {
+	                    Appendables.appendValue( Appendables.appendValue(target," [",minMessagesOnPipe) ,"-",maxMessagesOnPipe,"]");
+	                }
+	                target.append("\"]\n");
 	                
 	          
 	            }
@@ -1074,34 +1165,73 @@ public class GraphManager {
 	 * @param stageId
 	 */
 	public static void initInputRings(GraphManager m, int stageId) {
-		int ringId;
+		int pipeId;
 		int idx = m.stageIdToInputsBeginIdx[stageId];
-		while (-1 != (ringId=m.multInputIds[idx++])) {
-			m.pipeIdToPipe[ringId].initBuffers();				
+		while (-1 != (pipeId=m.multInputIds[idx++])) {
+			m.pipeIdToPipe[pipeId].initBuffers();				
 		}
 		//Does not return until some other stage has initialized the output rings
 		idx = m.stageIdToOutputsBeginIdx[stageId];
-		while (-1 != (ringId=m.multOutputIds[idx++])) {
+		while (-1 != (pipeId=m.multOutputIds[idx++])) {
+		    
 		    
 		    try {
     		    //double check that this was not built wrong, there must be a consumer of this ring
-    		    if (null==GraphManager.getRingConsumer(m, ringId)) {
-    		        throw new UnsupportedOperationException("No consumer for ring "+ringId);
-    		    }				
+		        int consumerId = getRingConsumerId(m, pipeId);
+		        if (consumerId < 0) {
+		            
+		            String schemaName = Pipe.schemaName(m.pipeIdToPipe[pipeId]);
+		            
+		            int producerId = getRingProducerId(m, pipeId);
+		            if (producerId<0) {
+		                throw new UnsupportedOperationException("Can not find stage consuming Pipe<"+schemaName+"> #"+pipeId+" "+CHECK_GRAPH_CONSTRUCTION);		                
+		            } else {
+		                PronghornStage prodStage = getRingProducer(m, pipeId);
+		                
+		                throw new UnsupportedOperationException("Can not find stage consuming Pipe<"+schemaName+"> #"+pipeId+" Which is produced by stage "+prodStage+". "+CHECK_GRAPH_CONSTRUCTION);
+		                
+		            }
+		        }
 		    } catch (ArrayIndexOutOfBoundsException aiobe) {
 		        if ("-1".equals(aiobe.getMessage())) {
-		            throw new UnsupportedOperationException("No consumer for ring "+ringId);
+		            throw new UnsupportedOperationException("No consumer for pipe "+pipeId);
 		        } else {
 		            throw new RuntimeException(aiobe);
 		        }
 		    }
 		    
-			while (!Pipe.isInit(m.pipeIdToPipe[ringId])) {
+		    //blocking wait on the other stage to init this pipe, required for clean startup only.
+			while (!Pipe.isInit(m.pipeIdToPipe[pipeId])) {
 				Thread.yield();
 			}				
 		}	
 		
 	}
+	
+	public static void reportError(GraphManager graphManager, final PronghornStage stage, Throwable t, Logger logger) {
+          String msg = t.getMessage();
+          if (null != msg && msg.contains(CHECK_GRAPH_CONSTRUCTION)) {
+              logger.error(msg);
+          } else {                
+              if (null==stage) {
+                  logger.error("Stage was never initialized");
+              } else {
+              
+                  int inputcount = GraphManager.getInputPipeCount(graphManager, stage);
+                                          
+                  logger.error("Unexpected error in "+stage+" with "+inputcount+" input pipes.", t);
+                  
+                  int i = inputcount;
+                  while (--i>=0) {
+                      
+                      logger.error(stage+" input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
+                      
+                  }
+                  
+                  GraphManager.shutdownNeighborRings(graphManager, stage);
+              }
+          }
+      }  
 	
 	public static Pipe[] attachMonitorsToGraph(GraphManager gm, Long monitorRate, PipeConfig ringBufferMonitorConfig) {
 
@@ -1170,7 +1300,7 @@ public class GraphManager {
 	    final int ringId = ringBuffer.ringId;
 	    String consumerName = "UnknownConsumer";
 	    {
-            int stageId = gm.ringIdToStages[(ringId*2)+1];
+            int stageId = getRingConsumerId(gm, ringId);
             if (stageId>=0) {
                 PronghornStage consumer = gm.stageIdToStage[stageId];
                 consumerName = getNota(gm, consumer, STAGE_NAME, consumer.getClass().getSimpleName()).toString();
@@ -1178,7 +1308,7 @@ public class GraphManager {
 	    }
 	    String producerName = "UnknownProducer";
 	    {
-            int stageId = gm.ringIdToStages[ringId*2];
+            int stageId = getRingProducerId(gm, ringId);
             if (stageId>=0) {                
                 PronghornStage producer = gm.stageIdToStage[stageId];                
                 producerName = getNota(gm, producer, STAGE_NAME, producer.getClass().getSimpleName()).toString();  
@@ -1238,6 +1368,19 @@ public class GraphManager {
         blockUntilStageBeginsShutdown(this,stageToWatch);
     }
 	
+    public static void spinLockUntilStageOfTypeStarted(GraphManager gm, Class<?> stageClass) {
+        boolean isStarted;
+        do {
+            isStarted = true;
+            Thread.yield();
+            PronghornStage[] stages = allStagesByType(gm, stageClass);
+            int s = stages.length;
+            while (--s>=0) {
+                isStarted &= isStageStarted(gm, stages[s].stageId);
+            }
+        } while (!isStarted);
+    }
+
     public static void blockUntilStageBeginsShutdown(GraphManager gm, PronghornStage stageToWatch) {
         //keep waiting until this stage starts it shut down or completed its shutdown, 
         //eg return on leading edge as soon as we detect shutdown in progress..
@@ -1248,6 +1391,28 @@ public class GraphManager {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    public static PronghornStage[] allStagesByType(GraphManager graphManager, Class<?> stageClass) {
+       
+        int count = 0;
+        int s = graphManager.stageIdToStage.length;
+        while (--s>=0) {
+            PronghornStage stage = graphManager.stageIdToStage[s];             
+            if (null!=stage && stage.getClass().isAssignableFrom(stageClass)) {
+                count++;
+            }
+        }
+        
+        PronghornStage[] stages = new PronghornStage[count];
+        s = graphManager.stageIdToStage.length;
+        while (--s>=0) {
+            PronghornStage stage = graphManager.stageIdToStage[s];             
+            if (null != stage && stage.getClass().isAssignableFrom(stageClass)) {
+                stages[--count] = stage;
+            }
+        }
+        return stages;
     }
 	
 //TODO: B, integrate this into the schedulers	

@@ -175,11 +175,6 @@ public class SplitterStage<T extends MessageSchema> extends PronghornStage {
 
 	}
 
-
-	public String toString() {
-		return getClass().getSimpleName()+ " source content "+Pipe.contentRemaining(source);
-	}
-
 	private static <S extends MessageSchema> void copyData(SplitterStage<S> ss, int byteTailPos,
 								int totalBytesCopy, int primaryTailPos, int totalPrimaryCopy,
 								Pipe<S> ringBuffer) {
