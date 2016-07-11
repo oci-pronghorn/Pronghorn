@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,8 +49,10 @@ public class GraphManager {
 	private final static int INIT_STAGES = 32;
 	
 	private final static Logger log = LoggerFactory.getLogger(GraphManager.class);
-
 				
+	//Used for assigning stageId and for keeping count of all known stages
+	private final AtomicInteger stageCounter = new AtomicInteger();
+	
 	//for lookup of source id and target id from the ring id
 	private int[] ringIdToStages  = new int[INIT_RINGS*2]; //stores the sourceId and targetId for every ring id.
 	
@@ -147,6 +151,10 @@ public class GraphManager {
 		return clone;
 	}
 	
+	public static int newStageId(GraphManager gm) {
+	    return gm.stageCounter.getAndIncrement();
+	}
+	
    @Deprecated	
    static PronghornStage[] getStages(GraphManager m) {
         return m.stageIdToStage;
@@ -167,6 +175,10 @@ public class GraphManager {
        }
 
        return ringIds;
+   }
+   
+   public static int countStages(GraphManager gm) {       
+       return gm.stageCounter.get();
    }
 	
    public static int countStagesWithNotaKey(GraphManager m, Object key) {
@@ -1368,6 +1380,8 @@ public class GraphManager {
         blockUntilStageBeginsShutdown(this,stageToWatch);
     }
 	
+
+
     public static void spinLockUntilStageOfTypeStarted(GraphManager gm, Class<?> stageClass) {
         boolean isStarted;
         do {
@@ -1413,6 +1427,19 @@ public class GraphManager {
             }
         }
         return stages;
+    }
+
+    public static boolean isAllPipesEmpty(GraphManager graphManager) {        
+        Pipe[] pipes = graphManager.pipeIdToPipe;
+        int p = pipes.length;
+        while (--p >= 0) {
+            if (null != pipes[p]) {
+                if (Pipe.hasContentToRead(pipes[p])) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 	
 //TODO: B, integrate this into the schedulers	

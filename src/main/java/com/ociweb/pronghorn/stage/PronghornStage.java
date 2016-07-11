@@ -19,7 +19,7 @@ public abstract class PronghornStage {
 	//What if we only have 1 because this is the first or last stage?
 
 	public final int stageId;	
-	private static AtomicInteger stageCounter = new AtomicInteger();
+	
 	private GraphManager graphManager;	
 	protected boolean supportsBatchedRelease = true;
 	protected boolean supportsBatchedPublish = true;
@@ -30,7 +30,7 @@ public abstract class PronghornStage {
 	    assert(null!=inputs) : "Use NONE";
 	    assert(null!=outputs) : "Use NONE";
 		
-	    this.stageId = stageCounter.getAndIncrement();	
+	    this.stageId = GraphManager.newStageId(graphManager);	
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, inputs, outputs);
 	}
@@ -39,7 +39,7 @@ public abstract class PronghornStage {
 	    assert(null!=input) : "Use NONE";
 	    assert(null!=outputs) : "Use NONE";
 		
-	    this.stageId = stageCounter.getAndIncrement();	
+	    this.stageId = GraphManager.newStageId(graphManager);  
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, input, outputs);
 	}
@@ -48,19 +48,15 @@ public abstract class PronghornStage {
 	    assert(null!=inputs) : "Use NONE";
 	    assert(null!=output) : "Use NONE";
 	    
-	    this.stageId = stageCounter.getAndIncrement();	
+	    this.stageId = GraphManager.newStageId(graphManager);  
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, inputs, output);
 	}
 	
 	protected PronghornStage(GraphManager graphManager, Pipe input, Pipe output) {
-		this.stageId = stageCounter.getAndIncrement();	
+		this.stageId = GraphManager.newStageId(graphManager); 
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, input, output);
-	}
-	
-	public static int totalStages() {
-		return stageCounter.get();
 	}
 
     public static Pipe[] join(Pipe[] ... pipes) {
