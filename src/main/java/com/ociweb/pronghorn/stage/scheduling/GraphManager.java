@@ -1084,7 +1084,7 @@ public class GraphManager {
 	            PronghornStage stage = m.stageIdToStage[i];
 	            if (null!=stage) {       
 	                
-	                target.append("\"Stage").append(Integer.toString(i)).append("\"[label=\"").append(stage.toString().replace("Stage","")).append("\"]\n");
+	                target.append("\"Stage").append(Integer.toString(i)).append("\"[label=\"").append(stage.toString().replace("Stage","").replace(" ", "\n")).append("\"]\n");
 	                	                
 	            }
 	        }
@@ -1125,12 +1125,19 @@ public class GraphManager {
 	                } else {
 	                    Appendables.appendValue( Appendables.appendValue(target," [",minMessagesOnPipe) ,"-",maxMessagesOnPipe,"]");
 	                }
-	                target.append("\"]\n");
+	                target.append("\"");
 	                
-	          
+	                //count bindings
+	                int consumerStage = GraphManager.getRingConsumerId(m, pipe.ringId);
+	                int producerStage = GraphManager.getRingProducerId(m, pipe.ringId);
+	                float weight = computeWeightBetweenStages(m, consumerStage, producerStage);	                
+	                target.append(",weight=").append(Float.toString(weight));
+	                
+	                
+	                target.append("]\n");
+	                	          
 	            }
-	        }
-	        
+	        }	        
 	    
             target.append("}\n");
             
@@ -1138,6 +1145,26 @@ public class GraphManager {
             throw new RuntimeException(e);
         }
 	}
+
+    private static float computeWeightBetweenStages(GraphManager m, int consumerStage, int producerStage) {
+        float weight = 0f;
+        Pipe[] pipes = m.pipeIdToPipe;
+        int p = pipes.length;
+        while (--p >= 0) {
+            if (null != pipes[p]) {
+                if (producerStage == GraphManager.getRingProducerId(m, pipes[p].ringId) &&
+                    consumerStage == GraphManager.getRingConsumerId(m, pipes[p].ringId)) {
+                    weight += 2;
+                    
+                } else if (consumerStage == GraphManager.getRingProducerId(m, pipes[p].ringId) &&
+                           producerStage == GraphManager.getRingConsumerId(m, pipes[p].ringId)) {
+                    weight += 2;
+                    
+                }
+            }
+        }
+        return weight;
+    }
 	
 	
 	public static void logOutputs(Logger log, GraphManager m, PronghornStage stage) {
@@ -1434,7 +1461,7 @@ public class GraphManager {
         int p = pipes.length;
         while (--p >= 0) {
             if (null != pipes[p]) {
-                if (Pipe.hasContentToRead(pipes[p])) {
+                if (Pipe.contentRemaining(pipes[p]) > 0) {                    
                     return false;
                 }
             }
@@ -1442,16 +1469,5 @@ public class GraphManager {
         return true;
     }
 	
-//TODO: B, integrate this into the schedulers	
-//    public static void releaseAllReads(GraphManager m, PronghornStage stage) {
-//        int ringId;
-//        int idx = m.stageIdToInputsBeginIdx[stage.stageId];
-//        while (-1 != (ringId=m.multInputIds[idx++])) {  //TODO: could be unrolled an inlined
-//            RingBuffer.releaseAllBatchedReads(m.ringIdToRing[ringId]);           
-//        }       
-//    }
-//	
-    
-    
 
 }
