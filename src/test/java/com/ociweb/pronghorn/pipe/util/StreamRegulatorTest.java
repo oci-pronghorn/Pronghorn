@@ -86,8 +86,7 @@ public class StreamRegulatorTest {
                 
                 while (sr.hasNextChunk() && --b>=0) {    
                     isStuck = false;
-                    try {                    
-                        
+   
                       //  int length = in.read(target);
                         long actualLongCount = in.readLong();
                         assertEquals(readCount, actualLongCount);
@@ -104,9 +103,7 @@ public class StreamRegulatorTest {
                         
                         
                         readCount++;
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+
                 }
                 if (isStuck) {
                     System.err.println(sr);
@@ -166,8 +163,7 @@ public class StreamRegulatorTest {
                 
                 while (sr.hasNextChunk() && --b>=0) {    
                     isStuck = false;
-                    try {                    
-                        
+ 
                         int length = in.read(target);
 
                         if (length != testSize) {
@@ -183,9 +179,7 @@ public class StreamRegulatorTest {
                             System.err.println(sr);
                             fail();
                         }
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+
                 }
                 if (isStuck) {
                     System.err.println(sr);

@@ -2668,6 +2668,7 @@ public final class Pipe<T extends MessageSchema> {
         return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition+size-1, input.llWrite); 
     }
     
+	//this method can only be used with low level api navigation loop
     public static <S extends MessageSchema> boolean hasContentToRead(Pipe<S> input) {
         assert(null != input.slabRing) : "Pipe must be init before use";
         boolean result = contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition, input.llWrite);

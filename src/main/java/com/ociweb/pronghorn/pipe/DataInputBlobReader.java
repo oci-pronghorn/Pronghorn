@@ -73,11 +73,11 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     }
 
     @Override
-    public int available() throws IOException {        
+    public int available() {        
         return bytesRemaining(this);
     }
 
-    public static int bytesRemaining(DataInputBlobReader that) {
+    public static int bytesRemaining(DataInputBlobReader<?> that) {
                 
         return  that.bytesLimit >= (that.byteMask & that.position) ? that.bytesLimit- (that.byteMask & that.position) : (that.pipe.sizeOfBlobRing- (that.byteMask & that.position))+that.bytesLimit;
 
@@ -88,7 +88,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     }
    
     @Override
-    public int read(byte[] b) throws IOException {
+    public int read(byte[] b) {
         if ((byteMask & position) == bytesLimit) {
             return -1;
         }       
@@ -101,7 +101,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     }
     
     @Override
-    public int read(byte[] b, int off, int len) throws IOException {
+    public int read(byte[] b, int off, int len) {
         if ((byteMask & position) == bytesLimit) {
             return -1;
         }
@@ -116,7 +116,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     }
     
     @Override
-    public void readFully(byte[] b) throws IOException {
+    public void readFully(byte[] b) {
                 
         Pipe.copyBytesFromToRing(backing, position, byteMask, b, 0, Integer.MAX_VALUE, b.length);
         position += b.length;
@@ -124,7 +124,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     }
 
     @Override
-    public void readFully(byte[] b, int off, int len) throws IOException {
+    public void readFully(byte[] b, int off, int len) {
         
         Pipe.copyBytesFromToRing(backing, position, byteMask, b, off, Integer.MAX_VALUE, len);
         position += len;
@@ -132,7 +132,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     }
 
     @Override
-    public int skipBytes(int n) throws IOException {
+    public int skipBytes(int n) {
         
         int skipCount = Math.min(n, length-position);
         position += skipCount;
@@ -141,17 +141,17 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     }
 
     @Override
-    public boolean readBoolean() throws IOException {
+    public boolean readBoolean() {
         return 0!=backing[byteMask & position++];
     }
 
     @Override
-    public byte readByte() throws IOException {
+    public byte readByte() {
         return backing[byteMask & position++];
     }
 
     @Override
-    public int readUnsignedByte() throws IOException {
+    public int readUnsignedByte() {
         return 0xFF & backing[byteMask & position++];
     }
     
@@ -179,48 +179,48 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     }
 
     @Override
-    public short readShort() throws IOException {
+    public short readShort() {
         return read16(backing,byteMask,this);
     }
 
     @Override
-    public int readUnsignedShort() throws IOException {
+    public int readUnsignedShort() {
         return 0xFFFF & read16(backing,byteMask,this);
     }
 
     @Override
-    public char readChar() throws IOException {
+    public char readChar() {
        return (char)read16(backing,byteMask,this);
     }
 
     @Override
-    public int readInt() throws IOException {
+    public int readInt() {
         return read32(backing,byteMask,this);
     }
 
     @Override
-    public long readLong() throws IOException {
+    public long readLong() {
         return read64(backing,byteMask,this);
     }
 
     @Override
-    public float readFloat() throws IOException {        
+    public float readFloat() {        
         return Float.intBitsToFloat(read32(backing,byteMask,this));
     }
 
     @Override
-    public double readDouble() throws IOException {
+    public double readDouble() {
         return Double.longBitsToDouble(read64(backing,byteMask,this));
     }
 
     @Override
-    public int read() throws IOException {
+    public int read() {
         //TODO: need to turn off at times.
         return (byteMask & position) != bytesLimit ? backing[byteMask & position++] : -1;//isOpen?0:-1;
     }
 
     @Override
-    public String readLine() throws IOException {
+    public String readLine() {
         
         workspace.setLength(0);        
         if ((byteMask & position) != bytesLimit) {
@@ -239,7 +239,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     }
 
     @Override
-    public String readUTF() throws IOException {
+    public String readUTF() {
         int length = readShort(); //read first 2 byte for length in bytes to convert.
         
         workspace.setLength(0);
@@ -258,13 +258,17 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         return new String(reader.workspace);
     }
         
-    public Object readObject() throws IOException, ClassNotFoundException  {
+    public Object readObject() throws ClassNotFoundException  {
         
-        if (null==ois) {
-            ois = new ObjectInputStream(this);
-        }            
-        //do we need to reset this before use?
-        return ois.readObject();
+        try {
+            if (null==ois) {
+                ois = new ObjectInputStream(this);
+            }            
+            //do we need to reset this before use?
+            return ois.readObject();
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     ////
