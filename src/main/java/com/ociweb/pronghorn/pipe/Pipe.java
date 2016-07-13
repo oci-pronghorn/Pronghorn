@@ -337,7 +337,7 @@ public final class Pipe<T extends MessageSchema> {
     public static final int EOF_SIZE = 2;
 
     //these public fields are fine because they are all final
-    public final int ringId;
+    public final int id;
     public final int sizeOfSlabRing;
     public final int sizeOfBlobRing;
     public final int mask;
@@ -452,7 +452,7 @@ public final class Pipe<T extends MessageSchema> {
 
         //Assign the immutable universal id value for this specific instance
         //these values are required to keep track of all ring buffers when graphs are built
-        this.ringId = ringCounter.getAndIncrement();
+        this.id = ringCounter.getAndIncrement();
 
         this.bitsOfSlabRing = primaryBits;
         this.bitsOfBlogRing = byteBits;
@@ -676,7 +676,7 @@ public final class Pipe<T extends MessageSchema> {
         assert(contentRem <= sizeOfSlabRing) : "ERROR: can not have more content than the size of the pipe. content "+contentRem+" vs "+sizeOfSlabRing;
         
     	StringBuilder result = new StringBuilder();
-    	result.append("RingId:").append(ringId);
+    	result.append("RingId:").append(id);
     	result.append(" slabTailPos ").append(slabRingTail.tailPos.get());
     	result.append(" slabWrkTailPos ").append(slabRingTail.workingTailPos.value);
     	result.append(" slabHeadPos ").append(slabRingHead.headPos.get());

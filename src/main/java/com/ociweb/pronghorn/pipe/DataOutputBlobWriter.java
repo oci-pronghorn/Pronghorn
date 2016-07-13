@@ -18,10 +18,11 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     
     public DataOutputBlobWriter(Pipe<S> p) {
         this.p = p;
+        assert(null!=p) : "requires non null pipe";
+        assert(Pipe.isInit(p)): "The pipe must be init before use.";
         this.byteBuffer = Pipe.blob(p);
         this.byteMask = Pipe.blobMask(p);  
         assert(this.byteMask!=0);
-        assert(this.byteBuffer!=null) : "The pipe must be init before use.";
     }
     
     public void openField() {
