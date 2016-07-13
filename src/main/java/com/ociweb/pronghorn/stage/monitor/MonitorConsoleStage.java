@@ -91,7 +91,7 @@ public class MonitorConsoleStage extends PronghornStage {
 			boolean inBounds = true;//value>80 || value < 1;
             long sampleCount = Histogram.sampleCount(hists[i]);
             if (inBounds && (sampleCount>=2)) {
-				PronghornStage producer = GraphManager.getRingProducer(graphManager,  inputs[i].ringId);
+				PronghornStage producer = GraphManager.getRingProducer(graphManager,  inputs[i].id);
 				//NOTE: may need to walk up tree till we find this object, (future feature)
 				String ringName;
 				if (producer instanceof RingBufferMonitorStage) {

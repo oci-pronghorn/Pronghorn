@@ -630,10 +630,10 @@ public class RingBufferPipeline {
 				//dump the Queue data
 				int k=0;
 				while (k<rings.length){
-					System.err.println(GraphManager.getRingProducer(gm, rings[k].ringId)+"  ->\n    "+rings[k].toString()+"  ->  "+GraphManager.getRingConsumer(gm, rings[k].ringId));										
+					System.err.println(GraphManager.getRingProducer(gm, rings[k].id)+"  ->\n    "+rings[k].toString()+"  ->  "+GraphManager.getRingConsumer(gm, rings[k].id));										
 					k++;
 				}	
-				System.err.println(GraphManager.getRingConsumer(gm, rings[k-1].ringId));
+				System.err.println(GraphManager.getRingConsumer(gm, rings[k-1].id));
 			}
 			
 			assertTrue("Test timed out, forced shut down of stages",cleanExit); //the tests are all getting cut here

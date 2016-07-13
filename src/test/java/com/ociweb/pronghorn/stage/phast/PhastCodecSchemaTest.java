@@ -117,15 +117,9 @@ public class PhastCodecSchemaTest {
                         //value2 holds bytes to skip
                         
                         assertEquals(testBody.length, value2);
-                        
-                        try {
-                            reader.read(testBodyTarget,0,testBody.length);
+                        reader.read(testBodyTarget,0,testBody.length);
+                        assertTrue(Arrays.equals(testBody, testBodyTarget));
                             
-                            assertTrue(Arrays.equals(testBody, testBodyTarget));
-                            
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
                         //now read the next real value
                         value2 = reader.readPackedLong();
                     }

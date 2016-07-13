@@ -642,7 +642,7 @@ public class GraphManager {
 
 	private static void regOutput(GraphManager pm, Pipe output, int stageId) {
 		if (null!=output) {
-			int outputId = output.ringId;
+			int outputId = output.id;
 			pm.ringIdToStages = setValue(pm.ringIdToStages, (outputId*2) , stageId); //source +0 then target +1
 			pm.pipeIdToPipe = setValue(pm.pipeIdToPipe, outputId, output);				
 			pm.multOutputIds = setValue(pm.multOutputIds, pm.topOutput++, outputId);
@@ -652,7 +652,7 @@ public class GraphManager {
 
 	private static void regInput(GraphManager pm, Pipe input,	int stageId) {
 		if (null!=input) {
-			int inputId = input.ringId;
+			int inputId = input.id;
 			pm.ringIdToStages = setValue(pm.ringIdToStages, (inputId*2)+1, stageId); //source +0 then target +1
 			pm.pipeIdToPipe = setValue(pm.pipeIdToPipe, inputId, input);
 			pm.multInputIds = setValue(pm.multInputIds, pm.topInput++, inputId);
@@ -1128,8 +1128,8 @@ public class GraphManager {
 	                target.append("\"");
 	                
 	                //count bindings
-	                int consumerStage = GraphManager.getRingConsumerId(m, pipe.ringId);
-	                int producerStage = GraphManager.getRingProducerId(m, pipe.ringId);
+	                int consumerStage = GraphManager.getRingConsumerId(m, pipe.id);
+	                int producerStage = GraphManager.getRingProducerId(m, pipe.id);
 	                float weight = computeWeightBetweenStages(m, consumerStage, producerStage);	                
 	                target.append(",weight=").append(Float.toString(weight));
 	                
@@ -1152,12 +1152,12 @@ public class GraphManager {
         int p = pipes.length;
         while (--p >= 0) {
             if (null != pipes[p]) {
-                if (producerStage == GraphManager.getRingProducerId(m, pipes[p].ringId) &&
-                    consumerStage == GraphManager.getRingConsumerId(m, pipes[p].ringId)) {
+                if (producerStage == GraphManager.getRingProducerId(m, pipes[p].id) &&
+                    consumerStage == GraphManager.getRingConsumerId(m, pipes[p].id)) {
                     weight += 2;
                     
-                } else if (consumerStage == GraphManager.getRingProducerId(m, pipes[p].ringId) &&
-                           producerStage == GraphManager.getRingConsumerId(m, pipes[p].ringId)) {
+                } else if (consumerStage == GraphManager.getRingProducerId(m, pipes[p].id) &&
+                           producerStage == GraphManager.getRingConsumerId(m, pipes[p].id)) {
                     weight += 2;
                     
                 }
@@ -1306,7 +1306,7 @@ public class GraphManager {
 	}
 
 	private static boolean ringHoldsMonitorData(GraphManager gm, Pipe ringBuffer) {
-		return null != GraphManager.getNota(gm, GraphManager.getRingProducerStageId(gm, ringBuffer.ringId), GraphManager.MONITOR, null);
+		return null != GraphManager.getNota(gm, GraphManager.getRingProducerStageId(gm, ringBuffer.id), GraphManager.MONITOR, null);
 	}
 	
     private static boolean stageForMonitorData(GraphManager gm, PronghornStage stage) {
@@ -1320,12 +1320,12 @@ public class GraphManager {
 			//never enable batching on the monitor rings
 			if (null!=ring && !ringHoldsMonitorData(gm, ring) ) {
 				
-				PronghornStage consumer = GraphManager.getRingConsumer(gm, ring.ringId);
+				PronghornStage consumer = GraphManager.getRingConsumer(gm, ring.id);
 				if (PronghornStage.supportsBatchedRelease(consumer)) { 
 					Pipe.setMaxReleaseBatchSize(ring);
 				}
 				
-				PronghornStage producer = GraphManager.getRingProducer(gm, ring.ringId);
+				PronghornStage producer = GraphManager.getRingProducer(gm, ring.id);
 				if (PronghornStage.supportsBatchedPublish(producer)) {
 					Pipe.setMaxPublishBatchSize(ring);
 				}				
@@ -1336,7 +1336,7 @@ public class GraphManager {
 
 	public static String getRingName(GraphManager gm, Pipe ringBuffer) {
 		
-	    final int ringId = ringBuffer.ringId;
+	    final int ringId = ringBuffer.id;
 	    String consumerName = "UnknownConsumer";
 	    {
             int stageId = getRingConsumerId(gm, ringId);
@@ -1354,7 +1354,7 @@ public class GraphManager {
             }
 	    }
 	    
-		return producerName + "-"+Integer.toString(ringBuffer.ringId)+"-" + consumerName;
+		return producerName + "-"+Integer.toString(ringBuffer.id)+"-" + consumerName;
 	}
 
 	/**
@@ -1387,7 +1387,7 @@ public class GraphManager {
 		if (idx>=path.length) {
 			return stage;
 		}
-		return findStageByPath(m,getRingConsumer(m, getOutputPipe(m,stage,path[idx]).ringId),1+idx,path);
+		return findStageByPath(m,getRingConsumer(m, getOutputPipe(m,stage,path[idx]).id),1+idx,path);
 	}
 
 	//when batching is used we need to flush outstanding writes before yield
