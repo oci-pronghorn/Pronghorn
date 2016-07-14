@@ -30,19 +30,14 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     private final String longDictionaryName = "previousLongDictionary";
     private final String intDictionaryName = "previousIntDictionary";
     private final String shortDictionaryName = "previousShortDictionary";
-    private final String writerName = "writer";
+    private final String writerName = "pipe";
     private final String pmapName = "map";
     private final String indexName = "idx";
     private final String bitMaskName = "bitMask";
     private final String intValueName = "intVal";
-    private final String longValueName = "longVal";
-    private final String shortValueName = "shortVal";
-    private final String stringValueName = "stringVal";
-    private final String tokenName = "token";
-    private final String booleanName = "boolean";
-    private int count;
     private static final String tab = "    ";
     private static final Logger logger = LoggerFactory.getLogger(PhastEncoderStageGenerator.class);
+    public static final String decoderClassName = "com.ociweb.pronghorn.stage.phast.PhastEncoder";
 
     public PhastEncoderStageGenerator(MessageSchema schema, Appendable bodyTarget) {
         super(schema, bodyTarget);
@@ -53,70 +48,14 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     protected void additionalImports(MessageSchema schema, Appendable target) {
         try {
             target.append("import ").append(schema.getClass().getCanonicalName()).append(";\n");
+            target.append("import " + decoderClassName + ";\n\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
     
-    @Override
-    protected void headerConstruction() throws IOException {
-        bodyTarget.append("package ").append(packageName).append(";\n");
-        bodyTarget.append("import ").append(LowLevelStateManager.class.getCanonicalName()).append(";\n");
-        bodyTarget.append("import ").append(Pipe.class.getCanonicalName()).append(";\n");
-        bodyTarget.append("import ").append(FieldReferenceOffsetManager.class.getCanonicalName()).append(";\n");
-        bodyTarget.append("import ").append(Appendables.class.getCanonicalName()).append(";\n");
-        bodyTarget.append("import ").append(MessageSchemaDynamic.class.getCanonicalName()).append(";\n");
-        additionalImports(schema, bodyTarget);
-        
-        bodyTarget.append("public class ").append(className).append(" implements Runnable {\n");
-
-        bodyTarget.append("\n");
-        bodyTarget.append("private void requestShutdown() {};\n"); //only here so generated code passes compile.
-    }
-
-    @Override
-    public void processSchema() throws IOException {
-        headerConstruction();
-
-        defineMembers();
-        additionalTokens(bodyTarget);
-
-        final FieldReferenceOffsetManager from = MessageSchema.from(schema);
-
-        //Build top level entry point
-        processCallerPrep();
-        for (int cursor = 0; cursor < from.fragScriptSize.length; cursor++) {
-            boolean isFragmentStart = 0 != from.fragScriptSize[cursor];
-            if (isFragmentStart) {
-                processCaller(cursor);
-            }
-
-        }
-        processCallerPost();
-
-        //Build fragment consumption methods
-        for (int cursor = 0; cursor < from.fragScriptSize.length; cursor++) {
-            boolean isFragmentStart = 0 != from.fragScriptSize[cursor];
-
-            if (isFragmentStart) {
-                processCalleeOpen(cursor);
-
-                boolean isMessageStart = FieldReferenceOffsetManager.isTemplateStart(from, cursor);
-
-                if (isMessageStart) {
-                    processFragment(1, cursor, from);
-                } else {
-                    processFragment(0, cursor, from);
-                }
-
-                processCalleeClose(cursor);
-            }
-        }
-
-        footerConstruction();
-    }
-
     // Additional Token method to append any longs, ins or string variables
+    @Override
     protected void additionalTokens(Appendable target) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         int[] tokens = from.tokens;
@@ -131,13 +70,10 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
             if (TypeMask.isLong(type)) {
                 target.append("private long ").append(scriptNames[i]).append(";\n");
-                count++;
             } else if (TypeMask.isInt(type)) {
                 target.append("private int ").append(scriptNames[i]).append(";\n");
-                count++;
             } else if (TypeMask.isText(type)) {
                 target.append("private String ").append(scriptNames[i]).append(";\n");
-                count++;
             }
         }
     }
@@ -188,7 +124,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // IntPresent Factory
-    protected void encodeIntPresentGenerator(MessageSchema schema, Appendable target) {
+    protected void encodeIntPresentGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "encodeIntPresent")
@@ -203,7 +139,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // DeltaInt Factory
-    protected void encodeDeltaIntGenerator(MessageSchema schema, Appendable target) {
+    protected void encodeDeltaIntGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "encodeDeltaInt")
@@ -211,8 +147,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")
-                    .append(indexName).append(", ")
-                    .append(intValueName)
+                    .append(Integer.toString(idx)).append(", ")
+                    .append(value)
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -220,16 +156,16 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // DeltaLong Factory
-    protected void encodeDeltaLongGenerator(MessageSchema schema, Appendable target) {
+    protected void encodeDeltaLongGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "encodeDeltaLong")
                     .append(longDictionaryName).append(", ")
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
-                    .append(indexName).append(", ")
                     .append(bitMaskName).append(", ")
-                    .append(longValueName)
+                    .append(Integer.toString(idx)).append(", ")
+                    .append(value)
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -252,7 +188,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // IncrementInt Factory
-    protected void incrementIntGenerator(MessageSchema schema, Appendable target) {
+    protected void incrementIntGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "incrementInt")
@@ -260,7 +196,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")
-                    .append(indexName)
+                    .append(Integer.toString(idx))
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -268,7 +204,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // CopyInt Factory
-    protected void copyIntGenerator(MessageSchema schema, Appendable target) {
+    protected void copyIntGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "copyInt")
@@ -276,8 +212,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")
-                    .append(indexName).append(", ")
-                    .append(intValueName)
+                    .append(Integer.toString(idx)).append(", ")
+                    .append(value)
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -285,7 +221,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // DefaultInt Factory
-    protected void encodeDefaultIntGenerator(MessageSchema schema, Appendable target) {
+    protected void encodeDefaultIntGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "encodeDefaultInt")
@@ -293,8 +229,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")
-                    .append(indexName).append(", ")
-                    .append(intValueName).append(", ")
+                    .append(Integer.toString(idx)).append(", ")
+                    .append(value)
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -302,14 +238,14 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // LongPresent Factory
-    protected void encodeLongPresentGenerator(MessageSchema schema, Appendable target) {
+    protected void encodeLongPresentGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "encodeLongPresentGenerator")
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")
-                    .append(longValueName).append(", ")
+                    .append(value)
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -317,7 +253,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // IncrementLong Factory
-    protected void incrementLongGenerator(MessageSchema schema, Appendable target) {
+    protected void incrementLongGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "incrementLong")
@@ -325,7 +261,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")
-                    .append(indexName).append(", ")
+                    .append(Integer.toString(idx))
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -333,7 +269,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // CopyLong Factory
-    protected void copyLongGenerator(MessageSchema schema, Appendable target) {
+    protected void copyLongGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "copyLong")
@@ -341,8 +277,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")
-                    .append(indexName).append(", ")
-                    .append(intValueName)
+                    .append(Integer.toString(idx)).append(", ")
+                    .append(value)
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -350,7 +286,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // DefaultLong Factory
-    protected void encodeDefaultLongGenerator(MessageSchema schema, Appendable target) {
+    protected void encodeDefaultLongGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "encodeDefaultLong")
@@ -358,8 +294,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")
-                    .append(indexName).append(", ")
-                    .append(longValueName).append(", ")
+                    .append(Integer.toString(idx)).append(", ")
+                    .append(value).append(", ")
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -367,14 +303,14 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // ShortPresent Factory
-    protected void encodeShortPresentGenerator(MessageSchema schema, Appendable target) {
+    protected void encodeShortPresentGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "encodeShortPresent")
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName)
-                    .append(shortValueName).append(", ")
+                    .append(value).append(", ")
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -382,7 +318,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // IncrementShort Factory
-    protected void incrementShortGenerator(MessageSchema schema, Appendable target) {
+    protected void incrementShortGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "incrementShort")
@@ -390,7 +326,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")
-                    .append(indexName).append(", ")
+                    .append(Integer.toString(idx)).append(", ")
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -398,7 +334,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // CopyShort Factory
-    protected void copyShortGenerator(MessageSchema schema, Appendable target) {
+    protected void copyShortGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "copyShort")
@@ -406,8 +342,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")
-                    .append(indexName).append(", ")
-                    .append(intValueName)
+                    .append(Integer.toString(idx)).append(", ")
+                    .append(value)
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -415,7 +351,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // DefaultShort Factory
-    protected void encodeDefaultShortGenerator(MessageSchema schema, Appendable target) {
+    protected void encodeDefaultShortGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "encodeDefaultShort")
@@ -423,8 +359,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")
-                    .append(indexName).append(", ")
-                    .append(shortValueName).append(", ")
+                    .append(Integer.toString(idx)).append(", ")
+                    .append(value)
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -432,16 +368,16 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // DeltaShort Factory
-    protected void encodeDeltaShortGenerator(MessageSchema schema, Appendable target) {
+    protected void encodeDeltaShortGenerator(MessageSchema schema, Appendable target, int idx, String value) {
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "encodeDeltaShort")
                     .append(shortDictionaryName).append(", ")
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
-                    .append(indexName).append(", ")
+                    .append(Integer.toString(idx)).append(", ")
                     .append(bitMaskName).append(", ")
-                    .append(shortValueName).append(", ")
+                    .append(value).append(", ")
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -452,16 +388,16 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     // Creates Pmap for encoding
     @Override
     protected void bodyBuilder(MessageSchema schema, int cursor, int fragmentParaCount, CharSequence[] fragmentParaTypes, CharSequence[] fragmentParaArgs, CharSequence[] fragmentParaSuff) {
-
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         cursor++;
         int curCursor = cursor;
         int curCursor2 = cursor;
         boolean pmapOptional = false;
-
-        //tracking id of the pmap so we can give it to the phast encoder later
+        
         try {
-            bodyTarget.append(tab + "long " + indexName + " = 1;\n");
+            //instantiate dictionaries
+            bodyTarget.append(tab + "int[] " + intDictionaryName + " = new int[" + (fragmentParaCount - 1)  + "]\n");
+            bodyTarget.append(tab + "int[] " + longDictionaryName + " = new int[" + (fragmentParaCount - 1) + "]\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -513,16 +449,15 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 }
             }
 
-            if (paramIdx != 0) {
-
-                try {
-                    bodyTarget.append(tab + indexName + " = " + indexName + " << 1;\n");
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
             curCursor += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
+        }
+        
+        //tracking id of the pmap so we can give it to the phast encoder later
+        try {
+            bodyTarget.append(tab + "long " + bitMaskName + " = 1;\n");
+            bodyTarget.append(tab + bitMaskName + " = " + bitMaskName + " << " + (fragmentParaCount - 1) + ";\n");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
 
         //line break for readability
@@ -541,19 +476,19 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
-                        copyIntGenerator(schema, bodyTarget);
+                        copyIntGenerator(schema, bodyTarget, paramIdx, varName);
                         break;
                     case OperatorMask.Field_Constant:
                         //this intentionally left blank, does nothing if constant
                         break;
                     case OperatorMask.Field_Default:
-                        encodeDefaultIntGenerator(schema, bodyTarget);
+                        encodeDefaultIntGenerator(schema, bodyTarget, paramIdx, varName);
                         break;
                     case OperatorMask.Field_Delta:
-                        encodeDeltaIntGenerator(schema, bodyTarget);
+                        encodeDeltaIntGenerator(schema, bodyTarget, paramIdx, varName);
                         break;
                     case OperatorMask.Field_Increment:
-                        incrementIntGenerator(schema, bodyTarget);
+                        incrementIntGenerator(schema, bodyTarget, paramIdx, varName);
                         break;
                     default: {
                         try {
@@ -567,19 +502,19 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
-                        copyLongGenerator(schema, bodyTarget);
+                        copyLongGenerator(schema, bodyTarget, paramIdx, varName);
                         break;
                     case OperatorMask.Field_Constant:
                         //this intentionally left blank, does nothing if constant
                         break;
                     case OperatorMask.Field_Default:
-                        encodeDefaultLongGenerator(schema, bodyTarget);
+                        encodeDefaultLongGenerator(schema, bodyTarget, paramIdx, varName);
                         break;
                     case OperatorMask.Field_Delta:
-                        encodeDeltaLongGenerator(schema, bodyTarget);
+                        encodeDeltaLongGenerator(schema, bodyTarget, paramIdx, varName);
                         break;
                     case OperatorMask.Field_Increment:
-                        incrementLongGenerator(schema, bodyTarget);
+                        incrementLongGenerator(schema, bodyTarget, paramIdx, varName);
                         break;
                 }
             } //else if string
@@ -594,6 +529,13 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 } catch (IOException ex) {
                     logger.error("Trying to write to body of code code = " + ex);
                 }
+            }
+            if (paramIdx != (fragmentParaCount - 1)){
+                try {
+                   bodyTarget.append(tab + bitMaskName + " = " + bitMaskName + " >> 1;\n");
+                } catch (IOException ex) {
+                java.util.logging.Logger.getLogger(PhastEncoderStageGenerator.class.getName()).log(Level.SEVERE, null, ex);
+            }
             }
             curCursor2 += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
         }
