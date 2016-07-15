@@ -153,11 +153,10 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
                 }    
                 
                 //stop if shutdown is requested
-                //stop if in single step mode
-                //continue until all the pipes are empty
+                //continue until all the pipes are empty and not in singleStepMode
                 //continue until enough time as passed for the largest rate to be called at least once
-            } while (!shutdownRequested.get() && (!isSingleStepMode) &&
-                    ((!GraphManager.isAllPipesEmpty(graphManager)) || System.nanoTime()<runUntil) 
+            } while (!shutdownRequested.get() && 
+                    (((!GraphManager.isAllPipesEmpty(graphManager)) && (!isSingleStepMode)) || System.nanoTime()<runUntil) 
                   );
                 
         } finally {
