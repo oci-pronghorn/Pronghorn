@@ -27,6 +27,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     // + ensures that the time trigger happens "near" the edge
     // + ensures that this non-thread scheduler in unit tests can capture the time delayed events.
     public static final int granularityMultiplier = 4;
+    private static final long MS_TO_NS = 1_000_000;
     
     
     public NonThreadScheduler(GraphManager graphManager) {
@@ -166,7 +167,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     }
 
     public void setMinimumStepDurationMS(long duration) {
-        this.minimumDuration = duration;
+        this.minimumDuration = duration*MS_TO_NS;
     }
     
     private long minimumRunDuration() {
