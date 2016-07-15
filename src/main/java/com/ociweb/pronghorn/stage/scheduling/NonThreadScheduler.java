@@ -170,7 +170,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     }
     
     private long minimumRunDuration() {
-        return Math.min(minimumDuration, maxRate*(granularityMultiplier+1));
+        return Math.max(minimumDuration, maxRate*(granularityMultiplier+1));
     }
 
     @Override
