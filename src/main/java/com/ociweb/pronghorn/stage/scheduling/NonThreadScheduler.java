@@ -19,7 +19,10 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     private long maxRate;
     
     private boolean isSingleStepMode = false;
-        
+
+    private long minimumDuration = 0;
+    
+    
     //Time based events will poll at least this many times over the period.
     // + ensures that the time trigger happens "near" the edge
     // + ensures that this non-thread scheduler in unit tests can capture the time delayed events.
@@ -116,7 +119,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     public void run() {
         
         runLock.lock();
-        long runUntil = System.nanoTime()+(maxRate*(granularityMultiplier+1));
+        long runUntil = System.nanoTime()+minimumRunDuration();
         
         try {
 
@@ -161,6 +164,14 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
             runLock.unlock();
         }
         
+    }
+
+    public void setMinimumStepDurationMS(long duration) {
+        this.minimumDuration = duration;
+    }
+    
+    private long minimumRunDuration() {
+        return Math.min(minimumDuration, maxRate*(granularityMultiplier+1));
     }
 
     @Override
