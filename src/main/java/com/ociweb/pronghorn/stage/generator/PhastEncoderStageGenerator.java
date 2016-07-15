@@ -30,14 +30,15 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     private final String longDictionaryName = "previousLongDictionary";
     private final String intDictionaryName = "previousIntDictionary";
     private final String shortDictionaryName = "previousShortDictionary";
-    private final String writerName = "pipe";
+    private final String writerName = "input";
     private final String pmapName = "map";
     private final String indexName = "idx";
     private final String bitMaskName = "bitMask";
     private final String intValueName = "intVal";
     private static final String tab = "    ";
     private static final Logger logger = LoggerFactory.getLogger(PhastEncoderStageGenerator.class);
-    public static final String decoderClassName = "com.ociweb.pronghorn.stage.phast.PhastEncoder";
+    public static final String DECODER_CLASS_NAME = "com.ociweb.pronghorn.stage.phast.PhastEncoder";
+    public static final String DATA_BLOB_WRITER_CLASS = "com.ociweb.pronghorn.pipe.DataOutputBlobWriter";
 
     public PhastEncoderStageGenerator(MessageSchema schema, Appendable bodyTarget) {
         super(schema, bodyTarget);
@@ -48,7 +49,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     protected void additionalImports(MessageSchema schema, Appendable target) {
         try {
             target.append("import ").append(schema.getClass().getCanonicalName()).append(";\n");
-            target.append("import " + decoderClassName + ";\n\n");
+            target.append("import " + DECODER_CLASS_NAME + ";\n");
+            target.append("import " + DATA_BLOB_WRITER_CLASS + ";\n\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -81,13 +83,14 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     //  BuilderInt Factory
     protected void encodePmapBuilderInt(MessageSchema schema, Appendable target, int token, int index, String valName) {
         try {
+            //TODO: add support for isnull
             appendStaticCall(target, encoder, "pmapBuilderInt")
                     .append(pmapName).append(", ")
                     .append(Integer.toString(token)).append(", ")
                     .append(valName).append(", ")
                     .append(intDictionaryName + "[" + index + "]").append(", ")
                     .append(defIntDictionaryName + "[" + index + "]").append(", ")
-                    .append("(" + valName + " == null)")
+                    .append("false")
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -103,7 +106,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(valName).append(", ")
                     .append(longDictionaryName + "[" + index + "]").append(", ")
                     .append(defLongDictionaryName + "[" + index + "]").append(", ")
-                    .append("(" + valName + " == null)")
+                    .append("false")
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -180,7 +183,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(writerName).append(", ")
                     .append(valName).append(", ")
                     .append(pmapName).append(", ")
-                    .append(indexName)
+                    .append(bitMaskName)
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -395,9 +398,15 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         boolean pmapOptional = false;
         
         try {
+            //isntantiate pipe
+            bodyTarget.append("DataOutputBlobWriter<MessageSchemaDynamic> " + writerName + " = new DataOutputBlobWriter<MessageSchemaDynamic>(input);\n");
+            
             //instantiate dictionaries
-            bodyTarget.append(tab + "int[] " + intDictionaryName + " = new int[" + (fragmentParaCount - 1)  + "]\n");
-            bodyTarget.append(tab + "int[] " + longDictionaryName + " = new int[" + (fragmentParaCount - 1) + "]\n");
+            bodyTarget.append(tab + "int[] " + intDictionaryName + " = new int[" + (fragmentParaCount - 1)  + "];\n");
+            bodyTarget.append(tab + "long[] " + longDictionaryName + " = new long[" + (fragmentParaCount - 1) + "];\n");
+            bodyTarget.append(tab + "int[] " + defIntDictionaryName + " = new int[" + (fragmentParaCount - 1)  + "];\n");
+            bodyTarget.append(tab + "long[] " + defLongDictionaryName + " = new long[" + (fragmentParaCount - 1) + "];\n");
+            bodyTarget.append(tab + "long " + pmapName + " = 0;\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -419,7 +428,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
             if (varType.equals("int")) {
                 try {
-                    bodyTarget.append(tab + "activePmap = ");
+                    bodyTarget.append(tab + pmapName + " = ");
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -427,7 +436,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
             } else if (varType.equals("long")) {
                 try {
-                    bodyTarget.append(tab + "activePmap = ");
+                    bodyTarget.append(tab + pmapName + " = ");
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -435,7 +444,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
             } else if (varType.equals("StringBuilder")) {
                 try {
-                    bodyTarget.append(tab + "activePmap = ");
+                    bodyTarget.append(tab + pmapName + " = ");
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -452,8 +461,11 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             curCursor += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
         }
         
+
         //tracking id of the pmap so we can give it to the phast encoder later
         try {
+            //encoding pmap
+            bodyTarget.append(tab + "DataOutputBlobWriter.writePackedLong(" + writerName + ", " + pmapName + ");\n");
             bodyTarget.append(tab + "long " + bitMaskName + " = 1;\n");
             bodyTarget.append(tab + bitMaskName + " = " + bitMaskName + " << " + (fragmentParaCount - 1) + ";\n");
         } catch (IOException e) {

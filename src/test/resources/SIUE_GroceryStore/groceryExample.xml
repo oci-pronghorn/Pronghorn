@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+
+   <template name="InventoryDetails" id="1" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+     <Int32 name="StoreID" id="101">
+			<copy/>
+	 </Int32>
+	 <Int64 name ="Date" id="102">
+			<delta/>
+	 </Int64>
+     <string name="ProductName" id="103"/>
+	 <uInt32 name ="Amount" id="104">	
+			<delta/>
+	 </uInt32>
+	 <uInt32 name="RecordID" id="105">
+			<increment/>
+	 </uInt32>
+	 <string name="Units" id="106" presence="optional"/>
+   </template>
+   
+</templates>
