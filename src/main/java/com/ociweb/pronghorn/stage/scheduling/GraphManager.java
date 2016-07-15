@@ -469,6 +469,14 @@ public class GraphManager {
 	        }
 	}
 	
+	/**
+	 * Returns all pipes of this time in the same order that they were created in the graph.
+	 * 
+	 * TODO: needs test of ordering.
+	 * @param gm
+	 * @param targetSchema
+	 * @return
+	 */
 	public static  <T extends MessageSchema> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema) {
 	    
 	    //pass one to count all the instances

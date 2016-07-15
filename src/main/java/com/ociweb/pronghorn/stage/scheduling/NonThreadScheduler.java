@@ -18,10 +18,21 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     private long[] lastRun;
     private long maxRate;
     
+    private boolean isSingleStepMode = false;
+        
+    //Time based events will poll at least this many times over the period.
+    // + ensures that the time trigger happens "near" the edge
+    // + ensures that this non-thread scheduler in unit tests can capture the time delayed events.
+    public static final int granularityMultiplier = 4;
+    
     
     public NonThreadScheduler(GraphManager graphManager) {
         super(graphManager);
         this.graphManager = graphManager;
+    }
+    
+    public void setSingleStepMode(boolean isSingleStepMode) {
+        this.isSingleStepMode = isSingleStepMode;    
     }
     
     @Override
@@ -100,19 +111,17 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
            throw new RuntimeException(e);
         }
     }
-    
+
     @Override
     public void run() {
         
         runLock.lock();
-        long runUntil = System.nanoTime()+(maxRate*2);
+        long runUntil = System.nanoTime()+(maxRate*(granularityMultiplier+1));
         
         try {
 
-            //stop if shutdown is requested
-            //continue until all the pipes are empty
-            //continue until enough time as passed for the largest rate to be called at least once
-            while (!shutdownRequested.get() && ((!GraphManager.isAllPipesEmpty(graphManager)) || System.nanoTime()<runUntil) ) {
+          //we always run at least once.
+          do {
                 
                 int s = GraphManager.countStages(graphManager)+1;
                 while (--s>=0) {
@@ -138,8 +147,16 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
                     } else {
                         //never run -1
                     }
-                }            
-            }
+                }    
+                
+                //stop if shutdown is requested
+                //stop if in single step mode
+                //continue until all the pipes are empty
+                //continue until enough time as passed for the largest rate to be called at least once
+            } while (!shutdownRequested.get() && (!isSingleStepMode) &&
+                    ((!GraphManager.isAllPipesEmpty(graphManager)) || System.nanoTime()<runUntil) 
+                  );
+                
         } finally {
             runLock.unlock();
         }
