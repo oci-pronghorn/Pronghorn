@@ -88,6 +88,27 @@ public class Blocker {
         int item = IntHashTable.getItem(table, id);
         return (item<1) ? false : 0!=untilTimes[item-1];
     }
+
+    //TODO: urgent needs a unit test to cover
+    
+    /**
+     * Returns true if any block will be released in the defined window.
+     * 
+     * @param currentTimeMillis
+     * @param msNearWindow
+     * @return
+     */
+    public boolean willReleaseInWindow(long currentTimeMillis, long msNearWindow) {
+        int i = untilTimes.length;
+        long limit = currentTimeMillis+msNearWindow;
+        while (--i>=0) {
+            long t = untilTimes[i];
+            if (t>=currentTimeMillis && t<limit) {
+                return true;
+            }
+        }
+        return false;
+    }
     
     
     
