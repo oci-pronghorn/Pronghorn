@@ -330,7 +330,7 @@ class StackStateWalker {
 	private static int readMsgIdx(Pipe ringBuffer, StackStateWalker ringBufferConsumer, final long tmpNextWokingTail) {
 	    
 		int i = ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset);
-        int idx = Pipe.primaryBuffer(ringBuffer)[i];
+        int idx = Pipe.slab(ringBuffer)[i];
         
 		
 		assert(isMsgIdxStartNewMessage(idx, ringBufferConsumer)) : "Bad msgIdx is not a starting point.";

@@ -105,18 +105,23 @@ public class PipeWriter {
           //<<OFF_BITS
     private static void finishWriteBytesAlreadyStarted(Pipe pipe, int loc, int length) {
         int p = Pipe.getBlobWorkingHeadPosition(pipe);
-        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
     	Pipe.validateVarLength(pipe, length);
 		writeSpecialBytesPosAndLen(pipe, loc, length, p);
 		
     }
     
+    public static void writeBytes(Pipe pipe, int loc, byte[] source, int offset, int length) {
+        assert(offset+length<source.length) : "out of bounds";
+        writeBytes(pipe,loc,source,offset,length,Integer.MAX_VALUE);
+    }
+    
     public static void writeBytes(Pipe pipe, int loc, byte[] source, int offset, int length, int mask) {
-        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
     	assert(length>=0);
-		Pipe.copyBytesFromToRing(source, offset, mask, Pipe.byteBuffer(pipe), Pipe.getBlobWorkingHeadPosition(pipe), pipe.byteMask, length);		
+		Pipe.copyBytesFromToRing(source, offset, mask, Pipe.blob(pipe), Pipe.getBlobWorkingHeadPosition(pipe), pipe.byteMask, length);		
 		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), Pipe.getBlobWorkingHeadPosition(pipe), length, Pipe.bytesWriteBase(pipe));
         Pipe.addAndGetBytesWorkingHeadPosition(pipe, length);	
     }
