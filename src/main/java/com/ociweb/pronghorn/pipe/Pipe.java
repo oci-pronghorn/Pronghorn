@@ -2663,6 +2663,7 @@ public final class Pipe<T extends MessageSchema> {
 
 	}
 
+	//do not use with high level API, is dependent on low level confirm calls.
 	public static <S extends MessageSchema> boolean hasContentToRead(Pipe<S> input, int size) {
         //optimized for the other method without size. this is why the -1 is there and we use > for target comparison.
         return contentToLowLevelRead2(input, input.llWrite.llwConfirmedWrittenPosition+size-1, input.llWrite); 
