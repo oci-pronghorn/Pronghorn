@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.pipe;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Random;
 
 import org.junit.Test;
@@ -258,9 +259,162 @@ public class DataInputOutputTest {
         duration = System.nanoTime()-start;
         long nsPerRead = duration/testSize;
   //      System.out.println(nsPerRead+"ns per read int, ints per second "+(1000l*1000l*1000l/nsPerRead));
-       
-        
+               
     }
+    
+    
+    
+    
+    @Test
+    public void testBytesArray() {
+        int testSize = testSpace/50;
+        Random r;
+        Pipe<RawDataSchema> testPipe = new Pipe<RawDataSchema>(config);        
+        
+        testPipe.initBuffers();
+        
+        DataOutputBlobWriter<RawDataSchema> out = new DataOutputBlobWriter<>(testPipe);
+        DataInputBlobReader<RawDataSchema> in = new DataInputBlobReader<>(testPipe);
+        
+        
+        assertTrue(PipeWriter.tryWriteFragment(testPipe, 0));
+        
+         
+        out.openField();
+        
+        int testSourceSize = 4;
+        byte[] testSource = new byte[testSourceSize];
+        
+        r = new Random(101);
+        long start = System.nanoTime();
+        for(int i = 0; i<testSize; i++) {
+            
+            for(int s=0;s<testSourceSize;s++) {
+                testSource[s] = (byte)testIntValueGenerator(r,i);
+            }            
+            
+            try {
+                out.write(testSource);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            
+        
+        }
+        long duration = System.nanoTime()-start;
+        long nsPerWrite = duration/testSize;
+        assertEquals(testSourceSize*testSize,out.length());
+            
+        
+        int length = out.closeHighLevelField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+        assertEquals(testSourceSize*testSize,length);
+        
+        PipeWriter.publishWrites(testPipe);
+        
+        assertTrue(PipeReader.tryReadFragment(testPipe));
+
+        
+        in.openHighLevelAPIField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+
+        r = new Random(101);
+        byte[] testActual = new byte[testSourceSize];
+        start = System.nanoTime();
+        for(int i = 0; i<testSize; i++) {
+            
+            
+            for(int s=0;s<testSourceSize;s++) {
+                testSource[s] = (byte)testIntValueGenerator(r,i);
+            }            
+                        
+            in.read(testActual);
+                        
+            if (!Arrays.equals(testSource, testActual)) {               
+                assertEquals(testSource, testActual);
+            }
+        }
+        duration = System.nanoTime()-start;
+        long nsPerRead = duration/testSize;
+  //      System.out.println(nsPerRead+"ns per read int, ints per second "+(1000l*1000l*1000l/nsPerRead));
+               
+    }
+    
+    @Test
+    public void testBytesArray2() {
+        int testSize = testSpace/50;
+        Random r;
+        Pipe<RawDataSchema> testPipe = new Pipe<RawDataSchema>(config);        
+        
+        testPipe.initBuffers();
+        
+        DataOutputBlobWriter<RawDataSchema> out = new DataOutputBlobWriter<>(testPipe);
+        DataInputBlobReader<RawDataSchema> in = new DataInputBlobReader<>(testPipe);
+        
+        
+        assertTrue(PipeWriter.tryWriteFragment(testPipe, 0));
+        
+         
+        out.openField();
+        
+        int testSourceSize = 4;
+        byte[] testSource = new byte[testSourceSize];
+        
+        r = new Random(101);
+        long start = System.nanoTime();
+        for(int i = 0; i<testSize; i++) {
+            
+            for(int s=0;s<testSourceSize;s++) {
+                testSource[s] = (byte)testIntValueGenerator(r,i);
+            }            
+            
+            try {
+                for(int s=0;s<testSourceSize;s++) {
+                    out.writeByte(testSource[s]);
+                }
+                
+                
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            
+        
+        }
+        long duration = System.nanoTime()-start;
+        long nsPerWrite = duration/testSize;
+        assertEquals(testSourceSize*testSize,out.length());
+        
+        
+        int length = out.closeHighLevelField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+        assertEquals(testSourceSize*testSize,length);
+        
+        PipeWriter.publishWrites(testPipe);
+        
+        assertTrue(PipeReader.tryReadFragment(testPipe));
+
+        
+        in.openHighLevelAPIField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+
+        r = new Random(101);
+        byte[] testActual = new byte[testSourceSize];
+        start = System.nanoTime();
+        for(int i = 0; i<testSize; i++) {
+            
+            
+            for(int s=0;s<testSourceSize;s++) {
+                testSource[s] = (byte)testIntValueGenerator(r,i);
+            }            
+                        
+            in.read(testActual);
+                        
+            if (!Arrays.equals(testSource, testActual)) {               
+                assertEquals(testSource, testActual);
+            }
+        }
+        duration = System.nanoTime()-start;
+        long nsPerRead = duration/testSize;
+  //      System.out.println(nsPerRead+"ns per read int, ints per second "+(1000l*1000l*1000l/nsPerRead));
+               
+    }
+    
     
     
 }

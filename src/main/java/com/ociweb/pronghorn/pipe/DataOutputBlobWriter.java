@@ -68,6 +68,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
 
     public static <T extends MessageSchema> int length(DataOutputBlobWriter<T> writer) {
+       
         if (writer.activePosition>=writer.startPosition) {
             return writer.activePosition-writer.startPosition;            
         } else {        
