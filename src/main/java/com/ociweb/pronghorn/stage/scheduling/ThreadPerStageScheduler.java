@@ -42,12 +42,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		this.executorService = Executors.newFixedThreadPool(i);
 		
 		int realStageCount = i;
-//		int j = i;
-//		while (--j>=0) {
-//		    if (null != GraphManager.getStage(graphManager, j)) {
-//		        realStageCount++;
-//		    }
-//		}
+
 		allStagesLatch = new CyclicBarrier(realStageCount+1);
 		
 		

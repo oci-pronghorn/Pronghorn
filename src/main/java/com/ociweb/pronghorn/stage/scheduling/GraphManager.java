@@ -131,6 +131,7 @@ public class GraphManager {
 				copyNotasForStage(m, clone, stage);	
 			}
 		}
+		clone.stageCounter.set(m.stageCounter.get());
 		return clone;
 	}
 	
