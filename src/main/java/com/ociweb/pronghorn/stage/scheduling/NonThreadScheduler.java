@@ -6,6 +6,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.ociweb.pronghorn.pipe.MessageSchema;
+import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.util.Blocker;
 
@@ -132,24 +134,31 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
                     
                     long rate = rates[s];
                     
-                    if (rate==0) {
-                        PronghornStage stage = GraphManager.getStage(graphManager, s);
-                        if (null != stage) {
+                    PronghornStage stage = GraphManager.getStage(graphManager, s);
+                    if (null != stage) {
+                        
+//                        System.out.println(stage.toString());
+//                        
+//                        int inputs = GraphManager.getInputPipeCount(graphManager, stage);
+//                        for(int i = 1;i<=inputs; i++) {
+//                            Pipe<MessageSchema> inputPipe = GraphManager.getInputPipe(graphManager, stage, i);
+//                            System.out.println("   input: "+inputPipe);
+//                        }                        
+                        
+                        if (rate==0) {
                             stage.run();
                             lastRun[s] = System.nanoTime();
-                        }
-                    } else if (rate>0) {
-                        //check time and only run if valid
-                        long now = System.nanoTime();
-                        if (lastRun[s]+rate <= now) {
-                            PronghornStage stage = GraphManager.getStage(graphManager, s);
-                            if (null != stage) {
+                            
+                        } else if (rate>0) {
+                            //check time and only run if valid
+                            long now = System.nanoTime();
+                            if (lastRun[s]+rate <= now) {
                                 stage.run();
                                 lastRun[s] = System.nanoTime();
                             }
+                        } else {
+                            //never run -1
                         }
-                    } else {
-                        //never run -1
                     }
                 }    
                 
