@@ -43,7 +43,7 @@ public class PipeSingleTemplateDecimalTest {
     	String emptyToString = ring.toString();
     	assertTrue(emptyToString, emptyToString.contains("slabHeadPos 0"));
     	assertTrue(emptyToString, emptyToString.contains("slabTailPos 0"));
-    	assertTrue(emptyToString, emptyToString.contains("RingId:"));
+    	assertTrue(emptyToString, emptyToString.contains("RingId"));
             	
         int messageSize = FROM.fragDataSize[FRAG_LOC];
         

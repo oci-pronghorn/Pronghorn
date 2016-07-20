@@ -58,7 +58,7 @@ class StackStateWalker {
 
     static void setMsgIdx(StackStateWalker rw, int idx, long llwHeadPosCache) {
 		rw.msgIdxPrev = rw.msgIdx;
-		//rw.log.trace("set message id {}", idx);
+	
 		rw.msgIdx = idx;
 		assert(isMsgIdxStartNewMessage(idx, rw)) : "Bad msgIdx is not a starting point. ";
 		assert(idx>-3): idx;

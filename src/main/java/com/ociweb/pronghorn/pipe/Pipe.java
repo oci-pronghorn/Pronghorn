@@ -676,7 +676,8 @@ public final class Pipe<T extends MessageSchema> {
         assert(contentRem <= sizeOfSlabRing) : "ERROR: can not have more content than the size of the pipe. content "+contentRem+" vs "+sizeOfSlabRing;
         
     	StringBuilder result = new StringBuilder();
-    	result.append("RingId:").append(id);
+    	result.append("RingId<").append(schemaName(this));
+    	result.append(">:").append(id);
     	result.append(" slabTailPos ").append(slabRingTail.tailPos.get());
     	result.append(" slabWrkTailPos ").append(slabRingTail.workingTailPos.value);
     	result.append(" slabHeadPos ").append(slabRingHead.headPos.get());
