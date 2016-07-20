@@ -33,6 +33,8 @@ public class Blocker {
      */
     public boolean until(int id, long untilTime) {
         
+        assert(untilTime<System.currentTimeMillis()+(60_000*60*24)) : "until value is set too far in the future";
+        
         int idx = IntHashTable.getItem(table, id);
         if (0==idx) {
             //new idx
@@ -88,6 +90,12 @@ public class Blocker {
         int item = IntHashTable.getItem(table, id);
         return (item<1) ? false : 0!=untilTimes[item-1];
     }
+    
+    public long isBlockedUntil(int id) {        
+        int item = IntHashTable.getItem(table, id);
+        return (item<1) ? 0 : (0==untilTimes[item-1]? 0 : untilTimes[item-1]);
+    }
+    
 
     //TODO: urgent needs a unit test to cover
     
