@@ -60,8 +60,16 @@ class StackStateWalker {
 		rw.msgIdxPrev = rw.msgIdx;
 	
 		rw.msgIdx = idx;
+		assert(idx < rw.from.fragDataSize.length) : "Bad msgIdx out of range";
+		assert(idx>-3): "Bad msgIdx too small ";
 		assert(isMsgIdxStartNewMessage(idx, rw)) : "Bad msgIdx is not a starting point. ";
-		assert(idx>-3): idx;
+		
+
+		
+		
+		
+		
+		
 		
 		//This validation is very important, because all down stream consumers will assume it to be true.
 		assert(-1 ==idx || (rw.from.hasSimpleMessagesOnly && 0==rw.msgIdx && rw.from.messageStarts.length==1)  ||
@@ -300,15 +308,15 @@ class StackStateWalker {
 	}
 
 
-	private static boolean isMsgIdxStartNewMessage(int msgIdx, StackStateWalker ringBufferConsumer) {
-        if (msgIdx<0) {
+	private static boolean isMsgIdxStartNewMessage(final int msgIdx, StackStateWalker ringBufferConsumer) {
+        if (msgIdx < 0) {
             return true;
         }
 	    
 	    int[] starts = ringBufferConsumer.from.messageStarts;
 	    int i = starts.length;
-	    while (--i>=0) {
-	        if (starts[i]==msgIdx) {
+	    while (--i >= 0) {
+	        if (starts[i] == msgIdx) {
 	            return true;
 	        }
 	    }
