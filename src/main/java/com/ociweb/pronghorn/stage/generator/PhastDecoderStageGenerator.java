@@ -12,52 +12,49 @@ import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.util.build.TemplateProcessGeneratorLowLevelWriter;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
+import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.util.Appendables;
 import java.nio.channels.Pipe;
 
+public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevelWriter {
 
-public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevelWriter
-{
-    private final Class decoder = PhastDecoder.class;    
+    private final Class decoder = PhastDecoder.class;
     //DataInputBlobReader reader = new DataInputBlobReader();
     private final Appendable bodyTarget;
     private final String methodScope = "public";
-    
+
     //field names
     private final String longDictionaryName = "longDictionary";
     private final String intDictionaryName = "intDictiornary";
     private final String readerName = "reader";
     private final String mapName = "map";
     private final String indexName = "idx";
-    private final String longValueName = "longVal";  
-    private final String longValueArrayName = "longArrVal"; 
+    private final String longValueName = "longVal";
+    private final String longValueArrayName = "longArrVal";
     private final String intValueName = "intVal";
     private final String intValueArrayName = "intArrVal";
     private final String bitMaskName = "bitMask";
-    
 
     public PhastDecoderStageGenerator(MessageSchema schema, Appendable target, String packageName) {
         super(schema, target, /*isAbstract*/ false, packageName);
-        
+
         this.bodyTarget = target;
     }
-    
 
     @Override
     protected void additionalImports(MessageSchema schema, Appendable target) {
-        try {            
+        try {
             target.append("import ").append(schema.getClass().getCanonicalName()).append(";\n");
             //target.append("import com.ociweb.pronghorn.stage.phast.PhastDecoder;\n");
         } catch (IOException e) {
-           throw new RuntimeException(e);
+            throw new RuntimeException(e);
         }
     }
-    
+
     @Override
-    protected void bodyOfNextMessageIdx(Appendable target) throws IOException 
-    {
+    protected void bodyOfNextMessageIdx(Appendable target) throws IOException {
 //        FieldReferenceOffsetManager from = MessageSchema.from(schema);
 //        
 //        int[] tokens = from.tokens;
@@ -88,13 +85,12 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 //            Appendables.appendValue(target, startsCount).append("];\n");
 //        }
     }
-    
+
     @Override
-    protected void bodyOfBusinessProcess(Appendable target, int cursor, int firstField, int fieldCount) throws IOException 
-    {    
+    protected void bodyOfBusinessProcess(Appendable target, int cursor, int firstField, int fieldCount) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         PhastDecoder decoder = new PhastDecoder();
-        
+
         int[] tokens = from.tokens;
         long[] scriptIds = from.fieldIdScript;
         String[] scriptNames = from.fieldNameScript;
@@ -102,21 +98,65 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         long[] longDict = from.newLongDefaultsDictionary();
         int map = from.preambleOffset;
         int bitMask = from.templateOffset;
-        
+
         // Appendables.appendValue(target, "////", cursor,"\n");
-        for (int f = firstField; f < fieldCount; f++) 
-        {
-            int type = TokenBuilder.extractType(tokens[f]);
-            if (TypeMask.isLong(type)) 
-            {
-                //long decodeDeltaLong = PhastDecoder.decodeDeltaLong(longDict, reader, map, f, tokens[f], bitMask);
+        for (int f = firstField; f < fieldCount; f++) {
+            int token = from.tokens[cursor];
+            int pmapType = TokenBuilder.extractType(token);
+            if (TypeMask.isInt(pmapType) == true) {
+                int oper = TokenBuilder.extractOper(token);
+                switch (oper) {
+                    case OperatorMask.Field_Copy:
+                        decodeCopyIntGenerator(schema, bodyTarget);
+                        break;
+                    case OperatorMask.Field_Constant:
+                        //this intentionally left blank, does nothing if constant
+                        break;
+                    case OperatorMask.Field_Default:
+                        decodeDefaultIntGenerator(schema, bodyTarget);
+                        break;
+                    case OperatorMask.Field_Delta:
+                        decodeIncIntGenerator(schema, bodyTarget);
+                        break;
+                    case OperatorMask.Field_Increment:
+                        decodeIncrementIntGenerator(schema, bodyTarget);
+                        break;
+                    default: {
+                        bodyTarget.append("Unsupported Operator Type");
+                    }
+                }
+            } //if long, goes to switch to find correct operator to call 
+            else if (TypeMask.isLong(pmapType) == true) {
+                int oper = TokenBuilder.extractOper(token);
+                switch (oper) {
+                    case OperatorMask.Field_Copy:
+                        decodeDeltaLongGenerator(schema, bodyTarget);
+                        break;
+                    case OperatorMask.Field_Constant:
+                        //this intentionally left blank, does nothing if constant
+                        break;
+                    case OperatorMask.Field_Default:
+                        //decocdeDefaultLongGenerator(schema, bodyTarget);
+                        break;
+                    case OperatorMask.Field_Delta:
+                        decodeDeltaLongGenerator(schema, bodyTarget);
+                        break;
+                    case OperatorMask.Field_Increment:
+                        //decodeIncrementLongGenerator(schema, bodyTarget);
+                        break;
+                }
+            } //if string
+            else if (TypeMask.isText(pmapType) == true) {
+                //encodeStringGenerator(schema, bodyTarget);
+            } else {
+                bodyTarget.append("Unsupported data type " + pmapType + "\n");
             }
+            cursor++;
         }
     }
-    
+
     @Override
-    protected void additionalMembers(Appendable target) throws IOException 
-    { 
+    protected void additionalMembers(Appendable target) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         int[] tokens = from.tokens;
         long[] scriptIds = from.fieldIdScript;
@@ -125,133 +165,83 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         long[] longDict = from.newLongDefaultsDictionary();
         int i = tokens.length;
 
-        while (--i >= 0) 
-        {
+        while (--i >= 0) {
             int type = TokenBuilder.extractType(tokens[i]);
 
-            if (TypeMask.isLong(type))  
-            {                
-                target.append("private long ").append(scriptNames[i]).append(";\n");                
-            }
-            else if(TypeMask.isInt(type))
-            {
+            if (TypeMask.isLong(type)) {
+                target.append("private long ").append(scriptNames[i]).append(";\n");
+            } else if (TypeMask.isInt(type)) {
                 target.append("private int ").append(scriptNames[i]).append(";\n");
-            }
-            else if(TypeMask.isText(type))
-            {
+            } else if (TypeMask.isText(type)) {
                 target.append("private String ").append(scriptNames[i]).append(";\n");
             }
-        }        
-    }
-    
-    protected void decodeDeltaLongGenerator(MessageSchema schema, Appendable target)
-    {        
-        try 
-        {
-            appendStaticCall(target, decoder , "decodeDeltaLong").append(longDictionaryName).append(", ").append(readerName).append
-                    (", ").append(mapName).append(", ").append(indexName).append(", ").append(longValueName).append(", ").append
-                    (bitMaskName).append(");\n");            
         }
-        catch (IOException e)
-        {
+    }
+
+    protected void decodeDeltaLongGenerator(MessageSchema schema, Appendable target) {
+        try {
+            appendStaticCall(target, decoder, "decodeDeltaLong").append(longDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(indexName).append(", ").append(longValueName).append(", ").append(bitMaskName).append(");\n");
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-    
-    protected void decodeDefaultIntGenerator(MessageSchema schema, Appendable target)
-    {
-        try
-        {
-            appendStaticCall(target, decoder , "decodeDefaultInt").append(readerName).append(", ").append(mapName).append
-                    (", ").append(intValueArrayName).append(", ").append(bitMaskName).append(", ").append
-                    (indexName).append(", ").append(");\n");
-        }
-        catch (IOException e)
-        {
+
+    protected void decodeDefaultIntGenerator(MessageSchema schema, Appendable target) {
+        try {
+            appendStaticCall(target, decoder, "decodeDefaultInt").append(readerName).append(", ").append(mapName).append(", ").append(intValueArrayName).append(", ").append(bitMaskName).append(", ").append(indexName).append(", ").append(");\n");
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-    
-    protected void decodeDeltaIntGenerator(MessageSchema schema, Appendable target)
-    {
-        try
-        {
-            appendStaticCall(target, decoder , "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append
-                    (", ").append(mapName).append(", ").append(indexName).append(", ").append
-                    (bitMaskName).append(", ").append(intValueName).append(");\n");
-        }
-        catch (IOException e)
-        {
+
+    protected void decodeDeltaIntGenerator(MessageSchema schema, Appendable target) {
+        try {
+            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(indexName).append(", ").append(bitMaskName).append(", ").append(intValueName).append(");\n");
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-    
-    protected void decodeIncIntGenerator(MessageSchema schema, Appendable target)
-    {
-        try
-        {
-            appendStaticCall(target, decoder , "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append
-                    (", ").append(mapName).append(", ").append(indexName).append(", ").append
-                    (bitMaskName).append(");\n");
-        }
-        catch (IOException e)
-        {
+
+    protected void decodeIncIntGenerator(MessageSchema schema, Appendable target) {
+        try {
+            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(indexName).append(", ").append(bitMaskName).append(");\n");
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-    
-    protected void decodeIncIntSlowGenerator(MessageSchema schema, Appendable target)
-    {
-        try
-        {
-            appendStaticCall(target, decoder , "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append
-                    (", ").append(mapName).append(", ").append(indexName).append(");\n");
-        }
-        catch (IOException e)
-        {
+
+    protected void decodeIncIntSlowGenerator(MessageSchema schema, Appendable target) {
+        try {
+            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(indexName).append(");\n");
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-    
-    protected void decodeCopyIntGenerator(MessageSchema schema, Appendable target)
-    {
-        try
-        {
-            appendStaticCall(target, decoder , "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append
-                    (", ").append(mapName).append(", ").append(indexName).append(", ").append(bitMaskName).append(");\n");
-        }
-        catch (IOException e)
-        {
+
+    protected void decodeCopyIntGenerator(MessageSchema schema, Appendable target) {
+        try {
+            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(indexName).append(", ").append(bitMaskName).append(");\n");
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-    
-    protected void decodeIncrementIntGenerator(MessageSchema schema, Appendable target)
-    {
-        try
-        {
-           appendStaticCall(target, decoder , "decodeDeltaInt").append(intDictionaryName).append(", ").append(mapName).append
-                    (", ").append(indexName).append(", ").append(bitMaskName).append(");\n"); 
-        }
-        catch (IOException e)
-        {
+
+    protected void decodeIncrementIntGenerator(MessageSchema schema, Appendable target) {
+        try {
+            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(mapName).append(", ").append(indexName).append(", ").append(bitMaskName).append(");\n");
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-    
-    protected void decodePresentIntGenerator(MessageSchema schema, Appendable target)
-    {
-        try
-        {
-            appendStaticCall(target, decoder , "decodeDeltaInt").append(", ").append(readerName).append(", ").append(mapName).append
-                            (", ").append(bitMaskName).append(");\n");
-        }
-        catch (IOException e)
-        {
+
+    protected void decodePresentIntGenerator(MessageSchema schema, Appendable target) {
+        try {
+            appendStaticCall(target, decoder, "decodeDeltaInt").append(", ").append(readerName).append(", ").append(mapName).append(", ").append(bitMaskName).append(");\n");
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-    
+
 //    protected void decodeStringGenerator(MessageSchema schema, Appendable target)
 //    {
 //        try
@@ -263,7 +253,6 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 //            throw new RuntimeException(e);
 //        }
 //    }
-    
     //    @Override
 //    protected void processCallerPrep() throws IOException
 //    {
@@ -294,7 +283,6 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 //        bodyTarget.append("@Override\n");
 //        bodyTarget.append("public void run() {\n");
 //    }
-    
 //   @Override
 //    protected void processCaller(int cursor) throws IOException
 //    {        
@@ -325,8 +313,5 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 //                                      
 //        bodyTarget.append(tab).append(tab).append("break;\n");
 //    }
-    
-    
     //TODO:...
-
 }
