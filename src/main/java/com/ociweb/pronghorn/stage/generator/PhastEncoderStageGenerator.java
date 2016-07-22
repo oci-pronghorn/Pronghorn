@@ -7,15 +7,9 @@ import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import static com.ociweb.pronghorn.util.Appendables.*;
 
 import com.ociweb.pronghorn.pipe.MessageSchema;
-import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.stream.LowLevelStateManager;
 import com.ociweb.pronghorn.pipe.token.*;
 import com.ociweb.pronghorn.pipe.util.build.TemplateProcessGeneratorLowLevelReader;
-import com.ociweb.pronghorn.util.Appendables;
 import java.util.logging.Level;
-import javax.swing.text.html.HTML;
-import jdk.nashorn.internal.parser.TokenStream;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
@@ -30,7 +24,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     private final String longDictionaryName = "previousLongDictionary";
     private final String intDictionaryName = "previousIntDictionary";
     private final String shortDictionaryName = "previousShortDictionary";
-    private final String writerName = "input";
+    private final String writerName = "writer";
     private final String pmapName = "map";
     private final String indexName = "idx";
     private final String bitMaskName = "bitMask";
@@ -55,16 +49,14 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             throw new RuntimeException(e);
         }
     }
-    
+
     // Additional Token method to append any longs, ins or string variables
     @Override
     protected void additionalTokens(Appendable target) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         int[] tokens = from.tokens;
-        int[] intDict = from.newIntDefaultsDictionary();
         String[] scriptNames = from.fieldNameScript;
         long[] scriptIds = from.fieldIdScript;
-        long[] longDict = from.newLongDefaultsDictionary();
         int i = tokens.length;
 
         while (--i >= 0) {
@@ -81,7 +73,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     //  BuilderInt Factory
-    protected void encodePmapBuilderInt(MessageSchema schema, Appendable target, int token, int index, String valName) {
+    protected void encodePmapBuilderInt(MessageSchema schema, Appendable target, int token, int index, String valName, boolean isNull) {
         try {
             //TODO: add support for isnull
             appendStaticCall(target, encoder, "pmapBuilderInt")
@@ -90,7 +82,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(valName).append(", ")
                     .append(intDictionaryName + "[" + index + "]").append(", ")
                     .append(defIntDictionaryName + "[" + index + "]").append(", ")
-                    .append("false")
+                    .append(Boolean.toString(isNull))
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -98,7 +90,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // builderLong Factory
-    protected void encodePmapBuilderLong(MessageSchema schema, Appendable target, int token, int index, String valName) {
+    protected void encodePmapBuilderLong(MessageSchema schema, Appendable target, int token, int index, String valName, boolean isNull) {
         try {
             appendStaticCall(target, encoder, "pmapBuilderLong")
                     .append(pmapName).append(", ")
@@ -106,7 +98,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(valName).append(", ")
                     .append(longDictionaryName + "[" + index + "]").append(", ")
                     .append(defLongDictionaryName + "[" + index + "]").append(", ")
-                    .append("false")
+                    .append(Boolean.toString(isNull))
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -387,170 +379,142 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
 
+    //method to instatiate dictionaries and pmap
+    private void generateVariables(MessageSchema schema, Appendable target) throws IOException {
+        bodyTarget.append(tab + "int[] " + intDictionaryName + " = new int[" + (fragmentParaCount - 1) + "];\n");
+        bodyTarget.append(tab + "long[] " + longDictionaryName + " = new long[" + (fragmentParaCount - 1) + "];\n");
+        bodyTarget.append(tab + "int[] " + defIntDictionaryName + " = new int[" + (fragmentParaCount - 1) + "];\n");
+        bodyTarget.append(tab + "long[] " + defLongDictionaryName + " = new long[" + (fragmentParaCount - 1) + "];\n");
+        bodyTarget.append(tab + "long " + pmapName + " = 0;\n");
+    }
+
     // BodyBuilder OverRide. Lots of Good stuff goes here
     // Creates Pmap for encoding
     @Override
     protected void bodyBuilder(MessageSchema schema, int cursor, int fragmentParaCount, CharSequence[] fragmentParaTypes, CharSequence[] fragmentParaArgs, CharSequence[] fragmentParaSuff) {
+        //create FROM which is generated from the schema provided.
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
+        //incremenent to pass over the group start at the begging of array
         cursor++;
         int curCursor = cursor;
         int curCursor2 = cursor;
-        boolean pmapOptional = false;
-        
+
+        //this try catches all IO problems and throws an error if the file does not exist
         try {
             //isntantiate pipe
-            bodyTarget.append("DataOutputBlobWriter<MessageSchemaDynamic> " + writerName + " = new DataOutputBlobWriter<MessageSchemaDynamic>(input);\n");
+            bodyTarget.append("DataOutputBlobWriter<" + schema.getClass().getSimpleName() + "> " + writerName + " = new DataOutputBlobWriter<" + schema.getClass().getSimpleName() + ">(input);\n");
             
-            //instantiate dictionaries
-            bodyTarget.append(tab + "int[] " + intDictionaryName + " = new int[" + (fragmentParaCount - 1)  + "];\n");
-            bodyTarget.append(tab + "long[] " + longDictionaryName + " = new long[" + (fragmentParaCount - 1) + "];\n");
-            bodyTarget.append(tab + "int[] " + defIntDictionaryName + " = new int[" + (fragmentParaCount - 1)  + "];\n");
-            bodyTarget.append(tab + "long[] " + defLongDictionaryName + " = new long[" + (fragmentParaCount - 1) + "];\n");
-            bodyTarget.append(tab + "long " + pmapName + " = 0;\n");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+            //call to instantiate dictionaries
+            generateVariables(schema, bodyTarget);
+            
+            //traverse all tokens and print out a pmap builder for each of them
+            for (int paramIdx = 0; paramIdx < fragmentParaCount; paramIdx++) {
+                int token = from.tokens[curCursor];
+                int pmapType = TokenBuilder.extractType(token);
 
-        //traverse all tokens and print out a pmap builder for each of them
-        for (int paramIdx = 0; paramIdx < fragmentParaCount; paramIdx++) {
-            int token = from.tokens[curCursor];
-            int pmapType = TokenBuilder.extractType(token);
+                String varName = new StringBuilder().append(fragmentParaArgs[paramIdx]).append(fragmentParaSuff[paramIdx]).toString();
+                String varType = new StringBuilder().append(fragmentParaTypes[paramIdx]).toString();
 
-            String varName = new StringBuilder().append(fragmentParaArgs[paramIdx]).append(fragmentParaSuff[paramIdx]).toString();
-            String varType = new StringBuilder().append(fragmentParaTypes[paramIdx]).toString();
+                boolean isNull = false;
 
-            String isNull = "false";
-
-            //TODO: to hex string isntead of string
-            if (TypeMask.isOptional(pmapType)) {
-                isNull = "true";
-            }
-
-            if (varType.equals("int")) {
-                try {
-                    bodyTarget.append(tab + pmapName + " = ");
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                if (TypeMask.isOptional(pmapType)) {
+                    isNull = true;
                 }
-                encodePmapBuilderInt(schema, bodyTarget, token, paramIdx, varName);
 
-            } else if (varType.equals("long")) {
-                try {
+                //call appropriate pmap builder according to type
+                if (varType.equals("int")) {
                     bodyTarget.append(tab + pmapName + " = ");
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                encodePmapBuilderLong(schema, bodyTarget, token, paramIdx, varName);
+                    encodePmapBuilderInt(schema, bodyTarget, token, paramIdx, varName, isNull);
 
-            } else if (varType.equals("StringBuilder")) {
-                try {
+                } else if (varType.equals("long")) {
                     bodyTarget.append(tab + pmapName + " = ");
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                encodePmapBuilderString(schema, bodyTarget, token, varName);
+                    encodePmapBuilderLong(schema, bodyTarget, token, paramIdx, varName,isNull);
 
-            } else {
-                try {
+                } else if (varType.equals("StringBuilder")) {
+                    bodyTarget.append(tab + pmapName + " = ");
+                    encodePmapBuilderString(schema, bodyTarget, token, varName);
+
+                } else {
                     bodyTarget.append("caught by nothing\n");
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
                 }
+
+                curCursor += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
             }
 
-            curCursor += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
-        }
-        
-
-        //tracking id of the pmap so we can give it to the phast encoder later
-        try {
-            //encoding pmap
+            //taking in pmap
             bodyTarget.append(tab + "DataOutputBlobWriter.writePackedLong(" + writerName + ", " + pmapName + ");\n");
-            bodyTarget.append(tab + "long " + bitMaskName + " = 1;\n");
+            //instantiating bimask
+            bodyTarget.append(tab + "int " + bitMaskName + " = 1;\n");
             bodyTarget.append(tab + bitMaskName + " = " + bitMaskName + " << " + (fragmentParaCount - 1) + ";\n");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        //line break for readability
-        try {
+            //line break for readability
             bodyTarget.append("\n");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        //traverses all data and pulls them off the pipe
-        for (int paramIdx = 0; paramIdx < fragmentParaCount; paramIdx++) {
-            int token = from.tokens[curCursor2];
-            int pmapType = TokenBuilder.extractType(token);
-            String varName = new StringBuilder().append(fragmentParaArgs[paramIdx]).append(fragmentParaSuff[paramIdx]).toString();
-            String varType = new StringBuilder().append(fragmentParaTypes[paramIdx]).toString();
-            if (TypeMask.isInt(pmapType) == true) {
-                int oper = TokenBuilder.extractOper(token);
-                switch (oper) {
-                    case OperatorMask.Field_Copy:
-                        copyIntGenerator(schema, bodyTarget, paramIdx, varName);
-                        break;
-                    case OperatorMask.Field_Constant:
-                        //this intentionally left blank, does nothing if constant
-                        break;
-                    case OperatorMask.Field_Default:
-                        encodeDefaultIntGenerator(schema, bodyTarget, paramIdx, varName);
-                        break;
-                    case OperatorMask.Field_Delta:
-                        encodeDeltaIntGenerator(schema, bodyTarget, paramIdx, varName);
-                        break;
-                    case OperatorMask.Field_Increment:
-                        incrementIntGenerator(schema, bodyTarget, paramIdx, varName);
-                        break;
-                    default: {
-                        try {
+            
+            //traverses all data and pulls them off the pipe
+            for (int paramIdx = 0; paramIdx < fragmentParaCount; paramIdx++) {
+                int token = from.tokens[curCursor2];
+                int pmapType = TokenBuilder.extractType(token);
+                String varName = new StringBuilder().append(fragmentParaArgs[paramIdx]).append(fragmentParaSuff[paramIdx]).toString();
+                String varType = new StringBuilder().append(fragmentParaTypes[paramIdx]).toString();
+                
+                //if int, goes to switch to find correct operator to call
+                if (TypeMask.isInt(pmapType) == true) {
+                    int oper = TokenBuilder.extractOper(token);
+                    switch (oper) {
+                        case OperatorMask.Field_Copy:
+                            copyIntGenerator(schema, bodyTarget, paramIdx, varName);
+                            break;
+                        case OperatorMask.Field_Constant:
+                            //this intentionally left blank, does nothing if constant
+                            break;
+                        case OperatorMask.Field_Default:
+                            encodeDefaultIntGenerator(schema, bodyTarget, paramIdx, varName);
+                            break;
+                        case OperatorMask.Field_Delta:
+                            encodeDeltaIntGenerator(schema, bodyTarget, paramIdx, varName);
+                            break;
+                        case OperatorMask.Field_Increment:
+                            incrementIntGenerator(schema, bodyTarget, paramIdx, varName);
+                            break;
+                        default: {
                             bodyTarget.append("Unsupported Operator Type");
-                        } catch (IOException ex) {
-                            java.util.logging.Logger.getLogger(PhastEncoderStageGenerator.class.getName()).log(Level.SEVERE, null, ex);
                         }
                     }
                 }
-            } else if (TypeMask.isLong(pmapType) == true) {
-                int oper = TokenBuilder.extractOper(token);
-                switch (oper) {
-                    case OperatorMask.Field_Copy:
-                        copyLongGenerator(schema, bodyTarget, paramIdx, varName);
-                        break;
-                    case OperatorMask.Field_Constant:
-                        //this intentionally left blank, does nothing if constant
-                        break;
-                    case OperatorMask.Field_Default:
-                        encodeDefaultLongGenerator(schema, bodyTarget, paramIdx, varName);
-                        break;
-                    case OperatorMask.Field_Delta:
-                        encodeDeltaLongGenerator(schema, bodyTarget, paramIdx, varName);
-                        break;
-                    case OperatorMask.Field_Increment:
-                        incrementLongGenerator(schema, bodyTarget, paramIdx, varName);
-                        break;
+                //if long, goes to switch to find correct operator to call 
+                else if (TypeMask.isLong(pmapType) == true) {
+                    int oper = TokenBuilder.extractOper(token);
+                    switch (oper) {
+                        case OperatorMask.Field_Copy:
+                            copyLongGenerator(schema, bodyTarget, paramIdx, varName);
+                            break;
+                        case OperatorMask.Field_Constant:
+                            //this intentionally left blank, does nothing if constant
+                            break;
+                        case OperatorMask.Field_Default:
+                            encodeDefaultLongGenerator(schema, bodyTarget, paramIdx, varName);
+                            break;
+                        case OperatorMask.Field_Delta:
+                            encodeDeltaLongGenerator(schema, bodyTarget, paramIdx, varName);
+                            break;
+                        case OperatorMask.Field_Increment:
+                            incrementLongGenerator(schema, bodyTarget, paramIdx, varName);
+                            break;
+                    }
                 }
-            } //else if string
-            
-            else if (TypeMask.isText(pmapType)== true) {
-                encodeStringGenerator(schema, bodyTarget, varName);
-            }
-            
-            else {
-                try {
+                //if string
+                else if (TypeMask.isText(pmapType) == true) {
+                    encodeStringGenerator(schema, bodyTarget, varName);
+                } else {
                     bodyTarget.append("Unsupported data type " + pmapType + "\n");
-                } catch (IOException ex) {
-                    logger.error("Trying to write to body of code code = " + ex);
                 }
+                if (paramIdx != (fragmentParaCount - 1)) {
+                    bodyTarget.append(tab + bitMaskName + " = " + bitMaskName + " >> 1;\n");
+                }
+                curCursor2 += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
             }
-            if (paramIdx != (fragmentParaCount - 1)){
-                try {
-                   bodyTarget.append(tab + bitMaskName + " = " + bitMaskName + " >> 1;\n");
-                } catch (IOException ex) {
-                java.util.logging.Logger.getLogger(PhastEncoderStageGenerator.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            }
-            curCursor2 += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
-        }
 
+        } catch (IOException e) {
+            java.util.logging.Logger.getLogger(PhastEncoderStageGenerator.class.getName()).log(Level.SEVERE, null, e);
+        }
     }
 }

@@ -31,7 +31,7 @@ private Pipe<MessageSchemaDynamic> input;
 // # Low level API is CAN NOT be extensiable in the sense of dealing with mising or extra/new fields. 
 // # Low level API is CAN NOT be extensiable in the sense of dealing with fields encoded with different types. 
 private static final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
-private static final long BUILD_TIME = 1468553452144L;
+private static final long BUILD_TIME = 1469205961050L;
 
 public void startup() {
     Pipe.from(input).validateGUID(FROM_GUID);
@@ -72,7 +72,7 @@ private void processPipeInventoryDetails() {
 }
 
 protected void businessMethodInventoryDetails(int pStoreID, long pDate, StringBuilder workspace0x67, int pAmount, int pRecordID, StringBuilder workspace0x6A) {
-DataOutputBlobWriter<MessageSchemaDynamic> input = new DataOutputBlobWriter<MessageSchemaDynamic>(input);
+DataOutputBlobWriter<MessageSchemaDynamic> writer = new DataOutputBlobWriter<MessageSchemaDynamic>(input);
     int[] previousIntDictionary = new int[5];
     long[] previousLongDictionary = new long[5];
     int[] defIntDictionary = new int[5];
@@ -84,21 +84,21 @@ DataOutputBlobWriter<MessageSchemaDynamic> input = new DataOutputBlobWriter<Mess
     map = PhastEncoder.pmapBuilderInt(map, -2139095039, pAmount, previousIntDictionary[3], defIntDictionary[3], false);
     map = PhastEncoder.pmapBuilderInt(map, -2136997886, pRecordID, previousIntDictionary[4], defIntDictionary[4], false);
     map = PhastEncoder.pmapBuilderString(map, -1543503871, (workspace0x6A == null));
-    DataOutputBlobWriter.writePackedLong(input, map);
-    long bitMask = 1;
+    DataOutputBlobWriter.writePackedLong(writer, map);
+    int bitMask = 1;
     bitMask = bitMask << 5;
 
-    PhastEncoder.copyInt(previousIntDictionary, input, map, bitMask, 0, pStoreID);
+    PhastEncoder.copyInt(previousIntDictionary, writer, map, bitMask, 0, pStoreID);
     bitMask = bitMask >> 1;
-    PhastEncoder.encodeDeltaLong(previousLongDictionary, input, map, bitMask, 1, pDate);
+    PhastEncoder.encodeDeltaLong(previousLongDictionary, writer, map, bitMask, 1, pDate);
     bitMask = bitMask >> 1;
-    PhastEncoder.encodeString(input, workspace0x67, map, bitMask);
+    PhastEncoder.encodeString(writer, workspace0x67, map, bitMask);
     bitMask = bitMask >> 1;
-    PhastEncoder.encodeDeltaInt(previousIntDictionary, input, map, bitMask, 3, pAmount);
+    PhastEncoder.encodeDeltaInt(previousIntDictionary, writer, map, bitMask, 3, pAmount);
     bitMask = bitMask >> 1;
-    PhastEncoder.incrementInt(previousIntDictionary, input, map, bitMask, 4);
+    PhastEncoder.incrementInt(previousIntDictionary, writer, map, bitMask, 4);
     bitMask = bitMask >> 1;
-    PhastEncoder.encodeString(input, workspace0x6A, map, bitMask);
+    PhastEncoder.encodeString(writer, workspace0x6A, map, bitMask);
 }
 
 }
