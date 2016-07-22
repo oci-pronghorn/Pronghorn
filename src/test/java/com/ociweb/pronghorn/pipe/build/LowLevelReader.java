@@ -31,7 +31,7 @@ private Pipe<MessageSchemaDynamic> input;
 // # Low level API is CAN NOT be extensiable in the sense of dealing with mising or extra/new fields. 
 // # Low level API is CAN NOT be extensiable in the sense of dealing with fields encoded with different types. 
 private static final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
-private static final long BUILD_TIME = 1469205961050L;
+private static final long BUILD_TIME = 1469207452483L;
 
 public void startup() {
     Pipe.from(input).validateGUID(FROM_GUID);
@@ -78,12 +78,12 @@ DataOutputBlobWriter<MessageSchemaDynamic> writer = new DataOutputBlobWriter<Mes
     int[] defIntDictionary = new int[5];
     long[] defLongDictionary = new long[5];
     long map = 0;
-    map = PhastEncoder.pmapBuilderInt(map, -2011168768, pStoreID, previousIntDictionary[0], defIntDictionary[0], false);
-    map = PhastEncoder.pmapBuilderLong(map, -1736441856, pDate, previousLongDictionary[1], defLongDictionary[1], false);
-    map = PhastEncoder.pmapBuilderString(map, -1610612736, (workspace0x67 == null));
-    map = PhastEncoder.pmapBuilderInt(map, -2139095039, pAmount, previousIntDictionary[3], defIntDictionary[3], false);
-    map = PhastEncoder.pmapBuilderInt(map, -2136997886, pRecordID, previousIntDictionary[4], defIntDictionary[4], false);
-    map = PhastEncoder.pmapBuilderString(map, -1543503871, (workspace0x6A == null));
+    map = PhastEncoder.pmapBuilderInt(map, 0x88200000, pStoreID, previousIntDictionary[0], defIntDictionary[0], false);
+    map = PhastEncoder.pmapBuilderLong(map, 0x98800000, pDate, previousLongDictionary[1], defLongDictionary[1], false);
+    map = PhastEncoder.pmapBuilderString(map, 0xa0000000, (workspace0x67 == null));
+    map = PhastEncoder.pmapBuilderInt(map, 0x80800001, pAmount, previousIntDictionary[3], defIntDictionary[3], false);
+    map = PhastEncoder.pmapBuilderInt(map, 0x80a00002, pRecordID, previousIntDictionary[4], defIntDictionary[4], false);
+    map = PhastEncoder.pmapBuilderString(map, 0xa4000001, (workspace0x6A == null));
     DataOutputBlobWriter.writePackedLong(writer, map);
     int bitMask = 1;
     bitMask = bitMask << 5;
