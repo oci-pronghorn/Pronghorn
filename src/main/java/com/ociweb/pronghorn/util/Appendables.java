@@ -21,7 +21,7 @@ public class Appendables {
         if (a != null) {        
             int iMax = a.length - 1;
             if (iMax == -1) {
-                target.append("{}");
+                target.append(left).append(right);
                 return target;
             }
             target.append(left);
@@ -48,7 +48,7 @@ public class Appendables {
         if (b != null) {        
             int iMax = bLength - 1;
             if (iMax == -1) {
-                target.append("{}");
+                target.append(left).append(right);
                 return target;
             }
             target.append(left);
@@ -70,7 +70,7 @@ public class Appendables {
         if (b != null) {        
             int iMax = bLength - 1;
             if (iMax == -1) {
-                target.append("{}");
+                target.append(left).append(right);
                 return target;
             }
             target.append(left);
@@ -92,7 +92,7 @@ public class Appendables {
         if (a != null) {        
             int iMax = a.length - 1;
             if (iMax == -1) {
-                target.append("{}");
+                target.append(left).append(right);
                 return target;
             }
             target.append(left);
@@ -114,7 +114,7 @@ public class Appendables {
         if (a != null) {        
             int iMax = a.length - 1;
             if (iMax == -1) {
-                target.append("{}");
+                target.append(left).append(right);
                 return target;
             }
             target.append(left);
