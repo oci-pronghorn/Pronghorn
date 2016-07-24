@@ -66,6 +66,28 @@ public class Appendables {
         return target;
     }
     
+    public static <A extends Appendable> A appendArray(A target, char left, byte[] b, int offset, int mask, char right, int bLength) throws IOException {
+        if (b != null) {        
+            int iMax = bLength - 1;
+            if (iMax == -1) {
+                target.append("{}");
+                return target;
+            }
+            target.append(left);
+            for (int i = 0; ; i++) {
+                appendValue(target,b[mask & (i+offset) ]);
+                //target.append(Integer.toString(a[i]));
+                if (i == iMax)
+                    return (A) target.append(right);
+                target.append(", ");
+            } 
+        } else {
+            target.append("null");
+        
+        }
+        return target;
+    }
+    
     public static <A extends Appendable> A appendArray(A target, char left, int[] a, char right) throws IOException {
         if (a != null) {        
             int iMax = a.length - 1;

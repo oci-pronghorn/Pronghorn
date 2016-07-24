@@ -5,9 +5,7 @@ import java.lang.reflect.Field;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
-import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
-import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.util.Appendables;
 
 public class FROMValidation {
@@ -92,6 +90,11 @@ public class FROMValidation {
 	    FieldReferenceOffsetManager encodedFrom = MessageSchema.from(schema);
 	    
 	    Field[] fields = schema.getClass().getFields();
+	    
+	    if (MessageSchema.class != schema.getClass().getSuperclass()) {
+	        System.out.println("all Schema objects must directly extend "+MessageSchema.class.getCanonicalName());
+	        return false;
+	    }
 	    
 	    int[] msgStart = encodedFrom.messageStarts;
 	    

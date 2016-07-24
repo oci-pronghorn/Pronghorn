@@ -504,7 +504,7 @@ class StackStateWalker {
 	
     static boolean hasContentToRead(Pipe pipe) {
         if (!(pipe.llWrite.llwHeadPosCache > 1+pipe.ringWalker.nextWorkingTail)) {
-            return (pipe.llRead.llrTailPosCache =  Pipe.headPosition(pipe)) > 1+pipe.ringWalker.nextWorkingTail;
+            return (pipe.llRead.llrTailPosCache =  Pipe.tailPosition(pipe)) > 1+pipe.ringWalker.nextWorkingTail;
         } else {
             return true;
         }
@@ -519,6 +519,7 @@ class StackStateWalker {
     }
 
     static boolean tryWriteFragment0(Pipe pipe, int cursorPosition, int fragSize, long target) {
+        assert(pipe.llRead.llrTailPosCache <= Pipe.tailPosition(pipe)) : "Tail cache corruption";
         return tryWriteFragment1(pipe, cursorPosition, Pipe.from(pipe), fragSize, target, pipe.llRead.llrTailPosCache >=  target);
     }
     
