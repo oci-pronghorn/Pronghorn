@@ -190,6 +190,10 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     public static void encodeAsUTF8(DataOutputBlobWriter writer, CharSequence s) {
         writer.activePosition = encodeAsUTF8(writer, s, 0, s.length(), writer.byteMask, writer.byteBuffer, writer.activePosition);
     }
+    
+    public static void encodeAsUTF8(DataOutputBlobWriter writer, CharSequence s, int position, int length) {
+        writer.activePosition = encodeAsUTF8(writer, s, position, length, writer.byteMask, writer.byteBuffer, writer.activePosition);
+    }
 
     @Deprecated
     public static int encodeAsUTF8(DataOutputBlobWriter writer, CharSequence s, int len, int mask, byte[] localBuf, int pos) {
@@ -201,7 +205,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
     
     public static int encodeAsUTF8(DataOutputBlobWriter writer, CharSequence s, int sPos, int sLen, int mask, byte[] localBuf, int pos) {
-        while (sPos < sLen) {
+        while (--sLen >= 0) {
             pos = Pipe.encodeSingleChar((int) s.charAt(sPos++), localBuf, mask, pos);
         }
         return pos;

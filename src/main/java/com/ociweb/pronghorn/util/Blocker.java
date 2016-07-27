@@ -117,6 +117,19 @@ public class Blocker {
         }
         return false;
     }
+
+    public long durationToNextRelease(long currentTimeMillis, long defaultValue) {
+        int i = untilTimes.length;
+        long minValue = defaultValue;
+        while (--i>=0) {
+            long t = untilTimes[i];
+            if (t>=currentTimeMillis) {
+                long duration = t-currentTimeMillis;
+                minValue = Math.min(duration, minValue);
+            }
+        }
+        return minValue;
+    }
     
     
     
