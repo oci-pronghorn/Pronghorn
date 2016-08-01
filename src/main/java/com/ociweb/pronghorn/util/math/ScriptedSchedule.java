@@ -6,9 +6,8 @@ import com.ociweb.pronghorn.util.Appendables;
 
 public class ScriptedSchedule {
 
-    //package protected
-    final int commonClock;
-    final byte[] script;
+    public final int commonClock;
+    public final byte[] script;
     
     
     public ScriptedSchedule(int commonClock, byte[] script) {
