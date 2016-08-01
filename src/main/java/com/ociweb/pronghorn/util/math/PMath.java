@@ -77,7 +77,7 @@ public class PMath {
                 min = Math.min(value, min);
             }
             
-            target[(offset+length)&mask] = (byte)min;
+            target[(offset+length)&mask] = (min==Integer.MAX_VALUE?0:(byte)min);
                         
         }
 
