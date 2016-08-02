@@ -185,18 +185,13 @@ public class PMathTest {
     @Test
     public void testScheduler() {
       
-        int[] schedulePeriods = {200, 70, 50 ,20}; //NOTE: sort these so they are longest to shortest (by time taken not frequency) do short read first.
+        int[] schedulePeriods = {300, 70, 50 ,20}; //NOTE: sort these so they are longest to shortest (by time taken not frequency) do short read first.
                 
         ScriptedSchedule schedule = PMath.buildScriptedSchedule(schedulePeriods);   
         
-        assertEquals(265, schedule.script.length);
+        assertEquals(394, schedule.script.length);
         assertEquals(10, schedule.commonClock);
-        
-        
-       //sum up the duration of all the calls and substract from the clock value here to get the actual rate needed for the stage.
-       // how much time is provided for the commands from the pipes?? this must be subtrated from the rate...
-       
- 
+        assertEquals(3, schedule.maxRun);     
         
     }
     

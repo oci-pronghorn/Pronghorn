@@ -63,18 +63,17 @@ public class PMath {
     
     
     public static void greatestCommonFactor( byte[][] backingA, int[] offsetA, int[] lengthA, int[] maskA,
-                                             byte[] target,   int offset, int length, int mask) {
-        
+                                             byte[] target, int offset, int length, int mask) {        
 
+        assert(isNotLessThanAny(length, lengthA));
+        
         while (--length>=0) {
             
-            int min = Integer.MAX_VALUE;
-            
+            int min = Integer.MAX_VALUE;            
             int i = backingA.length;
             while (--i>=0) {
-                int value = length>=lengthA[i] ? 0 : (backingA[i][(offsetA[i]+length)&maskA[i]]);
-                assert(value>=0) : "only works on integers not rationals";
-                min = Math.min(value, min);
+                assert( (backingA[i][(offsetA[i]+length)&maskA[i]]) >= 0) : "only works on integers not rationals";                
+                min = Math.min((int) (length>=lengthA[i] ? 0 : (backingA[i][(offsetA[i]+length)&maskA[i]])), min);
             }
             
             target[(offset+length)&mask] = (min==Integer.MAX_VALUE?0:(byte)min);
@@ -84,6 +83,16 @@ public class PMath {
     }   
     
     
+    private static boolean isNotLessThanAny(int x, int[] y) {
+        int i = y.length;
+        while (--i>=0) {
+            if (x<y[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /*
      * A contains the factors of B and we want them removed. The result is in target
      * 
@@ -239,7 +248,8 @@ public class PMath {
         byte[] repeatLength = new byte[maxPrimes];
         byte[] temp = new byte[maxPrimes];
         int[] steps = new int[i];
-        
+        int[] bases = new int[i];
+        int largestPrimeIdx = -1;
         while (--i>=0) {
            
             //remove the GCM from the factors for this particular rate
@@ -259,29 +269,58 @@ public class PMath {
             
             steps[i] = factorsToInt(factors[i], 0, maxPrimes, maxPrimesMask);
             
+            //finding the index of the largest prime used in any of these.
+            largestPrimeIdx = Math.max(largestPrimeFactorIdx(factors[i],0,maxPrimes,maxPrimesMask), largestPrimeIdx);
+            
         }
         int repeatCount = factorsToInt(repeatLength, 0, maxPrimes, maxPrimesMask);
         int scriptLength = repeatCount;//one for the -1 (stop flag) of each iteration
+       
         i = schedulePeriods.length;
+        int activeBase = 0;
+        int z = largestPrimeIdx+1;//we want to stay above the largest prime previously used.
         while (--i>=0) {
             int instances = (repeatCount/steps[i]);
             assert(0 == (repeatCount%steps[i])): "Internal compute error";
-            scriptLength += instances;            
+            scriptLength += instances;
+            
+            activeBase += primeAtIdx(i+z);
+            bases[i]=(activeBase); //each must start at a different base to minimize collision.
+ 
         }
     
         // -1 is the end of a block
         byte[] script = new byte[scriptLength];
         int s = 0;
+        int maxRun = 0;
         for(int r = 0; r<repeatCount; r++) {
             i = schedulePeriods.length;
+            int runCount = 0;
             while (--i>=0) {
-                if (0==(r % steps[i])) {
+                if (0==((bases[i]+r) % steps[i])) {
+                    runCount++;
                     script[s++]=(byte)i;
                 }
             }
+            if (runCount>=maxRun) {
+                maxRun = runCount;
+            }
             script[s++] = -1;
         }
-        return new ScriptedSchedule(commonClock, script);
+        System.out.println(Arrays.toString(script));
+        
+        return new ScriptedSchedule(commonClock, script, maxRun);
+    }
+
+    private static int largestPrimeFactorIdx(byte[] target, int offset, int length, int mask) {
+
+        while (--length>=0) {
+            int j = target[(offset+length)&mask];
+            if (j!=0) {
+                return length;
+            }
+        }
+        return -1;
     }
     
 }
