@@ -56,7 +56,11 @@ public class MAvgRollerLong {
     }
     
     public static int getCount(MAvgRollerLong roller) {
-        return (int) (roller.distance<0 ?  roller.size+roller.distance : roller.size);
+        return (int) (!isValid(roller) ?  roller.size+roller.distance : roller.size);
+    }
+    
+    public static boolean isValid(MAvgRollerLong roller) {
+        return roller.distance>=0;
     }
     
     public static double peek(MAvgRollerLong roller){
@@ -76,9 +80,9 @@ public class MAvgRollerLong {
         	roller.position=0;
         }
         
-        if (++roller.distance >= 0) {
-            roller.runningMean += ((curValue-result)*roller.factor);
-        } 
+        ++roller.distance;        
+        roller.runningMean += ((curValue-result)*roller.factor);
+         
 
         return result;
     }
@@ -96,7 +100,7 @@ public class MAvgRollerLong {
     }
 
     public static final double mean(MAvgRollerLong roller) {
-        if (roller.distance<0) {
+        if (!isValid(roller)) {
             throw new UnsupportedOperationException("Can not be called before moving average data is fully accumulated. Needs:"+roller.size+" Loaded:"+(roller.size+roller.distance));
         }
         return roller.runningMean;

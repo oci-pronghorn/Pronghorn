@@ -8,7 +8,22 @@ import org.junit.Test;
 public class MAAvgRollerLongTest {
 
     @Test
-    public void movingAverageTest() {
+    public void avgTest() {
+        
+        MAvgRollerLong roller = new MAvgRollerLong(4);
+        
+        MAvgRollerLong.roll(roller, 2);
+        MAvgRollerLong.roll(roller, 2);
+        MAvgRollerLong.roll(roller, 2);
+        MAvgRollerLong.roll(roller, 2);
+                
+        assertEquals(2, (int)Math.rint(MAvgRollerLong.mean(roller)));
+                
+    }
+    
+    
+    @Test
+    public void callTooEarlyTest() {
         
        int maSpan = 10; 
        int count = 100;       
@@ -24,6 +39,7 @@ public class MAAvgRollerLongTest {
            if (j<90) {
                assertEquals(--k, (int)Math.rint(removedValue));
                double movingAverage = MAvgRollerLong.mean(roller);
+               
            } else {               
                if (j>90) {
                    try {
