@@ -12,7 +12,7 @@ public class PMath {
                                              101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193};
 
     //can deal with prime factors up to the "length" prime number    
-    public static void factors(int value, byte[] target, int offset, int length, int mask) {
+    public static void factors(long value, byte[] target, int offset, int length, int mask) {
         
         int pIndex = 0;
         do {
@@ -23,8 +23,8 @@ public class PMath {
                 boolean continueCheck = false;
                 do {
         
-                    int d = value/p;
-                    int r = value%p;
+                    long d = value/p;
+                    long r = value%p;
                     
                     if (r==0) {
                         value = d;
@@ -176,6 +176,20 @@ public class PMath {
         return value;
     }
     
+    public static long factorsToLong(byte[] target, int offset, int length, int mask) {
+        long value = 1;
+        while (--length>=0) {
+            int j = target[(offset+length)&mask];
+            if (j<0) {
+                throw new UnsupportedOperationException("This rational number can not be expressed as an integer");
+            }
+            while (--j>=0) {
+                value = value * primeAtIdx(length);
+            }
+        }
+        return value;
+    }
+    
     /**
      * Grows the internal array as needed. Then returns the prime at that index.
      * NOTE: 0 index will return 2 and 1 index will return 3  (they are zero based)
@@ -218,7 +232,7 @@ public class PMath {
         return true;
     }
 
-    public static ScriptedSchedule buildScriptedSchedule(int[] schedulePeriods) {
+    public static ScriptedSchedule buildScriptedSchedule(long[] schedulePeriods) {
         
         int maxPrimeBits  = 4;
         int maxPrimes     = 1<<maxPrimeBits;
@@ -241,7 +255,7 @@ public class PMath {
         greatestCommonFactor(factors, offsets, lengths, masks,
                                    gcm, 0, maxPrimes, maxPrimesMask);
         
-        final int commonClock = factorsToInt(gcm, 0, maxPrimes, maxPrimesMask);
+        final long commonClock = factorsToLong(gcm, 0, maxPrimes, maxPrimesMask);
         
         //remove GCM from each rate and roll-up steps to find the point when the schedule loops
         i = schedulePeriods.length;

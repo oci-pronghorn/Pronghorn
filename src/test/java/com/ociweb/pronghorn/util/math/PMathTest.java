@@ -185,7 +185,7 @@ public class PMathTest {
     @Test
     public void testScheduler() {
       
-        int[] schedulePeriods = {300, 70, 50 ,20}; //NOTE: sort these so they are longest to shortest (by time taken not frequency) do short read first.
+        long[] schedulePeriods = {300, 70, 50 ,20}; //NOTE: sort these so they are longest to shortest (by time taken not frequency) do short read first.
                 
         ScriptedSchedule schedule = PMath.buildScriptedSchedule(schedulePeriods);   
         
