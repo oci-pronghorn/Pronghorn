@@ -95,7 +95,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
                      rates[stageId] = 0;
                      lastRun[stageId] = 0;
                  } else {
-                     //SCHEDULE_RAGE, RUN EVERY rate ns
+                     //SCHEDULE_rate, RUN EVERY rate ns
                      rates[stageId] = rate;
                      if (rate>maxRate) {
                          maxRate = rate;
@@ -119,12 +119,13 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     }
 
     @Override
-    public void run() {
-        
-        runLock.lock();
+    public void run() {    
+    	
+        runLock.lock();      
+
         long runUntil = System.nanoTime()+minimumRunDuration();
-        
-        try {
+
+       try {
 
           //we always run at least once.
           do {
@@ -135,40 +136,29 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
                     long rate = rates[s];
                     
                     PronghornStage stage = GraphManager.getStage(graphManager, s);
+
                     if (null != stage) {
-                        
-//                        System.out.println(stage.toString());
-//                        
-//                        int inputs = GraphManager.getInputPipeCount(graphManager, stage);
-//                        for(int i = 1;i<=inputs; i++) {
-//                            Pipe<MessageSchema> inputPipe = GraphManager.getInputPipe(graphManager, stage, i);
-//                            System.out.println("   input: "+inputPipe);
-//                        }                        
-                        
-                        if (rate==0) {
-                            stage.run();
-                            lastRun[s] = System.nanoTime();
-                            
-                        } else if (rate>0) {
-                            //check time and only run if valid
-                            long now = System.nanoTime();
-                            if (lastRun[s]+rate <= now) {
-                                stage.run();
-                                lastRun[s] = System.nanoTime();
-                            }
+                    	if (rate>0) {
+                    		//check time and only run if valid
+                    		long now = System.nanoTime();
+                    		if (lastRun[s]+rate <= now) {
+                    			stage.run();
+                    			lastRun[s] = now;
+                    		}
+                    	} else if (rate==0) {
+                            stage.run();                            
                         } else {
                             //never run -1
                         }
                     }
-                }    
+ 
+                }
                 
                 //stop if shutdown is requested
                 //continue until all the pipes are empty and not in singleStepMode
                 //continue until enough time as passed for the largest rate to be called at least once
-            } while (!shutdownRequested.get() && 
-                    (((!GraphManager.isAllPipesEmpty(graphManager)) && (!isSingleStepMode)) || System.nanoTime()<runUntil) 
-                  );
-                
+            } while (( System.nanoTime()<runUntil) && (!shutdownRequested.get()) && (((!GraphManager.isAllPipesEmpty(graphManager)) && (!isSingleStepMode)))  );
+
         } finally {
             runLock.unlock();
         }
@@ -180,7 +170,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     }
     
     private long minimumRunDuration() {
-        return Math.max(minimumDuration, maxRate*(granularityMultiplier+1));
+        return Math.max(minimumDuration, maxRate);
     }
 
     @Override

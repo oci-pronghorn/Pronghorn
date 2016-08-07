@@ -402,49 +402,32 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	}
 
 	private void runPeriodicLoop(final long msSleep, final int nsSleep, final PronghornStage stage) {
+		assert(nsSleep<=1_000_000);
+		int stageId = stage.stageId;
+		GraphManager localGM = graphManager;
 		
-	    if (0==msSleep) {
-	           do {
-	                //NOTE: This implementation is depended upon to run no faster than the requested rate. (eg i2c stage and others)
-	                //      Regardless of how long or short is spend inside run the same delay between calls is always enforced.
-
-	                nsSleep(nsSleep);
-	                	                
-	                stage.run();
-	                
-	            } while (!isShuttingDown && !GraphManager.isStageShuttingDown(graphManager, stage.stageId));
-	        
-	    } else {
-	    
-	    
-    	    do {
-    		    //NOTE: This implementation is depended upon to run no faster than the requested rate. (eg i2c stage and others)
-    		    //      Regardless of how long or short is spend inside run the same delay between calls is always enforced.
-	    
-        	    try {
-        		        Thread.sleep(msSleep, nsSleep);
-        	    } catch (InterruptedException e) {
-        		       Thread.currentThread().interrupt();
-        		       return;
-        	    }
-
-    		    
-    		    stage.run();
-    			
-    		} while (!isShuttingDown && !GraphManager.isStageShuttingDown(graphManager, stage.stageId));
-	    }
-		
-		
+		do {
+			if (msSleep>0) {
+	      	    try {
+			        Thread.sleep(msSleep);
+			    } catch (InterruptedException e) {
+				    Thread.currentThread().interrupt();
+				    return;
+			    }
+			}
+			if (nsSleep>0) {
+				long limit = nsSleep + System.nanoTime();
+				while (System.nanoTime()<limit) {
+					Thread.yield();
+					if (Thread.interrupted()) {
+						 Thread.currentThread().interrupt();
+						 return;
+					}
+				}			
+			}
+			
+			stage.run();
+		} while (!isShuttingDown && !GraphManager.isStageShuttingDown(localGM, stageId));		
 	}
 
-    private void nsSleep(final int nsSleep) {
-        long next = System.nanoTime()+nsSleep;
-        long hardStop = System.currentTimeMillis()+2;
-        while (System.nanoTime()<next) {
-           Thread.yield();
-           if (System.currentTimeMillis()>=hardStop) {
-               break;
-           }
-        }
-    }
 }
