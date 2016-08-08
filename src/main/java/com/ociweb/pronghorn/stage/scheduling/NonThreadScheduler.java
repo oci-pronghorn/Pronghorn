@@ -136,6 +136,8 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
                     long rate = rates[s];
                     
                     PronghornStage stage = GraphManager.getStage(graphManager, s);
+                    
+                    //TODO: time each run and keep a total of which stages take the most time to return, this is a nice debug feature.
 
                     if (null != stage) {
                     	if (rate>0) {
