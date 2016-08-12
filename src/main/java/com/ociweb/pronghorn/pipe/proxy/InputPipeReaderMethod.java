@@ -11,7 +11,7 @@ public abstract class InputPipeReaderMethod {
 	
 	public abstract Object read(Object[] args);
 	
-	static InputPipeReaderMethod buildReadForYourType(final Pipe inputRing, final int fieldLoc, final int extractedType, final FieldReferenceOffsetManager from) {
+	static InputPipeReaderMethod buildReadForYourType(final Pipe pipe, final int fieldLoc, final int extractedType, final FieldReferenceOffsetManager from) {
 		
 		final int absent32 = FieldReferenceOffsetManager.getAbsent32Value(from);
 		final long absent64 = FieldReferenceOffsetManager.getAbsent64Value(from);
@@ -27,7 +27,7 @@ public abstract class InputPipeReaderMethod {
 				return new InputPipeReaderMethod() {
 					@Override
 					public final Object read(Object[] args) {
-						return new Integer(PipeReader.readInt(inputRing, fieldLoc));
+						return new Integer(PipeReader.readInt(pipe, fieldLoc));
 					}
 				};
 			case 1:
@@ -35,7 +35,7 @@ public abstract class InputPipeReaderMethod {
 				return new InputPipeReaderMethod() {
 					@Override
 					public final Object read(Object[] args) {
-						int value = PipeReader.readInt(inputRing, fieldLoc);
+						int value = PipeReader.readInt(pipe, fieldLoc);
 						return value==absent32 ? null : new Integer(value);
 					}
 				};
@@ -44,7 +44,7 @@ public abstract class InputPipeReaderMethod {
 				return new InputPipeReaderMethod() {
 					@Override
 					public final Object read(Object[] args) {
-						return new Long(PipeReader.readLong(inputRing, fieldLoc));
+						return new Long(PipeReader.readLong(pipe, fieldLoc));
 					}
 				};
 			case 5:
@@ -52,7 +52,7 @@ public abstract class InputPipeReaderMethod {
 				return new InputPipeReaderMethod() {
 					@Override
 					public final Object read(Object[] args) {
-						long value = PipeReader.readLong(inputRing, fieldLoc);
+						long value = PipeReader.readLong(pipe, fieldLoc);
 						return value==absent64 ? null : new Long(value);
 					}
 				};
@@ -60,17 +60,17 @@ public abstract class InputPipeReaderMethod {
 				return new InputPipeReaderMethod() {
 					@Override
 					public final Object read(Object[] args) {
-						return PipeReader.readASCII(inputRing, fieldLoc, (Appendable)args[0]);
+						return PipeReader.readASCII(pipe, fieldLoc, (Appendable)args[0]);
 					}
 				};
 			case 9:
 				return new InputPipeReaderMethod() {
 					@Override
 					public final Object read(Object[] args) {
-						if (PipeReader.readDataLength(inputRing, fieldLoc)<0) {
+						if (PipeReader.readDataLength(pipe, fieldLoc)<0) {
 							return null;
 						} else {
-							return PipeReader.readASCII(inputRing, fieldLoc, (Appendable)args[0]);
+							return PipeReader.readASCII(pipe, fieldLoc, (Appendable)args[0]);
 						}
 					}
 				};
@@ -78,17 +78,17 @@ public abstract class InputPipeReaderMethod {
 				return new InputPipeReaderMethod() {
 					@Override
 					public final Object read(Object[] args) {
-						return PipeReader.readUTF8(inputRing, fieldLoc, (Appendable)args[0]);
+						return PipeReader.readUTF8(pipe, fieldLoc, (Appendable)args[0]);
 					}
 				};
 			case 11:
 				return new InputPipeReaderMethod() {
 					@Override
 					public final Object read(Object[] args) {
-						if (PipeReader.readDataLength(inputRing, fieldLoc)<0) {
+						if (PipeReader.readDataLength(pipe, fieldLoc)<0) {
 							return null;
 						} else {
-							return PipeReader.readUTF8(inputRing, fieldLoc, (Appendable)args[0]);
+							return PipeReader.readUTF8(pipe, fieldLoc, (Appendable)args[0]);
 						}
 					}
 				};
@@ -96,7 +96,7 @@ public abstract class InputPipeReaderMethod {
 				return new InputPipeReaderMethod() {
 					@Override
 					public final Object read(Object[] args) {						
-						return new Double(PipeReader.readDouble(inputRing, fieldLoc));
+						return new Double(PipeReader.readDouble(pipe, fieldLoc));
 					}
 				};
 			case 13:
@@ -104,10 +104,10 @@ public abstract class InputPipeReaderMethod {
 					@Override
 					public final Object read(Object[] args) {
 						
-						if (PipeReader.readDecimalExponent(inputRing, fieldLoc)==absent32) {
+						if (PipeReader.readDecimalExponent(pipe, fieldLoc)==absent32) {
 							return null;
 						} else {
-							return new Double(PipeReader.readDouble(inputRing, fieldLoc));
+							return new Double(PipeReader.readDouble(pipe, fieldLoc));
 						}
 					}
 				};
@@ -117,11 +117,11 @@ public abstract class InputPipeReaderMethod {
 					public final Object read(Object[] args) {
 						switch (args.length) {
 								case 1:
-									return PipeReader.readBytes(inputRing, fieldLoc, (ByteBuffer)args[0]);
+									return PipeReader.readBytes(pipe, fieldLoc, (ByteBuffer)args[0]);
 								case 2:
-									return PipeReader.readBytes(inputRing, fieldLoc, (byte[])args[0],((Number)args[1]).intValue());
+									return PipeReader.readBytes(pipe, fieldLoc, (byte[])args[0],((Number)args[1]).intValue());
 								case 3:
-									return PipeReader.readBytes(inputRing, fieldLoc, (byte[])args[0],((Number)args[1]).intValue(),((Number)args[2]).intValue());
+									return PipeReader.readBytes(pipe, fieldLoc, (byte[])args[0],((Number)args[1]).intValue(),((Number)args[2]).intValue());
 						}
 						return null;
 					}
@@ -130,14 +130,14 @@ public abstract class InputPipeReaderMethod {
 				return new InputPipeReaderMethod() {
 					@Override
 					public final Object read(Object[] args) {
-						if (PipeReader.readDataLength(inputRing, fieldLoc)>0) {
+						if (PipeReader.readDataLength(pipe, fieldLoc)>0) {
 							switch (args.length) {
 									case 1:
-										return PipeReader.readBytes(inputRing, fieldLoc, (ByteBuffer)args[0]);
+										return PipeReader.readBytes(pipe, fieldLoc, (ByteBuffer)args[0]);
 									case 2:
-										return PipeReader.readBytes(inputRing, fieldLoc, (byte[])args[0],((Number)args[1]).intValue());
+										return PipeReader.readBytes(pipe, fieldLoc, (byte[])args[0],((Number)args[1]).intValue());
 									case 3:
-										return PipeReader.readBytes(inputRing, fieldLoc, (byte[])args[0],((Number)args[1]).intValue(),((Number)args[2]).intValue());
+										return PipeReader.readBytes(pipe, fieldLoc, (byte[])args[0],((Number)args[1]).intValue(),((Number)args[2]).intValue());
 							}
 						}
 						return null;

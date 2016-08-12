@@ -37,38 +37,38 @@ public class PipeTest {
     	byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
     	byte byteRingSizeInBits = 16;
     	
-        Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
-        ring.initBuffers();
+        Pipe pipe = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
+        pipe.initBuffers();
         
         byte[] testArray = new byte[]{(byte)1,(byte)2,(byte)3,(byte)4,(byte)5};
         int testInt = 7;
         
         //clear out the ring buffer
-        Pipe.publishWorkingTailPosition(ring, Pipe.headPosition(ring));
+        Pipe.publishWorkingTailPosition(pipe, Pipe.headPosition(pipe));
         
         //write one integer to the ring buffer
-        Pipe.addIntValue(testInt, ring);       
+        Pipe.addIntValue(testInt, pipe);       
         
         //write array of bytes to ring buffer
-        addByteArray(testArray, 0, testArray.length, ring);             
+        addByteArray(testArray, 0, testArray.length, pipe);             
         
         //unblock for reading
-        publishWrites(ring);
+        publishWrites(pipe);
                 
         //read one integer back and confirm it matches
-        assertEquals(testInt, takeValue(ring)); 
+        assertEquals(testInt, takeValue(pipe)); 
         
         // constant from heap or dynamic from char ringBuffer
-        int meta = takeRingByteMetaData(ring); //MUST take this one before the length they come in order       
+        int meta = takeRingByteMetaData(pipe); //MUST take this one before the length they come in order       
                 
         //confirm the length is the same
-        int len = takeRingByteLen(ring);
+        int len = takeRingByteLen(pipe);
         assertEquals(testArray.length, len); //MUST take this one second after the meta they come in order    
         
         //read back the array and confirm it matches
-        int mask = blobMask(ring); //data often loops around end of array so this mask is required
-        byte[] data = byteBackingArray(meta, ring);
-        int offset = bytePosition(meta, ring, len);
+        int mask = blobMask(pipe); //data often loops around end of array so this mask is required
+        byte[] data = byteBackingArray(meta, pipe);
+        int offset = bytePosition(meta, pipe, len);
         int c = testArray.length;
         while (--c >= 0) {
         	int i = c + offset;
@@ -280,7 +280,7 @@ public class PipeTest {
 
             long start = System.nanoTime();
             
-            final Pipe ring = new Pipe(new PipeConfig(primaryBits, charBits, null,  RawDataSchema.instance));
+            final Pipe pipe = new Pipe(new PipeConfig(primaryBits, charBits, null,  RawDataSchema.instance));
             //creating an anonymous inner class that implements runnable so we can hand this
             //off to the execution service to be run on another thread while this thread does the writing.
             Runnable reader = new Runnable() {
@@ -291,24 +291,24 @@ public class PipeTest {
     	                    int messageCount = totalMesssages;
     	                    
     	                    //only enter this block when we know there are records to read
-    	                    long headPosCache = spinBlockOnHead(headPosition(ring), tailPosition(ring)+granularity, ring);	                    
+    	                    long headPosCache = spinBlockOnHead(headPosition(pipe), tailPosition(pipe)+granularity, pipe);	                    
     	                    while (--messageCount>=0) {
     	                        //read the message
     	                    	int messageFieldCount = totalMessageFields;
     	                        while (--messageFieldCount>=0) {
     	                        	
-    	                        	int meta = takeRingByteMetaData(ring);
-    	                        	int len = takeRingByteLen(ring);
+    	                        	int meta = takeRingByteMetaData(pipe);
+    	                        	int len = takeRingByteLen(pipe);
 
-    	                        	validateBytes(testArray, ring, granularity,	messageFieldCount, meta, len);
+    	                        	validateBytes(testArray, pipe, granularity,	messageFieldCount, meta, len);
     	                            
     	                        }
     	                        
     	                        //allow writer to write up to new tail position
     	                        if (0==(messageCount&chunkMask) ) {
-    	                        	Pipe.releaseReads(ring);
+    	                        	Pipe.releaseReads(pipe);
     	                        	if (messageCount>0) {
-    	                        		headPosCache = spinBlockOnHead(headPosCache, tailPosition(ring)+granularity, ring);	                        	    	                        		
+    	                        		headPosCache = spinBlockOnHead(headPosCache, tailPosition(pipe)+granularity, pipe);	                        	    	                        		
     	                        	}
     	                        }	                        
     	                    }                    
@@ -321,24 +321,24 @@ public class PipeTest {
             
             int messageCount = totalMesssages;            
             //keep local copy of the last time the tail was checked to avoid contention.
-            long tailPosCache = spinBlockOnTail(tailPosition(ring), headPosition(ring)-fill, ring);                        
+            long tailPosCache = spinBlockOnTail(tailPosition(pipe), headPosition(pipe)-fill, pipe);                        
             while (--messageCount>=0) {
                 //write the record
                 int messageFieldCount = totalMessageFields;
                 while (--messageFieldCount>=0) {
-                	addByteArray(testArray, 0, testArray.length, ring);
+                	addByteArray(testArray, 0, testArray.length, pipe);
                 }
                 if (0==(messageCount&chunkMask) ) {
-                    publishWrites(ring);
+                    publishWrites(pipe);
                     //wait for room to fit one message
                     //waiting on the tailPosition to move the others are constant for this scope.
                     //workingHeadPositoin is same or greater than headPosition
-                    tailPosCache = spinBlockOnTail(tailPosCache, headPosition(ring)-fill, ring);
+                    tailPosCache = spinBlockOnTail(tailPosCache, headPosition(pipe)-fill, pipe);
                 }
                                 
             }
             //wait until the other thread is finished reading
-            while ( Pipe.contentRemaining(ring) > 0 ) {
+            while ( Pipe.contentRemaining(pipe) > 0 ) {
             }
 
             long duration = System.nanoTime()-start;
@@ -363,7 +363,7 @@ public class PipeTest {
 		}
     }
     
-	private void validateBytes(final byte[] testArray, final Pipe ring, final int granularity,
+	private void validateBytes(final byte[] testArray, final Pipe pipe, final int granularity,
 			int messageFieldCount, int meta, int len) {
 		
 		try {
@@ -377,18 +377,18 @@ public class PipeTest {
 			if (testArray.length != len) {
 				fail("expected " + testArray.length + " but found " + len
 						+ " gr " + granularity + "   working tail pos "
-						+ Pipe.getWorkingTailPosition(ring));
+						+ Pipe.getWorkingTailPosition(pipe));
 			}
 
 			// not checking every byte for equals because it would slow down
 			// this test
 			if (0 == (messageFieldCount & 0x3F)) {
 				// read back the array and confirm it matches
-				int mask = blobMask(ring); // data often loops around end of
+				int mask = blobMask(pipe); // data often loops around end of
 											// array so this mask is required
 
-				byte[] data = byteBackingArray(meta, ring);
-				int offset = bytePosition(meta, ring, len);
+				byte[] data = byteBackingArray(meta, pipe);
+				int offset = bytePosition(meta, pipe, len);
 				int c = testArray.length;
 				while (--c >= 0) {
 					int i = offset + c;

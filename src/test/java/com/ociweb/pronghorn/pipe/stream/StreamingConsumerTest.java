@@ -260,7 +260,7 @@ public class StreamingConsumerTest {
         
     }
 	
-	private void populateRingBufferWithSequence(Pipe<MessageSchemaDynamic> ring, int testSize) {
+	private void populateRingBufferWithSequence(Pipe<MessageSchemaDynamic> pipe, int testSize) {
 		
 	    
 	    
@@ -268,49 +268,49 @@ public class StreamingConsumerTest {
         while (true) {
         	
         	if (j==0) {
-        		PipeWriter.publishEOF(ring);
+        		PipeWriter.publishEOF(pipe);
         		return;//done
         	}
         	        	
-        	if (PipeWriter.tryWriteFragment(ring, MSG_TRUCKS_LOC)) { //AUTO writes template id as needed
+        	if (PipeWriter.tryWriteFragment(pipe, MSG_TRUCKS_LOC)) { //AUTO writes template id as needed
  
-        		PipeWriter.writeASCII(ring, SQUAD_NAME, "TheBobSquad");     		
+        		PipeWriter.writeASCII(pipe, SQUAD_NAME, "TheBobSquad");     		
         		
         		//WRITE THE FIRST MEMBER OF THE SEQ
         		//block to ensure we have room for the next fragment, and ensure that bytes consumed gets recorded
-        		PipeWriter.blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);//could use tryWrite here but it would make this example more complex
+        		PipeWriter.blockWriteFragment(pipe, MSG_TRUCK_SEQ_LOC);//could use tryWrite here but it would make this example more complex
         		
-        		PipeWriter.writeLong(ring, SQUAD_TRUCK_ID, 10);         
-        		PipeWriter.writeDecimal(ring, TRUCK_CAPACITY, 2, 2000);
-        		PipeWriter.writeInt(ring, THING_NO_LOC, 1);
+        		PipeWriter.writeLong(pipe, SQUAD_TRUCK_ID, 10);         
+        		PipeWriter.writeDecimal(pipe, TRUCK_CAPACITY, 2, 2000);
+        		PipeWriter.writeInt(pipe, THING_NO_LOC, 1);
      
-        		PipeWriter.blockWriteFragment(ring, MSG_TRUCK_THING_SEQ_LOC);
-        		PipeWriter.writeInt(ring, THING_ID_LOC, 7);
+        		PipeWriter.blockWriteFragment(pipe, MSG_TRUCK_THING_SEQ_LOC);
+        		PipeWriter.writeInt(pipe, THING_ID_LOC, 7);
         		//
         		
         		//WRITE THE SECOND MEMBER OF THE SEQ
         		//block to ensure we have room for the next fragment, and ensure that bytes consumed gets recorded
-        		PipeWriter.blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);
+        		PipeWriter.blockWriteFragment(pipe, MSG_TRUCK_SEQ_LOC);
         		
-        		PipeWriter.writeLong(ring, SQUAD_TRUCK_ID, 11);
-        		PipeWriter.writeDouble(ring, TRUCK_CAPACITY, 30d, 2); //alternate way of writing a decimal
-        		PipeWriter.writeInt(ring, THING_NO_LOC, 1);
+        		PipeWriter.writeLong(pipe, SQUAD_TRUCK_ID, 11);
+        		PipeWriter.writeDouble(pipe, TRUCK_CAPACITY, 30d, 2); //alternate way of writing a decimal
+        		PipeWriter.writeInt(pipe, THING_NO_LOC, 1);
    
-        		PipeWriter.blockWriteFragment(ring, MSG_TRUCK_THING_SEQ_LOC);
-        		PipeWriter.writeInt(ring, THING_ID_LOC, 7);
+        		PipeWriter.blockWriteFragment(pipe, MSG_TRUCK_THING_SEQ_LOC);
+        		PipeWriter.writeInt(pipe, THING_ID_LOC, 7);
         		
         		//NOTE: because we are waiting until the end of the  sequence to write its length we have two rules
         		//      1. Publish can not be called between these fragments because it will publish a zero for the count
         		//      2. The RingBuffer must be large enough to hold all the fragments in the sequence.
         		//      Neither one of these apply when the length can be set first.
         		
-        		PipeWriter.writeInt(ring, SQUAD_NO_MEMBERS, 2); //NOTE: we are writing this field very late because we now know how many we wrote.
+        		PipeWriter.writeInt(pipe, SQUAD_NO_MEMBERS, 2); //NOTE: we are writing this field very late because we now know how many we wrote.
         		
-        		PipeWriter.blockWriteFragment(ring, FRAG_JOMQ_LOC);
+        		PipeWriter.blockWriteFragment(pipe, FRAG_JOMQ_LOC);
        		
-        		PipeWriter.writeInt(ring, JOMQ_LOC, 42);
+        		PipeWriter.writeInt(pipe, JOMQ_LOC, 42);
         		
-        		PipeWriter.publishWrites(ring);
+        		PipeWriter.publishWrites(pipe);
         		        		        		
         		 j--;       		
     		} else {

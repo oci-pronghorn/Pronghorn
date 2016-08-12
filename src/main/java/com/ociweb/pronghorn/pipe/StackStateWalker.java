@@ -427,14 +427,14 @@ class StackStateWalker {
 	
 
 	
-	static void prepWriteFragment(Pipe ring, int cursorPosition,	FieldReferenceOffsetManager from, int fragSize) {
+	static void prepWriteFragment(Pipe pipe, int cursorPosition,	FieldReferenceOffsetManager from, int fragSize) {
 		//NOTE: this is called by both blockWrite and tryWrite.  It must not call publish because we need to support
 		//      nested long sequences where we don't know the length until after they are all written.
 		
-		prepWriteFragmentSpecificProcessing(ring, cursorPosition, from);
+		prepWriteFragmentSpecificProcessing(pipe, cursorPosition, from);
 		
-		Pipe.addAndGetWorkingHead(ring, fragSize);
-		ring.ringWalker.nextWorkingHead = ring.ringWalker.nextWorkingHead + fragSize;
+		Pipe.addAndGetWorkingHead(pipe, fragSize);
+		pipe.ringWalker.nextWorkingHead = pipe.ringWalker.nextWorkingHead + fragSize;
 
 		//when publish is called this new byte will be appended due to this request
 
@@ -442,26 +442,26 @@ class StackStateWalker {
 	}
 
 
-	private static void prepWriteFragmentSpecificProcessing(Pipe ring, int cursorPosition, FieldReferenceOffsetManager from) {
+	private static void prepWriteFragmentSpecificProcessing(Pipe pipe, int cursorPosition, FieldReferenceOffsetManager from) {
 		
 		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {
-			prepWriteMessageStart(ring, cursorPosition, from);
+			prepWriteMessageStart(pipe, cursorPosition, from);
 		 } else {			
 			//this fragment does not start a new message but its start position must be recorded for usage later
-			ring.ringWalker.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=Pipe.workingHeadPosition(ring);
+			pipe.ringWalker.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=Pipe.workingHeadPosition(pipe);
 		 }
 	}
 
 
-	private static void prepWriteMessageStart(Pipe ring,
+	private static void prepWriteMessageStart(Pipe pipe,
 			int cursorPosition, FieldReferenceOffsetManager from) {
 		//each time some bytes were written in the previous fragment this value was incremented.		
 		//now it becomes the base value for all byte writes
-		Pipe.markBytesWriteBase(ring);
+		Pipe.markBytesWriteBase(pipe);
 		
 		//Start new stack of fragments because this is a new message
-		ring.ringWalker.activeWriteFragmentStack[0] = Pipe.workingHeadPosition(ring);
-		Pipe.slab(ring)[ring.mask &(int)(Pipe.workingHeadPosition(ring) + from.templateOffset)] = cursorPosition;
+		pipe.ringWalker.activeWriteFragmentStack[0] = Pipe.workingHeadPosition(pipe);
+		Pipe.slab(pipe)[pipe.mask &(int)(Pipe.workingHeadPosition(pipe) + from.templateOffset)] = cursorPosition;
 	}
 
 	
@@ -540,12 +540,12 @@ class StackStateWalker {
     return hasRoom;
     }
 
-    static void blockWriteFragment0(Pipe ring, int messageTemplateLOC, FieldReferenceOffsetManager from,
+    static void blockWriteFragment0(Pipe pipe, int messageTemplateLOC, FieldReferenceOffsetManager from,
             StackStateWalker consumerData) {
         int fragSize = from.fragDataSize[messageTemplateLOC];
-    	ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, consumerData.nextWorkingHead - (ring.sizeOfSlabRing - fragSize), ring);
+    	pipe.llRead.llrTailPosCache = spinBlockOnTail(pipe.llRead.llrTailPosCache, consumerData.nextWorkingHead - (pipe.sizeOfSlabRing - fragSize), pipe);
     
-    	prepWriteFragment(ring, messageTemplateLOC, from, fragSize);
+    	prepWriteFragment(pipe, messageTemplateLOC, from, fragSize);
     }
 
     static void writeEOF(Pipe ring) {

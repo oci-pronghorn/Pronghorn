@@ -50,7 +50,7 @@ public class PipeSingleTemplateTest {
         }    
     }
 
-	private void populateRingBufferWithBytes(Pipe ring, int blockSize, int testSize) {
+	private void populateRingBufferWithBytes(Pipe pipe, int blockSize, int testSize) {
 		int j = testSize;
         while (true) {
         	
@@ -58,16 +58,16 @@ public class PipeSingleTemplateTest {
         		return;//done
         	}
 
-        	if (PipeWriter.tryWriteFragment(ring,FRAG_LOC)) { //returns true if there is room to write this fragment
-        	    Pipe.writeTrailingCountOfBytesConsumed(ring, FRAG_LOC);
+        	if (PipeWriter.tryWriteFragment(pipe,FRAG_LOC)) { //returns true if there is room to write this fragment
+        	    Pipe.writeTrailingCountOfBytesConsumed(pipe, FRAG_LOC);
         		int arraySize = (--j*blockSize)/testSize;
         		byte[] arrayData = buildTestData(arraySize);
         		        		
-        		PipeWriter.writeBytes(ring, FRAG_FIELD, arrayData);
+        		PipeWriter.writeBytes(pipe, FRAG_FIELD, arrayData);
         		
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message        		
-        		Pipe.publishWritesBatched(ring); //must always publish the writes if message or fragment
+        		Pipe.publishWritesBatched(pipe); //must always publish the writes if message or fragment
         		
         	} else {
         		//Unable to write because there is no room so do something else while we are waiting.

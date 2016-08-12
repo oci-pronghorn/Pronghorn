@@ -14,7 +14,7 @@ public abstract class OutputPipeWriterMethod {
 	static final char[] EMPTY_CHAR = new char[0];
 	static final byte[] EMPTY_BYTES = new byte[0];
 	
-	static OutputPipeWriterMethod buildWriteForYourType(final Pipe outputRing, final int decimalPlaces, final int fieldLoc, final int extractedType, final FieldReferenceOffsetManager from) {
+	static OutputPipeWriterMethod buildWriteForYourType(final Pipe pipe, final int decimalPlaces, final int fieldLoc, final int extractedType, final FieldReferenceOffsetManager from) {
 		final int absent32 = FieldReferenceOffsetManager.getAbsent32Value(from);
 		final long absent64 = FieldReferenceOffsetManager.getAbsent64Value(from);
 	
@@ -26,7 +26,7 @@ public abstract class OutputPipeWriterMethod {
 				return new OutputPipeWriterMethod() {
 					@Override
 					public final void write(Object[] args) {
-						PipeWriter.writeInt(outputRing, fieldLoc, ((Number)args[0]).intValue());
+						PipeWriter.writeInt(pipe, fieldLoc, ((Number)args[0]).intValue());
 					}
 				};
 			case 1:
@@ -35,9 +35,9 @@ public abstract class OutputPipeWriterMethod {
 					@Override
 					public final void write(Object[] args) {
 						if (null == args[0]) {
-							PipeWriter.writeInt(outputRing, fieldLoc, absent32);
+							PipeWriter.writeInt(pipe, fieldLoc, absent32);
 						} else {
-							PipeWriter.writeInt(outputRing, fieldLoc, ((Number)args[0]).intValue());	
+							PipeWriter.writeInt(pipe, fieldLoc, ((Number)args[0]).intValue());	
 						}
 					}
 				};
@@ -46,7 +46,7 @@ public abstract class OutputPipeWriterMethod {
 				return new OutputPipeWriterMethod() {
 					@Override
 					public final void write(Object[] args) {
-						PipeWriter.writeLong(outputRing, fieldLoc, ((Number)args[0]).longValue());
+						PipeWriter.writeLong(pipe, fieldLoc, ((Number)args[0]).longValue());
 					}
 				};
 			case 5:
@@ -55,9 +55,9 @@ public abstract class OutputPipeWriterMethod {
 					@Override
 					public final void write(Object[] args) {
 						if (null == args[0]) {
-							PipeWriter.writeLong(outputRing, fieldLoc, absent64);
+							PipeWriter.writeLong(pipe, fieldLoc, absent64);
 						} else {
-							PipeWriter.writeLong(outputRing, fieldLoc, ((Number)args[0]).longValue());	
+							PipeWriter.writeLong(pipe, fieldLoc, ((Number)args[0]).longValue());	
 						}
 					}
 				};
@@ -65,7 +65,7 @@ public abstract class OutputPipeWriterMethod {
 				return new OutputPipeWriterMethod() {
 					@Override
 					public final void write(Object[] args) {
-						PipeWriter.writeASCII(outputRing, fieldLoc, args[0].toString());
+						PipeWriter.writeASCII(pipe, fieldLoc, args[0].toString());
 					}
 				};
 			case 9:
@@ -73,9 +73,9 @@ public abstract class OutputPipeWriterMethod {
 					@Override
 					public final void write(Object[] args) {
 						if (null==args[0]) {
-							PipeWriter.writeASCII(outputRing, fieldLoc, EMPTY_CHAR, 0, -1);
+							PipeWriter.writeASCII(pipe, fieldLoc, EMPTY_CHAR, 0, -1);
 						} else {
-							PipeWriter.writeASCII(outputRing, fieldLoc, args[0].toString());
+							PipeWriter.writeASCII(pipe, fieldLoc, args[0].toString());
 						}
 					}
 				};
@@ -83,7 +83,7 @@ public abstract class OutputPipeWriterMethod {
 				return new OutputPipeWriterMethod() {
 					@Override
 					public final void write(Object[] args) {
-						PipeWriter.writeUTF8(outputRing, fieldLoc, args[0].toString());
+						PipeWriter.writeUTF8(pipe, fieldLoc, args[0].toString());
 					}
 				};
 			case 11:
@@ -91,9 +91,9 @@ public abstract class OutputPipeWriterMethod {
 					@Override
 					public final void write(Object[] args) {
 						if (null==args[0]) {
-							PipeWriter.writeUTF8(outputRing, fieldLoc, EMPTY_CHAR, 0, -1);
+							PipeWriter.writeUTF8(pipe, fieldLoc, EMPTY_CHAR, 0, -1);
 						} else {
-							PipeWriter.writeUTF8(outputRing, fieldLoc, args[0].toString());
+							PipeWriter.writeUTF8(pipe, fieldLoc, args[0].toString());
 						}
 					}
 				};
@@ -101,7 +101,7 @@ public abstract class OutputPipeWriterMethod {
 				return new OutputPipeWriterMethod() {
 					@Override
 					public final void write(Object[] args) {
-						PipeWriter.writeDouble(outputRing, fieldLoc, ((Number)args[0]).doubleValue(), decimalPlaces);
+						PipeWriter.writeDouble(pipe, fieldLoc, ((Number)args[0]).doubleValue(), decimalPlaces);
 					}
 				};
 			case 13:
@@ -109,9 +109,9 @@ public abstract class OutputPipeWriterMethod {
 					@Override
 					public final void write(Object[] args) {
 						if (null==args[0]) {
-							PipeWriter.writeDecimal(outputRing, fieldLoc, absent32, absent64);
+							PipeWriter.writeDecimal(pipe, fieldLoc, absent32, absent64);
 						} else {
-							PipeWriter.writeDouble(outputRing, fieldLoc, ((Number)args[0]).doubleValue(), decimalPlaces);	
+							PipeWriter.writeDouble(pipe, fieldLoc, ((Number)args[0]).doubleValue(), decimalPlaces);	
 						}
 					}
 				};
@@ -120,9 +120,9 @@ public abstract class OutputPipeWriterMethod {
 					@Override
 					public final void write(Object[] args) {
 						if (args[0] instanceof ByteBuffer) {
-							PipeWriter.writeBytes(outputRing, fieldLoc, (ByteBuffer)args[0], args.length>1 ? ((Number)args[1]).intValue() : ((ByteBuffer)args[0]).remaining());			
+							PipeWriter.writeBytes(pipe, fieldLoc, (ByteBuffer)args[0], args.length>1 ? ((Number)args[1]).intValue() : ((ByteBuffer)args[0]).remaining());			
 						} else {
-							PipeWriter.writeBytes(outputRing, fieldLoc, (byte[])args[0]);					
+							PipeWriter.writeBytes(pipe, fieldLoc, (byte[])args[0]);					
 						}
 					}
 				};
@@ -131,12 +131,12 @@ public abstract class OutputPipeWriterMethod {
 					@Override
 					public final void write(Object[] args) {
 						if (null==args[0]) {
-							PipeWriter.writeBytes(outputRing, fieldLoc, EMPTY_BYTES, 0, -1, 1);
+							PipeWriter.writeBytes(pipe, fieldLoc, EMPTY_BYTES, 0, -1, 1);
 						} else {
 							if (args[0] instanceof ByteBuffer) {//NOTE: investigate returning wraper of backing array.
-								PipeWriter.writeBytes(outputRing, fieldLoc, (ByteBuffer)args[0], args.length>1 ? ((Number)args[1]).intValue() : ((ByteBuffer)args[0]).remaining());			
+								PipeWriter.writeBytes(pipe, fieldLoc, (ByteBuffer)args[0], args.length>1 ? ((Number)args[1]).intValue() : ((ByteBuffer)args[0]).remaining());			
 							} else {
-								PipeWriter.writeBytes(outputRing, fieldLoc, (byte[])args[0]);					
+								PipeWriter.writeBytes(pipe, fieldLoc, (byte[])args[0]);					
 							}
 						}
 					}

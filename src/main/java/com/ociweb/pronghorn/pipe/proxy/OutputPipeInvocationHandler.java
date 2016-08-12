@@ -19,10 +19,10 @@ public class OutputPipeInvocationHandler extends PipeInvokeHandler implements In
 	private final OutputPipeWriterMethod[] writers;
 	
 	
-	public OutputPipeInvocationHandler(Pipe outputRing, int msgIdx, Class<?> clazz) {
+	public OutputPipeInvocationHandler(Pipe pipe, int msgIdx, Class<?> clazz) {
 		super(clazz.getMethods());
 		
-		FieldReferenceOffsetManager from = Pipe.from(outputRing);
+		FieldReferenceOffsetManager from = Pipe.from(pipe);
 		final Method[] methods = clazz.getMethods();
 					
 
@@ -39,7 +39,7 @@ public class OutputPipeInvocationHandler extends PipeInvokeHandler implements In
 				if (null!=writers[key]) {
 					throw new UnsupportedOperationException();
 				}
-				writers[key] = OutputPipeWriterMethod.buildWriteForYourType(outputRing, fieldAnnonation.decimalPlaces(), fieldLoc, (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE, from);
+				writers[key] = OutputPipeWriterMethod.buildWriteForYourType(pipe, fieldAnnonation.decimalPlaces(), fieldLoc, (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE, from);
 								
 			}
 		}

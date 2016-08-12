@@ -69,41 +69,41 @@ public class PipeSingleTemplateDecimalTest {
         }    
     }
 
-	private void readTestValue(Pipe ring, int varDataMax, int testSize,
+	private void readTestValue(Pipe pipe, int varDataMax, int testSize,
 			int FIELD_LOC, int k, int messageIdx) {
 		assertEquals(0, messageIdx);
 		
 		int expectedValue = ((varDataMax*(k))/testSize);		        	
 		
-		int exp = PipeReader.readDecimalExponent(ring, FIELD_LOC);
-		long man = PipeReader.readDecimalMantissa(ring, FIELD_LOC);
+		int exp = PipeReader.readDecimalExponent(pipe, FIELD_LOC);
+		long man = PipeReader.readDecimalMantissa(pipe, FIELD_LOC);
 		
 		//System.err.println("read "+exp+" and "+man);
 		
-		float floatValue = PipeReader.readFloat(ring, FIELD_LOC);
+		float floatValue = PipeReader.readFloat(pipe, FIELD_LOC);
 		assertEquals(floatValue+"",2, exp);
 		assertEquals(floatValue+"",expectedValue,man);
 	}
 
-	private void writeTestValue(Pipe ring, int blockSize, int testSize) {
+	private void writeTestValue(Pipe pipe, int blockSize, int testSize) {
 		int j = testSize;
 		
         while (true) {
         	
         	if (j == 0) {
         	
-        		PipeWriter.publishEOF(ring);
+        		PipeWriter.publishEOF(pipe);
         		
         		return;//done
         	}
         
-        	if (PipeWriter.tryWriteFragment(ring, FRAG_LOC)) { //returns true if there is room to write this fragment
+        	if (PipeWriter.tryWriteFragment(pipe, FRAG_LOC)) { //returns true if there is room to write this fragment
      		
         		int value = (--j*blockSize)/testSize;
         		
-        		PipeWriter.writeDecimal(ring, FRAG_FIELD, 2, (long) value );
+        		PipeWriter.writeDecimal(pipe, FRAG_FIELD, 2, (long) value );
         	
-        		PipeWriter.publishWrites(ring); //must always publish the writes if message or fragment
+        		PipeWriter.publishWrites(pipe); //must always publish the writes if message or fragment
         		
         	} else {
         		//Unable to write because there is no room so do something else while we are waiting.

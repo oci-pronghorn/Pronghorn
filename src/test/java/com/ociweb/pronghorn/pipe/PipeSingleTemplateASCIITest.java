@@ -61,7 +61,7 @@ public class PipeSingleTemplateASCIITest {
         }    
     }
 
-	private void populateRingBufferWithASCII(Pipe<RawDataSchema> ring, int blockSize, int testSize) {
+	private void populateRingBufferWithASCII(Pipe<RawDataSchema> pipe, int blockSize, int testSize) {
 		int j = testSize;
         while (true) {
         	
@@ -69,8 +69,8 @@ public class PipeSingleTemplateASCIITest {
         		return;//done
         	}
         
-        	if (PipeWriter.tryWriteFragment(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1)) { //returns true if there is room to write this fragment
-        	    Pipe.writeTrailingCountOfBytesConsumed(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+        	if (PipeWriter.tryWriteFragment(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1)) { //returns true if there is room to write this fragment
+        	    Pipe.writeTrailingCountOfBytesConsumed(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
         	    
         		int stringSize = (--j*blockSize)/testSize;
         		String testString = buildTestString(stringSize);
@@ -78,16 +78,16 @@ public class PipeSingleTemplateASCIITest {
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message
         		if (0 == (j&1)) {
-        			PipeWriter.writeASCII(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testString);
+        			PipeWriter.writeASCII(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testString);
         		} else {
         			if (0 == (j&2)) {
         				char[] source = testString.toCharArray();
-        				PipeWriter.writeASCII(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, source);
+        				PipeWriter.writeASCII(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, source);
         			} else {
-        				PipeWriter.writeASCII(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testString.toCharArray(), 0, stringSize);
+        				PipeWriter.writeASCII(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testString.toCharArray(), 0, stringSize);
         			}
         		}
-        		Pipe.publishWritesBatched(ring); //must always publish the writes if message or fragment
+        		Pipe.publishWritesBatched(pipe); //must always publish the writes if message or fragment
         		
         	} else {
         		//Unable to write because there is no room so do something else while we are waiting.

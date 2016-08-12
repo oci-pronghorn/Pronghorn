@@ -79,7 +79,7 @@ public class PipeSingleTemplateUTF8Test {
         }    
     }
 
-	private void populateRingBufferWithUTF8(Pipe ring, int blockSize, int testSize) {
+	private void populateRingBufferWithUTF8(Pipe pipe, int blockSize, int testSize) {
 		int j = testSize;
         while (true) {
         	
@@ -87,8 +87,8 @@ public class PipeSingleTemplateUTF8Test {
         		return;//done
         	}
         
-        	if (PipeWriter.tryWriteFragment(ring, FRAG_LOC)) { //returns true if there is room to write this fragment
-        	    Pipe.writeTrailingCountOfBytesConsumed(ring, FRAG_LOC);
+        	if (PipeWriter.tryWriteFragment(pipe, FRAG_LOC)) { //returns true if there is room to write this fragment
+        	    Pipe.writeTrailingCountOfBytesConsumed(pipe, FRAG_LOC);
         		int stringSize = (--j*blockSize)/testSize;
         		
         		String testString = buildTestString(stringSize);
@@ -97,18 +97,18 @@ public class PipeSingleTemplateUTF8Test {
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message
         		if (0 == (j&1)) {
-        			PipeWriter.writeUTF8(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testString);
+        			PipeWriter.writeUTF8(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testString);
       
         		} else {
         			if (0 == (j&2)) {
-        				PipeWriter.writeUTF8(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testChars);
+        				PipeWriter.writeUTF8(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testChars);
       
         			} else {
-        				PipeWriter.writeUTF8(ring, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testChars, 0, stringSize);
+        				PipeWriter.writeUTF8(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, testChars, 0, stringSize);
     
         			}
         		}
-        		Pipe.publishWritesBatched(ring); //must always publish the writes if message or fragment
+        		Pipe.publishWritesBatched(pipe); //must always publish the writes if message or fragment
         		
         	} else {
         		//Unable to write because there is no room so do something else while we are waiting.

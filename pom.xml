@@ -57,27 +57,12 @@
             <argLine>-Xmx2048m</argLine>
         </configuration>
       </plugin>
-      
-      <!--  plugin>
-	      <groupId>org.apache.maven.plugins</groupId>
-	      <artifactId>maven-enforcer-plugin</artifactId>
-	      <version>1.4.1</version>
-	      <executions>
-	        <execution>
-	          <id>enforce-versions</id>
-	          <goals>
-	            <goal>enforce</goal>
-	          </goals>
-	          <configuration>
-	            <rules>
-	              <requireJavaVersion>
-	                <version>1.8</version>
-	              </requireJavaVersion>
-	            </rules>
-	          </configuration>
-	        </execution>
-	      </executions>
-      </plugin -->
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>2.5.3</version>
+      </plugin>
       
 	   <plugin>
 	        <artifactId>maven-compiler-plugin</artifactId>

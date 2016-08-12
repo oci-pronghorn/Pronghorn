@@ -79,8 +79,8 @@ public class PipeWriter {
 		buffer[rbMask & (int)p] = (int)mantissa & 0xFFFFFFFF;		  
     }
 
-    public static long structuredPositionForLOC(Pipe rb, int loc) {
-        return rb.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
+    public static long structuredPositionForLOC(Pipe pipe, int loc) {
+        return pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
     }
     
     public static void writeFloat(Pipe pipe, int loc, float value, int places) {

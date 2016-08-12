@@ -311,14 +311,14 @@ public class PipeMultiTemplateTest {
 	}
 	
 	
-	private void populateRingBufferHighLevel(Pipe<RawDataSchema> ring, int blockSize, int testSize) {
+	private void populateRingBufferHighLevel(Pipe<RawDataSchema> pipe, int blockSize, int testSize) {
 		
 		int[] templateIds = new int[] {2,1,4};
 		int j = testSize;
         while (true) {
         	
         	if (j == 0) {
-        		PipeWriter.publishEOF(ring);
+        		PipeWriter.publishEOF(pipe);
         		return;//done
         	}
         	
@@ -329,14 +329,14 @@ public class PipeMultiTemplateTest {
         	
         	switch(selectedTemplateId) {
 	        	case 2: //boxes
-	        		if (PipeWriter.tryWriteFragment(ring, MSG_BOXES_LOC)) { //AUTO writes template id as needed
+	        		if (PipeWriter.tryWriteFragment(pipe, MSG_BOXES_LOC)) { //AUTO writes template id as needed
 		        		j--;
 		        		byte[] source = buildMockData((j*blockSize)/testSize);
 		        		
-		        		PipeWriter.writeInt(ring, BOX_COUNT_LOC, 42);
-		        		PipeWriter.writeBytes(ring, BOX_OWNER_LOC, source);
+		        		PipeWriter.writeInt(pipe, BOX_COUNT_LOC, 42);
+		        		PipeWriter.writeBytes(pipe, BOX_OWNER_LOC, source);
 	        		
-		        		PipeWriter.publishWrites(ring); //must always publish the writes if message or fragment
+		        		PipeWriter.publishWrites(pipe); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
 	            		Thread.yield();
@@ -344,15 +344,15 @@ public class PipeMultiTemplateTest {
 	            	}       
 	        		break;
 	        	case 1: //samples
-	        		if (PipeWriter.tryWriteFragment(ring, MSG_SAMPLE_LOC)) { 
+	        		if (PipeWriter.tryWriteFragment(pipe, MSG_SAMPLE_LOC)) { 
 		        		j--;
 		        				        		
-		        		PipeWriter.writeInt(ring, SAMPLE_YEAR_LOC ,2014);
-		        		PipeWriter.writeInt(ring, SAMPLE_MONTH_LOC ,12);
-		        		PipeWriter.writeInt(ring, SAMPLE_DATE_LOC ,9);
-		        		PipeWriter.writeDecimal(ring,  SAMPLE_WEIGHT, 2, (long) 123456);
+		        		PipeWriter.writeInt(pipe, SAMPLE_YEAR_LOC ,2014);
+		        		PipeWriter.writeInt(pipe, SAMPLE_MONTH_LOC ,12);
+		        		PipeWriter.writeInt(pipe, SAMPLE_DATE_LOC ,9);
+		        		PipeWriter.writeDecimal(pipe,  SAMPLE_WEIGHT, 2, (long) 123456);
 		        				        		
-		        		PipeWriter.publishWrites(ring); //must always publish the writes if message or fragment
+		        		PipeWriter.publishWrites(pipe); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
 	        			Thread.yield();
@@ -360,11 +360,11 @@ public class PipeMultiTemplateTest {
 	            	}  
 	        		break;
 	        	case 4: //reset
-	        		if (PipeWriter.tryWriteFragment(ring, MSG_RESET_LOC)) { 
+	        		if (PipeWriter.tryWriteFragment(pipe, MSG_RESET_LOC)) { 
 	        			j--;
 	        			
-	        			PipeWriter.writeBytes(ring, REST_VERSION, ASCII_VERSION);
-	        			PipeWriter.publishWrites(ring); //must always publish the writes if message or fragment
+	        			PipeWriter.writeBytes(pipe, REST_VERSION, ASCII_VERSION);
+	        			PipeWriter.publishWrites(pipe); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
 	        			Thread.yield();
@@ -376,15 +376,15 @@ public class PipeMultiTemplateTest {
         }
 	}
 
-	private void populateRingBufferLowLevel(Pipe<RawDataSchema> ring, int blockSize, int testSize) {
+	private void populateRingBufferLowLevel(Pipe<RawDataSchema> pipe, int blockSize, int testSize) {
 		
 		int[] templateIds = new int[] {2,1,4};
 		int j = testSize;
         while (true) {
         	
         	if (j == 0) {
-        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfSlabRing - 1), ring);
-        		Pipe.publishEOF(ring);
+        		pipe.llRead.llrTailPosCache = spinBlockOnTail(pipe.llRead.llrTailPosCache, Pipe.workingHeadPosition(pipe) - (pipe.sizeOfSlabRing - 1), pipe);
+        		Pipe.publishEOF(pipe);
         		return;//done
         	}
         	
@@ -395,37 +395,37 @@ public class PipeMultiTemplateTest {
         	
         	switch(selectedTemplateId) {
 	        	case 2: //boxes
-	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfSlabRing - 4), ring);
+	        		pipe.llRead.llrTailPosCache = spinBlockOnTail(pipe.llRead.llrTailPosCache, Pipe.workingHeadPosition(pipe) - (pipe.sizeOfSlabRing - 4), pipe);
 	        		
 	        		j--;
-	        		Pipe.addMsgIdx(ring, MSG_BOXES_LOC);
+	        		Pipe.addMsgIdx(pipe, MSG_BOXES_LOC);
 	        		byte[] source = buildMockData((j*blockSize)/testSize);
-                Pipe.addIntValue(42, ring);
-	        		Pipe.addByteArray(source, 0, source.length, ring);
-	        		Pipe.publishWrites(ring);
+                Pipe.addIntValue(42, pipe);
+	        		Pipe.addByteArray(source, 0, source.length, pipe);
+	        		Pipe.publishWrites(pipe);
 	        		break;
 	        	case 1: //samples
-	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfSlabRing - 8), ring);
+	        		pipe.llRead.llrTailPosCache = spinBlockOnTail(pipe.llRead.llrTailPosCache, Pipe.workingHeadPosition(pipe) - (pipe.sizeOfSlabRing - 8), pipe);
 	        		
 	        		j--;
-	        		Pipe.addMsgIdx(ring, MSG_SAMPLE_LOC);
-                Pipe.addIntValue(2014, ring);
-                Pipe.addIntValue(12, ring);
-                Pipe.addIntValue(9, ring);
+	        		Pipe.addMsgIdx(pipe, MSG_SAMPLE_LOC);
+                Pipe.addIntValue(2014, pipe);
+                Pipe.addIntValue(12, pipe);
+                Pipe.addIntValue(9, pipe);
 	        		
-                Pipe.addIntValue(2, ring);
-	        		Pipe.addLongValue(ring, 123456);
+                Pipe.addIntValue(2, pipe);
+	        		Pipe.addLongValue(pipe, 123456);
 
-	        		Pipe.publishWrites(ring);
+	        		Pipe.publishWrites(pipe);
 	        		break;
 	        	case 4: //reset
-	        		ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfSlabRing - 3), ring);
+	        		pipe.llRead.llrTailPosCache = spinBlockOnTail(pipe.llRead.llrTailPosCache, Pipe.workingHeadPosition(pipe) - (pipe.sizeOfSlabRing - 3), pipe);
 	        		
 	        		j--;
-	        		Pipe.addMsgIdx(ring, MSG_RESET_LOC);
-	        		Pipe.addByteArray(ASCII_VERSION, 0, ASCII_VERSION.length, ring);
+	        		Pipe.addMsgIdx(pipe, MSG_RESET_LOC);
+	        		Pipe.addByteArray(ASCII_VERSION, 0, ASCII_VERSION.length, pipe);
 
-	        		Pipe.publishWrites(ring);
+	        		Pipe.publishWrites(pipe);
 
 	        		break;
         	}        	
@@ -495,43 +495,43 @@ public class PipeMultiTemplateTest {
 	
 	//TODO:B, it would be nice to discover early that the ring buffer is too small for a sequence of size x, TBD
 	
-	private void populateRingBufferWithSequence(Pipe ring, int testSize) {
+	private void populateRingBufferWithSequence(Pipe pipe, int testSize) {
 		
 		int j = testSize;
         while (true) {
         	
         	if (j==0) {
-        		PipeWriter.publishEOF(ring);
+        		PipeWriter.publishEOF(pipe);
         		return;//done
         	}
         	
         	
-        	if (PipeWriter.tryWriteFragment(ring, MSG_TRUCKS_LOC)) { //AUTO writes template id as needed
+        	if (PipeWriter.tryWriteFragment(pipe, MSG_TRUCKS_LOC)) { //AUTO writes template id as needed
  
-        		PipeWriter.writeASCII(ring, SQUAD_NAME, "TheBobSquad");     		
+        		PipeWriter.writeASCII(pipe, SQUAD_NAME, "TheBobSquad");     		
         		
         		//WRITE THE FIRST MEMBER OF THE SEQ
         		//block to ensure we have room for the next fragment, and ensure that bytes consumed gets recorded
-        		PipeWriter.blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);//could use tryWrite here but it would make this example more complex
+        		PipeWriter.blockWriteFragment(pipe, MSG_TRUCK_SEQ_LOC);//could use tryWrite here but it would make this example more complex
         		
-        		PipeWriter.writeLong(ring, SQUAD_TRUCK_ID, 10);         
-        		PipeWriter.writeDecimal(ring, TRUCK_CAPACITY, 2, 2000);
+        		PipeWriter.writeLong(pipe, SQUAD_TRUCK_ID, 10);         
+        		PipeWriter.writeDecimal(pipe, TRUCK_CAPACITY, 2, 2000);
         		
         		//WRITE THE SECOND MEMBER OF THE SEQ
         		//block to ensure we have room for the next fragment, and ensure that bytes consumed gets recorded
-        		PipeWriter.blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);
+        		PipeWriter.blockWriteFragment(pipe, MSG_TRUCK_SEQ_LOC);
         		
-        		PipeWriter.writeLong(ring, SQUAD_TRUCK_ID, 11);
-        		PipeWriter.writeDouble(ring, TRUCK_CAPACITY, 30d, 2); //alternate way of writing a decimal
+        		PipeWriter.writeLong(pipe, SQUAD_TRUCK_ID, 11);
+        		PipeWriter.writeDouble(pipe, TRUCK_CAPACITY, 30d, 2); //alternate way of writing a decimal
         		
         		//NOTE: because we are waiting until the end of the  sequence to write its length we have two rules
         		//      1. Publish can not be called between these fragments because it will publish a zero for the count
         		//      2. The RingBuffer must be large enough to hold all the fragments in the sequence.
         		//      Neither one of these apply when the length can be set first.
         		
-        		PipeWriter.writeInt(ring, SQUAD_NO_MEMBERS, 2); //NOTE: we are writing this field very late because we now know how many we wrote.
+        		PipeWriter.writeInt(pipe, SQUAD_NO_MEMBERS, 2); //NOTE: we are writing this field very late because we now know how many we wrote.
         		
-        		PipeWriter.publishWrites(ring);
+        		PipeWriter.publishWrites(pipe);
         		        		
         		 j--;       		
     		} else {
@@ -593,38 +593,38 @@ public class PipeMultiTemplateTest {
 		
 	}
 
-	private void populateRingBufferWithZeroSequence(Pipe<RawDataSchema> ring, int testSize) {
+	private void populateRingBufferWithZeroSequence(Pipe<RawDataSchema> pipe, int testSize) {
 		
 		int j = testSize;
         while (--j>=0) {
         	
-        	if (PipeWriter.tryWriteFragment(ring, MSG_TRUCKS_LOC)) { //AUTO writes template id as needed
+        	if (PipeWriter.tryWriteFragment(pipe, MSG_TRUCKS_LOC)) { //AUTO writes template id as needed
  
-        		PipeWriter.writeASCII(ring, SQUAD_NAME, "TheBobSquad");     		
-        		PipeWriter.blockWriteFragment(ring, MSG_TRUCK_SEQ_LOC);                    
+        		PipeWriter.writeASCII(pipe, SQUAD_NAME, "TheBobSquad");     		
+        		PipeWriter.blockWriteFragment(pipe, MSG_TRUCK_SEQ_LOC);                    
         		        		
         		if (0==(j&1)) {
-        		    PipeWriter.writeInt(ring, SQUAD_NO_MEMBERS, 0); //NOTE: we are writing this field very late because we now know how many we wrote.
+        		    PipeWriter.writeInt(pipe, SQUAD_NO_MEMBERS, 0); //NOTE: we are writing this field very late because we now know how many we wrote.
         		} else {
             		
             		//block to ensure we have room for the next fragment, and ensure that bytes consumed gets recorded
-                    PipeWriter.writeLong(ring, SQUAD_TRUCK_ID, 11);
-                    PipeWriter.writeDouble(ring, TRUCK_CAPACITY, 30d, 2); //alternate way of writing a decimal
+                    PipeWriter.writeLong(pipe, SQUAD_TRUCK_ID, 11);
+                    PipeWriter.writeDouble(pipe, TRUCK_CAPACITY, 30d, 2); //alternate way of writing a decimal
                     
                     //NOTE: because we are waiting until the end of the  sequence to write its length we have two rules
                     //      1. Publish can not be called between these fragments because it will publish a zero for the count
                     //      2. The RingBuffer must be large enough to hold all the fragments in the sequence.
                     //      Neither one of these apply when the length can be set first.
                     
-                    PipeWriter.writeInt(ring, SQUAD_NO_MEMBERS, 1); //NOTE: we are writing this field very late because we now know how many we wrote.
+                    PipeWriter.writeInt(pipe, SQUAD_NO_MEMBERS, 1); //NOTE: we are writing this field very late because we now know how many we wrote.
         		}
         		
-        		PipeWriter.publishWrites(ring);
-        		Pipe.publishAllBatchedWrites(ring);
+        		PipeWriter.publishWrites(pipe);
+        		Pipe.publishAllBatchedWrites(pipe);
         		          		
     		} 
         }
-        PipeWriter.publishEOF(ring);
+        PipeWriter.publishEOF(pipe);
                 
 	}
 	

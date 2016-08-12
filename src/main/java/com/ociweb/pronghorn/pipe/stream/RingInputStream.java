@@ -16,7 +16,7 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 
 public class RingInputStream extends InputStream implements AutoCloseable {
 
-	private final Pipe ring;
+	private final Pipe pipe;
 	private final int sourceByteMask;
 	private final int recordSize = RawDataSchema.FROM.fragDataSize[RawDataSchema.MSG_CHUNKEDSTREAM_1];
 	
@@ -26,13 +26,13 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 	private byte[] oneByte = new byte[1]; 
 	
 	/**
-	 * By definition an input stream is blocking so this adds a blocking API for the ring buffer.
-	 * @param ring
+	 * By definition an input stream is blocking so this adds a blocking API for the pipe;
+	 * @param pipe
 	 */
-	public RingInputStream(Pipe ring) {
-		this.ring = ring;
-		this.sourceByteMask = ring.byteMask;
-		if (Pipe.from(ring) != RawDataSchema.FROM) {
+	public RingInputStream(Pipe pipe) {
+		this.pipe = pipe;
+		this.sourceByteMask = pipe.byteMask;
+		if (Pipe.from(pipe) != RawDataSchema.FROM) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 	}
@@ -96,12 +96,12 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 //	    }
 		int returnLength = 0;
 		//only need to look for 1 value then step forward by steps this lets us pick up the EOM message without hanging.
-		long target = 1+tailPosition(ring);
-		long headPosCache = headPosition(ring);
+		long target = 1+tailPosition(pipe);
+		long headPosCache = headPosition(pipe);
 				
 		do {
 			//block until we have something to read
-		    headPosCache = spinBlockOnHead(headPosCache, target, ring);
+		    headPosCache = spinBlockOnHead(headPosCache, target, pipe);
 		    target+=recordSize;		    
 		    returnLength = sendNewContent(targetData, targetOffset, targetLength);		    
 		    
@@ -111,29 +111,29 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 	
 	private int sendNewContent(byte[] targetData, int targetOffset,	int targetLength) {
 		
-		int msgId = Pipe.takeMsgIdx(ring);
+		int msgId = Pipe.takeMsgIdx(pipe);
 		
 		if (msgId>=0) { //exit EOF logic
-			int meta = takeRingByteMetaData(ring);//side effect, this moves the pointer and must happen before we call for length
-			int sourceLength = takeRingByteLen(ring);
+			int meta = takeRingByteMetaData(pipe);//side effect, this moves the pointer and must happen before we call for length
+			int sourceLength = takeRingByteLen(pipe);
 			return beginNewContent(targetData, targetOffset, targetLength, meta, sourceLength);
 		} else { 
 		   // Pipe.confirmLowLevelRead(ring, recordSize);//wrong size?
-			Pipe.releaseReads(ring); //TOOD: bad idea needs more elegant solution.
+			Pipe.releaseReads(pipe); //TOOD: bad idea needs more elegant solution.
 		//	closed = true;
 			return -1;			
 		}
 	}
 
 	private int beginNewContent(byte[] targetData, int targetOffset, int targetLength, int meta, int sourceLength) {
-		byte[] sourceData = byteBackingArray(meta, ring);
-		int sourceOffset = bytePosition(meta,ring,sourceLength);        					
+		byte[] sourceData = byteBackingArray(meta, pipe);
+		int sourceOffset = bytePosition(meta,pipe,sourceLength);        					
 								
 		if (sourceLength<=targetLength) {
 			//the entire block can be sent
 			copyData(targetData, targetOffset, sourceLength, sourceData, sourceOffset);
-			Pipe.confirmLowLevelRead(ring, recordSize);
-			Pipe.releaseReads(ring);
+			Pipe.confirmLowLevelRead(pipe, recordSize);
+			Pipe.releaseReads(pipe);
 			return sourceLength;
 		} else {
 			//only part of the block can be sent so save some for later
@@ -161,7 +161,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 	private int continueRemainingContent(byte[] targetData, int targetOffset, int targetLength) {
 		//only part of the block can be sent so save some for later
 		
-		copyData(targetData, targetOffset, targetLength, byteBackingArray(remainingSourceMeta, ring), remainingSourceOffset);
+		copyData(targetData, targetOffset, targetLength, byteBackingArray(remainingSourceMeta, pipe), remainingSourceOffset);
 		
 		//do not release read lock we are not done yet
 		remainingSourceLength = remainingSourceLength-targetLength;
@@ -173,9 +173,9 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 	private int endRemainingContent(byte[] targetData, int targetOffset) {
 		//the entire remaining part of the block can be sent
 		int len = remainingSourceLength;
-		copyData(targetData, targetOffset, len, byteBackingArray(remainingSourceMeta, ring), remainingSourceOffset);
-		Pipe.confirmLowLevelRead(ring, recordSize);
-		Pipe.releaseReads(ring);
+		copyData(targetData, targetOffset, len, byteBackingArray(remainingSourceMeta, pipe), remainingSourceOffset);
+		Pipe.confirmLowLevelRead(pipe, recordSize);
+		Pipe.releaseReads(pipe);
 		remainingSourceLength = -1; //clear because we are now done with the remaining content
 		return len;
 	}

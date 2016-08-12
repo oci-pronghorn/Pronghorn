@@ -19,10 +19,10 @@ public class InputPipeInvocationHandler extends PipeInvokeHandler implements Inv
 	private final InputPipeReaderMethod[] readers;
 	
 	
-	public InputPipeInvocationHandler(Pipe inputRing, int msgIdx, Class<?> clazz) {
+	public InputPipeInvocationHandler(Pipe pipe, int msgIdx, Class<?> clazz) {
 		super(clazz.getMethods());
 		
-		FieldReferenceOffsetManager from = Pipe.from(inputRing);
+		FieldReferenceOffsetManager from = Pipe.from(pipe);
 		final Method[] methods = clazz.getMethods();
 							
 
@@ -39,7 +39,7 @@ public class InputPipeInvocationHandler extends PipeInvokeHandler implements Inv
 				if (null!=readers[key]) {
 					throw new UnsupportedOperationException();
 				}
-				readers[key] = InputPipeReaderMethod.buildReadForYourType(inputRing, fieldLoc, (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE, from);
+				readers[key] = InputPipeReaderMethod.buildReadForYourType(pipe, fieldLoc, (fieldLoc >> FieldReferenceOffsetManager.RW_FIELD_OFF_BITS) & TokenBuilder.MASK_TYPE, from);
 								
 			}
 		}

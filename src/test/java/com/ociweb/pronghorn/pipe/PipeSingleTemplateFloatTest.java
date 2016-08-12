@@ -65,33 +65,33 @@ public class PipeSingleTemplateFloatTest {
         }    
     }
 
-	private void testReadValue(Pipe ring, int varDataMax, int testSize,
+	private void testReadValue(Pipe pipe, int varDataMax, int testSize,
 			int FIELD_LOC, int k, int messageIdx) {
 		assertEquals(0, messageIdx);
 		
 		
 		float expectedValue = 1f/(float)((varDataMax*(k))/testSize);		        	
-		float value = PipeReader.readIntBitsToFloat(ring, FIELD_LOC);	
+		float value = PipeReader.readIntBitsToFloat(pipe, FIELD_LOC);	
 		assertEquals(expectedValue, value, .00001);
 	}
 
-	private void writeTestValue(Pipe ring, int blockSize, int testSize) {
+	private void writeTestValue(Pipe pipe, int blockSize, int testSize) {
 		
 		int FIELD_LOC = FieldReferenceOffsetManager.lookupFieldLocator(SINGLE_MESSAGE_NAMES[0], FRAG_LOC, FROM);
-		assertTrue(0==Pipe.contentRemaining(ring));
+		assertTrue(0==Pipe.contentRemaining(pipe));
 		int j = testSize;
         while (true) {
         	        	
         	if (j == 0) {
-        		PipeWriter.publishEOF(ring);
+        		PipeWriter.publishEOF(pipe);
         		return;//done
         	}
                	        	
-        	if (PipeWriter.tryWriteFragment(ring, FRAG_LOC)) { //returns true if there is room to write this fragment
+        	if (PipeWriter.tryWriteFragment(pipe, FRAG_LOC)) { //returns true if there is room to write this fragment
         		
         		int value = (--j*blockSize)/testSize;        		        		
-        		PipeWriter.writeFloatAsIntBits(ring, FIELD_LOC, 1f/(float)value);        		
-        		PipeWriter.publishWrites(ring); //must always publish the writes if message or fragment
+        		PipeWriter.writeFloatAsIntBits(pipe, FIELD_LOC, 1f/(float)value);        		
+        		PipeWriter.publishWrites(pipe); //must always publish the writes if message or fragment
         		        		
         	} else {
         		//Unable to write because there is no room so do something else while we are waiting.
