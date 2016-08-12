@@ -43,7 +43,7 @@
   
   
    <scm>
-    <connection>https://github.com/oci-pronghorn/PronghornPipes.git</connection>
+    <connection>scm:git:git://github.com/oci-pronghorn/PronghornPipes.git</connection>
     <url>https://github.com/oci-pronghorn/PronghornPipes</url>    
     <developerConnection>scm:git:git@github.com:oci-pronghorn/PronghornPipes.git</developerConnection>
   </scm>
