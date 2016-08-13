@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.ociweb</groupId>
   <artifactId>PronghornPipes</artifactId>
-  <version>0.0.2-SNAPSHOT</version>
+  <version>0.0.1-SNAPSHOT</version>
     <!-- Looking for the release jar? This project is under active development.
          Please consider getting involved and sponsoring the completion of Pronghorn.
          mailto:info@ociweb.com;?subject=Pronghorn%20Sponsor%20Inquiry
@@ -12,6 +12,18 @@
   	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   
+  <profiles>
+    <profile>
+        <id>disable-java8-doclint</id>
+        <activation>
+            <jdk>[1.8,)</jdk>
+        </activation>
+        <properties>
+            <additionalparam>-Xdoclint:none</additionalparam>
+        </properties>
+    </profile>
+ </profiles>
+
   <dependencies>
       	<dependency>
 			<groupId>junit</groupId>
@@ -45,7 +57,6 @@
     <connection>scm:git:git://github.com/oci-pronghorn/PronghornPipes.git</connection>
     <url>https://github.com/oci-pronghorn/PronghornPipes</url>    
     <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/PronghornPipes.git</developerConnection>
-    <tag>HEAD</tag>
   </scm>
   
   <repositories>
@@ -85,6 +96,23 @@
   <build>
   
   <plugins>
+
+	<plugin>
+	    <groupId>org.apache.maven.plugins</groupId>
+	    <artifactId>maven-javadoc-plugin</artifactId>
+	    <version>2.9</version>
+	    <executions>
+	        <execution>
+	            <id>attach-javadocs</id>
+	            <goals>
+	                <goal>jar</goal>
+	            </goals>
+	            <configuration>
+	              <failOnError>false</failOnError>
+	            </configuration>
+	        </execution>
+	    </executions>
+	</plugin>
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
