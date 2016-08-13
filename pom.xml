@@ -44,6 +44,7 @@
     <connection>scm:git:git://github.com/oci-pronghorn/PronghornPipes.git</connection>
     <url>https://github.com/oci-pronghorn/PronghornPipes</url>    
     <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/PronghornPipes.git</developerConnection>
+    <tag>PronghornPipes-0.0.1</tag>
   </scm>
   
   <build>
