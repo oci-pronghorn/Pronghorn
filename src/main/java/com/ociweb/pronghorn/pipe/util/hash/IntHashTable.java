@@ -62,7 +62,6 @@ public class IntHashTable {
 	 * returns zero if the value is not found otherwise it returns the value.
 	 * @param ht
 	 * @param key
-	 * @return
 	 */
 	public static int getItem(IntHashTable ht, int key) {
 

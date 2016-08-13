@@ -694,7 +694,6 @@ public final class Pipe<T extends MessageSchema> {
 
     /**
      * Return the configuration used for this ring buffer, Helpful when we need to make clones of the ring which will hold same message types.
-     * @return
      */
     public PipeConfig<T> config() {
         //TODO:M, this creates garbage and we should just hold the config object instead of copying the values out.  Then return the same instance here.
@@ -1365,7 +1364,6 @@ public final class Pipe<T extends MessageSchema> {
      * All bytes even those not yet committed.
      *
      * @param ringBuffer
-     * @return
      */
 	public static <S extends MessageSchema> int bytesOfContent(Pipe<S> ringBuffer) {
 		int dif = (ringBuffer.byteMask&ringBuffer.blobRingHead.byteWorkingHeadPos.value) - (ringBuffer.byteMask&PaddedInt.get(ringBuffer.blobRingTail.bytesTailPos));
@@ -1631,7 +1629,6 @@ public final class Pipe<T extends MessageSchema> {
 	 * @param mask
 	 * @param index
 	 * @param clearValue
-	 * @return
 	 */
 	public static int readIntSecure(int[] buffer, int mask, long index, int clearValue) {
 	        int idx = mask & (int)(index);

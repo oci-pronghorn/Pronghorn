@@ -54,7 +54,6 @@ public class MAvgRollerDouble {
      * one returns the item before that
      * 
      * @param index
-     * @return
      */
     public static double getElementAt(MAvgRollerDouble roller, int index) {
         index++;//need one more because roll is already pointing at the next spot

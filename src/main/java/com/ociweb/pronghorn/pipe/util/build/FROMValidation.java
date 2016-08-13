@@ -81,9 +81,6 @@ public class FROMValidation {
 	
 	/**
 	 * Confirm test target has all the right constants if not export the right source code.
-	 * @param testTarget
-	 * @param encodedFrom
-	 * @return
 	 */
 	public static <S extends MessageSchema> boolean testForMatchingLocators(S schema) {
 	    

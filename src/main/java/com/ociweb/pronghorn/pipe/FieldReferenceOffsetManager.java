@@ -478,7 +478,6 @@ public class FieldReferenceOffsetManager {
      * @param name
      * @param framentStart
      * @param from
-     * @return
      */
     public static int lookupFieldLocator(String name, int framentStart, FieldReferenceOffsetManager from) {
 		int x = framentStart;
@@ -616,7 +615,6 @@ public class FieldReferenceOffsetManager {
      * Helpful debugging method that writes the script in a human readable form out to the console.
      * 
      * @param title
-     * @param fullScript
      */
 	public static void printScript(String title, FieldReferenceOffsetManager from) {
 		System.out.println(title);

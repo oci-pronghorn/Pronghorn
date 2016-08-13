@@ -25,12 +25,7 @@ public class Histogram {
     private long minValue = Long.MAX_VALUE;
     private long minValueIdx;
     
-    /**
-     * 
-     * @param bucketBits Fixed buckets for recording the data.
-     * @param lowEst May grow lower with additional data
-     * @param highEst May grow larger with additional data
-     */
+
     public Histogram(int bucketsCount, long expectedAvg, long hardMin, long hardMax) {
         this.hardMin = hardMin;
         this.hardMax = hardMax;

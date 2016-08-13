@@ -8,7 +8,6 @@ public interface StreamingReadVisitor {
 	 * While this is true no more fragments will be read.  
 	 * Since fragments are atomic the current one will continue to its natural end.
 	 * 
-	 * @return
 	 */
 	boolean paused();
 

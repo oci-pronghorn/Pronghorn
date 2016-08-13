@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.ociweb</groupId>
   <artifactId>PronghornPipes</artifactId>
-  <version>0.0.2-SNAPSHOT</version>
+  <version>0.0.1-SNAPSHOT</version>
     <!-- Looking for the release jar? This project is under active development.
          Please consider getting involved and sponsoring the completion of Pronghorn.
          mailto:info@ociweb.com;?subject=Pronghorn%20Sponsor%20Inquiry
@@ -10,7 +10,6 @@
   <name>PronghornPipes</name>
   <properties>
   	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-	<maven.javadoc.failOnError>false</maven.javadoc.failOnError>
   </properties>
   
   <dependencies>
@@ -46,7 +45,6 @@
     <connection>scm:git:git://github.com/oci-pronghorn/PronghornPipes.git</connection>
     <url>https://github.com/oci-pronghorn/PronghornPipes</url>    
     <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/PronghornPipes.git</developerConnection>
-    <tag>HEAD</tag>
   </scm>
   
   <repositories>
@@ -85,16 +83,6 @@
   
   <build>
   
-  <pluginManagement>
-  <plugins>
-    <plugin>
-      <groupId>org.apache.maven.plugins</groupId>
-      <artifactId>maven-javadoc-plugin</artifactId>
-      <version>2.9.1</version>
-    </plugin>
-  </plugins>
-  </pluginManagement>
-
   <plugins>
 
       <plugin>

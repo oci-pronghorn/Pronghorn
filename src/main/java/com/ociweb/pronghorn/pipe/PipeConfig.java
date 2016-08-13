@@ -52,10 +52,6 @@ public class PipeConfig<T extends MessageSchema> {
 	 * is full of those exclusively.  This gives us the maximum number of variable length fields that can be expected which 
 	 * is multiplied by the provided maximumLenghOfVariableLengthFields to get the minimum size of the byte ring. This value is
 	 * then rounded up to the next power of 2.
-	 * 
-	 * @param from
-	 * @param minimumFragmentsOnRing The minimum number of fragments/messages that the application must be able to put on the ring.
-	 * @param maximumLenghOfVariableLengthFields
 	 */
 	
 	public PipeConfig(T messageSchema, int minimumFragmentsOnRing) {

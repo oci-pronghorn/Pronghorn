@@ -132,7 +132,6 @@ public class TokenBuilder {
      * 0 1 11111111111111111111111111111111 1111111111111111111111111111111
      * 
      * @param b
-     * @return
      */
     public static final int absentValue32(int b) {
         return ((1 | (0 - (b >> 1))) >>> (1 & b));
@@ -156,7 +155,6 @@ public class TokenBuilder {
      * 111111111111111111111111111111111111111111111111111111111111111
      * 
      * @param b
-     * @return
      */
     public static long absentValue64(int b) {
         return ((1 | (0l - (b >> 1))) >>> (1 & b));

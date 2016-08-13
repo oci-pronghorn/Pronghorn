@@ -512,7 +512,6 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	 * 
 	 * @param inputRing
 	 * @param outputRing
-	 * @return
 	 */
 	public static boolean tryMoveSingleMessage(Pipe inputRing, Pipe outputRing) {
 		assert(Pipe.from(inputRing) == Pipe.from(outputRing));

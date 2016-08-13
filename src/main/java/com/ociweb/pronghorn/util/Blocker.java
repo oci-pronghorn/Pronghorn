@@ -29,7 +29,6 @@ public class Blocker {
      * 
      * @param id
      * @param untilTime
-     * @return
      */
     public boolean until(int id, long untilTime) {
         
@@ -104,7 +103,6 @@ public class Blocker {
      * 
      * @param currentTimeMillis
      * @param msNearWindow
-     * @return
      */
     public boolean willReleaseInWindow(long currentTimeMillis, long msNearWindow) {
         int i = untilTimes.length;

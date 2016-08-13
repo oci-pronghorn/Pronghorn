@@ -313,9 +313,6 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     
     /**
      * Parse a 64 bit signed value 
-     * 
-     * @param reader
-     * @return
      */
     public long readPackedLong() {   
             return readPackedLong(this);

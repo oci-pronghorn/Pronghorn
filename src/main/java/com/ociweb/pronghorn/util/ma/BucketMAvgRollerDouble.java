@@ -168,7 +168,6 @@ public class BucketMAvgRollerDouble {
     
     /**
      * only returns new means or NaN
-     * @return
      */
     public static double newMean(BucketMAvgRollerDouble roller) {
         if (0==roller.accumulator){
