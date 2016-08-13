@@ -157,9 +157,6 @@ public class VarLenLong {
     
     /**
      * Parse a 64 bit signed value from the buffer
-     * 
-     * @param reader
-     * @return
      */
     public static long readLongSigned(ByteBuffer byteBuffer) {   
             byte v = byteBuffer.get();

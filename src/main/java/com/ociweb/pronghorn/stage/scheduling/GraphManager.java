@@ -476,7 +476,6 @@ public class GraphManager {
 	 * TODO: needs test of ordering.
 	 * @param gm
 	 * @param targetSchema
-	 * @return
 	 */
 	public static  <T extends MessageSchema> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema) {
 	    
@@ -755,7 +754,6 @@ public class GraphManager {
 	 * @param m
 	 * @param stage
 	 * @param key
-	 * @return
 	 */
 	public static Object getNota(GraphManager m, PronghornStage stage, Object key, Object defaultValue) {
 	    return (null==stage) ? defaultValue : getNota(m, stage.stageId, key, defaultValue);
@@ -1369,7 +1367,7 @@ public class GraphManager {
 	/**
 	 * Start with ordinal selection of input stages then ordinal selection of each output ring there after.
 	 * TODO: do generic return that extends pronghornStage
-	 * @param gm
+	 * @param m
 	 * @param path
 	 */
 	public static PronghornStage findStageByPath(GraphManager m, int ... path) {

@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.ociweb</groupId>
   <artifactId>Pronghorn</artifactId>
-  <version>0.0.2-SNAPSHOT</version>
+  <version>0.0.1-SNAPSHOT</version>
       <!-- Looking for the release jar? This project is under active development.
          Please consider getting involved and sponsoring the completion of Pronghorn.
          mailto:info@ociweb.com;?subject=Pronghorn%20Sponsor%20Inquiry
@@ -11,8 +11,21 @@
   <description>Primary dependency for any project using the Pronghorn framework</description>
   
   <properties>
-  <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
+  
+  <profiles>
+    <profile>
+        <id>disable-java8-doclint</id>
+        <activation>
+            <jdk>[1.8,)</jdk>
+        </activation>
+        <properties>
+            <additionalparam>-Xdoclint:none</additionalparam>
+        </properties>
+    </profile>
+ </profiles>
+  
   <dependencies>
         <dependency>
             <groupId>com.ociweb</groupId>
@@ -44,11 +57,32 @@
     <connection>scm:git:git://github.com/oci-pronghorn/Pronghorn.git</connection>
     <url>https://github.com/oci-pronghorn/Pronghorn</url>
     <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/Pronghorn.git</developerConnection>
-
-    <tag>HEAD</tag>
   </scm>
     
+  <distributionManagement>
+    <repository>
+      <id>cloudbees.release</id>
+      <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
+    </repository>
+  </distributionManagement>
+  
   <repositories>
+    
+    <repository>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>always</updatePolicy>
+        <checksumPolicy>warn</checksumPolicy>
+      </snapshots>
+      <id>repository-pronghorn.forge.cloudbees.com-snapshot</id>
+      <name>Snapshot Repo for Pronghorn</name>
+      <url>https://repository-pronghorn.forge.cloudbees.com/snapshot</url>
+      <layout>default</layout>
+    </repository>
+    
     <repository>
       <releases>
         <enabled>true</enabled>
@@ -56,28 +90,41 @@
         <checksumPolicy>warn</checksumPolicy>
       </releases>
       <snapshots>
-        <enabled>true</enabled>
-        <updatePolicy>always</updatePolicy>
-        <checksumPolicy>warn</checksumPolicy>
+        <enabled>false</enabled>
       </snapshots>
-      <id>repository-pronghorn.forge.cloudbees.com</id>
-      <name>Active Repo for PronghornPipes</name>
-      <!-- Looking for the release jar? This project is under active development.
-           Please consider getting involved and sponsoring the completion of Pronghorn.
-           mailto:info@ociweb.com;?subject=Pronghorn%20Sponsor%20Inquiry
-       -->
-      <url>http://repository-pronghorn.forge.cloudbees.com/snapshot/</url>
+      <id>repository-pronghorn.forge.cloudbees.com-release</id>
+      <name>Release Repo for Pronghorn</name>
+      <url>https://repository-pronghorn.forge.cloudbees.com/release</url>
       <layout>default</layout>
     </repository>
+        
   </repositories>
   
   <build>
+   <extensions>
+		<extension>
+		<groupId>org.apache.maven.wagon</groupId>
+		<artifactId>wagon-webdav-jackrabbit</artifactId>
+		<version>2.2</version>
+		</extension>
+   </extensions>
     
   <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.10.1</version>
+	    <artifactId>maven-javadoc-plugin</artifactId>
+	    <version>2.9</version>
+	    <executions>
+	        <execution>
+	            <id>attach-javadocs</id>
+	            <goals>
+	                <goal>jar</goal>
+	            </goals>
+	            <configuration>
+	              <failOnError>false</failOnError>
+	            </configuration>
+	        </execution>
+	    </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

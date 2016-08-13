@@ -134,7 +134,6 @@ public class BloomFilter implements Serializable {
     
     /**
      * Returns 0 if this was a new addition, and 1 if this may have been and old value
-     * @return
      */
     public int addValue(CharSequence value) {
         return add(value, bloom, bloomSeeds, bloomMask);

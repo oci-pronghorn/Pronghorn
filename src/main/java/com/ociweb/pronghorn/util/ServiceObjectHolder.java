@@ -96,10 +96,6 @@ public class ServiceObjectHolder<T> {
     
     /**
      * Do not use this constructor unless you want to start out with internal arrays more near the desired size.
-     * 
-     * @param initialBits, The initial size of the internal array as defined by 1<<initialBits 
-     * @param clazz, The class to be held 
-     * @param validator, Function to validate held values 
      */
     public ServiceObjectHolder(int initialBits, Class<T> clazz, ServiceObjectValidator<T> validator, boolean shouldGrow) {
         this.validator = validator;
@@ -119,7 +115,6 @@ public class ServiceObjectHolder<T> {
      * This is not thread safe and must not be called concurrently.
      * 
      * @param serviceObject
-     * @return
      */
     public long add(T serviceObject) {
         //Not thread safe, must be called by one thread or sequentially    
@@ -182,7 +177,6 @@ public class ServiceObjectHolder<T> {
      * Side effect, if the value is invalid it is set to null to release the resources sooner.
      * 
      * @param index
-     * @return
      */
     public T getValid(final long index) {  
         //must ensure we use the same instance for the work
@@ -208,7 +202,6 @@ public class ServiceObjectHolder<T> {
      * Given the index value return the value object or null.
      * 
      * @param index
-     * @return
      */
     public T get(final long index) {  
         //must ensure we use the same instance for the work
@@ -226,7 +219,6 @@ public class ServiceObjectHolder<T> {
     /**
      * Loop forever around all valid objects.
      * Only returns null when there are no valid items to loop over.
-     * @return
      */
     public T next() {
         
