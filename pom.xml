@@ -61,8 +61,8 @@
   
   <distributionManagement>
     <repository>
-      <id>repository-pronghorn.forge.cloudbees.com-release</id>
-      <url>https://repository-pronghorn.forge.cloudbees.com/release</url>
+      <id>cloudbees.release</id>
+      <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
     </repository>
   </distributionManagement>
   
