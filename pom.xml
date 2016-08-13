@@ -44,7 +44,7 @@
     <connection>scm:git:git://github.com/oci-pronghorn/Pronghorn.git</connection>
     <url>https://github.com/oci-pronghorn/Pronghorn</url>
     <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/Pronghorn.git</developerConnection>
-    <tag>Pronghorn-0.0.1</tag>
+
   </scm>
     
   <repositories>
