@@ -61,7 +61,7 @@
       </snapshots>
       <id>repository-pronghorn.forge.cloudbees.com-snapshot</id>
       <name>Snapshot Repo for Pronghorn</name>
-      <url>http://repository-pronghorn.forge.cloudbees.com/snapshot/</url>
+      <url>https://repository-pronghorn.forge.cloudbees.com/snapshot/</url>
       <layout>default</layout>
     </repository>
     
@@ -76,7 +76,7 @@
       </snapshots>
       <id>repository-pronghorn.forge.cloudbees.com-release</id>
       <name>Release Repo for Pronghorn</name>
-      <url>http://repository-pronghorn.forge.cloudbees.com/release/</url>
+      <url>https://repository-pronghorn.forge.cloudbees.com/release/</url>
       <layout>default</layout>
     </repository>
         
