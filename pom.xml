@@ -59,6 +59,13 @@
     <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/PronghornPipes.git</developerConnection>
   </scm>
   
+  <distributionManagement>
+    <repository>
+      <id>repository-pronghorn.forge.cloudbees.com-release</id>
+      <url>https://repository-pronghorn.forge.cloudbees.com/release/</url>
+    </repository>
+  </distributionManagement>
+  
   <repositories>
     
     <repository>
