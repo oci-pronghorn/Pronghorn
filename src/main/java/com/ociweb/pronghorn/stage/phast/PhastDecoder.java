@@ -19,7 +19,7 @@ public class PhastDecoder {
        return (MOST_FREQUENT_CASE == (map&bitMask)) ? defaultValues[idx] : DataInputBlobReader.readPackedInt(reader);
     }
 
-    public static int decodeDeltaInt(int[] intDictionary, DataInputBlobReader reader, long map, int idx, int bitMask, int value) {
+    public static int decodeDeltaInt(int[] intDictionary, DataInputBlobReader reader, long map, int idx, int bitMask) {
         return (MOST_FREQUENT_CASE == (map&bitMask)) ? (intDictionary[idx] += DataInputBlobReader.readPackedInt(reader)) : intDictionary[idx];
     }
 
@@ -39,9 +39,9 @@ public class PhastDecoder {
     }
     
     //decodes string
-    public static String decodeString(DataInputBlobReader writer) throws IOException{
-    	if (DataInputBlobReader.readPackedInt(writer) == INCOMING_VARIABLE){
-    		return writer.readUTF();
+    public static String decodeString(DataInputBlobReader reader) throws IOException{
+    	if (DataInputBlobReader.readPackedInt(reader) == INCOMING_VARIABLE){
+    		return reader.readUTF();
     	}
     	else 
     		return null;

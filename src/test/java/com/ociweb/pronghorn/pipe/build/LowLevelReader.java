@@ -4,7 +4,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
-import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
+THIS IS ENCODER GENERATOR import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.stage.phast.PhastEncoder;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 
@@ -31,7 +31,7 @@ private Pipe<MessageSchemaDynamic> input;
 // # Low level API is CAN NOT be extensiable in the sense of dealing with mising or extra/new fields. 
 // # Low level API is CAN NOT be extensiable in the sense of dealing with fields encoded with different types. 
 private static final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
-private static final long BUILD_TIME = 1469207452483L;
+private static final long BUILD_TIME = 1471387504767L;
 
 public void startup() {
     Pipe.from(input).validateGUID(FROM_GUID);

@@ -17,7 +17,7 @@ private String ProductName;
 private long Date;
 private int StoreID;
 private final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
-private final long BUILD_TIME = 1470357362278L;
+private final long BUILD_TIME = 1471389654819L;
 private static final int DO_NOTHING = -3;
 
 private int nextMessageIdx() {
@@ -43,11 +43,11 @@ public void run() {
 
 private void processInventoryDetails() {
     long map = DataInputBlobReader.readPackedLong(reader);
-    StoreID = PhastDecoder.decodeCopyInt(intDictionary, reader, map, idx, bitMask);
-    Date = PhastDecoder.decodeDeltaLong(longDictionary, reader, map, idx, longVal, bitMask);
+    StoreID = PhastDecoder.decodeCopyInt(intDictionary, reader, map, 1, bitMask);
+    Date = PhastDecoder.decodeDeltaLong(longDictionary, reader, map, 2, bitMask);
     ProductName = PhastDecoder.decodeString(reader);
-    Amount = PhastDecoder.decodeDeltaInt(intDictionary, reader, map, idx, bitMask);
-    RecordID = PhastDecoder.decodeIncrementInt(intDictionary, map, idx, bitMask);
+    Amount = PhastDecoder.decodeDeltaInt(intDictionary, reader, map, 100, bitMask, intVal);
+    RecordID = PhastDecoder.decodeIncrementInt(intDictionary, map, 5, bitMask);
     Units = PhastDecoder.decodeString(reader);
 }
 

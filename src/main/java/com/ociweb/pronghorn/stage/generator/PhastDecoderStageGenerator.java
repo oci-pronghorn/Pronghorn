@@ -35,7 +35,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     private final String longValueName = "longVal";
     private final String longValueArrayName = "longArrVal";
     private final String intValueName = "intVal";
-    private final String intValueArrayName = "intArrVal";
+    private final String defaultIntDictionaryName = "intDefaults";
     private final String bitMaskName = "bitMask";
 
     public PhastDecoderStageGenerator(MessageSchema schema, Appendable target, String packageName) {
@@ -114,19 +114,19 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
-                        decodeCopyIntGenerator(schema, bodyTarget);
+                        decodeCopyIntGenerator(bodyTarget, f);
                         break;
                     case OperatorMask.Field_Constant:
                         //this intentionally left blank, does nothing if constant
                         break;
                     case OperatorMask.Field_Default:
-                        decodeDefaultIntGenerator(schema, bodyTarget);
+                        decodeDefaultIntGenerator(bodyTarget, f);
                         break;
                     case OperatorMask.Field_Delta:
-                        decodeIncIntGenerator(schema, bodyTarget);
+                        decodeDeltaIntGenerator(bodyTarget, f);
                         break;
                     case OperatorMask.Field_Increment:
-                        decodeIncrementIntGenerator(schema, bodyTarget);
+                        decodeIncrementIntGenerator(bodyTarget, f);
                         break;
                     default: {
                         bodyTarget.append("Unsupported Operator Type");
@@ -137,24 +137,24 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
-                        decodeDeltaLongGenerator(schema, bodyTarget);
+                        decodeDeltaLongGenerator(bodyTarget, f);
                         break;
                     case OperatorMask.Field_Constant:
                         //this intentionally left blank, does nothing if constant
                         break;
                     case OperatorMask.Field_Default:
-                        //decocdeDefaultLongGenerator(schema, bodyTarget);
+                        decocdeDefaultLongGenerator(bodyTarget, f);
                         break;
                     case OperatorMask.Field_Delta:
-                        decodeDeltaLongGenerator(schema, bodyTarget);
+                        decodeDeltaLongGenerator(bodyTarget, f);
                         break;
                     case OperatorMask.Field_Increment:
-                        //decodeIncrementLongGenerator(schema, bodyTarget);
+                        decodeIncrementLongGenerator(bodyTarget, f);
                         break;
                 }
             } //if string
             else if (TypeMask.isText(pmapType) == true) {
-                decodeStringGenerator(schema, bodyTarget);
+                decodeStringGenerator( bodyTarget);
             } else {
                 bodyTarget.append("Unsupported data type " + pmapType + "\n");
             }
@@ -194,7 +194,23 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             throw new RuntimeException(e);
         }
     }
-    protected void decodeStringGenerator(MessageSchema schema, Appendable target) {
+    
+    protected void decodeIncrementLongGenerator(Appendable target, int index){
+        try {
+            appendStaticCall(target, decoder, "decodeIncrementLong").append(longDictionaryName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(");\n");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
+    protected void decocdeDefaultLongGenerator(Appendable target, int index){
+        try {
+            appendStaticCall(target, decoder, "decodeDefaultLong").append(readerName).append(", ").append(mapName).append(", ").append(defaultIntDictionaryName).append(", ").append(bitMaskName).append(", ").append(Integer.toString(index)).append(");\n");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    protected void decodeStringGenerator(Appendable target) {
         try {
             appendStaticCall(target, decoder, "decodeString").append(readerName).append(");\n");
         } catch (IOException e) {
@@ -202,38 +218,42 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
 
-    protected void decodeDeltaLongGenerator(MessageSchema schema, Appendable target) {
+    protected void decodeDeltaLongGenerator(Appendable target, int index) {
         try {
-            appendStaticCall(target, decoder, "decodeDeltaLong").append(longDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(indexName).append(", ").append(longValueName).append(", ").append(bitMaskName).append(");\n");
+            appendStaticCall(target, decoder, "decodeDeltaLong").append(longDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    protected void decodeDefaultIntGenerator(MessageSchema schema, Appendable target) {
+    protected void decodeDefaultIntGenerator(Appendable target, int index) {
         try {
-            appendStaticCall(target, decoder, "decodeDefaultInt").append(readerName).append(", ").append(mapName).append(", ").append(intValueArrayName).append(", ").append(bitMaskName).append(", ").append(indexName).append(", ").append(");\n");
+            appendStaticCall(target, decoder, "decodeDefaultInt").append(readerName).append(", ").append(mapName).append(", ").append(defaultIntDictionaryName).append(", ").append(bitMaskName).append(", ").append(Integer.toString(index)).append(", ").append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    protected void decodeDeltaIntGenerator(MessageSchema schema, Appendable target) {
+    protected void decodeDeltaIntGenerator( Appendable target, int index) {
         try {
-            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(indexName).append(", ").append(bitMaskName).append(", ").append(intValueName).append(");\n");
+            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toBinaryString(index)).append(", ").append(bitMaskName).append(", ").append(intValueName).append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
+    /*
+    MAY OR MAY NOT NEED THESE TWO:
+    
     protected void decodeIncIntGenerator(MessageSchema schema, Appendable target) {
-        try {
-            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(indexName).append(", ").append(bitMaskName).append(");\n");
-        } catch (IOException e) {
+       try {
+           appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(indexName).append(", ").append(bitMaskName).append(");\n");
+       } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
+    
     protected void decodeIncIntSlowGenerator(MessageSchema schema, Appendable target) {
         try {
             appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(indexName).append(");\n");
@@ -241,24 +261,24 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             throw new RuntimeException(e);
         }
     }
-
-    protected void decodeCopyIntGenerator(MessageSchema schema, Appendable target) {
+*/
+    protected void decodeCopyIntGenerator(Appendable target, int index) {
         try {
-            appendStaticCall(target, decoder, "decodeCopyInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(indexName).append(", ").append(bitMaskName).append(");\n");
+            appendStaticCall(target, decoder, "decodeCopyInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    protected void decodeIncrementIntGenerator(MessageSchema schema, Appendable target) {
+    protected void decodeIncrementIntGenerator(Appendable target, int index) {
         try {
-            appendStaticCall(target, decoder, "decodeIncrementInt").append(intDictionaryName).append(", ").append(mapName).append(", ").append(indexName).append(", ").append(bitMaskName).append(");\n");
+            appendStaticCall(target, decoder, "decodeIncrementInt").append(intDictionaryName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    protected void decodePresentIntGenerator(MessageSchema schema, Appendable target) {
+    protected void decodePresentIntGenerator(Appendable target) {
         try {
             appendStaticCall(target, decoder, "decodePresentInt").append(", ").append(readerName).append(", ").append(mapName).append(", ").append(bitMaskName).append(");\n");
         } catch (IOException e) {

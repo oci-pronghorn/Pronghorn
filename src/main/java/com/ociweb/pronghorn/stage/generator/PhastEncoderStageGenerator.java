@@ -398,6 +398,9 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         cursor++;
         int curCursor = cursor;
         int curCursor2 = cursor;
+        
+        //get bitmask
+        int bitMask = from.templateOffset;
 
         //this try catches all IO problems and throws an error if the file does not exist
         try {
