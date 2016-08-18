@@ -60,7 +60,7 @@ public class ProtoBuffInterface {
                     .append("public String get")
                     .append(stringName.toUpperCase()).append("() { return ")
                     .append(stringName).append("; }")
-                    .append(");\n");
+                    .append(";\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -74,7 +74,18 @@ public class ProtoBuffInterface {
                     .append(stringName).append(") { this.")
                     .append(stringName).append(" = ")
                     .append(stringName).append("; }")
-                    .append(");\n");
+                    .append(";\n");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    // public boolean hasName();
+    protected void InterfaceBuilderSetterHas(MessageSchema schema, Appendable interfaceTarget, String stringName) {
+        try {
+            appendStaticCall(interfaceTarget, encoderGenerator, "InterfaceBuilderSetter")
+                    .append("public boolean has")
+                    .append(stringName.toUpperCase()).append("();")
+                    .append("\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
