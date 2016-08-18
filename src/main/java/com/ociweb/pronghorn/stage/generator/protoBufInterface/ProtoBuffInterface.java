@@ -87,7 +87,6 @@ public class ProtoBuffInterface {
 
     public void buildClass() {
         this.buildFirst();
-
     }
     /* No.
     public class interfaceClassName {
