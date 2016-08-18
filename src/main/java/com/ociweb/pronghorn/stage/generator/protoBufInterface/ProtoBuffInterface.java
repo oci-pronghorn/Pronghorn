@@ -5,25 +5,30 @@
  */
 package com.ociweb.pronghorn.stage.generator.protoBufInterface;
 
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
+import com.ociweb.pronghorn.pipe.token.TokenBuilder;
+import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.stage.generator.PhastDecoderStageGenerator;
 import com.ociweb.pronghorn.stage.generator.PhastEncoderStageGenerator;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
  * @author jake
  */
 public class ProtoBuffInterface {
+
     private PhastDecoderStageGenerator decoderGenerator;
     private PhastEncoderStageGenerator encoderGenerator;
     String interfaceClassName;
     String packageName;
     MessageSchema schema;
     Appendable interfaceTarget;
-    
-    
-    public ProtoBuffInterface(String packageName, MessageSchema schema, Appendable decodeTarget, Appendable encodeTarget, Appendable interfaceTarget, String interfaceClassName){
+
+    public ProtoBuffInterface(String packageName, MessageSchema schema, Appendable decodeTarget, Appendable encodeTarget, Appendable interfaceTarget, String interfaceClassName) {
         encoderGenerator = new PhastEncoderStageGenerator(schema, encodeTarget);
         decoderGenerator = new PhastDecoderStageGenerator(schema, decodeTarget, packageName);
         this.packageName = packageName;
@@ -31,57 +36,62 @@ public class ProtoBuffInterface {
         this.interfaceTarget = interfaceTarget;
         this.interfaceClassName = interfaceClassName;
     }
-    // Do i need this if we are bringing int he encoderGenerator already?
-    /*@Override
-    protected void additionalTokens(Appendable target) throws IOException {
-        FieldReferenceOffsetManager from = MessageSchema.from(schema);
-        int[] tokens = from.tokens;
-        String[] scriptNames = from.fieldNameScript;
-        long[] scriptIds = from.fieldIdScript;
-        int i = tokens.length;
 
-        while (--i >= 0) {
-            int type = TokenBuilder.extractType(tokens[i]);
+    //this method generates a setter given its name, type, and appendable to be placed in.
+    private static void generateSetter(String varName, String varType, Appendable target) {
+        try {
+            //make variable name go to camel case
+            String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
+            //getter method generated
+            target.append("public " + varType + " get" + varNameCamel + "(){\n");
+            //return variable, close off, end line.
+            target.append("return " + varName + ";"
+                    + "\n}"
+                    + "\n");
 
-            if (TypeMask.isLong(type)) {
-                target.append("private long ").append(scriptNames[i]).append(";\n");
-            } else if (TypeMask.isInt(type)) {
-                target.append("private int ").append(scriptNames[i]).append(";\n");
-            } else if (TypeMask.isText(type)) {
-                target.append("private String ").append(scriptNames[i]).append(";\n");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private void buildFirst() {
+        try {
+            //This is where we declare the class to the output file
+            interfaceTarget.append("public class " + interfaceClassName + "{\n");
+
+            //walk through variables and generate has and sets only
+            FieldReferenceOffsetManager from = MessageSchema.from(schema);
+            int[] tokens = from.tokens;
+            String[] scriptNames = from.fieldNameScript;
+            long[] scriptIds = from.fieldIdScript;
+            int i = tokens.length;
+
+            while (--i >= 0) {
+                int type = TokenBuilder.extractType(tokens[i]);
+
+                if (TypeMask.isLong(type)) {
+                    //generate setters here
+                } else if (TypeMask.isInt(type)) {
+                    //and here
+                } else if (TypeMask.isText(type)) {
+                    //and here
+                }
             }
+
+            //closing bracking for class
+            interfaceTarget.append("}");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    */
-    //public String getName() { return name; }
-    protected void InterfaceBuilderGetterString(MessageSchema schema, Appendable interfaceTarget, String stringName) {
-        try {
-            appendStaticCall(interfaceTarget, encoderGenerator, "InterfaceBuilderGetter")
-                    .append("public String get")
-                    .append(stringName.toUpperCase()).append("() { return ")
-                    .append(stringName).append("; }")
-                    .append(");\n");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+
+    public void buildClass() {
+        this.buildFirst();
+
     }
-    //public void setName(String name) { this.name = name; }
-    protected void InterfaceBuilderSetterString(MessageSchema schema, Appendable interfaceTarget, String stringName) {
-        try {
-            appendStaticCall(interfaceTarget, encoderGenerator, "InterfaceBuilderSetter")
-                    .append("public void set")
-                    .append(stringName.toUpperCase()).append("(String ")
-                    .append(stringName).append(") { this.")
-                    .append(stringName).append(" = ")
-                    .append(stringName).append("; }")
-                    .append(");\n");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-    
+    /* No.
     public class interfaceClassName {
         
     }
-    
+     */
 }
