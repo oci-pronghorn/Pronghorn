@@ -54,7 +54,7 @@ public class ProtoBuffInterface {
     }
     */
     //public String getSalutation() { return salutation; }
-    protected void InterfaceBuilderGetterString(MessageSchema schema, Appendable interfaceTarget, int idx, String stringName) {
+    protected void InterfaceBuilderGetterString(MessageSchema schema, Appendable interfaceTarget, String stringName) {
         try {
             appendStaticCall(interfaceTarget, encoderGenerator, "InterfaceBuilderGetter")
                     .append("public String get")
@@ -66,7 +66,7 @@ public class ProtoBuffInterface {
         }
     }
     //public void setName(String name) { this.name = name; }
-    protected void InterfaceBuilderSetterString(MessageSchema schema, Appendable interfaceTarget, int idx, String stringName) {
+    protected void InterfaceBuilderSetterString(MessageSchema schema, Appendable interfaceTarget, String stringName) {
         try {
             appendStaticCall(interfaceTarget, encoderGenerator, "InterfaceBuilderSetter")
                     .append("public void set")
