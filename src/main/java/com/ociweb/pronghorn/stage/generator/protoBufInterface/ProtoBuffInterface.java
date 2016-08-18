@@ -53,7 +53,7 @@ public class ProtoBuffInterface {
         }
     }
     */
-    //public String getSalutation() { return salutation; }
+    //public String getName() { return name; }
     protected void InterfaceBuilderGetterString(MessageSchema schema, Appendable interfaceTarget, String stringName) {
         try {
             appendStaticCall(interfaceTarget, encoderGenerator, "InterfaceBuilderGetter")
