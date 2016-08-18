@@ -58,7 +58,7 @@ public class ProtoBuffInterface {
         try {
             appendStaticCall(interfaceTarget, encoderGenerator, "InterfaceBuilderGetter")
                     .append("public String get")
-                    .append(stringName).append("() { return ")
+                    .append(stringName.toUpperCase()).append("() { return ")
                     .append(stringName).append("; }")
                     .append(");\n");
         } catch (IOException e) {
@@ -70,7 +70,7 @@ public class ProtoBuffInterface {
         try {
             appendStaticCall(interfaceTarget, encoderGenerator, "InterfaceBuilderSetter")
                     .append("public void set")
-                    .append(stringName).append("(String ")
+                    .append(stringName.toUpperCase()).append("(String ")
                     .append(stringName).append(") { this.")
                     .append(stringName).append(" = ")
                     .append(stringName).append("; }")
