@@ -85,12 +85,13 @@ private static void generateGetter(String varName, String varType, Appendable ta
             long[] scriptIds = from.fieldIdScript;
             int i = tokens.length;
             
-            //insert has
-            interfaceTarget.append("public boolean has").append(scriptNames[i]).append("();\n");
             //inserts
             while (--i >= 0) {
                 int type = TokenBuilder.extractType(tokens[i]);
-
+                
+                //insert has
+                interfaceTarget.append("public boolean has").append(scriptNames[i]).append("();\n");
+                
                 if (TypeMask.isLong(type)) {
                     //set
                     interfaceTarget.append("public void set").append(scriptNames[i])
