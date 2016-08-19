@@ -36,24 +36,43 @@ public class ProtoBuffInterface {
         this.interfaceTarget = interfaceTarget;
         this.interfaceClassName = interfaceClassName;
     }
-
-    //this method generates a setter given its name, type, and appendable to be placed in.
-    private static void generateSetter(String varName, String varType, Appendable target) {
+private static void generateGetter(String varName, String varType, Appendable target) {
         try {
             //make variable name go to camel case
             String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
-            //getter method generated
+            //Getter method generated
             target.append("public " + varType + " get" + varNameCamel + "(){\n");
             //return variable, close off, end line.
             target.append("return " + varName + ";"
                     + "\n}"
                     + "\n");
-
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
+    //public void setName(String name) { this.name = name; }
+    private static void generateSetter(String varName, String varType, Appendable target) {
+        try {
+            //make variable name go to camel case
+            String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
+            //Setter method generated
+            target.append("public void" + " set" + varNameCamel + "(" + varType + " " + varName +
+                    ") { this." + varName + " = " + varName + "; }; \n");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    // public boolean has()
+    private static void generateHas(String varName, String varType, Appendable target) {
+        try {
+            //make variable name go to camel case
+            String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
+            //Has method generated
+            target.append("public boolean" + " has" + varNameCamel + "(){\n");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
     private void buildFirst() {
         try {
             //This is where we declare the class to the output file
@@ -65,32 +84,46 @@ public class ProtoBuffInterface {
             String[] scriptNames = from.fieldNameScript;
             long[] scriptIds = from.fieldIdScript;
             int i = tokens.length;
-
+            
+            //insert has
+            interfaceTarget.append("public boolean has").append(scriptNames[i]).append("();\n");
+            //inserts
             while (--i >= 0) {
                 int type = TokenBuilder.extractType(tokens[i]);
 
                 if (TypeMask.isLong(type)) {
-                    //generate setters here
+                    //set
+                    interfaceTarget.append("public void set").append(scriptNames[i])
+                            .append("(").append("Long ").append(scriptNames[i])
+                            .append(");\n");
+                    //get
+                    interfaceTarget.append("public long get").append(scriptNames[i])
+                            .append("();\n");
                 } else if (TypeMask.isInt(type)) {
-                    //and here
+                    //set
+                    interfaceTarget.append("public void set").append(scriptNames[i])
+                            .append("(").append("Int ").append(scriptNames[i])
+                            .append(");\n");
+                    //get
+                    interfaceTarget.append("public int get").append(scriptNames[i])
+                            .append("();\n");
                 } else if (TypeMask.isText(type)) {
-                    //and here
+                    //set
+                    interfaceTarget.append("public void set").append(scriptNames[i])
+                            .append("(").append("String ").append(scriptNames[i])
+                            .append(");\n");
+                    //get
+                    interfaceTarget.append("public String get").append(scriptNames[i])
+                            .append("();\n");
                 }
             }
-
             //closing bracking for class
             interfaceTarget.append("}");
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
     public void buildClass() {
         this.buildFirst();
     }
-    /* No.
-    public class interfaceClassName {
-        
-    }
-     */
 }
