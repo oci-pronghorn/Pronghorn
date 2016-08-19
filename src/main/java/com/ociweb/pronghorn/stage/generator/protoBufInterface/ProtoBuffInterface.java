@@ -27,6 +27,7 @@ public class ProtoBuffInterface {
     String packageName;
     MessageSchema schema;
     Appendable interfaceTarget;
+    private static String tab = "  ";
 
     public ProtoBuffInterface(String packageName, MessageSchema schema, Appendable decodeTarget, Appendable encodeTarget, Appendable interfaceTarget, String interfaceClassName) {
         encoderGenerator = new PhastEncoderStageGenerator(schema, encodeTarget);
@@ -36,43 +37,52 @@ public class ProtoBuffInterface {
         this.interfaceTarget = interfaceTarget;
         this.interfaceClassName = interfaceClassName;
     }
-private static void generateGetter(String varName, String varType, Appendable target) {
+
+    private static void generateGetter(String varName, String varType, Appendable target) {
         try {
             //make variable name go to camel case
             String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
             //Getter method generated
-            target.append("public " + varType + " get" + varNameCamel + "(){\n");
+            target.append(tab + "public " + varType + " get" + varNameCamel + "(){\n");
             //return variable, close off, end line.
-            target.append("return " + varName + ";"
-                    + "\n}"
-                    + "\n");
+            target.append(tab + tab +"return " + varName + ";"
+                    + "\n"
+                    + tab + "}\n");
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+
     //public void setName(String name) { this.name = name; }
     private static void generateSetter(String varName, String varType, Appendable target) {
         try {
             //make variable name go to camel case
             String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
             //Setter method generated
-            target.append("public void" + " set" + varNameCamel + "(" + varType + " " + varName +
-                    ") { this." + varName + " = " + varName + "; }; \n");
+            target.append(tab + "public void" + " set" + varNameCamel + "(" + varType + " " + varName
+                    + ") {\n"
+                    + tab + tab + "this." + varName + " = " + varName + "; \n"
+                    + "} \n");
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+
     // public boolean has()
-    private static void generateHas(String varName, String varType, Appendable target) {
+    private static void generateHas(String varName, Appendable target) {
         try {
             //make variable name go to camel case
             String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
             //Has method generated
-            target.append("public boolean" + " has" + varNameCamel + "(){\n");
+            target.append(tab +"public boolean" + " has " + varNameCamel + "(){"
+                    + "\n"
+                    + "\n"
+                    + tab +  "}\n");
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+
     private void buildFirst() {
         try {
             //This is where we declare the class to the output file
@@ -84,39 +94,28 @@ private static void generateGetter(String varName, String varType, Appendable ta
             String[] scriptNames = from.fieldNameScript;
             long[] scriptIds = from.fieldIdScript;
             int i = tokens.length;
-            
+
             //inserts
             while (--i >= 0) {
                 int type = TokenBuilder.extractType(tokens[i]);
-                
-                //insert has
-                interfaceTarget.append("public boolean has").append(scriptNames[i]).append("();\n");
-                
+
                 if (TypeMask.isLong(type)) {
                     //set
-                    interfaceTarget.append("public void set").append(scriptNames[i])
-                            .append("(").append("Long ").append(scriptNames[i])
-                            .append(");\n");
+                    generateGetter(scriptNames[i], "long", interfaceTarget);
                     //get
-                    interfaceTarget.append("public long get").append(scriptNames[i])
-                            .append("();\n");
+                    generateHas(scriptNames[i], interfaceTarget);
                 } else if (TypeMask.isInt(type)) {
                     //set
-                    interfaceTarget.append("public void set").append(scriptNames[i])
-                            .append("(").append("Int ").append(scriptNames[i])
-                            .append(");\n");
+                    generateGetter(scriptNames[i], "int", interfaceTarget);
                     //get
-                    interfaceTarget.append("public int get").append(scriptNames[i])
-                            .append("();\n");
+                    generateHas(scriptNames[i], interfaceTarget);
                 } else if (TypeMask.isText(type)) {
                     //set
-                    interfaceTarget.append("public void set").append(scriptNames[i])
-                            .append("(").append("String ").append(scriptNames[i])
-                            .append(");\n");
+                    generateGetter(scriptNames[i], "String", interfaceTarget);
                     //get
-                    interfaceTarget.append("public String get").append(scriptNames[i])
-                            .append("();\n");
+                    generateHas(scriptNames[i], interfaceTarget);
                 }
+                
             }
             //closing bracking for class
             interfaceTarget.append("}");
@@ -124,6 +123,7 @@ private static void generateGetter(String varName, String varType, Appendable ta
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+
     public void buildClass() {
         this.buildFirst();
     }
