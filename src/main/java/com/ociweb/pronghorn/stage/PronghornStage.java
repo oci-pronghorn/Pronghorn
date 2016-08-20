@@ -18,19 +18,35 @@ public abstract class PronghornStage {
 	
 	//What if we only have 1 because this is the first or last stage?
 
-	public final int stageId;	
+	public final int stageId; //since these are unique also used for hash
+	private final int hash;
 	
 	private GraphManager graphManager;	
 	protected boolean supportsBatchedRelease = true;
 	protected boolean supportsBatchedPublish = true;
+				
+	@Override
+	public int hashCode() {
+		return hash;
+	}
 	
-	
+	@Override
+	public boolean equals(Object obj) {		
+		if (obj instanceof PronghornStage) {
+			PronghornStage that = (PronghornStage)obj;
+			return that.hash == this.hash;
+		} else {
+			return false;
+		}
+	}
+
 	//in the constructor us a zero length array if there are no values.
 	protected PronghornStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs) {
 	    assert(null!=inputs) : "Use NONE";
 	    assert(null!=outputs) : "Use NONE";
 		
-	    this.stageId = GraphManager.newStageId(graphManager);	
+	    this.stageId = GraphManager.newStageId(graphManager);
+	    this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, inputs, outputs);
 	}
@@ -39,7 +55,8 @@ public abstract class PronghornStage {
 	    assert(null!=input) : "Use NONE";
 	    assert(null!=outputs) : "Use NONE";
 		
-	    this.stageId = GraphManager.newStageId(graphManager);  
+	    this.stageId = GraphManager.newStageId(graphManager);
+	    this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, input, outputs);
 	}
@@ -48,13 +65,15 @@ public abstract class PronghornStage {
 	    assert(null!=inputs) : "Use NONE";
 	    assert(null!=output) : "Use NONE";
 	    
-	    this.stageId = GraphManager.newStageId(graphManager);  
+	    this.stageId = GraphManager.newStageId(graphManager);
+	    this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, inputs, output);
 	}
 	
 	protected PronghornStage(GraphManager graphManager, Pipe input, Pipe output) {
 		this.stageId = GraphManager.newStageId(graphManager); 
+		this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, input, output);
 	}
