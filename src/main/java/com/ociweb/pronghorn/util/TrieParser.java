@@ -135,7 +135,7 @@ public class TrieParser {
         return skipDeepChecks;
     }
     
-    public void setValue(byte[] source, int offset, int length, int mask, int value) {
+    public void setValue(byte[] source, int offset, int length, int mask, long value) {
         setValue(0, data, source, offset, length, mask, value);        
     }
     
@@ -1041,6 +1041,11 @@ public class TrieParser {
         data[pos++] = (short)sourceLength;
         return pos;
     }
+
+	public void setValue(byte[] bytes, long value) {
+		setValue(bytes, 0, bytes.length, Integer.MAX_VALUE, value);
+		
+	}
 
 
 

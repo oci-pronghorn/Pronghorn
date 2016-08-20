@@ -1153,13 +1153,13 @@ public final class Pipe<T extends MessageSchema> {
 
 	public static <S extends MessageSchema, A extends Appendable> A readASCII(Pipe<S> pipe, A target, int meta, int len) {
 		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
-	        return (A) readASCIIConst(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
+	        return readASCIIConst(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
 	    } else {
-	        return (A) readASCIIRing(pipe,len,target,restorePosition(pipe, meta));
+	        return readASCIIRing(pipe,len,target,restorePosition(pipe, meta));
 	    }
 	}
 	
-   public static <S extends MessageSchema> Appendable readOptionalASCII(Pipe<S> pipe, Appendable target, int meta, int len) {
+   public static <S extends MessageSchema, A extends Appendable> A readOptionalASCII(Pipe<S> pipe, A target, int meta, int len) {
         if (len<0) {
             return null;
         }
@@ -1237,7 +1237,7 @@ public final class Pipe<T extends MessageSchema> {
 	        return true;
 	    }
 	
-	private static <S extends MessageSchema> Appendable readASCIIRing(Pipe<S> pipe, int len, Appendable target, int pos) {
+	private static <S extends MessageSchema,  A extends Appendable> A readASCIIRing(Pipe<S> pipe, int len, A target, int pos) {
 		byte[] buffer = pipe.blobRing;
 		int mask = pipe.byteMask;
 
@@ -1251,7 +1251,7 @@ public final class Pipe<T extends MessageSchema> {
 	    return target;
 	}
 
-	private static <S extends MessageSchema> Appendable readASCIIConst(Pipe<S> pipe, int len, Appendable target, int pos) {
+	private static <S extends MessageSchema, A extends Appendable> A readASCIIConst(Pipe<S> pipe, int len, A target, int pos) {
 	    try {
 	    	byte[] buffer = pipe.blobConstBuffer;
 	    	assert(null!=buffer) : "If constants are used the constByteBuffer was not initialized. Otherwise corruption in the stream has been discovered";
@@ -2825,7 +2825,20 @@ public final class Pipe<T extends MessageSchema> {
         Pipe.setBytesWorkingHead(pipe, pipe.marketHeadBlob);
         
     }
+
+    private int activeBlobHead = -1;
     
+	public static int storeBlobWorkingHeadPosition(Pipe<?> target) {
+		assert(-1 == target.activeBlobHead) : "can not store second until first is resolved";
+		return target.activeBlobHead = Pipe.getBlobWorkingHeadPosition(target);				
+	}
+    
+	public static int unstoreBlobWorkingHeadPosition(Pipe<?> target) {
+		assert(-1 != target.activeBlobHead) : "can not unstore value not saved";
+		int result = target.activeBlobHead;
+		target.activeBlobHead = -1;
+		return result;
+	}
         
 
 }
