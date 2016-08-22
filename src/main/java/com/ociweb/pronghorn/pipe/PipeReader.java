@@ -551,14 +551,37 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	    return StackStateWalker.hasContentToRead(pipe);
 	}
 	
+	/**
+	 * @param pipe
+	 * @param loc
+	 * @param expected
+	 * @return true if the value exists and matches the expected, when false is returned it does not mean not equals but rather undetermined.
+	 */
+	public static boolean peekEquals(Pipe pipe, int loc, int expected) {			
+	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
+		return StackStateWalker.hasContentToRead(pipe) && (expected == Pipe.readValue(Pipe.slab(pipe),pipe.mask,pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc)));
+	}
+
+	public static int peekInt(Pipe pipe, int loc) {			
+		assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
+	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
+		return Pipe.readValue(Pipe.slab(pipe),pipe.mask,pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc));
+	}
+	
+	public static long peekLong(Pipe pipe, int loc) {
+		assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
+	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.LongSigned, TypeMask.LongSignedOptional, TypeMask.LongUnsigned, TypeMask.LongUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
+		return Pipe.readLong(Pipe.slab(pipe),pipe.mask,pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc));
+	}
+	
 	//this impl only works for simple case where every message is one fragment. 
-	public static boolean tryReadFragment(Pipe ringBuffer) {
-		assert(null!=ringBuffer.ringWalker) : "NullPointer, double check that pipe was passed into super constructor of stage.";
-		if (FieldReferenceOffsetManager.isTemplateStart(Pipe.from(ringBuffer), ringBuffer.ringWalker.nextCursor)) {    
-		    assert(StackStateWalker.isSeqStackEmpty(ringBuffer.ringWalker)) : "Error the seqStack should be empty";
-			return StackStateWalker.prepReadMessage(ringBuffer, ringBuffer.ringWalker);			   
+	public static boolean tryReadFragment(Pipe pipe) {
+		assert(null!=pipe.ringWalker) : "NullPointer, double check that pipe was passed into super constructor of stage.";
+		if (FieldReferenceOffsetManager.isTemplateStart(Pipe.from(pipe), pipe.ringWalker.nextCursor)) {    
+		    assert(StackStateWalker.isSeqStackEmpty(pipe.ringWalker)) : "Error the seqStack should be empty";
+			return StackStateWalker.prepReadMessage(pipe, pipe.ringWalker);			   
 	    } else {  
-			return StackStateWalker.prepReadFragment(ringBuffer, ringBuffer.ringWalker);
+			return StackStateWalker.prepReadFragment(pipe, pipe.ringWalker);
 	    }
 	}
 

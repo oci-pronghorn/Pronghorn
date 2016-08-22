@@ -2250,14 +2250,17 @@ public final class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> int peekInt(Pipe<S> pipe) {
+    	assert(Pipe.hasContentToRead(pipe)) : "results would not be repeatable";
         return readValue(pipe.slabRing,pipe.mask,pipe.slabRingTail.workingTailPos.value);
     }
     
     public static <S extends MessageSchema> int peekInt(Pipe<S> pipe, int offset) {
+    	assert(Pipe.hasContentToRead(pipe)) : "results would not be repeatable";
         return readValue(pipe.slabRing,pipe.mask,pipe.slabRingTail.workingTailPos.value+offset);
     }
    
     public static <S extends MessageSchema> long peekLong(Pipe<S> pipe, int offset) {
+    	assert(Pipe.hasContentToRead(pipe)) : "results would not be repeatable";
         return readLong(pipe.slabRing,pipe.mask,pipe.slabRingTail.workingTailPos.value+offset);
     }
     

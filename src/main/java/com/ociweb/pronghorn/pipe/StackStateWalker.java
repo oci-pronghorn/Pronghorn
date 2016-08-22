@@ -503,20 +503,20 @@ class StackStateWalker {
 	}
 	
     static boolean hasContentToRead(Pipe pipe) {
-        if (!(pipe.llWrite.llwHeadPosCache > 1+pipe.ringWalker.nextWorkingTail)) {
-            return (pipe.llRead.llrTailPosCache =  Pipe.tailPosition(pipe)) > 1+pipe.ringWalker.nextWorkingTail;
-        } else {
-            return true;
-        }
+        return (pipe.llWrite.llwHeadPosCache > 1+pipe.ringWalker.nextWorkingTail) || hasContentToReadSlow(pipe);
     }
+
+	private static boolean hasContentToReadSlow(Pipe pipe) {
+		return (pipe.llWrite.llwHeadPosCache =  Pipe.headPosition(pipe)) > 1+pipe.ringWalker.nextWorkingTail;
+	}
 	
     static boolean hasRoomForFragmentOfSizeX(Pipe pipe, long limit) {
-        if (!(pipe.llRead.llrTailPosCache >= limit)) {
-            return (pipe.llRead.llrTailPosCache =  Pipe.tailPosition(pipe)) >= limit;
-        } else {
-            return true;
-        }
+        return (pipe.llRead.llrTailPosCache >= limit) || hasRoomForFragmentOfSizeXSlow(pipe, limit);
     }
+
+	private static boolean hasRoomForFragmentOfSizeXSlow(Pipe pipe, long limit) {
+		return (pipe.llRead.llrTailPosCache =  Pipe.tailPosition(pipe)) >= limit;
+	}
 
     static boolean tryWriteFragment0(Pipe pipe, int cursorPosition, int fragSize, long target) {
         assert(pipe.llRead.llrTailPosCache <= Pipe.tailPosition(pipe)) : "Tail cache corruption";
