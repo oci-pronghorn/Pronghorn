@@ -23,15 +23,18 @@ public class ServiceObjectHolderTest {
      ServiceObjectValidator<String> validator = new ServiceObjectValidator<String>() {
 
         @Override
-        public boolean isValid(String serviceObject) {
-            
+        public boolean isValid(String serviceObject) {            
             return ! expireRule(serviceObject);
         }
 
+        @Override
+        public void dispose(String t) {
+            //nothing to do.            
+        }
          
      };
        
-     ServiceObjectHolder<String> holder = new ServiceObjectHolder<String>(String.class, validator);
+     ServiceObjectHolder<String> holder = new ServiceObjectHolder<String>(String.class, validator, true /*grows */);
      
      Random r = new Random(42);
      

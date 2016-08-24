@@ -77,9 +77,9 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 		        			
 							Pipe.validateVarLength(outputRing, 21); //RingBuffer.bytesWorkingHeadPosition(ring)
 		        			
-							int max = 21 + Pipe.bytesWorkingHeadPosition(outputRing);
+							int max = 21 + Pipe.getBlobWorkingHeadPosition(outputRing);
 							int len = Pipe.leftConvertLongToASCII(outputRing, 0xFFFFFFFFl & uint, max);
-							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.bytesWorkingHeadPosition(outputRing)));
+							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.getBlobWorkingHeadPosition(outputRing)));
 		        		}	
 						break;
 	        		case 64: //UInt32 Named	   
@@ -88,9 +88,9 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 		        			long uint = PipeReader.readInt(stage.inputRing, MetaMessageDefs.NAMEDUINT32_VALUE_LOC);
 							Pipe outputRing = stage.outputRing;
 		        			Pipe.validateVarLength(outputRing, 21);
-							int max = 21 + Pipe.bytesWorkingHeadPosition(outputRing);
+							int max = 21 + Pipe.getBlobWorkingHeadPosition(outputRing);
 							int len = Pipe.leftConvertLongToASCII(outputRing, 0xFFFFFFFFl&uint, max);
-							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.bytesWorkingHeadPosition(outputRing)));
+							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.getBlobWorkingHeadPosition(outputRing)));
 		        		}	
 						break;
 						
@@ -100,9 +100,9 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 							int sint = PipeReader.readInt(stage.inputRing, MetaMessageDefs.INT32_VALUE_LOC);
 							Pipe outputRing = stage.outputRing;
 							Pipe.validateVarLength(outputRing, 12);
-							int max = 12 + Pipe.bytesWorkingHeadPosition(outputRing);
+							int max = 12 + Pipe.getBlobWorkingHeadPosition(outputRing);
 							int len = Pipe.leftConvertIntToASCII(outputRing, sint, max);
-							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.bytesWorkingHeadPosition(outputRing)));
+							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.getBlobWorkingHeadPosition(outputRing)));
 		        		}
 		        		break;
 	        		case 65: //Int32 Named      
@@ -111,9 +111,9 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 							int sint = PipeReader.readInt(stage.inputRing, MetaMessageDefs.NAMEDINT32_VALUE_LOC);
 							Pipe outputRing = stage.outputRing;
 							Pipe.validateVarLength(outputRing, 12);
-							int max = 12 + Pipe.bytesWorkingHeadPosition(outputRing);
+							int max = 12 + Pipe.getBlobWorkingHeadPosition(outputRing);
 							int len = Pipe.leftConvertIntToASCII(outputRing, sint, max);
-							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.bytesWorkingHeadPosition(outputRing)));
+							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.getBlobWorkingHeadPosition(outputRing)));
 		        		}
 		        		break;
 		        		
@@ -123,9 +123,9 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 							long ulong = PipeReader.readLong(stage.inputRing, MetaMessageDefs.UINT64_VALUE_LOC);
 							Pipe outputRing = stage.outputRing;
 							Pipe.validateVarLength(outputRing, 21);
-							int max = 21 + Pipe.bytesWorkingHeadPosition(outputRing);
+							int max = 21 + Pipe.getBlobWorkingHeadPosition(outputRing);
 							int len = Pipe.leftConvertLongToASCII(outputRing, ulong, max); //TODO: find a way to deal with top signed bit on long if it happens
-							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.bytesWorkingHeadPosition(outputRing))); 
+							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.getBlobWorkingHeadPosition(outputRing))); 
 		        		}
 		        		break;
 	        		case 66: //UInt64 Named
@@ -134,9 +134,9 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 							long ulong = PipeReader.readLong(stage.inputRing, MetaMessageDefs.NAMEDUINT64_VALUE_LOC);
 							Pipe outputRing = stage.outputRing;
 							Pipe.validateVarLength(outputRing, 21);
-							int max = 21 + Pipe.bytesWorkingHeadPosition(outputRing);
+							int max = 21 + Pipe.getBlobWorkingHeadPosition(outputRing);
 							int len = Pipe.leftConvertLongToASCII(outputRing, ulong, max);//TODO: find a way to deal with top signed bit on long if it happens
-							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.bytesWorkingHeadPosition(outputRing))); 
+							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.getBlobWorkingHeadPosition(outputRing))); 
 							
 		        		}
 		        		break;
@@ -147,9 +147,9 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 							long slong = PipeReader.readLong(stage.inputRing, MetaMessageDefs.INT64_VALUE_LOC);
 							Pipe outputRing = stage.outputRing;
 							Pipe.validateVarLength(outputRing, 21);
-							int max = 21 + Pipe.bytesWorkingHeadPosition(outputRing);
+							int max = 21 + Pipe.getBlobWorkingHeadPosition(outputRing);
 							int len = Pipe.leftConvertLongToASCII(outputRing, slong, max);
-							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.bytesWorkingHeadPosition(outputRing)));
+							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.getBlobWorkingHeadPosition(outputRing)));
 							
 		        		}
 	        			break;
@@ -159,9 +159,9 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 							long slong = PipeReader.readLong(stage.inputRing, MetaMessageDefs.NAMEDINT64_VALUE_LOC);
 							Pipe outputRing = stage.outputRing;
 							Pipe.validateVarLength(outputRing, 21);
-							int max = 21 + Pipe.bytesWorkingHeadPosition(outputRing);
+							int max = 21 + Pipe.getBlobWorkingHeadPosition(outputRing);
 							int len = Pipe.leftConvertLongToASCII(outputRing, slong, max);
-							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.bytesWorkingHeadPosition(outputRing)));
+							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(len + Pipe.getBlobWorkingHeadPosition(outputRing)));
 		        		}
 		        		break;      			
 	        			
@@ -175,8 +175,8 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 		        			
 						//	System.err.println("data:"+new String(backing, readBytesPos, readBytesLength));
 							
-							Pipe.copyBytesFromToRing(backing,readBytesPos,stage.inputRing.byteMask,outputRing.blobRing,Pipe.bytesWorkingHeadPosition(outputRing),outputRing.byteMask, readBytesLength);
-							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(Pipe.bytesWorkingHeadPosition(outputRing) + readBytesLength));
+							Pipe.copyBytesFromToRing(backing,readBytesPos,stage.inputRing.byteMask,outputRing.blobRing,Pipe.getBlobWorkingHeadPosition(outputRing),outputRing.byteMask, readBytesLength);
+							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(Pipe.getBlobWorkingHeadPosition(outputRing) + readBytesLength));
     			
 							
 							
@@ -190,8 +190,8 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 		        			byte[] backing      = PipeReader.readBytesBackingArray(stage.inputRing, MetaMessageDefs.NAMEDASCII_VALUE_LOC);
 							Pipe outputRing = stage.outputRing;
 									        			
-							Pipe.copyBytesFromToRing(backing,readBytesPos,stage.inputRing.byteMask,outputRing.blobRing,Pipe.bytesWorkingHeadPosition(outputRing),outputRing.byteMask, readBytesLength);
-							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(Pipe.bytesWorkingHeadPosition(outputRing) + readBytesLength));
+							Pipe.copyBytesFromToRing(backing,readBytesPos,stage.inputRing.byteMask,outputRing.blobRing,Pipe.getBlobWorkingHeadPosition(outputRing),outputRing.byteMask, readBytesLength);
+							Pipe.setBytesWorkingHead(outputRing, Pipe.BYTES_WRAP_MASK&(Pipe.getBlobWorkingHeadPosition(outputRing) + readBytesLength));
 
 		        		}
 	        			break;       			
@@ -222,20 +222,20 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 	        			
 	        			Pipe.blockWriteMessage(stage.outputRing, RawDataSchema.MSG_CHUNKEDSTREAM_1);        			
 	        			stage.activeFieldIdx = 0;
-	        			stage.activeByteBase = Pipe.bytesWorkingHeadPosition(stage.outputRing);
+	        			stage.activeByteBase = Pipe.getBlobWorkingHeadPosition(stage.outputRing);
 	        			break;
 	        		case 80: //beginMessage Named
 	        			Pipe.blockWriteMessage(stage.outputRing, RawDataSchema.MSG_CHUNKEDSTREAM_1);	  //?? begin message named?
 	        			stage.activeFieldIdx = 0;
-	        			stage.activeByteBase = Pipe.bytesWorkingHeadPosition(stage.outputRing);
+	        			stage.activeByteBase = Pipe.getBlobWorkingHeadPosition(stage.outputRing);
 	        			break;
 	        		case 17: //endMessage  		
 	        			
 	        			Pipe.copyASCIIToBytes("\n",stage.outputRing);	 //not very efficient may be better to make a single char writer method	         			
 	        			
 	        			//Total length for the full row row!!
-	        			Pipe.validateVarLength(stage.outputRing, Pipe.bytesWorkingHeadPosition(stage.outputRing)-stage.activeByteBase);
-	        			Pipe.addBytePosAndLen(stage.outputRing, stage.activeByteBase, Pipe.bytesWorkingHeadPosition(stage.outputRing)-stage.activeByteBase);
+	        			Pipe.validateVarLength(stage.outputRing, Pipe.getBlobWorkingHeadPosition(stage.outputRing)-stage.activeByteBase);
+	        			Pipe.addBytePosAndLen(stage.outputRing, stage.activeByteBase, Pipe.getBlobWorkingHeadPosition(stage.outputRing)-stage.activeByteBase);
 	        		        			
 	        			Pipe.publishWrites(stage.outputRing);
 	        				        			

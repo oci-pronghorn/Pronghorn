@@ -37,17 +37,12 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	    
 	    unscheduledLock.lock();//stop any non-runnable stages from running until shutdown is started.
 				
-		int i = PronghornStage.totalStages();
+		int i = GraphManager.countStages(graphManager);
 		
 		this.executorService = Executors.newFixedThreadPool(i);
 		
-		int realStageCount = 0;
-		int j = i;
-		while (--j>=0) {
-		    if (null != GraphManager.getStage(graphManager, j)) {
-		        realStageCount++;
-		    }
-		}
+		int realStageCount = i;
+
 		allStagesLatch = new CyclicBarrier(realStageCount+1);
 		
 		
@@ -97,7 +92,6 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	 * 
 	 * @param timeout
 	 * @param unit
-	 * @return
 	 */
 	public boolean awaitTermination(long timeout, TimeUnit unit) {
 		
@@ -174,8 +168,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
                     GraphManager.initInputRings(graphManager, stage.stageId);                   
                     log.trace("finished on initRings:"+stage.getClass().getSimpleName());
                     
-                    Thread.currentThread().setName(stage.getClass().getSimpleName());
+                    Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
                     stage.startup();
+                    GraphManager.setStateToStarted(graphManager, stage.stageId);
                     
                     try {
                         allStagesLatch.await();
@@ -211,26 +206,11 @@ public class ThreadPerStageScheduler extends StageScheduler {
                     if (null==firstException) {                     
                         firstException = t;
                     }
-                }                       
-                log.error("Stacktrace",t);
+                }            
                 
-                if (null==stage) {
-                    log.error("Stage was never initialized");
-                } else {
-                
-                    int inputcount = GraphManager.getInputPipeCount(graphManager, stage);
-                    log.error("Unexpected error in stage "+stage.stageId+" "+stage.getClass().getSimpleName()+" inputs:"+inputcount);
-                    
-                    int i = inputcount;
-                    while (--i>=0) {
-                        
-                        log.error("left input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
-                        
-                    }
-                    
-                    GraphManager.shutdownNeighborRings(graphManager, stage);
-                }
-            }           
+                GraphManager.reportError(graphManager, stage, t, log);
+            }
+            
         };
     }
 	
@@ -256,15 +236,15 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					GraphManager.initInputRings(graphManager, stage.stageId);					
 					log.trace("finished on initRings:"+stage.getClass().getSimpleName());
 					
-					Thread.currentThread().setName(stage.getClass().getSimpleName());
+					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
 					stage.startup();
+					GraphManager.setStateToStarted(graphManager, stage.stageId);
 					
 				       try {
 				            allStagesLatch.await();
 				        } catch (InterruptedException e) {
 				        } catch (BrokenBarrierException e) {
 				        }
-					
 					runLoop(stage);	
 			
 				} catch (Throwable t) {				    
@@ -339,15 +319,16 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					GraphManager.initInputRings(graphManager, stage.stageId);
 					log.trace("finished on initRings:{}",stage.getClass().getSimpleName());
 					
-					Thread.currentThread().setName(stage.getClass().getSimpleName());
+					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
 					stage.startup();
+					GraphManager.setStateToStarted(graphManager, stage.stageId);					
 				       
 					try {
 				            allStagesLatch.await();
 				        } catch (InterruptedException e) {
 				        } catch (BrokenBarrierException e) {
 				        }
-										
+					
 					runPeriodicLoop(nsScheduleRate/1_000_000l, (int)(nsScheduleRate%1_000_000l), stage);	
 			
 					stage.shutdown();
@@ -361,10 +342,11 @@ public class ThreadPerStageScheduler extends StageScheduler {
     				    }
 				    }				    
 				    
-				    log.error("Stacktrace",t);
-					log.error("Unexpected error in stage {}", stage);
+				    GraphManager.reportError(graphManager, stage, t, log);
+				    
 					GraphManager.shutdownNeighborRings(graphManager, stage);
 					Thread.currentThread().interrupt();
+					shutdown();
 				}
 			}			
 		};
@@ -419,49 +401,32 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	}
 
 	private void runPeriodicLoop(final long msSleep, final int nsSleep, final PronghornStage stage) {
+		assert(nsSleep<=1_000_000);
+		int stageId = stage.stageId;
+		GraphManager localGM = graphManager;
 		
-	    if (0==msSleep) {
-	           do {
-	                //NOTE: This implementation is depended upon to run no faster than the requested rate. (eg i2c stage and others)
-	                //      Regardless of how long or short is spend inside run the same delay between calls is always enforced.
-
-	                nsSleep(nsSleep);
-	                	                
-	                stage.run();
-	                
-	            } while (!isShuttingDown && !GraphManager.isStageShuttingDown(graphManager, stage.stageId));
-	        
-	    } else {
-	    
-	    
-    	    do {
-    		    //NOTE: This implementation is depended upon to run no faster than the requested rate. (eg i2c stage and others)
-    		    //      Regardless of how long or short is spend inside run the same delay between calls is always enforced.
-	    
-        	    try {
-        		        Thread.sleep(msSleep, nsSleep);
-        	    } catch (InterruptedException e) {
-        		       Thread.currentThread().interrupt();
-        		       return;
-        	    }
-
-    		    
-    		    stage.run();
-    			
-    		} while (!isShuttingDown && !GraphManager.isStageShuttingDown(graphManager, stage.stageId));
-	    }
-		
-		
+		do {
+			if (msSleep>0) {
+	      	    try {
+			        Thread.sleep(msSleep);
+			    } catch (InterruptedException e) {
+				    Thread.currentThread().interrupt();
+				    return;
+			    }
+			}
+			if (nsSleep>0) {
+				long limit = nsSleep + System.nanoTime();
+				while (System.nanoTime()<limit) {
+					Thread.yield();
+					if (Thread.interrupted()) {
+						 Thread.currentThread().interrupt();
+						 return;
+					}
+				}			
+			}
+			
+			stage.run();
+		} while (!isShuttingDown && !GraphManager.isStageShuttingDown(localGM, stageId));		
 	}
 
-    private void nsSleep(final int nsSleep) {
-        long next = System.nanoTime()+nsSleep;
-        long hardStop = System.currentTimeMillis()+2;
-        while (System.nanoTime()<next) {
-           Thread.yield();
-           if (System.currentTimeMillis()>=hardStop) {
-               break;
-           }
-        }
-    }
 }

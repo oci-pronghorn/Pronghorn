@@ -85,13 +85,13 @@ public class GraphManagerTest {
 		assertTrue(b == GraphManager.getStage(gm,b.stageId));
 		assertTrue(c == GraphManager.getStage(gm,c.stageId));
 		
-		assertTrue(rb1 == GraphManager.getRing(gm,rb1.ringId));
-		assertTrue(rb2 == GraphManager.getRing(gm,rb2.ringId));
+		assertTrue(rb1 == GraphManager.getRing(gm,rb1.id));
+		assertTrue(rb2 == GraphManager.getRing(gm,rb2.id));
 		
-		assertTrue(a == GraphManager.getRingProducer(gm,rb1.ringId));
-		assertTrue(b == GraphManager.getRingConsumer(gm,rb1.ringId));
-		assertTrue(b == GraphManager.getRingProducer(gm,rb2.ringId));
-		assertTrue(c == GraphManager.getRingConsumer(gm,rb2.ringId));
+		assertTrue(a == GraphManager.getRingProducer(gm,rb1.id));
+		assertTrue(b == GraphManager.getRingConsumer(gm,rb1.id));
+		assertTrue(b == GraphManager.getRingProducer(gm,rb2.id));
+		assertTrue(c == GraphManager.getRingConsumer(gm,rb2.id));
 		
 		Pipe.addMsgIdx(rb1,  0);
 		Pipe.addIntValue(101, rb1); //add a single int to the ring buffer

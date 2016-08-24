@@ -53,7 +53,7 @@ public class TapeReadStage extends PronghornStage {
         intHeader = header.asIntBuffer();
         INT_BUFFER_WRAPPER = new IntBuferWritableByteChannel();
         
-        targetBlobPos = Pipe.bytesWorkingHeadPosition(target);
+        targetBlobPos = Pipe.getBlobWorkingHeadPosition(target);
         targetSlabPos = Pipe.workingHeadPosition(target);  
     }
     

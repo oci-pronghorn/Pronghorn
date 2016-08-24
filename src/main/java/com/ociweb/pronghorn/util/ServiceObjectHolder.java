@@ -42,8 +42,10 @@ public class ServiceObjectHolder<T> {
     static class ServiceObjectData<T> {
         public int size;
         public int mask;
-        public long[] serviceObjectKeys;
-        public T[] serviceObjectValues;
+        public final long[] serviceObjectKeys;
+        public final T[] serviceObjectValues;
+        public final int[] serviceObjectLookupCounts; //Used for sequence counts or usage counts
+
         public final Class<T> clazz; 
 
         @SuppressWarnings("unchecked")
@@ -53,16 +55,18 @@ public class ServiceObjectHolder<T> {
             this.mask = size-1;
             this.serviceObjectKeys = new long[size];
             this.serviceObjectValues = (T[]) Array.newInstance(clazz, size);
+            this.serviceObjectLookupCounts = new int[size];
         }
 
         @SuppressWarnings("unchecked")
         public ServiceObjectData(ServiceObjectData<T> data, int growthFactor) {
             
             this.clazz = data.clazz;
-            this.size = data.size*2;
+            this.size = data.size*growthFactor;
             this.mask = this.size-1;
             this.serviceObjectKeys = new long[size];
             this.serviceObjectValues = (T[]) Array.newInstance(clazz, size);
+            this.serviceObjectLookupCounts = new int[size];
             
             int index = data.size;
             int mask = this.mask;
@@ -82,26 +86,27 @@ public class ServiceObjectHolder<T> {
     private final ServiceObjectValidator<T> validator;
     
     private long sequenceCounter;//goes up on every add
-    private long removalCounter;//goes down on every remove
+    private long removalCounter;//goes up on every remove
     
     //for support of forever loop around the valid Objects
     private int loopPos = -1;
     
+    private final boolean shouldGrow;
+    
+    
     /**
      * Do not use this constructor unless you want to start out with internal arrays more near the desired size.
-     * 
-     * @param initialBits, The initial size of the internal array as defined by 1<<initialBits 
-     * @param clazz, The class to be held 
-     * @param validator, Function to validate held values 
      */
-    public ServiceObjectHolder(int initialBits, Class<T> clazz, ServiceObjectValidator<T> validator) {
+    public ServiceObjectHolder(int initialBits, Class<T> clazz, ServiceObjectValidator<T> validator, boolean shouldGrow) {
         this.validator = validator;
         this.data = new ServiceObjectData<T>(initialBits, clazz);
+        this.shouldGrow = shouldGrow;
     }    
     
-    public ServiceObjectHolder(Class<T> clazz, ServiceObjectValidator<T> validator) {
+    public ServiceObjectHolder(Class<T> clazz, ServiceObjectValidator<T> validator, boolean shouldGrow) {
         this.validator = validator;
         this.data = new ServiceObjectData<T>(DEFAULT_BITS, clazz);
+        this.shouldGrow = shouldGrow;
     }  
     
     /**
@@ -110,29 +115,59 @@ public class ServiceObjectHolder<T> {
      * This is not thread safe and must not be called concurrently.
      * 
      * @param serviceObject
-     * @return
      */
     public long add(T serviceObject) {
         //Not thread safe, must be called by one thread or sequentially    
-        long index;
-        int modIdx;
+        long index = -1;
+        int modIdx =-1;
         
-        long hardStop = sequenceCounter+data.size;
+        long localSequenceCount = sequenceCounter;
+        long hardStop = localSequenceCount + data.size;
+        
+        long minCount = Long.MAX_VALUE;
+        long  minCountIndex = -1;
+        
         do {
-            index = ++sequenceCounter;
+            //if we end up passing over all the members find which is the least used.
+            if (-1 != index) {
+                if (data.serviceObjectLookupCounts[modIdx]<minCount) {
+                    minCount = data.serviceObjectLookupCounts[modIdx];
+                    minCountIndex = index;
+                }
+            }
+            
+            index = ++localSequenceCount;
             modIdx = data.mask & (int)index;
         
             if (index==hardStop) {
-                //copy and grow the data space, done locally then it is all replaced at once to not break concurrent callers
-                data = new ServiceObjectData<T>(data, 2);                  
+               
+                //three choices - build 3 different add methods
+                // + grow - not good for production and should be avoided     addGrow
+                // + replace least frequently used                            addReplace
+                // + return -1 to signal can not insert                       addTry
+                
+                if (shouldGrow) {
+                   //copy and grow the data space, done locally then it is all replaced at once to not break concurrent callers
+                    data = new ServiceObjectData<T>(data, 2);   
+                } else {
+                    //do not grow instead replace the least used member                    
+                    index = minCountIndex;
+                    modIdx = data.mask & (int)minCountIndex;
+                    validator.dispose(data.serviceObjectValues[modIdx]);
+                    break;
+                }
             }
-                        
+              
+            
+            
             //keep going if we have looped around and hit a bucket which is already occupied with something valid.
         } while (null != data.serviceObjectValues[modIdx] && validator.isValid(data.serviceObjectValues[modIdx]));
         
+        sequenceCounter = localSequenceCount;//where we left off
+        
         data.serviceObjectKeys[modIdx] = index;
         data.serviceObjectValues[modIdx] = serviceObject;
-        
+        //Never resets the usage count, that field is use case specific and should not always be cleared.
         return index;
     }
     
@@ -142,21 +177,31 @@ public class ServiceObjectHolder<T> {
      * Side effect, if the value is invalid it is set to null to release the resources sooner.
      * 
      * @param index
-     * @return
      */
     public T getValid(final long index) {  
         //must ensure we use the same instance for the work
         ServiceObjectData<T> localData = data;
         
         int modIdx = localData.mask & (int)index;
-        return (index != localData.serviceObjectKeys[modIdx] ? null : (validator.isValid(localData.serviceObjectValues[modIdx]) ? localData.serviceObjectValues[modIdx] : null ));
+        if (index == localData.serviceObjectKeys[modIdx] && validator.isValid(localData.serviceObjectValues[modIdx])) {          
+            return localData.serviceObjectValues[modIdx];
+        }
+        return null;        
+    }
+    
+    public void resetUsageCount(final long index) {
+        data.serviceObjectLookupCounts[data.mask & (int)index] = 0;
+    }
+    
+    @Deprecated
+    public int incUsageCount(final long index) {
+        return data.serviceObjectLookupCounts[data.mask & (int)index]++;
     }
 
     /**
      * Given the index value return the value object or null.
      * 
      * @param index
-     * @return
      */
     public T get(final long index) {  
         //must ensure we use the same instance for the work
@@ -174,7 +219,6 @@ public class ServiceObjectHolder<T> {
     /**
      * Loop forever around all valid objects.
      * Only returns null when there are no valid items to loop over.
-     * @return
      */
     public T next() {
         
@@ -198,7 +242,7 @@ public class ServiceObjectHolder<T> {
     }
     
     public static long getRemovalCount(ServiceObjectHolder sho) {
-        return sho.removalCounter; 
+        return sho.removalCounter; //TODO: must update this value if we delete something from collection!
     }
     
     

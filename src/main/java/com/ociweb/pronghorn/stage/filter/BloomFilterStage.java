@@ -5,6 +5,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.BloomFilter;
 
 public class BloomFilterStage<T extends MessageSchema> extends PronghornStage {
 

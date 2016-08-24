@@ -131,7 +131,7 @@ public class SpeedTest {
             Pipe<RawDataSchema> loadedDataPipe = new Pipe<RawDataSchema>(config);
                                     
             
-            new FileBlobReadStage(gm, new RandomAccessFile(tempFile, "r"),tempFile.getAbsolutePath(), loadedDataPipe);            
+            new FileBlobReadStage(gm, tempFile.getAbsolutePath(),loadedDataPipe);            
             outputStream.reset();
             new ToOutputStreamStage(gm, loadedDataPipe, outputStream, false);
             

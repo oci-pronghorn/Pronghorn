@@ -165,9 +165,8 @@ public class SplitterStage<T extends MessageSchema> extends PronghornStage {
 			if (!Pipe.hasRoomForWrite(ss.targets[working[j]], totalPrimaryCopy)) {
 			 	working[c++] = working[j];
 			} else {
-				Pipe<S> ringBuffer = ss.targets[working[j]];					
-				copyData(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ringBuffer);				
-				Pipe.confirmLowLevelWrite(ringBuffer, totalPrimaryCopy);	
+			    Pipe.confirmLowLevelWrite(ss.targets[working[j]], totalPrimaryCopy);	
+				copyData(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ss.targets[working[j]]);				
 			}
 			j++;
 		}
@@ -176,26 +175,21 @@ public class SplitterStage<T extends MessageSchema> extends PronghornStage {
 
 	}
 
-
-	public String toString() {
-		return getClass().getSimpleName()+ " source content "+Pipe.contentRemaining(source);
-	}
-
 	private static <S extends MessageSchema> void copyData(SplitterStage<S> ss, int byteTailPos,
 								int totalBytesCopy, int primaryTailPos, int totalPrimaryCopy,
 								Pipe<S> ringBuffer) {
 		
 		//copy the bytes
-		Pipe.copyBytesFromToRing(Pipe.byteBuffer(ss.source),                   byteTailPos, ss.source.byteMask, 
-		        Pipe.byteBuffer(ringBuffer), Pipe.getBlobRingHeadPosition(ringBuffer), ringBuffer.byteMask, 
+		Pipe.copyBytesFromToRing(Pipe.blob(ss.source),                   byteTailPos, ss.source.byteMask, 
+		        Pipe.blob(ringBuffer), Pipe.getBlobRingHeadPosition(ringBuffer), ringBuffer.byteMask, 
 									  totalBytesCopy);
 		
 		Pipe.setBytesWorkingHead(ringBuffer, Pipe.addAndGetBytesHead(ringBuffer, totalBytesCopy));
 								
 		//copy the primary data
 		int headPosition = (int)Pipe.headPosition(ringBuffer);
-		Pipe.copyIntsFromToRing(Pipe.primaryBuffer(ss.source), primaryTailPos, ss.source.mask, 
-		        Pipe.primaryBuffer(ringBuffer), headPosition, ringBuffer.mask, 
+		Pipe.copyIntsFromToRing(Pipe.slab(ss.source), primaryTailPos, ss.source.mask, 
+		        Pipe.slab(ringBuffer), headPosition, ringBuffer.mask, 
 									 totalPrimaryCopy);
 		
 		Pipe.publishWorkingHeadPosition(ringBuffer, headPosition + totalPrimaryCopy);

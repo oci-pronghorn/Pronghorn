@@ -90,7 +90,7 @@ public class FileBlobRoundTripTest {
             Pipe<RawDataSchema> midCheckPipe = new Pipe<RawDataSchema>(config.grow2x());
             Pipe<RawDataSchema> outputPipe = new Pipe<RawDataSchema>(config.grow2x());
             
-            new FileBlobReadStage(gm, new RandomAccessFile(f,"r"),f.getAbsolutePath(), inputPipe);
+            new FileBlobReadStage(gm, f.getAbsolutePath(),inputPipe);
             new SplitterStage(gm, inputPipe, midCheckPipe, outputPipe);
             
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream(testSize);

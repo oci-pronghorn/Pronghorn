@@ -241,10 +241,6 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
             ss.headPos = Pipe.headPosition(ss.source);
         }
     }
-
-    public String toString() {
-        return getClass().getSimpleName()+ " source content "+Pipe.contentRemaining(source);
-    }
     
     private static class IntBufferAdapter implements ReadableByteChannel {
 

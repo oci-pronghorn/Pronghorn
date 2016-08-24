@@ -124,7 +124,6 @@ public class ColorMinusScheduler extends StageScheduler {
      * 
      * @param timeout
      * @param unit
-     * @return
      */
     public boolean awaitTermination(long timeout, TimeUnit unit) {
         

@@ -1,7 +1,6 @@
 package com.ociweb.pronghorn.stage.file;
 
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -21,7 +20,6 @@ public class FileBlobReadStage extends PronghornStage {
 
     private static final int SIZE = RawDataSchema.FROM.fragDataSize[0];
     
- //   private final RandomAccessFile inputFile;
     private final String inputPathString;
     
     private FileChannel openChannel;
@@ -31,9 +29,8 @@ public class FileBlobReadStage extends PronghornStage {
     private FileSystem fileSystem;
     private Set<OpenOption> readOptions;
     
-    public FileBlobReadStage(GraphManager graphManager, RandomAccessFile inputFile, String inputPathString, Pipe<RawDataSchema> output) {
+    public FileBlobReadStage(GraphManager graphManager, String inputPathString, Pipe<RawDataSchema> output) {
         super(graphManager, NONE, output);
-      //  this.inputFile = inputFile;
         this.inputPathString = inputPathString;
         this.output = output;
         
@@ -62,7 +59,7 @@ public class FileBlobReadStage extends PronghornStage {
             
         while (Pipe.hasRoomForWrite(output)) {
         
-            int originalBlobPosition = Pipe.bytesWorkingHeadPosition(output);      
+            int originalBlobPosition = Pipe.getBlobWorkingHeadPosition(output);      
             try {            
                 
                 //attempt to read this many bytes but may read less
