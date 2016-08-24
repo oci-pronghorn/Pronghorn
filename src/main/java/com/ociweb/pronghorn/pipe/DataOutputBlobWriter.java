@@ -4,14 +4,13 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 
 public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream implements DataOutput, Appendable {
 
     private final Pipe<S> p;
     private final byte[] byteBuffer;
     private final int byteMask;
-    
-    private ObjectOutputStream oos;
     
     private int startPosition;
     public int activePosition;
@@ -81,13 +80,14 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         Pipe.copyBytesFromToRing(byteBuffer, startPosition, byteMask, result, 0, Integer.MAX_VALUE, result.length);
         return result;
     }
+ 
     
     public void writeObject(Object object) throws IOException {
-            if (null==oos) {
-                oos = new ObjectOutputStream(this);
-            }            
-            oos.writeObject(object); //TODO:: this needs testing
+
+           	ObjectOutputStream oos = new ObjectOutputStream(this); //writes stream header
+            oos.writeObject(object);
             oos.flush();
+            
     }
     
     @Override

@@ -12,13 +12,14 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     private byte[] backing;
     private final int byteMask;
     
-    private ObjectInputStream ois;
-    
     private int length;
     private int bytesLimit;
     private int position;
     
+    private int EOF_MARKER = -1;
+    
     public DataInputBlobReader(Pipe<S> pipe) {
+    	super();
         this.pipe = pipe;
         this.backing = Pipe.blob(pipe);
         this.byteMask = Pipe.blobMask(pipe); 
@@ -90,7 +91,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     @Override
     public int read(byte[] b) {
         if ((byteMask & position) == bytesLimit) {
-            return -1;
+            return EOF_MARKER;
         }       
         
         int max = bytesRemaining(this);
@@ -103,7 +104,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     @Override
     public int read(byte[] b, int off, int len) {
         if ((byteMask & position) == bytesLimit) {
-            return -1;
+            return EOF_MARKER;
         }
         
         int max = bytesRemaining(this);
@@ -215,8 +216,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
 
     @Override
     public int read() {
-        //TODO: need to turn off at times.
-        return (byteMask & position) != bytesLimit ? backing[byteMask & position++] : -1;//isOpen?0:-1;
+        return (byteMask & position) != bytesLimit ? backing[byteMask & position++] : EOF_MARKER;//isOpen?0:-1;
     }
 
     @Override
@@ -261,11 +261,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     public Object readObject() throws ClassNotFoundException  {
         
         try {
-            if (null==ois) {
-                ois = new ObjectInputStream(this);
-            }            
-            //do we need to reset this before use?
-            return ois.readObject();
+            return new ObjectInputStream(this).readObject();
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
