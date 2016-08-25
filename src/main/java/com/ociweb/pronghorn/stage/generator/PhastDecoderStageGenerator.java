@@ -99,7 +99,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         int[] intDict = from.newIntDefaultsDictionary();
         long[] longDict = from.newLongDefaultsDictionary();
         int map = from.preambleOffset;
-        int bitMask = from.templateOffset;
+        long bitMask = from.templateOffset;
         
         //recieve pmap
         decodePmap(target);

@@ -398,7 +398,6 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         cursor++;
         int curCursor = cursor;
         int curCursor2 = cursor;
-        from.
         
         //get bitmask
         int bitMask = from.templateOffset;
@@ -448,7 +447,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             //taking in pmap
             bodyTarget.append(tab + "DataOutputBlobWriter.writePackedLong(" + writerName + ", " + pmapName + ");\n");
             //instantiating bimask
-            bodyTarget.append(tab + "int " + bitMaskName + " = 1;\n");
+            bodyTarget.append(tab + "long " + bitMaskName + " = 1;\n");
             bodyTarget.append(tab + bitMaskName + " = " + bitMaskName + " << " + (fragmentParaCount - 1) + ";\n");
             //line break for readability
             bodyTarget.append("\n");
