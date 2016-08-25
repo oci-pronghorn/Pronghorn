@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.ociweb.pronghorn.stage.generator.protoBufInterface;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
@@ -33,7 +28,6 @@ public class ProtoBuffInterface {
         this.interfaceTarget = interfaceTarget;
         this.interfaceClassName = interfaceClassName;
     }
-
     private static void generateGetter(String varName, String varType, Appendable target) {
         try {
             //make variable name go to camel case
@@ -48,7 +42,6 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
     //public void setName(String name) { this.name = name; }
     private static void generateSetter(String varName, String varType, Appendable target) {
         try {
@@ -63,7 +56,6 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
     // public boolean has()
     private static void generateHas(String varName, Appendable target) {
         try {
@@ -78,7 +70,6 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
     //public void clearName() {  }
     //ressets all fields to default values
     private static void generateClear(String varName, Appendable target) {
@@ -94,9 +85,9 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
     //public void build()
     //builds the builder
+    //TODO :build() stub is empty. 
     private static void generateBuild(String varName, Appendable target) {
         try {
             //make variable name go to camel case
@@ -110,7 +101,6 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
     // import package
     // ex. import Pronghorn.Grocery.Inventory
     // TODO: Make it work
@@ -120,13 +110,12 @@ public class ProtoBuffInterface {
             //make variable name go to camel case
             String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
             //import created
-            target.append(tab + "import " + varNameCamel +  ""
+            target.append(tab + "import " + varNameCamel +  ";"
                     + "\n");
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
     //  main method
     private static void generateMain(Appendable target) {
         try {
@@ -139,7 +128,6 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
     private void buildFirst() {
         try {
             //This is where we declare the class to the output file
@@ -186,7 +174,6 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
     public void buildClass() {
         this.buildFirst();
     }
