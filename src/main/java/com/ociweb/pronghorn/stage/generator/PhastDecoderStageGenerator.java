@@ -57,35 +57,35 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
     @Override
     protected void bodyOfNextMessageIdx(Appendable target) throws IOException {
-//        FieldReferenceOffsetManager from = MessageSchema.from(schema);
-//        
-//        int[] tokens = from.tokens;
-//        long[] scriptIds = from.fieldIdScript;
-//        String[] scriptNames = from.fieldNameScript;
-//        int[] intDict = from.newIntDefaultsDictionary();
-//        long[] longDict = from.newLongDefaultsDictionary();
-//        int i = tokens.length;
-//        int startsCount = MessageSchema.from(schema).messageStarts().length;
-//
-//        if (startsCount == 1) {
-//            target.append(tab).append("return ");
-//            Appendables.appendValue(target, MessageSchema.from(schema).messageStarts()[0]).append(";\n");
-//        } else {
-//            target.append(tab).append("return ");
-//
-//            if (null == pipeVarName) {
-//                if (!(schema instanceof MessageSchemaDynamic)) {
-//                    target.append(schema.getClass().getSimpleName()).append(".");
-//                }
-//
-//                target.append("FROM");
-//            } else {
-//                Appendables.appendStaticCall(target, Pipe.class, "from").append(pipeVarName).append(")");
-//            }
-//
-//            target.append(".messageStarts[(");
-//            Appendables.appendValue(target, startsCount).append("];\n");
-//        }
+        FieldReferenceOffsetManager from = MessageSchema.from(schema);
+        
+        int[] tokens = from.tokens;
+        long[] scriptIds = from.fieldIdScript;
+        String[] scriptNames = from.fieldNameScript;
+        int[] intDict = from.newIntDefaultsDictionary();
+        long[] longDict = from.newLongDefaultsDictionary();
+        int i = tokens.length;
+        int startsCount = MessageSchema.from(schema).messageStarts().length;
+
+        if (startsCount == 1) {
+            target.append(tab).append("return ");
+            Appendables.appendValue(target, MessageSchema.from(schema).messageStarts()[0]).append(";\n");
+        } else {
+            target.append(tab).append("return ");
+
+            if (null == pipeVarName) {
+                if (!(schema instanceof MessageSchemaDynamic)) {
+                    target.append(schema.getClass().getSimpleName()).append(".");
+                }
+
+                target.append("FROM");
+            } else {
+                Appendables.appendStaticCall(target, Pipe.class, "from").append(pipeVarName).append(")");
+            }
+
+            target.append(".messageStarts[(");
+            Appendables.appendValue(target, startsCount).append("];\n");
+        }
     }
 
     @Override

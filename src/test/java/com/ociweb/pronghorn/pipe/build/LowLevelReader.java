@@ -4,7 +4,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
-THIS IS ENCODER GENERATOR import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
+import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.stage.phast.PhastEncoder;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 
@@ -62,13 +62,11 @@ cursor = Pipe.takeMsgIdx(input);
 }
 
 private void processPipeInventoryDetails() {
-    businessMethodInventoryDetails(
-            Pipe.takeValue(input),
+    businessMethodInventoryDetails(Pipe.takeValue(input),
             Pipe.takeLong(input),
             Pipe.readASCII(input, Appendables.truncate(this.workspace0x67), Pipe.takeRingByteMetaData(input), Pipe.takeRingByteLen(input)),
             Pipe.takeValue(input),
-            Pipe.takeValue(input),
-            Pipe.readOptionalASCII(input, Appendables.truncate(this.workspace0x6A), Pipe.takeRingByteMetaData(input), Pipe.takeRingByteLen(input))    );
+            Pipe.takeValue(input), (StringBuilder) Pipe.readOptionalASCII(input, Appendables.truncate(this.workspace0x6A), Pipe.takeRingByteMetaData(input), Pipe.takeRingByteLen(input)));
 }
 
 protected void businessMethodInventoryDetails(int pStoreID, long pDate, StringBuilder workspace0x67, int pAmount, int pRecordID, StringBuilder workspace0x6A) {

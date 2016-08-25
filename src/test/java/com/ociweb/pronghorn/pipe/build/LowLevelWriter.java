@@ -17,10 +17,11 @@ private String ProductName;
 private long Date;
 private int StoreID;
 private final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
-private final long BUILD_TIME = 1471389654819L;
+private final long BUILD_TIME = 1471636213551L;
 private static final int DO_NOTHING = -3;
 
 private int nextMessageIdx() {
+    return 0;
 }
 
 @Override
