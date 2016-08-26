@@ -105,18 +105,26 @@ public class Blocker {
      * @param msNearWindow
      */
     public boolean willReleaseInWindow(long currentTimeMillis, long msNearWindow) {
-        int i = untilTimes.length;
+    	if (0==blockedCount) {
+    		return false;
+    	}
+    	long[] local = untilTimes;
+        int i = local.length;
         long limit = currentTimeMillis+msNearWindow;
         while (--i>=0) {
-            long t = untilTimes[i];
-            if (t>=currentTimeMillis && t<limit) {
-                return true;
+            long t = local[i];
+            if (t<currentTimeMillis || t>=limit) {
+            } else {
+            	return true;
             }
         }
         return false;
     }
 
     public long durationToNextRelease(long currentTimeMillis, long defaultValue) {
+    	if (0==blockedCount) {
+    		return defaultValue;
+    	}
         int i = untilTimes.length;
         long minValue = defaultValue;
         while (--i>=0) {
