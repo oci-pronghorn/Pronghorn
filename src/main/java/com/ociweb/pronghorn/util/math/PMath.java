@@ -321,7 +321,7 @@ public class PMath {
             }
             script[s++] = -1;
         }
-        System.out.println(Arrays.toString(script));
+        //System.out.println(Arrays.toString(script));
         
         return new ScriptedSchedule(commonClock, script, maxRun);
     }
