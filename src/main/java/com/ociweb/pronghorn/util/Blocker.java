@@ -32,6 +32,7 @@ public class Blocker {
      */
     public boolean until(int id, long untilTime) {
         
+    	
         assert(untilTime<System.currentTimeMillis()+(60_000*60*24)) : "until value is set too far in the future";
         
         int idx = IntHashTable.getItem(table, id);
@@ -41,6 +42,7 @@ public class Blocker {
             IntHashTable.setItem(table, id, idx);
             ids[idx-1] = id;
         }        
+        
         if (0 != untilTimes[idx-1]) {
             return false;//can not set new time the old one has not been cleared
         }
@@ -55,12 +57,17 @@ public class Blocker {
         if (0==blockedCount) {
             return none;
         }
-        int j = untilTimes.length;
+        return consumeNextReleased(now, none, untilTimes);        
+    }
+
+	private int consumeNextReleased(long now, int none, long[] local) {
+		int j = itemCount; //no need to scan above this point
+		
         long minTime = Long.MAX_VALUE;
         int minIdx = -1;
         //find the next lowest time to release
         while (--j>=0) {
-            long time = untilTimes[j];
+            long time = local[j];
             if (0!=time && time<now) {
                 if (time<=minTime) {
                     minTime=time;
@@ -73,11 +80,10 @@ public class Blocker {
             return none;            
         } else {
             blockedCount--;                
-            untilTimes[minIdx] = 0;
+            local[minIdx] = 0;
             return ids[minIdx];
         }
-        
-    }
+	}
     
     public void releaseBlocks(long now) {
         while (-1 != nextReleased(now, -1)) {            
@@ -108,8 +114,11 @@ public class Blocker {
     	if (0==blockedCount) {
     		return false;
     	}
-    	long[] local = untilTimes;
-        int i = local.length;
+    	return willReleaseInWindow(currentTimeMillis, msNearWindow, untilTimes);
+    }
+
+	private boolean willReleaseInWindow(long currentTimeMillis, long msNearWindow, long[] local) {
+		int i = itemCount; //no need to scan above this point
         long limit = currentTimeMillis+msNearWindow;
         while (--i>=0) {
             long t = local[i];
@@ -119,16 +128,17 @@ public class Blocker {
             }
         }
         return false;
-    }
+	}
 
     public long durationToNextRelease(long currentTimeMillis, long defaultValue) {
     	if (0==blockedCount) {
     		return defaultValue;
     	}
-        int i = untilTimes.length;
+        int i = itemCount; //no need to scan above this point
+        long[] local = untilTimes;
         long minValue = defaultValue;
         while (--i>=0) {
-            long t = untilTimes[i];
+            long t = local[i];
             if (t>=currentTimeMillis) {
                 long duration = t-currentTimeMillis;
                 minValue = Math.min(duration, minValue);
