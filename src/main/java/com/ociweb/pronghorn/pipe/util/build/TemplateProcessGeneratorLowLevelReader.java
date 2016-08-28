@@ -95,6 +95,9 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         
     }
     
+    protected void additionalTokens(Appendable target) throws IOException {
+    }
+    
     public void processSchema() throws IOException {
     
 
@@ -143,7 +146,7 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
 
             }   
         }
-        
+        additionalTokens(bodyTarget);
         bodyTarget.append("}\n");
     }
     
