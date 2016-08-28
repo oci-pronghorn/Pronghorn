@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.pipe.util.build;
 
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import static com.ociweb.pronghorn.util.Appendables.appendClass;
 import static com.ociweb.pronghorn.util.Appendables.appendStaticCall;
 import static com.ociweb.pronghorn.util.Appendables.appendValue;
@@ -44,6 +45,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
 
     private final String className;
     private final String baseText;
+    protected final String writerName = "writer";
     
     
     public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target, String className,
@@ -95,6 +97,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
             appendClass(bodyTarget.append("private "), pipeClass, schema.getClass()).append(pipeVarName).append(";\n");
         }
         additionalMembers(bodyTarget);
+        bodyTarget.append("DataOutputBlobWriter<" + schema.getClass().getSimpleName() + "> " + writerName + ";");
     }
 
     protected void additionalMembers(Appendable target) throws IOException {  
@@ -786,6 +789,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         bodyTarget.append("import ").append(FieldReferenceOffsetManager.class.getCanonicalName()).append(";\n");
         bodyTarget.append("import ").append(Appendables.class.getCanonicalName()).append(";\n");
         bodyTarget.append("import ").append(MessageSchemaDynamic.class.getCanonicalName()).append(";\n");
+        bodyTarget.append("import ").append(DataOutputBlobWriter.class .getCanonicalName()).append(";\n");
        
 
         additionalImports(schema, bodyTarget);

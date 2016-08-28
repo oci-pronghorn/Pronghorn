@@ -55,6 +55,8 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
     private final String packageName;
     private final String className;
     
+    protected final String readerName = "reader";
+    
     public TemplateProcessGeneratorLowLevelReader(MessageSchema schema, Appendable bodyTarget) {
         super(schema);
         
@@ -212,7 +214,6 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         bodyTarget.append("\n");
         bodyTarget.append("@Override\n");
         bodyTarget.append("public void run() {\n");
-        
         
 //        if (!Pipe.hasContentToRead(input)) {
 //            return;
@@ -945,6 +946,7 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         bodyTarget.append("import ").append(FieldReferenceOffsetManager.class.getCanonicalName()).append(";\n");
         bodyTarget.append("import ").append(Appendables.class.getCanonicalName()).append(";\n");
         bodyTarget.append("import ").append(MessageSchemaDynamic.class.getCanonicalName()).append(";\n");
+        bodyTarget.append("import ").append(DataInputBlobReader.class .getCanonicalName()).append(";\n");
         additionalImports(schema, bodyTarget);
         
         bodyTarget.append("public class ").append(className).append(" implements Runnable {\n");
@@ -987,6 +989,12 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
             bodyTarget.append("private LowLevelStateManager navState;\n");
         }
         appendClass(bodyTarget.append("private "), pipeClass, schema.getClass()).append(pipeVarName).append(";\n");
+        bodyTarget.append("DataInputBlobReader<" + schema.getClass().getSimpleName() + "> " + readerName + ";");
+        //put schema into code
+        from.appendConstuctionSource(bodyTarget);
+
+
+
         
         
         
