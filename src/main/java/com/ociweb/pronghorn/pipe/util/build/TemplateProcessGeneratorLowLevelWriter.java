@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.pipe.util.build;
 
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import static com.ociweb.pronghorn.util.Appendables.appendClass;
 import static com.ociweb.pronghorn.util.Appendables.appendStaticCall;
 import static com.ociweb.pronghorn.util.Appendables.appendValue;
@@ -788,6 +789,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         bodyTarget.append("import ").append(FieldReferenceOffsetManager.class.getCanonicalName()).append(";\n");
         bodyTarget.append("import ").append(Appendables.class.getCanonicalName()).append(";\n");
         bodyTarget.append("import ").append(MessageSchemaDynamic.class.getCanonicalName()).append(";\n");
+        bodyTarget.append("import ").append(DataOutputBlobWriter.class .getCanonicalName()).append(";\n");
        
 
         additionalImports(schema, bodyTarget);
@@ -828,7 +830,6 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
                 bodyTarget.append("@Override\n");
             }
             bodyTarget.append("public void startup() {\n");
-            bodyTarget.append(writerName + " = new DataOutputBlobWriter<" + schema.getClass().getSimpleName() + ">(input);\n");
             bodyTarget.append(tab).append("navState").append(" = new ");
             bodyTarget.append(LowLevelStateManager.class.getSimpleName()).append("(");
             if (buildFullStageWritingToPipe()) {
