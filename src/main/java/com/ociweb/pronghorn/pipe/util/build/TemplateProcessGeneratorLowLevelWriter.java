@@ -44,6 +44,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
 
     private final String className;
     private final String baseText;
+    protected final String writerName = "writer";
     
     
     public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target, String className,
@@ -95,6 +96,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
             appendClass(bodyTarget.append("private "), pipeClass, schema.getClass()).append(pipeVarName).append(";\n");
         }
         additionalMembers(bodyTarget);
+        bodyTarget.append("DataOutputBlobWriter<" + schema.getClass().getSimpleName() + "> " + writerName + ";");
     }
 
     protected void additionalMembers(Appendable target) throws IOException {  
@@ -826,6 +828,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
                 bodyTarget.append("@Override\n");
             }
             bodyTarget.append("public void startup() {\n");
+            bodyTarget.append(writerName + " = new DataOutputBlobWriter<" + schema.getClass().getSimpleName() + ">(input);\n");
             bodyTarget.append(tab).append("navState").append(" = new ");
             bodyTarget.append(LowLevelStateManager.class.getSimpleName()).append("(");
             if (buildFullStageWritingToPipe()) {
