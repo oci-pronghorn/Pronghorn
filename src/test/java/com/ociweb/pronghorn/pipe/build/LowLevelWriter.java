@@ -19,10 +19,15 @@ private long Date;
 private int StoreID;
 DataOutputBlobWriter<MessageSchemaDynamic> writer;
 private final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
+<<<<<<< HEAD
 private final long BUILD_TIME = 1472580752732L;
+=======
+private final long BUILD_TIME = 1471636213551L;
+>>>>>>> af0baa22fd0eb029000b1b2dd62042b4e0bfc8e9
 private static final int DO_NOTHING = -3;
 
 private int nextMessageIdx() {
+    return 0;
 }
 
 @Override

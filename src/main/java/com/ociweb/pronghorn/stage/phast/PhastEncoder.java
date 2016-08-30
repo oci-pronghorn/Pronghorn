@@ -89,13 +89,13 @@ public class PhastEncoder {
 		return pmap;
 	}
 	
-	public static void encodeIntPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, int value) {
+	public static void encodeIntPresent(DataOutputBlobWriter writer, long pmapHeader, long bitMask, int value) {
         if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
             DataOutputBlobWriter.writePackedInt(writer, value);
         }
     }
 
-	public static void encodeDeltaInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx, int value) {
+	public static void encodeDeltaInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx, int value) {
         if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
             DataOutputBlobWriter.writePackedInt(writer, value-intDictionary[idx]);
             intDictionary[idx] = value;
@@ -106,7 +106,7 @@ public class PhastEncoder {
     }
 
     
-	public static void encodeDeltaLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int idx, int bitMask, long value) {
+	public static void encodeDeltaLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int idx, long bitMask, long value) {
         if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
             
             DataOutputBlobWriter.writePackedLong(writer, value-longDictionary[idx]);
@@ -115,7 +115,7 @@ public class PhastEncoder {
     }
     
     //this method encodes a string
-	public static void encodeString(DataOutputBlobWriter writer, String value, long pmapHeader, int bitMask) throws IOException{
+	public static void encodeString(DataOutputBlobWriter writer, String value, long pmapHeader, long bitMask) throws IOException{
 		if(MOST_FREQUENT_CASE == (pmapHeader&bitMask)){
 			//encode -63 so it knows it is variable length
 			//make constant -63
@@ -127,14 +127,14 @@ public class PhastEncoder {
     }
     
     //this method increments a dictionary value by one, then writes it to the pipe
-	public static void incrementInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
+	public static void incrementInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx){
     	if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
     		intDictionary[idx]++;
     	}
     }
     
     //this method just uses the previous value that was sent
-	public static void copyInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx, int value){
+	public static void copyInt(int[] intDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx, int value){
     	if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
     		DataOutputBlobWriter.writePackedInt(writer, intDictionary[idx]);
     	}
@@ -144,7 +144,7 @@ public class PhastEncoder {
     }
     
     //encodes the default value from the default value dictionary
-	public static void encodeDefaultInt(int[] defaultIntDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitmask, int idx, int value){
+	public static void encodeDefaultInt(int[] defaultIntDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitmask, int idx, int value){
     	if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)){
     		DataOutputBlobWriter.writePackedInt(writer, defaultIntDictionary[idx]);
     	}
@@ -154,21 +154,21 @@ public class PhastEncoder {
     }
     
     //encodes long that is present in the pmap
-	public static void encodeLongPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, long value) {
+	public static void encodeLongPresent(DataOutputBlobWriter writer, long pmapHeader, long bitMask, long value) {
         if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
         	DataOutputBlobWriter.writePackedLong(writer, value);
         }
     }
     
     //this method increments a dictionary value by one, then writes it to the pipe
-	public static void incrementLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
+	public static void incrementLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx){
     	if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
     		longDictionary[idx]++;
     	}
     }
     
     //this method just uses the previous value that was sent
-	public static void copyLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx, long value){
+	public static void copyLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx, long value){
     	if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
     		DataOutputBlobWriter.writePackedLong(writer, longDictionary[idx]);
     	}
@@ -178,7 +178,7 @@ public class PhastEncoder {
     }
     
     //encodes default value for a long
-	public static void encodeDefaultLong(long[] defaultLongDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitmask, int idx, long value){
+	public static void encodeDefaultLong(long[] defaultLongDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitmask, int idx, long value){
     	if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)){
     		DataOutputBlobWriter.writePackedLong(writer, defaultLongDictionary[idx]);
     	}
@@ -188,21 +188,21 @@ public class PhastEncoder {
     }
     
     //encodes short that is present in the pmap
-	public static void encodeShortPresent(DataOutputBlobWriter writer, long pmapHeader, int bitMask, short value) {
+	public static void encodeShortPresent(DataOutputBlobWriter writer, long pmapHeader, long bitMask, short value) {
         if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
         	DataOutputBlobWriter.writePackedShort(writer, value);
         }
     }
     
     //this method increments a dictionary value by one, then writes it to the pipe
-	public static void incrementShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx){
+	public static void incrementShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx){
     	if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
     		shortDictionary[idx]++;
     	}
     }
     
     //this method just uses the previous value that was sent
-	public static void copyShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitMask, int idx, short value){
+	public static void copyShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx, short value){
     	if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
     		DataOutputBlobWriter.writePackedShort(writer, shortDictionary[idx]);
     	}
@@ -212,7 +212,7 @@ public class PhastEncoder {
     }
     
     //encodes default value for a short
-	public static void encodeDefaultShort(short[] defaultShortDictionary, DataOutputBlobWriter writer, long pmapHeader, int bitmask, int idx, short value){
+	public static void encodeDefaultShort(short[] defaultShortDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitmask, int idx, short value){
     	if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)){
     		DataOutputBlobWriter.writePackedShort(writer, defaultShortDictionary[idx]);
     	}
@@ -222,7 +222,7 @@ public class PhastEncoder {
     }
     
     //encodes the change in value of a short
-	public static void encodeDeltaShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int idx, int bitMask, short value) {
+	public static void encodeDeltaShort(short[] shortDictionary, DataOutputBlobWriter writer, long pmapHeader, int idx, long bitMask, short value) {
         if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
             DataOutputBlobWriter.writePackedShort(writer, (short)(value-shortDictionary[idx]));
             shortDictionary[idx] = value;             

@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.ociweb.pronghorn.stage.generator.protoBufInterface;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
@@ -15,10 +10,6 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- *
- * @author jake
- */
 public class ProtoBuffInterface {
 
     private PhastDecoderStageGenerator decoderGenerator;
@@ -37,7 +28,6 @@ public class ProtoBuffInterface {
         this.interfaceTarget = interfaceTarget;
         this.interfaceClassName = interfaceClassName;
     }
-
     private static void generateGetter(String varName, String varType, Appendable target) {
         try {
             //make variable name go to camel case
@@ -52,7 +42,6 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
     //public void setName(String name) { this.name = name; }
     private static void generateSetter(String varName, String varType, Appendable target) {
         try {
@@ -67,14 +56,13 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
     // public boolean has()
     private static void generateHas(String varName, Appendable target) {
         try {
             //make variable name go to camel case
             String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
             //Has method generated
-            target.append(tab +"public boolean" + " has " + varNameCamel + "(){"
+            target.append(tab +"public boolean" + " has" + varNameCamel + "(){"
                     + "\n"
                     + "\n"
                     + tab +  "}\n");
@@ -82,7 +70,64 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
+    //public void clearName() {  }
+    //ressets all fields to default values
+    private static void generateClear(String varName, Appendable target) {
+        try {
+            //make variable name go to camel case
+            String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
+            //Clear method generated
+            target.append(tab + "public void" + " clear" + varNameCamel +  "(){"
+                    + "\n"
+                    + "\n"
+                    + tab +  "}\n");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    //public void build()
+    //builds the builder
+    //TODO :build() stub is empty. 
+    private static void generateBuild(String varName, Appendable target) {
+        try {
+            //make variable name go to camel case
+            String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
+            //Build method generated
+            target.append(tab + "public void" + " build" + varNameCamel +  "(){"
+                    + "\n"
+                    + "\n"
+                    + tab +  "}\n");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    // import package
+    // ex. import Pronghorn.Grocery.Inventory
+    // TODO: Make it work
+    // "Working" Stub
+    private static void generateImport(String varName, Appendable target) {
+        try {
+            //make variable name go to camel case
+            String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
+            //import created
+            target.append(tab + "import " + varNameCamel +  ";"
+                    + "\n");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    //  main method
+    private static void generateMain(Appendable target) {
+        try {
+            // Empty Main Created
+            target.append(tab + "public static void main(String[] args) throws Exception {"
+                     + "\n"
+                    + "\n"
+                    + tab +  "}\n");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
     private void buildFirst() {
         try {
             //This is where we declare the class to the output file
@@ -100,20 +145,26 @@ public class ProtoBuffInterface {
                 int type = TokenBuilder.extractType(tokens[i]);
 
                 if (TypeMask.isLong(type)) {
-                    //set
+                    //get
                     generateGetter(scriptNames[i], "long", interfaceTarget);
-                    //get
+                    //gas
                     generateHas(scriptNames[i], interfaceTarget);
+                    //clear
+                    generateClear(scriptNames[i], interfaceTarget);
                 } else if (TypeMask.isInt(type)) {
-                    //set
+                    //get
                     generateGetter(scriptNames[i], "int", interfaceTarget);
-                    //get
+                    //gas
                     generateHas(scriptNames[i], interfaceTarget);
+                    //clear
+                    generateClear(scriptNames[i], interfaceTarget);
                 } else if (TypeMask.isText(type)) {
-                    //set
-                    generateGetter(scriptNames[i], "String", interfaceTarget);
                     //get
+                    generateGetter(scriptNames[i], "String", interfaceTarget);
+                    //has
                     generateHas(scriptNames[i], interfaceTarget);
+                    //clear
+                    generateClear(scriptNames[i], interfaceTarget);
                 }
                 
             }
@@ -123,7 +174,6 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
     public void buildClass() {
         this.buildFirst();
     }
