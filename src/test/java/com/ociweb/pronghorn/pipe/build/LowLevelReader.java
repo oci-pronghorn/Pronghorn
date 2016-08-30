@@ -4,7 +4,8 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
-THIS IS ENCODER GENERATOR import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.stage.phast.PhastEncoder;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 
@@ -13,13 +14,16 @@ public class LowLevelReader implements Runnable {
 private void requestShutdown() {};
 private StringBuilder workspace0x67;
 private StringBuilder workspace0x6A;
-private String Units;
-private int RecordID;
-private int Amount;
-private String ProductName;
-private long Date;
-private int StoreID;
 private Pipe<MessageSchemaDynamic> input;
+DataInputBlobReader<MessageSchemaDynamic> reader;public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
+    new int[]{0xc1400007,0x88200000,0x98800000,0xa0000000,0x80800001,0x80a00002,0xa4000001,0xc1200007},
+    (short)0,
+    new String[]{"InventoryDetails","StoreID","Date","ProductName","Amount","RecordID","Units",null},
+    new long[]{1, 101, 102, 103, 104, 105, 106, 0},
+    new String[]{"global",null,null,null,null,null,null,null},
+    "groceryExample.xml",
+    new long[]{2, 2, 0},
+    new int[]{2, 2, 0});
 
 // GENERATED LOW LEVEL READER 
 // # Low level API is the fastest way of reading from a pipe in a business semantic way. 
@@ -31,7 +35,7 @@ private Pipe<MessageSchemaDynamic> input;
 // # Low level API is CAN NOT be extensiable in the sense of dealing with mising or extra/new fields. 
 // # Low level API is CAN NOT be extensiable in the sense of dealing with fields encoded with different types. 
 private static final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
-private static final long BUILD_TIME = 1471387504767L;
+private static final long BUILD_TIME = 1472582277744L;
 
 public void startup() {
     Pipe.from(input).validateGUID(FROM_GUID);
@@ -73,10 +77,6 @@ private void processPipeInventoryDetails() {
 
 protected void businessMethodInventoryDetails(int pStoreID, long pDate, StringBuilder workspace0x67, int pAmount, int pRecordID, StringBuilder workspace0x6A) {
 DataOutputBlobWriter<MessageSchemaDynamic> writer = new DataOutputBlobWriter<MessageSchemaDynamic>(input);
-    int[] previousIntDictionary = new int[5];
-    long[] previousLongDictionary = new long[5];
-    int[] defIntDictionary = new int[5];
-    long[] defLongDictionary = new long[5];
     long map = 0;
     map = PhastEncoder.pmapBuilderInt(map, 0x88200000, pStoreID, previousIntDictionary[0], defIntDictionary[0], false);
     map = PhastEncoder.pmapBuilderLong(map, 0x98800000, pDate, previousLongDictionary[1], defLongDictionary[1], false);

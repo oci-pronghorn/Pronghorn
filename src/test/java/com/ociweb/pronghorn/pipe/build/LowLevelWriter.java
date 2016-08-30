@@ -4,6 +4,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.stage.phast.PhastDecoder;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
@@ -16,8 +17,9 @@ private int Amount;
 private String ProductName;
 private long Date;
 private int StoreID;
+DataOutputBlobWriter<MessageSchemaDynamic> writer;
 private final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
-private final long BUILD_TIME = 1471389654819L;
+private final long BUILD_TIME = 1472580752732L;
 private static final int DO_NOTHING = -3;
 
 private int nextMessageIdx() {

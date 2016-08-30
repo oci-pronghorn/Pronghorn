@@ -380,11 +380,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     //method to instatiate dictionaries and pmap
+    //TODO:generate dictionaries
     private void generateVariables(MessageSchema schema, Appendable target) throws IOException {
-        bodyTarget.append(tab + "int[] " + intDictionaryName + " = new int[" + (fragmentParaCount - 1) + "];\n");
-        bodyTarget.append(tab + "long[] " + longDictionaryName + " = new long[" + (fragmentParaCount - 1) + "];\n");
-        bodyTarget.append(tab + "int[] " + defIntDictionaryName + " = new int[" + (fragmentParaCount - 1) + "];\n");
-        bodyTarget.append(tab + "long[] " + defLongDictionaryName + " = new long[" + (fragmentParaCount - 1) + "];\n");
         bodyTarget.append(tab + "long " + pmapName + " = 0;\n");
     }
 
