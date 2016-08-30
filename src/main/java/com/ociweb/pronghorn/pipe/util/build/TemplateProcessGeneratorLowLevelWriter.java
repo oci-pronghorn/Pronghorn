@@ -97,7 +97,7 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
             appendClass(bodyTarget.append("private "), pipeClass, schema.getClass()).append(pipeVarName).append(";\n");
         }
         additionalMembers(bodyTarget);
-        bodyTarget.append("DataOutputBlobWriter<" + schema.getClass().getSimpleName() + "> " + writerName + ";");
+        from.appendConstuctionSource(bodyTarget);
     }
 
     protected void additionalMembers(Appendable target) throws IOException {  

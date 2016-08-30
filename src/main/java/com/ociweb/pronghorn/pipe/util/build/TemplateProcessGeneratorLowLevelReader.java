@@ -95,6 +95,9 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         
     }
     
+    protected void additionalMembers(Appendable target) throws IOException {
+    }
+    
     public void processSchema() throws IOException {
     
 
@@ -143,7 +146,7 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
 
             }   
         }
-        
+        additionalMembers(bodyTarget);
         bodyTarget.append("}\n");
     }
     
@@ -989,7 +992,6 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
             bodyTarget.append("private LowLevelStateManager navState;\n");
         }
         appendClass(bodyTarget.append("private "), pipeClass, schema.getClass()).append(pipeVarName).append(";\n");
-        bodyTarget.append("DataInputBlobReader<" + schema.getClass().getSimpleName() + "> " + readerName + ";");
         //put schema into code
         from.appendConstuctionSource(bodyTarget);
 
