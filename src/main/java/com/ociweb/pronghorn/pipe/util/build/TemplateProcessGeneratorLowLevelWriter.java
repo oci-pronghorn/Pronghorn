@@ -819,11 +819,11 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         final FieldReferenceOffsetManager from = MessageSchema.from(schema);
         if (!from.hasSimpleMessagesOnly) {
             
-            if (!buildFullStageWritingToPipe() && (schema instanceof MessageSchemaDynamic)) {
-                
-                MessageSchema.from(schema).appendConstuctionSource(bodyTarget);
-                
-            }
+//            if (!buildFullStageWritingToPipe() && (schema instanceof MessageSchemaDynamic)) {
+//                
+//                MessageSchema.from(schema).appendConstuctionSource(bodyTarget);
+//                
+//            }
                         
             
             if (!baseText.contains("Runnable")) {
