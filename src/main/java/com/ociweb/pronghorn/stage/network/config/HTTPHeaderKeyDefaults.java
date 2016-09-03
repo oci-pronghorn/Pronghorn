@@ -8,7 +8,7 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
     CONNECTION("Connection: %b"),
     USER_AGENT("User-Agent: %b"),
     TRANSFER_ENCODING("Transfer-Encoding: chunked"),
-    CONTENT_LENGTH("Content-Length: %b"),
+    CONTENT_LENGTH("Content-Length: %u"), //note this captures an integer not a string
     CONTENT_TYPE("Content-Type: %b"),
     ACCEPT("Accept: %b"),
     ACCEPT_CHARSET("Accept-Charset: %b"),
