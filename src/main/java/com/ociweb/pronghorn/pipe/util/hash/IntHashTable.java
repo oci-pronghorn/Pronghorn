@@ -67,9 +67,10 @@ public class IntHashTable {
 
 		int mask = ht.mask;
 		int hash = MurmurHash.hash32finalizer(key);
-		long block = ht.data[hash & mask];
-		while (((int)block) != key && block != 0) { 			
-			block = ht.data[++hash & mask];
+		long[] data2 = ht.data;
+		long block = data2[hash & mask];
+		while ((block != 0) && ((int)block) != key) { 			
+			block = data2[++hash & mask];
 		}
 		return (int)(block >> 32);
 	}

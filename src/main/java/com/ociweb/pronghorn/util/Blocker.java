@@ -1,12 +1,8 @@
 package com.ociweb.pronghorn.util;
 
-import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
-
 public class Blocker {
 
-    private final IntHashTable table;
     private final long[] untilTimes;
-    private final int[] ids;
     private int itemCount;
     private int blockedCount;
     
@@ -17,10 +13,7 @@ public class Blocker {
     }
     
     public Blocker(int maxUniqueValues) {
-        //we add extra padding to the hash table to avoid collisions which improves the speed.
-        table = new IntHashTable( 2 + (int) Math.ceil(Math.log(maxUniqueValues)/Math.log(2)) );
         untilTimes = new long[maxUniqueValues];
-        ids = new int[maxUniqueValues];
     }
     
     /**
@@ -35,13 +28,8 @@ public class Blocker {
     	
         assert(untilTime<System.currentTimeMillis()+(60_000*60*24)) : "until value is set too far in the future";
         
-        int idx = IntHashTable.getItem(table, id);
-        if (0==idx) {
-            //new idx
-            idx = ++itemCount;
-            IntHashTable.setItem(table, id, idx);
-            ids[idx-1] = id;
-        }        
+        int idx = id+1;
+        itemCount = Math.max(itemCount, idx);
         
         if (0 != untilTimes[idx-1]) {
             return false;//can not set new time the old one has not been cleared
@@ -68,11 +56,9 @@ public class Blocker {
         //find the next lowest time to release
         while (--j>=0) {
             long time = local[j];
-            if (0!=time && time<now) {
-                if (time<=minTime) {
-                    minTime=time;
+            if (0!=time && time<now && time<=minTime) {                
+                    minTime = time;
                     minIdx = j;
-                }
             }
         }
         
@@ -81,7 +67,7 @@ public class Blocker {
         } else {
             blockedCount--;                
             local[minIdx] = 0;
-            return ids[minIdx];
+            return minIdx;
         }
 	}
     
@@ -92,12 +78,12 @@ public class Blocker {
     
     
     public boolean isBlocked(int id) {        
-        int item = IntHashTable.getItem(table, id);
+        int item = id+1;
         return (item<1) ? false : 0!=untilTimes[item-1];
     }
     
     public long isBlockedUntil(int id) {        
-        int item = IntHashTable.getItem(table, id);
+        int item = id+1;
         return (item<1) ? 0 : (0==untilTimes[item-1]? 0 : untilTimes[item-1]);
     }
     
@@ -107,22 +93,19 @@ public class Blocker {
     /**
      * Returns true if any block will be released in the defined window.
      * 
-     * @param currentTimeMillis
-     * @param msNearWindow
      */
-    public boolean willReleaseInWindow(long currentTimeMillis, long msNearWindow) {
+    public boolean willReleaseInWindow(long limit) {
     	if (0==blockedCount) {
     		return false;
     	}
-    	return willReleaseInWindow(currentTimeMillis, msNearWindow, untilTimes);
+    	return willReleaseInWindow(limit, untilTimes);
     }
 
-	private boolean willReleaseInWindow(long currentTimeMillis, long msNearWindow, long[] local) {
-		int i = itemCount; //no need to scan above this point
-        long limit = currentTimeMillis+msNearWindow;
+	private boolean willReleaseInWindow(long limit, long[] local) {
+		int i = itemCount; //no need to scan above this point;
         while (--i>=0) {
             long t = local[i];
-            if (t<currentTimeMillis || t>=limit) {
+            if (0==t || t>=limit) {
             } else {
             	return true;
             }

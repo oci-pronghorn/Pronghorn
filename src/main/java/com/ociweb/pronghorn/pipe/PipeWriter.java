@@ -338,11 +338,6 @@ public class PipeWriter {
         PipeWriter.writeSpecialBytesPosAndLen(pipe, loc, byteCount, startPosition);
     }
 
-    @Deprecated
-    public static ByteBuffer wrappedUnstructuredLayoutBuffer(Pipe<?> target, int loc) {
-    	return wrappedUnstructuredLayoutBufferOpen(target,loc);
-    }
-    
     /**
      * Does not require tryWrite to be called first, we only need to check that there is room to write. This is for supporting buffer write
      * to determine if we have data that can be written.
@@ -352,6 +347,7 @@ public class PipeWriter {
      */
 	public static ByteBuffer wrappedUnstructuredLayoutBufferOpen(Pipe<?> target, int loc) {
 		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
+		assert(PipeWriter.hasRoomForWrite(target)) : "must protect by ensuring we have room first";
 		return Pipe.wrappedBlobForWriting(Pipe.storeBlobWorkingHeadPosition(target), target);
 	}
 	

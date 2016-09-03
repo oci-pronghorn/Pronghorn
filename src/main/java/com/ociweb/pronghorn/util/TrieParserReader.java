@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 
 public class TrieParserReader {
     
@@ -177,6 +178,27 @@ public class TrieParserReader {
         that.sourceLen     = length;
         that.sourceMask    = mask;        
     }
+    
+    /**
+     * Save position and return the current length
+     * @param that
+     * @param target
+     * @param offset
+     * @return length of remaining position.
+     */
+    public static int savePositionMemo(TrieParserReader that, int[] target, int offset) {
+    	target[offset] = that.sourcePos;
+    	return target[offset+1] = that.sourceLen;
+    }
+    
+
+    public static void loadPositionMemo(TrieParserReader that, int[] source, int offset) {
+   		that.sourcePos = source[offset];
+   		that.sourceLen = source[offset+1];
+    }
+    
+    
+    
     
     public static int debugAsUTF8(TrieParserReader that, Appendable target) {
         return debugAsUTF8(that,target, Integer.MAX_VALUE);
@@ -819,16 +841,28 @@ public class TrieParserReader {
         reader.capturedValues[reader.capturedPos++] = (base<<16) | (0xFFFF & intLength) ; //Base: 10 or 16, IntLength:  
         
     }
+    
+    public static long capturedLongField(TrieParserReader reader, int idx) {
+    	
+    	 int pos = idx*4;
+         
+         int sign = reader.capturedValues[pos++];
+         assert(sign==0);
+    	
+         long value = reader.capturedValues[pos++];
+         value = (value<<32) | (0xFFFFFFFF&reader.capturedValues[pos++]);
+         assert(10 == reader.capturedValues[pos++]);
+         
+         return value;
+    }
 
 
     public static void parseSetup(TrieParserReader trieReader, Pipe<?> input) {
         int meta = Pipe.takeRingByteMetaData(input);
         int length    = Pipe.takeRingByteLen(input);
         parseSetup(trieReader, Pipe.byteBackingArray(meta, input), Pipe.bytePosition(meta, input, length), length, Pipe.blobMask(input));
-        
-        //logger.warn("TO Parse:{}",Pipe.readASCII(input, new StringBuilder(), meta, length));
-        
     }
+    
     
     public static int capturedFieldCount(TrieParserReader reader) {
         return reader.capturedPos>>2;
@@ -929,6 +963,20 @@ public class TrieParserReader {
         }
         return totalBytes;
     }
+    
+    public static int writeCapturedUTF8ToPipe(TrieParserReader reader, Pipe<?> target, int idx, int loc) {
+    	int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int bpos = reader.capturedValues[pos++];
+        int blen = reader.capturedValues[pos++];
+        PipeWriter.writeBytes(target, loc, reader.capturedBlobArray, bpos, blen, reader.capturedValues[pos++]);
+        
+        return blen;
+
+    }
+    
     
     public static int writeCapturedValuesToDataOutput(TrieParserReader reader, DataOutputBlobWriter target) throws IOException {
         int limit = reader.capturedPos;

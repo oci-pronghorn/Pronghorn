@@ -10,7 +10,7 @@ public class BlockerTest {
     @Test
     public void simpleUsageTest() {
         
-        Blocker block = new Blocker(12);
+        Blocker block = new Blocker(50);
         
         block.until(34, 201);
         block.until(17, 21);
