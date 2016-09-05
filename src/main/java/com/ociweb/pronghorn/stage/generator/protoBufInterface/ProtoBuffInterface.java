@@ -56,6 +56,7 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+    
     // public boolean has()
     private static void generateHas(String varName, Appendable target) {
         try {
@@ -64,6 +65,17 @@ public class ProtoBuffInterface {
             //Has method generated
             target.append(tab +"public boolean" + " has" + varNameCamel + "(){"
                     + "\n"
+                    + "\n"
+                    + tab +  "}\n");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+     // public boolean has()
+    private static void generateCreate(String varName, Appendable target) {
+        try {
+            target.append(tab +"private static" + " create(){"
+                    + "return new buildFirst();"
                     + "\n"
                     + tab +  "}\n");
         } catch (IOException ex) {
@@ -85,9 +97,52 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+    // cloneName()
+    // clones the field
+    private static void generateClone(Appendable target) {
+        try {
+            //Clone method generated
+            target.append(tab + "public void" + " clone(){"
+                    + "\n"
+                    + "return create().mergeFrom(buildFirst());"
+                    + "\n"
+                    + tab +  "}\n");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    // addName()
+    // add a value
+    private static void generateAdd(String varName, String varType, Appendable target) {
+        try {
+            //make variable name go to camel case
+            String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
+            //Add method generated
+             target.append(tab + "public void" + " add" + varNameCamel + "(" + varType + " " + varName
+                    + ") {\n"
+                    + "\n"
+                    + tab +  "}\n");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    private static void generateList(String varName, Appendable target) {
+        try {
+             //List method generated
+             target.append(tab + "public java.util.List<java.lang.Integer>" 
+                    // getList() { return varName; }
+                    + " {\n"
+                    + "return " + varName + "_;"
+                    + "\n"
+                    + tab +  "}\n");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
     //public void build()
     //builds the builder
     //TODO :build() stub is empty. 
+    // is Build same as buildFirst?
     private static void generateBuild(String varName, Appendable target) {
         try {
             //make variable name go to camel case
@@ -95,6 +150,25 @@ public class ProtoBuffInterface {
             //Build method generated
             target.append(tab + "public void" + " build" + varNameCamel +  "(){"
                     + "\n"
+                    + "\n"
+                    + tab +  "}\n");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    //mergeFrom()
+    private static void generateMergeFrom(String locationMessage, String messageType, Appendable target) {
+         try {
+            //mergeFrom method generated
+            target.append(tab + "public Builder mergeFrom(" + locationMessage + " other){"
+                    + "\n"
+                    + "if (other " + messageType + ") {"
+                    + "\n"
+                    + "return mergeFrom((" + messageType + ")other);"
+                    + "\n"
+                    + "else {" + "\n"
+                    + "super.mergeFrom(other);" + "\n"
+                    + "return this;" + "\n" + "}"
                     + "\n"
                     + tab +  "}\n");
         } catch (IOException ex) {
@@ -117,6 +191,7 @@ public class ProtoBuffInterface {
         }
     }
     //  main method
+    // Probably not used
     private static void generateMain(Appendable target) {
         try {
             // Empty Main Created
