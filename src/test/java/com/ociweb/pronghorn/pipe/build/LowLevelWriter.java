@@ -17,17 +17,31 @@ private int Amount;
 private String ProductName;
 private long Date;
 private int StoreID;
-DataOutputBlobWriter<MessageSchemaDynamic> writer;
+public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
+    new int[]{0xc1400007,0x88200000,0x98800000,0xa0000000,0x80800001,0x80a00002,0xa4000001,0xc1200007},
+    (short)0,
+    new String[]{"InventoryDetails","StoreID","Date","ProductName","Amount","RecordID","Units",null},
+    new long[]{1, 101, 102, 103, 104, 105, 106, 0},
+    new String[]{"global",null,null,null,null,null,null,null},
+    "groceryExample.xml",
+    new long[]{2, 2, 0},
+    new int[]{2, 2, 0});
+
+private long[] longDictionary;
+private int[] intDictionary;
+DataInputBlobReader<MessageSchemaDynamic> reader = new DataInputBlobReader<MessageSchemaDynamic>(output);
+
 private final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
-<<<<<<< HEAD
-private final long BUILD_TIME = 1472580752732L;
-=======
-private final long BUILD_TIME = 1471636213551L;
->>>>>>> af0baa22fd0eb029000b1b2dd62042b4e0bfc8e9
+private final long BUILD_TIME = 1473087641947L;
 private static final int DO_NOTHING = -3;
 
 private int nextMessageIdx() {
     return 0;
+}
+
+public void startup(){
+    intDictionary = FROM.newIntDefaultsDictionary();
+    longDictionary = FROM.newLongDefaultsDictionary();
 }
 
 @Override
@@ -49,13 +63,21 @@ public void run() {
 }
 
 private void processInventoryDetails() {
+    long bitMask = 1;
     long map = DataInputBlobReader.readPackedLong(reader);
+    bitMask = bitMask << 1;
     StoreID = PhastDecoder.decodeCopyInt(intDictionary, reader, map, 1, bitMask);
+    bitMask = bitMask << 1;
     Date = PhastDecoder.decodeDeltaLong(longDictionary, reader, map, 2, bitMask);
+    bitMask = bitMask << 1;
     ProductName = PhastDecoder.decodeString(reader);
-    Amount = PhastDecoder.decodeDeltaInt(intDictionary, reader, map, 100, bitMask, intVal);
+    bitMask = bitMask << 1;
+    Amount = PhastDecoder.decodeDeltaInt(intDictionary, reader, map, 100, bitMask);
+    bitMask = bitMask << 1;
     RecordID = PhastDecoder.decodeIncrementInt(intDictionary, map, 5, bitMask);
+    bitMask = bitMask << 1;
     Units = PhastDecoder.decodeString(reader);
+    bitMask = bitMask << 1;
 }
 
 private void processPipe1WriteInventoryDetails( int pStoreID,long pDate,CharSequence pProductName,int pAmount,int pRecordID,CharSequence pUnits) {

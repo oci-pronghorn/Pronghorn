@@ -55,6 +55,18 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
 
+    protected void generateStartup(Appendable target){
+        try{
+            target.append("/nPublic void static startup(){/n");
+            target.append(intDictionaryName + " = FROM.newIntDefaultsDictionary();/n");
+            target.append(longDictionaryName + " = FROM.newLongDefaultsDictionary();/n");
+            target.append("}/n");
+        }
+        catch (IOException e) {
+        throw new RuntimeException(e);
+        }
+    }
+
     @Override
     protected void bodyOfNextMessageIdx(Appendable target) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
@@ -88,6 +100,23 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
 
+    protected void lsitMembers(Appendable target) throws IOException {
+        FieldReferenceOffsetManager from = MessageSchema.from(schema);
+        int[] tokens = from.tokens;
+        int i = tokens.length;
+        String[] scriptNames = from.fieldNameScript;
+
+        while (--i >= 0) {
+            int type = TokenBuilder.extractType(tokens[i]);
+            if(TypeMask.isLong(type)|| TypeMask.isInt(type)||TypeMask.isText(type))
+                target.append(scriptNames[i]);
+            if(i != 0){
+                target.append(",");
+            }
+        }
+
+
+    }
     @Override
     protected void bodyOfBusinessProcess(Appendable target, int cursor, int firstField, int fieldCount) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
@@ -98,9 +127,13 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         String[] scriptNames = from.fieldNameScript;
         int[] intDict = from.newIntDefaultsDictionary();
         long[] longDict = from.newLongDefaultsDictionary();
-        int map = from.preambleOffset;
-        long bitMask = from.templateOffset;
-        
+
+        //these fields on if supporting preamble
+        //int map = from.preambleOffset;
+        //long bitMask = from.templateOffset;
+
+        //bitmask goes here
+        target.append("long " + bitMaskName + " = 1;");
         //recieve pmap
         decodePmap(target);
         //pass over group tag 0x10000
@@ -132,6 +165,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                         bodyTarget.append("Unsupported Operator Type");
                     }
                 }
+                target.append(bitMaskName + " = " + bitMaskName + " << 1;/n");
             } //if long, goes to switch to find correct operator to call 
             else if (TypeMask.isLong(pmapType) == true) {
                 int oper = TokenBuilder.extractOper(token);
@@ -152,9 +186,11 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                         decodeIncrementLongGenerator(bodyTarget, f);
                         break;
                 }
+                target.append(bitMaskName + " = " + bitMaskName + " << 1;/n");
             } //if string
             else if (TypeMask.isText(pmapType) == true) {
                 decodeStringGenerator( bodyTarget);
+                target.append(bitMaskName + " = " + bitMaskName + " << 1;/n");
             } else {
                 bodyTarget.append("Unsupported data type " + pmapType + "\n");
             }
@@ -183,6 +219,10 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 target.append("private String ").append(scriptNames[i]).append(";\n");
             }
         }
+        target.append("private long[] " + longDictionaryName + "/n");
+        target.append("private int[] " +intDictionaryName + "/n");
+        bodyTarget.append("DataInputBlobReader<" + schema.getClass().getSimpleName() + "> " + writerName + " = new DataOutputBlobWriter<" + schema.getClass().getSimpleName() + ">(output);\n");
+
     }
 
     
@@ -236,7 +276,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
     protected void decodeDeltaIntGenerator( Appendable target, int index) {
         try {
-            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toBinaryString(index)).append(", ").append(bitMaskName).append(", ").append(intValueName).append(");\n");
+            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toBinaryString(index)).append(", ").append(bitMaskName).append(", ").append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

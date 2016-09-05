@@ -4,10 +4,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
-<<<<<<< HEAD
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
-=======
->>>>>>> af0baa22fd0eb029000b1b2dd62042b4e0bfc8e9
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.stage.phast.PhastEncoder;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
@@ -18,7 +15,7 @@ private void requestShutdown() {};
 private StringBuilder workspace0x67;
 private StringBuilder workspace0x6A;
 private Pipe<MessageSchemaDynamic> input;
-DataInputBlobReader<MessageSchemaDynamic> reader;public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
+public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
     new int[]{0xc1400007,0x88200000,0x98800000,0xa0000000,0x80800001,0x80a00002,0xa4000001,0xc1200007},
     (short)0,
     new String[]{"InventoryDetails","StoreID","Date","ProductName","Amount","RecordID","Units",null},
@@ -38,10 +35,16 @@ DataInputBlobReader<MessageSchemaDynamic> reader;public final static FieldRefere
 // # Low level API is CAN NOT be extensiable in the sense of dealing with mising or extra/new fields. 
 // # Low level API is CAN NOT be extensiable in the sense of dealing with fields encoded with different types. 
 private static final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
-private static final long BUILD_TIME = 1472582277744L;
+private static final long BUILD_TIME = 1473087759440L;
 
 public void startup() {
     Pipe.from(input).validateGUID(FROM_GUID);
+private String Units;
+private int RecordID;
+private int Amount;
+private String ProductName;
+private long Date;
+private int StoreID;
 }
 
 @Override
@@ -69,11 +72,13 @@ cursor = Pipe.takeMsgIdx(input);
 }
 
 private void processPipeInventoryDetails() {
-    businessMethodInventoryDetails(Pipe.takeValue(input),
+    businessMethodInventoryDetails(
+            Pipe.takeValue(input),
             Pipe.takeLong(input),
             Pipe.readASCII(input, Appendables.truncate(this.workspace0x67), Pipe.takeRingByteMetaData(input), Pipe.takeRingByteLen(input)),
             Pipe.takeValue(input),
-            Pipe.takeValue(input), (StringBuilder) Pipe.readOptionalASCII(input, Appendables.truncate(this.workspace0x6A), Pipe.takeRingByteMetaData(input), Pipe.takeRingByteLen(input)));
+            Pipe.takeValue(input),
+            Pipe.readOptionalASCII(input, Appendables.truncate(this.workspace0x6A), Pipe.takeRingByteMetaData(input), Pipe.takeRingByteLen(input))    );
 }
 
 protected void businessMethodInventoryDetails(int pStoreID, long pDate, StringBuilder workspace0x67, int pAmount, int pRecordID, StringBuilder workspace0x6A) {
@@ -86,7 +91,7 @@ DataOutputBlobWriter<MessageSchemaDynamic> writer = new DataOutputBlobWriter<Mes
     map = PhastEncoder.pmapBuilderInt(map, 0x80a00002, pRecordID, previousIntDictionary[4], defIntDictionary[4], false);
     map = PhastEncoder.pmapBuilderString(map, 0xa4000001, (workspace0x6A == null));
     DataOutputBlobWriter.writePackedLong(writer, map);
-    int bitMask = 1;
+    long bitMask = 1;
     bitMask = bitMask << 5;
 
     PhastEncoder.copyInt(previousIntDictionary, writer, map, bitMask, 0, pStoreID);

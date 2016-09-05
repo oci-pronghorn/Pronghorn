@@ -39,7 +39,7 @@ public class PhastDecoder {
     }
     
     //decodes string
-    public static String decodeString(DataInputBlobReader reader) throws IOException{
+    public static String decodeString(DataInputBlobReader reader){
     	if (DataInputBlobReader.readPackedInt(reader) == INCOMING_VARIABLE){
     		return reader.readUTF();
     	}
