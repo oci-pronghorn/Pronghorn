@@ -52,7 +52,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
     // Additional Token method to append any longs, ins or string variables
     @Override
-    protected void additionalTokens(Appendable target) throws IOException {
+    protected void additionalMembers(Appendable target) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         int[] tokens = from.tokens;
         String[] scriptNames = from.fieldNameScript;
