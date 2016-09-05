@@ -68,11 +68,11 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     }
     
     public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target, String packageName) {
-        this(schema, target, "LowLevelWriter", "implements Runnable", "output", "private", false, packageName);       
+        this(schema, target, "DecoderStage", "implements Runnable", "output", "private", false, packageName);
     }
     
     public TemplateProcessGeneratorLowLevelWriter(MessageSchema schema, Appendable target, boolean isAbstract, String packageName) {
-        this(schema, target, "LowLevelWriter", "implements Runnable", "output", isAbstract ? "protected" : "private", isAbstract, packageName);       
+        this(schema, target, "LowLevelWriter", "implements Runnable", "output", isAbstract ? "protected" : "private", isAbstract, packageName);
     }
     
     public String getClassName() {
@@ -86,6 +86,9 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     
     protected void additionalImports(MessageSchema schema, Appendable target) {
     }
+    
+    protected void generateStartup(Appendable Target){
+	}
 
     protected void defineMembers() throws IOException {
         final FieldReferenceOffsetManager from = MessageSchema.from(schema);
@@ -108,28 +111,28 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
       
         
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
-        
+
         if (buildFullStageWritingToPipe()) {
             from.appendGUID( bodyTarget.append("private final int[] FROM_GUID = ")).append(";\n");
-        } 
-        
-        
+        }
+
+
         bodyTarget.append("private final long BUILD_TIME = ");
         Appendables.appendValue(bodyTarget, System.currentTimeMillis()).append("L;\n");
         bodyTarget.append("private static final int ").append(doNothingConstant).append(" = ").append(doNothingConstantValue).append(";\n");
-        
-        
+
+
         bodyTarget.append("\n");
-        
-        bodyTarget.append(methodScope).append(" int nextMessageIdx() {\n");        
-        bodyOfNextMessageIdx(bodyTarget);        
-        bodyTarget.append("}\n");
-        
+
+        bodyTarget.append(methodScope).append(" int nextMessageIdx() {\n");
+        bodyOfNextMessageIdx(bodyTarget);
+        bodyTarget.append("}\n\n");
+        generateStartup(bodyTarget);
         bodyTarget.append("\n");
         bodyTarget.append("@Override\n");
         bodyTarget.append("public void run() {\n");
 
-        
+
         if (buildFullStageWritingToPipe()) {
             //      if (!Pipe.hasRoomForWrite(input)) {
             //      return;
@@ -138,20 +141,20 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         }
         ///
         ///
-        
-        
+
+
         if (hasSimpleMessagesOnly) {
-            
+
             //switch(cursor)) {
             bodyTarget.append(tab).append("switch(").append("nextMessageIdx()").append(") {\n");
-            
-            
+
+
         } else {
             bodyTarget.append(tab).append("int ").append(cursorVarName).append(";\n");
             bodyTarget.append("\n");
             //if (LowLevelStateManager.isStartNewMessage(navState)) {
             bodyTarget.append(tab).append("if (").append(stageMgrClassName).append(".isStartNewMessage(").append(stageMgrVarName).append(")) {\n");
-            
+
             bodyTarget.append(tab).append(tab).append(cursorVarName).append(" = nextMessageIdx();\n");
 
             //} else {
@@ -160,14 +163,14 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
             bodyTarget.append(tab).append(tab).append(cursorVarName).append(" = ").append(stageMgrClassName).append(".activeCursor(").append(stageMgrVarName).append(");\n");
             //}
             bodyTarget.append(tab).append("}\n");
-            
+
             bodyTarget.append("\n");
      //       bodyTarget.append("System.out.println(cursor);//WHYHAPPEN\n");
-            
+
             //switch(cursor)) {
             bodyTarget.append(tab).append("switch(").append(cursorVarName).append(") {\n");
         }
-        
+
     }
 
     
@@ -757,6 +760,10 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
             t.append(methodScope).append(" void ");
             appendBusinessMethodName(cursor).append("() {\n");
             bodyOfBusinessProcess(t, cursor, businessFirstField, businessFieldCount);
+
+            //placed call to next method
+            appendCallToNextMethod(t, cursor);
+
             t.append("}\n");
         
         }
@@ -766,6 +773,17 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         appendWriteFragmentLogic(t, cursor);
         t.append('\n');
         
+    }
+
+    private void appendCallToNextMethod(Appendable t, int curstor) throws IOException {
+        appendWriteMethodName(t,curstor);
+        t.append("/n(");
+        listMembers(t);
+        t.append(");/n");
+    }
+
+    protected void listMembers(Appendable target){
+
     }
 
     protected void appendWriteFragmentLogic(Appendable t, int cursor) throws IOException {
