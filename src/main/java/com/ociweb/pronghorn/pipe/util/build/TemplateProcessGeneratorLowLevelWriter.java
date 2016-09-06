@@ -13,6 +13,8 @@ import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.stream.LowLevelStateManager;
+import com.ociweb.pronghorn.pipe.token.TokenBuilder;
+import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.util.Appendables;
 
 public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGenerator {
@@ -784,7 +786,23 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     }
 
     protected void listMembers(Appendable target){
-
+        FieldReferenceOffsetManager from = MessageSchema.from(schema);
+        int[] tokens = from.tokens;
+        int i = 1;
+        String[] scriptNames = from.fieldNameScript;
+        try {
+            while (i < from.tokensLen) {
+                int type = TokenBuilder.extractType(tokens[i]);
+                if(TypeMask.isLong(type)|| TypeMask.isInt(type)||TypeMask.isText(type))
+                    target.append(scriptNames[i]);
+                if(i < (from.tokensLen - (1 + TypeMask.scriptTokenSize[TokenBuilder.extractType(tokens[i])])))
+                    target.append(",");
+                i += TypeMask.scriptTokenSize[TokenBuilder.extractType(tokens[i])];
+                //target.append("\n" + type);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     protected void appendWriteFragmentLogic(Appendable t, int cursor) throws IOException {
