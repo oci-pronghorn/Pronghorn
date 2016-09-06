@@ -776,10 +776,11 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
     }
 
     private void appendCallToNextMethod(Appendable t, int curstor) throws IOException {
+        t.append(tab);
         appendWriteMethodName(t,curstor);
-        t.append("/n(");
+        t.append("(");
         listMembers(t);
-        t.append(");/n");
+        t.append(");\n");
     }
 
     protected void listMembers(Appendable target){
