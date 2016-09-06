@@ -54,13 +54,13 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             throw new RuntimeException(e);
         }
     }
-
+    @Override
     protected void generateStartup(Appendable target){
         try{
-            target.append("/nPublic void static startup(){/n");
-            target.append(intDictionaryName + " = FROM.newIntDefaultsDictionary();/n");
-            target.append(longDictionaryName + " = FROM.newLongDefaultsDictionary();/n");
-            target.append("}/n");
+            target.append("\npublic void startup(){\n");
+            target.append(intDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
+            target.append(longDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
+            target.append("}\n");
         }
         catch (IOException e) {
         throw new RuntimeException(e);
@@ -99,22 +99,25 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             Appendables.appendValue(target, startsCount).append("];\n");
         }
     }
-
-    protected void lsitMembers(Appendable target) throws IOException {
+    @Override
+    protected void listMembers(Appendable target) {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         int[] tokens = from.tokens;
         int i = tokens.length;
         String[] scriptNames = from.fieldNameScript;
 
-        while (--i >= 0) {
-            int type = TokenBuilder.extractType(tokens[i]);
-            if(TypeMask.isLong(type)|| TypeMask.isInt(type)||TypeMask.isText(type))
-                target.append(scriptNames[i]);
-            if(i != 0){
-                target.append(",");
+        try {
+            while (--i >= 0) {
+                int type = TokenBuilder.extractType(tokens[i]);
+                if(TypeMask.isLong(type)|| TypeMask.isInt(type)||TypeMask.isText(type))
+                    target.append(scriptNames[i]);
+                if(i != 0){
+                    target.append(",");
+                }
             }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-
 
     }
     @Override
@@ -165,7 +168,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                         bodyTarget.append("Unsupported Operator Type");
                     }
                 }
-                target.append(bitMaskName + " = " + bitMaskName + " << 1;/n");
+                target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
             } //if long, goes to switch to find correct operator to call 
             else if (TypeMask.isLong(pmapType) == true) {
                 int oper = TokenBuilder.extractOper(token);
@@ -186,11 +189,11 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                         decodeIncrementLongGenerator(bodyTarget, f);
                         break;
                 }
-                target.append(bitMaskName + " = " + bitMaskName + " << 1;/n");
+                target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
             } //if string
             else if (TypeMask.isText(pmapType) == true) {
                 decodeStringGenerator( bodyTarget);
-                target.append(bitMaskName + " = " + bitMaskName + " << 1;/n");
+                target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
             } else {
                 bodyTarget.append("Unsupported data type " + pmapType + "\n");
             }
@@ -219,9 +222,9 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 target.append("private String ").append(scriptNames[i]).append(";\n");
             }
         }
-        target.append("private long[] " + longDictionaryName + "/n");
-        target.append("private int[] " +intDictionaryName + "/n");
-        bodyTarget.append("DataInputBlobReader<" + schema.getClass().getSimpleName() + "> " + writerName + " = new DataOutputBlobWriter<" + schema.getClass().getSimpleName() + ">(output);\n");
+        target.append("private long[] " + longDictionaryName + ";\n");
+        target.append("private int[] " +intDictionaryName + ";\n");
+        bodyTarget.append("DataInputBlobReader<" + schema.getClass().getSimpleName() + "> " + readerName + " = new DataInputBlobReader<" + schema.getClass().getSimpleName() + ">(output);\n");
 
     }
 
