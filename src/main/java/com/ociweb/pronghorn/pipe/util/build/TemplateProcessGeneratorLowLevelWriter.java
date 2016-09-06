@@ -763,9 +763,6 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
             appendBusinessMethodName(cursor).append("() {\n");
             bodyOfBusinessProcess(t, cursor, businessFirstField, businessFieldCount);
 
-            //placed call to next method
-            appendCallToNextMethod(t, cursor);
-
             t.append("}\n");
         
         }
@@ -777,33 +774,8 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         
     }
 
-    private void appendCallToNextMethod(Appendable t, int curstor) throws IOException {
-        t.append(tab);
-        appendWriteMethodName(t,curstor);
-        t.append("(");
-        listMembers(t);
-        t.append(");\n");
-    }
 
-    protected void listMembers(Appendable target){
-        FieldReferenceOffsetManager from = MessageSchema.from(schema);
-        int[] tokens = from.tokens;
-        int i = 1;
-        String[] scriptNames = from.fieldNameScript;
-        try {
-            while (i < from.tokensLen) {
-                int type = TokenBuilder.extractType(tokens[i]);
-                if(TypeMask.isLong(type)|| TypeMask.isInt(type)||TypeMask.isText(type))
-                    target.append(scriptNames[i]);
-                if(i < (from.tokensLen - (1 + TypeMask.scriptTokenSize[TokenBuilder.extractType(tokens[i])])))
-                    target.append(",");
-                i += TypeMask.scriptTokenSize[TokenBuilder.extractType(tokens[i])];
-                //target.append("\n" + type);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+
 
     protected void appendWriteFragmentLogic(Appendable t, int cursor) throws IOException {
         appendWriteMethodName(t.append(methodScope).append(" void "), cursor).append("(").append(writeToPipeSignatureWorkspace).append(") {\n");
