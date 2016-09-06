@@ -51,25 +51,16 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // Additional Token method to append any longs, ins or string variables
+    //@Override
+    protected void startupBody(Appendable target) throws IOException {
+        target.append("\n" + tab + intDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
+        target.append(tab + longDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
+    }
+
     @Override
     protected void additionalMembers(Appendable target) throws IOException {
-        FieldReferenceOffsetManager from = MessageSchema.from(schema);
-        int[] tokens = from.tokens;
-        String[] scriptNames = from.fieldNameScript;
-        long[] scriptIds = from.fieldIdScript;
-        int i = tokens.length;
-
-        while (--i >= 0) {
-            int type = TokenBuilder.extractType(tokens[i]);
-
-            if (TypeMask.isLong(type)) {
-                target.append("private long ").append(scriptNames[i]).append(";\n");
-            } else if (TypeMask.isInt(type)) {
-                target.append("private int ").append(scriptNames[i]).append(";\n");
-            } else if (TypeMask.isText(type)) {
-                target.append("private String ").append(scriptNames[i]).append(";\n");
-            }
-        }
+        target.append("long[] " + longDictionaryName + ";\n");
+        target.append("int[] " + intDictionaryName + ";\n");
     }
 
     //  BuilderInt Factory
