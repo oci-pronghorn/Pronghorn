@@ -95,7 +95,10 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         
     }
     
-    protected void additionalMembers(Appendable target) throws IOException {
+    protected void startupBody(Appendable target) throws IOException {
+    }
+
+    protected void additionalMembers(Appendable target) throws IOException{
     }
     
     public void processSchema() throws IOException {
@@ -146,7 +149,7 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
 
             }   
         }
-        additionalMembers(bodyTarget);
+        startupBody(bodyTarget);
         bodyTarget.append("}\n");
     }
     
@@ -994,6 +997,7 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         appendClass(bodyTarget.append("private "), pipeClass, schema.getClass()).append(pipeVarName).append(";\n");
         //put schema into code
         from.appendConstuctionSource(bodyTarget);
+        additionalMembers(bodyTarget);
 
 
 
