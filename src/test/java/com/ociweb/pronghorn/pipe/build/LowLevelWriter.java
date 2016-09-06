@@ -30,7 +30,7 @@ public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetM
     new long[]{2, 2, 0},
     new int[]{2, 2, 0});
 private final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
-private final long BUILD_TIME = 1473168503184L;
+private final long BUILD_TIME = 1473170118186L;
 private static final int DO_NOTHING = -3;
 
 private int nextMessageIdx() {
@@ -39,8 +39,8 @@ private int nextMessageIdx() {
 
 
 public void startup(){
-intDictionary = FROM.newIntDefaultsDictionary();
-longDictionary = FROM.newLongDefaultsDictionary();
+    intDictionary = FROM.newIntDefaultsDictionary();
+    longDictionary = FROM.newLongDefaultsDictionary();
 }
 
 @Override
@@ -70,7 +70,7 @@ private void processInventoryDetails() {
     bitMask = bitMask << 1;
     ProductName = PhastDecoder.decodeString(reader);
     bitMask = bitMask << 1;
-    Amount = PhastDecoder.decodeDeltaInt(intDictionary, reader, map, 100, bitMask, );
+    Amount = PhastDecoder.decodeDeltaInt(intDictionary, reader, map, 100, bitMask);
     bitMask = bitMask << 1;
     RecordID = PhastDecoder.decodeIncrementInt(intDictionary, map, 5, bitMask);
     bitMask = bitMask << 1;

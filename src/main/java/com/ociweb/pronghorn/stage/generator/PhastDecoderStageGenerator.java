@@ -58,8 +58,8 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     protected void generateStartup(Appendable target){
         try{
             target.append("\npublic void startup(){\n");
-            target.append(intDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
-            target.append(longDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
+            target.append(tab + intDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
+            target.append(tab + longDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
             target.append("}\n");
         }
         catch (IOException e) {
@@ -110,9 +110,10 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 int type = TokenBuilder.extractType(tokens[i]);
                 if(TypeMask.isLong(type)|| TypeMask.isInt(type)||TypeMask.isText(type))
                     target.append(scriptNames[i]);
-                if(i < (1 + from.tokensLen - (1 + TypeMask.scriptTokenSize[TokenBuilder.extractType(tokens[i])])))
+                if(i < (from.tokensLen - (1 + TypeMask.scriptTokenSize[TokenBuilder.extractType(tokens[i])])))
                     target.append(",");
                 i += TypeMask.scriptTokenSize[TokenBuilder.extractType(tokens[i])];
+                //target.append("\n" + type);
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -278,7 +279,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
     protected void decodeDeltaIntGenerator( Appendable target, int index) {
         try {
-            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toBinaryString(index)).append(", ").append(bitMaskName).append(", ").append(");\n");
+            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toBinaryString(index)).append(", ").append(bitMaskName).append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
