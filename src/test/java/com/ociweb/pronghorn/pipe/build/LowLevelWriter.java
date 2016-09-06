@@ -30,7 +30,7 @@ public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetM
     new long[]{2, 2, 0},
     new int[]{2, 2, 0});
 private final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
-private final long BUILD_TIME = 1473124754595L;
+private final long BUILD_TIME = 1473168503184L;
 private static final int DO_NOTHING = -3;
 
 private int nextMessageIdx() {
@@ -62,7 +62,8 @@ public void run() {
 }
 
 private void processInventoryDetails() {
-long bitMask = 1;    long map = DataInputBlobReader.readPackedLong(reader);
+    long bitMask = 1;
+    long map = DataInputBlobReader.readPackedLong(reader);
     StoreID = PhastDecoder.decodeCopyInt(intDictionary, reader, map, 1, bitMask);
     bitMask = bitMask << 1;
     Date = PhastDecoder.decodeDeltaLong(longDictionary, reader, map, 2, bitMask);
@@ -75,7 +76,8 @@ long bitMask = 1;    long map = DataInputBlobReader.readPackedLong(reader);
     bitMask = bitMask << 1;
     Units = PhastDecoder.decodeString(reader);
     bitMask = bitMask << 1;
-processPipe1WriteInventoryDetails/n(,Units,RecordID,Amount,ProductName,Date,StoreID,);/n}
+    processPipe1WriteInventoryDetails(StoreID,Date,ProductName,Amount,RecordID,Units);
+}
 
 private void processPipe1WriteInventoryDetails( int pStoreID,long pDate,CharSequence pProductName,int pAmount,int pRecordID,CharSequence pUnits) {
     Pipe.addIntValue(pStoreID,output);

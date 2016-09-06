@@ -103,17 +103,16 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     protected void listMembers(Appendable target) {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         int[] tokens = from.tokens;
-        int i = tokens.length;
+        int i = 1;
         String[] scriptNames = from.fieldNameScript;
-
         try {
-            while (--i >= 0) {
+            while (i < from.tokensLen) {
                 int type = TokenBuilder.extractType(tokens[i]);
                 if(TypeMask.isLong(type)|| TypeMask.isInt(type)||TypeMask.isText(type))
                     target.append(scriptNames[i]);
-                if(i != 0){
+                if(i < (1 + from.tokensLen - (1 + TypeMask.scriptTokenSize[TokenBuilder.extractType(tokens[i])])))
                     target.append(",");
-                }
+                i += TypeMask.scriptTokenSize[TokenBuilder.extractType(tokens[i])];
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -136,7 +135,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         //long bitMask = from.templateOffset;
 
         //bitmask goes here
-        target.append("long " + bitMaskName + " = 1;");
+        target.append(tab + "long " + bitMaskName + " = 1;\n");
         //recieve pmap
         decodePmap(target);
         //pass over group tag 0x10000
