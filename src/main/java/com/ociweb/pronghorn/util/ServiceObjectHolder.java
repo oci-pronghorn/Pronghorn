@@ -109,6 +109,21 @@ public class ServiceObjectHolder<T> {
         this.shouldGrow = shouldGrow;
     }  
     
+    
+    public void disposeAll() {
+    	int j = data.serviceObjectValues.length;
+    	while (--j>=0) {
+    		if (null != data.serviceObjectValues[j]) {
+    			
+    			validator.dispose(data.serviceObjectValues[j]);
+    			
+    		}
+    		
+    	}
+    	
+    	
+    }
+    
     /**
      * Add new service object and return the index to retrieve the object later.
      * 
