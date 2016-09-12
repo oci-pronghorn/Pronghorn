@@ -61,7 +61,7 @@ public class StreamRegulatorTest {
                 boolean isStuck = true;
                 while (sr.hasRoomForChunk() && --a>=0) {          
                     isStuck = false;
-                    try {
+                 
                       //  System.out.println("write "+writeCount);
                        
                         // out.write(testdata);
@@ -79,9 +79,7 @@ public class StreamRegulatorTest {
                         out.writeUTF(Long.toHexString(writeCount));
                         
                         writeCount++;
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+
                 }
                 
                 while (sr.hasNextChunk() && --b>=0) {    
@@ -154,11 +152,9 @@ public class StreamRegulatorTest {
                 boolean isStuck = true;
                 while (sr.hasRoomForChunk() && --a>=0) {          
                     isStuck = false;
-                    try {
+         
                         out.write(testdata);                        
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+     
                 }
                 
                 while (sr.hasNextChunk() && --b>=0) {    

@@ -179,11 +179,11 @@ public abstract class TemplateProcessGenerator {
                     processTextUTF8Optional(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);
                     idx+=2;
                     break;
-                case TypeMask.ByteArray:
+                case TypeMask.ByteVector:
                     processByteArray(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);
                     idx+=2;
                     break;  
-                case TypeMask.ByteArrayOptional:
+                case TypeMask.ByteVectorOptional:
                     processByteArrayOptional(fieldNameScript[fieldCursor], idx, fieldCursor, fieldIdScript[fieldCursor]);
                     idx+=2;
                     break;

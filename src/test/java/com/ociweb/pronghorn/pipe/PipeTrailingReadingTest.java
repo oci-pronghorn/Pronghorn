@@ -43,14 +43,11 @@ public class PipeTrailingReadingTest {
             
             int writeSize = Pipe.addMsgIdx(dataPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);            
             
-            try {
                 DataOutputBlobWriter.openField(blobWriter);
                 //TODO: make up some data.
                 blobWriter.write(testData, 0, dataLen);
                 DataOutputBlobWriter.closeLowLevelField(blobWriter);
-            } catch (IOException e) {
-               throw new RuntimeException(e);
-            }
+
             
             Pipe.confirmLowLevelWrite(dataPipe, writeSize);            
             Pipe.publishWrites(dataPipe);  

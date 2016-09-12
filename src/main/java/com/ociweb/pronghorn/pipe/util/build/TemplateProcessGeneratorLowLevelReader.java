@@ -142,8 +142,8 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
                 
                 preprocessTextfieldsAssign(name, id);
                  
-            } else if (TypeMask.ByteArray==type | 
-                       TypeMask.ByteArrayOptional==type) {
+            } else if (TypeMask.ByteVector==type | 
+                       TypeMask.ByteVectorOptional==type) {
                 
                 preprocessBytefieldsAssign(name, id);
 
@@ -984,8 +984,8 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
                 
                 preprocessTextfieldsDef(name, id);
                  
-            } else if (TypeMask.ByteArray==type | 
-                       TypeMask.ByteArrayOptional==type) {
+            } else if (TypeMask.ByteVector==type | 
+                       TypeMask.ByteVectorOptional==type) {
                 
                 preprocessBytefieldsDef(name, id);
 

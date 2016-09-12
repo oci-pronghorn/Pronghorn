@@ -389,7 +389,7 @@ public class TemplateHandler extends DefaultHandler {
 
             } else if (qName.equalsIgnoreCase("bytevector")) {
                 fieldOperator = OperatorMask.Field_None;
-                fieldType = TypeMask.ByteArray;
+                fieldType = TypeMask.ByteVector;
                 commonIdAttributes(attributes);
 
             } else if (qName.equalsIgnoreCase("copy")) {

@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.pipe;
 
+import java.io.DataOutput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -60,7 +61,7 @@ import com.ociweb.pronghorn.pipe.util.PaddedAtomicLong;
  * @since 0.1
  *
  */
-public final class Pipe<T extends MessageSchema> {
+public class Pipe<T extends MessageSchema> {
 
     private static final AtomicInteger ringCounter = new AtomicInteger();
     
@@ -392,16 +393,32 @@ public final class Pipe<T extends MessageSchema> {
     //defined externally and never changes
     protected final byte[] blobConstBuffer;
     private byte[][] blobRingLookup;
+    
+    
     //NOTE:
-    //     This is the future direction of the ring buffer which is not yet complete
-    //     By migrating all array index usages to these the backing ring can be moved outside the Java heap
-    //     By moving the ring outside the Java heap other applications have have direct access
-    //     The Overhead of the poly method call is what has prevented this change
+    //     These are provided for seamless integration with the APIs that use ByteBuffers
+    //     This include the SSLEngine and SocketChanels and many other NIO APIs
+    //     For performance reasons ByteBuffers should not be used unless the API has no other integration points.
+    //     Using the Pipes directly is more perfomrmant and the use of DataOutput and DataInput should also be considered.
 
     private IntBuffer wrappedSlabRing;
-    private ByteBuffer wrappedBlobRingA;
-    private ByteBuffer wrappedBlobRingB;
+    private ByteBuffer wrappedBlobReadingRingA;
+    private ByteBuffer wrappedBlobReadingRingB;
+    
+    private ByteBuffer wrappedBlobWritingRingA;
+    private ByteBuffer wrappedBlobWritingRingB;
+    
+    private ByteBuffer[] wrappedWritingBuffers;
+    private ByteBuffer[] wrappedReadingBuffers;
+    
+    
     private ByteBuffer wrappedBlobConstBuffer;
+    
+    //      These are the recommended objects to be used for reading and writing streams into the blob
+    private DataOutputBlobWriter<T> blobWriter;
+    private DataInputBlobReader<T> blobReader;
+    
+    
 
     //for writes validates that bytes of var length field is within the expected bounds.
     private int varLenMovingAverage = 0;//this is an exponential moving average
@@ -462,12 +479,12 @@ public final class Pipe<T extends MessageSchema> {
 //cas: naming.  This should be consistent with the maxByteSize, i.e., maxFixedSize or whatever.
         //single buffer size for every nested set of groups, must be set to support the largest need.
         this.sizeOfSlabRing = 1 << primaryBits;
-        this.mask = sizeOfSlabRing - 1;
+        this.mask = Math.max(1, sizeOfSlabRing - 1);  //mask can no be any smaller than 1
 
         //single text and byte buffers because this is where the variable-length data will go.
 
         this.sizeOfBlobRing =  1 << byteBits;
-        this.byteMask = sizeOfBlobRing - 1;
+        this.byteMask = Math.max(1, sizeOfBlobRing - 1); //mask can no be any smaller than 1
 
         FieldReferenceOffsetManager from = MessageSchema.from(config.schema); 
 
@@ -758,14 +775,39 @@ public final class Pipe<T extends MessageSchema> {
         this.slabRing = new int[sizeOfSlabRing];
         this.blobRingLookup = new byte[][] {blobRing,blobConstBuffer};
 
+        //This assignment is critical to knowing that init was called
         this.wrappedSlabRing = IntBuffer.wrap(this.slabRing);        
-        this.wrappedBlobRingA = ByteBuffer.wrap(this.blobRing);
-        this.wrappedBlobRingB = ByteBuffer.wrap(this.blobRing);
-        this.wrappedBlobConstBuffer = null==this.blobConstBuffer?null:ByteBuffer.wrap(this.blobConstBuffer);
-        
-        assert(0==wrappedBlobRingA.position() && wrappedBlobRingA.capacity()==wrappedBlobRingA.limit()) : "The ByteBuffer is not clear.";
 
+        //only create if there is a possiblity that they may be used.
+        if (sizeOfBlobRing>0) {
+	        this.wrappedBlobReadingRingA = ByteBuffer.wrap(this.blobRing);
+	        this.wrappedBlobReadingRingB = ByteBuffer.wrap(this.blobRing);
+	        this.wrappedBlobWritingRingA = ByteBuffer.wrap(this.blobRing);
+	        this.wrappedBlobWritingRingB = ByteBuffer.wrap(this.blobRing);	        
+	        this.wrappedBlobConstBuffer = null==this.blobConstBuffer?null:ByteBuffer.wrap(this.blobConstBuffer);
+	        
+	        this.wrappedReadingBuffers = new ByteBuffer[]{wrappedBlobReadingRingA,wrappedBlobReadingRingB}; 
+	        this.wrappedWritingBuffers = new ByteBuffer[]{wrappedBlobWritingRingA,wrappedBlobWritingRingB};
+	        
+	        
+	        assert(0==wrappedBlobReadingRingA.position() && wrappedBlobReadingRingA.capacity()==wrappedBlobReadingRingA.limit()) : "The ByteBuffer is not clear.";
+	
+	        //blobReader and writer must be last since they will be checking isInit in construction.
+	        this.blobReader = createNewBlobReader();
+	        this.blobWriter = createNewBlobWriter();
+        }
 	}
+	
+	//Can be overridden to support specific classes which extend DataInputBlobReader
+	protected DataInputBlobReader<T> createNewBlobReader() {
+		 return new DataInputBlobReader<T>(this);
+	}
+	
+	//Can be overridden to support specific classes which extend DataOutputBlobWriter
+	protected DataOutputBlobWriter<T> createNewBlobWriter() {
+		return new DataOutputBlobWriter<T>(this);
+	}
+	
 
 	public static <S extends MessageSchema> boolean isInit(Pipe<S> ring) {
 	    //Due to the fact that no locks are used it becomes necessary to check
@@ -775,9 +817,17 @@ public final class Pipe<T extends MessageSchema> {
 			   null!=ring.slabRing &&
 			   null!=ring.blobRingLookup &&
 			   null!=ring.wrappedSlabRing &&
-			   null!=ring.wrappedBlobRingA &&
 			   null!=ring.llRead &&
-			   null!=ring.llWrite;
+			   null!=ring.llWrite &&
+			   (
+			    ring.sizeOfBlobRing == 0 || //no init of these if the blob is not used
+			    (null!=ring.wrappedBlobReadingRingA &&
+		         null!=ring.wrappedBlobReadingRingB &&
+			     null!=ring.wrappedBlobWritingRingA &&
+			     null!=ring.wrappedBlobWritingRingB
+			     )
+			   );
+		      //blobReader and blobWriter and not checked since they call isInit on construction
 	}
 
 	public static <S extends MessageSchema> boolean validateVarLength(Pipe<S> pipe, int length) {
@@ -888,14 +938,45 @@ public final class Pipe<T extends MessageSchema> {
     static int safeLength(int sizeOfBlobRing, int position, int remaining) {
         return ((position+remaining)<=sizeOfBlobRing) ? remaining : sizeOfBlobRing-position;
     }
-
-    public static <S extends MessageSchema> ByteBuffer wrappedBlobForWriting(int originalBlobPosition, Pipe<S> output) {
-        ByteBuffer target = Pipe.wrappedBlobRingA(output);  //Get the blob array as a wrapped byte buffer     
+    
+    public static <S extends MessageSchema> ByteBuffer wrappedBlobForWritingA(int originalBlobPosition, Pipe<S> output) {
+        ByteBuffer target = output.wrappedBlobWritingRingA; //Get the blob array as a wrapped byte buffer     
         int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
+        target.limit(target.capacity());
         target.position(writeToPos);   
         target.limit(Math.min(target.capacity(), writeToPos+output.maxAvgVarLen )); //ensure we stop at end of wrap or max var length 
         return target;
     }
+
+    public static <S extends MessageSchema> ByteBuffer wrappedBlobForWritingB(int originalBlobPosition, Pipe<S> output) {
+        ByteBuffer target = output.wrappedBlobWritingRingB; //Get the blob array as a wrapped byte buffer     
+        int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
+        target.position(0);   
+        int endPos = writeToPos+output.maxAvgVarLen;
+    	if (endPos>output.sizeOfBlobRing) {
+    		target.limit(output.byteMask & endPos);
+    	} else {
+    		target.limit(0);
+    	}
+        return target;
+    }
+    
+    public static <S extends MessageSchema> ByteBuffer[] wrappedWritingBuffers(int originalBlobPosition, Pipe<S> output) {
+    	int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
+    	int endPos = writeToPos+output.maxAvgVarLen;
+    	    	
+    	ByteBuffer aBuf = output.wrappedBlobWritingRingA; //Get the blob array as a wrapped byte buffer     
+		aBuf.limit(aBuf.capacity());
+		aBuf.position(writeToPos);   
+		aBuf.limit(Math.min(aBuf.capacity(), endPos ));
+		
+		ByteBuffer bBuf = output.wrappedBlobWritingRingB; //Get the blob array as a wrapped byte buffer     
+		bBuf.position(0);   
+		bBuf.limit(endPos>output.sizeOfBlobRing ? output.byteMask & endPos: 0);
+		
+		return output.wrappedWritingBuffers;
+    }
+   
 
 
     public static <S extends MessageSchema> void moveBlobPointerAndRecordPosAndLength(int originalBlobPosition, int len, Pipe<S> output) {
@@ -904,6 +985,30 @@ public final class Pipe<T extends MessageSchema> {
     }
 
 
+    @Deprecated
+    public static <S extends MessageSchema> ByteBuffer wrappedBlobRingA(Pipe<S> pipe, int meta, int len) {
+        return wrappedBlobReadingRingA(pipe, meta, len);
+    }
+    
+    public static <S extends MessageSchema> ByteBuffer wrappedBlobReadingRingA(Pipe<S> pipe, int meta, int len) {
+        ByteBuffer buffer;
+        if (meta < 0) {
+        	buffer = wrappedBlobConstBuffer(pipe);
+        	int position = PipeReader.POS_CONST_MASK & meta;    
+        	buffer.position(position);
+        	buffer.limit(position+len);        	
+        } else {
+        	buffer = wrappedBlobRingA(pipe);
+        	int position = pipe.byteMask & restorePosition(pipe,meta);
+        	buffer.clear();
+        	buffer.position(position);
+        	//use the end of the buffer if the length runs past it.
+        	buffer.limit(Math.min(pipe.sizeOfBlobRing, position+len));
+        }
+        return buffer;
+    }
+    
+    @Deprecated
     public static <S extends MessageSchema> ByteBuffer wrappedBlobRingB(Pipe<S> pipe, int meta, int len) {
         return wrappedBlobReadingRingB(pipe,meta,len);
     }
@@ -930,27 +1035,45 @@ public final class Pipe<T extends MessageSchema> {
     	return buffer;
     }
 
-    public static <S extends MessageSchema> ByteBuffer wrappedBlobRingA(Pipe<S> pipe, int meta, int len) {
-        return wrappedBlobReadingRingA(pipe, meta, len);
+    public static <S extends MessageSchema> ByteBuffer[] wrappedReadingBuffers(Pipe<S> pipe, int meta, int len) {
+    	if (meta >= 0) {
+    		wrappedReadingBuffersRing(pipe, meta, len);
+		} else {
+			wrappedReadingBufffersConst(pipe, meta, len);
+		}
+		return pipe.wrappedReadingBuffers;
     }
+
+	private static <S extends MessageSchema> void wrappedReadingBuffersRing(Pipe<S> pipe, int meta, int len) {
+		
+		final int position = pipe.byteMask & restorePosition(pipe,meta);
+		final int endPos = position+len;
+		
+		ByteBuffer aBuf = wrappedBlobRingA(pipe);
+		aBuf.clear();
+		aBuf.position(position);
+		//use the end of the buffer if the length runs past it.
+		aBuf.limit(Math.min(pipe.sizeOfBlobRing, endPos));
+
+		ByteBuffer bBuf = wrappedBlobRingB(pipe);
+		bBuf.clear();
+		bBuf.limit(endPos > pipe.sizeOfBlobRing ? pipe.byteMask & endPos : 0 ); 
+				
+	}
+
+	private static <S extends MessageSchema> void wrappedReadingBufffersConst(Pipe<S> pipe, int meta, int len) {
+		
+		ByteBuffer aBuf = wrappedBlobConstBuffer(pipe);
+		int position = PipeReader.POS_CONST_MASK & meta;    
+		aBuf.position(position);
+		aBuf.limit(position+len);        	
+
+		//always zero because constant array never wraps
+		ByteBuffer bBuf = wrappedBlobConstBuffer(pipe);
+		bBuf.position(0);
+		bBuf.limit(0);
+	}
     
-    public static <S extends MessageSchema> ByteBuffer wrappedBlobReadingRingA(Pipe<S> pipe, int meta, int len) {
-        ByteBuffer buffer;
-        if (meta < 0) {
-        	buffer = wrappedBlobConstBuffer(pipe);
-        	int position = PipeReader.POS_CONST_MASK & meta;    
-        	buffer.position(position);
-        	buffer.limit(position+len);        	
-        } else {
-        	buffer = wrappedBlobRingA(pipe);
-        	int position = pipe.byteMask & restorePosition(pipe,meta);
-        	buffer.clear();
-        	buffer.position(position);
-        	//use the end of the buffer if the lengh runs past it.
-        	buffer.limit(Math.min(pipe.sizeOfBlobRing, position+len));
-        }
-        return buffer;
-    }
 
     public static int convertToUTF8(final char[] charSeq, final int charSeqOff, final int charSeqLength, final byte[] targetBuf, final int targetIdx, final int targetMask) {
     	
@@ -1078,8 +1201,8 @@ public final class Pipe<T extends MessageSchema> {
                                // value = target.toString();
                             }
                             break;
-                        case TypeMask.ByteArray:
-                        case TypeMask.ByteArrayOptional:
+                        case TypeMask.ByteVector:
+                        case TypeMask.ByteVectorOptional:
                             {
                                 int meta = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input));
                                 int length = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input)+1);
@@ -1119,6 +1242,14 @@ public final class Pipe<T extends MessageSchema> {
 	        return readBytesRing(pipe,len,target,restorePosition(pipe,meta));
 	    }
 	}
+    
+    public static <S extends MessageSchema> DataOutputBlobWriter<?> readBytes(Pipe<S> pipe, DataOutputBlobWriter<?> target, int meta, int len) {
+		if (meta < 0) {
+	        return readBytesConst(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
+	    } else {
+	        return readBytesRing(pipe,len,target,restorePosition(pipe,meta));
+	    }
+	}
 
     public static <S extends MessageSchema> void readBytes(Pipe<S> pipe, byte[] target, int targetIdx, int targetMask, int meta, int len) {
 		if (meta < 0) {
@@ -1145,12 +1276,34 @@ public final class Pipe<T extends MessageSchema> {
 
 	    return target;
 	}
+	
+	private static <S extends MessageSchema> DataOutputBlobWriter<?> readBytesRing(Pipe<S> pipe, int len, DataOutputBlobWriter<?> target, int pos) {
+		int mask = pipe.byteMask;
+		byte[] buffer = pipe.blobRing;
+
+        int tStart = pos & mask;
+        int len1 = 1+mask - tStart;
+
+		if (len1>=len) {
+			target.write(buffer, mask&pos, len);
+		} else {
+			target.write(buffer, mask&pos, len1);
+			target.write(buffer, 0, len-len1);
+		}
+
+	    return target;
+	}
 
 	private static <S extends MessageSchema> ByteBuffer readBytesConst(Pipe<S> pipe, int len, ByteBuffer target, int pos) {
 	    	target.put(pipe.blobConstBuffer, pos, len);
 	        return target;
 	    }
 
+	private static <S extends MessageSchema> DataOutputBlobWriter<?> readBytesConst(Pipe<S> pipe, int len, DataOutputBlobWriter<?> target, int pos) {
+    	target.write(pipe.blobConstBuffer, pos, len);
+        return target;
+    }
+	
 	public static <S extends MessageSchema, A extends Appendable> A readASCII(Pipe<S> pipe, A target, int meta, int len) {
 		if (meta < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
 	        return readASCIIConst(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
@@ -2609,17 +2762,26 @@ public final class Pipe<T extends MessageSchema> {
 	}
 
 	public static <S extends MessageSchema> ByteBuffer wrappedBlobRingA(Pipe<S> pipe) {
-		return pipe.wrappedBlobRingA;
+		return pipe.wrappedBlobReadingRingA;
 	}
 
     public static <S extends MessageSchema> ByteBuffer wrappedBlobRingB(Pipe<S> pipe) {
-        return pipe.wrappedBlobRingB;
+        return pipe.wrappedBlobReadingRingB;
     }
 
 	public static <S extends MessageSchema> ByteBuffer wrappedBlobConstBuffer(Pipe<S> pipe) {
 		return pipe.wrappedBlobConstBuffer;
 	}
 
+	
+	public static <S extends MessageSchema> DataOutputBlobWriter<S> outputStream(Pipe<S> pipe) {
+		return pipe.blobWriter;
+	}
+
+	public static <S extends MessageSchema> DataInputBlobReader<S> inputStream(Pipe<S> pipe) {
+		return pipe.blobReader;
+	}
+	
 	/////////////
 	//low level API
 	////////////

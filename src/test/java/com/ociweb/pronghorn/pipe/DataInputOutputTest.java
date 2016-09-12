@@ -293,13 +293,8 @@ public class DataInputOutputTest {
                 testSource[s] = (byte)testIntValueGenerator(r,i);
             }            
             
-            try {
                 out.write(testSource);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            
-        
+
         }
         long duration = System.nanoTime()-start;
         long nsPerWrite = duration/testSize;
@@ -366,16 +361,10 @@ public class DataInputOutputTest {
                 testSource[s] = (byte)testIntValueGenerator(r,i);
             }            
             
-            try {
                 for(int s=0;s<testSourceSize;s++) {
                     out.writeByte(testSource[s]);
                 }
-                
-                
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            
+                  
         
         }
         long duration = System.nanoTime()-start;

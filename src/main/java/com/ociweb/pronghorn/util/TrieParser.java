@@ -51,10 +51,10 @@ public class TrieParser {
     
     public final byte ESCAPE_BYTE;
     //EXTRACT VALUE
-    public static final byte ESCAPE_CMD_SIGNED_DEC    = 'i'; //signedInt
-    public static final byte ESCAPE_CMD_UNSIGNED_DEC  = 'u'; //unsignedInt
-    public static final byte ESCAPE_CMD_SIGNED_HEX    = 'I'; //signedInt (can be hex or decimal)
-    public static final byte ESCAPE_CMD_UNSIGNED_HEX  = 'U'; //unsignedInt (can be hex or decimal)
+    public static final byte ESCAPE_CMD_SIGNED_DEC    = 'i'; //signedInt (may be hex if starts with 0x)
+    public static final byte ESCAPE_CMD_UNSIGNED_DEC  = 'u'; //unsignedInt (may be hex if starts with 0x)
+    public static final byte ESCAPE_CMD_SIGNED_HEX    = 'I'; //signedInt (may skip prefix 0x)
+    public static final byte ESCAPE_CMD_UNSIGNED_HEX  = 'U'; //unsignedInt (may skip prefix 0x) 
     public static final byte ESCAPE_CMD_DECIMAL       = '.'; //if found capture u and places else captures zero and 1 place
     public static final byte ESCAPE_CMD_RATIONAL      = '/'; //if found capture i else captures 1
     //EXTRACTED BYTES
@@ -737,13 +737,16 @@ public class TrieParser {
             }                         
         }
                          
-        if (0==(NUMERIC_FLAG_HEX&numType) | ('0'!=source[sourceMask & sourcePos+1])| ('x'!=source[sourceMask & sourcePos+2])  ) {                            
+        boolean hasNo0xPrefix = ('0'!=source[sourceMask & sourcePos+1]) || ('x'!=source[sourceMask & sourcePos+2]);
+		if (hasNo0xPrefix && 0==(NUMERIC_FLAG_HEX&numType) ) {                            
             short c = 0;
             do {
                 c = source[sourceMask & sourcePos++];
             }  while ((c>='0') && (c<='9'));
         } else {
-            sourcePos+=2;//skipping over the 0x checked above
+        	if (!hasNo0xPrefix) {
+        		sourcePos+=2;//skipping over the 0x checked above
+        	}
             short c = 0;
             do {
                 c = source[sourceMask & sourcePos++];

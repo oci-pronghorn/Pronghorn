@@ -56,7 +56,7 @@ public class FieldGenerator implements ItemGenerator {
 	}
 	
 	public boolean isByteArray() {
-		return (TypeMask.ByteArray==type || TypeMask.ByteArrayOptional==type );
+		return (TypeMask.ByteVector==type || TypeMask.ByteVectorOptional==type );
 	}
     
     public boolean isLong() {

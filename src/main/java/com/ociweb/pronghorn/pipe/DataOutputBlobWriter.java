@@ -21,7 +21,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         assert(Pipe.isInit(p)): "The pipe must be init before use.";
         this.byteBuffer = Pipe.blob(p);
         this.byteMask = Pipe.blobMask(p);  
-        assert(this.byteMask!=0);
+        assert(this.byteMask!=0): "mask is "+p.byteMask+" size of blob is "+p.sizeOfBlobRing;
     }
     
     public void openField() {
@@ -57,7 +57,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         int len = length(writer);
         Pipe.addAndGetBytesWorkingHeadPosition(writer.p, len);
         Pipe.addBytePosAndLenSpecial(writer.p,writer.startPosition,len);
-        assert(Pipe.validateVarLength(writer.p, len));
+        Pipe.validateVarLength(writer.p, len);
         writer.p.closeBlobFieldWrite();
         return len;
     }
@@ -70,8 +70,8 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
        
         if (writer.activePosition>=writer.startPosition) {
             return writer.activePosition-writer.startPosition;            
-        } else {        
-            return (writer.activePosition-Integer.MIN_VALUE)+(1+Integer.MAX_VALUE-writer.startPosition);
+        } else {       
+        	return (writer.p.sizeOfBlobRing- (writer.byteMask & writer.startPosition))+(writer.activePosition & writer.byteMask);
         }
     }
     
@@ -91,62 +91,62 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
     
     @Override
-    public void write(int b) throws IOException {
+    public void write(int b) {
         byteBuffer[byteMask & activePosition++] = (byte)b;
     }
 
     @Override
-    public void write(byte[] b) throws IOException {
+    public void write(byte[] b) {
         write(this,b,0,b.length,Integer.MAX_VALUE);
     }
 
     @Override
-    public void write(byte[] b, int off, int len) throws IOException {
+    public void write(byte[] b, int off, int len) {
         write(this,b,off,len,Integer.MAX_VALUE);
     }
 
     @Override
-    public void writeBoolean(boolean v) throws IOException {
+    public void writeBoolean(boolean v) {
         byteBuffer[byteMask & activePosition++] = (byte) (v ? 1 : 0);
     }
 
     @Override
-    public void writeByte(int v) throws IOException {
+    public void writeByte(int v) {
         byteBuffer[byteMask & activePosition++] = (byte)v;
     }
 
     @Override
-    public void writeShort(int v) throws IOException {
+    public void writeShort(int v) {
         activePosition = write16(byteBuffer, byteMask, activePosition, v); 
     }
 
     @Override
-    public void writeChar(int v) throws IOException {
+    public void writeChar(int v) {
         activePosition = write16(byteBuffer, byteMask, activePosition, v); 
     }
 
     @Override
-    public void writeInt(int v) throws IOException {
+    public void writeInt(int v) {
         activePosition = write32(byteBuffer, byteMask, activePosition, v); 
     }
 
     @Override
-    public void writeLong(long v) throws IOException {
+    public void writeLong(long v) {
         activePosition = write64(byteBuffer, byteMask, activePosition, v);
     }
 
     @Override
-    public void writeFloat(float v) throws IOException {
+    public void writeFloat(float v) {
         activePosition = write32(byteBuffer, byteMask, activePosition, Float.floatToIntBits(v));
     }
 
     @Override
-    public void writeDouble(double v) throws IOException {
+    public void writeDouble(double v) {
         activePosition = write64(byteBuffer, byteMask, activePosition, Double.doubleToLongBits(v));
     }
 
     @Override
-    public void writeBytes(String s) throws IOException {
+    public void writeBytes(String s) {
         byte[] localBuf = byteBuffer;
         int mask = byteMask;
         int pos = activePosition;
@@ -158,7 +158,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
 
     @Override
-    public void writeChars(String s) throws IOException {
+    public void writeChars(String s) {
         byte[] localBuf = byteBuffer;
         int mask = byteMask;
         int pos = activePosition;
@@ -172,7 +172,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
 
 
     @Override
-    public void writeUTF(String s) throws IOException {
+    public void writeUTF(String s) {
         activePosition = writeUTF(s, s.length(), byteMask, byteBuffer, activePosition);
     }
 
@@ -241,7 +241,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
     
-    public void writeUTF(CharSequence s) throws IOException {
+    public void writeUTF(CharSequence s) {
         activePosition = writeUTF(s, s.length(), byteMask, byteBuffer, activePosition);
     }    
     
@@ -256,7 +256,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         activePosition = pos;
     }
     
-    public void writeByteArray(byte[] bytes) throws IOException {
+    public void writeByteArray(byte[] bytes) {
         activePosition = writeByteArray(bytes, bytes.length, byteBuffer, byteMask, activePosition);
     }
 
@@ -268,7 +268,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
 
-    public void writeCharArray(char[] chars) throws IOException {
+    public void writeCharArray(char[] chars) {
         activePosition = writeCharArray(chars, chars.length, byteBuffer, byteMask, activePosition);
     }
 
@@ -280,7 +280,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
 
-    public void writeIntArray(int[] ints) throws IOException {
+    public void writeIntArray(int[] ints) {
         activePosition = writeIntArray(ints, ints.length, byteBuffer, byteMask, activePosition);
     }
 
@@ -292,7 +292,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
 
-    public void writeLongArray(long[] longs) throws IOException {
+    public void writeLongArray(long[] longs) {
         activePosition = writeLongArray(longs, longs.length, byteBuffer, byteMask, activePosition);
     }
 
@@ -304,7 +304,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
 
-    public void writeDoubleArray(double[] doubles) throws IOException {
+    public void writeDoubleArray(double[] doubles) {
         activePosition = writeDoubleArray(doubles, doubles.length, byteBuffer, byteMask, activePosition);
     }
 
@@ -316,7 +316,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
 
-    public void writeFloatArray(float[] floats) throws IOException {
+    public void writeFloatArray(float[] floats) {
         activePosition = writeFloatArray(floats, floats.length, byteBuffer, byteMask, activePosition);
     }
 
@@ -328,7 +328,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
 
-    public void writeShortArray(short[] shorts) throws IOException {
+    public void writeShortArray(short[] shorts) {
         activePosition = writeShortArray(shorts, shorts.length, byteBuffer, byteMask, activePosition);
     }
 
@@ -340,7 +340,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
 
-    public void writeBooleanArray(boolean[] booleans) throws IOException {
+    public void writeBooleanArray(boolean[] booleans) {
         activePosition = writeBooleanArray(booleans, booleans.length, byteBuffer, byteMask, activePosition);
     }
 
@@ -352,7 +352,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
 
-    public void writeUTFArray(String[] utfs) throws IOException {
+    public void writeUTFArray(String[] utfs) {
         activePosition = writeUTFArray(utfs, utfs.length, byteBuffer, byteMask, activePosition);
     }
 
@@ -364,7 +364,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }    
     
-    public static void write(DataOutputBlobWriter writer, byte[] source, int sourceOff, int sourceLen, int sourceMask) throws IOException {
+    public static void write(DataOutputBlobWriter writer, byte[] source, int sourceOff, int sourceLen, int sourceMask) {
         Pipe.copyBytesFromToRing(source, sourceOff, sourceMask, writer.byteBuffer, writer.activePosition, writer.byteMask, sourceLen); 
         writer.activePosition+=sourceLen;
     }

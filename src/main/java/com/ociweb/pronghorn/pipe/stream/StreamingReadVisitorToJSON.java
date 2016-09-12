@@ -1,7 +1,10 @@
 package com.ociweb.pronghorn.pipe.stream;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.ByteBuffer;
+
+import com.ociweb.pronghorn.util.Appendables;
 
 public class StreamingReadVisitorToJSON implements StreamingReadVisitor {
 
@@ -93,13 +96,19 @@ public class StreamingReadVisitorToJSON implements StreamingReadVisitor {
 	@Override
 	public void visitSignedLong(String name, long id, long value) {
 		writeTab();
-		out.println("{\""+name+"\":"+Long.valueOf(value)+"}");
+		out.print("{\"");
+		out.print(name);
+		out.print("\":");
+		out.println(Long.valueOf(value)+"}");
 	}
 
 	@Override
 	public void visitUnsignedLong(String name, long id, long value) {
 		writeTab();
-		out.println("{\""+name+"\":"+Long.valueOf(value)+"}"); //TODO: this is not strictly right and can be negative!!
+		out.print("{\"");
+		out.print(name);
+		out.print("\":");
+		out.println(Long.valueOf(value)+"}"); //TODO: this is not strictly right and can be negative!!
 	}
 
 	@Override
@@ -129,7 +138,11 @@ public class StreamingReadVisitorToJSON implements StreamingReadVisitor {
 	@Override
 	public void visitUTF8(String name, long id, Appendable value) {
 		writeTab();
-		out.println("{\""+name+"\":\""+value+"\"}");
+		out.print("{\"");
+        out.print(name);
+        out.print("\":\"");
+        out.print(value);
+		out.println("\"}");
 	}
 
 	@Override
@@ -144,13 +157,17 @@ public class StreamingReadVisitorToJSON implements StreamingReadVisitor {
 	@Override
 	public void visitBytes(String name, long id, ByteBuffer value) {
 	    writeTab();
-        out.print("{\""+name+"\":\"");
+        out.print("{\"");
+        out.print(name);
+        out.print("\":\"");
         value.flip();
-        
-        while (value.hasRemaining()) {//TODO: needs clean up !!
-            String tmp = "00"+Integer.toHexString(value.get());
-            out.print("0x");
-            out.print(tmp.substring(tmp.length()-2)  );
+   
+        while (value.hasRemaining()) {
+            try {
+				Appendables.appendFixedHexDigits(out, 0xFF&value.get(), 8);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
             if (value.hasRemaining()) {
                 out.print(",");
             }
@@ -158,8 +175,6 @@ public class StreamingReadVisitorToJSON implements StreamingReadVisitor {
         }
         out.println("\"}");
         
-        
-		//undefined how we should send a binary block to JSON
 	}
 
 	@Override

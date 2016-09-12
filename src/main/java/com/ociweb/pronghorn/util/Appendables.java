@@ -15,7 +15,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 public class Appendables {
     
     private final static char[] hBase = new char[] {'0','1','2','3','4','5','6','7','8','9',
-      'A','B','C','D','E','F'};
+      'a','b','c','d','e','f'};
     
     public static <A extends Appendable> A appendArray(A target, char left, long[] a, char right) throws IOException {
         if (a != null) {        

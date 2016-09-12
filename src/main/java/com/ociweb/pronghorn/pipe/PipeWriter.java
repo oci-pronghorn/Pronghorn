@@ -246,7 +246,7 @@ public class PipeWriter {
 	}
 
     public static void writeLongAsText(Pipe pipe, int loc, long value) { 
-        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteArray, TypeMask.ByteArrayOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
         
     	int max = 21+Pipe.getBlobWorkingHeadPosition(pipe);
     	int len = Pipe.leftConvertLongToASCII(pipe, value, max);
@@ -338,18 +338,36 @@ public class PipeWriter {
         PipeWriter.writeSpecialBytesPosAndLen(pipe, loc, byteCount, startPosition);
     }
 
-    /**
-     * Does not require tryWrite to be called first, we only need to check that there is room to write. This is for supporting buffer write
-     * to determine if we have data that can be written.
-     * 
-     * @param target
-     * @param loc
-     */
-	public static ByteBuffer wrappedUnstructuredLayoutBufferOpen(Pipe<?> target, int loc) {
+    @Deprecated
+	public static ByteBuffer wrappedUnstructuredLayoutBufferOpenA(Pipe<?> target, int loc) {
 		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		assert(PipeWriter.hasRoomForWrite(target)) : "must protect by ensuring we have room first";
-		return Pipe.wrappedBlobForWriting(Pipe.storeBlobWorkingHeadPosition(target), target);
+		return Pipe.wrappedBlobForWritingA(Pipe.storeBlobWorkingHeadPosition(target), target);
 	}
+	
+	@Deprecated
+	public static ByteBuffer wrappedUnstructuredLayoutBufferOpenB(Pipe<?> target, int loc) {
+		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
+		assert(PipeWriter.hasRoomForWrite(target)) : "must protect by ensuring we have room first";
+		return Pipe.wrappedBlobForWritingB(Pipe.getBlobWorkingHeadPosition(target), target);
+	}
+	
+	
+	/**
+	 * Does not require tryWrite to be called first, we only need to check that there is room to write. This is for supporting buffer write
+	 * to determine if we have data that can be written.
+	 * 
+	 * @param target
+	 * @param loc
+	 */
+	public static ByteBuffer[] wrappedUnstructuredLayoutBufferOpen(Pipe<?> target, int loc) {
+		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
+		assert(PipeWriter.hasRoomForWrite(target)) : "must protect by ensuring we have room first";
+		return Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target);
+		
+		
+	}
+	
 	
 	public static void wrappedUnstructuredLayoutBufferCancel(Pipe<?> target) {
 		Pipe.unstoreBlobWorkingHeadPosition(target);
@@ -361,12 +379,17 @@ public class PipeWriter {
 		
 		Pipe.validateVarLength(target,length);
 		long ringPos = target.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(loc>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&loc);		
-		Pipe.slab(target)[target.mask & (int)ringPos] = (int)(Pipe.unstoreBlobWorkingHeadPosition(target)-Pipe.bytesWriteBase(target)) & Pipe.BYTES_WRAP_MASK; //mask is needed for the negative case, does no harm in positive case
-		Pipe.slab(target)[target.mask & (int)(ringPos+1)] = length;		
+		Pipe.slab(target)[target.mask & (int)ringPos] = (int)(target.sizeOfBlobRing + Pipe.unstoreBlobWorkingHeadPosition(target)-Pipe.bytesWriteBase(target)) & target.byteMask; //mask is needed for the negative case, does no harm in positive case
+		Pipe.slab(target)[target.mask & (int)(ringPos+1)] = length;	
 		Pipe.addAndGetBytesWorkingHeadPosition(target, length);
 		
 	}
+
+	public static <S extends MessageSchema> DataOutputBlobWriter<S> outputStream(Pipe<S> pipe) {
+		return Pipe.outputStream(pipe);
+	}
     
+	
     
 	
     

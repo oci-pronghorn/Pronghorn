@@ -49,11 +49,11 @@ public class TrieParserReader {
     //TODO: when looking for N stops or them together as a quick way to avoid a number of checks.
        
     public void debug() {
-        System.out.println(TrieParserReader.class.getName()+" reader debug() details:");
-        System.out.println("pos  "+sourcePos+" masked "+(sourcePos&sourceMask));
-        System.out.println("len  "+sourceLen);
-        System.out.println("mask "+sourceMask);
-        System.out.println("size "+sourceBacking.length);
+        System.err.println(TrieParserReader.class.getName()+" reader debug() details:");
+        System.err.println("pos  "+sourcePos+" masked "+(sourcePos&sourceMask));
+        System.err.println("len  "+sourceLen);
+        System.err.println("mask "+sourceMask);
+        System.err.println("size "+sourceBacking.length);
         
     }
     
@@ -169,14 +169,21 @@ public class TrieParserReader {
     
     
     public static void parseSetup(TrieParserReader that, byte[] source, int offset, int length, int mask) {
-        if (null==source) {
-            throw new NullPointerException();
-        }
         assert(length<=source.length) : "length is "+length+" but the array is only "+source.length;
         that.sourceBacking = source;
         that.sourcePos     = offset;
         that.sourceLen     = length;
         that.sourceMask    = mask;        
+    }
+    
+    public static void parseSetup(TrieParserReader that, byte[] source, int mask) {
+        that.sourceBacking = source;
+        that.sourceMask    = mask;        
+    }
+    
+    public static void parseSetupGrow(TrieParserReader that, int additionalLength) {
+    	that.sourceLen += additionalLength;
+    	assert(that.sourceLen<=that.sourceMask) : "length is out of bounds";
     }
     
     /**
@@ -204,25 +211,29 @@ public class TrieParserReader {
         return debugAsUTF8(that,target, Integer.MAX_VALUE);
     }
     public static int debugAsUTF8(TrieParserReader that, Appendable target, int maxLen) {
+    	return debugAsUTF8(that, target, maxLen, true);
+    }
+    public static int debugAsUTF8(TrieParserReader that, Appendable target, int maxLen, boolean mayHaveLeading) {
+    	int pos = that.sourcePos;
         try {
-             if ((that.sourceBacking[that.sourcePos & that.sourceMask]<32) || (that.sourceBacking[(1+that.sourcePos) & that.sourceMask]<32)) {
+             if (mayHaveLeading && ((that.sourceBacking[pos & that.sourceMask]<32) || (that.sourceBacking[(1+pos) & that.sourceMask]<32))) {
                  //we have a leading length
                  target.append("[");
-                 Appendables.appendValue(target, that.sourceBacking[that.sourceMask&that.sourcePos++]);
+                 Appendables.appendValue(target, that.sourceBacking[that.sourceMask & pos++]);
                  target.append(",");
-                 Appendables.appendValue(target, that.sourceBacking[that.sourceMask&that.sourcePos++]);
+                 Appendables.appendValue(target, that.sourceBacking[that.sourceMask & pos++]);
                  target.append("]");
                  that.sourceLen-=2;
              }
             
-             Appendable a = Appendables.appendUTF8(target, that.sourceBacking, that.sourcePos, Math.min(maxLen, that.sourceLen), that.sourceMask);
+             Appendable a = Appendables.appendUTF8(target, that.sourceBacking, pos, Math.min(maxLen, that.sourceLen), that.sourceMask);
              if (maxLen<that.sourceLen) {
                  a.append("...");
              }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return that.sourcePos;
+        return pos;
     }
     
     public static boolean parseHasContent(TrieParserReader reader) {
@@ -280,9 +291,20 @@ public class TrieParserReader {
         logger.warn("to parse next:\n{}",toParse);
     }
     
-    public static void parseSkip(TrieParserReader reader, int count) {
-        reader.sourcePos += count;
-        reader.sourceLen -= count;
+    public static int parseSkip(TrieParserReader reader, int count) {
+    	int len = Math.min(count, reader.sourceLen);
+        reader.sourcePos += len;
+        reader.sourceLen -= len;
+        return len;
+    }
+    
+    public static int parseCopy(TrieParserReader reader, long count, DataOutputBlobWriter<?> writer) {
+        
+    	int len = (int)Math.min(count, (long)reader.sourceLen);    	
+    	DataOutputBlobWriter.write(writer, reader.sourceBacking, reader.sourcePos, len, reader.sourceMask);    	
+    	reader.sourcePos += len;
+        reader.sourceLen -= len;
+        return len;
     }
     
     /**
@@ -429,7 +451,11 @@ public class TrieParserReader {
                     }
                 }
             } else if (t == TrieParser.TYPE_VALUE_NUMERIC) {                
-                reader.localSourcePos = parseNumeric(reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, (int)trie.data[reader.pos++]);
+            	int temp = parseNumeric(reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, (int)trie.data[reader.pos++]);
+            	if (temp<0) {
+            		return unfoundResult;
+            	}
+                reader.localSourcePos = temp;
             } else if (t == TrieParser.TYPE_ALT_BRANCH) {
                  processAltBranch(reader, trie.data);                 
             } else  {                
@@ -782,9 +808,10 @@ public class TrieParserReader {
         }
         
         //just to keep it from spinning on values that are way out of bounds
-        sourceLength = 0x1F & sourceLength; //never scan over 32
+        sourceLength = Math.min(32, sourceLength); //never scan over 32
         
-        if (0==(TrieParser.NUMERIC_FLAG_HEX&numType) | ('0'!=source[sourceMask & sourcePos+1])| ('x'!=source[sourceMask & sourcePos+2])  ) {                            
+        boolean hasNo0xPrefix = ('0'!=source[sourceMask & sourcePos+1]) || ('x'!=source[sourceMask & sourcePos+2]);
+		if (hasNo0xPrefix && 0==(TrieParser.NUMERIC_FLAG_HEX&numType) ) {                            
             base = 10;
             short c = 0;
             do {
@@ -803,7 +830,9 @@ public class TrieParserReader {
             }
         } else {
             base = 16;
-            sourcePos+=2;//skipping over the 0x checked above
+            if (!hasNo0xPrefix) {
+            	sourcePos+=2;//skipping over the 0x checked above
+            }
             short c = 0;
             do {
                 c = source[sourceMask & sourcePos++];
@@ -823,12 +852,16 @@ public class TrieParserReader {
             
             if (intLength>16) {
                 //ERROR
+            	return -1;
             }
             
         }
 
+		if (intLength==0) {
+			return -1;
+		}
         publish(reader, sign, intValue, intLength, base);
-
+        
         return sourcePos-1;
     }
 
@@ -842,16 +875,46 @@ public class TrieParserReader {
         
     }
     
+    public static void writeCapturedShort(TrieParserReader reader, int idx, DataOutput target) {
+         int pos = idx*4;
+         
+         int sign = reader.capturedValues[pos++];
+         assert(sign!=0);
+         pos++;//skip high since we are writing a short
+         try {
+			target.writeShort((short)reader.capturedValues[pos++]);
+	 	 } catch (IOException e) {
+			throw new RuntimeException(e);
+		 }        
+    }
+    
+    public static void writeCapturedUTF8(TrieParserReader reader, int idx, DataOutputBlobWriter<?> target) {
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int p = reader.capturedValues[pos++];
+        int l = reader.capturedValues[pos++];
+        int m = reader.capturedValues[pos++];
+        
+        //this data is already encoded as UTF8 so we do a direct copy
+        target.writeShort(l);
+        DataOutputBlobWriter.write(target, reader.capturedBlobArray, p, l, m);
+    
+   }
+    
+    
     public static long capturedLongField(TrieParserReader reader, int idx) {
     	
     	 int pos = idx*4;
          
          int sign = reader.capturedValues[pos++];
-         assert(sign==0);
+         assert(sign!=0);
     	
          long value = reader.capturedValues[pos++];
          value = (value<<32) | (0xFFFFFFFF&reader.capturedValues[pos++]);
-         assert(10 == reader.capturedValues[pos++]);
+
+         assert((reader.capturedValues[pos]&0xFFFF) != 0) : "No number was found, no digits were parsed.";
          
          return value;
     }

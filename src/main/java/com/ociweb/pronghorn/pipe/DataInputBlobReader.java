@@ -243,19 +243,31 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         int length = readShort(); //read first 2 byte for length in bytes to convert.
         
         workspace.setLength(0);
-        
-        return readUTF(this, length);
+        try {
+        	return readUTF(this, length, workspace).toString();
+        } catch (Exception e) {
+        	throw new RuntimeException(e);
+        }
+    }
+    
+    public <A extends Appendable> A readUTF(A target) {
+        int length = readShort(); //read first 2 byte for length in bytes to convert.        
+        try {
+        	return readUTF(this, length, target);
+        } catch (Exception e) {
+        	throw new RuntimeException(e);
+        }
     }
 
-    public static String readUTF(DataInputBlobReader reader, int length) {
+    public static <A extends Appendable> A readUTF(DataInputBlobReader reader, int length, A target) throws IOException {
         long charAndPos = ((long)reader.position)<<32;
         long limit = ((long)reader.position+length)<<32;
 
         while (charAndPos<limit) {
             charAndPos = Pipe.decodeUTF8Fast(reader.backing, charAndPos, reader.byteMask);
-            reader.workspace.append((char)charAndPos);
+            target.append((char)charAndPos);
         }
-        return new String(reader.workspace);
+        return target;
     }
         
     public Object readObject() throws ClassNotFoundException  {
