@@ -69,6 +69,8 @@ public class GraphManager {
 	//for lookup of RingBuffer from RingBuffer id
 	private Pipe[] pipeIdToPipe = new Pipe[INIT_RINGS];
 	
+	private static final Pipe[] EMPTY_PIPE_ARRAY = new Pipe[0];
+	
 	//for lookup of Stage from Stage id
 	private PronghornStage[]  stageIdToStage = new PronghornStage[INIT_STAGES];
 			
@@ -500,6 +502,10 @@ public class GraphManager {
                     count++;
                 }
             }
+        }
+        
+        if (0==count) {
+        	return EMPTY_PIPE_ARRAY;
         }
 	    
         //pass two to collect all the instances.
