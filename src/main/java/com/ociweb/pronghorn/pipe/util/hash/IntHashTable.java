@@ -27,6 +27,10 @@ public class IntHashTable {
 		int j = size;
 		
 	}
+	
+	public static boolean isEmpty(IntHashTable ht) {
+		return ht.space == ht.mask;
+	}
 		
 	public long memoryConsumed() {
 	    return 4 + 4 + (data.length*8);
@@ -60,6 +64,7 @@ public class IntHashTable {
 	
 	/**
 	 * returns zero if the value is not found otherwise it returns the value.
+	 * If zero was set as the value there is no way to tell the difference without calling hasItem
 	 * @param ht
 	 * @param key
 	 */
