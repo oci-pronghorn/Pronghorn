@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.stage.network.config;
 public enum HTTPContentTypeDefaults implements HTTPContentType {
 
     //TODO: user smaller hash and put the lest used values at the bottom so they get the collision jump
-    UNKNOWN("","aaaa"),//MUST BE FIRST WITH ORDINAL ZERO
+    UNKNOWN("",""),//MUST BE FIRST WITH ORDINAL ZERO
     AI("application/postscript","ai"),
     AIF("audio/x-aiff","aif"),
     AIFF("audio/x-aiff","aiff"),
@@ -103,26 +103,26 @@ public enum HTTPContentTypeDefaults implements HTTPContentType {
     ZIP("application/zip","zip");
     
     
-    private CharSequence contentType;
-    private CharSequence fileExtension;
+    private final String contentType;
+    private final String fileExtension;
     
     
-    private HTTPContentTypeDefaults(CharSequence contentType, CharSequence fileExtension) {
+    private HTTPContentTypeDefaults(String contentType, String fileExtension) {
 
         this.contentType = contentType;
         this.fileExtension = fileExtension;
-        
+
     }
 
 
     @Override
-    public CharSequence contentType() {
+    public String contentType() {
         return contentType;
     }
 
 
     @Override
-    public CharSequence fileExtension() {
+    public String fileExtension() {
         return fileExtension;
     }
     

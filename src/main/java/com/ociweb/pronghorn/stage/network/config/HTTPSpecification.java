@@ -13,15 +13,15 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
     
     public final int maxVerbLength;
     public final int maxRevisionLength;
-    
+
     @Deprecated
-    public final int GET_ID;
-    @Deprecated
-    public final int HEAD_ID;
     public final byte[][] revisionBytes; //TODO: caution, code using this may not find it NUMA local
+    @Deprecated
     public final byte[][] contentTypeBytes; //TODO: caution, code using this may not find it NUMA local
+    
     public final int headerCount;
     public final H[] headers;
+    public final T[] contentTypes;
     
     private static HTTPSpecification<HTTPContentTypeDefaults,HTTPRevisionDefaults,HTTPVerbDefaults,HTTPHeaderKeyDefaults> defaultSpec;
     
@@ -55,11 +55,11 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         this.maxRevisionLength = maxRevisionLength;
         
         //populate content bytes
-        T[] cTypes = supportedHTTPContentTypes.getEnumConstants();
-        int t = cTypes.length;
+        contentTypes = supportedHTTPContentTypes.getEnumConstants();
+        int t = contentTypes.length;
         contentTypeBytes = new byte[t][];
         while (--t >=  0) {
-            contentTypeBytes[ cTypes[t].ordinal() ] = (cTypes[t].contentType().toString()+"\n").getBytes();            
+            contentTypeBytes[ contentTypes[t].ordinal() ] = (contentTypes[t].contentType().toString()+"\n").getBytes();            
         }
         
         //find ordinal values and max length
@@ -80,9 +80,7 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
             }            
         }
         this.maxVerbLength = maxVerbLength;
-        GET_ID = localGet;
-        HEAD_ID = localHead;
-        
+
     }
 
 	public boolean headerMatches(int headerId, CharSequence cs) {
