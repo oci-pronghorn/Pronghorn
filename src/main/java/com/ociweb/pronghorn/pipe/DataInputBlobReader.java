@@ -270,11 +270,11 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         return target;
     }
         
-    public Object readObject() throws ClassNotFoundException  {
+    public Object readObject()  {
         
         try {
             return new ObjectInputStream(this).readObject();
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
     }
