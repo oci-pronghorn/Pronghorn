@@ -504,6 +504,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 curCursor2 += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
             }
 
+
         } catch (IOException e) {
             java.util.logging.Logger.getLogger(PhastEncoderStageGenerator.class.getName()).log(Level.SEVERE, null, e);
         }

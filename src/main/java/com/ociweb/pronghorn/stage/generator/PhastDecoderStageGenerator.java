@@ -99,7 +99,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             Appendables.appendValue(target, startsCount).append("];\n");
         }
     }
-    @Override
+    //@Override
     protected void listMembers(Appendable target) {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         int[] tokens = from.tokens;
@@ -199,6 +199,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             }
             cursor++;
         }
+        appendWriteMethodName(target,cursor);
     }
 
     @Override
