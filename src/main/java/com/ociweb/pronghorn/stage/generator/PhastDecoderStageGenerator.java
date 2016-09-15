@@ -124,6 +124,8 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     protected void bodyOfBusinessProcess(Appendable target, int cursor, int firstField, int fieldCount) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         PhastDecoder decoder = new PhastDecoder();
+        //cursor for generating the method after loop
+        int cursor2 = cursor;
 
         int[] tokens = from.tokens;
         long[] scriptIds = from.fieldIdScript;
@@ -134,6 +136,9 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         //these fields on if supporting preamble
         //int map = from.preambleOffset;
         //long bitMask = from.templateOffset;
+
+        //this will keep track of variable names
+        StringBuilder argumentList = new StringBuilder();
 
         //bitmask goes here
         target.append(tab + "long " + bitMaskName + " = 1;\n");
@@ -165,7 +170,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                         decodeIncrementIntGenerator(bodyTarget, f);
                         break;
                     default: {
-                        bodyTarget.append("Unsupported Operator Type");
+                        bodyTarget.append("0//here as placeholder, this is unsupported\n");
                     }
                 }
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
@@ -198,8 +203,16 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 bodyTarget.append("Unsupported data type " + pmapType + "\n");
             }
             cursor++;
+            argumentList.append(scriptNames[f]);
+            if (f != fieldCount){
+                argumentList.append(',');
+            }
         }
-        appendWriteMethodName(target,cursor);
+
+        //open method to call with the variable names
+        appendWriteMethodName(target.append(tab), cursor2).append("(");
+        target.append(argumentList);
+        target.append(");\n");
     }
 
     @Override
