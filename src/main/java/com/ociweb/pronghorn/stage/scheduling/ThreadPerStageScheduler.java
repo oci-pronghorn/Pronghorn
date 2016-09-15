@@ -82,6 +82,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		    unscheduledLock.unlock();
 		} catch (Throwable t) {
 		}
+
 		GraphManager.terminateInputStages(graphManager);
 		isShuttingDown = true;
 				
@@ -319,8 +320,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					GraphManager.initInputRings(graphManager, stage.stageId);
 					log.trace("finished on initRings:{}",stage.getClass().getSimpleName());
 					
-					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
+					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);				
 					stage.startup();
+					
 					GraphManager.setStateToStarted(graphManager, stage.stageId);					
 				       
 					try {
@@ -416,13 +418,27 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			}
 			if (nsSleep>0) {
 				long limit = nsSleep + System.nanoTime();
-				while (System.nanoTime()<limit) {
-					Thread.yield();
-					if (Thread.interrupted()) {
-						 Thread.currentThread().interrupt();
-						 return;
+				if (nsSleep>900) {					
+		      	    try {
+				        Thread.sleep(0,nsSleep-300);
+				    } catch (InterruptedException e) {
+					    Thread.currentThread().interrupt();
+					    return;
+				    }
+					
+				}
+				//if sleep(long, int) is implemented on this platform then  will not spin longer than 800 ns in the worst case
+				//we will not watch for interupt while in his short loop.
+				long dif;
+				while ((dif = (limit-System.nanoTime()))>0) {
+					if (dif>100) {
+						Thread.yield();
 					}
-				}			
+				}	
+				if (Thread.interrupted()) {
+					Thread.currentThread().interrupt();
+					return;
+				}
 			}
 			
 			stage.run();

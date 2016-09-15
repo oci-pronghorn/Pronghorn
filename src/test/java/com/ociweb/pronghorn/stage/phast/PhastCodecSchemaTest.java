@@ -182,16 +182,14 @@ public class PhastCodecSchemaTest {
 	            
 	            ///TODO: add test bytes array
 	            
-	            try {
+	       
                     writer.writePackedLong(escape);
                     writer.writePackedLong(4);
                     writer.write(1);
                     writer.write(2);
                     writer.write(3);
                     writer.write(4);
-	            } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+
 	            
 	            
 	            

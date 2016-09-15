@@ -69,6 +69,8 @@ public class GraphManager {
 	//for lookup of RingBuffer from RingBuffer id
 	private Pipe[] pipeIdToPipe = new Pipe[INIT_RINGS];
 	
+	private static final Pipe[] EMPTY_PIPE_ARRAY = new Pipe[0];
+	
 	//for lookup of Stage from Stage id
 	private PronghornStage[]  stageIdToStage = new PronghornStage[INIT_STAGES];
 			
@@ -234,8 +236,19 @@ public class GraphManager {
 	
 	
 	public static boolean validShutdown(GraphManager m) {
+				
 		boolean result = true;
 
+		
+		PronghornStage[] neverStarted = GraphManager.allStagesByState(m, GraphManagerStageStateData.STAGE_NEW);
+		int j = neverStarted.length;
+		if  (j>0) {
+			result = false;
+			while (--j>=0) {
+				StageScheduler.log.error("{} never completed startup()",neverStarted[j]);
+			}
+		}		
+		
 		int i = -1;
 		while (++i<m.stageIdToStage.length) {
 			if (null!=m.stageIdToStage[i]) {				
@@ -490,6 +503,10 @@ public class GraphManager {
                 }
             }
         }
+        
+        if (0==count) {
+        	return EMPTY_PIPE_ARRAY;
+        }
 	    
         //pass two to collect all the instances.
         Pipe[] result = new Pipe[count];
@@ -696,6 +713,9 @@ public class GraphManager {
 		synchronized(m.lock) {	
 			
 			//if Nota key already exists then replace previous value
+			
+		
+			
 			int notaId = findNotaIdForKey(m, stage.stageId, key);
 			
 			if (-1 != notaId) {
@@ -737,6 +757,9 @@ public class GraphManager {
 	
 	private static int findNotaIdForKey(GraphManager m, int stageId, Object key) {
 		int idx = m.stageIdToNotasBeginIdx[stageId];
+		if (idx>=m.multNotaIds.length) {
+			return -1;
+		}
 		int notaId;
 		while(-1 != (notaId = m.multNotaIds[idx])) {
 			if (m.notaIdToKey[notaId].equals(key)) {
@@ -968,6 +991,30 @@ public class GraphManager {
     public static boolean isStageStarted(GraphManager m, int stageId) {
         return m.stageStateData.stageStateArray[stageId]>=GraphManagerStageStateData.STAGE_STARTED; //or running or shuttingdown or terminated
     }
+    
+    public static PronghornStage[] allStagesByState(GraphManager graphManager, int state) {
+        
+        int count = 0;
+        int s = graphManager.stageIdToStage.length;
+        while (--s>=0) {
+            PronghornStage stage = graphManager.stageIdToStage[s];             
+            if (null!=stage && graphManager.stageStateData.stageStateArray[stage.stageId]==state) {
+                count++;
+            }
+        }
+        
+        PronghornStage[] stages = new PronghornStage[count];
+        s = graphManager.stageIdToStage.length;
+        while (--s>=0) {
+            PronghornStage stage = graphManager.stageIdToStage[s];             
+            if (null != stage && graphManager.stageStateData.stageStateArray[stage.stageId]==state) {
+                stages[--count] = stage;
+            }
+        }
+        return stages;
+    }
+    
+    
     
     //TODO: AA must have blocking base stage to extend for blockers.
     
@@ -1468,7 +1515,7 @@ public class GraphManager {
         int p = pipes.length;
         while (--p >= 0) {
             if (null != pipes[p]) {
-                if (Pipe.contentRemaining(pipes[p]) > 0) {                    
+                if (Pipe.contentRemaining(pipes[p]) > 0) {   
                     return false;
                 }
             }
