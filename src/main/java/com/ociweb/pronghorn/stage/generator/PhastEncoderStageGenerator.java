@@ -55,12 +55,16 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     protected void startupBody(Appendable target) throws IOException {
         target.append("\n" + tab + intDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
         target.append(tab + longDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
+        target.append(tab + defIntDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
+        target.append(tab + defLongDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
     }
 
     @Override
     protected void additionalMembers(Appendable target) throws IOException {
         target.append("long[] " + longDictionaryName + ";\n");
         target.append("int[] " + intDictionaryName + ";\n");
+        target.append("long[] " + defLongDictionaryName + ";\n");
+        target.append("int[] " + defIntDictionaryName + ";\n");
     }
 
     //  BuilderInt Factory
@@ -397,14 +401,15 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             
             //call to instantiate dictionaries
             generateVariables(schema, bodyTarget);
-            
+
             //traverse all tokens and print out a pmap builder for each of them
-            for (int paramIdx = 0; paramIdx < fragmentParaCount; paramIdx++) {
+            int i = fragmentParaCount - 1;
+            while (i >= 0){
                 int token = from.tokens[curCursor];
                 int pmapType = TokenBuilder.extractType(token);
 
-                String varName = new StringBuilder().append(fragmentParaArgs[paramIdx]).append(fragmentParaSuff[paramIdx]).toString();
-                String varType = new StringBuilder().append(fragmentParaTypes[paramIdx]).toString();
+                String varName = new StringBuilder().append(fragmentParaArgs[i]).append(fragmentParaSuff[i]).toString();
+                String varType = new StringBuilder().append(fragmentParaTypes[i]).toString();
 
                 boolean isNull = false;
 
@@ -415,11 +420,11 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 //call appropriate pmap builder according to type
                 if (varType.equals("int")) {
                     bodyTarget.append(tab + pmapName + " = ");
-                    encodePmapBuilderInt(schema, bodyTarget, token, paramIdx, varName, isNull);
+                    encodePmapBuilderInt(schema, bodyTarget, token, i, varName, isNull);
 
                 } else if (varType.equals("long")) {
                     bodyTarget.append(tab + pmapName + " = ");
-                    encodePmapBuilderLong(schema, bodyTarget, token, paramIdx, varName,isNull);
+                    encodePmapBuilderLong(schema, bodyTarget, token, i, varName,isNull);
 
                 } else if (varType.equals("StringBuilder")) {
                     bodyTarget.append(tab + pmapName + " = ");
@@ -430,26 +435,28 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 }
 
                 curCursor += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
+                i--;
             }
 
             //taking in pmap
             bodyTarget.append(tab + "DataOutputBlobWriter.writePackedLong(" + writerName + ", " + pmapName + ");\n");
             //instantiating bimask
             bodyTarget.append(tab + "long " + bitMaskName + " = 1;\n");
-            bodyTarget.append(tab + bitMaskName + " = " + bitMaskName + " << " + (fragmentParaCount - 1) + ";\n");
             //line break for readability
             bodyTarget.append("\n");
-            
+
+            //number of shifts if it is optional or not
+            int numShifts = 0;
             //traverses all data and pulls them off the pipe
             for (int paramIdx = 0; paramIdx < fragmentParaCount; paramIdx++) {
                 int token = from.tokens[curCursor2];
                 int pmapType = TokenBuilder.extractType(token);
                 String varName = new StringBuilder().append(fragmentParaArgs[paramIdx]).append(fragmentParaSuff[paramIdx]).toString();
                 String varType = new StringBuilder().append(fragmentParaTypes[paramIdx]).toString();
-                
                 //if int, goes to switch to find correct operator to call
                 if (TypeMask.isInt(pmapType) == true) {
                     int oper = TokenBuilder.extractOper(token);
+                    numShifts = 1;
                     switch (oper) {
                         case OperatorMask.Field_Copy:
                             copyIntGenerator(schema, bodyTarget, paramIdx, varName);
@@ -474,6 +481,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 //if long, goes to switch to find correct operator to call 
                 else if (TypeMask.isLong(pmapType) == true) {
                     int oper = TokenBuilder.extractOper(token);
+                    numShifts = 1;
                     switch (oper) {
                         case OperatorMask.Field_Copy:
                             copyLongGenerator(schema, bodyTarget, paramIdx, varName);
@@ -494,12 +502,13 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 }
                 //if string
                 else if (TypeMask.isText(pmapType) == true) {
+                    numShifts = 1;
                     encodeStringGenerator(schema, bodyTarget, varName);
                 } else {
                     bodyTarget.append("Unsupported data type " + pmapType + "\n");
                 }
                 if (paramIdx != (fragmentParaCount - 1)) {
-                    bodyTarget.append(tab + bitMaskName + " = " + bitMaskName + " >> 1;\n");
+                    bodyTarget.append(tab + bitMaskName + " = " + bitMaskName + " << " + numShifts + ";\n");
                 }
                 curCursor2 += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
             }

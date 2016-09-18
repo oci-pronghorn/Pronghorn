@@ -25,7 +25,8 @@ public class PhastEncoderTest {
 		DataOutputBlobWriter<RawDataSchema> writer = new DataOutputBlobWriter<RawDataSchema>(pipe);
 		
 		//encode a string on blob using the static method
-		PhastEncoder.encodeString(writer, "This is a test", 0, 0);
+		StringBuilder testString = new StringBuilder("This is a test");
+		PhastEncoder.encodeString(writer, testString , 0, 0);
 		
 		writer.close();
 		

@@ -106,7 +106,7 @@ public class PhastEncoder {
     }
 
     
-	public static void encodeDeltaLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, int idx, long bitMask, long value) {
+	public static void encodeDeltaLong(long[] longDictionary, DataOutputBlobWriter writer, long pmapHeader, long bitMask, int idx, long value) {
         if (MOST_FREQUENT_CASE == (pmapHeader&bitMask)) {
             
             DataOutputBlobWriter.writePackedLong(writer, value-longDictionary[idx]);
@@ -115,14 +115,14 @@ public class PhastEncoder {
     }
     
     //this method encodes a string
-	public static void encodeString(DataOutputBlobWriter writer, String value, long pmapHeader, long bitMask) throws IOException{
+	public static void encodeString(DataOutputBlobWriter writer, StringBuilder value, long pmapHeader, long bitMask){
 		if(MOST_FREQUENT_CASE == (pmapHeader&bitMask)){
 			//encode -63 so it knows it is variable length
 			//make constant -63
 			DataOutputBlobWriter.writePackedInt(writer, INCOMING_VARIABLE);
     		 
 			//write string using utf
-			writer.writeUTF(value);
+			writer.writeUTF(value.toString());
 		}
     }
     
