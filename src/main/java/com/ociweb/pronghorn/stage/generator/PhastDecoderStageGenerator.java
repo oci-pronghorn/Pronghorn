@@ -95,7 +95,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 Appendables.appendStaticCall(target, Pipe.class, "from").append(pipeVarName).append(")");
             }
 
-            target.append(".messageStarts[(");
+            target.append(".messageStarts[");
             Appendables.appendValue(target, startsCount).append("];\n");
         }
     }
@@ -147,7 +147,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         //pass over group tag 0x10000
         cursor++;
 
-        for (int f = firstField; f <= fieldCount; f++) {
+        for (int f = 0; f < fieldCount; f++) {
             target.append(tab + scriptNames[f] + " = ");
             int token = from.tokens[cursor];
             int pmapType = TokenBuilder.extractType(token);
@@ -168,9 +168,11 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                         break;
                     case OperatorMask.Field_Increment:
                         decodeIncrementIntGenerator(bodyTarget, f);
+                    case OperatorMask.Field_None:
+                        bodyTarget.append("0;//no oper currently not supported.\n");
                         break;
                     default: {
-                        bodyTarget.append("0//here as placeholder, this is unsupported\n");
+                        bodyTarget.append("0;//here as placeholder, this is unsupported\n");
                     }
                 }
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");

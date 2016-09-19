@@ -374,8 +374,6 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
 
-    //method to instatiate dictionaries and pmap
-    //TODO:generate dictionaries
     private void generateVariables(MessageSchema schema, Appendable target) throws IOException {
         bodyTarget.append(tab + "long " + pmapName + " = 0;\n");
     }
@@ -473,8 +471,11 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                         case OperatorMask.Field_Increment:
                             incrementIntGenerator(schema, bodyTarget, paramIdx, varName);
                             break;
+                        case OperatorMask.Field_None:
+                            bodyTarget.append("//no oper, not supported yet.\n");
+                            break;
                         default: {
-                            bodyTarget.append("Unsupported Operator Type");
+                            bodyTarget.append("Unsupported Operator Type " + pmapType + "\n");
                         }
                     }
                 }
