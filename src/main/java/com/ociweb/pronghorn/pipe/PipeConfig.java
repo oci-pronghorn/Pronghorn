@@ -31,7 +31,11 @@ public class PipeConfig<T extends MessageSchema> {
         //validate
         FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<slabBits);
      }
-		     
+	     
+     
+     public byte slabBits() {
+    	 return slabBits;
+     }
      
     public static <S extends MessageSchema> Pipe<S> pipe(PipeConfig<S> config) {
         return new Pipe<S>(config);
