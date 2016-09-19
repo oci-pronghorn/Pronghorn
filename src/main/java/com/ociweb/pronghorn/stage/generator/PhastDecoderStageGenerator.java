@@ -151,6 +151,9 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             target.append(tab + scriptNames[f] + " = ");
             int token = from.tokens[cursor];
             int pmapType = TokenBuilder.extractType(token);
+            //if (TypeMask.isOptional(pmapType) == true){
+                //TODO: support optional fields.
+            //}
             if (TypeMask.isInt(pmapType) == true) {
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
@@ -168,11 +171,12 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                         break;
                     case OperatorMask.Field_Increment:
                         decodeIncrementIntGenerator(bodyTarget, f);
+                        break;
                     case OperatorMask.Field_None:
                         bodyTarget.append("0;//no oper currently not supported.\n");
                         break;
                     default: {
-                        bodyTarget.append("0;//here as placeholder, this is unsupported\n");
+                        bodyTarget.append("//here as placeholder, this is unsupported\n");
                     }
                 }
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");

@@ -30,7 +30,7 @@ public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetM
     new long[]{2, 2, 0},
     new int[]{2, 2, 0});
 private final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
-private final long BUILD_TIME = 1474296011642L;
+private final long BUILD_TIME = 1474310395627L;
 private static final int DO_NOTHING = -3;
 
 private int nextMessageIdx() {
