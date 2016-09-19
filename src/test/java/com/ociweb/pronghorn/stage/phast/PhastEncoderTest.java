@@ -45,35 +45,6 @@ public class PhastEncoderTest {
 	}
 	
 	@Test
-	public void testIncrementInt() throws IOException{
-		//create blob for test
-		Pipe<RawDataSchema> encodedValuesToValidate = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 4000));
-		encodedValuesToValidate.initBuffers();
-		DataOutputBlobWriter<RawDataSchema> writer = new DataOutputBlobWriter<RawDataSchema>(encodedValuesToValidate);
-		
-		//create int dictionary
-		int[] intDictionary = new int[5];
-		Arrays.fill(intDictionary, 0);
-		intDictionary[2] = 5;
-		intDictionary[1] = 5;
-		
-		//increment one and not the other
-		PhastEncoder.incrementInt(intDictionary, writer, 1, 1, 2);
-		PhastEncoder.incrementInt(intDictionary, writer, 0, 1, 1);
-		
-		writer.close();
-		
-		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
-		//should be 5
-		int test1 = reader.readPackedInt();
-		//should be 6
-		int test2 = reader.readPackedInt();
-		reader.close();
-		
-		assertTrue((test1 == 5) && (test2==6));
-	}
-	
-	@Test
 	public void copyIntTest() throws IOException{
 		//create blob for test
 		Pipe<RawDataSchema> encodedValuesToValidate = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 4000));
@@ -157,9 +128,7 @@ public class PhastEncoderTest {
 		writer.close();
 		
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
-		assertTrue(reader.readPackedLong()==455);
-		assertTrue(reader.readPackedLong()==2834);
-		assertTrue(reader.readPackedLong()==2835);
+        assertTrue(reader.readPackedLong()==455);
 		assertTrue(reader.readPackedLong()==2835);
 		assertTrue(reader.readPackedLong()==3468);
 		assertTrue(reader.readPackedLong()==455);
@@ -201,8 +170,6 @@ public class PhastEncoderTest {
 		
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
 		assertTrue(reader.readPackedLong()==342);
-		assertTrue(reader.readPackedLong()==347);
-		assertTrue(reader.readPackedLong()==348);
 		assertTrue(reader.readPackedLong()==348);
 		assertTrue(reader.readPackedLong()==8239);
 		assertTrue(reader.readPackedLong()==342);

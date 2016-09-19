@@ -147,7 +147,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         //pass over group tag 0x10000
         cursor++;
 
-        for (int f = 0; f < fieldCount; f++) {
+        for (int f = firstField; f <= fieldCount; f++) {
             target.append(tab + scriptNames[f] + " = ");
             int token = from.tokens[cursor];
             int pmapType = TokenBuilder.extractType(token);
