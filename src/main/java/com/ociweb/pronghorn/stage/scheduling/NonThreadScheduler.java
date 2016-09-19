@@ -13,17 +13,14 @@ import com.ociweb.pronghorn.util.Blocker;
 
 public class NonThreadScheduler extends StageScheduler implements Runnable {
 
-    private final GraphManager graphManager;
     private AtomicBoolean shutdownRequested;
-    private ReentrantLock runLock;
+    private ReentrantLock runTerminationLock;
     private long[] rates;
     private long[] lastRun;
     private long maxRate;
+    private final PronghornStage[] stages;
     
-    private boolean isSingleStepMode = false;
-
-    private long minimumDuration = 0;
-    
+	private volatile Throwable firstException;//will remain null if nothing is wrong
     
     //Time based events will poll at least this many times over the period.
     // + ensures that the time trigger happens "near" the edge
@@ -34,19 +31,22 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     
     public NonThreadScheduler(GraphManager graphManager) {
         super(graphManager);
-        this.graphManager = graphManager;
+        
+        this.stages = GraphManager.allStages(graphManager);
+        
     }
     
-    public void setSingleStepMode(boolean isSingleStepMode) {
-        this.isSingleStepMode = isSingleStepMode;    
-    }
+    public NonThreadScheduler(GraphManager graphManager, PronghornStage[] stages) {
+        super(graphManager);
+        this.stages = stages;       
+    }    
     
     @Override
     public void startup() {
         shutdownRequested = new AtomicBoolean(false);
-        runLock = new ReentrantLock();
+        runTerminationLock = new ReentrantLock();
         
-        final int stageCount = GraphManager.countStages(graphManager);
+        final int stageCount = stages.length;
         
         rates = new long[stageCount+1];
         lastRun = new long[stageCount+1];
@@ -71,42 +71,63 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         
         
         ExecutorService executorService = Executors.newFixedThreadPool(stageCount); //must be as big as the count of stages
-        int stageId = stageCount+1;
-        while (--stageId >= 0) {               
-             final PronghornStage stage = GraphManager.getStage(graphManager, stageId);
+        int idx = stageCount;
+        while (--idx >= 0) {               
+             final PronghornStage stage = stages[idx];
              executorService.submit(new Runnable() {
                  public void run() {
                      //this may block as it must wait for the output pipes to be init by a different stage down stream
                      GraphManager.initInputRings(graphManager, stage.stageId);   //any output pipe that does not have a consuming stage is a configuration error.   
                      //everything down stream has been init so we are free to call the client work in startup();
-                     stage.startup();
-                     //client work is complete so move stage of stage to started.
-                     GraphManager.setStateToStarted(graphManager, stage.stageId);
+                 
+                     try {
+                    	 stage.startup();
+                    	 //client work is complete so move stage of stage to started.
+                    	 GraphManager.setStateToStarted(graphManager, stage.stageId);
+	                 } catch (Throwable t) {				    
+	 	                recordTheException(stage, t);
+	 	                try {
+	 	                	if (null!=stage) {
+	 	                		stage.shutdown();	
+	 	                	}
+	 	                } catch(Throwable tx) {
+	 	                	recordTheException(stage, tx);
+	 	                } finally {
+	 	                	if (null!=stage) {
+	 	                		GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
+	 	                	}
+	 	                }
+	 				 }                 
                  };
              });
              //determine the scheduling rules
              
              if (null == GraphManager.getNota(graphManager, stage, GraphManager.UNSCHEDULED, null)) {                   
-                 Object value = GraphManager.getNota(graphManager, stage, GraphManager.SCHEDULE_RATE, Long.valueOf(0));              
+
+            	 Object value = GraphManager.getNota(graphManager, stage, GraphManager.SCHEDULE_RATE, Long.valueOf(0));       
                  long rate = value instanceof Number ? ((Number)value).longValue() : null==value ? 0 : Long.parseLong(value.toString());
+                 
+                 //System.out.println("NTS schedule rate for "+stage+" is "+value);
+                 
                  
                  if (0==rate) {
                      //DEFAULT, RUN IN TIGHT LOOP
-                     rates[stageId] = 0;
-                     lastRun[stageId] = 0;
+                     rates[idx] = 0;
+                     lastRun[idx] = 0;
                  } else {
                      //SCHEDULE_rate, RUN EVERY rate ns
-                     rates[stageId] = rate;
+                     rates[idx] = rate;
                      if (rate>maxRate) {
                          maxRate = rate;
                      }
-                     lastRun[stageId] = 0;                     
+                     lastRun[idx] = 0;                     
                  }
              } else {
                  //UNSCHEDULED, NEVER RUN
-                 rates[stageId] = -1;
-                 lastRun[stageId] = 0;
+                 rates[idx] = -1;
+                 lastRun[idx] = 0;
              }
+
              
         }
         executorService.shutdown();
@@ -116,79 +137,120 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         } catch (InterruptedException e) {
            throw new RuntimeException(e);
         }
+ 
+        
     }
 
+    private long nextRun = 0; //keeps times of the last pass so we need not check again
+        
     @Override
-    public void run() {    
+    public void run() {   
     	
-        runLock.lock();      
-
-        long runUntil = System.nanoTime()+minimumRunDuration();
+    	if (nextRun>0) {
+    		//we have called run but we know that it can do anything until this time so we must wait
+    		long nanoDelay = nextRun-System.nanoTime();
+    	
+    		try {
+				Thread.sleep(nanoDelay/1_000_000,(int) (nanoDelay%1_000_000));
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return;
+		    }
+    	}
+    	
+    	if (!runTerminationLock.tryLock()) {
+    		return;
+    	}
+    	
+    	if (isShutdownRequested(this)) {
+    		return;
+    	}
 
        try {
-
-          //we always run at least once.
-          do {
-                
-                int s = GraphManager.countStages(graphManager)+1;
-                while (--s>=0) {
+    	        long minDelay = Long.MAX_VALUE;
+    	        int s = stages.length;
+                while (--s>=0 && !shutdownRequested.get()) {
                     
                     long rate = rates[s];
                     
-                    PronghornStage stage = GraphManager.getStage(graphManager, s);
+                    PronghornStage stage = stages[s];
                     
                     //TODO: time each run and keep a total of which stages take the most time to return, this is a nice debug feature.
 
-                    if (null != stage) {
+                    if (rate>=0) {
+                    	
+                    	if (GraphManager.isRateLimited(graphManager,  stage.stageId)) {                    	
+                    		long nsDelay =  GraphManager.delayRequiredNS(graphManager,stage.stageId);
+                    		if (nsDelay>0) {   
+                    			minDelay = Math.min(minDelay, nsDelay);
+                    			continue;//must try again later
+                    		}
+                    	}
+                    	
                     	if (rate>0) {
                     		//check time and only run if valid
                     		long now = System.nanoTime();
-                    		if (lastRun[s]+rate <= now) {
-                    			stage.run();
-                    			lastRun[s] = now;
+                    		                    		
+                    		long nsDelay = (lastRun[s]+rate) - now;
+                    		if (nsDelay<=0) {
+                    			run(stage);
+                    			lastRun[s] = System.nanoTime();
+                    		} else {                    			
+                    			minDelay = Math.min(minDelay, nsDelay);
                     		}
-                    	} else if (rate==0) {
-                            stage.run();                            
-                        } else {
-                            //never run -1
-                        }
-                    }
- 
+                    	} else {
+                    		assert(0==rate);
+                    		minDelay = 0;
+                    		run(stage);                            
+                    	}
+                    } else {
+                    	//never run -1
+                    }    
+                }
+                //if we are spinning we need to sleep if non of the runs will need to be called for a while.
+                if (minDelay>300) { //300 ns
+                	nextRun = System.nanoTime()+minDelay;                	
+                } else {
+                	nextRun = 0;
                 }
                 
-                //stop if shutdown is requested
-                //continue until all the pipes are empty and not in singleStepMode
-                //continue until enough time as passed for the largest rate to be called at least once
-            } while (( System.nanoTime()<runUntil) && (!shutdownRequested.get()) && (((!GraphManager.isAllPipesEmpty(graphManager)) && (!isSingleStepMode)))  );
-
         } finally {
-            runLock.unlock();
+            runTerminationLock.unlock();
         }
         
     }
 
-    public void setMinimumStepDurationMS(long duration) {
-        this.minimumDuration = duration*MS_TO_NS;
-    }
-    
-    private long minimumRunDuration() {
-        return Math.max(minimumDuration, maxRate);
-    }
+	private void run(PronghornStage stage) {
+		try {
+			stage.run();
+		} catch (Throwable t) {				    
+            recordTheException(stage, t);
+		} 
+		
+	}
 
     @Override
     public void shutdown() {
-        shutdownRequested.set(true);
+    	shutdownRequested.set(true);
+    	GraphManager.terminateInputStages(graphManager);		
     }
 
+    public static boolean isShutdownRequested(NonThreadScheduler nts) {
+    	return nts.shutdownRequested.get();
+    }
+    
     @Override
     public boolean awaitTermination(long timeout, TimeUnit unit) { 
         try {
+        	if (!isShutdownRequested(this)) {
+        		throw new UnsupportedOperationException("Shutdown() must be called before awaitTerminiation()");
+        	}
             //wait for run to stop...
-            if (runLock.tryLock(timeout, unit)) {
+            if (runTerminationLock.tryLock(timeout, unit)) {
                 
-                int s = GraphManager.countStages(graphManager)+1;
+                int s = stages.length;
                 while (--s>=0) {
-                    PronghornStage stage = GraphManager.getStage(graphManager, s);
+                    PronghornStage stage = stages[s];
                     if (null != stage) {
                         stage.shutdown();
                     }
@@ -210,4 +272,13 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         return true;
     }
 
+    private void recordTheException(final PronghornStage stage, Throwable t) {
+        synchronized(this) {
+            if (null==firstException) {                     
+                firstException = t;
+            }
+        }            
+        
+        GraphManager.reportError(graphManager, stage, t, log);
+    }
 }

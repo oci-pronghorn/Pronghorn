@@ -37,22 +37,22 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	    
 	    unscheduledLock.lock();//stop any non-runnable stages from running until shutdown is started.
 				
-		int i = GraphManager.countStages(graphManager);
+		int realStageCount = GraphManager.countStages(graphManager);
 		
-		this.executorService = Executors.newFixedThreadPool(i);
-		
-		int realStageCount = i;
+		this.executorService = Executors.newFixedThreadPool(realStageCount);
 
 		allStagesLatch = new CyclicBarrier(realStageCount+1);
 		
 		
-		while (--i>=0) {
+		for(int i=1;i<=realStageCount;i++) {
 			PronghornStage stage = GraphManager.getStage(graphManager, i);
 			if (null != stage) {
 			    
 			    if (null == GraphManager.getNota(graphManager, stage, GraphManager.UNSCHEDULED, null)) {			        
     			    Object value = GraphManager.getNota(graphManager, stage, GraphManager.SCHEDULE_RATE, Long.valueOf(0));			    
     				long rate = value instanceof Number ? ((Number)value).longValue() : null==value ? 0 : Long.parseLong(value.toString());
+    				
+    				//System.out.println("thread per stage rates "+stage+" rate "+rate);
     				
     				if (0==rate) {
     					executorService.execute(buildRunnable(allStagesLatch, stage)); 	

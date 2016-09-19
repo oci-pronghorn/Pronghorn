@@ -150,7 +150,10 @@ public abstract class PronghornStage {
 	}
 
 	public void requestShutdown() {
-		GraphManager.setStateToStopping(graphManager, stageId);
+		
+		if (!GraphManager.isStageShuttingDown(graphManager, stageId)) {
+			GraphManager.setStateToStopping(graphManager, stageId);
+		}
 		
 		//if this stage is a PRODUCER then we go directly to the shutdown state to ensure the thread ignores any incoming messages
 		//all other stages must wait for the queues to empy before the move into the shutdown state.		

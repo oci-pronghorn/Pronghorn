@@ -39,8 +39,8 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         this.supportedHTTPVerbs = supportedHTTPVerbs;
         this.supportedHTTPHeaders = supportedHTTPHeaders;
         
-        headers = supportedHTTPHeaders.getEnumConstants();
-        headerCount = headers.length;
+        this.headers = supportedHTTPHeaders.getEnumConstants();
+        this.headerCount = null==this.headers? 0 : headers.length;
         
         //populate revision bytes
         R[] revisions = supportedHTTPRevisions.getEnumConstants();
