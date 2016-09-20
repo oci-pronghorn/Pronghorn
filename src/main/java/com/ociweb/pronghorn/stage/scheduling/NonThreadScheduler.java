@@ -219,7 +219,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 	        while (--j >= 0) {               
 	        	final PronghornStage stage = stages[j];
 	        	
-	        	if (!GraphManager.isStageStarted(graphManager, stage.stageId)) {
+	        	if (null!=stage && !GraphManager.isStageStarted(graphManager, stage.stageId)) {
 	        		
 		        	int outputCounts = GraphManager.getOutputPipeCount(graphManager, stage.stageId);
 		        	boolean readyForStartup = true;
