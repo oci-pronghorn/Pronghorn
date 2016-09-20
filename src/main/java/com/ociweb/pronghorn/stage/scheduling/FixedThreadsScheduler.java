@@ -93,7 +93,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    
 	    
 	    //TODO: build dot file? ///////////////////////////////////////
-	  //  GraphManager.writeAsDOT(graphManager, System.out);
+	    //GraphManager.writeAsDOT(graphManager, System.out);
 	    
 	    //clean up now before we begin.
 		System.gc();
@@ -166,22 +166,26 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    		//find all the entry points where the inputs to this stage are NOT this same root
 
 				int inputCount = GraphManager.getInputPipeCount(graphManager, stage);
-				boolean isTop = rootMemberCounter[root]>0; //can only be top if group contains something
-				if (isTop) {
+				if (rootMemberCounter[root]>0) {
 					//create array if not created since count is > 0
 					if (null==stageArrays[root]) {
+						//System.out.println("count of group "+rootMemberCounter[root]);
 						stageArrays[root] = new PronghornStage[rootMemberCounter[root]];
 					}					
 				}
 				
-				//if 1 pipe matches the root then is not top
+				boolean isTop=false; 
 				
 				for(int j=1; j<=inputCount; j++) {	    			
 					int ringProducerStageId = GraphManager.getRingProducerStageId(graphManager, GraphManager.getInputPipe(graphManager, stage, j).id);
-					if (rootId(ringProducerStageId, rootsTable) == root && !isInLoop(stage.stageId, graphManager)) {
-						isTop = false;
+					if (rootId(ringProducerStageId, rootsTable) != root || 
+					    isInLoop(stage.stageId, graphManager)) {
+						isTop = true;
 					}
 				}
+				if (0==inputCount || null!=GraphManager.getNota(graphManager, stage.stageId, GraphManager.PRODUCER, null)) {
+					isTop=true;
+				}								
 				
 				//Add this and all down stream stages in order only if we have discovered
 				//this stage is the top where it starts
@@ -231,6 +235,9 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    int ntsIdx = 0;
 	    while (--k >= 0) {
 	    	if (null!=stageArrays[k]) {
+	    		
+	    		//System.err.println("NonThreadScheduler for "+Arrays.toString(stageArrays[k]) );
+	    		
 	    		ntsArray[ntsIdx++]=new NonThreadScheduler(graphManager, stageArrays[k]);	    		     
 	    	}
 	    }
@@ -246,10 +253,11 @@ public class FixedThreadsScheduler extends StageScheduler {
 		}
 		//now add the new stage at index i
 		pronghornStages[i]=stage;
+		
 		//Recursively add the ones under the same root.
 		
 		int outputCount = GraphManager.getOutputPipeCount(graphManager, stage.stageId);
-		for(int r = 1; r<outputCount; r++) {
+		for(int r = 1; r<=outputCount; r++) {
 			Pipe<MessageSchema> outputPipe = GraphManager.getOutputPipe(graphManager, stage, r);
 			
 			int consumerId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);

@@ -56,7 +56,9 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         
         final int stageCount = stages.length;
 
+        //System.err.println("beging stage startup "+this.hashCode());
         startupAllStages(stageCount);
+        //System.err.println("done stage startup "+this.hashCode());
         
         int i;
         producersIdx = buildProducersList(0, 0, graphManager, stages);        
@@ -212,28 +214,29 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
      */
     private void startupAllStages(final int stageCount) {
 
+    	int j;
+    	
+    	//to avoid hang we must init all the inputs first
+    	j = stageCount;
+    	while (--j >= 0) {               
+    		//this is a half init which is required when loops in the graph are discovered and we need to initialized cross dependent stages.
+    		if (null!=stages[j]) {
+    			GraphManager.initInputPipesAsNeeded(graphManager,stages[j].stageId);
+    		}
+    	}
+
     	int unInitCount = stageCount;
  
     	while (unInitCount>0) {
-    		int j = stageCount;
+    		    		
+    		j = stageCount;
 	        while (--j >= 0) {               
 	        	final PronghornStage stage = stages[j];
 	        	
 	        	if (null!=stage && !GraphManager.isStageStarted(graphManager, stage.stageId)) {
-	        		
-		        	int outputCounts = GraphManager.getOutputPipeCount(graphManager, stage.stageId);
-		        	boolean readyForStartup = true;
-		        	for(int i=1;i<=outputCounts;i++) {
-		        		Pipe<MessageSchema> outputPipe = GraphManager.getOutputPipe(graphManager, stage, i);
-		        		if (!outputPipe.isInit(outputPipe)) {
-		        			Thread.yield();//waiting for another thread or service but do not stay long since this may also be done here.
-		        			readyForStartup = false;
-		        			break;
-		        		}
-		        	}
-		        	
-		        	if (readyForStartup) {
+	        				        		
 		        		GraphManager.initAllPipes(graphManager, stage.stageId);
+		        		
 		        		 try {
 		                	 stage.startup();
 		                	 //client work is complete so move stage of stage to started.
@@ -252,13 +255,8 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 		 	                		GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
 		 	                	}
 		 	                }
-		 				 } 
-		        		 
-		        	} else {
-		        		//this is a half init which is required when loops in the graph are discovered and we need to initialized cross dependent stages.
-		        		GraphManager.initInputPipesAsNeeded(graphManager,stage.stageId);
-		        		Thread.yield();//waiting for another thread or service but do not stay long since this may also be done here.
-		        	}
+		 	                return;
+		 				 }		        		
 	        	}
 	        }
     	}
