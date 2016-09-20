@@ -490,36 +490,28 @@ public class GraphManager {
 	 * @param targetSchema
 	 */
 	public static  <T extends MessageSchema> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema) {
-	    
-	    //pass one to count all the instances
-	    int count = 0;
-	    int p = gm.pipeIdToPipe.length;
+	    return pipesOfType(0, gm.pipeIdToPipe.length, gm, targetSchema);
+	}
+
+	private static <T extends MessageSchema> Pipe<T>[] pipesOfType(int count, int p, GraphManager gm, T targetSchema) {
+		//pass one to count all the instances
         while (--p>=0) {
             Pipe tp = gm.pipeIdToPipe[p];
             if (null != tp) {
                 if (tp.isForSchema(tp, targetSchema)) {
-                    count++;
+                	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchema);
+                	result[count] = tp;
+                    return result;
                 }
             }
         }
         
         if (0==count) {
         	return EMPTY_PIPE_ARRAY;
+        } else {
+        	return new Pipe[count];
         }
 	    
-        //pass two to collect all the instances.
-        Pipe[] result = new Pipe[count];
-        p = gm.pipeIdToPipe.length; 
-        while (--p>=0) { //we are walking backwards over the pipes added
-            Pipe tp = gm.pipeIdToPipe[p];
-            if (null != tp) {
-                if (tp.isForSchema(tp, targetSchema)) {
-                    result[--count] = tp; //so we add them backwards to the input array
-                }
-            }
-        }
-	    //the order of this array will be the same order that the pipes were added to the graph.
-        return result;
 	}
 	
 	public static  <T extends MessageSchema> Pipe<T>[] allPipes(GraphManager gm) {
@@ -1019,7 +1011,7 @@ public class GraphManager {
     }
     
     public static PronghornStage[] allStagesByState(GraphManager graphManager, int state) {
-        
+    	 //TODO: rewrite and simple recursive stack unroll to eliminate the duplication of the code here. see pipesOfType
         int count = 0;
         int s = graphManager.stageIdToStage.length;
         while (--s>=0) {
@@ -1313,13 +1305,11 @@ public class GraphManager {
 	 * @param m
 	 * @param stageId
 	 */
-	public static void initInputRings(GraphManager m, int stageId) {
-		int pipeId;
-		int idx = m.stageIdToInputsBeginIdx[stageId];
-		while (-1 != (pipeId=m.multInputIds[idx++])) {
-			m.pipeIdToPipe[pipeId].initBuffers();				
-		}
+	public static void initAllPipes(GraphManager m, int stageId) {
+		int idx;
+		initInputPipesAsNeeded(m, stageId);
 		//Does not return until some other stage has initialized the output rings
+		int pipeId;
 		idx = m.stageIdToOutputsBeginIdx[stageId];
 		while (-1 != (pipeId=m.multOutputIds[idx++])) {
 		    
@@ -1355,6 +1345,16 @@ public class GraphManager {
 			}				
 		}	
 		
+	}
+
+	public static void initInputPipesAsNeeded(GraphManager m, int stageId) {
+		int pipeIdIn;
+		int idx = m.stageIdToInputsBeginIdx[stageId];
+		while (-1 != (pipeIdIn=m.multInputIds[idx++])) {
+			if (!Pipe.isInit(m.pipeIdToPipe[pipeIdIn])) {
+				m.pipeIdToPipe[pipeIdIn].initBuffers();		
+			}
+		}
 	}
 	
 	public static void reportError(GraphManager graphManager, final PronghornStage stage, Throwable t, Logger logger) {
@@ -1545,7 +1545,7 @@ public class GraphManager {
     }
 
     public static PronghornStage[] allStagesByType(GraphManager graphManager, Class<?> stageClass) {
-       
+    	 //TODO: rewrite and simple recursive stack unroll to eliminate the duplication of the code here. see pipesOfType
         int count = 0;
         int s = graphManager.stageIdToStage.length;
         while (--s>=0) {

@@ -166,7 +166,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
                     
                     //TODO: need to record state so we know the failure point
                     log.trace("block on initRings:"+stage.getClass().getSimpleName());                  
-                    GraphManager.initInputRings(graphManager, stage.stageId);                   
+                    GraphManager.initAllPipes(graphManager, stage.stageId);                   
                     log.trace("finished on initRings:"+stage.getClass().getSimpleName());
                     
                     Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
@@ -234,7 +234,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					
 					//TODO: need to record state so we know the failure point
 					log.trace("block on initRings:"+stage.getClass().getSimpleName());					
-					GraphManager.initInputRings(graphManager, stage.stageId);					
+					GraphManager.initAllPipes(graphManager, stage.stageId);					
 					log.trace("finished on initRings:"+stage.getClass().getSimpleName());
 					
 					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
@@ -317,7 +317,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				try {	
 					
 					log.trace("block on initRings:{}",stage.getClass().getSimpleName());
-					GraphManager.initInputRings(graphManager, stage.stageId);
+					GraphManager.initAllPipes(graphManager, stage.stageId);
 					log.trace("finished on initRings:{}",stage.getClass().getSimpleName());
 					
 					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);				

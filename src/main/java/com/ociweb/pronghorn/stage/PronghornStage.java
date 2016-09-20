@@ -49,6 +49,7 @@ public abstract class PronghornStage {
 	    this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, inputs, outputs);
+		GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, null, this); //This provides room for assignment later
 	}
 	
 	protected PronghornStage(GraphManager graphManager, Pipe input, Pipe[] outputs) {
@@ -59,6 +60,7 @@ public abstract class PronghornStage {
 	    this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, input, outputs);
+		GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, null, this);//This provides room for assignment later
 	}
     
 	protected PronghornStage(GraphManager graphManager, Pipe[] inputs, Pipe output) {
@@ -69,6 +71,7 @@ public abstract class PronghornStage {
 	    this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, inputs, output);
+		GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, null, this);//This provides room for assignment later
 	}
 	
 	protected PronghornStage(GraphManager graphManager, Pipe input, Pipe output) {
@@ -76,6 +79,7 @@ public abstract class PronghornStage {
 		this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, input, output);
+		GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, null, this);//This provides room for assignment later
 	}
 
     public static Pipe[] join(Pipe[] ... pipes) {

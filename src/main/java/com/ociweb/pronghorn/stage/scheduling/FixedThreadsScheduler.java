@@ -70,17 +70,20 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    //created sorted list of pipes by those that should have there stages combined first.
 	    Pipe[] pipes = GraphManager.allPipes(graphManager);	  
 	    Arrays.sort(pipes, joinFirstComparator);
-	  
+
+	    
 	    int totalThreads = GraphManager.countStages(graphManager);  
 	  
 	    //must add 1 for the tree of roots also adding 1 more to make hash more efficient.
 	    rootsTable = new IntHashTable(2 + (int)Math.ceil(Math.log(totalThreads)/Math.log(2)));
 	    
 	    int rootCounter = totalThreads+1; //counter for root ids, must not collide with stageIds so we start above that point.
-	    
+	   
 	    rootCounter = hierarchicalClassifier(graphManager, targetThreadCount, pipes, totalThreads, rootCounter);    
+	    
 
 	    int[] rootMemberCounter = buildCountOfStagesForEachThread(graphManager, rootCounter);	    
+
 	    
 	    PronghornStage[][] stageArrays = buildOrderedArraysOfStages(graphManager, rootCounter, rootMemberCounter);
 	    
@@ -134,15 +137,16 @@ public class FixedThreadsScheduler extends StageScheduler {
 	private int[] buildCountOfStagesForEachThread(GraphManager graphManager, int rootCounter) {
 		
 	    int[] rootMemberCounter = new int[rootCounter+1]; //TODO: keep this for later??
+	    int countStages = GraphManager.countStages(graphManager);
 	    
-	    for(int stages=1;stages<=GraphManager.countStages(graphManager);stages++) { 
+		for(int stages=1;stages<=countStages;stages++) { 
 	    
 	    	PronghornStage stage = GraphManager.getStage(graphManager, stages);
 	    	if (null!=stage) {
 	    		int rootId = rootId(stage.stageId, rootsTable);
 				rootMemberCounter[rootId]++;	    			
-				//first point where we know the final root (group), assignment is done here so it is available for debug later.
-	    		//TOO LATE??  GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, rootId, stage);
+				//This late NOTA only works because we wrote a placeholder of null when stages are created.
+				GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, rootId, stage);
 	    	}
 	    }
 	    //logger.info("group counts "+Arrays.toString(rootMemberCounter));
@@ -227,8 +231,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    int ntsIdx = 0;
 	    while (--k >= 0) {
 	    	if (null!=stageArrays[k]) {
-	    		ntsArray[ntsIdx++]=new NonThreadScheduler(graphManager, stageArrays[k]); 
-	    		        //TODO: we want to monitor pipe content and flip execution order if they are full.
+	    		ntsArray[ntsIdx++]=new NonThreadScheduler(graphManager, stageArrays[k]);	    		     
 	    	}
 	    }
 	}
