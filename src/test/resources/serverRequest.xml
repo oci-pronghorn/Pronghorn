@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+  
+   <template name="FromChannel" id="100">    
+        <uInt64 name="ChannelId"   id="21">
+            <delta/>
+        </uInt64>
+            
+		<byteVector name="Payload" id="25"/>
+   </template>
+    
+</templates>

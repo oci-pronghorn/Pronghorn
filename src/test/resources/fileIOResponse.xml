@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+    
+     <template name="FileWritten" id="303" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+         <Int32 name="reqId" id="1"/>
+     </template>
+  
+     <template name="FileNotFound" id="103" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+         <Int32 name="reqId" id="1"/>
+     </template>
+     
+     <template name="FileReadBegin" id="201" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+         <Int32 name="reqId" id="1"/>
+     </template>
+     
+     <template name="FileReadData" id="202" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+         <Int32 name="reqId" id="1"/>
+         <uInt32 name="fragmentCount" id="2"/>
+     </template>
+     
+      <template name="FileReadEnd" id="203" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+         <Int32 name="reqId" id="1"/>
+     </template>
+
+
+</templates>
