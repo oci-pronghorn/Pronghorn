@@ -119,7 +119,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 			return beginNewContent(targetData, targetOffset, targetLength, meta, sourceLength);
 		} else { 
 		   // Pipe.confirmLowLevelRead(ring, recordSize);//wrong size?
-			Pipe.releaseReads(pipe); //TOOD: bad idea needs more elegant solution.
+			Pipe.releaseReadLock(pipe); //TOOD: bad idea needs more elegant solution.
 		//	closed = true;
 			return -1;			
 		}
@@ -133,7 +133,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 			//the entire block can be sent
 			copyData(targetData, targetOffset, sourceLength, sourceData, sourceOffset);
 			Pipe.confirmLowLevelRead(pipe, recordSize);
-			Pipe.releaseReads(pipe);
+			Pipe.releaseReadLock(pipe);
 			return sourceLength;
 		} else {
 			//only part of the block can be sent so save some for later
@@ -175,7 +175,7 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 		int len = remainingSourceLength;
 		copyData(targetData, targetOffset, len, byteBackingArray(remainingSourceMeta, pipe), remainingSourceOffset);
 		Pipe.confirmLowLevelRead(pipe, recordSize);
-		Pipe.releaseReads(pipe);
+		Pipe.releaseReadLock(pipe);
 		remainingSourceLength = -1; //clear because we are now done with the remaining content
 		return len;
 	}

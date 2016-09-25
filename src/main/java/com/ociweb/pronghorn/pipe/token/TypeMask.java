@@ -31,8 +31,8 @@ public final class TypeMask {
     public final static int Decimal = 0x0C;                // 01100       real (64/32)
     public final static int DecimalOptional = 0x0D;        // 01101       realOptional
     // 2
-    public final static int ByteVector = 0x0E;              // 01110    (position and length) each in 32 bit int, high bits of position hold const and runtime rune/bcd encoding).
-    public final static int ByteVectorOptional = 0x0F;      // 01111
+    public final static int ByteVector = 0x0E;             // 01110    (position and length) each in 32 bit int, high bits of position hold const and runtime rune/bcd encoding).
+    public final static int ByteVectorOptional = 0x0F;     // 01111
     
     @Deprecated
     public final static int ByteArray = ByteVector;// 0x0E;              // 01110    (position and length) each in 32 bit int, high bits of position hold const and runtime rune/bcd encoding).

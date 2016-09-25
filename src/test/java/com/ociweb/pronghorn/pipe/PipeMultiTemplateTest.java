@@ -288,7 +288,7 @@ public class PipeMultiTemplateTest {
         			break;    		
     		}       		
         	
-    		Pipe.releaseReads(ring);
+    		Pipe.releaseReadLock(ring);
     
     		Pipe.confirmLowLevelRead(ring, FROM.fragDataSize[msgLoc]);
         		

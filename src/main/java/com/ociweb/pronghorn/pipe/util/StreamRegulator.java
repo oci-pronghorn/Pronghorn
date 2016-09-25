@@ -133,7 +133,7 @@ public class StreamRegulator {
     private void releaseOpenRead() {
         //log.trace("release block");
         Pipe.confirmLowLevelRead(pipe, MSG_SIZE);
-        Pipe.releaseReads(pipe);
+        Pipe.releaseReadLock(pipe);
         hasOpenRead = false;
     }
         

@@ -2684,6 +2684,7 @@ public class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> void setWorkingHead(Pipe<S> pipe, long value) {
+    	assert(pipe.slabRingHead.workingHeadPos.value<=value) : "new working head must be forward";
         PaddedLong.set(pipe.slabRingHead.workingHeadPos, value);
     }
 
@@ -2953,7 +2954,7 @@ public class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> int sizeOf(Pipe<S> pipe, int msgIdx) {
-        return pipe.schema.from.fragDataSize[msgIdx];
+        return msgIdx>=0? pipe.schema.from.fragDataSize[msgIdx] : Pipe.EOF_SIZE;
     }
 
     public static <S extends MessageSchema> void releasePendingReadLock(Pipe<S> pipe) {

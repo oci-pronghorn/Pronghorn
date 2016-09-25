@@ -169,7 +169,7 @@ public class PipeTest {
                             
                             //allow writer to write up to new tail position
                             if (0==(messageCount&chunkMask) ) {
-                            	Pipe.releaseReads(ring);
+                            	Pipe.releaseReadLock(ring);
                             	if (messageCount>0) {
                             		headPosCache = spinBlockOnHead(headPosCache, tailPosition(ring)+granularity, ring);
                             		
@@ -306,7 +306,7 @@ public class PipeTest {
     	                        
     	                        //allow writer to write up to new tail position
     	                        if (0==(messageCount&chunkMask) ) {
-    	                        	Pipe.releaseReads(pipe);
+    	                        	Pipe.releaseReadLock(pipe);
     	                        	if (messageCount>0) {
     	                        		headPosCache = spinBlockOnHead(headPosCache, tailPosition(pipe)+granularity, pipe);	                        	    	                        		
     	                        	}

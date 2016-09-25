@@ -64,7 +64,7 @@ public class RingStreams {
 
         				
         	if (msgId<0) { //exit logic
-        		Pipe.releaseReads(inputRing);
+        		Pipe.releaseReadLock(inputRing);
           		break;
         	} else {          
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
@@ -83,7 +83,7 @@ public class RingStreams {
 					}
 					outputStream.flush();
             	}
-            	Pipe.releaseReads(inputRing);
+            	Pipe.releaseReadLock(inputRing);
         	}
         	
         	target += step;
@@ -134,7 +134,7 @@ public class RingStreams {
         		int bytesCount = Pipe.takeValue(inputRing);
         		assert(0==bytesCount);
             	
-        		Pipe.releaseReads(inputRing);
+        		Pipe.releaseReadLock(inputRing);
           		return;
         	} else {                    	
             	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
@@ -161,7 +161,7 @@ public class RingStreams {
 					os.flush();
 				}
 				
-				Pipe.releaseReads(inputRing);
+				Pipe.releaseReadLock(inputRing);
         	}
         	
         	target += step;
@@ -296,7 +296,7 @@ public class RingStreams {
 		    	assert(0==bytesCount);
 		    	
 		    	Pipe.confirmLowLevelRead(inputRing, RawDataSchema.FROM.fragDataSize[0]);
-		    	Pipe.releaseReads(inputRing);
+		    	Pipe.releaseReadLock(inputRing);
 	    		visitor.close();
 	      		return;
 	    	} else {                    	
@@ -316,7 +316,7 @@ public class RingStreams {
 					 visitor.visit(data, offset&byteMask, len); 
 				}
 				Pipe.confirmLowLevelRead(inputRing, RawDataSchema.FROM.fragDataSize[0]);
-				Pipe.releaseReads(inputRing);
+				Pipe.releaseReadLock(inputRing);
 	    	}
 	    	
 	    	target += step;

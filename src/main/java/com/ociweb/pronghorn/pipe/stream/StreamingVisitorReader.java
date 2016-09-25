@@ -56,7 +56,12 @@ public class StreamingVisitorReader {
 
 		        	cursor = Pipe.takeMsgIdx(inputRing);
 		        	if (cursor<0) {
-		        		oldShutdown();
+		        		
+						visitor.shutdown();
+						
+						Pipe.confirmLowLevelRead(inputRing, Pipe.EOF_SIZE);
+						Pipe.releaseReadLock(inputRing);
+												
 						return;
 		        	}
 		        	startPos = 1;//new message so skip over this messageId field
@@ -82,17 +87,12 @@ public class StreamingVisitorReader {
 		        //add the bytes consumed by this fragment, this is always the last value in the fragment
 		        Pipe.addAndGetBytesWorkingTailPosition(inputRing, Pipe.primaryBuffer(inputRing)[(int) (inputRing.mask&(Pipe.getWorkingTailPosition(inputRing)-1))]);
 
-		        Pipe.releaseReads(inputRing);
+		        Pipe.releaseReadLock(inputRing);
 		}
 
 	}
 
-    private void oldShutdown() {
-		Pipe.takeValue(inputRing);
-		Pipe.releaseReads(inputRing);
-	}
-
-	private void processFragment(int startPos, final int fragmentCursor) {
+    private void processFragment(int startPos, final int fragmentCursor) {
 
 		final int fieldsInFragment = from.fragScriptSize[fragmentCursor];
 		final String[] fieldNameScript = from.fieldNameScript;

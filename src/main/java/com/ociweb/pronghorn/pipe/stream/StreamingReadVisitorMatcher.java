@@ -46,7 +46,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         if (needsClose) {
             needsClose = false;
             Pipe.confirmLowLevelRead(expectedInput, Pipe.sizeOf(expectedInput, activeCursor));
-            Pipe.releaseReads(expectedInput);
+            Pipe.releaseReadLock(expectedInput);
         }
 
     }
@@ -62,7 +62,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         if (needsClose) {
             needsClose = false;
             Pipe.confirmLowLevelRead(expectedInput, Pipe.sizeOf(expectedInput, activeCursor));
-            Pipe.releaseReads(expectedInput);
+            Pipe.releaseReadLock(expectedInput);
         }
     }
 
@@ -76,7 +76,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
         }
         needsClose = false;
         Pipe.confirmLowLevelRead(expectedInput, Pipe.sizeOf(expectedInput, activeCursor));
-        Pipe.releaseReads(expectedInput);
+        Pipe.releaseReadLock(expectedInput);
     }
 
     @Override
