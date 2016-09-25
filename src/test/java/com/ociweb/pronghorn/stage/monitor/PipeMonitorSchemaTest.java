@@ -11,7 +11,7 @@ public class PipeMonitorSchemaTest {
 	@Test
 	public void testFROMMatchesXML() {
 		assertTrue(FROMValidation.testForMatchingFROMs("/ringMonitor.xml", "FROM", PipeMonitorSchema.FROM));
-	};
+	}
 	
 	@Test
 	public void testConstantFields() {

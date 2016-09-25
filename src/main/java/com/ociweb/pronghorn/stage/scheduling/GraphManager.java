@@ -1547,6 +1547,20 @@ public class GraphManager {
             }
         }
     }
+   
+
+    public static void blockUntilStageBeginsShutdown(GraphManager gm, PronghornStage stageToWatch, long timeoutMS) {
+        //keep waiting until this stage starts it shut down or completed its shutdown, 
+        //eg return on leading edge as soon as we detect shutdown in progress..
+        while (--timeoutMS>=0 && (!  (isStageShuttingDown(gm, stageToWatch.stageId)||isStageTerminated(gm, stageToWatch.stageId))) ) { 
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+    
 
     public static PronghornStage[] allStagesByType(GraphManager graphManager, Class<?> stageClass) {
     	 //TODO: rewrite and simple recursive stack unroll to eliminate the duplication of the code here. see pipesOfType

@@ -397,9 +397,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	}
 
 	private static boolean continueRunning(ThreadPerStageScheduler tpss, final PronghornStage stage) {
-		return (!tpss.isShuttingDown && !GraphManager.isStageShuttingDown(tpss.graphManager, stage.stageId)) 
-				|| 
-				GraphManager.mayHaveUpstreamData(tpss.graphManager, stage.stageId);
+		return ( (!GraphManager.isStageShuttingDown(tpss.graphManager, stage.stageId))) 
+				&&
+				(!tpss.isShuttingDown || GraphManager.mayHaveUpstreamData(tpss.graphManager, stage.stageId) );
 	}
 
 	private void runPeriodicLoop(final long msSleep, final int nsSleep, final PronghornStage stage) {

@@ -28,7 +28,7 @@ public class ByteArrayEqualsStage extends PronghornStage {
             
             int msgId = Pipe.takeMsgIdx(input);   
             if (msgId < 0) {
-                Pipe.releaseReads(input);
+                Pipe.releaseReadLock(input);
                 Pipe.confirmLowLevelRead(input, Pipe.EOF_SIZE);
                 requestShutdown();
                 return;
@@ -37,7 +37,7 @@ public class ByteArrayEqualsStage extends PronghornStage {
             int len = Pipe.takeRingByteLen(input);
                             
             if (len < 0) {
-                Pipe.releaseReads(input);
+                Pipe.releaseReadLock(input);
                 Pipe.confirmLowLevelRead(input, SIZE);
                 requestShutdown();
                 return;
@@ -48,7 +48,7 @@ public class ByteArrayEqualsStage extends PronghornStage {
             expectedPos += len;
             
             Pipe.confirmLowLevelRead(input, SIZE);
-            Pipe.releaseReads(input);
+            Pipe.releaseReadLock(input);
         }
         
         

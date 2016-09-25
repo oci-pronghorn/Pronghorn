@@ -317,7 +317,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 			        }
 				
 				while (!NonThreadScheduler.isShutdownRequested(nts)) {
-					nts.run();//nts.run has its own internal sleep, nothing needed here.
+					nts.run();//nts.run has its own internal sleep, nothing needed here.					
 				}
 			}	
 			
@@ -338,36 +338,22 @@ public class FixedThreadsScheduler extends StageScheduler {
 	public boolean awaitTermination(long timeout, TimeUnit unit) {
 		
 		int i = threadCount;
+		boolean cleanExit = true;
 		while (--i>=0) {			
-			ntsArray[i].awaitTermination(timeout, unit);			
+			cleanExit &= ntsArray[i].awaitTermination(timeout, unit);			
 		}	
-		
-		executorService.shutdown();
+		if (!cleanExit) {
+			validShutdownState();
+			return false;
+		}
+		//each child scheduler has already completed await termination so no need to wait for this 
+		executorService.shutdownNow();
 	
 		if (null!=firstException) {
 		    throw new RuntimeException(firstException);
 		}
+		return true;
 		
-		try {
-			boolean cleanExit = executorService.awaitTermination(timeout, unit);			
-			validShutdownState();			
-			return cleanExit;
-		} catch (InterruptedException e) {
-			executorService.shutdownNow();
-			Thread.currentThread().interrupt();
-			return true;			
-		} 
-		catch (Throwable e) {
-		    if (null==firstException) {
-                throw new RuntimeException(e);
-            }
-			log.error("awaitTermination", e);
-			return false;
-		} finally {
-		    if (null!=firstException) {
-	            throw new RuntimeException(firstException);
-	        }
-		}
 	}
 
 	@Override
