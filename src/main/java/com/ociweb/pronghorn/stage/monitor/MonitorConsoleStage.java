@@ -94,13 +94,15 @@ public class MonitorConsoleStage extends PronghornStage {
 				PronghornStage producer = GraphManager.getRingProducer(graphManager,  inputs[i].id);
 				//NOTE: may need to walk up tree till we find this object, (future feature)
 				String ringName;
+				long published = 0;
 				if (producer instanceof RingBufferMonitorStage) {
 					ringName = ((RingBufferMonitorStage)producer).getObservedRingName();
+					published = ((RingBufferMonitorStage)producer).getObservedRingPublishedCount();
 				} else {
 					ringName = "Unknown";
 				}
-					
-				System.out.println("    "+i+" "+ringName+" Queue Fill Median:"+value+"% Average:"+(Histogram.accumulatedTotal(hists[i])/sampleCount)+"%    samples:"+sampleCount);
+				
+				System.out.println("    "+i+" "+ringName+" Queue Fill Median:"+value+"% Average:"+(Histogram.accumulatedTotal(hists[i])/sampleCount)+"%    samples:"+sampleCount+"  totalPublished:"+published);
 			}
 		}
 	}

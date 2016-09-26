@@ -1,0 +1,124 @@
+package com.ociweb.pronghorn.stage.network;
+
+import java.util.concurrent.TimeUnit;
+
+import org.junit.Ignore;
+import org.junit.Test;
+
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.network.config.HTTPHeaderKeyDefaults;
+import com.ociweb.pronghorn.stage.network.schema.HTTPRequestSchema;
+import com.ociweb.pronghorn.stage.network.schema.ServerRequestSchema;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
+import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
+import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
+import com.ociweb.pronghorn.util.Pool;
+
+public class HTTPRouterStageTest {
+        
+    
+    private final CharSequence[] paths = new CharSequence[] {
+            "/hello/x/x%b",
+            "/hello/x/longer",
+            "/hello/myfile",
+            "/hello/x/zlonger",            
+            "/hello/zmyfile",
+            "/hello/x/qlonger",
+            "/hello/qmyfile",
+            "/elsewhere/this/is/the/longest/path/to/be/checked",
+            "/elsewhere/myfile"
+    };
+    
+    @Ignore
+    public void rapidValidRequestTest() {
+        
+       
+        GraphManager gm = new GraphManager();
+        
+        final int apps = paths.length;
+        final int iterations = 1_000_000;        
+        final PipeConfig<ServerRequestSchema> rawRequestPipeConfig = new PipeConfig<ServerRequestSchema>(ServerRequestSchema.instance, 200, 512) ;
+        final PipeConfig<HTTPRequestSchema> appPipeConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 100, 512); ///consumers
+        
+        
+        Pipe<ServerRequestSchema> rawRequestPipe = new Pipe<ServerRequestSchema>(rawRequestPipeConfig);               
+        Pool<Pipe<ServerRequestSchema>> pool = new Pool<Pipe<ServerRequestSchema>>(new Pipe[]{ rawRequestPipe});
+        
+        
+        PronghornStage stage = ClientHTTPRequestDataGeneratorStage.newInstance(gm, rawRequestPipe, iterations, paths);  
+        HTTPRouterStage stage2 = buildRouterStage(gm, apps, appPipeConfig, pool);
+               
+        runGraph(gm, apps, iterations, stage2);
+        
+        //TODO: add more test asserts into here, to confirm correctness of the test.
+        
+        
+    }
+
+    private void runGraph(GraphManager gm, final int apps, final int iterations, PronghornStage stage) {
+        boolean monitorPipes = false;
+        if (monitorPipes) {
+            MonitorConsoleStage.attach(gm);        
+        } 
+        GraphManager.enableBatching(gm);
+        ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
+        
+        long start = System.currentTimeMillis();
+
+        scheduler.startup();  
+        
+        if (monitorPipes) {
+          try {
+              Thread.sleep(1000);
+          } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+          }
+        }
+        
+        gm.blockUntilStageBeginsShutdown(stage); //generator gets done very early and begins the shutdown before the route completes so this block is required.
+        
+        scheduler.awaitTermination(30, TimeUnit.SECONDS);
+        
+        long duration = System.currentTimeMillis()-start;
+        long totalRequests = iterations*(long)apps;
+        
+        float requestPerMsSecond = totalRequests/(float)duration;
+        System.out.println("totalRequests: "+totalRequests+" perMs:"+requestPerMsSecond);
+    }
+
+    private HTTPRouterStage buildRouterStage(GraphManager gm, final int apps,
+            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pool<Pipe<ServerRequestSchema>> pool) {
+        Pipe[] routedAppPipes = new Pipe[apps];
+        long[] appHeaders = new long[apps];
+        int[] msgIds = new int[apps];
+        
+        int i = apps;
+        while (--i >= 0) {
+            routedAppPipes[i] = new Pipe<HTTPRequestSchema>(appPipeConfig);
+            appHeaders[i] = 0;//(1<<HTTPHeaderRequestKeyDefaults.UPGRADE.ordinal());//headers needed.
+            msgIds[i] =  HTTPRequestSchema.MSG_FILEREQUEST_200;//  MSG_UNITTESTREQUEST_100;
+            
+            GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 10_000, 
+                    PipeCleanerStage.newInstance(gm, routedAppPipes[i])
+                    
+                    );
+            
+            
+            
+            
+        }
+        
+        //TODO: revisit this part of the test later.
+        Pipe errorPipe = new Pipe(new PipeConfig(RawDataSchema.instance));
+        ConsoleJSONDumpStage dump = new ConsoleJSONDumpStage(gm,errorPipe);
+        
+        HTTPRouterStage stage = HTTPRouterStage.newInstance(gm, pool, routedAppPipes, errorPipe , paths, appHeaders, msgIds);
+        return stage;
+    }
+ 
+}

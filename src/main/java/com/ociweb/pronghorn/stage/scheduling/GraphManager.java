@@ -39,10 +39,9 @@ public class GraphManager {
 	public final static String MONITOR       = "MONITOR"; //this stage is not part of business logic but part of internal monitoring.
 	public final static String PRODUCER      = "PRODUCER";//explicit so it can be found even if it has feedback inputs.
 	public final static String STAGE_NAME    = "STAGE_NAME";
-	
-	//do not use thise they are under development
+
 	public final static String UNSCHEDULED   = "UNSCHEDULED";//new nota for stages that should never get a thread (experimental)
-	public final static String BLOCKING      = "BLOCKING";   //new nota for stages that do not give threads back (experimental)
+	public final static String THREAD_GROUP  = "THREAD_GROUP";   //new nota for stages that do not give threads back (experimental)
 	
 	
 	private final static int INIT_RINGS = 32;
@@ -155,12 +154,12 @@ public class GraphManager {
 	}
 	
 	public static int newStageId(GraphManager gm) {
-	    return gm.stageCounter.getAndIncrement();
+	    return gm.stageCounter.incrementAndGet();//no stage id can be 0 or smaller
 	}
 	
    @Deprecated	
    static PronghornStage[] getStages(GraphManager m) {
-        return m.stageIdToStage;
+        return allStages(m);
     }
    
    @Deprecated    
@@ -491,6 +490,31 @@ public class GraphManager {
 	 * @param targetSchema
 	 */
 	public static  <T extends MessageSchema> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema) {
+	    return pipesOfType(0, gm.pipeIdToPipe.length, gm, targetSchema);
+	}
+
+	private static <T extends MessageSchema> Pipe<T>[] pipesOfType(int count, int p, GraphManager gm, T targetSchema) {
+		//pass one to count all the instances
+        while (--p>=0) {
+            Pipe tp = gm.pipeIdToPipe[p];
+            if (null != tp) {
+                if (tp.isForSchema(tp, targetSchema)) {
+                	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchema);
+                	result[count] = tp;
+                    return result;
+                }
+            }
+        }
+        
+        if (0==count) {
+        	return EMPTY_PIPE_ARRAY;
+        } else {
+        	return new Pipe[count];
+        }
+	    
+	}
+	
+	public static  <T extends MessageSchema> Pipe<T>[] allPipes(GraphManager gm) {
 	    
 	    //pass one to count all the instances
 	    int count = 0;
@@ -498,9 +522,7 @@ public class GraphManager {
         while (--p>=0) {
             Pipe tp = gm.pipeIdToPipe[p];
             if (null != tp) {
-                if (tp.isForSchema(tp, targetSchema)) {
-                    count++;
-                }
+            	count++;
             }
         }
         
@@ -514,9 +536,7 @@ public class GraphManager {
         while (--p>=0) { //we are walking backwards over the pipes added
             Pipe tp = gm.pipeIdToPipe[p];
             if (null != tp) {
-                if (tp.isForSchema(tp, targetSchema)) {
-                    result[--count] = tp; //so we add them backwards to the input array
-                }
+            	result[--count] = tp; //so we add them backwards to the input array
             }
         }
 	    //the order of this array will be the same order that the pipes were added to the graph.
@@ -714,8 +734,6 @@ public class GraphManager {
 			
 			//if Nota key already exists then replace previous value
 			
-		
-			
 			int notaId = findNotaIdForKey(m, stage.stageId, key);
 			
 			if (-1 != notaId) {
@@ -828,7 +846,7 @@ public class GraphManager {
         return  gm.stageIdToStage[stageId];
 	}
 
-    private static int getRingProducerId(GraphManager gm, int ringId) {
+    static int getRingProducerId(GraphManager gm, int ringId) {
         return gm.ringIdToStages[ringId*2];
     }
 	
@@ -844,7 +862,7 @@ public class GraphManager {
         return  gm.stageIdToStage[stageId];
 	}
 
-    private static int getRingConsumerId(GraphManager gm, int ringId) {
+    static int getRingConsumerId(GraphManager gm, int ringId) {
         return gm.ringIdToStages[(ringId*2)+1];
     }
 	
@@ -993,7 +1011,7 @@ public class GraphManager {
     }
     
     public static PronghornStage[] allStagesByState(GraphManager graphManager, int state) {
-        
+    	 //TODO: rewrite and simple recursive stack unroll to eliminate the duplication of the code here. see pipesOfType
         int count = 0;
         int s = graphManager.stageIdToStage.length;
         while (--s>=0) {
@@ -1014,6 +1032,27 @@ public class GraphManager {
         return stages;
     }
     
+    public static PronghornStage[] allStages(GraphManager graphManager) {
+        
+        int count = 0;
+        int s = graphManager.stageIdToStage.length;
+        while (--s>=0) {
+            PronghornStage stage = graphManager.stageIdToStage[s];             
+            if (null!=stage) {
+                count++;
+            }
+        }
+        
+        PronghornStage[] stages = new PronghornStage[count];
+        s = graphManager.stageIdToStage.length;
+        while (--s>=0) {
+            PronghornStage stage = graphManager.stageIdToStage[s];             
+            if (null != stage) {
+                stages[--count] = stage;
+            }
+        }
+        return stages;
+    }
     
     
     //TODO: AA must have blocking base stage to extend for blockers.
@@ -1137,8 +1176,17 @@ public class GraphManager {
 	        while (++i<m.stageIdToStage.length) {
 	            PronghornStage stage = m.stageIdToStage[i];
 	            if (null!=stage) {       
+	            	
+	            	//TODO: we need to group the nodes and edges with the same THREAD_GROUP under a subgraph cluster
+	                //  subgraph cluster_1 {
+	            	Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
+	            	
+	                target.append("\"Stage").append(Integer.toString(i)).append("\"[label=\"").append(stage.toString().replace("Stage","").replace(" ", "\n"));
+	                if (null!=group) {
+	                	target.append(" grp:"+group);
+	                }
 	                
-	                target.append("\"Stage").append(Integer.toString(i)).append("\"[label=\"").append(stage.toString().replace("Stage","").replace(" ", "\n")).append("\"]\n");
+	                target.append("\"]\n");
 	                	                
 	            }
 	        }
@@ -1257,13 +1305,11 @@ public class GraphManager {
 	 * @param m
 	 * @param stageId
 	 */
-	public static void initInputRings(GraphManager m, int stageId) {
-		int pipeId;
-		int idx = m.stageIdToInputsBeginIdx[stageId];
-		while (-1 != (pipeId=m.multInputIds[idx++])) {
-			m.pipeIdToPipe[pipeId].initBuffers();				
-		}
+	public static void initAllPipes(GraphManager m, int stageId) {
+		int idx;
+		initInputPipesAsNeeded(m, stageId);
 		//Does not return until some other stage has initialized the output rings
+		int pipeId;
 		idx = m.stageIdToOutputsBeginIdx[stageId];
 		while (-1 != (pipeId=m.multOutputIds[idx++])) {
 		    
@@ -1294,11 +1340,25 @@ public class GraphManager {
 		    }
 		    
 		    //blocking wait on the other stage to init this pipe, required for clean startup only.
+		    long timeout = System.currentTimeMillis()+20_000;
 			while (!Pipe.isInit(m.pipeIdToPipe[pipeId])) {
 				Thread.yield();
+				if (System.currentTimeMillis()>timeout) {
+					throw new RuntimeException("Check Graph, unable to startup "+GraphManager.getStage(m, stageId)+" due to output "+m.pipeIdToPipe[pipeId]+" consumed by "+getRingConsumer(m,m.pipeIdToPipe[pipeId].id));
+				}
 			}				
 		}	
 		
+	}
+
+	public static void initInputPipesAsNeeded(GraphManager m, int stageId) {
+		int pipeIdIn;
+		int idx = m.stageIdToInputsBeginIdx[stageId];
+		while (-1 != (pipeIdIn=m.multInputIds[idx++])) {
+			if (!Pipe.isInit(m.pipeIdToPipe[pipeIdIn])) {
+				m.pipeIdToPipe[pipeIdIn].initBuffers();		
+			}
+		}
 	}
 	
 	public static void reportError(GraphManager graphManager, final PronghornStage stage, Throwable t, Logger logger) {
@@ -1487,9 +1547,23 @@ public class GraphManager {
             }
         }
     }
+   
+
+    public static void blockUntilStageBeginsShutdown(GraphManager gm, PronghornStage stageToWatch, long timeoutMS) {
+        //keep waiting until this stage starts it shut down or completed its shutdown, 
+        //eg return on leading edge as soon as we detect shutdown in progress..
+        while (--timeoutMS>=0 && (!  (isStageShuttingDown(gm, stageToWatch.stageId)||isStageTerminated(gm, stageToWatch.stageId))) ) { 
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+    
 
     public static PronghornStage[] allStagesByType(GraphManager graphManager, Class<?> stageClass) {
-       
+    	 //TODO: rewrite and simple recursive stack unroll to eliminate the duplication of the code here. see pipesOfType
         int count = 0;
         int s = graphManager.stageIdToStage.length;
         while (--s>=0) {

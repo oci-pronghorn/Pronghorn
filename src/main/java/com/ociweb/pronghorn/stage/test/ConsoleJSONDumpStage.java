@@ -43,6 +43,11 @@ public class ConsoleJSONDumpStage<T extends MessageSchema> extends PronghornStag
 					assert (((CharSequence)value).length()<=input.maxAvgVarLen) : "Text is too long found "+((CharSequence)value).length();
 					super.visitUTF8(name, id, value);
 				}
+				@Override
+				public void shutdown() {
+					super.shutdown();
+					ConsoleJSONDumpStage.this.requestShutdown();
+				}
 			};
 
 			reader = new StreamingVisitorReader(input, visitor );

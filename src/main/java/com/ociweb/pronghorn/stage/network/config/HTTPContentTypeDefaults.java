@@ -3,15 +3,15 @@ package com.ociweb.pronghorn.stage.network.config;
 public enum HTTPContentTypeDefaults implements HTTPContentType {
 
     //TODO: user smaller hash and put the lest used values at the bottom so they get the collision jump
-    UNKNOWN("",""),//MUST BE FIRST WITH ORDINAL ZERO
+    UNKNOWN("","",true),//MUST BE FIRST WITH ORDINAL ZERO, market as alias to ensrue its not used for file lookup.
     AI("application/postscript","ai"),
     AIF("audio/x-aiff","aif"),
     AIFF("audio/x-aiff","aiff"),
     AIFC("audio/x-aiff","aifc"),
     AU("audio/basic", "au"),
     AVI("video/avi","avi"),
-    AVIMSX("video/x-msvideo","avi"),
-    AVIMS("video/msvideo","avi"),
+    AVIMSX("video/x-msvideo","avi",true),
+    AVIMS("video/msvideo","avi",true),
     BIN("application/octet-stream","bin"),
     BMP("image/bmp","bmp"),
     BZ2("application/x-bzip2","bz2"),
@@ -54,7 +54,7 @@ public enum HTTPContentTypeDefaults implements HTTPContentType {
     MPG("video/mpeg","mpg"),
     MPE("video/mpeg","mpe"),
     MPGA("audio/mpeg","mpga"),
-    OGGVORB("audio/vorbis","ogg"),
+    OGGVORB("audio/vorbis","ogg",true),
     OGG("application/ogg","ogg"),    
     PDF("application/pdf","pdf"),
     PL("application/x-perl","pl"),    
@@ -70,13 +70,13 @@ public enum HTTPContentTypeDefaults implements HTTPContentType {
     PPT("application/vnd.ms-powerpoint","ppt"),
     PS("application/postscript","ps"),
     QT("video/quicktime","qt"),
-    RAX("audio/x-pn-realaudio","ra"),
+    RAX("audio/x-pn-realaudio","ra",true),
     RA("audio/vnd.rn-realaudio","ra"),    
-    RAMX("audio/x-pn-realaudio","ram"),
+    RAMX("audio/x-pn-realaudio","ram",true),
     RAM("audio/vnd.rn-realaudio","ram"),    
     RAS("image/x-cmu-raster","ras"),
     RDF("application/rdf","rdf"),
-    RDFXML("application/rdf+xml","rdf"),    
+    RDFXML("application/rdf+xml","rdf",true),    
     RTF("application/rtf","rtf"),
     RTX("text/richtext","rtx"),
     SGML("text/sgml","sgml"),
@@ -95,25 +95,32 @@ public enum HTTPContentTypeDefaults implements HTTPContentType {
     TXT("text/plain","txt"),
     VCD("application/x-cdlink","vcd"),
     WAV("audio/wav","wav"),
-    WAVX("audio/x-wav","wav"),    
+    WAVX("audio/x-wav","wav",true),    
     XLS("pplication/vnd.ms-excel","xls"),
     XML("application/xml","xml"),
     Z("application/x-compress","Z"),  
-    ZIPX("application/x-compressed-zip","zip"),
+    ZIPX("application/x-compressed-zip","zip",true),
     ZIP("application/zip","zip");
     
     
     private final String contentType;
     private final String fileExtension;
+    private final boolean isAlias; //non alias entries are the only ones used for type lookup based on file extension.
     
     
     private HTTPContentTypeDefaults(String contentType, String fileExtension) {
 
         this.contentType = contentType;
         this.fileExtension = fileExtension;
-
+        this.isAlias = false;
     }
 
+    private HTTPContentTypeDefaults(String contentType, String fileExtension, boolean isAlias) {
+
+        this.contentType = contentType;
+        this.fileExtension = fileExtension;
+        this.isAlias = isAlias;
+    }
 
     @Override
     public String contentType() {
@@ -126,6 +133,9 @@ public enum HTTPContentTypeDefaults implements HTTPContentType {
         return fileExtension;
     }
     
+    public boolean isAlias() {
+        return isAlias;
+    }
     
     
     

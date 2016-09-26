@@ -22,6 +22,8 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
     public final int headerCount;
     public final H[] headers;
     public final T[] contentTypes;
+    public final V[] verbs;
+    
     
     private static HTTPSpecification<HTTPContentTypeDefaults,HTTPRevisionDefaults,HTTPVerbDefaults,HTTPHeaderKeyDefaults> defaultSpec;
     
@@ -39,8 +41,8 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         this.supportedHTTPVerbs = supportedHTTPVerbs;
         this.supportedHTTPHeaders = supportedHTTPHeaders;
         
-        headers = supportedHTTPHeaders.getEnumConstants();
-        headerCount = headers.length;
+        this.headers = supportedHTTPHeaders.getEnumConstants();
+        this.headerCount = null==this.headers? 0 : headers.length;
         
         //populate revision bytes
         R[] revisions = supportedHTTPRevisions.getEnumConstants();
@@ -64,7 +66,7 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         
         //find ordinal values and max length
         int maxVerbLength = 0;
-        V[] verbs = supportedHTTPVerbs.getEnumConstants();
+        verbs = supportedHTTPVerbs.getEnumConstants();
         int j = verbs.length;
         int localGet = 0;
         int localHead = 0;
@@ -86,7 +88,10 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 	public boolean headerMatches(int headerId, CharSequence cs) {
 		return headers[headerId].getKey().equals(cs);
 	}
-    
-    
+
+   public boolean verbMatches(int verbId, CharSequence cs) {
+        return verbs[verbId].getKey().equals(cs);
+    }
+
     
 }

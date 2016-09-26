@@ -8,5 +8,7 @@ public interface HTTPContentType {
     
     int ordinal();
     
+    boolean isAlias();
+    
     
 }

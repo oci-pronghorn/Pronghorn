@@ -105,7 +105,7 @@ public class FileWriteStage extends PronghornStage {
 					}                	
                 }
                                 
-				Pipe.releaseReads(inputRing);  
+				Pipe.releaseReadLock(inputRing);  
 				Pipe.confirmLowLevelRead(inputRing, msgSize);
                                 
 				assert(Pipe.contentRemaining(inputRing)>=0) : "still has "+Pipe.contentRemaining(inputRing)+" content to write "+inputRing;

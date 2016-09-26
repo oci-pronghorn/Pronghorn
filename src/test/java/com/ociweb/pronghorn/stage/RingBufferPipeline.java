@@ -67,7 +67,7 @@ public class RingBufferPipeline {
                 //show depth vs bufSize	            
 				
 	        	//doing nothing with the data
-				Pipe.releaseReads(inputRing);
+				Pipe.releaseReadLock(inputRing);
 
 	        	
 	        	messageCount++;
@@ -126,7 +126,7 @@ public class RingBufferPipeline {
 						}
 					}
 					
-					Pipe.releaseReads(inputRing);
+					Pipe.releaseReadLock(inputRing);
 		            	
 		        	messageCount++;
 		        	
@@ -291,7 +291,7 @@ public class RingBufferPipeline {
 					Pipe.addByteArrayWithMask(outputRing, mask, len, byteBackingArray(meta, inputRing), bytePosition(meta, inputRing, len));	
 							
 					Pipe.publishWrites(outputRing);
-					Pipe.releaseReads(inputRing);
+					Pipe.releaseReadLock(inputRing);
 
 			} 
 				

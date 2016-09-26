@@ -102,7 +102,7 @@ public class FieldSplitterStage extends PronghornStage {
 				//done reading bytes input can have that section of the array again.
 	
 	    	}
-	    	Pipe.releaseReads(inputRing);
+	    	Pipe.releaseReadLock(inputRing);
 		}
 		
 	}

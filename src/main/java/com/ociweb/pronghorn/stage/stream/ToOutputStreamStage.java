@@ -47,7 +47,7 @@ public class ToOutputStreamStage extends PronghornStage {
 						
 					int msgId = Pipe.takeMsgIdx(inputRing);
 					if (msgId<0) {
-					    Pipe.releaseReads(inputRing);
+					    Pipe.releaseReadLock(inputRing);
 					    Pipe.confirmLowLevelRead(inputRing, Pipe.EOF_SIZE);
 					    Pipe.releaseAllBatchedReads(inputRing);
 					    requestShutdown();
@@ -76,13 +76,13 @@ public class ToOutputStreamStage extends PronghornStage {
 						}
 						outputStream.flush();
 			    	} else if (len<0) {
-			    	    Pipe.releaseReads(inputRing);
+			    	    Pipe.releaseReadLock(inputRing);
 	                    Pipe.confirmLowLevelRead(inputRing, step);
 	                    Pipe.releaseAllBatchedReads(inputRing);
 			    	    requestShutdown();
 			    	    return;
 			    	}
-			        Pipe.releaseReads(inputRing);
+			        Pipe.releaseReadLock(inputRing);
 			    	Pipe.confirmLowLevelRead(inputRing, step);		    	
  
 				}			
