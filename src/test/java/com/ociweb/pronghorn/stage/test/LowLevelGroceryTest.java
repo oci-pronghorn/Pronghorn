@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.stage.generator;
+package com.ociweb.pronghorn.stage.test;
 
 import com.ociweb.pronghorn.code.LoaderUtil;
 import com.ociweb.pronghorn.pipe.*;
@@ -112,14 +112,14 @@ public class LowLevelGroceryTest {
             e.printStackTrace();
             fail();
         }
-    /*
+
         try {
             Constructor constructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClassName(), eTarget, PhastEncoderStageGenerator.class);
 
 
             GraphManager gm = new GraphManager();
 
-            Pipe<?> pipe = new Pipe<>(new PipeConfig<>(schema, pipeLength));
+            Pipe<?> pipe = new Pipe<>(new PipeConfig<>(schema, 8000));
 
             constructor.newInstance(gm, pipe);
             Appendable out = new PrintWriter(new ByteArrayOutputStream());
@@ -132,7 +132,7 @@ public class LowLevelGroceryTest {
             scheduler.playNice=false;
             scheduler.startup();
 
-            Thread.sleep(durationMS);
+            Thread.sleep(100);
 
             scheduler.shutdown();
             scheduler.awaitTermination(10, TimeUnit.SECONDS);
@@ -141,6 +141,7 @@ public class LowLevelGroceryTest {
             e.printStackTrace();
         } catch (NoSuchMethodException e) {
             e.printStackTrace();
+
         } catch (InstantiationException e) {
             e.printStackTrace();
         } catch (IllegalAccessException e) {
@@ -154,7 +155,5 @@ public class LowLevelGroceryTest {
         }
     }
 
-    }
-    */
-    }
+
 }

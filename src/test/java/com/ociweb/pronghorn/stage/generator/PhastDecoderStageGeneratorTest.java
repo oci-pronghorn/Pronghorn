@@ -68,20 +68,7 @@ public class PhastDecoderStageGeneratorTest {
         }
         
     }
-    
-    @Test
-    public void testProject() throws IOException, SAXException, ParserConfigurationException{
-        //test build to see what is being printout out
-        File output = new File("src/test/java/com/ociweb/pronghorn/pipe/build/LowLevelWriter.java");
-        FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
-        MessageSchema schema = new MessageSchemaDynamic(from);
-        
-        PrintWriter target = new PrintWriter(output);
-        
-        PhastDecoderStageGenerator ew = new PhastDecoderStageGenerator(schema, target, "com.ociweb.pronghorn.pipe.build");
-        ew.processSchema();
-        
-        target.close();
-    }
+
+    //TODO: Add speed tests here.
     
 }
