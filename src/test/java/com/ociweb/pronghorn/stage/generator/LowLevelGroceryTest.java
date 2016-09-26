@@ -6,6 +6,7 @@ import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.generator.FuzzDataStageGenerator;
 import com.ociweb.pronghorn.stage.generator.PhastDecoderStageGenerator;
+import com.ociweb.pronghorn.stage.generator.PhastEncoderStageGenerator;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleSummaryStage;
@@ -29,23 +30,33 @@ import static org.junit.Assert.fail;
 public class LowLevelGroceryTest {
 
     @Test
-    public void fuzzGeneratorBuildTest() throws IOException, SAXException, ParserConfigurationException {
-        StringBuilder target = new StringBuilder();
+    public void compileTest() throws IOException, SAXException, ParserConfigurationException {
+        StringBuilder eTarget = new StringBuilder();
 
         FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
         MessageSchema schema = new MessageSchemaDynamic(from);
 
         //decoder generator compile test
-        PhastDecoderStageGenerator ew = new PhastDecoderStageGenerator(schema, target, "com.ociweb.pronghorn.pipe.build");
+        PhastDecoderStageGenerator ew = new PhastDecoderStageGenerator(schema, eTarget, "com.ociweb.pronghorn.pipe.build");
         try {
             ew.processSchema();
         } catch (IOException e) {
             e.printStackTrace();
             fail();
         }
-        validateCleanCompile(ew.getPackageName(), ew.getClassName(), target);
+        validateCleanCompile(ew.getPackageName(), ew.getClassName(), eTarget);
+
 
         //encoder generator compile test
+        StringBuilder dTarget = new StringBuilder();
+        PhastEncoderStageGenerator dw = new PhastEncoderStageGenerator(schema, dTarget);
+        try {
+            dw.processSchema();
+        } catch (IOException e) {
+            e.printStackTrace();
+            fail();
+        }
+        validateCleanCompile(dw.getPackageName(), dw.getClassName(), dTarget);
 
     }
 
@@ -55,7 +66,7 @@ public class LowLevelGroceryTest {
             Class generateClass = LoaderUtil.generateClass(packageName, className, target, FuzzDataStageGenerator.class);
 
             if (generateClass.isAssignableFrom(PronghornStage.class)) {
-                Constructor constructor =  generateClass.getConstructor(GraphManager.class, Pipe.class);
+                Constructor constructor = generateClass.getConstructor(GraphManager.class, Pipe.class);
                 assertNotNull(constructor);
             }
 
@@ -75,9 +86,15 @@ public class LowLevelGroceryTest {
 
     }
 
-    //this is how he wrote fuzz generator test
-    /*
-    private void runtimeTestingOfFuzzGenerator(StringBuilder target, MessageSchema schema, FuzzDataStageGenerator ew, int durationMS, int pipeLength) {
+    @Test
+    public void integrityTest() throws IOException, SAXException, ParserConfigurationException {
+        StringBuilder eTarget = new StringBuilder();
+
+        FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
+        MessageSchema schema = new MessageSchemaDynamic(from);
+
+        //decoder generator compile test
+        PhastDecoderStageGenerator ew = new PhastDecoderStageGenerator(schema, eTarget, "com.ociweb.pronghorn.pipe.build");
         try {
             ew.processSchema();
         } catch (IOException e) {
@@ -86,16 +103,22 @@ public class LowLevelGroceryTest {
         }
 
 
-
-
+        //encoder generator compile test
+        StringBuilder dTarget = new StringBuilder();
+        PhastEncoderStageGenerator dw = new PhastEncoderStageGenerator(schema, dTarget);
         try {
-            Constructor constructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClassName(), target, FuzzDataStageGenerator.class);
+            dw.processSchema();
+        } catch (IOException e) {
+            e.printStackTrace();
+            fail();
+        }
+    /*
+        try {
+            Constructor constructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClassName(), eTarget, PhastEncoderStageGenerator.class);
 
 
             GraphManager gm = new GraphManager();
 
-            //NOTE: Since the ConsoleSummaryStage usess the HighLevel API the pipe MUST be large enough to hold and entire message
-            //      Would be nice to detect this failure, not sure how.
             Pipe<?> pipe = new Pipe<>(new PipeConfig<>(schema, pipeLength));
 
             constructor.newInstance(gm, pipe);
@@ -130,5 +153,8 @@ public class LowLevelGroceryTest {
             e.printStackTrace();
         }
     }
+
+    }
     */
+    }
 }

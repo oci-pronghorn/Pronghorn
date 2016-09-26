@@ -99,27 +99,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             Appendables.appendValue(target, startsCount).append("];\n");
         }
     }
-    //@Override
-    protected void listMembers(Appendable target) {
-        FieldReferenceOffsetManager from = MessageSchema.from(schema);
-        int[] tokens = from.tokens;
-        int i = 1;
-        String[] scriptNames = from.fieldNameScript;
-        try {
-            while (i < from.tokensLen) {
-                int type = TokenBuilder.extractType(tokens[i]);
-                if(TypeMask.isLong(type)|| TypeMask.isInt(type)||TypeMask.isText(type))
-                    target.append(scriptNames[i]);
-                if(i < (from.tokensLen - (1 + TypeMask.scriptTokenSize[TokenBuilder.extractType(tokens[i])])))
-                    target.append(",");
-                i += TypeMask.scriptTokenSize[TokenBuilder.extractType(tokens[i])];
-                //target.append("\n" + type);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
 
-    }
     @Override
     protected void bodyOfBusinessProcess(Appendable target, int cursor, int firstField, int fieldCount) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
@@ -147,14 +127,14 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         //pass over group tag 0x10000
         cursor++;
 
-        for (int f = firstField; f <= fieldCount; f++) {
-            target.append(tab + scriptNames[f] + " = ");
+        for (int f = cursor; f < (firstField+fieldCount); f++) {
             int token = from.tokens[cursor];
             int pmapType = TokenBuilder.extractType(token);
             //if (TypeMask.isOptional(pmapType) == true){
                 //TODO: support optional fields.
             //}
             if (TypeMask.isInt(pmapType) == true) {
+                target.append(tab + "int " + scriptNames[f] + " = ");
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
@@ -182,6 +162,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
             } //if long, goes to switch to find correct operator to call 
             else if (TypeMask.isLong(pmapType) == true) {
+                target.append(tab + "long " + scriptNames[f] + " = ");
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
@@ -203,6 +184,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
             } //if string
             else if (TypeMask.isText(pmapType) == true) {
+                target.append(tab + "String " + scriptNames[f] + " = ");
                 decodeStringGenerator( bodyTarget);
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
             } else {
@@ -210,7 +192,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             }
             cursor++;
             argumentList.append(scriptNames[f]);
-            if (f != fieldCount){
+            if (f != (firstField+fieldCount) - 1){
                 argumentList.append(',');
             }
         }
@@ -223,6 +205,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
     @Override
     protected void additionalMembers(Appendable target) throws IOException {
+        /*
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         int[] tokens = from.tokens;
         long[] scriptIds = from.fieldIdScript;
@@ -242,6 +225,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 target.append("private String ").append(scriptNames[i]).append(";\n");
             }
         }
+        */
         target.append("private long[] " + longDictionaryName + ";\n");
         target.append("private int[] " +intDictionaryName + ";\n");
         bodyTarget.append("DataInputBlobReader<" + schema.getClass().getSimpleName() + "> " + readerName + " = new DataInputBlobReader<" + schema.getClass().getSimpleName() + ">(output);\n");

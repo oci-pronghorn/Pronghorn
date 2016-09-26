@@ -11,12 +11,6 @@ import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 public class LowLevelWriter implements Runnable {
 
 private Pipe<MessageSchemaDynamic> output;
-private String Units;
-private int RecordID;
-private int Amount;
-private String ProductName;
-private long Date;
-private int StoreID;
 private long[] longDictionary;
 private int[] intDictionary;
 DataInputBlobReader<MessageSchemaDynamic> reader = new DataInputBlobReader<MessageSchemaDynamic>(output);
@@ -30,7 +24,7 @@ public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetM
     new long[]{2, 2, 0},
     new int[]{2, 2, 0});
 private final int[] FROM_GUID = new int[]{236463696, 1042588431, 307749989, 0, (-1421281399), (-1920029437), (-261718140), 1608417298};
-private final long BUILD_TIME = 1474310395627L;
+private final long BUILD_TIME = 1474914822876L;
 private static final int DO_NOTHING = -3;
 
 private int nextMessageIdx() {
@@ -64,17 +58,17 @@ public void run() {
 private void processInventoryDetails() {
     long bitMask = 1;
     long map = DataInputBlobReader.readPackedLong(reader);
-    StoreID = PhastDecoder.decodeCopyInt(intDictionary, reader, map, 1, bitMask);
+    int StoreID = PhastDecoder.decodeCopyInt(intDictionary, reader, map, 1, bitMask);
     bitMask = bitMask << 1;
-    Date = PhastDecoder.decodeDeltaLong(longDictionary, reader, map, 2, bitMask);
+    long Date = PhastDecoder.decodeDeltaLong(longDictionary, reader, map, 2, bitMask);
     bitMask = bitMask << 1;
-    ProductName = PhastDecoder.decodeString(reader);
+    String ProductName = PhastDecoder.decodeString(reader);
     bitMask = bitMask << 1;
-    Amount = PhastDecoder.decodeDeltaInt(intDictionary, reader, map, 100, bitMask);
+    int Amount = PhastDecoder.decodeDeltaInt(intDictionary, reader, map, 100, bitMask);
     bitMask = bitMask << 1;
-    RecordID = PhastDecoder.decodeIncrementInt(intDictionary, map, 5, bitMask);
+    int RecordID = PhastDecoder.decodeIncrementInt(intDictionary, map, 5, bitMask);
     bitMask = bitMask << 1;
-    Units = PhastDecoder.decodeString(reader);
+    String Units = PhastDecoder.decodeString(reader);
     bitMask = bitMask << 1;
     processPipe1WriteInventoryDetails(StoreID,Date,ProductName,Amount,RecordID,Units);
 }
