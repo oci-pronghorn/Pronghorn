@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -91,22 +92,22 @@ public class MatrixComputeTest {
 	@Test
 	public void testCompute() {
 		//speed
-		//slow     Doubles  Longs
-		//         Decimals
-		//         Floats
-		//fast     Integers
+		//slow     Doubles  Longs    6.15 5.8      7.024  7.18
+		//         Decimals          5.9           9.40 - 13
+		//         Floats            6.06           6.26
+		//fast     Integers          5.80           5.95
 		
-		
-		
-		MatrixTypes type = MatrixTypes.Integers;
+		//TODO: convert all to Decimals for unit test check.
+	
+		MatrixTypes type = MatrixTypes.Decimals;//Integers;
 		
 		//TypeMask.Decimal;
 		
 		
-		int leftRows=50;//100;
-		int rightColumns=500;//100;//1000; //this also impacts the number of threads
+		int leftRows=100; //TODO: hangs with small values?? check thread distribution.
+		int rightColumns=100;//1000; //this also impacts the number of threads
 				
-		int leftColumns = 50;//100;//1000;
+		int leftColumns = 100; //TODO: crash with small values?
 		int rightRows=leftColumns;		
 		
 		
@@ -116,6 +117,7 @@ public class MatrixComputeTest {
 		MatrixSchema leftSchema = BuildMatrixCompute.buildSchema(leftRows, leftColumns, type);		
 		MatrixSchema rightSchema = BuildMatrixCompute.buildSchema(rightRows, rightColumns, type);
 		MatrixSchema resultSchema = BuildMatrixCompute.buildResultSchema(leftSchema, rightSchema);
+		DecimalSchema result2Schema = new DecimalSchema<MatrixSchema>(resultSchema);
 
 		assertTrue(resultSchema.getRows()==leftRows);
 		assertTrue(resultSchema.getColumns()==rightColumns);
@@ -131,29 +133,34 @@ public class MatrixComputeTest {
 		
 		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 500);
 		
-		Pipe<MatrixSchema> left = new Pipe<MatrixSchema>(new PipeConfig<MatrixSchema>(leftSchema, 1)); 
-		Pipe<MatrixSchema> right = new Pipe<MatrixSchema>(new PipeConfig<MatrixSchema>(rightSchema, 1));
+		Pipe<MatrixSchema> left = new Pipe<MatrixSchema>(new PipeConfig<MatrixSchema>(leftSchema, 2)); 
+		Pipe<MatrixSchema> right = new Pipe<MatrixSchema>(new PipeConfig<MatrixSchema>(rightSchema, 2));
 		Pipe<MatrixSchema> result = new Pipe<MatrixSchema>(new PipeConfig<MatrixSchema>(resultSchema, 2)); //NOTE: reqires 2 or JSON will not write out !!
+		Pipe<DecimalSchema<MatrixSchema>> result2 = new Pipe<DecimalSchema<MatrixSchema>>(new PipeConfig<DecimalSchema<MatrixSchema>>(result2Schema, 2)); //NOTE: reqires 2 or JSON will not write out !!
+		
 		
 		BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, result);
 		
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		
-		ConsoleJSONDumpStage<MatrixSchema> watch = new ConsoleJSONDumpStage<>(gm, result, new PrintStream(baos));
 		
-	//	MonitorConsoleStage.attach(gm);
+		ConvertToDecimalStage<MatrixSchema> convert = new ConvertToDecimalStage<MatrixSchema>(gm, resultSchema, result, result2);
+		ConsoleJSONDumpStage<DecimalSchema<MatrixSchema>> watch = new ConsoleJSONDumpStage<>(gm, result2, new PrintStream(baos));
+		
+		gm.exportGraphDotFile();
+		
+		MonitorConsoleStage.attach(gm);
 		
 		int targetThreadCount = 12;
 		StageScheduler scheduler = //new ThreadPerStageScheduler(gm);
-				new FixedThreadsScheduler(gm, targetThreadCount);
+			                     new FixedThreadsScheduler(gm, targetThreadCount);
 		
 		scheduler.startup();	
 		
-		int testSize = 100;//500;
+		int testSize = 1;//50;
 		int k = testSize;
 		while (--k>=0) {
-			//System.out.println(k);
-			
+						
 			while (!Pipe.hasRoomForWrite(left) || !Pipe.hasRoomForWrite(right)) {
 				Thread.yield();
 			}
@@ -178,6 +185,13 @@ public class MatrixComputeTest {
 
 		}
 		
+//		try {
+//			Thread.sleep(1000);
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+		
 		Pipe.spinBlockForRoom(left, Pipe.EOF_SIZE);
 		Pipe.spinBlockForRoom(right, Pipe.EOF_SIZE);
 		Pipe.publishEOF(left);
@@ -188,7 +202,7 @@ public class MatrixComputeTest {
 
 		scheduler.awaitTermination(2, TimeUnit.SECONDS);
 				
-		//System.out.println("len "+baos.toByteArray().length+"  "+new String(baos.toByteArray()));
+		System.out.println("len "+baos.toByteArray().length+"  "+new String(baos.toByteArray()));
 		
 		
 	}

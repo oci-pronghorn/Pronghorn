@@ -69,7 +69,10 @@ public class ColumnsJoinStage<M extends MatrixSchema> extends PronghornStage{
 						
 					long sourceLoc = Pipe.getWorkingTailPosition(columnPipeInput[columnIdx]);
 					
-					int value = Pipe.readValue(0,columnPipeInput[columnIdx] );
+//					int value = Pipe.readValue(0,columnPipeInput[columnIdx] );
+//					long v2 = Pipe.readLong(1,columnPipeInput[columnIdx] );
+//					System.out.println(typeSize+"  "+value+"  "+v2);
+		
 					
 					Pipe.copyIntsFromToRing(Pipe.slab(columnPipeInput[columnIdx]), (int)sourceLoc, Pipe.slabMask(columnPipeInput[columnIdx]), 
 							                Pipe.slab(matrixPipeOutput), (int)targetLoc, Pipe.slabMask(matrixPipeOutput), typeSize);

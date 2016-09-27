@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.stage.math;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.math.BuildMatrixCompute.MatrixTypes;
@@ -7,16 +10,16 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, R extends MatrixSchema > extends PronghornStage {
 
-	private Pipe<ColumnSchema<C>> colInput;
+	private Logger logger = LoggerFactory.getLogger(ColumnComputeStage.class);
+	
+	private Pipe<ColumnSchema<C>>[] colInput;
 	private Pipe<R> matrixInput;
 	private Pipe<ColumnSchema<M>> colOutput;
 	private M resultSchema;
 	private R rSchema;
 	private MatrixTypes type;
-		
-	boolean isRunning  = true;
 	
-	protected ColumnComputeStage(GraphManager graphManager, Pipe<ColumnSchema<C>> colInput,  Pipe<R> matrixInput, Pipe<ColumnSchema<M>> colOutput,
+	protected ColumnComputeStage(GraphManager graphManager, Pipe<ColumnSchema<C>>[] colInput,  Pipe<R> matrixInput, Pipe<ColumnSchema<M>> colOutput,
 			                     M matrixSchema, C cSchema, R rSchema) {
 		super(graphManager, join(colInput,matrixInput), colOutput);
 		this.colInput = colInput;
@@ -51,22 +54,24 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 
 	@Override
 	public void run() {
-		if (!isRunning) {
-			throw new UnsupportedOperationException();
-		}
+		
+		//logger.info("{} {} {} {} ",Pipe.hasContentToRead(this.matrixInput),  Pipe.hasContentToRead(this.colInput),  Pipe.hasRoomForWrite(this.colOutput), this.colOutput);
+		
+		int activeCol = 0;//TODO: add suport for multiple cols in loop.
 		
 		while (Pipe.hasContentToRead(this.matrixInput) && 
-			   Pipe.hasContentToRead(this.colInput) &&
+			   Pipe.hasContentToRead(this.colInput[activeCol]) &&
 			   Pipe.hasRoomForWrite(this.colOutput)) {
 
-			int colId = Pipe.takeMsgIdx(this.colInput);			
+			
+			int colId = Pipe.takeMsgIdx(this.colInput[activeCol]);			
 			int matrixId = Pipe.takeMsgIdx(this.matrixInput);
 			
 			if (colId>=0 && matrixId>=0) {
 				assert(matrixId == resultSchema.matrixId);
 				int msgOutSize = Pipe.addMsgIdx(this.colOutput, resultSchema.columnId);
 				
-				final long colStartPos = ((int)Pipe.getWorkingTailPosition(this.colInput));
+				final long colStartPos = ((int)Pipe.getWorkingTailPosition(this.colInput[activeCol]));
 								
 				//Due to strong typing we know how long the columns are and how big every matrix is
 
@@ -79,8 +84,8 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 					//produce a single value for the output column
 					////////////////
 					
-				    Pipe.setWorkingTailPosition(this.colInput, colStartPos);//reset to the beginning of column.	
-				    type.computeColumn(this.rSchema.getRows(), colInput, matrixInput, colOutput);
+				    Pipe.setWorkingTailPosition(this.colInput[activeCol], colStartPos);//reset to the beginning of column.	
+				    type.computeColumn(this.rSchema.getRows(), colInput[activeCol], matrixInput, colOutput);
    				    
 				}				
 	            //we have now finished 1 column of the result.
@@ -90,10 +95,10 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 				Pipe.confirmLowLevelWrite(this.colOutput, msgOutSize);
 				Pipe.publishWrites(this.colOutput);
 			    
-				Pipe.confirmLowLevelRead(this.colInput, Pipe.sizeOf(this.colInput, colId));
+				Pipe.confirmLowLevelRead(this.colInput[activeCol], Pipe.sizeOf(this.colInput[activeCol], colId)); //TODO: make constants.
 				Pipe.confirmLowLevelRead(this.matrixInput, Pipe.sizeOf(this.matrixInput, matrixId));
 				
-				Pipe.releaseReadLock(this.colInput);
+				Pipe.releaseReadLock(this.colInput[activeCol]);
 				Pipe.releaseReadLock(this.matrixInput);
 				
 				
@@ -102,7 +107,6 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 				//we already know that colOuput has room for write
 				Pipe.publishEOF(this.colOutput);				
 				requestShutdown();
-				isRunning = false;
 				return;
 			}
 			

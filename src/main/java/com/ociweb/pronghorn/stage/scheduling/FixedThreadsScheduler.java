@@ -203,6 +203,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 		return isInPath(stageId, stageId, graphManager);
 	}
 	
+	//TODO: broken
 	private static boolean isInPath(int stageId, final int targetId, GraphManager graphManager) {
 		//search all nodes until the end is reached or we see the duplicate
 		PronghornStage stage = GraphManager.getStage(graphManager, stageId);
@@ -214,7 +215,9 @@ public class FixedThreadsScheduler extends StageScheduler {
 						
 			int consumerId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
 			if (consumerId >= 0) {
-			    if ((consumerId == targetId) || (isInPath(consumerId, targetId, graphManager))) {
+				//if stageId is not found then it is not in a loop but the consumer Id could be in a loop and we will not return.
+				
+			    if ((consumerId == targetId) || (isInPath(consumerId, targetId, graphManager))) { //TODO: AAA recursion not indendended must be fixed. a loop causes this to crash!!!!
 			    	return true;
 			    }
 			}			

@@ -1,6 +1,8 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -1164,7 +1166,40 @@ public class GraphManager {
 		return count;
 	}
 	
+	public void exportGraphDotFile() {
+	    exportGraphDotFile(this, "graph.dot");
+	}
 	
+    public static void exportGraphDotFile(GraphManager gm, String filename) {
+        FileOutputStream fost;
+        try {
+            fost = new FileOutputStream(filename);
+            PrintWriter pw = new PrintWriter(fost);
+            gm.writeAsDOT(gm, pw);
+            pw.close();
+            
+            
+            //to produce the png we must call
+            //  dot -Tpng -O deviceGraph.dot        
+            Process result = Runtime.getRuntime().exec("dot -Tsvg -o"+filename+".svg "+filename);
+            
+            if (0!=result.waitFor()) {
+                return;
+            }
+            
+            result = Runtime.getRuntime().exec("circo -Tsvg -o"+filename+".circo.svg "+filename);
+            
+            if (0!=result.waitFor()) {
+                return;
+            }
+            
+        } catch (Exception e) {
+            System.out.println("No runtime graph produced.");
+        }
+        
+        
+    }
+    
 	public static void writeAsDOT(GraphManager m, Appendable target) {
 	    try {
 	    
@@ -1456,7 +1491,7 @@ public class GraphManager {
             int stageId = getRingConsumerId(gm, ringId);
             if (stageId>=0) {
                 PronghornStage consumer = gm.stageIdToStage[stageId];
-                consumerName = getNota(gm, consumer, STAGE_NAME, consumer.getClass().getSimpleName()).toString();
+                consumerName = getNota(gm, consumer, STAGE_NAME, consumer.getClass().getSimpleName()).toString()+"#"+stageId;
             }
 	    }
 	    String producerName = "UnknownProducer";
@@ -1464,7 +1499,7 @@ public class GraphManager {
             int stageId = getRingProducerId(gm, ringId);
             if (stageId>=0) {                
                 PronghornStage producer = gm.stageIdToStage[stageId];                
-                producerName = getNota(gm, producer, STAGE_NAME, producer.getClass().getSimpleName()).toString();  
+                producerName = getNota(gm, producer, STAGE_NAME, producer.getClass().getSimpleName()).toString()+"#"+stageId;  
             }
 	    }
 	    
