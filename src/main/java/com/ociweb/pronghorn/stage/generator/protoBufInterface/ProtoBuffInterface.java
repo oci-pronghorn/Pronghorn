@@ -28,6 +28,11 @@ public class ProtoBuffInterface {
         this.interfaceTarget = interfaceTarget;
         this.interfaceClassName = interfaceClassName;
     }
+    // Interface name change
+    // generateNameSpace? Class Name
+    // public void Grocery getName()
+    // public void Amazon getName()
+    // Needs to hold more than one namespace and work at sametime without conflicts
     private static void generateGetter(String varName, String varType, Appendable target) {
         try {
             //make variable name go to camel case
@@ -71,7 +76,8 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-     // public boolean has()
+     // public boolean Create()
+     // TODO: build partial???
     private static void generateCreate(String varName, Appendable target) {
         try {
             target.append(tab +"private static" + " create(){"
@@ -99,6 +105,7 @@ public class ProtoBuffInterface {
     }
     // cloneName()
     // clones the field
+    // check mergeFrom instance.........
     private static void generateClone(Appendable target) {
         try {
             //Clone method generated
@@ -126,11 +133,13 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+    // Unfinished Stub for List
     private static void generateList(String varName, Appendable target) {
         try {
              //List method generated
              target.append(tab + "public java.util.List<java.lang.Integer>" 
                     // getList() { return varName; }
+                    + "get" + varName + "()" 
                     + " {\n"
                     + "return " + varName + "_;"
                     + "\n"
@@ -157,6 +166,10 @@ public class ProtoBuffInterface {
         }
     }
     //mergeFrom()
+    //Builder?
+    //rethink this for clone
+    // DELETE NOT NEEDED 
+    // REWORK THIS FOR OUR CODE
     private static void generateMergeFrom(String locationMessage, String messageType, Appendable target) {
          try {
             //mergeFrom method generated
@@ -169,34 +182,6 @@ public class ProtoBuffInterface {
                     + "else {" + "\n"
                     + "super.mergeFrom(other);" + "\n"
                     + "return this;" + "\n" + "}"
-                    + "\n"
-                    + tab +  "}\n");
-        } catch (IOException ex) {
-            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-    // import package
-    // ex. import Pronghorn.Grocery.Inventory
-    // TODO: Make it work
-    // "Working" Stub
-    private static void generateImport(String varName, Appendable target) {
-        try {
-            //make variable name go to camel case
-            String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
-            //import created
-            target.append(tab + "import " + varNameCamel +  ";"
-                    + "\n");
-        } catch (IOException ex) {
-            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-    //  main method
-    // Probably not used
-    private static void generateMain(Appendable target) {
-        try {
-            // Empty Main Created
-            target.append(tab + "public static void main(String[] args) throws Exception {"
-                     + "\n"
                     + "\n"
                     + tab +  "}\n");
         } catch (IOException ex) {
