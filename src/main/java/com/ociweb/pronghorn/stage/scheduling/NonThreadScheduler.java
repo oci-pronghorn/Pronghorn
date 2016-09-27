@@ -1,6 +1,5 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
