@@ -26,17 +26,17 @@ public class LowLevelWriterTest{
     
         @Test
         public void lowLevelWriterStartupTest(){            
-            LowLevelWriter lw = new LowLevelWriter();
+            //LowLevelWriter lw = new LowLevelWriter();
             
-            lw.startup();
+            //lw.startup();
         }
         
         @Test
         public void lowLevelWriterRunTest() {
             //StringBuilder target = new StringBuilder();
-            LowLevelWriter lw = new LowLevelWriter();
+            //LowLevelWriter lw = new LowLevelWriter();
             
-            lw.run();            
+            //lw.run();
         }
         
         

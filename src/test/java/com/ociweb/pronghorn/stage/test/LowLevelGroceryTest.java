@@ -85,7 +85,7 @@ public class LowLevelGroceryTest {
         }
 
     }
-
+/*
     @Test
     public void integrityTest() throws IOException, SAXException, ParserConfigurationException {
         StringBuilder eTarget = new StringBuilder();
@@ -154,6 +154,6 @@ public class LowLevelGroceryTest {
             e.printStackTrace();
         }
     }
-
+*/
 
 }

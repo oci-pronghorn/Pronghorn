@@ -19,12 +19,12 @@ import com.ociweb.pronghorn.pipe.build.LowLevelReader;
  */
 public class LowLevelReaderTest {
     
-    @Test
+        @Test
         public void lowLevelReaderStartupTest(){
             StringBuilder target = new StringBuilder();
             LowLevelReader rw = new LowLevelReader();
             
-            rw.startup();
+            //rw.startup();
            
         }
         
@@ -33,7 +33,7 @@ public class LowLevelReaderTest {
             //StringBuilder target = new StringBuilder();
             LowLevelReader rw = new LowLevelReader();
             
-            rw.run();
+            //rw.run();
             
             //validateCleanCompile();
             
