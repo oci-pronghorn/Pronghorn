@@ -502,7 +502,7 @@ public class GraphManager {
             if (null != tp) {
                 if (tp.isForSchema(tp, targetSchema)) {
                 	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchema);
-                	result[count] = tp;
+                	result[(result.length-1)-count] = tp;
                     return result;
                 }
             }
