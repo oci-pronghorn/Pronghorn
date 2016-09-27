@@ -323,7 +323,7 @@ public class FieldReferenceOffsetManager {
         fragDataSize[fragmentStartIdx]++;//Add one for trailing byte count on end of every fragment
         
         int lastFragTotalSize = fragDataSize[fragmentStartIdx];
-        assert(lastFragTotalSize<65536) : "Fragments larger than this are possible but unlikely, You do not want to do this fragment of "+lastFragTotalSize;
+        assert(lastFragTotalSize< (1<<30)) : "Fragments larger than this are possible but unlikely, You probably do not want to build this fragment of "+lastFragTotalSize;
         
         maxFragmentDataSize = Math.max(maxFragmentDataSize, lastFragTotalSize);
         minFragmentDataSize = Math.min(minFragmentDataSize, lastFragTotalSize);

@@ -768,7 +768,7 @@ public class Pipe<T extends MessageSchema> {
         //This target is a counter that marks if there is room to write more data into the ring without overwriting other data.
         llWrite.llwHeadPosCache = toPos;
         llRead.llrTailPosCache = toPos;
-        llRead.llwConfirmedReadPosition = toPos - mask;//must be mask to ensure zero case works.
+        llRead.llwConfirmedReadPosition = toPos - sizeOfSlabRing;// TODO: hack test,  mask;//must be mask to ensure zero case works.
         llWrite.llwConfirmedWrittenPosition = toPos;
 
         this.blobRing = new byte[sizeOfBlobRing];
@@ -869,7 +869,7 @@ public class Pipe<T extends MessageSchema> {
         if (null!=llWrite) {
             llWrite.llwHeadPosCache = structuredPos;
             llRead.llrTailPosCache = structuredPos;
-            llRead.llwConfirmedReadPosition = structuredPos -  mask;
+            llRead.llwConfirmedReadPosition = structuredPos -  sizeOfSlabRing;//mask;sss  TODO: hack test.
             llWrite.llwConfirmedWrittenPosition = structuredPos;
         }
 

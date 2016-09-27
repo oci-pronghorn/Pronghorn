@@ -84,7 +84,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 
     public static double readDouble(Pipe pipe, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
-        return ((double)readDecimalMantissa(pipe,loc))*powdi[64 + readDecimalExponent(pipe,loc)];
+        return ((double)readDecimalMantissa(pipe,loc))*powdi[64 - readDecimalExponent(pipe,loc)];
     }
 
     public static double readLongBitsToDouble(Pipe pipe, int loc) {
@@ -94,7 +94,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     
     public static float readFloat(Pipe pipe, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
-        return ((float)readDecimalMantissa(pipe,loc))*powfi[64 + readDecimalExponent(pipe,loc)];
+        return ((float)readDecimalMantissa(pipe,loc))*powfi[64 - readDecimalExponent(pipe,loc)];
     }
     
     public static float readIntBitsToFloat(Pipe pipe, int loc) {

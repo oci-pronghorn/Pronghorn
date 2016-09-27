@@ -384,5 +384,26 @@ public class Appendables {
         }
         return target;
     }
+
+	public static CharSequence[] split(CharSequence text, char c) {
+		return split(0,0,0,text,c);
+	}
+	
+	//TODO: needs testing
+	private static CharSequence[] split(int pos, int start, int depth, final CharSequence text, final char c) {
+		CharSequence[] result;
+		while (pos<text.length()) {
+			if (text.charAt(pos++)==c) {
+				result = split(pos, pos ,depth+1, text, c);
+				result[depth] = text.subSequence(start, pos);
+				return result;
+			}
+		}
+		result = new CharSequence[depth+1];
+		result[depth] = text.subSequence(start, text.length());		
+		return result;
+	}
+	
+	
     
 }

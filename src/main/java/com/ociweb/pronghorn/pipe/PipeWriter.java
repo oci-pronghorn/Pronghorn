@@ -85,11 +85,11 @@ public class PipeWriter {
     
     public static void writeFloat(Pipe pipe, int loc, float value, int places) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);   	
-    	Pipe.setValues(Pipe.slab(pipe), pipe.mask, structuredPositionForLOC(pipe, loc), places, (long)Math.rint(value*powd[64+places]));
+    	Pipe.setValues(Pipe.slab(pipe), pipe.mask, structuredPositionForLOC(pipe, loc), -places, (long)Math.rint(value*powd[64+places]));
     }
     public static void writeDouble(Pipe pipe, int loc, double value, int places) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
-    	Pipe.setValues(Pipe.slab(pipe), pipe.mask, structuredPositionForLOC(pipe, loc), places, (long)Math.rint(value*powd[64+places]));
+    	Pipe.setValues(Pipe.slab(pipe), pipe.mask, structuredPositionForLOC(pipe, loc), -places, (long)Math.rint(value*powd[64+places]));
     }
     
     public static void writeFloatAsIntBits(Pipe pipe, int loc, float value) {

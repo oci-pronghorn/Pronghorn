@@ -480,13 +480,13 @@ public class PipeMultiTemplateTest {
 			PipeReader.tryReadFragment(ring);
 			assertEquals(10, PipeReader.readLong(ring, SQUAD_TRUCK_ID));
 			assertEquals(2000, PipeReader.readDecimalMantissa(ring, TRUCK_CAPACITY));
-			assertEquals(2, PipeReader.readDecimalExponent(ring, TRUCK_CAPACITY));
+			assertEquals(-2, PipeReader.readDecimalExponent(ring, TRUCK_CAPACITY));
 			assertEquals(20.00d, PipeReader.readDouble(ring, TRUCK_CAPACITY),.001);
         	
 			PipeReader.tryReadFragment(ring);
 			assertEquals(11, PipeReader.readLong(ring, SQUAD_TRUCK_ID));
 			assertEquals(3000, PipeReader.readDecimalMantissa(ring, TRUCK_CAPACITY));
-			assertEquals(2, PipeReader.readDecimalExponent(ring, TRUCK_CAPACITY));
+			assertEquals(-2, PipeReader.readDecimalExponent(ring, TRUCK_CAPACITY));
 			assertEquals(30.00d, PipeReader.readDouble(ring, TRUCK_CAPACITY),.001);
         	
         }
@@ -515,7 +515,7 @@ public class PipeMultiTemplateTest {
         		PipeWriter.blockWriteFragment(pipe, MSG_TRUCK_SEQ_LOC);//could use tryWrite here but it would make this example more complex
         		
         		PipeWriter.writeLong(pipe, SQUAD_TRUCK_ID, 10);         
-        		PipeWriter.writeDecimal(pipe, TRUCK_CAPACITY, 2, 2000);
+        		PipeWriter.writeDecimal(pipe, TRUCK_CAPACITY, -2, 2000);
         		
         		//WRITE THE SECOND MEMBER OF THE SEQ
         		//block to ensure we have room for the next fragment, and ensure that bytes consumed gets recorded
@@ -583,7 +583,7 @@ public class PipeMultiTemplateTest {
 		        // RingReader.printFragment(ring);
 		         assertEquals(11, PipeReader.readLong(ring, SQUAD_TRUCK_ID));
 		         assertEquals(3000, PipeReader.readDecimalMantissa(ring, TRUCK_CAPACITY));
-		         assertEquals(2, PipeReader.readDecimalExponent(ring, TRUCK_CAPACITY));
+		         assertEquals(-2, PipeReader.readDecimalExponent(ring, TRUCK_CAPACITY));
 
 			}
 			

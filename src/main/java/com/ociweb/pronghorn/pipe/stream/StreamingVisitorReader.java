@@ -266,7 +266,7 @@ public class StreamingVisitorReader {
 
     private void processDecimalOptional(String name, int idx, int fieldCursor, long id) {
         int exp = Pipe.readValue(idx, inputRing);
-        long mant = Pipe.readLong(idx, inputRing);
+        long mant = Pipe.readLong(idx+1, inputRing);
         if (FieldReferenceOffsetManager.getAbsent32Value(from)!=exp) {
         	visitor.visitDecimal(name,id,exp,mant);
         }
@@ -274,7 +274,7 @@ public class StreamingVisitorReader {
 
     private void processDecimal(String name, int idx, int fieldCursor, long id) {
         int exp = Pipe.readValue(idx, inputRing);
-        long mant = Pipe.readLong(idx, inputRing);
+        long mant = Pipe.readLong(idx+1, inputRing);
         visitor.visitDecimal(name,id,exp,mant);
     }
 
