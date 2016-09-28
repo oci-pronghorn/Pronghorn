@@ -14,12 +14,17 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 	
 	private Pipe<ColumnSchema<C>>[] colInput;
 	private Pipe<R> matrixInput;
-	private Pipe<ColumnSchema<M>> colOutput;
+	private Pipe<ColumnSchema<M>>[] colOutput;
 	private M resultSchema;
 	private R rSchema;
 	private MatrixTypes type;
+	private int shutdownCount;
+	private final int colMsgSize;
+	private final int matMsgSize;
+	private int activeCol;
+		
 	
-	protected ColumnComputeStage(GraphManager graphManager, Pipe<ColumnSchema<C>>[] colInput,  Pipe<R> matrixInput, Pipe<ColumnSchema<M>> colOutput,
+	protected ColumnComputeStage(GraphManager graphManager, Pipe<ColumnSchema<C>>[] colInput,  Pipe<R> matrixInput, Pipe<ColumnSchema<M>>[] colOutput,
 			                     M matrixSchema, C cSchema, R rSchema) {
 		super(graphManager, join(colInput,matrixInput), colOutput);
 		this.colInput = colInput;
@@ -28,6 +33,14 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		this.resultSchema = matrixSchema;
 		this.rSchema = rSchema;
 		this.type = rSchema.type;
+		this.activeCol = -2;
+		
+		assert(colInput.length == colOutput.length);
+		this.shutdownCount = colInput.length;
+
+		this.colMsgSize = Pipe.sizeOf(colInput[0], matrixSchema.columnId);
+		this.matMsgSize = Pipe.sizeOf(matrixInput, matrixSchema.matrixId);
+		
 		
 		if (cSchema.getColumns() != rSchema.getRows()) {
 			throw new UnsupportedOperationException("column count of left input must match row count of right input "+cSchema.getColumns()+" vs "+rSchema.getRows());
@@ -48,30 +61,48 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		if (rSchema.type != matrixSchema.type) {
 			throw new UnsupportedOperationException("type mismatch");
 		}
-		
-        
+		        
 	}
 
+	long matrixStartPos;
+	
 	@Override
 	public void run() {
 		
 		//logger.info("{} {} {} {} ",Pipe.hasContentToRead(this.matrixInput),  Pipe.hasContentToRead(this.colInput),  Pipe.hasRoomForWrite(this.colOutput), this.colOutput);
+						
 		
-		int activeCol = 0;//TODO: add suport for multiple cols in loop.
-		
-		while (Pipe.hasContentToRead(this.matrixInput) && 
-			   Pipe.hasContentToRead(this.colInput[activeCol]) &&
-			   Pipe.hasRoomForWrite(this.colOutput)) {
-
-			
-			int colId = Pipe.takeMsgIdx(this.colInput[activeCol]);			
-			int matrixId = Pipe.takeMsgIdx(this.matrixInput);
-			
-			if (colId>=0 && matrixId>=0) {
-				assert(matrixId == resultSchema.matrixId);
-				int msgOutSize = Pipe.addMsgIdx(this.colOutput, resultSchema.columnId);
+		if (activeCol == -2) {			
+			if (Pipe.hasContentToRead(matrixInput)) {
+				int matrixId = Pipe.takeMsgIdx(matrixInput);
+				if (matrixId < 0) {
+					requestShutdown();
+					return;
+				}				
+				matrixStartPos = ((int)Pipe.getWorkingTailPosition(matrixInput));												
+				activeCol = colInput.length-1;//begin next pass			
 				
-				final long colStartPos = ((int)Pipe.getWorkingTailPosition(this.colInput[activeCol]));
+			} else {
+				return;//do later when we have content
+			}			
+		}
+					
+		Pipe<ColumnSchema<C>> inputPipe;
+		Pipe<ColumnSchema<M>> outputPipe;
+		
+		while (activeCol >= 0 &&
+			   Pipe.hasContentToRead(inputPipe = colInput[activeCol]) &&
+			   Pipe.hasRoomForWrite(outputPipe = colOutput[activeCol])) {
+						
+			//start here for the top of each matrix at the top of each column.
+			Pipe.setWorkingTailPosition(matrixInput, matrixStartPos);
+			
+			int colId = Pipe.takeMsgIdx(inputPipe);			
+			
+			if (colId>=0) {
+				int msgOutSize = Pipe.addMsgIdx(outputPipe, resultSchema.columnId);
+				
+				final long colStartPos = ((int)Pipe.getWorkingTailPosition(inputPipe));
 								
 				//Due to strong typing we know how long the columns are and how big every matrix is
 
@@ -84,33 +115,37 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 					//produce a single value for the output column
 					////////////////
 					
-				    Pipe.setWorkingTailPosition(this.colInput[activeCol], colStartPos);//reset to the beginning of column.	
-				    type.computeColumn(this.rSchema.getRows(), colInput[activeCol], matrixInput, colOutput);
+				    Pipe.setWorkingTailPosition(inputPipe, colStartPos);//reset to the beginning of column.	
+				    type.computeColumn(rSchema.getRows(), inputPipe, matrixInput, outputPipe);
    				    
 				}				
 	            //we have now finished 1 column of the result.
-				
-								
+													
 				//always confirm writes before reads.
-				Pipe.confirmLowLevelWrite(this.colOutput, msgOutSize);
-				Pipe.publishWrites(this.colOutput);
+				Pipe.confirmLowLevelWrite(outputPipe, msgOutSize);
+				Pipe.publishWrites(outputPipe);
 			    
-				Pipe.confirmLowLevelRead(this.colInput[activeCol], Pipe.sizeOf(this.colInput[activeCol], colId)); //TODO: make constants.
-				Pipe.confirmLowLevelRead(this.matrixInput, Pipe.sizeOf(this.matrixInput, matrixId));
-				
-				Pipe.releaseReadLock(this.colInput[activeCol]);
-				Pipe.releaseReadLock(this.matrixInput);
-				
-				
+				Pipe.confirmLowLevelRead(inputPipe, colMsgSize); 
+				Pipe.releaseReadLock(inputPipe);
 				
 			} else {
 				//we already know that colOuput has room for write
-				Pipe.publishEOF(this.colOutput);				
-				requestShutdown();
-				return;
+				Pipe.publishEOF(outputPipe);				
+				if (--shutdownCount<=0) {
+					requestShutdown();
+					return;
+				}
 			}
+			//move to next column only after this column is complete
+			activeCol--;
+		}
 			
+		//will be -1 when each column has been processed.
+		if (activeCol == -1) {
 			
+			Pipe.confirmLowLevelRead(matrixInput, matMsgSize);
+			Pipe.releaseReadLock(matrixInput);		
+			activeCol = -2;
 		}
 		
 		

@@ -89,7 +89,7 @@ public class MatrixComputeTest {
 		
 	}
 
-	@Test
+	@Ignore
 	public void testCompute() {
 		//speed
 		//slow     Doubles  Longs    6.15 5.8      7.024  7.18
@@ -99,15 +99,15 @@ public class MatrixComputeTest {
 		
 		//TODO: convert all to Decimals for unit test check.
 	
-		MatrixTypes type = MatrixTypes.Decimals;//Integers;
+		MatrixTypes type = MatrixTypes.Longs;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
 		
 		//TypeMask.Decimal;
 		
 		
 		int leftRows=100; //TODO: hangs with small values?? check thread distribution.
-		int rightColumns=100;//1000; //this also impacts the number of threads
+		int rightColumns=1000;//1000; //this also impacts the number of threads
 				
-		int leftColumns = 100; //TODO: crash with small values?
+		int leftColumns = 1000; //TODO: crash with small values?
 		int rightRows=leftColumns;		
 		
 		
@@ -139,7 +139,8 @@ public class MatrixComputeTest {
 		Pipe<DecimalSchema<MatrixSchema>> result2 = new Pipe<DecimalSchema<MatrixSchema>>(new PipeConfig<DecimalSchema<MatrixSchema>>(result2Schema, 2)); //NOTE: reqires 2 or JSON will not write out !!
 		
 		
-		BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, result);
+		int targetThreadCount = 12;
+		BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, result, targetThreadCount-2);
 		
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		
@@ -147,11 +148,10 @@ public class MatrixComputeTest {
 		ConvertToDecimalStage<MatrixSchema> convert = new ConvertToDecimalStage<MatrixSchema>(gm, resultSchema, result, result2);
 		ConsoleJSONDumpStage<DecimalSchema<MatrixSchema>> watch = new ConsoleJSONDumpStage<>(gm, result2, new PrintStream(baos));
 		
-		gm.exportGraphDotFile();
+		//gm.exportGraphDotFile();
 		
-		MonitorConsoleStage.attach(gm);
+		//MonitorConsoleStage.attach(gm);
 		
-		int targetThreadCount = 12;
 		StageScheduler scheduler = //new ThreadPerStageScheduler(gm);
 			                     new FixedThreadsScheduler(gm, targetThreadCount);
 		
@@ -185,12 +185,6 @@ public class MatrixComputeTest {
 
 		}
 		
-//		try {
-//			Thread.sleep(1000);
-//		} catch (InterruptedException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
 		
 		Pipe.spinBlockForRoom(left, Pipe.EOF_SIZE);
 		Pipe.spinBlockForRoom(right, Pipe.EOF_SIZE);
