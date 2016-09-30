@@ -267,6 +267,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
             charAndPos = Pipe.decodeUTF8Fast(reader.backing, charAndPos, reader.byteMask);
             target.append((char)charAndPos);
         }
+        reader.position+=length;
         return target;
     }
         
