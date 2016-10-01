@@ -387,7 +387,8 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         	long nearestNextRun = Long.MAX_VALUE;
    	        int s = stages.length;
    	        boolean continueRun = false;
-            while (--s>=0 && !shutdownRequested.get()) {
+            while (--s>=0 && !shutdownRequested.get() && rates!=null) {
+            	
                     nearestNextRun = runStage(someAreRateLimited, nearestNextRun, s, rates[s], stages[s], this);    
                     
                     //if one is not shutting down then keep going
