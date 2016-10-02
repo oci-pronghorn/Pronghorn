@@ -408,23 +408,15 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
             }
             return pathId;
         } else {
-            try {
-                new UnsupportedOperationException(bytesLength+" Did not find: '"+ Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString()+"'").printStackTrace();
-            } catch (IOException e1) {
-                // TODO Auto-generated catch block
-                e1.printStackTrace();
-            }
+            new UnsupportedOperationException(bytesLength+" Did not find: '"+ Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString()+"'").printStackTrace();
+
             
             //////////////////
             //we have never seen this path before and need to establish the new one
             ////////////////////
             pathId = setupUnseenFile(trie, bytesLength, bytesBackingArray, bytesPosition, bytesMask);
             if (pathId<0) {
-                try {
                     throw new UnsupportedOperationException("Did not find: "+ Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString());
-                } catch (IOException e) {
-                    throw new UnsupportedOperationException();
-                }
             }
             return pathId;
         }

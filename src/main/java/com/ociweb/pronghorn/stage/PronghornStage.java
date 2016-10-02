@@ -159,11 +159,7 @@ public abstract class PronghornStage {
 	}
 
 	public String toString() {
-	    try {
-            return Appendables.appendValue(new StringBuilder().append(getClass().getSimpleName()), " #", stageId).toString();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return Appendables.appendValue(new StringBuilder().append(getClass().getSimpleName()), " #", stageId).toString();
 	}
 	
 	public void shutdown() {
