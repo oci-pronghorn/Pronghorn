@@ -308,6 +308,7 @@ public class PipeWriter {
 	}
 
     public static boolean hasRoomForWrite(Pipe pipe) {
+    	assert(pipe!=null);
         return StackStateWalker.hasRoomForFragmentOfSizeX(pipe, pipe.ringWalker.nextWorkingHead - (pipe.sizeOfSlabRing - FieldReferenceOffsetManager.maxFragmentSize( Pipe.from(pipe))));
     }
 	

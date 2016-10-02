@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.util.math;
 
-import java.io.IOException;
-
 import com.ociweb.pronghorn.util.Appendables;
 
 public class ScriptedSchedule {
@@ -19,15 +17,9 @@ public class ScriptedSchedule {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        
-        try {
-        
-            Appendables.appendValue(builder, "Clock:", commonClock, "ns  Script:");
-            Appendables.appendArray(builder, '[', script, ']');
-            
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+
+        Appendables.appendValue(builder, "Clock:", commonClock, "ns  Script:");
+        Appendables.appendArray(builder, '[', script, ']');
                 
         return builder.toString();
     }

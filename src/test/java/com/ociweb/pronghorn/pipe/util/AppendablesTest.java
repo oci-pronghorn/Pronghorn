@@ -21,19 +21,13 @@ public class AppendablesTest {
         for(int i = 0; i<TEST_SIZE; i++) {
             int value = r.nextInt();
             
-            try {
                 String actual = Appendables.appendValue(new StringBuilder(), value).toString();
                 String expected = Integer.toString(value);
                 if (value<0) {
                     expected = "("+expected+")";
                 }
                 assertEquals(expected, actual);
-                
-                
-            } catch (IOException e) {
-                e.printStackTrace();
-                fail();
-            }           
+         
         }
         
     }
@@ -46,16 +40,10 @@ public class AppendablesTest {
         for(int i = 0; i<TEST_SIZE; i++) {
             int value = r.nextInt();
             
-            try {
                 String actual = Appendables.appendHexDigits(new StringBuilder(), value).toString().toLowerCase();
                 String expected = "0x"+Integer.toHexString(value);
                 assertEquals(""+i,expected, actual);
-                
-                
-            } catch (IOException e) {
-                e.printStackTrace();
-                fail();
-            }           
+         
         }
     }  
     
@@ -67,18 +55,12 @@ public class AppendablesTest {
         
         for(int i = 0; i<TEST_SIZE; i++) {
             int value = r.nextInt();
-            
-            try {
-                
+ 
                 String actual = Appendables.appendFixedHexDigits(new StringBuilder(), value, 32).toString().toLowerCase();
                 String temp = "00000000"+Integer.toHexString(value);
                 String expected = "0x"+temp.substring(temp.length()-8);
                 assertEquals(""+i,expected, actual);                
-                
-            } catch (IOException e) {
-                e.printStackTrace();
-                fail();
-            }           
+                          
         }
     }  
     
@@ -89,12 +71,8 @@ public class AppendablesTest {
         String skipText = "XYZ";
         
         StringBuilder target = new StringBuilder();
-        try {
-            Appendables.appendAndSkip(target, originalText, skipText);
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail();
-        }
+        Appendables.appendAndSkip(target, originalText, skipText);
+
         
         String expected = originalText.replace(skipText,"");
         

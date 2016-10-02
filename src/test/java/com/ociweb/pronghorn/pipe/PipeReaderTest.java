@@ -85,12 +85,9 @@ public class PipeReaderTest {
                 
                 
                 //Confirms that the bytes copied into the blob match what was expected.
-                try {
-                    String afterCopy = Appendables.appendUTF8(new StringBuilder(), Pipe.blob(pipeB), bBlobPos, len, Pipe.blobMask(pipeB)).toString();
-                    assertEquals(expected,afterCopy);                    
-                } catch (IOException e) {
-                   throw new UnsupportedOperationException(e);
-                }
+                String afterCopy = Appendables.appendUTF8(new StringBuilder(), Pipe.blob(pipeB), bBlobPos, len, Pipe.blobMask(pipeB)).toString();
+                assertEquals(expected,afterCopy);                    
+  
                 
                 int copiedMsgIdx = Pipe.slab(pipeB)[  (int)(Pipe.slabMask(pipeB)&bSlabPos++) ];
                 int copiedMeta   = Pipe.slab(pipeB)[  (int)(Pipe.slabMask(pipeB)&bSlabPos++) ];

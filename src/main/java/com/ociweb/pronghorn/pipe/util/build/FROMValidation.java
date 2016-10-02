@@ -202,11 +202,7 @@ public class FROMValidation {
     private static void appendAssignmentCode(StringBuilder result, String constantName, int value) {
        
         result.append("public static final int ").append(constantName).append(" = ");
-        try {
-            Appendables.appendFixedHexDigits(result, value, 32).append(";\n");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        Appendables.appendFixedHexDigits(result, value, 32).append(";\n");
         
     }
 

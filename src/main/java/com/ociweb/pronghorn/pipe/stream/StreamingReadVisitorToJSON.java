@@ -163,11 +163,8 @@ public class StreamingReadVisitorToJSON implements StreamingReadVisitor {
         value.flip();
    
         while (value.hasRemaining()) {
-            try {
-				Appendables.appendFixedHexDigits(out, 0xFF&value.get(), 8);
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
+ 			Appendables.appendFixedHexDigits(out, 0xFF&value.get(), 8);
+
             if (value.hasRemaining()) {
                 out.print(",");
             }

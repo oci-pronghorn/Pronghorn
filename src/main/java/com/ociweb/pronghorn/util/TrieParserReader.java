@@ -263,17 +263,14 @@ public class TrieParserReader {
 
     private static void reportError(TrieParserReader reader, int debugPos, int debugLen) {
         String input = "";
-        try {
-            input = Appendables.appendUTF8(new StringBuilder(), 
+  
+        input = Appendables.appendUTF8(new StringBuilder(), 
                                        reader.sourceBacking, 
                                        debugPos, 
                                        Math.min(500,(int)debugLen), 
                                        reader.sourceMask).toString();
 
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+
         
         
         System.out.println("pos:"+debugPos+" len:"+debugLen+" unable to parse:\n'"+input+"'");
@@ -986,11 +983,8 @@ public class TrieParserReader {
         int blen = reader.capturedValues[pos++];
         int bmsk = reader.capturedValues[pos++];
         
-        try {
-            return Appendables.appendUTF8(target, reader.capturedBlobArray, bpos, blen, bmsk);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return Appendables.appendUTF8(target, reader.capturedBlobArray, bpos, blen, bmsk);
+
 
     }
    
