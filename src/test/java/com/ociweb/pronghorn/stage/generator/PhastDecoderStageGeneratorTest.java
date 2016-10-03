@@ -28,7 +28,7 @@ public class PhastDecoderStageGeneratorTest {
     public void generateDecoderCompileTest() {
         
         StringBuilder target = new StringBuilder();
-        PhastDecoderStageGenerator ew = new PhastDecoderStageGenerator(PipeMonitorSchema.instance, target, "com.ociweb.test");
+        PhastDecoderStageGenerator ew = new PhastDecoderStageGenerator(PipeMonitorSchema.instance, target, false);
 
         try {
             ew.processSchema();

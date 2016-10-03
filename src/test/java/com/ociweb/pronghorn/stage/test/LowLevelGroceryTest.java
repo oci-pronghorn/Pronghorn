@@ -2,11 +2,14 @@ package com.ociweb.pronghorn.stage.test;
 
 import com.ociweb.pronghorn.code.LoaderUtil;
 import com.ociweb.pronghorn.pipe.*;
+import com.ociweb.pronghorn.pipe.build.GroceryExampleWriterStage;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.generator.FuzzDataStageGenerator;
 import com.ociweb.pronghorn.stage.generator.PhastDecoderStageGenerator;
 import com.ociweb.pronghorn.stage.generator.PhastEncoderStageGenerator;
+import com.ociweb.pronghorn.stage.phast.PhastDecoder;
+import com.ociweb.pronghorn.stage.phast.PhastEncoder;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleSummaryStage;
@@ -37,7 +40,7 @@ public class LowLevelGroceryTest {
         MessageSchema schema = new MessageSchemaDynamic(from);
 
         //decoder generator compile test
-        PhastDecoderStageGenerator ew = new PhastDecoderStageGenerator(schema, eTarget, "com.ociweb.pronghorn.pipe.build");
+        PhastDecoderStageGenerator ew = new PhastDecoderStageGenerator(schema, eTarget, false);
         try {
             ew.processSchema();
         } catch (IOException e) {
@@ -84,6 +87,33 @@ public class LowLevelGroceryTest {
             fail();
         }
 
+    }
+
+
+    //something wrong with delta int, looking into it.
+    //@Test
+    public void runtimeWriterTest() throws IOException, ParserConfigurationException, SAXException {
+        GraphManager gm = new GraphManager();
+        FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
+        MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);
+        Pipe<MessageSchemaDynamic> pipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));
+        pipe.initBuffers();
+
+        //putting data to decode onto pipe
+        DataOutputBlobWriter<MessageSchemaDynamic> writer = new DataOutputBlobWriter<MessageSchemaDynamic>(pipe);
+        //putting pmap
+        PhastEncoder.encodeLongPresent(writer,0,0,9);
+        PhastEncoder.encodeIntPresent(writer,0,0,16);
+        PhastEncoder.encodeLongPresent(writer,0,0,31);
+        PhastEncoder.encodeString(writer, new StringBuilder("the first test"),0,0);
+        PhastEncoder.encodeIntPresent(writer,0,0,25);
+        PhastEncoder.encodeString(writer, new StringBuilder("The second test"),0,0);
+        writer.close();
+
+
+        GroceryExampleWriterStage writerStage = new GroceryExampleWriterStage(gm, pipe);
+
+        writerStage.run();
     }
 /*
     @Test

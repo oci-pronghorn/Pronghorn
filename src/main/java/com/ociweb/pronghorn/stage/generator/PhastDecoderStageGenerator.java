@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.stage.generator;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.phast.PhastDecoder;
 import java.io.IOException;
 
@@ -15,6 +16,7 @@ import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import java.nio.channels.Pipe;
 
@@ -23,7 +25,6 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     private final Class decoder = PhastDecoder.class;
     private final Class blobReader = DataInputBlobReader.class;
     //DataInputBlobReader reader = new DataInputBlobReader();
-    private final Appendable bodyTarget;
     private final String methodScope = "public";
 
     //field names
@@ -36,13 +37,78 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     private final String longValueArrayName = "longArrVal";
     private final String intValueName = "intVal";
     private final String defaultIntDictionaryName = "intDefaults";
+    private final String defaultLongDictionaryName = "longDefaults";
     private final String bitMaskName = "bitMask";
+    private final boolean generateRunnable;
 
-    public PhastDecoderStageGenerator(MessageSchema schema, Appendable target, String packageName) {
-        super(schema, target, /*isAbstract*/ false, packageName);
-
-        this.bodyTarget = target;
+    public PhastDecoderStageGenerator(MessageSchema schema, Appendable target) {
+        this(schema, target, false);
     }
+
+
+    public PhastDecoderStageGenerator(MessageSchema schema, Appendable target, boolean generateRunnable, boolean scopeProtected) {
+        super(schema, target, generateClassName(schema)+(generateRunnable ? "" : "Stage"),
+                generateRunnable ? "implements Runnable" : "extends PronghornStage",
+                generateRunnable ? null : "output",
+                scopeProtected ? "protected" : "private",
+                false, schema.getClass().getPackage().getName()+".build");
+        this.generateRunnable = generateRunnable;
+    }
+
+
+    public PhastDecoderStageGenerator(MessageSchema schema, Appendable target, String interitance, boolean scopeProtected) {
+        super(schema, target, generateClassName(schema),  interitance,null,
+                scopeProtected ? "protected" : "private",
+                false, schema.getClass().getPackage().getName()+".build");
+        this.generateRunnable = true;
+    }
+
+    public PhastDecoderStageGenerator(MessageSchema schema, Appendable target, boolean generateRunnable) {
+        this(schema, target, generateRunnable, generateRunnable);
+    }
+
+    @Override
+    protected void buildConstructors(Appendable target, String className) throws IOException {
+
+        target.append("public ").append(className).append("(");
+        if (generateRunnable) {
+            target.append(") { \n");
+
+            FieldReferenceOffsetManager from = MessageSchema.from(schema);
+            if (!from.hasSimpleMessagesOnly) {
+                target.append(tab).append("startup();\n");
+            }
+
+        } else {
+            target.append(GraphManager.class.getCanonicalName()).append(" gm, ");
+            Appendables.appendClass(target, Pipe.class, schema.getClass()).append(" ").append(pipeVarName).append(") {\n");
+
+            target.append(tab).append("super(gm,NONE,").append(pipeVarName).append(");\n");
+            target.append(tab).append("this.").append(pipeVarName).append(" = ").append(pipeVarName).append(";\n");
+            target.append(tab);
+            Appendables.appendStaticCall(target, Pipe.class, "from").append(pipeVarName).append(").validateGUID(FROM_GUID);\n");
+        }
+        target.append(tab + intDictionaryName + " = new int[150];\n");
+        target.append(tab + longDictionaryName + " = new long[150];\n");
+        target.append(tab + defaultIntDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
+        target.append(tab + defaultLongDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
+        target.append(readerName + " = new DataInputBlobReader<" + schema.getClass().getSimpleName() + ">(output);\n");
+        target.append("}\n\n");
+
+    }
+
+    private static String generateClassName(MessageSchema schema) {
+        if (schema instanceof MessageSchemaDynamic) {
+            String name = MessageSchema.from(schema).name.replaceAll("/", "").replaceAll(".xml", "")+"Writer";
+            if (Character.isLowerCase(name.charAt(0))) {
+                return Character.toUpperCase(name.charAt(0))+name.substring(1);
+            }
+            return name;
+        } else {
+            return (schema.getClass().getSimpleName().replace("Schema", ""))+"Writer";
+        }
+    }
+
 
     @Override
     protected void additionalImports(MessageSchema schema, Appendable target) {
@@ -50,6 +116,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             target.append("import ").append(schema.getClass().getCanonicalName()).append(";\n");
             target.append("import com.ociweb.pronghorn.stage.phast.PhastDecoder;\n");
             target.append("import ").append(DataInputBlobReader.class.getCanonicalName()).append(";\n");
+            target.append("import ").append(PronghornStage.class.getCanonicalName()).append(";\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -58,8 +125,6 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     protected void generateStartup(Appendable target){
         try{
             target.append("\npublic void startup(){\n");
-            target.append(tab + intDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
-            target.append(tab + longDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
             target.append("}\n");
         }
         catch (IOException e) {
@@ -124,6 +189,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append(tab + "long " + bitMaskName + " = 1;\n");
         //recieve pmap
         decodePmap(target);
+        target.append("System.out.println(" + mapName + ");\n");
         //pass over group tag 0x10000
         cursor++;
 
@@ -138,25 +204,25 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
-                        decodeCopyIntGenerator(bodyTarget, f);
+                        decodeCopyIntGenerator(target, f);
                         break;
                     case OperatorMask.Field_Constant:
                         //this intentionally left blank, does nothing if constant
                         break;
                     case OperatorMask.Field_Default:
-                        decodeDefaultIntGenerator(bodyTarget, f);
+                        decodeDefaultIntGenerator(target, f);
                         break;
                     case OperatorMask.Field_Delta:
-                        decodeDeltaIntGenerator(bodyTarget, f);
+                        decodeDeltaIntGenerator(target, f);
                         break;
                     case OperatorMask.Field_Increment:
-                        decodeIncrementIntGenerator(bodyTarget, f);
+                        decodeIncrementIntGenerator(target, f);
                         break;
                     case OperatorMask.Field_None:
-                        bodyTarget.append("0;//no oper currently not supported.\n");
+                        target.append("0;//no oper currently not supported.\n");
                         break;
                     default: {
-                        bodyTarget.append("//here as placeholder, this is unsupported\n");
+                        target.append("//here as placeholder, this is unsupported\n");
                     }
                 }
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
@@ -166,30 +232,31 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
-                        decodeDeltaLongGenerator(bodyTarget, f);
+                        decodeDeltaLongGenerator(target, f);
                         break;
                     case OperatorMask.Field_Constant:
                         //this intentionally left blank, does nothing if constant
                         break;
                     case OperatorMask.Field_Default:
-                        decocdeDefaultLongGenerator(bodyTarget, f);
+                        decocdeDefaultLongGenerator(target, f);
                         break;
                     case OperatorMask.Field_Delta:
-                        decodeDeltaLongGenerator(bodyTarget, f);
+                        decodeDeltaLongGenerator(target, f);
                         break;
                     case OperatorMask.Field_Increment:
-                        decodeIncrementLongGenerator(bodyTarget, f);
+                        decodeIncrementLongGenerator(target, f);
                         break;
                 }
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
             } //if string
             else if (TypeMask.isText(pmapType) == true) {
                 target.append(tab + "String " + scriptNames[f] + " = ");
-                decodeStringGenerator( bodyTarget);
+                decodeStringGenerator( target);
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
             } else {
-                bodyTarget.append("Unsupported data type " + pmapType + "\n");
+                target.append("Unsupported data type " + pmapType + "\n");
             }
+            target.append("System.out.println(" + scriptNames[f] + ");\n");
             cursor++;
             argumentList.append(scriptNames[f]);
             if (f != (firstField+fieldCount) - 1){
@@ -201,6 +268,10 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         appendWriteMethodName(target.append(tab), cursor2).append("(");
         target.append(argumentList);
         target.append(");\n");
+    }
+
+    protected void additionalMethods(Appendable target) throws IOException {
+        //blank to remove request shut down method from parent class
     }
 
     @Override
@@ -228,7 +299,9 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         */
         target.append("private long[] " + longDictionaryName + ";\n");
         target.append("private int[] " +intDictionaryName + ";\n");
-        bodyTarget.append("DataInputBlobReader<" + schema.getClass().getSimpleName() + "> " + readerName + " = new DataInputBlobReader<" + schema.getClass().getSimpleName() + ">(output);\n");
+        target.append("private long[] " +defaultLongDictionaryName + ";\n");
+        target.append("private int[] " +defaultIntDictionaryName + ";\n");
+        target.append("DataInputBlobReader<" + schema.getClass().getSimpleName() + "> " + readerName + ";\n");
 
     }
 
