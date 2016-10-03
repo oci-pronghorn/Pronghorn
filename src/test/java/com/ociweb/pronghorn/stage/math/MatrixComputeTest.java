@@ -29,48 +29,61 @@ public class MatrixComputeTest {
 
 	
 	@Test
-	public void testColSplit() {
+	public void testRowsToColSplit() {
 		
 		int rows=10;
 		int columns=6;
 		MatrixSchema schema = BuildMatrixCompute.buildSchema(rows, columns, MatrixTypes.Integers);
+		ColumnSchema<MatrixSchema> cs = new ColumnSchema<MatrixSchema>(schema);
+		RowSchema<MatrixSchema> rs = new RowSchema<MatrixSchema>(schema);
 
 		GraphManager gm = new GraphManager();		
-		PipeConfig<MatrixSchema> matrixConfig = new PipeConfig<MatrixSchema>(schema, 2);
-		
-		ColumnSchema<MatrixSchema> cs = new ColumnSchema<MatrixSchema>(schema);
-		PipeConfig<ColumnSchema<MatrixSchema>> columnConfig = new PipeConfig<ColumnSchema<MatrixSchema>>(cs);
+		PipeConfig<RowSchema<MatrixSchema>> rowConfig = new PipeConfig<RowSchema<MatrixSchema>>(rs, schema.getRows());		
+		PipeConfig<ColumnSchema<MatrixSchema>> columnConfig = new PipeConfig<ColumnSchema<MatrixSchema>>(cs, 2);
 		
 		Pipe<ColumnSchema<MatrixSchema>>[] intputAsColumns = new Pipe[schema.getColumns()];
 		
-		Pipe<MatrixSchema> left = new Pipe<MatrixSchema>(matrixConfig); 
+		Pipe<RowSchema<MatrixSchema>> inputRows = new Pipe<RowSchema<MatrixSchema>>(rowConfig); 
+
+		int t = intputAsColumns.length;
+		while (--t>=0) {
+			intputAsColumns[t]=new Pipe<ColumnSchema<MatrixSchema>>(columnConfig);
+		}
 		
 		
-		new ColumnsRouteStage<>(gm, schema, left, intputAsColumns);
+		new RowsToColumnRouteStage<>(gm, schema, inputRows, intputAsColumns);
 		int i = schema.getColumns();
 		ByteArrayOutputStream[] targets = new ByteArrayOutputStream[i];
 		PronghornStage[] watch = new PronghornStage[i];
 		while (--i>=0) {
 			targets[i] = new ByteArrayOutputStream();
-			watch[i] =new ConsoleJSONDumpStage<>(gm, intputAsColumns[i]=new Pipe<ColumnSchema<MatrixSchema>>(columnConfig), new PrintStream(targets[i]));
+			watch[i] =new ConsoleJSONDumpStage<>(gm, intputAsColumns[i], new PrintStream(targets[i]));
 		}
+		
+		
 		
 		
 		//StageScheduler scheduler = new ThreadPerStageScheduler(gm);
-		int targetThreadCount = 6;
-		StageScheduler scheduler = new FixedThreadsScheduler(gm,targetThreadCount);
+		//int targetThreadCount = 6;
+		StageScheduler scheduler = new ThreadPerStageScheduler(gm);
+				//new FixedThreadsScheduler(gm,targetThreadCount); //TODO: do not enable until the thread grouping is balanced in FixedThreadScheduler
 		
 		scheduler.startup();	
 				
-		Pipe.addMsgIdx(left, schema.matrixId);		
 		for(int c=0;c<schema.getRows();c++) {
-			for(int r=0;r<schema.getColumns();r++) {
-				Pipe.addIntValue(c, left);
+			while (!Pipe.hasRoomForWrite(inputRows)) {
+				Thread.yield();
 			}
+			
+			Pipe.addMsgIdx(inputRows, schema.rowId);		
+			for(int r=0;r<schema.getColumns();r++) {
+				Pipe.addIntValue(c, inputRows);
+			}
+			Pipe.confirmLowLevelWrite(inputRows, Pipe.sizeOf(inputRows, schema.rowId));
+			Pipe.publishWrites(inputRows);	
+			
 		}
-		Pipe.confirmLowLevelWrite(left, Pipe.sizeOf(left, schema.matrixId));
-		Pipe.publishWrites(left);		
-		Pipe.publishEOF(left);
+		Pipe.publishEOF(inputRows);
 			
 		i = schema.getColumns();
 		while (--i>=0) {
@@ -82,13 +95,78 @@ public class MatrixComputeTest {
 		i = schema.getColumns();
 		while (--i>=0) {
 			String actualText = new String(targets[i].toByteArray());
+			
+			//System.out.println(actualText);
+			
 			assertTrue(actualText.contains("{\"1\":0}"));
 			assertTrue(actualText.contains("{\"5\":4}"));
 			assertTrue(actualText.contains("{\"10\":9}"));
+			
+			assertTrue(actualText.indexOf("{\"1\":0}") > actualText.indexOf("{\"1\":1}"));
+			
 		}
 		
 	}
 
+	@Test
+	public void testcolToRowsSplit() {
+		
+		int rows=10;
+		int columns=6;
+		MatrixSchema schema = BuildMatrixCompute.buildSchema(rows, columns, MatrixTypes.Integers);
+		ColumnSchema<MatrixSchema> cs = new ColumnSchema<MatrixSchema>(schema);
+		RowSchema<MatrixSchema> rs = new RowSchema<MatrixSchema>(schema);
+
+		GraphManager gm = new GraphManager();		
+		PipeConfig<RowSchema<MatrixSchema>> rowConfig = new PipeConfig<RowSchema<MatrixSchema>>(rs, schema.getRows());		
+		PipeConfig<ColumnSchema<MatrixSchema>> columnConfig = new PipeConfig<ColumnSchema<MatrixSchema>>(cs, 2);
+		
+		Pipe<ColumnSchema<MatrixSchema>>[] columnsPipes = new Pipe[schema.getColumns()];
+		
+		int i = columnsPipes.length;
+		while (--i>=0) {
+			columnsPipes[i] = new Pipe<ColumnSchema<MatrixSchema>>(columnConfig);
+		}
+		
+		Pipe<RowSchema<MatrixSchema>> rowsPipe = new Pipe<RowSchema<MatrixSchema>>(rowConfig); 
+		
+		
+		new ColumnsToRowsStage(gm, schema, columnsPipes, rowsPipe);
+		ByteArrayOutputStream capture = new ByteArrayOutputStream();
+		ConsoleJSONDumpStage<RowSchema<MatrixSchema>> watch = new ConsoleJSONDumpStage<>(gm, rowsPipe, new PrintStream(capture));
+		
+		
+		StageScheduler scheduler = new ThreadPerStageScheduler(gm);
+		scheduler.startup();
+
+		int c = columnsPipes.length;
+		while (--c>=0) {
+			
+			int size = Pipe.addMsgIdx(columnsPipes[c], schema.columnId);
+			int r = rows;
+			while (--r >= 0) {
+				Pipe.addIntValue(r, columnsPipes[c]);				
+			}
+			Pipe.confirmLowLevelWrite(columnsPipes[c], size);
+			Pipe.publishWrites(columnsPipes[c]);
+						
+			
+		}
+		
+		GraphManager.blockUntilStageBeginsShutdown(gm, watch, 500);
+		
+		String actualText = new String(capture.toByteArray());
+		//System.out.println(actualText);
+		
+		assertTrue(actualText.contains("{\"1\":0}"));
+		assertTrue(actualText.contains("{\"5\":4}"));
+		assertTrue(actualText.contains("{\"6\":9}"));
+		
+		assertTrue(actualText.indexOf("{\"1\":0}") > actualText.indexOf("{\"1\":1}"));
+		
+	}
+	
+	
 	@Ignore
 	public void testCompute() {
 		//speed
@@ -112,11 +190,20 @@ public class MatrixComputeTest {
 		
 		
 		//walk leftRows , by rightCol for output
+		//5x2
+		//2x3
 		
 		
 		MatrixSchema leftSchema = BuildMatrixCompute.buildSchema(leftRows, leftColumns, type);		
+		RowSchema<MatrixSchema> leftRowSchema = new RowSchema<MatrixSchema>(leftSchema);
+		
 		MatrixSchema rightSchema = BuildMatrixCompute.buildSchema(rightRows, rightColumns, type);
+		RowSchema<MatrixSchema> rightRowSchema = new RowSchema<MatrixSchema>(rightSchema);
+				
 		MatrixSchema resultSchema = BuildMatrixCompute.buildResultSchema(leftSchema, rightSchema);
+		RowSchema<MatrixSchema> rowResultSchema = new RowSchema<MatrixSchema>(resultSchema);		
+		
+		
 		DecimalSchema result2Schema = new DecimalSchema<MatrixSchema>(resultSchema);
 
 		assertTrue(resultSchema.getRows()==leftRows);
@@ -133,55 +220,62 @@ public class MatrixComputeTest {
 		
 		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 500);
 		
-		Pipe<MatrixSchema> left = new Pipe<MatrixSchema>(new PipeConfig<MatrixSchema>(leftSchema, 2)); 
-		Pipe<MatrixSchema> right = new Pipe<MatrixSchema>(new PipeConfig<MatrixSchema>(rightSchema, 2));
-		Pipe<MatrixSchema> result = new Pipe<MatrixSchema>(new PipeConfig<MatrixSchema>(resultSchema, 2)); //NOTE: reqires 2 or JSON will not write out !!
-		Pipe<DecimalSchema<MatrixSchema>> result2 = new Pipe<DecimalSchema<MatrixSchema>>(new PipeConfig<DecimalSchema<MatrixSchema>>(result2Schema, 2)); //NOTE: reqires 2 or JSON will not write out !!
+		Pipe<RowSchema<MatrixSchema>> left = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(leftRowSchema, leftRows)); 
+		Pipe<RowSchema<MatrixSchema>> right = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(rightRowSchema, rightRows));
+		
+		Pipe<RowSchema<MatrixSchema>> result = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(rowResultSchema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
+	//	Pipe<DecimalSchema<MatrixSchema>> result2 = new Pipe<DecimalSchema<MatrixSchema>>(new PipeConfig<DecimalSchema<MatrixSchema>>(result2Schema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
 		
 		
 		int targetThreadCount = 12;
-		BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, result, targetThreadCount-2);
+		Pipe<ColumnSchema<MatrixSchema>>[] colResults = BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, targetThreadCount-2);
+		
+		ColumnsToRowsStage<MatrixSchema> ctr = new ColumnsToRowsStage<MatrixSchema>(gm, resultSchema, colResults, result);
+		
 		
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		
 		
-		ConvertToDecimalStage<MatrixSchema> convert = new ConvertToDecimalStage<MatrixSchema>(gm, resultSchema, result, result2);
-		ConsoleJSONDumpStage<DecimalSchema<MatrixSchema>> watch = new ConsoleJSONDumpStage<>(gm, result2, new PrintStream(baos));
+		//ConvertToDecimalStage<MatrixSchema> convert = new ConvertToDecimalStage<MatrixSchema>(gm, resultSchema, result, result2);
+		
+		ConsoleJSONDumpStage<?> watch = new ConsoleJSONDumpStage<>(gm, result , new PrintStream(baos));
 		
 		//gm.exportGraphDotFile();
 		
 		//MonitorConsoleStage.attach(gm);
 		
-		StageScheduler scheduler = //new ThreadPerStageScheduler(gm);
-			                     new FixedThreadsScheduler(gm, targetThreadCount);
+		StageScheduler scheduler = new ThreadPerStageScheduler(gm);
+			                     //new FixedThreadsScheduler(gm, targetThreadCount);
 		
 		scheduler.startup();	
 		
 		int testSize = 1;//50;
 		int k = testSize;
 		while (--k>=0) {
-						
-			while (!Pipe.hasRoomForWrite(left) || !Pipe.hasRoomForWrite(right)) {
-				Thread.yield();
-			}
 			
-			Pipe.addMsgIdx(left, resultSchema.matrixId);		
 			for(int c=0;c<leftRows;c++) {
-				for(int r=0;r<leftColumns;r++) {
-					type.addValue(r, left);
+				while (!Pipe.hasRoomForWrite(left)) {
+					Thread.yield();
 				}
+				Pipe.addMsgIdx(left, resultSchema.rowId);		
+					for(int r=0;r<leftColumns;r++) {
+						type.addValue(r, left);
+					}
+				Pipe.confirmLowLevelWrite(left, Pipe.sizeOf(left, resultSchema.rowId));
+				Pipe.publishWrites(left);
 			}
-			Pipe.confirmLowLevelWrite(left, Pipe.sizeOf(left, resultSchema.matrixId));
-			Pipe.publishWrites(left);
 			
-			Pipe.addMsgIdx(right, resultSchema.matrixId);		
 			for(int c=0;c<rightRows;c++) {
-				for(int r=0;r<rightColumns;r++) {
-					type.addValue(c, right);
+				while (!Pipe.hasRoomForWrite(right)) {
+					Thread.yield();
 				}
+				Pipe.addMsgIdx(right, resultSchema.rowId);		
+					for(int r=0;r<rightColumns;r++) {
+						type.addValue(c, right);
+					}
+				Pipe.confirmLowLevelWrite(right, Pipe.sizeOf(right, resultSchema.rowId));
+				Pipe.publishWrites(right);
 			}
-			Pipe.confirmLowLevelWrite(right, Pipe.sizeOf(right, resultSchema.matrixId));
-			Pipe.publishWrites(right);
 
 		}
 		
@@ -194,10 +288,168 @@ public class MatrixComputeTest {
 		GraphManager.blockUntilStageBeginsShutdown(gm, watch, 500);//timeout in ms
 		
 
-		scheduler.awaitTermination(2, TimeUnit.SECONDS);
+		scheduler.awaitTermination(2000, TimeUnit.SECONDS);
 				
-		System.out.println("len "+baos.toByteArray().length+"  "+new String(baos.toByteArray()));
+	//	System.out.println("len "+baos.toByteArray().length+"  "+new String(baos.toByteArray()));
 		
+		
+	}
+	
+	@Test
+	public void testComputeExample() {
+		//speed
+		//slow     Doubles  Longs    6.15 5.8      7.024  7.18
+		//         Decimals          5.9           9.40 - 13
+		//         Floats            6.06           6.26
+		//fast     Integers          5.80           5.95
+		
+		//TODO: convert all to Decimals for unit test check.
+	
+		MatrixTypes type = MatrixTypes.Doubles;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
+		
+		//TypeMask.Decimal;
+		
+		
+		int leftRows=5;
+		int rightColumns=3;
+				
+		int leftColumns = 2;
+		int rightRows=leftColumns;		
+		
+		
+		//walk leftRows , by rightCol for output
+		//5x2
+		//2x3
+		
+		int[][] leftTest = new int[][] {
+			{1,2},
+			{4,4},
+			{7,7},
+			{3,2},
+			{1,1},
+		}; 
+		
+		int[][] rightTest = new int[][] {
+			{1,2,3},
+			{4,4,4}
+		}; 
+		
+
+		
+		
+		
+		MatrixSchema leftSchema = BuildMatrixCompute.buildSchema(leftRows, leftColumns, type);		
+		RowSchema<MatrixSchema> leftRowSchema = new RowSchema<MatrixSchema>(leftSchema);
+		
+		MatrixSchema rightSchema = BuildMatrixCompute.buildSchema(rightRows, rightColumns, type);
+		RowSchema<MatrixSchema> rightRowSchema = new RowSchema<MatrixSchema>(rightSchema);
+				
+		MatrixSchema resultSchema = BuildMatrixCompute.buildResultSchema(leftSchema, rightSchema);
+		RowSchema<MatrixSchema> rowResultSchema = new RowSchema<MatrixSchema>(resultSchema);		
+		
+		
+		DecimalSchema result2Schema = new DecimalSchema<MatrixSchema>(resultSchema);
+
+		assertTrue(resultSchema.getRows()==leftRows);
+		assertTrue(resultSchema.getColumns()==rightColumns);
+		
+		assertTrue(leftSchema.getRows()==leftRows);
+		assertTrue(leftSchema.getColumns()==leftColumns);
+		
+		assertTrue(rightSchema.getRows()==rightRows);
+		assertTrue(rightSchema.getColumns()==rightColumns);
+				
+		
+		GraphManager gm = new GraphManager();
+		
+		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 500);
+		
+		Pipe<RowSchema<MatrixSchema>> left = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(leftRowSchema, leftRows)); 
+		Pipe<RowSchema<MatrixSchema>> right = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(rightRowSchema, rightRows));
+		
+		Pipe<RowSchema<MatrixSchema>> result = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(rowResultSchema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
+		Pipe<DecimalSchema<MatrixSchema>> result2 = new Pipe<DecimalSchema<MatrixSchema>>(new PipeConfig<DecimalSchema<MatrixSchema>>(result2Schema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
+		
+		
+		int targetThreadCount = 12;
+		Pipe<ColumnSchema<MatrixSchema>>[] colResults = BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, targetThreadCount-2);
+		
+		ColumnsToRowsStage<MatrixSchema> ctr = new ColumnsToRowsStage<MatrixSchema>(gm, resultSchema, colResults, result);
+		
+		
+		ConvertToDecimalStage<MatrixSchema> watch = new ConvertToDecimalStage<MatrixSchema>(gm, rowResultSchema, result, result2);
+		
+		result2.initBuffers(); //required for us to jump in on this thread and grab the data.
+
+		
+		StageScheduler scheduler = new ThreadPerStageScheduler(gm);
+		
+		scheduler.startup();	
+
+		for(int c=0;c<leftRows;c++) {
+			while (!Pipe.hasRoomForWrite(left)) {
+				Thread.yield();
+			}
+			Pipe.addMsgIdx(left, resultSchema.rowId);	
+			for(int r=0;r<leftColumns;r++) {
+				type.addValue(leftTest[c][r], left);
+			}
+			Pipe.confirmLowLevelWrite(left, Pipe.sizeOf(left, resultSchema.rowId));
+			Pipe.publishWrites(left);
+		}
+		
+		for(int c=0;c<rightRows;c++) {
+			while (!Pipe.hasRoomForWrite(right)) {
+				Thread.yield();
+			}
+			Pipe.addMsgIdx(right, resultSchema.rowId);		
+			for(int r=0;r<rightColumns;r++) {
+				type.addValue(rightTest[c][r], right);
+			}
+			Pipe.confirmLowLevelWrite(right, Pipe.sizeOf(right, resultSchema.rowId));
+			Pipe.publishWrites(right);
+		}
+
+		
+		Pipe.spinBlockForRoom(left, Pipe.EOF_SIZE);
+		Pipe.spinBlockForRoom(right, Pipe.EOF_SIZE);
+		Pipe.publishEOF(left);
+		Pipe.publishEOF(right);
+				
+		GraphManager.blockUntilStageBeginsShutdown(gm, watch, 500);//timeout in ms
+		
+
+		scheduler.awaitTermination(2000, TimeUnit.SECONDS);
+		
+		int[][] expectedAnswer = new int[][] {
+			{9,10,11},
+			{20,24,28},
+			{35,42,49},
+			{11,14,17},
+			{5,6,7},
+			
+		}; 
+		
+	//	String actual = new String(baos.toByteArray());
+		
+		for(int r=0;r<5;r++) {
+			assertTrue(result2.hasContentToRead(result2));
+	
+			int id = Pipe.takeMsgIdx(result2);
+			for(int c=0;c<3;c++) {
+					
+					int exp = Pipe.takeValue(result2);					
+					long man = Pipe.takeLong(result2);
+					
+					long value = (long)Math.rint(man*Math.pow(10, exp));
+					
+					assertEquals(expectedAnswer[r][c], value);
+			}
+			
+			Pipe.confirmLowLevelRead(result2, Pipe.sizeOf(result2, id));
+			Pipe.releaseReadLock(result2);
+		}
+
 		
 	}
 	

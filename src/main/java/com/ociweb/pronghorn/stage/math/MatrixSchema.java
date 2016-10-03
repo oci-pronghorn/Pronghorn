@@ -9,23 +9,27 @@ import com.ociweb.pronghorn.stage.math.BuildMatrixCompute.MatrixTypes;
 
 public class MatrixSchema extends MessageSchema {
 
-	public final int matrixId = 0;
 	public final int columnId = 0;
 	public final int rowId = 0;
 	public final int typeSize; //in ints
 	public final MatrixTypes type;
 	
-	private final int rows;
-	private final int columns;
+	public final int rows;
+	public final int columns;
 	
-	private final FieldReferenceOffsetManager colFrom;
+	@Override
+	public String toString() {
+		return "rows:"+rows+" columns:"+columns+" of type "+type;
+	}
 	
 	protected MatrixSchema(int rows, int columns, MatrixTypes type) {
-		super(singleNumberBlockFrom(type, rows*columns));
-			
-		colFrom = singleNumberBlockFrom(type, rows);					
+		this(rows,columns,type,singleNumberBlockFrom(type, rows*columns));
 		
-		
+	}
+	
+	protected MatrixSchema(int rows, int columns, MatrixTypes type, FieldReferenceOffsetManager from) {
+		super(from);
+									
 		this.rows = rows;
 		this.columns = columns;
 		
@@ -34,7 +38,7 @@ public class MatrixSchema extends MessageSchema {
 
 	}
 	
-	private static FieldReferenceOffsetManager singleNumberBlockFrom(MatrixTypes type, int points) {
+	public static FieldReferenceOffsetManager singleNumberBlockFrom(MatrixTypes type, int points) {
 		
 		int fields = 1;
 		int size = TypeMask.ringBufferFieldSize[type.typeMask];
@@ -50,7 +54,10 @@ public class MatrixSchema extends MessageSchema {
 		long[]   matrixIds=new long[matLen];
 		matrixIds[0] = 10000;
 		matrixNames[0] = "Matrix";
-		matrixTokens[0] = TokenBuilder.buildToken(TypeMask.Group, 0, (size*points)+1); 
+		
+		int dataSize = (size*points)+1;
+		
+		matrixTokens[0] = TokenBuilder.buildToken(TypeMask.Group, 0, dataSize); 
 		if (type.typeMask==TypeMask.Decimal) {
 			int m = 1;
 			for (int i=1;i<=points;i++) {
@@ -71,16 +78,12 @@ public class MatrixSchema extends MessageSchema {
 				
 			}
 		}
-		matrixTokens[matrixTokens.length-1] = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Close, (size*points)+1);
+		matrixTokens[matrixTokens.length-1] = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Close, dataSize);
 		//last position is left as null and zero
 		assert(matrixIds[matrixIds.length-1]==0);
 		assert(matrixNames[matrixNames.length-1]==null);
 		FieldReferenceOffsetManager matFrom = new FieldReferenceOffsetManager(matrixTokens, /*pramble*/ (short)0, matrixNames, matrixIds);
 		return matFrom;
-	}
-	
-	public FieldReferenceOffsetManager getColumnFrom() {
-		return colFrom;
 	}
 	
 	public FieldReferenceOffsetManager getDecimalFrom() {

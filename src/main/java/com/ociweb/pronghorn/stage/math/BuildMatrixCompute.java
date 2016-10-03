@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.stage.math;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -369,25 +370,30 @@ public class BuildMatrixCompute {
 	
 	
 	public static <M extends MatrixSchema, L extends MatrixSchema, R extends MatrixSchema>
-	            void buildGraph(GraphManager gm, M resultSchema,  L leftSchema, R rightSchema, Pipe<L> leftInput, Pipe<R> rightInput, Pipe<M> result, int parallelism) {
+	            Pipe<ColumnSchema<M>>[] buildGraph(GraphManager gm, M resultSchema,  L leftSchema, R rightSchema, Pipe<RowSchema<L>> leftInput, Pipe<RowSchema<R>> rightInput, int parallelism) {
 		
 		int i = resultSchema.getColumns();
 		Pipe<ColumnSchema<R>>[] intputAsColumns = new Pipe[i];
-		Pipe<ColumnSchema<M>>[] resultInColumns = new Pipe[i];
-				
-		PipeConfig<ColumnSchema<R>> rightColumnConfig = new PipeConfig<ColumnSchema<R>>(new ColumnSchema<R>(rightSchema),1);
-		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(new ColumnSchema<M>(resultSchema),1);
+		Pipe<ColumnSchema<M>>[] resultColumnPipes = new Pipe[i];
+
+		ColumnSchema<R> columnsInputSchema = new ColumnSchema<R>(rightSchema);		
+		assert(rightSchema.rows == columnsInputSchema.rows);
+
+		ColumnSchema<M> columnsOutoutSchema = new ColumnSchema<M>(resultSchema);
+
+		PipeConfig<ColumnSchema<R>> rightColumnConfig = new PipeConfig<ColumnSchema<R>>(columnsInputSchema,1);
+		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsOutoutSchema,1);
 		
-		int parts = parallelism;
+		int parts = Math.min(parallelism,i);
 		int partsSize = i/parts;
 						
 		int splitterPipesCount = parts;
-		Pipe<L>[] splitterPipes = new Pipe[splitterPipesCount];
+		Pipe<RowSchema<L>>[] splitterPipes = new Pipe[splitterPipesCount];
 		
 		int start = i;
 		while (--i>=0) {
 			intputAsColumns[i] = new Pipe<ColumnSchema<R>>(rightColumnConfig.grow2x());			
-			resultInColumns[i] =  new Pipe<ColumnSchema<M>>(resultColumnConfig);	
+			resultColumnPipes[i] =  new Pipe<ColumnSchema<M>>(resultColumnConfig);	
 		
 			//build each parallel compute stage that will deal with multiple columns, 
 			//note how the last one takes the remainder of the pipes. TODO: may want to revist for better spread of the remainder.
@@ -395,26 +401,23 @@ public class BuildMatrixCompute {
 			if ((splitterPipesCount>1 && len==partsSize) || i==0) {
 				
 				splitterPipesCount = buildComputeStage(gm, resultSchema, leftSchema, rightSchema, leftInput, i,
-						                               intputAsColumns, resultInColumns, splitterPipesCount, splitterPipes, start, len);
+						                               intputAsColumns, resultColumnPipes, splitterPipesCount, splitterPipes, start, len);
 				start = i;
 			}
-						
+					
 		}
-		
-		
+
 		//split the left matrix into N column pipes.
-		new ColumnsRouteStage(gm, rightSchema, rightInput, intputAsColumns);
-		new SplitterStage<L>(gm, leftInput, splitterPipes); //duplicate the matrix once for each column.		
-		new ColumnsJoinStage<M>(gm, resultSchema, resultInColumns, result);
-			
-		
+		new RowsToColumnRouteStage(gm, rightSchema, rightInput, intputAsColumns);
+		new SplitterStage<RowSchema<L>>(gm, leftInput, splitterPipes); //duplicate the matrix once for each column.		
+		return resultColumnPipes;
 	}
 
 
 	private static <L extends MatrixSchema, R extends MatrixSchema, M extends MatrixSchema> int buildComputeStage(
-			GraphManager gm, M resultSchema, L leftSchema, R rightSchema, Pipe<L> leftInput, int i,
+			GraphManager gm, M resultSchema, L leftSchema, R rightSchema, Pipe<RowSchema<L>> leftInput, int i,
 			Pipe<ColumnSchema<R>>[] intputAsColumns, Pipe<ColumnSchema<M>>[] resultInColumns, int splitterPipesCount,
-			Pipe<L>[] splitterPipes, int start, int len) {
+			Pipe<RowSchema<L>>[] splitterPipes, int start, int len) {
 		
 		int idx = start;
 		Pipe<ColumnSchema<R>>[] inputs = new Pipe[len];
@@ -426,8 +429,11 @@ public class BuildMatrixCompute {
 			c++;
 		}
 		assert(c==len);
-		new ColumnComputeStage(gm, inputs, splitterPipes[--splitterPipesCount] = new Pipe<L>(leftInput.config().grow2x()),
-				                outputs, resultSchema, leftSchema, rightSchema);
+		new ColumnComputeStage( gm, 
+				                inputs, 
+				                splitterPipes[--splitterPipesCount] = new Pipe<RowSchema<L>>(leftInput.config().grow2x()),
+				                outputs, 
+				                resultSchema, leftSchema, rightSchema);
 		return splitterPipesCount;
 	}
 

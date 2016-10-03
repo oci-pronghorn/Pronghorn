@@ -1350,9 +1350,9 @@ public class GraphManager {
 		    
 		    
 		    try {
-    		    //double check that this was not built wrong, there must be a consumer of this ring
+    		    //double check that this was not built wrong, there must be a consumer of this ring or it was explicitly initialized
 		        int consumerId = getRingConsumerId(m, pipeId);
-		        if (consumerId < 0) {
+		        if (consumerId < 0 && !Pipe.isInit(getRing(m, pipeId))) {
 		            
 		            String schemaName = Pipe.schemaName(m.pipeIdToPipe[pipeId]);
 		            
