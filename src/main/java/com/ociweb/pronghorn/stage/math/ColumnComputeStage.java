@@ -142,7 +142,12 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 
 			long rowSourceLoc = Pipe.getWorkingTailPosition(rowInput);	
 			
-			vectorOperations(rowSourceLoc);
+			boolean doNative = false;
+			if (doNative) {
+				vectorOperations2(rowSourceLoc);
+			} else {
+				vectorOperations(rowSourceLoc);
+			}
 			
 			Pipe.confirmLowLevelRead(rowInput, Pipe.sizeOf(rowInput, rowId));
 			Pipe.releaseReadLock(rowInput);
@@ -178,7 +183,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		int i = colInput.length;
 		while (--i>=0) {
 			long sourceLoc = Pipe.getWorkingTailPosition(colInput[i]);	
-			Pipe.setWorkingTailPosition(rowInput,rowSourceLoc);				
+			Pipe.setWorkingTailPosition(rowInput, rowSourceLoc);				
 
 			//add one value to the output pipe
 			//value taken from full rowInput and full inputPipe input				
@@ -190,6 +195,46 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			}
 			
 		}
+	}
+
+	private final int[][] inputPipes = new int[colInput.length][];
+	private final int[][] outputPipes = new int[colInput.length][];
+	private final int[]   cPos = new int[colInput.length];
+	private final int[]   cPosOut = new int[colInput.length];
+	
+	private void vectorOperations2(long rowSourceLoc) {
+		int i = colInput.length;
+		
+		int slabMask = Pipe.slabMask(colInput[0]);
+		int outMask = Pipe.slabMask(colOutput[0]);
+		
+		while (--i>=0) {
+			
+			assert(slabMask == Pipe.slabMask(colInput[i]));
+			assert(outMask == Pipe.slabMask(colOutput[i]));
+			
+			inputPipes[i] = Pipe.slab(colInput[i]);
+			outputPipes[i] = Pipe.slab(colOutput[i]);
+			cPos[i] = (int)Pipe.getWorkingTailPosition(colInput[i]);
+			cPosOut[i] = (int)Pipe.getWorkingTailPosition(colOutput[i]);
+			
+		}		
+		
+		goCompute(type.typeMask, Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
+		
+	}
+	
+    //YF this is the method to be implemented natively 
+	private void goCompute(int typeMask, 
+			               int[] rowSlab, long rowPosition, int rowMask, int length, 
+			               int[][] colSlabs, int[] colPositions, int colMask, 
+			               int[][] outputPipes, int[] cPosOut, int outMask) {
+		
+		
+		// TODO Auto-generated method stub
+		
+		
+		
 	}
 
 
