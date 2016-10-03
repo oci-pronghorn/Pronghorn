@@ -140,13 +140,13 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			}
 			remainingRows--;
 
-			long rowSourceLoc = Pipe.getWorkingTailPosition(rowInput);	
+			
 			
 			boolean doNative = false;
 			if (doNative) {
-				vectorOperations2(rowSourceLoc);
+				vectorOperations2();
 			} else {
-				vectorOperations(rowSourceLoc);
+				vectorOperations();
 			}
 			
 			Pipe.confirmLowLevelRead(rowInput, Pipe.sizeOf(rowInput, rowId));
@@ -177,9 +177,8 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 				
 	}
 
-
-	//TODO: this method should call out to SIMD implementation when available.
-	private void vectorOperations(long rowSourceLoc) {
+	private void vectorOperations() {
+		long rowSourceLoc = Pipe.getWorkingTailPosition(rowInput);	
 		int i = colInput.length;
 		while (--i>=0) {
 			long sourceLoc = Pipe.getWorkingTailPosition(colInput[i]);	
@@ -202,7 +201,9 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 	private final int[]   cPos = new int[colInput.length];
 	private final int[]   cPosOut = new int[colInput.length];
 	
-	private void vectorOperations2(long rowSourceLoc) {
+	private void vectorOperations2() {
+		long rowSourceLoc = Pipe.getWorkingTailPosition(rowInput);	
+		
 		int i = colInput.length;
 		
 		int slabMask = Pipe.slabMask(colInput[0]);
@@ -218,13 +219,19 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			cPos[i] = (int)Pipe.getWorkingTailPosition(colInput[i]);
 			cPosOut[i] = (int)Pipe.getWorkingTailPosition(colOutput[i]);
 			
+			if (remainingRows==0) {//only done on last row
+				long sourceLoc = Pipe.getWorkingTailPosition(colInput[i]);
+				Pipe.setWorkingTailPosition(colInput[i],sourceLoc + (resultSchema.typeSize*rSchema.getRows()));
+			}
 		}		
 		
 		goCompute(type.typeMask, Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
-		
+				
+		Pipe.setWorkingTailPosition(rowInput, rowSourceLoc + (resultSchema.typeSize*rSchema.getRows()));
+				
 	}
 	
-    //YF this is the method to be implemented natively 
+    //TODO:  YF this is the method to be implemented natively 
 	private void goCompute(int typeMask, 
 			               int[] rowSlab, long rowPosition, int rowMask, int length, 
 			               int[][] colSlabs, int[] colPositions, int colMask, 
