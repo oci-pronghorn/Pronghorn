@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.stage.math;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -34,8 +35,16 @@ public class BuildMatrixCompute {
 		Integers(TypeMask.IntegerSigned) {
 			public void convertToDecimal(int count, Pipe<?> input, Pipe<?> output) {
 				while (--count>=0) {
-					Pipe.addIntValue(0, output); //exp
-					Pipe.addLongValue(Pipe.takeValue(input), output);
+					
+					int dotPosition = 0;
+					int value = Pipe.takeValue(input);
+					while (0 ==	(value%10)) {
+						value = value/10;
+						dotPosition++;
+					}
+										
+					Pipe.addIntValue(dotPosition, output); //exp
+					Pipe.addLongValue(value, output);
 				}
 			}
 			public void computeColumn(int rows, Pipe<?> columnPipe, Pipe<?> rowPipe, Pipe<?> outputPipe) {
@@ -64,14 +73,23 @@ public class BuildMatrixCompute {
 		Floats(TypeMask.IntegerSigned) {
 			public void convertToDecimal(int count, Pipe<?> input, Pipe<?> output) {
 				while (--count>=0) {
-					//convert flaot to decimal
 					double value = (double)Float.intBitsToFloat(Pipe.takeValue(input));
-					int places = 9;
-					
-					//TODO: how many powers of 10 does this float have? must reduce or we will loose accuracy.
-					
-					Pipe.addIntValue(-places, output); //safe because long has 18 digits
-					Pipe.addLongValue((long)Math.rint(value*powd[64+places]), output);
+				
+					int dotPosition=0;
+					while (0f != value%1f) {
+						value = value*10;
+						dotPosition--;//move point to left to put it back						
+					}
+								
+					if (value != 0) {
+						while (0 ==	(value%10f)) {
+							value=value/10f;
+							dotPosition++;
+						}
+					}
+
+					Pipe.addIntValue(dotPosition, output); //safe because long has 18 digits
+					Pipe.addLongValue((long)value, output);
 			
 				}
 			}
@@ -99,8 +117,16 @@ public class BuildMatrixCompute {
 		Longs(TypeMask.LongSigned) {
 			public void convertToDecimal(int count, Pipe<?> input, Pipe<?> output) {
 				while (--count>=0) {					
-					Pipe.addIntValue(0, output); //exp
-					Pipe.addLongValue(Pipe.takeLong(input), output);
+
+					int dotPosition = 0;
+					long value = Pipe.takeLong(input);
+					while (0 ==	(value%10)) {
+						value = value/10;
+						dotPosition++;
+					}
+					
+					Pipe.addIntValue(dotPosition, output); //exp
+					Pipe.addLongValue(value, output);
 				}
 			}
 			public void computeColumn(int rows, Pipe<?> columnPipe, Pipe<?> rowPipe, Pipe<?> outputPipe) {
@@ -127,13 +153,24 @@ public class BuildMatrixCompute {
 		Doubles(TypeMask.LongSigned){
 			public void convertToDecimal(int count, Pipe<?> input, Pipe<?> output) {
 				while (--count>=0) {
-					//convert flaot to decimal
-					double value = (double)Float.intBitsToFloat(Pipe.takeValue(input));
-					//only has a max of 9 significant digits					
-					//TODO: WARNING can loose accuracy for places below the first 9
-					Pipe.addIntValue(9, output);
-					Pipe.addLongValue((long)(value * -1_000_000_000d), output);
-			
+					
+					double value = (double)Double.longBitsToDouble(Pipe.takeLong(input));
+					
+					int dotPosition=0;
+					while (0d != value%1d) {
+						value = value*10;
+						dotPosition--;//move point to left to put it back						
+					}
+					if (value!=0) {					
+						while (0 ==	(value%10d)) {
+							value = value/10d;
+							dotPosition++;
+						}
+					}
+
+					Pipe.addIntValue(dotPosition, output); //safe because long has 18 digits
+					Pipe.addLongValue((long)value, output);
+					
 				}
 			}
 			public void computeColumn(int rows, Pipe<?> columnPipe, Pipe<?> rowPipe, Pipe<?> outputPipe) {
@@ -197,7 +234,6 @@ public class BuildMatrixCompute {
 					    
 					    //if it did overflow reduce the accuracy of the larger value
 					    if (overflows) {
-					    	System.out.println("overflow detected");
 					    	if (x>y) {
 					    		x = x/10;
 					    		xExp++;					    		
@@ -223,16 +259,27 @@ public class BuildMatrixCompute {
 						
 					} else if (exp>sumExp){
 						int dif = (exp-sumExp);		
-						//if dif is > 18 then we will loose all the days anyway..   TODO revisit.
-						long temp =	(long)(prod * powd[64+dif]); //* (Math.pow(10, dif));												
+						//if dif is > 18 then we will loose the data anyway..  
+						long temp =	dif>=longPow.length? 0 : prod*longPow[dif];												
 						sumValue = sumValue + temp;
 					} else {
 						int dif = (sumExp-exp);						
-						long temp =	(long)(sumValue * powd[64+dif]);//* (Math.pow(10, dif));
+						long temp =	dif>=longPow.length? 0 : sumValue*longPow[dif];
 						sumValue = prod+temp;
 						sumExp = exp;
 					}	
 					
+				}
+				
+				///////////////////
+				//Recenter
+				///////////////////
+				
+				if (sumValue != 0) {
+					while (0 == (sumValue % 10L)) {
+						sumValue = sumValue / 10L;
+						sumExp++;
+					}
 				}
 				
 				//sum now holds the new value to be sent out
@@ -296,6 +343,10 @@ public class BuildMatrixCompute {
 
 		public abstract int size();
 		
+		private static long[] longPow = new long[] {1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 
+				                                   1_000_000_000, 10_000_000_000L, 100_000_000_000L ,1000_000_000_000L,
+				                                   1_000_000_000_000L, 10_000_000_000_000L, 100_000_000_000_000L ,1000_000_000_000_000L,
+				                                   1_000_000_000_000_000L, 10_000_000_000_000_000L, 100_000_000_000_000_000L ,1000_000_000_000_000_000L};
 		
 		private static double[] powd = new double[] {
 				  1.0E-64,1.0E-63,1.0E-62,1.0E-61,1.0E-60,1.0E-59,1.0E-58,1.0E-57,1.0E-56,1.0E-55,1.0E-54,1.0E-53,1.0E-52,1.0E-51,1.0E-50,1.0E-49,1.0E-48,1.0E-47,1.0E-46,
@@ -319,32 +370,71 @@ public class BuildMatrixCompute {
 	
 	
 	public static <M extends MatrixSchema, L extends MatrixSchema, R extends MatrixSchema>
-	            void buildGraph(GraphManager gm, M resultSchema,  L leftSchema, R rightSchema, Pipe<L> leftInput, Pipe<R> rightInput, Pipe<M> result) {
+	            Pipe<ColumnSchema<M>>[] buildGraph(GraphManager gm, M resultSchema,  L leftSchema, R rightSchema, Pipe<RowSchema<L>> leftInput, Pipe<RowSchema<R>> rightInput, int parallelism) {
 		
 		int i = resultSchema.getColumns();
-		Pipe<L>[] splitterPipes = new Pipe[i];
 		Pipe<ColumnSchema<R>>[] intputAsColumns = new Pipe[i];
-		Pipe<ColumnSchema<M>>[] resultInColumns = new Pipe[i];
-				
-		PipeConfig<ColumnSchema<R>> rightColumnConfig = new PipeConfig<ColumnSchema<R>>(new ColumnSchema<R>(rightSchema),1);
-		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(new ColumnSchema<M>(resultSchema),1);
-				
-		while (--i>=0) {
-			splitterPipes[i] = new Pipe<L>(leftInput.config().grow2x());
-			intputAsColumns[i] = new Pipe<ColumnSchema<R>>(rightColumnConfig.grow2x());			
-			resultInColumns[i] =  new Pipe<ColumnSchema<M>>(resultColumnConfig);	
-			
-			Pipe<ColumnSchema<R>>[] inputs = new Pipe[]{intputAsColumns[i]}; //TOOD: add support for grouped columns
-			
-			new ColumnComputeStage(gm, inputs, splitterPipes[i], resultInColumns[i], resultSchema, leftSchema, rightSchema);
-						
-		}
-		//split the left matrix into N column pipes.
-		new ColumnsRouteStage(gm, rightSchema, rightInput, intputAsColumns);
-		new SplitterStage<L>(gm, leftInput, splitterPipes); //duplicate the matrix once for each column.		
-		new ColumnsJoinStage<M>(gm, resultSchema, resultInColumns, result);
-			
+		Pipe<ColumnSchema<M>>[] resultColumnPipes = new Pipe[i];
+
+		ColumnSchema<R> columnsInputSchema = new ColumnSchema<R>(rightSchema);		
+		assert(rightSchema.rows == columnsInputSchema.rows);
+
+		ColumnSchema<M> columnsOutoutSchema = new ColumnSchema<M>(resultSchema);
+
+		PipeConfig<ColumnSchema<R>> rightColumnConfig = new PipeConfig<ColumnSchema<R>>(columnsInputSchema,1);
+		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsOutoutSchema,1);
 		
+		int parts = Math.min(parallelism,i);
+		int partsSize = i/parts;
+						
+		int splitterPipesCount = parts;
+		Pipe<RowSchema<L>>[] splitterPipes = new Pipe[splitterPipesCount];
+		
+		int start = i;
+		while (--i>=0) {
+			intputAsColumns[i] = new Pipe<ColumnSchema<R>>(rightColumnConfig.grow2x());			
+			resultColumnPipes[i] =  new Pipe<ColumnSchema<M>>(resultColumnConfig);	
+		
+			//build each parallel compute stage that will deal with multiple columns, 
+			//note how the last one takes the remainder of the pipes. TODO: may want to revist for better spread of the remainder.
+			int len = start-i;			
+			if ((splitterPipesCount>1 && len==partsSize) || i==0) {
+				
+				splitterPipesCount = buildComputeStage(gm, resultSchema, leftSchema, rightSchema, leftInput, i,
+						                               intputAsColumns, resultColumnPipes, splitterPipesCount, splitterPipes, start, len);
+				start = i;
+			}
+					
+		}
+
+		//split the left matrix into N column pipes.
+		new RowsToColumnRouteStage(gm, rightSchema, rightInput, intputAsColumns);
+		new SplitterStage<RowSchema<L>>(gm, leftInput, splitterPipes); //duplicate the matrix once for each column.		
+		return resultColumnPipes;
+	}
+
+
+	private static <L extends MatrixSchema, R extends MatrixSchema, M extends MatrixSchema> int buildComputeStage(
+			GraphManager gm, M resultSchema, L leftSchema, R rightSchema, Pipe<RowSchema<L>> leftInput, int i,
+			Pipe<ColumnSchema<R>>[] intputAsColumns, Pipe<ColumnSchema<M>>[] resultInColumns, int splitterPipesCount,
+			Pipe<RowSchema<L>>[] splitterPipes, int start, int len) {
+		
+		int idx = start;
+		Pipe<ColumnSchema<R>>[] inputs = new Pipe[len];
+		Pipe<ColumnSchema<M>>[] outputs = new Pipe[len];
+		int c = 0;
+		while (--idx >= i) {
+			inputs[c]=intputAsColumns[idx];
+			outputs[c]=resultInColumns[idx];
+			c++;
+		}
+		assert(c==len);
+		new ColumnComputeStage( gm, 
+				                inputs, 
+				                splitterPipes[--splitterPipesCount] = new Pipe<RowSchema<L>>(leftInput.config().grow2x()),
+				                outputs, 
+				                resultSchema, leftSchema, rightSchema);
+		return splitterPipesCount;
 	}
 
 

@@ -44,6 +44,8 @@ public abstract class PronghornStage {
 	protected PronghornStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs) {
 	    assert(null!=inputs) : "Use NONE";
 	    assert(null!=outputs) : "Use NONE";
+	    assert(noContainedNull(inputs)) : "Null disovered in array";
+	  //  assert(noContainedNull(outputs)) : "Null disovered in array"; //TODO: put back in and find the bug in IoT project
 		
 	    this.stageId = GraphManager.newStageId(graphManager);
 	    this.hash = PronghornStage.class.hashCode() ^ stageId;
@@ -55,6 +57,8 @@ public abstract class PronghornStage {
 	protected PronghornStage(GraphManager graphManager, Pipe input, Pipe[] outputs) {
 	    assert(null!=input) : "Use NONE";
 	    assert(null!=outputs) : "Use NONE";
+	    assert(noContainedNull(outputs)) : "Null disovered in array";
+		assert(input!=null);
 		
 	    this.stageId = GraphManager.newStageId(graphManager);
 	    this.hash = PronghornStage.class.hashCode() ^ stageId;
@@ -66,6 +70,8 @@ public abstract class PronghornStage {
 	protected PronghornStage(GraphManager graphManager, Pipe[] inputs, Pipe output) {
 	    assert(null!=inputs) : "Use NONE";
 	    assert(null!=output) : "Use NONE";
+	    assert(noContainedNull(inputs)) : "Null disovered in array";	
+		assert(output!=null);
 	    
 	    this.stageId = GraphManager.newStageId(graphManager);
 	    this.hash = PronghornStage.class.hashCode() ^ stageId;
@@ -74,7 +80,20 @@ public abstract class PronghornStage {
 		GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, null, this);//This provides room for assignment later
 	}
 	
+	private boolean noContainedNull(Pipe[] inputs) {
+		int i = inputs.length;
+		while (--i>=0) {
+			if (null==inputs[i]) {
+				log.warn("null found at index {} in array of Pipes",i);
+				return false;
+			}
+		}
+		return true;
+	}
+
 	protected PronghornStage(GraphManager graphManager, Pipe input, Pipe output) {
+		assert(input!=null);
+		assert(output!=null);
 		this.stageId = GraphManager.newStageId(graphManager); 
 		this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
@@ -140,11 +159,7 @@ public abstract class PronghornStage {
 	}
 
 	public String toString() {
-	    try {
-            return Appendables.appendValue(new StringBuilder().append(getClass().getSimpleName()), " #", stageId).toString();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return Appendables.appendValue(new StringBuilder().append(getClass().getSimpleName()), " #", stageId).toString();
 	}
 	
 	public void shutdown() {

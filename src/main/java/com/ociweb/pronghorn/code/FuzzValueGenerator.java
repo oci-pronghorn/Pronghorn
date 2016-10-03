@@ -164,22 +164,15 @@ public class FuzzValueGenerator extends Code implements SingleResult {
     }
         
     public static CharSequence stringGenerator(long key) {
-        try {
             return (CharSequence)Appendables.appendHexDigits(new StringBuilder(), key);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
    
     public static CharSequence nullableStringGenerator(long key) {
         if (0==(key&MAX_FOR_NULL_INT)) {
             return null;
         }
-        try {
-            return (CharSequence)Appendables.appendHexDigits(new StringBuilder(), key);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return (CharSequence)Appendables.appendHexDigits(new StringBuilder(), key);
+
     }
 
     private void nullableBoxedValues(Appendable target) throws IOException {

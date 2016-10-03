@@ -115,6 +115,14 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    		int consRoot = rootId(consumerId, rootsTable);
 	    		int prodRoot = rootId(producerId, rootsTable);
 	    		if (consRoot!=prodRoot) {
+	    			
+	    			//TODO: if this is already added wait ...... we must buld up from short depths to longer.
+	    			
+	    			
+	    			
+	    			
+	    			
+	    			
 	    			//combine these two roots.
 	    			int newRootId = ++rootCounter;
 	    			if (!IntHashTable.setItem(rootsTable, consRoot, newRootId)) {
@@ -153,8 +161,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 		return rootMemberCounter;
 	}
 
-	private PronghornStage[][] buildOrderedArraysOfStages(GraphManager graphManager, int rootCounter,
-			int[] rootMemberCounter) {
+	private PronghornStage[][] buildOrderedArraysOfStages(GraphManager graphManager, int rootCounter, int[] rootMemberCounter) {
 		int stages;
 		PronghornStage[][] stageArrays = new PronghornStage[rootCounter+1][];
 	    	    
@@ -199,28 +206,29 @@ public class FixedThreadsScheduler extends StageScheduler {
 		return stageArrays;
 	}
 
-	private static boolean isInLoop(int stageId, GraphManager graphManager) {
-		return isInPath(stageId, stageId, graphManager);
+	private static boolean isInLoop(int stageId, GraphManager graphManager) {		
+		return isInPath(stageId, stageId, graphManager, GraphManager.countStages(graphManager));
 	}
-	
-	//TODO: broken
-	private static boolean isInPath(int stageId, final int targetId, GraphManager graphManager) {
+
+	private static boolean isInPath(int stageId, final int targetId, GraphManager graphManager, int maxRecursionDepth) {
 		//search all nodes until the end is reached or we see the duplicate
-		PronghornStage stage = GraphManager.getStage(graphManager, stageId);
-		
-		int c = GraphManager.getOutputPipeCount(graphManager, stageId);
-		for(int i=1; i<=c; i++) {
+		if (maxRecursionDepth>0) {
+			PronghornStage stage = GraphManager.getStage(graphManager, stageId);
 			
-			Pipe<MessageSchema> outputPipe = GraphManager.getOutputPipe(graphManager, stage, i);
-						
-			int consumerId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
-			if (consumerId >= 0) {
-				//if stageId is not found then it is not in a loop but the consumer Id could be in a loop and we will not return.
+			int c = GraphManager.getOutputPipeCount(graphManager, stageId);
+			for(int i=1; i<=c; i++) {
 				
-			    if ((consumerId == targetId) || (isInPath(consumerId, targetId, graphManager))) { //TODO: AAA recursion not indendended must be fixed. a loop causes this to crash!!!!
-			    	return true;
-			    }
-			}			
+				Pipe<MessageSchema> outputPipe = GraphManager.getOutputPipe(graphManager, stage, i);
+							
+				int consumerId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
+				if (consumerId >= 0) {
+					//if stageId is not found then it is not in a loop but the consumer Id could be in a loop unrelated to the StageID, 
+					//to defend against this we have a maximum depth based on the stage count in the graphManager					
+				    if ((consumerId == targetId) || (isInPath(consumerId, targetId, graphManager, --maxRecursionDepth))) {
+				    	return true;
+				    }
+				}			
+			}
 		}
 		return false;
 	}
