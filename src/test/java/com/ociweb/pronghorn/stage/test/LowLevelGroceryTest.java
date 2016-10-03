@@ -117,12 +117,28 @@ public class LowLevelGroceryTest {
         //putting data to decode onto pipe
         DataOutputBlobWriter<MessageSchemaDynamic> writer = new DataOutputBlobWriter<MessageSchemaDynamic>(pipe);
         //putting pmap
-        PhastEncoder.encodeLongPresent(writer,0,0,9);
+        PhastEncoder.encodeLongPresent(writer,0,0,1);
         PhastEncoder.encodeIntPresent(writer,0,0,16);
         PhastEncoder.encodeLongPresent(writer,0,0,31);
         PhastEncoder.encodeString(writer, new StringBuilder("the first test"),0,0);
         PhastEncoder.encodeIntPresent(writer,0,0,25);
         PhastEncoder.encodeString(writer, new StringBuilder("The second test"),0,0);
+
+
+        PhastEncoder.encodeLongPresent(writer,0,0,1);
+        PhastEncoder.encodeIntPresent(writer,0,0,16);
+        PhastEncoder.encodeLongPresent(writer,0,0,31);
+        PhastEncoder.encodeString(writer, new StringBuilder("the third test"),0,0);
+        PhastEncoder.encodeIntPresent(writer,0,0,25);
+        PhastEncoder.encodeString(writer, new StringBuilder("The fourth test"),0,0);
+
+        PhastEncoder.encodeLongPresent(writer,0,0,17);
+        PhastEncoder.encodeIntPresent(writer,0,0,16);
+        PhastEncoder.encodeLongPresent(writer,0,0,31);
+        PhastEncoder.encodeString(writer, new StringBuilder("the fith test"),0,0);
+        PhastEncoder.encodeIntPresent(writer,0,0,25);
+        PhastEncoder.encodeString(writer, new StringBuilder("The sixth test"),0,0);
+
         writer.close();
 
 
