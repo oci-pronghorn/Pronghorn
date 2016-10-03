@@ -22,7 +22,7 @@ public class LowLevelReaderTest {
         @Test
         public void lowLevelReaderStartupTest(){
             StringBuilder target = new StringBuilder();
-            LowLevelReader rw = new LowLevelReader();
+            //LowLevelReader rw = new LowLevelReader();
             
             //rw.startup();
            
@@ -31,7 +31,7 @@ public class LowLevelReaderTest {
         @Test
         public void lowLevelReaderRunTest() {
             //StringBuilder target = new StringBuilder();
-            LowLevelReader rw = new LowLevelReader();
+            //LowLevelReader rw = new LowLevelReader();
             
             //rw.run();
             

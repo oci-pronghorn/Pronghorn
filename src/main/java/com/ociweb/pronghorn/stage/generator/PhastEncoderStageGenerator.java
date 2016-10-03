@@ -57,6 +57,9 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append(tab + longDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
         target.append(tab + defIntDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
         target.append(tab + defLongDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
+        //isntantiate pipe
+        bodyTarget.append(tab + writerName + " = new DataOutputBlobWriter<" + schema.getClass().getSimpleName() + ">(input);\n");
+
     }
 
     @Override
@@ -65,6 +68,9 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append("int[] " + intDictionaryName + ";\n");
         target.append("long[] " + defLongDictionaryName + ";\n");
         target.append("int[] " + defIntDictionaryName + ";\n");
+        //isntantiate pipe
+        bodyTarget.append("DataOutputBlobWriter<" + schema.getClass().getSimpleName() + "> " + writerName + ";\n");
+
     }
 
     //  BuilderInt Factory
@@ -394,9 +400,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
         //this try catches all IO problems and throws an error if the file does not exist
         try {
-            //isntantiate pipe
-            bodyTarget.append("DataOutputBlobWriter<" + schema.getClass().getSimpleName() + "> " + writerName + " = new DataOutputBlobWriter<" + schema.getClass().getSimpleName() + ">(input);\n");
-            
+
             //call to instantiate dictionaries
             generateVariables(schema, bodyTarget);
 
