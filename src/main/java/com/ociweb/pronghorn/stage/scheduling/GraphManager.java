@@ -1374,14 +1374,19 @@ public class GraphManager {
 		        }
 		    }
 		    
-		    //blocking wait on the other stage to init this pipe, required for clean startup only.
-		    long timeout = System.currentTimeMillis()+20_000;
-			while (!Pipe.isInit(m.pipeIdToPipe[pipeId])) {
-				Thread.yield();
-				if (System.currentTimeMillis()>timeout) {
-					throw new RuntimeException("Check Graph, unable to startup "+GraphManager.getStage(m, stageId)+" due to output "+m.pipeIdToPipe[pipeId]+" consumed by "+getRingConsumer(m,m.pipeIdToPipe[pipeId].id));
-				}
-			}				
+		    
+		    //STILL UNDER TEST IF THIS IS A GOOD IDEA
+		    if (!stageForMonitorData(m, getStage(m, stageId))) {
+			    
+			    //blocking wait on the other stage to init this pipe, required for clean startup only.
+			    long timeout = System.currentTimeMillis()+20_000;
+				while (!Pipe.isInit(m.pipeIdToPipe[pipeId])) {
+					Thread.yield();
+					if (System.currentTimeMillis()>timeout) {
+						throw new RuntimeException("Check Graph, unable to startup "+GraphManager.getStage(m, stageId)+" due to output "+m.pipeIdToPipe[pipeId]+" consumed by "+getRingConsumer(m,m.pipeIdToPipe[pipeId].id));
+					}
+				}				
+			}
 		}	
 		
 	}

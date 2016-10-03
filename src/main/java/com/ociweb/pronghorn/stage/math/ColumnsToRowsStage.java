@@ -15,7 +15,6 @@ public class ColumnsToRowsStage<M extends MatrixSchema> extends PronghornStage{
 	private final int rowLimit;
 	private int remainingRows;
 	
-	//TODO: rewrite to convert columns int rows...   This is broken as written.
 	
 	public ColumnsToRowsStage(GraphManager graphManager, M matrixSchema, Pipe<ColumnSchema<M>>[] columnPipeInput, Pipe<RowSchema<M>> matrixPipeOutput) {
 		super(graphManager, columnPipeInput, matrixPipeOutput);
@@ -54,7 +53,6 @@ public class ColumnsToRowsStage<M extends MatrixSchema> extends PronghornStage{
 					return;				
 				}
 				
-				assert(shutdownCount == columnPipeInput.length);
 			}
 			
 			/////

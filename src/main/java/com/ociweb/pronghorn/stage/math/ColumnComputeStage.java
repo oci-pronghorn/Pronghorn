@@ -92,10 +92,11 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		//  (A1*X1 + B1*Y1 + C1*Z1)
 		//  (A2*X1 + B2*Y1 + C2*Z1)
 		//
-		
+
 		while (Pipe.hasContentToRead(rowInput) && ((remainingRows<rowLimit)||(allHaveContentToRead(colInput)&&allHaveRoomToWrite(colOutput)) )  ) {
 			
 			int rowId = Pipe.takeMsgIdx(rowInput);
+			
 			if (rowId < 0) {
 				Pipe.confirmLowLevelRead(rowInput, Pipe.EOF_SIZE);
 				Pipe.releaseReadLock(rowInput);
@@ -103,6 +104,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 					assert(remainingRows==rowLimit);
 					requestShutdown();				
 					sendShutdownDownStream();
+					logger.trace("shutdown A");
 					return;
 				}
 			}		
@@ -110,7 +112,11 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			if (remainingRows==rowLimit) {		
 				int c = colInput.length;
 				
+				//System.out.println(rowInput.id+" new matrix row input "+rowInput);
+				
+				
 				while (--c>=0) {	
+					
 					if (Pipe.takeMsgIdx(colInput[c])<0) {
 						Pipe.confirmLowLevelRead(colInput[c], Pipe.EOF_SIZE);
 						Pipe.releaseReadLock(colInput[c]);
@@ -118,6 +124,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 							assert(remainingRows==rowLimit);
 							requestShutdown();
 							sendShutdownDownStream();	
+							logger.trace("shutdown B");
 							return;		
 						}
 					}
@@ -128,6 +135,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			}
 			
 			if (shutdownCount<colInput.length+1) {
+				logger.trace("shutdown C");
 				return;
 			}
 			remainingRows--;
@@ -141,16 +149,19 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			
 			if (0==remainingRows) {
 
+				//System.out.println(rowInput.id+" released matrix row input "+rowInput);
+				
+				
 				//done with the columns so release them
 				int  c = colInput.length;
 				while (--c>=0) {
 					
 					Pipe.confirmLowLevelWrite(colOutput[c], colOutMsgSize);
 					Pipe.publishWrites(colOutput[c]);
-
+					
 					Pipe.confirmLowLevelRead(colInput[c], colInMsgSize);
 					Pipe.releaseReadLock(colInput[c]);
-
+	
 				}			
 				remainingRows = rowLimit;
 			}
@@ -173,7 +184,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			//value taken from full rowInput and full inputPipe input				
 			type.computeColumn(rSchema.getRows(), colInput[i], rowInput, colOutput[i]);
 
-			if (remainingRows>0 || i>0) {  
+			if (remainingRows>0) {  
 				//restore for next pass but not for the very last one.
 				Pipe.setWorkingTailPosition(colInput[i],sourceLoc);
 			}
@@ -209,8 +220,9 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 	
 	private boolean allHaveContentToRead(Pipe<ColumnSchema<C>>[] columnPipeInput) {
 		int i = columnPipeInput.length;
+		
 		while (--i>=0) {
-			if (!Pipe.hasContentToRead(columnPipeInput[i])) {				
+			if (!Pipe.hasContentToRead(columnPipeInput[i])) {
 				return false;
 			}
 		}

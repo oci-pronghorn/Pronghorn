@@ -381,8 +381,10 @@ public class BuildMatrixCompute {
 
 		ColumnSchema<M> columnsOutoutSchema = new ColumnSchema<M>(resultSchema);
 
-		PipeConfig<ColumnSchema<R>> rightColumnConfig = new PipeConfig<ColumnSchema<R>>(columnsInputSchema,1);
-		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsOutoutSchema,1);
+		PipeConfig<ColumnSchema<R>> rightColumnConfig = new PipeConfig<ColumnSchema<R>>(columnsInputSchema,4);
+		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsOutoutSchema,6);
+		
+		System.out.println("col config "+rightColumnConfig+" "+columnsInputSchema.rows);
 		
 		int parts = Math.min(parallelism,i);
 		int partsSize = i/parts;

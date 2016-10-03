@@ -167,7 +167,7 @@ public class MatrixComputeTest {
 	}
 	
 	
-	@Ignore
+	@Test
 	public void testCompute() {
 		//speed
 		//slow     Doubles  Longs    6.15 5.8      7.024  7.18
@@ -182,10 +182,10 @@ public class MatrixComputeTest {
 		//TypeMask.Decimal;
 		
 		
-		int leftRows=100; //TODO: hangs with small values?? check thread distribution.
-		int rightColumns=1000;//1000; //this also impacts the number of threads
+		int leftRows=200;//100;
+		int rightColumns=1000;//1000;//1000; //this also impacts the number of threads
 				
-		int leftColumns = 1000; //TODO: crash with small values?
+		int leftColumns = 500;//1000; //TODO: crash with small values?
 		int rightRows=leftColumns;		
 		
 		
@@ -233,12 +233,13 @@ public class MatrixComputeTest {
 		ColumnsToRowsStage<MatrixSchema> ctr = new ColumnsToRowsStage<MatrixSchema>(gm, resultSchema, colResults, result);
 		
 		
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		//ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		
 		
 		//ConvertToDecimalStage<MatrixSchema> convert = new ConvertToDecimalStage<MatrixSchema>(gm, resultSchema, result, result2);
 		
-		ConsoleJSONDumpStage<?> watch = new ConsoleJSONDumpStage<>(gm, result , new PrintStream(baos));
+		//ConsoleJSONDumpStage<?> watch = new ConsoleJSONDumpStage<>(gm, result , new PrintStream(baos));
+		ConsoleSummaryStage<RowSchema<MatrixSchema>> watch = new ConsoleSummaryStage<>(gm, result);
 		
 		//gm.exportGraphDotFile();
 		
@@ -249,13 +250,21 @@ public class MatrixComputeTest {
 		
 		scheduler.startup();	
 		
-		int testSize = 1;//50;
+		int testSize = 50;
 		int k = testSize;
+		long timeout = 0;
 		while (--k>=0) {
-			
+			timeout = System.currentTimeMillis()+5000;
+			//System.out.println(k);
 			for(int c=0;c<leftRows;c++) {
 				while (!Pipe.hasRoomForWrite(left)) {
 					Thread.yield();
+					if (System.currentTimeMillis()>timeout) {
+						scheduler.shutdown();
+						scheduler.awaitTermination(20, TimeUnit.SECONDS);
+						fail();
+						return;
+					}
 				}
 				Pipe.addMsgIdx(left, resultSchema.rowId);		
 					for(int r=0;r<leftColumns;r++) {
@@ -268,6 +277,12 @@ public class MatrixComputeTest {
 			for(int c=0;c<rightRows;c++) {
 				while (!Pipe.hasRoomForWrite(right)) {
 					Thread.yield();
+					if (System.currentTimeMillis()>timeout) {
+						scheduler.shutdown();
+						scheduler.awaitTermination(20, TimeUnit.SECONDS);
+						fail();
+						return;
+					}
 				}
 				Pipe.addMsgIdx(right, resultSchema.rowId);		
 					for(int r=0;r<rightColumns;r++) {
@@ -280,15 +295,16 @@ public class MatrixComputeTest {
 		}
 		
 		
-		Pipe.spinBlockForRoom(left, Pipe.EOF_SIZE);
-		Pipe.spinBlockForRoom(right, Pipe.EOF_SIZE);
-		Pipe.publishEOF(left);
-		Pipe.publishEOF(right);
-				
+		if (k<0) {
+			Pipe.spinBlockForRoom(left, Pipe.EOF_SIZE);
+			Pipe.spinBlockForRoom(right, Pipe.EOF_SIZE);
+			Pipe.publishEOF(left);
+			Pipe.publishEOF(right);
+		}
 		GraphManager.blockUntilStageBeginsShutdown(gm, watch, 500);//timeout in ms
 		
 
-		scheduler.awaitTermination(2000, TimeUnit.SECONDS);
+		scheduler.awaitTermination(20, TimeUnit.SECONDS);
 				
 	//	System.out.println("len "+baos.toByteArray().length+"  "+new String(baos.toByteArray()));
 		
