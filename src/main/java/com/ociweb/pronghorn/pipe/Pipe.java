@@ -2419,7 +2419,9 @@ public class Pipe<T extends MessageSchema> {
     
     
     public static <S extends MessageSchema> int contentRemaining(Pipe<S> pipe) {
-        return (int)(pipe.slabRingHead.headPos.get() - pipe.slabRingTail.tailPos.get()); //must not go past add count because it is not release yet.
+        int result = (int)(pipe.slabRingHead.headPos.get() - pipe.slabRingTail.tailPos.get()); //must not go past add count because it is not release yet.
+        assert(result>=0) : "content remaining must never be negative";
+        return result;
     }
 
     public static <S extends MessageSchema> int releaseReadLock(Pipe<S> pipe) {
@@ -2837,7 +2839,8 @@ public class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> boolean hasContentToRead(Pipe<S> pipe) {
         assert(null != pipe.slabRing) : "Pipe must be init before use";
         boolean result = contentToLowLevelRead2(pipe, pipe.llWrite.llwConfirmedWrittenPosition, pipe.llWrite);
-        //there are times when result can be false but we have data which relate to our holding the position for some other reason.
+        
+        //there are times when result can be false but we have data which relate to our holding the position for some other reason. only when we hold back releases.
         assert(!result || result ==  (Pipe.contentRemaining(pipe)>0) ) : result+" != "+Pipe.contentRemaining(pipe)+">0";
         return result;
     }
@@ -2855,7 +2858,7 @@ public class Pipe<T extends MessageSchema> {
 	    assert(size>0) : "Must have read something.";
 	     //not sure if this assert is true in all cases
 	  //  assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value+Pipe.EOF_SIZE) : "size was far too large, past known data";
-	  //  assert(input.llWrite.llwConfirmedWrittenPosition + size >= input.slabRingTail.tailPos.get()) : "size was too small, under known data";        
+	  //  assert(input.llWrite.llwConfirmedWrittenPosition + size >= input.slabRingTail.tailPos.get()) : "size was too small, under known data";   
 		return (pipe.llWrite.llwConfirmedWrittenPosition += size);
 	}
 
