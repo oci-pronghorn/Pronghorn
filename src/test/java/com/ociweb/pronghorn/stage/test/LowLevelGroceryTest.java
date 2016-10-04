@@ -7,6 +7,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.generator.FuzzDataStageGenerator;
 import com.ociweb.pronghorn.stage.generator.PhastDecoderStageGenerator;
 import com.ociweb.pronghorn.stage.generator.PhastEncoderStageGenerator;
+import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
 import com.ociweb.pronghorn.stage.phast.PhastDecoder;
 import com.ociweb.pronghorn.stage.phast.PhastEncoder;
@@ -103,7 +104,7 @@ public class LowLevelGroceryTest {
         //llr.run();
 
     }
-    //@Test
+    @Test
     public void runtimeWriterTest() throws IOException, ParserConfigurationException, SAXException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException, InterruptedException {
         GraphManager gm = new GraphManager();
         FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
@@ -150,14 +151,15 @@ public class LowLevelGroceryTest {
         constructor.newInstance(gm, pipe);
 
         Appendable out = new PrintWriter(new ByteArrayOutputStream());
-        ConsoleSummaryStage dump = new ConsoleSummaryStage(gm, pipe, out );
-
+        //ConsoleSummaryStage dump = new ConsoleSummaryStage(gm, pipe, out );
+        ConsoleJSONDumpStage json = new ConsoleJSONDumpStage(gm, pipe, System.out);
         GraphManager.enableBatching(gm);
         //     MonitorConsoleStage.attach(gm);
 
         ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
         scheduler.playNice=false;
         scheduler.startup();
+        //gm.blockUntilStageBeginsShutdown(gm, constructor);
 
         Thread.sleep(300);
 

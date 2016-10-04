@@ -189,7 +189,6 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append(tab + "long " + bitMaskName + " = 1;\n");
         //recieve pmap
         decodePmap(target);
-        target.append("System.out.println(" + mapName + ");\n");
         //pass over group tag 0x10000
         cursor++;
 
@@ -256,7 +255,6 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             } else {
                 target.append("Unsupported data type " + pmapType + "\n");
             }
-            target.append("System.out.println(" + scriptNames[f] + ");\n");
             cursor++;
             argumentList.append(scriptNames[f]);
             if (f != (firstField+fieldCount) - 1){
