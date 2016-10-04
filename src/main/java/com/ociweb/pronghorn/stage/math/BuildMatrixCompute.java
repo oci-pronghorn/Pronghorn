@@ -381,11 +381,9 @@ public class BuildMatrixCompute {
 
 		ColumnSchema<M> columnsOutoutSchema = new ColumnSchema<M>(resultSchema);
 
-		PipeConfig<ColumnSchema<R>> rightColumnConfig = new PipeConfig<ColumnSchema<R>>(columnsInputSchema,4);
-		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsOutoutSchema,6);
-		
-		System.out.println("col config "+rightColumnConfig+" "+columnsInputSchema.rows);
-		
+		PipeConfig<ColumnSchema<R>> rightColumnConfig = new PipeConfig<ColumnSchema<R>>(columnsInputSchema,8);
+		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsOutoutSchema,16);
+	
 		int parts = Math.min(parallelism,i);
 		int partsSize = i/parts;
 						
@@ -394,7 +392,7 @@ public class BuildMatrixCompute {
 		
 		int start = i;
 		while (--i>=0) {
-			intputAsColumns[i] = new Pipe<ColumnSchema<R>>(rightColumnConfig.grow2x());			
+			intputAsColumns[i] = new Pipe<ColumnSchema<R>>(rightColumnConfig);			
 			resultColumnPipes[i] =  new Pipe<ColumnSchema<M>>(resultColumnConfig);	
 		
 			//build each parallel compute stage that will deal with multiple columns, 

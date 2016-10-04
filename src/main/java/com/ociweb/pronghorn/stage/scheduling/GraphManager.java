@@ -1474,16 +1474,21 @@ public class GraphManager {
 			//never enable batching on the monitor rings
 			if (null!=ring && !ringHoldsMonitorData(gm, ring) ) {
 				
-				PronghornStage consumer = GraphManager.getRingConsumer(gm, ring.id);
-				if (PronghornStage.supportsBatchedRelease(consumer)) { 
-					Pipe.setMaxReleaseBatchSize(ring);
+				int ringId1 = ring.id;
+				int stageId1 = GraphManager.getRingConsumerId(gm, ringId1);
+				if (stageId1>=0) {
+					if (PronghornStage.supportsBatchedRelease(gm.stageIdToStage[stageId1])) { 
+						Pipe.setMaxReleaseBatchSize(ring);
+					}
 				}
 				
-				PronghornStage producer = GraphManager.getRingProducer(gm, ring.id);
-				if (PronghornStage.supportsBatchedPublish(producer)) {
-					Pipe.setMaxPublishBatchSize(ring);
-				}				
-				
+				int ringId = ring.id;
+				int stageId = GraphManager.getRingProducerId(gm, ringId);
+				if (stageId>=0) {
+					if (PronghornStage.supportsBatchedPublish(gm.stageIdToStage[stageId])) {
+						Pipe.setMaxPublishBatchSize(ring);
+					}
+				}
 			}
 		}
 	}

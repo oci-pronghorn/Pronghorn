@@ -167,7 +167,7 @@ public class MatrixComputeTest {
 	}
 	
 	
-	@Test
+	@Ignore
 	public void testCompute() {
 		//speed
 		//slow     Doubles  Longs    6.15 5.8      7.024  7.18

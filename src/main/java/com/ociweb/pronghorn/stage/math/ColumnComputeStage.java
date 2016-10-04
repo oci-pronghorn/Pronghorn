@@ -25,6 +25,11 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 	
 	private final int rowLimit;
 	private int remainingRows;
+	
+	private int[][] inputPipes;
+	private int[][] outputPipes;
+	private int[]   cPos;
+	private int[]   cPosOut;
 
 	
 	protected ColumnComputeStage(GraphManager graphManager, 
@@ -76,6 +81,14 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		
 	}
 	
+	
+	@Override
+	public void startup() {
+		inputPipes = new int[colInput.length][];
+		outputPipes = new int[colInput.length][];
+		cPos = new int[colInput.length];
+		cPosOut = new int[colInput.length];
+	}
 	
 	@Override
 	public void run() {
@@ -196,10 +209,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		}
 	}
 
-	private final int[][] inputPipes = new int[colInput.length][];
-	private final int[][] outputPipes = new int[colInput.length][];
-	private final int[]   cPos = new int[colInput.length];
-	private final int[]   cPosOut = new int[colInput.length];
+
 	
 	private void vectorOperations2() {
 		long rowSourceLoc = Pipe.getWorkingTailPosition(rowInput);	
