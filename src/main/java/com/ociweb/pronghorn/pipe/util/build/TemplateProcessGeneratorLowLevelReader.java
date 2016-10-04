@@ -58,6 +58,10 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
     protected final String readerName = "reader";
     
     public TemplateProcessGeneratorLowLevelReader(MessageSchema schema, Appendable bodyTarget) {
+    	this(schema, bodyTarget, "LowLevelReader", "com.ociweb.pronghorn.pipe.build");
+    }
+    
+    public TemplateProcessGeneratorLowLevelReader(MessageSchema schema, Appendable bodyTarget, String className, String packageName) {
         super(schema);
         
         this.hasSimpleMessagesOnly = MessageSchema.from(schema).hasSimpleMessagesOnly;        
@@ -72,14 +76,9 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         this.fragmentParaSuff = new CharSequence[maxFieldCount];
         this.workspacesDefined = new long[maxFieldCount];
         
-        this.className = "LowLevelReader";//TODO: should be passed in 
-        this.packageName = "com.ociweb.pronghorn.pipe.build";//TODO: shuld be passed in/
-        //Startup Method
-        /// only create navstate if needed
-        //  create workspace objects
-        //  
-        
-        
+        this.className = className;
+        this.packageName = packageName;
+                
     }
     
     private Appendable appendWorkspaceName(Appendable target, long id) throws IOException {
@@ -953,14 +952,25 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         bodyTarget.append("import ").append(Appendables.class.getCanonicalName()).append(";\n");
         bodyTarget.append("import ").append(MessageSchemaDynamic.class.getCanonicalName()).append(";\n");
         bodyTarget.append("import ").append(DataInputBlobReader.class .getCanonicalName()).append(";\n");
+        
         additionalImports(schema, bodyTarget);
         
-        bodyTarget.append("public class ").append(className).append(" implements Runnable {\n");
-
-        bodyTarget.append("\n");
-        bodyTarget.append("private void requestShutdown() {};\n"); //only here so generated code passes compile.
+        defineClassAndConstructor();
     }
 
+	private void defineClassAndConstructor() throws IOException {
+		bodyTarget.append("public class ").append(className).append(" implements Runnable {\n");
+
+        bodyTarget.append("\n");
+        
+        buildConstructors(bodyTarget, className);
+        
+        bodyTarget.append("private void requestShutdown() {};\n"); //only here so generated code passes compile.
+	}
+
+    protected void buildConstructors(Appendable target, String className) throws IOException {
+    }
+	
     protected void additionalImports(MessageSchema schema, Appendable target) {
     }
     

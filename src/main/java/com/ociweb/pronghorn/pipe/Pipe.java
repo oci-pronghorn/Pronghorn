@@ -771,10 +771,15 @@ public class Pipe<T extends MessageSchema> {
         llRead.llwConfirmedReadPosition = toPos - sizeOfSlabRing;// TODO: hack test,  mask;//must be mask to ensure zero case works.
         llWrite.llwConfirmedWrittenPosition = toPos;
 
+        try {
         this.blobRing = new byte[sizeOfBlobRing];
         this.slabRing = new int[sizeOfSlabRing];
         this.blobRingLookup = new byte[][] {blobRing,blobConstBuffer};
-
+        } catch (OutOfMemoryError oome) {
+        	log.warn("attempted to allocate Slab:{} Blob:{}", sizeOfSlabRing, sizeOfBlobRing, oome);
+        	shutdown(this);
+        	System.exit(-1);
+        }
         //This assignment is critical to knowing that init was called
         this.wrappedSlabRing = IntBuffer.wrap(this.slabRing);        
 
