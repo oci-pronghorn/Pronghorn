@@ -2,8 +2,6 @@ package com.ociweb.pronghorn.stage.test;
 
 import com.ociweb.pronghorn.code.LoaderUtil;
 import com.ociweb.pronghorn.pipe.*;
-import com.ociweb.pronghorn.pipe.build.GroceryExampleWriterStage;
-import com.ociweb.pronghorn.pipe.build.LowLevelReader;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.generator.FuzzDataStageGenerator;
@@ -105,9 +103,8 @@ public class LowLevelGroceryTest {
         //llr.run();
 
     }
-    //something wrong with delta int, looking into it.
     //@Test
-    public void runtimeWriterTest() throws IOException, ParserConfigurationException, SAXException {
+    public void runtimeWriterTest() throws IOException, ParserConfigurationException, SAXException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException, InterruptedException {
         GraphManager gm = new GraphManager();
         FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
         MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);
@@ -141,9 +138,32 @@ public class LowLevelGroceryTest {
 
         writer.close();
 
+        StringBuilder eTarget = new StringBuilder();
+        PhastDecoderStageGenerator ew = new PhastDecoderStageGenerator(messageSchema, eTarget, false);
+        try {
+            ew.processSchema();
+        } catch (IOException e) {
+            e.printStackTrace();
+            fail();
+        }
+        Constructor constructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClassName(), eTarget, PhastDecoderStageGenerator.class);
+        constructor.newInstance(gm, pipe);
 
-        GroceryExampleWriterStage writerStage = new GroceryExampleWriterStage(gm, pipe);
+        Appendable out = new PrintWriter(new ByteArrayOutputStream());
+        ConsoleSummaryStage dump = new ConsoleSummaryStage(gm, pipe, out );
 
-        writerStage.run();
+        GraphManager.enableBatching(gm);
+        //     MonitorConsoleStage.attach(gm);
+
+        ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
+        scheduler.playNice=false;
+        scheduler.startup();
+
+        Thread.sleep(300);
+
+        scheduler.shutdown();
+        scheduler.awaitTermination(10, TimeUnit.SECONDS);
+
+
     }
 }
