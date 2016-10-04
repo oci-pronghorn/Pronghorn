@@ -22,7 +22,7 @@ public class ProtoBuffInterface {
 
     public ProtoBuffInterface(String packageName, MessageSchema schema, Appendable decodeTarget, Appendable encodeTarget, Appendable interfaceTarget, String interfaceClassName) {
         encoderGenerator = new PhastEncoderStageGenerator(schema, encodeTarget);
-        decoderGenerator = new PhastDecoderStageGenerator(schema, decodeTarget, true);
+        decoderGenerator = new PhastDecoderStageGenerator(schema, decodeTarget, packageName);
         this.packageName = packageName;
         this.schema = schema;
         this.interfaceTarget = interfaceTarget;
@@ -165,12 +165,34 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+    // sets boolean has flags to false
+    private static void generateInit(String varName, Appendable target) {
+        try {
+            //make variable name go to camel case
+            String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
+            //Build method generated
+            target.append(tab + "public final boolean" + " isInitialized() {"
+                    + "\n");
+            // need variable step through loop
+            // cycles through has statements to generate false statements
+            for(int i = 0; i < 0; i++) {
+                target.append(tab + "if (!has" + varNameCamel + "()) {"
+                + "\n"
+                + "return false;"
+                + "\n" + "}" + "\n");
+            }
+            target.append("}");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
     //mergeFrom()
     //Builder?
     //rethink this for clone
     // DELETE NOT NEEDED 
-    // REWORK THIS FOR OUR CODE
-    private static void generateMergeFrom(String locationMessage, String messageType, Appendable target) {
+    // REWORK THIS FOR OUR CODE??
+    // need help how to implement
+    private static void generateMergeFromBuilder(String locationMessage, String messageType, Appendable target) {
          try {
             //mergeFrom method generated
             target.append(tab + "public Builder mergeFrom(" + locationMessage + " other){"
@@ -184,6 +206,14 @@ public class ProtoBuffInterface {
                     + "return this;" + "\n" + "}"
                     + "\n"
                     + tab +  "}\n");
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    private static void generateMergeFrom(String locationMessage, String messageType, Appendable target) {
+         try {
+            //mergeFrom method generated
+            target.append(tab + "Good stuff goes here");
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
