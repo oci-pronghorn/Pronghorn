@@ -381,8 +381,10 @@ public class BuildMatrixCompute {
 
 		ColumnSchema<M> columnsOutoutSchema = new ColumnSchema<M>(resultSchema);
 
-		PipeConfig<ColumnSchema<R>> rightColumnConfig = new PipeConfig<ColumnSchema<R>>(columnsInputSchema,8);
-		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsOutoutSchema,16);
+		PipeConfig<ColumnSchema<R>> rightColumnConfig = new PipeConfig<ColumnSchema<R>>(columnsInputSchema,4); //just big enough to support batching of one consumer and one producer
+		
+		//TODO: build second compute that will use rows rather than keep this column open.
+		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsOutoutSchema,4);
 	
 		int parts = Math.min(parallelism,i);
 		int partsSize = i/parts;

@@ -182,8 +182,8 @@ public class MatrixComputeTest {
 		//TypeMask.Decimal;
 		
 		
-		int leftRows=200;//100;
-		int rightColumns=1000;//1000;//1000; //this also impacts the number of threads
+		int leftRows=20;
+		int rightColumns=200;
 				
 		int leftColumns = 500;//1000; //TODO: crash with small values?
 		int rightRows=leftColumns;		

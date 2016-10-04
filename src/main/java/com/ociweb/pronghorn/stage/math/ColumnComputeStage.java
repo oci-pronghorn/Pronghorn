@@ -106,7 +106,9 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		//  (A2*X1 + B2*Y1 + C2*Z1)
 		//
 
-		while (Pipe.hasContentToRead(rowInput) && ((remainingRows<rowLimit)||(allHaveContentToRead(colInput)&&allHaveRoomToWrite(colOutput)) )  ) {
+		while (Pipe.hasContentToRead(rowInput) && 
+				((Pipe.peekInt(rowInput)==-1) || //if row has shutdown then do so.
+				 ((remainingRows<rowLimit)||(allHaveContentToRead(colInput)&&allHaveRoomToWrite(colOutput)) ) ) ) {
 			
 			int rowId = Pipe.takeMsgIdx(rowInput);
 			
