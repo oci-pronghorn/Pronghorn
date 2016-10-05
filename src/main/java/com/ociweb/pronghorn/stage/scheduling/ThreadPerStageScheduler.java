@@ -373,7 +373,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
     		   
     		    if (nsDelay>0) {
                     try {
-                        GraphManager.publishAllWrites(graphManager, stage);
+                        GraphManager.publishAllWrites(graphManager, stage); //TODO: not sure this is still neede?
                         
                         Thread.sleep(nsDelay/1_000_000,(int)(nsDelay%1_000_000));
                                                 
@@ -383,7 +383,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
     		    } else if (playNice && 0==(0x3&i++)){
     		            //one out of every 8 passes we will yield to play nice since we may end up with a lot of threads
     		            //before doing yield must push any batched up writes & reads
-    		            GraphManager.publishAllWrites(graphManager, stage);
+    		            GraphManager.publishAllWrites(graphManager, stage); //TODO: not sure this is still neede?
     		            Thread.yield(); //TODO: is there a race condition causing JUnit failures that happens when this is used?
     		            //nsSleep(1);
     		            //LockSupport.parkNanos(1); //may be longer than 1ns

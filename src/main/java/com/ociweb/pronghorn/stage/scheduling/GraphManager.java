@@ -1592,16 +1592,18 @@ public class GraphManager {
     }
    
 
-    public static void blockUntilStageBeginsShutdown(GraphManager gm, PronghornStage stageToWatch, long timeoutMS) {
+    public static boolean blockUntilStageBeginsShutdown(GraphManager gm, PronghornStage stageToWatch, long timeoutMS) {
         //keep waiting until this stage starts it shut down or completed its shutdown, 
         //eg return on leading edge as soon as we detect shutdown in progress..
         while (--timeoutMS>=0 && (!  (isStageShuttingDown(gm, stageToWatch.stageId)||isStageTerminated(gm, stageToWatch.stageId))) ) { 
             try {
                 Thread.sleep(1);
             } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            	Thread.currentThread().interrupt();
+            	return true;
             }
         }
+        return timeoutMS>=0;
     }
     
 
