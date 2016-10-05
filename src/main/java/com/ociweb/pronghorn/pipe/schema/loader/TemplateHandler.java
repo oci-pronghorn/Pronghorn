@@ -1030,7 +1030,7 @@ public class TemplateHandler extends DefaultHandler {
         	}
         }
 
-        return TemplateHandler.from(handler,preamble, simpleName(source));
+        return TemplateHandler.from(handler, preamble, simpleName(source));
 	}
 
     public static String simpleName(String source) {

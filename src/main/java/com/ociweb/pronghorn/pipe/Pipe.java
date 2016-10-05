@@ -453,8 +453,11 @@ public class Pipe<T extends MessageSchema> {
     private PipeRegulator regulatorProducer; //disabled by default
 
     //for monitoring only
-    public int lastMsgIdx;
-    
+    public int lastMsgIdx; //last msgId read
+
+    //helper method for those stages that are not watching for the poison pill.
+	private long knownPositionOfEOF = Long.MAX_VALUE;
+	
 
 	
     public Pipe(PipeConfig<T> config) {
@@ -1546,14 +1549,18 @@ public class Pipe<T extends MessageSchema> {
 		return Math.min(maxBatchFromBytes, maxBatchFromPrimary);
 	}
 
-
+	public static <S extends MessageSchema> boolean isEndOfPipe(Pipe<S> pipe, long tailPosition) {
+		return tailPosition>=pipe.knownPositionOfEOF;
+	}
+	
 	public static <S extends MessageSchema> void publishEOF(Pipe<S> pipe) {
 
 		assert(pipe.slabRingTail.tailPos.get()+pipe.sizeOfSlabRing>=pipe.slabRingHead.headPos.get()+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
 
 		PaddedInt.set(pipe.blobRingHead.bytesHeadPos,pipe.blobRingHead.byteWorkingHeadPos.value);
-		pipe.slabRing[pipe.mask &((int)pipe.slabRingHead.workingHeadPos.value +  from(pipe).templateOffset)]    = -1;
-		pipe.slabRing[pipe.mask &((int)pipe.slabRingHead.workingHeadPos.value +1 +  from(pipe).templateOffset)] = 0;
+		pipe.knownPositionOfEOF = (int)pipe.slabRingHead.workingHeadPos.value +  from(pipe).templateOffset;
+		pipe.slabRing[pipe.mask & (int)pipe.knownPositionOfEOF]    = -1;
+		pipe.slabRing[pipe.mask & ((int)pipe.knownPositionOfEOF+1)] = 0;
 
 		pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value = pipe.slabRingHead.workingHeadPos.value + Pipe.EOF_SIZE);
 
