@@ -67,7 +67,7 @@ public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
             Pipe.publishWorkingTailPosition(input, tail = head);            
             
         } else {
-        	if (Pipe.isEndOfPipe(input, tail)) {
+        	if (Pipe.isEndOfPipe(input, tail) && Pipe.contentRemaining(input)==0) {
         		requestShutdown();
         	}
         }
