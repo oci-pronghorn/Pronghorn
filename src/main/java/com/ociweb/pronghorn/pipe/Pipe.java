@@ -707,6 +707,10 @@ public class Pipe<T extends MessageSchema> {
     	result.append(" blobWrkTailPos ").append(blobRingTail.byteWorkingTailPos.value);
     	result.append(" blobHeadPos ").append(PaddedInt.get(blobRingHead.bytesHeadPos));
     	result.append(" blobWrkHeadPos ").append(blobRingHead.byteWorkingHeadPos.value);
+    	
+    	if (isEndOfPipe(this, slabRingTail.tailPos.get())) {
+    		result.append(" Ended at "+this.knownPositionOfEOF);
+    	}
 
     	return result.toString();
     }
