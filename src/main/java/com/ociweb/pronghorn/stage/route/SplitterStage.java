@@ -136,7 +136,8 @@ public class SplitterStage<T extends MessageSchema> extends PronghornStage {
 		Pipe.publishWorkingTailPosition(ss.source,(ss.cachedTail+=ss.totalPrimaryCopy));
 		ss.totalPrimaryCopy = 0; //clear so next time we find the next block
 		
-		if (Pipe.isEndOfPipe(ss.source, ss.cachedTail)) {
+		//both end of pipe was sent AND we have consumed everything off that pipe.
+		if (Pipe.isEndOfPipe(ss.source, ss.cachedTail) && Pipe.contentRemaining(ss.source)==0) {
 			//we have copied everything including the EOF marker to all the downstream consumers
 			ss.requestShutdown();
 		}
