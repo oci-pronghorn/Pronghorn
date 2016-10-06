@@ -388,6 +388,12 @@ public class BuildMatrixCompute {
 	
 		int parts = Math.min(parallelism,i);
 		int partsSize = i/parts;
+		
+		//TODO: divide group and spread the remainder evenly so we have groups of 2 sizes and most.
+		//      * this is required before we can make the compute stage write to rows.
+		//      * the rowTocol and colToRow will be the next pinch point  (colToRows is removed by the above, rowToCall will only be used externally for data generation)
+		//      * rowToCol can be removed by producing data in cols in the first place.
+		
 						
 		int splitterPipesCount = parts;
 		Pipe<RowSchema<L>>[] splitterPipes = new Pipe[splitterPipesCount];
