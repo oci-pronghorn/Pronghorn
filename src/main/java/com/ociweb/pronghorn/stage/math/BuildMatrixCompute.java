@@ -431,6 +431,8 @@ public class BuildMatrixCompute {
 			c++;
 		}
 		assert(c==len);
+
+		
 		new ColumnComputeStage( gm, 
 				                inputs, 
 				                splitterPipes[--splitterPipesCount] = new Pipe<RowSchema<L>>(leftInput.config().grow2x()),

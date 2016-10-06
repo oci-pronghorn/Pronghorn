@@ -367,33 +367,44 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	    if (!playNice && !GraphManager.isRateLimited(graphManager,  stage.stageId) ) {
 	        runLoopNotNice(stage);
 	    } else {
-    		int i = 0;
-    		do {
-    		    long nsDelay =  GraphManager.delayRequiredNS(graphManager,stage.stageId);
-    		   
-    		    if (nsDelay>0) {
-                    try {
-                        GraphManager.publishAllWrites(graphManager, stage); //TODO: not sure this is still neede?
-                        
-                        Thread.sleep(nsDelay/1_000_000,(int)(nsDelay%1_000_000));
-                                                
-                    } catch (InterruptedException e) {
-                        break;
-                    }
-    		    } else if (playNice && 0==(0x3&i++)){
-    		            //one out of every 8 passes we will yield to play nice since we may end up with a lot of threads
-    		            //before doing yield must push any batched up writes & reads
-    		            GraphManager.publishAllWrites(graphManager, stage); //TODO: not sure this is still neede?
-    		            Thread.yield(); //TODO: is there a race condition causing JUnit failures that happens when this is used?
-    		            //nsSleep(1);
-    		            //LockSupport.parkNanos(1); //may be longer than 1ns
-    		            //GraphManager.releaseAllReads(graphManager, stage);
-    		    }
-    			stage.run();			
-    			
-    			
-    		} while (continueRunning(this, stage));	
+	    	if (!GraphManager.isRateLimited(graphManager,  stage.stageId)) {
+	    		int i = 0;
+				do {
+				   if (playNice && 0==(0x3&i++)){
+				            //one out of every 8 passes we will yield to play nice since we may end up with a lot of threads
+				            //before doing yield must push any batched up writes & reads
+				            Thread.yield(); 
+				    }
+					stage.run();					
+					
+				} while (continueRunning(this, stage));
+	    		
+	    	} else {
+	    		runLoopRateLimited(stage);	
+	    	}
 	    }
+	}
+
+	private void runLoopRateLimited(final PronghornStage stage) {
+		int i = 0;
+		do {
+		    long nsDelay =  GraphManager.delayRequiredNS(graphManager,stage.stageId);
+		   
+		    if (nsDelay>0) {
+		        try {
+		            Thread.sleep(nsDelay/1_000_000,(int)(nsDelay%1_000_000));		                                    
+		        } catch (InterruptedException e) {
+		            break;
+		        }
+		    } else if (playNice && 0==(0x3&i++)){
+		            //one out of every 8 passes we will yield to play nice since we may end up with a lot of threads
+		            //before doing yield must push any batched up writes & reads
+		            Thread.yield();
+		    }
+			stage.run();			
+			
+			
+		} while (continueRunning(this, stage));
 	}
 
 	private static boolean continueRunning(ThreadPerStageScheduler tpss, final PronghornStage stage) {

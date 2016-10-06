@@ -10,6 +10,7 @@ public class RowsToColumnRouteStage<M extends MatrixSchema> extends PronghornSta
 	private final Pipe<ColumnSchema<M>>[] columnPipeOutput;
 	private final M matrixSchema;
 	private final int rowLimit;
+	private final int sizeOf;
 	private int remainingRows;
 	
 	protected RowsToColumnRouteStage(GraphManager graphManager, M matrixSchema, Pipe<RowSchema<M>> rowPipeInput, Pipe<ColumnSchema<M>>[] columnPipeOutput) {
@@ -19,8 +20,22 @@ public class RowsToColumnRouteStage<M extends MatrixSchema> extends PronghornSta
 		this.matrixSchema = matrixSchema;
 		this.rowLimit = matrixSchema.getRows();
 		this.remainingRows = rowLimit;
+		this.sizeOf = Pipe.sizeOf(columnPipeOutput[0], matrixSchema.columnId);
+		if (matrixSchema.columns != columnPipeOutput.length) {
+			throw new UnsupportedOperationException(matrixSchema.columns+" was expected to match "+columnPipeOutput.length);
+		}
 	}
 
+	
+	@Override
+	public void shutdown() {
+		int c = columnPipeOutput.length;
+		while (--c>=0) {
+			Pipe.spinBlockForRoom(columnPipeOutput[c], Pipe.EOF_SIZE);
+			Pipe.publishEOF(columnPipeOutput[c]);
+		}
+	}
+	
 	@Override
 	public void run() {
 		
@@ -29,21 +44,18 @@ public class RowsToColumnRouteStage<M extends MatrixSchema> extends PronghornSta
 		final int typeSize = matrixSchema.typeSize;
 
 		
-		while (Pipe.hasContentToRead(rowPipeInput) && ((remainingRows<rowLimit)||allHaveRoomToWrite(columnPipeOutput))  ) {
+		//TODO: by waiting for all outputs to have room then 1 of the compute units can stop any of the others.
+	    //      can we write to those that are available while we wait?			
+		
+		while (Pipe.hasContentToRead(rowPipeInput) && ((remainingRows<rowLimit) || allHaveRoomToWrite(columnPipeOutput))  ) {
 						
 			    ///////////////////////////
 				//begin processing this row
-			    ////////////////
+			    ///////////////////////////
+			
 				int rowId = Pipe.takeMsgIdx(rowPipeInput);
 				if (rowId<0) {
 					assert(remainingRows==rowLimit);
-					int c = columnLimit;
-					while (--c>=0) {
-						Pipe.spinBlockForRoom(columnPipeOutput[c], Pipe.EOF_SIZE);
-						Pipe.publishEOF(columnPipeOutput[c]);
-					}
-					
-					
 					Pipe.confirmLowLevelRead(rowPipeInput, Pipe.EOF_SIZE);
 					Pipe.releaseReadLock(rowPipeInput);
 					requestShutdown();
@@ -93,7 +105,7 @@ public class RowsToColumnRouteStage<M extends MatrixSchema> extends PronghornSta
 								
 					int c = columnLimit;
 					while (--c>=0) {
-						int sizeOf = Pipe.sizeOf(columnPipeOutput[c], matrixSchema.columnId);
+						
 						//System.out.println("wrote col "+sizeOf);
 						Pipe.confirmLowLevelWrite(columnPipeOutput[c], sizeOf);					
 						Pipe.publishWrites(columnPipeOutput[c]);					

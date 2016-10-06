@@ -321,7 +321,7 @@ public class MatrixComputeTest {
 		
 		//TODO: convert all to Decimals for unit test check.
 	
-		MatrixTypes type = MatrixTypes.Doubles;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
+		MatrixTypes type = MatrixTypes.Integers;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
 		
 		//TypeMask.Decimal;
 		
