@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.stage.math;
 
+import java.nio.channels.UnsupportedAddressTypeException;
+
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -14,7 +16,8 @@ public class ColumnsToRowsStage<M extends MatrixSchema> extends PronghornStage{
 	private final int columnLimit;
 	private final int rowLimit;
 	private int remainingRows;
-	
+	private final int colSizeOf;
+	private final int matrixSize;
 	
 	public ColumnsToRowsStage(GraphManager graphManager, M matrixSchema, Pipe<ColumnSchema<M>>[] columnPipeInput, Pipe<RowSchema<M>> matrixPipeOutput) {
 		super(graphManager, columnPipeInput, matrixPipeOutput);
@@ -27,6 +30,9 @@ public class ColumnsToRowsStage<M extends MatrixSchema> extends PronghornStage{
 		this.columnLimit = matrixSchema.getColumns();
 		this.remainingRows = rowLimit;
 		assert(columnLimit==columnPipeInput.length);
+		this.colSizeOf = Pipe.sizeOf(columnPipeInput[0], matrixSchema.columnId);
+		this.matrixSize = Pipe.sizeOf(matrixPipeOutput, matrixSchema.rowId);
+		
 	}
 
 	public void run() {
@@ -37,22 +43,23 @@ public class ColumnsToRowsStage<M extends MatrixSchema> extends PronghornStage{
 			//open all the columns for reading since we are on the first row.
 			//////////////////////
 			if (remainingRows==rowLimit) {		
+				assert(allHaveContentToRead(columnPipeInput));
 				
 				int c = columnPipeInput.length;
 				while (--c>=0) {
 					if (Pipe.takeMsgIdx(columnPipeInput[c])<0) {
 						Pipe.confirmLowLevelRead(columnPipeInput[c], Pipe.EOF_SIZE);
 						Pipe.releaseReadLock(columnPipeInput[c]);
+						
 						shutdownCount--;
-					} 
+					}
 				}
-				if (shutdownCount<=0) {
-					Pipe.spinBlockForRoom(matrixPipeOutput, Pipe.EOF_SIZE);
+				//if any column goes into shutdown then we shutdown them all.
+				if (shutdownCount!=columnPipeInput.length) {
 					Pipe.publishEOF(matrixPipeOutput);				
 					requestShutdown();
 					return;				
 				}
-				
 			}
 			
 			/////
@@ -67,23 +74,23 @@ public class ColumnsToRowsStage<M extends MatrixSchema> extends PronghornStage{
 			//  2 4 6]
 			////////
 			remainingRows--;
-			
-			
-			//Write one row
-			
-			int matrixSize = Pipe.addMsgIdx(matrixPipeOutput, matrixSchema.rowId);				
+						
+			//Write one row			
+			Pipe.addMsgIdx(matrixPipeOutput, matrixSchema.rowId);	
 			
 			long targetLoc = Pipe.workingHeadPosition(matrixPipeOutput); 
-		
+		    int tSize = typeSize;
 			for(int columnIdx=0;columnIdx<columnLimit;columnIdx++) {
 					
-				long sourceLoc = Pipe.getWorkingTailPosition(columnPipeInput[columnIdx]);			
-		
-				Pipe.copyIntsFromToRing(Pipe.slab(columnPipeInput[columnIdx]), (int)sourceLoc, Pipe.slabMask(columnPipeInput[columnIdx]), 
-						                Pipe.slab(matrixPipeOutput), (int)targetLoc, Pipe.slabMask(matrixPipeOutput), typeSize);
+				Pipe<ColumnSchema<M>> colPipeIn = columnPipeInput[columnIdx];
 				
-				Pipe.setWorkingTailPosition(columnPipeInput[columnIdx], sourceLoc+(long)typeSize);					
-				targetLoc+=(long)typeSize;					
+				long sourceLoc = Pipe.getWorkingTailPosition(colPipeIn);			
+		
+				Pipe.copyIntsFromToRing(Pipe.slab(colPipeIn), (int)sourceLoc, Pipe.slabMask(colPipeIn), 
+						                Pipe.slab(matrixPipeOutput), (int)targetLoc, Pipe.slabMask(matrixPipeOutput), tSize);
+				
+				Pipe.setWorkingTailPosition(colPipeIn, sourceLoc+(long)tSize);					
+				targetLoc+=(long)tSize;					
 										
 			}						
 			Pipe.setWorkingHead(matrixPipeOutput, targetLoc);
@@ -95,11 +102,10 @@ public class ColumnsToRowsStage<M extends MatrixSchema> extends PronghornStage{
 				//done with the columns so release them
 				int  c = columnPipeInput.length;
 				while (--c>=0) {
-					int sizeOf = Pipe.sizeOf(columnPipeInput[c], matrixSchema.columnId);
-					Pipe.confirmLowLevelRead(columnPipeInput[c], sizeOf);
-					Pipe.releaseReadLock(columnPipeInput[c]);
-				}			
-				
+					Pipe<ColumnSchema<M>> colPipeIn = columnPipeInput[c];
+					Pipe.confirmLowLevelRead(colPipeIn, colSizeOf);
+					Pipe.releaseReadLock(colPipeIn);
+				}				
 				remainingRows = rowLimit;
 			}
 			
