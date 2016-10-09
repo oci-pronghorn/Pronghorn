@@ -39,6 +39,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     private final String defaultIntDictionaryName = "intDefaults";
     private final String defaultLongDictionaryName = "longDefaults";
     private final String bitMaskName = "bitMask";
+    private final String inPipeName = "input";
     private final boolean generateRunnable;
 
     public PhastDecoderStageGenerator(MessageSchema schema, Appendable target) {
@@ -81,18 +82,19 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
         } else {
             target.append(GraphManager.class.getCanonicalName()).append(" gm, ");
+            target.append("Pipe<RawDataSchema>  " + inPipeName + ", ");
             Appendables.appendClass(target, Pipe.class, schema.getClass()).append(" ").append(pipeVarName).append(") {\n");
 
-            target.append(tab).append("super(gm,NONE,").append(pipeVarName).append(");\n");
+            target.append(tab).append("super(gm," + inPipeName + ",").append(pipeVarName).append(");\n");
             target.append(tab).append("this.").append(pipeVarName).append(" = ").append(pipeVarName).append(";\n");
             target.append(tab);
             Appendables.appendStaticCall(target, Pipe.class, "from").append(pipeVarName).append(").validateGUID(FROM_GUID);\n");
+            target.append(tab + "this." + inPipeName + " = " + inPipeName + ";\n");
         }
         target.append(tab + intDictionaryName + " = new int[150];\n");
         target.append(tab + longDictionaryName + " = new long[150];\n");
         target.append(tab + defaultIntDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
         target.append(tab + defaultLongDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
-        target.append(readerName + " = new DataInputBlobReader<" + schema.getClass().getSimpleName() + ">(output);\n");
         target.append("}\n\n");
 
     }
@@ -117,6 +119,8 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             target.append("import com.ociweb.pronghorn.stage.phast.PhastDecoder;\n");
             target.append("import ").append(DataInputBlobReader.class.getCanonicalName()).append(";\n");
             target.append("import ").append(PronghornStage.class.getCanonicalName()).append(";\n");
+            target.append("import java.util.Arrays;\n");
+            target.append("import com.ociweb.pronghorn.pipe.*;\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -168,20 +172,19 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     @Override
     protected void bodyOfBusinessProcess(Appendable target, int cursor, int firstField, int fieldCount) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
-        PhastDecoder decoder = new PhastDecoder();
         //cursor for generating the method after loop
         int cursor2 = cursor;
 
         int[] tokens = from.tokens;
         long[] scriptIds = from.fieldIdScript;
         String[] scriptNames = from.fieldNameScript;
-        int[] intDict = from.newIntDefaultsDictionary();
-        long[] longDict = from.newLongDefaultsDictionary();
 
         //these fields on if supporting preamble
         //int map = from.preambleOffset;
         //long bitMask = from.templateOffset;
 
+        //make reader
+        target.append("DataInputBlobReader<RawDataSchema> " + readerName + " = Pipe.inputStream(" + inPipeName + ");\n");
         //this will keep track of variable names
         StringBuilder argumentList = new StringBuilder();
 
@@ -192,6 +195,9 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         //pass over group tag 0x10000
         cursor++;
 
+        //TODO: remove these
+        //target.append("System.out.println(Arrays.toString(intDefaults));");
+        //target.append("System.out.println(Arrays.toString(longDefaults));");
         for (int f = cursor; f < (firstField+fieldCount); f++) {
             int token = from.tokens[cursor];
             int pmapType = TokenBuilder.extractType(token);
@@ -266,6 +272,8 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         appendWriteMethodName(target.append(tab), cursor2).append("(");
         target.append(argumentList);
         target.append(");\n");
+
+        target.append(tab + "Pipe.publishWrites(" + pipeVarName + ");");
     }
 
     protected void additionalMethods(Appendable target) throws IOException {
@@ -299,7 +307,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append("private int[] " +intDictionaryName + ";\n");
         target.append("private long[] " +defaultLongDictionaryName + ";\n");
         target.append("private int[] " +defaultIntDictionaryName + ";\n");
-        target.append("DataInputBlobReader<" + schema.getClass().getSimpleName() + "> " + readerName + ";\n");
+        target.append("private Pipe<RawDataSchema> " + inPipeName + ";\n");
 
     }
 

@@ -104,7 +104,7 @@ public class LowLevelGroceryTest {
         //llr.run();
 
     }
-    //@Test
+    @Test
     public void runtimeWriterTest() throws IOException, ParserConfigurationException, SAXException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException, InterruptedException {
         GraphManager gm = new GraphManager();
         FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
