@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertNotNull;
@@ -104,67 +105,106 @@ public class LowLevelGroceryTest {
         //llr.run();
 
     }
-    @Test
+    //@Test
     public void runtimeWriterTest() throws IOException, ParserConfigurationException, SAXException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException, InterruptedException {
         GraphManager gm = new GraphManager();
         FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
         MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);
-        Pipe<MessageSchemaDynamic> pipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));
-        pipe.initBuffers();
+        Pipe<RawDataSchema> inPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));
+        inPipe.initBuffers();
+        Pipe<MessageSchemaDynamic> sharedPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));
+        sharedPipe.initBuffers();
+        Pipe<RawDataSchema> outPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));
+        outPipe.initBuffers();
 
-        //putting data to decode onto pipe
-        DataOutputBlobWriter<MessageSchemaDynamic> writer = new DataOutputBlobWriter<MessageSchemaDynamic>(pipe);
-        //putting pmap
-        PhastEncoder.encodeLongPresent(writer,0,0,1);
-        PhastEncoder.encodeIntPresent(writer,0,0,16);
-        PhastEncoder.encodeLongPresent(writer,0,0,31);
-        PhastEncoder.encodeString(writer, new StringBuilder("the first test"),0,0);
-        PhastEncoder.encodeIntPresent(writer,0,0,25);
-        PhastEncoder.encodeString(writer, new StringBuilder("The second test"),0,0);
-
-
-        PhastEncoder.encodeLongPresent(writer,0,0,1);
-        PhastEncoder.encodeIntPresent(writer,0,0,16);
-        PhastEncoder.encodeLongPresent(writer,0,0,31);
-        PhastEncoder.encodeString(writer, new StringBuilder("the third test"),0,0);
-        PhastEncoder.encodeIntPresent(writer,0,0,25);
-        PhastEncoder.encodeString(writer, new StringBuilder("The fourth test"),0,0);
-
-        PhastEncoder.encodeLongPresent(writer,0,0,17);
-        PhastEncoder.encodeIntPresent(writer,0,0,16);
-        PhastEncoder.encodeLongPresent(writer,0,0,31);
-        PhastEncoder.encodeString(writer, new StringBuilder("the fith test"),0,0);
-        PhastEncoder.encodeIntPresent(writer,0,0,25);
-        PhastEncoder.encodeString(writer, new StringBuilder("The sixth test"),0,0);
-
-        writer.close();
-
+        //get encoder ready
         StringBuilder eTarget = new StringBuilder();
-        PhastDecoderStageGenerator ew = new PhastDecoderStageGenerator(messageSchema, eTarget, false);
+        PhastEncoderStageGenerator ew = new PhastEncoderStageGenerator(messageSchema, eTarget);
         try {
             ew.processSchema();
         } catch (IOException e) {
             e.printStackTrace();
             fail();
         }
-        Constructor constructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClassName(), eTarget, PhastDecoderStageGenerator.class);
-        constructor.newInstance(gm, pipe);
+        Constructor econstructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClassName(), eTarget, PhastEncoderStageGenerator.class);
 
-        Appendable out = new PrintWriter(new ByteArrayOutputStream());
-        //ConsoleSummaryStage dump = new ConsoleSummaryStage(gm, pipe, out );
-        ConsoleJSONDumpStage json = new ConsoleJSONDumpStage(gm, pipe, System.out);
+
+        //get decoder ready
+        StringBuilder dTarget = new StringBuilder();
+        PhastDecoderStageGenerator dw = new PhastDecoderStageGenerator(messageSchema, dTarget, false);
+        try {
+            dw.processSchema();
+        } catch (IOException e) {
+            e.printStackTrace();
+            fail();
+        }
+        Constructor dconstructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClassName(), dTarget, PhastDecoderStageGenerator.class);
+
+        //loading just two messages onto pipe.
+        Random rnd = new Random();
+        int random, storeID, amount, recordID;
+        long date;
+        String productName, units;
+        for (int i = 0; i < 0; i++){
+            //generate random numbers
+            random = rnd.nextInt(20);
+            storeID = (random < 18) ? 4 : random;
+            date = (long)random * 1000;
+            productName = "first string test " + Integer.toString(random);
+            amount = random * 100;
+            recordID = i;
+            units = "second string test " + Integer.toString(random);
+
+            //place them on the pipe
+            Pipe.addIntValue(storeID,inPipe);
+            Pipe.addLongValue(date,inPipe);
+            Pipe.addASCII(productName,inPipe);
+            Pipe.addIntValue(amount,inPipe);
+            Pipe.addIntValue(recordID,inPipe);
+            Pipe.addASCII(units,inPipe);
+            Pipe.confirmLowLevelWrite(inPipe, 11/* fragment 0  size 8*/);
+            Pipe.publishWrites(inPipe);
+        }
+
+        econstructor.newInstance(gm, inPipe, sharedPipe);
+        ConsoleJSONDumpStage json = new ConsoleJSONDumpStage(gm, sharedPipe, System.out);
+
+        //encoding data
         GraphManager.enableBatching(gm);
-        //     MonitorConsoleStage.attach(gm);
-
         ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
         scheduler.playNice=false;
         scheduler.startup();
-        //gm.blockUntilStageBeginsShutdown(gm, constructor);
-
         Thread.sleep(300);
-
         scheduler.shutdown();
         scheduler.awaitTermination(10, TimeUnit.SECONDS);
+
+        //decoding data
+        dconstructor.newInstance(gm, sharedPipe, outPipe);
+        GraphManager.enableBatching(gm);
+        scheduler.playNice=false;
+        scheduler.startup();
+        Thread.sleep(300);
+        scheduler.shutdown();
+        scheduler.awaitTermination(10, TimeUnit.SECONDS);
+
+        StringBuilder strProuctName = new StringBuilder();
+        StringBuilder strUniits = new StringBuilder();
+        for (int i = 0; i < 0; i++) {
+            storeID = Pipe.takeValue(outPipe);
+            date = Pipe.takeLong(outPipe);
+            Pipe.readASCII(outPipe, strProuctName, Pipe.takeRingByteMetaData(outPipe), Pipe.takeRingByteLen(outPipe), Pipe.takeValue(outPipe);
+            amount = Pipe.takeValue(outPipe);
+            recordID = Pipe.takeValue(outPipe);
+            Pipe.readOptionalASCII(outPipe, strUniits, Pipe.takeRingByteMetaData(outPipe), Pipe.takeRingByteLen(outPipe));
+
+            System.out.println("storeID = " + storeID);
+            System.out.println("date = " + date);
+            System.out.println("ProductName = " + strProuctName.toString());
+            System.out.println("amount = " + amount);
+            System.out.println("record ID = " + recordID);
+            System.out.println("Units = " + strUniits.toString());
+        }
+
 
 
     }
