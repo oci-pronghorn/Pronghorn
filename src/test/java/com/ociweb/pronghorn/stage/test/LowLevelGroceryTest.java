@@ -192,10 +192,11 @@ public class LowLevelGroceryTest {
         for (int i = 0; i < 0; i++) {
             storeID = Pipe.takeValue(outPipe);
             date = Pipe.takeLong(outPipe);
-            Pipe.readASCII(outPipe, strProuctName, Pipe.takeRingByteMetaData(outPipe), Pipe.takeRingByteLen(outPipe), Pipe.takeValue(outPipe);
+            strProuctName = Pipe.readASCII(outPipe, strProuctName, Pipe.takeRingByteMetaData(outPipe), Pipe.takeRingByteLen(outPipe));
             amount = Pipe.takeValue(outPipe);
             recordID = Pipe.takeValue(outPipe);
             Pipe.readOptionalASCII(outPipe, strUniits, Pipe.takeRingByteMetaData(outPipe), Pipe.takeRingByteLen(outPipe));
+            Pipe.confirmLowLevelRead(outPipe, 11);
 
             System.out.println("storeID = " + storeID);
             System.out.println("date = " + date);
