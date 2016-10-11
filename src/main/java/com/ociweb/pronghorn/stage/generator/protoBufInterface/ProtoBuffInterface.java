@@ -22,7 +22,7 @@ public class ProtoBuffInterface {
 
     public ProtoBuffInterface(String packageName, MessageSchema schema, Appendable decodeTarget, Appendable encodeTarget, Appendable interfaceTarget, String interfaceClassName) {
         encoderGenerator = new PhastEncoderStageGenerator(schema, encodeTarget);
-        decoderGenerator = new PhastDecoderStageGenerator(schema, decodeTarget, packageName);
+        decoderGenerator = new PhastDecoderStageGenerator(schema, decodeTarget, false);
         this.packageName = packageName;
         this.schema = schema;
         this.interfaceTarget = interfaceTarget;
