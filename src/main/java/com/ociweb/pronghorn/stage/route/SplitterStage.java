@@ -13,7 +13,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  * @author Nathan Tippy
  *
  */
-@Deprecated
+@Deprecated //Use ReplicatorStage
 public class SplitterStage<T extends MessageSchema> extends PronghornStage {
 
 	private Pipe<T> source;
