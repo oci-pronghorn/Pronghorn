@@ -20,7 +20,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.route.SplitterStage;
+import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
@@ -161,7 +161,7 @@ public class GeneratorValidatorTest {
         
 //simple test using split
         PronghornStage generator = new TestGenerator(gm, seed, iterations, pipe(busConfig));        
-        SplitterStage splitter = new SplitterStage(gm, getOutputPipe(gm, generator), pipe(busConfig.grow2x()), pipe(busConfig.grow2x()));       
+        ReplicatorStage splitter = new ReplicatorStage(gm, getOutputPipe(gm, generator), pipe(busConfig.grow2x()), pipe(busConfig.grow2x()));       
         PronghornStage validateResults = new TestValidator(gm, getOutputPipe(gm, splitter, 2), getOutputPipe(gm, splitter, 1));
   
         

@@ -12,7 +12,7 @@ import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
-import com.ociweb.pronghorn.stage.route.SplitterStage;
+import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class BuildMatrixCompute {
@@ -417,7 +417,7 @@ public class BuildMatrixCompute {
 
 		//split the left matrix into N column pipes.
 		new RowsToColumnRouteStage(gm, rightSchema, rightInput, intputAsColumns);
-		new SplitterStage<RowSchema<L>>(gm, leftInput, splitterPipes); //duplicate the matrix once for each column.		
+		new ReplicatorStage<RowSchema<L>>(gm, leftInput, splitterPipes); //duplicate the matrix once for each column.		
 		return resultColumnPipes;
 	}
 
