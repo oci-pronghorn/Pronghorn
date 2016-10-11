@@ -101,7 +101,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
     private static String generateClassName(MessageSchema schema) {
         if (schema instanceof MessageSchemaDynamic) {
-            String name = MessageSchema.from(schema).name.replaceAll("/", "").replaceAll(".xml", "")+"DecoderStage";
+            String name = MessageSchema.from(schema).name.replaceAll("/", "").replaceAll(".xml", "")+"Decoder";
             if (Character.isLowerCase(name.charAt(0))) {
                 return Character.toUpperCase(name.charAt(0))+name.substring(1);
             }
