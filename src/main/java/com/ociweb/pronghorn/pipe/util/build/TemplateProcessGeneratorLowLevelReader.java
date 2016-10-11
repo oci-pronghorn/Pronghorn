@@ -54,14 +54,15 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
     
     private final String packageName;
     private final String className;
+    private final String baseClassName;
     
     protected final String readerName = "reader";
     
     public TemplateProcessGeneratorLowLevelReader(MessageSchema schema, Appendable bodyTarget) {
-    	this(schema, bodyTarget, "LowLevelReader", "com.ociweb.pronghorn.pipe.build");
+    	this(schema, bodyTarget, "LowLevelReader implements Runnable", "LowLevelReader", "com.ociweb.pronghorn.pipe.build");
     }
     
-    public TemplateProcessGeneratorLowLevelReader(MessageSchema schema, Appendable bodyTarget, String className, String packageName) {
+    public TemplateProcessGeneratorLowLevelReader(MessageSchema schema, Appendable bodyTarget, String className, String baseClassName, String packageName) {
         super(schema);
         
         this.hasSimpleMessagesOnly = MessageSchema.from(schema).hasSimpleMessagesOnly;        
@@ -77,6 +78,7 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         this.workspacesDefined = new long[maxFieldCount];
         
         this.className = className;
+        this.baseClassName = baseClassName;
         this.packageName = packageName;
                 
     }
@@ -86,7 +88,7 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
     }
 
     public String getClassName() {
-        return className;
+        return baseClassName;
     }
     
     public String getPackageName() {
@@ -959,11 +961,11 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
     }
 
 	private void defineClassAndConstructor() throws IOException {
-		bodyTarget.append("public class ").append(className).append(" implements Runnable {\n");
+		bodyTarget.append("public class ").append(className).append(" {\n");
 
         bodyTarget.append("\n");
         
-        buildConstructors(bodyTarget, className);
+        buildConstructors(bodyTarget, baseClassName);
         
         bodyTarget.append("private void requestShutdown() {};\n"); //only here so generated code passes compile.
 	}
