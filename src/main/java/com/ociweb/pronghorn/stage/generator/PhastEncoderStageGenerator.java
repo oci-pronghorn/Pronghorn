@@ -50,7 +50,9 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         try {
             target.append("import ").append(schema.getClass().getCanonicalName()).append(";\n");
             target.append("import " + DECODER_CLASS_NAME + ";\n");
-            target.append("import " + DATA_BLOB_WRITER_CLASS + ";\n\n");
+            target.append("import " + DATA_BLOB_WRITER_CLASS + ";\n");
+            target.append("import java.util.Arrays;\n");
+            target.append("import com.ociweb.pronghorn.pipe.*;\n\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
