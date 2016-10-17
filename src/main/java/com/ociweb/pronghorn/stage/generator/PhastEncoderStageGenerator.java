@@ -54,7 +54,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 //    }
 
     public PhastEncoderStageGenerator(MessageSchema schema, Appendable bodyTarget) {
-        super(schema, bodyTarget, generateClassName(schema) + "extends PronghornStage",
+        super(schema, bodyTarget, generateClassName(schema) + " extends PronghornStage",
              generateClassName(schema), schema.getClass().getPackage().getName()+".build");
         this.bodyTarget = bodyTarget;
         generateRunnable = false;
@@ -62,7 +62,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
     private static String generateClassName(MessageSchema schema) {
         if (schema instanceof MessageSchemaDynamic) {
-            String name = MessageSchema.from(schema).name.replaceAll("/", "").replaceAll(".xml", "")+"Encoder";
+            String name = MessageSchema.from(schema).name.replaceAll("/", "").replaceAll(".xml", "")+"EncoderStage";
             if (Character.isLowerCase(name.charAt(0))) {
                 return Character.toUpperCase(name.charAt(0))+name.substring(1);
             }
@@ -79,7 +79,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             target.append("import " + DECODER_CLASS_NAME + ";\n");
             target.append("import " + DATA_BLOB_WRITER_CLASS + ";\n");
             target.append("import java.util.Arrays;\n");
-            target.append("import com.ociweb.pronghorn.pipe.*;\n\n");
+            target.append("import com.ociweb.pronghorn.pipe.*;\n");
+            target.append("import com.ociweb.pronghorn.stage.PronghornStage;\n\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -127,8 +128,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         } else {
             target.append(GraphManager.class.getCanonicalName()).append(" gm, ");
 
-            target.append("Pipe<MessageSchemaDynamic>  " + outPipeName + ", ");
-            target.append("Pipe<RawDataSchema> " + inPipeName + ") {\n");
+            target.append("Pipe<MessageSchemaDynamic>  " + inPipeName + ", ");
+            target.append("Pipe<RawDataSchema> " + outPipeName + ") {\n");
             //Appendables.appendClass(target, Pipe.class, schema.getClass()).append(" ").append(outPipeName).append(") {\n");
 
             target.append(tab).append("super(gm," + inPipeName + ",").append(outPipeName).append(");\n");
