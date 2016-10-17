@@ -91,8 +91,8 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             Appendables.appendStaticCall(target, Pipe.class, "from").append(pipeVarName).append(").validateGUID(FROM_GUID);\n");
             target.append(tab + "this." + inPipeName + " = " + inPipeName + ";\n");
         }
-        target.append(tab + intDictionaryName + " = new int[150];\n");
-        target.append(tab + longDictionaryName + " = new long[150];\n");
+        target.append(tab + intDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
+        target.append(tab + longDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
         target.append(tab + defaultIntDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
         target.append(tab + defaultLongDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
         target.append("}\n\n");
@@ -209,19 +209,19 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
-                        decodeCopyIntGenerator(target, f);
+                        decodeCopyIntGenerator(target, TokenBuilder.extractId(token));
                         break;
                     case OperatorMask.Field_Constant:
                         //this intentionally left blank, does nothing if constant
                         break;
                     case OperatorMask.Field_Default:
-                        decodeDefaultIntGenerator(target, f);
+                        decodeDefaultIntGenerator(target, TokenBuilder.extractId(token));
                         break;
                     case OperatorMask.Field_Delta:
-                        decodeDeltaIntGenerator(target, f);
+                        decodeDeltaIntGenerator(target, TokenBuilder.extractId(token));
                         break;
                     case OperatorMask.Field_Increment:
-                        decodeIncrementIntGenerator(target, f);
+                        decodeIncrementIntGenerator(target, TokenBuilder.extractId(token));
                         break;
                     case OperatorMask.Field_None:
                         target.append("0;//no oper currently not supported.\n");
@@ -237,19 +237,19 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
-                        decodeDeltaLongGenerator(target, f);
+                        decodeDeltaLongGenerator(target, TokenBuilder.extractId(token));
                         break;
                     case OperatorMask.Field_Constant:
                         //this intentionally left blank, does nothing if constant
                         break;
                     case OperatorMask.Field_Default:
-                        decocdeDefaultLongGenerator(target, f);
+                        decocdeDefaultLongGenerator(target, TokenBuilder.extractId(token));
                         break;
                     case OperatorMask.Field_Delta:
-                        decodeDeltaLongGenerator(target, f);
+                        decodeDeltaLongGenerator(target, TokenBuilder.extractId(token));
                         break;
                     case OperatorMask.Field_Increment:
-                        decodeIncrementLongGenerator(target, f);
+                        decodeIncrementLongGenerator(target, TokenBuilder.extractId(token));
                         break;
                 }
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");

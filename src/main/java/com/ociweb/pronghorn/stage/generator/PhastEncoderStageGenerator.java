@@ -86,17 +86,6 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
 
-    // Additional Token method to append any longs, ins or string variables
-    @Override
-    protected void startupBody(Appendable target) throws IOException {
-        target.append("\n" + tab + intDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
-        target.append(tab + longDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
-        target.append(tab + defIntDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
-        target.append(tab + defLongDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
-        //isntantiate pipe
-        //target.append(tab + writerName + " = new DataOutputBlobWriter<" + schema.getClass().getSimpleName() + ">(input);\n");
-
-    }
 
     @Override
     protected void additionalMembers(Appendable target) throws IOException {
@@ -139,8 +128,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             Appendables.appendStaticCall(target, Pipe.class, "from").append(outPipeName).append(").validateGUID(FROM_GUID);\n");
 
         }
-        target.append(tab + intDictionaryName + " = new int[150];\n");
-        target.append(tab + longDictionaryName + " = new long[150];\n");
+        target.append(tab + intDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
+        target.append(tab + longDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
         target.append(tab + defIntDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
         target.append(tab + defLongDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
         target.append("}\n\n");
@@ -225,19 +214,19 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     numShifts = 1;
                     switch (oper) {
                         case OperatorMask.Field_Copy:
-                            copyIntGenerator(schema, bodyTarget, paramIdx, varName);
+                            copyIntGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName);
                             break;
                         case OperatorMask.Field_Constant:
                             //this intentionally left blank, does nothing if constant
                             break;
                         case OperatorMask.Field_Default:
-                            encodeDefaultIntGenerator(schema, bodyTarget, paramIdx, varName);
+                            encodeDefaultIntGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName);
                             break;
                         case OperatorMask.Field_Delta:
-                            encodeDeltaIntGenerator(schema, bodyTarget, paramIdx, varName);
+                            encodeDeltaIntGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName);
                             break;
                         case OperatorMask.Field_Increment:
-                            incrementIntGenerator(schema, bodyTarget, paramIdx, varName);
+                            incrementIntGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName);
                             break;
                         case OperatorMask.Field_None:
                             bodyTarget.append("//no oper, not supported yet.\n");
@@ -252,19 +241,19 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     numShifts = 1;
                     switch (oper) {
                         case OperatorMask.Field_Copy:
-                            copyLongGenerator(schema, bodyTarget, paramIdx, varName);
+                            copyLongGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName);
                             break;
                         case OperatorMask.Field_Constant:
                             //this intentionally left blank, does nothing if constant
                             break;
                         case OperatorMask.Field_Default:
-                            encodeDefaultLongGenerator(schema, bodyTarget, paramIdx, varName);
+                            encodeDefaultLongGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName);
                             break;
                         case OperatorMask.Field_Delta:
-                            encodeDeltaLongGenerator(schema, bodyTarget, paramIdx, varName);
+                            encodeDeltaLongGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName);
                             break;
                         case OperatorMask.Field_Increment:
-                            incrementLongGenerator(schema, bodyTarget, paramIdx, varName);
+                            incrementLongGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName);
                             break;
                     }
                 } //if string
