@@ -10,13 +10,13 @@ import java.util.Random;
 /**
  * Created by jake on 10/17/16.
  */
-public class RandomeReaderStage extends PronghornStage {
+public class RandomReaderStage extends PronghornStage {
 
 
     Pipe<MessageSchemaDynamic> input;
 
 
-    public RandomeReaderStage(GraphManager gm, Pipe<MessageSchemaDynamic>  input){
+    public RandomReaderStage(GraphManager gm, Pipe<MessageSchemaDynamic>  input){
         super(gm,input,NONE);
         this.input = input;
     }

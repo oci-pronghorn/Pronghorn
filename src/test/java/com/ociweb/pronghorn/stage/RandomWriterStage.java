@@ -10,13 +10,13 @@ import java.util.Random;
 /**
  * Created by jake on 10/17/16.
  */
-public class RandomWriterGeneratorStage extends PronghornStage{
+public class RandomWriterStage extends PronghornStage{
 
 
     Pipe<MessageSchemaDynamic>  output;
 
 
-    public RandomWriterGeneratorStage(GraphManager gm, Pipe<MessageSchemaDynamic>  output){
+    public RandomWriterStage(GraphManager gm, Pipe<MessageSchemaDynamic>  output){
         super(gm,NONE,output);
         this.output = output;
     }
@@ -53,7 +53,7 @@ public class RandomWriterGeneratorStage extends PronghornStage{
             }
 
             Pipe.publishEOF(output);
-            
+
     }
 
 }

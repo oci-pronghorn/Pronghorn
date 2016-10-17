@@ -4,8 +4,7 @@ import com.ociweb.pronghorn.code.LoaderUtil;
 import com.ociweb.pronghorn.pipe.*;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.RandomWriterGeneratorStage;
-import com.ociweb.pronghorn.stage.RandomeReaderStage;
+import com.ociweb.pronghorn.stage.RandomWriterStage;
 import com.ociweb.pronghorn.stage.generator.PhastDecoderStageGenerator;
 import com.ociweb.pronghorn.stage.generator.PhastEncoderStageGenerator;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -119,10 +118,10 @@ public class LowLevelGroceryTest {
         }
         Constructor dconstructor =  LoaderUtil.generateThreeArgConstructor(dw.getPackageName(), dw.getClassName(), dTarget, PhastDecoderStageGenerator.class);
 
-        RandomWriterGeneratorStage random1 = new RandomWriterGeneratorStage(gm, inPipe);
+        RandomWriterStage random1 = new RandomWriterStage(gm, inPipe);
         econstructor.newInstance(gm, inPipe, sharedPipe);
         //dconstructor.newInstance(gm, sharedPipe, outPipe);
-        //RandomeReaderStage rand2 = new RandomeReaderStage(gm, outPipe);
+        //RandomReaderStage rand2 = new RandomReaderStage(gm, outPipe);
         ConsoleJSONDumpStage json = new ConsoleJSONDumpStage(gm, sharedPipe);
 
         //encoding data
