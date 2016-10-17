@@ -966,9 +966,14 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         bodyTarget.append("\n");
         
         buildConstructors(bodyTarget, baseClassName);
-        
-        bodyTarget.append("private void requestShutdown() {};\n"); //only here so generated code passes compile.
+
+        generateRequestShutDown();
 	}
+
+    protected void generateRequestShutDown() throws IOException {
+
+        bodyTarget.append("private void requestShutdown() {};\n"); //only here so generated code passes compile.
+    }
 
     protected void buildConstructors(Appendable target, String className) throws IOException {
     }
