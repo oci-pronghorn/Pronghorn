@@ -138,7 +138,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
     @Override
     protected void generateRequestShutDown() throws IOException { }
-
+    
     // BodyBuilder OverRide. Lots of Good stuff goes here
     // Creates Pmap for encoding
     @Override
