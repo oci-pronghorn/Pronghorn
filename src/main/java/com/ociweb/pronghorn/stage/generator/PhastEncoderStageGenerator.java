@@ -18,6 +18,7 @@ import java.util.logging.Level;
 
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
@@ -134,6 +135,9 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append(tab + defLongDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
         target.append("}\n\n");
     }
+
+    @Override
+    protected void generateRequestShutDown() throws IOException { }
 
     // BodyBuilder OverRide. Lots of Good stuff goes here
     // Creates Pmap for encoding
