@@ -126,7 +126,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             target.append(tab).append("this." + outPipeName + " = " + outPipeName + ";\n");
             target.append(tab + "this." + inPipeName + " = " + inPipeName + ";\n");
             target.append(tab);
-            Appendables.appendStaticCall(target, Pipe.class, "from").append(outPipeName).append(").validateGUID(FROM_GUID);\n");
+            Appendables.appendStaticCall(target, Pipe.class, "from").append(inPipeName).append(").validateGUID(FROM_GUID);\n");
 
         }
         target.append(tab + intDictionaryName + " = FROM.newIntDefaultsDictionary();\n");

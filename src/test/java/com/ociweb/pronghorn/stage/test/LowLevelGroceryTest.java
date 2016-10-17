@@ -133,13 +133,13 @@ public class LowLevelGroceryTest {
         String productName, units;
         for (int i = 0; i < 0; i++){
             //generate random numbers
-            random = rnd.nextInt(20);
-            storeID = (random < 18) ? 4 : random;
-            date = (long)random * 1000;
-            productName = "first string test " + Integer.toString(random);
+            random = rnd.nextInt(50000);
+            storeID = rnd.nextInt(50000);
+            date = (long)rnd.nextInt(50000);
+            productName = "first string test " + Integer.toString(rnd.nextInt(50000));
             amount = random * 100;
             recordID = i;
-            units = "second string test " + Integer.toString(random);
+            units = "second string test " + Integer.toString(rnd.nextInt(50000));
 
             //place them on the pipe
             Pipe.addIntValue(storeID,inPipe);
