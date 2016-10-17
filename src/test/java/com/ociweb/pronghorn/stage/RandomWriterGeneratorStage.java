@@ -23,43 +23,37 @@ public class RandomWriterGeneratorStage extends PronghornStage{
 
     @Override
     public void run() {
-        while (true){
             Random rnd = new Random();
             int random, storeID, amount, recordID;
             long date;
             String productName, units;
-            int i = 0;
-            while (Pipe.hasRoomForWrite(output)){
-                //generate random numbers
-                random = rnd.nextInt(50000);
-                storeID = rnd.nextInt(50000);
-                date = (long)rnd.nextInt(50000);
-                productName = "first string test " + Integer.toString(rnd.nextInt(50000));
-                amount = random * 100;
-                recordID = i;
-                units = "second string test " + Integer.toString(rnd.nextInt(50000));
-                //put message
-                Pipe.addMsgIdx(output,0);
-                //place them on the pipe
-                Pipe.addIntValue(storeID,output);
-                Pipe.addLongValue(date,output);
-                Pipe.addASCII(productName,output);
-                Pipe.addIntValue(amount,output);
-                Pipe.addIntValue(recordID,output);
-                Pipe.addASCII(units,output);
-                Pipe.confirmLowLevelWrite(output, 11);
-                Pipe.publishWrites(output);
+            for (int i = 0; i < 10; i++){
 
-                System.out.println("storeID = " + storeID);
-                System.out.println("date = " + date);
-                System.out.println("ProductName = " + productName.toString());
-                System.out.println("amount = " + amount);
-                System.out.println("record ID = " + recordID);
-                System.out.println("Units = " + units.toString());
-
-                i++;
+                if (Pipe.hasRoomForWrite(output)) {
+                    //generate random numbers
+                    random = rnd.nextInt(50000);
+                    storeID = rnd.nextInt(50000);
+                    date = (long) rnd.nextInt(50000);
+                    productName = "first string test " + Integer.toString(rnd.nextInt(50000));
+                    amount = random * 100;
+                    recordID = i;
+                    units = "second string test " + Integer.toString(rnd.nextInt(50000));
+                    //put message
+                    Pipe.addMsgIdx(output, 0);
+                    //place them on the pipe
+                    Pipe.addIntValue(storeID, output);
+                    Pipe.addLongValue(date, output);
+                    Pipe.addASCII(productName, output);
+                    Pipe.addIntValue(amount, output);
+                    Pipe.addIntValue(recordID, output);
+                    Pipe.addASCII(units, output);
+                    Pipe.confirmLowLevelWrite(output, 11);
+                    Pipe.publishWrites(output);
+                }
             }
-        }
+
+            Pipe.publishEOF(output);
+            
     }
 
 }

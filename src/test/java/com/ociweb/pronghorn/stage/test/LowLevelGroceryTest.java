@@ -121,15 +121,16 @@ public class LowLevelGroceryTest {
 
         RandomWriterGeneratorStage random1 = new RandomWriterGeneratorStage(gm, inPipe);
         econstructor.newInstance(gm, inPipe, sharedPipe);
-        dconstructor.newInstance(gm, sharedPipe, outPipe);
-        RandomeReaderStage rand2 = new RandomeReaderStage(gm, outPipe);
+        //dconstructor.newInstance(gm, sharedPipe, outPipe);
+        //RandomeReaderStage rand2 = new RandomeReaderStage(gm, outPipe);
+        ConsoleJSONDumpStage json = new ConsoleJSONDumpStage(gm, sharedPipe);
 
         //encoding data
         GraphManager.enableBatching(gm);
         ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
         scheduler.playNice=false;
         scheduler.startup();
-        Thread.sleep(3);
+        Thread.sleep(300);
         scheduler.shutdown();
         scheduler.awaitTermination(10, TimeUnit.SECONDS);
 

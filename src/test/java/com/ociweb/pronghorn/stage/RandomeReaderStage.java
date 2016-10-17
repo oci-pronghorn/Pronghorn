@@ -23,14 +23,13 @@ public class RandomeReaderStage extends PronghornStage {
 
     @Override
     public void run() {
-        while (Pipe.hasContentToRead(input)){
             Random rnd = new Random();
             int random, storeID, amount, recordID, msgID;
             long date;
             String productName, units;
             StringBuilder strProuctName = new StringBuilder();
             StringBuilder strUniits = new StringBuilder();
-            while (true){
+            while(Pipe.hasContentToRead(input)){
                 msgID = Pipe.takeValue(input);
                 storeID = Pipe.takeValue(input);
                 date = Pipe.takeLong(input);
@@ -39,7 +38,14 @@ public class RandomeReaderStage extends PronghornStage {
                 recordID = Pipe.takeValue(input);
                 Pipe.readOptionalASCII(input, strUniits, Pipe.takeRingByteMetaData(input), Pipe.takeRingByteLen(input));
                 Pipe.confirmLowLevelRead(input, 11);
+
+
+                System.out.println("storeID = " + storeID);
+                System.out.println("date = " + date);
+                System.out.println("ProductName = " + strProuctName.toString());
+                System.out.println("amount = " + amount);
+                System.out.println("record ID = " + recordID);
+                System.out.println("Units = " + strUniits.toString());
             }
-        }
     }
 }
