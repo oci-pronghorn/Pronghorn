@@ -4,26 +4,19 @@ import com.ociweb.pronghorn.code.LoaderUtil;
 import com.ociweb.pronghorn.pipe.*;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.generator.FuzzDataStageGenerator;
+import com.ociweb.pronghorn.stage.RandomWriterGeneratorStage;
+import com.ociweb.pronghorn.stage.RandomeReaderStage;
 import com.ociweb.pronghorn.stage.generator.PhastDecoderStageGenerator;
 import com.ociweb.pronghorn.stage.generator.PhastEncoderStageGenerator;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
-import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
-import com.ociweb.pronghorn.stage.phast.PhastDecoder;
-import com.ociweb.pronghorn.stage.phast.PhastEncoder;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
-import com.ociweb.pronghorn.stage.test.ConsoleSummaryStage;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertNotNull;
@@ -126,72 +119,21 @@ public class LowLevelGroceryTest {
         }
         Constructor dconstructor =  LoaderUtil.generateThreeArgConstructor(dw.getPackageName(), dw.getClassName(), dTarget, PhastDecoderStageGenerator.class);
 
-        //loading just two messages onto pipe.
-        Random rnd = new Random();
-        int random, storeID, amount, recordID;
-        long date;
-        String productName, units;
-        for (int i = 0; i < 0; i++){
-            //generate random numbers
-            random = rnd.nextInt(50000);
-            storeID = rnd.nextInt(50000);
-            date = (long)rnd.nextInt(50000);
-            productName = "first string test " + Integer.toString(rnd.nextInt(50000));
-            amount = random * 100;
-            recordID = i;
-            units = "second string test " + Integer.toString(rnd.nextInt(50000));
-
-            //place them on the pipe
-            Pipe.addIntValue(storeID,inPipe);
-            Pipe.addLongValue(date,inPipe);
-            Pipe.addASCII(productName,inPipe);
-            Pipe.addIntValue(amount,inPipe);
-            Pipe.addIntValue(recordID,inPipe);
-            Pipe.addASCII(units,inPipe);
-            Pipe.confirmLowLevelWrite(inPipe, 11);
-            Pipe.publishWrites(inPipe);
-        }
-
+        RandomWriterGeneratorStage random1 = new RandomWriterGeneratorStage(gm, inPipe);
         econstructor.newInstance(gm, inPipe, sharedPipe);
-        ConsoleJSONDumpStage json = new ConsoleJSONDumpStage(gm, sharedPipe, System.out);
+        dconstructor.newInstance(gm, sharedPipe, outPipe);
+        RandomeReaderStage rand2 = new RandomeReaderStage(gm, outPipe);
 
         //encoding data
         GraphManager.enableBatching(gm);
         ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
         scheduler.playNice=false;
         scheduler.startup();
-        Thread.sleep(300);
+        Thread.sleep(3);
         scheduler.shutdown();
         scheduler.awaitTermination(10, TimeUnit.SECONDS);
 
-        //decoding data
-        dconstructor.newInstance(gm, sharedPipe, outPipe);
-        GraphManager.enableBatching(gm);
-        scheduler.playNice=false;
-        scheduler.startup();
-        Thread.sleep(300);
-        scheduler.shutdown();
-        scheduler.awaitTermination(10, TimeUnit.SECONDS);
-
-        StringBuilder strProuctName = new StringBuilder();
-        StringBuilder strUniits = new StringBuilder();
-        for (int i = 0; i < 0; i++) {
-            storeID = Pipe.takeValue(outPipe);
-            date = Pipe.takeLong(outPipe);
-            strProuctName = Pipe.readASCII(outPipe, strProuctName, Pipe.takeRingByteMetaData(outPipe), Pipe.takeRingByteLen(outPipe));
-            amount = Pipe.takeValue(outPipe);
-            recordID = Pipe.takeValue(outPipe);
-            Pipe.readOptionalASCII(outPipe, strUniits, Pipe.takeRingByteMetaData(outPipe), Pipe.takeRingByteLen(outPipe));
-            Pipe.confirmLowLevelRead(outPipe, 11);
-
-            System.out.println("storeID = " + storeID);
-            System.out.println("date = " + date);
-            System.out.println("ProductName = " + strProuctName.toString());
-            System.out.println("amount = " + amount);
-            System.out.println("record ID = " + recordID);
-            System.out.println("Units = " + strUniits.toString());
-        }
-
+        System.out.println(inPipe.toString());
 
 
     }
