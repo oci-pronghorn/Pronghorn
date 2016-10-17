@@ -113,7 +113,7 @@ public class LowLevelGroceryTest {
             fail();
         }
 
-        Constructor econstructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClass().getName(), eTarget, PhastEncoderStageGenerator.class);
+        Constructor econstructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClassName(), eTarget, PhastEncoderStageGenerator.class);
 
         //get decoder ready
         StringBuilder dTarget = new StringBuilder();
@@ -192,7 +192,7 @@ public class LowLevelGroceryTest {
             System.out.println("Units = " + strUniits.toString());
         }
 
-        
+
 
     }
 }
