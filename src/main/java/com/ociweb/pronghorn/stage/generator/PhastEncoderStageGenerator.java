@@ -12,7 +12,12 @@ import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.pipe.token.*;
 import com.ociweb.pronghorn.pipe.util.build.TemplateProcessGeneratorLowLevelReader;
+
+import java.nio.channels.Pipe;
 import java.util.logging.Level;
+
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
@@ -33,16 +38,38 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     private final String indexName = "idx";
     private final String bitMaskName = "bitMask";
     private final String intValueName = "intVal";
+    private final String inPipeName = "input";
     private final String outPipeName = "output";
-    
+    private final boolean generateRunnable;
+
     private static final String tab = "    ";
     private static final Logger logger = LoggerFactory.getLogger(PhastEncoderStageGenerator.class);
-    public static final String DECODER_CLASS_NAME = "com.ociweb.pronghorn.stage.phast.PhastEncoder";
-    public static final String DATA_BLOB_WRITER_CLASS = "com.ociweb.pronghorn.pipe.DataOutputBlobWriter";
+    private static final String DECODER_CLASS_NAME = "com.ociweb.pronghorn.stage.phast.PhastEncoder";
+    private static final String DATA_BLOB_WRITER_CLASS = "com.ociweb.pronghorn.pipe.DataOutputBlobWriter";
+
+//    public PhastEncoderStageGenerator(MessageSchema schema, Appendable bodyTarget) {
+//        super(schema, bodyTarget);
+//        this.bodyTarget = bodyTarget;
+//        generateRunnable = false;
+//    }
 
     public PhastEncoderStageGenerator(MessageSchema schema, Appendable bodyTarget) {
-        super(schema, bodyTarget);
+        super(schema, bodyTarget, generateClassName(schema) + "extends PronghornStage",
+             generateClassName(schema), schema.getClass().getPackage().getName()+".build");
         this.bodyTarget = bodyTarget;
+        generateRunnable = false;
+    }
+
+    private static String generateClassName(MessageSchema schema) {
+        if (schema instanceof MessageSchemaDynamic) {
+            String name = MessageSchema.from(schema).name.replaceAll("/", "").replaceAll(".xml", "")+"Encoder";
+            if (Character.isLowerCase(name.charAt(0))) {
+                return Character.toUpperCase(name.charAt(0))+name.substring(1);
+            }
+            return name;
+        } else {
+            return (schema.getClass().getSimpleName().replace("Schema", ""))+"Writer";
+        }
     }
     
     @Override
@@ -66,7 +93,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append(tab + defIntDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
         target.append(tab + defLongDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
         //isntantiate pipe
-        target.append(tab + writerName + " = new DataOutputBlobWriter<" + schema.getClass().getSimpleName() + ">(input);\n");
+        //target.append(tab + writerName + " = new DataOutputBlobWriter<" + schema.getClass().getSimpleName() + ">(input);\n");
 
     }
 
@@ -76,13 +103,46 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append("int[] " + intDictionaryName + ";\n");
         target.append("long[] " + defLongDictionaryName + ";\n");
         target.append("int[] " + defIntDictionaryName + ";\n");
-        //isntantiate pipe        
+        //isntantiate pipe
         target.append("DataOutputBlobWriter<" + schema.getClass().getSimpleName() + "> " + writerName + ";\n");
+        //target.append("private Pipe<MessageSchemaDynamic> " + inPipeName + ";\n");
         target.append("private Pipe<RawDataSchema> " + outPipeName + ";\n");
     }
 
     private void generateVariables(MessageSchema schema, Appendable target) throws IOException {
         target.append(tab + "long " + pmapName + " = 0;\n");
+    }
+    
+    @Override
+    protected void buildConstructors(Appendable target, String className) throws IOException {
+        target.append("public ").append(className).append("(");
+        if (generateRunnable) {
+            target.append(") { \n");
+
+            FieldReferenceOffsetManager from = MessageSchema.from(schema);
+            if (!from.hasSimpleMessagesOnly) {
+                target.append(tab).append("startup();\n");
+            }
+
+        } else {
+            target.append(GraphManager.class.getCanonicalName()).append(" gm, ");
+
+            target.append("Pipe<MessageSchemaDynamic>  " + inPipeName + ", ");
+            target.append("Pipe<RawDataSchema> " + outPipeName + ") {\n");
+            //Appendables.appendClass(target, Pipe.class, schema.getClass()).append(" ").append(outPipeName).append(") {\n");
+
+            target.append(tab).append("super(gm," + inPipeName + ",").append(outPipeName).append(");\n");
+            target.append(tab).append("this." + outPipeName + " = " + outPipeName + ";\n");
+            target.append(tab + "this." + inPipeName + " = " + inPipeName + ";\n");
+            target.append(tab);
+            Appendables.appendStaticCall(target, Pipe.class, "from").append(outPipeName).append(").validateGUID(FROM_GUID);\n");
+
+        }
+        target.append(tab + intDictionaryName + " = new int[150];\n");
+        target.append(tab + longDictionaryName + " = new long[150];\n");
+        target.append(tab + defIntDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
+        target.append(tab + defLongDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
+        target.append("}\n\n");
     }
 
     // BodyBuilder OverRide. Lots of Good stuff goes here
@@ -104,7 +164,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
             //call to instantiate dictionaries
             generateVariables(schema, bodyTarget);
-            bodyTarget.append("DataOutputBlobWriter<RawDataSchema> " + writerName + " =Pipe.outputStream("
+            bodyTarget.append(tab + "DataOutputBlobWriter<RawDataSchema> " + writerName + " = Pipe.outputStream("
                     + outPipeName + ");\n");
 
             //traverse all tokens and print out a pmap builder for each of them
@@ -218,7 +278,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 }
                 curCursor2 += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
                 //pipeVarName needs protected status
-                //bodyTarget.append(tab + "Pipe.confirmLowLevelRead(" + pipeVarName + ", )" + size + ");\n");
+                //bodyTarget.append(tab + "Pipe.confirmLowLevelRead(" + inPipeName + ", )" +  + ");\n");
+                //bodyTarget.append(tab + "Pipe.releaseLock(" + )
             }
         } catch (IOException e) {
             java.util.logging.Logger.getLogger(PhastEncoderStageGenerator.class.getName()).log(Level.SEVERE, null, e);
