@@ -68,7 +68,7 @@ public class LowLevelGroceryTest {
     private static void validateCleanCompile(String packageName, String className, StringBuilder target) {
         try {
 
-            Class generateClass = LoaderUtil.generateClass(packageName, className, target, FuzzDataStageGenerator.class);
+            Class generateClass = LoaderUtil.generateClass(packageName, className, target, PhastEncoderStageGenerator.class);
 
             if (generateClass.isAssignableFrom(PronghornStage.class)) {
                 Constructor constructor = generateClass.getConstructor(GraphManager.class, Pipe.class);
@@ -113,7 +113,7 @@ public class LowLevelGroceryTest {
             fail();
         }
 
-        Constructor econstructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClassName(), eTarget, PhastEncoderStageGenerator.class);
+        Constructor econstructor =  LoaderUtil.generateThreeArgConstructor(ew.getPackageName(), ew.getClassName(), eTarget, PhastEncoderStageGenerator.class);
 
         //get decoder ready
         StringBuilder dTarget = new StringBuilder();
@@ -124,7 +124,7 @@ public class LowLevelGroceryTest {
             e.printStackTrace();
             fail();
         }
-        Constructor dconstructor =  LoaderUtil.generateClassConstructor(dw.getPackageName(), dw.getClassName(), dTarget, PhastDecoderStageGenerator.class);
+        Constructor dconstructor =  LoaderUtil.generateThreeArgConstructor(dw.getPackageName(), dw.getClassName(), dTarget, PhastDecoderStageGenerator.class);
 
         //loading just two messages onto pipe.
         Random rnd = new Random();
