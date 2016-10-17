@@ -91,22 +91,8 @@ public class LowLevelGroceryTest {
 
     }
 
-
-    //@Test
-    public void runTimeReaderTest() throws IOException, SAXException, ParserConfigurationException {
-        FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
-        MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);
-        Pipe<MessageSchemaDynamic> pipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));
-        pipe.initBuffers();
-        PipeWriter.tryWriteFragment(pipe,1);
-        Pipe.publishWrites(pipe);
-
-        //LowLevelReader llr = new LowLevelReader(pipe);
-        //llr.run();
-
-    }
-    //@Test
-    public void runtimeWriterTest() throws IOException, ParserConfigurationException, SAXException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException, InterruptedException {
+    @Test
+    public void runTimeTest() throws IOException, ParserConfigurationException, SAXException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException, InterruptedException {
         GraphManager gm = new GraphManager();
         FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
         MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);
@@ -126,8 +112,8 @@ public class LowLevelGroceryTest {
             e.printStackTrace();
             fail();
         }
-        Constructor econstructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClassName(), eTarget, PhastEncoderStageGenerator.class);
 
+        Constructor econstructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClass().getName(), eTarget, PhastEncoderStageGenerator.class);
 
         //get decoder ready
         StringBuilder dTarget = new StringBuilder();
@@ -138,7 +124,7 @@ public class LowLevelGroceryTest {
             e.printStackTrace();
             fail();
         }
-        Constructor dconstructor =  LoaderUtil.generateClassConstructor(ew.getPackageName(), ew.getClassName(), dTarget, PhastDecoderStageGenerator.class);
+        Constructor dconstructor =  LoaderUtil.generateClassConstructor(dw.getPackageName(), dw.getClassName(), dTarget, PhastDecoderStageGenerator.class);
 
         //loading just two messages onto pipe.
         Random rnd = new Random();
@@ -162,7 +148,7 @@ public class LowLevelGroceryTest {
             Pipe.addIntValue(amount,inPipe);
             Pipe.addIntValue(recordID,inPipe);
             Pipe.addASCII(units,inPipe);
-            Pipe.confirmLowLevelWrite(inPipe, 11/* fragment 0  size 8*/);
+            Pipe.confirmLowLevelWrite(inPipe, 11);
             Pipe.publishWrites(inPipe);
         }
 
@@ -206,7 +192,7 @@ public class LowLevelGroceryTest {
             System.out.println("Units = " + strUniits.toString());
         }
 
-
+        
 
     }
 }
