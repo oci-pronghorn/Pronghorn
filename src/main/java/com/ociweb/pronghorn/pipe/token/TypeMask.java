@@ -183,12 +183,22 @@ public final class TypeMask {
                 
     }
     
-    
+    public static String toString(int ... typeMask) {
+    	StringBuilder result = new StringBuilder();
+    	for(int i = 0;i<typeMask.length;i++) {
+    		result.append(toString(typeMask[i]));
+    		result.append(',');
+    	}
+    	if (result.length()>0) {
+    		result.setLength(result.length()-1);
+    	}
+    	return result.toString();
+    }    
     // This method for debugging and therefore can produce garbage.
     public static String toString(int typeMask) {
 
-        return methodTypeName[typeMask] + methodTypeSuffix[typeMask] + ":"
-                + prefix(6, '0', Integer.toBinaryString(typeMask));
+        return methodTypeName[typeMask] + methodTypeSuffix[typeMask];
+        //+ ":" + prefix(6, '0', Integer.toBinaryString(typeMask));
 
     }
     

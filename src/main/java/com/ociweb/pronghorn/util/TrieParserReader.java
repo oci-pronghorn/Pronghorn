@@ -1056,6 +1056,10 @@ public class TrieParserReader {
                 
                 //if those bytes were utf8 encoded then this matches the same as writeUTF8 without decode/encode
                 target.writeShort(l);
+                
+         //       logger.info("captured text: {}", Appendables.appendUTF8(new StringBuilder(), reader.capturedBlobArray, p, l, m));
+                
+                
                 DataOutputBlobWriter.write(target,reader.capturedBlobArray,p,l,m);
                                 
             } else {
@@ -1064,6 +1068,42 @@ public class TrieParserReader {
                 target.writeInt(localCapturedValues[i++]);
                 target.writeInt(localCapturedValues[i++]);
                 target.writeInt(localCapturedValues[i++]);
+                
+            }            
+        }
+        return totalBytes;
+    }
+    
+    public static int writeCapturedValuesToAppendable(TrieParserReader reader, Appendable target) throws IOException {
+        int limit = reader.capturedPos;
+        int[] localCapturedValues = reader.capturedValues;
+        
+        
+        int totalBytes = 0;
+        int i = 0;
+        while (i < limit) {
+            
+            int type = localCapturedValues[i++];
+            
+            if (0==type) {
+                
+                int p = localCapturedValues[i++];
+                int l = localCapturedValues[i++];
+                int m = localCapturedValues[i++];   
+                                
+                totalBytes += l;
+                
+                //if those bytes were utf8 encoded then this matches the same as writeUTF8 without decode/encode
+                
+                Appendables.appendValue(target, "[", l, "]");                
+                Appendables.appendUTF8(target, reader.capturedBlobArray,p,l,m);
+                                
+            } else {
+                
+            	Appendables.appendValue(target, "[",type);
+            	Appendables.appendValue(target, ",",localCapturedValues[i++]);
+            	Appendables.appendValue(target, ",",localCapturedValues[i++]);
+            	Appendables.appendValue(target, ",",localCapturedValues[i++],"]");
                 
             }            
         }

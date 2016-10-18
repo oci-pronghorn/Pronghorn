@@ -179,7 +179,7 @@ System.err.println(ring1);
 public Pipe buildPopulatedRing(FieldReferenceOffsetManager from,
         PipeConfig rbConfig, int commonSeed, int iterations) {
     int i;
-    Pipe ring2 = new Pipe(rbConfig);
+     	Pipe ring2 = new Pipe(rbConfig);
        ring2.initBuffers();
        StreamingWriteVisitorGenerator swvg2 = new StreamingWriteVisitorGenerator(from, new Random(commonSeed), varLength, varLength);    
        StreamingVisitorWriter svw2 = new StreamingVisitorWriter(ring2, swvg2);

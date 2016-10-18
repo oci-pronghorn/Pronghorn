@@ -47,7 +47,7 @@ public class PipeTest {
         Pipe.publishWorkingTailPosition(pipe, Pipe.headPosition(pipe));
         
         //write one integer to the ring buffer
-        Pipe.addIntValue(testInt, pipe);       
+        ///Pipe.addIntValue(testInt, pipe);       
         
         //write array of bytes to ring buffer
         addByteArray(testArray, 0, testArray.length, pipe);             
@@ -56,7 +56,7 @@ public class PipeTest {
         publishWrites(pipe);
                 
         //read one integer back and confirm it matches
-        assertEquals(testInt, takeValue(pipe)); 
+        //assertEquals(testInt, takeValue(pipe)); 
         
         // constant from heap or dynamic from char ringBuffer
         int meta = takeRingByteMetaData(pipe); //MUST take this one before the length they come in order       

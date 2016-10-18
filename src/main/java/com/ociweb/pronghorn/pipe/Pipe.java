@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -553,6 +554,10 @@ public class Pipe<T extends MessageSchema> {
     
     public static <S extends MessageSchema> boolean isForSchema(Pipe<S> pipe, MessageSchema schema) {
         return pipe.schema == schema;
+    }
+    
+    public static <S extends MessageSchema> boolean isForDynamicSchema(Pipe<S> pipe) {
+        return pipe.schema instanceof MessageSchemaDynamic;
     }
     
     public static <S extends MessageSchema> String schemaName(Pipe<S> pipe) {
@@ -2183,7 +2188,38 @@ public class Pipe<T extends MessageSchema> {
 
     public static <S extends MessageSchema> void addIntValue(int value, Pipe<S> rb) {
          assert(rb.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(rb)+rb.sizeOfSlabRing);
+         assert(isValidFieldTypePosition(rb, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional));
 		 setValue(rb.slabRing,rb.mask,rb.slabRingHead.workingHeadPos.value++,value);
+	}
+
+	private static <S extends MessageSchema> boolean isValidFieldTypePosition(Pipe<S> rb, int ... expected) {
+		FieldReferenceOffsetManager from = Pipe.from(rb);
+		
+         if (from.hasSimpleMessagesOnly && !isForDynamicSchema(rb)) {
+        	 long offset =  Pipe.workingHeadPosition(rb)-Pipe.headPosition(rb);
+        	 int[] starts = from.messageStarts();
+        	 int j = starts.length;
+        	 boolean found = false;
+        	 while (--j>=0) {
+        		 
+        		 int idx = starts[j]+1; //skip over msg id field of fixed size.
+        		 int rem = (int)(offset-1);//skipe over msg id 
+        		 
+        		 while (rem>0) {
+        			 rem -= from.fragDataSize[idx++];
+        		 }
+        		 int type = TokenBuilder.extractType(from.tokens[idx]);
+        		 int x = expected.length;
+        		 while (--x>=0) {
+        			 found |= type==expected[x];
+        		 }        		 
+        	 }
+        	 if (!found) {
+        		 log.error("Field type mismatch, no messages have an {} in this position", TypeMask.toString(expected));
+        		 return false;
+        	 }        
+         }
+         return true;
 	}
     
     public static <S extends MessageSchema> void setIntValue(int value, Pipe<S> pipe, long position) {
@@ -2560,7 +2596,8 @@ public class Pipe<T extends MessageSchema> {
 		pipe.blobWriteLastConsumedPos = pipe.blobRingHead.byteWorkingHeadPos.value;
 
     	assert(pipe.slabRingHead.workingHeadPos.value >= Pipe.headPosition(pipe));
-    	assert(pipe.llWrite.llwConfirmedWrittenPosition<=Pipe.headPosition(pipe) || pipe.slabRingHead.workingHeadPos.value<=pipe.llWrite.llwConfirmedWrittenPosition) : "Unsupported mix of high and low level API. NextHead>head and workingHead>nextHead";
+    	assert(pipe.llWrite.llwConfirmedWrittenPosition<=Pipe.headPosition(pipe) || 
+    		   pipe.slabRingHead.workingHeadPos.value<=pipe.llWrite.llwConfirmedWrittenPosition) : "Unsupported mix of high and low level API. NextHead>head and workingHead>nextHead "+pipe;
     	assert(validateFieldCount(pipe)) : "No fragment could be found with this field count, check for missing or extra fields.";
 
     	publishHeadPositions(pipe);

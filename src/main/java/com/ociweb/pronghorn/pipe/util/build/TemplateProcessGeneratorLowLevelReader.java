@@ -154,7 +154,7 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         bodyTarget.append("}\n");
     }
     
-    private void preprocessTextfieldsDef(String name, long id) throws IOException {    
+    protected void preprocessTextfieldsDef(String name, long id) throws IOException {    
         int i = workspacesDefinedCount;
         while (--i>=0) {
             if (id == workspacesDefined[i]) {
@@ -162,9 +162,8 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
             }
         }
         
-        appendWorkspaceName(bodyTarget.append("private StringBuilder "),id).append(";\n");        
-        //.append(" = new StringBuilder(").append(pipeVarName).append(".maxAvgVarLen);\n");        
-    
+        appendWorkspaceName(bodyTarget.append("private StringBuilder "),id).append(" = new StringBuilder();\n");        
+          
         workspacesDefined[workspacesDefinedCount++] = id;
     }
 
