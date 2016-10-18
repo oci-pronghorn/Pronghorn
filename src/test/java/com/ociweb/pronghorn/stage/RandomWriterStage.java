@@ -62,12 +62,15 @@ public class RandomWriterStage extends PronghornStage{
                 Pipe.addIntValue(amount, output);
                 Pipe.addIntValue(recordID, output);
                 Pipe.addASCII(units, output);
-                Pipe.confirmLowLevelWrite(output, 11);
+                Pipe.confirmLowLevelWrite(output, Pipe.sizeOf(output, 0));
                 Pipe.publishWrites(output);
             }
             else {
+                System.out.println(output);
+                Pipe.spinBlockForRoom(output, Pipe.EOF_SIZE);
                 Pipe.publishEOF(output);
                 requestShutdown();
+                return;
             }
         }
     }

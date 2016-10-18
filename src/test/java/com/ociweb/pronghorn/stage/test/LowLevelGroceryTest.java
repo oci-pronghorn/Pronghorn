@@ -125,15 +125,14 @@ public class LowLevelGroceryTest {
         ConsoleJSONDumpStage json = new ConsoleJSONDumpStage(gm, sharedPipe);
 
         //encoding data
-        GraphManager.enableBatching(gm);
+        //GraphManager.enableBatching(gm);
         ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
-        scheduler.playNice=false;
+        //scheduler.playNice=false;
         scheduler.startup();
-        Thread.sleep(300);
+        GraphManager.blockUntilStageBeginsShutdown(gm,json);
         scheduler.shutdown();
         scheduler.awaitTermination(10, TimeUnit.SECONDS);
 
-        System.out.println(inPipe.toString());
 
 
     }
