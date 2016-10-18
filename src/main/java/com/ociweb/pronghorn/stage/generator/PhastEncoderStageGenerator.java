@@ -179,11 +179,11 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 //call appropriate pmap builder according to type
                 if (varType.equals("int")) {
                     bodyTarget.append(tab + pmapName + " = ");
-                    encodePmapBuilderInt(schema, bodyTarget, token, i, varName, isNull);
+                    encodePmapBuilderInt(schema, bodyTarget, token, TokenBuilder.extractId(token), varName, isNull);
 
                 } else if (varType.equals("long")) {
                     bodyTarget.append(tab + pmapName + " = ");
-                    encodePmapBuilderLong(schema, bodyTarget, token, i, varName, isNull);
+                    encodePmapBuilderLong(schema, bodyTarget, token, TokenBuilder.extractId(token), varName, isNull);
 
                 } else if (varType.equals("StringBuilder")) {
                     bodyTarget.append(tab + pmapName + " = ");
