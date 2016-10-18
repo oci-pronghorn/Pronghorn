@@ -151,14 +151,17 @@ public class ProtoBuffInterface {
     //public void build()
     //builds the builder
     //TODO :build() stub is empty. 
-    // is Build same as buildFirst?
-    private static void generateBuild(String varName, Appendable target) {
+    // create 3 pipes used for buffers
+    private static void generateBuildConstr(Appendable target) {
         try {
-            //make variable name go to camel case
-            String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
             //Build method generated
-            target.append(tab + "public void" + " build" + varNameCamel +  "(){"
+            target.append(tab + "public void" + " build(){"
                     + "\n"
+                    + tab + tab + "Pipe<MessageSchemaDynamic> inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
+                    + "\n"
+                    + tab + tab + "Pipe<RawDataSchema> sharedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));"
+                    + "\n"
+                    + tab + tab + "Pipe<MessageSchemaDynamic> outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
                     + "\n"
                     + tab +  "}\n");
         } catch (IOException ex) {
