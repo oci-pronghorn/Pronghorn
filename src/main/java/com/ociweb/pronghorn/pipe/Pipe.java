@@ -7,6 +7,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -2188,7 +2189,7 @@ public class Pipe<T extends MessageSchema> {
 
     public static <S extends MessageSchema> void addIntValue(int value, Pipe<S> rb) {
          assert(rb.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(rb)+rb.sizeOfSlabRing);
-         assert(isValidFieldTypePosition(rb, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional));
+         assert(isValidFieldTypePosition(rb, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.Decimal));
 		 setValue(rb.slabRing,rb.mask,rb.slabRingHead.workingHeadPos.value++,value);
 	}
 
@@ -2200,6 +2201,7 @@ public class Pipe<T extends MessageSchema> {
         	 int[] starts = from.messageStarts();
         	 int j = starts.length;
         	 boolean found = false;
+        	 String[] suggestions = new String[j];
         	 while (--j>=0) {
         		 
         		 int idx = starts[j]+1; //skip over msg id field of fixed size.
@@ -2209,13 +2211,15 @@ public class Pipe<T extends MessageSchema> {
         			 rem -= from.fragDataSize[idx++];
         		 }
         		 int type = TokenBuilder.extractType(from.tokens[idx]);
+        		 suggestions[j]=(TokenBuilder.tokenToString(from.tokens[idx]));
+        		 
         		 int x = expected.length;
         		 while (--x>=0) {
         			 found |= type==expected[x];
         		 }        		 
         	 }
         	 if (!found) {
-        		 log.error("Field type mismatch, no messages have an {} in this position", TypeMask.toString(expected));
+        		 log.error("Field type mismatch, no messages have an {} in this position perhaps you wanted one of these {}", TypeMask.toString(expected), Arrays.toString(suggestions));
         		 return false;
         	 }        
          }
