@@ -2189,7 +2189,7 @@ public class Pipe<T extends MessageSchema> {
 
     public static <S extends MessageSchema> void addIntValue(int value, Pipe<S> rb) {
          assert(rb.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(rb)+rb.sizeOfSlabRing);
-         assert(isValidFieldTypePosition(rb, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.Decimal));
+         //TODO: not always working in deep structures, check offsets:  assert(isValidFieldTypePosition(rb, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.Decimal));
 		 setValue(rb.slabRing,rb.mask,rb.slabRingHead.workingHeadPos.value++,value);
 	}
 
@@ -2203,6 +2203,8 @@ public class Pipe<T extends MessageSchema> {
         	 boolean found = false;
         	 String[] suggestions = new String[j];
         	 while (--j>=0) {
+        		 
+        		 //TODO: after walking over longs and strings may be off, TODO: double check this before using it again.
         		 
         		 int idx = starts[j]+1; //skip over msg id field of fixed size.
         		 int rem = (int)(offset-1);//skipe over msg id 
