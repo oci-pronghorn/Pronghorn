@@ -333,65 +333,6 @@ JNIEXPORT void JNICALL Java_com_ociweb_pronghorn_stage_math_ColumnComputeStage_g
 			outMask,
 			cPosOut_nat,
 			buf_output);
-  
-
-  // // typeMask == 0 for Integers.
-  // // typeMask == 1 for Floats.
-  // // typeMask == 2 for Longs.
-  // // typeMask == 3 for Doubles.
-  // // typeMask == 4 for Decimals.
-  // switch(typeMask) {
-  // case 0: 
-  //   MulAVXInt(length, output_length, 
-  // 	      colSlabs_nat,
-  // 	      rowSlab_nat,
-  // 	      rowMask,
-  // 	      rowPosition,
-  // 	      colMask,
-  // 	      colPositions_nat,
-  // 	      outMask,
-  // 	      cPosOut_nat,
-  // 	      buf_output);
-  //   break;
-  // case 1:
-  //   MulAVXPS(length, output_length, 
-  // 	     colSlabs_nat,
-  // 	     rowSlab_nat,
-  // 	     rowMask,
-  // 	     rowPosition,
-  // 	     colMask,
-  // 	     colPositions_nat,
-  // 	     outMask,
-  // 	     cPosOut_nat,
-  // 	     buf_output);
-  //   break;
-  // case 2:
-  //   MulAVXLong(length, output_length, 
-  // 	     colSlabs_nat,
-  // 	     rowSlab_nat,
-  // 	     rowMask,
-  // 	     rowPosition,
-  // 	     colMask,
-  // 	     colPositions_nat,
-  // 	     outMask,
-  // 	     cPosOut_nat,
-  // 	     buf_output);
-  //   break;
-  // case 3:
-  //   MulAVXPD(length, output_length, 
-  // 	     colSlabs_nat,
-  // 	     rowSlab_nat,
-  // 	     rowMask,
-  // 	     rowPosition,
-  // 	     colMask,
-  // 	     colPositions_nat,
-  // 	     outMask,
-  // 	     cPosOut_nat,
-  // 	     buf_output);
-  //   break;
-  // default :
-  //   break;
-  // }
   env->ReleaseIntArrayElements(rowSlab, rowSlab_nat, 0);
   free(colSlabs_nat);
   free(colPositions_nat);
