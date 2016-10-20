@@ -33,6 +33,10 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 	private int[]   cPos;
 	private int[]   cPosOut;
 
+	static 
+	{
+	    NarSystem.loadLibrary();
+	}
 	
 	protected ColumnComputeStage(GraphManager graphManager, 
 			                     Pipe<ColumnSchema<C>>[] colInput, //input matrix split into columns
@@ -248,7 +252,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			/////
 		}		
 		
-		goCompute(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
+		goComputeNativeAVX(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
 				  inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
 		
 	}
@@ -288,7 +292,17 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		
 	}
 
+	// implementation of c/c++ code
+	private final native void goComputeNative(int typeMask, 
+						  int[] rowSlab, long rowPosition, int rowMask, int length, 
+						  int[][] colSlabs, int[] colPositions, int colMask, 
+						  int[][] outputPipes, int[] cPosOut, int outMask);
 
+	// implementation by AVX instruction set
+	private final native void goComputeNativeAVX(int typeMask, 
+						     int[] rowSlab, long rowPosition, int rowMask, int length, 
+						     int[][] colSlabs, int[] colPositions, int colMask, 
+						     int[][] outputPipes, int[] cPosOut, int outMask);
 	
 	private boolean allHaveRoomToWrite(Pipe<ColumnSchema<M>>[] columnPipeOutput) {
 		int i = columnPipeOutput.length;
@@ -315,7 +329,5 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		y++;
 		return true;
 	}
-	
-	
-	
+			
 }
