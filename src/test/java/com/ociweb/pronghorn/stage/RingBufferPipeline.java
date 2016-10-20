@@ -29,7 +29,7 @@ import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
 import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
 import com.ociweb.pronghorn.stage.route.RoundRobinRouteStage;
-import com.ociweb.pronghorn.stage.route.SplitterStage;
+import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
@@ -594,7 +594,7 @@ public class RingBufferPipeline {
 			     if (useRouter) {
 			    	 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), new RoundRobinRouteStage(gm, rings[j++], splitsBuffers));
 			     } else {
-			    	 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), new SplitterStage(gm, rings[j++], splitsBuffers)); 
+			    	 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), new ReplicatorStage(gm, rings[j++], splitsBuffers)); 
 			     }
 			 } else {			 
 				 Pipe inputRing = rings[j++];
