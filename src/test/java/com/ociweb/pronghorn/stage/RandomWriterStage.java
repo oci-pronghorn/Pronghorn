@@ -66,7 +66,6 @@ public class RandomWriterStage extends PronghornStage{
                 Pipe.publishWrites(output);
             }
             else {
-                System.out.println(output);
                 Pipe.spinBlockForRoom(output, Pipe.EOF_SIZE);
                 Pipe.publishEOF(output);
                 requestShutdown();

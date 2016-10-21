@@ -274,6 +274,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 //pipeVarName needs protected status
                 //bodyTarget.append(tab + "Pipe.confirmLowLevelRead(" + inPipeName + ", )" +  + ");\n");
                 //bodyTarget.append(tab + "Pipe.releaseLock(" + )
+                bodyTarget.append("Pipe.publishWrites(" + outPipeName + ");");
             }
         } catch (IOException e) {
             java.util.logging.Logger.getLogger(PhastEncoderStageGenerator.class.getName()).log(Level.SEVERE, null, e);
