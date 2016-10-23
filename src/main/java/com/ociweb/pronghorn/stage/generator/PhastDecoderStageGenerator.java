@@ -261,14 +261,13 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             } else {
                 target.append("Unsupported data type " + pmapType + "\n");
             }
-            target.append("Pipe.releaseReadLock(" + inPipeName + ");\n");
             cursor++;
             argumentList.append(scriptNames[f]);
             if (f != (firstField+fieldCount) - 1){
                 argumentList.append(',');
             }
         }
-
+        target.append("Pipe.releaseReadLock(" + inPipeName + ");\n");
         //open method to call with the variable names
         appendWriteMethodName(target.append(tab), cursor2).append("(");
         target.append(argumentList);
