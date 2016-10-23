@@ -3,9 +3,9 @@ package com.ociweb.pronghorn.stage.network;
 import java.io.IOException;
 import java.util.Arrays;
 
+import com.ociweb.pronghorn.network.schema.ServerRequestSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.network.schema.ServerRequestSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class ClientHTTPRequestDataGeneratorStage extends PronghornStage {
@@ -101,20 +101,15 @@ public class ClientHTTPRequestDataGeneratorStage extends PronghornStage {
             target.append("Host: 127.0.0.1:8081\r\n");
             target.append("Connection: keep-alive\r\n");
             target.append("Cache-Control: max-age=0\r\n");
-            target.append("Upgrade: WAT\r\n");
-     //       target.append("Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\n");
-   
-            //longer values may be picked up and inerprited wrongly.
-            
-    //        target.append("Upgrade-Insecure-Requests: 1\n");
-            
-      //      target.append("User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/47.0.2526.106 Chrome/47.0.2526.106 Safari/537.36\r\n");
-            //TODO: duplicate the above and profile again.
-            
+           // target.append("Upgrade: WAT\r\n");
+            target.append("Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\n");
+            target.append("User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/47.0.2526.106 Chrome/47.0.2526.106 Safari/537.36\r\n");
+              
+            target.append("Upgrade-Insecure-Requests: 1\n");
             
             target.append("DNT: 1\r\n");
-     //       target.append("Accept-Language: en-US,en;q=0.8\r\n");
-    //        target.append("Accept-Encoding: gzip, deflate, sdch\r\n");
+            target.append("Accept-Language: en-US,en;q=0.8\r\n");
+            target.append("Accept-Encoding: gzip, deflate, sdch\r\n");
             target.append("\r\n");//Official end-of-header
             
         } catch (IOException e) {

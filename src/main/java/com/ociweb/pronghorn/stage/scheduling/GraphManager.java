@@ -1408,14 +1408,15 @@ public class GraphManager {
                   logger.error("Stage was never initialized");
               } else {
               
-                  int inputcount = GraphManager.getInputPipeCount(graphManager, stage);
-                                          
-                  logger.error("Unexpected error in "+stage+" with "+inputcount+" input pipes.", t);
+                  int inputCount = GraphManager.getInputPipeCount(graphManager, stage);
+                  int outputCount = GraphManager.getOutputPipeCount(graphManager,stage.stageId);
                   
-                  int i = inputcount;
+                  logger.error("Unexpected error in "+stage+" which has "+inputCount+" inputs and "+outputCount+" outputs", t);
+                  
+                  int i = inputCount;
                   while (--i>=0) {
                       
-                      logger.error(stage+" input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
+                      logger.error(stage+"  input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
                       
                   }
                   

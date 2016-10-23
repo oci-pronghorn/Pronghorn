@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+
+   <template name="Response" id="200">
+     <uInt64 name="ConnectionId" id="201"/>
+     <byteVector name="Payload" id="203"/>
+   </template>   
+  
+    <template name="SimpleResponse" id="210">
+     <uInt64 name="ConnectionId" id="201"/>
+     <string name="Payload" id="204" charset="unicode"/>
+   </template>  
+      
+</templates>

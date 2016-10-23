@@ -7,19 +7,21 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.ociweb.pronghorn.network.HTTPModuleFileReadStage;
+import com.ociweb.pronghorn.network.HTTPRouterStage;
+import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
+import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
+import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
+import com.ociweb.pronghorn.network.config.HTTPSpecification;
+import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.ServerRequestSchema;
+import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
-import com.ociweb.pronghorn.stage.network.config.HTTPContentTypeDefaults;
-import com.ociweb.pronghorn.stage.network.config.HTTPHeaderKeyDefaults;
-import com.ociweb.pronghorn.stage.network.config.HTTPRevisionDefaults;
-import com.ociweb.pronghorn.stage.network.config.HTTPSpecification;
-import com.ociweb.pronghorn.stage.network.config.HTTPVerbDefaults;
-import com.ociweb.pronghorn.stage.network.schema.HTTPRequestSchema;
-import com.ociweb.pronghorn.stage.network.schema.ServerRequestSchema;
-import com.ociweb.pronghorn.stage.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
@@ -73,12 +75,16 @@ public class PipelineIntegrationTest {
         
     }
 
-    private void runGraph(GraphManager gm, final int testDataSize, final int iterations, PronghornStage stage) {
-        boolean monitorPipes = true;
+    private void runGraph(GraphManager gm, final int testDataSize, final int iterations, PronghornStage watchStage) {
+        
+    	GraphManager.exportGraphDotFile(gm, getClass().getSimpleName());
+    	
+    	boolean monitorPipes = true;
         if (monitorPipes) {
             MonitorConsoleStage.attach(gm);        
         } 
         GraphManager.enableBatching(gm);
+        
         
         ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
       //  scheduler.playNice = false;
@@ -86,17 +92,9 @@ public class PipelineIntegrationTest {
 
         scheduler.startup();  
         
-        if (monitorPipes) {
-          try {
-              Thread.sleep(1000);
-          } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-          }
-        }
-      
         //TODO: file read is getting blocked and stops moving.
-        gm.blockUntilStageBeginsShutdown(stage); //generator gets done very early and begins the shutdown before the route completes so this block is required.
-        System.out.println("now waiting for timeout.");
+        gm.blockUntilStageBeginsShutdown(watchStage); //generator gets done very early and begins the shutdown before the route completes so this block is required.
+        
         scheduler.awaitTermination(30, TimeUnit.SECONDS);
         
         long duration = System.currentTimeMillis()-start;

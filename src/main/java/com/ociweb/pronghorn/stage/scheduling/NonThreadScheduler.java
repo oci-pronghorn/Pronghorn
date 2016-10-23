@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.stage.scheduling;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.ociweb.pronghorn.pipe.MessageSchema;
@@ -11,7 +12,6 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 public class NonThreadScheduler extends StageScheduler implements Runnable {
 
     private AtomicBoolean shutdownRequested;
-    private ReentrantLock runTerminationLock;
     private long[] rates;
     private long[] lastRun;
     private long maxRate;
@@ -38,6 +38,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     private Pipe[] internalPipes;
     private boolean isInternalEmpty = false; //always starts as no empty to be safe.
     private boolean someAreRateLimited = false;
+    private AtomicInteger isRunning = new AtomicInteger(0);
 
     public NonThreadScheduler(GraphManager graphManager) {
         super(graphManager);        
@@ -52,7 +53,6 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     @Override
     public void startup() {
         shutdownRequested = new AtomicBoolean(false);
-        runTerminationLock = new ReentrantLock();
         
         final int stageCount = stages.length;
 
@@ -351,13 +351,12 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     		nextRun = 0;
     	} 
 
+
+	    	if (!isRunning.compareAndSet(0, 1)){
+	    		return;
+	    	}
+       	        	
     	
-    	if (!runTerminationLock.tryLock()) {
-    		return;
-    	}//try must immediatly follow this lock.
-        try {
-        	        	
-        	
         	//confirm that we have work to do before
         	
         	
@@ -395,15 +394,13 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
                     continueRun |= !GraphManager.isStageShuttingDown(graphManager, stages[s].stageId);
                     
              }
-             if (!continueRun && !shutdownRequested.get()) {
+             if (!continueRun || shutdownRequested.get()) {
             	shutdown();
              }
              nextRun = Long.MAX_VALUE==nearestNextRun ? 0 : nearestNextRun;
                 
-        } finally {
-            runTerminationLock.unlock();
-        }
-        
+             if (! isRunning.compareAndSet(1, 0) ) {
+             }
     }
 
 	private static long runStage(boolean someAreRateLimited, long nearestNextRun, int s, long rate, PronghornStage stage, NonThreadScheduler that) {
@@ -464,7 +461,16 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     @Override
     public void shutdown() {
     	shutdownRequested.set(true);
-    	GraphManager.terminateInputStages(graphManager);		
+    	GraphManager.terminateInputStages(graphManager);	
+    	
+	    int s = stages.length;
+        while (--s>=0 && !shutdownRequested.get()) {        	
+        		if (null!=stages[s] && !GraphManager.isStageTerminated(graphManager, stages[s].stageId)) {
+        			stages[s].shutdown();
+        			GraphManager.setStateToShutdown(graphManager, stages[s].stageId); 
+        		}        		
+         }
+    	
     }
 
     public static boolean isShutdownRequested(NonThreadScheduler nts) {
@@ -473,29 +479,29 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     
     @Override
     public boolean awaitTermination(long timeout, TimeUnit unit) { 
-        try {
 
-            //wait for run to stop...
-            if (runTerminationLock.tryLock(timeout, unit)) {
+        	long limit = System.nanoTime()+unit.toNanos(timeout);
+        	
+        	while (!isRunning.compareAndSet(0, 2)) {
+        		
+        		Thread.yield();
+        		if (System.nanoTime()>limit) {
+        			return false;
+        		}
+        	}
+
+            int s = stages.length;
+            while (--s>=0) {
+                PronghornStage stage = stages[s];
                 
-                int s = stages.length;
-                while (--s>=0) {
-                    PronghornStage stage = stages[s];
-                    
-                    if (null != stage && !GraphManager.isStageTerminated(graphManager, stage.stageId)) {
-                        stage.shutdown();
-                        GraphManager.setStateToShutdown(graphManager, stage.stageId);                        
-                    }
+                if (null != stage && !GraphManager.isStageTerminated(graphManager, stage.stageId)) {
+                    stage.shutdown();
+                    GraphManager.setStateToShutdown(graphManager, stage.stageId);                        
                 }
-                
-                return true;
-            } else {
-                return false;
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return false;
-        }
+            
+            return true;
+
     }
 
     @Override

@@ -3,46 +3,34 @@ package com.ociweb.pronghorn.stage.network;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.Assert.*;
-import org.junit.Assert;
 
+import com.ociweb.pronghorn.network.HTTPModuleFileReadStage;
+import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
+import com.ociweb.pronghorn.network.config.HTTPSpecification;
+import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTableVisitor;
-import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
-import com.ociweb.pronghorn.stage.network.config.HTTPContentTypeDefaults;
-import com.ociweb.pronghorn.stage.network.config.HTTPHeaderKeyDefaults;
-import com.ociweb.pronghorn.stage.network.config.HTTPRevisionDefaults;
-import com.ociweb.pronghorn.stage.network.config.HTTPSpecification;
-import com.ociweb.pronghorn.stage.network.config.HTTPVerbDefaults;
-import com.ociweb.pronghorn.stage.network.schema.HTTPRequestSchema;
-import com.ociweb.pronghorn.stage.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
-import com.ociweb.pronghorn.stage.test.ConsoleSummaryStage;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
 public class HTTPModuleFileReadStageTest {
 
     
-    //NOTE: stages can be limited by -Data throughput or -Cycle rate
-    //    * Throughput is helpful when controlling data bus usage 
-    //    * Cycle rate helps when there are large windows with no traffic
-    //TODO: BB, Add auto adjust cycle delay, if output is empty it was too short, if output is full it was too long.
-    
-    //TODO: urgent fix must load all files and use faster optimized query.
-    
-    //test not complete yet.
-    @Test
+    @Ignore
     public void rapidValidReadTest() {
         
         GraphManager gm = new GraphManager();
 
         //1 -20 gb is not hard to saturate, above this is scales more slowly and it never reaches 40 gb (may work on new PCIe hardware...)
-        int fileCount = 8;
+        int fileCount = 20;
         int fileSize = 3000;//selected to make the output 20gbs
         int iterations = 500_000;
         HTTPVerbDefaults verb = HTTPVerbDefaults.GET;//HTTPVerbDefaults.HEAD; //HTTPVerbDefaults.GET;
