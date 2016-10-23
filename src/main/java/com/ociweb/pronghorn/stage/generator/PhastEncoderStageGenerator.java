@@ -14,6 +14,7 @@ import com.ociweb.pronghorn.pipe.token.*;
 import com.ociweb.pronghorn.pipe.util.build.TemplateProcessGeneratorLowLevelReader;
 
 import java.nio.channels.Pipe;
+import java.util.Stack;
 import java.util.logging.Level;
 
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -162,10 +163,18 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             bodyTarget.append(tab + "DataOutputBlobWriter<RawDataSchema> " + writerName + " = Pipe.outputStream("
                     + outPipeName + ");\n");
 
+
+            //make 3 stacks for tokens
+            Stack<Integer> tokens = new Stack<>();
+            for (int paramIdx = 0; paramIdx < fragmentParaCount; paramIdx++) {
+                int token = from.tokens[curCursor];
+                tokens.push(token);
+                curCursor += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
+            }
             //traverse all tokens and print out a pmap builder for each of them
             int i = fragmentParaCount - 1;
             while (i >= 0) {
-                int token = from.tokens[curCursor];
+                int token = tokens.pop();
                 int pmapType = TokenBuilder.extractType(token);
 
                 String varName = new StringBuilder().append(fragmentParaArgs[i]).append(fragmentParaSuff[i]).toString();
@@ -275,8 +284,8 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 //pipeVarName needs protected status
                 //bodyTarget.append(tab + "Pipe.confirmLowLevelRead(" + inPipeName + ", )" +  + ");\n");
                 //bodyTarget.append(tab + "Pipe.releaseLock(" + )
-                bodyTarget.append("Pipe.publishWrites(" + outPipeName + ");");
             }
+            bodyTarget.append(tab + "Pipe.publishWrites(" + outPipeName + ");\n");
         } catch (IOException e) {
             java.util.logging.Logger.getLogger(PhastEncoderStageGenerator.class.getName()).log(Level.SEVERE, null, e);
         }
