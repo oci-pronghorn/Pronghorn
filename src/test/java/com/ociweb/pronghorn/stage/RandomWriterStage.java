@@ -44,15 +44,6 @@ public class RandomWriterStage extends PronghornStage{
                 amount = rnd.nextInt(50000);
                 recordID = i;
                 units = "second string test " + Integer.toString(rnd.nextInt(50000));
-
-                //generate random numbers
-                random = rnd.nextInt(50000);
-                storeID = rnd.nextInt(50000);
-                date = (long) rnd.nextInt(50000);
-                productName = "first string test " + Integer.toString(rnd.nextInt(50000));
-                amount = random * 100;
-                recordID = i;
-                units = "second string test " + Integer.toString(rnd.nextInt(50000));
                 //put message
                 Pipe.addMsgIdx(output, 0);
                 //place them on the pipe

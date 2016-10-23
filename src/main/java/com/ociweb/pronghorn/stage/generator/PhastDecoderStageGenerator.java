@@ -261,6 +261,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             } else {
                 target.append("Unsupported data type " + pmapType + "\n");
             }
+            target.append("Pipe.releaseReadLock(" + inPipeName + ");\n");
             cursor++;
             argumentList.append(scriptNames[f]);
             if (f != (firstField+fieldCount) - 1){
@@ -273,7 +274,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append(argumentList);
         target.append(");\n");
 
-        target.append(tab + "Pipe.publishWrites(" + pipeVarName + ");");
+        target.append(tab + "Pipe.publishWrites(" + pipeVarName + ");\n");
     }
 
     protected void additionalMethods(Appendable target) throws IOException {

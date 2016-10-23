@@ -88,6 +88,7 @@ public class LowLevelGroceryTest {
     @Test
     public void runTimeTest() throws IOException, ParserConfigurationException, SAXException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException, InterruptedException {
         GraphManager gm = new GraphManager();
+
         FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
         MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);
         Pipe<MessageSchemaDynamic> inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));
@@ -135,6 +136,8 @@ public class LowLevelGroceryTest {
         ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
         //scheduler.playNice=false;
         scheduler.startup();
+
+
         GraphManager.blockUntilStageBeginsShutdown(gm,json);
         scheduler.shutdown();
         scheduler.awaitTermination(10, TimeUnit.SECONDS);
