@@ -27,7 +27,7 @@ import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 public class ClientHTTPSPipelineTest {
 
 	
-	@Test
+	@Ignore
 	public void buildPipelineTest() {
 		
 		//forced sequential calls, send next after previous returns.
