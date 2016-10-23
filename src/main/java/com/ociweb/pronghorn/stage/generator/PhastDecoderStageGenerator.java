@@ -272,8 +272,6 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         appendWriteMethodName(target.append(tab), cursor2).append("(");
         target.append(argumentList);
         target.append(");\n");
-
-        target.append(tab + "Pipe.publishWrites(" + pipeVarName + ");\n");
     }
 
     protected void additionalMethods(Appendable target) throws IOException {
