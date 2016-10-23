@@ -27,28 +27,33 @@ import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 public class ClientHTTPSPipelineTest {
 
 	
-	@Ignore
+	@Ignore // do not disable it requires interet access to run, we will make a better test soon.
 	public void buildPipelineTest() {
-		
-		//forced sequential calls, send next after previous returns.
-		boolean sequential = false;
-		
+
 		//only build minimum for the pipeline
 		
 		GraphManager gm = new GraphManager();
 
 		final int inputsCount = 2;
 		
-		int base2SimultaniousConnections = 1;
+		int base2SimultaniousConnections = 1;//TODO: bug, why can we not set this to larger nubmer??
 		final int outputsCount = 2;//must be < connections
 		int maxPartialResponses = 2;
-		int maxListeners = 1<<base2SimultaniousConnections;
+		final int maxListeners = 1<<base2SimultaniousConnections;
 
 		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);
 		
 		ClientConnectionManager ccm = new ClientConnectionManager(base2SimultaniousConnections,inputsCount);
 		IntHashTable listenerPipeLookup = new IntHashTable(base2SimultaniousConnections+2);
-		IntHashTable.setItem(listenerPipeLookup, 42, 0);//put on pipe 0
+		
+		System.out.println("listeners "+maxListeners);
+		int i = maxListeners;
+		while (--i>=0) {
+			IntHashTable.setItem(listenerPipeLookup, i, i);//put this key on that pipe
+			
+		}
+		
+		//IntHashTable.setItem(listenerPipeLookup, 42, 0);//put on pipe 0
 		
 		
 		PipeConfig<NetRequestSchema> netREquestConfig = new PipeConfig<NetRequestSchema>(NetRequestSchema.instance, 30,1<<9);
@@ -85,9 +90,9 @@ public class ClientHTTPSPipelineTest {
 		
 		
 		NetGraphBuilder.buildHTTPClientGraph(gm, outputsCount, maxPartialResponses, ccm, listenerPipeLookup, clientNetRequestConfig,
-				parseAckConfig, clientNetResponseConfig, clientRequests, toReactor);
+											parseAckConfig, clientNetResponseConfig, clientRequests, toReactor);
 		
-		int i = toReactor.length;
+		i = toReactor.length;
 		PipeCleanerStage[] cleaners = new PipeCleanerStage[i];
 		while (--i>=0) {
 			cleaners[i] = new PipeCleanerStage<>(gm, toReactor[i]); 
@@ -123,24 +128,11 @@ public class ClientHTTPSPipelineTest {
 		long start = System.currentTimeMillis();
 		int d = 0;
 		while (requests>0 && System.currentTimeMillis()<timeout) {
-			
-
-			if (sequential) {
-				
-				System.out.println("received "+d);
-				while (doneCount(cleaners)<d && System.currentTimeMillis()<timeout){
-					try {
-						Thread.sleep(5);
-					} catch (InterruptedException e) {
-						break;
-					}
-				}
-			}
-			
+						
 			Pipe<NetRequestSchema> pipe = input[0];
 			if (PipeWriter.tryWriteFragment(pipe, NetRequestSchema.MSG_HTTPGET_100)) {
 				PipeWriter.writeUTF8(pipe, NetRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2, "encrypted.google.com");
-				PipeWriter.writeInt(pipe, NetRequestSchema.MSG_HTTPGET_100_FIELD_LISTENER_10, 42);
+				PipeWriter.writeInt(pipe, NetRequestSchema.MSG_HTTPGET_100_FIELD_LISTENER_10,  requests%maxListeners);
 				PipeWriter.writeUTF8(pipe, NetRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3, "/");
 				PipeWriter.writeInt(pipe, NetRequestSchema.MSG_HTTPGET_100_FIELD_PORT_1, 443);
 				PipeWriter.publishWrites(pipe);
@@ -148,7 +140,8 @@ public class ClientHTTPSPipelineTest {
 				requests--;
 			
 				d+=MSG_SIZE;
-		
+				
+				Thread.yield();
 			}
 		}
 		

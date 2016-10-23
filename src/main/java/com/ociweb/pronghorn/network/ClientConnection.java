@@ -51,6 +51,7 @@ public class ClientConnection {
 	private final int userId;
 	private final String host;
 	private final int port;
+	private long lastUsedTime;
 	
 	private static InetAddress testAddr;
 	
@@ -77,6 +78,14 @@ public class ClientConnection {
 		} catch (IOException e) {
 			return false;
 		}
+	}
+	
+	public void setLastUsedTime(long time) {
+		lastUsedTime = time;
+	}
+	
+	public long getLastUsedTime() {
+		return lastUsedTime;
 	}
 	
 	public ClientConnection(String host, int port, int userId, int pipeIdx) throws IOException {
@@ -205,7 +214,7 @@ public class ClientConnection {
 	}
 	
 		
-	public void handshake(Selector selector) throws IOException {
+	public void beginHandshake(Selector selector) throws IOException {
 
 		assert(socketChannel.finishConnect());
 		

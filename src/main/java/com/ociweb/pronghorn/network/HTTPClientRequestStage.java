@@ -20,6 +20,9 @@ public class HTTPClientRequestStage extends PronghornStage {
 	private final Pipe<ClientNetRequestSchema>[] output;
 	private final ClientConnectionManager ccm;
 
+	private final long disconnectTimeoutMS = 10_000;  //TODO: set with param
+	private long nextUnusedCheck = 0;
+	
 	private int activeOutIdx = 0;
 			
 	private static final String implementationVersion = PronghornStage.class.getPackage().getImplementationVersion()==null?"unknown":PronghornStage.class.getPackage().getImplementationVersion();
@@ -51,33 +54,53 @@ public class HTTPClientRequestStage extends PronghornStage {
 		
 		int i = output.length;
 		while (--i>=0) {
-			
-			
-			
-			
 			PipeWriter.publishEOF(output[i]);
 		}
-		//TODO: send poison pill for clean disconnect of every connection
-		
-		
-		//this.ccm.shutdown(); //TODO: this has no way to close the handshake. this is a hard close which shoul onlly happen on error?
 	}
 	
 	@Override
 	public void run() {
+		long now = System.currentTimeMillis();
 		int i = input.length;
 		while (--i>=0) {
-			processMessagesForPipe(i);
+			processMessagesForPipe(i, now);
 		}
 		
-		//for idle work scan for connections which can be disconnected.
-		//TODO: add disconnect.
-		
-		
+		//check if some connections have not been used and can be closed.
+		if (now>nextUnusedCheck) {
+			closeUnusedConnections();
+			nextUnusedCheck = now+disconnectTimeoutMS;
+		}
 		
 	}
+
+
+	private void closeUnusedConnections() {
+		long now;
+		ClientConnection con = ccm.nextValidConnection();
+		final ClientConnection firstCon = con;					
+		while (null!=con) {
+			con = ccm.nextValidConnection();
+			
+			long unused = now = con.getLastUsedTime();
+			
+			if (unused>disconnectTimeoutMS) {
+				
+				Pipe<ClientNetRequestSchema> pipe = output[con.requestPipeLineIdx()];
+				if (PipeWriter.hasRoomForWrite(pipe)) {
+					//close the least used connection
+					cleanCloseConnection(con, pipe);				
+				}
+				
+			}
+			
+			if (firstCon==con) {
+				break;
+			}
+		}
+	}
 	
-	protected void processMessagesForPipe(int activePipe) {
+	protected void processMessagesForPipe(int activePipe, long now) {
 		
 		    Pipe<NetRequestSchema> requestPipe = input[activePipe];
 		    	        	    		    
@@ -95,28 +118,17 @@ public class HTTPClientRequestStage extends PronghornStage {
 								
 								ClientConnection connectionToKill = ccm.nextValidConnection();
 								final ClientConnection firstToKill = connectionToKill;					
-								while (null!=connectionToKill) {
-								
+								while (null!=connectionToKill) {								
 									connectionToKill = ccm.nextValidConnection();
-									if (firstToKill == connectionToKill) {
-										break;//done
-									}
-									//do not close that will be done by last stage
-									//must be done first before we send the message
-									connectionToKill.beginDisconnect();
-								    
+									
 									//must send handshake request down this pipe
 									int pipeId = connectionToKill.requestPipeLineIdx();
 									
-									Pipe<ClientNetRequestSchema> pipe = output[pipeId];
-									
-									if (PipeWriter.tryWriteFragment(pipe, ClientNetRequestSchema.MSG_SIMPLEDISCONNECT_101) ) {
-						                PipeWriter.writeLong(pipe, ClientNetRequestSchema.MSG_SIMPLEDISCONNECT_101_FIELD_CONNECTIONID_101, connectionToKill.getId());
-										PipeWriter.publishWrites(pipe);
-									} else {
-										throw new RuntimeException("Unable to send request, outputPipe is full");
-									}
+									cleanCloseConnection(connectionToKill, output[pipeId]);
 																		
+									if (firstToKill == connectionToKill) {
+										break;//done
+									}
 								}
 								
 								requestShutdown();
@@ -137,6 +149,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 					                if (-1 != connectionId) {
 						                
 					                	ClientConnection clientConnection = ccm.get(connectionId);
+					                	clientConnection.setLastUsedTime(now);
 					                	int outIdx = clientConnection.requestPipeLineIdx();
 					                	
 					                	clientConnection.incRequestsSent();//count of messages can only be done here.
@@ -172,6 +185,11 @@ public class HTTPClientRequestStage extends PronghornStage {
 						                } else {
 						                	throw new RuntimeException("Unable to send request, outputPipe is full");
 						                }
+					                } else {
+					                	
+					                	//TODO: what is this case?
+					               
+					                	
 					                }
 			                	}
 	            		break;
@@ -190,6 +208,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 					                if (-1 != connectionId) {
 						                
 					                	ClientConnection clientConnection = ccm.get(connectionId);
+					                	clientConnection.setLastUsedTime(now);
 					                	int outIdx = clientConnection.requestPipeLineIdx();
 					                					                  	
 					                	clientConnection.incRequestsSent();//count of messages can only be done here.
@@ -238,30 +257,35 @@ public class HTTPClientRequestStage extends PronghornStage {
 						                	throw new RuntimeException("Unable to send request, outputPipe is full");
 						                }
 										
-										
-										
-										
 					                }
 		            		
 				                }
-	    	        	break;
-	    	            
-	            	
+	    	        	break;	    	            	            	
 	            
 	            }
 			
-				PipeReader.releaseReadLock(requestPipe);
-				
+				PipeReader.releaseReadLock(requestPipe);				
 
-	        }
-
-	            
+	        }	            
 		
 	}
 
 
-	//TODO: make static.
-	public boolean hasRoomForWrite(Pipe<NetRequestSchema> requestPipe, StringBuilder activeHost, Pipe<ClientNetRequestSchema>[] output, ClientConnectionManager ccm) {
+	private static void cleanCloseConnection(ClientConnection connectionToKill, Pipe<ClientNetRequestSchema> pipe) {
+		//do not close that will be done by last stage
+		//must be done first before we send the message
+		connectionToKill.beginDisconnect();
+
+		if (PipeWriter.tryWriteFragment(pipe, ClientNetRequestSchema.MSG_SIMPLEDISCONNECT_101) ) {
+		    PipeWriter.writeLong(pipe, ClientNetRequestSchema.MSG_SIMPLEDISCONNECT_101_FIELD_CONNECTIONID_101, connectionToKill.getId());
+			PipeWriter.publishWrites(pipe);
+		} else {
+			throw new RuntimeException("Unable to send request, outputPipe is full");
+		}
+	}
+
+
+	public  boolean hasRoomForWrite(Pipe<NetRequestSchema> requestPipe, StringBuilder activeHost, Pipe<ClientNetRequestSchema>[] output, ClientConnectionManager ccm) {
 		int result = -1;
 		//if we go around once and find nothing then stop looking
 		int i = output.length;
@@ -280,6 +304,12 @@ public class HTTPClientRequestStage extends PronghornStage {
 		if (-1 == outIdx) {
 			return false;
 		}
+		return hasOpenConnection(requestPipe, activeHost, output, ccm, outIdx);
+	}
+
+
+	public static boolean hasOpenConnection(Pipe<NetRequestSchema> requestPipe, StringBuilder activeHost,
+											Pipe<ClientNetRequestSchema>[] output, ClientConnectionManager ccm, int outIdx) {
 		activeHost.setLength(0);//NOTE: we may want to think about a zero copy design
 		PipeReader.peekUTF8(requestPipe, NetRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2, activeHost);
 		
@@ -287,13 +317,25 @@ public class HTTPClientRequestStage extends PronghornStage {
 		int userId = PipeReader.peekInt(requestPipe, NetRequestSchema.MSG_HTTPGET_100_FIELD_LISTENER_10);
 				
 		long connectionId = ClientConnectionManager.openConnection(ccm, activeHost, port, userId, outIdx);
-		if (-1 != connectionId) {
+		if (connectionId>=0) {
 			ClientConnection clientConnection = ccm.get(connectionId);
 			//if we have a pre-existing pipe, must use it.
 			outIdx = clientConnection.requestPipeLineIdx();
 			if (!PipeWriter.hasRoomForWrite(output[outIdx])) {
 				return false;
 			}
+		} else {
+			 //"Has no room" for the new connection so we request that the oldest connection is closed.
+			
+			ClientConnection connectionToKill = ccm.get( -connectionId);
+			
+			Pipe<ClientNetRequestSchema> pipe = output[connectionToKill.requestPipeLineIdx()];
+			if (PipeWriter.hasRoomForWrite(pipe)) {
+				//close the least used connection
+				cleanCloseConnection(connectionToKill, pipe);				
+			}
+			
+			return false;
 		}
 		return true;
 	}

@@ -44,7 +44,7 @@ public class ServiceObjectHolder<T> {
         public int mask;
         public final long[] serviceObjectKeys;
         public final T[] serviceObjectValues;
-        public final int[] serviceObjectLookupCounts; //Used for sequence counts or usage counts
+        public final long[] serviceObjectLookupCounts; //Used for sequence counts or usage counts
 
         public final Class<T> clazz; 
 
@@ -55,7 +55,7 @@ public class ServiceObjectHolder<T> {
             this.mask = size-1;
             this.serviceObjectKeys = new long[size];
             this.serviceObjectValues = (T[]) Array.newInstance(clazz, size);
-            this.serviceObjectLookupCounts = new int[size];
+            this.serviceObjectLookupCounts = new long[size];
         }
 
         @SuppressWarnings("unchecked")
@@ -66,7 +66,7 @@ public class ServiceObjectHolder<T> {
             this.mask = this.size-1;
             this.serviceObjectKeys = new long[size];
             this.serviceObjectValues = (T[]) Array.newInstance(clazz, size);
-            this.serviceObjectLookupCounts = new int[size];
+            this.serviceObjectLookupCounts = new long[size];
             
             int index = data.size;
             int mask = this.mask;
@@ -145,8 +145,9 @@ public class ServiceObjectHolder<T> {
         do {
             //if we end up passing over all the members find which is the least used.
             if (-1 != index) {
-                if (data.serviceObjectLookupCounts[modIdx]<minCount) {
-                    minCount = data.serviceObjectLookupCounts[modIdx];
+                long lookupCounts = data.serviceObjectLookupCounts[modIdx];
+				if (lookupCounts<minCount) {
+                    minCount = lookupCounts;
                     minCountIndex = index;
                 }
             }
@@ -205,8 +206,9 @@ public class ServiceObjectHolder<T> {
         do {
             //if we end up passing over all the members find which is the least used.
             if (-1 != index) {
-                if (data.serviceObjectLookupCounts[modIdx]<minCount) {
-                    minCount = data.serviceObjectLookupCounts[modIdx];
+                long lookupCounts = data.serviceObjectLookupCounts[modIdx];
+				if (lookupCounts<minCount) {
+                    minCount = lookupCounts;
                     minCountIndex = index;
                 }
             }
@@ -266,8 +268,7 @@ public class ServiceObjectHolder<T> {
         data.serviceObjectLookupCounts[data.mask & (int)index] = 0;
     }
     
-    @Deprecated
-    public int incUsageCount(final long index) {
+    public long incUsageCount(final long index) {
         return data.serviceObjectLookupCounts[data.mask & (int)index]++;
     }
 

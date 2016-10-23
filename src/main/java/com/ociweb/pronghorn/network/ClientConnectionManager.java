@@ -35,7 +35,9 @@ public class ClientConnectionManager implements ServiceObjectValidator<ClientCon
 		ClientConnection response = connections.getValid(hostId);
 		if (null == response) {
 			releaseResponsePipeLineIdx(hostId);
-		}		
+		} else {
+			connections.incUsageCount(hostId);
+		}
 		return response;
 	}
 	
@@ -54,12 +56,19 @@ public class ClientConnectionManager implements ServiceObjectValidator<ClientCon
 		return TrieParserReader.query(hostTrieReader, hostTrie, guidWorkspace, 0, len, Integer.MAX_VALUE);
 	}
 	
-	public long add(ClientConnection connection) {
-		long id = connections.add(connection);		
+	
+	public long lookupInsertPosition() {
+		return connections.lookupInsertPosition();
+	}
+	
+	public void setNewConnection(long index, ClientConnection connection) {
+		
+		connections.setValue(index, connection);
+
 		//store under host and port this hostId
-		hostTrie.setValue(connection.GUID(), id);
-		connection.setId(id);
-		return id;
+		hostTrie.setValue(connection.GUID(), index);
+		connection.setId(index);	
+		
 	}
 
 	public int responsePipeLineIdx(long ccId) {
@@ -124,6 +133,13 @@ public class ClientConnectionManager implements ServiceObjectValidator<ClientCon
 		long connectionId = ccm.lookup(host, port, userId);				                
 		if (-1 == connectionId || null == ccm.get(connectionId)) {
 			
+			connectionId = ccm.lookupInsertPosition();
+			
+			if (connectionId<0) {
+				//do not open instead we should attempt to close this one to provide room.
+				return connectionId;
+			}
+			
 			try {
 		    	//create new connection because one was not found or the old one was closed
 				ClientConnection cc = new ClientConnection(host.toString(), port, userId, pipeIdx);				                	
@@ -131,27 +147,16 @@ public class ClientConnectionManager implements ServiceObjectValidator<ClientCon
 		    	while (!cc.isFinishConnect() ) {  //TODO: revisit
 		    		Thread.yield();
 		    	}
+	
+		    	cc.beginHandshake(ccm.selector());
 		    	
-		   ///////////////////////// 	
-		   //TODO: remove this point and do the handshake inline
-		   ///////////////////////// 	
-		    	cc.handshake(ccm.selector()); //TODO: revisit this is blocking
-		    	
-		    	
-		    	if (cc.isValid()) {
-		    		connectionId = ccm.add(cc);
-		    		//log.debug("added new connection under id:"+connectionId);
-		    	} else {
-		    		logger.warn("new connection was invalid {}:{}",host,port);
-		    		connectionId = -1;
-		    	}
-		    	
+		    	ccm.setNewConnection(connectionId,  cc);
 		    	
 		    	
 			} catch (IOException ex) {
 				logger.warn("handshake problems with new connection {}:{}",host,port,ex);
 				
-				connectionId = -1;
+				connectionId = Long.MIN_VALUE;
 			}				                	
 		}
 		return connectionId;
