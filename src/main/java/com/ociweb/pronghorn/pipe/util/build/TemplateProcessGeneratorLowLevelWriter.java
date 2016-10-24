@@ -139,10 +139,13 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
             //      if (!Pipe.hasRoomForWrite(input)) {
             //      return;
             //  }
-            appendStaticCall(bodyTarget.append(tab).append("while ("), pipeClass, "hasRoomForWrite").append(pipeVarName).append(")) {\n");
+            appendStaticCall(bodyTarget.append(tab).append("while ("), pipeClass, "hasRoomForWrite").append(pipeVarName).append(")");
+            additionalLoopLogic(bodyTarget);
+            bodyTarget.append("){\n");
         }
         ///
         ///
+
 
 
         if (hasSimpleMessagesOnly) {
@@ -175,6 +178,9 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
 
     }
 
+    //intentionally left blank to override in later sub classes
+    protected void additionalLoopLogic(Appendable target){
+    }
     
     private boolean buildFullStageWritingToPipe() {
         return null!=pipeVarName;
