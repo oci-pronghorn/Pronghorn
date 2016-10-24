@@ -2,8 +2,6 @@ package com.ociweb.pronghorn.stage.test;
 
 import com.ociweb.pronghorn.code.LoaderUtil;
 import com.ociweb.pronghorn.pipe.*;
-import com.ociweb.pronghorn.pipe.build.GroceryExampleDecoderStage;
-import com.ociweb.pronghorn.pipe.build.GroceryExampleEncoderStage;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.RandomWriterStage;
