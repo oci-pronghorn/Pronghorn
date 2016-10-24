@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.stage.generator;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.phast.PhastDecoder;
+
 import java.io.IOException;
 
 import static com.ociweb.pronghorn.util.Appendables.appendClass;
@@ -18,6 +19,7 @@ import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
+
 import java.nio.channels.Pipe;
 
 public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevelWriter {
@@ -48,19 +50,19 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
 
     public PhastDecoderStageGenerator(MessageSchema schema, Appendable target, boolean generateRunnable, boolean scopeProtected) {
-        super(schema, target, generateClassName(schema)+(generateRunnable ? "" : "Stage"),
+        super(schema, target, generateClassName(schema) + (generateRunnable ? "" : "Stage"),
                 generateRunnable ? "implements Runnable" : "extends PronghornStage",
                 generateRunnable ? null : "output",
                 scopeProtected ? "protected" : "private",
-                false, schema.getClass().getPackage().getName()+".build");
+                false, schema.getClass().getPackage().getName() + ".build");
         this.generateRunnable = generateRunnable;
     }
 
 
     public PhastDecoderStageGenerator(MessageSchema schema, Appendable target, String interitance, boolean scopeProtected) {
-        super(schema, target, generateClassName(schema),  interitance,null,
+        super(schema, target, generateClassName(schema), interitance, null,
                 scopeProtected ? "protected" : "private",
-                false, schema.getClass().getPackage().getName()+".build");
+                false, schema.getClass().getPackage().getName() + ".build");
         this.generateRunnable = true;
     }
 
@@ -68,6 +70,14 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         this(schema, target, generateRunnable, generateRunnable);
     }
 
+    /**
+     * This method is to be ovveridden and called on by the super class. It should not be called anywhere but by the
+     * super class
+     *
+     * @param target    where the code is being written in super class
+     * @param className the base class name, without extensions or implementations
+     * @throws IOException when the target can not be written to
+     */
     @Override
     protected void buildConstructors(Appendable target, String className) throws IOException {
 
@@ -99,19 +109,30 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
     }
 
+    /**
+     * This method generates a class name based on the input schema
+     *
+     * @param schema This is an object created from an XML schema file
+     */
     private static String generateClassName(MessageSchema schema) {
         if (schema instanceof MessageSchemaDynamic) {
-            String name = MessageSchema.from(schema).name.replaceAll("/", "").replaceAll(".xml", "")+"Decoder";
+            String name = MessageSchema.from(schema).name.replaceAll("/", "").replaceAll(".xml", "") + "Decoder";
             if (Character.isLowerCase(name.charAt(0))) {
-                return Character.toUpperCase(name.charAt(0))+name.substring(1);
+                return Character.toUpperCase(name.charAt(0)) + name.substring(1);
             }
             return name;
         } else {
-            return (schema.getClass().getSimpleName().replace("Schema", ""))+"Writer";
+            return (schema.getClass().getSimpleName().replace("Schema", "")) + "Writer";
         }
     }
 
-
+    /**
+     * This method overrides from the super class, where it is called to add imports. This method should not be called
+     * from anywhere but the super class.
+     *
+     * @param schema the schema from super class
+     * @param target the Appendable target from super class
+     */
     @Override
     protected void additionalImports(MessageSchema schema, Appendable target) {
         try {
@@ -125,19 +146,31 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * This method is where the startup is overriden in the printed out code. Called from teh super class, and should
+     * not be called from elsewhere.
+     *
+     * @param target
+     */
     @Override
-    protected void generateStartup(Appendable target){
-        try{
+    protected void generateStartup(Appendable target) {
+        try {
             target.append("\npublic void startup(){\n");
             target.append("}\n");
-        }
-        catch (IOException e) {
-        throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
+    /**
+     * This method is to be ovveridden and called on by the super class. It should not be called anywhere but by the
+     * super class. This addes to the loop logic in the run method in the printed out code.
+     *
+     * @param target The target that the code is being written to
+     */
     @Override
-    protected void additionalLoopLogic(Appendable target){
+    protected void additionalLoopLogic(Appendable target) {
         try {
             target.append(" && Pipe.contentRemaining(" + inPipeName + ") > 0");
         } catch (IOException e) {
@@ -148,7 +181,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     @Override
     protected void bodyOfNextMessageIdx(Appendable target) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
-        
+
         int[] tokens = from.tokens;
         long[] scriptIds = from.fieldIdScript;
         String[] scriptNames = from.fieldNameScript;
@@ -178,6 +211,16 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
 
+    /**
+     * This method is called from the super class to make the body of the printed out code. It should only be called
+     * from the super class.
+     *
+     * @param target
+     * @param cursor
+     * @param firstField
+     * @param fieldCount
+     * @throws IOException
+     */
     @Override
     protected void bodyOfBusinessProcess(Appendable target, int cursor, int firstField, int fieldCount) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
@@ -194,7 +237,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
         //make reader
         target.append("DataInputBlobReader<RawDataSchema> " + readerName + " = Pipe.inputStream(" + inPipeName + ");\n");
-        //this will keep track of variable names
+        //this will keep track of variable names so they can be called as arguments in a later method
         StringBuilder argumentList = new StringBuilder();
 
         //bitmask goes here
@@ -204,14 +247,11 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         //pass over group tag 0x10000
         cursor++;
 
-        //TODO: remove these
-        //target.append("System.out.println(Arrays.toString(intDefaults));");
-        //target.append("System.out.println(Arrays.toString(longDefaults));");
-        for (int f = cursor; f < (firstField+fieldCount); f++) {
+        for (int f = cursor; f < (firstField + fieldCount); f++) {
             int token = from.tokens[cursor];
             int pmapType = TokenBuilder.extractType(token);
             //if (TypeMask.isOptional(pmapType) == true){
-                //TODO: support optional fields.
+            //TODO: support optional fields.
             //}
             if (TypeMask.isInt(pmapType) == true) {
                 target.append(tab + "int " + scriptNames[f] + " = ");
@@ -265,14 +305,14 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             } //if string
             else if (TypeMask.isText(pmapType) == true) {
                 target.append(tab + "String " + scriptNames[f] + " = ");
-                decodeStringGenerator( target);
+                decodeStringGenerator(target);
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
             } else {
                 target.append("Unsupported data type " + pmapType + "\n");
             }
             cursor++;
             argumentList.append(scriptNames[f]);
-            if (f != (firstField+fieldCount) - 1){
+            if (f != (firstField + fieldCount) - 1) {
                 argumentList.append(',');
             }
         }
@@ -283,43 +323,38 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append(");\n");
     }
 
+    /**
+     * This method is intentionally left blank so it can overrid the super classes implementation of requestShutDown
+     *
+     * @param target where the code is written to
+     * @throws IOException when the target can not be written to.
+     */
     protected void additionalMethods(Appendable target) throws IOException {
-        //blank to remove request shut down method from parent class
     }
 
+    /**
+     * This method overrides from the super class, where it is called to add instance variables. This method should not
+     * be called from anywhere but the super class.
+     *
+     * @param target the Appendable target from super class
+     * @throws IOException if the target can not be written to
+     */
     @Override
     protected void additionalMembers(Appendable target) throws IOException {
-        /*
-        FieldReferenceOffsetManager from = MessageSchema.from(schema);
-        int[] tokens = from.tokens;
-        long[] scriptIds = from.fieldIdScript;
-        String[] scriptNames = from.fieldNameScript;
-        int[] intDict = from.newIntDefaultsDictionary();
-        long[] longDict = from.newLongDefaultsDictionary();
-        int i = tokens.length;
-
-        while (--i >= 0) {
-            int type = TokenBuilder.extractType(tokens[i]);
-
-            if (TypeMask.isLong(type)) {
-                target.append("private long ").append(scriptNames[i]).append(";\n");
-            } else if (TypeMask.isInt(type)) {
-                target.append("private int ").append(scriptNames[i]).append(";\n");
-            } else if (TypeMask.isText(type)) {
-                target.append("private String ").append(scriptNames[i]).append(";\n");
-            }
-        }
-        */
         target.append("private long[] " + longDictionaryName + ";\n");
-        target.append("private int[] " +intDictionaryName + ";\n");
-        target.append("private long[] " +defaultLongDictionaryName + ";\n");
-        target.append("private int[] " +defaultIntDictionaryName + ";\n");
+        target.append("private int[] " + intDictionaryName + ";\n");
+        target.append("private long[] " + defaultLongDictionaryName + ";\n");
+        target.append("private int[] " + defaultIntDictionaryName + ";\n");
         target.append("private Pipe<RawDataSchema> " + inPipeName + ";\n");
 
     }
 
-    
-    protected void decodePmap(Appendable target){
+    /**
+     * writes the code to pull the pmap off of the input pipe
+     *
+     * @param target where the code is written to.
+     */
+    protected void decodePmap(Appendable target) {
         try {
             target.append(tab + "long " + mapName + " = ");
             appendStaticCall(target, blobReader, "readPackedLong").append(readerName).append(");\n");
@@ -327,22 +362,26 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             throw new RuntimeException(e);
         }
     }
-    
-    protected void decodeIncrementLongGenerator(Appendable target, int index){
+
+    //incremement int code generator
+    protected void decodeIncrementLongGenerator(Appendable target, int index) {
         try {
             appendStaticCall(target, decoder, "decodeIncrementLong").append(longDictionaryName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-    
-    protected void decocdeDefaultLongGenerator(Appendable target, int index){
+
+    //default long code generator
+    protected void decocdeDefaultLongGenerator(Appendable target, int index) {
         try {
             appendStaticCall(target, decoder, "decodeDefaultLong").append(readerName).append(", ").append(mapName).append(", ").append(defaultIntDictionaryName).append(", ").append(bitMaskName).append(", ").append(Integer.toString(index)).append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
+
+    //decode string generator
     protected void decodeStringGenerator(Appendable target) {
         try {
             appendStaticCall(target, decoder, "decodeString").append(readerName).append(");\n");
@@ -351,6 +390,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
 
+    //delta long code generator
     protected void decodeDeltaLongGenerator(Appendable target, int index) {
         try {
             appendStaticCall(target, decoder, "decodeDeltaLong").append(longDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(");\n");
@@ -359,6 +399,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
 
+    //default int code generator
     protected void decodeDefaultIntGenerator(Appendable target, int index) {
         try {
             appendStaticCall(target, decoder, "decodeDefaultInt").append(readerName).append(", ").append(mapName).append(", ").append(defaultIntDictionaryName).append(", ").append(bitMaskName).append(", ").append(Integer.toString(index)).append(", ").append(");\n");
@@ -367,7 +408,8 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
 
-    protected void decodeDeltaIntGenerator( Appendable target, int index) {
+    //delta int code generator
+    protected void decodeDeltaIntGenerator(Appendable target, int index) {
         try {
             appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toBinaryString(index)).append(", ").append(bitMaskName).append(");\n");
         } catch (IOException e) {
@@ -375,26 +417,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
 
-    /*
-    MAY OR MAY NOT NEED THESE TWO:
-    
-    protected void decodeIncIntGenerator(MessageSchema schema, Appendable target) {
-       try {
-           appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(indexName).append(", ").append(bitMaskName).append(");\n");
-       } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    
-    protected void decodeIncIntSlowGenerator(MessageSchema schema, Appendable target) {
-        try {
-            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(indexName).append(");\n");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-*/
+    //copy int code generator
     protected void decodeCopyIntGenerator(Appendable target, int index) {
         try {
             appendStaticCall(target, decoder, "decodeCopyInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(");\n");
@@ -403,6 +426,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
 
+    //increment int code generator
     protected void decodeIncrementIntGenerator(Appendable target, int index) {
         try {
             appendStaticCall(target, decoder, "decodeIncrementInt").append(intDictionaryName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(");\n");
@@ -411,6 +435,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         }
     }
 
+    //int present code generator
     protected void decodePresentIntGenerator(Appendable target) {
         try {
             appendStaticCall(target, decoder, "decodePresentInt").append(", ").append(readerName).append(", ").append(mapName).append(", ").append(bitMaskName).append(");\n");
@@ -418,77 +443,4 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             throw new RuntimeException(e);
         }
     }
-
-//    protected void decodeStringGenerator(MessageSchema schema, Appendable target)
-//    {
-//        try
-//        {
-//            
-//        }
-//        catch (IOException e)
-//        {
-//            throw new RuntimeException(e);
-//        }
-//    }
-    //    @Override
-//    protected void processCallerPrep() throws IOException
-//    {
-//        final FieldReferenceOffsetManager from = MessageSchema.from(schema); 
-//        
-////        if (buildFullStageWritingToPipe()) {
-////            from.appendGUID( bodyTarget.append("private final int[] FROM_GUID = ")).append(";\n");
-////        } 
-//        
-//        
-////        bodyTarget.append("private final long BUILD_TIME = ");
-////        Appendables.appendValue(bodyTarget, System.currentTimeMillis()).append("L;\n");
-////        bodyTarget.append("private static final int ").append(doNothingConstant).append(" = ").append(doNothingConstantValue).append(";\n");
-//
-//
-//        from.appendLongDefaults(bodyTarget.append("private final long[] ").append(longDictionaryName).append(" = ").append(";\n"));
-//        from.appendIntDefaults(bodyTarget.append("private final int[] ").append(intDictionaryName).append(" = ").append(";\n"));        
-//                
-//        
-//        
-//        bodyTarget.append("\n");
-//        
-//        bodyTarget.append(methodScope).append(" int nextMessageIdx() {\n");        
-//        bodyOfNextMessageIdx(bodyTarget);        
-//        bodyTarget.append("}\n");
-//        
-//        bodyTarget.append("\n");
-//        bodyTarget.append("@Override\n");
-//        bodyTarget.append("public void run() {\n");
-//    }
-//   @Override
-//    protected void processCaller(int cursor) throws IOException
-//    {        
-//        FieldReferenceOffsetManager from = MessageSchema.from(schema);
-//        
-//        //appendCaseMsgIdConstant(bodyTarget.append(tab).append(tab).append("case "), cursor, schema).append(":\n");
-//
-//        if ( FieldReferenceOffsetManager.isTemplateStart(from, cursor) ) {
-//            beginMessage(bodyTarget, cursor);
-//        }
-//        
-//        bodyTarget.append(tab).append(tab).append(tab);
-//        appendBusinessMethodName(cursor).append("();\n");
-//                                       
-//                                       
-//        //Pipe.confirmLowLevelWrite(input, 8);
-//        int fragmentSizeLiteral = from.fragDataSize[cursor];
-//        
-//        if (buildFullStageWritingToPipe()) {
-//            appendStaticCall(bodyTarget.append(tab).append(tab).append(tab), pipeClass, "confirmLowLevelWrite").append(pipeVarName).append(", ");
-//            Appendables.appendValue(bodyTarget, fragmentSizeLiteral);
-//            bodyTarget.append("/* fragment ");
-//            Appendables.appendValue(bodyTarget, cursor).append("  size ");
-//            Appendables.appendValue(bodyTarget, from.fragScriptSize[cursor]);
-//            bodyTarget.append("*/);\n");
-//        }
-//        
-//                                      
-//        bodyTarget.append(tab).append(tab).append("break;\n");
-//    }
-    //TODO:...
 }
