@@ -234,7 +234,9 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         
         if (hasSimpleMessagesOnly) {
             
-            appendStaticCall(bodyTarget.append("if ("), pipeClass,"hasContentToRead").append(pipeVarName).append(")) {\n");            
+            appendStaticCall(bodyTarget.append("if ("), pipeClass,"hasContentToRead").append(pipeVarName).append(")");
+            additionalLoopLogic(bodyTarget);
+            bodyTarget.append("){\n");
             appendStaticCall(bodyTarget.append(cursorVarName).append(" = "), pipeClass, "takeMsgIdx").append(pipeVarName).append(");\n");
             
             
@@ -255,6 +257,10 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         bodyTarget.append(tab).append("switch(").append(cursorVarName).append(") {\n");
       
         
+    }
+
+    //intentionally left blank to override in later sub classes
+    protected void additionalLoopLogic(Appendable target){
     }
 
     @Override
