@@ -250,11 +250,32 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         for (int f = cursor; f < (firstField + fieldCount); f++) {
             int token = from.tokens[cursor];
             int pmapType = TokenBuilder.extractType(token);
-            //if (TypeMask.isOptional(pmapType) == true){
-            //TODO: support optional fields.
-            //}
+            if (TypeMask.isInt(pmapType)){
+                target.append(tab + "int");
+            }
+            else if (TypeMask.isLong(pmapType)){
+                target.append(tab + "long");
+            }
+            else{
+                target.append(tab + "String");
+            }
+            target.append(" " + scriptNames[f] + ";\n");
+
+            if (TypeMask.isOptional(pmapType) == true){
+                if (TypeMask.isInt(pmapType) == true){
+                    target.append(tab + tab + scriptNames[f] + "=-70");
+                }
+                else if(TypeMask.isLong(pmapType) == true){
+                    target.append(tab + tab + scriptNames[f] + "=-70");
+                }
+                else{
+                    target.append(tab + tab + scriptNames[f] + "= \"None\";");
+                }
+                target.append(tab +"if ((bitMask & 1) == 0) {\n");
+                target.append(tab + tab +"bitMask = bitMask << 1;\n");
+            }
             if (TypeMask.isInt(pmapType) == true) {
-                target.append(tab + "int " + scriptNames[f] + " = ");
+                target.append(tab + scriptNames[f] + " = ");
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
@@ -282,7 +303,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
             } //if long, goes to switch to find correct operator to call 
             else if (TypeMask.isLong(pmapType) == true) {
-                target.append(tab + "long " + scriptNames[f] + " = ");
+                target.append(tab + scriptNames[f] + " = ");
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
@@ -304,7 +325,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
             } //if string
             else if (TypeMask.isText(pmapType) == true) {
-                target.append(tab + "String " + scriptNames[f] + " = ");
+                target.append(tab + scriptNames[f] + " = ");
                 decodeStringGenerator(target);
                 target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
             } else {
@@ -314,6 +335,9 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             argumentList.append(scriptNames[f]);
             if (f != (firstField + fieldCount) - 1) {
                 argumentList.append(',');
+            }
+            if (TypeMask.isOptional(pmapType) == true){
+                target.append(tab + "}\n");
             }
         }
         target.append("Pipe.releaseReadLock(" + inPipeName + ");\n");

@@ -22,11 +22,6 @@ public class PhastEncoder {
 	//encodes pmap one number at a time
 	//takes the pmap (0 if it has not been started yet) and the token for the number
 	public static long pmapBuilderLong(long pmap, int type, int oper, long curValue, long prevValue, long initValue, boolean isNull){
-		//gets the operation from the token
-		//get the type from the token, to see if it is optional or not
-		if (TypeMask.isOptional(type)){
-			pmap = (pmap << 1) + (isNull? LEAST_FREQUENT_CASE:MOST_FREQUENT_CASE);
-		}
 		//build pmap according to operator
 		switch (oper) {
         	case OperatorMask.Field_Copy:
@@ -44,17 +39,16 @@ public class PhastEncoder {
         	case OperatorMask.Field_Increment:
         		pmap = (pmap << 1) + ((1 + prevValue) == curValue? MOST_FREQUENT_CASE:LEAST_FREQUENT_CASE);
         		break;
+		}
+		//get the type from the token, to see if it is optional or not
+		if (TypeMask.isOptional(type)){
+			pmap = (pmap << 1) + (isNull? LEAST_FREQUENT_CASE:MOST_FREQUENT_CASE);
 		}
 		return pmap;
 	}
 	
 	//pmap builder for all cases of int
 	public static long pmapBuilderInt(long pmap, int type, int oper, int curValue, int prevValue, int initValue, boolean isNull){
-		//gets the operation from the token
-		//get the type from the token, to see if it is optional or not
-		if (TypeMask.isOptional(type)){
-			pmap = (pmap << 1) + (isNull? LEAST_FREQUENT_CASE:MOST_FREQUENT_CASE);
-		}
 		//build pmap according to operator
 		switch (oper) {
         	case OperatorMask.Field_Copy:
@@ -72,6 +66,10 @@ public class PhastEncoder {
         	case OperatorMask.Field_Increment:
         		pmap = (pmap << 1) + ((1 + prevValue) == curValue? MOST_FREQUENT_CASE:LEAST_FREQUENT_CASE);
         		break;
+		}
+		//get the type from the token, to see if it is optional or not
+		if (TypeMask.isOptional(type)){
+			pmap = (pmap << 1) + (isNull? LEAST_FREQUENT_CASE:MOST_FREQUENT_CASE);
 		}
 		return pmap;
 	}

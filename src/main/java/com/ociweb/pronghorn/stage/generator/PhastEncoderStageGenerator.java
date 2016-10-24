@@ -16,6 +16,7 @@ import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.pipe.token.*;
 import com.ociweb.pronghorn.pipe.util.build.TemplateProcessGeneratorLowLevelReader;
 
+import java.lang.reflect.Type;
 import java.nio.channels.Pipe;
 import java.util.Stack;
 import java.util.logging.Level;
@@ -228,18 +229,23 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             //instantiating bitmask
             bodyTarget.append(tab + "long " + bitMaskName + " = 1;\n\n");
 
-            //number of shifts if it is optional or not
-            int numShifts = 0;
             //traverses all parameters in message and pulls them off the pipe
             for (int paramIdx = 0; paramIdx < fragmentParaCount; paramIdx++) {
                 int token = from.tokens[curCursor2];
                 int pmapType = TokenBuilder.extractType(token);
                 String varName = new StringBuilder().append(fragmentParaArgs[paramIdx]).append(fragmentParaSuff[paramIdx]).toString();
                 String varType = new StringBuilder().append(fragmentParaTypes[paramIdx]).toString();
+                //reset numshifts
+                int numShifts = 0;
+                if (TypeMask.isOptional(pmapType)){
+                    numShifts++;
+                    bodyTarget.append(tab + "if ((bitMask & 1) == 0) {\n" +
+                                       tab + tab +"bitMask = bitMask << 1;\n");
+                }
                 //if int, goes to switch to find correct operator to call
                 if (TypeMask.isInt(pmapType) == true) {
                     int oper = TokenBuilder.extractOper(token);
-                    numShifts = 1;
+                    numShifts++;
                     switch (oper) {
                         case OperatorMask.Field_Copy:
                             copyIntGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName);
@@ -294,6 +300,9 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 if (paramIdx != (fragmentParaCount - 1)) {
                     bodyTarget.append(tab + bitMaskName + " = " + bitMaskName + " << " + numShifts + ";\n");
                 }
+                if (TypeMask.isOptional(pmapType)){
+                    bodyTarget.append(tab + "}\n");
+                }
                 curCursor2 += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
             }
             bodyTarget.append(tab + "Pipe.publishWrites(" + outPipeName + ");\n");
@@ -336,12 +345,11 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             String varName = new StringBuilder().append(fragmentParaArgs[i]).append(fragmentParaSuff[i]).toString();
             String varType = new StringBuilder().append(fragmentParaTypes[i]).toString();
 
-            boolean isNull = false;
+            String isNull = "false";
 
             if (TypeMask.isOptional(pmapType)) {
-                isNull = false;
+                isNull = "true";
             }
-
             //call appropriate pmap builder according to type
             if (varType.equals("int")) {
                 bodyTarget.append(tab + pmapName + " = ");
@@ -365,7 +373,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     //  BuilderInt Factory
-    protected void encodePmapBuilderInt(MessageSchema schema, Appendable target, int token, int index, String valName, boolean isNull) {
+    protected void encodePmapBuilderInt(MessageSchema schema, Appendable target, int token, int index, String valName, String isNull) {
         try {
             //TODO: add support for isnull
             appendStaticCall(target, encoder, "pmapBuilderInt")
@@ -375,7 +383,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(valName).append(", ")
                     .append(intDictionaryName + "[" + index + "]").append(", ")
                     .append(defIntDictionaryName + "[" + index + "]").append(", ")
-                    .append(Boolean.toString(isNull))
+                    .append(isNull)
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -383,7 +391,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     // builderLong Factory
-    protected void encodePmapBuilderLong(MessageSchema schema, Appendable target, int token, int index, String valName, boolean isNull) {
+    protected void encodePmapBuilderLong(MessageSchema schema, Appendable target, int token, int index, String valName, String isNull) {
         try {
             appendStaticCall(target, encoder, "pmapBuilderLong")
                     .append(pmapName).append(", ")
@@ -392,7 +400,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     .append(valName).append(", ")
                     .append(longDictionaryName + "[" + index + "]").append(", ")
                     .append(defLongDictionaryName + "[" + index + "]").append(", ")
-                    .append(Boolean.toString(isNull))
+                    .append(isNull)
                     .append(");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
