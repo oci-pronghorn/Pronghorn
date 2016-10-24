@@ -311,7 +311,8 @@ public class MatrixComputeTest {
 		
 		
 	}
-	
+
+    //        @Ignore
 	@Test
 	public void testComputeExample() {
 		//speed
@@ -472,17 +473,18 @@ public class MatrixComputeTest {
 		
 	}
 	
+        @Ignore
 	@Test
-	public void testComputeExampleNative() {
+	public void testComputeExampleNativeInteger() {
 		MatrixTypes type = MatrixTypes.Integers;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
 		
 		//TypeMask.Decimal;
 		
 		
-		int leftRows = 64;
-		int leftColumns = 64;
+		int leftRows = 4;
+		int leftColumns = 4;
 
-		int rightColumns = 64;				
+		int rightColumns = 4;				
 		int rightRows = leftColumns;		
 		
 		Random rand = new Random();
@@ -614,4 +616,167 @@ public class MatrixComputeTest {
 
 		
 	}
+
+        @Ignore
+	@Test
+	public void testComputeExampleNativeFloat() {
+		MatrixTypes type = MatrixTypes.Floats;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
+		
+		//TypeMask.Decimal;
+		
+		
+		int leftRows = 64;
+		int leftColumns = 64;
+
+		int rightColumns = 64;				
+		int rightRows = leftColumns;		
+		
+		Random rand = new Random();
+		
+		float[][] leftTest = new float[leftRows][leftColumns];
+		for (int i = 0; i < leftRows; ++i) {
+		    for (int j = 0; j < leftColumns; ++j) {
+			leftTest[i][j] = rand.nextFloat();
+		    }
+		}
+		
+		float[][] rightTest = new float[rightRows][rightColumns];
+		for (int i = 0; i < rightRows; ++i) {
+		    for (int j = 0; j < rightColumns; ++j) {
+			rightTest[i][j] = rand.nextFloat();
+		    }
+		}
+								
+		MatrixSchema leftSchema = BuildMatrixCompute.buildSchema(leftRows, leftColumns, type);		
+		RowSchema<MatrixSchema> leftRowSchema = new RowSchema<MatrixSchema>(leftSchema);
+		
+		MatrixSchema rightSchema = BuildMatrixCompute.buildSchema(rightRows, rightColumns, type);
+		RowSchema<MatrixSchema> rightRowSchema = new RowSchema<MatrixSchema>(rightSchema);
+				
+		MatrixSchema resultSchema = BuildMatrixCompute.buildResultSchema(leftSchema, rightSchema);
+		RowSchema<MatrixSchema> rowResultSchema = new RowSchema<MatrixSchema>(resultSchema);		
+		
+		
+		DecimalSchema result2Schema = new DecimalSchema<MatrixSchema>(resultSchema);
+
+		assertTrue(resultSchema.getRows()==leftRows);
+		assertTrue(resultSchema.getColumns()==rightColumns);
+		
+		assertTrue(leftSchema.getRows()==leftRows);
+		assertTrue(leftSchema.getColumns()==leftColumns);
+		
+		assertTrue(rightSchema.getRows()==rightRows);
+		assertTrue(rightSchema.getColumns()==rightColumns);
+				
+		
+		GraphManager gm = new GraphManager();
+		
+		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 500);
+		
+		Pipe<RowSchema<MatrixSchema>> left = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(leftRowSchema, leftRows)); 
+		Pipe<RowSchema<MatrixSchema>> right = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(rightRowSchema, rightRows));
+		
+		Pipe<RowSchema<MatrixSchema>> result = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(rowResultSchema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
+		Pipe<DecimalSchema<MatrixSchema>> result2 = new Pipe<DecimalSchema<MatrixSchema>>(new PipeConfig<DecimalSchema<MatrixSchema>>(result2Schema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
+		
+		
+		int targetThreadCount = 12;
+		Pipe<ColumnSchema<MatrixSchema>>[] colResults = BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, targetThreadCount-2);
+		
+		ColumnsToRowsStage<MatrixSchema> ctr = new ColumnsToRowsStage<MatrixSchema>(gm, resultSchema, colResults, result);
+		
+		
+		ConvertToDecimalStage<MatrixSchema> watch = new ConvertToDecimalStage<MatrixSchema>(gm, rowResultSchema, result, result2);
+		
+		result2.initBuffers(); //required for us to jump in on this thread and grab the data.
+
+		
+		StageScheduler scheduler = new ThreadPerStageScheduler(gm);
+		
+		scheduler.startup();	
+
+		for(int c=0;c<leftRows;c++) {
+			while (!Pipe.hasRoomForWrite(left)) {
+				Thread.yield();
+			}
+			Pipe.addMsgIdx(left, resultSchema.rowId);	
+			for(int r=0;r<leftColumns;r++) {
+				type.addValue(leftTest[c][r], left);
+			}
+			Pipe.confirmLowLevelWrite(left, Pipe.sizeOf(left, resultSchema.rowId));
+			Pipe.publishWrites(left);
+		}
+		
+		for(int c=0;c<rightRows;c++) {
+			while (!Pipe.hasRoomForWrite(right)) {
+				Thread.yield();
+			}
+			Pipe.addMsgIdx(right, resultSchema.rowId);		
+			for(int r=0;r<rightColumns;r++) {
+				type.addValue(rightTest[c][r], right);
+			}
+			Pipe.confirmLowLevelWrite(right, Pipe.sizeOf(right, resultSchema.rowId));
+			Pipe.publishWrites(right);
+		}
+		
+		Pipe.spinBlockForRoom(left, Pipe.EOF_SIZE);
+		Pipe.spinBlockForRoom(right, Pipe.EOF_SIZE);
+		Pipe.publishEOF(left);
+		Pipe.publishEOF(right);
+				
+		GraphManager.blockUntilStageBeginsShutdown(gm, watch, 500);//timeout in ms
+		
+
+		scheduler.awaitTermination(2000, TimeUnit.SECONDS);
+		
+		float[][] expectedAnswer = new float[leftRows][rightColumns];
+		for (int i = 0; i < leftRows; ++i) {
+		    for (int j = 0; j < rightRows; ++j) {
+			for (int k = 0; k < leftColumns; ++k) {
+			    expectedAnswer[i][j] += leftTest[i][k] * rightTest[k][j];
+			}
+		    }
+		}
+				
+	//	String actual = new String(baos.toByteArray());
+		
+		for(int r=0;r<leftRows;r++) {
+			assertTrue(result2.hasContentToRead(result2));
+	
+			int id = Pipe.takeMsgIdx(result2);
+			for(int c=0;c<rightColumns;c++) {
+					
+					int exp = Pipe.takeValue(result2);					
+					long man = Pipe.takeLong(result2);					
+					long value = (long)Math.rint(man*Math.pow(10, exp));
+					System.out.println("value is " + value);
+					assertEquals(expectedAnswer[r][c], value);
+			}
+			
+			Pipe.confirmLowLevelRead(result2, Pipe.sizeOf(result2, id));
+			Pipe.releaseReadLock(result2);
+		}
+
+		
+	}
+
+        @Ignore("Only for performance test")
+	@Test
+	public void testComputePerformance() {
+	    long startTime, duration, durationMs;
+
+	    startTime = System.nanoTime();
+	    testComputeExample();
+	    duration = System.nanoTime() - startTime;
+	    durationMs = TimeUnit.NANOSECONDS.toMillis(duration);
+	    System.out.println("Pure Java run time: " + durationMs + "ms");
+
+	    startTime = System.nanoTime();
+	    testComputeExampleNativeInteger();
+	    duration = System.nanoTime() - startTime;
+	    durationMs = TimeUnit.NANOSECONDS.toMillis(duration);
+	    System.out.println("Native integer run time: " + durationMs + "ms");
+
+	}
+
 }

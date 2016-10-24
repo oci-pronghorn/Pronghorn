@@ -164,7 +164,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			remainingRows--;
 
 			
-			boolean doNative = false;
+			boolean doNative = true;
 			if (doNative) {
 				vectorOperations2();
 			} else {
@@ -205,6 +205,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 	private void vectorOperations() {
 		long rowSourceLoc = Pipe.getWorkingTailPosition(rowInput);	
 		int i = colInput.length;
+
 		while (--i>=0) {
 			long sourceLoc = Pipe.getWorkingTailPosition(colInput[i]);	
 			Pipe.setWorkingTailPosition(rowInput, rowSourceLoc);				
@@ -227,6 +228,9 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		long rowSourceLoc = Pipe.getWorkingTailPosition(rowInput);	
 		
 		int i = colInput.length;
+
+		System.out.println("colInput " + colInput.length
+				   + " colOutput " + colOutput.length);
 		
 		int slabMask = Pipe.slabMask(colInput[0]);
 		int outMask = Pipe.slabMask(colOutput[0]);
@@ -249,30 +253,30 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			if (remainingRows==0) {  
 				Pipe.setWorkingTailPosition(colInput[i], Pipe.getWorkingTailPosition(colInput[i])+len);
 			}
-			/////
 		}		
-		
-		goComputeNativeAVX(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
+		System.out.println("inputPipes size : " + inputPipes.length + ", " + inputPipes[0].length);
+		goCompute(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
 				  inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
 		
 	}
 	
     //TODO:  YF this is the method to be implemented natively 
 	private void goCompute(int typeMask, 
-			               int[] rowSlab, long rowPosition, int rowMask, int length, 
-			               int[][] colSlabs, int[] colPositions, int colMask, 
-			               int[][] outputPipes, int[] cPosOut, int outMask) {
+			       int[] rowSlab, long rowPosition, int rowMask, int length, 
+			       int[][] colSlabs, int[] colPositions, int colMask, 
+			       int[][] outputPipes, int[] cPosOut, int outMask) {
 		
-		// typeMask == 0 for Integers.
-		// typeMask == 1 for Floats.
-		// typeMask == 2 for Longs.
-	    // typeMask == 3 for Doubles.
-		// typeMask == 4 for Decimals.
+	        // typeMask == 0 for Integers.
+	        // typeMask == 1 for Floats.
+	        // typeMask == 2 for Longs.
+	        // typeMask == 3 for Doubles.
+	        // typeMask == 4 for Decimals.
 		
 				
 		
 		//10/5 - profiler shows this block is over 90% of the compute time.
 		int p = length;
+		//		System.out.println("p: " + p + " c: " + colSlabs.length);
 		while (--p>=0) {
 			
 			int idx = rowMask&(int)(rowPosition+p);
@@ -283,6 +287,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 				int[] is = colSlabs[c];
 				int v2 = is[colMask&(colPositions[c]+p)];				
 				int prod = v1*v2;				
+				//System.out.println("v1: " + v1 + " v2: " + v2);
 				outputPipes[c][cPosOut[c]&outMask] += prod;
 			}	
 			

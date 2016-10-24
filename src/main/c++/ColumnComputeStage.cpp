@@ -6,6 +6,7 @@
 #include <x86intrin.h>
 #endif
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <jni.h>
 #include "com_ociweb_pronghorn_stage_math_ColumnComputeStage.h"
@@ -27,8 +28,9 @@ void MulNoOptimization(const int length,
 		       jint** buf_output) {
   jint* buf_output_i = (jint*)malloc(size * sizeof(jint));
   for (int i = 0; i < length; ++i) {        
-    int v1 = rowSlab_nat[(int)rowMask & ((int)(rowPosition) + i)];
+    int v1 = rowSlab_nat[(long)rowMask & (rowPosition + i)];
     for (int j = 0; j < length; ++j) {
+      printf("loop %d, %d \n", i, j);
       // int* is = colSlabs_nat[j];
       int v2 = colSlabs_nat[j][colMask & (colPositions_nat[j] + i)];
       buf_output_i[(int)(cPosOut_nat[j]) & outMask] += v1 * v2;
@@ -66,6 +68,7 @@ JNIEXPORT void JNICALL Java_com_ociweb_pronghorn_stage_math_ColumnComputeStage_g
   jint** buf_output = (jint**)malloc(size * sizeof(jint));
   jint output_length = env->GetArrayLength(outputPipes);
 
+  printf("length %d, output_length %d\n", length, output_length);
   MulNoOptimization(length, output_length, 
 		    colSlabs_nat,
 		    rowSlab_nat,
