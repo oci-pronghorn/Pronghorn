@@ -22,8 +22,6 @@ import java.util.logging.Level;
 
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
-import com.sun.xml.internal.fastinfoset.algorithm.IntegerEncodingAlgorithm;
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
