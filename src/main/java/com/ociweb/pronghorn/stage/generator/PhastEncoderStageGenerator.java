@@ -1,7 +1,10 @@
 package com.ociweb.pronghorn.stage.generator;
 
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+
 import java.io.IOException;
+
+import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.phast.PhastEncoder;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
@@ -32,7 +35,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     private final String defLongDictionaryName = "defLongDictionary";
     private final String defIntDictionaryName = "defIntDictionary";
     //short not supported yet
-    //private final String defShortDictionaryName = "defShortDictiornary";
+    //private final String defShortDictionaryName = "defShortDictionary";
     private final String longDictionaryName = "previousLongDictionary";
     private final String intDictionaryName = "previousIntDictionary";
     private final String shortDictionaryName = "previousShortDictionary";
@@ -47,49 +50,58 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
     private static final String tab = "    ";
     private static final Logger logger = LoggerFactory.getLogger(PhastEncoderStageGenerator.class);
-    private static final String DECODER_CLASS_NAME = "com.ociweb.pronghorn.stage.phast.PhastEncoder";
-    private static final String DATA_BLOB_WRITER_CLASS = "com.ociweb.pronghorn.pipe.DataOutputBlobWriter";
-
-//    public PhastEncoderStageGenerator(MessageSchema schema, Appendable bodyTarget) {
-//        super(schema, bodyTarget);
-//        this.bodyTarget = bodyTarget;
-//        generateRunnable = false;
-//    }
 
     public PhastEncoderStageGenerator(MessageSchema schema, Appendable bodyTarget) {
         super(schema, bodyTarget, generateClassName(schema) + " extends PronghornStage",
-             generateClassName(schema), schema.getClass().getPackage().getName()+".build");
+                generateClassName(schema), schema.getClass().getPackage().getName() + ".build");
         this.bodyTarget = bodyTarget;
         generateRunnable = false;
     }
 
+    /**
+     * This method generates a class name based on the input schema
+     *
+     * @param schema This is an object created from an XML schema file
+     */
     private static String generateClassName(MessageSchema schema) {
         if (schema instanceof MessageSchemaDynamic) {
-            String name = MessageSchema.from(schema).name.replaceAll("/", "").replaceAll(".xml", "")+"EncoderStage";
+            String name = MessageSchema.from(schema).name.replaceAll("/", "").replaceAll(".xml", "") + "EncoderStage";
             if (Character.isLowerCase(name.charAt(0))) {
-                return Character.toUpperCase(name.charAt(0))+name.substring(1);
+                return Character.toUpperCase(name.charAt(0)) + name.substring(1);
             }
             return name;
         } else {
-            return (schema.getClass().getSimpleName().replace("Schema", ""))+"Writer";
+            return (schema.getClass().getSimpleName().replace("Schema", "")) + "Writer";
         }
     }
-    
+
+    /**
+     * This method overrides from the super class, where it is called to add imports. This method should not be called
+     * from anywhere but the super class.
+     *
+     * @param schema the schema from super class
+     * @param target the Appendable target from super class
+     */
     @Override
     protected void additionalImports(MessageSchema schema, Appendable target) {
         try {
             target.append("import ").append(schema.getClass().getCanonicalName()).append(";\n");
-            target.append("import " + DECODER_CLASS_NAME + ";\n");
-            target.append("import " + DATA_BLOB_WRITER_CLASS + ";\n");
-            target.append("import java.util.Arrays;\n");
+            target.append("import " + PhastEncoder.class.getCanonicalName() + ";\n");
+            target.append("import " + DataOutputBlobWriter.class.getCanonicalName() + ";\n");
             target.append("import com.ociweb.pronghorn.pipe.*;\n");
-            target.append("import com.ociweb.pronghorn.stage.PronghornStage;\n\n");
+            target.append("import " + PronghornStage.class.getCanonicalName() + ";\n\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-
+    /**
+     * This method overrides from the super class, where it is called to add instance variables. This method should not
+     * be called from anywhere but the super class.
+     *
+     * @param target the Appendable target from super class
+     * @throws IOException if the target can not be written to
+     */
     @Override
     protected void additionalMembers(Appendable target) throws IOException {
         target.append("long[] " + longDictionaryName + ";\n");
@@ -102,10 +114,25 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append("private Pipe<RawDataSchema> " + outPipeName + ";\n");
     }
 
-    private void generateVariables(MessageSchema schema, Appendable target) throws IOException {
+    /**
+     * This method generates variables necessary to begin a message
+     *
+     * @param target The target that the code is being written to
+     * @throws IOException if the target can not be written to
+     */
+    private void generateVariables(Appendable target) throws IOException {
         target.append(tab + "long " + pmapName + " = 0;\n");
+        bodyTarget.append(tab + "DataOutputBlobWriter<RawDataSchema> " + writerName + " = Pipe.outputStream(" +
+                outPipeName + ");\n");
+
     }
 
+    /**
+     * This method is to be ovveridden and called on by the super class. It should not be called anywhere but by the
+     * super class
+     *
+     * @param target The target that the code is being written to
+     */
     @Override
     protected void additionalLoopLogic(Appendable target) {
         try {
@@ -114,7 +141,15 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             e.printStackTrace();
         }
     }
-    
+
+    /**
+     * This method is to be ovveridden and called on by the super class. It should not be called anywhere but by the
+     * super class
+     *
+     * @param target    where the code is being written in super class
+     * @param className the base class name, without extensions or implementations
+     * @throws IOException when the target can not be written to
+     */
     @Override
     protected void buildConstructors(Appendable target, String className) throws IOException {
         target.append("public ").append(className).append("(");
@@ -131,14 +166,13 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
             target.append("Pipe<MessageSchemaDynamic>  " + inPipeName + ", ");
             target.append("Pipe<RawDataSchema> " + outPipeName + ") {\n");
-            //Appendables.appendClass(target, Pipe.class, schema.getClass()).append(" ").append(outPipeName).append(") {\n");
 
             target.append(tab).append("super(gm," + inPipeName + ",").append(outPipeName).append(");\n");
             target.append(tab).append("this." + outPipeName + " = " + outPipeName + ";\n");
             target.append(tab + "this." + inPipeName + " = " + inPipeName + ";\n");
             target.append(tab);
-            Appendables.appendStaticCall(target, Pipe.class, "from").append(inPipeName).append(").validateGUID(FROM_GUID);\n");
-
+            Appendables.appendStaticCall(target, Pipe.class, "from").append(inPipeName)
+                    .append(").validateGUID(FROM_GUID);\n");
         }
         target.append(tab + intDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
         target.append(tab + longDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
@@ -147,85 +181,58 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append("}\n\n");
     }
 
+    /**
+     * This method is overriden and left blank on purpose. It overrides an empty request shut down, and writes nothing
+     * so the class may use the reuest shut down from PronghornStage
+     *
+     * @throws IOException when target can not be written to
+     */
     @Override
-    protected void generateRequestShutDown() throws IOException { }
+    protected void generateRequestShutDown() throws IOException {
+    }
 
-    // BodyBuilder OverRide. Lots of Good stuff goes here
-    // Creates Pmap for encoding
+    /**
+     * The body of the class is generated from this method. It is called from the super class, and should only be called
+     * from the super class.
+     *
+     * @param schema            an object that has loaded in the correct XML file
+     * @param cursor            provided by the super class, so we know where the message begins
+     * @param fragmentParaCount the amount of variables we are are using for the message
+     * @param fragmentParaTypes this array holds the types that the variables are
+     * @param fragmentParaArgs  this array holds the parameters data
+     * @param fragmentParaSuff  this array holds the name of the variables
+     */
     @Override
-    protected void bodyBuilder(MessageSchema schema, int cursor, int fragmentParaCount, CharSequence[] fragmentParaTypes, CharSequence[] fragmentParaArgs, CharSequence[] fragmentParaSuff) {
+    protected void bodyBuilder(MessageSchema schema, int cursor, int fragmentParaCount,
+                               CharSequence[] fragmentParaTypes, CharSequence[] fragmentParaArgs,
+                               CharSequence[] fragmentParaSuff) {
+
         //create FROM which is generated from the schema provided.
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
+
         //incremenent to pass over the group start at the begging of array
         cursor++;
+        //make two cursors, one for pmap building and other for encoding
         int curCursor = cursor;
         int curCursor2 = cursor;
 
-        //get bitmask
-        int bitMask = from.templateOffset;
+        // this only used if supporting preamble : int bitMask = from.templateOffset;
 
-        //this try catches all IO problems and throws an error if the file does not exist
+        //If the appendable can not be written to, throw an error
         try {
 
             //call to instantiate dictionaries
-            generateVariables(schema, bodyTarget);
-            bodyTarget.append(tab + "DataOutputBlobWriter<RawDataSchema> " + writerName + " = Pipe.outputStream("
-                    + outPipeName + ");\n");
-
-
-            //make 3 stacks for tokens
-            Stack<Integer> tokens = new Stack<>();
-            for (int paramIdx = 0; paramIdx < fragmentParaCount; paramIdx++) {
-                int token = from.tokens[curCursor];
-                tokens.push(token);
-                curCursor += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
-            }
-            //traverse all tokens and print out a pmap builder for each of them
-            int i = fragmentParaCount - 1;
-            while (i >= 0) {
-                int token = tokens.pop();
-                int pmapType = TokenBuilder.extractType(token);
-
-                String varName = new StringBuilder().append(fragmentParaArgs[i]).append(fragmentParaSuff[i]).toString();
-                String varType = new StringBuilder().append(fragmentParaTypes[i]).toString();
-
-                boolean isNull = false;
-
-                if (TypeMask.isOptional(pmapType)) {
-                    isNull = true;
-                }
-
-                //call appropriate pmap builder according to type
-                if (varType.equals("int")) {
-                    bodyTarget.append(tab + pmapName + " = ");
-                    encodePmapBuilderInt(schema, bodyTarget, token, TokenBuilder.extractId(token), varName, isNull);
-
-                } else if (varType.equals("long")) {
-                    bodyTarget.append(tab + pmapName + " = ");
-                    encodePmapBuilderLong(schema, bodyTarget, token, TokenBuilder.extractId(token), varName, isNull);
-
-                } else if (varType.equals("StringBuilder")) {
-                    bodyTarget.append(tab + pmapName + " = ");
-                    encodePmapBuilderString(schema, bodyTarget, token, varName);
-
-                } else {
-                    bodyTarget.append("caught by nothing\n");
-                }
-
-                curCursor += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
-                i--;
-            }
+            generateVariables(bodyTarget);
+            printPmapBuilding(fragmentParaCount, fragmentParaArgs, fragmentParaSuff, fragmentParaTypes, curCursor, from);
 
             //taking in pmap
             bodyTarget.append(tab + "DataOutputBlobWriter.writePackedLong(" + writerName + ", " + pmapName + ");\n");
-            //instantiating bimask
-            bodyTarget.append(tab + "long " + bitMaskName + " = 1;\n");
-            //line break for readability
-            bodyTarget.append("\n");
+            //instantiating bitmask
+            bodyTarget.append(tab + "long " + bitMaskName + " = 1;\n\n");
 
             //number of shifts if it is optional or not
             int numShifts = 0;
-            //traverses all data and pulls them off the pipe
+            //traverses all parameters in message and pulls them off the pipe
             for (int paramIdx = 0; paramIdx < fragmentParaCount; paramIdx++) {
                 int token = from.tokens[curCursor2];
                 int pmapType = TokenBuilder.extractType(token);
@@ -290,13 +297,72 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     bodyTarget.append(tab + bitMaskName + " = " + bitMaskName + " << " + numShifts + ";\n");
                 }
                 curCursor2 += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
-                //pipeVarName needs protected status
-                //bodyTarget.append(tab + "Pipe.confirmLowLevelRead(" + inPipeName + ", )" +  + ");\n");
-                //bodyTarget.append(tab + "Pipe.releaseLock(" + )
             }
             bodyTarget.append(tab + "Pipe.publishWrites(" + outPipeName + ");\n");
         } catch (IOException e) {
             java.util.logging.Logger.getLogger(PhastEncoderStageGenerator.class.getName()).log(Level.SEVERE, null, e);
+        }
+    }
+
+    /**
+     * This method will print out code to call methods in PhastEncoder, to construct the pmap
+     *
+     * @param fragmentParaCount the number of parametets
+     * @param fragmentParaArgs  holds the name
+     * @param fragmentParaSuff  also holds the name
+     * @param fragmentParaTypes the types that the parameters are
+     * @param curCursor         where to start
+     * @param from              the FROM generated from the given schema
+     * @throws IOException when it can not write to the appendable
+     */
+    private void printPmapBuilding(int fragmentParaCount, CharSequence[] fragmentParaArgs,
+                                   CharSequence[] fragmentParaSuff, CharSequence[] fragmentParaTypes,
+                                   int curCursor, FieldReferenceOffsetManager from) throws IOException {
+        /*
+        Make a stack for the tokens, so they can in reverse order. You need them in reverse so the least
+        significant bit, is the first item that comes through.
+        */
+        Stack<Integer> tokens = new Stack<>();
+        for (int paramIdx = 0; paramIdx < fragmentParaCount; paramIdx++) {
+            int token = from.tokens[curCursor];
+            tokens.push(token);
+            curCursor += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
+        }
+
+        //traverse all tokens and print out a pmap builder for each of them
+        int i = fragmentParaCount - 1;
+        while (i >= 0) {
+            int token = tokens.pop();
+            int pmapType = TokenBuilder.extractType(token);
+
+            String varName = new StringBuilder().append(fragmentParaArgs[i]).append(fragmentParaSuff[i]).toString();
+            String varType = new StringBuilder().append(fragmentParaTypes[i]).toString();
+
+            boolean isNull = false;
+
+            if (TypeMask.isOptional(pmapType)) {
+                isNull = false;
+            }
+
+            //call appropriate pmap builder according to type
+            if (varType.equals("int")) {
+                bodyTarget.append(tab + pmapName + " = ");
+                encodePmapBuilderInt(schema, bodyTarget, token, TokenBuilder.extractId(token), varName, isNull);
+
+            } else if (varType.equals("long")) {
+                bodyTarget.append(tab + pmapName + " = ");
+                encodePmapBuilderLong(schema, bodyTarget, token, TokenBuilder.extractId(token), varName, isNull);
+
+            } else if (varType.equals("StringBuilder")) {
+                bodyTarget.append(tab + pmapName + " = ");
+                encodePmapBuilderString(schema, bodyTarget, token, varName);
+
+            } else {
+                bodyTarget.append("caught by nothing\n");
+            }
+
+            curCursor += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
+            i--;
         }
     }
 
