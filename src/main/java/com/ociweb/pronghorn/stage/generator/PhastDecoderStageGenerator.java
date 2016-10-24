@@ -137,6 +137,15 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     @Override
+    protected void additionalLoopLogic(Appendable target){
+        try {
+            target.append(" && Pipe.contentRemaining(" + inPipeName + ") > 0");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
     protected void bodyOfNextMessageIdx(Appendable target) throws IOException {
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
         

@@ -105,6 +105,15 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     private void generateVariables(MessageSchema schema, Appendable target) throws IOException {
         target.append(tab + "long " + pmapName + " = 0;\n");
     }
+
+    @Override
+    protected void additionalLoopLogic(Appendable target) {
+        try {
+            target.append("  && Pipe.hasRoomForWrite(" + outPipeName + ")");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
     
     @Override
     protected void buildConstructors(Appendable target, String className) throws IOException {

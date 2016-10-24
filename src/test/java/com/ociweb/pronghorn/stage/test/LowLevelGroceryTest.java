@@ -11,6 +11,7 @@ import com.ociweb.pronghorn.stage.generator.PhastDecoderStageGenerator;
 import com.ociweb.pronghorn.stage.generator.PhastEncoderStageGenerator;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
+import org.junit.Assert;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
@@ -99,7 +100,6 @@ public class LowLevelGroceryTest {
         outPipe.initBuffers();
 
         //get encoder ready
-        /*
         StringBuilder eTarget = new StringBuilder();
         PhastEncoderStageGenerator ew = new PhastEncoderStageGenerator(messageSchema, eTarget);
         try {
@@ -112,7 +112,6 @@ public class LowLevelGroceryTest {
         Constructor econstructor =  LoaderUtil.generateThreeArgConstructor(ew.getPackageName(), ew.getClassName(), eTarget, PhastEncoderStageGenerator.class);
 
         //get decoder ready
-        /*
         StringBuilder dTarget = new StringBuilder();
         PhastDecoderStageGenerator dw = new PhastDecoderStageGenerator(messageSchema, dTarget, false);
         try {
@@ -122,27 +121,21 @@ public class LowLevelGroceryTest {
             fail();
         }
         Constructor dconstructor =  LoaderUtil.generateThreeArgConstructor(dw.getPackageName(), dw.getClassName(), dTarget, PhastDecoderStageGenerator.class);
-        */
-        GroceryExampleDecoderStage dconstructor = new GroceryExampleDecoderStage(gm,sharedPipe,outPipe);
-        GroceryExampleEncoderStage econstructor = new GroceryExampleEncoderStage(gm, inPipe,sharedPipe);
+
         RandomWriterStage random1 = new RandomWriterStage(gm, inPipe);
-        //econstructor.newInstance(gm, inPipe, sharedPipe);
-        //dconstructor.newInstance(gm, sharedPipe, outPipe);
+        econstructor.newInstance(gm, inPipe, sharedPipe);
+        dconstructor.newInstance(gm, sharedPipe, outPipe);
         //RandomReaderStage rand2 = new RandomReaderStage(gm, outPipe);
         ConsoleJSONDumpStage json = new ConsoleJSONDumpStage(gm, outPipe);
 
         //encoding data
-        //GraphManager.enableBatching(gm);
         ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
-        //scheduler.playNice=false;
         scheduler.startup();
 
 
         GraphManager.blockUntilStageBeginsShutdown(gm,json);
         scheduler.shutdown();
         scheduler.awaitTermination(10, TimeUnit.SECONDS);
-
-
 
     }
 }
