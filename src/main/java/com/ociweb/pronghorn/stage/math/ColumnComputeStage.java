@@ -229,9 +229,6 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		
 		int i = colInput.length;
 
-		System.out.println("colInput " + colInput.length
-				   + " colOutput " + colOutput.length);
-		
 		int slabMask = Pipe.slabMask(colInput[0]);
 		int outMask = Pipe.slabMask(colOutput[0]);
 		
@@ -254,10 +251,10 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 				Pipe.setWorkingTailPosition(colInput[i], Pipe.getWorkingTailPosition(colInput[i])+len);
 			}
 		}		
-		System.out.println("inputPipes size : " + inputPipes.length + ", " + inputPipes[0].length);
-		goCompute(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
-				  inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
-		
+		goComputeNative(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
+			inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
+		//goCompute(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
+		//	  inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
 	}
 	
     //TODO:  YF this is the method to be implemented natively 
@@ -276,7 +273,6 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		
 		//10/5 - profiler shows this block is over 90% of the compute time.
 		int p = length;
-		//		System.out.println("p: " + p + " c: " + colSlabs.length);
 		while (--p>=0) {
 			
 			int idx = rowMask&(int)(rowPosition+p);
@@ -287,7 +283,6 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 				int[] is = colSlabs[c];
 				int v2 = is[colMask&(colPositions[c]+p)];				
 				int prod = v1*v2;				
-				//System.out.println("v1: " + v1 + " v2: " + v2);
 				outputPipes[c][cPosOut[c]&outMask] += prod;
 			}	
 			
@@ -306,8 +301,8 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 	// implementation by AVX instruction set
 	private final native void goComputeNativeAVX(int typeMask, 
 						     int[] rowSlab, long rowPosition, int rowMask, int length, 
-						     int[][] colSlabs, int[] colPositions, int colMask, 
-						     int[][] outputPipes, int[] cPosOut, int outMask);
+						     int[][] colSlabs, int colSlabsCol, int[] colPositions, int colMask, 
+						     int[][] outputPipes, int outputPipesCol, int[] cPosOut, int outMask);
 	
 	private boolean allHaveRoomToWrite(Pipe<ColumnSchema<M>>[] columnPipeOutput) {
 		int i = columnPipeOutput.length;

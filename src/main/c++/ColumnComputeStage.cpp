@@ -11,12 +11,28 @@
 #include <jni.h>
 #include "com_ociweb_pronghorn_stage_math_ColumnComputeStage.h"
 
+// performance test
+#include <time.h>
+timespec diff(timespec start, timespec end)
+{
+  timespec temp;
+  if ((end.tv_nsec-start.tv_nsec)<0) {
+    temp.tv_sec = end.tv_sec-start.tv_sec-1;
+    temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+  } else {
+    temp.tv_sec = end.tv_sec-start.tv_sec;
+    temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+  }
+  return temp;
+}
+
+
 typedef void (*MULAVX)(const int, const int, jint**, jint*, const jint,
 		       const jlong, const jint, jint*, const jint,
 		       jint*, jint**);
 
-void MulNoOptimization(const int length,
-		       const int size,
+void MulNoOptimization(const int row,
+		       const int col,
 		       jint** colSlabs_nat,
 		       jint* rowSlab_nat,
 		       const jint rowMask,
@@ -25,24 +41,35 @@ void MulNoOptimization(const int length,
 		       jint* colPositions_nat,
 		       const jint outMask,
 		       jint* cPosOut_nat,
-		       jint** buf_output) {
-  jint* buf_output_i = (jint*)malloc(size * sizeof(jint));
-  for (int i = 0; i < length; ++i) {        
-    int v1 = rowSlab_nat[(long)rowMask & (rowPosition + i)];
-    for (int j = 0; j < length; ++j) {
-      printf("loop %d, %d \n", i, j);
-      // int* is = colSlabs_nat[j];
-      int v2 = colSlabs_nat[j][colMask & (colPositions_nat[j] + i)];
-      buf_output_i[(int)(cPosOut_nat[j]) & outMask] += v1 * v2;
-    }	        
-    buf_output[i] = buf_output_i;
+		       JNIEnv* env,
+		       jobjectArray outputPipes) {
+  jint p = row;
+  // performance test
+  // timespec start, end;
+  // clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+  while(--p >= 0) {        
+    int v1 = rowSlab_nat[rowMask & (jint)(rowPosition + p)];
+    jint c = col;
+    while(--c >= 0) {
+      int v2 = colSlabs_nat[c][colMask & (colPositions_nat[c] + p)];
+      jintArray output_c = (jintArray)env->GetObjectArrayElement(outputPipes, c); 
+      int out_len = env->GetArrayLength(output_c);
+      jint* buf_c = (jint*)calloc(out_len, sizeof(jint));
+      env->GetIntArrayRegion(output_c, 0, out_len, buf_c);   
+      buf_c[(cPosOut_nat[c]) & outMask] += v1 * v2;
+      env->SetIntArrayRegion(output_c, 0, out_len, buf_c); 
+      env->SetObjectArrayElement(outputPipes, c, output_c);    
+      env->DeleteLocalRef(output_c); 
+      free(buf_c);
+    }	            
   }
-  free(buf_output_i);
+  // clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
+  // printf("computation: %lds:%ldns\n", diff(start, end).tv_sec, diff(start, end).tv_nsec);
 }
 
 
 JNIEXPORT void JNICALL Java_com_ociweb_pronghorn_stage_math_ColumnComputeStage_goComputeNative( JNIEnv *env, jobject obj,
-												jint typeMask, jintArray rowSlab, jlong rowPosition, jint rowMask, jint length,
+												jint typeMask, jintArray rowSlab, jlong rowPosition, jint rowMask, jint resRows,
 												jobjectArray colSlabs, jintArray colPositions, jint colMask,
 												jobjectArray outputPipes, jintArray cPosOut, jint outMask ) {
   // typeMask == 0 for Integers.
@@ -57,19 +84,18 @@ JNIEXPORT void JNICALL Java_com_ociweb_pronghorn_stage_math_ColumnComputeStage_g
   jint* cPosOut_nat = env->GetIntArrayElements(cPosOut, 0);    
   
   // fetch native colSlabs
-  jint size = env->GetArrayLength(colSlabs);
-  jint** colSlabs_nat = (jint**)malloc(size * sizeof(jint*));
-  for (int k = 0; k < size; k++) {                               
-    colSlabs_nat[k] = (jint*)malloc(size * sizeof(jint));
+  jint colSlabsRow = env->GetArrayLength(colSlabs);
+  jint** colSlabs_nat = (jint**)calloc(colSlabsRow, sizeof(jint*));
+  for (int k = 0; k < colSlabsRow; k++) {                               
     jintArray col_k = (jintArray)env->GetObjectArrayElement(colSlabs, k); 
-    env->GetIntArrayRegion(col_k, 0, size, colSlabs_nat[k]);   
+    int col_len = env->GetArrayLength(col_k);
+    colSlabs_nat[k] = (jint*)calloc(col_len, sizeof(jint));
+    env->GetIntArrayRegion(col_k, 0, col_len, colSlabs_nat[k]);   
     env->DeleteLocalRef(col_k);                         
   }
-  jint** buf_output = (jint**)malloc(size * sizeof(jint));
-  jint output_length = env->GetArrayLength(outputPipes);
 
-  printf("length %d, output_length %d\n", length, output_length);
-  MulNoOptimization(length, output_length, 
+  // matrix multiplication
+  MulNoOptimization(resRows, colSlabsRow, 
 		    colSlabs_nat,
 		    rowSlab_nat,
 		    rowMask,
@@ -78,22 +104,17 @@ JNIEXPORT void JNICALL Java_com_ociweb_pronghorn_stage_math_ColumnComputeStage_g
 		    colPositions_nat,
 		    outMask,
 		    cPosOut_nat,
-		    buf_output);
+		    env,
+		    outputPipes);
 
   env->ReleaseIntArrayElements(rowSlab, rowSlab_nat, 0);
-  free(colSlabs_nat);
-  free(colPositions_nat);
-  free(cPosOut_nat);
-
-  // copy buffer back output pipe
-  for (int i = 0; i < length; ++i) {    
-    jintArray output_row = env->NewIntArray(size);
-    env->SetIntArrayRegion(output_row, 0, size, buf_output[i]); 
-    env->SetObjectArrayElement(outputPipes, i, output_row);    
-    env->DeleteLocalRef(output_row);                          
+  env->ReleaseIntArrayElements(colPositions, colPositions_nat, 0);
+  env->ReleaseIntArrayElements(cPosOut, cPosOut_nat, 0);
+  
+  for (int k = 0; k < colSlabsRow; k++) {                               
+    free(colSlabs_nat[k]);
   }
-
-  free(buf_output);
+  free(colSlabs_nat);
 }
 
 // integer
@@ -305,8 +326,8 @@ MULAVX mulavxfuncs[5] = {MulAVXInt, MulAVXPS, MulAVXPD, MulAVXLong, MulAVXInt};
 
 JNIEXPORT void JNICALL Java_com_ociweb_pronghorn_stage_math_ColumnComputeStage_goComputeNativeAVX( JNIEnv *env, jobject obj,
 												   jint typeMask, jintArray rowSlab, jlong rowPosition, jint rowMask, jint length,
-												   jobjectArray colSlabs, jintArray colPositions, jint colMask,
-												   jobjectArray outputPipes, jintArray cPosOut, jint outMask ) {
+												   jobjectArray colSlabs, jint colSlabsCol, jintArray colPositions, jint colMask,
+												   jobjectArray outputPipes, jint outputPipesCol, jintArray cPosOut, jint outMask ) {
   // fetch native rowSlab
   jint* rowSlab_nat = env->GetIntArrayElements(rowSlab, 0);    
   jint* colPositions_nat = env->GetIntArrayElements(colPositions, 0);    
