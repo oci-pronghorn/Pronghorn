@@ -83,7 +83,7 @@ public class LowLevelGroceryTest {
 
     }
 
-    @Test
+    //@Test
     public void runTimeTest() throws IOException, ParserConfigurationException, SAXException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException, InterruptedException {
         GraphManager gm = new GraphManager();
 
