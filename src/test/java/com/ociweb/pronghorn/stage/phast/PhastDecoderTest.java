@@ -30,7 +30,7 @@ public class PhastDecoderTest {
 		
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(pipe);
 		
-		String stest = PhastDecoder.decodeString(reader);
+		String stest = PhastDecoder.decodeString(reader, false);
 		
 		reader.close();
 		
@@ -68,7 +68,7 @@ public class PhastDecoderTest {
 		
 		//present int test
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(pipe);
-		int test = PhastDecoder.decodePresentInt(reader, 0, 0);
+		int test = PhastDecoder.decodePresentInt(reader, 0, 0, false);
 		assertTrue(test==3894);
 		
 		//delta int test
@@ -77,17 +77,17 @@ public class PhastDecoderTest {
 		//assertTrue(test==961 && test2==961);
 		
 		//increment test
-		test = PhastDecoder.decodeIncrementInt(intDictionary, 0, 0, 0);
+		test = PhastDecoder.decodeIncrementInt(intDictionary, 0, 0, 0, false);
 		//test2 = PhastDecoder.decodeIncrementInt(intDictionary, 1, 0, 1);
 		//assertTrue(test == 4 && test2 == 4);
 		
 		//copy int test
-		test = PhastDecoder.decodeCopyInt(intDictionary, reader, 0, 2, 0);
+		test = PhastDecoder.decodeCopyInt(intDictionary, reader, 0, 2, 0, false);
 		//test2 = PhastDecoder.decodeCopyInt(intDictionary, reader, 1, 2, 1);
 		//assertTrue(test == 70 && test2 == 903);
 		
 		//default int test
-		test = PhastDecoder.decodeDefaultInt(reader, 0, defaultValues, 0, 2);
+		test = PhastDecoder.decodeDefaultInt(reader, 0, defaultValues, 0, 2, false);
 		//test2 = PhastDecoder.decodeDefaultInt(reader, 1, defaultValues, 1, 2);
 		//assertTrue(test == 16 && test2==404);
 		
@@ -123,27 +123,27 @@ public class PhastDecoderTest {
 		
 		//present long test
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(pipe);
-		long test = PhastDecoder.decodePresentLong(reader, 0, 0);
+		long test = PhastDecoder.decodePresentLong(reader, 0, 0, false);
 		assertTrue(test==3894);
 		
 		//delta long test
-		test = PhastDecoder.decodeDeltaLong(longDictionary, reader, 0, 1, 0);
-		long test2 = PhastDecoder.decodeDeltaLong(longDictionary, reader, 1, 1, 1);
+		test = PhastDecoder.decodeDeltaLong(longDictionary, reader, 0, 1, 0, false);
+		long test2 = PhastDecoder.decodeDeltaLong(longDictionary, reader, 1, 1, 1, false);
 		assertTrue(test==961 && test2==961);
 		
 		//increment test
-		test = PhastDecoder.decodeIncrementLong(longDictionary, 0, 0, 0);
-		test2 = PhastDecoder.decodeIncrementLong(longDictionary, 1, 0, 1);
+		test = PhastDecoder.decodeIncrementLong(longDictionary, 0, 0, 0, false);
+		test2 = PhastDecoder.decodeIncrementLong(longDictionary, 1, 0, 1, false);
 		assertTrue(test == 4 && test2 == 4);
 		
 		//copy long test
-		test = PhastDecoder.decodeCopyLong(longDictionary, reader, 0, 2, 0);
-		test2 = PhastDecoder.decodeCopyLong(longDictionary, reader, 1, 2, 1);
+		test = PhastDecoder.decodeCopyLong(longDictionary, reader, 0, 2, 0, false);
+		test2 = PhastDecoder.decodeCopyLong(longDictionary, reader, 1, 2, 1, false);
 		assertTrue(test == 70 && test2 == 903);
 		
 		//default long test
-		test = PhastDecoder.decodeDefaultLong(reader, 0, defaultValues, 0, 2);
-		test2 = PhastDecoder.decodeDefaultLong(reader, 1, defaultValues, 1, 2);
+		test = PhastDecoder.decodeDefaultLong(reader, 0, defaultValues, 0, 2, false);
+		test2 = PhastDecoder.decodeDefaultLong(reader, 1, defaultValues, 1, 2, false);
 		assertTrue(test == 16 && test2==404);
 		
 	}
@@ -178,27 +178,27 @@ public class PhastDecoderTest {
 		
 		//present long test
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(pipe);
-		short test = PhastDecoder.decodePresentShort(reader, 0, 0);
+		short test = PhastDecoder.decodePresentShort(reader, 0, 0, false);
 		assertTrue(test==3894);
 		
 		//delta long test
-		test = PhastDecoder.decodeDeltaShort(shortDictionary, reader, 0, 1, 0);
-		long test2 = PhastDecoder.decodeDeltaShort(shortDictionary, reader, 1, 1, 1);
+		test = PhastDecoder.decodeDeltaShort(shortDictionary, reader, 0, 1, 0, false);
+		long test2 = PhastDecoder.decodeDeltaShort(shortDictionary, reader, 1, 1, 1, false);
 		assertTrue(test==961 && test2==961);
 		
 		//increment test
-		test = PhastDecoder.decodeIncrementShort(shortDictionary, 0, 0, 0);
-		test2 = PhastDecoder.decodeIncrementShort(shortDictionary, 1, 0, 1);
+		test = PhastDecoder.decodeIncrementShort(shortDictionary, 0, 0, 0, false);
+		test2 = PhastDecoder.decodeIncrementShort(shortDictionary, 1, 0, 1, false);
 		assertTrue(test == 4 && test2 == 4);
 		
 		//copy long test
-		test = PhastDecoder.decodeCopyShort(shortDictionary, reader, 0, 2, 0);
-		test2 = PhastDecoder.decodeCopyShort(shortDictionary, reader, 1, 2, 1);
+		test = PhastDecoder.decodeCopyShort(shortDictionary, reader, 0, 2, 0, false);
+		test2 = PhastDecoder.decodeCopyShort(shortDictionary, reader, 1, 2, 1, false);
 		assertTrue(test == 70 && test2 == 903);
 		
 		//default long test
-		test = PhastDecoder.decodeDefaultShort(reader, 0, defaultValues, 0, 2);
-		test2 = PhastDecoder.decodeDefaultShort(reader, 1, defaultValues, 1, 2);
+		test = PhastDecoder.decodeDefaultShort(reader, 0, defaultValues, 0, 2, false);
+		test2 = PhastDecoder.decodeDefaultShort(reader, 1, defaultValues, 1, 2, false);
 		assertTrue(test == 16 && test2==404);
 		
 	}

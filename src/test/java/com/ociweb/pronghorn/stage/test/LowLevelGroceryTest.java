@@ -12,7 +12,6 @@ import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import org.junit.Assert;
 import org.junit.Test;
 import org.xml.sax.SAXException;
-
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.lang.reflect.Constructor;

@@ -246,52 +246,31 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         decodePmap(target);
         //pass over group tag 0x10000
         cursor++;
-
         for (int f = cursor; f < (firstField + fieldCount); f++) {
+            int numShifts = 1;
             int token = from.tokens[cursor];
             int pmapType = TokenBuilder.extractType(token);
-            if (TypeMask.isInt(pmapType)){
-                target.append(tab + "int");
-            }
-            else if (TypeMask.isLong(pmapType)){
-                target.append(tab + "long");
-            }
-            else{
-                target.append(tab + "String");
-            }
-            target.append(" " + scriptNames[f] + ";\n");
+            if(TypeMask.isOptional(pmapType))
+                numShifts++;
 
-            if (TypeMask.isOptional(pmapType) == true){
-                if (TypeMask.isInt(pmapType) == true){
-                    target.append(tab + tab + scriptNames[f] + "=-70");
-                }
-                else if(TypeMask.isLong(pmapType) == true){
-                    target.append(tab + tab + scriptNames[f] + "=-70");
-                }
-                else{
-                    target.append(tab + tab + scriptNames[f] + "= \"None\";");
-                }
-                target.append(tab +"if ((bitMask & 1) == 0) {\n");
-                target.append(tab + tab +"bitMask = bitMask << 1;\n");
-            }
             if (TypeMask.isInt(pmapType) == true) {
-                target.append(tab + scriptNames[f] + " = ");
+                target.append(tab + "int " + scriptNames[f] + " = ");
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
-                        decodeCopyIntGenerator(target, TokenBuilder.extractId(token));
+                        decodeCopyIntGenerator(target, TokenBuilder.extractId(token), TypeMask.isOptional(pmapType));
                         break;
                     case OperatorMask.Field_Constant:
                         //this intentionally left blank, does nothing if constant
                         break;
                     case OperatorMask.Field_Default:
-                        decodeDefaultIntGenerator(target, TokenBuilder.extractId(token));
+                        decodeDefaultIntGenerator(target, TokenBuilder.extractId(token), TypeMask.isOptional(pmapType));
                         break;
                     case OperatorMask.Field_Delta:
-                        decodeDeltaIntGenerator(target, TokenBuilder.extractId(token));
+                        decodeDeltaIntGenerator(target, TokenBuilder.extractId(token), TypeMask.isOptional(pmapType));
                         break;
                     case OperatorMask.Field_Increment:
-                        decodeIncrementIntGenerator(target, TokenBuilder.extractId(token));
+                        decodeIncrementIntGenerator(target, TokenBuilder.extractId(token), TypeMask.isOptional(pmapType));
                         break;
                     case OperatorMask.Field_None:
                         target.append("0;//no oper currently not supported.\n");
@@ -300,34 +279,34 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                         target.append("//here as placeholder, this is unsupported\n");
                     }
                 }
-                target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
+                target.append(tab + bitMaskName + " = " + bitMaskName + " << " +numShifts + ";\n");
             } //if long, goes to switch to find correct operator to call 
             else if (TypeMask.isLong(pmapType) == true) {
-                target.append(tab + scriptNames[f] + " = ");
+                target.append(tab + "long " + scriptNames[f] + " = ");
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
-                        decodeDeltaLongGenerator(target, TokenBuilder.extractId(token));
+                        decodeDeltaLongGenerator(target, TokenBuilder.extractId(token), TypeMask.isOptional(pmapType));
                         break;
                     case OperatorMask.Field_Constant:
                         //this intentionally left blank, does nothing if constant
                         break;
                     case OperatorMask.Field_Default:
-                        decocdeDefaultLongGenerator(target, TokenBuilder.extractId(token));
+                        decocdeDefaultLongGenerator(target, TokenBuilder.extractId(token), TypeMask.isOptional(pmapType));
                         break;
                     case OperatorMask.Field_Delta:
-                        decodeDeltaLongGenerator(target, TokenBuilder.extractId(token));
+                        decodeDeltaLongGenerator(target, TokenBuilder.extractId(token), TypeMask.isOptional(pmapType));
                         break;
                     case OperatorMask.Field_Increment:
-                        decodeIncrementLongGenerator(target, TokenBuilder.extractId(token));
+                        decodeIncrementLongGenerator(target, TokenBuilder.extractId(token), TypeMask.isOptional(pmapType));
                         break;
                 }
-                target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
+                target.append(tab + bitMaskName + " = " + bitMaskName + " << " +numShifts + ";\n");
             } //if string
             else if (TypeMask.isText(pmapType) == true) {
-                target.append(tab + scriptNames[f] + " = ");
-                decodeStringGenerator(target);
-                target.append(tab + bitMaskName + " = " + bitMaskName + " << 1;\n");
+                target.append(tab + "String " + scriptNames[f] + " = ");
+                decodeStringGenerator(target, TypeMask.isOptional(pmapType));
+                target.append(tab + bitMaskName + " = " + bitMaskName + " << " +numShifts + ";\n");
             } else {
                 target.append("Unsupported data type " + pmapType + "\n");
             }
@@ -335,9 +314,6 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             argumentList.append(scriptNames[f]);
             if (f != (firstField + fieldCount) - 1) {
                 argumentList.append(',');
-            }
-            if (TypeMask.isOptional(pmapType) == true){
-                target.append(tab + "}\n");
             }
         }
         target.append("Pipe.releaseReadLock(" + inPipeName + ");\n");
@@ -388,81 +364,81 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     //incremement int code generator
-    protected void decodeIncrementLongGenerator(Appendable target, int index) {
+    protected void decodeIncrementLongGenerator(Appendable target, int index, Boolean isOptional) {
         try {
-            appendStaticCall(target, decoder, "decodeIncrementLong").append(longDictionaryName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(");\n");
+            appendStaticCall(target, decoder, "decodeIncrementLong").append(longDictionaryName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(", " + isOptional.toString() + ");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     //default long code generator
-    protected void decocdeDefaultLongGenerator(Appendable target, int index) {
+    protected void decocdeDefaultLongGenerator(Appendable target, int index, Boolean isOptional) {
         try {
-            appendStaticCall(target, decoder, "decodeDefaultLong").append(readerName).append(", ").append(mapName).append(", ").append(defaultIntDictionaryName).append(", ").append(bitMaskName).append(", ").append(Integer.toString(index)).append(");\n");
+            appendStaticCall(target, decoder, "decodeDefaultLong").append(readerName).append(", ").append(mapName).append(", ").append(defaultIntDictionaryName).append(", ").append(bitMaskName).append(", ").append(Integer.toString(index)).append(", " + isOptional.toString() + ");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     //decode string generator
-    protected void decodeStringGenerator(Appendable target) {
+    protected void decodeStringGenerator(Appendable target, Boolean isOptional) {
         try {
-            appendStaticCall(target, decoder, "decodeString").append(readerName).append(");\n");
+            appendStaticCall(target, decoder, "decodeString").append(readerName).append(", " + isOptional.toString() + ");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     //delta long code generator
-    protected void decodeDeltaLongGenerator(Appendable target, int index) {
+    protected void decodeDeltaLongGenerator(Appendable target, int index, Boolean isOptional) {
         try {
-            appendStaticCall(target, decoder, "decodeDeltaLong").append(longDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(");\n");
+            appendStaticCall(target, decoder, "decodeDeltaLong").append(longDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(", " + isOptional.toString() + ");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     //default int code generator
-    protected void decodeDefaultIntGenerator(Appendable target, int index) {
+    protected void decodeDefaultIntGenerator(Appendable target, int index, Boolean isOptional) {
         try {
-            appendStaticCall(target, decoder, "decodeDefaultInt").append(readerName).append(", ").append(mapName).append(", ").append(defaultIntDictionaryName).append(", ").append(bitMaskName).append(", ").append(Integer.toString(index)).append(", ").append(");\n");
+            appendStaticCall(target, decoder, "decodeDefaultInt").append(readerName).append(", ").append(mapName).append(", ").append(defaultIntDictionaryName).append(", ").append(bitMaskName).append(", ").append(Integer.toString(index)).append(", ").append(", " + isOptional.toString() + ");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     //delta int code generator
-    protected void decodeDeltaIntGenerator(Appendable target, int index) {
+    protected void decodeDeltaIntGenerator(Appendable target, int index, Boolean isOptional) {
         try {
-            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toBinaryString(index)).append(", ").append(bitMaskName).append(");\n");
+            appendStaticCall(target, decoder, "decodeDeltaInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toBinaryString(index)).append(", ").append(bitMaskName).append(", " + isOptional.toString() + ");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     //copy int code generator
-    protected void decodeCopyIntGenerator(Appendable target, int index) {
+    protected void decodeCopyIntGenerator(Appendable target, int index, Boolean isOptional) {
         try {
-            appendStaticCall(target, decoder, "decodeCopyInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(");\n");
+            appendStaticCall(target, decoder, "decodeCopyInt").append(intDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(", " + isOptional.toString() + ");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     //increment int code generator
-    protected void decodeIncrementIntGenerator(Appendable target, int index) {
+    protected void decodeIncrementIntGenerator(Appendable target, int index, Boolean isOptional) {
         try {
-            appendStaticCall(target, decoder, "decodeIncrementInt").append(intDictionaryName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(");\n");
+            appendStaticCall(target, decoder, "decodeIncrementInt").append(intDictionaryName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(", " + isOptional.toString() + ");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     //int present code generator
-    protected void decodePresentIntGenerator(Appendable target) {
+    protected void decodePresentIntGenerator(Appendable target, Boolean isOptional) {
         try {
-            appendStaticCall(target, decoder, "decodePresentInt").append(", ").append(readerName).append(", ").append(mapName).append(", ").append(bitMaskName).append(");\n");
+            appendStaticCall(target, decoder, "decodePresentInt").append(", ").append(readerName).append(", ").append(mapName).append(", ").append(bitMaskName).append(", " + isOptional.toString() + ");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

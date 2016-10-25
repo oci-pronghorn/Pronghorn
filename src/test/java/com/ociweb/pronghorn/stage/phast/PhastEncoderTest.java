@@ -26,7 +26,7 @@ public class PhastEncoderTest {
 		
 		//encode a string on blob using the static method
 		StringBuilder testString = new StringBuilder("This is a test");
-		PhastEncoder.encodeString(writer, testString , 0, 0);
+		PhastEncoder.encodeString(writer, testString , 0, 0, false);
 		
 		writer.close();
 		
@@ -57,7 +57,7 @@ public class PhastEncoderTest {
 		intDictionary[2] = 5;
 		
 		//make it increment 2 values 0 and 5
-		PhastEncoder.copyInt(intDictionary, writer, 0, 0, 2, 0);
+		PhastEncoder.copyInt(intDictionary, writer, 0, 0, 2, 0, false);
 		writer.close();
 		
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
@@ -79,9 +79,9 @@ public class PhastEncoderTest {
 		defaultInt[3] = 4;
 		
 		//should encode 16
-		PhastEncoder.encodeDefaultInt(defaultInt, writer, 1, 1, 3, 16);
+		PhastEncoder.encodeDefaultInt(defaultInt, writer, 1, 1, 3, 16, false);
 		//should encode 4
-		PhastEncoder.encodeDefaultInt(defaultInt, writer, 0, 1, 3, 16);
+		PhastEncoder.encodeDefaultInt(defaultInt, writer, 0, 1, 3, 16, false);
 		
 		writer.close();
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
@@ -113,17 +113,17 @@ public class PhastEncoderTest {
 		long defaultTest = 455;
 		
 		//should encode: 455
-		PhastEncoder.encodeLongPresent(writer, 0, 1, defaultTest);
+		PhastEncoder.encodeLongPresent(writer, 0, 1, defaultTest, false);
 		//should encode: 2834
-		PhastEncoder.incrementLong(longDictionary, writer, 1, 1, 4);
+		PhastEncoder.incrementLong(longDictionary, writer, 1, 1, 4, false);
 		//should encode: 2835
-		PhastEncoder.incrementLong(longDictionary, writer, 0, 1, 4);
+		PhastEncoder.incrementLong(longDictionary, writer, 0, 1, 4, false);
 		//should encode: 2835
-		PhastEncoder.copyLong(longDictionary, writer, 0, 1, 4, 0);
+		PhastEncoder.copyLong(longDictionary, writer, 0, 1, 4, 0, false);
 		//should encode: 3468
-		PhastEncoder.encodeDefaultLong(defaultLongDictionary, writer, 0, 1, 2, defaultTest);
+		PhastEncoder.encodeDefaultLong(defaultLongDictionary, writer, 0, 1, 2, defaultTest, false);
 		//should encode 455
-		PhastEncoder.encodeDefaultLong(defaultLongDictionary, writer, 1, 1, 2, defaultTest);
+		PhastEncoder.encodeDefaultLong(defaultLongDictionary, writer, 1, 1, 2, defaultTest, false);
 		
 		writer.close();
 		
@@ -154,17 +154,17 @@ public class PhastEncoderTest {
 		short defaultTest = 342;
 		
 		//should encode: 342
-		PhastEncoder.encodeShortPresent(writer, 0, 1, defaultTest);
+		PhastEncoder.encodeShortPresent(writer, 0, 1, defaultTest, false);
 		//should encode: 347
-		PhastEncoder.incrementShort(shortDictionary, writer, 1, 1, 4);
+		PhastEncoder.incrementShort(shortDictionary, writer, 1, 1, 4, false);
 		//should encode: 348
-		PhastEncoder.incrementShort(shortDictionary, writer, 0, 1, 4);
+		PhastEncoder.incrementShort(shortDictionary, writer, 0, 1, 4, false);
 		//should encode: 348
-		PhastEncoder.copyShort(shortDictionary, writer, 0, 1, 4, (short)0);
+		PhastEncoder.copyShort(shortDictionary, writer, 0, 1, 4, (short)0, false);
 		//should encode: 8239
-		PhastEncoder.encodeDefaultShort(defaultShortDictionary, writer, 0, 1, 2, defaultTest);
+		PhastEncoder.encodeDefaultShort(defaultShortDictionary, writer, 0, 1, 2, defaultTest, false);
 		//should encode 342
-		PhastEncoder.encodeDefaultShort(defaultShortDictionary, writer, 1, 1, 2, defaultTest);
+		PhastEncoder.encodeDefaultShort(defaultShortDictionary, writer, 1, 1, 2, defaultTest, false);
 		
 		writer.close();
 		
