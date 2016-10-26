@@ -310,7 +310,7 @@ public class GraphManager {
         	        int idIdx = threadName.indexOf("id:");
         	        if (idIdx>=0) {
         	            int stageId = Integer.valueOf(threadName.substring(idIdx+3));
-        	            if (isInputsEmpty(m,getStage(m,stageId))) {
+        	            if (isInputsEmpty(m, stageId)) {
         	                continue;//do next, this one has nothing blocking.
         	            }
         	        }
@@ -994,11 +994,7 @@ public class GraphManager {
 	
 	public static boolean isProducerTerminated(GraphManager m, int ringId) {
 		int producerStageId = getRingProducerId(m, ringId);
-		if (producerStageId<0) {
-		    log.debug("No producer stage was found for ring {}, check the graph builder.",ringId);
-		    return true;
-		}
-        return m.stageStateData.stageStateArray[producerStageId] == GraphManagerStageStateData.STAGE_TERMINATED;
+        return producerStageId<0 || m.stageStateData.stageStateArray[producerStageId] == GraphManagerStageStateData.STAGE_TERMINATED;
 	}
 
     public static boolean isStageTerminated(GraphManager m, int stageId) {
@@ -1324,9 +1320,13 @@ public class GraphManager {
 		
 	}
 
-	public static boolean isInputsEmpty(GraphManager m,    PronghornStage stage) {
-	     int ringId;
-	     int idx = m.stageIdToInputsBeginIdx[stage.stageId];
+	public static boolean isInputsEmpty(GraphManager m, PronghornStage stage) {
+		 return isInputsEmpty(m, stage.stageId);
+	}
+
+	public static boolean isInputsEmpty(GraphManager m, int stageId) {
+		int ringId;
+	     int idx = m.stageIdToInputsBeginIdx[stageId];
 	     while (-1 != (ringId=m.multInputIds[idx++])) { 
 	         
 	         if (Pipe.contentRemaining(m.pipeIdToPipe[ringId])>0) {

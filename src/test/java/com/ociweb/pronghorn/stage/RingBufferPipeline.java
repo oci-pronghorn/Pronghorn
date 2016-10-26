@@ -420,7 +420,7 @@ public class RingBufferPipeline {
 		}
 	}
 
-	private static final int TIMEOUT_SECONDS = 10;
+	private static final int TIMEOUT_SECONDS = 30;
 	private static final String testString1 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@@";
 	private static final String testString = testString1+testString1+testString1+testString1+testString1+testString1+testString1+testString1;
 	//using length of 61 because it is prime and will wrap at odd places
@@ -507,7 +507,7 @@ public class RingBufferPipeline {
 		
 		 GraphManager gm = new GraphManager();
 		
-		
+		//GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 200_000);
 						
 		 System.out.println();
 
@@ -618,7 +618,7 @@ public class RingBufferPipeline {
 		 
 		 GraphManager.enableBatching(gm);
 		 ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(GraphManager.cloneAll(gm));
-		 scheduler.playNice = false;
+		 scheduler.playNice = true;
 		 scheduler.startup();
 		 
 		 
