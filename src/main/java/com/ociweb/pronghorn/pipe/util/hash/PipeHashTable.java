@@ -34,6 +34,12 @@ public class PipeHashTable {
 	public static void setLowerBounds(PipeHashTable ht, long value) {
 	    ht.lowerBounds = value;
 	}
+	
+	public static long getLowerBounds(PipeHashTable ht) {
+	    return ht.lowerBounds;
+	}
+	
+	
 		
 	public static boolean setItem(PipeHashTable ht, long key, long value)
 	{
