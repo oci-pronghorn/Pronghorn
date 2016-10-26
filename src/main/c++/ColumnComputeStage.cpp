@@ -11,7 +11,11 @@
 #include <jni.h>
 #include "com_ociweb_pronghorn_stage_math_ColumnComputeStage.h"
 
-// performance test
+// for performance test. usage:
+// timespec start, end;
+// clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+// clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
+// printf("computation: %lds:%ldns\n", diff(start, end).tv_sec, diff(start, end).tv_nsec);
 #include <time.h>
 timespec diff(timespec start, timespec end)
 {
@@ -26,48 +30,49 @@ timespec diff(timespec start, timespec end)
   return temp;
 }
 
+// update one column of output pipes
+static inline void updateOutputPipesCol(JNIEnv* env, jobjectArray outputPipes, 
+					int* newCol, const int colNum,
+					const jint outMask,
+					jint* cPosOut_nat) {
+  // have to copy each row and update element according to column
+  // better implement?
+  for (int c = colNum - 1; c >= 0; --c) {
+    jintArray output_c = (jintArray)env->GetObjectArrayElement(outputPipes, c); 
+    int out_len = env->GetArrayLength(output_c);
+    jint* buf_c = (jint*)calloc(out_len, sizeof(jint));
+    env->GetIntArrayRegion(output_c, 0, out_len, buf_c);   
+    buf_c[(cPosOut_nat[c]) & outMask] = newCol[c];
+    env->SetIntArrayRegion(output_c, 0, out_len, buf_c); 
+    env->SetObjectArrayElement(outputPipes, c, output_c);    
+    env->DeleteLocalRef(output_c); 
+    free(buf_c);
+  }
+}
 
 typedef void (*MULAVX)(const int, const int, jint**, jint*, const jint,
 		       const jlong, const jint, jint*, const jint,
 		       jint*, jint**);
 
-void MulNoOptimization(const int row,
-		       const int col,
+void mulNoOptimization(int row, int col,
 		       jint** colSlabs_nat,
 		       jint* rowSlab_nat,
 		       const jint rowMask,
 		       const jlong rowPosition,
 		       const jint colMask,
 		       jint* colPositions_nat,
-		       const jint outMask,
-		       jint* cPosOut_nat,
-		       JNIEnv* env,
-		       jobjectArray outputPipes) {
-  jint p = row;
-  // performance test
-  // timespec start, end;
-  // clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
-  while(--p >= 0) {        
-    int v1 = rowSlab_nat[rowMask & (jint)(rowPosition + p)];
-    jint c = col;
-    while(--c >= 0) {
+		       int* results) {
+  for (int c = col - 1; c >= 0; --c) {
+    int prod = 0;
+    for (int p = row - 1; p >= 0; --p) {
+      int v1 = rowSlab_nat[rowMask & (jint)(rowPosition + p)];
       int v2 = colSlabs_nat[c][colMask & (colPositions_nat[c] + p)];
-      jintArray output_c = (jintArray)env->GetObjectArrayElement(outputPipes, c); 
-      int out_len = env->GetArrayLength(output_c);
-      jint* buf_c = (jint*)calloc(out_len, sizeof(jint));
-      env->GetIntArrayRegion(output_c, 0, out_len, buf_c);   
-      buf_c[(cPosOut_nat[c]) & outMask] += v1 * v2;
-      env->SetIntArrayRegion(output_c, 0, out_len, buf_c); 
-      env->SetObjectArrayElement(outputPipes, c, output_c);    
-      env->DeleteLocalRef(output_c); 
-      free(buf_c);
+      prod += v1 * v2;
     }	            
+    results[c] = prod;
   }
-  // clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
-  // printf("computation: %lds:%ldns\n", diff(start, end).tv_sec, diff(start, end).tv_nsec);
 }
-
-
+	      
 JNIEXPORT void JNICALL Java_com_ociweb_pronghorn_stage_math_ColumnComputeStage_goComputeNative( JNIEnv *env, jobject obj,
 												jint typeMask, jintArray rowSlab, jlong rowPosition, jint rowMask, jint resRows,
 												jobjectArray colSlabs, jintArray colPositions, jint colMask,
@@ -94,18 +99,11 @@ JNIEXPORT void JNICALL Java_com_ociweb_pronghorn_stage_math_ColumnComputeStage_g
     env->DeleteLocalRef(col_k);                         
   }
 
-  // matrix multiplication
-  MulNoOptimization(resRows, colSlabsRow, 
-		    colSlabs_nat,
-		    rowSlab_nat,
-		    rowMask,
-		    rowPosition,
-		    colMask,
-		    colPositions_nat,
-		    outMask,
-		    cPosOut_nat,
-		    env,
-		    outputPipes);
+  int* tmp_output = (int*)calloc(colSlabsRow, sizeof(int));
+  mulNoOptimization(resRows, colSlabsRow, colSlabs_nat, rowSlab_nat, rowMask,
+		    rowPosition, colMask, colPositions_nat, tmp_output);
+  updateOutputPipesCol(env, outputPipes, tmp_output, colSlabsRow, outMask, cPosOut_nat);
+  free(tmp_output);
 
   env->ReleaseIntArrayElements(rowSlab, rowSlab_nat, 0);
   env->ReleaseIntArrayElements(colPositions, colPositions_nat, 0);
