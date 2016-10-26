@@ -443,6 +443,7 @@ public class GraphManager {
 			}
 			
 			endStageRegister(gm);
+									
 		}
 		
 	}
@@ -576,10 +577,8 @@ public class GraphManager {
 
 
 
-
 	public static void register(GraphManager gm, PronghornStage stage, Pipe input, Pipe[] outputs) {
-		synchronized(gm.lock) {		
-			
+		synchronized(gm.lock) {
 			int stageId = beginStageRegister(gm, stage);
 			setStateToNew(gm, stageId);
 			
@@ -749,15 +748,20 @@ public class GraphManager {
 				
 				int beginIdx = m.stageIdToNotasBeginIdx[stage.stageId];
 			    if (m.topNota == m.multNotaIds.length) {
+			    	
 			    	//create new larger array		    	
 			    	int[] newMultiNotaIdx = new int[m.multNotaIds.length*2];			    	
 			    	Arrays.fill(newMultiNotaIdx, -1);
+			    	
 			    	System.arraycopy(m.multNotaIds, 0, newMultiNotaIdx, 0, beginIdx);
-			    	System.arraycopy(m.multNotaIds, beginIdx, newMultiNotaIdx, beginIdx, m.topNota-(beginIdx));
+			    	
+			    	//copy over and move it down by one so we have room for the new entry
+			    	System.arraycopy(m.multNotaIds, beginIdx, newMultiNotaIdx, beginIdx+1, m.topNota-(beginIdx));
 			    	
 			    	m.multNotaIds = newMultiNotaIdx;		    	
 			    } else {
-			    	//move all the data down.
+			    	
+			    	//move all the data down by one so we have room.
 			    	System.arraycopy(m.multNotaIds, beginIdx, m.multNotaIds, beginIdx+1, m.topNota-(beginIdx));
 			    }
 			    
@@ -947,7 +951,8 @@ public class GraphManager {
 		int count = 0;
 		while ((pipeId = m.multOutputIds[outputPos++])>=0) {
 			count++;
-			noConsumers = noConsumers & isStageTerminated(m,GraphManager.getRingConsumer(m, pipeId).stageId);						
+			int ringConsumerId = GraphManager.getRingConsumerId(m, pipeId);
+			noConsumers = noConsumers & (ringConsumerId<0 || isStageTerminated(m,ringConsumerId));						
 		}				
 		if (count>0 && noConsumers) {
 			//ignore input because all the consumers have already shut down

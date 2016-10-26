@@ -52,7 +52,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
     			    Object value = GraphManager.getNota(graphManager, stage, GraphManager.SCHEDULE_RATE, Long.valueOf(0));			    
     				long rate = value instanceof Number ? ((Number)value).longValue() : null==value ? 0 : Long.parseLong(value.toString());
     				
-    				//System.out.println("thread per stage rates "+stage+" rate "+rate);
+    				//log.info("thread per stage rates "+stage+" rate "+rate);
     				
     				if (0==rate) {
     					executorService.execute(buildRunnable(allStagesLatch, stage)); 	
