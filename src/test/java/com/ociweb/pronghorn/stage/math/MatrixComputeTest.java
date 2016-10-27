@@ -473,7 +473,7 @@ public class MatrixComputeTest {
 		
 	}
 	
-        @Ignore
+    //        @Ignore
 	@Test
 	public void testComputeExampleNativeInteger() {
 		MatrixTypes type = MatrixTypes.Integers;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
@@ -481,10 +481,10 @@ public class MatrixComputeTest {
 		//TypeMask.Decimal;
 		
 		
-		int leftRows = 4;
-		int leftColumns = 4;
+		int leftRows = 64;
+		int leftColumns = 64;
 
-		int rightColumns = 4;				
+		int rightColumns = 64;				
 		int rightRows = leftColumns;		
 		
 		Random rand = new Random();
@@ -536,7 +536,7 @@ public class MatrixComputeTest {
 		Pipe<DecimalSchema<MatrixSchema>> result2 = new Pipe<DecimalSchema<MatrixSchema>>(new PipeConfig<DecimalSchema<MatrixSchema>>(result2Schema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
 		
 		
-		int targetThreadCount = 12;
+		int targetThreadCount = 3;
 		Pipe<ColumnSchema<MatrixSchema>>[] colResults = BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, targetThreadCount-2);
 		
 		ColumnsToRowsStage<MatrixSchema> ctr = new ColumnsToRowsStage<MatrixSchema>(gm, resultSchema, colResults, result);
