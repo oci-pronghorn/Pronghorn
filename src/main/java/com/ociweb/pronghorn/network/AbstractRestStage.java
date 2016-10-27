@@ -21,7 +21,15 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
                                          V extends Enum<V> & HTTPVerb,
                                          H extends Enum<H> & HTTPHeaderKey> extends PronghornStage {
    
-    protected final HTTPSpecification<T,R,V, H> httpSpec;
+    private static final byte[] RETURN_NEWLINE = "\r\n".getBytes();
+
+	private static final byte[] EXPIRES_ZERO = "Expires: 0\r\n".getBytes();
+
+	private static final byte[] PRAGMA_NO_CACHE = "Pragma: no-cache\r\n".getBytes();
+
+	private static final byte[] CACHE_CONTROL_NO_CACHE = "Cache-Control: no-cache, no-store, must-revalidate\r\n".getBytes();
+
+	protected final HTTPSpecification<T,R,V, H> httpSpec;
     
     protected static final byte[] OK_200        = " 200 OK\n".getBytes();
     protected static final byte[] Not_Found_404 = " 404 Not Found\n".getBytes();
@@ -72,7 +80,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     
 
     protected int publishHeaderMessage(int originalRequestContext, int sequence, int thisRequestContext, int status,                                     
-                                        DataOutputBlobWriter<ServerResponseSchema> writer, Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow,
+                                        Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow,
                                         HTTPSpecification<T,R,V, H> httpSpec, int revision, int contentType, byte[] localSizeAsBytes, byte[] localETagBytes) {
         
         int headerSize = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
@@ -81,6 +89,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         Pipe.addIntValue(channelIdLow, localOutput);
         Pipe.addIntValue(sequence, localOutput);        
         
+        DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.outputStream(localOutput);
         writer.openField();
         writeHeader(httpSpec.revisions[revision].getBytes(), status, originalRequestContext, localETagBytes,  httpSpec.contentTypes[contentType].getBytes(), localSizeAsBytes, writer);
         int bytesLength = writer.closeLowLevelField();
@@ -90,14 +99,14 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         Pipe.confirmLowLevelWrite(localOutput, headerSize);
         Pipe.publishWrites(localOutput);
         
-        logger.info("published header");
+        //logger.debug("published header");
         
         return bytesLength;
     }
     
     protected void publishError(int requestContext, int sequence, int status,
-                                DataOutputBlobWriter<ServerResponseSchema> writer, Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow, 
-                                HTTPSpecification<T,R,V, H> httpSpec, int revision, int contentType) {
+                                Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow, HTTPSpecification<T,R,V, H> httpSpec, 
+                                int revision, int contentType) {
         
         int headerSize = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
 
@@ -105,6 +114,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         Pipe.addIntValue(channelIdLow, localOutput);
         Pipe.addIntValue(sequence, localOutput);
         
+        DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.outputStream(localOutput);        
         writer.openField();
         writeHeader(httpSpec.revisions[revision].getBytes(), status, requestContext, null, contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), ZERO, writer);
         writer.closeLowLevelField();          
@@ -146,15 +156,15 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
 //                writer.write('\n');
 //            }          
             
-            writer.write("Cache-Control: no-cache, no-store, must-revalidate\r\n".getBytes());
-            writer.write("Pragma: no-cache\r\n".getBytes());
-            writer.write("Expires: 0\r\n".getBytes());
+            writer.write(CACHE_CONTROL_NO_CACHE);
+            writer.write(PRAGMA_NO_CACHE);
+            writer.write(EXPIRES_ZERO);
             
             //line three
             if (null!=typeBytes) {
                 writer.write(CONTENT_TYPE);
                 writer.write(typeBytes);
-                writer.write("\r\n".getBytes());
+                writer.write(RETURN_NEWLINE);
             }
             
             //line four
@@ -162,14 +172,14 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
                 writer.write(CONTENT_LENGTH);
                 writer.write(lenAsBytes);
                 
-                logger.info("returning payload of length:{}",new String(lenAsBytes));
-                writer.write("\r\n".getBytes());
+                //logger.debug("returning payload of length:{}",new String(lenAsBytes));
+                writer.write(RETURN_NEWLINE);
             }
             
             //line five            
             int closeIdx = 1&(requestContext>>ServerConnectionWriterStage.CLOSE_CONNECTION_SHIFT);
             writer.write(CONNECTION[closeIdx]);
-            writer.write("\r\n".getBytes());
+            writer.write(RETURN_NEWLINE);
             //now ready for content
     
     }

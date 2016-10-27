@@ -11,7 +11,7 @@ import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
-import com.ociweb.pronghorn.network.schema.ClientNetResponseSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
@@ -25,7 +25,7 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTPResponseParserStage extends PronghornStage {
 
-	private final Pipe<ClientNetResponseSchema>[] input; 
+	private final Pipe<NetPayloadSchema>[] input; 
 	private final Pipe<NetResponseSchema>[] output;
 	private final Pipe<NetParseAckSchema> ackStop;
 	private final HTTPSpecification<?,?,?,?> httpSpec;
@@ -61,7 +61,7 @@ public class HTTPResponseParserStage extends PronghornStage {
 		
 	
 	public HTTPResponseParserStage(GraphManager graphManager, 
-			                       Pipe<ClientNetResponseSchema>[] input, 
+			                       Pipe<NetPayloadSchema>[] input, 
 			                       Pipe<NetResponseSchema>[] output, Pipe<NetParseAckSchema> ackStop, 
 			                       IntHashTable listenerPipeLookup,
 			                       ClientConnectionManager ccm,
@@ -176,7 +176,7 @@ public class HTTPResponseParserStage extends PronghornStage {
 				Pipe<NetResponseSchema> targetPipe = null;
 				long ccId = 0;
 				
-				Pipe<ClientNetResponseSchema> pipe = input[i];
+				Pipe<NetPayloadSchema> pipe = input[i];
 				if (!Pipe.hasContentToRead(pipe)) {
 					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 					if (trieReader.sourceLen<=0) {
@@ -197,7 +197,7 @@ public class HTTPResponseParserStage extends PronghornStage {
 				} else {	
 									
 					int msgIdx = Pipe.takeMsgIdx(pipe);
-					assert(ClientNetResponseSchema.MSG_SIMPLERESPONSE_210==msgIdx): "msgIdx "+msgIdx+"  "+pipe;
+					assert(NetPayloadSchema.MSG_PLAIN_210==msgIdx): "msgIdx "+msgIdx+"  "+pipe;
 			
 					ccId = Pipe.takeLong(pipe);
 					ccIdData[i] = ccId;

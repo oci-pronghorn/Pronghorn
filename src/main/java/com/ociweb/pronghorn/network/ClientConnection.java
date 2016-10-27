@@ -23,7 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.schema.ClientNetRequestSchema;
-import com.ociweb.pronghorn.network.schema.ClientNetResponseSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
@@ -434,7 +434,7 @@ public class ClientConnection {
 	}
 
 
-	public static void engineUnWrap(ClientConnectionManager ccm, Pipe<ClientNetResponseSchema> source, Pipe<ClientNetResponseSchema> target, 
+	public static void engineUnWrap(ClientConnectionManager ccm, Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target, 
 			                        ByteBuffer rolling, ByteBuffer[] workspace, Pipe<ClientNetRequestSchema> handshakePipe, ByteBuffer secureBuffer) {
 		
 		while (PipeReader.hasContentToRead(source) ) {
@@ -444,7 +444,7 @@ public class ClientConnection {
 			}			
 				
 			
-			ClientConnection cc = ccm.get(PipeReader.peekLong(source, ClientNetResponseSchema.MSG_RESPONSE_200_FIELD_CONNECTIONID_201));
+			ClientConnection cc = ccm.get(PipeReader.peekLong(source, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201));
 			
 			if (null==cc || !cc.isValid) {
 				//do not process this message because the connection has dropped
@@ -465,21 +465,21 @@ public class ClientConnection {
 				//TODO: shutdown?
 			}
 			
-			final ByteBuffer[] writeHolderUnWrap = PipeWriter.wrappedUnstructuredLayoutBufferOpen(target, ClientNetResponseSchema.MSG_SIMPLERESPONSE_210_FIELD_PAYLOAD_204);
+			final ByteBuffer[] writeHolderUnWrap = PipeWriter.wrappedUnstructuredLayoutBufferOpen(target, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 			
 			
 			SSLEngineResult result = unwrappedResultStatusState(source, rolling, cc, writeHolderUnWrap);
 			Status status = null==result?null:result.getStatus();			
 			
 			if(cc.localRunningBytesProduced>0) {
-				if (!PipeWriter.tryWriteFragment(target, ClientNetResponseSchema.MSG_SIMPLERESPONSE_210)) {
+				if (!PipeWriter.tryWriteFragment(target, NetPayloadSchema.MSG_PLAIN_210)) {
 					throw new RuntimeException("already checked for space should not happen.");
 				}
-				PipeWriter.wrappedUnstructuredLayoutBufferClose(target, ClientNetResponseSchema.MSG_SIMPLERESPONSE_210_FIELD_PAYLOAD_204, cc.localRunningBytesProduced);
+				PipeWriter.wrappedUnstructuredLayoutBufferClose(target, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204, cc.localRunningBytesProduced);
 				cc.localRunningBytesProduced = -1;
 				
 				//assert(longs match the one for cc)
-				PipeWriter.writeLong(target, ClientNetResponseSchema.MSG_SIMPLERESPONSE_210_FIELD_CONNECTIONID_201, cc.id);
+				PipeWriter.writeLong(target, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, cc.id);
 				//    PipeReader.copyLong(source, target, ClientNetResponseSchema.MSG_RESPONSE_200_FIELD_CONNECTIONID_201, ClientNetResponseSchema.MSG_SIMPLERESPONSE_210_FIELD_CONNECTIONID_201);
 				
 				PipeWriter.publishWrites(target);
@@ -511,14 +511,14 @@ public class ClientConnection {
 					PipeWriter.wrappedUnstructuredLayoutBufferCancel(target);							
 				} else {
 					if (cc.localRunningBytesProduced>0) {
-						if (!PipeWriter.tryWriteFragment(target, ClientNetResponseSchema.MSG_SIMPLERESPONSE_210)) {
+						if (!PipeWriter.tryWriteFragment(target, NetPayloadSchema.MSG_PLAIN_210)) {
 							throw new RuntimeException("already checked for space should not happen.");
 						}
-						PipeWriter.wrappedUnstructuredLayoutBufferClose(target, ClientNetResponseSchema.MSG_SIMPLERESPONSE_210_FIELD_PAYLOAD_204, cc.localRunningBytesProduced);
+						PipeWriter.wrappedUnstructuredLayoutBufferClose(target, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204, cc.localRunningBytesProduced);
 						cc.localRunningBytesProduced = -1;
 						
 						//assert(longs match the one for cc)
-						PipeWriter.writeLong(target, ClientNetResponseSchema.MSG_SIMPLERESPONSE_210_FIELD_CONNECTIONID_201, cc.id);
+						PipeWriter.writeLong(target, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, cc.id);
 						//    PipeReader.copyLong(source, target, ClientNetResponseSchema.MSG_RESPONSE_200_FIELD_CONNECTIONID_201, ClientNetResponseSchema.MSG_SIMPLERESPONSE_210_FIELD_CONNECTIONID_201);
 						
 						PipeWriter.publishWrites(target);
@@ -535,12 +535,12 @@ public class ClientConnection {
 		}
 	}
 
-	private static SSLEngineResult unwrappedResultStatusState(Pipe<ClientNetResponseSchema> source, ByteBuffer rolling,
+	private static SSLEngineResult unwrappedResultStatusState(Pipe<NetPayloadSchema> source, ByteBuffer rolling,
 			ClientConnection cc, final ByteBuffer[] targetBuffer) {
 		
 		SSLEngineResult result=null;
 				
-		ByteBuffer[] inputs = PipeReader.wrappedUnstructuredLayoutBuffer(source, ClientNetResponseSchema.MSG_RESPONSE_200_FIELD_PAYLOAD_203);
+		ByteBuffer[] inputs = PipeReader.wrappedUnstructuredLayoutBuffer(source, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_PAYLOAD_203);
 		
 		cc.localRunningBytesProduced = 0;
 		if (inputs[1].remaining()==0) {
@@ -699,7 +699,7 @@ public class ClientConnection {
 		 return false;
 	}
 	
-	public static boolean handShakeUnWrapIfNeeded(ClientConnection cc, Pipe<ClientNetResponseSchema> source, ByteBuffer rolling, ByteBuffer[] workspace, 
+	public static boolean handShakeUnWrapIfNeeded(ClientConnection cc, Pipe<NetPayloadSchema> source, ByteBuffer rolling, ByteBuffer[] workspace, 
 			                                      Pipe<ClientNetRequestSchema> handshakePipe, ByteBuffer secureBuffer) {
 		
 		 HandshakeStatus handshakeStatus = cc.engine.getHandshakeStatus();

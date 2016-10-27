@@ -16,7 +16,7 @@ import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
-import com.ociweb.pronghorn.network.schema.ServerRequestSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.Pipe.PaddedLong;
@@ -26,14 +26,14 @@ import com.ociweb.pronghorn.util.Pool;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
-public class HTTPRouterStage<T extends Enum<T> & HTTPContentType,
+public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
                              H extends Enum<H> & HTTPHeaderKey,
                              R extends Enum<R> & HTTPRevision,
                              V extends Enum<V> & HTTPVerb> extends PronghornStage {
 
   //TODO: double check that this all works iwth ipv6.
     
-    private static Logger logger = LoggerFactory.getLogger(HTTPRouterStage.class);
+    private static Logger logger = LoggerFactory.getLogger(HTTP1xRouterStage.class);
     
     private TrieParser verbMap;
     private TrieParser urlMap;
@@ -42,7 +42,7 @@ public class HTTPRouterStage<T extends Enum<T> & HTTPContentType,
         
     private TrieParserReader trieReader;
     
-    private final Pipe<ServerRequestSchema>[] inputs;
+    private final Pipe<NetPayloadSchema>[] inputs;
     private       long[]                      inputChannels;
     private       int[]                       inputPositions;
     private       int[]                       inputLengths;
@@ -50,7 +50,7 @@ public class HTTPRouterStage<T extends Enum<T> & HTTPContentType,
         
     
     private final Pipe<HTTPRequestSchema>[] outputs;
-    private final Pipe errorPipe;
+
     private final int[]                     messageIds;
     private DataOutputBlobWriter<HTTPRequestSchema>[] blobWriter;
     private long[] requestHeaderMask;
@@ -84,22 +84,21 @@ public class HTTPRouterStage<T extends Enum<T> & HTTPContentType,
     //total all into one master DataInputReader
        
     
-    public static HTTPRouterStage newInstance(GraphManager gm, Pool<Pipe<ServerRequestSchema>> input, Pipe<HTTPRequestSchema>[] outputs, Pipe errorResponse, 
+    public static HTTP1xRouterStage newInstance(GraphManager gm, Pool<Pipe<NetPayloadSchema>> input, Pipe<HTTPRequestSchema>[] outputs,
                                               CharSequence[] paths, long[] headers, int[] messageIds) {
         
-       return new HTTPRouterStage<HTTPContentTypeDefaults ,HTTPHeaderKeyDefaults, HTTPRevisionDefaults, HTTPVerbDefaults>(gm,input,outputs, errorResponse, paths, headers, messageIds,
+       return new HTTP1xRouterStage<HTTPContentTypeDefaults ,HTTPHeaderKeyDefaults, HTTPRevisionDefaults, HTTPVerbDefaults>(gm,input,outputs, paths, headers, messageIds,
                                    HTTPSpecification.defaultSpec()  ); 
     }
 
    
-    public HTTPRouterStage(GraphManager gm, Pool<Pipe<ServerRequestSchema>> input, Pipe<HTTPRequestSchema>[] outputs, Pipe errorPipe,
+    public HTTP1xRouterStage(GraphManager gm, Pool<Pipe<NetPayloadSchema>> input, Pipe<HTTPRequestSchema>[] outputs, 
                            CharSequence[] paths, long[] headers, int[] messageIds, 
                            HTTPSpecification<T,R,V,H> httpSpec) {
-        super(gm,input.members(),join(outputs, errorPipe));
+        super(gm,input.members(),outputs);
         this.inputs = input.members();
                 
         this.outputs = outputs;
-        this.errorPipe = errorPipe;
         this.messageIds = messageIds;
         this.requestHeaderMask = headers;
         
@@ -272,7 +271,7 @@ public class HTTPRouterStage<T extends Enum<T> & HTTPContentType,
     }
 
     public int singlePipe(int idx) {
-        Pipe<ServerRequestSchema> selectedInput = inputs[idx];     
+        Pipe<NetPayloadSchema> selectedInput = inputs[idx];     
         if (null==selectedInput) {
             return 1;
         }
@@ -303,7 +302,7 @@ public class HTTPRouterStage<T extends Enum<T> & HTTPContentType,
     }
 
 
-    private void consumeAvail(final int idx, Pipe<ServerRequestSchema> selectedInput, final long channel, int p,
+    private void consumeAvail(final int idx, Pipe<NetPayloadSchema> selectedInput, final long channel, int p,
             int l) {
         int consumed;
         do {
@@ -381,6 +380,9 @@ private boolean route(TrieParserReader trieReader, long channel, int idx) {
         
         final int size =  Pipe.addMsgIdx(staticRequestPipe, messageIds[routeId]);        // Write 1   1                         
         Pipe.addLongValue(channel, staticRequestPipe); // Channel                        // Write 2   3        
+        
+        System.out.println("wrote ever increasing squence from router of "+sequenceNo);//TODO: should this be per connection instead!!
+        
         Pipe.addIntValue(sequenceNo++, staticRequestPipe); //sequence                    // Write 1   4
         Pipe.addIntValue(verbId, staticRequestPipe);   // Verb                           // Write 1   5
         
@@ -454,7 +456,7 @@ public boolean isCalled() {
     return true;
 }
 
-private int accumulateRunningBytes(int idx, Pipe<ServerRequestSchema> selectedInput) {
+private int accumulateRunningBytes(int idx, Pipe<NetPayloadSchema> selectedInput) {
     
     int messageIdx = Integer.MAX_VALUE;
 
@@ -470,7 +472,7 @@ private int accumulateRunningBytes(int idx, Pipe<ServerRequestSchema> selectedIn
         
         
         messageIdx = Pipe.takeMsgIdx(selectedInput);
-        if (ServerRequestSchema.MSG_FROMCHANNEL_100 == messageIdx) {
+        if (NetPayloadSchema.MSG_PLAIN_210 == messageIdx) {
             long channel   = Pipe.takeLong(selectedInput);
             
             int meta       = Pipe.takeRingByteMetaData(selectedInput);
@@ -522,7 +524,7 @@ private int accumulateRunningBytes(int idx, Pipe<ServerRequestSchema> selectedIn
 }
 
 
-private boolean validatePipePositions(Pipe<ServerRequestSchema> selectedInput, int p, int l) {
+private boolean validatePipePositions(Pipe<NetPayloadSchema> selectedInput, int p, int l) {
     int head = Pipe.getBlobRingHeadPosition(selectedInput);
     int mhead = Pipe.blobMask(selectedInput) & head;
     int mstart = Pipe.blobMask(selectedInput) & p;
@@ -539,12 +541,12 @@ private boolean validatePipePositions(Pipe<ServerRequestSchema> selectedInput, i
 }
 
 
-private boolean hasContinuedData(int idx, Pipe<ServerRequestSchema> selectedInput) {
+private boolean hasContinuedData(int idx, Pipe<NetPayloadSchema> selectedInput) {
     return Pipe.peekLong(selectedInput, 1)==inputChannels[idx];
 }
 
 
-private boolean hasReachedEndOfStream(Pipe<ServerRequestSchema> selectedInput) {
+private boolean hasReachedEndOfStream(Pipe<NetPayloadSchema> selectedInput) {
     return Pipe.peekInt(selectedInput)<0;
 }
 

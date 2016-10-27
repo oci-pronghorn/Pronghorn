@@ -5,7 +5,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.network.schema.ClientNetRequestSchema;
-import com.ociweb.pronghorn.network.schema.ClientNetResponseSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
 import com.ociweb.pronghorn.network.schema.NetRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
@@ -21,8 +21,8 @@ public class SchemaValidationTest {
 	
     @Test
     public void messageClientNetResponseSchemaFROMTest() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/ClientNetResponse.xml", ClientNetResponseSchema.instance));
-        assertTrue(FROMValidation.testForMatchingLocators(ClientNetResponseSchema.instance));
+        assertTrue(FROMValidation.testForMatchingFROMs("/NetPayload.xml", NetPayloadSchema.instance));
+        assertTrue(FROMValidation.testForMatchingLocators(NetPayloadSchema.instance));
     }
     
     @Test

@@ -10,7 +10,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.schema.ClientNetResponseSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
@@ -21,12 +21,12 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public class ClientSocketReaderStage extends PronghornStage {	
 	
 	private final ClientConnectionManager ccm;
-	private final Pipe<ClientNetResponseSchema>[] output2;
+	private final Pipe<NetPayloadSchema>[] output2;
 	private final Pipe<NetParseAckSchema> parseAck;
 	private Logger log = LoggerFactory.getLogger(ClientSocketReaderStage.class);
 
 	
-	protected ClientSocketReaderStage(GraphManager graphManager, ClientConnectionManager ccm, Pipe<NetParseAckSchema> parseAck, Pipe<ClientNetResponseSchema>[] output) {
+	protected ClientSocketReaderStage(GraphManager graphManager, ClientConnectionManager ccm, Pipe<NetParseAckSchema> parseAck, Pipe<NetPayloadSchema>[] output) {
 		super(graphManager, parseAck, output);
 		this.ccm = ccm;
 		this.output2 = output;
@@ -69,7 +69,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 				    	int pipeIdx = ccm.responsePipeLineIdx(cc.getId());
 				    	if (pipeIdx>=0) {
 				    		//was able to reserve a pipe run 
-					    	Pipe<ClientNetResponseSchema> target = output2[pipeIdx];
+					    	Pipe<NetPayloadSchema> target = output2[pipeIdx];
 					    	
 //					    	while (!PipeWriter.hasRoomForWrite(target)) {
 //					    		Thread.yield();
@@ -77,7 +77,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 					    	
 					    	if (PipeWriter.hasRoomForWrite(target)) {	    	
 						    	
-					    		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = PipeWriter.wrappedUnstructuredLayoutBufferOpen(target,ClientNetResponseSchema.MSG_RESPONSE_200_FIELD_PAYLOAD_203);
+					    		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = PipeWriter.wrappedUnstructuredLayoutBufferOpen(target,NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_PAYLOAD_203);
 					    							    		
 					    		int readCount = 0;
 						    	long temp=0;
@@ -97,9 +97,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    	if (readCount>0) {	
 						    		//log.debug("read count from socket {} vs {} ",readCount,  wrappedUnstructuredLayoutBufferOpen.position()-p);
 						    		//we read some data so send it			    					    		
-						    		if (PipeWriter.tryWriteFragment(target, ClientNetResponseSchema.MSG_RESPONSE_200)) try {
-						    			PipeWriter.writeLong(target, ClientNetResponseSchema.MSG_RESPONSE_200_FIELD_CONNECTIONID_201, cc.getId() );
-						    			PipeWriter.wrappedUnstructuredLayoutBufferClose(target, ClientNetResponseSchema.MSG_RESPONSE_200_FIELD_PAYLOAD_203, readCount);
+						    		if (PipeWriter.tryWriteFragment(target, NetPayloadSchema.MSG_ENCRYPTED_200)) try {
+						    			PipeWriter.writeLong(target, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201, cc.getId() );
+						    			PipeWriter.wrappedUnstructuredLayoutBufferClose(target, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_PAYLOAD_203, readCount);
 						    		    //log.info("from socket published          {} bytes ",readCount);
 						    		} finally {
 						    			PipeWriter.publishWrites(target);

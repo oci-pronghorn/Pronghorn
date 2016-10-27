@@ -19,11 +19,11 @@ public class HTTPServer {
     public static void main(String[] args) {
         
     	GraphManager gm = new GraphManager();
-    	GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 200_000); //TODO: this must happen before the graph is built? why?
+    	GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1_000_000); //TODO: this must happen before the graph is built? why?
         gm = NetGraphBuilder.buildHTTPServerGraph(gm, groups, apps);
         
         
-        GraphManager.exportGraphDotFile(gm, "RealHTTPServer");
+       // GraphManager.exportGraphDotFile(gm, "RealHTTPServer");
         
        
         //MonitorConsoleStage.attach(gm);
@@ -34,12 +34,25 @@ public class HTTPServer {
         
         scheduler.startup();                
         
+        
+        
+        
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
                     scheduler.shutdown();
                     scheduler.awaitTermination(1, TimeUnit.MINUTES);
             }
         });
-                
+        
+        try {
+        	Thread.sleep(1000);
+        } catch (InterruptedException e) {
+        	// TODO Auto-generated catch block
+        	e.printStackTrace();
+        }
+        
+   //     System.exit(0);
+        
+        
     }
 }

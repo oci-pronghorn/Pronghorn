@@ -136,6 +136,7 @@ public class ClientConnectionManager implements ServiceObjectValidator<ClientCon
 			connectionId = ccm.lookupInsertPosition();
 			
 			if (connectionId<0) {
+				logger.warn("too many open connection, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
 				//do not open instead we should attempt to close this one to provide room.
 				return connectionId;
 			}

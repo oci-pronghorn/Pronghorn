@@ -90,13 +90,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 
     @Override
     public void run() {
-//        try {
-//            Thread.sleep(3);
-//        } catch (InterruptedException e) {
-//            // TODO Auto-generated catch block
-//            e.printStackTrace();
-//        }
-        
+  
         try {
            if (selector.selectNow() > selectionKeysAllowedToWait) {
                 //we know that there is an interesting (non zero positive) number of keys waiting.
@@ -142,7 +136,7 @@ public class ServerNewConnectionStage extends PronghornStage{
                           //NOTE: for servers that do not require an upgrade we can set this to the needed pipe right now.
                           ServerCoordinator.setTargetUpgradePipeIdx(coordinator, targetPipeIdx, channelId, 0); //default for all
                                                                                                   
-                          logger.info("register new data to selector for pipe {}",targetPipeIdx);
+                         // logger.info("register new data to selector for pipe {}",targetPipeIdx);
                           Selector selector2 = ServerCoordinator.getSelector(coordinator, targetPipeIdx);
 						  channel.register(selector2, SelectionKey.OP_READ, ServerCoordinator.selectorKeyContext(coordinator, targetPipeIdx, channelId));
     						 

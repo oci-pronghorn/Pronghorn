@@ -108,7 +108,7 @@ public class ServerCoordinator {
     
     public static ConnectionContext selectorKeyContext(ServerCoordinator that, int idx, long channelId) {
         ConnectionContext context = that.connectionContext[idx][(int)(that.channelBitsMask & channelId)];
-        context.channelId = channelId;        
+        context.setChannelId(channelId);        
         return context;
     }
 

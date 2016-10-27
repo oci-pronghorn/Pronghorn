@@ -11,7 +11,7 @@ import java.util.Iterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.schema.ServerRequestSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -23,7 +23,7 @@ public class ServerConnectionReaderStage extends PronghornStage {
     
     public static final Logger logger = LoggerFactory.getLogger(ServerConnectionReaderStage.class);
     
-    private final Pipe<ServerRequestSchema>[] output;
+    private final Pipe<NetPayloadSchema>[] output;
 
     private final ServerCoordinator coordinator;
     private final int pipeIdx;
@@ -31,7 +31,7 @@ public class ServerConnectionReaderStage extends PronghornStage {
     private Selector selector;
 
     private long                      channelId;
-    private Pipe<ServerRequestSchema> targetPipe;
+    private Pipe<NetPayloadSchema> targetPipe;
 
     
     private int pendingSelections = 0;
@@ -40,13 +40,11 @@ public class ServerConnectionReaderStage extends PronghornStage {
     private ServiceObjectHolder<SocketChannel> holder;
     
     
-    public ServerConnectionReaderStage(GraphManager graphManager, Pipe<ServerRequestSchema>[] output, ServerCoordinator coordinator, int pipeIdx) {
+    public ServerConnectionReaderStage(GraphManager graphManager, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, int pipeIdx) {
         super(graphManager, NONE, output);
         this.coordinator = coordinator;
         this.pipeIdx = pipeIdx;
         this.output = output;
-      // GraphManager.addNota(graphManager,GraphManager.PRODUCER, GraphManager.PRODUCER, this);
-   
     }
 
     @Override
@@ -59,7 +57,7 @@ public class ServerConnectionReaderStage extends PronghornStage {
         } catch (IOException e) {
            throw new RuntimeException(e);
         }
-        logger.info("selector is registered for pipe {}",pipeIdx);
+        //logger.debug("selector is registered for pipe {}",pipeIdx);
         
     }
     
@@ -78,7 +76,7 @@ public class ServerConnectionReaderStage extends PronghornStage {
 
         if (hasNewDataToRead()) {
         	
-        	logger.info("found new data to read on "+pipeIdx);
+        	//logger.debug("found new data to read on "+pipeIdx);
             
             Iterator<SelectionKey>  keyIterator = selector.selectedKeys().iterator();   
             
@@ -94,7 +92,7 @@ public class ServerConnectionReaderStage extends PronghornStage {
                 
                 
                 //get the context object so we know what the channel identifier is
-                channelId = ((ConnectionContext)selection.attachment()).channelId;
+                channelId = ((ConnectionContext)selection.attachment()).getChannelId();
                 
                 targetPipe = output[ServerCoordinator.getTargetUpgradePipeIdx(coordinator, pipeIdx, channelId)];                
                 //TODO: note above that every channel gets a pipe, this should be changed so we have a small fixed number of pipes.
@@ -144,7 +142,7 @@ public class ServerConnectionReaderStage extends PronghornStage {
     }
     
     //returns true if all the data for this chanel has been consumed
-    public boolean pumpByteChannelIntoPipe(ReadableByteChannel sourceChannel, long channelId, Pipe<ServerRequestSchema> targetPipe) {
+    public boolean pumpByteChannelIntoPipe(ReadableByteChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe) {
         
        
         //keep appending messages until the channel is empty or the pipe is full
@@ -209,10 +207,10 @@ public class ServerConnectionReaderStage extends PronghornStage {
           }
     }
 
-    private void publishData(Pipe<ServerRequestSchema> targetPipe, long channelId, int len) {
+    private void publishData(Pipe<NetPayloadSchema> targetPipe, long channelId, int len) {
 
         
-        int size = Pipe.addMsgIdx(targetPipe,ServerRequestSchema.MSG_FROMCHANNEL_100);               
+        int size = Pipe.addMsgIdx(targetPipe,NetPayloadSchema.MSG_PLAIN_210);               
         Pipe.addLongValue(channelId, targetPipe);  
 
         int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);

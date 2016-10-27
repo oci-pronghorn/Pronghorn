@@ -89,10 +89,9 @@ public class ServerConnectionWriterStage extends PronghornStage {
              //need list of channels off the one Id  requires new schema update
 
         boolean done = publish(writeToChannel);
-
         
-        int c = dataToSend.length;
-      //  logger.info("done {} {}",done,c);
+        int c = dataToSend.length;     
+        
         while (done && --c>= 0) {
             while (done && Pipe.hasContentToRead(dataToSend[activePipe])) {
                 
@@ -110,6 +109,11 @@ public class ServerConnectionWriterStage extends PronghornStage {
                     //read the next non-blocked pipe, sequenceNo is never reset to zero
                     //every number is used even if there is an exception upon write.
                     boolean isBlocked = sequenceNo!=expected; 
+                    
+                    if (isBlocked) {
+                    	System.out.println("in use connection "+(int)(channelId & coordinator.channelBitsMask)+" must match expected "+expected+" and sequenceNo "+sequenceNo);
+                    }
+                    
                     if (isBlocked) {
                     	
                     	logger.info("unable to send {} {} blocked", sequenceNo, expected);
@@ -169,16 +173,23 @@ public class ServerConnectionWriterStage extends PronghornStage {
         	
         	expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)]++;
         	
-        	System.out.println("found end of response, increment sequence for "+(channelId & coordinator.channelBitsMask)+" next expected "+expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)]);
+        	//System.out.println("found end of response, increment sequence for connection "+(channelId & coordinator.channelBitsMask)+" next expected "+expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)]);
         	
         }
                 
-//        byte[] t1 = Pipe.byteBackingArray(meta, pipe);
-//        int t2 = Pipe.blobMask(pipe);
-//        int t3 = Pipe.bytePosition(meta, pipe, len);
+//
+//        if (len<4095) {
 //        
-//        Appendables.appendUTF8(System.out, t1, t3, len, t2);
-        
+//        	System.out.println("--------------------------------");
+//        	byte[] t1 = Pipe.byteBackingArray(meta, pipe);
+//        	int t2 = Pipe.blobMask(pipe);
+//        	int t3 = Pipe.bytePosition(meta, pipe, len);        
+//        	Appendables.appendUTF8(System.out, t1, t3, len, t2);
+//        	System.out.println("--------------------------------");
+//        	System.out.println(pipe+" "+pipe.sizeOfSlabRing+" "+pipe.sizeOfBlobRing);
+//        	System.out.println("--------------------------------");
+//        	
+//        }
         //BROKEN RESPONSE.
 //        0x2 200 OK
 //        Server: Pronghorn
@@ -247,6 +258,7 @@ public class ServerConnectionWriterStage extends PronghornStage {
     }
 
     private void markDoneAndRelease() {
+    	
         writeDone = true;        
         Pipe<ServerResponseSchema> pipe = dataToSend[activePipe];
         Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, activeMessageId));

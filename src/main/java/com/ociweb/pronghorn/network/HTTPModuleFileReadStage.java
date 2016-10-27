@@ -52,7 +52,6 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
     private final Pipe<HTTPRequestSchema> input;    
     private final Pipe<ServerResponseSchema> output;
     private PipeHashTable outputHash;
-    private DataOutputBlobWriter<ServerResponseSchema> writer;
 
     private final FileSystem fileSystem;    
     private FileSystemProvider provider;
@@ -218,9 +217,6 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
         this.provider = fileSystem.provider();
         this.readOptions = new HashSet<OpenOption>();
         this.readOptions.add(StandardOpenOption.READ);
-        
-        this.writer = new DataOutputBlobWriter<ServerResponseSchema>(output);
-        
         
         File rootFileDirectory = new File(folderRoot);
         if (!rootFileDirectory.isDirectory()) {
@@ -500,13 +496,16 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
             int status = 200;
                         
             totalBytes += publishHeaderMessage(requestContext, sequence, VERB_GET==verb ? 0 : requestContext, 
-            		                           status, writer,
-                                               output, activeChannelHigh, activeChannelLow,  
+            		                           status, output, activeChannelHigh, activeChannelLow,  
                                                httpSpec, httpRevision, type[pathId], fileSizeAsBytes[pathId],  etagBytes[pathId]); 
             
+                        
             PipeHashTable.setLowerBounds(outputHash, 1 + Pipe.getBlobWorkingHeadPosition(output) - output.sizeOfBlobRing );
+            
+            assert(Pipe.getBlobWorkingHeadPosition(output) == positionOfFileDataBegin());
+            
                    
-            try{
+            try{              
                 publishBodiesMessage(verb, sequence, pathId);
             } catch (IOException ioex) {
                 disconnectDueToError(activeReadMessageSize, output, ioex);
@@ -517,22 +516,27 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
         }        
     }
 
+	private long positionOfFileDataBegin() {
+		return PipeHashTable.getLowerBounds(outputHash)-1+output.sizeOfBlobRing;
+	}
+
     private void publishErrorHeader(int httpRevision, int requestContext, int pathId, int sequence, Exception e) {
         if (null != e) {
             logger.error("Unable to read file for sending.",e);
         }
         //Informational 1XX, Successful 2XX, Redirection 3XX, Client Error 4XX and Server Error 5XX.
         int errorStatus = null==e? 400:500;
-        publishError(requestContext, sequence, errorStatus, writer, output, activeChannelHigh, activeChannelLow,
-                httpSpec, httpRevision, type[pathId]);
+        
+        publishError(requestContext, sequence, errorStatus, output, activeChannelHigh, activeChannelLow, httpSpec,
+                httpRevision, type[pathId]);
         
         Pipe.confirmLowLevelRead(input, activeReadMessageSize);
         Pipe.releaseReadLock(input);
     }
 
     private void publishErrorHeader(int httpRevision, int requestContext, int sequence, int code) {
-        
-        publishError(requestContext, sequence, code, writer, output, activeChannelHigh, activeChannelLow, httpSpec, httpRevision, -1);
+        logger.warn("published error "+code);
+        publishError(requestContext, sequence, code, output, activeChannelHigh, activeChannelLow, httpSpec, httpRevision, -1);
         
         Pipe.confirmLowLevelRead(input, activeReadMessageSize);
         Pipe.releaseReadLock(input);
@@ -557,6 +561,7 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
             if (VERB_GET == verb) { //head does not get body
 
                 activePosition = 0;
+                activeFileChannel.position(0);
                 writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, sequence, output, activeFileChannel, pathId);                             
 
             } else if (VERB_HEAD == verb){
@@ -585,35 +590,40 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
              /////////
              
             int blobPosition = (int)PipeHashTable.getItem(outputHash, fcId[pathId]);
+            
             final int headBlobPosInPipe = Pipe.storeBlobWorkingHeadPosition(localOutput);
-            if (blobPosition>0) {
+            if (true && blobPosition>0 && (fileSizes[pathId]<Pipe.blobMask(localOutput))) { //WARNING: still needs more testing TODO: confirm it works for all layouts.
+            	
             	//data is still in the output buffer so copy it from there.
-                int len = Math.min((int)activePayloadSizeRemaining, localOutput.maxAvgVarLen);
+            	int len = Math.min((int)activePayloadSizeRemaining, localOutput.maxAvgVarLen);
                 
                 Pipe.copyBytesFromToRing(Pipe.blob(localOutput), Pipe.safeBlobPosAdd(blobPosition,localPos), Pipe.blobMask(localOutput), 
-                                         Pipe.blob(localOutput), Pipe.safeBlobPosAdd(headBlobPosInPipe,localPos), Pipe.blobMask(localOutput), len);
+                                         Pipe.blob(localOutput), headBlobPosInPipe, Pipe.blobMask(localOutput), len);
                 
                 publishBodyPart(channelHigh, channelLow, sequence, localOutput, len);   
                 localPos += len;
             } else {
+            	assert(localFileChannel.position() == localPos) : "independent file position check does not match";
             	//must read from file system
                 long len;
                 if ((len=localFileChannel.read(Pipe.wrappedWritingBuffers(headBlobPosInPipe, localOutput))) >= 0) {
                     
-                	//logger.info("wrote out {}",len);
-                	
+                	//Not yet complete 
+                	//logger.info("FileReadStage wrote out {} total file size {} curpos {} ",len,localFileChannel.size(),localFileChannel.position());
+                                    	
                 	assert(len<Integer.MAX_VALUE);
                     publishBodyPart(channelHigh, channelLow, sequence, localOutput, (int)len);   
                     localPos += len;
                                         
                 } else {
                     //logger.info("end of input file detected");
+                    
                     Pipe.confirmLowLevelRead(input, activeReadMessageSize);
                     totalBytes += Pipe.releaseReadLock(input);//returns count of bytes used by this fragment                 
                     activeFileChannel = null;
                     //now store the location of this new data.
-                    
-                    PipeHashTable.replaceItem(outputHash, fcId[pathId], Pipe.unstoreBlobWorkingHeadPosition(localOutput));
+                    Pipe.unstoreBlobWorkingHeadPosition(localOutput);
+                    PipeHashTable.replaceItem(outputHash, fcId[pathId], positionOfFileDataBegin() );
               
                     return;
                 }
@@ -625,7 +635,7 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
                 activeFileChannel = null;
          
                 //now store the location of this new data so we can use it as the cache later                
-                PipeHashTable.replaceItem(outputHash, fcId[pathId], headBlobPosInPipe);
+                PipeHashTable.replaceItem(outputHash, fcId[pathId], positionOfFileDataBegin());
                 return;
             }
             
@@ -662,6 +672,7 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
         
         Pipe.confirmLowLevelWrite(localOutput, payloadMsgSize);
         Pipe.publishWrites(localOutput);
+        
     }
 
 

@@ -8,14 +8,14 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.network.HTTPModuleFileReadStage;
-import com.ociweb.pronghorn.network.HTTPRouterStage;
+import com.ociweb.pronghorn.network.HTTP1xRouterStage;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
-import com.ociweb.pronghorn.network.schema.ServerRequestSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
@@ -56,17 +56,17 @@ public class PipelineIntegrationTest {
         }
         
         final int iterations = 1_000_000;        
-        final PipeConfig<ServerRequestSchema> rawRequestPipeConfig = new PipeConfig<ServerRequestSchema>(ServerRequestSchema.instance, 200, 512) ;
+        final PipeConfig<NetPayloadSchema> rawRequestPipeConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 200, 512) ;
         final PipeConfig<HTTPRequestSchema> appPipeConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 100, 512); ///consumers
         
         
-        Pipe<ServerRequestSchema> rawRequestPipe = new Pipe<ServerRequestSchema>(rawRequestPipeConfig);
-        Pool<Pipe<ServerRequestSchema>> pool = new Pool<Pipe<ServerRequestSchema>>(new Pipe[]{ rawRequestPipe});
+        Pipe<NetPayloadSchema> rawRequestPipe = new Pipe<NetPayloadSchema>(rawRequestPipeConfig);
+        Pool<Pipe<NetPayloadSchema>> pool = new Pool<Pipe<NetPayloadSchema>>(new Pipe[]{ rawRequestPipe});
 
         ClientHTTPRequestDataGeneratorStage genStage = ClientHTTPRequestDataGeneratorStage.newInstance(gm, rawRequestPipe, iterations, paths);  
         
         //route all urls to the same static loader
-        HTTPRouterStage stage = buildRouterStage(gm, apps, appPipeConfig, pool, testDataFiles, urls);
+        HTTP1xRouterStage stage = buildRouterStage(gm, apps, appPipeConfig, pool, testDataFiles, urls);
                
         runGraph(gm, paths.length, iterations, genStage);
         
@@ -104,8 +104,8 @@ public class PipelineIntegrationTest {
         System.out.println("totalRequests: "+totalRequests+" perMs:"+requestPerMsSecond);
     }
 
-    private HTTPRouterStage buildRouterStage(GraphManager gm, final int apps,
-            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pool<Pipe<ServerRequestSchema>> pool, TestDataFiles testDataFiles, CharSequence[] paths) {
+    private HTTP1xRouterStage buildRouterStage(GraphManager gm, final int apps,
+            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pool<Pipe<NetPayloadSchema>> pool, TestDataFiles testDataFiles, CharSequence[] paths) {
         
         Pipe[] routedAppPipes = new Pipe[apps];
         long[] appHeaders = new long[apps];
@@ -132,7 +132,7 @@ public class PipelineIntegrationTest {
         Pipe errorPipe = new Pipe(new PipeConfig(RawDataSchema.instance));
         ConsoleJSONDumpStage dump = new ConsoleJSONDumpStage(gm,errorPipe);
         
-        HTTPRouterStage stage = HTTPRouterStage.newInstance(gm, pool, routedAppPipes, errorPipe, paths, appHeaders, msgIds);
+        HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pool, routedAppPipes, paths, appHeaders, msgIds);
         return stage;
     }
 
