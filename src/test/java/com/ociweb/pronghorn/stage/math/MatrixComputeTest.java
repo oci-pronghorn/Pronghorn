@@ -312,7 +312,6 @@ public class MatrixComputeTest {
 		
 	}
 
-    //        @Ignore
 	@Test
 	public void testComputeExample() {
 		//speed
@@ -481,10 +480,10 @@ public class MatrixComputeTest {
 		//TypeMask.Decimal;
 		
 		
-		int leftRows = 64;
-		int leftColumns = 64;
+		int leftRows = 32;
+		int leftColumns = 32;
 
-		int rightColumns = 64;				
+		int rightColumns = 32;				
 		int rightRows = leftColumns;		
 		
 		Random rand = new Random();
@@ -492,14 +491,16 @@ public class MatrixComputeTest {
 		int[][] leftTest = new int[leftRows][leftColumns];
 		for (int i = 0; i < leftRows; ++i) {
 		    for (int j = 0; j < leftColumns; ++j) {
-			leftTest[i][j] = rand.nextInt();
+			leftTest[i][j] = rand.nextInt(100);
+			//leftTest[i][j] = -1;
 		    }
 		}
 		
 		int[][] rightTest = new int[rightRows][rightColumns];
 		for (int i = 0; i < rightRows; ++i) {
 		    for (int j = 0; j < rightColumns; ++j) {
-			rightTest[i][j] = rand.nextInt();
+			rightTest[i][j] = rand.nextInt(100);
+			//rightTest[i][j] = 2;
 		    }
 		}
 								
@@ -536,7 +537,7 @@ public class MatrixComputeTest {
 		Pipe<DecimalSchema<MatrixSchema>> result2 = new Pipe<DecimalSchema<MatrixSchema>>(new PipeConfig<DecimalSchema<MatrixSchema>>(result2Schema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
 		
 		
-		int targetThreadCount = 3;
+		int targetThreadCount = 12;
 		Pipe<ColumnSchema<MatrixSchema>>[] colResults = BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, targetThreadCount-2);
 		
 		ColumnsToRowsStage<MatrixSchema> ctr = new ColumnsToRowsStage<MatrixSchema>(gm, resultSchema, colResults, result);
@@ -587,7 +588,7 @@ public class MatrixComputeTest {
 		
 		int[][] expectedAnswer = new int[leftRows][rightColumns];
 		for (int i = 0; i < leftRows; ++i) {
-		    for (int j = 0; j < rightRows; ++j) {
+		    for (int j = 0; j < rightColumns; ++j) {
 			for (int k = 0; k < leftColumns; ++k) {
 			    expectedAnswer[i][j] += leftTest[i][k] * rightTest[k][j];
 			}

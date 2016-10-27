@@ -87,8 +87,7 @@ void mulAVXInt(const int row, const int col,
   for (int c = col - 1; c >= 0; --c) {
     int prod = 0;
     int row_remain = (row - 1) - (row - 1)%16;
-    for (int p = (row - 1)%16; p >= row_remain; --p) {
-      printf("normal multiplication\n");
+    for (int p = (row - 1); p >= row_remain; --p) {
       int v1 = rowSlab_nat[rowMask & (jint)(rowPosition + p)];
       int v2 = colSlabs_nat[c][colMask & (colPositions_nat[c] + p)];
       prod += v1 * v2;
@@ -102,15 +101,16 @@ void mulAVXInt(const int row, const int col,
       ymm1 = _mm256_cvtepi32_ps(_mm256_loadu_si256((__m256i *)(&rowSlab_nat[(int)rowMask & ((int)(rowPosition) + p - 15)])));
       ymm2 = _mm256_cvtepi32_ps(_mm256_loadu_si256((__m256i *)&colSlabs_nat[c][colMask & (colPositions_nat[c] + p - 7)]));
       ymm3 = _mm256_cvtepi32_ps(_mm256_loadu_si256((__m256i *)&colSlabs_nat[c][colMask & (colPositions_nat[c] + p - 15)]));
-      ymm4 = _mm256_dp_ps(ymm0, ymm1, 255);
-      ymm5 = _mm256_dp_ps(ymm2, ymm3, 255);
+
+      ymm4 = _mm256_dp_ps(ymm0, ymm2, 255);
+      ymm5 = _mm256_dp_ps(ymm1, ymm3, 255);
       ymm6 = _mm256_add_ps(ymm4, ymm5);
       float tmp_prod[8] = {0};
-      _mm256_store_ps(tmp_prod, ymm6); 
-      prod = (int)tmp_prod[0];
+      _mm256_storeu_ps(tmp_prod, ymm6); 
+      prod += (int)tmp_prod[0] + (int)tmp_prod[4];
     }	            
-  
-    results[c] = prod;
+    // results[c] = prod;
+    memcpy((void*)(results + c), (void*)&prod, sizeof(int));
   }
 }
 
@@ -124,29 +124,29 @@ void mulAVXPS(const int row, const int col,
 	      int* results) {
   __m256 ymm0, ymm1, ymm2, ymm3, ymm4, ymm5, ymm6;
   for (int c = col - 1; c >= 0; --c) {
-    int prod = 0;
+    float prod = 0;
     int row_remain = (row - 1) - (row - 1)%16;
-    for (int p = (row - 1)%16; p >= row_remain; --p) {
-      printf("normal multiplication\n");
-      int v1 = rowSlab_nat[rowMask & (jint)(rowPosition + p)];
-      int v2 = colSlabs_nat[c][colMask & (colPositions_nat[c] + p)];
+    for (int p = (row - 1); p >= row_remain; --p) {
+      float v1 = (float)rowSlab_nat[rowMask & (jint)(rowPosition + p)];
+      float v2 = (float)colSlabs_nat[c][colMask & (colPositions_nat[c] + p)];
       prod += v1 * v2;
     }
 
     for (int p = row_remain - 1; p >= 0; p -= 16) {
-      ymm0 = _mm256_loadu_ps((float *)(&rowSlab_nat[(int)rowMask & ((int)(rowPosition) + p - 7)])));
-      ymm1 = _mm256_loadu_ps((float *)(&rowSlab_nat[(int)rowMask & ((int)(rowPosition) + p - 15)])));
-      ymm2 = _mm256_loadu_ps((float *)&colSlabs_nat[c][colMask & (colPositions_nat[c] + p - 7)]));
-      ymm3 = _mm256_loadu_ps((float *)&colSlabs_nat[c][colMask & (colPositions_nat[c] + p - 15)]));
-      ymm4 = _mm256_dp_ps(ymm0, ymm1, 255);
-      ymm5 = _mm256_dp_ps(ymm2, ymm3, 255);
+      ymm0 = _mm256_loadu_ps((float *)(&rowSlab_nat[(int)rowMask & ((int)(rowPosition) + p - 7)]));
+      ymm1 = _mm256_loadu_ps((float *)(&rowSlab_nat[(int)rowMask & ((int)(rowPosition) + p - 15)]));
+      ymm2 = _mm256_loadu_ps((float *)&colSlabs_nat[c][colMask & (colPositions_nat[c] + p - 7)]);
+      ymm3 = _mm256_loadu_ps((float *)&colSlabs_nat[c][colMask & (colPositions_nat[c] + p - 15)]);
+      
+      ymm4 = _mm256_dp_ps(ymm0, ymm2, 255);
+      ymm5 = _mm256_dp_ps(ymm1, ymm3, 255);
       ymm6 = _mm256_add_ps(ymm4, ymm5);
       float tmp_prod[8] = {0};
-      _mm256_store_ps(tmp_prod, ymm6); 
-      prod = (int)tmp_prod[0];
+      _mm256_storeu_ps(tmp_prod, ymm6); 
+      prod += tmp_prod[0] + tmp_prod[4];
     }	            
   
-    results[c] = prod;
+    memcpy((void*)&results[c], (void*)&prod, sizeof(float));
   }
 }
 
