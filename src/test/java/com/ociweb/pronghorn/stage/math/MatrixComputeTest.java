@@ -624,10 +624,10 @@ public class MatrixComputeTest {
 		//TypeMask.Decimal;
 		
 		
-		int leftRows = 32;
-		int leftColumns = 32;
+		int leftRows = 128;
+		int leftColumns = 128;
 
-		int rightColumns = 32;				
+		int rightColumns = 128;				
 		int rightRows = leftColumns;		
 		
 		Random rand = new Random();
@@ -635,16 +635,14 @@ public class MatrixComputeTest {
 		float[][] leftTest = new float[leftRows][leftColumns];
 		for (int i = 0; i < leftRows; ++i) {
 		    for (int j = 0; j < leftColumns; ++j) {
-			// leftTest[i][j] = rand.nextFloat() * 100;
-			leftTest[i][j] = 1.0f;
+			leftTest[i][j] = rand.nextFloat() * 100;
 		    }
 		}
 		
 		float[][] rightTest = new float[rightRows][rightColumns];
 		for (int i = 0; i < rightRows; ++i) {
 		    for (int j = 0; j < rightColumns; ++j) {
-			// rightTest[i][j] = rand.nextFloat() * 100;
-			rightTest[i][j] = 2.0f;
+			rightTest[i][j] = rand.nextFloat() * 100;
 		    }
 		}
 								

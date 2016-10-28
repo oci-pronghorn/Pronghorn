@@ -253,19 +253,19 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 				Pipe.setWorkingTailPosition(colInput[i], Pipe.getWorkingTailPosition(colInput[i])+len);
 			}
 		}		
-
+		
+		// perform test
 		startTime = System.nanoTime();
-		goComputeNative(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
-			inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
-		//goCompute(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
-		//	  inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
+		goCompute(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
+			  inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
+		// preform test
 		durationNs = System.nanoTime() - startTime;
 		durationUs = TimeUnit.NANOSECONDS.toMicros(durationNs);
 		durationMs = TimeUnit.NANOSECONDS.toMillis(durationNs);
-		//System.out.println("duration: " + durationUs + "us");
+		System.out.println("duration: " + durationUs + "us");
 	}
 	
-    //TODO:  YF this is the method to be implemented natively 
+
 	private void goCompute(int typeMask, 
 			       int[] rowSlab, long rowPosition, int rowMask, int length, 
 			       int[][] colSlabs, int[] colPositions, int colMask, 
@@ -277,40 +277,38 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 	        // typeMask == 3 for Doubles.
 	        // typeMask == 4 for Decimals.
 		
-				
-		
-		//10/5 - profiler shows this block is over 90% of the compute time.
-		int p = length;
-		while (--p>=0) {
-			
-			int idx = rowMask&(int)(rowPosition+p);
-			int v1 = rowSlab[idx];
-			
-			int c = colSlabs.length;
-			while (--c>=0) {
-				int[] is = colSlabs[c];
-				int v2 = is[colMask&(colPositions[c]+p)];				
-				int prod = v1*v2;				
-				outputPipes[c][cPosOut[c]&outMask] += prod;
-			}	
-			
-			
+	        switch(typeMask) {
+		   case 0: case 1:
+		       goComputeNative(typeMask, rowSlab, rowPosition, rowMask, length, 
+				       colSlabs, colPositions, colMask, outputPipes, cPosOut, outMask);
+		       break;
+		   case 2: case 3: case 4:		
+		       //10/5 - profiler shows this block is over 90% of the compute time.
+		       // no native implementation for these types
+		       int p = length;
+		       while (--p>=0) {			   
+			   int idx = rowMask&(int)(rowPosition+p);
+			   int v1 = rowSlab[idx];			   
+			   int c = colSlabs.length;
+			   while (--c>=0) {
+			       int[] is = colSlabs[c];
+			       int v2 = is[colMask&(colPositions[c]+p)];				
+			       int prod = v1*v2;				
+			       outputPipes[c][cPosOut[c]&outMask] += prod;
+			   }	
+		       }
+		       break;
+		     default: System.out.println("Invalid type.");	
 		}
 		
 		
 	}
 
-	// implementation of c/c++ code
+	// native implementation by c/c++ code
 	private final native void goComputeNative(int typeMask, 
 						  int[] rowSlab, long rowPosition, int rowMask, int length, 
 						  int[][] colSlabs, int[] colPositions, int colMask, 
 						  int[][] outputPipes, int[] cPosOut, int outMask);
-
-	// implementation by AVX instruction set
-	private final native void goComputeNativeAVX(int typeMask, 
-						     int[] rowSlab, long rowPosition, int rowMask, int length, 
-						     int[][] colSlabs, int colSlabsCol, int[] colPositions, int colMask, 
-						     int[][] outputPipes, int outputPipesCol, int[] cPosOut, int outMask);
 	
 	private boolean allHaveRoomToWrite(Pipe<ColumnSchema<M>>[] columnPipeOutput) {
 		int i = columnPipeOutput.length;
