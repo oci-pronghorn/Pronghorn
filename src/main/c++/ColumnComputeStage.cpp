@@ -154,6 +154,7 @@ void mulAVXPS(const int row, const int col,
   }
 }
 
+// Todo: implement pd, long, decimal
 void mulAVXPD(const int row, const int col,
 	      jint** colSlabs_nat,
 	      jint* rowSlab_nat,
@@ -192,18 +193,36 @@ void mulAVXLong(const int row, const int col,
   }
 }
 
-MULAVX mulavxfuncs[5] = {mulAVXInt, mulAVXPS, mulAVXPD, mulAVXLong, mulNoAVX};
+void mulAVXDecimal(const int row, const int col,
+		   jint** colSlabs_nat,
+		   jint* rowSlab_nat,
+		   const jint rowMask,
+		   const jlong rowPosition,
+		   const jint colMask,
+		   jint* colPositions_nat,
+		   int* results) {
+  for (int c = col - 1; c >= 0; --c) {
+    int prod = 0;
+    for (int p = row - 1; p >= 0; --p) {
+      int v1 = rowSlab_nat[rowMask & (jint)(rowPosition + p)];
+      int v2 = colSlabs_nat[c][colMask & (colPositions_nat[c] + p)];
+      prod += v1 * v2;
+    }	            
+    results[c] = prod;
+  }
+}
+
+// typeMask == 0 for Integers.
+// typeMask == 1 for Floats.
+// typeMask == 2 for Longs.
+// typeMask == 3 for Doubles.
+// typeMask == 4 for Decimals.
+MULAVX mulavxfuncs[5] = {mulAVXInt, mulAVXPS, mulAVXPD, mulAVXLong, mulAVXDecimal};
 	      
 JNIEXPORT void JNICALL Java_com_ociweb_pronghorn_stage_math_ColumnComputeStage_goComputeNative( JNIEnv *env, jobject obj,
 												jint typeMask, jintArray rowSlab, jlong rowPosition, jint rowMask, jint resRows,
 												jobjectArray colSlabs, jintArray colPositions, jint colMask,
 												jobjectArray outputPipes, jintArray cPosOut, jint outMask ) {
-  // typeMask == 0 for Integers.
-  // typeMask == 1 for Floats.
-  // typeMask == 2 for Longs.
-  // typeMask == 3 for Doubles.
-  // typeMask == 4 for Decimals.
-  
   // fetch native rowSlab
   jint* rowSlab_nat = env->GetIntArrayElements(rowSlab, 0);    
   jint* colPositions_nat = env->GetIntArrayElements(colPositions, 0);    
@@ -221,10 +240,15 @@ JNIEXPORT void JNICALL Java_com_ociweb_pronghorn_stage_math_ColumnComputeStage_g
   }
 
   int* tmp_output = (int*)calloc(colSlabsRow, sizeof(int));
+  timespec start, end;
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
   mulavxfuncs[typeMask](resRows, colSlabsRow, colSlabs_nat, rowSlab_nat, rowMask,
 			rowPosition, colMask, colPositions_nat, tmp_output);
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
+  // printf("AVX computation: %lds:%ldus\n", diff(start, end).tv_sec, diff(start, end).tv_nsec / 1000);
   updateOutputPipesCol(env, outputPipes, tmp_output, colSlabsRow, outMask, cPosOut_nat);
 
+  // free memory
   env->ReleaseIntArrayElements(rowSlab, rowSlab_nat, 0);
   env->ReleaseIntArrayElements(colPositions, colPositions_nat, 0);
   env->ReleaseIntArrayElements(cPosOut, cPosOut_nat, 0);

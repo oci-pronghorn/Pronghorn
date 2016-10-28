@@ -262,7 +262,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		durationNs = System.nanoTime() - startTime;
 		durationUs = TimeUnit.NANOSECONDS.toMicros(durationNs);
 		durationMs = TimeUnit.NANOSECONDS.toMillis(durationNs);
-		System.out.println("duration: " + durationUs + "us");
+		// System.out.println("JNI compuation: " + durationUs + "us");
 	}
 	
 

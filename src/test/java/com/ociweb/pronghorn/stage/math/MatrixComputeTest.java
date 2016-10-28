@@ -472,7 +472,6 @@ public class MatrixComputeTest {
 		
 	}
 	
-        @Ignore
 	@Test
 	public void testComputeExampleNativeInteger() {
 		MatrixTypes type = MatrixTypes.Integers;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
@@ -480,10 +479,10 @@ public class MatrixComputeTest {
 		//TypeMask.Decimal;
 		
 		
-		int leftRows = 128;
-		int leftColumns = 128;
+		int leftRows = 32;
+		int leftColumns = 32;
 
-		int rightColumns = 128;				
+		int rightColumns = 32;				
 		int rightRows = leftColumns;		
 		
 		Random rand = new Random();
@@ -616,7 +615,7 @@ public class MatrixComputeTest {
 		
 	}
 
-    //@Ignore
+        @Ignore
 	@Test
 	public void testComputeExampleNativeFloat() {
 		MatrixTypes type = MatrixTypes.Floats;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
@@ -624,10 +623,10 @@ public class MatrixComputeTest {
 		//TypeMask.Decimal;
 		
 		
-		int leftRows = 128;
-		int leftColumns = 128;
+		int leftRows = 16;
+		int leftColumns = 16;
 
-		int rightColumns = 128;				
+		int rightColumns = 16;				
 		int rightRows = leftColumns;		
 		
 		Random rand = new Random();
