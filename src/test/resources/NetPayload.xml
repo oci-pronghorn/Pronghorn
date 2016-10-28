@@ -6,9 +6,13 @@
      <byteVector name="Payload" id="203"/>
    </template>   
   
-    <template name="Plain" id="210">
+   <template name="Plain" id="210">
      <uInt64 name="ConnectionId" id="201"/>
      <string name="Payload" id="204" charset="unicode"/>
-   </template>  
+   </template>    
+  
+   <template name="Disconnect" id="203">
+     <uInt64 name="ConnectionId" id="201"/>
+   </template>
       
 </templates>

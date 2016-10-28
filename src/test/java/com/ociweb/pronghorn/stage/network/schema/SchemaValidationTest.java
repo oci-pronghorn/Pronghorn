@@ -4,7 +4,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.ociweb.pronghorn.network.schema.ClientNetRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
 import com.ociweb.pronghorn.network.schema.NetRequestSchema;
@@ -13,11 +12,6 @@ import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
 
 public class SchemaValidationTest {
 
-    @Test
-    public void messageClientNetRequestSchemaFROMTest() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/ClientNetRequest.xml", ClientNetRequestSchema.instance));
-        assertTrue(FROMValidation.testForMatchingLocators(ClientNetRequestSchema.instance));
-    }
 	
     @Test
     public void messageClientNetResponseSchemaFROMTest() {
