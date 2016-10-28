@@ -126,10 +126,12 @@ void mulAVXPS(const int row, const int col,
   for (int c = col - 1; c >= 0; --c) {
     float prod = 0;
     int row_remain = (row - 1) - (row - 1)%16;
+    float* v1 = (float*)calloc(1, sizeof(float));
+    float* v2 = (float*)calloc(1, sizeof(float));
     for (int p = (row - 1); p >= row_remain; --p) {
-      float v1 = (float)rowSlab_nat[rowMask & (jint)(rowPosition + p)];
-      float v2 = (float)colSlabs_nat[c][colMask & (colPositions_nat[c] + p)];
-      prod += v1 * v2;
+      memcpy((void*)v1, (void*)&rowSlab_nat[rowMask & (jint)(rowPosition + p)], sizeof(float));
+      memcpy((void*)v2, (void*)&colSlabs_nat[c][colMask & (colPositions_nat[c] + p)], sizeof(float));
+      prod += (*v1) * (*v2);
     }
 
     for (int p = row_remain - 1; p >= 0; p -= 16) {
@@ -146,7 +148,7 @@ void mulAVXPS(const int row, const int col,
       prod += tmp_prod[0] + tmp_prod[4];
     }	            
   
-    memcpy((void*)&results[c], (void*)&prod, sizeof(float));
+    memcpy((void*)(results + c), (void*)&prod, sizeof(float));
   }
 }
 

@@ -472,7 +472,7 @@ public class MatrixComputeTest {
 		
 	}
 	
-    //        @Ignore
+        @Ignore
 	@Test
 	public void testComputeExampleNativeInteger() {
 		MatrixTypes type = MatrixTypes.Integers;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
@@ -480,10 +480,10 @@ public class MatrixComputeTest {
 		//TypeMask.Decimal;
 		
 		
-		int leftRows = 32;
-		int leftColumns = 32;
+		int leftRows = 128;
+		int leftColumns = 128;
 
-		int rightColumns = 32;				
+		int rightColumns = 128;				
 		int rightRows = leftColumns;		
 		
 		Random rand = new Random();
@@ -492,7 +492,6 @@ public class MatrixComputeTest {
 		for (int i = 0; i < leftRows; ++i) {
 		    for (int j = 0; j < leftColumns; ++j) {
 			leftTest[i][j] = rand.nextInt(100);
-			//leftTest[i][j] = -1;
 		    }
 		}
 		
@@ -500,7 +499,6 @@ public class MatrixComputeTest {
 		for (int i = 0; i < rightRows; ++i) {
 		    for (int j = 0; j < rightColumns; ++j) {
 			rightTest[i][j] = rand.nextInt(100);
-			//rightTest[i][j] = 2;
 		    }
 		}
 								
@@ -618,7 +616,7 @@ public class MatrixComputeTest {
 		
 	}
 
-        @Ignore
+    //@Ignore
 	@Test
 	public void testComputeExampleNativeFloat() {
 		MatrixTypes type = MatrixTypes.Floats;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
@@ -626,10 +624,10 @@ public class MatrixComputeTest {
 		//TypeMask.Decimal;
 		
 		
-		int leftRows = 64;
-		int leftColumns = 64;
+		int leftRows = 32;
+		int leftColumns = 32;
 
-		int rightColumns = 64;				
+		int rightColumns = 32;				
 		int rightRows = leftColumns;		
 		
 		Random rand = new Random();
@@ -637,14 +635,16 @@ public class MatrixComputeTest {
 		float[][] leftTest = new float[leftRows][leftColumns];
 		for (int i = 0; i < leftRows; ++i) {
 		    for (int j = 0; j < leftColumns; ++j) {
-			leftTest[i][j] = rand.nextFloat();
+			// leftTest[i][j] = rand.nextFloat() * 100;
+			leftTest[i][j] = 1.0f;
 		    }
 		}
 		
 		float[][] rightTest = new float[rightRows][rightColumns];
 		for (int i = 0; i < rightRows; ++i) {
 		    for (int j = 0; j < rightColumns; ++j) {
-			rightTest[i][j] = rand.nextFloat();
+			// rightTest[i][j] = rand.nextFloat() * 100;
+			rightTest[i][j] = 2.0f;
 		    }
 		}
 								
@@ -681,7 +681,7 @@ public class MatrixComputeTest {
 		Pipe<DecimalSchema<MatrixSchema>> result2 = new Pipe<DecimalSchema<MatrixSchema>>(new PipeConfig<DecimalSchema<MatrixSchema>>(result2Schema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
 		
 		
-		int targetThreadCount = 12;
+		int targetThreadCount = 3;
 		Pipe<ColumnSchema<MatrixSchema>>[] colResults = BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, targetThreadCount-2);
 		
 		ColumnsToRowsStage<MatrixSchema> ctr = new ColumnsToRowsStage<MatrixSchema>(gm, resultSchema, colResults, result);
@@ -748,10 +748,9 @@ public class MatrixComputeTest {
 			for(int c=0;c<rightColumns;c++) {
 					
 					int exp = Pipe.takeValue(result2);					
-					long man = Pipe.takeLong(result2);					
-					long value = (long)Math.rint(man*Math.pow(10, exp));
-					System.out.println("value is " + value);
-					assertEquals(expectedAnswer[r][c], value);
+					long man = Pipe.takeLong(result2);										
+					float value = (float)(man * Math.pow(10, exp));
+					assertTrue(Math.abs(expectedAnswer[r][c] - value) < 0.001);
 			}
 			
 			Pipe.confirmLowLevelRead(result2, Pipe.sizeOf(result2, id));

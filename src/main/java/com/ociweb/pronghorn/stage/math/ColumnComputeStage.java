@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.concurrent.TimeUnit;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
@@ -225,6 +226,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 
 	
 	private void vectorOperations2() {
+	        long startTime, durationMs, durationNs, durationUs;
 		long rowSourceLoc = Pipe.getWorkingTailPosition(rowInput);	
 		
 		int i = colInput.length;
@@ -251,10 +253,16 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 				Pipe.setWorkingTailPosition(colInput[i], Pipe.getWorkingTailPosition(colInput[i])+len);
 			}
 		}		
+
+		startTime = System.nanoTime();
 		goComputeNative(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
 			inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
 		//goCompute(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
 		//	  inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
+		durationNs = System.nanoTime() - startTime;
+		durationUs = TimeUnit.NANOSECONDS.toMicros(durationNs);
+		durationMs = TimeUnit.NANOSECONDS.toMillis(durationNs);
+		//System.out.println("duration: " + durationUs + "us");
 	}
 	
     //TODO:  YF this is the method to be implemented natively 
