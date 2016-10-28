@@ -149,6 +149,8 @@ void mulAVXPS(const int row, const int col,
     }	            
   
     memcpy((void*)(results + c), (void*)&prod, sizeof(float));
+    free(v1);
+    free(v2);
   }
 }
 
