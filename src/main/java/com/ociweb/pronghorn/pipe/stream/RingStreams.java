@@ -131,7 +131,7 @@ public class RingStreams {
         	int msgId = Pipe.takeMsgIdx(inputRing);
         				
         	if (msgId<0) { //exit logic
-        		int bytesCount = Pipe.takeValue(inputRing);
+        		int bytesCount = Pipe.takeInt(inputRing);
         		assert(0==bytesCount);
             	
         		Pipe.releaseReadLock(inputRing);
@@ -292,7 +292,7 @@ public class RingStreams {
 	    	int byteMask = inputRing.byteMask;
 	    				
 	    	if (msg<0) { //exit logic
-	    		int bytesCount = Pipe.takeValue(inputRing);
+	    		int bytesCount = Pipe.takeInt(inputRing);
 		    	assert(0==bytesCount);
 		    	
 		    	Pipe.confirmLowLevelRead(inputRing, RawDataSchema.FROM.fragDataSize[0]);

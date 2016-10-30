@@ -160,7 +160,7 @@ public class PipeTest {
                                                     
                             //read the message
                             while (--messageFieldCount>=0) {                            
-                                int value = takeValue(ring);                             
+                                int value = Pipe.takeInt(ring);                             
                                 //not calling normal unit test method because it will slow down the run
                                 if (value!=messageFieldCount) {                                
                                     fail("expected "+messageFieldCount+" but found "+messageCount);

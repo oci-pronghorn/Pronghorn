@@ -85,8 +85,10 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     public void writeObject(Object object) throws IOException {
 
            	ObjectOutputStream oos = new ObjectOutputStream(this); //writes stream header
-            oos.writeObject(object);
+            oos.writeObject(object);            
             oos.flush();
+            
+            assert(Pipe.validateVarLength(this.p, length(this)));
             
     }
     

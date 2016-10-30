@@ -71,7 +71,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     public void visitSequenceOpen(String name, long id, int length) {
 
         int tempLen;
-        if ((tempLen=Pipe.takeValue(expectedInput))!=length) {
+        if ((tempLen=Pipe.takeInt(expectedInput))!=length) {
             throw new AssertionError("expected length: "+Long.toHexString(tempLen)+" but got "+Long.toHexString(length));
         }
         needsClose = false;
@@ -86,7 +86,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     @Override
     public void visitSignedInteger(String name, long id, int value) {
         needsClose = true;
-        if (Pipe.takeValue(expectedInput) != value) {
+        if (Pipe.takeInt(expectedInput) != value) {
             throw new AssertionError();
         }
     }
@@ -95,7 +95,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     public void visitUnsignedInteger(String name, long id, long value) {
         needsClose = true;
         int temp;
-        if ((temp = Pipe.takeValue(expectedInput)) != value) {
+        if ((temp = Pipe.takeInt(expectedInput)) != value) {
             throw new AssertionError("expected integer "+temp+" but found "+value);
         }
     }
@@ -122,7 +122,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     public void visitDecimal(String name, long id, int exp, long mant) {
         needsClose = true;
         int tempExp;
-        if ((tempExp = Pipe.takeValue(expectedInput)) != exp) {
+        if ((tempExp = Pipe.takeInt(expectedInput)) != exp) {
             
             //TODO; AAAAAAA, decimal support is broken here  must fix...
             

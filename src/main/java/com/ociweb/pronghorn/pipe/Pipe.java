@@ -2397,8 +2397,13 @@ public class Pipe<T extends MessageSchema> {
     	return readValue(idx, pipe.slabRing,pipe.mask,pipe.slabRingTail.workingTailPos.value);
     }
 
-    public static <S extends MessageSchema> int takeValue(Pipe<S> pipe) {
+    public static <S extends MessageSchema> int takeInt(Pipe<S> pipe) {
     	return readValue(pipe.slabRing, pipe.mask, pipe.slabRingTail.workingTailPos.value++);
+    }
+    
+    @Deprecated //use takeInt
+    public static <S extends MessageSchema> int takeValue(Pipe<S> pipe) {
+    	return takeInt(pipe);
     }
     
     public static <S extends MessageSchema> int readValue(int[] rbB, int rbMask, long rbPos) {
@@ -2483,7 +2488,7 @@ public class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> int releaseReadLock(Pipe<S> pipe) {
-        int bytesConsumedByFragment = takeValue(pipe);
+        int bytesConsumedByFragment = takeInt(pipe);
         assert(bytesConsumedByFragment>=0) : "Bytes consumed by fragment must never be negative, was fragment written correctly?, is read positioned correctly?";
         Pipe.markBytesReadBase(pipe, bytesConsumedByFragment);
         assert(Pipe.contentRemaining(pipe)>=0); 
@@ -2492,7 +2497,7 @@ public class Pipe<T extends MessageSchema> {
     }
     
     public static <S extends MessageSchema> int readNextWithoutReleasingReadLock(Pipe<S> pipe) {
-        int len = takeValue(pipe);
+        int len = takeInt(pipe);
         Pipe.markBytesReadBase(pipe, len);
         assert(Pipe.contentRemaining(pipe)>=0);
         PendingReleaseData.appendPendingReadRelease(pipe.pendingReleases,
@@ -3016,7 +3021,11 @@ public class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> int sizeOf(Pipe<S> pipe, int msgIdx) {
-        return msgIdx>=0? pipe.schema.from.fragDataSize[msgIdx] : Pipe.EOF_SIZE;
+    	return sizeOf(pipe.schema, msgIdx);
+    }
+    
+    public static <S extends MessageSchema> int sizeOf(S schema, int msgIdx) {
+        return msgIdx>=0? schema.from.fragDataSize[msgIdx] : Pipe.EOF_SIZE;
     }
 
     public static <S extends MessageSchema> void releasePendingReadLock(Pipe<S> pipe) {

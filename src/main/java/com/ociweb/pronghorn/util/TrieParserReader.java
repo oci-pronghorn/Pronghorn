@@ -298,9 +298,11 @@ public class TrieParserReader {
     public static int parseCopy(TrieParserReader reader, long count, DataOutputBlobWriter<?> writer) {
         
     	int len = (int)Math.min(count, (long)reader.sourceLen);    	
+
     	DataOutputBlobWriter.write(writer, reader.sourceBacking, reader.sourcePos, len, reader.sourceMask);    	
     	reader.sourcePos += len;
-        reader.sourceLen -= len;
+        reader.sourceLen -= len;       
+        
         return len;
     }
     
