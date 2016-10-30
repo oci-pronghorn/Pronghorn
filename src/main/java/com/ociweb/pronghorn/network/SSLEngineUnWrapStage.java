@@ -5,7 +5,6 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.schema.ClientNetRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -13,10 +12,10 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class SSLEngineUnWrapStage extends PronghornStage {
 
-	private final ClientConnectionManager ccm;
+	private final SSLConnectionHolder ccm;
 	private final Pipe<NetPayloadSchema>[] encryptedContent; 
 	private final Pipe<NetPayloadSchema>[] outgoingPipeLines;
-	private final Pipe<ClientNetRequestSchema>[] handshakePipe;
+	private final Pipe<NetPayloadSchema>[] handshakePipe;
 	private ByteBuffer[]                          buffers;
 	private ByteBuffer[]                          workspace;
 	private Logger logger = LoggerFactory.getLogger(SSLEngineUnWrapStage.class);
@@ -26,23 +25,23 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	private ByteBuffer secureBuffer;
 	private final boolean isServer;
 
-	public SSLEngineUnWrapStage(GraphManager graphManager, ClientConnectionManager ccm, 
+	public SSLEngineUnWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, 
 			                       Pipe<NetPayloadSchema>[] encryptedContent, 
 			                       Pipe<NetPayloadSchema>[] outgoingPipeLines) {
 		this(graphManager,ccm,encryptedContent,outgoingPipeLines,new Pipe[outgoingPipeLines.length], false);
 	}
 	
-	public SSLEngineUnWrapStage(GraphManager graphManager, ClientConnectionManager ccm, 
+	public SSLEngineUnWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, 
             Pipe<NetPayloadSchema>[] encryptedContent, 
             Pipe<NetPayloadSchema>[] outgoingPipeLines,
-            Pipe<ClientNetRequestSchema>[] handshakePipe) {
+            Pipe<NetPayloadSchema>[] handshakePipe) {
 		this(graphManager, ccm, encryptedContent, outgoingPipeLines, handshakePipe, true);
 	}
 	
-	protected SSLEngineUnWrapStage(GraphManager graphManager, ClientConnectionManager ccm, 
+	protected SSLEngineUnWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, 
 			                       Pipe<NetPayloadSchema>[] encryptedContent, 
 			                       Pipe<NetPayloadSchema>[] outgoingPipeLines,
-			                       Pipe<ClientNetRequestSchema>[] handshakePipe, boolean isServer) {
+			                       Pipe<NetPayloadSchema>[] handshakePipe, boolean isServer) {
 		super(graphManager, encryptedContent, outgoingPipeLines);
 		this.ccm = ccm;
 		this.encryptedContent = encryptedContent;
@@ -77,7 +76,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 						
 		int i = encryptedContent.length;
 		while (--i >= 0) {
-			ClientConnection.engineUnWrap(ccm, encryptedContent[i], outgoingPipeLines[i], buffers[i], workspace, handshakePipe[i], secureBuffer);
+			SSLUtil.engineUnWrap(ccm, encryptedContent[i], outgoingPipeLines[i], buffers[i], workspace, handshakePipe[i], secureBuffer);
 		}
 		totalNS += System.nanoTime()-start;
 		

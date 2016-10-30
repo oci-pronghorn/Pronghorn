@@ -2,37 +2,34 @@ package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 
-public class ServerConnectionWriterStage extends PronghornStage {
+public class ServerSocketWriterStage extends PronghornStage {
     
-    private static Logger logger = LoggerFactory.getLogger(ServerConnectionWriterStage.class);
-    private ServiceObjectHolder<SocketChannel> socketHolder;    
+    private static Logger logger = LoggerFactory.getLogger(ServerSocketWriterStage.class);
+    private ServiceObjectHolder<ServerConnection> socketHolder;    
     
-    private final Pipe<ServerResponseSchema>[] dataToSend;
-
+    private final Pipe<NetPayloadSchema>[] dataToSend;
     
     private final ServerCoordinator coordinator;
-    private final int pipeIdx;
+    private final int groupIdx;
     
     private SocketChannel  writeToChannel;
     private boolean        writeDone = true;
-    private boolean        keepOpenAfterWrite = true;
+    private int            activeMessageId;    
     private int            activePipe = 0;
-    private int            activeMessageId;
-    private int[]          expectedSquenceNos;
     
+
+    private ByteBuffer[] writeBuffs;
     
     public final static int UPGRADE_TARGET_PIPE_MASK     = (1<<21)-1;
  
@@ -67,19 +64,18 @@ public class ServerConnectionWriterStage extends PronghornStage {
      * @param coordinator
      * @param pipeIdx
      */
-    public ServerConnectionWriterStage(GraphManager graphManager, Pipe<ServerResponseSchema>[] dataToSend, ServerCoordinator coordinator, int pipeIdx) {
+    public ServerSocketWriterStage(GraphManager graphManager, Pipe<NetPayloadSchema>[] dataToSend, ServerCoordinator coordinator, int pipeIdx) {
         super(graphManager, dataToSend, NONE);
         this.coordinator = coordinator;
-        this.pipeIdx = pipeIdx;
+        this.groupIdx = pipeIdx;
         this.dataToSend = dataToSend;
     }
     
     @Override
     public void startup() {
                 
-        socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator, pipeIdx);
+        socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator, groupIdx);
         
-        expectedSquenceNos = new int[coordinator.channelBitsSize];
     }
     
     @Override
@@ -89,56 +85,62 @@ public class ServerConnectionWriterStage extends PronghornStage {
              //need list of channels off the one Id  requires new schema update
 
         boolean done = publish(writeToChannel);
+        assert(!done || Pipe.contentRemaining(dataToSend[activePipe])>=0);
         
         int c = dataToSend.length;     
         
         while (done && --c>= 0) {
             while (done && Pipe.hasContentToRead(dataToSend[activePipe])) {
                 
-            	//logger.info("sendng new content");
+            	activeMessageId = Pipe.takeMsgIdx(dataToSend[activePipe]);
             	
-                //peek to see if the next message should be blocked, eg out of order, if so skip to the next pipe
-                int peekId = Pipe.peekInt(dataToSend[activePipe], 0);
-                if (peekId>=0) {
-                    long channelId = Pipe.peekLong(dataToSend[activePipe], 1);
-                    int sequenceNo = Pipe.peekInt(dataToSend[activePipe], 3);
-                    int pos = (int)(channelId & coordinator.channelBitsMask);
+         
+            	if ( (NetPayloadSchema.MSG_PLAIN_210 == activeMessageId) ||
+            	     (NetPayloadSchema.MSG_ENCRYPTED_200 == activeMessageId) ) {
+            		
+            		assert(Pipe.contentRemaining(dataToSend[activePipe])>=0);
+            		
+            		loadPayloadForXmit();            		
+            		done = publish(writeToChannel);
+            		
+            		assert(!done || Pipe.contentRemaining(dataToSend[activePipe])>=0);
+            		            		
+            	} else if (NetPayloadSchema.MSG_DISCONNECT_203 == activeMessageId) {
+            	
+            		final long channelId = Pipe.takeLong(dataToSend[activePipe]);
+            		closeChannel(socketHolder.get(channelId).getSocketChannel()); 
+            		
+                    Pipe.confirmLowLevelRead(dataToSend[activePipe], Pipe.sizeOf(dataToSend[activePipe], activeMessageId));
+                    Pipe.releaseReadLock(dataToSend[activePipe]);
+                    assert(Pipe.contentRemaining(dataToSend[activePipe])>=0);
+            		            		
+            	} else if (NetPayloadSchema.MSG_UPGRADE_207 == activeMessageId) {
+            		
+            		final long channelId = Pipe.takeLong(dataToSend[activePipe]);
+            		final int newRoute = Pipe.takeInt(dataToSend[activePipe]);
+            		
+            	    //set the pipe for any further communications
+                    ServerCoordinator.setTargetUpgradePipeIdx(coordinator, groupIdx, channelId, newRoute);
                     
-                    int expected = expectedSquenceNos[pos];                
+                    Pipe.confirmLowLevelRead(dataToSend[activePipe], Pipe.sizeOf(dataToSend[activePipe], activeMessageId));
+                    Pipe.releaseReadLock(dataToSend[activePipe]);
+                    assert(Pipe.contentRemaining(dataToSend[activePipe])>=0);
+                                      
+            	} else if (activeMessageId < 0) {
                     
-                    //read the next non-blocked pipe, sequenceNo is never reset to zero
-                    //every number is used even if there is an exception upon write.
-                    boolean isBlocked = sequenceNo!=expected; 
+            		Pipe.confirmLowLevelRead(dataToSend[activePipe], Pipe.EOF_SIZE);
+                    Pipe.releaseReadLock(dataToSend[activePipe]);
+                    assert(Pipe.contentRemaining(dataToSend[activePipe])>=0);
                     
-                    if (isBlocked) {
-                    	System.out.println("in use connection "+(int)(channelId & coordinator.channelBitsMask)+" must match expected "+expected+" and sequenceNo "+sequenceNo);
-                    }
-                    
-                    if (isBlocked) {
-                    	
-                    	logger.info("unable to send {} {} blocked", sequenceNo, expected);
-                    	
-                        nextPipe();
-                        continue;
-                    }
-               //     expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)] = expected+1 END_RESPONSE_MASK; //only add bit when we reach the end!!!!!
-                    
-                }
-                if ((activeMessageId = Pipe.takeMsgIdx(dataToSend[activePipe])) < 0) {
                     requestShutdown();
                     return;
                 }
-                
-                loadPayloadForXmit();
-    
-                done = publish(writeToChannel);
             }
 
             if (done) {
                 nextPipe();
             }
-        }
-  
+        }  
     }
 
     private void nextPipe() {
@@ -151,60 +153,18 @@ public class ServerConnectionWriterStage extends PronghornStage {
 
     private void loadPayloadForXmit() {
         
-        Pipe<ServerResponseSchema> pipe = dataToSend[activePipe];
+        Pipe<NetPayloadSchema> pipe = dataToSend[activePipe];
         final long channelId = Pipe.takeLong(pipe);
-        writeToChannel = socketHolder.get(channelId); //ChannelId or SubscriptionId
-        
-        Pipe.takeValue(pipe); //sequence number
-        //we have already selected and confirmed this above, so nothing to do this value        
-        
+        writeToChannel = socketHolder.get(channelId).getSocketChannel(); //ChannelId or SubscriptionId
+ 
         //byteVector is payload
         int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
         int len = Pipe.takeRingByteLen(pipe);
-
-        int requestContext = Pipe.takeValue(pipe); //high 1 upgrade, 1 close low 20 target pipe
-        if (0 != (UPGRADE_MASK & requestContext)) {
-            //set the pipe for any further communications
-            ServerCoordinator.setTargetUpgradePipeIdx(coordinator, pipeIdx, channelId, UPGRADE_TARGET_PIPE_MASK & requestContext);                        
-        }
-        keepOpenAfterWrite =  (0 == (CLOSE_CONNECTION_MASK  & requestContext));
-                
-        if (0 != (END_RESPONSE_MASK & requestContext)) {
-        	
-        	expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)]++;
-        	
-        	//System.out.println("found end of response, increment sequence for connection "+(channelId & coordinator.channelBitsMask)+" next expected "+expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)]);
-        	
-        }
-                
-//
-//        if (len<4095) {
-//        
-//        	System.out.println("--------------------------------");
-//        	byte[] t1 = Pipe.byteBackingArray(meta, pipe);
-//        	int t2 = Pipe.blobMask(pipe);
-//        	int t3 = Pipe.bytePosition(meta, pipe, len);        
-//        	Appendables.appendUTF8(System.out, t1, t3, len, t2);
-//        	System.out.println("--------------------------------");
-//        	System.out.println(pipe+" "+pipe.sizeOfSlabRing+" "+pipe.sizeOfBlobRing);
-//        	System.out.println("--------------------------------");
-//        	
-//        }
-        //BROKEN RESPONSE.
-//        0x2 200 OK
-//        Server: Pronghorn
-//        ETag:217721
-//        Content-Type: HTTP/1.1
-//        Content-Length: text/html
-//
-//        Connection: open
-        
         
         writeBuffs= Pipe.wrappedReadingBuffers(pipe, meta, len);
         writeDone = false;
                 
     }
-    ByteBuffer[] writeBuffs;
 
     private boolean publish(SocketChannel channel) {
         if (writeDone) {
@@ -235,9 +195,6 @@ public class ServerConnectionWriterStage extends PronghornStage {
         		return false;        		
         	} else {
         	    markDoneAndRelease();
-        	    if (!keepOpenAfterWrite) {
-        	    	closeChannel(channel);
-        	    }
         	    return true;
         	}
         } catch (IOException e) {
@@ -259,10 +216,9 @@ public class ServerConnectionWriterStage extends PronghornStage {
 
     private void markDoneAndRelease() {
     	
-        writeDone = true;        
-        Pipe<ServerResponseSchema> pipe = dataToSend[activePipe];
-        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, activeMessageId));
-        Pipe.releaseReadLock(pipe);
+        writeDone = true;
+        Pipe.confirmLowLevelRead(dataToSend[activePipe], Pipe.sizeOf(dataToSend[activePipe], activeMessageId));
+        Pipe.releaseReadLock(dataToSend[activePipe]);
         
         //logger.info("done and release message {}",pipe);
     }

@@ -454,7 +454,7 @@ public class MatrixComputeTest {
 			int id = Pipe.takeMsgIdx(result2);
 			for(int c=0;c<3;c++) {
 					
-					int exp = Pipe.takeValue(result2);					
+					int exp = Pipe.takeInt(result2);					
 					long man = Pipe.takeLong(result2);
 					
 					long value = (long)Math.rint(man*Math.pow(10, exp));

@@ -177,7 +177,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
             }
             
             //line five            
-            int closeIdx = 1&(requestContext>>ServerConnectionWriterStage.CLOSE_CONNECTION_SHIFT);
+            int closeIdx = 1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT);
             writer.write(CONNECTION[closeIdx]);
             writer.write(RETURN_NEWLINE);
             //now ready for content

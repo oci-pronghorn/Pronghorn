@@ -11,9 +11,11 @@ import com.ociweb.pronghorn.util.MemberHolder;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
 
-public class ServerCoordinator {
+public class ServerCoordinator extends SSLConnectionHolder {
 
-    private final ServiceObjectHolder<SocketChannel>[] socketHolder;
+    //TODO: replace to hold ServerConnection
+	private final ServiceObjectHolder<ServerConnection>[] socketHolder;
+    
     private final Selector[]                           selectors;
     private final MemberHolder[]                       subscriptions;
     private final int[][]                              upgradePipeLookup;
@@ -24,11 +26,26 @@ public class ServerCoordinator {
     public final int                                  channelBitsMask;
 
     private final int port;
-    private final InetSocketAddress                    address; 
+    private final InetSocketAddress                    address;
+
+    public final static int INCOMPLETE_RESPONSE_SHIFT    = 28;
+    public final static int END_RESPONSE_SHIFT           = 29;//for multi message send this high bit marks the end
+    public final static int CLOSE_CONNECTION_SHIFT       = 30;
+    public final static int UPGRADE_CONNECTION_SHIFT     = 31;
+    public final static int UPGRADE_TARGET_PIPE_MASK     = (1<<21)-1; 
+
+    public final static int INCOMPLETE_RESPONSE_MASK     = 1<<INCOMPLETE_RESPONSE_SHIFT;
+	public final static int END_RESPONSE_MASK            = 1<<END_RESPONSE_SHIFT;
+	public final static int CLOSE_CONNECTION_MASK        = 1<<CLOSE_CONNECTION_SHIFT;
+	public final static int UPGRADE_MASK                 = 1<<UPGRADE_CONNECTION_SHIFT;
+
+
     
     public ServerCoordinator(int socketGroups, int port) {
         this.socketHolder      = new ServiceObjectHolder[socketGroups];    
         this.selectors         = new Selector[socketGroups];
+        
+        
         this.subscriptions     = new MemberHolder[socketGroups];
         this.port              = port;
         this.upgradePipeLookup        = new int[socketGroups][];
@@ -40,12 +57,18 @@ public class ServerCoordinator {
         
     }
     
+
+	@Override
+	public SSLConnection get(long id, int groupId) {
+		return socketHolder[groupId].get(id);		
+	}
+    
     public InetSocketAddress getAddress() {
         return address;
     }
 
     
-    public static ServiceObjectHolder<SocketChannel> newSocketChannelHolder(ServerCoordinator that, int idx) {
+    public static ServiceObjectHolder<ServerConnection> newSocketChannelHolder(ServerCoordinator that, int idx) {
         that.connectionContext[idx] = new ConnectionContext[that.channelBitsSize];
         //must also create these long lived instances, this would be a good use case for StructuredArray and ObjectLayout
         int i = that.channelBitsSize;
@@ -54,11 +77,11 @@ public class ServerCoordinator {
         }
         
         that.upgradePipeLookup[idx] = new int[that.channelBitsSize];
-        return that.socketHolder[idx] = new ServiceObjectHolder(that.channelBits, SocketChannel.class, new SocketValidator(), false/*Do not grow*/);
+        return that.socketHolder[idx] = new ServiceObjectHolder(that.channelBits, ServerConnection.class, new SocketValidator(), false/*Do not grow*/);
         
     }
     
-    public static ServiceObjectHolder<SocketChannel> getSocketChannelHolder(ServerCoordinator that, int idx) {
+    public static ServiceObjectHolder<ServerConnection> getSocketChannelHolder(ServerCoordinator that, int idx) {
         while (null==that.socketHolder[idx]) {//TODO: may need to find more elegant way to do this but this will probably do just fine.
             Thread.yield();//we have a race that happens on graph building so is may have to wait here.
         }
@@ -114,9 +137,9 @@ public class ServerCoordinator {
 
     static int scanForOptimalPipe(ServerCoordinator that, int minValue, int minIdx) {
         int i = that.socketHolder.length;
-        ServiceObjectHolder<SocketChannel>[] localSocketHolder=that.socketHolder;
+        ServiceObjectHolder<ServerConnection>[] localSocketHolder=that.socketHolder;
         while (--i>=0) {
-             ServiceObjectHolder<SocketChannel> holder = localSocketHolder[i];                         
+             ServiceObjectHolder<ServerConnection> holder = localSocketHolder[i];                         
              int openConnections = (int)(ServiceObjectHolder.getSequenceCount(holder) - ServiceObjectHolder.getRemovalCount(holder));
              if (openConnections<minValue /*&& Pipe.hasRoomForWrite(localOutputs[i])*/ ) {
                  minValue = openConnections;
@@ -130,5 +153,6 @@ public class ServerCoordinator {
     	assert(null==selectors[pipeIdx]) : "Should not already have a value";
         selectors[pipeIdx] = selector;
     }
+
 
 }

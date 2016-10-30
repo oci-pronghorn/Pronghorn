@@ -40,6 +40,30 @@ public abstract class PronghornStage {
 		}
 	}
 
+    /**
+     * @return the maximum variable length supported across all the pipes
+     */
+    protected static int maxVarLength(Pipe<?>[] pipes) {
+    	int result = 0;
+    	int i = pipes.length;
+    	while (--i>=0) {
+    		result = Math.max(result, pipes[i].maxAvgVarLen);
+    	}
+		return result;
+	}
+
+    /**
+     * @return the minimum variable length supported across all the pipes
+     */
+	protected static int minVarLength(Pipe<?>[] pipes) {
+		int result = Integer.MAX_VALUE;
+    	int i = pipes.length;
+    	while (--i>=0) {
+    		result = Math.min(result, pipes[i].maxAvgVarLen);
+    	}
+		return Integer.MAX_VALUE==result ? 0 : result;
+	}
+	
 	//in the constructor us a zero length array if there are no values.
 	protected PronghornStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs) {
 	    assert(null!=inputs) : "Use NONE";

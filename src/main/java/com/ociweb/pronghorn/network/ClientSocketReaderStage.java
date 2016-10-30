@@ -132,11 +132,12 @@ public class ClientSocketReaderStage extends PronghornStage {
 									
 					long finishedConnectionId = PipeReader.readLong(parseAck, NetParseAckSchema.MSG_PARSEACK_100_FIELD_CONNECTIONID_1);
 					
-					ClientConnection clientConnection = ccm.get(finishedConnectionId);
+					ClientConnection clientConnection = (ClientConnection)ccm.get(finishedConnectionId, 0);
 					//only remove after all the in flight messages are consumed
-					if (clientConnection.incResponsesReceived()) {	
+					if ((null==clientConnection) || (clientConnection.incResponsesReceived())) {
+						assert((null==clientConnection) || (clientConnection.getId()==finishedConnectionId));
 						//connection may still be open but we will release the pipeline
-						ccm.releaseResponsePipeLineIdx(clientConnection.getId());
+						ccm.releaseResponsePipeLineIdx(finishedConnectionId);
 					}
 				}
 				

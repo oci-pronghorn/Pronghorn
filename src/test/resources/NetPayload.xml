@@ -8,11 +8,17 @@
   
    <template name="Plain" id="210">
      <uInt64 name="ConnectionId" id="201"/>
-     <string name="Payload" id="204" charset="unicode"/>
+     <byteVector name="Payload" id="204"/>
    </template>    
   
    <template name="Disconnect" id="203">
      <uInt64 name="ConnectionId" id="201"/>
    </template>
+   
+   <template name="Upgrade" id="207">
+     <uInt64 name="ConnectionId" id="201"/>
+     <uInt32 name="NewRoute" id="205"/>
+   </template>
+   
       
 </templates>

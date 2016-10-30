@@ -57,9 +57,9 @@ public class RingBufferPipeline {
 	            long time = Pipe.takeLong(inputRing);
 	            long head = Pipe.takeLong(inputRing);
 	            long tail = Pipe.takeLong(inputRing);
-	            int tmpId = Pipe.takeValue(inputRing);
-	            int bufSize = Pipe.takeValue(inputRing);
-	            int bLen = Pipe.takeValue(inputRing);
+	            int tmpId = Pipe.takeInt(inputRing);
+	            int bufSize = Pipe.takeInt(inputRing);
+	            int bLen = Pipe.takeInt(inputRing);
 
 	            Pipe.setWorkingTailPosition(inputRing, Pipe.getWorkingTailPosition(inputRing)+monitorMessageSize);
 	                     

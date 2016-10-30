@@ -419,7 +419,7 @@ private boolean route(TrieParserReader trieReader, long channel, int idx) {
         Pipe.addIntValue(httpRevisionId, staticRequestPipe); // Revision Id          // Write 1   8
 
         int requestContext = parseHeaderFields(routeId, staticRequestPipe, httpRevisionId, false);  // Write 2   10 //if header is presen
-        if (ServerConnectionWriterStage.INCOMPLETE_RESPONSE_MASK == requestContext) {   
+        if (ServerCoordinator.INCOMPLETE_RESPONSE_MASK == requestContext) {   
             //try again later, not complete.
             Pipe.resetHead(staticRequestPipe);
             return false;
@@ -608,7 +608,7 @@ private boolean hasNoActiveChannel(int idx) {
             		throw new RuntimeException("client has sent bad data, this connection should be closed so we can move on");//TODO: remove this exeption and do what it says.
             	}
                 //nothing valid was found so this is incomplete.
-                return ServerConnectionWriterStage.INCOMPLETE_RESPONSE_MASK; 
+                return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
             }
 
             if (headerIdUpgrade == headerId) {
@@ -657,7 +657,7 @@ private boolean hasNoActiveChannel(int idx) {
             iteration++;
         }
         if (!isDone) {
-            return ServerConnectionWriterStage.INCOMPLETE_RESPONSE_MASK;
+            return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
         }
         return requestContext;
     }
@@ -677,10 +677,10 @@ private boolean hasNoActiveChannel(int idx) {
 		int len = TrieParserReader.capturedFieldByte(trieReader, 0, 1);
 		switch(len) {
 		    case 'l': //close
-		        requestContext |= ServerConnectionWriterStage.CLOSE_CONNECTION_MASK;                        
+		        requestContext |= ServerCoordinator.CLOSE_CONNECTION_MASK;                        
 		        break;
 		    case 'e': //keep-alive
-		        requestContext &= (~ServerConnectionWriterStage.CLOSE_CONNECTION_MASK);                        
+		        requestContext &= (~ServerCoordinator.CLOSE_CONNECTION_MASK);                        
 		        break;
 		    default:
 		        //unknown
@@ -699,7 +699,7 @@ private boolean hasNoActiveChannel(int idx) {
            (HTTPRevisionDefaults.HTTP_0_9.ordinal() == revisionId) ||
            (HTTPRevisionDefaults.HTTP_1_0.ordinal() == revisionId)
           ) {
-            requestContext |= ServerConnectionWriterStage.CLOSE_CONNECTION_MASK;
+            requestContext |= ServerCoordinator.CLOSE_CONNECTION_MASK;
         }
 		return requestContext;
 	}

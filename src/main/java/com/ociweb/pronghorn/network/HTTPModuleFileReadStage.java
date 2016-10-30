@@ -341,11 +341,11 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
         //revision
         //context
         
-        activeChannelHigh = Pipe.takeValue(input);
-        activeChannelLow  = Pipe.takeValue(input); 
+        activeChannelHigh = Pipe.takeInt(input);
+        activeChannelLow  = Pipe.takeInt(input); 
    
-        activeSequenceId = Pipe.takeValue(input);
-        int verb = Pipe.takeValue(input);
+        activeSequenceId = Pipe.takeInt(input);
+        int verb = Pipe.takeInt(input);
         
                  
         int meta = Pipe.takeRingByteMetaData(input);
@@ -367,9 +367,9 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
         ///////////
         //NOTE we have added 2 because that is how it is sent from the routing stage! with a leading short for length
         ////////////
-        int httpRevision = Pipe.takeValue(input);
+        int httpRevision = Pipe.takeInt(input);
         int pathId = selectActiveFileChannel(pathCacheReader, pathCache, bytesLength-2, bytesBackingArray, bytesPosition+2, bytesMask);
-        int context = Pipe.takeValue(input);
+        int context = Pipe.takeInt(input);
         
         if (pathId<0) {
       	  
@@ -382,7 +382,7 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
 	        
 	        activePathId = pathId;
 	        //This value is ONLY sent on the last message that makes up this response, all others get a zero.
-	        activeRequestContext = context | ServerConnectionWriterStage.END_RESPONSE_MASK; 
+	        activeRequestContext = context | ServerCoordinator.END_RESPONSE_MASK; 
 	
 	        assert(Pipe.peekInt(input) == bytesLength) : "bytes consumed "+Pipe.peekInt(input)+" must match file path length "+bytesLength+" peek at idx; "+ Pipe.getWorkingTailPosition(input);
 	        
@@ -548,7 +548,7 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
         //now implement an unexpected disconnect of the connection since we had an IO failure.
         int originalBlobPosition = Pipe.getBlobWorkingHeadPosition(localOutput);
         Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, 0, localOutput);
-        Pipe.addIntValue(ServerConnectionWriterStage.CLOSE_CONNECTION_MASK | ServerConnectionWriterStage.END_RESPONSE_MASK, localOutput);
+        Pipe.addIntValue(ServerCoordinator.CLOSE_CONNECTION_MASK | ServerCoordinator.END_RESPONSE_MASK, localOutput);
         Pipe.confirmLowLevelWrite(localOutput, Pipe.sizeOf(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100));
         Pipe.publishWrites(localOutput);
         Pipe.confirmLowLevelRead(input, releaseSize);

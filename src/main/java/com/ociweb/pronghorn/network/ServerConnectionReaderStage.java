@@ -37,7 +37,7 @@ public class ServerConnectionReaderStage extends PronghornStage {
     private int pendingSelections = 0;
     
 
-    private ServiceObjectHolder<SocketChannel> holder;
+    private ServiceObjectHolder<ServerConnection> holder;
     
     
     public ServerConnectionReaderStage(GraphManager graphManager, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, int pipeIdx) {

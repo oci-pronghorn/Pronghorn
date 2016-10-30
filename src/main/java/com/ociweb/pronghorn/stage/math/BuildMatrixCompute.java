@@ -37,7 +37,7 @@ public class BuildMatrixCompute {
 				while (--count>=0) {
 					
 					int dotPosition = 0;
-					int value = Pipe.takeValue(input);
+					int value = Pipe.takeInt(input);
 					while (0 ==	(value%10)) {
 						value = value/10;
 						dotPosition++;
@@ -51,8 +51,8 @@ public class BuildMatrixCompute {
 	
 				int sum = 0; 
 				while (--rows >= 0) {
-					int colValue = Pipe.takeValue(columnPipe); //take each value from this column
-					int matrixValue = Pipe.takeValue(rowPipe); //take each value from the same sized row
+					int colValue = Pipe.takeInt(columnPipe); //take each value from this column
+					int matrixValue = Pipe.takeInt(rowPipe); //take each value from the same sized row
 					sum = sum + (colValue*matrixValue);
 				}
 				//sum now holds the new value to be sent out
@@ -73,7 +73,7 @@ public class BuildMatrixCompute {
 		Floats(TypeMask.IntegerSigned) {
 			public void convertToDecimal(int count, Pipe<?> input, Pipe<?> output) {
 				while (--count>=0) {
-					double value = (double)Float.intBitsToFloat(Pipe.takeValue(input));
+					double value = (double)Float.intBitsToFloat(Pipe.takeInt(input));
 				
 					int dotPosition=0;
 					while (0f != value%1f) {
@@ -96,8 +96,8 @@ public class BuildMatrixCompute {
 			public void computeColumn(int rows, Pipe<?> columnPipe, Pipe<?> rowPipe, Pipe<?> outputPipe) {
 				float sum = 0; 
 				while (--rows >= 0) {
-					float colValue = Float.intBitsToFloat(Pipe.takeValue(columnPipe)); //take each value from this column
-					float matrixValue = Float.intBitsToFloat(Pipe.takeValue(rowPipe)); //take each value from the same sized row
+					float colValue = Float.intBitsToFloat(Pipe.takeInt(columnPipe)); //take each value from this column
+					float matrixValue = Float.intBitsToFloat(Pipe.takeInt(rowPipe)); //take each value from the same sized row
 					sum = sum + (colValue*matrixValue);
 				}
 				//sum now holds the new value to be sent out
@@ -213,10 +213,10 @@ public class BuildMatrixCompute {
 				
 				while (--rows >= 0) {
 					
-					int  xExp   = Pipe.takeValue(columnPipe);
+					int  xExp   = Pipe.takeInt(columnPipe);
 					long x      = Pipe.takeLong(columnPipe); //take each value from this column
 					
-					int yExp   = Pipe.takeValue(rowPipe);
+					int yExp   = Pipe.takeInt(rowPipe);
 					long y     = Pipe.takeLong(rowPipe); //take each value from the same sized row
 					
 					/////////////////////

@@ -1,7 +1,7 @@
 package com.ociweb.pronghorn.network;
 
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
-import com.ociweb.pronghorn.network.schema.ClientNetRequestSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
@@ -23,12 +23,12 @@ public class NetGraphBuilder {
 	
 	public static void buildHTTPClientGraph(GraphManager gm, int outputsCount, int maxPartialResponses,
 			ClientConnectionManager ccm, IntHashTable listenerPipeLookup,
-			PipeConfig<ClientNetRequestSchema> clientNetRequestConfig, PipeConfig<NetParseAckSchema> parseAckConfig,
-			PipeConfig<NetPayloadSchema> clientNetResponseConfig, Pipe<ClientNetRequestSchema>[] requests,
+			PipeConfig<NetPayloadSchema> clientNetRequestConfig, PipeConfig<NetParseAckSchema> parseAckConfig,
+			PipeConfig<NetPayloadSchema> clientNetResponseConfig, Pipe<NetPayloadSchema>[] requests,
 			Pipe<NetResponseSchema>[] responses) {
 		//this is the fully formed request to be wrapped
 		//this is the encrypted (aka wrapped) fully formed requests
-		Pipe<ClientNetRequestSchema>[] wrappedClientRequests = new Pipe[outputsCount];	
+		Pipe<NetPayloadSchema>[] wrappedClientRequests = new Pipe[outputsCount];	
 
 		Pipe<NetParseAckSchema> parseAck = new Pipe<NetParseAckSchema>(parseAckConfig);
 		Pipe<NetPayloadSchema>[] socketResponse = new Pipe[maxPartialResponses];
@@ -43,7 +43,7 @@ public class NetGraphBuilder {
 		
 		int j = outputsCount;
 		while (--j>=0) {								
-			wrappedClientRequests[j] = new Pipe<ClientNetRequestSchema>(clientNetRequestConfig);
+			wrappedClientRequests[j] = new Pipe<NetPayloadSchema>(clientNetRequestConfig);
 		}
 	
 		
@@ -95,7 +95,8 @@ public class NetGraphBuilder {
 	        PipeConfig<HTTPRequestSchema> httpRequestPipeConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 10, 4000);
 	        PipeConfig<ServerResponseSchema> outgoingDataConfig = new PipeConfig<ServerResponseSchema>(ServerResponseSchema.instance, 10, 4000);
 	        PipeConfig<NetPayloadSchema> incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 10, 4000);
-	    	
+	        PipeConfig<NetPayloadSchema> socketWriteDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 10, 4000);
+	        
 	        ServerCoordinator coordinator = new ServerCoordinator(groups, 8081); 
 	        
 	        Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(newConnectionsConfig);
@@ -131,6 +132,7 @@ public class NetGraphBuilder {
 	            
 	            
 	            
+	            
 	            Pipe<NetPayloadSchema> staticRequestPipe = new Pipe<NetPayloadSchema>(incomingDataConfig);
 	            incomingGroup[g] = new Pipe[] {staticRequestPipe};
 	            
@@ -140,18 +142,19 @@ public class NetGraphBuilder {
 	            //reads from the socket connection
 	            ServerConnectionReaderStage readerStage = new ServerConnectionReaderStage(graphManager, incomingGroup[g], coordinator, g); //TODO: must take pool 
 	            
-	            //writes to the socket connection           
-	            ServerConnectionWriterStage writerStage = new ServerConnectionWriterStage(graphManager, fromApps, coordinator, g); 
-	      
+	            
+	            int w = 3;//writers
+	            Pipe[] writerPipe = new Pipe[w];
+	            while (--w>=0) {	            	
+	            	writerPipe[w] = new Pipe<NetPayloadSchema>(socketWriteDataConfig);
+	            }
+	            WrapSupervisorStage wrapSuper = new WrapSupervisorStage(graphManager, fromApps, writerPipe, coordinator);//ensure order
+	            ServerSocketWriterStage writerStage = new ServerSocketWriterStage(graphManager, writerPipe, coordinator, g); //pump bytes out
+
+	            
 	            HTTP1xRouterStage.newInstance(graphManager, pool, toApps, paths, headers, msgIds);        
 	            
-	            
-	//            int j = fromApps.length;
-	//            while (--j>=0) {
-	//            	ConsoleJSONDumpStage<?> stage = new ConsoleJSONDumpStage(graphManager, fromApps[j]); //TODO: make version that takes array
-	//            }
-	            
-	                        
+	             
 	        }
 	               
 	        
@@ -169,7 +172,8 @@ public class NetGraphBuilder {
         PipeConfig<HTTPRequestSchema> httpRequestPipeConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 10, 4000);
         PipeConfig<ServerResponseSchema> outgoingDataConfig = new PipeConfig<ServerResponseSchema>(ServerResponseSchema.instance, 10, 4000);
         PipeConfig<NetPayloadSchema> incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 10, 4000);
-    	
+        PipeConfig<NetPayloadSchema> socketWriteDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 10, 4000);
+        
         ServerCoordinator coordinator = new ServerCoordinator(groups, 8081); 
         
         Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(newConnectionsConfig);
@@ -179,8 +183,7 @@ public class NetGraphBuilder {
         
         
         PipeCleanerStage<ServerConnectionSchema> dump = new PipeCleanerStage<>(graphManager, newConnectionsPipe); //IS this important data?
-        // ConsoleJSONDumpStage dump = new ConsoleJSONDumpStage(graphManager,newConnectionsPipe); //TODO: leave until we resolve the initial hang.
-        
+
                 
         Pipe[][] incomingGroup = new Pipe[groups][];
 
@@ -226,8 +229,21 @@ public class NetGraphBuilder {
             
             HTTP1xRouterStage.newInstance(graphManager, pool, toApps, paths, headers, msgIds);        
          
-            //writes to the socket connection           
-            ServerConnectionWriterStage writerStage = new ServerConnectionWriterStage(graphManager, fromApps, coordinator, g); 
+            
+            int w = 3;//writers
+            Pipe[] writerPipe = new Pipe[w];
+            while (--w>=0) {	            	
+            	writerPipe[w] = new Pipe<NetPayloadSchema>(socketWriteDataConfig);
+            }
+            WrapSupervisorStage wrapSuper = new WrapSupervisorStage(graphManager, fromApps, writerPipe, coordinator);//ensure order
+            
+            
+            //TODO: wrapping will go between these two
+            
+            
+            ServerSocketWriterStage writerStage = new ServerSocketWriterStage(graphManager, writerPipe, coordinator, g); //pump bytes out
+
+            
                                        
         }
                

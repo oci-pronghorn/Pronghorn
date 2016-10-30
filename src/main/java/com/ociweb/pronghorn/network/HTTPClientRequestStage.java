@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.network;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.schema.ClientNetRequestSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetRequestSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -17,7 +17,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 	public static final Logger log = LoggerFactory.getLogger(HTTPClientRequestStage.class);
 	
 	private final Pipe<NetRequestSchema>[] input;
-	private final Pipe<ClientNetRequestSchema>[] output;
+	private final Pipe<NetPayloadSchema>[] output;
 	private final ClientConnectionManager ccm;
 
 	private final long disconnectTimeoutMS = 10_000;  //TODO: set with param
@@ -33,7 +33,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 	public HTTPClientRequestStage(GraphManager graphManager, 	
 			ClientConnectionManager ccm,
             Pipe<NetRequestSchema>[] input,
-            Pipe<ClientNetRequestSchema>[] output
+            Pipe<NetPayloadSchema>[] output
             ) {
 		super(graphManager, input, output);
 		this.input = input;
@@ -86,7 +86,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 			
 			if (unused>disconnectTimeoutMS) {
 				
-				Pipe<ClientNetRequestSchema> pipe = output[con.requestPipeLineIdx()];
+				Pipe<NetPayloadSchema> pipe = output[con.requestPipeLineIdx()];
 				if (PipeWriter.hasRoomForWrite(pipe)) {
 					//close the least used connection
 					cleanCloseConnection(con, pipe);				
@@ -148,18 +148,18 @@ public class HTTPClientRequestStage extends PronghornStage {
 					                
 					                if (-1 != connectionId) {
 						                
-					                	ClientConnection clientConnection = ccm.get(connectionId);
+					                	ClientConnection clientConnection = (ClientConnection)ccm.get(connectionId, 0);
 					                	clientConnection.setLastUsedTime(now);
 					                	int outIdx = clientConnection.requestPipeLineIdx();
 					                	
 					                	clientConnection.incRequestsSent();//count of messages can only be done here.
-										Pipe<ClientNetRequestSchema> outputPipe = output[outIdx];
+										Pipe<NetPayloadSchema> outputPipe = output[outIdx];
 						                				                	
-						                if (PipeWriter.tryWriteFragment(outputPipe, ClientNetRequestSchema.MSG_SIMPLEREQUEST_100) ) {
+						                if (PipeWriter.tryWriteFragment(outputPipe, NetPayloadSchema.MSG_PLAIN_210) ) {
 						                    	
-						                	PipeWriter.writeLong(outputPipe, ClientNetRequestSchema.MSG_SIMPLEREQUEST_100_FIELD_CONNECTIONID_101, connectionId);
+						                	PipeWriter.writeLong(outputPipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, connectionId);
 						                	
-						                	DataOutputBlobWriter<ClientNetRequestSchema> activeWriter = PipeWriter.outputStream(outputPipe);
+						                	DataOutputBlobWriter<NetPayloadSchema> activeWriter = PipeWriter.outputStream(outputPipe);
 						                	DataOutputBlobWriter.openField(activeWriter);
 											
 						                	DataOutputBlobWriter.encodeAsUTF8(activeWriter,"GET");
@@ -178,7 +178,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 											PipeReader.readBytes(requestPipe, NetRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3, activeWriter);
 											
 											finishWritingHeader(activeHost, activeWriter, implementationVersion, 0);
-						                	DataOutputBlobWriter.closeHighLevelField(activeWriter, ClientNetRequestSchema.MSG_SIMPLEREQUEST_100_FIELD_PAYLOAD_103);
+						                	DataOutputBlobWriter.closeHighLevelField(activeWriter, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 						                					                	
 						                	PipeWriter.publishWrites(outputPipe);
 						                					                	
@@ -207,18 +207,18 @@ public class HTTPClientRequestStage extends PronghornStage {
 					                
 					                if (-1 != connectionId) {
 						                
-					                	ClientConnection clientConnection = ccm.get(connectionId);
+					                	ClientConnection clientConnection = (ClientConnection)ccm.get(connectionId, 0);
 					                	clientConnection.setLastUsedTime(now);
 					                	int outIdx = clientConnection.requestPipeLineIdx();
 					                					                  	
 					                	clientConnection.incRequestsSent();//count of messages can only be done here.
-										Pipe<ClientNetRequestSchema> outputPipe = output[outIdx];
+										Pipe<NetPayloadSchema> outputPipe = output[outIdx];
 					                
-						                if (PipeWriter.tryWriteFragment(outputPipe, ClientNetRequestSchema.MSG_SIMPLEREQUEST_100) ) {
+						                if (PipeWriter.tryWriteFragment(outputPipe, NetPayloadSchema.MSG_PLAIN_210) ) {
 					                    	
-						                	PipeWriter.writeLong(outputPipe, ClientNetRequestSchema.MSG_SIMPLEREQUEST_100_FIELD_CONNECTIONID_101, connectionId);
+						                	PipeWriter.writeLong(outputPipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, connectionId);
 						                	
-						                	DataOutputBlobWriter<ClientNetRequestSchema> activeWriter = PipeWriter.outputStream(outputPipe);
+						                	DataOutputBlobWriter<NetPayloadSchema> activeWriter = PipeWriter.outputStream(outputPipe);
 						                	DataOutputBlobWriter.openField(activeWriter);
 						                			                
 						                	DataOutputBlobWriter.encodeAsUTF8(activeWriter,"POST");
@@ -248,7 +248,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 											
 											PipeReader.readBytes(requestPipe, NetRequestSchema.MSG_HTTPPOST_101_FIELD_PAYLOAD_5, activeWriter);
 											
-						                	DataOutputBlobWriter.closeHighLevelField(activeWriter, ClientNetRequestSchema.MSG_SIMPLEREQUEST_100_FIELD_PAYLOAD_103);
+						                	DataOutputBlobWriter.closeHighLevelField(activeWriter, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 						                					                	
 						                	PipeWriter.publishWrites(outputPipe);
 						                					                	
@@ -271,13 +271,13 @@ public class HTTPClientRequestStage extends PronghornStage {
 	}
 
 
-	private static void cleanCloseConnection(ClientConnection connectionToKill, Pipe<ClientNetRequestSchema> pipe) {
+	private static void cleanCloseConnection(ClientConnection connectionToKill, Pipe<NetPayloadSchema> pipe) {
 		//do not close that will be done by last stage
 		//must be done first before we send the message
 		connectionToKill.beginDisconnect();
 
-		if (PipeWriter.tryWriteFragment(pipe, ClientNetRequestSchema.MSG_SIMPLEDISCONNECT_101) ) {
-		    PipeWriter.writeLong(pipe, ClientNetRequestSchema.MSG_SIMPLEDISCONNECT_101_FIELD_CONNECTIONID_101, connectionToKill.getId());
+		if (PipeWriter.tryWriteFragment(pipe, NetPayloadSchema.MSG_DISCONNECT_203) ) {
+		    PipeWriter.writeLong(pipe, NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, connectionToKill.getId());
 			PipeWriter.publishWrites(pipe);
 		} else {
 			throw new RuntimeException("Unable to send request, outputPipe is full");
@@ -285,7 +285,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 	}
 
 
-	public  boolean hasRoomForWrite(Pipe<NetRequestSchema> requestPipe, StringBuilder activeHost, Pipe<ClientNetRequestSchema>[] output, ClientConnectionManager ccm) {
+	public  boolean hasRoomForWrite(Pipe<NetRequestSchema> requestPipe, StringBuilder activeHost, Pipe<NetPayloadSchema>[] output, ClientConnectionManager ccm) {
 		int result = -1;
 		//if we go around once and find nothing then stop looking
 		int i = output.length;
@@ -309,7 +309,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 
 	public static boolean hasOpenConnection(Pipe<NetRequestSchema> requestPipe, StringBuilder activeHost,
-											Pipe<ClientNetRequestSchema>[] output, ClientConnectionManager ccm, int outIdx) {
+											Pipe<NetPayloadSchema>[] output, ClientConnectionManager ccm, int outIdx) {
 		activeHost.setLength(0);//NOTE: we may want to think about a zero copy design
 		PipeReader.peekUTF8(requestPipe, NetRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2, activeHost);
 		
@@ -318,7 +318,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 				
 		long connectionId = ClientConnectionManager.openConnection(ccm, activeHost, port, userId, outIdx);
 		if (connectionId>=0) {
-			ClientConnection clientConnection = ccm.get(connectionId);
+			ClientConnection clientConnection = (ClientConnection)ccm.get(connectionId, 0);
 			//if we have a pre-existing pipe, must use it.
 			outIdx = clientConnection.requestPipeLineIdx();
 			if (!PipeWriter.hasRoomForWrite(output[outIdx])) {
@@ -327,20 +327,20 @@ public class HTTPClientRequestStage extends PronghornStage {
 		} else {
 			 //"Has no room" for the new connection so we request that the oldest connection is closed.
 			
-			ClientConnection connectionToKill = ccm.get( -connectionId);
-			
-			Pipe<ClientNetRequestSchema> pipe = output[connectionToKill.requestPipeLineIdx()];
-			if (PipeWriter.hasRoomForWrite(pipe)) {
-				//close the least used connection
-				cleanCloseConnection(connectionToKill, pipe);				
+			ClientConnection connectionToKill = (ClientConnection)ccm.get( -connectionId, 0);
+			if (null!=connectionToKill) {
+				Pipe<NetPayloadSchema> pipe = output[connectionToKill.requestPipeLineIdx()];
+				if (PipeWriter.hasRoomForWrite(pipe)) {
+					//close the least used connection
+					cleanCloseConnection(connectionToKill, pipe);				
+				}
 			}
-			
 			return false;
 		}
 		return true;
 	}
 
-	public static void finishWritingHeader(CharSequence host, DataOutputBlobWriter<ClientNetRequestSchema> writer, CharSequence implementationVersion, long length) {
+	public static void finishWritingHeader(CharSequence host, DataOutputBlobWriter<NetPayloadSchema> writer, CharSequence implementationVersion, long length) {
 		DataOutputBlobWriter.encodeAsUTF8(writer," HTTP/1.1\r\nHost: ");
 		DataOutputBlobWriter.encodeAsUTF8(writer,host);
 		DataOutputBlobWriter.encodeAsUTF8(writer,"\r\nUser-Agent: Pronghorn/");

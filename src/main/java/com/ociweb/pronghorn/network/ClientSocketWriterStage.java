@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.network;
 
-import com.ociweb.pronghorn.network.schema.ClientNetRequestSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -9,10 +9,10 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public class ClientSocketWriterStage extends PronghornStage {
 	
 	private final ClientConnectionManager ccm;
-	private final Pipe<ClientNetRequestSchema>[] input;
+	private final Pipe<NetPayloadSchema>[] input;
 	private int shutCountDown;
 	
-	protected ClientSocketWriterStage(GraphManager graphManager, ClientConnectionManager ccm, Pipe<ClientNetRequestSchema>[] input) {
+	protected ClientSocketWriterStage(GraphManager graphManager, ClientConnectionManager ccm, Pipe<NetPayloadSchema>[] input) {
 		super(graphManager, input, NONE);
 		this.ccm = ccm;
 		this.input = input;
@@ -28,9 +28,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 			while (PipeReader.tryReadFragment(input[i])) try {			
 				
 								
-				if (ClientNetRequestSchema.MSG_ENCRYPTEDREQUEST_110 == PipeReader.getMsgIdx(input[i])) {
+				if (NetPayloadSchema.MSG_ENCRYPTED_200 == PipeReader.getMsgIdx(input[i])) {
 									
-					ClientConnection cc = ccm.get(PipeReader.readLong(input[i], ClientNetRequestSchema.MSG_ENCRYPTEDREQUEST_110_FIELD_CONNECTIONID_101));
+					ClientConnection cc = (ClientConnection)ccm.get(PipeReader.readLong(input[i], NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201), 0);
 					
 					if (null!=cc) {
 						if (!cc.writeToSocketChannel(input[i])) { //TODO: this is a blocking write to be converted to non blocking soon.
@@ -43,16 +43,18 @@ public class ClientSocketWriterStage extends PronghornStage {
 					}
 				} else {
 					
-					if (ClientNetRequestSchema.MSG_SIMPLEDISCONNECT_101 == PipeReader.getMsgIdx(input[i])) {
+					if (NetPayloadSchema.MSG_PLAIN_210 == PipeReader.getMsgIdx(input[i])) {
 					
-						ClientConnection cc = ccm.get(PipeReader.readLong(input[i], ClientNetRequestSchema.MSG_SIMPLEDISCONNECT_101_FIELD_CONNECTIONID_101));
+						ClientConnection cc = (ClientConnection)ccm.get(PipeReader.readLong(input[i], NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201), 0);
 						
 						if (null!=cc) {
 							cc.close();//this location is free to be re-used and this connection can not be fetched again.
 						}
 					}
 					
-					assert(-1 == PipeReader.getMsgIdx(input[i])) : "Expected end of stream shutdown";
+					//what about disconnect meesage
+					
+				//	assert(-1 == PipeReader.getMsgIdx(input[i])) : "Expected end of stream shutdown";
 					if (--this.shutCountDown <= 0) {
 						requestShutdown();
 						return;

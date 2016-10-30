@@ -241,7 +241,7 @@ public class ServiceObjectHolder<T> {
     public void setValue(long index, T object) {
     	int modIdx = data.mask & (int)index;
     	assert(data.serviceObjectKeys[modIdx] == index) : "this method should only be called after using lookupInsertPosition";
-    	data.serviceObjectValues[modIdx] = object;    	
+    	data.serviceObjectValues[modIdx] = (T)object;    	
     	
     }
     

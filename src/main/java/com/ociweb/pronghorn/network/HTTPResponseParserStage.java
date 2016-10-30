@@ -20,6 +20,7 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -185,7 +186,7 @@ public class HTTPResponseParserStage extends PronghornStage {
 						//else use the data we have
 						
 						ccId = ccIdData[i];
-						final ClientConnection cc = ccm.get(ccId);					
+						final ClientConnection cc = (ClientConnection)ccm.get(ccId, 0);					
 						if (null==cc) {	//skip data the connection was closed						
 							TrieParserReader.parseSkip(trieReader, trieReader.sourceLen);
 							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
@@ -201,7 +202,7 @@ public class HTTPResponseParserStage extends PronghornStage {
 			
 					ccId = Pipe.takeLong(pipe);
 					ccIdData[i] = ccId;
-					final ClientConnection cc = ccm.get(ccId);
+					final ClientConnection cc = (ClientConnection)ccm.get(ccId, 0);
 								
 					if (null==cc) {		
 						logger.debug("closed connection detected");
@@ -223,6 +224,14 @@ public class HTTPResponseParserStage extends PronghornStage {
 					int len = Pipe.takeRingByteLen(pipe);
 					int pos = Pipe.bytePosition(meta, pipe, len);
 			
+//					boolean showContent = false;
+//					if (showContent) {						
+//						Appendables.appendUTF8(System.out, Pipe.byteBackingArray(meta, pipe), pos, len, Pipe.blobMask(pipe));
+//						System.out.println();
+//						System.out.println("BLOCKSIZE:"+len+" REMAINING CHUNK:"+payloadLengthData[i]+" IDX:"+i);
+//						
+//					}
+					
 	
 					if (positionMemoData[memoIdx+1]==0) {
 						positionMemoData[memoIdx] = pos;
@@ -238,6 +247,10 @@ public class HTTPResponseParserStage extends PronghornStage {
 	
 				int state = positionMemoData[stateIdx];
 				
+//				System.out.println();
+//				trieReader.debugAsUTF8(trieReader, System.out, 1000,false);
+//				System.out.println();
+				
 				switch (state) {
 					case 0:////HTTP/1.1 200 OK              FIRST LINE REVISION AND STATUS NUMBER
 						int startingLength1 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
@@ -246,31 +259,32 @@ public class HTTPResponseParserStage extends PronghornStage {
 							System.err.println("no room for write");
 							break;
 						}
-						boolean isLongEnough = trieReader.sourceLen>=MAX_VALID_STATUS;
+						boolean isLongEnough = trieReader.sourceLen>=MAX_VALID_HEADER;
 						final int revisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap);
 						if (revisionId<0) {
-							if (isLongEnough) { //IF BIGGER THAN MAX THIS IS AN ERROR
-								
-								ClientConnection connection = ccm.get(ccId);
-								if (null!=connection) {
-									//server is behaving badly so we do not bother with handshake just close this NOW.
-									connection.close();
-								}
-								
-								//TODO: send a better message we can recover from !!!!!!
-								
-								TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-								
-								logger.warn("bad data from server can not parse {} bytes to find revision",trieReader.sourceLen);
-								
-								ByteArrayOutputStream ist = new ByteArrayOutputStream();
-								trieReader.debugAsUTF8(trieReader, new PrintStream(ist), MAX_VALID_STATUS, false);
-								logger.warn("'"+new String(ist.toByteArray())+"'");
-								
-								requestShutdown();
-								return;
-								
-							}
+							
+//							if (isLongEnough) { //IF BIGGER THAN MAX THIS IS AN ERROR
+//								
+//								ClientConnection connection = ccm.get(ccId);
+//								if (null!=connection) {
+//									//server is behaving badly so we do not bother with handshake just close this NOW.
+//									connection.close();
+//								}
+//								
+////								//TODO: send a better message we can recover from !!!!!!
+////								
+////								TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
+////								
+////								logger.warn("is long enough, bad data from server can not parse {} bytes to find revision",trieReader.sourceLen);
+////								
+////								ByteArrayOutputStream ist = new ByteArrayOutputStream();
+////								trieReader.debugAsUTF8(trieReader, new PrintStream(ist), MAX_VALID_STATUS, false);
+////								logger.warn("'"+new String(ist.toByteArray())+"'");
+////								
+////								requestShutdown();
+//								return;
+//								
+//							}
 							
 							break;
 						} else {
@@ -316,6 +330,7 @@ public class HTTPResponseParserStage extends PronghornStage {
 											long length = TrieParserReader.capturedLongField(trieReader, 0);
 											
 											if (-1 != payloadLengthData[i]) {
+												System.out.println("set length value xxxxxxxxxxxxxxxxxxxxxxxx");
 												payloadLengthData[i] = length;
 											}
 											break;
@@ -362,7 +377,7 @@ public class HTTPResponseParserStage extends PronghornStage {
 								if (isTooLarge) {
 									//this is bigger than the acceptable header so the server must have sent something bad
 									
-									ClientConnection connection = ccm.get(ccId);
+									ClientConnection connection = (ClientConnection)ccm.get(ccId, 0);
 									if (null!=connection) {
 										//server is behaving badly so we do not bother with handshake just close this NOW.
 										connection.close();
@@ -372,7 +387,7 @@ public class HTTPResponseParserStage extends PronghornStage {
 									
 									TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 									
-									logger.warn("bad data from server can not parse {} bytes to find revision",trieReader.sourceLen);
+									logger.warn("is too large, bad data from server can not parse {} bytes to find revision",trieReader.sourceLen);
 									
 									ByteArrayOutputStream ist = new ByteArrayOutputStream();
 									trieReader.debugAsUTF8(trieReader, new PrintStream(ist), MAX_VALID_STATUS, false);
@@ -425,28 +440,39 @@ public class HTTPResponseParserStage extends PronghornStage {
 							DataOutputBlobWriter<NetResponseSchema> writer3 = PipeWriter.outputStream(targetPipe);
 							do {
 								if (0==chunkRemaining) {
+									
 									int startingLength3 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	
 										
+//									System.out.print("NEW BLOCK TEXT: ");
+//									trieReader.debugAsUTF8(trieReader, System.out, 100,false);
+//									System.out.println();
+									
 									int chunkId = (int)TrieParserReader.parseNext(trieReader, chunkMap);
+							
 									if (chunkId < 0) {
 										
-										//restore poisition so we can debug.
+										//restore position so we can debug.
 										TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-										
-										ByteArrayOutputStream ist = new ByteArrayOutputStream();
 										
 										int readingPos = trieReader.sourcePos;
 										
-										trieReader.debugAsUTF8(trieReader, new PrintStream(ist), 100,false);
-	
-										byte[] data = ist.toByteArray();
+										boolean debug = true;
+										if (debug) {
+											ByteArrayOutputStream ist = new ByteArrayOutputStream();
+											trieReader.debugAsUTF8(trieReader, new PrintStream(ist), 100,false);
+											byte[] data = ist.toByteArray();
 										
-										assert (trieReader.sourceLen==0 || (  (data[0]>='0' && data[0]<='9') || (data[0]>='a' && data[0]<='f')    )) : "Non hex valu found at "+readingPos+" data: "+new String(data);
-										
+											assert (trieReader.sourceLen==0 || (  (data[0]>='0' && data[0]<='9') || (data[0]>='a' && data[0]<='f')    )) : "http parse, non hex value found at "+readingPos+" data: "+new String(data);
+										}
 										
 										if (trieReader.sourceLen>16) { //FORMAL ERROR
-											System.err.println("chunk ID is TOO long starting at "+readingPos);
+											System.err.println("chunk ID is TOO long starting at "+readingPos+" data remaining "+trieReader.sourceLen);
+											
+											ByteArrayOutputStream ist = new ByteArrayOutputStream();
+											trieReader.debugAsUTF8(trieReader, new PrintStream(ist), 100,false);
+											byte[] data = ist.toByteArray();
 											System.err.println(new String(data));
+											
 											System.err.println(pipe);
 											trieReader.debug(); //failure position is AT the mask??
 											
@@ -462,6 +488,8 @@ public class HTTPResponseParserStage extends PronghornStage {
 									}					
 									foundWork = true;								
 									chunkRemaining = TrieParserReader.capturedLongField(trieReader,0);
+									
+					//				System.out.println("                                                           READ NEW CHUNK OF size "+chunkRemaining);
 									
 									if (0==chunkRemaining) {
 										
@@ -496,13 +524,22 @@ public class HTTPResponseParserStage extends PronghornStage {
 										
 										TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 									}
-								}							
+								}				
+								
+								
+								////////
+								//normal copy of data for chunk
+								////////
+								
 								int temp3 = TrieParserReader.parseCopy(trieReader, chunkRemaining, writer3);
 								if (temp3>0) {
 									foundWork = true;
 								}
-									
+				//					System.out.println("    chunk removed total of "+temp3);
 								chunkRemaining -= temp3;
+								
+								assert(chunkRemaining>=0);
+								
 								if (chunkRemaining==0) {
 									//NOTE: assert of these 2 bytes would be a good idea right here.
 									TrieParserReader.parseSkip(trieReader, 2); //skip \r\n which appears on the end of every chunk
@@ -514,6 +551,7 @@ public class HTTPResponseParserStage extends PronghornStage {
 								Pipe.releasePendingAsReadLock(pipe, temp3); 
 							} while (0 == chunkRemaining);
 							
+			//				System.out.println("          store remaining chunk size of "+chunkRemaining);
 							payloadLengthData[i] = chunkRemaining;	
 							break;
 					

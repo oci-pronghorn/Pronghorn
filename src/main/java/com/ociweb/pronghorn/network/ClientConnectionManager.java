@@ -12,7 +12,7 @@ import com.ociweb.pronghorn.util.ServiceObjectValidator;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
-public class ClientConnectionManager implements ServiceObjectValidator<ClientConnection>{
+public class ClientConnectionManager extends SSLConnectionHolder implements ServiceObjectValidator<ClientConnection>{
 
 	private final ServiceObjectHolder<ClientConnection> connections;
 	private final TrieParser hostTrie;
@@ -31,7 +31,7 @@ public class ClientConnectionManager implements ServiceObjectValidator<ClientCon
 		responsePipeLinePool = new PoolIdx(maxPartialResponses); //NOTE: maxPartialResponses should never be greater than response listener count		
 	}
 		
-	public ClientConnection get(long hostId) {
+	public SSLConnection get(long hostId, int groupId) {
 		ClientConnection response = connections.getValid(hostId);
 		if (null == response) {
 			releaseResponsePipeLineIdx(hostId);
@@ -61,16 +61,6 @@ public class ClientConnectionManager implements ServiceObjectValidator<ClientCon
 		return connections.lookupInsertPosition();
 	}
 	
-	public void setNewConnection(long index, ClientConnection connection) {
-		
-		connections.setValue(index, connection);
-
-		//store under host and port this hostId
-		hostTrie.setValue(connection.GUID(), index);
-		connection.setId(index);	
-		
-	}
-
 	public int responsePipeLineIdx(long ccId) {
 		return responsePipeLinePool.get(ccId);
 	}
@@ -117,7 +107,6 @@ public class ClientConnectionManager implements ServiceObjectValidator<ClientCon
 		return connections.next();
 	}
 	
-	
 	public Selector selector() {
 		if (null==selector) {
 			try {
@@ -131,7 +120,7 @@ public class ClientConnectionManager implements ServiceObjectValidator<ClientCon
 
 	public static long openConnection(ClientConnectionManager ccm, CharSequence host, int port, int userId, int pipeIdx) {
 		long connectionId = ccm.lookup(host, port, userId);				                
-		if (-1 == connectionId || null == ccm.get(connectionId)) {
+		if (-1 == connectionId || null == ccm.get(connectionId, 0)) {
 			
 			connectionId = ccm.lookupInsertPosition();
 			
@@ -143,7 +132,7 @@ public class ClientConnectionManager implements ServiceObjectValidator<ClientCon
 			
 			try {
 		    	//create new connection because one was not found or the old one was closed
-				ClientConnection cc = new ClientConnection(host.toString(), port, userId, pipeIdx);				                	
+				ClientConnection cc = new ClientConnection(host.toString(), port, userId, pipeIdx, connectionId);				                	
 		    	
 		    	while (!cc.isFinishConnect() ) {  //TODO: revisit
 		    		Thread.yield();
@@ -151,9 +140,11 @@ public class ClientConnectionManager implements ServiceObjectValidator<ClientCon
 	
 		    	cc.beginHandshake(ccm.selector());
 		    	
-		    	ccm.setNewConnection(connectionId,  cc);
-		    	
-		    	
+		    	ccm.connections.setValue(connectionId, cc);
+				
+				//store under host and port this hostId
+				ccm.hostTrie.setValue(cc.GUID(), connectionId);
+	
 			} catch (IOException ex) {
 				logger.warn("handshake problems with new connection {}:{}",host,port,ex);
 				

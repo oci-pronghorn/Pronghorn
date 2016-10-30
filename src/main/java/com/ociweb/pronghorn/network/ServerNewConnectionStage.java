@@ -17,6 +17,7 @@ import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.ServiceObjectHolder;
 
 /**
  * General base class for server construction.
@@ -126,12 +127,23 @@ public class ServerNewConnectionStage extends PronghornStage{
                           
                       //    channel.setOption(StandardSocketOptions.SO_LINGER, 3);     
                                                     
-                          long channelId = ServerCoordinator.getSocketChannelHolder(coordinator, targetPipeIdx).add(channel); //TODO: confirm this returns -1 if nothing is found.
+                          ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator, targetPipeIdx);
+                          
+                          final long channelId = holder.lookupInsertPosition();
+                          
+                          //long channelId = ServerCoordinator.getSocketChannelHolder(coordinator, targetPipeIdx).add(channel); //TODO: confirm this returns -1 if nothing is found.
                           if (channelId<0) {
                               //error this should have been detected in the scanForOptimalPipe method
                         	  logger.info("no channel, dropping data");
                               return;
                           }
+                          
+                          //TODO: not sure these are right at all.
+                          String host="localhost";
+						  int port=443;
+						  
+						  holder.setValue(channelId, new ServerConnection(SSLEngineFactory.createSSLEngine(host, port), channel, channelId));
+                          
                           
                           //NOTE: for servers that do not require an upgrade we can set this to the needed pipe right now.
                           ServerCoordinator.setTargetUpgradePipeIdx(coordinator, targetPipeIdx, channelId, 0); //default for all
