@@ -39,16 +39,37 @@ static inline void updateOutputPipesCol(JNIEnv* env, jobjectArray outputPipes,
   // better implement?
   for (int c = colNum - 1; c >= 0; --c) {
     jintArray output_c = (jintArray)env->GetObjectArrayElement(outputPipes, c); 
-    int out_len = env->GetArrayLength(output_c);
-    jint* buf_c = (jint*)calloc(out_len, sizeof(jint));
-    env->GetIntArrayRegion(output_c, 0, out_len, buf_c);   
-    buf_c[(cPosOut_nat[c]) & outMask] = newCol[c];
-    env->SetIntArrayRegion(output_c, 0, out_len, buf_c); 
-    env->SetObjectArrayElement(outputPipes, c, output_c);    
-    env->DeleteLocalRef(output_c); 
-    free(buf_c);
+    jint* buf_c = (jint*)env->GetPrimitiveArrayCritical(output_c, 0);
+    buf_c[(cPosOut_nat[c]) & outMask] = newCol[c];   
+    // int out_len = env->GetArrayLength(output_c);
+    // jint* buf_c = (jint*)calloc(out_len, sizeof(jint));
+    // env->GetIntArrayRegion(output_c, 0, out_len, buf_c);   
+    // buf_c[(cPosOut_nat[c]) & outMask] = newCol[c];
+    // env->SetIntArrayRegion(output_c, 0, out_len, buf_c); 
+    // env->SetObjectArrayElement(outputPipes, c, output_c);    
+    // env->DeleteLocalRef(output_c); 
+    // free(buf_c);
   }
 }
+
+// static inline void updateOutputPipesCol(JNIEnv* env, jobjectArray outputPipes, 
+// 					int* newCol, const int colNum,
+// 					const jint outMask,
+// 					jint* cPosOut_nat) {
+//   // have to copy each row and update element according to column
+//   // better implement?
+//   for (int c = colNum - 1; c >= 0; --c) {
+//     jintArray output_c = (jintArray)env->GetObjectArrayElement(outputPipes, c); 
+//     int out_len = env->GetArrayLength(output_c);
+//     jint* buf_c = (jint*)calloc(out_len, sizeof(jint));
+//     env->GetIntArrayRegion(output_c, 0, out_len, buf_c);   
+//     buf_c[(cPosOut_nat[c]) & outMask] = newCol[c];
+//     env->SetIntArrayRegion(output_c, 0, out_len, buf_c); 
+//     env->SetObjectArrayElement(outputPipes, c, output_c);    
+//     env->DeleteLocalRef(output_c); 
+//     free(buf_c);
+//   }
+// }
 
 typedef void (*MULAVX)(const int, const int, jint**, jint*, const jint,
 		       const jlong, const jint, jint*, int*);
@@ -223,38 +244,82 @@ JNIEXPORT void JNICALL Java_com_ociweb_pronghorn_stage_math_ColumnComputeStage_g
 												jint typeMask, jintArray rowSlab, jlong rowPosition, jint rowMask, jint resRows,
 												jobjectArray colSlabs, jintArray colPositions, jint colMask,
 												jobjectArray outputPipes, jintArray cPosOut, jint outMask ) {
-  // fetch native rowSlab
-  jint* rowSlab_nat = env->GetIntArrayElements(rowSlab, 0);    
-  jint* colPositions_nat = env->GetIntArrayElements(colPositions, 0);    
-  jint* cPosOut_nat = env->GetIntArrayElements(cPosOut, 0);    
-  
+  timespec start, end;
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);  
+  jint* rowSlab_nat = (jint*)env->GetPrimitiveArrayCritical(rowSlab, 0);    
+  jint* colPositions_nat = (jint*)env->GetPrimitiveArrayCritical(colPositions, 0);    
+  jint* cPosOut_nat = (jint*)env->GetPrimitiveArrayCritical(cPosOut, 0);    
+
   // fetch native colSlabs
   jint colSlabsRow = env->GetArrayLength(colSlabs);
   jint** colSlabs_nat = (jint**)calloc(colSlabsRow, sizeof(jint*));
+  long usec = 0;
   for (int k = 0; k < colSlabsRow; k++) {                               
+    jboolean iscopy = false;
     jintArray col_k = (jintArray)env->GetObjectArrayElement(colSlabs, k); 
-    int col_len = env->GetArrayLength(col_k);
-    colSlabs_nat[k] = (jint*)calloc(col_len, sizeof(jint));
-    env->GetIntArrayRegion(col_k, 0, col_len, colSlabs_nat[k]);   
+    jint* col_array = (jint*)env->GetPrimitiveArrayCritical(col_k, &iscopy);
+    colSlabs_nat[k] = col_array;
     env->DeleteLocalRef(col_k);                         
   }
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
+  printf("prepare data: %lds:%ldus\n", diff(start, end).tv_sec, diff(start, end).tv_nsec / 1000);
 
   int* tmp_output = (int*)calloc(colSlabsRow, sizeof(int));
-  timespec start, end;
-  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
   mulavxfuncs[typeMask](resRows, colSlabsRow, colSlabs_nat, rowSlab_nat, rowMask,
 			rowPosition, colMask, colPositions_nat, tmp_output);
-  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
-  // printf("AVX computation: %lds:%ldus\n", diff(start, end).tv_sec, diff(start, end).tv_nsec / 1000);
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
+  printf("AVX ops: %lds:%ldus\n", diff(start, end).tv_sec, diff(start, end).tv_nsec / 1000);
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
   updateOutputPipesCol(env, outputPipes, tmp_output, colSlabsRow, outMask, cPosOut_nat);
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
+  printf("copy results: %lds:%ldus\n\n", diff(start, end).tv_sec, diff(start, end).tv_nsec / 1000);
 
-  // free memory
-  env->ReleaseIntArrayElements(rowSlab, rowSlab_nat, 0);
-  env->ReleaseIntArrayElements(colPositions, colPositions_nat, 0);
-  env->ReleaseIntArrayElements(cPosOut, cPosOut_nat, 0);
+  // free memory  
   free(tmp_output);
-  for (int k = 0; k < colSlabsRow; k++) {                               
-    free(colSlabs_nat[k]);
-  }
   free(colSlabs_nat);
 }
+
+
+// JNIEXPORT void JNICALL Java_com_ociweb_pronghorn_stage_math_ColumnComputeStage_goComputeNative( JNIEnv *env, jobject obj,
+// 												jint typeMask, jintArray rowSlab, jlong rowPosition, jint rowMask, jint resRows,
+// 												jobjectArray colSlabs, jintArray colPositions, jint colMask,
+// 												jobjectArray outputPipes, jintArray cPosOut, jint outMask ) {
+//   timespec start, end;
+//   // fetch native rowSlab
+//   jint* rowSlab_nat = env->GetIntArrayElements(rowSlab, 0);    
+//   jint* colPositions_nat = env->GetIntArrayElements(colPositions, 0);    
+//   jint* cPosOut_nat = env->GetIntArrayElements(cPosOut, 0);    
+  
+//   // fetch native colSlabs
+//   jint colSlabsRow = env->GetArrayLength(colSlabs);
+//   jint** colSlabs_nat = (jint**)calloc(colSlabsRow, sizeof(jint*));
+//   clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
+//   for (int k = 0; k < colSlabsRow; k++) {                               
+//     jintArray col_k = (jintArray)env->GetObjectArrayElement(colSlabs, k); 
+//     int col_len = env->GetArrayLength(col_k);
+//     colSlabs_nat[k] = (jint*)calloc(col_len, sizeof(jint));
+//     env->GetIntArrayRegion(col_k, 0, col_len, colSlabs_nat[k]);   
+//     env->DeleteLocalRef(col_k);                         
+//   }
+//   clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
+//   printf("prepare data: %lds, %ldus\n", diff(start, end).tv_sec, diff(start, end).tv_nsec / 1000);
+
+//   int* tmp_output = (int*)calloc(colSlabsRow, sizeof(int));
+//   clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
+//   mulavxfuncs[typeMask](resRows, colSlabsRow, colSlabs_nat, rowSlab_nat, rowMask,
+// 			rowPosition, colMask, colPositions_nat, tmp_output);
+//   clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
+//   printf("AVX computation: %lds:%ldus\n", diff(start, end).tv_sec, diff(start, end).tv_nsec / 1000);
+//   updateOutputPipesCol(env, outputPipes, tmp_output, colSlabsRow, outMask, cPosOut_nat);
+
+//   // free memory
+//   env->ReleaseIntArrayElements(rowSlab, rowSlab_nat, 0);
+//   env->ReleaseIntArrayElements(colPositions, colPositions_nat, 0);
+//   env->ReleaseIntArrayElements(cPosOut, cPosOut_nat, 0);
+//   free(tmp_output);
+//   for (int k = 0; k < colSlabsRow; k++) {                               
+//     free(colSlabs_nat[k]);
+//   }
+//   free(colSlabs_nat);
+// }
