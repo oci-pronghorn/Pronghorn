@@ -14,7 +14,7 @@ import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.route.SplitterStage;
+import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 /**

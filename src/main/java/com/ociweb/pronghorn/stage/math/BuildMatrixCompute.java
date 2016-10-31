@@ -12,7 +12,7 @@ import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
-import com.ociweb.pronghorn.stage.route.SplitterStage;
+import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class BuildMatrixCompute {
@@ -37,7 +37,7 @@ public class BuildMatrixCompute {
 				while (--count>=0) {
 					
 					int dotPosition = 0;
-					int value = Pipe.takeValue(input);
+					int value = Pipe.takeInt(input);
 					while (0 ==	(value%10)) {
 						value = value/10;
 						dotPosition++;
@@ -51,8 +51,8 @@ public class BuildMatrixCompute {
 	
 				int sum = 0; 
 				while (--rows >= 0) {
-					int colValue = Pipe.takeValue(columnPipe); //take each value from this column
-					int matrixValue = Pipe.takeValue(rowPipe); //take each value from the same sized row
+					int colValue = Pipe.takeInt(columnPipe); //take each value from this column
+					int matrixValue = Pipe.takeInt(rowPipe); //take each value from the same sized row
 					sum = sum + (colValue*matrixValue);
 				}
 				//sum now holds the new value to be sent out
@@ -73,7 +73,7 @@ public class BuildMatrixCompute {
 		Floats(TypeMask.IntegerSigned) {
 			public void convertToDecimal(int count, Pipe<?> input, Pipe<?> output) {
 				while (--count>=0) {
-					double value = (double)Float.intBitsToFloat(Pipe.takeValue(input));
+					double value = (double)Float.intBitsToFloat(Pipe.takeInt(input));
 				
 					int dotPosition=0;
 					while (0f != value%1f) {
@@ -96,8 +96,8 @@ public class BuildMatrixCompute {
 			public void computeColumn(int rows, Pipe<?> columnPipe, Pipe<?> rowPipe, Pipe<?> outputPipe) {
 				float sum = 0; 
 				while (--rows >= 0) {
-					float colValue = Float.intBitsToFloat(Pipe.takeValue(columnPipe)); //take each value from this column
-					float matrixValue = Float.intBitsToFloat(Pipe.takeValue(rowPipe)); //take each value from the same sized row
+					float colValue = Float.intBitsToFloat(Pipe.takeInt(columnPipe)); //take each value from this column
+					float matrixValue = Float.intBitsToFloat(Pipe.takeInt(rowPipe)); //take each value from the same sized row
 					sum = sum + (colValue*matrixValue);
 				}
 				//sum now holds the new value to be sent out
@@ -213,10 +213,10 @@ public class BuildMatrixCompute {
 				
 				while (--rows >= 0) {
 					
-					int  xExp   = Pipe.takeValue(columnPipe);
+					int  xExp   = Pipe.takeInt(columnPipe);
 					long x      = Pipe.takeLong(columnPipe); //take each value from this column
 					
-					int yExp   = Pipe.takeValue(rowPipe);
+					int yExp   = Pipe.takeInt(rowPipe);
 					long y     = Pipe.takeLong(rowPipe); //take each value from the same sized row
 					
 					/////////////////////
@@ -381,18 +381,26 @@ public class BuildMatrixCompute {
 
 		ColumnSchema<M> columnsOutoutSchema = new ColumnSchema<M>(resultSchema);
 
-		PipeConfig<ColumnSchema<R>> rightColumnConfig = new PipeConfig<ColumnSchema<R>>(columnsInputSchema,1);
-		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsOutoutSchema,1);
+		PipeConfig<ColumnSchema<R>> rightColumnConfig = new PipeConfig<ColumnSchema<R>>(columnsInputSchema,4); //just big enough to support batching of one consumer and one producer
 		
+		//TODO: build second compute that will use rows rather than keep this column open.
+		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsOutoutSchema,4);
+	
 		int parts = Math.min(parallelism,i);
 		int partsSize = i/parts;
+		
+		//TODO: divide group and spread the remainder evenly so we have groups of 2 sizes and most.
+		//      * this is required before we can make the compute stage write to rows.
+		//      * the rowTocol and colToRow will be the next pinch point  (colToRows is removed by the above, rowToCall will only be used externally for data generation)
+		//      * rowToCol can be removed by producing data in cols in the first place.
+		
 						
 		int splitterPipesCount = parts;
 		Pipe<RowSchema<L>>[] splitterPipes = new Pipe[splitterPipesCount];
 		
 		int start = i;
 		while (--i>=0) {
-			intputAsColumns[i] = new Pipe<ColumnSchema<R>>(rightColumnConfig.grow2x());			
+			intputAsColumns[i] = new Pipe<ColumnSchema<R>>(rightColumnConfig);			
 			resultColumnPipes[i] =  new Pipe<ColumnSchema<M>>(resultColumnConfig);	
 		
 			//build each parallel compute stage that will deal with multiple columns, 
@@ -409,7 +417,7 @@ public class BuildMatrixCompute {
 
 		//split the left matrix into N column pipes.
 		new RowsToColumnRouteStage(gm, rightSchema, rightInput, intputAsColumns);
-		new SplitterStage<RowSchema<L>>(gm, leftInput, splitterPipes); //duplicate the matrix once for each column.		
+		new ReplicatorStage<RowSchema<L>>(gm, leftInput, splitterPipes); //duplicate the matrix once for each column.		
 		return resultColumnPipes;
 	}
 
@@ -429,6 +437,8 @@ public class BuildMatrixCompute {
 			c++;
 		}
 		assert(c==len);
+
+		
 		new ColumnComputeStage( gm, 
 				                inputs, 
 				                splitterPipes[--splitterPipesCount] = new Pipe<RowSchema<L>>(leftInput.config().grow2x()),

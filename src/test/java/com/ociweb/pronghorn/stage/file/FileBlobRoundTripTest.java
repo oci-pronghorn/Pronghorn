@@ -20,7 +20,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
-import com.ociweb.pronghorn.stage.route.SplitterStage;
+import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.stream.ToOutputStreamStage;
@@ -91,7 +91,7 @@ public class FileBlobRoundTripTest {
             Pipe<RawDataSchema> outputPipe = new Pipe<RawDataSchema>(config.grow2x());
             
             new FileBlobReadStage(gm, f.getAbsolutePath(),inputPipe);
-            new SplitterStage(gm, inputPipe, midCheckPipe, outputPipe);
+            new ReplicatorStage(gm, inputPipe, midCheckPipe, outputPipe);
             
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream(testSize);
             new ToOutputStreamStage(gm, midCheckPipe, outputStream, false);

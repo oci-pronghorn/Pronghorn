@@ -58,19 +58,20 @@ public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
             
             if (byteHead >= byteTail) {
                 totalBlobCount += byteHead-byteTail;
-                
-                //System.out.println(byteHead-byteTail);
             } else {
-                totalBlobCount += (long) (Pipe.blobMask(input)&byteHead);
-             //   System.out.println((Pipe.blobMask(input)&byteHead)); //wrong!!!
-                
+                totalBlobCount += (long) (Pipe.blobMask(input)&byteHead);                
                 totalBlobCount += (long)(input.sizeOfBlobRing-(Pipe.blobMask(input)&byteTail));
-              //  System.out.println((input.sizeOfBlobRing-(Pipe.blobMask(input)&byteTail)) );  //wrong.
             } 
             
             Pipe.publishBlobWorkingTailPosition(input, byteTail = byteHead);
             Pipe.publishWorkingTailPosition(input, tail = head);            
-        }        
+            
+        } else {
+        	if (Pipe.isEndOfPipe(input, tail) && Pipe.contentRemaining(input)==0) {
+        		requestShutdown();
+        	}
+        }
+        
     }
     
     @Override

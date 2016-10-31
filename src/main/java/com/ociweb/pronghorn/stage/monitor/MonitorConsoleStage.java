@@ -1,6 +1,11 @@
 package com.ociweb.pronghorn.stage.monitor;
 
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.*;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_BUFFERSIZE_5;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_HEAD_2;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_MS_1;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_TAIL_3;
+import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -100,6 +105,10 @@ public class MonitorConsoleStage extends PronghornStage {
 					published = ((RingBufferMonitorStage)producer).getObservedRingPublishedCount();
 				} else {
 					ringName = "Unknown";
+				}
+				
+				while (ringName.length()<60) {
+					ringName=ringName+" ";
 				}
 				
 				System.out.println("    "+i+" "+ringName+" Queue Fill Median:"+value+"% Average:"+(Histogram.accumulatedTotal(hists[i])/sampleCount)+"%    samples:"+sampleCount+"  totalPublished:"+published);

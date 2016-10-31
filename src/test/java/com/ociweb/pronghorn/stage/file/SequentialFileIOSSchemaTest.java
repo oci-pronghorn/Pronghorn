@@ -4,11 +4,11 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
-import com.ociweb.pronghorn.stage.network.schema.HTTPRequestSchema;
-import com.ociweb.pronghorn.stage.network.schema.ServerConnectionSchema;
-import com.ociweb.pronghorn.stage.network.schema.ServerRequestSchema;
-import com.ociweb.pronghorn.stage.network.schema.ServerResponseSchema;
 
 public class SequentialFileIOSSchemaTest {
 
