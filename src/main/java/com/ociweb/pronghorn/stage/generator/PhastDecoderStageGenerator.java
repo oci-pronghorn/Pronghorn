@@ -286,7 +286,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 int oper = TokenBuilder.extractOper(token);
                 switch (oper) {
                     case OperatorMask.Field_Copy:
-                        decodeDeltaLongGenerator(target, TokenBuilder.extractId(token), TypeMask.isOptional(pmapType));
+                        decodeCopyLongGenerator(target, TokenBuilder.extractId(token), TypeMask.isOptional(pmapType));
                         break;
                     case OperatorMask.Field_Constant:
                         //this intentionally left blank, does nothing if constant
@@ -375,7 +375,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     //default long code generator
     protected void decocdeDefaultLongGenerator(Appendable target, int index, Boolean isOptional) {
         try {
-            appendStaticCall(target, decoder, "decodeDefaultLong").append(readerName).append(", ").append(mapName).append(", ").append(defaultIntDictionaryName).append(", ").append(bitMaskName).append(", ").append(Integer.toString(index)).append(", " + isOptional.toString() + ");\n");
+            appendStaticCall(target, decoder, "decodeDefaultLong").append(readerName).append(", ").append(mapName).append(", ").append(defaultLongDictionaryName).append(", ").append(bitMaskName).append(", ").append(Integer.toString(index)).append(", " + isOptional.toString() + ");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -402,7 +402,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     //default int code generator
     protected void decodeDefaultIntGenerator(Appendable target, int index, Boolean isOptional) {
         try {
-            appendStaticCall(target, decoder, "decodeDefaultInt").append(readerName).append(", ").append(mapName).append(", ").append(defaultIntDictionaryName).append(", ").append(bitMaskName).append(", ").append(Integer.toString(index)).append(", ").append(", " + isOptional.toString() + ");\n");
+            appendStaticCall(target, decoder, "decodeDefaultInt").append(readerName).append(", ").append(mapName).append(", ").append(defaultIntDictionaryName).append(", ").append(bitMaskName).append(", ").append(Integer.toString(index)).append(", ").append(isOptional.toString() + ");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -439,6 +439,15 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     protected void decodePresentIntGenerator(Appendable target, Boolean isOptional) {
         try {
             appendStaticCall(target, decoder, "decodePresentInt").append(", ").append(readerName).append(", ").append(mapName).append(", ").append(bitMaskName).append(", " + isOptional.toString() + ");\n");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    //copy long generator
+    protected void decodeCopyLongGenerator(Appendable target, int index, Boolean isOptional) {
+        try {
+            appendStaticCall(target, decoder, "decodeCopyLong").append(longDictionaryName).append(", ").append(readerName).append(", ").append(mapName).append(", ").append(Integer.toString(index)).append(", ").append(bitMaskName).append(", " + isOptional.toString() + ");\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -10,14 +10,14 @@ import java.util.Random;
 /**
  * Created by jake on 10/17/16.
  */
-public class RandomWriterStage extends PronghornStage{
+public class GroceryFuzzGenerator extends PronghornStage{
 
 
     Pipe<MessageSchemaDynamic>  output;
     private int i;
     private Random rnd;
 
-    public RandomWriterStage(GraphManager gm, Pipe<MessageSchemaDynamic>  output){
+    public GroceryFuzzGenerator(GraphManager gm, Pipe<MessageSchemaDynamic>  output){
         super(gm,NONE,output);
         this.output = output;
         i=0;

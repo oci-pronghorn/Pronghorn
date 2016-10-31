@@ -34,6 +34,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     private final Appendable bodyTarget;
     private final String defLongDictionaryName = "defLongDictionary";
     private final String defIntDictionaryName = "defIntDictionary";
+    private final String defShortDictionaryName = "defShortDictionary";
     //short not supported yet
     //private final String defShortDictionaryName = "defShortDictionary";
     private final String longDictionaryName = "previousLongDictionary";
@@ -247,19 +248,19 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     numShifts++;
                     switch (oper) {
                         case OperatorMask.Field_Copy:
-                            copyIntGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(token));
+                            copyIntGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(pmapType));
                             break;
                         case OperatorMask.Field_Constant:
                             //this intentionally left blank, does nothing if constant
                             break;
                         case OperatorMask.Field_Default:
-                            encodeDefaultIntGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(token));
+                            encodeDefaultIntGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(pmapType));
                             break;
                         case OperatorMask.Field_Delta:
-                            encodeDeltaIntGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(token));
+                            encodeDeltaIntGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(pmapType));
                             break;
                         case OperatorMask.Field_Increment:
-                            incrementIntGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(token));
+                            incrementIntGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(pmapType));
                             break;
                         case OperatorMask.Field_None:
                             bodyTarget.append("//no oper, not supported yet.\n");
@@ -274,25 +275,25 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                     numShifts = 1;
                     switch (oper) {
                         case OperatorMask.Field_Copy:
-                            copyLongGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(token));
+                            copyLongGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(pmapType));
                             break;
                         case OperatorMask.Field_Constant:
                             //this intentionally left blank, does nothing if constant
                             break;
                         case OperatorMask.Field_Default:
-                            encodeDefaultLongGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(token));
+                            encodeDefaultLongGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(pmapType));
                             break;
                         case OperatorMask.Field_Delta:
-                            encodeDeltaLongGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(token));
+                            encodeDeltaLongGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(pmapType));
                             break;
                         case OperatorMask.Field_Increment:
-                            incrementLongGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(token));
+                            incrementLongGenerator(schema, bodyTarget, TokenBuilder.extractId(token), varName, TypeMask.isOptional(pmapType));
                             break;
                     }
                 } //if string
                 else if (TypeMask.isText(pmapType) == true) {
                     numShifts = 1;
-                    encodeStringGenerator(schema, bodyTarget, varName, TypeMask.isOptional(token));
+                    encodeStringGenerator(schema, bodyTarget, varName, TypeMask.isOptional(pmapType));
                 } else {
                     bodyTarget.append("Unsupported data type " + pmapType + "\n");
                 }
@@ -524,7 +525,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "encodeDefaultInt")
-                    .append(intDictionaryName).append(", ")
+                    .append(defIntDictionaryName).append(", ")
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")
@@ -593,12 +594,12 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "encodeDefaultLong")
-                    .append(longDictionaryName).append(", ")
+                    .append(defLongDictionaryName).append(", ")
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")
                     .append(Integer.toString(idx)).append(", ")
-                    .append(value).append(", ").append(", ")
+                    .append(value).append(", ")
                     .append(isOptional.toString())
                     .append(");\n");
         } catch (IOException e) {
@@ -662,7 +663,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         try {
             target.append(tab);
             appendStaticCall(target, encoder, "encodeDefaultShort")
-                    .append(shortDictionaryName).append(", ")
+                    .append(defShortDictionaryName).append(", ")
                     .append(writerName).append(", ")
                     .append(pmapName).append(", ")
                     .append(bitMaskName).append(", ")

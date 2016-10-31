@@ -1,16 +1,17 @@
-package com.ociweb.pronghorn.stage.test;
+package com.ociweb.pronghorn.stage.generator;
 
 import com.ociweb.pronghorn.code.LoaderUtil;
 import com.ociweb.pronghorn.pipe.*;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
+import com.ociweb.pronghorn.stage.IntegrityFuzzGenerator;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.GroceryFuzzGenerator;
-import com.ociweb.pronghorn.stage.generator.PhastDecoderStageGenerator;
-import com.ociweb.pronghorn.stage.generator.PhastEncoderStageGenerator;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
+import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import org.junit.Test;
 import org.xml.sax.SAXException;
+
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -21,72 +22,49 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 /**
- * Created by jake on 9/19/16.
+ * Created by jake on 10/29/16.
  */
-public class LowLevelGroceryTest {
-
+public class EncodeDecodeRuntimeTest {
     @Test
     public void compileTest() throws IOException, SAXException, ParserConfigurationException {
-        StringBuilder eTarget = new StringBuilder();
+        FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/template/integrityTest.xml");
+        MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);
 
-        FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
-        MessageSchema schema = new MessageSchemaDynamic(from);
+        StringBuilder target = new StringBuilder();
+        PhastDecoderStageGenerator ew = new PhastDecoderStageGenerator(messageSchema, target, false);
 
-        //decoder generator compile test
-        PhastDecoderStageGenerator ew = new PhastDecoderStageGenerator(schema, eTarget, false);
         try {
             ew.processSchema();
         } catch (IOException e) {
+            System.out.println(target);
             e.printStackTrace();
             fail();
         }
-        validateCleanCompile(ew.getPackageName(), ew.getClassName(), eTarget);
 
 
-        //encoder generator compile test
-        StringBuilder dTarget = new StringBuilder();
-        PhastEncoderStageGenerator dw = new PhastEncoderStageGenerator(schema, dTarget);
+        validateCleanCompile(ew.getPackageName(), ew.getClassName(), target, PhastDecoderStageGenerator.class);
+
+        StringBuilder target2 = new StringBuilder();
+        PhastEncoderStageGenerator encoder = new PhastEncoderStageGenerator(messageSchema, target2);
+
         try {
-            dw.processSchema();
+            encoder.processSchema();
         } catch (IOException e) {
-            e.printStackTrace();
-            fail();
-        }
-        validateCleanCompile(dw.getPackageName(), dw.getClassName(), dTarget);
-
-    }
-
-    private static void validateCleanCompile(String packageName, String className, StringBuilder target) {
-        try {
-
-            Class generateClass = LoaderUtil.generateClass(packageName, className, target, PhastEncoderStageGenerator.class);
-
-            if (generateClass.isAssignableFrom(PronghornStage.class)) {
-                Constructor constructor = generateClass.getConstructor(GraphManager.class, Pipe.class);
-                assertNotNull(constructor);
-            }
-
-        } catch (ClassNotFoundException e) {
-            System.out.println(target);
-            e.printStackTrace();
-            fail();
-        } catch (NoSuchMethodException e) {
-            System.out.println(target);
-            e.printStackTrace();
-            fail();
-        } catch (SecurityException e) {
             System.out.println(target);
             e.printStackTrace();
             fail();
         }
 
+
+        validateCleanCompile(encoder.getPackageName(), encoder.getClassName(), target2, PhastEncoderStageGenerator.class);
+
     }
 
-    //@Test
-    public void runTimeTest() throws IOException, ParserConfigurationException, SAXException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException, InterruptedException {
+    @Test
+    public void runTimeTest() throws IOException, SAXException, ParserConfigurationException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException {
         GraphManager gm = new GraphManager();
 
-        FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
+        FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/template/integrityTest.xml");
         MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);
         Pipe<MessageSchemaDynamic> inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));
         inPipe.initBuffers();
@@ -94,7 +72,6 @@ public class LowLevelGroceryTest {
         sharedPipe.initBuffers();
         Pipe<MessageSchemaDynamic> outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));
         outPipe.initBuffers();
-
         //get encoder ready
         StringBuilder eTarget = new StringBuilder();
         PhastEncoderStageGenerator ew = new PhastEncoderStageGenerator(messageSchema, eTarget);
@@ -118,12 +95,11 @@ public class LowLevelGroceryTest {
         }
         Constructor dconstructor =  LoaderUtil.generateThreeArgConstructor(dw.getPackageName(), dw.getClassName(), dTarget, PhastDecoderStageGenerator.class);
 
-        GroceryFuzzGenerator random1 = new GroceryFuzzGenerator(gm, inPipe);
+        IntegrityFuzzGenerator random1 = new IntegrityFuzzGenerator(gm, inPipe);
         econstructor.newInstance(gm, inPipe, sharedPipe);
         dconstructor.newInstance(gm, sharedPipe, outPipe);
         ConsoleJSONDumpStage json = new ConsoleJSONDumpStage(gm, outPipe);
 
-        //encoding data
         ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
         scheduler.startup();
 
@@ -131,6 +107,32 @@ public class LowLevelGroceryTest {
         GraphManager.blockUntilStageBeginsShutdown(gm,json);
         scheduler.shutdown();
         scheduler.awaitTermination(10, TimeUnit.SECONDS);
+
+    }
+
+    private static void validateCleanCompile(String packageName, String className, StringBuilder target, Class clazz) {
+        try {
+
+            Class generateClass = LoaderUtil.generateClass(packageName, className, target, clazz);
+
+            if (generateClass.isAssignableFrom(PronghornStage.class)) {
+                Constructor constructor =  generateClass.getConstructor(GraphManager.class, Pipe.class, Pipe.class);
+                assertNotNull(constructor);
+            }
+
+        } catch (ClassNotFoundException e) {
+            System.out.println(target);
+            e.printStackTrace();
+            fail();
+        } catch (NoSuchMethodException e) {
+            System.out.println(target);
+            e.printStackTrace();
+            fail();
+        } catch (SecurityException e) {
+            System.out.println(target);
+            e.printStackTrace();
+            fail();
+        }
 
     }
 }

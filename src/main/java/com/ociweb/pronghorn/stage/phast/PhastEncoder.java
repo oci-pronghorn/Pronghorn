@@ -108,7 +108,7 @@ public class PhastEncoder {
 					DataOutputBlobWriter.writePackedInt(writer, value - intDictionary[idx]);
 					intDictionary[idx] = value;
 				} else {
-					DataOutputBlobWriter.writePackedInt(writer, intDictionary[idx]);
+					//do nothing
 				}
 			}
 		} else {
@@ -116,7 +116,7 @@ public class PhastEncoder {
 				DataOutputBlobWriter.writePackedInt(writer, value - intDictionary[idx]);
 				intDictionary[idx] = value;
 			} else {
-				DataOutputBlobWriter.writePackedInt(writer, intDictionary[idx]);
+				//do nothing
 			}
 		}
 	}
@@ -129,7 +129,7 @@ public class PhastEncoder {
                     DataOutputBlobWriter.writePackedLong(writer, value - longDictionary[idx]);
                     longDictionary[idx] = value;
                 } else {
-                    DataOutputBlobWriter.writePackedULong(writer, longDictionary[idx]);
+                    //do nothing
                 }
             }
         } else {
@@ -137,7 +137,7 @@ public class PhastEncoder {
                 DataOutputBlobWriter.writePackedLong(writer, value - longDictionary[idx]);
                 longDictionary[idx] = value;
             } else {
-                DataOutputBlobWriter.writePackedULong(writer, longDictionary[idx]);
+                //do nothing
             }
         }
     }
@@ -148,7 +148,6 @@ public class PhastEncoder {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
                 bitMask = bitMask << 1;
                 //encode -63 so it knows it is variable length
-                //make constant -63
                 DataOutputBlobWriter.writePackedInt(writer, INCOMING_VARIABLE);
 
                 //write string using utf
@@ -196,7 +195,7 @@ public class PhastEncoder {
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                DataOutputBlobWriter.writePackedInt(writer, intDictionary[idx]);
+                //do nothing
             } else {
                 DataOutputBlobWriter.writePackedInt(writer, value);
             }
@@ -209,14 +208,14 @@ public class PhastEncoder {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)){
                 bitmask = bitmask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)) {
-                    DataOutputBlobWriter.writePackedInt(writer, defaultIntDictionary[idx]);
+                    //do nothing
                 } else {
                     DataOutputBlobWriter.writePackedInt(writer, value);
                 }
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)) {
-                DataOutputBlobWriter.writePackedInt(writer, defaultIntDictionary[idx]);
+                //do nothing
             } else {
                 DataOutputBlobWriter.writePackedInt(writer, value);
             }
@@ -268,7 +267,7 @@ public class PhastEncoder {
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                DataOutputBlobWriter.writePackedLong(writer, longDictionary[idx]);
+                //do nothing
             } else {
                 DataOutputBlobWriter.writePackedLong(writer, value);
             }
@@ -281,14 +280,14 @@ public class PhastEncoder {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)){
                 bitmask = bitmask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)) {
-                    DataOutputBlobWriter.writePackedLong(writer, defaultLongDictionary[idx]);
+                    //do nothing
                 } else {
                     DataOutputBlobWriter.writePackedLong(writer, value);
                 }
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)) {
-                DataOutputBlobWriter.writePackedLong(writer, defaultLongDictionary[idx]);
+                //do nothing
             } else {
                 DataOutputBlobWriter.writePackedLong(writer, value);
             }
@@ -340,7 +339,7 @@ public class PhastEncoder {
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitMask)) {
-                DataOutputBlobWriter.writePackedShort(writer, shortDictionary[idx]);
+                //do nothing
             } else {
                 DataOutputBlobWriter.writePackedShort(writer, value);
             }
@@ -353,14 +352,14 @@ public class PhastEncoder {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)){
                 bitmask = bitmask << 1;
                 if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)) {
-                    DataOutputBlobWriter.writePackedShort(writer, defaultShortDictionary[idx]);
+                    //do nothing
                 } else {
                     DataOutputBlobWriter.writePackedShort(writer, value);
                 }
             }
         } else {
             if (MOST_FREQUENT_CASE == (pmapHeader & bitmask)) {
-                DataOutputBlobWriter.writePackedShort(writer, defaultShortDictionary[idx]);
+                //do nothing
             } else {
                 DataOutputBlobWriter.writePackedShort(writer, value);
             }
@@ -376,7 +375,7 @@ public class PhastEncoder {
                     DataOutputBlobWriter.writePackedShort(writer, (short) (value - shortDictionary[idx]));
                     shortDictionary[idx] = value;
                 } else{
-                    DataOutputBlobWriter.writePackedShort(writer, value);
+                    //do nothing
                 }
             }
         } else {
@@ -384,7 +383,7 @@ public class PhastEncoder {
                 DataOutputBlobWriter.writePackedShort(writer, (short) (value - shortDictionary[idx]));
                 shortDictionary[idx] = value;
             }else{
-                DataOutputBlobWriter.writePackedShort(writer, value);
+                //do nothing
             }
         }
     }
