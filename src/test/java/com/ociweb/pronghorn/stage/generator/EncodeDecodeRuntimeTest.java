@@ -60,7 +60,7 @@ public class EncodeDecodeRuntimeTest {
 
     }
 
-    @Test
+    //@Test
     public void runTimeTest() throws IOException, SAXException, ParserConfigurationException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException {
         GraphManager gm = new GraphManager();
 
