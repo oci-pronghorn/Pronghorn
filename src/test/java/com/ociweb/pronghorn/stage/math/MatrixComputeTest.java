@@ -472,7 +472,6 @@ public class MatrixComputeTest {
 		
 	}
 	
-        @Ignore
 	@Test
 	public void testComputeExampleNativeInteger() {
 		MatrixTypes type = MatrixTypes.Integers;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
@@ -480,10 +479,10 @@ public class MatrixComputeTest {
 		//TypeMask.Decimal;
 		
 		
-		int leftRows = 32;
-		int leftColumns = 32;
+		int leftRows = 256;
+		int leftColumns = 256;
 
-		int rightColumns = 32;				
+		int rightColumns = 256;				
 		int rightRows = leftColumns;		
 		
 		Random rand = new Random();
@@ -616,13 +615,13 @@ public class MatrixComputeTest {
 		
 	}
 
+        @Ignore
 	@Test
 	public void testComputeExampleNativeFloat() {
 		MatrixTypes type = MatrixTypes.Floats;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
 		
 		//TypeMask.Decimal;
-		
-		
+				
 		int leftRows = 128;
 		int leftColumns = 128;
 
@@ -678,7 +677,7 @@ public class MatrixComputeTest {
 		Pipe<DecimalSchema<MatrixSchema>> result2 = new Pipe<DecimalSchema<MatrixSchema>>(new PipeConfig<DecimalSchema<MatrixSchema>>(result2Schema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
 		
 		
-		int targetThreadCount = 3;
+		int targetThreadCount = 12;
 		Pipe<ColumnSchema<MatrixSchema>>[] colResults = BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, targetThreadCount-2);
 		
 		ColumnsToRowsStage<MatrixSchema> ctr = new ColumnsToRowsStage<MatrixSchema>(gm, resultSchema, colResults, result);
@@ -757,17 +756,10 @@ public class MatrixComputeTest {
 		
 	}
 
-        @Ignore("Only for performance test")
+    @Ignore("Only for performance test")
 	@Test
 	public void testComputePerformance() {
 	    long startTime, duration, durationMs;
-
-	    startTime = System.nanoTime();
-	    testComputeExample();
-	    duration = System.nanoTime() - startTime;
-	    durationMs = TimeUnit.NANOSECONDS.toMillis(duration);
-	    System.out.println("Pure Java run time: " + durationMs + "ms");
-
 	    startTime = System.nanoTime();
 	    testComputeExampleNativeInteger();
 	    duration = System.nanoTime() - startTime;

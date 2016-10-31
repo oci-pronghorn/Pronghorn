@@ -254,15 +254,15 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			}
 		}		
 		
-		// perform test
-		startTime = System.nanoTime();
+		// performance test
+		// startTime = System.nanoTime();
 		goCompute(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
 			  inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
-		// preform test
-		durationNs = System.nanoTime() - startTime;
-		durationUs = TimeUnit.NANOSECONDS.toMicros(durationNs);
-		durationMs = TimeUnit.NANOSECONDS.toMillis(durationNs);
-		System.out.println("JNI compuation: " + durationUs + "us");
+		// preformance test
+		// durationNs = System.nanoTime() - startTime;
+		// durationUs = TimeUnit.NANOSECONDS.toMicros(durationNs);
+		// durationMs = TimeUnit.NANOSECONDS.toMillis(durationNs);
+		// System.out.println("JNI compuation: " + durationUs + "us");
 	}
 	
 
@@ -271,11 +271,11 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			       int[][] colSlabs, int[] colPositions, int colMask, 
 			       int[][] outputPipes, int[] cPosOut, int outMask) {
 		
-	        // typeMask == 0 for Integers.
-	        // typeMask == 1 for Floats.
-	        // typeMask == 2 for Longs.
-	        // typeMask == 3 for Doubles.
-	        // typeMask == 4 for Decimals.
+	    //typeMask == 0 for Integers.
+	    //typeMask == 1 for Floats.
+	    //typeMask == 2 for Longs.
+	    //typeMask == 3 for Doubles.
+	    //typeMask == 4 for Decimals.
 		
 	        switch(typeMask) {
 		   case 0: case 1:
@@ -283,8 +283,6 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 				       colSlabs, colPositions, colMask, outputPipes, cPosOut, outMask);
 		       break;
 		   case 2: case 3: case 4:		
-		       //10/5 - profiler shows this block is over 90% of the compute time.
-		       // no native implementation for these types
 		       int p = length;
 		       while (--p>=0) {			   
 			   int idx = rowMask&(int)(rowPosition+p);
@@ -300,7 +298,6 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		       break;
 		     default: System.out.println("Invalid type.");	
 		}
-		
 		
 	}
 
