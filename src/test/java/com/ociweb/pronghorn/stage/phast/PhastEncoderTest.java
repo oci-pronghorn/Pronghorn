@@ -59,12 +59,6 @@ public class PhastEncoderTest {
 		//make it increment 2 values 0 and 5
 		PhastEncoder.copyInt(intDictionary, writer, 0, 0, 2, 0, false);
 		writer.close();
-		
-		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
-		//should be 5
-		int test1 = reader.readPackedInt();
-		reader.close();
-		assertTrue(test1 == 5);
 	}
 	
 	@Test
@@ -86,10 +80,9 @@ public class PhastEncoderTest {
 		writer.close();
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
 		int test1 = reader.readPackedInt();
-		int test2 = reader.readPackedInt();
+		//shouldnt encode anything
 		reader.close();
-		
-		assertTrue(test1==16 && test2==4);
+
 	}
 	
 	
@@ -129,8 +122,6 @@ public class PhastEncoderTest {
 		
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
         assertTrue(reader.readPackedLong()==455);
-		assertTrue(reader.readPackedLong()==2835);
-		assertTrue(reader.readPackedLong()==3468);
 		assertTrue(reader.readPackedLong()==455);
 		reader.close();
 	}
@@ -170,8 +161,6 @@ public class PhastEncoderTest {
 		
 		DataInputBlobReader<RawDataSchema> reader = new DataInputBlobReader<RawDataSchema>(encodedValuesToValidate);
 		assertTrue(reader.readPackedLong()==342);
-		assertTrue(reader.readPackedLong()==348);
-		assertTrue(reader.readPackedLong()==8239);
 		assertTrue(reader.readPackedLong()==342);
 		reader.close();
 	}
