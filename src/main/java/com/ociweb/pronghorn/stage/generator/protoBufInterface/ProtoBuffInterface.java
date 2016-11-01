@@ -152,18 +152,78 @@ public class ProtoBuffInterface {
     //builds the builder
     //TODO :build() stub is empty. 
     // create 3 pipes used for buffers
-    private static void generateBuildConstr(Appendable target) {
-        try {
+    /* while (Pipe.hasRoomForWrite(output)) {
+            if (++i<10){
+                int random, storeID, amount, recordID;
+                long date;
+                String productName, units;
+
+                random = rnd.nextInt(50000);
+                storeID = rnd.nextInt(50000);
+                date = (long) rnd.nextInt(50000);
+                productName = "first string test " + Integer.toString(rnd.nextInt(50000));
+                amount = rnd.nextInt(50000);
+                recordID = i;
+                units = "second string test " + Integer.toString(rnd.nextInt(50000));
+                //put message
+                Pipe.addMsgIdx(output, 0);
+                //place them on the pipe
+                Pipe.addIntValue(storeID, output);
+                Pipe.addLongValue(date, output);
+                Pipe.addASCII(productName, output);
+                Pipe.addIntValue(amount, output);
+                Pipe.addIntValue(recordID, output);
+                Pipe.addASCII(units, output);
+                Pipe.confirmLowLevelWrite(output, Pipe.sizeOf(output, 0));
+                Pipe.publishWrites(output);
+
+                System.out.println("id : " + storeID + " Date " + date + " Product Name " + productName + " Amounnt " + amount + "Units " + units);
+            }
+            else {
+                Pipe.spinBlockForRoom(output, Pipe.EOF_SIZE);
+                Pipe.publishEOF(output);
+                requestShutdown();
+                return;
+            }*/
+    private static void generateBuildConstr(String varName, String varType, Appendable target) {
+        try {        
             //Build method generated
             target.append(tab + "public void" + " build(){"
+                    // Create Dynamic schema and pipes
                     + "\n"
-                    + tab + tab + "Pipe<MessageSchemaDynamic> inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
+                    + "MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);"
                     + "\n"
-                    + tab + tab + "Pipe<RawDataSchema> sharedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));"
+                    + tab + "Pipe<MessageSchemaDynamic> inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
                     + "\n"
-                    + tab + tab + "Pipe<MessageSchemaDynamic> outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
+                    + tab + "inPipe.initBuffers();"
                     + "\n"
-                    + tab +  "}\n");
+                    + tab + "Pipe<RawDataSchema> sharedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));"
+                    + "\n"
+                    + tab +  "sharedPipe.initBuffers();"
+                    + "\n"
+                    + tab + "Pipe<MessageSchemaDynamic> outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
+                    + "\n"
+                    + tab + " outPipe.initBuffers();"
+                    + "\n"
+                    // Read Data and Put into the InPipe
+                    + tab + "while (Pipe.hasRoomForWrite(inPipe)) {" 
+                    + tab + tab + "if(Pipe.hasContentToRead(inPipe) {"
+                    + tab + tab + tab + "Pipe.addMsgIdx(inPipe, 0);");
+             for(int i = 0; i < 0; i++) {
+                target.append(tab + tab + tab + "Pipe.add" + varType + "(" + varName + ", inPipe); \n");
+            }
+            target.append(tab + tab + tab + "Pipe.confirmLowLevelWrite(inPipe, Pipe.sizeOf(inPipe, 0));"
+                    + "\n" 
+                    + tab + tab + tab + "Pipe.publishWrites(inPipe);"
+                    + tab + tab + "else {"
+                    + "\n"
+                    + tab + tab + tab + "Pipe.spinBlockForRoom(inPipe, Pipe.EOF_SIZE);"
+                    + "\n"
+                    + tab + tab + tab + "Pipe.publishEOF(inPipe);"
+                    + "\n"
+                    + tab + tab + tab + "requestShutdown();"
+                    + "\n"
+                    + tab + tab + tab + "return;" + "\n" + "}");
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
