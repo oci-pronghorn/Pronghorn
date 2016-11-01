@@ -11,7 +11,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class ProtoBuffInterface {
-
     private PhastDecoderStageGenerator decoderGenerator;
     private PhastEncoderStageGenerator encoderGenerator;
     String interfaceClassName;
@@ -148,9 +147,23 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+    public static void generateBuildTypes(String varName, String varType, Appendable target) {
+        try {
+            for(int i = 0; i < 0; i++) {
+                target.append(tab + tab + tab + "Pipe.add" + varType + "(" + varName + ", inPipe); \n");
+            }
+        } catch (IOException ex) {
+            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
     //public void build()
     //builds the builder
-    private static void generateBuildConstr(String varName, String varType, Appendable target) {
+    private void generateBuildConstr(Appendable target) {
+        FieldReferenceOffsetManager from = MessageSchema.from(schema);
+        int[] tokens = from.tokens;
+        String[] scriptNames = from.fieldNameScript;
+        int i = tokens.length;
+        
         try {        
             //Build method generated
             target.append(tab + "public void" + " build(){"
@@ -174,9 +187,21 @@ public class ProtoBuffInterface {
                     + tab + "while (Pipe.hasRoomForWrite(inPipe)) {" 
                     + tab + tab + "if(Pipe.hasContentToRead(inPipe) {"
                     + tab + tab + tab + "Pipe.addMsgIdx(inPipe, 0);");
-            // run through schema and add type and name
-             for(int i = 0; i < 0; i++) {
-                target.append(tab + tab + tab + "Pipe.add" + varType + "(" + varName + ", inPipe); \n");
+             // run through schema and add type and name
+            //Inserts Types into fields
+            while (--i >= 0) {
+                int type = TokenBuilder.extractType(tokens[i]);
+
+                if (TypeMask.isLong(type)) {
+                    //long
+                    generateBuildTypes(scriptNames[i], "LongValue", interfaceTarget);
+                } else if (TypeMask.isInt(type)) {
+                    //int
+                    generateGetter(scriptNames[i], "IntValue", interfaceTarget);
+                } else if (TypeMask.isText(type)) {
+                    //string
+                    generateGetter(scriptNames[i], "ASCII", interfaceTarget);
+                }
             }
             target.append(tab + tab + tab + "Pipe.confirmLowLevelWrite(inPipe, Pipe.sizeOf(inPipe, 0));"
                     + "\n" 
@@ -289,6 +314,9 @@ public class ProtoBuffInterface {
                 }
                 
             }
+            //generate build constructor
+            generateBuildConstr(interfaceTarget);
+            
             //closing bracking for class
             interfaceTarget.append("}");
         } catch (IOException ex) {
