@@ -169,25 +169,28 @@ public class ProtoBuffInterface {
             target.append(tab + "public void" + " build(){"
                     // Create Dynamic schema and pipes
                     + "\n"
-                    + "MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);"
+                    + tab + tab + "MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);"
                     + "\n"
-                    + tab + "Pipe<MessageSchemaDynamic> inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
+                    + tab + tab + "Pipe<MessageSchemaDynamic> inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
                     + "\n"
-                    + tab + "inPipe.initBuffers();"
+                    + tab + tab + "inPipe.initBuffers();"
                     + "\n"
-                    + tab + "Pipe<RawDataSchema> sharedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));"
+                    + tab + tab + "Pipe<RawDataSchema> sharedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));"
                     + "\n"
-                    + tab +  "sharedPipe.initBuffers();"
+                    + tab +  tab + "sharedPipe.initBuffers();"
                     + "\n"
-                    + tab + "Pipe<MessageSchemaDynamic> outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
+                    + tab + tab + "Pipe<MessageSchemaDynamic> outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
                     + "\n"
-                    + tab + " outPipe.initBuffers();"
+                    + tab + tab + "outPipe.initBuffers();"
+                    + "\n"
                     + "\n"
                     // Read Data and Put into the InPipe
-                    + tab + "while (Pipe.hasRoomForWrite(inPipe)) {" 
-                    + tab + tab + "if(Pipe.hasContentToRead(inPipe) {"
-                    + tab + tab + tab + "Pipe.addMsgIdx(inPipe, 0);");
-             // run through schema and add type and name
+                    + tab + tab + "while (Pipe.hasRoomForWrite(inPipe)) {"
+                    + "\n"
+                    + tab + tab + tab + "if(Pipe.hasContentToRead(inPipe) {"
+                    +"\n"
+                    + tab + tab + tab + tab + "Pipe.addMsgIdx(inPipe, 0); \n");
+            //Run through schema and add type and name
             //Inserts Types into fields
             while (--i >= 0) {
                 int type = TokenBuilder.extractType(tokens[i]);
@@ -203,18 +206,18 @@ public class ProtoBuffInterface {
                     generateGetter(scriptNames[i], "ASCII", interfaceTarget);
                 }
             }
-            target.append(tab + tab + tab + "Pipe.confirmLowLevelWrite(inPipe, Pipe.sizeOf(inPipe, 0));"
+            target.append(tab + tab + tab + tab + "Pipe.confirmLowLevelWrite(inPipe, Pipe.sizeOf(inPipe, 0));"
                     + "\n" 
-                    + tab + tab + tab + "Pipe.publishWrites(inPipe);"
-                    + tab + tab + "else {"
+                    + tab + tab + tab + tab + "Pipe.publishWrites(inPipe);"
+                    + tab + tab + tab + "else {"
                     + "\n"
-                    + tab + tab + tab + "Pipe.spinBlockForRoom(inPipe, Pipe.EOF_SIZE);"
+                    + tab + tab + tab + tab + "Pipe.spinBlockForRoom(inPipe, Pipe.EOF_SIZE);"
                     + "\n"
-                    + tab + tab + tab + "Pipe.publishEOF(inPipe);"
+                    + tab + tab + tab + tab + "Pipe.publishEOF(inPipe);"
                     + "\n"
-                    + tab + tab + tab + "requestShutdown();"
+                    + tab + tab + tab + tab + "requestShutdown();"
                     + "\n"
-                    + tab + tab + tab + "return;" + "\n" + "}");
+                    + tab + tab + tab + tab + "return;" + "\n" + "}");
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
