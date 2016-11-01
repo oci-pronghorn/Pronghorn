@@ -150,41 +150,6 @@ public class ProtoBuffInterface {
     }
     //public void build()
     //builds the builder
-    //TODO :build() stub is empty. 
-    // create 3 pipes used for buffers
-    /* while (Pipe.hasRoomForWrite(output)) {
-            if (++i<10){
-                int random, storeID, amount, recordID;
-                long date;
-                String productName, units;
-
-                random = rnd.nextInt(50000);
-                storeID = rnd.nextInt(50000);
-                date = (long) rnd.nextInt(50000);
-                productName = "first string test " + Integer.toString(rnd.nextInt(50000));
-                amount = rnd.nextInt(50000);
-                recordID = i;
-                units = "second string test " + Integer.toString(rnd.nextInt(50000));
-                //put message
-                Pipe.addMsgIdx(output, 0);
-                //place them on the pipe
-                Pipe.addIntValue(storeID, output);
-                Pipe.addLongValue(date, output);
-                Pipe.addASCII(productName, output);
-                Pipe.addIntValue(amount, output);
-                Pipe.addIntValue(recordID, output);
-                Pipe.addASCII(units, output);
-                Pipe.confirmLowLevelWrite(output, Pipe.sizeOf(output, 0));
-                Pipe.publishWrites(output);
-
-                System.out.println("id : " + storeID + " Date " + date + " Product Name " + productName + " Amounnt " + amount + "Units " + units);
-            }
-            else {
-                Pipe.spinBlockForRoom(output, Pipe.EOF_SIZE);
-                Pipe.publishEOF(output);
-                requestShutdown();
-                return;
-            }*/
     private static void generateBuildConstr(String varName, String varType, Appendable target) {
         try {        
             //Build method generated
@@ -209,6 +174,7 @@ public class ProtoBuffInterface {
                     + tab + "while (Pipe.hasRoomForWrite(inPipe)) {" 
                     + tab + tab + "if(Pipe.hasContentToRead(inPipe) {"
                     + tab + tab + tab + "Pipe.addMsgIdx(inPipe, 0);");
+            // run through schema and add type and name
              for(int i = 0; i < 0; i++) {
                 target.append(tab + tab + tab + "Pipe.add" + varType + "(" + varName + ", inPipe); \n");
             }
@@ -300,6 +266,8 @@ public class ProtoBuffInterface {
                 if (TypeMask.isLong(type)) {
                     //get
                     generateGetter(scriptNames[i], "long", interfaceTarget);
+                    //test
+                    //generateBuildConstr(scriptNames[i], "long", interfaceTarget);
                     //gas
                     generateHas(scriptNames[i], interfaceTarget);
                     //clear
