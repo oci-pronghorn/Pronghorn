@@ -167,7 +167,7 @@ public class MatrixComputeTest {
 	}
 	
 	
-	@Ignore
+	@Test
 	public void testCompute() {
 		//speed
 		//slow     Doubles  Longs    6.15 5.8      7.024  7.18
@@ -177,15 +177,15 @@ public class MatrixComputeTest {
 		
 		//TODO: convert all to Decimals for unit test check.
 	
-		MatrixTypes type = MatrixTypes.Longs;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
+		MatrixTypes type = MatrixTypes.Integers;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
 		
 		//TypeMask.Decimal;
 		
 		
-		int leftRows=20;
-		int rightColumns=200;
+		int leftRows=10;
+		int rightColumns=2048;
 				
-		int leftColumns = 500;//1000; //TODO: crash with small values?
+		int leftColumns = 2048;
 		int rightRows=leftColumns;		
 		
 		
@@ -193,14 +193,14 @@ public class MatrixComputeTest {
 		//5x2
 		//2x3
 		
-		
+		//TODO: these 3 must be removed since they are not "real" schemas but just hold the type and matrix size.
 		MatrixSchema leftSchema = BuildMatrixCompute.buildSchema(leftRows, leftColumns, type);		
-		RowSchema<MatrixSchema> leftRowSchema = new RowSchema<MatrixSchema>(leftSchema);
-		
 		MatrixSchema rightSchema = BuildMatrixCompute.buildSchema(rightRows, rightColumns, type);
-		RowSchema<MatrixSchema> rightRowSchema = new RowSchema<MatrixSchema>(rightSchema);
-				
 		MatrixSchema resultSchema = BuildMatrixCompute.buildResultSchema(leftSchema, rightSchema);
+		
+		
+		RowSchema<MatrixSchema> leftRowSchema = new RowSchema<MatrixSchema>(leftSchema);
+		RowSchema<MatrixSchema> rightRowSchema = new RowSchema<MatrixSchema>(rightSchema);				
 		RowSchema<MatrixSchema> rowResultSchema = new RowSchema<MatrixSchema>(resultSchema);		
 		
 		
