@@ -291,7 +291,7 @@ public class TrieParser {
         Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
         
         Pipe.takeMsgIdx(pipe);
-        setValue(pipe, value);  
+        setValue(pipe, value);
         Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
         
         //WARNING: this is not thread safe if set is called and we have not yet parsed!!
@@ -422,9 +422,8 @@ public class TrieParser {
                                 
                                 //found an escape byte, so this set may need to break the run up.
                                 if (ESCAPE_BYTE == sourceByte) {
-                                    assert(value=='%');
                                     sourceByte = source[sourceMask & sourcePos++];
-                
+             
                                     //confirm second value is not also the escape byte so we do have a command
                                     if (ESCAPE_BYTE != sourceByte) {
                                         fieldExtractionsCount++; //this count can be off by buried extractions.
@@ -821,7 +820,7 @@ public class TrieParser {
         if (len <= 0) {
             return pos;//nothing to be moved
         }                
-        
+
         updatePreviousJumpDistances(0, data, pos, requiredRoom);        
         
         int newPos = pos + requiredRoom;
@@ -842,6 +841,7 @@ public class TrieParser {
     private void updatePreviousJumpDistances(int i, short[] data, int limit, int requiredRoom) {
 
         while (i<limit) {
+       
             switch (data[i]) {
                 case TYPE_SAFE_END:
                     i += SIZE_OF_SAFE_END;
@@ -903,6 +903,7 @@ public class TrieParser {
                     i += SIZE_OF_VALUE_BYTES;
                     break;                    
                 case TYPE_RUN:
+                	assert(data[i+1] >= 0) : "run length must be positive but we found "+data[i+1]+" at position "+i;              
                     i = i+SIZE_OF_RUN+data[i+1];
                     break;
                 case TYPE_END:
