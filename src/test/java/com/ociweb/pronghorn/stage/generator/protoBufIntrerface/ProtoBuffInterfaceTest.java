@@ -25,25 +25,9 @@ import org.xml.sax.SAXException;
 public class ProtoBuffInterfaceTest {
     @Test
     public void groceryTest() throws FileNotFoundException, ParserConfigurationException, IOException, SAXException{
-        File output = new File("src/test/resources/SIUE_GroceryStore/ClassName.java");
-        FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
-        MessageSchema schema = new MessageSchemaDynamic(from);
         
-        PrintWriter target = new PrintWriter(output);
-        
-        //decode target
-        File outputdecode = new File("src/test/resources/SIUE_GroceryStore/decodeTarget.java");
-        PrintWriter decodeTarget = new PrintWriter(outputdecode);
-        
-        //encode target
-        File outputencode = new File("src/test/resources/SIUE_GroceryStore/encodeTarget.java");
-        PrintWriter encodeTarget = new PrintWriter(outputencode);
-        
-        ProtoBuffInterface test = new ProtoBuffInterface("test.package", schema, decodeTarget, encodeTarget, target, "GroceryStore");
-        test.buildClass();
-        target.close();
-        decodeTarget.close();
-        encodeTarget.close();
+        ProtoBuffInterface test = new ProtoBuffInterface("test.package", "GroceryQueryProvider", "InventoryDetails",
+                "target/generated-sources/", "src/test/resources/SIUE_GroceryStore/groceryExample.xml");
         
     }
 }

@@ -2,36 +2,72 @@ package com.ociweb.pronghorn.stage.generator.protoBufInterface;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
+import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
+import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.stage.generator.PhastDecoderStageGenerator;
 import com.ociweb.pronghorn.stage.generator.PhastEncoderStageGenerator;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import org.xml.sax.SAXException;
+
+import javax.xml.parsers.ParserConfigurationException;
+import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class ProtoBuffInterface {
     private PhastDecoderStageGenerator decoderGenerator;
     private PhastEncoderStageGenerator encoderGenerator;
-    String interfaceClassName;
-    String packageName;
-    MessageSchema schema;
-    Appendable interfaceTarget;
-    private static String tab = "  ";
+    private String interfaceClassName;
+    private String packageName;
+    String innerClassName;
+    private MessageSchema schema;
+    private Appendable interfaceTarget;
+    private static String tab = "    ";
+    private static String decoderClassName = "DecoderStage";
+    private static String encoderClassName = "EncoderStage";
+    GraphManager gm;
+    FieldReferenceOffsetManager from;
 
-    public ProtoBuffInterface(String packageName, MessageSchema schema, Appendable decodeTarget, Appendable encodeTarget, Appendable interfaceTarget, String interfaceClassName) {
+    public ProtoBuffInterface(String packageName, String interfaceClassName, String innerClassName,
+                              String filePath, String xmlPath) throws IOException, SAXException, ParserConfigurationException {
+
+        File output = new File(filePath + interfaceClassName + ".java");
+
+        from = TemplateHandler.loadFrom(xmlPath);
+
+        MessageSchema schema = new MessageSchemaDynamic(from);
+
+        PrintWriter target = new PrintWriter(output);
+        this.interfaceTarget = target;
+
+        //decode target
+        File outputDecode = new File(filePath + decoderClassName + ".java");
+        PrintWriter decodeTarget = new PrintWriter(outputDecode);
+
+        //encode target
+        File outputEncode = new File(filePath + encoderClassName + ".java");
+        PrintWriter encodeTarget = new PrintWriter(outputEncode);
+
         encoderGenerator = new PhastEncoderStageGenerator(schema, encodeTarget);
+        encoderGenerator.processSchema();
         decoderGenerator = new PhastDecoderStageGenerator(schema, decodeTarget, false);
+        decoderGenerator.processSchema();
         this.packageName = packageName;
         this.schema = schema;
-        this.interfaceTarget = interfaceTarget;
         this.interfaceClassName = interfaceClassName;
+        this.innerClassName = innerClassName;
+        this.gm = new GraphManager();
+
+        this.buildClass();
+        decodeTarget.close();
+        encodeTarget.close();
+        target.close();
     }
-    // Interface name change
-    // generateNameSpace? Class Name
-    // public void Grocery getName()
-    // public void Amazon getName()
-    // Needs to hold more than one namespace and work at sametime without conflicts
+
     private static void generateGetter(String varName, String varType, Appendable target) {
         try {
             //make variable name go to camel case
@@ -39,8 +75,7 @@ public class ProtoBuffInterface {
             //Getter method generated
             target.append(tab + "public " + varType + " get" + varNameCamel + "(){\n");
             //return variable, close off, end line.
-            target.append(tab + tab +"return " + varName + ";"
-                    + "\n"
+            target.append(tab + tab +"return " + varNameCamel + ";\n"
                     + tab + "}\n");
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
@@ -55,7 +90,7 @@ public class ProtoBuffInterface {
             target.append(tab + "public void" + " set" + varNameCamel + "(" + varType + " " + varName
                     + ") {\n"
                     + tab + tab + "this." + varName + " = " + varName + "; \n"
-                    + "} \n");
+                    + tab + "} \n");
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -69,6 +104,7 @@ public class ProtoBuffInterface {
             //Has method generated
             target.append(tab +"public boolean" + " has" + varNameCamel + "(){"
                     + "\n"
+                    + tab + tab + "return true;"
                     + "\n"
                     + tab +  "}\n");
         } catch (IOException ex) {
@@ -156,71 +192,38 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+
+    private void generateNewBuilder() throws IOException {
+        //Build method generated
+        interfaceTarget.append(tab + "public Builder newbuilder(){"
+                // Create Dynamic schema and pipes
+                + "\n"
+                + tab + tab + "messageSchema = new MessageSchemaDynamic(DecoderStage.FROM);"
+                + "\n"
+                + tab + tab + "inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
+                + "\n"
+                + tab + tab + "inPipe.initBuffers();"
+                + "\n"
+                + tab + tab + "sharedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));"
+                + "\n"
+                + tab +  tab + "sharedPipe.initBuffers();"
+                + "\n"
+                + tab + tab + "outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
+                + "\n"
+                + tab + tab + "outPipe.initBuffers();\n"
+                + tab + tab + "encStage = new " + encoderClassName + "(gm, inPipe, out);\n"
+                + tab + tab + "decStage = new " + decoderClassName + "(gm, );\n");
+
+                interfaceTarget.append( tab + tab + "return new Builder();\n"
+                + tab + "}\n");
+    }
     //public void build()
     //builds the builder
-    private void generateBuildConstr(Appendable target) {
-        FieldReferenceOffsetManager from = MessageSchema.from(schema);
-        int[] tokens = from.tokens;
-        String[] scriptNames = from.fieldNameScript;
-        int i = tokens.length;
-        
-        try {        
-            //Build method generated
-            target.append(tab + "public void" + " build(){"
-                    // Create Dynamic schema and pipes
-                    + "\n"
-                    + tab + tab + "MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);"
-                    + "\n"
-                    + tab + tab + "Pipe<MessageSchemaDynamic> inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
-                    + "\n"
-                    + tab + tab + "inPipe.initBuffers();"
-                    + "\n"
-                    + tab + tab + "Pipe<RawDataSchema> sharedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));"
-                    + "\n"
-                    + tab +  tab + "sharedPipe.initBuffers();"
-                    + "\n"
-                    + tab + tab + "Pipe<MessageSchemaDynamic> outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));"
-                    + "\n"
-                    + tab + tab + "outPipe.initBuffers();"
-                    + "\n"
-                    + "\n"
-                    // Read Data and Put into the InPipe
-                    + tab + tab + "while (Pipe.hasRoomForWrite(inPipe)) {"
-                    + "\n"
-                    + tab + tab + tab + "if(Pipe.hasContentToRead(inPipe) {"
-                    +"\n"
-                    + tab + tab + tab + tab + "Pipe.addMsgIdx(inPipe, 0); \n");
-            //Run through schema and add type and name
-            //Inserts Types into fields
-            while (--i >= 0) {
-                int type = TokenBuilder.extractType(tokens[i]);
+    private void generateBuild() throws IOException {
+        interfaceTarget.append(tab + "public void build(){\n" +
+                                tab + tab + "isReady = true;\n" +
+                                tab + "}\n");
 
-                if (TypeMask.isLong(type)) {
-                    //long
-                    generateBuildTypes(scriptNames[i], "LongValue", interfaceTarget);
-                } else if (TypeMask.isInt(type)) {
-                    //int
-                    generateGetter(scriptNames[i], "IntValue", interfaceTarget);
-                } else if (TypeMask.isText(type)) {
-                    //string
-                    generateGetter(scriptNames[i], "ASCII", interfaceTarget);
-                }
-            }
-            target.append(tab + tab + tab + tab + "Pipe.confirmLowLevelWrite(inPipe, Pipe.sizeOf(inPipe, 0));"
-                    + "\n" 
-                    + tab + tab + tab + tab + "Pipe.publishWrites(inPipe);"
-                    + tab + tab + tab + "else {"
-                    + "\n"
-                    + tab + tab + tab + tab + "Pipe.spinBlockForRoom(inPipe, Pipe.EOF_SIZE);"
-                    + "\n"
-                    + tab + tab + tab + tab + "Pipe.publishEOF(inPipe);"
-                    + "\n"
-                    + tab + tab + tab + tab + "requestShutdown();"
-                    + "\n"
-                    + tab + tab + tab + tab + "return;" + "\n" + "}");
-        } catch (IOException ex) {
-            Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
-        }
     }
     // sets boolean has flags to false
     private static void generateInit(String varName, Appendable target) {
@@ -275,10 +278,58 @@ public class ProtoBuffInterface {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+
+    private void generateRun() throws IOException {
+        interfaceTarget.append(tab + "@Override\n" +
+                                tab + "public void run(){}\n");
+
+    }
+
+    private void generateStartup() throws IOException {
+        interfaceTarget.append(tab + "@Override\n" +
+                tab + "public void startup(){}\n");
+    }
+
+    private void generateInstanceVariables() throws IOException {
+        FieldReferenceOffsetManager from = MessageSchema.from(schema);
+        int[] tokens = from.tokens;
+        String[] scriptNames = from.fieldNameScript;
+        long[] scriptIds = from.fieldIdScript;
+        int i = tokens.length;
+
+        //from schema
+        while (--i >= 0) {
+            int type = TokenBuilder.extractType(tokens[i]);
+            if (TypeMask.isLong(type)) {
+                interfaceTarget.append(tab + "private long " + scriptNames[i] + ";\n");
+            } else if (TypeMask.isInt(type)) {
+                interfaceTarget.append(tab + "private int " + scriptNames[i] + ";\n");
+            } else if (TypeMask.isText(type)) {
+                interfaceTarget.append(tab + "private String  " + scriptNames[i] + ";\n");
+            }
+
+        }
+        interfaceTarget.append(tab + "private MessageSchemaDynamic messageSchema;\n");
+        interfaceTarget.append(tab + "private Pipe<MessageSchemaDynamic> inPipe;\n");
+        interfaceTarget.append(tab + "private Pipe<RawDataSchema> sharedPipe;\n");
+        interfaceTarget.append(tab + "private Pipe<MessageSchemaDynamic> outPipe;\n");
+        interfaceTarget.append(tab + "private " + decoderClassName + " decStage;\n");
+        interfaceTarget.append(tab + "private " + encoderClassName + " encStage;\n");
+        interfaceTarget.append(tab + GraphManager.class.getSimpleName() + "gm;\n");
+        from.appendConstuctionSource(interfaceTarget);
+        interfaceTarget.append(tab + "private Boolean isReady;\n");
+    }
     private void buildFirst() {
         try {
             //This is where we declare the class to the output file
-            interfaceTarget.append("public class " + interfaceClassName + "{\n");
+            interfaceTarget.append("public class " + innerClassName + "{\n");
+            generateInstanceVariables();
+            //make embedded builder class
+            interfaceTarget.append(tab + "public static class Builder{\n");
+            interfaceTarget.append(tab+tab+"public Builder(){}\n");
+            interfaceTarget.append(tab + "}\n");
+
+            generateNewBuilder();
 
             //walk through variables and generate has and sets only
             FieldReferenceOffsetManager from = MessageSchema.from(schema);
@@ -300,6 +351,7 @@ public class ProtoBuffInterface {
                     generateHas(scriptNames[i], interfaceTarget);
                     //clear
                     generateClear(scriptNames[i], interfaceTarget);
+                    generateSetter(scriptNames[i],"long", interfaceTarget);
                 } else if (TypeMask.isInt(type)) {
                     //get
                     generateGetter(scriptNames[i], "int", interfaceTarget);
@@ -307,6 +359,7 @@ public class ProtoBuffInterface {
                     generateHas(scriptNames[i], interfaceTarget);
                     //clear
                     generateClear(scriptNames[i], interfaceTarget);
+                    generateSetter(scriptNames[i],"int", interfaceTarget);
                 } else if (TypeMask.isText(type)) {
                     //get
                     generateGetter(scriptNames[i], "String", interfaceTarget);
@@ -314,19 +367,37 @@ public class ProtoBuffInterface {
                     generateHas(scriptNames[i], interfaceTarget);
                     //clear
                     generateClear(scriptNames[i], interfaceTarget);
+                    generateSetter(scriptNames[i],"String", interfaceTarget);
+
                 }
                 
             }
             //generate build constructor
-            generateBuildConstr(interfaceTarget);
-            
+            generateBuild(interfaceTarget);
+            generateStartup();
+            generateRun();
             //closing bracking for class
             interfaceTarget.append("}");
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    public void buildClass() {
+
+    public void buildOuter() throws IOException {
+        interfaceTarget.append("public Class " + interfaceClassName + " extends PronghornStage{\n\n");
+    }
+    public void buildClass() throws IOException {
+        interfaceTarget.append("/*\n");
+        interfaceTarget.append("THIS CLASS HAS BEN GENERATED DO NOT MODIFY\n");
+        interfaceTarget.append("*/\n");
+        interfaceTarget.append("package " + packageName + "\n");
+        this.buildOuter();
         this.buildFirst();
+
+
+        //close outer
+        interfaceTarget.append("\n}");
+
+
     }
 }
