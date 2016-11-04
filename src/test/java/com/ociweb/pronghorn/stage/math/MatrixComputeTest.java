@@ -167,7 +167,7 @@ public class MatrixComputeTest {
 	}
 	
 	
-	@Test
+	@Ignore
 	public void testCompute() {
 		//speed
 		//slow     Doubles  Longs    6.15 5.8      7.024  7.18
@@ -182,7 +182,7 @@ public class MatrixComputeTest {
 		//TypeMask.Decimal;
 		
 		
-		int leftRows=10;
+		int leftRows=2048;
 		int rightColumns=2048;
 				
 		int leftColumns = 2048;
@@ -249,22 +249,15 @@ public class MatrixComputeTest {
 			                     //new FixedThreadsScheduler(gm, targetThreadCount);
 		
 		scheduler.startup();	
-		
+	
 		int testSize = 50;
 		int k = testSize;
-		long timeout = 0;
+	
 		while (--k>=0) {
-			timeout = System.currentTimeMillis()+5000;
 			//System.out.println(k);
 			for(int c=0;c<leftRows;c++) {
 				while (!Pipe.hasRoomForWrite(left)) {
 					Thread.yield();
-					if (System.currentTimeMillis()>timeout) {
-						scheduler.shutdown();
-						scheduler.awaitTermination(20, TimeUnit.SECONDS);
-						fail();
-						return;
-					}
 				}
 				Pipe.addMsgIdx(left, resultSchema.rowId);		
 					for(int r=0;r<leftColumns;r++) {
@@ -277,12 +270,6 @@ public class MatrixComputeTest {
 			for(int c=0;c<rightRows;c++) {
 				while (!Pipe.hasRoomForWrite(right)) {
 					Thread.yield();
-					if (System.currentTimeMillis()>timeout) {
-						scheduler.shutdown();
-						scheduler.awaitTermination(20, TimeUnit.SECONDS);
-						fail();
-						return;
-					}
 				}
 				Pipe.addMsgIdx(right, resultSchema.rowId);		
 					for(int r=0;r<rightColumns;r++) {
