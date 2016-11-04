@@ -348,20 +348,22 @@ public class TemplateProcessGeneratorLowLevelReader extends TemplateProcessGener
         return i;
     }
 
+    protected void negativeOneCase(Appendable target) throws IOException {
+        target.append(tab).append(tab).append("case -1:");
+
+        appendStaticCall(target.append(tab), pipeClass, "takeMsgIdx").append(pipeVarName).append(");\n");
+        appendStaticCall(target.append(tab), pipeClass, "takeValue").append(pipeVarName).append(");\n");
+
+        target.append(tab).append(tab).append("requestShutdown();\n");
+
+        //TODO; consume message can call request shutdown.
+
+        target.append(tab).append("break;\n");
+    }
+    
     @Override
     protected void processCallerPost() throws IOException {
-        
-        bodyTarget.append(tab).append(tab).append("case -1:");
-        
-        appendStaticCall(bodyTarget.append(tab), pipeClass, "takeMsgIdx").append(pipeVarName).append(");\n");
-        appendStaticCall(bodyTarget.append(tab), pipeClass, "takeValue").append(pipeVarName).append(");\n");
-
-        bodyTarget.append(tab).append(tab).append("requestShutdown();\n");
-        
-        //TODO; consume message can call request shutdown.
-        
-        bodyTarget.append(tab).append("break;\n");
-        
+        negativeOneCase(bodyTarget);
         bodyTarget.append(tab).append(tab).append("default:\n");
         bodyTarget.append(tab).append(tab).append(tab).append("throw new UnsupportedOperationException(\"Unknown message type, rebuid with the new schema.\");\n");
 
