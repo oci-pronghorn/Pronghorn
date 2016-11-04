@@ -181,6 +181,7 @@ public class MatrixComputeTest {
 		
 		//TypeMask.Decimal;
 		
+		//targeting 7680 × 4320
 		
 		int leftRows=2048;
 		int rightColumns=2048;
