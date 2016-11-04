@@ -80,7 +80,7 @@ void mulAVXInt(const int row, const int col,
   __m256 ymm0, ymm1, ymm2;
   for (int c = col - 1; c >= 0; --c) {
     int prod = 0;
-    int row_remain = (row - 1) - (row - 1)%8;
+    int row_remain = row - row%8;
     for (int p = (row - 1); p >= row_remain; --p) {
       int v1 = rowSlab_nat[rowMask & (jint)(rowPosition + p)];
       int v2 = colSlabs_nat[c][colMask & (colPositions_nat[c] + p)];
