@@ -10,14 +10,14 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Random;
 
+import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
+import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
+import com.ociweb.pronghorn.network.config.HTTPVerb;
+import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.network.config.HTTPHeaderKeyDefaults;
-import com.ociweb.pronghorn.stage.network.config.HTTPRevisionDefaults;
-import com.ociweb.pronghorn.stage.network.config.HTTPVerb;
-import com.ociweb.pronghorn.stage.network.config.HTTPVerbDefaults;
-import com.ociweb.pronghorn.stage.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 import junit.framework.Assert;

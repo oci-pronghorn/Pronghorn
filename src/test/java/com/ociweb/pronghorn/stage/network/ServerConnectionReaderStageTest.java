@@ -5,13 +5,17 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.*;
 
+import com.ociweb.pronghorn.network.ServerConnectionReaderStage;
+import com.ociweb.pronghorn.network.ServerCoordinator;
+import com.ociweb.pronghorn.network.ServerNewConnectionStage;
+import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
-import com.ociweb.pronghorn.stage.network.schema.ServerConnectionSchema;
-import com.ociweb.pronghorn.stage.network.schema.ServerRequestSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
+import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
 public class ServerConnectionReaderStageTest {
@@ -21,11 +25,68 @@ public class ServerConnectionReaderStageTest {
             "/Unrequested"
     };
     
+    @Ignore    
+    public void manualTest() {
+        PipeConfig<NetPayloadSchema> rawRequestPipeConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 1000, 2048);//defines largest read chunk /2
+        PipeConfig<ServerConnectionSchema> newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 500);  
+                
+        GraphManager gm = new GraphManager();
+                
+        Pipe<NetPayloadSchema>[] output = new Pipe[]{new Pipe<NetPayloadSchema>(rawRequestPipeConfig)};
+                
+        //TODO: add support for more than one in this test.
+        int socketGroups = 1;  //only have 1 group listener for this test
+        int socketGroupId = 0; //we only have the 0th reader in use.
+        
+        int port = 8089;
+        ServerCoordinator coordinator = new ServerCoordinator(socketGroups, port);
+        
+        ///////////////////////
+        Pipe<NetPayloadSchema> rawRequestPipe = new Pipe<NetPayloadSchema>(rawRequestPipeConfig);
+        
+
+        Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(newConnectionsConfig);
+        ServerNewConnectionStage newConStage = new ServerNewConnectionStage(gm, coordinator, newConnectionsPipe);
+        
+        ConsoleJSONDumpStage<ServerConnectionSchema> connectionNotice = new ConsoleJSONDumpStage<ServerConnectionSchema>(gm, newConnectionsPipe);
+
+        ServerConnectionReaderStage readerStage = new ServerConnectionReaderStage(gm, output, coordinator, socketGroupId);
+
+        int i = output.length;
+        while (--i>=0) { 
+            ConsoleJSONDumpStage<NetPayloadSchema> contentDump = new ConsoleJSONDumpStage<NetPayloadSchema>(gm, output[i]);
+        }
+        
+         MonitorConsoleStage.attach(gm);
+      //   GraphManager.enableBatching(gm);
+         
+         ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
+         System.out.println("started");
+
+         scheduler.startup();  
+                  
+         try {
+        	 System.out.println("waiting for URL hits");
+			Thread.sleep(240_000);
+			
+		 } catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		 }
+         System.out.println("begin shutdown");
+         newConStage.requestShutdown();
+         readerStage.requestShutdown();
+         scheduler.shutdown();
+         
+         scheduler.awaitTermination(30, TimeUnit.MINUTES);
+        
+        
+    }
     
-    @Test
+    @Ignore
     public void rapidServerConnectionReaderTest() {
         
-        PipeConfig<ServerRequestSchema> rawRequestPipeConfig = new PipeConfig<ServerRequestSchema>(ServerRequestSchema.instance, 1000, 2048);//defines largest read chunk /2
+        PipeConfig<NetPayloadSchema> rawRequestPipeConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 1000, 2048);//defines largest read chunk /2
         PipeConfig<ServerConnectionSchema> newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 500);  
         
         
@@ -39,7 +100,7 @@ public class ServerConnectionReaderStageTest {
         
         GraphManager gm = new GraphManager();
                 
-        Pipe<ServerRequestSchema>[] output = new Pipe[]{new Pipe<ServerRequestSchema>(rawRequestPipeConfig)};
+        Pipe<NetPayloadSchema>[] output = new Pipe[]{new Pipe<NetPayloadSchema>(rawRequestPipeConfig)};
                 
         //TODO: add support for more than one in this test.
         int socketGroups = 1;  //only have 1 group listener for this test
@@ -49,7 +110,7 @@ public class ServerConnectionReaderStageTest {
         ServerCoordinator coordinator = new ServerCoordinator(socketGroups, port);
         
         ///////////////////////
-        Pipe<ServerRequestSchema> rawRequestPipe = new Pipe<ServerRequestSchema>(rawRequestPipeConfig);
+        Pipe<NetPayloadSchema> rawRequestPipe = new Pipe<NetPayloadSchema>(rawRequestPipeConfig);
         
         //multiple channels/connections       
         ClientHTTPSocketRequestGeneratorStage[] gens = new ClientHTTPSocketRequestGeneratorStage[connections];
@@ -68,8 +129,8 @@ public class ServerConnectionReaderStageTest {
         
         int i = output.length;
         while (--i>=0) { //TODO: confirm squence number is incrmenting.
-            PipeCleanerStage<ServerRequestSchema> dump = new PipeCleanerStage<ServerRequestSchema>(gm, output[i]);
-           // ConsoleJSONDumpStage<ServerRequestSchema> dump = new ConsoleJSONDumpStage<ServerRequestSchema>(gm, output[i]);
+            PipeCleanerStage<NetPayloadSchema> dump = new PipeCleanerStage<NetPayloadSchema>(gm, output[i]);
+           // ConsoleJSONDumpStage<NetPayloadSchema> dump = new ConsoleJSONDumpStage<NetPayloadSchema>(gm, output[i]);
         }
         
          MonitorConsoleStage.attach(gm);

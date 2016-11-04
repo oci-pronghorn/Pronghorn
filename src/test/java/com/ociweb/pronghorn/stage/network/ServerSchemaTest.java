@@ -4,25 +4,15 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
-import com.ociweb.pronghorn.stage.network.schema.HTTPRequestSchema;
-import com.ociweb.pronghorn.stage.network.schema.ServerConnectionSchema;
-import com.ociweb.pronghorn.stage.network.schema.ServerRequestSchema;
-import com.ociweb.pronghorn.stage.network.schema.ServerResponseSchema;
 
 public class ServerSchemaTest {
 
-    @Test
-    public void testServerRequestSchemaFROMMatchesXML() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/serverRequest.xml", ServerRequestSchema.instance));
-    };
-    
-    @Test
-    public void testServerRequestSchemaConstantFields() {
-        assertTrue(FROMValidation.testForMatchingLocators(ServerRequestSchema.instance));
-    }
-    
-    
+
     @Test
     public void testServerResponseSchemaFROMMatchesXML() {
         assertTrue(FROMValidation.testForMatchingFROMs("/serverResponse.xml", ServerResponseSchema.instance));

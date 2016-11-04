@@ -44,7 +44,7 @@ public class ServiceObjectHolder<T> {
         public int mask;
         public final long[] serviceObjectKeys;
         public final T[] serviceObjectValues;
-        public final int[] serviceObjectLookupCounts; //Used for sequence counts or usage counts
+        public final long[] serviceObjectLookupCounts; //Used for sequence counts or usage counts
 
         public final Class<T> clazz; 
 
@@ -55,7 +55,7 @@ public class ServiceObjectHolder<T> {
             this.mask = size-1;
             this.serviceObjectKeys = new long[size];
             this.serviceObjectValues = (T[]) Array.newInstance(clazz, size);
-            this.serviceObjectLookupCounts = new int[size];
+            this.serviceObjectLookupCounts = new long[size];
         }
 
         @SuppressWarnings("unchecked")
@@ -66,7 +66,7 @@ public class ServiceObjectHolder<T> {
             this.mask = this.size-1;
             this.serviceObjectKeys = new long[size];
             this.serviceObjectValues = (T[]) Array.newInstance(clazz, size);
-            this.serviceObjectLookupCounts = new int[size];
+            this.serviceObjectLookupCounts = new long[size];
             
             int index = data.size;
             int mask = this.mask;
@@ -145,8 +145,9 @@ public class ServiceObjectHolder<T> {
         do {
             //if we end up passing over all the members find which is the least used.
             if (-1 != index) {
-                if (data.serviceObjectLookupCounts[modIdx]<minCount) {
-                    minCount = data.serviceObjectLookupCounts[modIdx];
+                long lookupCounts = data.serviceObjectLookupCounts[modIdx];
+				if (lookupCounts<minCount) {
+                    minCount = lookupCounts;
                     minCountIndex = index;
                 }
             }
@@ -185,6 +186,65 @@ public class ServiceObjectHolder<T> {
         //Never resets the usage count, that field is use case specific and should not always be cleared.
         return index;
     }
+
+    
+    /**
+     * 
+     * @return negative value of least used or the new value of the new service ID?
+     */
+    public long lookupInsertPosition() {
+        //Not thread safe, must be called by one thread or sequentially    
+        long index = -1;
+        int modIdx =-1;
+        
+        long localSequenceCount = sequenceCounter;
+        long hardStop = localSequenceCount + data.size;
+        
+        long minCount = Long.MAX_VALUE;
+        long  minCountIndex = -1;
+        
+        do {
+            //if we end up passing over all the members find which is the least used.
+            if (-1 != index) {
+                long lookupCounts = data.serviceObjectLookupCounts[modIdx];
+				if (lookupCounts<minCount) {
+                    minCount = lookupCounts;
+                    minCountIndex = index;
+                }
+            }
+            
+            index = ++localSequenceCount;
+            modIdx = data.mask & (int)index;
+        
+            if (index==hardStop) {
+            	//do not grow instead return the negative value of the least used objectr
+            	return -minCountIndex;
+               
+            }
+            
+            //keep going if we have looped around and hit a bucket which is already occupied with something valid.
+        } while (null != data.serviceObjectValues[modIdx] && validator.isValid(data.serviceObjectValues[modIdx]));
+        
+        sequenceCounter = localSequenceCount;//where we left off
+        
+        data.serviceObjectKeys[modIdx] = index;
+        data.serviceObjectValues[modIdx] = null; //To be set by set value later
+        //Never resets the usage count, that field is use case specific and should not always be cleared.
+        return index;
+    }
+    
+    /*
+     * Only used with the above lookupInsertPosition for setting the object, this allows for the late construction when the object is needed.
+     * This can also be used to replace this value if it is still valid and not expired.
+     * 
+     */
+    public void setValue(long index, T object) {
+    	int modIdx = data.mask & (int)index;
+    	assert(data.serviceObjectKeys[modIdx] == index) : "this method should only be called after using lookupInsertPosition";
+    	data.serviceObjectValues[modIdx] = (T)object;    	
+    	
+    }
+    
     
     /**
      * Given the index value return the valid value object or null.
@@ -208,8 +268,7 @@ public class ServiceObjectHolder<T> {
         data.serviceObjectLookupCounts[data.mask & (int)index] = 0;
     }
     
-    @Deprecated
-    public int incUsageCount(final long index) {
+    public long incUsageCount(final long index) {
         return data.serviceObjectLookupCounts[data.mask & (int)index]++;
     }
 

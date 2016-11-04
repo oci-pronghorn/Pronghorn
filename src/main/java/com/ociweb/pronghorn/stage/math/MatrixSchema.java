@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.stage.math;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
@@ -17,13 +20,15 @@ public class MatrixSchema extends MessageSchema {
 	public final int rows;
 	public final int columns;
 	
+	private static final Logger logger = LoggerFactory.getLogger(MatrixSchema.class);
+	
 	@Override
 	public String toString() {
 		return "rows:"+rows+" columns:"+columns+" of type "+type;
 	}
 	
 	protected MatrixSchema(int rows, int columns, MatrixTypes type) {
-		this(rows,columns,type,singleNumberBlockFrom(type, rows*columns));
+		this(rows,columns,type,null);//nothing can use this as the proper schema instead matrix is always sent as rows or columns.
 		
 	}
 	
@@ -56,6 +61,13 @@ public class MatrixSchema extends MessageSchema {
 		matrixNames[0] = "Matrix";
 		
 		int dataSize = (size*points)+1;
+		
+		if (dataSize>TokenBuilder.MAX_INSTANCE) {
+			
+			logger.info("Data size {} is too large.  Element size is {}, total count of values {} ",dataSize,size,points);	
+			//TODO: we are bulding a full matrix but that is no longer needed since we only send 1 row or column at a time.
+			
+		}
 		
 		matrixTokens[0] = TokenBuilder.buildToken(TypeMask.Group, 0, dataSize); 
 		if (type.typeMask==TypeMask.Decimal) {

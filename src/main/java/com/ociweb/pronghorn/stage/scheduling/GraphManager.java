@@ -310,7 +310,7 @@ public class GraphManager {
         	        int idIdx = threadName.indexOf("id:");
         	        if (idIdx>=0) {
         	            int stageId = Integer.valueOf(threadName.substring(idIdx+3));
-        	            if (isInputsEmpty(m,getStage(m,stageId))) {
+        	            if (isInputsEmpty(m, stageId)) {
         	                continue;//do next, this one has nothing blocking.
         	            }
         	        }
@@ -443,6 +443,7 @@ public class GraphManager {
 			}
 			
 			endStageRegister(gm);
+									
 		}
 		
 	}
@@ -576,10 +577,8 @@ public class GraphManager {
 
 
 
-
 	public static void register(GraphManager gm, PronghornStage stage, Pipe input, Pipe[] outputs) {
-		synchronized(gm.lock) {		
-			
+		synchronized(gm.lock) {
 			int stageId = beginStageRegister(gm, stage);
 			setStateToNew(gm, stageId);
 			
@@ -749,15 +748,20 @@ public class GraphManager {
 				
 				int beginIdx = m.stageIdToNotasBeginIdx[stage.stageId];
 			    if (m.topNota == m.multNotaIds.length) {
+			    	
 			    	//create new larger array		    	
 			    	int[] newMultiNotaIdx = new int[m.multNotaIds.length*2];			    	
 			    	Arrays.fill(newMultiNotaIdx, -1);
+			    	
 			    	System.arraycopy(m.multNotaIds, 0, newMultiNotaIdx, 0, beginIdx);
-			    	System.arraycopy(m.multNotaIds, beginIdx, newMultiNotaIdx, beginIdx, m.topNota-(beginIdx));
+			    	
+			    	//copy over and move it down by one so we have room for the new entry
+			    	System.arraycopy(m.multNotaIds, beginIdx, newMultiNotaIdx, beginIdx+1, m.topNota-(beginIdx));
 			    	
 			    	m.multNotaIds = newMultiNotaIdx;		    	
 			    } else {
-			    	//move all the data down.
+			    	
+			    	//move all the data down by one so we have room.
 			    	System.arraycopy(m.multNotaIds, beginIdx, m.multNotaIds, beginIdx+1, m.topNota-(beginIdx));
 			    }
 			    
@@ -947,7 +951,8 @@ public class GraphManager {
 		int count = 0;
 		while ((pipeId = m.multOutputIds[outputPos++])>=0) {
 			count++;
-			noConsumers = noConsumers & isStageTerminated(m,GraphManager.getRingConsumer(m, pipeId).stageId);						
+			int ringConsumerId = GraphManager.getRingConsumerId(m, pipeId);
+			noConsumers = noConsumers & (ringConsumerId<0 || isStageTerminated(m,ringConsumerId));						
 		}				
 		if (count>0 && noConsumers) {
 			//ignore input because all the consumers have already shut down
@@ -989,11 +994,7 @@ public class GraphManager {
 	
 	public static boolean isProducerTerminated(GraphManager m, int ringId) {
 		int producerStageId = getRingProducerId(m, ringId);
-		if (producerStageId<0) {
-		    log.debug("No producer stage was found for ring {}, check the graph builder.",ringId);
-		    return true;
-		}
-        return m.stageStateData.stageStateArray[producerStageId] == GraphManagerStageStateData.STAGE_TERMINATED;
+        return producerStageId<0 || m.stageStateData.stageStateArray[producerStageId] == GraphManagerStageStateData.STAGE_TERMINATED;
 	}
 
     public static boolean isStageTerminated(GraphManager m, int stageId) {
@@ -1319,9 +1320,13 @@ public class GraphManager {
 		
 	}
 
-	public static boolean isInputsEmpty(GraphManager m,    PronghornStage stage) {
-	     int ringId;
-	     int idx = m.stageIdToInputsBeginIdx[stage.stageId];
+	public static boolean isInputsEmpty(GraphManager m, PronghornStage stage) {
+		 return isInputsEmpty(m, stage.stageId);
+	}
+
+	public static boolean isInputsEmpty(GraphManager m, int stageId) {
+		int ringId;
+	     int idx = m.stageIdToInputsBeginIdx[stageId];
 	     while (-1 != (ringId=m.multInputIds[idx++])) { 
 	         
 	         if (Pipe.contentRemaining(m.pipeIdToPipe[ringId])>0) {
@@ -1408,14 +1413,15 @@ public class GraphManager {
                   logger.error("Stage was never initialized");
               } else {
               
-                  int inputcount = GraphManager.getInputPipeCount(graphManager, stage);
-                                          
-                  logger.error("Unexpected error in "+stage+" with "+inputcount+" input pipes.", t);
+                  int inputCount = GraphManager.getInputPipeCount(graphManager, stage);
+                  int outputCount = GraphManager.getOutputPipeCount(graphManager,stage.stageId);
                   
-                  int i = inputcount;
+                  logger.error("Unexpected error in "+stage+" which has "+inputCount+" inputs and "+outputCount+" outputs", t);
+                  
+                  int i = inputCount;
                   while (--i>=0) {
                       
-                      logger.error(stage+" input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
+                      logger.error(stage+"  input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
                       
                   }
                   

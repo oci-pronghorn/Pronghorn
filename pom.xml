@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.ociweb</groupId>
   <artifactId>Pronghorn</artifactId>
-  <version>0.0.8-SNAPSHOT</version>
+  <version>0.0.10-SNAPSHOT</version>
       <!-- Looking for the release jar? This project is under active development.
          Please consider getting involved and sponsoring the completion of Pronghorn.
          mailto:info@ociweb.com;?subject=Pronghorn%20Sponsor%20Inquiry
@@ -31,7 +31,7 @@
         <dependency>
             <groupId>com.ociweb</groupId>
             <artifactId>PronghornPipes</artifactId>
-            <version>[0.0.7,0.1.0)</version>
+            <version>[0.0.8,0.1.0)</version>
         </dependency> 
       	<dependency>
 			<groupId>junit</groupId>
@@ -141,7 +141,7 @@
       <plugin>
 		    <groupId>org.codehaus.mojo</groupId>
 		    <artifactId>build-helper-maven-plugin</artifactId>
-		    <version>1.12</version>
+		    <version>1.3</version>
 		    <executions>
 		        <execution>
 		            <phase>generate-sources</phase>
