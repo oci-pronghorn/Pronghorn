@@ -236,9 +236,15 @@ public class TemplateProcessGeneratorLowLevelWriter extends TemplateProcessGener
         return Appendables.appendValue(target, cursor);
     }
 
+    //TO BE OVERRIDDEN
+    protected void negativeOneCase(Appendable target)throws IOException{
+
+    }
+
     @Override
     protected void processCallerPost() throws IOException {
 
+        negativeOneCase(bodyTarget);
         bodyTarget.append(tab).append(tab).append("case ").append(doNothingConstant).append(":\n");
         //TODO; consume message can call request shutdown.
         
