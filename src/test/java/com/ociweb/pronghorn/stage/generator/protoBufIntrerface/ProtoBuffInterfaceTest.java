@@ -26,8 +26,8 @@ public class ProtoBuffInterfaceTest {
     @Test
     public void groceryTest() throws FileNotFoundException, ParserConfigurationException, IOException, SAXException{
         
-        ProtoBuffInterface test = new ProtoBuffInterface("test.package", "GroceryQueryProvider", "InventoryDetails",
-                "target/generated-sources/", "src/test/resources/SIUE_GroceryStore/groceryExample.xml");
+        ProtoBuffInterface test = new ProtoBuffInterface("com.ociweb.test", "GroceryQueryProvider", "InventoryDetails",
+                "target/generated-sources/pronghorn/com/ociweb/", "src/test/resources/SIUE_GroceryStore/groceryExample.xml");
         
     }
 }
