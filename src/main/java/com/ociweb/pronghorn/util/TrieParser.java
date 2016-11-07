@@ -384,7 +384,10 @@ public class TrieParser {
                         break;
                     case TYPE_VALUE_NUMERIC:   
                         fieldExtractionsCount++;
+                        
+                        //if the data contains a number we must step over it                        
                         int newSourcePosition = stepOverNumeric(source, sourcePos, sourceMask, (int) data[pos++]);
+          
                         length += (newSourcePosition-sourcePos);//move length forward by count of extracted bytes
                         sourcePos = newSourcePosition;
                         
@@ -700,7 +703,8 @@ public class TrieParser {
     
 
     private void insertAtBranchValue(final int pos, short[] data, byte[] source, int sourceLength, int sourceMask, long value, int length, int runPos, int run, int r1, final int sourceCharPos, boolean branchOnByte) {
-        if (++r1 == run) {
+        
+    	if (++r1 == run) {
             int p = pos-3;
             if (p < 0) {
                 p = 0;
@@ -717,6 +721,19 @@ public class TrieParser {
 
 
     private int stepOverBytes(byte[] source, int sourcePos, int sourceMask, final short stop) {
+    	
+    	//TODO: WHOW TO DO WE SUPPORT THE END WITH NO STOP??
+    	
+    	if ('%'==source[sourceMask & sourcePos]) {        	
+    		byte second = source[sourceMask & (sourcePos+1)];
+    		if ('b'==second) {				
+				byte third = source[sourceMask & (sourcePos+2)];				
+				if (stop == third) {
+					return sourcePos+3;
+				}
+    		}
+    	}
+    	
         short t = 0;
         int c = source.length;
         do {
@@ -728,6 +745,18 @@ public class TrieParser {
 
     private int stepOverNumeric(byte[] source, int sourcePos, int sourceMask, int numType) {
 
+    	if ('%'==source[sourceMask & sourcePos]) {
+    	
+    		byte second = source[sourceMask & (sourcePos+1)];
+			if ('u'==second || 'U'==second ||
+				'.'==second || '/'==second ||
+				'i'==second || 'I'==second
+				) {
+    	    	return sourcePos+2;
+    		}
+    	}
+    	
+    	
         //NOTE: these Numeric Flags are invariants consuming runtime resources, this tree could be pre-compiled to remove them if neded.
         if (0!=(NUMERIC_FLAG_SIGN&numType)) {
             final short c = source[sourceMask & sourcePos];
@@ -1011,9 +1040,8 @@ public class TrieParser {
                                   pos = writeRuns(data, pos, source, sourcePos, remainingLength, sourceMask);
                               }
                           } else {
-                              pos = writeNumericExtract(data, pos, value);
-                              
-                              int remainingLength = runLeft-1;
+                              pos = writeNumericExtract(data, pos, value);                                                            
+                              int remainingLength = runLeft-1;                                                         
                               if (remainingLength > 0) {
                                   pos = writeRuns(data, pos, source, sourcePos, remainingLength, sourceMask);
                               }

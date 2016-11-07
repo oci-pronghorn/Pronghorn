@@ -74,7 +74,7 @@ public class TokenBuilder {
 
     // Decimals must pass in both operators in the tokenOpps field together
     public static int buildToken(int tokenType, int tokenOpps, int id) {
-        assert (id <= MAX_INSTANCE); //NOTE: this also limits the largest fragment size in ints due to Group using this field as the jump delta.
+        assert (id <= MAX_INSTANCE) : "can not index values larger than "+MAX_INSTANCE+" bad value requested was "+id; //NOTE: this also limits the largest fragment size in ints due to Group using this field as the jump delta.
         assert (TypeMask.toString(tokenType).indexOf("unknown") == -1) : "Unknown type of " + tokenType + " "
                 + Integer.toHexString(tokenType);
         assert (tokenType >= 0);

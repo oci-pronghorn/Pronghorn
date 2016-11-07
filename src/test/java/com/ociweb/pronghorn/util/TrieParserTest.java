@@ -358,6 +358,48 @@ public class TrieParserTest {
         
     }
     
+    
+    @Test
+    public void testNonBranchInsert() {
+    	
+    	TrieParserReader reader = new TrieParserReader(3);
+        TrieParser map = new TrieParser(1000);
+        map.setUTF8Value("Hello: %u\r",   value2); //FYI, one should not see one of these in the wild often.
+        map.setUTF8Value("Hello: %u\r\n", value3); //This just ends later so there is no branch 
+        
+        assertFalse(map.toString().contains("BRANCH_VALUE1"));
+        
+    }
+
+    @Test
+    public void testOrder1Insert() {
+    	
+    	TrieParserReader reader = new TrieParserReader(3);
+        TrieParser map = new TrieParser(1000);
+        map.setUTF8Value("%bb\n",   value2); 
+        map.setUTF8Value("ab\n",    value3);  
+        
+        System.out.println(map.toString()); //TODO: ERROR this is not showing the second insert
+  
+        
+    }
+    
+
+    @Test
+    public void testOrder2Insert() {
+    	
+    	TrieParserReader reader = new TrieParserReader(3);
+        TrieParser map = new TrieParser(1000);
+        map.setUTF8Value("ab\n",    value3);  
+        map.setUTF8Value("%bb\n",   value2); 
+        map.setUTF8Value("bb\n",    value3);  
+        
+        
+        System.out.println(map.toString()); //TODO: ERROR the bb should have come first and wrapped the others? OR alt branch should not insert first.
+ 
+        
+    }
+    
     @Test
     public void testMultipleTrysOfTrie() {
         TrieParserReader reader = new TrieParserReader(3);

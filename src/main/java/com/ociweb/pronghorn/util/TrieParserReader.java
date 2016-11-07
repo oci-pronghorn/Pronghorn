@@ -449,12 +449,14 @@ public class TrieParserReader {
                         return unfoundResult;
                     }
                 }
-            } else if (t == TrieParser.TYPE_VALUE_NUMERIC) {                
+            } else if (t == TrieParser.TYPE_VALUE_NUMERIC) {       
+            	
             	int temp = parseNumeric(reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, (int)trie.data[reader.pos++]);
             	if (temp<0) {
             		return unfoundResult;
-            	}
+            	}            	
                 reader.localSourcePos = temp;
+                
             } else if (t == TrieParser.TYPE_ALT_BRANCH) {
                  processAltBranch(reader, trie.data);                 
             } else  {                
@@ -545,6 +547,7 @@ public class TrieParserReader {
 
     private static int scanForMismatch(TrieParserReader reader, byte[] source, int sourceMask, short[] localData,
             int run) {
+   
         int r = run;
         while ((--r >= 0) && (localData[reader.pos++] == source[sourceMask & reader.localSourcePos++]) ) {
         }
@@ -770,7 +773,7 @@ public class TrieParserReader {
         long intValue = 0;
         byte intLength = 0;
         byte base=10;
-        
+                
         
         if (0!= (TrieParser.NUMERIC_FLAG_DECIMAL&numType)) {
             final short c = source[sourceMask & sourcePos];
