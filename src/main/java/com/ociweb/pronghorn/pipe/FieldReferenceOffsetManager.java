@@ -470,6 +470,13 @@ public class FieldReferenceOffsetManager {
     	throw new UnsupportedOperationException("Unable to find template id: "+id);
     }
 	
+	public int getLoc(String messageName, String fieldName) {		
+		return lookupFieldLocator(fieldName, lookupTemplateLocator(messageName, this), this);
+	}
+
+	public int getLoc(long messageId, long fieldId) {		
+		return lookupFieldLocator(fieldId, lookupTemplateLocator(messageId, this), this);
+	}
     
     /**
      * This does not return the token found in the script but rather a special value that can be used to 
