@@ -15,6 +15,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Stack;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -174,6 +175,7 @@ public class ProtoBuffInterface {
                 "import com.ociweb.pronghorn.pipe.build.GroceryExampleEncoderStage;\n" +
                 "import com.ociweb.pronghorn.stage.PronghornStage;\n" +
                 "import com.ociweb.pronghorn.stage.scheduling.GraphManager;\n" +
+                "import java.util.LinkedList;\n" +
                 "\n" +
                 "import java.io.IOException;\n" +
                 "import java.io.OutputStream;\n" +
@@ -187,12 +189,12 @@ public class ProtoBuffInterface {
                 "    private Boolean isWriting;\n" +
                 "    private GroceryExampleEncoderStage enc;\n" +
                 "    private GroceryExampleDecoderStage dec;\n" +
-                "    private OutputStream out;\n");
+                "    private LinkedList<InventoryDetails> list = new LinkedList<InventoryDetails>();\n" +
+                "    private OutputStream out;\n" +
+                "\n" +
+                "    public class InventoryDetails extends PronghornStage{\n" );
         generateInstanceVariables();
         interfaceTarget.append(
-                "\n" +
-                "    public class InventoryDetails extends PronghornStage{\n" +
-                "        //all instance variables\n" +
                 "        private int recordsIn;\n" +
                 "        private int recordsOut;\n" +
                 "\n" +
@@ -216,17 +218,24 @@ public class ProtoBuffInterface {
                 "\n" +
                 "        public void writeTo(OutputStream out){\n" +
                 "            out = out;\n" +
+                "            list.add(this);\n" +
                 "            recordsIn++;\n" +
                 "        }\n" +
                 "\n" +
                 "        @Override\n" +
                 "        public void run(){\n" +
                 "            if (isWriting){\n" +
-                "                while (recordsIn > recordsOut && Pipe.hasRoomForWrite(inPipe)){\n" +
+                "                while (recordsIn > recordsOut && Pipe.hasRoomForWrite(inPipe) && !list.isEmpty()){\n" +
                 "                    //write message id and stuff\n" +
+                "                    InventoryDetails current = list.poll();\n" +
+                "                    Pipe.addMsgIdx(inPipe, 0);\n");
+        generateLowLevelAPI("                    ");
+        interfaceTarget.append(
+                "                    Pipe.confirmLowLevelWrite(inPipe, Pipe.sizeOf(inPipe, 0));\n" +
+                "                    Pipe.publishWrites(inPipe);" +
                 "\n" +
                 "                    try {\n" +
-                "                        Pipe.writeFieldToOutputStream(outPipe, out);\n" +
+                "                        Pipe.writeFieldToOutputStream(inPipe, out);\n" +
                 "                    } catch (IOException e) {\n" +
                 "                        e.printStackTrace();\n" +
                 "                    }\n" +
@@ -266,6 +275,29 @@ public class ProtoBuffInterface {
                 "}");
 
 
+    }
+
+    private void generateLowLevelAPI(String tabspace) throws IOException {
+        FieldReferenceOffsetManager from = MessageSchema.from(schema);
+        int[] tokens = from.tokens;
+        String[] scriptNames = from.fieldNameScript;
+        long[] scriptIds = from.fieldIdScript;
+        int i = tokens.length;
+        Stack<String> stack = new Stack<String>();
+        //from schema
+        while (--i >= 0) {
+            int type = TokenBuilder.extractType(tokens[i]);
+            if (TypeMask.isLong(type)) {
+                stack.push(tabspace + "Pipe.addLongValue(current." + scriptNames[i] + "a, inPipe);\n");
+            } else if (TypeMask.isInt(type)) {
+                stack.push(tabspace + "Pipe.addIntValue(current." + scriptNames[i] + "a, inPipe);\n");
+            } else if (TypeMask.isText(type)) {
+                stack.push(tabspace + "Pipe.addASCII(current." + scriptNames[i] + "a, inPipe);\n");
+            }
+        }
+        while (!stack.empty()){
+            interfaceTarget.append(stack.pop());
+        }
     }
 
     private static String generateClassNameEncoder(MessageSchema schema) {
