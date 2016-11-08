@@ -71,7 +71,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     /**
-     * This method is to be ovveridden and called on by the super class. It should not be called anywhere but by the
+     * This method is to be overridden and called on by the super class. It should not be called anywhere but by the
      * super class
      *
      * @param target    where the code is being written in super class
@@ -106,6 +106,23 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append(tab + defaultIntDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
         target.append(tab + defaultLongDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
         target.append("}\n\n");
+
+    }
+
+    /**
+     * This method overrides the method in super to add the proper logic in the case of a -1
+     * being read from the Pipe
+     *
+     * @param target where the code is being written in super class
+     * @throws IOException when target can not be written to
+     */
+    @Override
+    protected void negativeOneCase(Appendable target) throws IOException {
+        target.append(tab+tab).append("case -1:\n");
+
+        target.append(tab+tab+tab).append("Pipe.confirmLowLevelRead(" + pipeVarName + ", Pipe.EOF_SIZE);\n");
+        target.append(tab+tab+tab).append("Pipe.publishEOF(" + pipeVarName + ");\n");
+        target.append(tab+tab+tab).append("requestShutdown();\n");
 
     }
 
@@ -148,7 +165,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     /**
-     * This method is where the startup is overriden in the printed out code. Called from teh super class, and should
+     * This method is where the startup is overridden in the printed out code. Called from teh super class, and should
      * not be called from elsewhere.
      *
      * @param target
@@ -164,8 +181,8 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     /**
-     * This method is to be ovveridden and called on by the super class. It should not be called anywhere but by the
-     * super class. This addes to the loop logic in the run method in the printed out code.
+     * This method is to be overridden and called on by the super class. It should not be called anywhere but by the
+     * super class. This adds to the loop logic in the run method in the printed out code.
      *
      * @param target The target that the code is being written to
      */
@@ -180,35 +197,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
 
     @Override
     protected void bodyOfNextMessageIdx(Appendable target) throws IOException {
-        FieldReferenceOffsetManager from = MessageSchema.from(schema);
-
-        int[] tokens = from.tokens;
-        long[] scriptIds = from.fieldIdScript;
-        String[] scriptNames = from.fieldNameScript;
-        int[] intDict = from.newIntDefaultsDictionary();
-        long[] longDict = from.newLongDefaultsDictionary();
-        int i = tokens.length;
-        int startsCount = MessageSchema.from(schema).messageStarts().length;
-
-        if (startsCount == 1) {
-            target.append(tab).append("return ");
-            Appendables.appendValue(target, MessageSchema.from(schema).messageStarts()[0]).append(";\n");
-        } else {
-            target.append(tab).append("return ");
-
-            if (null == pipeVarName) {
-                if (!(schema instanceof MessageSchemaDynamic)) {
-                    target.append(schema.getClass().getSimpleName()).append(".");
-                }
-
-                target.append("FROM");
-            } else {
-                Appendables.appendStaticCall(target, Pipe.class, "from").append(pipeVarName).append(")");
-            }
-
-            target.append(".messageStarts[");
-            Appendables.appendValue(target, startsCount).append("];\n");
-        }
+        target.append(tab).append("return Pipe.takeMsgIdx(" + inPipeName + ");\n");
     }
 
     /**
@@ -324,7 +313,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     /**
-     * This method is intentionally left blank so it can overrid the super classes implementation of requestShutDown
+     * This method is intentionally left blank so it can override the super classes implementation of requestShutDown
      *
      * @param target where the code is written to
      * @throws IOException when the target can not be written to.

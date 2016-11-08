@@ -129,7 +129,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     /**
-     * This method is to be ovveridden and called on by the super class. It should not be called anywhere but by the
+     * This method is to be overridden and called on by the super class. It should not be called anywhere but by the
      * super class
      *
      * @param target The target that the code is being written to
@@ -144,7 +144,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     /**
-     * This method is to be ovveridden and called on by the super class. It should not be called anywhere but by the
+     * This method is to be overridden and called on by the super class. It should not be called anywhere but by the
      * super class
      *
      * @param target    where the code is being written in super class
@@ -183,8 +183,24 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
     }
 
     /**
-     * This method is overriden and left blank on purpose. It overrides an empty request shut down, and writes nothing
-     * so the class may use the reuest shut down from PronghornStage
+     * This method overrides its super method to add the proper logic in case of a -1
+     * being written to the Pipe
+     *
+     * @param target where the code is being written in super class
+     * @throws IOException when target can not be written to
+     */
+    @Override
+    protected void negativeOneCase(Appendable target) throws IOException {
+        target.append(tab+tab).append("case -1:\n");
+
+        target.append(tab+tab+tab).append("Pipe.confirmLowLevelRead(" + inPipeName + ", Pipe.EOF_SIZE);\n");
+        target.append(tab+tab+tab).append("Pipe.publishEOF(" + outPipeName + ");\n");
+        target.append(tab+tab+tab).append("requestShutdown();\n");
+    }
+
+    /**
+     * This method is overridden and left blank on purpose. It overrides an empty request shut down, and writes nothing
+     * so the class may use the request shut down from PronghornStage
      *
      * @throws IOException when target can not be written to
      */
@@ -211,7 +227,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         //create FROM which is generated from the schema provided.
         FieldReferenceOffsetManager from = MessageSchema.from(schema);
 
-        //incremenent to pass over the group start at the begging of array
+        //increment to pass over the group start at the begging of array
         cursor++;
         //make two cursors, one for pmap building and other for encoding
         int curCursor = cursor;
