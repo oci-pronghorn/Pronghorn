@@ -239,6 +239,7 @@ public class ProtoBuffInterface {
                 "                    } catch (IOException e) {\n" +
                 "                        e.printStackTrace();\n" +
                 "                    }\n" +
+                "        recordsOut++;\n" +
                 "                }\n" +
                 "            }\n" +
                 "            else{\n" +
