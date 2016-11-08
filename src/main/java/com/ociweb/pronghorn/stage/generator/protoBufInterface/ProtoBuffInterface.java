@@ -21,7 +21,7 @@ import java.util.logging.Logger;
 
 public class ProtoBuffInterface {
     private PhastDecoderStageGenerator decoderGenerator;
-    private PhastEncoderStageGenerator encoderGenerator;
+    private ProtoBuffEncoderStageGenerator encoderGenerator;
     private String interfaceClassName;
     private String packageName;
     String innerClassName;
@@ -57,7 +57,7 @@ public class ProtoBuffInterface {
         File outputEncode = new File(filePath + encoderClassName + ".java");
         PrintWriter encodeTarget = new PrintWriter(outputEncode);
 
-        encoderGenerator = new PhastEncoderStageGenerator(schema, encodeTarget);
+        encoderGenerator = new ProtoBuffEncoderStageGenerator(schema, encodeTarget);
         encoderGenerator.processSchema();
         decoderGenerator = new PhastDecoderStageGenerator(schema, decodeTarget, false);
         decoderGenerator.processSchema();
@@ -234,11 +234,6 @@ public class ProtoBuffInterface {
                 "                    Pipe.confirmLowLevelWrite(inPipe, Pipe.sizeOf(inPipe, 0));\n" +
                 "                    Pipe.publishWrites(inPipe);" +
                 "\n" +
-                "                    try {\n" +
-                "                        Pipe.writeFieldToOutputStream(inPipe, out);\n" +
-                "                    } catch (IOException e) {\n" +
-                "                        e.printStackTrace();\n" +
-                "                    }\n" +
                 "        recordsOut++;\n" +
                 "                }\n" +
                 "            }\n" +

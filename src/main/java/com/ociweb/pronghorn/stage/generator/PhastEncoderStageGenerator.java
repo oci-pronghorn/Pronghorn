@@ -90,10 +90,16 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             target.append("import " + PhastEncoder.class.getCanonicalName() + ";\n");
             target.append("import " + DataOutputBlobWriter.class.getCanonicalName() + ";\n");
             target.append("import com.ociweb.pronghorn.pipe.*;\n");
-            target.append("import " + PronghornStage.class.getCanonicalName() + ";\n\n");
+            target.append("import " + PronghornStage.class.getCanonicalName() + ";\n");
+            interfaceImports(target);
+            target.append("\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    protected void interfaceImports(Appendable target){
+
     }
 
     /**
@@ -113,6 +119,11 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append("DataOutputBlobWriter<" + schema.getClass().getSimpleName() + "> " + writerName + ";\n");
         //target.append("private Pipe<MessageSchemaDynamic> " + inPipeName + ";\n");
         target.append("private Pipe<RawDataSchema> " + outPipeName + ";\n");
+        interfaceMembers(target);
+    }
+
+    protected void interfaceMembers(Appendable target){
+
     }
 
     /**
@@ -166,7 +177,9 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
             target.append(GraphManager.class.getCanonicalName()).append(" gm, ");
 
             target.append("Pipe<MessageSchemaDynamic>  " + inPipeName + ", ");
-            target.append("Pipe<RawDataSchema> " + outPipeName + ") {\n");
+            target.append("Pipe<RawDataSchema> " + outPipeName );
+            additionalArgs(target);
+            target.append(") {\n");
 
             target.append(tab).append("super(gm," + inPipeName + ",").append(outPipeName).append(");\n");
             target.append(tab).append("this." + outPipeName + " = " + outPipeName + ";\n");
@@ -179,9 +192,17 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append(tab + longDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
         target.append(tab + defIntDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
         target.append(tab + defLongDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
+        additionalConstructorLogic(target);
         target.append("}\n\n");
     }
 
+    protected void additionalConstructorLogic(Appendable target){
+
+    }
+
+    protected void additionalArgs(Appendable target){
+
+    }
     /**
      * This method overrides its super method to add the proper logic in case of a -1
      * being written to the Pipe
@@ -319,9 +340,15 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 curCursor2 += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
             }
             bodyTarget.append(tab + "Pipe.publishWrites(" + outPipeName + ");\n");
+            additionalBody(bodyTarget);
+
         } catch (IOException e) {
             java.util.logging.Logger.getLogger(PhastEncoderStageGenerator.class.getName()).log(Level.SEVERE, null, e);
         }
+    }
+
+    protected void additionalBody(Appendable target){
+
     }
 
     /**
