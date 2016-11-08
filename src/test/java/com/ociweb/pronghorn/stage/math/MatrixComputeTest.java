@@ -183,10 +183,10 @@ public class MatrixComputeTest {
 		
 		//targeting 7680 × 4320
 		
-		int leftRows=2048;
-		int rightColumns=2048;
+		int leftRows=1080;
+		int rightColumns=1920;
 				
-		int leftColumns = 2048;
+		int leftColumns = 1920;
 		int rightRows=leftColumns;		
 		
 		
@@ -251,7 +251,7 @@ public class MatrixComputeTest {
 		
 		scheduler.startup();	
 	
-		int testSize = 50;
+		int testSize = 10;
 		int k = testSize;
 	
 		while (--k>=0) {

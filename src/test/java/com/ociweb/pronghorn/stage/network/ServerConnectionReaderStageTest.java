@@ -50,7 +50,7 @@ public class ServerConnectionReaderStageTest {
         
         ConsoleJSONDumpStage<ServerConnectionSchema> connectionNotice = new ConsoleJSONDumpStage<ServerConnectionSchema>(gm, newConnectionsPipe);
 
-        ServerConnectionReaderStage readerStage = new ServerConnectionReaderStage(gm, output, coordinator, socketGroupId);
+        ServerConnectionReaderStage readerStage = new ServerConnectionReaderStage(gm, output, coordinator, socketGroupId, false);
 
         int i = output.length;
         while (--i>=0) { 
@@ -123,7 +123,7 @@ public class ServerConnectionReaderStageTest {
         ServerNewConnectionStage newConStage = new ServerNewConnectionStage(gm, coordinator, newConnectionsPipe);
         PipeCleanerStage<ServerConnectionSchema> newConnectionNotice = new PipeCleanerStage<>(gm, newConnectionsPipe);
         
-        ServerConnectionReaderStage readerStage = new ServerConnectionReaderStage(gm, output, coordinator, socketGroupId);
+        ServerConnectionReaderStage readerStage = new ServerConnectionReaderStage(gm, output, coordinator, socketGroupId, false);
         
         long totalRequests = iterations*(long)fileCount*(long)connections;
         

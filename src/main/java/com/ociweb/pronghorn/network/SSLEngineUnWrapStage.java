@@ -24,33 +24,37 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	private int calls;
 	private ByteBuffer secureBuffer;
 	private final boolean isServer;
+	private int groupId;
 
-	public SSLEngineUnWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, 
-			                       Pipe<NetPayloadSchema>[] encryptedContent, 
-			                       Pipe<NetPayloadSchema>[] outgoingPipeLines) {
-		this(graphManager,ccm,encryptedContent,outgoingPipeLines,new Pipe[outgoingPipeLines.length], false);
-	}
 	
 	public SSLEngineUnWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, 
-            Pipe<NetPayloadSchema>[] encryptedContent, 
-            Pipe<NetPayloadSchema>[] outgoingPipeLines,
-            Pipe<NetPayloadSchema>[] handshakePipe) {
-		this(graphManager, ccm, encryptedContent, outgoingPipeLines, handshakePipe, true);
-	}
-	
-	protected SSLEngineUnWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, 
 			                       Pipe<NetPayloadSchema>[] encryptedContent, 
 			                       Pipe<NetPayloadSchema>[] outgoingPipeLines,
-			                       Pipe<NetPayloadSchema>[] handshakePipe, boolean isServer) {
-		super(graphManager, encryptedContent, outgoingPipeLines);
+			                       Pipe<NetPayloadSchema>[] handshakePipe, boolean isServer, int groupId) {
+		super(graphManager, encryptedContent, join(outgoingPipeLines, handshakePipe));
 		this.ccm = ccm;
 		this.encryptedContent = encryptedContent;
 		this.outgoingPipeLines = outgoingPipeLines;
 		this.handshakePipe = handshakePipe;
 		this.isServer = isServer;
+		this.groupId = groupId;
 		assert(encryptedContent.length == outgoingPipeLines.length);
 	}
 
+	public SSLEngineUnWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, 
+            Pipe<NetPayloadSchema>[] encryptedContent, 
+            Pipe<NetPayloadSchema>[] outgoingPipeLines,
+            boolean isServer, int groupId) {
+		super(graphManager, encryptedContent, outgoingPipeLines);
+		this.ccm = ccm;
+		this.encryptedContent = encryptedContent;
+		this.outgoingPipeLines = outgoingPipeLines;
+		this.handshakePipe = null;
+		this.isServer = isServer;
+		this.groupId = groupId;
+		assert(encryptedContent.length == outgoingPipeLines.length);
+	}
+	
 	@Override
 	public void startup() {
 		
@@ -73,14 +77,15 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	public void run() {
 		long start = System.nanoTime();
 		calls++;	
-						
+		
 		int i = encryptedContent.length;
-		while (--i >= 0) {
-			SSLUtil.engineUnWrap(ccm, encryptedContent[i], outgoingPipeLines[i], buffers[i], workspace, handshakePipe[i], secureBuffer);
+		while (--i >= 0) {			
+			SSLUtil.engineUnWrap(ccm, encryptedContent[i], outgoingPipeLines[i], buffers[i], workspace, isServer ? handshakePipe[i] : null, secureBuffer, groupId);			
 		}
 		totalNS += System.nanoTime()-start;
 		
 	}
+	
 
 	@Override
 	public void shutdown() {

@@ -22,7 +22,6 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.Pipe.PaddedLong;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.Pool;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -84,7 +83,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     //total all into one master DataInputReader
        
     
-    public static HTTP1xRouterStage newInstance(GraphManager gm, Pool<Pipe<NetPayloadSchema>> input, Pipe<HTTPRequestSchema>[] outputs,
+    public static HTTP1xRouterStage newInstance(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs,
                                               CharSequence[] paths, long[] headers, int[] messageIds) {
         
        return new HTTP1xRouterStage<HTTPContentTypeDefaults ,HTTPHeaderKeyDefaults, HTTPRevisionDefaults, HTTPVerbDefaults>(gm,input,outputs, paths, headers, messageIds,
@@ -92,11 +91,11 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     }
 
    
-    public HTTP1xRouterStage(GraphManager gm, Pool<Pipe<NetPayloadSchema>> input, Pipe<HTTPRequestSchema>[] outputs, 
+    public HTTP1xRouterStage(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, 
                            CharSequence[] paths, long[] headers, int[] messageIds, 
                            HTTPSpecification<T,R,V,H> httpSpec) {
-        super(gm,input.members(),outputs);
-        this.inputs = input.members();
+        super(gm,input,outputs);
+        this.inputs = input;
                 
         this.outputs = outputs;
         this.messageIds = messageIds;
@@ -156,7 +155,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         ///
         
         urlMap = new TrieParser(1024,true);  //TODO: build size needed for these URLs dynamically 
-        headerMap = new TrieParser(1024,true);//true skips deep checks we have an unknown value that gets picked for unexpected headers
+        headerMap = new TrieParser(2048,true);//true skips deep checks we have an unknown value that gets picked for unexpected headers
         
         verbMap = new TrieParser(256,false);//does deep check
         revisionMap = new TrieParser(256,true); //avoid deep check
@@ -174,6 +173,13 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         totalShortestRequest = 0;//count bytes for the shortest known request, this opmization helps prevent parse attempts when its clear that there is not enough data.
         int localShortest;
         
+        headerMap.setUTF8Value("\n", END_OF_HEADER_ID); //Detecting this first but not right!! we did not close the revision??
+        headerMap.setUTF8Value("\r\n", END_OF_HEADER_ID);
+        
+        //TODO: this addition is slowing down the performance, must investigate
+        headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //TODO: bug in trie if we attemp to set this first...
+        headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
+
         //Load the supported header keys
         H[] shr =  httpSpec.supportedHTTPHeaders.getEnumConstants();
         x = shr.length;
@@ -182,12 +188,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             headerMap.setUTF8Value(shr[x].getKey(), "\n",shr[x].ordinal());
             headerMap.setUTF8Value(shr[x].getKey(), "\r\n",shr[x].ordinal());
         }     
-        headerMap.setUTF8Value("\n", END_OF_HEADER_ID); //Detecting this first but not right!! we did not close the revision??
-        headerMap.setUTF8Value("\r\n", END_OF_HEADER_ID);
-    
-        //TODO: this addition is slowing down the performance, must investigate
-        headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //TODO: bug in trie if we attemp to set this first...
-        headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
 
         
         //a request may have NO header with just the end marker so add one
@@ -381,20 +381,20 @@ private boolean route(TrieParserReader trieReader, long channel, int idx) {
         final int size =  Pipe.addMsgIdx(staticRequestPipe, messageIds[routeId]);        // Write 1   1                         
         Pipe.addLongValue(channel, staticRequestPipe); // Channel                        // Write 2   3        
         
-        System.out.println("wrote ever increasing squence from router of "+sequenceNo);//TODO: should this be per connection instead!!
+       // System.out.println("wrote ever increasing squence from router of "+sequenceNo);//TODO: should this be per connection instead!!
         
         Pipe.addIntValue(sequenceNo++, staticRequestPipe); //sequence                    // Write 1   4
         Pipe.addIntValue(verbId, staticRequestPipe);   // Verb                           // Write 1   5
         
         
-        try {
-        	//System.out.print("captured data:");
-			TrieParserReader.writeCapturedValuesToAppendable(trieReader,System.out);
-			//System.out.println();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+//        try {
+//        	//System.out.print("captured data:");
+//			TrieParserReader.writeCapturedValuesToAppendable(trieReader,System.out);
+//			//System.out.println();
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
         
         writeURLParamsToField(trieReader, blobWriter[routeId]);                          //write 2   7
        
@@ -451,10 +451,6 @@ private void writeURLParamsToField(TrieParserReader trieReader, DataOutputBlobWr
 }
 
 
-public boolean isCalled() {
-    System.out.println("is called");
-    return true;
-}
 
 private int accumulateRunningBytes(int idx, Pipe<NetPayloadSchema> selectedInput) {
     

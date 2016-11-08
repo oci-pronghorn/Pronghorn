@@ -48,11 +48,11 @@ public class HTTPRouterStageTest {
         
         
         Pipe<NetPayloadSchema> rawRequestPipe = new Pipe<NetPayloadSchema>(rawRequestPipeConfig);               
-        Pool<Pipe<NetPayloadSchema>> pool = new Pool<Pipe<NetPayloadSchema>>(new Pipe[]{ rawRequestPipe});
+        Pipe[] pipes = new Pipe[]{ rawRequestPipe};
         
         
         PronghornStage stage = ClientHTTPRequestDataGeneratorStage.newInstance(gm, rawRequestPipe, iterations, paths);  
-        HTTP1xRouterStage stage2 = buildRouterStage(gm, apps, appPipeConfig, pool);
+        HTTP1xRouterStage stage2 = buildRouterStage(gm, apps, appPipeConfig, pipes);
                
         runGraph(gm, apps, iterations, stage2);
         
@@ -93,7 +93,7 @@ public class HTTPRouterStageTest {
     }
 
     private HTTP1xRouterStage buildRouterStage(GraphManager gm, final int apps,
-            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pool<Pipe<NetPayloadSchema>> pool) {
+            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pipe<NetPayloadSchema>[] pipes) {
         Pipe[] routedAppPipes = new Pipe[apps];
         long[] appHeaders = new long[apps];
         int[] msgIds = new int[apps];
@@ -117,7 +117,7 @@ public class HTTPRouterStageTest {
         Pipe errorPipe = new Pipe(new PipeConfig(RawDataSchema.instance));
         ConsoleJSONDumpStage dump = new ConsoleJSONDumpStage(gm,errorPipe);
         
-        HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pool, routedAppPipes, paths, appHeaders, msgIds);
+        HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, routedAppPipes, paths, appHeaders, msgIds);
         return stage;
     }
  

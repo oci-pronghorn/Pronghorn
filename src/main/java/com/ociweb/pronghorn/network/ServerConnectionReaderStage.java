@@ -21,7 +21,9 @@ import com.ociweb.pronghorn.util.ServiceObjectHolder;
 
 public class ServerConnectionReaderStage extends PronghornStage {
     
-    public static final Logger logger = LoggerFactory.getLogger(ServerConnectionReaderStage.class);
+    private final int messageType;
+
+	public static final Logger logger = LoggerFactory.getLogger(ServerConnectionReaderStage.class);
     
     private final Pipe<NetPayloadSchema>[] output;
 
@@ -40,11 +42,12 @@ public class ServerConnectionReaderStage extends PronghornStage {
     private ServiceObjectHolder<ServerConnection> holder;
     
     
-    public ServerConnectionReaderStage(GraphManager graphManager, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, int pipeIdx) {
+    public ServerConnectionReaderStage(GraphManager graphManager, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, int pipeIdx, boolean encrypted) {
         super(graphManager, NONE, output);
         this.coordinator = coordinator;
         this.pipeIdx = pipeIdx;
         this.output = output;
+        this.messageType = encrypted ? NetPayloadSchema.MSG_ENCRYPTED_200 : NetPayloadSchema.MSG_PLAIN_210;
     }
 
     @Override
@@ -76,7 +79,7 @@ public class ServerConnectionReaderStage extends PronghornStage {
 
         if (hasNewDataToRead()) {
         	
-        	//logger.debug("found new data to read on "+pipeIdx);
+        	logger.debug("found new data to read on "+pipeIdx);
             
             Iterator<SelectionKey>  keyIterator = selector.selectedKeys().iterator();   
             
@@ -210,12 +213,12 @@ public class ServerConnectionReaderStage extends PronghornStage {
     private void publishData(Pipe<NetPayloadSchema> targetPipe, long channelId, int len) {
 
         
-        int size = Pipe.addMsgIdx(targetPipe,NetPayloadSchema.MSG_PLAIN_210);               
+        int size = Pipe.addMsgIdx(targetPipe,messageType);               
         Pipe.addLongValue(channelId, targetPipe);  
 
         int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);
        
-       // logger.info("server got: "+Appendables.appendUTF8(new StringBuilder(), Pipe.blob(targetPipe), originalBlobPosition, len, Pipe.blobMask(targetPipe)));
+        //logger.info("server got: "+Appendables.appendUTF8(new StringBuilder(), Pipe.blob(targetPipe), originalBlobPosition, len, Pipe.blobMask(targetPipe)));
   
 //EXAMPLE REQUEST        
 //        GET /index.html HTTP/1.1

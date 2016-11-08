@@ -109,7 +109,7 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
                     
                     //read the next non-blocked pipe, sequenceNo is never reset to zero
                     //every number is used even if there is an exception upon write.
-                    boolean isBlocked = sequenceNo!=expected; 
+                    boolean isBlocked = false;//sequenceNo!=expected; 
                     
                     if (isBlocked) {
                     	System.out.println("in use connection "+(int)(channelId & coordinator.channelBitsMask)+" must match expected "+expected+" and sequenceNo "+sequenceNo);

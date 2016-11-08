@@ -431,7 +431,11 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
         ///////////////
         //we lost our file channel and need to request a new one.
         //////////////
-        try {                    
+        try {
+        	
+        	assert(	paths[pathId].toFile().isFile() );
+        	assert(	paths[pathId].toFile().exists() );
+        	        			
             activeFileChannel = provider.newFileChannel(paths[pathId], readOptions);
             fcId[pathId] = channelHolder.add(activeFileChannel);
             fileSizes[pathId] = activeFileChannel.size();
@@ -603,13 +607,14 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
                 publishBodyPart(channelHigh, channelLow, sequence, localOutput, len);   
                 localPos += len;
             } else {
+            	assert(localFileChannel.isOpen());
             	assert(localFileChannel.position() == localPos) : "independent file position check does not match";
             	//must read from file system
                 long len;
                 if ((len=localFileChannel.read(Pipe.wrappedWritingBuffers(headBlobPosInPipe, localOutput))) >= 0) {
                     
                 	//Not yet complete 
-                	//logger.info("FileReadStage wrote out {} total file size {} curpos {} ",len,localFileChannel.size(),localFileChannel.position());
+                	logger.info("FileReadStage wrote out {} total file size {} curpos {} ",len,localFileChannel.size(),localFileChannel.position());
                                     	
                 	assert(len<Integer.MAX_VALUE);
                     publishBodyPart(channelHigh, channelLow, sequence, localOutput, (int)len);   

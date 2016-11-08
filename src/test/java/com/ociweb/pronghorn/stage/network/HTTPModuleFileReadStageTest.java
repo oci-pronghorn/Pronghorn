@@ -28,7 +28,7 @@ import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 public class HTTPModuleFileReadStageTest {
 
     
-    @Test
+    @Ignore
     public void rapidValidReadTest() {
         
         GraphManager gm = new GraphManager();

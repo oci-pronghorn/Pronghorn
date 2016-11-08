@@ -14,7 +14,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class HTTPClientRequestStage extends PronghornStage {
 
-	public static final Logger log = LoggerFactory.getLogger(HTTPClientRequestStage.class);
+	public static final Logger logger = LoggerFactory.getLogger(HTTPClientRequestStage.class);
 	
 	private final Pipe<NetRequestSchema>[] input;
 	private final Pipe<NetPayloadSchema>[] output;
@@ -115,7 +115,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 	            
 				switch (msgIdx) {
 							case -1:
-								
+								logger.info("Received shutdown message");
 								ClientConnection connectionToKill = ccm.nextValidConnection();
 								final ClientConnection firstToKill = connectionToKill;					
 								while (null!=connectionToKill) {								
@@ -181,6 +181,9 @@ public class HTTPClientRequestStage extends PronghornStage {
 						                	DataOutputBlobWriter.closeHighLevelField(activeWriter, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 						                					                	
 						                	PipeWriter.publishWrites(outputPipe);
+						                	
+						                    //logger.info("published the get request {}",outputPipe);
+						                	
 						                					                	
 						                } else {
 						                	throw new RuntimeException("Unable to send request, outputPipe is full");
