@@ -369,6 +369,12 @@ public class TrieParserTest {
         
         assertFalse(map.toString().contains("BRANCH_VALUE1"));
         
+        byte[] text1 = "Hello: 123\r".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text1,4), 0, text1.length, 15));
+        
+        byte[] text2 = "Hello: 123\r\n".getBytes();
+		assertEquals(value3, TrieParserReader.query(reader,map, wrapping(text2,4), 0, text2.length, 15));
+		
     }
 
     @Test
@@ -377,11 +383,11 @@ public class TrieParserTest {
     	TrieParserReader reader = new TrieParserReader(3);
         TrieParser map = new TrieParser(1000);
         map.setUTF8Value("%bb\n",   value2); 
+        String a = map.toString();
         map.setUTF8Value("ab\n",    value3);  
-        
-        System.out.println(map.toString()); //TODO: ERROR this is not showing the second insert
-  
-        
+        String b = map.toString();
+        assertFalse(a.equals(b));
+              
     }
     
 
@@ -392,12 +398,10 @@ public class TrieParserTest {
         TrieParser map = new TrieParser(1000);
         map.setUTF8Value("ab\n",    value3);  
         map.setUTF8Value("%bb\n",   value2); 
-        map.setUTF8Value("bb\n",    value3);  
+        map.setUTF8Value("bb\n",    value3);     
         
-        
-        System.out.println(map.toString()); //TODO: ERROR the bb should have come first and wrapped the others? OR alt branch should not insert first.
- 
-        
+       //System.out.println(map.toString()); //TODO: WARN the bb and ab should have come first and wrapped the others? OR alt branch should not insert first.
+         
     }
     
     @Test

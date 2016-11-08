@@ -370,43 +370,50 @@ public class TrieParser {
                         }
                         break;
                     case TYPE_ALT_BRANCH:
-                        
-                        //this selects the one to try first
-                      //  if (1==BRANCH_JUMP_SIZE) {
-                      //      altBranch(data, pos, sourcePos, data[pos++], data[pos]); //jump and peek, that is why second does not ++
-                       // } else {
-                            altBranch(data, pos, sourcePos, (((int)data[pos++])<<15) | (0x7FFF&data[pos++]), data[pos]);
-                      //  }
-                        
+                 
+                        altBranch(data, pos, sourcePos, (((int)data[pos++])<<15) | (0x7FFF&data[pos++]), data[pos]);
+                                             
                         pos       = altStackA[--altStackPos];
                         sourcePos = altStackB[altStackPos];
                         
                         break;
                     case TYPE_VALUE_NUMERIC:   
                         fieldExtractionsCount++;
+                        maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                         
-                        //if the data contains a number we must step over it                        
-                        int newSourcePosition = stepOverNumeric(source, sourcePos, sourceMask, (int) data[pos++]);
-          
-                        length += (newSourcePosition-sourcePos);//move length forward by count of extracted bytes
-                        sourcePos = newSourcePosition;
+                        if ('%'==source[sourceMask & sourcePos]) {                        	
+                    		byte second = source[sourceMask & (sourcePos+1)];
+                			if ('u'==second || 'U'==second ||
+                				'.'==second || '/'==second ||
+                				'i'==second || 'I'==second) {
+                				
+                				pos++;
+                				length += 2;
+                				sourcePos += 2;
+                				
+                				break;
+                    		}
+                    	}                        
                         
-                        break;
+                        insertAtBranchValue(0, data, pos-1, source, sourcePos, sourceLength-length, sourceMask, value, false);
+                        return;
+
                     case TYPE_VALUE_BYTES:
                         fieldExtractionsCount++;       
+                        maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                         
-                        int newSourcePos = stepOverBytes(source, sourcePos, sourceMask, data[pos++]);
-                        
-                        if (newSourcePos>0) {
-                            length += (newSourcePos-sourcePos);//move length forward by count of extracted bytes
-                            sourcePos = newSourcePos;
-                        } else {
-                            fieldExtractionsCount++; 
-                            //rollback and insert this new pattern since we did not match the existing
-                            insertAtBranchValue(0, data, pos-2, source, sourcePos, sourceLength-length, sourceMask, value, false); 
-                            maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
-                            return;
-                        }                        
+                    	if ('%'!=source[sourceMask & sourcePos]     ||
+                    		'b'!=source[sourceMask & (sourcePos+1)] ||
+                    		data[pos]!=source[sourceMask & (sourcePos+2)] ) {   	
+                    		insertAtBranchValue(0, data, pos-1, source, sourcePos, sourceLength-length, sourceMask, value, false);
+                    		return;
+                    		
+                    	} else {
+                    		pos++;//for the stop consumed
+                    		length += 3;//move length forward by count of extracted bytes
+                            sourcePos += 3;
+                    	}
+                                        
                         
                         break;
                     case TYPE_RUN:
@@ -853,7 +860,11 @@ public class TrieParser {
         updatePreviousJumpDistances(0, data, pos, requiredRoom);        
         
         int newPos = pos + requiredRoom;
-
+        assert(pos>=0);
+        assert(pos+len<data.length);
+        if (newPos+len>data.length) {
+        	throw new UnsupportedOperationException("allocated length of "+data.length+" is too short to add all the patterns");
+        }       
         System.arraycopy(data, pos, data, newPos, len);
         
         if (danglingByteCount > 0) {//do the prepend because we now have room
