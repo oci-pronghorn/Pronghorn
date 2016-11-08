@@ -63,8 +63,8 @@ public class SSLUtil {
 			do {
 				
 				//TODO: very odd hack here.
-				while (Pipe.contentRemaining(target)>0) {//  !PipeWriter.hasRoomForWrite(target)) {
-					
+				while (!PipeWriter.hasRoomForWrite(target)) {
+					Thread.yield();
 				}
 				
 				final ByteBuffer[] targetBuffers = PipeWriter.wrappedUnstructuredLayoutBufferOpen(target, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_PAYLOAD_203);
