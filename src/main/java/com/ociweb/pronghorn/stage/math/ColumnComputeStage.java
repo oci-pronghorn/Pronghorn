@@ -255,14 +255,14 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		}		
 		
 		// performance test
-		startTime = System.nanoTime();
+		// startTime = System.nanoTime();
 		goCompute(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rRows, 
 			  inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
 		// preformance test
-		durationNs = System.nanoTime() - startTime;
-		durationUs = TimeUnit.NANOSECONDS.toMicros(durationNs);
-		durationMs = TimeUnit.NANOSECONDS.toMillis(durationNs);
-		System.out.println("JNI compuation: " + durationUs + "us");
+		// durationNs = System.nanoTime() - startTime;
+		// durationUs = TimeUnit.NANOSECONDS.toMicros(durationNs);
+		// durationMs = TimeUnit.NANOSECONDS.toMillis(durationNs);
+		// System.out.println("JNI compuation: " + durationUs + "us");
 	}
 	
 
@@ -278,11 +278,11 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 	    //typeMask == 4 for Decimals.
 		
 	        switch(typeMask) {
-		   case 0: case 1:
-		       goComputeNative(typeMask, rowSlab, rowPosition, rowMask, length, 
-				       colSlabs, colPositions, colMask, outputPipes, cPosOut, outMask);
-		       break;
-		   case 2: case 3: case 4:		
+		    case 0: case 1:
+		        goComputeNative(typeMask, rowSlab, rowPosition, rowMask, length, 
+		    		       colSlabs, colPositions, colMask, outputPipes, cPosOut, outMask);
+		        break;
+		    case 2: case 3: case 4:		
 		       int p = length;
 		       while (--p>=0) {			   
 			   int idx = rowMask&(int)(rowPosition+p);

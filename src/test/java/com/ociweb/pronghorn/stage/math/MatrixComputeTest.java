@@ -167,6 +167,7 @@ public class MatrixComputeTest {
 		
 	}
 	
+        @Ignore
 	@Test
 	public void testCompute() {
 		//speed
@@ -183,15 +184,10 @@ public class MatrixComputeTest {
 		
 		
 		int leftRows=10;
-		int rightColumns=1024;
+		int rightColumns=2048;
 				
-		int leftColumns = 1024;
+		int leftColumns = 2048;
 		int rightRows=leftColumns;		
-		
-		
-		//walk leftRows , by rightCol for output
-		//5x2
-		//2x3
 		
 		//TODO: these 3 must be removed since they are not "real" schemas but just hold the type and matrix size.
 		MatrixSchema leftSchema = BuildMatrixCompute.buildSchema(leftRows, leftColumns, type);		
@@ -252,19 +248,12 @@ public class MatrixComputeTest {
 		
 		int testSize = 1;
 		int k = testSize;
-		long timeout = 0;
+	
 		while (--k>=0) {
-			timeout = System.currentTimeMillis()+5000;
 			//System.out.println(k);
 			for(int c=0;c<leftRows;c++) {
 				while (!Pipe.hasRoomForWrite(left)) {
 					Thread.yield();
-					if (System.currentTimeMillis()>timeout) {
-						scheduler.shutdown();
-						scheduler.awaitTermination(20, TimeUnit.SECONDS);
-						fail();
-						return;
-					}
 				}
 				Pipe.addMsgIdx(left, resultSchema.rowId);		
 					for(int r=0;r<leftColumns;r++) {
@@ -277,12 +266,6 @@ public class MatrixComputeTest {
 			for(int c=0;c<rightRows;c++) {
 				while (!Pipe.hasRoomForWrite(right)) {
 					Thread.yield();
-					if (System.currentTimeMillis()>timeout) {
-						scheduler.shutdown();
-						scheduler.awaitTermination(20, TimeUnit.SECONDS);
-						fail();
-						return;
-					}
 				}
 				Pipe.addMsgIdx(right, resultSchema.rowId);		
 					for(int r=0;r<rightColumns;r++) {
@@ -471,7 +454,6 @@ public class MatrixComputeTest {
 		
 	}
 	
-        @Ignore
 	@Test
 	public void testComputeExampleNativeInteger() {
 		MatrixTypes type = MatrixTypes.Integers;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
@@ -479,10 +461,10 @@ public class MatrixComputeTest {
 		//TypeMask.Decimal;
 		
 		
-		int leftRows = 10;
-		int leftColumns = 1048;
+		int leftRows = 512;
+		int leftColumns = 512;
 
-		int rightColumns = 1048;				
+		int rightColumns = 512;				
 		int rightRows = leftColumns;		
 		
 		Random rand = new Random();
@@ -608,7 +590,7 @@ public class MatrixComputeTest {
 	//	String actual = new String(baos.toByteArray());
 		
 		for(int r=0;r<leftRows;r++) {
-			assertTrue(result2.hasContentToRead(result2));
+		    //assertTrue(result2.hasContentToRead(result2));
 	
 			int id = Pipe.takeMsgIdx(result2);
 			for(int c=0;c<rightColumns;c++) {
