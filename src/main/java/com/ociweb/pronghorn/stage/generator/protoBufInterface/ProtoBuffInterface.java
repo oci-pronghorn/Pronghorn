@@ -93,16 +93,21 @@ public class ProtoBuffInterface {
             String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
             //Setter method generated
             target.append(tab + tab + tab + "public void" + " set" + varNameCamel + "(" + varType + " " + varName
-                    + ") {\n"
-                    + tab + tab + tab + tab + varName + "a = " + varName + "; \n"
-                    + tab + tab + tab + "} \n");
+                    + ") {\n");
+            if (varType == "int")
+                target.append( tab + tab + tab + tab + "PipeWriter.writeInt(query.inPipe, query." + varName + "loc, " + varName + "); \n");
+            if (varType == "long")
+                target.append( tab + tab + tab + tab + "PipeWriter.writeLong(query.inPipe, query." + varName + "loc, " + varName + "); \n");
+            if (varType == "String")
+                target.append( tab + tab + tab + tab + "PipeWriter.writeASCII(query.inPipe, query." + varName + "loc, " + varName + "); \n");
+
+            target.append( tab + tab + tab + "} \n");
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
-    private void generateInstanceVariables() throws IOException {
-        FieldReferenceOffsetManager from = MessageSchema.from(schema);
+    private void generateLOC(String messageName) throws IOException {
         int[] tokens = from.tokens;
         String[] scriptNames = from.fieldNameScript;
         long[] scriptIds = from.fieldIdScript;
@@ -112,18 +117,32 @@ public class ProtoBuffInterface {
         while (--i >= 0) {
             int type = TokenBuilder.extractType(tokens[i]);
             if (TypeMask.isLong(type)) {
-                interfaceTarget.append(tab + tab + "private long " + scriptNames[i] + "a;\n");
+                interfaceTarget.append(tab + tab + "private final int " + scriptNames[i] + "loc = FROM.getLoc(\"" + messageName + "\", \"" + scriptNames[i] + "\");\n");
             } else if (TypeMask.isInt(type)) {
-                interfaceTarget.append(tab + tab + "private int " + scriptNames[i] + "a;\n");
+                interfaceTarget.append(tab + tab + "private final int " + scriptNames[i] + "loc = FROM.getLoc(\"" + messageName + "\", \"" + scriptNames[i] + "\");\n");
             } else if (TypeMask.isText(type)) {
-                interfaceTarget.append(tab + tab + "private String  " + scriptNames[i] + "a;\n");
+                interfaceTarget.append(tab + tab + "private final int " + scriptNames[i] + "loc = FROM.getLoc(\"" + messageName + "\", \"" + scriptNames[i] + "\");\n");
             }
+        }
+    }
 
+    private void additionalInstaceVariables(){
+        try {
+            interfaceTarget.append(
+                    "        private GraphManager gm;\n" +
+                    "        private Pipe<MessageSchemaDynamic> inPipe;\n" +
+                    "        private Pipe<MessageSchemaDynamic> outPipe;\n" +
+                    "        private Pipe<RawDataSchema> trandsmittedPipe;\n" +
+                    "        private GroceryExampleEncoderStage enc;\n" +
+                    "        GroceryExampleDecoderStage dec;\n" +
+                    "        OutputStream out;\n" +
+                    "        ThreadPerStageScheduler scheduler;\n");
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
     private void generateSetters(){
-        FieldReferenceOffsetManager from = MessageSchema.from(schema);
         int[] tokens = from.tokens;
         String[] scriptNames = from.fieldNameScript;
         long[] scriptIds = from.fieldIdScript;
@@ -176,23 +195,32 @@ public class ProtoBuffInterface {
                 "import com.ociweb.pronghorn.stage.PronghornStage;\n" +
                 "import com.ociweb.pronghorn.stage.scheduling.GraphManager;\n" +
                 "import java.util.LinkedList;\n" +
-                "\n" +
                 "import java.io.IOException;\n" +
                 "import java.io.OutputStream;\n" +
-                "\n" +
-                "public class GroceryQueryProvider{\n" +
+                "import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;\n\n" +
+                "public class GroceryQueryProvider{\n");
+        from.appendConstuctionSource(interfaceTarget);
+        generateLOC("InventoryDetails");
+        additionalInstaceVariables();
+        generateConstructor();
+        interfaceTarget.append(
                 "    public class InventoryDetails{\n" );
-        generateInstanceVariables();
         interfaceTarget.append(
                 "\n" +
+                "        private GroceryQueryProvider query;\n" +
                 "        public Builder newBuilder(){\n" +
+                "            Builder builder = newBuilder();\n" +
+                "            this.query = builder.query;\n" +
+                "            PipeWriter.tryWriteFragment(inPipe, 0);\n" +
+                "            return builder;" +
                 "        }\n" +
                 "\n" +
                 "        public void writeTo(OutputStream out){\n" +
                 "        }\n" +
                 "        public class Builder{\n" +
+                "            private GroceryQueryProvider query;\n" +
                 "            private Builder(){\n" +
-                "\n" +
+                "            query = new GroceryQueryProvider(true);\n" +
                 "            }\n" +
                 "            //setters\n");
         generateSetters();
@@ -206,6 +234,31 @@ public class ProtoBuffInterface {
                 "}");
 
 
+    }
+
+    private void generateConstructor(){
+        try {
+            interfaceTarget.append("" +
+                    "   public GroceryQueryProvider(Boolean isWriting){\n" +
+                    "        gm = new GraphManager();\n" +
+                    "        MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(FROM);\n" +
+                    "        trandsmittedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));\n" +
+                    "        trandsmittedPipe.initBuffers();\n" +
+                    "        if(isWriting) {\n" +
+                    "            inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));\n" +
+                    "            inPipe.initBuffers();\n" +
+                    "            enc = new GroceryExampleEncoderStage(gm, inPipe, trandsmittedPipe, out);\n" +
+                    "        }else{\n" +
+                    "            outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));\n" +
+                    "            outPipe.initBuffers();\n" +
+                    "            dec = new GroceryExampleDecoderStage(gm, trandsmittedPipe, outPipe);\n" +
+                    "        }\n" +
+                    "        scheduler = new ThreadPerStageScheduler(gm);\n" +
+                    "        scheduler.startup();\n" +
+                    "    }\n\n");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void generateLowLevelAPI(String tabspace) throws IOException {

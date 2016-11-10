@@ -16,7 +16,7 @@ public class ProtoBuffEncoderStageGenerator extends PhastEncoderStageGenerator {
 
     protected void interfaceMembers(Appendable target){
         try {
-            target.append("private DataOutputStream out;\n");
+            target.append("private OutputStream out;\n");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -48,7 +48,7 @@ public class ProtoBuffEncoderStageGenerator extends PhastEncoderStageGenerator {
     @Override
     protected void additionalArgs(Appendable target){
         try {
-            target.append(", DataOutputStream out");
+            target.append(", OutputStream out");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -57,7 +57,7 @@ public class ProtoBuffEncoderStageGenerator extends PhastEncoderStageGenerator {
     @Override
     protected void interfaceImports(Appendable target){
         try {
-            target.append("import java.io.DataOutputStream;\n");
+            target.append("import java.io.OutputStream;\n");
             target.append("import java.io.IOException;\n");
         } catch (IOException e) {
             e.printStackTrace();
