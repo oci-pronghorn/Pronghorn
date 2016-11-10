@@ -112,11 +112,11 @@ public class ProtoBuffInterface {
         while (--i >= 0) {
             int type = TokenBuilder.extractType(tokens[i]);
             if (TypeMask.isLong(type)) {
-                interfaceTarget.append(tab + "private long " + scriptNames[i] + "a;\n");
+                interfaceTarget.append(tab + tab + "private long " + scriptNames[i] + "a;\n");
             } else if (TypeMask.isInt(type)) {
-                interfaceTarget.append(tab + "private int " + scriptNames[i] + "a;\n");
+                interfaceTarget.append(tab + tab + "private int " + scriptNames[i] + "a;\n");
             } else if (TypeMask.isText(type)) {
-                interfaceTarget.append(tab + "private String  " + scriptNames[i] + "a;\n");
+                interfaceTarget.append(tab + tab + "private String  " + scriptNames[i] + "a;\n");
             }
 
         }
@@ -181,80 +181,15 @@ public class ProtoBuffInterface {
                 "import java.io.OutputStream;\n" +
                 "\n" +
                 "public class GroceryQueryProvider{\n" +
-                "    private GraphManager graphManager;\n" +
-                "    private Pipe<MessageSchemaDynamic> inPipe;\n" +
-                "    private Pipe<RawDataSchema> sharedPipe;\n" +
-                "    private Pipe<MessageSchemaDynamic> outPipe;\n" +
-                "    private FieldReferenceOffsetManager from;\n" +
-                "    private Boolean isWriting;\n" +
-                "    private GroceryExampleEncoderStage enc;\n" +
-                "    private GroceryExampleDecoderStage dec;\n" +
-                "    private LinkedList<InventoryDetails> list = new LinkedList<InventoryDetails>();\n" +
-                "    private OutputStream out;\n" +
-                "\n" +
-                "    public class InventoryDetails extends PronghornStage{\n" );
+                "    public class InventoryDetails{\n" );
         generateInstanceVariables();
         interfaceTarget.append(
-                "        private int recordsIn;\n" +
-                "        private int recordsOut;\n" +
                 "\n" +
-                "        public InventoryDetails(){\n" +
-                "            super(graphManager, NONE, outPipe);\n" +
-                "        }\n" +
-                "\n" +
-                "        public Builder newBuilder(GraphManager gm, Boolean iswriting){\n" +
-                "            graphManager = gm;\n" +
-                "            isWriting = iswriting;\n" +
-                "            from = GroceryExampleEncoderStage.FROM;\n" +
-                "            MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);\n" +
-                "            inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));\n" +
-                "            inPipe.initBuffers();\n" +
-                "            sharedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));\n" +
-                "            sharedPipe.initBuffers();\n" +
-                "            outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));\n" +
-                "            outPipe.initBuffers();\n" +
-                "            return new Builder();\n" +
+                "        public Builder newBuilder(){\n" +
                 "        }\n" +
                 "\n" +
                 "        public void writeTo(OutputStream out){\n" +
-                "            out = out;\n" +
-                "            list.add(this);\n" +
-                "            recordsIn++;\n" +
                 "        }\n" +
-                "\n" +
-                "        @Override\n" +
-                "        public void run(){\n" +
-                "            if (isWriting){\n" +
-                "                while (recordsIn > recordsOut && Pipe.hasRoomForWrite(inPipe) && !list.isEmpty()){\n" +
-                "                    //write message id and stuff\n" +
-                "                    InventoryDetails current = list.poll();\n" +
-                "                    Pipe.addMsgIdx(inPipe, 0);\n");
-        generateLowLevelAPI("                    ");
-        interfaceTarget.append(
-                "                    Pipe.confirmLowLevelWrite(inPipe, Pipe.sizeOf(inPipe, 0));\n" +
-                "                    Pipe.publishWrites(inPipe);" +
-                "\n" +
-                "        recordsOut++;\n" +
-                "                }\n" +
-                "            }\n" +
-                "            else{\n" +
-                "                while (Pipe.contentRemaining(inPipe) > 0) {\n" +
-                "                    //read message id and stuff\n" +
-                "                }\n" +
-                "            }\n" +
-                "        }\n" +
-                "\n" +
-                "        @Override\n" +
-                "        public void startup(){\n" +
-                "            if (isWriting){\n" +
-                "                enc = new GroceryExampleEncoderStage(graphManager, inPipe, sharedPipe);\n" +
-                "            }\n" +
-                "            else{\n" +
-                "                dec = new GroceryExampleDecoderStage(graphManager, sharedPipe, outPipe);\n" +
-                "            }\n" +
-                "        }\n" +
-                "\n" +
-                "\n" +
                 "        public class Builder{\n" +
                 "            private Builder(){\n" +
                 "\n" +
