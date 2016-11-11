@@ -217,7 +217,7 @@ public class ProtoBuffInterface {
         interfaceTarget.append(
                 "\n" +
                 "        private GroceryQueryProvider query;\n" +
-                "        public Builder newBuilder(){\n" +
+                "        public Builder new Builder(){\n" +
                 "            Builder builder = newBuilder();\n" +
                 "            this.query = builder.query;\n" +
                 "            PipeWriter.tryWriteFragment(inPipe, 0);\n" +
@@ -225,6 +225,8 @@ public class ProtoBuffInterface {
                 "        }\n" +
                 "\n" +
                 "        public void writeTo(OutputStream out){\n" +
+                "            query.out = out;" +
+                "            PipeWriter.publishWrites(inPipe);" +
                 "        }\n" +
                 "        public class Builder{\n" +
                 "            private GroceryQueryProvider query;\n" +
