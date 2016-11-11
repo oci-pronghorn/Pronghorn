@@ -108,6 +108,11 @@ public class PipeConfig<T extends MessageSchema> {
 		return new PipeConfig<T>((byte)(1+slabBits), (byte)(1+blobBits), byteConst, schema);
 	}
 	
+	public PipeConfig<T> blobGrow2x(){
+		return new PipeConfig<T>((byte)(slabBits), (byte)(1+blobBits), byteConst, schema);
+	}
+	
+	
 	public PipeConfig<T> debug(int debugFlags){
 		PipeConfig<T> result = new PipeConfig<T>((byte)(slabBits), (byte)(blobBits), byteConst, schema);
 		result.debugFlags = debugFlags;
