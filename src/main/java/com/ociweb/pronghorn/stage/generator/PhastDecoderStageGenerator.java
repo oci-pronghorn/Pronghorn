@@ -225,7 +225,8 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         //long bitMask = from.templateOffset;
 
         //make reader
-        target.append("DataInputBlobReader<RawDataSchema> " + readerName + " = Pipe.inputStream(" + inPipeName + ");\n");
+        target.append(tab + "DataInputBlobReader<RawDataSchema> " + readerName + " = Pipe.inputStream(" + inPipeName + ");\n");
+        target.append(tab + "DataInputBlobReader.openLowLevelAPIField(" + readerName + ");\n");
         //this will keep track of variable names so they can be called as arguments in a later method
         StringBuilder argumentList = new StringBuilder();
 

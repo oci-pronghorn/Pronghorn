@@ -136,6 +136,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append(tab + "long " + pmapName + " = 0;\n");
         bodyTarget.append(tab + "DataOutputBlobWriter<RawDataSchema> " + writerName + " = Pipe.outputStream(" +
                 outPipeName + ");\n");
+        bodyTarget.append(tab + "DataOutputBlobWriter.openField(" + writerName + ");\n");
 
     }
 
@@ -339,6 +340,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
                 }
                 curCursor2 += TypeMask.scriptTokenSize[TokenBuilder.extractType(token)];
             }
+            bodyTarget.append(tab + "DataOutputBlobWriter.closeLowLevelField(" + writerName + ");\n");
             bodyTarget.append(tab + "Pipe.publishWrites(" + outPipeName + ");\n");
             additionalBody(bodyTarget);
 
