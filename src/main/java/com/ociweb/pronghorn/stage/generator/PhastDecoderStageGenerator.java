@@ -93,7 +93,9 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         } else {
             target.append(GraphManager.class.getCanonicalName()).append(" gm, ");
             target.append("Pipe<RawDataSchema>  " + inPipeName + ", ");
-            Appendables.appendClass(target, Pipe.class, schema.getClass()).append(" ").append(pipeVarName).append(") {\n");
+            Appendables.appendClass(target, Pipe.class, schema.getClass()).append(" ").append(pipeVarName);
+            additionalArgs(target);
+            target.append(") {\n");
 
             target.append(tab).append("super(gm," + inPipeName + ",").append(pipeVarName).append(");\n");
             target.append(tab).append("this.").append(pipeVarName).append(" = ").append(pipeVarName).append(";\n");
@@ -105,7 +107,17 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append(tab + longDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
         target.append(tab + defaultIntDictionaryName + " = FROM.newIntDefaultsDictionary();\n");
         target.append(tab + defaultLongDictionaryName + " = FROM.newLongDefaultsDictionary();\n");
+        interfaceSetup(target);
         target.append("}\n\n");
+
+    }
+
+
+    protected void interfaceSetup(Appendable target){
+
+    }
+
+    protected void additionalArgs(Appendable target){
 
     }
 
@@ -159,9 +171,13 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
             target.append("import ").append(PronghornStage.class.getCanonicalName()).append(";\n");
             target.append("import java.util.Arrays;\n");
             target.append("import com.ociweb.pronghorn.pipe.*;\n");
+            interfaceImports(target);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    protected void interfaceImports(Appendable target){
     }
 
     /**
@@ -224,6 +240,8 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         //int map = from.preambleOffset;
         //long bitMask = from.templateOffset;
 
+        //read from input stream
+        appendDataSource(target);
         //make reader
         target.append(tab + "DataInputBlobReader<RawDataSchema> " + readerName + " = Pipe.inputStream(" + inPipeName + ");\n");
         target.append(tab + "DataInputBlobReader.openLowLevelAPIField(" + readerName + ");\n");
@@ -322,6 +340,10 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     protected void additionalMethods(Appendable target) throws IOException {
     }
 
+    protected void appendDataSource(Appendable target){
+
+    }
+
     /**
      * This method overrides from the super class, where it is called to add instance variables. This method should not
      * be called from anywhere but the super class.
@@ -336,6 +358,10 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append("private long[] " + defaultLongDictionaryName + ";\n");
         target.append("private int[] " + defaultIntDictionaryName + ";\n");
         target.append("private Pipe<RawDataSchema> " + inPipeName + ";\n");
+        interfaceMembers(target);
+    }
+
+    protected void interfaceMembers(Appendable target){
 
     }
 

@@ -20,7 +20,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class ProtoBuffInterface {
-    private PhastDecoderStageGenerator decoderGenerator;
+    private ProtoBuffDecoderStageGenerator decoderGenerator;
     private ProtoBuffEncoderStageGenerator encoderGenerator;
     private String interfaceClassName;
     private String packageName;
@@ -59,7 +59,7 @@ public class ProtoBuffInterface {
 
         encoderGenerator = new ProtoBuffEncoderStageGenerator(schema, encodeTarget);
         encoderGenerator.processSchema();
-        decoderGenerator = new PhastDecoderStageGenerator(schema, decodeTarget, false);
+        decoderGenerator = new ProtoBuffDecoderStageGenerator(schema, decodeTarget, false);
         decoderGenerator.processSchema();
         this.packageName = packageName;
         this.schema = schema;
