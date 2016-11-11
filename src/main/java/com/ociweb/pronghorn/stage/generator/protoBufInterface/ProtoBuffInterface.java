@@ -141,7 +141,7 @@ public class ProtoBuffInterface {
                     "        private GraphManager gm;\n" +
                     "        private Pipe<MessageSchemaDynamic> inPipe;\n" +
                     "        private Pipe<MessageSchemaDynamic> outPipe;\n" +
-                    "        private Pipe<RawDataSchema> trandsmittedPipe;\n" +
+                    "        private Pipe<RawDataSchema> transmittedPipe;\n" +
                     "        private GroceryExampleEncoderStage enc;\n" +
                     "        GroceryExampleDecoderStage dec;\n" +
                     "        OutputStream out;\n" +
@@ -253,16 +253,16 @@ public class ProtoBuffInterface {
                     "   public GroceryQueryProvider(Boolean isWriting){\n" +
                     "        gm = new GraphManager();\n" +
                     "        MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(FROM);\n" +
-                    "        trandsmittedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));\n" +
-                    "        trandsmittedPipe.initBuffers();\n" +
+                    "        transmittedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));\n" +
+                    "        transmittedPipe.initBuffers();\n" +
                     "        if(isWriting) {\n" +
                     "            inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));\n" +
                     "            inPipe.initBuffers();\n" +
-                    "            enc = new GroceryExampleEncoderStage(gm, inPipe, trandsmittedPipe, out);\n" +
+                    "            enc = new GroceryExampleEncoderStage(gm, inPipe, transmittedPipe, out);\n" +
                     "        }else{\n" +
                     "            outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));\n" +
                     "            outPipe.initBuffers();\n" +
-                    "            dec = new GroceryExampleDecoderStage(gm, trandsmittedPipe, outPipe);\n" +
+                    "            dec = new GroceryExampleDecoderStage(gm, transmittedPipe, outPipe);\n" +
                     "        }\n" +
                     "        scheduler = new ThreadPerStageScheduler(gm);\n" +
                     "        scheduler.startup();\n" +
