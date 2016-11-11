@@ -88,6 +88,10 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         return length<0 ? null : this;
     }
    
+    public int position() {
+    	return position;
+    }
+    
     @Override
     public int read(byte[] b) {
         if ((byteMask & position) == bytesLimit) {
