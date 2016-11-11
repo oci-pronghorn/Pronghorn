@@ -85,7 +85,7 @@ public class ProtoBuffInterface {
             if (varType == "long")
                 target.append( tab + tab + tab + tab + "return PipeReader.readLong(query.inPipe, query." + varName + "loc); \n");
             if (varType == "String") {
-                target.append(tab + tab + tab + tab + "StringBuilder str;\n");
+                target.append(tab + tab + tab + tab + "StringBuilder str = new StringBuilder();\n");
                 target.append(tab + tab + tab + tab + "PipeReader.readASCII(query.inPipe, query." + varName + "loc, str); \n");
                 target.append(tab + tab + tab + tab + "return str.toString(); \n");
             }
