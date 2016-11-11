@@ -144,6 +144,7 @@ public class ProtoBuffInterface {
                     "        private Pipe<RawDataSchema> transmittedPipe;\n" +
                     "        private GroceryExampleEncoderStage enc;\n" +
                     "        GroceryExampleDecoderStage dec;\n" +
+                    "        InputStream in;\n" +
                     "        OutputStream out;\n" +
                     "        ThreadPerStageScheduler scheduler;\n");
         } catch (IOException e) {
@@ -206,6 +207,7 @@ public class ProtoBuffInterface {
                 "import java.util.LinkedList;\n" +
                 "import java.io.IOException;\n" +
                 "import java.io.OutputStream;\n" +
+                "import java.io.InputStream;\n" +
                 "import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;\n\n" +
                 "public class GroceryQueryProvider{\n");
         from.appendConstuctionSource(interfaceTarget);
@@ -214,6 +216,8 @@ public class ProtoBuffInterface {
         generateConstructor();
         interfaceTarget.append(
                 "    public class InventoryDetails{\n" );
+
+        generateGetters();
         interfaceTarget.append(
                 "\n" +
                 "        private GroceryQueryProvider query;\n" +
@@ -224,6 +228,8 @@ public class ProtoBuffInterface {
                 "            return builder;\n" +
                 "        }\n" +
                 "\n" +
+                "        public void parseFrom(InputStream in){\n" +
+                "        }\n" +
                 "        public void writeTo(OutputStream out){\n" +
                 "            query.out = out;\n" +
                 "            PipeWriter.publishWrites(inPipe);\n" +
@@ -235,7 +241,6 @@ public class ProtoBuffInterface {
                 "            }\n" +
                 "            //setters\n");
         generateSetters();
-        generateGetters();
         interfaceTarget.append(
                 "            public InventoryDetails build(){\n" +
                 "                return new InventoryDetails();\n" +
@@ -262,7 +267,7 @@ public class ProtoBuffInterface {
                     "        }else{\n" +
                     "            outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));\n" +
                     "            outPipe.initBuffers();\n" +
-                    "            dec = new GroceryExampleDecoderStage(gm, transmittedPipe, outPipe);\n" +
+                    "            dec = new GroceryExampleDecoderStage(gm, transmittedPipe, outPipe, in);\n" +
                     "        }\n" +
                     "        scheduler = new ThreadPerStageScheduler(gm);\n" +
                     "        scheduler.startup();\n" +
