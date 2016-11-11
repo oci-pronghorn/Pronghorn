@@ -9,6 +9,7 @@ import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.stage.generator.PhastDecoderStageGenerator;
 import com.ociweb.pronghorn.stage.generator.PhastEncoderStageGenerator;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -143,7 +144,7 @@ public class ProtoBuffInterface {
                     "        private Pipe<MessageSchemaDynamic> outPipe;\n" +
                     "        private Pipe<RawDataSchema> transmittedPipe;\n" +
                     "        private GroceryExampleEncoderStage enc;\n" +
-                    "        GroceryExampleDecoderStage dec;\n" +
+                    "        private GroceryExampleDecoderStage dec;\n" +
                     "        InputStream in;\n" +
                     "        OutputStream out;\n" +
                     "        ThreadPerStageScheduler scheduler;\n");
@@ -151,6 +152,14 @@ public class ProtoBuffInterface {
             e.printStackTrace();
         }
     }
+
+    private void additionalMethods() throws IOException{
+        interfaceTarget.append(
+                    "        public void writeTo(){\n" +
+                    "           InventoryDetails inv = new InventoryDetails();\n" +
+                    "           inv.writeTo(out);\n" +
+                    "}\n");
+        }
 
     private void generateSetters(){
         int[] tokens = from.tokens;
@@ -195,7 +204,7 @@ public class ProtoBuffInterface {
 
     public void buildClass() throws IOException {
         interfaceTarget.append("/*\n");
-        interfaceTarget.append("THIS CLASS HAS BEN GENERATED DO NOT MODIFY\n");
+        interfaceTarget.append("THIS CLASS HAS BEEN GENERATED DO NOT MODIFY\n");
         interfaceTarget.append("*/\n");
         interfaceTarget.append("package "+ packageName + ";\n" +
                 "\n" +
@@ -214,6 +223,7 @@ public class ProtoBuffInterface {
         generateLOC("InventoryDetails");
         additionalInstaceVariables();
         generateConstructor();
+        //additionalMethods();
         interfaceTarget.append(
                 "    public class InventoryDetails{\n" );
 
@@ -221,14 +231,17 @@ public class ProtoBuffInterface {
         interfaceTarget.append(
                 "\n" +
                 "        private GroceryQueryProvider query;\n" +
+                "        private InventoryDetails inv;\n" +
                 "        public Builder newBuilder(){\n" +
                 "            Builder builder = new Builder();\n" +
                 "            this.query = builder.query;\n" +
+                "            this.inv = builder.inv;\n" +
                 "            PipeWriter.tryWriteFragment(inPipe, 0);\n" +
                 "            return builder;\n" +
                 "        }\n" +
                 "\n" +
-                "        public void parseFrom(InputStream in){\n" +
+                "        public int parseFrom(int loc){\n" +
+                "            return FROM.extractTypeFromLoc(loc);\n" +
                 "        }\n" +
                 "        public void writeTo(OutputStream out){\n" +
                 "            query.out = out;\n" +
@@ -236,8 +249,10 @@ public class ProtoBuffInterface {
                 "        }\n" +
                 "        public class Builder{\n" +
                 "            private GroceryQueryProvider query;\n" +
+                "            private InventoryDetails inv;\n" +
                 "            private Builder(){\n" +
                 "            query = new GroceryQueryProvider(true);\n" +
+                "            inv = build();\n" +
                 "            }\n" +
                 "            //setters\n");
         generateSetters();
