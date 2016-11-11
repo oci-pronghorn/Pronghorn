@@ -217,16 +217,16 @@ public class ProtoBuffInterface {
         interfaceTarget.append(
                 "\n" +
                 "        private GroceryQueryProvider query;\n" +
-                "        public Builder new Builder(){\n" +
-                "            Builder builder = newBuilder();\n" +
+                "        public Builder newBuilder(){\n" +
+                "            Builder builder = new Builder();\n" +
                 "            this.query = builder.query;\n" +
                 "            PipeWriter.tryWriteFragment(inPipe, 0);\n" +
-                "            return builder;" +
+                "            return builder;\n" +
                 "        }\n" +
                 "\n" +
                 "        public void writeTo(OutputStream out){\n" +
-                "            query.out = out;" +
-                "            PipeWriter.publishWrites(inPipe);" +
+                "            query.out = out;\n" +
+                "            PipeWriter.publishWrites(inPipe);\n" +
                 "        }\n" +
                 "        public class Builder{\n" +
                 "            private GroceryQueryProvider query;\n" +
