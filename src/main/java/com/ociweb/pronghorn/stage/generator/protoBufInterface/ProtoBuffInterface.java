@@ -80,8 +80,17 @@ public class ProtoBuffInterface {
             //Getter method generated
             target.append(tab + tab + tab + "public " + varType + " get" + varNameCamel + "(){\n");
             //return variable, close off, end line.
-            target.append(tab + tab + tab + tab +"return " + varNameCamel + "a;\n"
-                    + tab + tab + tab + "}\n");
+            if (varType == "int")
+                target.append( tab + tab + tab + tab + "return PipeReader.readInt(query.inPipe, query." + varName + "loc); \n");
+            if (varType == "long")
+                target.append( tab + tab + tab + tab + "return PipeReader.readLong(query.inPipe, query." + varName + "loc); \n");
+            if (varType == "String") {
+                target.append(tab + tab + tab + tab + "StringBuilder str;\n");
+                target.append(tab + tab + tab + tab + "PipeReader.readASCII(query.inPipe, query." + varName + "loc, str); \n");
+                target.append(tab + tab + tab + tab + "return str.toString(); \n");
+            }
+
+            target.append(tab + tab + tab + "}\n");
         } catch (IOException ex) {
             Logger.getLogger(ProtoBuffInterface.class.getName()).log(Level.SEVERE, null, ex);
         }
