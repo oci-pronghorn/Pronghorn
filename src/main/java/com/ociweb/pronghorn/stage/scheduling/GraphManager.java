@@ -9,6 +9,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +18,7 @@ import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
 import com.ociweb.pronghorn.util.Appendables;
 
@@ -1169,12 +1171,16 @@ public class GraphManager {
 	    exportGraphDotFile(this, "graph.dot");
 	}
 	
-    public static void exportGraphDotFile(GraphManager gm, String filename) {
+	public static void exportGraphDotFile(GraphManager gm, String filename) {
+		exportGraphDotFile(gm,filename,null);
+	}
+	
+    public static void exportGraphDotFile(GraphManager gm, String filename, int[] percentileValues) {
         FileOutputStream fost;
         try {
             fost = new FileOutputStream(filename);
             PrintWriter pw = new PrintWriter(fost);
-            gm.writeAsDOT(gm, pw);
+            gm.writeAsDOT(gm, pw, percentileValues);
             pw.close();
             
             
@@ -1195,11 +1201,15 @@ public class GraphManager {
         } catch (Exception e) {
             System.out.println("No runtime graph produced.");
         }
-        
+       
         
     }
+  
+    public static void writeAsDOT(GraphManager m, Appendable target) {
+    	writeAsDOT(m,target,null);
+    }
     
-	public static void writeAsDOT(GraphManager m, Appendable target) {
+	public static void writeAsDOT(GraphManager m, Appendable target, int[] percentileValues) {
 	    try {
 	    
 	        target.append("digraph {\n");
@@ -1209,7 +1219,8 @@ public class GraphManager {
 	        int i = -1;
 	        while (++i<m.stageIdToStage.length) {
 	            PronghornStage stage = m.stageIdToStage[i];
-	            if (null!=stage) {       
+	            
+	            if (null!=stage && !(stage instanceof MonitorConsoleStage) && !(stage instanceof RingBufferMonitorStage)) {       
 	            	
 	            	//TODO: we need to group the nodes and edges with the same THREAD_GROUP under a subgraph cluster
 	                //  subgraph cluster_1 {
@@ -1228,50 +1239,68 @@ public class GraphManager {
 	        int undefIdx = 0;
 	        int j = m.pipeIdToPipe.length;
 	        while (--j>=0) {
-	            Pipe pipe = m.pipeIdToPipe[j];	            
+	            Pipe pipe = m.pipeIdToPipe[j];
 	            if (null!=pipe) {
 	                
 	                int producer = getRingProducerId(m, j);
 	                int consumer = getRingConsumerId(m, j);
 	                
-	                if (producer>=0) {
-	                    target.append("\"Stage").append(Integer.toString(producer));
-	                } else {
-	                    target.append("\"Undefined").append(Integer.toString(undefIdx++));	                    
-	                }
-	                
-	                target.append("\" -> ");
-	                
-	                if (consumer>=0) {
-	                    target.append("\"Stage").append(Integer.toString(consumer));
-	                } else {
-	                    target.append("\"Undefined").append(Integer.toString(undefIdx++));
-	                }
-	               
-	                //compute the min and max count of messages that can be on this pipe at any time
-                    int minFrag = FieldReferenceOffsetManager.minFragmentSize(Pipe.from(pipe));
-                    int maxFrag = FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe));                    
-                    int maxMessagesOnPipe = pipe.sizeOfSlabRing/minFrag;
-                    int minMessagesOnPipe = pipe.sizeOfSlabRing/maxFrag;           
-                   
-                    
-	                target.append("\"[label=\"").append(Pipe.schemaName(pipe).replace("Schema", ""));
-	                if (minMessagesOnPipe==maxMessagesOnPipe) {
-	                    Appendables.appendValue(target," [",minMessagesOnPipe,"]");
-	                } else {
-	                    Appendables.appendValue( Appendables.appendValue(target," [",minMessagesOnPipe) ,"-",maxMessagesOnPipe,"]");
-	                }
-	                target.append("\"");
-	                
-	                //count bindings
-	                int consumerStage = GraphManager.getRingConsumerId(m, pipe.id);
-	                int producerStage = GraphManager.getRingProducerId(m, pipe.id);
-	                float weight = computeWeightBetweenStages(m, consumerStage, producerStage);	                
-	                target.append(",weight=").append(Float.toString(weight));
-	                
-	                
-	                target.append("]\n");
-	                	          
+	                //skip all pipes that are gathering monitor data
+	                if (consumer<0  || !(GraphManager.getStage(m, consumer) instanceof MonitorConsoleStage) ) {
+		                
+		                
+		                if (producer>=0) {
+		                    target.append("\"Stage").append(Integer.toString(producer));
+		                } else {
+		                    target.append("\"Undefined").append(Integer.toString(undefIdx++));	                    
+		                }
+		                
+		                target.append("\" -> ");
+		                
+		                if (consumer>=0) {
+		                    target.append("\"Stage").append(Integer.toString(consumer));
+		                } else {
+		                    target.append("\"Undefined").append(Integer.toString(undefIdx++));
+		                }
+		               
+		                //compute the min and max count of messages that can be on this pipe at any time
+	                    int minFrag = FieldReferenceOffsetManager.minFragmentSize(Pipe.from(pipe));
+	                    int maxFrag = FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe));                    
+	                    int maxMessagesOnPipe = pipe.sizeOfSlabRing/minFrag;
+	                    int minMessagesOnPipe = pipe.sizeOfSlabRing/maxFrag;           
+	                   
+	                    
+		                target.append("\"[label=\"").append(Pipe.schemaName(pipe).replace("Schema", ""));
+		                
+		                
+		                if (null!=percentileValues) {		                	
+		                	int pctFull = percentileValues[pipe.id];
+		                	Appendables.appendValue(target.append(" Full:"), pctFull).append("% ");		                		                	
+		                }
+		                
+		                
+		                if (minMessagesOnPipe==maxMessagesOnPipe) {
+		                    Appendables.appendValue(target," [",minMessagesOnPipe,"]");
+		                } else {
+		                    Appendables.appendValue( Appendables.appendValue(target," [",minMessagesOnPipe) ,"-",maxMessagesOnPipe,"]");
+		                }
+		                target.append("\"");
+		                
+		                //count bindings
+		                int consumerStage = GraphManager.getRingConsumerId(m, pipe.id);
+		                int producerStage = GraphManager.getRingProducerId(m, pipe.id);
+		                float weight = computeWeightBetweenStages(m, consumerStage, producerStage);	                
+		                target.append(",weight=").append(Float.toString(weight));
+		                
+		                if (null!=percentileValues) {		                	
+		                	int pctFull = percentileValues[pipe.id];
+		                	if (pctFull>=80) {
+		                		target.append(",color=red");	    
+		                	}
+		                }
+		                
+		                target.append("]\n");
+	                }	          
 	            }
 	        }	        
 	    
@@ -1647,6 +1676,8 @@ public class GraphManager {
         }
         return true;
     }
+
+
 	
 
 }

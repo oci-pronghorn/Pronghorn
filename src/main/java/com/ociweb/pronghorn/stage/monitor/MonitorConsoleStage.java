@@ -11,7 +11,9 @@ import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeReader;
-import com.ociweb.pronghorn.pipe.util.Histogram;
+
+import org.HdrHistogram.*;
+
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -19,9 +21,11 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public class MonitorConsoleStage extends PronghornStage {
 
 	private final Pipe[] inputs;
-	private Histogram[] hists; ///TODO: replace with HDRHistogram
 	private GraphManager graphManager;
+	private int[] percentileValues; 
 	
+	private Histogram[] hists; ///TODO: replace with HDRHistogram
+
 	
 	public MonitorConsoleStage(GraphManager graphManager, Pipe ... inputs) {
 		super(graphManager, inputs, NONE);
@@ -44,14 +48,18 @@ public class MonitorConsoleStage extends PronghornStage {
 	@Override
 	public void startup() {
 		super.startup();
+		percentileValues = new int[Pipe.totalRings()+1];
+		
 		int p = Thread.currentThread().getPriority();
 		Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
 		int i = inputs.length;
 		hists = new Histogram[i];
 		while (--i>=0) {
-			hists[i] = new Histogram(1000,50,0,100);
+			hists[i] = new Histogram(100,2); 
 		}
 		Thread.currentThread().setPriority(p);
+		
+		
 	}
 		
 	
@@ -78,8 +86,9 @@ public class MonitorConsoleStage extends PronghornStage {
 				
 				long pctFull = (100*(head-tail))/ringSize;
 				//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
-				Histogram.sample( pctFull>=0 ? pctFull<=100 ? pctFull : 99 : 0, hists[i]);
-													
+												
+				hists[i].recordValue(pctFull>=0 ? pctFull<=100 ? pctFull : 99 : 0);
+				
 				PipeReader.releaseReadLock(ring);
 			}
 		}
@@ -91,10 +100,12 @@ public class MonitorConsoleStage extends PronghornStage {
 		int i = hists.length;
 		while (--i>=0) {
 			
-			long value = hists[i].valueAtPercent(.5);
-			
+			long pctile = hists[i].getValueAtPercentile(80); 
+			long avg = (long)hists[i].getMean();
+				
 			boolean inBounds = true;//value>80 || value < 1;
-            long sampleCount = Histogram.sampleCount(hists[i]);
+            long sampleCount = hists[i].getTotalCount();
+            
             if (inBounds && (sampleCount>=2)) {
 				PronghornStage producer = GraphManager.getRingProducer(graphManager,  inputs[i].id);
 				//NOTE: may need to walk up tree till we find this object, (future feature)
@@ -103,6 +114,9 @@ public class MonitorConsoleStage extends PronghornStage {
 				if (producer instanceof RingBufferMonitorStage) {
 					ringName = ((RingBufferMonitorStage)producer).getObservedRingName();
 					published = ((RingBufferMonitorStage)producer).getObservedRingPublishedCount();
+					
+					percentileValues[ ((RingBufferMonitorStage)producer).getObservedRingId() ] = (int)pctile;
+					
 				} else {
 					ringName = "Unknown";
 				}
@@ -111,9 +125,16 @@ public class MonitorConsoleStage extends PronghornStage {
 					ringName=ringName+" ";
 				}
 				
-				System.out.println("    "+i+" "+ringName+" Queue Fill Median:"+value+"% Average:"+(Histogram.accumulatedTotal(hists[i])/sampleCount)+"%    samples:"+sampleCount+"  totalPublished:"+published);
-			}
+				
+				
+				System.out.println("    "+i+" "+ringName+" Queue Fill "+pctile+"% Average:"+avg+"%    samples:"+sampleCount+"  totalPublished:"+published);
+
+            }
 		}
+				
+		//Send in pipe depth data		
+		GraphManager.exportGraphDotFile(graphManager, "MonitorResults", percentileValues);
+		
 	}
 
 	private static final Long defaultMonitorRate = Long.valueOf(50000000);
