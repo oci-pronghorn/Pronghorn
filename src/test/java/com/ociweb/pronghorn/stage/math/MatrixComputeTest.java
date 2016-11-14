@@ -177,15 +177,16 @@ public class MatrixComputeTest {
 		
 		//TODO: convert all to Decimals for unit test check.
 	
-		MatrixTypes type = MatrixTypes.Longs;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
+		MatrixTypes type = MatrixTypes.Integers;//Decimals;//Integers; //2, 3328335 longs/ints/doubles   [0,332833152] floats
 		
 		//TypeMask.Decimal;
 		
+		//targeting 7680 × 4320
 		
-		int leftRows=20;
-		int rightColumns=200;
+		int leftRows=1080;
+		int rightColumns=1920;
 				
-		int leftColumns = 500;//1000; //TODO: crash with small values?
+		int leftColumns = 1920;
 		int rightRows=leftColumns;		
 		
 		
@@ -193,14 +194,14 @@ public class MatrixComputeTest {
 		//5x2
 		//2x3
 		
-		
+		//TODO: these 3 must be removed since they are not "real" schemas but just hold the type and matrix size.
 		MatrixSchema leftSchema = BuildMatrixCompute.buildSchema(leftRows, leftColumns, type);		
-		RowSchema<MatrixSchema> leftRowSchema = new RowSchema<MatrixSchema>(leftSchema);
-		
 		MatrixSchema rightSchema = BuildMatrixCompute.buildSchema(rightRows, rightColumns, type);
-		RowSchema<MatrixSchema> rightRowSchema = new RowSchema<MatrixSchema>(rightSchema);
-				
 		MatrixSchema resultSchema = BuildMatrixCompute.buildResultSchema(leftSchema, rightSchema);
+		
+		
+		RowSchema<MatrixSchema> leftRowSchema = new RowSchema<MatrixSchema>(leftSchema);
+		RowSchema<MatrixSchema> rightRowSchema = new RowSchema<MatrixSchema>(rightSchema);				
 		RowSchema<MatrixSchema> rowResultSchema = new RowSchema<MatrixSchema>(resultSchema);		
 		
 		
@@ -249,22 +250,15 @@ public class MatrixComputeTest {
 			                     //new FixedThreadsScheduler(gm, targetThreadCount);
 		
 		scheduler.startup();	
-		
-		int testSize = 50;
+	
+		int testSize = 10;
 		int k = testSize;
-		long timeout = 0;
+	
 		while (--k>=0) {
-			timeout = System.currentTimeMillis()+5000;
 			//System.out.println(k);
 			for(int c=0;c<leftRows;c++) {
 				while (!Pipe.hasRoomForWrite(left)) {
 					Thread.yield();
-					if (System.currentTimeMillis()>timeout) {
-						scheduler.shutdown();
-						scheduler.awaitTermination(20, TimeUnit.SECONDS);
-						fail();
-						return;
-					}
 				}
 				Pipe.addMsgIdx(left, resultSchema.rowId);		
 					for(int r=0;r<leftColumns;r++) {
@@ -277,12 +271,6 @@ public class MatrixComputeTest {
 			for(int c=0;c<rightRows;c++) {
 				while (!Pipe.hasRoomForWrite(right)) {
 					Thread.yield();
-					if (System.currentTimeMillis()>timeout) {
-						scheduler.shutdown();
-						scheduler.awaitTermination(20, TimeUnit.SECONDS);
-						fail();
-						return;
-					}
 				}
 				Pipe.addMsgIdx(right, resultSchema.rowId);		
 					for(int r=0;r<rightColumns;r++) {

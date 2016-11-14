@@ -1,7 +1,7 @@
 
 # Pronghorn Stage Creation Principles
 
-## Pronghorn is *not* Memory efficient
+
 ## Pronghorn _is_ CPU efficient
 
 ### Principles

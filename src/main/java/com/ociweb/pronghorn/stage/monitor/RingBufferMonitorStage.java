@@ -64,4 +64,8 @@ public class RingBufferMonitorStage extends PronghornStage {
 	public long getObservedRingPublishedCount() {
 		return Pipe.headPosition(observedRingBuffer);
 	}
+	
+	public int getObservedRingId() {
+		return observedRingBuffer.id;
+	}
 }

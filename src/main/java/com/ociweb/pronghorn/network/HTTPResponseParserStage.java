@@ -131,7 +131,7 @@ public class HTTPResponseParserStage extends PronghornStage {
 	      ///////////////////////////
 	      //Load the supported header keys
 	      ///////////////////////////
-	      headerMap = new TrieParser(1024,false);//deep check on to detect unexpected headers.
+	      headerMap = new TrieParser(2048,false);//deep check on to detect unexpected headers.
 	      HTTPHeaderKey[] shr =  httpSpec.headers;
 	      x = shr.length;
 	      while (--x >= 0) {
@@ -139,15 +139,19 @@ public class HTTPResponseParserStage extends PronghornStage {
 	          CharSequence key = shr[x].getKey();
 	          
 	          if (H_CONTENT_TYPE == x) {
-	        	  key = key.subSequence(0, key.length()-2);//removes %b from the end so we can parse for it specifically
-	        	  headerMap.setUTF8Value(key,shr[x].ordinal());
-	          } else {
-	        	   headerMap.setUTF8Value(key, "\n",shr[x].ordinal());
-	        	   headerMap.setUTF8Value(key, "\r\n",shr[x].ordinal());
+	        	  assert(key.charAt(key.length()-2)=='%');
+	        	  assert(key.charAt(key.length()-1)=='b');
+	        	  key = key.subSequence(0, key.length()-2);//removes %b from the end so we can us a seprate parser just to determine the content type.
+	        	  	        	  
+	        	  headerMap.setUTF8Value(key,shr[x].ordinal());	        	  
+	        	  
+	          } else {	        	  
+	        	  headerMap.setUTF8Value(key, "\n",shr[x].ordinal());  //TODO: urgent the insert of this conditional breaks on the wrong point
+	        	  headerMap.setUTF8Value(key, "\r\n",shr[x].ordinal());
 	          }
 	      }
-	      headerMap.setUTF8Value("%b: %b\n", UNSUPPORTED_HEADER_ID);
-	      headerMap.setUTF8Value("%b: %b\r\n", UNSUPPORTED_HEADER_ID);	
+	      headerMap.setUTF8Value("%b: %b\n", UNSUPPORTED_HEADER_ID);  //TODO: urgent the insert of this conditional breaks on the wrong point
+	      headerMap.setUTF8Value("%b: %b\r\n", UNSUPPORTED_HEADER_ID);	  //TODO: urgent the insert of this conditional breaks on the wrong point
 	      
 	      headerMap.setUTF8Value("\n", END_OF_HEADER_ID); //Detecting this first but not right!! we did not close the revision??
 	      headerMap.setUTF8Value("\r\n", END_OF_HEADER_ID);	        
@@ -162,9 +166,8 @@ public class HTTPResponseParserStage extends PronghornStage {
 	@Override
 	public void run() {
 		
-		//TODO: keep going untl we make a pass and there is no work.
 		
-		boolean foundWork;
+		boolean foundWork; //keep going untl we make a pass and there is no work.
 	
 		do {		
 			foundWork = false;
@@ -224,12 +227,15 @@ public class HTTPResponseParserStage extends PronghornStage {
 					int len = Pipe.takeRingByteLen(pipe);
 					int pos = Pipe.bytePosition(meta, pipe, len);
 			
-//					boolean showContent = false;
+					
+//					logger.info("****  reading HTTP Response {}",len);
+//					
+//					boolean showContent = true;
 //					if (showContent) {						
-//						Appendables.appendUTF8(System.out, Pipe.byteBackingArray(meta, pipe), pos, len, Pipe.blobMask(pipe));
+//						//Why can I not display this. because the payload is an image
+//						//Appendables.appendUTF8(System.out, Pipe.byteBackingArray(meta, pipe), pos, len, Pipe.blobMask(pipe));
 //						System.out.println();
-//						System.out.println("BLOCKSIZE:"+len+" REMAINING CHUNK:"+payloadLengthData[i]+" IDX:"+i);
-//						
+//						System.out.println("BLOCKSIZE:"+len+" REMAINING CHUNK:"+payloadLengthData[i]+" IDX:"+i);				
 //					}
 					
 	
@@ -263,7 +269,7 @@ public class HTTPResponseParserStage extends PronghornStage {
 						final int revisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap);
 						if (revisionId<0) {
 							
-//							if (isLongEnough) { //IF BIGGER THAN MAX THIS IS AN ERROR
+//							if (isLongEnough) { //IF BIGGER THAN MAX THIS IS AN ERROR???
 //								
 //								ClientConnection connection = ccm.get(ccId);
 //								if (null!=connection) {
@@ -312,25 +318,39 @@ public class HTTPResponseParserStage extends PronghornStage {
 						
 						boolean foundEnd = false;
 						do {
-							int startingLength = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);		
-
+							int startingLength = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	
 							boolean isTooLarge = trieReader.sourceLen>=MAX_VALID_HEADER;							
+							
+							//does not MOVE the position
+//							boolean showHeaders = true;
+//							if (showHeaders) {
+//								TrieParserReader.debugAsUTF8(trieReader, System.out);
+//							}
+
+							
 							int headerId = (int)TrieParserReader.parseNext(trieReader, headerMap);
 							if (headerId>=0) {
+								
 								foundWork = true;
 								if (END_OF_HEADER_ID != headerId) {
+									
+//									if (headerId == UNSUPPORTED_HEADER_ID) {
+//										logger.info("WARNING unsupported header found");
+//									} else {
+//										logger.info("found header {} {}",headerId,this.httpSpec.headers[headerId]);
+//									}
 									
 									//only some headers are supported the rest are ignored
 									
 									switch (headerId) {
-										case H_TRANSFER_ENCODING:										
+										case H_TRANSFER_ENCODING:
+											//logger.info("xxxxxxxxxx chunked ");
 											payloadLengthData[i] = -1; //marked as chunking										
 											break;
 										case H_CONTENT_LENGTH:										
 											long length = TrieParserReader.capturedLongField(trieReader, 0);
-											
+											//logger.info("**********************  Captured length field was {} ",length);
 											if (-1 != payloadLengthData[i]) {
-												System.out.println("set length value xxxxxxxxxxxxxxxxxxxxxxxx");
 												payloadLengthData[i] = length;
 											}
 											break;
@@ -341,7 +361,9 @@ public class HTTPResponseParserStage extends PronghornStage {
 											
 											int type = (int)TrieParserReader.parseNext(trieReader, typeMap);
 											
-									//		System.out.println("type was "+type);//TODO: refine this.
+											//logger.info("wrote out content type of {} {}",type,this.httpSpec.contentTypes[type]);
+											
+											
 											writer.writeShort((short)type);
 											break;
 																											
@@ -359,10 +381,14 @@ public class HTTPResponseParserStage extends PronghornStage {
 									PipeWriter.tryWriteFragment(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
 								    PipeWriter.writeLong(targetPipe, NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
 	
+								    //logger.info("**************** end of headers length values is {}",payloadLengthData[i]);
+								    
+								    
 									if (payloadLengthData[i]<0) {
 										positionMemoData[stateIdx]= state= 3;	
 										payloadLengthData[i] = 0;//starting chunk size.
 									} else {
+									    //logger.info("*********************** simple length payload size was {}",payloadLengthData[i]);
 										positionMemoData[stateIdx]= state= 2;									
 									}
 									foundEnd = true;
@@ -407,6 +433,7 @@ public class HTTPResponseParserStage extends PronghornStage {
 						
 					case 2: //PAYLOAD READING WITH LENGTH
 							if (2==state) {
+								//logger.info("** payload reading with length");
 								long lengthRemaining = payloadLengthData[i];
 								DataOutputBlobWriter<NetResponseSchema> writer2 = PipeWriter.outputStream(targetPipe);
 				
@@ -439,6 +466,9 @@ public class HTTPResponseParserStage extends PronghornStage {
 							long chunkRemaining = payloadLengthData[i];
 							DataOutputBlobWriter<NetResponseSchema> writer3 = PipeWriter.outputStream(targetPipe);
 							do {
+								
+								//logger.info("****************************  chunk remainining {} ",chunkRemaining);
+								
 								if (0==chunkRemaining) {
 									
 									int startingLength3 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	
@@ -456,14 +486,14 @@ public class HTTPResponseParserStage extends PronghornStage {
 										
 										int readingPos = trieReader.sourcePos;
 										
-										boolean debug = true;
-										if (debug) {
-											ByteArrayOutputStream ist = new ByteArrayOutputStream();
-											trieReader.debugAsUTF8(trieReader, new PrintStream(ist), 100,false);
-											byte[] data = ist.toByteArray();
-										
-											assert (trieReader.sourceLen==0 || (  (data[0]>='0' && data[0]<='9') || (data[0]>='a' && data[0]<='f')    )) : "http parse, non hex value found at "+readingPos+" data: "+new String(data);
-										}
+//										boolean debug = false;
+//										if (debug) {
+//											ByteArrayOutputStream ist = new ByteArrayOutputStream();
+//											trieReader.debugAsUTF8(trieReader, new PrintStream(ist), 100,false);
+//											byte[] data = ist.toByteArray();
+//										
+//											assert (trieReader.sourceLen==0 || (  (data[0]>='0' && data[0]<='9') || (data[0]>='a' && data[0]<='f')    )) : "http parse, non hex value found at "+readingPos+" data: "+new String(data);
+//										}
 										
 										if (trieReader.sourceLen>16) { //FORMAL ERROR
 											System.err.println("chunk ID is TOO long starting at "+readingPos+" data remaining "+trieReader.sourceLen);
@@ -489,7 +519,7 @@ public class HTTPResponseParserStage extends PronghornStage {
 									foundWork = true;								
 									chunkRemaining = TrieParserReader.capturedLongField(trieReader,0);
 									
-					//				System.out.println("                                                           READ NEW CHUNK OF size "+chunkRemaining);
+									//logger.info("*** parsing new HTTP payload of size {}",chunkRemaining);
 									
 									if (0==chunkRemaining) {
 										
@@ -510,9 +540,11 @@ public class HTTPResponseParserStage extends PronghornStage {
 										
 										//NOTE: input is low level, TireParser is using low level take
 										//      writer output is high level;									
-										writer3.closeHighLevelField(NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3);
+										int len = writer3.closeHighLevelField(NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3);
 										positionMemoData[stateIdx] = state = 5;
 										PipeWriter.publishWrites(targetPipe);
+										
+										//logger.info("***************  published payload length of {} ",len);
 										
 										foundWork = sendAck(foundWork, stateIdx, ccId);
 										
@@ -570,9 +602,6 @@ public class HTTPResponseParserStage extends PronghornStage {
 
 	private boolean sendAck(boolean foundWork, final int stateIdx, long ccId) {
 		countOfRecords++;
-		//System.err.println("parse records "+ countOfRecords++); //TODO: not called after last header?
-		
-		
 		if (PipeWriter.tryWriteFragment(ackStop, NetParseAckSchema.MSG_PARSEACK_100)) {
 			PipeWriter.writeLong(ackStop, NetParseAckSchema.MSG_PARSEACK_100_FIELD_CONNECTIONID_1, ccId);
 			PipeWriter.publishWrites(ackStop);

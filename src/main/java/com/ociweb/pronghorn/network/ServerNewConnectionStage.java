@@ -10,6 +10,9 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLEngineResult.HandshakeStatus;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +44,10 @@ public class ServerNewConnectionStage extends PronghornStage{
     private Pipe<ServerConnectionSchema> newClientConnections;
     
     
+    //TODO: not sure these are right at all.
+    private String host="localhost";
+	private int port=8443;
+	  
     
     public ServerNewConnectionStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<ServerConnectionSchema> newClientConnections) {
         super(graphManager, NONE, newClientConnections);
@@ -72,7 +79,7 @@ public class ServerNewConnectionStage extends PronghornStage{
             channel.register(selector, SelectionKey.OP_ACCEPT); 
             
             
-            System.out.println("ServerNewConnectionStage is now ready on  http:/"+endPoint+"/index.html");
+            System.out.println("ServerNewConnectionStage is now ready on  https:/"+endPoint+"/index.html");
         } catch (BindException be) {
             String msg = be.getMessage();
             if (msg.contains("already in use")) {
@@ -137,13 +144,22 @@ public class ServerNewConnectionStage extends PronghornStage{
                         	  logger.info("no channel, dropping data");
                               return;
                           }
-                          
-                          //TODO: not sure these are right at all.
-                          String host="localhost";
-						  int port=443;
 						  
-						  holder.setValue(channelId, new ServerConnection(SSLEngineFactory.createSSLEngine(host, port), channel, channelId));
+						  SSLEngine sslEngine = SSLEngineFactory.createSSLEngine();//// not needed for server? host, port);
+						  sslEngine.setUseClientMode(false); //here just to be complete and clear
+						//  sslEngine.setNeedClientAuth(true); //only if the auth is required to have a connection
+						  sslEngine.setWantClientAuth(false); //the auth is optional
+						  sslEngine.setNeedClientAuth(false);
+						  
+						  
+						  sslEngine.beginHandshake();
+						  
+						  holder.setValue(channelId, new ServerConnection(sslEngine, channel, channelId));
                           
+						  
+//						  HandshakeStatus handshakeStatus = sslEngine.getHandshakeStatus();
+//						  logger.info("external handshake check is now {} NEED TO SEND HANDSHAKE FROM HERE?",handshakeStatus);
+						  
                           
                           //NOTE: for servers that do not require an upgrade we can set this to the needed pipe right now.
                           ServerCoordinator.setTargetUpgradePipeIdx(coordinator, targetPipeIdx, channelId, 0); //default for all

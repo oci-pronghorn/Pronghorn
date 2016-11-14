@@ -443,7 +443,7 @@ public class BuildMatrixCompute {
 				                inputs, 
 				                splitterPipes[--splitterPipesCount] = new Pipe<RowSchema<L>>(leftInput.config().grow2x()),
 				                outputs, 
-				                resultSchema, leftSchema, rightSchema);
+				                resultSchema, leftSchema, rightSchema.getRows(), rightSchema.getColumns(), rightSchema.type);
 		return splitterPipesCount;
 	}
 

@@ -46,13 +46,16 @@ public class ClientConnection extends SSLConnection {
 	
 	static {
 		
-		try {
-			testAddr = InetAddress.getByName("www.google.com");
-		} catch (UnknownHostException e) {
-			log.error("no network connection.");
-			System.exit(-1);
+		boolean testForExternalNetwork = false;
+		
+		if (testForExternalNetwork) {
+			try {
+				testAddr = InetAddress.getByName("www.google.com");
+			} catch (UnknownHostException e) {
+				log.error("no network connection.");
+				System.exit(-1);
+			}		
 		}
-	
 	}
 	
 	private boolean hasNetworkConnectivity() {

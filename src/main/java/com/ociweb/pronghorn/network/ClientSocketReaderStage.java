@@ -32,7 +32,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 		this.output2 = output;
 		this.parseAck = parseAck;
 		
-		assert(ccm.resposePoolSize() == output.length);
+		//assert(ccm.resposePoolSize() == output.length);
 
 		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
 	}
@@ -83,6 +83,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    	long temp=0;
 						    	do {
 									temp = cc.readfromSocketChannel(wrappedUnstructuredLayoutBufferOpen);
+									
+									//log.debug("reading {} from socket",temp);
 				
 						    		if (temp>0) {
 						    			readCount+=temp;

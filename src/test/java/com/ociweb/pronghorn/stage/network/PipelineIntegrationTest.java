@@ -61,12 +61,12 @@ public class PipelineIntegrationTest {
         
         
         Pipe<NetPayloadSchema> rawRequestPipe = new Pipe<NetPayloadSchema>(rawRequestPipeConfig);
-        Pool<Pipe<NetPayloadSchema>> pool = new Pool<Pipe<NetPayloadSchema>>(new Pipe[]{ rawRequestPipe});
+        Pipe[] pipes = new Pipe[]{ rawRequestPipe};
 
         ClientHTTPRequestDataGeneratorStage genStage = ClientHTTPRequestDataGeneratorStage.newInstance(gm, rawRequestPipe, iterations, paths);  
         
         //route all urls to the same static loader
-        HTTP1xRouterStage stage = buildRouterStage(gm, apps, appPipeConfig, pool, testDataFiles, urls);
+        HTTP1xRouterStage stage = buildRouterStage(gm, apps, appPipeConfig, pipes, testDataFiles, urls);
                
         runGraph(gm, paths.length, iterations, genStage);
         
@@ -105,7 +105,7 @@ public class PipelineIntegrationTest {
     }
 
     private HTTP1xRouterStage buildRouterStage(GraphManager gm, final int apps,
-            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pool<Pipe<NetPayloadSchema>> pool, TestDataFiles testDataFiles, CharSequence[] paths) {
+            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pipe<NetPayloadSchema>[] pipes, TestDataFiles testDataFiles, CharSequence[] paths) {
         
         Pipe[] routedAppPipes = new Pipe[apps];
         long[] appHeaders = new long[apps];
@@ -132,7 +132,7 @@ public class PipelineIntegrationTest {
         Pipe errorPipe = new Pipe(new PipeConfig(RawDataSchema.instance));
         ConsoleJSONDumpStage dump = new ConsoleJSONDumpStage(gm,errorPipe);
         
-        HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pool, routedAppPipes, paths, appHeaders, msgIds);
+        HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, routedAppPipes, paths, appHeaders, msgIds);
         return stage;
     }
 

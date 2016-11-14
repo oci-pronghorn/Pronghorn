@@ -26,7 +26,7 @@ import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 public class ClientHTTPSPipelineTest {
 
 	
-	@Ignore //Test // do not disable it requires interet access to run, we will make a better test soon.
+	@Ignore // do not disable it requires interet access to run, we will make a better test soon.
 	public void buildPipelineTest() {
 
 		//only build minimum for the pipeline
@@ -36,7 +36,7 @@ public class ClientHTTPSPipelineTest {
 		final int inputsCount = 2;
 		
 		int base2SimultaniousConnections = 1;//TODO: bug, why can we not set this to larger nubmer??
-		final int outputsCount = 2;//must be < connections
+		final int outputsCount = 1;//must be < connections
 		int maxPartialResponses = 2;
 		final int maxListeners = 1<<base2SimultaniousConnections;
 
@@ -88,8 +88,14 @@ public class ClientHTTPSPipelineTest {
 		HTTPClientRequestStage requestStage = new HTTPClientRequestStage(gm, ccm, input, clientRequests);
 		
 		
-		NetGraphBuilder.buildHTTPClientGraph(gm, outputsCount, maxPartialResponses, ccm, listenerPipeLookup, clientNetRequestConfig,
-											parseAckConfig, clientNetResponseConfig, clientRequests, toReactor);
+		NetGraphBuilder.buildHTTPClientGraph(gm, 
+				                             outputsCount, maxPartialResponses, ccm, 
+				                             listenerPipeLookup, 
+				                             clientNetRequestConfig,
+											 parseAckConfig, 
+											 clientNetResponseConfig, 
+											 clientRequests, 
+											 toReactor);
 		
 		i = toReactor.length;
 		PipeCleanerStage[] cleaners = new PipeCleanerStage[i];
@@ -117,7 +123,7 @@ public class ClientHTTPSPipelineTest {
 		
 		final int MSG_SIZE = 6;
 		
-		int testSize = 200; 
+		int testSize = 100; 
 		
 		int requests = testSize;
 		
@@ -126,6 +132,7 @@ public class ClientHTTPSPipelineTest {
 		
 		long start = System.currentTimeMillis();
 		int d = 0;
+	//	int b = 0;
 		while (requests>0 && System.currentTimeMillis()<timeout) {
 						
 			Pipe<NetRequestSchema> pipe = input[0];
@@ -141,7 +148,18 @@ public class ClientHTTPSPipelineTest {
 				d+=MSG_SIZE;
 				
 				Thread.yield();
-			}
+			} 
+//			else {
+//				try {
+//					Thread.sleep(1);
+//				} catch (InterruptedException e) {
+//					break;
+//				}
+//				if (++b==1000){
+//					System.err.println("pipe is backed up, can not make new requests to "+input[0]);
+//					System.err.println("requests pipe is "+clientRequests[0]);
+//				}
+//			}
 		}
 		
 

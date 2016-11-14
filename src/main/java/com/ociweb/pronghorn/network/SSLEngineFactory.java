@@ -4,6 +4,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.security.KeyStore;
 import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
@@ -11,6 +12,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,11 +28,32 @@ public class SSLEngineFactory {
 
 	private static final Logger log = LoggerFactory.getLogger(SSLEngineFactory.class);
 	
+	private static final boolean TRUST_ALL = true;
+	
 	static {
 		
 		try {
 			keyManagers = createKeyManagers("./src/main/resources/client.jks", "storepass", "keypass");
-			trustManagers = createTrustManagers("./src/main/resources/trustedCerts.jks", "storepass");
+			
+			if (TRUST_ALL) {
+				log.warn("***** No trust manager in use, all connecions will be trusted. This is only appropriate for development and testing. *****");
+				trustManagers = new TrustManager[] { 
+					    new X509TrustManager() {     
+					        public java.security.cert.X509Certificate[] getAcceptedIssuers() { 
+					            return new X509Certificate[0];
+					        } 
+					        public void checkClientTrusted( 
+					            java.security.cert.X509Certificate[] certs, String authType) {
+					            } 
+					        public void checkServerTrusted( 
+					            java.security.cert.X509Certificate[] certs, String authType) {
+					        }
+					    } 
+					}; 
+			} else {
+				trustManagers = createTrustManagers("./src/main/resources/trustedCerts.jks", "storepass");				
+			}
+			
 			
 	        context = SSLContext.getInstance(PROTOCOL);
 			context.init(keyManagers, trustManagers, new SecureRandom());
@@ -92,12 +115,23 @@ public class SSLEngineFactory {
 	private static String[] protocols = new String[]{"TLSv1.2"}; //[SSLv2Hello, TLSv1, TLSv1.1, TLSv1.2]
     
     public static SSLEngine createSSLEngine(String host, int port) {
+    	
     	SSLEngine result = context.createSSLEngine(host, port);
     	result.setEnabledCipherSuites(filterCipherSuits(result)); 
     	result.setEnabledProtocols(protocols);
+    	
     	return result;
     }
 
+    public static SSLEngine createSSLEngine() {
+    	
+    	SSLEngine result = context.createSSLEngine();
+    	result.setEnabledCipherSuites(filterCipherSuits(result)); 
+    	result.setEnabledProtocols(protocols);
+    	
+    	return result;
+    }
+    
 	private static String[] filterCipherSuits(SSLEngine result) {
 		if (null==cipherSuits) {
     		
@@ -130,13 +164,12 @@ public class SSLEngineFactory {
 	private static boolean doesNotContainWeakCipher(String[] enabledCipherSuites, int i) {
 		return !enabledCipherSuites[i].contains("DES_") &&
 			   !enabledCipherSuites[i].contains("EXPORT") && 
-			  // !enabledCipherSuites[i].contains("RSA") && //only use ECC
 			   !enabledCipherSuites[i].contains("NULL");
+		
 	}
 
 	private static boolean containsPerfectForward(String[] enabledCipherSuites, int i) {
 		return enabledCipherSuites[i].contains("DHE") || 
-			//	enabledCipherSuites[i].contains("ECC") ||
 			   enabledCipherSuites[i].contains("EDH");
 	}
 	

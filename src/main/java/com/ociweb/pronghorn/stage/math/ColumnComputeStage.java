@@ -19,7 +19,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 	private Pipe<RowSchema<R>> rowInput;
 	private Pipe<ColumnSchema<M>>[] colOutput;
 	private M resultSchema;
-	private R rSchema;
+	private int rRows;
 	private MatrixTypes type;
 	private final int colInMsgSize;
 	private final int colOutMsgSize;
@@ -38,27 +38,27 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			                     Pipe<ColumnSchema<C>>[] colInput, //input matrix split into columns
 			                     Pipe<RowSchema<R>>      rowInput, //input matrix split into rows
 			                     Pipe<ColumnSchema<M>>[] colOutput,//output matrix split into columns
-			                     M matrixSchema, C cSchema, R rSchema) {
+			                     M matrixSchema, C cSchema, int rRows, int rCols, MatrixTypes type) {
 		
 		super(graphManager, join(colInput, rowInput), colOutput);
 		this.colInput = colInput;
 		this.rowInput = rowInput;
 		this.colOutput= colOutput;
 		this.resultSchema = matrixSchema;
-		this.rSchema = rSchema;
-		this.type = rSchema.type;
+		this.rRows = rRows;
+		this.type = type;
 				
 		assert(colInput.length == colOutput.length);
 
 		this.rowLimit = resultSchema.getRows();		
 		this.remainingRows = rowLimit; 
 		
-		if (cSchema.getColumns() != rSchema.getRows()) {
-			throw new UnsupportedOperationException("column count of left input must match row count of right input "+cSchema.getColumns()+" vs "+rSchema.getRows());
+		if (cSchema.getColumns() != rRows) {
+			throw new UnsupportedOperationException("column count of left input must match row count of right input "+cSchema.getColumns()+" vs "+rRows);
 		}
 		
-		if (resultSchema.getColumns() != rSchema.getColumns()) {
-			throw new UnsupportedOperationException("column count of right input must match result output "+rSchema.getColumns()+" vs "+resultSchema.getColumns());
+		if (resultSchema.getColumns() != rCols) {
+			throw new UnsupportedOperationException("column count of right input must match result output "+ rCols+" vs "+resultSchema.getColumns());
 		}
 			
         if (resultSchema.getRows() != cSchema.getRows()) {
@@ -69,7 +69,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			throw new UnsupportedOperationException("type mismatch");
 		}
 		
-		if (rSchema.type != matrixSchema.type) {
+		if (type != matrixSchema.type) {
 			throw new UnsupportedOperationException("type mismatch");
 		}
 		
@@ -207,7 +207,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 
 			//add one value to the output pipe
 			//value taken from full rowInput and full inputPipe input				
-			type.computeColumn(rSchema.getRows(), colInput[i], rowInput, colOutput[i]);
+			type.computeColumn(rRows, colInput[i], rowInput, colOutput[i]);
 
 			if (remainingRows>0) {  
 				//restore for next pass but not for the very last one.
@@ -227,7 +227,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		int slabMask = Pipe.slabMask(colInput[0]);
 		int outMask = Pipe.slabMask(colOutput[0]);
 		
-		long len = rSchema.getRows()*resultSchema.typeSize;	
+		long len = rRows*resultSchema.typeSize;	
 
 		while (--i>=0) {
 			
@@ -248,7 +248,7 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 			/////
 		}		
 		
-		goCompute(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rSchema.getRows(), 
+		goCompute(type.ordinal(), Pipe.slab(rowInput), rowSourceLoc, Pipe.slabMask(rowInput), rRows, 
 				  inputPipes, cPos, slabMask, outputPipes, cPosOut, outMask);
 		
 	}

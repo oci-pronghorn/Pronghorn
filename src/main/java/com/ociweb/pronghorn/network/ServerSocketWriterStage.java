@@ -161,7 +161,9 @@ public class ServerSocketWriterStage extends PronghornStage {
         int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
         int len = Pipe.takeRingByteLen(pipe);
         
-        writeBuffs= Pipe.wrappedReadingBuffers(pipe, meta, len);
+        //logger.info("write {} to socket",len);
+        
+        writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
         writeDone = false;
                 
     }

@@ -25,14 +25,15 @@ public class SSLEngineWrapStage extends PronghornStage {
 	private final boolean isServer;
 	private int           shutdownCount;
 	private final int     SIZE_HANDSHAKE_AND_DISCONNECT;
+	private final int     groupId;
 	
 	protected SSLEngineWrapStage(GraphManager graphManager, SSLConnectionHolder ccm,
-            Pipe<NetPayloadSchema>[] plainContent, Pipe<NetPayloadSchema>[] encryptedContent) {
-		this(graphManager,ccm,false,plainContent,encryptedContent);
+            Pipe<NetPayloadSchema>[] plainContent, Pipe<NetPayloadSchema>[] encryptedContent, int groupId) {
+		this(graphManager,ccm,false,plainContent,encryptedContent, groupId);
 	}
 	
 	protected SSLEngineWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, boolean isServer,
-			                     Pipe<NetPayloadSchema>[] plainContent, Pipe<NetPayloadSchema>[] encryptedContent) {
+			                     Pipe<NetPayloadSchema>[] plainContent, Pipe<NetPayloadSchema>[] encryptedContent, int  groupId) {
 		
 		super(graphManager, plainContent, encryptedContent);
 
@@ -45,6 +46,8 @@ public class SSLEngineWrapStage extends PronghornStage {
 		this.plainContent = plainContent;
 		this.isServer = isServer;
 		assert(encryptedContent.length==plainContent.length);
+		
+		this.groupId = groupId;
 		
 	}
 
@@ -68,7 +71,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 		int i = encryptedContent.length;
 		while (--i >= 0) {
 						
-			SSLUtil.engineWrap(ccm, plainContent[i], encryptedContent[i], secureBuffers[i], isServer);			
+			SSLUtil.engineWrap(ccm, plainContent[i], encryptedContent[i], secureBuffers[i], isServer, groupId);			
 			
 			/////////////////////////////////////
 			//close the connection logic
@@ -79,7 +82,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 				PipeReader.tryReadFragment(plainContent[i]);
 				long connectionId = PipeReader.readLong(plainContent[i], NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201);
 				
-				SSLConnection connection = ccm.get(connectionId, 0);
+				SSLConnection connection = ccm.get(connectionId, groupId);
 				if (null!=connection) {
 					assert(connection.isDisconnecting()) : "should only receive disconnect messages on connections which are disconnecting.";
 					SSLUtil.handShakeWrapIfNeeded(connection, encryptedContent[i], secureBuffers[i]);					
