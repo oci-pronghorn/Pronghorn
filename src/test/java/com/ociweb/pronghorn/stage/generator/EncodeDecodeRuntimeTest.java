@@ -5,7 +5,6 @@ import com.ociweb.pronghorn.pipe.*;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.stage.IntegrityFuzzGenerator;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.GroceryFuzzGenerator;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
@@ -60,7 +59,7 @@ public class EncodeDecodeRuntimeTest {
 
     }
 
-    //@Test
+    @Test
     public void runTimeTest() throws IOException, SAXException, ParserConfigurationException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException {
         GraphManager gm = new GraphManager();
 

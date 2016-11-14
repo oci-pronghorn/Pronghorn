@@ -94,7 +94,6 @@ public class LowLevelGroceryTest {
         sharedPipe.initBuffers();
         Pipe<MessageSchemaDynamic> outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));
         outPipe.initBuffers();
-
         //get encoder ready
         StringBuilder eTarget = new StringBuilder();
         PhastEncoderStageGenerator ew = new PhastEncoderStageGenerator(messageSchema, eTarget);
@@ -119,10 +118,8 @@ public class LowLevelGroceryTest {
         Constructor dconstructor =  LoaderUtil.generateThreeArgConstructor(dw.getPackageName(), dw.getClassName(), dTarget, PhastDecoderStageGenerator.class);
 
         GroceryFuzzGenerator random1 = new GroceryFuzzGenerator(gm, inPipe);
-        //econstructor.newInstance(gm, inPipe, sharedPipe);
-        //GroceryExampleEncoderStage enc = new GroceryExampleEncoderStage(gm,inPipe,sharedPipe);
-        //GroceryExampleDecoderStage dec = new GroceryExampleDecoderStage(gm, sharedPipe, outPipe);
-        //dconstructor.newInstance(gm, sharedPipe, outPipe);
+        econstructor.newInstance(gm, inPipe, sharedPipe);
+        dconstructor.newInstance(gm, sharedPipe, outPipe);
         ConsoleJSONDumpStage json = new ConsoleJSONDumpStage(gm, outPipe);
 
         //encoding data

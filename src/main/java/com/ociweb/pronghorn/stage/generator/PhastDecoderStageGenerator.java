@@ -32,7 +32,7 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     //field names
     private final String longDictionaryName = "longDictionary";
     private final String intDictionaryName = "intDictionary";
-    private final String readerName = "reader";
+    protected final String readerName = "reader";
     private final String mapName = "map";
     private final String indexName = "idx";
     private final String longValueName = "longVal";
@@ -40,8 +40,8 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     private final String intValueName = "intVal";
     private final String defaultIntDictionaryName = "intDefaults";
     private final String defaultLongDictionaryName = "longDefaults";
-    private final String bitMaskName = "bitMask";
-    private final String inPipeName = "input";
+    protected final String bitMaskName = "bitMask";
+    protected final String inPipeName = "input";
     private final boolean generateRunnable;
 
     public PhastDecoderStageGenerator(MessageSchema schema, Appendable target) {
@@ -132,7 +132,6 @@ public class PhastDecoderStageGenerator extends TemplateProcessGeneratorLowLevel
     protected void negativeOneCase(Appendable target) throws IOException {
         target.append(tab+tab).append("case -1:\n");
 
-        target.append(tab+tab+tab).append("Pipe.confirmLowLevelRead(" + pipeVarName + ", Pipe.EOF_SIZE);\n");
         target.append(tab+tab+tab).append("Pipe.publishEOF(" + pipeVarName + ");\n");
         target.append(tab+tab+tab).append("requestShutdown();\n");
 

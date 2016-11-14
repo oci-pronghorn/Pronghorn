@@ -177,7 +177,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         } else {
             target.append(GraphManager.class.getCanonicalName()).append(" gm, ");
 
-            target.append("Pipe<MessageSchemaDynamic>  " + inPipeName + ", ");
+            target.append("Pipe<" + schema.getClass().getSimpleName() + ">  " + inPipeName + ", ");
             target.append("Pipe<RawDataSchema> " + outPipeName );
             additionalArgs(target);
             target.append(") {\n");
@@ -218,6 +218,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         target.append(tab+tab+tab).append("Pipe.confirmLowLevelRead(" + inPipeName + ", Pipe.EOF_SIZE);\n");
         target.append(tab+tab+tab).append("Pipe.publishEOF(" + outPipeName + ");\n");
         target.append(tab+tab+tab).append("requestShutdown();\n");
+        target.append(tab+tab+tab).append("break;\n");
     }
 
     /**
@@ -260,6 +261,7 @@ public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevel
         //If the appendable can not be written to, throw an error
         try {
 
+            bodyTarget.append("Pipe.addMsgIdx(output, 0);\n");
             //call to instantiate dictionaries
             generateVariables(bodyTarget);
             printPmapBuilding(fragmentParaCount, fragmentParaArgs, fragmentParaSuff, fragmentParaTypes, curCursor, from);
