@@ -23,7 +23,7 @@ import org.xml.sax.SAXException;
  * @author jake
  */
 public class ProtoBuffInterfaceTest {
-    @Test
+    //@Test
     public void groceryTest() throws FileNotFoundException, ParserConfigurationException, IOException, SAXException{
         
         ProtoBuffInterface test = new ProtoBuffInterface("com.ociweb.test", "GroceryQueryProvider", "InventoryDetails",
