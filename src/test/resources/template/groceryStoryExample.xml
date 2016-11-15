@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+
+   <template name="Boxes" id="2" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+     <uInt32 name="Count" id="34"/>
+     <string name="Owner" id="35">
+            <copy/>
+     </string>
+   </template>
+   
+   <template name="Sample" id="1" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+	     <uInt32 name="Year" id="101">
+	         <copy value="1"/>
+	     </uInt32>
+	     <uInt32 name="Month" id="102">
+	         <copy value="1"/>
+	     </uInt32>
+	     <uInt32 name="Date" id="103">
+	         <copy value="1"/>
+	     </uInt32>
+	     <decimal name="Weight" id="200">
+	                <exponent>
+	                    <default value="0"/>
+	                </exponent>
+	                <mantissa>
+	                    <delta/>
+	                </mantissa>
+	     </decimal>     
+   </template>
+   
+   <template name="Reset" id="4" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+        <string name="Version" id="900">
+            <constant value="1.0"/>
+        </string>
+   </template>
+      
+   <template name="Trucks" id="5" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+        <string name="Squad" id="201">
+            <copy/>
+        </string>
+        <sequence name="Members">
+            <length name="NoMembers" id="202"/>
+            <uInt64 name="TruckId" id="203"/>
+	        <decimal name="Capacity" id="203">
+	                    <exponent>
+	                        <default value="0"/>
+	                    </exponent>
+	                    <mantissa>
+	                        <delta/>
+	                    </mantissa>
+	        </decimal>  
+        </sequence>
+   </template>
+   
+   <template name="TrucksMark2" id="51" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+        <string name="Squad" id="51201">
+            <copy/>
+        </string>
+        <sequence name="Members">
+            <length name="NoMembers" id="51202"/>
+            <uInt64 name="TruckId" id="51203"/>
+            <decimal name="Capacity" id="51203">
+                        <exponent>
+                            <default value="0"/>
+                        </exponent>
+                        <mantissa>
+                            <delta/>
+                        </mantissa>
+            </decimal> 
+            <sequence name="Things">
+                     <length name="NoThings" id="51402"/>
+                     <uInt32 name="AThing"   id="51403"/>
+            </sequence> 
+        </sequence>
+        <uInt32 name="JustOneMoreQuestion" id="61403"/>
+   </template>
+
+</templates>

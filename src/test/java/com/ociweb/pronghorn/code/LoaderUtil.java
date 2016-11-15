@@ -101,6 +101,13 @@ public class LoaderUtil {
 
     }
 
+    public static Constructor generateThreeArgConstructor(String packageName, String className, StringBuilder target, Class clazz) throws ClassNotFoundException, NoSuchMethodException {
+
+        return generateClass(packageName, className, target, clazz).getConstructor(GraphManager.class, Pipe.class, Pipe.class);
+
+
+    }
+
     public static Class generateClass(String packageName, String className, StringBuilder target, Class clazz) throws ClassNotFoundException, NoSuchMethodException {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         
