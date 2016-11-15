@@ -28,11 +28,26 @@ public class ProtoBuffInterface {
     String innerClassName;
     private MessageSchema schema;
     private Appendable interfaceTarget;
+
     private static String tab = "    ";
     private String decoderClassName;
+    private String decoderInstanceName = "dec";
     private String encoderClassName;
+    private String encoderInstanceName = "enc";
+    private String schedulerName = "scheduler";
+    private String isWritingName = "isWriting";
+    private String inPipeName = "inPipe";
+    private String outPipeName = "outPipe";
+    private String sharedPipeName = "transmittedPipe";
+    private String inputStreamName = "in";
+    private String outputStreamName = "out";
+    private String gmName = "gm";
+    private String messageSchemaName = "messageSchema";
+    private String fromName = "FROM";
+
     GraphManager gm;
     FieldReferenceOffsetManager from;
+
 
     public ProtoBuffInterface(String packageName, String interfaceClassName, String innerClassName,
                               String filePath, String xmlPath) throws IOException, SAXException, ParserConfigurationException {
@@ -79,16 +94,16 @@ public class ProtoBuffInterface {
             //make variable name go to camel case
             String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
             //Getter method generated
-            target.append(tab + tab + tab + "public " + varType + " get" + varNameCamel + "(){\n");
+            target.append(tab + tab + "public " + varType + " get" + varNameCamel + "(){\n");
             //return variable, close off, end line.
             if (varType == "int")
-                target.append( tab + tab + tab + tab + "return PipeReader.readInt(query.inPipe, query." + varName + "loc); \n");
+                target.append(tab + tab + tab + "return PipeReader.readInt(query.inPipe, query." + varName + "loc); \n");
             if (varType == "long")
-                target.append( tab + tab + tab + tab + "return PipeReader.readLong(query.inPipe, query." + varName + "loc); \n");
+                target.append(tab + tab + tab + "return PipeReader.readLong(query.inPipe, query." + varName + "loc); \n");
             if (varType == "String") {
-                target.append(tab + tab + tab + tab + "StringBuilder str = new StringBuilder();\n");
-                target.append(tab + tab + tab + tab + "PipeReader.readASCII(query.inPipe, query." + varName + "loc, str); \n");
-                target.append(tab + tab + tab + tab + "return str.toString(); \n");
+                target.append(tab + tab + tab + "StringBuilder str = new StringBuilder();\n");
+                target.append(tab + tab + tab + "PipeReader.readASCII(query.inPipe, query." + varName + "loc, str); \n");
+                target.append(tab + tab + tab + "return str.toString(); \n");
             }
 
             target.append(tab + tab + tab + "}\n");
@@ -136,7 +151,7 @@ public class ProtoBuffInterface {
         }
     }
 
-    private void additionalInstaceVariables(){
+    private void additionalInstanceVariables(){
         try {
             interfaceTarget.append(
                     "        private GraphManager gm;\n" +
@@ -145,6 +160,7 @@ public class ProtoBuffInterface {
                     "        private Pipe<RawDataSchema> transmittedPipe;\n" +
                     "        private GroceryExampleEncoderStage enc;\n" +
                     "        private GroceryExampleDecoderStage dec;\n" +
+                    "        private boolean isWriting;\n" +
                     "        InputStream in;\n" +
                     "        OutputStream out;\n" +
                     "        ThreadPerStageScheduler scheduler;\n");
@@ -153,13 +169,7 @@ public class ProtoBuffInterface {
         }
     }
 
-    private void additionalMethods() throws IOException{
-        interfaceTarget.append(
-                    "        public void writeTo(){\n" +
-                    "           InventoryDetails inv = new InventoryDetails();\n" +
-                    "           inv.writeTo(out);\n" +
-                    "}\n");
-        }
+
 
     private void generateSetters(){
         int[] tokens = from.tokens;
@@ -206,90 +216,153 @@ public class ProtoBuffInterface {
         interfaceTarget.append("/*\n");
         interfaceTarget.append("THIS CLASS HAS BEEN GENERATED DO NOT MODIFY\n");
         interfaceTarget.append("*/\n");
-        interfaceTarget.append("package "+ packageName + ";\n" +
-                "\n" +
-                "import com.ociweb.pronghorn.pipe.*;\n" +
-                "import com.ociweb.pronghorn.pipe.build.GroceryExampleDecoderStage;\n" +
-                "import com.ociweb.pronghorn.pipe.build.GroceryExampleEncoderStage;\n" +
-                "import com.ociweb.pronghorn.stage.PronghornStage;\n" +
-                "import com.ociweb.pronghorn.stage.scheduling.GraphManager;\n" +
-                "import java.util.LinkedList;\n" +
-                "import java.io.IOException;\n" +
-                "import java.io.OutputStream;\n" +
-                "import java.io.InputStream;\n" +
-                "import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;\n\n" +
-                "public class GroceryQueryProvider{\n");
+        interfaceTarget.append("package "+ packageName + ";\n");
+        generateImports(interfaceTarget);
+        generateClassDeclaration(interfaceTarget, interfaceClassName);
         from.appendConstuctionSource(interfaceTarget);
-        generateLOC("InventoryDetails");
-        additionalInstaceVariables();
-        generateConstructor();
-        //additionalMethods();
-        interfaceTarget.append(
-                "    public class InventoryDetails{\n" );
+        generateLOC(innerClassName);
+        additionalInstanceVariables();
 
-        generateGetters();
-        interfaceTarget.append(
-                "\n" +
-                "        private GroceryQueryProvider query;\n" +
-                "        private InventoryDetails inv;\n" +
-                "        public Builder newBuilder(){\n" +
-                "            Builder builder = new Builder();\n" +
-                "            this.query = builder.query;\n" +
-                "            this.inv = builder.inv;\n" +
-                "            PipeWriter.tryWriteFragment(inPipe, 0);\n" +
-                "            return builder;\n" +
-                "        }\n" +
-                "\n" +
-                "        public int parseFrom(int loc){\n" +
-                "            return FROM.extractTypeFromLoc(loc);\n" +
-                "        }\n" +
-                "        public void writeTo(OutputStream out){\n" +
-                "            query.out = out;\n" +
-                "            PipeWriter.publishWrites(inPipe);\n" +
-                "        }\n" +
-                "        public class Builder{\n" +
-                "            private GroceryQueryProvider query;\n" +
-                "            private InventoryDetails inv;\n" +
-                "            private Builder(){\n" +
-                "            query = new GroceryQueryProvider(true);\n" +
-                "            inv = build();\n" +
-                "            }\n" +
-                "            //setters\n");
-        generateSetters();
-        interfaceTarget.append(
-                "            public InventoryDetails build(){\n" +
-                "                return new InventoryDetails();\n" +
-                "            }\n" +
-                "        }\n" +
-                "    }\n" +
-                "}");
+        generateRun(interfaceTarget);
+        generate3ArgConstructor(interfaceTarget);
+        generate2ArgConstructor(interfaceTarget);
 
-
+        generateInnerClass(interfaceTarget, innerClassName);
+        interfaceTarget.append("}\n");
     }
 
-    private void generateConstructor(){
-        try {
-            interfaceTarget.append("" +
-                    "   public GroceryQueryProvider(Boolean isWriting){\n" +
-                    "        gm = new GraphManager();\n" +
-                    "        MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(FROM);\n" +
-                    "        transmittedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));\n" +
-                    "        transmittedPipe.initBuffers();\n" +
-                    "        if(isWriting) {\n" +
-                    "            inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));\n" +
-                    "            inPipe.initBuffers();\n" +
-                    "            enc = new GroceryExampleEncoderStage(gm, inPipe, transmittedPipe, out);\n" +
-                    "        }else{\n" +
-                    "            outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));\n" +
-                    "            outPipe.initBuffers();\n" +
-                    "            dec = new GroceryExampleDecoderStage(gm, transmittedPipe, outPipe, in);\n" +
-                    "        }\n" +
-                    "        scheduler = new ThreadPerStageScheduler(gm);\n" +
-                    "        scheduler.startup();\n" +
-                    "    }\n\n");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    private void generateClassDeclaration(Appendable target, String className) throws IOException{
+        target.append("public class ").append(className).append(" extends PronghornStage{\n");
+    }
+
+
+    private void generateInnerClass(Appendable target, String className) throws IOException{
+        target.append(tab).append("public class ").append(className).append("{\n");
+        target.append(tab+tab).append("private ").append(interfaceClassName).append(" query;\n");
+        generateGetters();
+        generateAdditionalMethods(interfaceTarget);
+        generateBuilderClass(interfaceTarget);
+        target.append(tab + "}\n");
+    }
+
+    private void generateBuilderClass(Appendable target) throws IOException{
+        target.append(tab+tab).append("public class Builder{\n")
+                .append(tab+tab+tab).append("private ").append(innerClassName).append(" messages;\n")
+                .append(tab+tab+tab).append("private ").append(interfaceClassName).append(" query;\n");
+        generateBuilderConstructor(target);
+        target.append(tab + tab + "}\n");
+    }
+
+    private void generateBuilderConstructor(Appendable target) throws IOException{
+        target.append(tab+tab+tab).append("private Builder(){\n")
+                .append(tab+tab+tab+tab).append("GraphManager ").append(gmName).append("= new GraphManager();\n")
+                .append(tab+tab+tab+tab).append("Pipe<RawDataSchema> ").append(sharedPipeName)
+                .append(" = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));\n")
+                .append(tab+tab+tab+tab).append("query = new ").append(interfaceClassName).append("(true, ")
+                .append(gmName).append(", " + sharedPipeName + ");\n")
+                .append(tab+tab+tab).append("}\n\n");
+
+        generateSetters();
+        generateBuild(target);
+    }
+
+    private void generateRun(Appendable target) throws IOException{
+        target.append(tab + "public void run(){\n");
+        target.append(tab+tab).append("if(" + isWritingName + "){\n");
+        target.append(tab+tab+tab).append("while(Pipe.contentRemaining(" + sharedPipeName + ") > 0){\n")
+                .append(tab+tab+tab+tab).append("try{\n")
+                .append(tab+tab+tab+tab+tab).append("Pipe.writeFieldToOutputStream(" + sharedPipeName + ", " + outputStreamName +");\n")
+                .append(tab+tab+tab+tab).append("} catch (IOException e) {\n")
+                .append(tab+tab+tab+tab+tab).append("e.printStackTrace();\n")
+                .append(tab+tab+tab+tab).append("}\n")
+                .append(tab+tab+tab).append("}\n")
+                .append(tab+tab).append("} else{\n")
+                .append(tab+tab+tab).append("try{\n")
+                .append(tab+tab+tab+tab).append("while(" + inputStreamName + ".available() > 0 && Pipe.contentRemaining(" + sharedPipeName + ") > 0){\n")
+                .append(tab+tab+tab+tab+tab).append("Pipe.readFieldFromInputStream(").append(sharedPipeName + ", ").append(inputStreamName + ", ")
+                .append(inputStreamName + ".available());\n")
+                .append(tab+tab+tab+tab).append("}\n")
+                .append(tab+tab+tab).append("} catch (IOException e) {\n")
+                .append(tab+tab+tab+tab).append("e.printStackTrace();\n")
+                .append(tab+tab+tab).append("}\n")
+                .append(tab+tab).append("}\n")
+                .append(tab + "}\n");
+    }
+
+    private void generateBuild(Appendable target) throws IOException{
+        target.append(tab+tab+tab).append("public ").append(innerClassName).append(" build(){\n")
+                .append(tab+tab+tab+tab).append("return messages;\n")
+                .append(tab+tab+tab).append("}\n");
+    }
+
+    private void generate3ArgConstructor(Appendable target) throws IOException{
+        target.append(tab + "public ").append(interfaceClassName)
+                .append("(Boolean ").append(isWritingName + ", ")
+                .append("GraphManager ").append(gmName + ", ")
+                .append("Pipe<RawDataSchema> ").append(sharedPipeName +"){\n");
+
+        target.append(tab+tab).append("super(").append(gmName + ", ").append(sharedPipeName + ", ").append("NONE);\n")
+                .append(tab+tab).append("this." + isWritingName).append(" = " + isWritingName + ";\n")
+                .append(tab+tab).append("MessageSchemaDynamic ").append(messageSchemaName).append(" = new MessageSchemaDynamic(" + fromName + ");\n")
+                .append(tab+tab).append(inPipeName).append(" = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(" + messageSchemaName + "));\n")
+                .append(tab+tab).append(inPipeName).append(".initBuffers();\n")
+                .append(tab+tab).append(encoderInstanceName).append(" = new ").append(encoderClassName + "(")
+                .append(gmName + ", ").append(inPipeName + ", ").append(sharedPipeName + ");\n")
+                .append(tab+tab).append(schedulerName).append(" = new ThreadPerStageScheduler(").append(gmName).append(");\n")
+                .append(tab+tab).append(schedulerName).append(".startup();\n")
+                .append(tab+"}\n");
+    }
+
+    private void generate2ArgConstructor(Appendable target) throws IOException{
+        target.append(tab + "public ").append(interfaceClassName)
+                .append("(GraphManager ").append(gmName + ", ")
+                .append("Pipe<RawDataSchema> ").append(sharedPipeName +"){\n");
+
+        target.append(tab+tab).append("super(").append(gmName + ", ").append("NONE, ").append(sharedPipeName + ");\n")
+                .append(tab+tab).append("this." + isWritingName).append(" = false;\n")
+                .append(tab+tab).append("MessageSchemaDynamic ").append(messageSchemaName).append(" = new MessageSchemaDynamic(" + fromName + ");\n")
+                .append(tab+tab).append(outPipeName).append(" = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(" + messageSchemaName + "));\n")
+                .append(tab+tab).append(outPipeName).append(".initBuffers();\n")
+                .append(tab+tab).append(decoderInstanceName).append(" = new ").append(decoderClassName + "(")
+                .append(gmName + ", ").append(sharedPipeName + ", ").append(outPipeName + ");\n")
+                .append(tab+tab).append(schedulerName).append(" = new ThreadPerStageScheduler(").append(gmName).append(");\n")
+                .append(tab+tab).append(schedulerName).append(".startup();\n")
+                .append(tab + "}\n");
+    }
+
+    private void generateAdditionalMethods(Appendable target) throws IOException{
+        target.append(tab + "public Builder newBuilder(){\n")
+                .append(tab+tab).append("Builder builder = new Builder();\n")
+                .append(tab+tab).append("this.query = builder.query;\n")
+                .append(tab+tab).append("builder.messages = this;\n")
+                .append(tab+tab).append("PipeWriter.tryWriteFragment(").append(inPipeName + ", 0);\n")
+                .append(tab+tab).append("return builder;\n")
+                .append(tab + "}\n\n");
+
+        target.append(tab + "public InventoryDetails writeTo(OutputStream ").append(outputStreamName + "){\n")
+                .append(tab+tab).append("GraphManager ").append(gmName).append(" = new GraphManager();\n")
+                .append(tab+tab).append("Pipe<RawDataSchema> ").append(sharedPipeName)
+                .append("= new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 300));\n")
+                .append(tab+tab).append(sharedPipeName).append(".initBuffers();\n")
+                .append(tab+tab).append(interfaceClassName).append(" query = new ").append(interfaceClassName).append("(" + gmName)
+                .append(" ," + sharedPipeName).append(");\n")
+                .append(tab+tab).append("query." + outputStreamName).append(" = " + outputStreamName).append(";\n")
+                .append(tab+tab).append("PipeWriter.publishWrites(").append(inPipeName + ");\n")
+                .append(tab+tab).append("return this;\n")
+                .append(tab + "}\n\n");
+    }
+
+    private void generateImports(Appendable target) throws IOException{
+        target.append("import com.ociweb.pronghorn.pipe.*;\n")
+                .append("import com.ociweb.pronghorn.pipe.build.GroceryExampleDecoderStage;\n")
+                .append("import com.ociweb.pronghorn.pipe.build.GroceryExampleEncoderStage;\n")
+                .append("import com.ociweb.pronghorn.stage.PronghornStage;\n")
+                .append("import com.ociweb.pronghorn.stage.scheduling.GraphManager;\n")
+                .append("import java.util.LinkedList;\n")
+                .append("import java.io.IOException;\n")
+                .append("import java.io.OutputStream;\n")
+                .append("import java.io.InputStream;\n")
+                .append("import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;\n\n");
     }
 
     private void generateLowLevelAPI(String tabspace) throws IOException {
