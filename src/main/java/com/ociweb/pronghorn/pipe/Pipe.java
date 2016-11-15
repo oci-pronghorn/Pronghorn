@@ -928,22 +928,28 @@ public class Pipe<T extends MessageSchema> {
         buildFieldFromInputStream(pipe, inputStream, byteCount, Pipe.getBlobWorkingHeadPosition(pipe), Pipe.blobMask(pipe), Pipe.blob(pipe), pipe.sizeOfBlobRing);
     }
 
-    private static void buildFieldFromInputStream(Pipe pipe, InputStream inputStream, final int byteCount, int startPosition, int byteMask, byte[] buffer, int sizeOfBlobRing) throws IOException {
-        copyFromInputStreamLoop(inputStream, byteCount, startPosition, byteMask, buffer, sizeOfBlobRing, 0);        
+    private static boolean buildFieldFromInputStream(Pipe pipe, InputStream inputStream, final int byteCount, int startPosition, int byteMask, byte[] buffer, int sizeOfBlobRing) throws IOException {
+        boolean result = copyFromInputStreamLoop(inputStream, byteCount, startPosition, byteMask, buffer, sizeOfBlobRing, 0);        
         Pipe.addBytePosAndLen(pipe, startPosition, byteCount);
         Pipe.addAndGetBytesWorkingHeadPosition(pipe, byteCount);
         assert(Pipe.validateVarLength(pipe, byteCount));
+        return result;
     }
 
-    private static void copyFromInputStreamLoop(InputStream inputStream, int remaining, int position, int byteMask, byte[] buffer, int sizeOfBlobRing, int size) throws IOException {
+    private static boolean copyFromInputStreamLoop(InputStream inputStream, int remaining, int position, int byteMask, byte[] buffer, int sizeOfBlobRing, int size) throws IOException {
         while ( (remaining>0) && (size=safeRead(inputStream, position&byteMask, buffer, sizeOfBlobRing, remaining))>=0 ) { 
             if (size>0) {
                 remaining -= size;                    
                 position += size;
             } else {
-                Thread.yield();
+                if (size<0) {
+                	return false;
+                }
+            	Thread.yield();
+                
             }
         }
+        return true;
     }
     
     static int safeRead(InputStream inputStream, int position, byte[] buffer, int sizeOfBlobRing, int remaining) throws IOException {
