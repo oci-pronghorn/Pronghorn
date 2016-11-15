@@ -3,3 +3,13 @@ target/
 /.classpath
 /.project
 /.attach_pid25440
+/src/test/java/com/ociweb/pronghorn/stage/generator/testOutputs/*.java
+.idea/
+Pronghorn.iml
+/graph.dot
+/graph.dot.circo.svg
+/graph.dot.svg
+/httpClientPipeline.circo.svg
+/httpClientPipeline.svg
+/HTTPSRoundTripTest.circo.svg
+/HTTPSRoundTripTest.svg
