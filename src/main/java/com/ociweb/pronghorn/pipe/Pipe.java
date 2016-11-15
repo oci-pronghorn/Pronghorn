@@ -924,8 +924,8 @@ public class Pipe<T extends MessageSchema> {
         }
     }
     
-    public static void readFieldFromInputStream(Pipe pipe, InputStream inputStream, final int byteCount) throws IOException {
-        buildFieldFromInputStream(pipe, inputStream, byteCount, Pipe.getBlobWorkingHeadPosition(pipe), Pipe.blobMask(pipe), Pipe.blob(pipe), pipe.sizeOfBlobRing);
+    public static boolean readFieldFromInputStream(Pipe pipe, InputStream inputStream, final int byteCount) throws IOException {
+        return buildFieldFromInputStream(pipe, inputStream, byteCount, Pipe.getBlobWorkingHeadPosition(pipe), Pipe.blobMask(pipe), Pipe.blob(pipe), pipe.sizeOfBlobRing);
     }
 
     private static boolean buildFieldFromInputStream(Pipe pipe, InputStream inputStream, final int byteCount, int startPosition, int byteMask, byte[] buffer, int sizeOfBlobRing) throws IOException {
