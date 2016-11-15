@@ -1,13 +1,11 @@
 package com.ociweb.pronghorn.pipe;
 
-import java.io.DataOutput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -460,8 +458,7 @@ public class Pipe<T extends MessageSchema> {
     //helper method for those stages that are not watching for the poison pill.
 	private long knownPositionOfEOF = Long.MAX_VALUE;
 	
-
-	
+    	
     public Pipe(PipeConfig<T> config) {
 
         byte primaryBits = config.slabBits;
@@ -2750,7 +2747,7 @@ public class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> void setWorkingHead(Pipe<S> pipe, long value) {
-    	assert(pipe.slabRingHead.workingHeadPos.value<=value) : "new working head must be forward";
+    	//assert(pipe.slabRingHead.workingHeadPos.value<=value) : "new working head must be forward";
         PaddedLong.set(pipe.slabRingHead.workingHeadPos, value);
     }
 
