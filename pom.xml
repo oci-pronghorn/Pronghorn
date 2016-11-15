@@ -1,0 +1,129 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.ociweb</groupId>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>Ph-TLS-pureJava</name>
+  <artifactId>Ph-TLS-pureJava</artifactId>
+  <description>pure Java TLS implementation</description>
+    <dependencies>
+     
+  	<dependency>
+		<groupId>junit</groupId>
+		<artifactId>junit</artifactId>
+		<version>4.8.1</version>
+		<type>jar</type>
+		<scope>test</scope>
+	</dependency>
+	<dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>1.7.9</version>
+    </dependency>   	
+    <dependency>
+	  <groupId>org.slf4j</groupId>
+	  <artifactId>slf4j-simple</artifactId>
+	  <version>1.7.9</version>
+	  <scope>runtime</scope>
+	</dependency>
+	 
+  </dependencies>
+  
+      <repositories>
+    
+    <repository>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>always</updatePolicy>
+        <checksumPolicy>warn</checksumPolicy>
+      </snapshots>
+      <id>repository-pronghorn.forge.cloudbees.com-snapshot</id>
+      <name>Snapshot Repo for Pronghorn</name>
+      <url>https://repository-pronghorn.forge.cloudbees.com/snapshot</url>
+      <layout>default</layout>
+    </repository>
+    
+    <repository>
+      <releases>
+        <enabled>true</enabled>
+        <updatePolicy>always</updatePolicy>
+        <checksumPolicy>warn</checksumPolicy>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <id>repository-pronghorn.forge.cloudbees.com-release</id>
+      <name>Release Repo for Pronghorn</name>
+      <url>https://repository-pronghorn.forge.cloudbees.com/release</url>
+      <layout>default</layout>
+    </repository>
+        
+  </repositories>
+  
+  <build>
+    <plugins>
+      <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.10.1</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.17</version>
+        <configuration>
+            <argLine>-Xmx2048m</argLine>
+        </configuration>
+      </plugin>
+	      <plugin>
+		    <groupId>org.codehaus.mojo</groupId>
+		    <artifactId>build-helper-maven-plugin</artifactId>
+		    <executions>
+		        <execution>
+		            <phase>generate-sources</phase>
+		            <goals>
+		                <goal>add-source</goal>
+		            </goals>
+		            <configuration>
+		                <sources>
+		                    <source>${project.build.directory}/generated-sources/pronghorn</source>
+		                </sources>
+		            </configuration>
+		        </execution>
+		    </executions>
+		</plugin>
+
+        <plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.2</version>
+				<configuration>
+				   
+				    <compilerArguments>
+				        <profile>compact3</profile>
+				    </compilerArguments>
+					<target>1.8</target>
+					<source>1.8</source>
+					<encoding>UTF-8</encoding>
+				</configuration>
+		</plugin>
+		
+        <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>2.4</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>  
+</project>
