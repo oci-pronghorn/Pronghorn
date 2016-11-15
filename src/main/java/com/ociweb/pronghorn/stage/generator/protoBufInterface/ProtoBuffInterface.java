@@ -119,6 +119,11 @@ public class ProtoBuffInterface {
             //Setter method generated
             target.append(tab + tab + tab + "public void" + " set" + varNameCamel + "(" + varType + " " + varName
                     + ") {\n");
+            target.append(
+                    "                if (!query.isPrimed){\n" +
+                            "                    PipeWriter.tryWriteFragment(inPipe, 0);\n" +
+                            "                    query.isPrimed = true;\n" +
+                            "                }\n");
             if (varType == "int")
                 target.append( tab + tab + tab + tab + "PipeWriter.writeInt(query.inPipe, query." + varName + "loc, " + varName + "); \n");
             if (varType == "long")
@@ -163,7 +168,8 @@ public class ProtoBuffInterface {
                     "        private boolean isWriting;\n" +
                     "        InputStream in;\n" +
                     "        OutputStream out;\n" +
-                    "        ThreadPerStageScheduler scheduler;\n");
+                    "        ThreadPerStageScheduler scheduler;\n" +
+                    "        Boolean isPrimed;\n");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -291,6 +297,7 @@ public class ProtoBuffInterface {
 
     private void generateBuild(Appendable target) throws IOException{
         target.append(tab+tab+tab).append("public ").append(innerClassName).append(" build(){\n")
+                .append(tab+tab+tab+tab).append("query.isPrimed = false;\n")
                 .append(tab+tab+tab+tab).append("return messages;\n")
                 .append(tab+tab+tab).append("}\n");
     }
@@ -310,6 +317,7 @@ public class ProtoBuffInterface {
                 .append(gmName + ", ").append(inPipeName + ", ").append(sharedPipeName + ");\n")
                 .append(tab+tab).append(schedulerName).append(" = new ThreadPerStageScheduler(").append(gmName).append(");\n")
                 .append(tab+tab).append(schedulerName).append(".startup();\n")
+                .append(tab+tab + "isPrimed = false;\n")
                 .append(tab+"}\n");
     }
 
@@ -335,7 +343,6 @@ public class ProtoBuffInterface {
                 .append(tab+tab).append("Builder builder = new Builder();\n")
                 .append(tab+tab).append("this.query = builder.query;\n")
                 .append(tab+tab).append("builder.messages = this;\n")
-                .append(tab+tab).append("PipeWriter.tryWriteFragment(").append(inPipeName + ", 0);\n")
                 .append(tab+tab).append("return builder;\n")
                 .append(tab + "}\n\n");
 

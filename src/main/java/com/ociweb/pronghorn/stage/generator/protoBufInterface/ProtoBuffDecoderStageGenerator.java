@@ -65,7 +65,7 @@ public class ProtoBuffDecoderStageGenerator extends PhastDecoderStageGenerator {
 
         //bitmask goes here
         target.append(tab + "long " + bitMaskName + " = 1;\n");
-        target.append(tab + "int position = reader.position\n");
+        target.append(tab + "int position = reader.position();\n");
         //recieve pmap
         decodePmap(target);
         //pass over group tag 0x10000
@@ -140,7 +140,7 @@ public class ProtoBuffDecoderStageGenerator extends PhastDecoderStageGenerator {
                 argumentList.append(',');
             }
         }
-        target.append("Pipe.releasePendingAsReadLock(" + inPipeName + ", " + readerName +".position - position);\n");
+        target.append("Pipe.releasePendingAsReadLock(" + inPipeName + ", " + readerName +".position() - position);\n");
         target.append("Pipe.readNextWithoutReleasingReadLock(" + inPipeName + ");\n");
         //open method to call with the variable names
         appendWriteMethodName(target.append(tab), cursor2).append("(");
