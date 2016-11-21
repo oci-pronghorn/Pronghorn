@@ -28,7 +28,23 @@
 	 
   </dependencies>
   
-      <repositories>
+  
+  <scm>
+    <connection>scm:git:git://github.com/oci-pronghorn/Ph-TLS-pureJava.git</connection>
+    <url>https://github.com/oci-pronghorn/Ph-TLS-pureJava</url>
+    <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/Ph-TLS-pureJava.git</developerConnection>
+    <tag>HEAD</tag>
+  </scm>
+  
+    
+  <distributionManagement>
+    <repository>
+      <id>cloudbees.release</id>
+      <url>dav:https://repository-pronghorn.forge.cloudbees.com/release</url>
+    </repository>
+  </distributionManagement>
+  
+  <repositories>
     
     <repository>
       <releases>
@@ -63,7 +79,20 @@
   </repositories>
   
   <build>
+   <extensions>
+		<extension>
+		<groupId>org.apache.maven.wagon</groupId>
+		<artifactId>wagon-webdav-jackrabbit</artifactId>
+		<version>2.2</version>
+		</extension>
+   </extensions>
+   
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>2.5.3</version>
+      </plugin>
       <plugin>
       <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
