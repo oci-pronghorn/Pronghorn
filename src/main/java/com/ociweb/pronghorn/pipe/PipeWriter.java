@@ -375,7 +375,7 @@ public class PipeWriter {
 	}
 
 	public static void wrappedUnstructuredLayoutBufferClose(Pipe<?> target,	int loc, int length) {
-		
+		assert(length>=0);
 		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
 		Pipe.validateVarLength(target,length);

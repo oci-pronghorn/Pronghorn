@@ -50,6 +50,9 @@ public class TrieParser {
     //humans require long readable URLs but the machine can split them into categories on just a few key bytes
     
     public final byte ESCAPE_BYTE;
+    public final byte NO_ESCAPE_SUPPORT=(byte)0xFF;
+    
+    
     //EXTRACT VALUE
     public static final byte ESCAPE_CMD_SIGNED_DEC    = 'i'; //signedInt (may be hex if starts with 0x)
     public static final byte ESCAPE_CMD_UNSIGNED_DEC  = 'u'; //unsignedInt (may be hex if starts with 0x)
@@ -116,7 +119,7 @@ public class TrieParser {
         if (supportsExtraction) {
             ESCAPE_BYTE = '%';
         } else {
-            ESCAPE_BYTE = (byte)0xFF; //not valid UTF-8, will not encounter this value.
+            ESCAPE_BYTE = NO_ESCAPE_SUPPORT;
         }
         
         
@@ -276,6 +279,9 @@ public class TrieParser {
 
     
     static int jumpOnBit(short source, short critera, int jump, int pos) {
+    	
+    	//System.out.println(" JumpOn Critera:  "+Integer.toBinaryString(critera));
+    	
         return 1 + (( (~(((source & (0xFF & critera))-1)>>>8) ^ critera>>>8)) & jump) + pos;
     }
 
@@ -351,7 +357,7 @@ public class TrieParser {
                     case TYPE_BRANCH_VALUE:
                         
                         short v = (short) source[sourceMask & sourcePos];
-                        if ('%'==v && '%'!=source[sourceMask & (1+sourcePos)]) {
+                        if (NO_ESCAPE_SUPPORT!=ESCAPE_BYTE && ESCAPE_BYTE==v && ESCAPE_BYTE!=source[sourceMask & (1+sourcePos)] ) {
                             //we have found an escape sequence so we must insert a branch here we cant branch on a value
                             
                             fieldExtractionsCount++; 
@@ -361,12 +367,8 @@ public class TrieParser {
                             
                         } else {
                             int pos1 = pos;
-                            
-                       //     if (1==BRANCH_JUMP_SIZE) {
-                       //         pos = jumpOnBit((short) v, data[pos1++], data[pos1], pos1);                               
-                       //     } else {
-                                pos = jumpOnBit((short) v, data[pos1++], (((int)data[pos1++])<<15) | (0x7FFF&data[pos1]), pos1);   
-                        //    }
+                            pos = jumpOnBit((short) v, data[pos1++], (((int)data[pos1++])<<15) | (0x7FFF&data[pos1]), pos1);   
+                        
                         }
                         break;
                     case TYPE_ALT_BRANCH:
@@ -431,7 +433,7 @@ public class TrieParser {
                                 byte sourceByte = source[sourceMask & sourcePos++];
                                 
                                 //found an escape byte, so this set may need to break the run up.
-                                if (ESCAPE_BYTE == sourceByte) {
+                                if (ESCAPE_BYTE == sourceByte && NO_ESCAPE_SUPPORT!=ESCAPE_BYTE) {
                                     sourceByte = source[sourceMask & sourcePos++];
              
                                     //confirm second value is not also the escape byte so we do have a command
@@ -463,7 +465,7 @@ public class TrieParser {
                         while (--r >= 0) {
                             
                             byte sourceByte = source[sourceMask & sourcePos++];
-                            if (ESCAPE_BYTE == sourceByte) {
+                            if (ESCAPE_BYTE == sourceByte && NO_ESCAPE_SUPPORT==ESCAPE_BYTE) {
                                 sourceByte = source[sourceMask & sourcePos++];
                    
                                 if (ESCAPE_BYTE != sourceByte) {
@@ -658,7 +660,7 @@ public class TrieParser {
             
             byte value = source[sourceMask & (sourcePos+i)];
             
-            if (ESCAPE_BYTE == value) {
+            if (ESCAPE_BYTE == value && NO_ESCAPE_SUPPORT!=ESCAPE_BYTE) {
                 assert(value=='%');
                 i++;
                 value = source[sourceMask & (sourcePos+i)];
@@ -731,7 +733,7 @@ public class TrieParser {
     	
     	//TODO: WHOW TO DO WE SUPPORT THE END WITH NO STOP??
     	
-    	if ('%'==source[sourceMask & sourcePos]) {        	
+    	if (ESCAPE_BYTE==source[sourceMask & sourcePos] && NO_ESCAPE_SUPPORT!=ESCAPE_BYTE) {        	
     		byte second = source[sourceMask & (sourcePos+1)];
     		if ('b'==second) {				
 				byte third = source[sourceMask & (sourcePos+2)];				
@@ -752,7 +754,7 @@ public class TrieParser {
 
     private int stepOverNumeric(byte[] source, int sourcePos, int sourceMask, int numType) {
 
-    	if ('%'==source[sourceMask & sourcePos]) {
+    	if (ESCAPE_BYTE==source[sourceMask & sourcePos] && NO_ESCAPE_SUPPORT!=ESCAPE_BYTE) {
     	
     		byte second = source[sourceMask & (sourcePos+1)];
 			if ('u'==second || 'U'==second ||
@@ -797,29 +799,21 @@ public class TrieParser {
         assert(sourceLength>=1);
    
         if (branchOnByte) {        
-            final int requiredRoom = SIZE_OF_END_1 + SIZE_OF_BRANCH + sourceLength+ midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);
+            final int requiredRoom = SIZE_OF_END_1 + SIZE_OF_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);
                         
             final int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
             pos = writeBranch(TYPE_BRANCH_VALUE, data, pos, requiredRoom, findSingleBitMask((short) source[sourcePos & sourceMask], data[oldValueIdx]));
         } else {
             
-            int requiredRoom = SIZE_OF_END_1 + SIZE_OF_ALT_BRANCH + sourceLength+ midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);  
+            int requiredRoom = SIZE_OF_END_1 + SIZE_OF_ALT_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);  
             final int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
 
-            
             requiredRoom -= SIZE_OF_ALT_BRANCH;//subtract the size of the branch operator
             data[pos++] = TYPE_ALT_BRANCH;         
             
-            
-              if (1==BRANCH_JUMP_SIZE) {
-                  if (requiredRoom > 0x7FFF) {
-                      throw new UnsupportedOperationException("This content is too large, use shorter content or modify this code to make multiple jumps.");
-                  }
-                    data[pos++] = (short)(0x7FFF&requiredRoom);           
-              } else {
-                   data[pos++] = (short)(0x7FFF&(requiredRoom>>15));          
-                   data[pos++] = (short)(0x7FFF&requiredRoom);  
-              }          
+            assert(2==BRANCH_JUMP_SIZE);              
+            data[pos++] = (short)(0x7FFF&(requiredRoom>>15));          
+            data[pos++] = (short)(0x7FFF&requiredRoom);
             
         }
         
@@ -831,13 +825,13 @@ public class TrieParser {
 
 
     private short findSingleBitMask(short a, short b) {
-        int mask = 1<<5; //default of sign bit, only used when nothing replaces it.
-        
+        int mask = 1<<5; //default of sign bit, only used when nothing replaces it.        
         int i = 8; 
         while (--i>=0) {            
             if (5!=i) { //sign bit, we do not use it unless all the others are tested first                
-                mask = 1 << i;
-                if ((mask&a) != (mask&b)) {
+                int localMask = 1 << i;
+                if ((localMask&a) != (localMask&b)) {
+                	mask = localMask;
                     break;
                 }
             }          
@@ -958,21 +952,15 @@ public class TrieParser {
 
 
     private int writeBranch(byte type, short[] data, int pos, int requiredRoom, short criteria) {
-        
-        
+                
         requiredRoom -= SIZE_OF_BRANCH;//subtract the size of the branch operator
         data[pos++] = type;
         data[pos++] = criteria;
         
-//        if (1==BRANCH_JUMP_SIZE ) {
-//            if (requiredRoom > 0x7FFF) {
-//                throw new UnsupportedOperationException("This content is too large, use shorter content or modify this code to make multiple jumps.");
-//            }
-//            data[pos++] = (short)(0x7FFF&requiredRoom);
-//        } else {            
-            data[pos++] = (short)(0x7FFF&(requiredRoom>>15));
-            data[pos++] = (short)(0x7FFF&requiredRoom);
- //       }
+        assert(2==BRANCH_JUMP_SIZE);
+        data[pos++] = (short)(0x7FFF&(requiredRoom>>15));
+        data[pos++] = (short)(0x7FFF&requiredRoom);
+
         return pos;
     }
 
@@ -1029,7 +1017,7 @@ public class TrieParser {
        short activeRunLength = 0;
        while (--runLeft >= 0) {
                   byte value = source[sourceMask & sourcePos++];
-                  if (ESCAPE_BYTE == value) {
+                  if (ESCAPE_BYTE == value && NO_ESCAPE_SUPPORT!=ESCAPE_BYTE) {
                       assert(value=='%');
                       value = source[sourceMask & sourcePos++];
                       if (ESCAPE_BYTE != value) {

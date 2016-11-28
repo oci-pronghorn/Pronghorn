@@ -519,7 +519,7 @@ public class Pipe<T extends MessageSchema> {
 
     public void closeBlobFieldWrite() {
         if (!isInBlobFieldWrite.compareAndSet(true, false)) {
-            throw new UnsupportedOperationException("only one open write against the blob at a time.");
+            throw new UnsupportedOperationException("can not close blob if not open.");
         }
     }
     
@@ -3037,6 +3037,10 @@ public class Pipe<T extends MessageSchema> {
     
     public static <S extends MessageSchema> void releasePendingAsReadLock(Pipe<S> pipe, int consumed) {
         PendingReleaseData.releasePendingAsReadRelease(pipe.pendingReleases, pipe, consumed);
+    }
+    
+    public static <S extends MessageSchema> int releasePendingCount(Pipe<S> pipe) {
+    	return PendingReleaseData.pendingReleaseCount(pipe.pendingReleases);
     }
     
     public static <S extends MessageSchema> void releaseAllPendingReadLock(Pipe<S> pipe) {

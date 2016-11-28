@@ -248,7 +248,7 @@ public class TrieParserTest {
         
         assertEquals(value3, TrieParserReader.query(reader, map, wrapping(data1,4), 2, 3, 15));
 
-        assertEquals(value4, TrieParserReader.query(reader, map, wrapping(toParseMiddle,4), 0, toParseMiddle.length, 15));
+        assertEquals(value2, TrieParserReader.query(reader, map, wrapping(toParseMiddle,4), 0, toParseMiddle.length, 15));
         assertEquals(value2, TrieParserReader.query(reader, map, wrapping(toParseEnd,4), 0, toParseEnd.length, 15));
                 
         assertEquals(1, TrieParserReader.capturedFieldCount(reader));
