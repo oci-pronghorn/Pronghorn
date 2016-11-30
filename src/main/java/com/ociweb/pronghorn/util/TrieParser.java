@@ -92,7 +92,7 @@ public class TrieParser {
     private int maxExtractedFields = 0;//out of all the byte patterns known what is the maximum # of extracted fields from any of them.
     
     
-    private final static int MAX_ALT_DEPTH = 32;
+    private final static int MAX_ALT_DEPTH = 128;
     private int altStackPos = 0;
     private int[] altStackA = new int[MAX_ALT_DEPTH];
     private int[] altStackB = new int[MAX_ALT_DEPTH];
