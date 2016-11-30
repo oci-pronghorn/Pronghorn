@@ -9,6 +9,7 @@ import com.ociweb.pronghorn.network.ServerConnectionReaderStage;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.ServerNewConnectionStage;
 import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
+import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
@@ -39,18 +40,21 @@ public class ServerConnectionReaderStageTest {
         int socketGroupId = 0; //we only have the 0th reader in use.
         
         int port = 8089;
-        ServerCoordinator coordinator = new ServerCoordinator(socketGroups, port);
+        ServerCoordinator coordinator = new ServerCoordinator(socketGroups, port, 1, 15);
         
         ///////////////////////
         Pipe<NetPayloadSchema> rawRequestPipe = new Pipe<NetPayloadSchema>(rawRequestPipeConfig);
         
 
         Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(newConnectionsConfig);
-        ServerNewConnectionStage newConStage = new ServerNewConnectionStage(gm, coordinator, newConnectionsPipe);
+        ServerNewConnectionStage newConStage = new ServerNewConnectionStage(gm, coordinator, newConnectionsPipe,2);
         
         ConsoleJSONDumpStage<ServerConnectionSchema> connectionNotice = new ConsoleJSONDumpStage<ServerConnectionSchema>(gm, newConnectionsPipe);
 
-        ServerConnectionReaderStage readerStage = new ServerConnectionReaderStage(gm, output, coordinator, socketGroupId, false);
+        PipeConfig<NetParseAckSchema> ackConfig = new PipeConfig<NetParseAckSchema>(NetParseAckSchema.instance);
+		Pipe<NetParseAckSchema> ack = new Pipe<NetParseAckSchema>(ackConfig );
+        
+        ServerConnectionReaderStage readerStage = new ServerConnectionReaderStage(gm, new Pipe[]{ack}, output, coordinator, socketGroupId, false);
 
         int i = output.length;
         while (--i>=0) { 
@@ -107,7 +111,7 @@ public class ServerConnectionReaderStageTest {
         int socketGroupId = 0; //we only have the 0th reader in use.
         
         int port = 8089;
-        ServerCoordinator coordinator = new ServerCoordinator(socketGroups, port);
+        ServerCoordinator coordinator = new ServerCoordinator(socketGroups, port, 1, 15);
         
         ///////////////////////
         Pipe<NetPayloadSchema> rawRequestPipe = new Pipe<NetPayloadSchema>(rawRequestPipeConfig);
@@ -118,12 +122,15 @@ public class ServerConnectionReaderStageTest {
         while (--j>=0) {
             gens[j] = addGeneratorStage(fileCount, fileSize, iterations, gm, port, "staticFileRequestGeneratorStage"+j); 
         }
-
+        
         Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(newConnectionsConfig);
-        ServerNewConnectionStage newConStage = new ServerNewConnectionStage(gm, coordinator, newConnectionsPipe);
+        ServerNewConnectionStage newConStage = new ServerNewConnectionStage(gm, coordinator, newConnectionsPipe,2);
         PipeCleanerStage<ServerConnectionSchema> newConnectionNotice = new PipeCleanerStage<>(gm, newConnectionsPipe);
         
-        ServerConnectionReaderStage readerStage = new ServerConnectionReaderStage(gm, output, coordinator, socketGroupId, false);
+        PipeConfig<NetParseAckSchema> ackConfig = new PipeConfig<NetParseAckSchema>(NetParseAckSchema.instance);
+		Pipe<NetParseAckSchema> ack = new Pipe<NetParseAckSchema>(ackConfig );
+        
+        ServerConnectionReaderStage readerStage = new ServerConnectionReaderStage(gm, new Pipe[]{ack}, output, coordinator, socketGroupId, false);
         
         long totalRequests = iterations*(long)fileCount*(long)connections;
         

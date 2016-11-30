@@ -11,9 +11,11 @@ import java.util.Iterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
@@ -26,37 +28,38 @@ public class ServerConnectionReaderStage extends PronghornStage {
 	public static final Logger logger = LoggerFactory.getLogger(ServerConnectionReaderStage.class);
     
     private final Pipe<NetPayloadSchema>[] output;
-
+    private final Pipe<NetParseAckSchema>[] ack;
     private final ServerCoordinator coordinator;
-    private final int pipeIdx;
+    private final int groupIdx;
     
     private Selector selector;
 
-    private long                      channelId;
-    private Pipe<NetPayloadSchema> targetPipe;
-
-    
     private int pendingSelections = 0;
     
 
     private ServiceObjectHolder<ServerConnection> holder;
     
     
-    public ServerConnectionReaderStage(GraphManager graphManager, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, int pipeIdx, boolean encrypted) {
-        super(graphManager, NONE, output);
+    public ServerConnectionReaderStage(GraphManager graphManager, Pipe<NetParseAckSchema>[] ack, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, int pipeIdx, boolean encrypted) {
+        super(graphManager, ack, output);
         this.coordinator = coordinator;
-        this.pipeIdx = pipeIdx;
+        this.groupIdx = pipeIdx;
         this.output = output;
+        this.ack = ack;
+        
+        if (output.length<2) {
+        	throw new RuntimeException("outputs count "+output.length);
+        }
         this.messageType = encrypted ? NetPayloadSchema.MSG_ENCRYPTED_200 : NetPayloadSchema.MSG_PLAIN_210;
     }
 
     @Override
     public void startup() {
 
-        holder = ServerCoordinator.newSocketChannelHolder(coordinator, pipeIdx);
+        holder = ServerCoordinator.newSocketChannelHolder(coordinator, groupIdx);
                 
         try {
-            coordinator.registerSelector(pipeIdx, selector = Selector.open());
+            coordinator.registerSelector(groupIdx, selector = Selector.open());
         } catch (IOException e) {
            throw new RuntimeException(e);
         }
@@ -66,20 +69,28 @@ public class ServerConnectionReaderStage extends PronghornStage {
     
     @Override
     public void shutdown() {
-        System.out.println("finsihed reading");
+        int i = output.length;
+        while (--i >= 0) {
+        	Pipe.spinBlockForRoom(output[i], Pipe.EOF_SIZE);
+            Pipe.publishEOF(output[i]);                
+        }
+        logger.warn("server reader has shut down");
     }
 
+    int found = 0;
     
     @Override
     public void run() {
         
+    	releasePipesForUse();    	
+    	
         ////////////////////////////////////////
         ///Read from socket
         ////////////////////////////////////////
 
         if (hasNewDataToRead()) {
         	
-        	logger.debug("found new data to read on "+pipeIdx);
+        	//logger.debug("found new data to read on "+groupIdx);
             
             Iterator<SelectionKey>  keyIterator = selector.selectedKeys().iterator();   
             
@@ -95,21 +106,41 @@ public class ServerConnectionReaderStage extends PronghornStage {
                 
                 
                 //get the context object so we know what the channel identifier is
-                channelId = ((ConnectionContext)selection.attachment()).getChannelId();
-                
-                targetPipe = output[ServerCoordinator.getTargetUpgradePipeIdx(coordinator, pipeIdx, channelId)];                
-                //TODO: note above that every channel gets a pipe, this should be changed so we have a small fixed number of pipes.
-                  
-                
-                if (!Pipe.hasRoomForWrite(targetPipe)) {
-                	break;
-                }
-                
-                keyIterator.remove();
-                pendingSelections--;
-                
+                ConnectionContext connectionContext = (ConnectionContext)selection.attachment();                
+				long channelId = connectionContext.getChannelId();
+                				
+				releasePipesForUse();
+				int responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
+				
+				/////////////////
+				///ERROR: the high speed processing keeps the pipe held by the user so until it is done with data it will not be free
+				//       but at the same time we ahve new handshakes that need to get in
+				//////////   THE HANDSHAKES ARE STARVED OUT....
+				
+				
+				
+				
+				if (-1 == responsePipeLineIdx) { //handshake is dropped by input buffer at these loads?
+					Thread.yield();
+					releasePipesForUse();
+					responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
+					if (-1 == responsePipeLineIdx) {
+//						if (found<30) {
+//							logger.info("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCc  server was not able to find free pipe for {} so try again soon", channelId);
+//							found++;
+//						}
+		                keyIterator.remove();
+		                pendingSelections--;   
+						continue;
+					}
+				}
+				
+				Pipe<NetPayloadSchema> targetPipe = output[responsePipeLineIdx]; //TODO: add support for groupIdx here? each group needs its own pool....                
                 if (!pumpByteChannelIntoPipe(socketChannel, channelId, targetPipe)) {//consumes from channel until it has no more or pipe has no more room
                 	//end of stream
+                	
+                	logger.error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXX end of stream detected {} closing channel",channelId);
+                	
                 	try {
 						socketChannel.close();
 						selection.cancel();
@@ -118,9 +149,42 @@ public class ServerConnectionReaderStage extends PronghornStage {
 						e.printStackTrace();
 					}
                 }
+                
+                keyIterator.remove();
+                pendingSelections--;             
+                releasePipesForUse();
             }
         }
     }
+
+	private void releasePipesForUse() {
+		int i = ack.length;
+		while (--i>=0) {
+			Pipe<NetParseAckSchema> a = ack[i];
+			while (Pipe.hasContentToRead(a)) {
+	    						
+	    		int id = Pipe.takeMsgIdx(a);
+	    		if (id == NetParseAckSchema.MSG_PARSEACK_100) {
+	    			long idToClear = Pipe.takeLong(a); //PipeReader.readLong(a, NetParseAckSchema.MSG_PARSEACK_100_FIELD_CONNECTIONID_1);
+	    			long pos = Pipe.takeLong(a);//PipeReader.readLong(a, NetParseAckSchema.MSG_PARSEACK_100_FIELD_POSITION_2);
+	    			
+	    			int pipeIdx = coordinator.responsePipeLineIdx(idToClear);
+	    			
+	    			///////////////////////////////////////////////////
+	    			//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
+	    			if (pipeIdx>=0 && Pipe.headPosition(output[pipeIdx]) == pos && Pipe.contentRemaining(output[pipeIdx])==0  ) {
+	    				       //TODO: why is the pipe content check needed? seems reduntant but it is needed to pass tests.. was only needed after we added multiple unwrappers.
+	    				coordinator.releaseResponsePipeLineIdx(idToClear);
+	    			}    			
+	    			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(NetParseAckSchema.instance, NetParseAckSchema.MSG_PARSEACK_100));
+	    		} else {
+	    			assert(-1==id);
+	    			Pipe.confirmLowLevelRead(a, Pipe.EOF_SIZE);
+	    		}
+	    		Pipe.releaseReadLock(a);	    		
+	    	}
+		}
+	}
 
     private boolean hasNewDataToRead() {
     	
@@ -135,10 +199,6 @@ public class ServerConnectionReaderStage extends PronghornStage {
             return (pendingSelections=selector.selectNow()) > 0;
         } catch (IOException e) {
             logger.error("unexpected shutdown, Selector for this group of connections has crashed with ",e);
-            int i = output.length;
-            while (--i >= 0) {
-                Pipe.publishEOF(output[i]);                
-            }
             requestShutdown();
             return false;
         }
@@ -168,13 +228,16 @@ public class ServerConnectionReaderStage extends PronghornStage {
                     
                     publishData(targetPipe, channelId, len);    
                   
-                    //logger.info("published "+len);
+                    //logger.info("server published {} to unwrap for connection {} ",len,channelId);
+                    
                     if (b[0].remaining()>0 || b[1].remaining()>0) {
                     	//copied all the data from the source channel
-                    	return temp!=-1;
+                    	//return temp!=-1;//TODO: testing, do not close but return true
+                    	return true;
                     } else {
                     	if (temp==-1) {
-                    		return false;
+                    		//return false;//TODO: testing, do not close but return true
+                    		return true;
                     	}
                     	//logger.info("more data may exist, we did not have enought room in a single outgoing message.");
                     	
@@ -191,7 +254,7 @@ public class ServerConnectionReaderStage extends PronghornStage {
              
             } catch (IOException e) {
                     recordErrorAndClose(sourceChannel, e);
-                     return false;//remove this one its bad. 
+                    return false;
             }
         }
         return true;//stopped because there was no room in the pipe
@@ -216,6 +279,10 @@ public class ServerConnectionReaderStage extends PronghornStage {
         int size = Pipe.addMsgIdx(targetPipe,messageType);               
         Pipe.addLongValue(channelId, targetPipe);  
 
+        if (NetPayloadSchema.MSG_PLAIN_210 == messageType) {
+        	Pipe.addLongValue(Pipe.getWorkingTailPosition(targetPipe), targetPipe);
+        }
+        
         int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);
        
         //logger.info("server got: "+Appendables.appendUTF8(new StringBuilder(), Pipe.blob(targetPipe), originalBlobPosition, len, Pipe.blobMask(targetPipe)));

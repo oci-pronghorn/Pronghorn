@@ -8,6 +8,7 @@ import org.junit.Test;
 import com.ociweb.pronghorn.network.HTTP1xRouterStage;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
@@ -50,9 +51,13 @@ public class HTTPRouterStageTest {
         Pipe<NetPayloadSchema> rawRequestPipe = new Pipe<NetPayloadSchema>(rawRequestPipeConfig);               
         Pipe[] pipes = new Pipe[]{ rawRequestPipe};
         
+        PipeConfig<NetParseAckSchema> ackConfig = new PipeConfig<NetParseAckSchema>(NetParseAckSchema.instance);
+		Pipe<NetParseAckSchema> ack = new Pipe<NetParseAckSchema>(ackConfig );
+        
+		PipeCleanerStage<NetParseAckSchema> cleaner = new PipeCleanerStage<NetParseAckSchema>(gm, ack);
         
         PronghornStage stage = ClientHTTPRequestDataGeneratorStage.newInstance(gm, rawRequestPipe, iterations, paths);  
-        HTTP1xRouterStage stage2 = buildRouterStage(gm, apps, appPipeConfig, pipes);
+        HTTP1xRouterStage stage2 = buildRouterStage(gm, apps, appPipeConfig, pipes, ack);
                
         runGraph(gm, apps, iterations, stage2);
         
@@ -93,7 +98,7 @@ public class HTTPRouterStageTest {
     }
 
     private HTTP1xRouterStage buildRouterStage(GraphManager gm, final int apps,
-            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pipe<NetPayloadSchema>[] pipes) {
+            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pipe<NetPayloadSchema>[] pipes, Pipe<NetParseAckSchema> ack) {
         Pipe[] routedAppPipes = new Pipe[apps];
         long[] appHeaders = new long[apps];
         int[] msgIds = new int[apps];
@@ -108,16 +113,17 @@ public class HTTPRouterStageTest {
                     PipeCleanerStage.newInstance(gm, routedAppPipes[i])
                     
                     );
-                   
+                  
             
             
         }
+        
         
         //TODO: revisit this part of the test later.
         Pipe errorPipe = new Pipe(new PipeConfig(RawDataSchema.instance));
         ConsoleJSONDumpStage dump = new ConsoleJSONDumpStage(gm,errorPipe);
         
-        HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, routedAppPipes, paths, appHeaders, msgIds);
+		HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, routedAppPipes, ack, paths, appHeaders, msgIds);
         return stage;
     }
  

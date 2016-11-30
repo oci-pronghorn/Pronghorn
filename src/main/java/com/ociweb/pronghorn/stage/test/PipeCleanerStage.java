@@ -10,27 +10,41 @@ import com.ociweb.pronghorn.util.Appendables;
 
 public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
 
-    private Pipe<T> input;
     private long totalSlabCount = 0;
     private long totalBlobCount = 0;
     private long startTime;
     private long duration;
+    private final String label;
     
-    private long tail;
-    private int byteTail;
+    //TODO: make 3 arrays to be dumped
+    private Pipe<T>[] input;
+    private long[] tail;
+    private int[] byteTail;
     
-
+    private int pos = 0;
+    
     public static PipeCleanerStage newInstance(GraphManager gm, Pipe pipe) {
         return new PipeCleanerStage(gm, pipe);
     }
     
     //NOTE: this should be extended to produce a diagnostic stage 
+    public PipeCleanerStage(GraphManager graphManager, Pipe<T> input) { 
+    	this(graphManager, input, "");
+    }
     
-    public PipeCleanerStage(GraphManager graphManager, Pipe<T> input) {
-        super(graphManager, input, NONE);
-        this.input = input;
+    public PipeCleanerStage(GraphManager graphManager, Pipe<T> input, String label) {
+        this(graphManager, new Pipe[]{input},label);
     }
 
+    public PipeCleanerStage(GraphManager graphManager, Pipe<T>[] input, String label) { 
+    	super(graphManager, input, NONE);
+    	this.input = input;
+        this.label = label;
+        this.tail = new long[input.length];
+        this.byteTail = new int[input.length];
+    }
+  
+    
     public long getTotalSlabCount() {
         return totalSlabCount;
     }
@@ -42,41 +56,53 @@ public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
     @Override
     public void startup() {
         startTime = System.currentTimeMillis();
-        tail = Pipe.tailPosition(input);
-        byteTail = Pipe.getBlobRingTailPosition(input);
+        tail[pos] = Pipe.tailPosition(input[pos]);
+        byteTail[pos] = Pipe.getBlobRingTailPosition(input[pos]);
     }
     
     @Override
     public void run() {
+    	
+    	int i = input.length;
+    	while (--i >= 0) {
+    		cleanPipe(i);
+    	}
         
-        long head = Pipe.headPosition(input);
-        long contentRemaining = head-tail;
+    }
+
+	private void cleanPipe(int sourcePos) {
+		long head = Pipe.headPosition(this.input[sourcePos]);
+        long contentRemaining = head-tail[sourcePos];
         if (contentRemaining>0) {
-            totalSlabCount += contentRemaining;
+        	
+        	totalSlabCount += contentRemaining;
             
-            int byteHead = Pipe.getBlobRingHeadPosition(input);
+            int byteHead = Pipe.getBlobRingHeadPosition(this.input[sourcePos]);
             
-            if (byteHead >= byteTail) {
-                totalBlobCount += byteHead-byteTail;
+            if (byteHead >= byteTail[sourcePos]) {
+                totalBlobCount += byteHead-byteTail[sourcePos];
             } else {
-                totalBlobCount += (long) (Pipe.blobMask(input)&byteHead);                
-                totalBlobCount += (long)(input.sizeOfBlobRing-(Pipe.blobMask(input)&byteTail));
+                totalBlobCount += (long) (Pipe.blobMask(this.input[sourcePos])&byteHead);                
+                totalBlobCount += (long)(this.input[sourcePos].sizeOfBlobRing-(Pipe.blobMask(this.input[sourcePos])&byteTail[sourcePos]));
             } 
             
-            Pipe.publishBlobWorkingTailPosition(input, byteTail = byteHead);
-            Pipe.publishWorkingTailPosition(input, tail = head);            
+            Pipe.publishBlobWorkingTailPosition(this.input[sourcePos], byteTail[sourcePos] = byteHead);
+            Pipe.publishWorkingTailPosition(this.input[sourcePos], tail[sourcePos] = head);            
             
         } else {
-        	if (Pipe.isEndOfPipe(input, tail) && Pipe.contentRemaining(input)==0) {
+        	
+        	if (Pipe.isEndOfPipe(this.input[sourcePos], tail[sourcePos]) && Pipe.contentRemaining(this.input[sourcePos])==0) {
         		requestShutdown();
         	}
         }
-        
-    }
+	}
     
     @Override
     public void shutdown() {
         duration = System.currentTimeMillis()-startTime;
+        
+        //TODO: loop over all the pipes and confirm this inside an assert METHOD.
+        //assert(Pipe.contentRemaining(input[pos])==0) : "expected pipe to be empty but found "+input;
         
         //TODO: may want boolean to turn this off on construction?
         try {
@@ -92,10 +118,17 @@ public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
     
     public <A extends Appendable> A appendReport(A target) throws IOException {
         
-        Appendables.appendValue(target, "Duration :",duration,"ms\n");
+    	
+    	
+    	target.append(label);
+    	if (label.length()>0) {
+    		target.append(' ');
+    	}
+        Appendables.appendValue(target, "Duration :",duration,"ms  ");
        // Appendables.appendValue(target, "BlobOnlyCount :",totalBlobCount,"\n");        
-        Appendables.appendValue(target, "TotalBytes :",totalBytes(),"\n");
-        
+        Appendables.appendValue(target, "TotalBytes :",totalBytes(),"  ");
+        Appendables.appendValue(target, "BlobCount :",totalBlobCount,"  ");
+                
         if (0!=duration) {
             long kbps = (totalBytes()*8L)/duration;
             if (kbps>16000) {
@@ -103,6 +136,8 @@ public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
             } else {
                 Appendables.appendValue(target, "kbps :",(kbps),"\n");     
             }
+        } else {
+        	target.append("\n");
         }
         return target;
     }

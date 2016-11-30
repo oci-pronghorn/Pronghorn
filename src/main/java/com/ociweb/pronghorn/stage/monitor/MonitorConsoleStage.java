@@ -115,7 +115,7 @@ public class MonitorConsoleStage extends PronghornStage {
 					ringName = ((RingBufferMonitorStage)producer).getObservedRingName();
 					published = ((RingBufferMonitorStage)producer).getObservedRingPublishedCount();
 					
-					percentileValues[ ((RingBufferMonitorStage)producer).getObservedRingId() ] = (int)pctile;
+					percentileValues[ ((RingBufferMonitorStage)producer).getObservedRingId() ] = (int)avg;
 					
 				} else {
 					ringName = "Unknown";

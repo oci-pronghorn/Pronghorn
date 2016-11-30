@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
 import java.nio.channels.Selector;
+import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,16 +26,25 @@ public class ClientConnectionManager extends SSLConnectionHolder implements Serv
 	//TOOD: may keep internal pipe of "in flight" URLs to be returned with the results...
 	
 	public ClientConnectionManager(int connectionsInBits, int maxPartialResponses) { 
+		
+		
+		int maxUsers = 1<<connectionsInBits;
+		int trieSize = 1024+(16*maxUsers); //TODO: this is a hack 
+				
+		
 		connections = new ServiceObjectHolder<ClientConnection>(connectionsInBits, ClientConnection.class, this, false);
-		hostTrie = new TrieParser(4096,4,false,false);
+		hostTrie = new TrieParser(trieSize, 4, false, false); //TODO: ugent,  first boolean should be true but only false works,  this is a problem because it must be very large for large number of connecions !!!
 		hostTrieReader = new TrieParserReader();
 		responsePipeLinePool = new PoolIdx(maxPartialResponses); //NOTE: maxPartialResponses should never be greater than response listener count		
 	}
 		
 	public SSLConnection get(long hostId, int groupId) {
 		ClientConnection response = connections.getValid(hostId);
-		if (null == response) {
+		if (null == response) {			
+			//logger.trace("Release the pipe because the connection was discovered closed/missing");
+			
 			releaseResponsePipeLineIdx(hostId);
+			connections.resetUsageCount(hostId);
 		} else {
 			connections.incUsageCount(hostId);
 		}
@@ -52,8 +62,17 @@ public class ClientConnectionManager extends SSLConnectionHolder implements Serv
 	 */
 	public long lookup(CharSequence host, int port, int userId) {	
 		//TODO: lookup by userID then by port then by host??? may be a better approach instead of guid 
-		int len = ClientConnection.buildGUID(guidWorkspace, host, port, userId);		
-		return TrieParserReader.query(hostTrieReader, hostTrie, guidWorkspace, 0, len, Integer.MAX_VALUE);
+		int len = ClientConnection.buildGUID(guidWorkspace, host, port, userId);	
+		
+		
+		long result = TrieParserReader.query(hostTrieReader, hostTrie, guidWorkspace, 0, len, Integer.MAX_VALUE);
+		
+//		if (result<0) {
+//			System.err.println("lookup "+host+":"+port+"   user "+userId);
+//			
+//		}
+		
+		return result;
 	}
 	
 	
@@ -121,28 +140,30 @@ public class ClientConnectionManager extends SSLConnectionHolder implements Serv
 	public static long openConnection(ClientConnectionManager ccm, CharSequence host, int port, int userId, int pipeIdx) {
 		long connectionId = ccm.lookup(host, port, userId);				                
 		if (-1 == connectionId || null == ccm.get(connectionId, 0)) {
+						
+			//logger.warn("Unable to lookup connection");
 			
 			connectionId = ccm.lookupInsertPosition();
 			
-			if (connectionId<0) {
-				logger.warn("too many open connection, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
+			if (connectionId<0 || pipeIdx<0) {
+				logger.warn("unable to find insertn position for this connection");
+				//logger.warn("too many open connection, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
 				//do not open instead we should attempt to close this one to provide room.
 				return connectionId;
 			}
 			
 			try {
 		    	//create new connection because one was not found or the old one was closed
-				ClientConnection cc = new ClientConnection(host.toString(), port, userId, pipeIdx, connectionId);				                	
-		    	
-		    	while (!cc.isFinishConnect() ) {  //TODO: revisit
+				ClientConnection cc = new ClientConnection(host.toString(), port, userId, pipeIdx, connectionId);
+			
+				
+		    	while (!cc.isFinishConnect() ) {  //TODO: revisit, this is very very dangerious and requires a time out or done perferably done as a re-entry.
+		    		
 		    		Thread.yield();
 		    	}
 	
-		    	cc.beginHandshake(ccm.selector());
-		    	
-		    	ccm.connections.setValue(connectionId, cc);
-				
-				//store under host and port this hostId
+		    	cc.beginHandshake(ccm.selector());		    	
+		    	ccm.connections.setValue(connectionId, cc);				
 				ccm.hostTrie.setValue(cc.GUID(), connectionId);
 	
 			} catch (IOException ex) {
@@ -150,7 +171,7 @@ public class ClientConnectionManager extends SSLConnectionHolder implements Serv
 				
 				connectionId = Long.MIN_VALUE;
 			}				                	
-		}
+		} 
 		return connectionId;
 	}
 

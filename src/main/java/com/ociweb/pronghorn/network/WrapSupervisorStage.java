@@ -15,7 +15,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 //TODO: should add feature of subscriptions here due to it being before the encryption stage.
 public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stage
     
-    private static Logger logger = LoggerFactory.getLogger(WrapSupervisorStage.class);
+    private static final int SIZE_OF_TO_CHNL = Pipe.sizeOf(ServerResponseSchema.instance, ServerResponseSchema.MSG_TOCHANNEL_100);
+
+	private static Logger logger = LoggerFactory.getLogger(WrapSupervisorStage.class);
 
     private final Pipe<ServerResponseSchema>[] dataToSend;
     private final Pipe<NetPayloadSchema>[] outgoingPipes;
@@ -41,6 +43,7 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
     
     public final int poolMod;
     public final int maxOuputSize;
+    public final int plainSize = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
     
     
     /**
@@ -89,132 +92,181 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
     @Override
     public void run() {
 
-        int c = dataToSend.length;     
-        
-        while (--c>= 0) {
-        	Pipe<ServerResponseSchema> sourcePipe = dataToSend[c];
-            while (Pipe.hasContentToRead(sourcePipe)) {
-                
-                //peek to see if the next message should be blocked, eg out of order, if so skip to the next pipe
-                int peekMsgId = Pipe.peekInt(sourcePipe, 0);
-                Pipe<NetPayloadSchema> myPipe = null;
-                int sequenceNo = 0;
-                if (peekMsgId>=0) {
-                    long channelId = Pipe.peekLong(sourcePipe, 1);
-                    sequenceNo = Pipe.peekInt(sourcePipe,  3);
-                     
-                    
-                    int expected = expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)];                
-                    
-                    
-                    //read the next non-blocked pipe, sequenceNo is never reset to zero
-                    //every number is used even if there is an exception upon write.
-                    boolean isBlocked = false;//sequenceNo!=expected; 
-                    
-                    if (isBlocked) {
-                    	System.out.println("in use connection "+(int)(channelId & coordinator.channelBitsMask)+" must match expected "+expected+" and sequenceNo "+sequenceNo);
-                    	
-                    	logger.info("unable to send {} {} blocked", sequenceNo, expected);
-                    	
-                    	break;
-                    }
-                    //////////////////////
-                    //not blocked by sequence order so we must check if we are blocked by having write room.
-                    //////////////////////
-                    
-                    myPipe = outgoingPipes[(int)(channelId % poolMod)];
-                    
-                    if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {
-                    //	logger.info("unable to send data, output pipe is full {}",myPipe);
-                    	break;
-                    }
-                } else {
-                	Pipe.takeMsgIdx(sourcePipe);
-                	Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
-                	Pipe.releaseReadLock(sourcePipe);
-                	requestShutdown();
-                	return;
-                }
-                
-                ////////////////////////////////////////////////////
-                //we now know that this work should be done and that there is room to put it out on the pipe
-                //so do it already
-                ////////////////////////////////////////////////////
-                //the EOF message has already been taken so no need to check 
-                //all remaning messages start with the connection id
-                
-                final int activeMessageId = Pipe.takeMsgIdx(sourcePipe);
-                assert(peekMsgId == activeMessageId);
-                final long channelId = Pipe.takeLong(sourcePipe);
-                
-                
-                //most common case by far so we put it first
-                if (ServerResponseSchema.MSG_TOCHANNEL_100 == activeMessageId ) {
-                	                	             	  
-                	 int expSeq = Pipe.takeInt(sourcePipe); //sequence number
-                	 assert(sequenceNo == expSeq);
-                	 
-                     //byteVector is payload
-                     int meta = Pipe.takeRingByteMetaData(sourcePipe); //for string and byte array
-                     int len = Pipe.takeRingByteLen(sourcePipe);
-                     int requestContext = Pipe.takeInt(sourcePipe); //high 1 upgrade, 1 close low 20 target pipe
-                     
-                     
-                     /////////////
-                     //if needed write out the upgrade message
-                     ////////////
-                     
-                     if (0 != (UPGRADE_MASK & requestContext)) {
-                    	 
-                    	 //the next response should be routed to this new location
-                    	 int upgSize = Pipe.addMsgIdx(myPipe, NetPayloadSchema.MSG_UPGRADE_207);
-                    	 Pipe.addLongValue(channelId, myPipe);
-                    	 Pipe.addIntValue(UPGRADE_TARGET_PIPE_MASK & requestContext, myPipe);;
-                    	 Pipe.confirmLowLevelWrite(myPipe, upgSize);
-                    	 Pipe.publishWrites(myPipe);
-                    	 
-                     }
-                	                	
-                     /////////////
-                     //write out the content
-                     /////////////
-                                          
-                     int plainSize = Pipe.addMsgIdx(myPipe, NetPayloadSchema.MSG_PLAIN_210);
-                     Pipe.addLongValue(channelId, myPipe);
-                     Pipe.addByteArrayWithMask(myPipe, Pipe.blobMask(sourcePipe), len, Pipe.blob(sourcePipe), Pipe.bytePosition(meta, sourcePipe, len));
-                     Pipe.confirmLowLevelWrite(myPipe, plainSize);
-                     Pipe.publishWrites(myPipe);
-                     
-                     if (0 != (END_RESPONSE_MASK & requestContext)) { 
-                        //we have finished all the chunks for this request so the sequence number will now go up by one	
-                     	expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)]++;                     	
-                     }
-                                         
-                     
-                     //////////////
-                     //if needed write out the close connection message
-                     //////////////
-                     
-                     if (0 != (CLOSE_CONNECTION_MASK & requestContext)) { 
-                         
-                    	 int disSize = Pipe.addMsgIdx(myPipe, NetPayloadSchema.MSG_DISCONNECT_203);
-                    	 Pipe.addLongValue(channelId, myPipe);
-                    	 Pipe.confirmLowLevelWrite(myPipe, disSize);
-                    	 Pipe.publishWrites(myPipe);
-                    	 
-                     }                     
-                     
-                     Pipe.confirmLowLevelRead(sourcePipe, Pipe.sizeOf(sourcePipe, ServerResponseSchema.MSG_TOCHANNEL_100));
-                     Pipe.releaseReadLock(sourcePipe);
-                	
-                	
-                } else if (ServerResponseSchema.MSG_TOSUBSCRIPTION_200 == activeMessageId ) {
-                	
-                	throw new UnsupportedOperationException();
-                	
-                }    
-            }
-        }  
+    	boolean didWork;
+    	
+    	do {
+	    	didWork = false;
+	        int c = dataToSend.length;
+	        
+	        while (--c >= 0) {
+	        	Pipe<ServerResponseSchema> sourcePipe = dataToSend[c];
+	        	
+	        	//WARNING a single response sits on the pipe and its output is full so nothing happens until it is cleared.
+	        	//System.err.println("process pipe: "+c+" of "+dataToSend.length);
+	        	
+	        	//Hold position pending, and write as data becomes available
+	        	//this lets us read deep into the pipe
+	        	
+	        	//OR
+	        	
+	        	//app/module must write to different pipes to balance the load, 
+	        	//this may happen due to complex logic but do we want to force this on all module makers?
+	        	
+	        	//NOTE: this is only a problem because the router takes all the messages from 1 connection before doing the next.
+	        	//      if we ensure it is balanced then this data will also get balanced.
+	        	
+	            while (Pipe.hasContentToRead(sourcePipe)) {
+	                
+	                //peek to see if the next message should be blocked, eg out of order, if so skip to the next pipe
+	                int peekMsgId = Pipe.peekInt(sourcePipe, 0);
+	                Pipe<NetPayloadSchema> myPipe = null;
+	                int sequenceNo = 0;
+	                if (peekMsgId>=0) {
+	                    long channelId = Pipe.peekLong(sourcePipe, 1);
+	                    sequenceNo = Pipe.peekInt(sourcePipe,  3);
+	                     
+	                    
+	                    int expected = expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)];                
+	                    
+	                    
+	                    //read the next non-blocked pipe, sequenceNo is never reset to zero
+	                    //every number is used even if there is an exception upon write.
+	                    boolean isBlocked = false;//sequenceNo!=expected;  //TODO: urgent must fix ordering 
+	                    //TODO: add support for blocked by id  until it is empty.
+	                    
+	                    if (isBlocked) {
+	                    	System.out.println("in use connection "+(int)(channelId & coordinator.channelBitsMask)+" must match expected "+expected+" and sequenceNo "+sequenceNo);
+	                    	
+	                    	logger.info("unable to send {} {} blocked", sequenceNo, expected);
+	                    	
+	                    	break;
+	                    }
+	                    //////////////////////
+	                    //not blocked by sequence order so we must check if we are blocked by having write room.
+	                    //////////////////////
+	                    int requestContext = Pipe.peekInt(sourcePipe, 6);
+	                    
+	                    myPipe = outgoingPipes[(int)(channelId % poolMod)];
+	                    
+	                    if (0 != ((UPGRADE_MASK|CLOSE_CONNECTION_MASK) & requestContext)) {
+	                    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {
+	                    		break;
+	                    	}
+	                    } else {
+	                    	if (!Pipe.hasRoomForWrite(myPipe, plainSize)) {
+	                    		break;
+	                    	}	                    	
+	                    }
+	                    
+	                    
+	                } else {
+	                	//TODO: add count down of shutdown !!
+	                	
+	                	Pipe.takeMsgIdx(sourcePipe);
+	                	Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
+	                	Pipe.releaseReadLock(sourcePipe);
+	                	requestShutdown();
+	                	return;
+	                }
+	                
+	                ////////////////////////////////////////////////////
+	                //we now know that this work should be done and that there is room to put it out on the pipe
+	                //so do it already
+	                ////////////////////////////////////////////////////
+	                //the EOF message has already been taken so no need to check 
+	                //all remaning messages start with the connection id
+	                
+	                didWork = true;
+	                final int activeMessageId = Pipe.takeMsgIdx(sourcePipe);
+	                
+	                
+	                
+	                assert(peekMsgId == activeMessageId);
+	                final long channelId = Pipe.takeLong(sourcePipe);
+	                
+	                
+	                //most common case by far so we put it first
+	                if (ServerResponseSchema.MSG_TOCHANNEL_100 == activeMessageId ) {
+	                	                	             	  
+	                	 int expSeq = Pipe.takeInt(sourcePipe); //sequence number
+	                	 assert(sequenceNo == expSeq);
+	                	 
+	                     //byteVector is payload
+	                     int meta = Pipe.takeRingByteMetaData(sourcePipe); //for string and byte array
+	                     int len = Pipe.takeRingByteLen(sourcePipe);
+	                     int requestContext = Pipe.takeInt(sourcePipe); //high 1 upgrade, 1 close low 20 target pipe	                     
+	                     int blobMask = Pipe.blobMask(sourcePipe);
+						 byte[] blob = Pipe.blob(sourcePipe);
+						 int bytePosition = Pipe.bytePosition(meta, sourcePipe, len);
+						
+	                     writeToNextStage(myPipe, channelId, len, requestContext, blobMask, blob, bytePosition);                     
+	                     
+	                     
+	                     Pipe.confirmLowLevelRead(sourcePipe, SIZE_OF_TO_CHNL);	                     
+	                     Pipe.releaseReadLock(sourcePipe);
+	                     
+	                   
+	                	
+	                	
+	                } else if (ServerResponseSchema.MSG_TOSUBSCRIPTION_200 == activeMessageId ) {
+	                	
+	                	throw new UnsupportedOperationException();
+	                	
+	                }    
+	            }
+	        }  
+    	} while (didWork);
     }
+
+
+	private void writeToNextStage(Pipe<NetPayloadSchema> myPipe, final long channelId, int len, int requestContext,
+			int blobMask, byte[] blob, int bytePosition) {
+		/////////////
+		 //if needed write out the upgrade message
+		 ////////////
+		 
+		 if (0 != (UPGRADE_MASK & requestContext)) {
+			 
+			 //the next response should be routed to this new location
+			 int upgSize = Pipe.addMsgIdx(myPipe, NetPayloadSchema.MSG_UPGRADE_207);
+			 Pipe.addLongValue(channelId, myPipe);
+			 Pipe.addIntValue(UPGRADE_TARGET_PIPE_MASK & requestContext, myPipe);;
+			 Pipe.confirmLowLevelWrite(myPipe, upgSize);
+			 Pipe.publishWrites(myPipe);
+			 
+		 }
+		                	
+		 /////////////
+		 //write out the content
+		 /////////////
+		                      
+		 int plainSize = Pipe.addMsgIdx(myPipe, NetPayloadSchema.MSG_PLAIN_210);
+		 Pipe.addLongValue(channelId, myPipe);
+		 Pipe.addLongValue(Pipe.getWorkingTailPosition(myPipe), myPipe);
+		 Pipe.addByteArrayWithMask(myPipe, blobMask, len, blob, bytePosition);
+		 Pipe.confirmLowLevelWrite(myPipe, plainSize);
+		 Pipe.publishWrites(myPipe);
+		 
+		 if (0 != (END_RESPONSE_MASK & requestContext)) { 
+		    //we have finished all the chunks for this request so the sequence number will now go up by one	
+		 	expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)]++;                     	
+		 }
+		                     
+		 
+		 //////////////
+		 //if needed write out the close connection message
+		 //////////////
+		 
+		 if (0 != (CLOSE_CONNECTION_MASK & requestContext)) { 
+			 
+			 //logger.info("CLOSE CONNECTION DETECTED IN WRAP SUPER");
+		     
+			 int disSize = Pipe.addMsgIdx(myPipe, NetPayloadSchema.MSG_DISCONNECT_203);
+			 Pipe.addLongValue(channelId, myPipe);
+			 Pipe.confirmLowLevelWrite(myPipe, disSize);
+			 Pipe.publishWrites(myPipe);
+			 
+		 }
+	}
     
 }

@@ -16,9 +16,11 @@ import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.Pipe.PaddedLong;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -43,10 +45,11 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     private final Pipe<NetPayloadSchema>[] inputs;
     private       long[]                      inputChannels;
-    private       int[]                       inputPositions;
+    private       int[]                       inputBlobPos;
     private       int[]                       inputLengths;
     private       boolean[]                   isOpen;
         
+    private final Pipe<NetParseAckSchema> ackStop;
     
     private final Pipe<HTTPRequestSchema>[] outputs;
 
@@ -55,6 +58,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private long[] requestHeaderMask;
     private byte[][] headerOffsets;
     private int[][] headerBlankBases;
+    private long[] inputSlabPos;
     
     private static int MAX_HEADER = 1<<15;
     
@@ -78,28 +82,29 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     
     private int totalShortestRequest;
+    private int shutdownCount;
     
     //read all messages and they must have the same channelID
     //total all into one master DataInputReader
        
     
-    public static HTTP1xRouterStage newInstance(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs,
+    public static HTTP1xRouterStage newInstance(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<NetParseAckSchema> ackStop,
                                               CharSequence[] paths, long[] headers, int[] messageIds) {
         
-       return new HTTP1xRouterStage<HTTPContentTypeDefaults ,HTTPHeaderKeyDefaults, HTTPRevisionDefaults, HTTPVerbDefaults>(gm,input,outputs, paths, headers, messageIds,
+       return new HTTP1xRouterStage<HTTPContentTypeDefaults ,HTTPHeaderKeyDefaults, HTTPRevisionDefaults, HTTPVerbDefaults>(gm,input,outputs, ackStop, paths, headers, messageIds,
                                    HTTPSpecification.defaultSpec()  ); 
     }
 
-   
-    public HTTP1xRouterStage(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, 
+	public HTTP1xRouterStage(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<NetParseAckSchema> ackStop,
                            CharSequence[] paths, long[] headers, int[] messageIds, 
                            HTTPSpecification<T,R,V,H> httpSpec) {
-        super(gm,input,outputs);
+        super(gm,input,join(outputs,ackStop));
         this.inputs = input;
-                
+        this.ackStop = ackStop;        
         this.outputs = outputs;
         this.messageIds = messageIds;
         this.requestHeaderMask = headers;
+        this.shutdownCount = inputs.length;
         
         this.httpSpec = httpSpec;
         
@@ -120,10 +125,12 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         //also used to release the subscription? TODO: this may be a race condition, not sure ...
         inputChannels = new long[inputs.length];
         Arrays.fill(inputChannels, -1);
-        inputPositions = new int[inputs.length];
+        inputBlobPos = new int[inputs.length];
         inputLengths = new int[inputs.length];
         isOpen = new boolean[inputs.length];
         Arrays.fill(isOpen, true);
+        
+        inputSlabPos = new long[inputs.length];
         
         final int sizeOfVarField = 2;
         
@@ -150,8 +157,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             headerBlankBases[h] = buildEmptyBlockOfVarDatas(fieldCount);
             
         }
-        
-        ////
+
         ///
         
         urlMap = new TrieParser(1024,true);  //TODO: build size needed for these URLs dynamically 
@@ -242,7 +248,14 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         
         
     }
-       
+    
+
+    @Override
+    public void shutdown() {
+        //TODO: send EOF 
+    }
+   
+
     
 //a request example
 //
@@ -260,44 +273,70 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     @Override
     public void run() {
-        int i = inputs.length;
-        int openCount = i;
-        while (--i>=0) {
-            openCount -= singlePipe(i);
-        }
-        if (0==openCount) {
-            requestShutdown();
-        } 
+    	int didWork;
+    	//TODO: keep routing while we have work.    	
+    	do { 
+    		didWork = 0;
+	        int i = inputs.length;
+	   
+	        while (--i>=0) {
+	            int result = singlePipe(i);
+	            
+	            if (result<0) {
+	            	if (--shutdownCount==0) {
+	            		requestShutdown();
+	            		return;
+	            	}
+	            	
+	            } else {
+	            	didWork+=result;
+	            }
+	            
+	            
+	        }
+    	} while (didWork!=0);    
+	        
+	        
+	//        if (0==openCount) {
+	  //          requestShutdown();
+	   //         return;
+	     //   }
+	 //       Thread.yield();
+    //	}
+    	
     }
 
+    
+    //return 0, 1 work, -1 shutdown.
     public int singlePipe(int idx) {
         Pipe<NetPayloadSchema> selectedInput = inputs[idx];     
-        if (null==selectedInput) {
-            return 1;
-        }
 
         if (isOpen[idx]) {
             int messageIdx = accumulateRunningBytes(idx, selectedInput);
             if (messageIdx < 0) {
                 isOpen[idx] = false;
+                
+                return -1;
+                
             }
         }
         
         long channel   = inputChannels[idx];
         if (channel >= 0) {
-            assert(inputLengths[idx]>=0) : "length is "+inputLengths[idx];
-            TrieParserReader.parseSetup(trieReader, Pipe.blob(selectedInput), inputPositions[idx], inputLengths[idx], Pipe.blobMask(selectedInput));
+            assert(inputLengths[idx]>=0) : "length is "+inputLengths[idx]; 
+            TrieParserReader.parseSetup(trieReader, Pipe.blob(selectedInput), inputBlobPos[idx], inputLengths[idx], Pipe.blobMask(selectedInput));
             final int idx1 = idx;
             final long channel1 = channel; 
             
-            consumeAvail(idx1, selectedInput, channel1, inputPositions[idx1], inputLengths[idx1]);
+            consumeAvail(idx1, selectedInput, channel1, inputBlobPos[idx1], inputLengths[idx1]);
+            return 1;
         }
         
-        if (!isOpen[idx] && 0==inputLengths[idx]) {
-            Pipe.publishWorkingTailPosition(selectedInput, Pipe.headPosition(selectedInput));//wipe out pipe.           
-            inputs[idx] = null;
-            return 1;
-        }        
+//        if (!isOpen[idx] && 0==inputLengths[idx]) {
+//            Pipe.publishWorkingTailPosition(selectedInput, Pipe.headPosition(selectedInput));//wipe out pipe.       
+//
+//            return 1;
+//        }        
         return 0;
     }
 
@@ -305,39 +344,31 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private void consumeAvail(final int idx, Pipe<NetPayloadSchema> selectedInput, final long channel, int p,
             int l) {
         int consumed;
-        do {
-            consumed = 0;
+           consumed = 0;
             final long toParseLength = TrieParserReader.parseHasContentLength(trieReader);
             assert(toParseLength>=0) : "length is "+toParseLength+" and input was "+l;
             
-                        
-          // logger.info("total input length "+toParseLength);
-            
-
-            if (toParseLength>=totalShortestRequest && route(trieReader, channel, idx)) {
+            if (toParseLength>=totalShortestRequest && route(trieReader, channel, idx, selectedInput)) {
                 consumed = (int)(toParseLength - TrieParserReader.parseHasContentLength(trieReader));           
                 Pipe.releasePendingAsReadLock(selectedInput, consumed);
                 p = Pipe.blobMask(selectedInput) & (p + consumed);
                 l -= consumed;                
                 assert(l == trieReader.sourceLen);
                 
+                if (l<=0) {
+                	inputChannels[idx] = -1;
+                }
+                
             } else {
                 assert(l>=0) : "length is "+l;
-                break; //no room or no data try write again later.
             }
-            
-            if (l<=0) {
-                inputChannels[idx] = -1;
-                break;
-            }
-            
-        } while (consumed>0);
-        inputPositions[idx]=p;
+
+        inputBlobPos[idx]=p;
         inputLengths[idx]=l;
     }
 
 
-private boolean route(TrieParserReader trieReader, long channel, int idx) {    
+private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<NetPayloadSchema> selectedInput) {    
     
 	// TrieParserReader.debugAsUTF8(trieReader, System.out,3000, false);
 	
@@ -428,7 +459,22 @@ private boolean route(TrieParserReader trieReader, long channel, int idx) {
         
         int consumed = Pipe.publishWrites(staticRequestPipe);                        // Write 1   12
         assert(consumed>=0);        
-        Pipe.confirmLowLevelWrite(staticRequestPipe, size);
+        Pipe.confirmLowLevelWrite(staticRequestPipe, size);     
+        
+        
+        if (true && this.inputSlabPos[idx]!=-1 && trieReader.sourceLen==0) { 
+        	
+        	if (Pipe.hasRoomForWrite(ackStop)) {
+        		int s = Pipe.addMsgIdx(ackStop, NetParseAckSchema.MSG_PARSEACK_100);
+        		Pipe.addLongValue(channel,ackStop);
+        		Pipe.addLongValue(this.inputSlabPos[idx],ackStop);
+        		Pipe.confirmLowLevelWrite(ackStop, s);
+        		Pipe.publishWrites(ackStop);
+        		this.inputSlabPos[idx]=-1;
+        	} else {
+				logger.error("B server no room for ack of {} {}",channel,ackStop);
+			}
+        } 
         
     } else {
         //no room try again later
@@ -463,19 +509,17 @@ private int accumulateRunningBytes(int idx, Pipe<NetPayloadSchema> selectedInput
               hasContinuedData(idx, selectedInput) 
            )            
           ) {
-        
-        int guessLen = Pipe.peekInt(selectedInput,4);
-        
+    
         
         messageIdx = Pipe.takeMsgIdx(selectedInput);
         if (NetPayloadSchema.MSG_PLAIN_210 == messageIdx) {
             long channel   = Pipe.takeLong(selectedInput);
+            this.inputSlabPos[idx] = Pipe.takeLong(selectedInput);
             
             int meta       = Pipe.takeRingByteMetaData(selectedInput);
             assert(Pipe.byteBackingArray(meta, selectedInput) == Pipe.blob(selectedInput));
             
             int length     = Pipe.takeRingByteLen(selectedInput);
-            assert(length==guessLen);
             assert(length>0) : "value:"+length;
             assert(Pipe.validateVarLength(selectedInput, length));
             
@@ -485,7 +529,7 @@ private int accumulateRunningBytes(int idx, Pipe<NetPayloadSchema> selectedInput
                 //assign
                 inputChannels[idx]  = channel;
                 inputLengths[idx]   = length;
-                inputPositions[idx] = pos;
+                inputBlobPos[idx] = pos;
      
                 assert(inputLengths[idx]<selectedInput.sizeOfBlobRing);
             } else {
@@ -498,7 +542,7 @@ private int accumulateRunningBytes(int idx, Pipe<NetPayloadSchema> selectedInput
                 assert(inputLengths[idx]<Pipe.blobMask(selectedInput)) : "When we roll up is must always be smaller than ring";
                 
                 //may only read up to safe point where head is
-                assert(validatePipePositions(selectedInput, inputPositions[idx], inputLengths[idx]));
+                assert(validatePipePositions(selectedInput, inputBlobPos[idx], inputLengths[idx]));
                                 
             }
             
@@ -508,7 +552,7 @@ private int accumulateRunningBytes(int idx, Pipe<NetPayloadSchema> selectedInput
             Pipe.readNextWithoutReleasingReadLock(selectedInput); 
             
         } else {
-            assert(-1 == messageIdx);
+            assert(-1 == messageIdx) : "messageIdx:"+messageIdx;
             Pipe.confirmLowLevelRead(selectedInput, Pipe.EOF_SIZE);
             Pipe.readNextWithoutReleasingReadLock(selectedInput);
             return messageIdx;//do not loop again just exit now
@@ -714,11 +758,6 @@ private boolean hasNoActiveChannel(int idx) {
          }
     }
 
-    @Override
-    public void shutdown() {
-        
-    }
-   
     
     public static int[] buildEmptyBlockOfVarDatas(int fieldCount) {
         int[] result = new int[fieldCount*2];

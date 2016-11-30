@@ -1,7 +1,9 @@
 package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
 import org.slf4j.Logger;
@@ -24,6 +26,8 @@ public class ServerSocketWriterStage extends PronghornStage {
     private final int groupIdx;
     
     private SocketChannel  writeToChannel;
+    private long           chnlId;
+    
     private boolean        writeDone = true;
     private int            activeMessageId;    
     private int            activePipe = 0;
@@ -83,64 +87,84 @@ public class ServerSocketWriterStage extends PronghornStage {
        
         //NOTE: TODO: BBB For the websockets,  add subscription support, eg N channels get the same message (should be in config already)
              //need list of channels off the one Id  requires new schema update
-
-        boolean done = publish(writeToChannel);
+    	    	
+    	boolean done = writeDone;
+    	if (!writeDone) {
+    		done = publish(writeToChannel);        
+        	//logger.info("A server wrote out {} to channel {}",done,chnlId);
+    	}
         assert(!done || Pipe.contentRemaining(dataToSend[activePipe])>=0);
+        boolean didWork;
+        do {
+	        int c = dataToSend.length;     
+	        didWork = false;
+	        
+	        while (done && --c>= 0) {
+	            while (done && Pipe.hasContentToRead(dataToSend[activePipe])) {
+	                
+	            	activeMessageId = Pipe.takeMsgIdx(dataToSend[activePipe]);
+	            	didWork = true;
+	         
+	            	if ( (NetPayloadSchema.MSG_PLAIN_210 == activeMessageId) ||
+	            	     (NetPayloadSchema.MSG_ENCRYPTED_200 == activeMessageId) ) {
+	            		
+	            		assert(Pipe.contentRemaining(dataToSend[activePipe])>=0);
+	            		
+	            		loadPayloadForXmit(NetPayloadSchema.MSG_PLAIN_210 == activeMessageId);  
+	            		ByteBuffer a = writeBuffs[0];
+						ByteBuffer b = writeBuffs[1];
+						int size = a.remaining()+b.remaining();
+	            		done = publish(writeToChannel);
+	            		//logger.info("B server wrote out {} to channel {} of size {}",done,chnlId,size);
+	            		
+	            		assert(!done || Pipe.contentRemaining(dataToSend[activePipe])>=0);
+	            		            		
+	            	} else if (NetPayloadSchema.MSG_DISCONNECT_203 == activeMessageId) {
+	            	
+	            		
+	            		final long channelId = Pipe.takeLong(dataToSend[activePipe]);
+	            		//logger.info("DISCONNECT MESSAGE FOUND BY SOCKET WRITER {} ",channelId);
+	            		
+	                    Pipe.confirmLowLevelRead(dataToSend[activePipe], Pipe.sizeOf(dataToSend[activePipe], activeMessageId));
+	                    Pipe.releaseReadLock(dataToSend[activePipe]);
+	                    assert(Pipe.contentRemaining(dataToSend[activePipe])>=0);
+	                    
+	                    ServerConnection serverConnection = socketHolder.get(channelId);	            		
+	            //        serverConnection.getSocketChannel().keyFor(coordinator.getSelector(coordinator, 0)).cancel();
+	                    if (null!=serverConnection) {
+	                    	closeChannel(serverConnection.getSocketChannel()); 
+	                    }
+	            	} else if (NetPayloadSchema.MSG_UPGRADE_207 == activeMessageId) {
+	            		
+	            		final long channelId = Pipe.takeLong(dataToSend[activePipe]);
+	            		final int newRoute = Pipe.takeInt(dataToSend[activePipe]);
+	            		
+	            	    //set the pipe for any further communications
+	                    ServerCoordinator.setTargetUpgradePipeIdx(coordinator, groupIdx, channelId, newRoute);
+	                    
+	                    Pipe.confirmLowLevelRead(dataToSend[activePipe], Pipe.sizeOf(dataToSend[activePipe], activeMessageId));
+	                    Pipe.releaseReadLock(dataToSend[activePipe]);
+	                    assert(Pipe.contentRemaining(dataToSend[activePipe])>=0);
+	                                      
+	            	} else if (activeMessageId < 0) {
+	                    
+	            		Pipe.confirmLowLevelRead(dataToSend[activePipe], Pipe.EOF_SIZE);
+	                    Pipe.releaseReadLock(dataToSend[activePipe]);
+	                    assert(Pipe.contentRemaining(dataToSend[activePipe])>=0);
+	                    
+	                    requestShutdown();
+	                    return;
+	                }
+	            }
+	
+	            if (done) {
+	                nextPipe();
+	            }
+	        }  
+	        
         
-        int c = dataToSend.length;     
+        } while (done && didWork); //stay here as long as we find work.
         
-        while (done && --c>= 0) {
-            while (done && Pipe.hasContentToRead(dataToSend[activePipe])) {
-                
-            	activeMessageId = Pipe.takeMsgIdx(dataToSend[activePipe]);
-            	
-         
-            	if ( (NetPayloadSchema.MSG_PLAIN_210 == activeMessageId) ||
-            	     (NetPayloadSchema.MSG_ENCRYPTED_200 == activeMessageId) ) {
-            		
-            		assert(Pipe.contentRemaining(dataToSend[activePipe])>=0);
-            		
-            		loadPayloadForXmit();            		
-            		done = publish(writeToChannel);
-            		
-            		assert(!done || Pipe.contentRemaining(dataToSend[activePipe])>=0);
-            		            		
-            	} else if (NetPayloadSchema.MSG_DISCONNECT_203 == activeMessageId) {
-            	
-            		final long channelId = Pipe.takeLong(dataToSend[activePipe]);
-            		closeChannel(socketHolder.get(channelId).getSocketChannel()); 
-            		
-                    Pipe.confirmLowLevelRead(dataToSend[activePipe], Pipe.sizeOf(dataToSend[activePipe], activeMessageId));
-                    Pipe.releaseReadLock(dataToSend[activePipe]);
-                    assert(Pipe.contentRemaining(dataToSend[activePipe])>=0);
-            		            		
-            	} else if (NetPayloadSchema.MSG_UPGRADE_207 == activeMessageId) {
-            		
-            		final long channelId = Pipe.takeLong(dataToSend[activePipe]);
-            		final int newRoute = Pipe.takeInt(dataToSend[activePipe]);
-            		
-            	    //set the pipe for any further communications
-                    ServerCoordinator.setTargetUpgradePipeIdx(coordinator, groupIdx, channelId, newRoute);
-                    
-                    Pipe.confirmLowLevelRead(dataToSend[activePipe], Pipe.sizeOf(dataToSend[activePipe], activeMessageId));
-                    Pipe.releaseReadLock(dataToSend[activePipe]);
-                    assert(Pipe.contentRemaining(dataToSend[activePipe])>=0);
-                                      
-            	} else if (activeMessageId < 0) {
-                    
-            		Pipe.confirmLowLevelRead(dataToSend[activePipe], Pipe.EOF_SIZE);
-                    Pipe.releaseReadLock(dataToSend[activePipe]);
-                    assert(Pipe.contentRemaining(dataToSend[activePipe])>=0);
-                    
-                    requestShutdown();
-                    return;
-                }
-            }
-
-            if (done) {
-                nextPipe();
-            }
-        }  
     }
 
     private void nextPipe() {
@@ -151,34 +175,40 @@ public class ServerSocketWriterStage extends PronghornStage {
 
     
 
-    private void loadPayloadForXmit() {
+    private void loadPayloadForXmit(boolean takeTail) {
         
         Pipe<NetPayloadSchema> pipe = dataToSend[activePipe];
         final long channelId = Pipe.takeLong(pipe);
-        writeToChannel = socketHolder.get(channelId).getSocketChannel(); //ChannelId or SubscriptionId
- 
+        
+        if (takeTail) {
+        	long tail =	Pipe.takeLong(pipe);
+        }
         //byteVector is payload
         int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
         int len = Pipe.takeRingByteLen(pipe);
         
-        //logger.info("write {} to socket",len);
-        
-        writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
-        writeDone = false;
+        ServerConnection serverConnection = socketHolder.get(channelId);
+        //only write if this connection is still valid
+        if (null != serverConnection) {        
+			writeToChannel = serverConnection.getSocketChannel(); //ChannelId or SubscriptionId
+	        chnlId = channelId;	        
+	        
+	        //logger.info("write {} to socket",len);
+	        
+	        writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
+	        writeDone = false;
+        }
                 
     }
 
     private boolean publish(SocketChannel channel) {
         if (writeDone) {
-        	///logger.info("A");
             //do nothing if already done 
             return true;
         } else {            
             if (null!=channel && channel.isOpen()) { 
-            	//logger.info("B");
             	return writeToChannel(channel);                
             } else {          
-            	//logger.info("C");
                 //if channel is closed drop the data 
                 markDoneAndRelease();  
                 return true;
@@ -193,7 +223,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         	channel.write(writeBuffs);
                        
         	if (writeBuffs[0].hasRemaining() || writeBuffs[1].hasRemaining()) {
-        		logger.warn("no room to write to channel");
+        		//logger.warn("no room to write to channel");
         		return false;        		
         	} else {
         	    markDoneAndRelease();
@@ -202,7 +232,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         } catch (IOException e) {
             //unable to write to this socket, treat as closed
             markDoneAndRelease();
-            logger.warn("unable to write to channel",e);
+            logger.trace("unable to write to channel",e);
             closeChannel(channel);
             return true;
         }
@@ -210,7 +240,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 
     private void closeChannel(SocketChannel channel) {
         try {
-            channel.close();
+        	if (channel.isOpen()) {
+        		channel.close();
+        	}
         } catch (IOException e1) {
             logger.warn("unable co close channel",e1);
         }

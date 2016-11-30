@@ -15,6 +15,7 @@ import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
+import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -113,6 +114,7 @@ public class PipelineIntegrationTest {
 
         PipeConfig<ServerResponseSchema> responseConfig = new PipeConfig<ServerResponseSchema>(ServerResponseSchema.instance, 10000, 20000);
         
+        
         int i = apps;
         while (--i >= 0) {
             routedAppPipes[i] = new Pipe<HTTPRequestSchema>(appPipeConfig);
@@ -127,12 +129,11 @@ public class PipelineIntegrationTest {
             }            
         }
         
-        
-        //TODO: revisit this part of the test later.
-        Pipe errorPipe = new Pipe(new PipeConfig(RawDataSchema.instance));
-        ConsoleJSONDumpStage dump = new ConsoleJSONDumpStage(gm,errorPipe);
-        
-        HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, routedAppPipes, paths, appHeaders, msgIds);
+        PipeConfig<NetParseAckSchema> ackConfig = new PipeConfig<NetParseAckSchema>(NetParseAckSchema.instance);
+		Pipe<NetParseAckSchema> ack = new Pipe<NetParseAckSchema>(ackConfig );
+        PipeCleanerStage.newInstance(gm, ack);
+		
+        HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, routedAppPipes, ack, paths, appHeaders, msgIds);
         return stage;
     }
 

@@ -48,11 +48,13 @@ public class ServerNewConnectionStage extends PronghornStage{
     private String host="localhost";
 	private int port=8443;
 	  
+	private final int maxConnections;//prevents input pipes from sharing encrypted data, must be large engough to split up the users.
     
-    public ServerNewConnectionStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<ServerConnectionSchema> newClientConnections) {
+    public ServerNewConnectionStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<ServerConnectionSchema> newClientConnections, int maxConnections) {
         super(graphManager, NONE, newClientConnections);
         this.coordinator = coordinator;
         this.newClientConnections = newClientConnections;
+        this.maxConnections = maxConnections;
     }
     
 
@@ -76,6 +78,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 
             //this stage accepts connections as fast as possible
             selector = Selector.open();
+            
             channel.register(selector, SelectionKey.OP_ACCEPT); 
             
             
@@ -127,6 +130,8 @@ public class ServerNewConnectionStage extends PronghornStage{
                       try {                          
                           channel.configureBlocking(false);
                           channel.setOption(StandardSocketOptions.TCP_NODELAY, true);
+                        //  channel.setOption(StandardSocketOptions.SO_RCVBUF,1<<20);
+                          
                           
                    //       System.out.println("buffer size:"+        channel.socket().getReceiveBufferSize());// channel.getOption(StandardSocketOptions.SO_RCVBUF) );
                           
@@ -138,6 +143,10 @@ public class ServerNewConnectionStage extends PronghornStage{
                           
                           final long channelId = holder.lookupInsertPosition();
                           
+                          
+                          //System.err.println("lookup insert channel position:" +channelId+" out of "+holder.size());
+                          
+                          
                           //long channelId = ServerCoordinator.getSocketChannelHolder(coordinator, targetPipeIdx).add(channel); //TODO: confirm this returns -1 if nothing is found.
                           if (channelId<0) {
                               //error this should have been detected in the scanForOptimalPipe method
@@ -148,22 +157,22 @@ public class ServerNewConnectionStage extends PronghornStage{
 						  SSLEngine sslEngine = SSLEngineFactory.createSSLEngine();//// not needed for server? host, port);
 						  sslEngine.setUseClientMode(false); //here just to be complete and clear
 						//  sslEngine.setNeedClientAuth(true); //only if the auth is required to have a connection
-						  sslEngine.setWantClientAuth(false); //the auth is optional
-						  sslEngine.setNeedClientAuth(false);
+						 // sslEngine.setWantClientAuth(true); //the auth is optional
+						  sslEngine.setNeedClientAuth(false); //required for openSSL/boringSSL
 						  
 						  
 						  sslEngine.beginHandshake();
 						  
+						 // logger.info("server new connection attached for new id {} ",channelId);
+						  
 						  holder.setValue(channelId, new ServerConnection(sslEngine, channel, channelId));
-                          
-						  
-//						  HandshakeStatus handshakeStatus = sslEngine.getHandshakeStatus();
-//						  logger.info("external handshake check is now {} NEED TO SEND HANDSHAKE FROM HERE?",handshakeStatus);
-						  
-                          
+   
                           //NOTE: for servers that do not require an upgrade we can set this to the needed pipe right now.
-                          ServerCoordinator.setTargetUpgradePipeIdx(coordinator, targetPipeIdx, channelId, 0); //default for all
-                                                                                                  
+						  
+						//  This is bad because we have hardcoded each channel to a pipe this will not work due to needing more connections per pipe than we have.
+                          ServerCoordinator.setTargetUpgradePipeIdx(coordinator, targetPipeIdx, channelId, (int)(channelId % maxConnections)); //default for all
+
+                                                                                                                            
                          // logger.info("register new data to selector for pipe {}",targetPipeIdx);
                           Selector selector2 = ServerCoordinator.getSelector(coordinator, targetPipeIdx);
 						  channel.register(selector2, SelectionKey.OP_READ, ServerCoordinator.selectorKeyContext(coordinator, targetPipeIdx, channelId));

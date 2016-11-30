@@ -59,11 +59,14 @@ public class ClientConnection extends SSLConnection {
 	}
 	
 	private boolean hasNetworkConnectivity() {
-		try {
-			return testAddr.isReachable(10_000);
-		} catch (IOException e) {
-			return false;
-		}
+		return true;
+		
+//		//TODO: this detection is not yet perfected and throws NPE upon problems
+//		try {
+//			return testAddr.isReachable(10_000);
+//		} catch (IOException e) {
+//			return false;
+//		}
 	}
 	
 	public void setLastUsedTime(long time) {
@@ -162,8 +165,10 @@ public class ClientConnection extends SSLConnection {
 	public static int buildGUID(byte[] target, CharSequence host, int port, int userId) {
 		//TODO: if we find a better hash for host port user we can avoid this trie lookup. TODO: performance improvement.
 		//new Exception("build guid").printStackTrace();
-		
+
 		int pos = 0;
+
+			
     	for(int i = 0; i<host.length(); i++) {
     		short c = (short)host.charAt(i);
     		target[pos++] = (byte)(c>>8);
@@ -172,10 +177,11 @@ public class ClientConnection extends SSLConnection {
     	target[pos++] = (byte)(port>>8);
     	target[pos++] = (byte)(port);
     	
-    	target[pos++] = (byte)(userId>>24);
-    	target[pos++] = (byte)(userId>>16);
-    	target[pos++] = (byte)(userId>>8);
     	target[pos++] = (byte)(userId);
+    	target[pos++] = (byte)(userId>>8);
+    	target[pos++] = (byte)(userId>>16);
+    	target[pos++] = (byte)(userId>>24);
+    	
     	return pos;
 	}
 	
@@ -188,7 +194,11 @@ public class ClientConnection extends SSLConnection {
 	 * @throws IOException
 	 */
 	public boolean isFinishConnect() throws IOException {
-		return getSocketChannel().finishConnect();
+		try {
+			return getSocketChannel().finishConnect();
+		} catch (IOException io) {
+			return false;
+		}
 	}
 	
 		
@@ -210,20 +220,21 @@ public class ClientConnection extends SSLConnection {
 			return false;
 		}
 		
-		if (responsesReceived==requestsSent && System.currentTimeMillis() > closeTimeLimit) {
-			log.info("stale connection closed after non use {}",this);
-			
-			//TODO: this work can not be done here and needs to be owned by the pipe. HTTPClientReqeust is the ideal place.
-			
-			beginDisconnect(); 
-			
-			if (true) {
-				throw new UnsupportedOperationException("Can not close old connection without finishing handshake.");
-			}
-			
-			close();
-			return false;
-		}
+		//TODO: new auto shutdown logic for old unused connections, Still under development,closes connections too soon
+//		if (responsesReceived==requestsSent && System.currentTimeMillis() > closeTimeLimit) {
+//			log.info("stale connection closed after non use {}",this);
+//			
+//			//TODO: this work can not be done here and needs to be owned by the pipe. HTTPClientReqeust is the ideal place.
+//			
+//			beginDisconnect(); 
+//			
+//			if (true) {
+//				throw new UnsupportedOperationException("Can not close old connection without finishing handshake.");
+//			}
+//			
+//			close();
+//			return false;
+//		}
 		return isValid;
 	}
 
@@ -239,12 +250,31 @@ public class ClientConnection extends SSLConnection {
 	}
 		
 	
-	public boolean writeToSocketChannel(Pipe<NetPayloadSchema> source) {
-		ByteBuffer[] writeHolder = PipeReader.wrappedUnstructuredLayoutBuffer(source, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
+	public void writeToSocketChannel(ByteBuffer buf) throws IOException {
+		
+		while (buf.hasRemaining()) {
+			getSocketChannel().write(buf);
+			if (buf.hasRemaining()) {
+				Thread.yield(); //TODO: bad loop.
+			}
+		}
+	}	
+	
+	
+	public boolean writeToSocketChannel(Pipe<NetPayloadSchema> source, int loc, ByteBuffer directBuffer) {
+			
+		
+		ByteBuffer[] writeHolder = PipeReader.wrappedUnstructuredLayoutBuffer(source, loc);
 		try {
-			do {
-				getSocketChannel().write(writeHolder);
-			} while (writeHolder[1].hasRemaining()); //TODO: this  is a bad spin loop to be refactored up and out.
+			
+			//copy done here to avoid GC and memory allocation done by socketChannel
+			directBuffer.clear();
+			directBuffer.put(writeHolder[0]);
+			directBuffer.put(writeHolder[1]);
+			directBuffer.flip();			
+			
+			writeToSocketChannel(directBuffer);
+			
 		} catch (IOException e) {
 			log.debug("unable to write to socket {}",this,e);
 			close();
@@ -259,7 +289,7 @@ public class ClientConnection extends SSLConnection {
 		try {
 			return getSocketChannel().read(targetByteBuffers);			
 		} catch (IOException ex) {			
-			log.warn("unable read from socket {}",this,ex);
+			//expected close case.. log.warn("unable read from socket {}",this,ex);
 			close();
 		}
 		return -1;

@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeReader;
@@ -26,6 +27,7 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitor;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitorAdapter;
 import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
+import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
 import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
 import com.ociweb.pronghorn.stage.route.RoundRobinRouteStage;
@@ -33,49 +35,11 @@ import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
+import com.ociweb.pronghorn.stage.test.ConsoleSummaryStage;
+import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
 public class RingBufferPipeline {
 	
-	private final class DumpMonitorStage extends PronghornStage {
-		private final Pipe inputRing;
-		private int monitorMessageSize;
-		private long messageCount = 0;
-		
-		private DumpMonitorStage(GraphManager gm,Pipe inputRing) {
-			super(gm,inputRing, NONE);
-			this.inputRing = inputRing;
-			this.monitorMessageSize = Pipe.from(inputRing).fragDataSize[0];
-		}
-
-		@Override
-		public void run() {  
-			while (Pipe.hasContentToRead(inputRing, monitorMessageSize)) {
-	        
-	            //read the message
-	            int msgId = Pipe.takeMsgIdx(inputRing);//readValue(0, inputRing.buffer,inputRing.mask,inputRing.workingTailPos.value); 
-	            
-	            long time = Pipe.takeLong(inputRing);
-	            long head = Pipe.takeLong(inputRing);
-	            long tail = Pipe.takeLong(inputRing);
-	            int tmpId = Pipe.takeInt(inputRing);
-	            int bufSize = Pipe.takeInt(inputRing);
-	            int bLen = Pipe.takeInt(inputRing);
-
-	            Pipe.setWorkingTailPosition(inputRing, Pipe.getWorkingTailPosition(inputRing)+monitorMessageSize);
-	                     
-	            int queueDepth = (int)(head-tail);
-                //show depth vs bufSize	            
-				
-	        	//doing nothing with the data
-				Pipe.releaseReadLock(inputRing);
-
-	        	
-	        	messageCount++;
-	        	Pipe.confirmLowLevelRead(inputRing, monitorMessageSize);
-
-			}
-		}
-	}
 
 	private final class DumpStageLowLevel extends PronghornStage {
 		private final Pipe inputRing;
@@ -98,7 +62,12 @@ public class RingBufferPipeline {
 		        	
 			while (Pipe.hasContentToRead(inputRing, msgSize)) {
 		        	
-		            Pipe.takeMsgIdx(inputRing);
+		            if (Pipe.takeMsgIdx(inputRing)<0) {
+		            	  Pipe.confirmLowLevelRead(inputRing, msgSize);
+		            	  Pipe.releaseReadLock(inputRing);
+		            	requestShutdown();
+		            	return;
+		            };
 		            Pipe.confirmLowLevelRead(inputRing, msgSize);
 		        	int meta = takeRingByteMetaData(inputRing);
 		        	int len = takeRingByteLen(inputRing);
@@ -135,14 +104,7 @@ public class RingBufferPipeline {
 			}      	
 			
 		}
-		
-		@Override
-		public void shutdown() {
-			//assertEquals(testMessages,useRoute? messageCount*splits: messageCount);	            			            	
-        	Pipe.releaseAll(inputRing);	
-			
-		}
-		
+
 	}
 
 	private final class DumpStageStreamingConsumer extends PronghornStage {
@@ -420,7 +382,7 @@ public class RingBufferPipeline {
 		}
 	}
 
-	private static final int TIMEOUT_SECONDS = 30;
+	private static final int TIMEOUT_SECONDS = 20;
 	private static final String testString1 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@@";
 	private static final String testString = testString1+testString1+testString1+testString1+testString1+testString1+testString1+testString1;
 	//using length of 61 because it is prime and will wrap at odd places
@@ -503,8 +465,6 @@ public class RingBufferPipeline {
 
 	private void pipelineTest(boolean highLevelAPI, boolean monitor, boolean useTap, boolean useRouter) {
 	
-		
-		
 		 GraphManager gm = new GraphManager();
 		
 		//GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 200_000);
@@ -526,14 +486,6 @@ public class RingBufferPipeline {
 		 
 		 PronghornStage[] monitorStages = null;
 
-		 		 
-		 Pipe[] monitorRings = null;
-		 FieldReferenceOffsetManager montorFROM = null;
-		 if (monitor) {
-			monitorStages = new PronghornStage[j];
-		 	monitorRings = new Pipe[j];
-		 	montorFROM = PipeMonitorSchema.FROM;
-		 }
 		 
 		 byte ex = (byte)(useRouter ? 0 : 1);
 		 
@@ -546,19 +498,6 @@ public class RingBufferPipeline {
 				 rings[j] = new Pipe(new PipeConfig(primaryBits, secondaryBits, null, RawDataSchema.instance));
 			 } 
 	  		 
-			 if (monitor) {
-				 monitorRings[j] = new Pipe(new PipeConfig((byte)16, (byte)2, null, PipeMonitorSchema.instance));
-				 final Pipe monRing = monitorRings[j];
-
-				 monitorStages[j] = new RingBufferMonitorStage(gm, rings[j], monRing);	
-				 
-				
-				 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(4100000), monitorStages[j]);
-				 
-				 
-				 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(4700000), new DumpMonitorStage(gm, monRing));
-				 
-			 }
 		 }
 		 		 
 
@@ -567,7 +506,8 @@ public class RingBufferPipeline {
 		 j = 0;
 	 	 Pipe outputRing = rings[j];
 	
-		 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? new ProductionStageHighLevel(gm, outputRing) : new ProductionStageLowLevel(gm, outputRing));
+		 PronghornStage productionStage = highLevelAPI ? new ProductionStageHighLevel(gm, outputRing) : new ProductionStageLowLevel(gm, outputRing);
+		 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), productionStage);
 				 
 		 int i = stagesBetweenSourceAndSink;
 		 while (--i>=0) {
@@ -606,15 +546,20 @@ public class RingBufferPipeline {
 		 
 	  	 Pipe inputRing = rings[j];
 		 boolean useRoute = useTap&useRouter;
-		 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? 
-			//	new DumpStageStreamingConsumer(gm, inputRing, useRoute):
-			      new DumpStageHighLevel(gm, inputRing, useRoute) :
-			      new DumpStageLowLevel(gm, inputRing, useRoute));
+		 PronghornStage dumpStage = highLevelAPI ?   new DumpStageHighLevel(gm, inputRing, useRoute) : new DumpStageLowLevel(gm, inputRing, useRoute);
+		 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), dumpStage);
+		 
+		 
+		 if (monitor) {			 
+			 MonitorConsoleStage.attach(gm);
+		 }
 		 
 		 System.out.println("########################################################## Testing "+ (highLevelAPI?"HIGH level ":"LOW level ")+(useTap? "using "+splits+(useRouter?" router ":" splitter "):"")+(monitor?"monitored":"")+" totalThreads:"+totalThreads);
 		 
 		 //start the timer		 
 		 final long start = System.currentTimeMillis();
+		 	 
+		 
 		 
 		 GraphManager.enableBatching(gm);
 		 ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(GraphManager.cloneAll(gm));
@@ -622,7 +567,12 @@ public class RingBufferPipeline {
 		 scheduler.startup();
 		 
 		 
-		 //blocks until all the submitted runnables have stopped
+		 //blocks until all the submitted 
+		 GraphManager.blockUntilStageBeginsShutdown(gm, productionStage, TIMEOUT_SECONDS*1000);
+		 //while (Pipe.contentRemaining(inputRing)>0){}; //wait til empty??
+		 
+		 scheduler.shutdown();
+		 
 		
 			 //this timeout is set very large to support slow machines that may also run this test.
 			boolean cleanExit = scheduler.awaitTermination(TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -642,12 +592,7 @@ public class RingBufferPipeline {
 			while (--t>=0) {
 				assertFalse("Unexpected error in thread, see console output",Pipe.isShutdown(rings[t]));
 			}
-			if (monitor) {
-				t = monitorRings.length;
-				while (--t>=0) {
-					assertFalse("Unexpected error in thread, see console output",Pipe.isShutdown(monitorRings[t]));
-				}
-			}
+
 			
 			long duration = System.currentTimeMillis()-start;
 			
@@ -660,12 +605,6 @@ public class RingBufferPipeline {
 				t = rings.length;
 				while (--t>=0) {
 					Pipe.shutdown(rings[t]);
-				}
-				if (monitor) {
-					t = monitorRings.length;
-					while (--t>=0) {
-						Pipe.shutdown(monitorRings[t]);
-					}
 				}	 
 		 
 	}

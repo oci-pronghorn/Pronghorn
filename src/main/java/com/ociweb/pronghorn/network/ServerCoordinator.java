@@ -8,6 +8,7 @@ import java.nio.channels.SocketChannel;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.util.MemberHolder;
+import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
 
@@ -39,9 +40,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public final static int CLOSE_CONNECTION_MASK        = 1<<CLOSE_CONNECTION_SHIFT;
 	public final static int UPGRADE_MASK                 = 1<<UPGRADE_CONNECTION_SHIFT;
 
-
+	private final PoolIdx responsePipeLinePool;
     
-    public ServerCoordinator(int socketGroups, int port) {
+    public ServerCoordinator(int socketGroups, int port, int maxPartialResponses, int maxConnectionsBits) {
         this.socketHolder      = new ServiceObjectHolder[socketGroups];    
         this.selectors         = new Selector[socketGroups];
         
@@ -50,12 +51,28 @@ public class ServerCoordinator extends SSLConnectionHolder {
         this.port              = port;
         this.upgradePipeLookup        = new int[socketGroups][];
         this.connectionContext = new ConnectionContext[socketGroups][];
-        this.channelBits       = 12; //max of 4096 open connections per stage
+        this.channelBits       = maxConnectionsBits;
         this.channelBitsSize   = 1<<channelBits;
         this.channelBitsMask   = channelBitsSize-1;
         this.address           = new InetSocketAddress("127.0.0.1",port);
         
+    	this.responsePipeLinePool = new PoolIdx(maxPartialResponses); 
+    	
+        
     }
+    
+	public int responsePipeLineIdx(long ccId) {
+		return responsePipeLinePool.get(ccId);
+	}
+	
+	
+	public void releaseResponsePipeLineIdx(long ccId) {
+		responsePipeLinePool.release(ccId);
+	}
+	
+	public int resposePoolSize() {
+		return responsePipeLinePool.length();
+	}
     
 
 	@Override
@@ -77,7 +94,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
         }
         
         that.upgradePipeLookup[idx] = new int[that.channelBitsSize];
-        return that.socketHolder[idx] = new ServiceObjectHolder(that.channelBits, ServerConnection.class, new SocketValidator(), false/*Do not grow*/);
+        return that.socketHolder[idx] = new ServiceObjectHolder<ServerConnection>(that.channelBits, ServerConnection.class, new SocketValidator(), false/*Do not grow*/);
         
     }
     
@@ -92,23 +109,19 @@ public class ServerCoordinator extends SSLConnectionHolder {
         return subscriptions[idx] = new MemberHolder(100);
     }
     
-    public static class SocketValidator implements ServiceObjectValidator<SocketChannel> {
+    public static class SocketValidator implements ServiceObjectValidator<ServerConnection> {
 
         @Override
-        public boolean isValid(SocketChannel serviceObject) {            
-            return serviceObject.isConnectionPending() || 
-                   serviceObject.isConnected();
+        public boolean isValid(ServerConnection serviceObject) {            
+            return serviceObject.socketChannel.isConnectionPending() || 
+                   serviceObject.socketChannel.isConnected();
         }
 
         @Override
-        public void dispose(SocketChannel t) {            
-            try {
-                if (t.isOpen()) {
+        public void dispose(ServerConnection t) {
+                if (t.socketChannel.isOpen()) {
                     t.close();
                 }
-            } catch (IOException e) {
-                //ignore since we are wanting this object to get garbage collected anyway.
-            }            
         }
         
     }
@@ -118,9 +131,14 @@ public class ServerCoordinator extends SSLConnectionHolder {
     public static int[] getUpgradedPipeLookupArray(ServerCoordinator that, int idx) {
         return that.upgradePipeLookup[idx];
     }
+    
+    @Deprecated//Not needed bad idea
     public static void setTargetUpgradePipeIdx(ServerCoordinator coordinator, int groupId, long channelId, int idxValue) {
         coordinator.upgradePipeLookup[groupId][(int)(coordinator.channelBitsMask & channelId)] = idxValue;
     }
+    
+    
+    @Deprecated
     public static int getTargetUpgradePipeIdx(ServerCoordinator coordinator, int groupId, long channelId) {
         return coordinator.upgradePipeLookup[groupId][(int)(coordinator.channelBitsMask & channelId)];
     }

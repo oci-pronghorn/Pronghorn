@@ -4,6 +4,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +44,8 @@ public class GraphManager {
 	public final static String MONITOR       = "MONITOR"; //this stage is not part of business logic but part of internal monitoring.
 	public final static String PRODUCER      = "PRODUCER";//explicit so it can be found even if it has feedback inputs.
 	public final static String STAGE_NAME    = "STAGE_NAME";
+	public final static String DOT_RANK_NAME = "DOT_RANK_NAME";
+	
 
 	public final static String UNSCHEDULED   = "UNSCHEDULED";//new nota for stages that should never get a thread (experimental)
 	public final static String THREAD_GROUP  = "THREAD_GROUP";   //new nota for stages that do not give threads back (experimental)
@@ -1215,18 +1218,37 @@ public class GraphManager {
 	        target.append("digraph {\n");
 	        target.append("rankdir = LR\n");
 	        
+	        //TODO: redesign to be cleaner without garbage
+	        Map<Object, StringBuilder> ranks = new HashMap<Object, StringBuilder>();
 	        
 	        int i = -1;
 	        while (++i<m.stageIdToStage.length) {
 	            PronghornStage stage = m.stageIdToStage[i];
+	        
 	            
 	            if (null!=stage && !(stage instanceof MonitorConsoleStage) && !(stage instanceof RingBufferMonitorStage)) {       
+
+	            	String stageName = "Stage"+Integer.toString(i);
+	            	
+	            	
+	            	Object rankKey = getNota(m, stage.stageId, GraphManager.DOT_RANK_NAME, null);
+	            	if (rankKey!=null) {
+	            		
+	            		//{ rank=same, b, c, d }
+	            		StringBuilder b = ranks.get(rankKey);
+	            		if (null==b) {
+	            			b = new StringBuilder("{ rank=same");
+	            			ranks.put(rankKey, b);
+	            		}
+	            		b.append(" \""+stageName+"\",");
+	            		
+	            	}
 	            	
 	            	//TODO: we need to group the nodes and edges with the same THREAD_GROUP under a subgraph cluster
 	                //  subgraph cluster_1 {
 	            	Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
 	            	
-	                target.append("\"Stage").append(Integer.toString(i)).append("\"[label=\"").append(stage.toString().replace("Stage","").replace(" ", "\n"));
+	                target.append("\"").append(stageName).append("\"[label=\"").append(stage.toString().replace("Stage","").replace(" ", "\n"));
 	                if (null!=group) {
 	                	target.append(" grp:"+group);
 	                }
@@ -1235,6 +1257,16 @@ public class GraphManager {
 	                	                
 	            }
 	        }
+	        /////
+	        //DOT_RANK_NAME
+	        /////
+	        for (StringBuilder value: ranks.values()) {
+	        	target.append(value.subSequence(0, value.length()-1)).append(" }\n");	        	
+	        }
+	        
+	        /////
+	        //pipes
+	        /////
 	        
 	        int undefIdx = 0;
 	        int j = m.pipeIdToPipe.length;
@@ -1294,8 +1326,12 @@ public class GraphManager {
 		                
 		                if (null!=percentileValues) {		                	
 		                	int pctFull = percentileValues[pipe.id];
-		                	if (pctFull>=80) {
-		                		target.append(",color=red");	    
+		                	if (pctFull>=40) {
+		                		target.append(",color=orange");	    
+		                	} else {
+		                		if (pctFull>=60) {
+			                		target.append(",color=red");	    
+			                	}	
 		                	}
 		                }
 		                
@@ -1447,12 +1483,12 @@ public class GraphManager {
                   
                   logger.error("Unexpected error in "+stage+" which has "+inputCount+" inputs and "+outputCount+" outputs", t);
                   
-                  int i = inputCount;
-                  while (--i>=0) {
-                      
-                      logger.error(stage+"  input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
-                      
-                  }
+//                  int i = inputCount;
+//                  while (--i>=0) {
+//                      
+//                      logger.error(stage+"  input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
+//                      
+//                  }
                   
                   GraphManager.shutdownNeighborRings(graphManager, stage);
               }

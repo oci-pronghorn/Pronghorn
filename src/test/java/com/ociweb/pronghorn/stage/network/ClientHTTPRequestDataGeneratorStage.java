@@ -151,6 +151,7 @@ public class ClientHTTPRequestDataGeneratorStage extends PronghornStage {
     private void writeTestRecord(int length, int offset) {
         final int size = Pipe.addMsgIdx(output, NetPayloadSchema.MSG_PLAIN_210);
         Pipe.addLongValue(0, output); //channel
+        Pipe.addLongValue(Pipe.getWorkingTailPosition(output), output);
         Pipe.addByteArray(rawData, offset, length, output);
         Pipe.confirmLowLevelWrite(output, size);
         Pipe.publishWrites(output);            

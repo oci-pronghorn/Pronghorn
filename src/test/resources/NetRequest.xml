@@ -31,5 +31,11 @@
      <uInt32 name="Listener" id="10"/>
    </template>     
   
+   <template name="Close" id="104">
+   	 <uInt32 name="Port" id="1"/>
+     <string name="Host" id="2" charset="unicode"/>
+     <uInt32 name="Listener" id="10"/>
+   </template>
+  
       
 </templates>

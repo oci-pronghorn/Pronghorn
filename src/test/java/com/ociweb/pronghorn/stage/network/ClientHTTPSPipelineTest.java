@@ -57,7 +57,6 @@ public class ClientHTTPSPipelineTest {
 		
 		PipeConfig<NetRequestSchema> netREquestConfig = new PipeConfig<NetRequestSchema>(NetRequestSchema.instance, 30,1<<9);
 		PipeConfig<NetPayloadSchema> clientNetRequestConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,4,16000); 
-		PipeConfig<NetParseAckSchema> parseAckConfig = new PipeConfig<NetParseAckSchema>(NetParseAckSchema.instance, 4);
 		
 		PipeConfig<NetPayloadSchema> clientNetResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 10, 1<<16); 		
 		PipeConfig<NetResponseSchema> netResponseConfig = new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, 10, 1<<15); //if this backs up we get an error TODO: fix
@@ -88,14 +87,11 @@ public class ClientHTTPSPipelineTest {
 		HTTPClientRequestStage requestStage = new HTTPClientRequestStage(gm, ccm, input, clientRequests);
 		
 		
-		NetGraphBuilder.buildHTTPClientGraph(gm, 
-				                             outputsCount, maxPartialResponses, ccm, 
-				                             listenerPipeLookup, 
-				                             clientNetRequestConfig,
-											 parseAckConfig, 
-											 clientNetResponseConfig, 
+		NetGraphBuilder.buildHTTPClientGraph(true, gm, 
+				                             maxPartialResponses, ccm, listenerPipeLookup, 
+				                             clientNetResponseConfig,
 											 clientRequests, 
-											 toReactor);
+											 toReactor, 2, 2);
 		
 		i = toReactor.length;
 		PipeCleanerStage[] cleaners = new PipeCleanerStage[i];
