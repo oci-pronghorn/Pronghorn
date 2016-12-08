@@ -31,6 +31,9 @@ public class PipeTrailingReadingTest {
         int releaseTrigger = TOTAL_TEST_SIZE - (MSG_IN_FLIGHT/2);
         long lastKnownTailPos = 0;
         
+        
+        int totalBytesInFlight=0;
+        
         int c = TOTAL_TEST_SIZE;
         while (--c>=0) {
             int dataLen = c&0x1FF;//  511
@@ -48,7 +51,8 @@ public class PipeTrailingReadingTest {
                 blobWriter.write(testData, 0, dataLen);
                 DataOutputBlobWriter.closeLowLevelField(blobWriter);
 
-            
+                totalBytesInFlight+=dataLen;
+                
             Pipe.confirmLowLevelWrite(dataPipe, writeSize);            
             Pipe.publishWrites(dataPipe);  
             
@@ -96,8 +100,6 @@ public class PipeTrailingReadingTest {
             
             Pipe.readNextWithoutReleasingReadLock(dataPipe);
             
-         //   Pipe.releaseReadLock(dataPipe);
-            
             ///////////////////////////////
             //consumer
             //////////////////////////////
@@ -105,15 +107,114 @@ public class PipeTrailingReadingTest {
             //do not release any until we reach this point.
             if (c<releaseTrigger) {
                 Pipe.releasePendingAsReadLock(dataPipe, bytesInMessage);
+                totalBytesInFlight-=bytesInMessage;
             }
         
-           // int onPipe = (Pipe.contentRemaining(dataPipe)/Pipe.sizeOf(dataPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
-         //   System.out.println(onPipe);
+            int count = Pipe.releasePendingCount(dataPipe);
             
         }
         
         
     }
+    
+    @Test
+    public void testMultiMessageConsume() {
+    	
+    	
+        final int MSG_IN_FLIGHT = 1000;
+        final int PIPE_PADDING_TO_FORCE_WRAP_ARROUND = 333;
+        
+        
+        final int MSG_PAYLOAD_SIZE  = 100;
+        
+        PipeConfig<RawDataSchema> config = new PipeConfig<RawDataSchema>(RawDataSchema.instance, MSG_IN_FLIGHT+PIPE_PADDING_TO_FORCE_WRAP_ARROUND, MSG_PAYLOAD_SIZE);
+        
+        Pipe<RawDataSchema> dataPipe = new Pipe<RawDataSchema>(config);
+        dataPipe.initBuffers();
+        byte[] data = new byte[MSG_PAYLOAD_SIZE];
+        
+        int baseTailPos = 0;        
+        int baseHeadPos = 0;
+        
+        int iterations = 30;
+        while (--iterations>=0) {
+        
+        
+	    	///////////////////////////
+	    	//write data as small blocks
+	    	///////////////////////////
+	    	for(int i = 0;i<MSG_IN_FLIGHT;i++) {
+	    		assertTrue(Pipe.hasRoomForWrite(dataPipe));
+	    		
+	    		Pipe.addMsgIdx(dataPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+	    		Pipe.addByteArray(data, 0, data.length, dataPipe);
+	    		baseHeadPos+=data.length;
+	    		Pipe.confirmLowLevelWrite(dataPipe, Pipe.sizeOf(RawDataSchema.instance, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+	    		Pipe.publishWrites(dataPipe);
+	    	}
+	        assertEquals(baseHeadPos, Pipe.getBlobWorkingHeadPosition(dataPipe));
+	        assertEquals(baseHeadPos, Pipe.getBlobHeadPosition(dataPipe)); //can only read up to this point
+	        
+	        
+	        //////////////////////////////
+	    	//consume data as large blocks
+	    	//////////////////////////////
+	        {
+	         int consumeBlockSize = MSG_PAYLOAD_SIZE + (MSG_PAYLOAD_SIZE/2);        
+	         int accumulateCount = 600;
+	         int consumeCount = 400;        
+	                
+	         baseTailPos = testAccumulateConsume(baseTailPos, MSG_PAYLOAD_SIZE, dataPipe, consumeBlockSize, accumulateCount, consumeCount);
+	        }       
+			//////////////////////////////
+			//consume data as small blocks
+			//////////////////////////////
+	        {
+	         int consumeBlockSize = MSG_PAYLOAD_SIZE/4;        
+	         int accumulateCount = 400;
+	         int consumeCount = accumulateCount*4;        
+	                
+	         baseTailPos = testAccumulateConsume(baseTailPos, MSG_PAYLOAD_SIZE, dataPipe, consumeBlockSize, accumulateCount, consumeCount);
+	        }
+        }
+    }
+
+	private int testAccumulateConsume(int baseTailPos, final int MSG_PAYLOAD_SIZE, Pipe<RawDataSchema> dataPipe, int consumeBlockSize,
+			int accumulateCount, int consumeCount) {
+		
+		final int expectedTailMovement = accumulateCount*Pipe.sizeOf(RawDataSchema.instance, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+		for(int i=0;i<accumulateCount;i++) {
+        	
+        	assertTrue(Pipe.hasContentToRead(dataPipe));
+        	int msg = Pipe.takeMsgIdx(dataPipe);
+        	int meta = Pipe.takeRingByteMetaData(dataPipe);
+        	int len = Pipe.takeRingByteLen(dataPipe);
+        	Pipe.bytePosition(meta, dataPipe, len);
+        	
+        	Pipe.confirmLowLevelRead(dataPipe, Pipe.sizeOf(RawDataSchema.instance, msg));
+        	Pipe.readNextWithoutReleasingReadLock(dataPipe);
+        	
+        	assertEquals(i+1, Pipe.releasePendingCount(dataPipe));
+        	
+        }
+        assertEquals(baseTailPos, Pipe.tailPosition(dataPipe));
+		assertEquals(baseTailPos+ expectedTailMovement, Pipe.getWorkingTailPosition(dataPipe));
+        
+        int totalBytesInLargeTest = accumulateCount*MSG_PAYLOAD_SIZE;
+        
+        for(int i=0;i<consumeCount;i++) {
+        	
+        	Pipe.releasePendingAsReadLock(dataPipe, consumeBlockSize);
+        	
+        	totalBytesInLargeTest-=consumeBlockSize;
+        	int expectedMessages = (int)Math.ceil(totalBytesInLargeTest/(float)MSG_PAYLOAD_SIZE);
+        	assertEquals(expectedMessages,Pipe.releasePendingCount(dataPipe) );
+        }
+        assertEquals(baseTailPos+ expectedTailMovement, Pipe.tailPosition(dataPipe));
+        
+        //return new base
+        return baseTailPos+expectedTailMovement;
+	}
     
     
 }

@@ -21,10 +21,12 @@ public class PendingReleaseData {
 
     public static void appendPendingReadRelease(PendingReleaseData that, long slabTail, int blobTail, int fragBytesLen) {
         int idx = that.pendingReleaseMask & that.pendingReleaseHead++;
+        assert(that.pendingReleaseHead-that.pendingReleaseTail<=that.pendingLength.length);
         that.pendingBlobReleaseRing[idx] = blobTail;
         that.pendingSlabReleaseRing[idx] = slabTail;
         that.pendingLength[idx] = fragBytesLen;
         that.pendingReleaseCount++;
+        assert(that.pendingReleaseCount<=that.pendingLength.length);
     }
     
     public static <S extends MessageSchema> int pendingReleaseCount(PendingReleaseData that) {

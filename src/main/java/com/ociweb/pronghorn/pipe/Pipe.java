@@ -1075,7 +1075,7 @@ public class Pipe<T extends MessageSchema> {
 		aBuf.position(position);
 		//use the end of the buffer if the length runs past it.
 		aBuf.limit(Math.min(pipe.sizeOfBlobRing, endPos));
-
+		
 		ByteBuffer bBuf = wrappedBlobRingB(pipe);
 		bBuf.clear();
 		bBuf.limit(endPos > pipe.sizeOfBlobRing ? pipe.byteMask & endPos : 0 ); 
@@ -2310,6 +2310,7 @@ public class Pipe<T extends MessageSchema> {
         return pos;
     }
 
+    @Deprecated
     public static <S extends MessageSchema> int bytePositionGen(int meta, Pipe<S> pipe) {
     	return restorePosition(pipe, meta & RELATIVE_POS_MASK);
     }
@@ -2933,16 +2934,26 @@ public class Pipe<T extends MessageSchema> {
         pipe.llWrite.llwConfirmedWrittenPosition =  Pipe.getWorkingTailPosition(pipe);
     }
 
-	public static <S extends MessageSchema> int getBlobRingTailPosition(Pipe<S> pipe) {
+    public static <S extends MessageSchema> int getBlobTailPosition(Pipe<S> pipe) {
 	    return PaddedInt.get(pipe.blobRingTail.bytesTailPos);
+	}
+
+    @Deprecated
+	public static <S extends MessageSchema> int getBlobRingTailPosition(Pipe<S> pipe) {
+	    return getBlobTailPosition(pipe);
 	}
 
 	public static <S extends MessageSchema> void setBytesTail(Pipe<S> pipe, int value) {
         PaddedInt.set(pipe.blobRingTail.bytesTailPos, value);
     }
 
-    public static <S extends MessageSchema> int getBlobRingHeadPosition(Pipe<S> pipe) {
+    public static <S extends MessageSchema> int getBlobHeadPosition(Pipe<S> pipe) {
         return PaddedInt.get(pipe.blobRingHead.bytesHeadPos);        
+    }
+	
+    @Deprecated
+    public static <S extends MessageSchema> int getBlobRingHeadPosition(Pipe<S> pipe) {
+        return getBlobHeadPosition(pipe); 
     }
 
     public static <S extends MessageSchema> void setBytesHead(Pipe<S> pipe, int value) {
