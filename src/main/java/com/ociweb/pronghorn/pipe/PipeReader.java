@@ -113,11 +113,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         return Pipe.readLong(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc) + 1);//plus one to skip over exponent
     }
     
-    public static int readDataLength(Pipe pipe, int loc) {
-        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
-		
-        return Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc) + 1)];// second int is always the length
-    }
+
   
     public static boolean isEqual(Pipe pipe, int loc, CharSequence charSeq) {
     	int pos = Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];      	
@@ -355,6 +351,11 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
         return Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]  + (OFF_MASK&loc) + 1)];// second int is always the length
+    }
+    
+    @Deprecated
+    public static int readDataLength(Pipe pipe, int loc) {
+    	return readBytesLength(pipe,loc);
     }
     
     public static int readBytesMask(Pipe pipe, int loc) {
@@ -610,10 +611,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	public static <A extends Appendable> A peekUTF8(Pipe pipe, int loc, A target) {
 		assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
 		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
-		
-        int pos = Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc))];
-        
-        return (A)Pipe.readUTF8(pipe, target, pos, PipeReader.peekDataLength(pipe, loc));
+        return (A)Pipe.readUTF8(pipe, target, peekDataPosition(pipe, loc), PipeReader.peekDataLength(pipe, loc));
     }
 	
     public static int peekDataLength(Pipe pipe, int loc) {
@@ -623,6 +621,11 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         return Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc)+1)];// second int is always the length
     }
 	
+    public static int peekDataPosition(Pipe pipe, int loc) {
+    	assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        return Pipe.restorePosition(pipe,Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc))]);
+    }
 	
 	//this impl only works for simple case where every message is one fragment. 
 	public static boolean tryReadFragment(Pipe pipe) {

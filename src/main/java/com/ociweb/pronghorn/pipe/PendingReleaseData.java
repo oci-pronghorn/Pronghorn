@@ -33,6 +33,20 @@ public class PendingReleaseData {
     	return that.pendingReleaseCount;
     }
     
+    public static <S extends MessageSchema> int pendingReleaseByteCount(PendingReleaseData that) {
+    	    
+    	int total = 0;
+    	int t = that.pendingReleaseTail;
+    	int c = that.pendingReleaseCount;
+    	while (--c>=0) {    		
+    		int idx = that.pendingReleaseMask & t;    		
+    		total += that.pendingLength[idx];    		
+    		t++;
+    	}
+    	return total;
+    }
+    
+    
     public static <S extends MessageSchema> void releasePendingReadRelease(PendingReleaseData that, Pipe<S> pipe) {
         if (that.pendingReleaseCount>0) {
             int idx = that.pendingReleaseMask & that.pendingReleaseTail++;

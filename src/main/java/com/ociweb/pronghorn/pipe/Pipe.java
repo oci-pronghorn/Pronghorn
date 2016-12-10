@@ -903,7 +903,30 @@ public class Pipe<T extends MessageSchema> {
 
 
 
-    public static <S extends MessageSchema> void writeFieldToOutputStream(Pipe<S> pipe, OutputStream out) throws IOException {
+    public static Pipe[][] splitPipes(int pipeCount, Pipe[] socketResponse) {
+		
+		Pipe[][] result = new Pipe[pipeCount][];
+			
+		int fullLen = socketResponse.length;
+		int last = 0;
+		for(int p = 1;p<pipeCount;p++) {			
+			int nextLimit = (p*fullLen)/pipeCount;			
+			int plen = nextLimit-last;			
+		    Pipe[] newPipe = new Pipe[plen];
+		    System.arraycopy(socketResponse, last, newPipe, 0, plen);
+		    result[p-1]=newPipe;
+			last = nextLimit;
+		}
+		int plen = fullLen-last;
+	    Pipe[] newPipe = new Pipe[plen];
+	    System.arraycopy(socketResponse, last, newPipe, 0, plen);
+	    result[pipeCount-1]=newPipe;
+				
+		return result;
+				
+	}
+
+	public static <S extends MessageSchema> void writeFieldToOutputStream(Pipe<S> pipe, OutputStream out) throws IOException {
         int meta = Pipe.takeRingByteMetaData(pipe);
         int length    = Pipe.takeRingByteLen(pipe);    
         if (length>0) {                
@@ -3052,6 +3075,10 @@ public class Pipe<T extends MessageSchema> {
     
     public static <S extends MessageSchema> int releasePendingCount(Pipe<S> pipe) {
     	return PendingReleaseData.pendingReleaseCount(pipe.pendingReleases);
+    }
+    
+    public static <S extends MessageSchema> int releasePendingByteCount(Pipe<S> pipe) {
+    	return PendingReleaseData.pendingReleaseByteCount(pipe.pendingReleases);
     }
     
     public static <S extends MessageSchema> void releaseAllPendingReadLock(Pipe<S> pipe) {
