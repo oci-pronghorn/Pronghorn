@@ -10,8 +10,10 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.UnresolvedAddressException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,10 +21,13 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 
 public class ClientConnection extends SSLConnection {
 
-	static final Logger log = LoggerFactory.getLogger(ClientConnection.class);
+	static final Logger logger = LoggerFactory.getLogger(ClientConnection.class);
+
+	private static final byte[] EMPTY = new byte[0];
 		
 	private SelectionKey key; //only registered after handshake is complete.
 
@@ -52,7 +57,7 @@ public class ClientConnection extends SSLConnection {
 			try {
 				testAddr = InetAddress.getByName("www.google.com");
 			} catch (UnknownHostException e) {
-				log.error("no network connection.");
+				logger.error("no network connection.");
 				System.exit(-1);
 			}		
 		}
@@ -77,14 +82,15 @@ public class ClientConnection extends SSLConnection {
 		return lastUsedTime;
 	}
 	
-	public ClientConnection(String host, int port, int userId, int pipeIdx, long conId) throws IOException {
+	public ClientConnection(String host, byte[] hostBacking, int hostPos, int hostLen, int hostMask, 
+			                 int port, int userId, int pipeIdx, long conId) throws IOException {
 		super(SSLEngineFactory.createSSLEngine(host, port), SocketChannel.open(), conId);
 		
 		assert(port<=65535);		
 		
 		// RFC 1035 the length of a FQDN is limited to 255 characters
 		this.connectionGUID = new byte[(2*host.length())+6];
-		buildGUID(connectionGUID, host, port, userId);
+		buildGUID(connectionGUID, hostBacking, hostPos, hostLen, hostMask, port, userId);
 		this.pipeIdx = pipeIdx;
 		this.userId = userId;
 		this.host = host;
@@ -93,9 +99,12 @@ public class ClientConnection extends SSLConnection {
 		this.getEngine().setUseClientMode(true);
 				
 		this.getSocketChannel().configureBlocking(false);  
-		this.getSocketChannel().setOption(StandardSocketOptions.SO_KEEPALIVE, true);
+	//	this.getSocketChannel().setOption(StandardSocketOptions.SO_KEEPALIVE, true);
 		this.getSocketChannel().setOption(StandardSocketOptions.TCP_NODELAY, true); 
-		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<18); //.25 MB
+		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<17); 
+		
+	//	logger.info("recv buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF));
+		
 						
 		try {
 			InetSocketAddress remote = new InetSocketAddress(host, port);
@@ -103,19 +112,17 @@ public class ClientConnection extends SSLConnection {
 		} catch (UnresolvedAddressException uae) {
 			
 			if (hasNetworkConnectivity()) {
-				log.error("unable to find {}:{}",host,port);
+				logger.error("unable to find {}:{}",host,port);
 				throw uae;
 			} else {
-				log.error("No network connection.");
+				logger.error("No network connection.");
 				System.exit(-1);						
 			}
 		}
 		this.getSocketChannel().finishConnect(); //call again later to confirm its done.	
-		
-	}
-	
 
-	
+	}
+
 	public String getHost() {
 		return host;
 	}
@@ -162,18 +169,15 @@ public class ClientConnection extends SSLConnection {
 		return pipeIdx;
 	}
 
-	public static int buildGUID(byte[] target, CharSequence host, int port, int userId) {
+	public static int buildGUID(byte[] target, byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int userId) {
 		//TODO: if we find a better hash for host port user we can avoid this trie lookup. TODO: performance improvement.
 		//new Exception("build guid").printStackTrace();
 
 		int pos = 0;
-
 			
-    	for(int i = 0; i<host.length(); i++) {
-    		short c = (short)host.charAt(i);
-    		target[pos++] = (byte)(c>>8);
-    		target[pos++] = (byte)(c);
-    	}
+		Pipe.copyBytesFromToRing(hostBack, hostPos, hostMask, target, pos, Integer.MAX_VALUE, hostLen);
+		pos+=hostLen;
+		
     	target[pos++] = (byte)(port>>8);
     	target[pos++] = (byte)(port);
     	
@@ -200,17 +204,51 @@ public class ClientConnection extends SSLConnection {
 			return false;
 		}
 	}
-	
+
+	public boolean isRegistered() {
+		return this.key!=null;
+	}
 		
-	public void beginHandshake(Selector selector) throws IOException {
+	public void registerForUse(Selector selector, Pipe<NetPayloadSchema>[] handshakeBegin, boolean isTLS) throws IOException {
 
 		assert(getSocketChannel().finishConnect());
 		
-		getEngine().beginHandshake();	
+		if (isTLS) {
+			getEngine().beginHandshake();
+			
+			HandshakeStatus handshake = getEngine().getHandshakeStatus();
+			if (HandshakeStatus.NEED_TASK == handshake) { 				
+	             Runnable task;
+	             while ((task = getEngine().getDelegatedTask()) != null) {
+	                	task.run(); 
+	             }
+			} else if (HandshakeStatus.NEED_WRAP == handshake) {
+												
+				int i = handshakeBegin.length;
+				while (--i>=0) {
+					Pipe<NetPayloadSchema> pipe = handshakeBegin[i];
+
+					if (PipeWriter.tryWriteFragment(pipe, NetPayloadSchema.MSG_PLAIN_210) ) {
+						
+						PipeWriter.writeLong(pipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, getId());
+						PipeWriter.writeLong(pipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, SSLUtil.HANDSHAKE_POS); //signal that WRAP is needed 
+						PipeWriter.writeBytes(pipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204, EMPTY);
+						PipeWriter.publishWrites(pipe);	
+						
+						//we did it, hurrah
+						break;							
+					}						
+				}
+				if (i<0) {
+					throw new UnsupportedOperationException("unable to wrap handshake no pipes are avilable.");
+				}				
+				
+			}			
+						
+		}
 		isValid = true;
 		this.key = getSocketChannel().register(selector, SelectionKey.OP_READ, this); 
 
-    	
 	}
 
 
@@ -244,56 +282,13 @@ public class ClientConnection extends SSLConnection {
 			 isDisconnecting = true;
 			 getEngine().closeOutbound();
 		} catch (Throwable e) {
-			log.warn("Error closing connection ",e);
+			logger.warn("Error closing connection ",e);
 			close();
 		}
 	}
 		
 	
-	public void writeToSocketChannel(ByteBuffer buf) throws IOException {
-		
-		while (buf.hasRemaining()) {
-			getSocketChannel().write(buf);
-			if (buf.hasRemaining()) {
-				Thread.yield(); //TODO: bad loop.
-			}
-		}
-	}	
-	
-	
-	public boolean writeToSocketChannel(Pipe<NetPayloadSchema> source, int loc, ByteBuffer directBuffer) {
-			
-		
-		ByteBuffer[] writeHolder = PipeReader.wrappedUnstructuredLayoutBuffer(source, loc);
-		try {
-			
-			//copy done here to avoid GC and memory allocation done by socketChannel
-			directBuffer.clear();
-			directBuffer.put(writeHolder[0]);
-			directBuffer.put(writeHolder[1]);
-			directBuffer.flip();			
-			
-			writeToSocketChannel(directBuffer);
-			
-		} catch (IOException e) {
-			log.debug("unable to write to socket {}",this,e);
-			close();
-			return false;
-		}
-		return true;
-		
-	}
-	
-	public long readfromSocketChannel(ByteBuffer[] targetByteBuffers) {
-		
-		try {
-			return getSocketChannel().read(targetByteBuffers);			
-		} catch (IOException ex) {			
-			//expected close case.. log.warn("unable read from socket {}",this,ex);
-			close();
-		}
-		return -1;
-	}
+
 	
 	
 	

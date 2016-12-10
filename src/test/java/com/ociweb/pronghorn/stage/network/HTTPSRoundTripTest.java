@@ -12,18 +12,19 @@ import org.HdrHistogram.Histogram;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.ociweb.pronghorn.network.ClientConnectionManager;
+import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.HTTPClientRequestStage;
 import com.ociweb.pronghorn.network.HTTPModuleFileReadStage;
 import com.ociweb.pronghorn.network.ModuleConfig;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
-import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
@@ -37,6 +38,7 @@ import com.ociweb.pronghorn.stage.scheduling.FixedThreadsScheduler;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
+import com.ociweb.pronghorn.stage.test.ConsoleSummaryStage;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
 public class HTTPSRoundTripTest {
@@ -67,10 +69,16 @@ public class HTTPSRoundTripTest {
         /////////////////
     	int base2SimultaniousConnections = 3;
     	final int maxListeners = 1<<base2SimultaniousConnections;
+		ServerCoordinator serverCoord = new ServerCoordinator(groups, 8443, 15, maxListeners);//32K simulanious connections on server. 
     	
     	//TODO: the stages must STAY if there is work to do an NOT return !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     	
-    	gm = defineServer(isTLS, root, gm, maxListeners);     
+    	
+		 int requestUnwrapUnits = 1;
+		 int responseWrapUnits = 4; //only have 4 users now...
+		 int pipesPerOutputEngine = 1;
+ 
+    	gm = defineServer(isTLS, root, gm, maxListeners, requestUnwrapUnits, responseWrapUnits, pipesPerOutputEngine, serverCoord);     
         
         /////////////////
       	
@@ -80,19 +88,29 @@ public class HTTPSRoundTripTest {
 		final int outputsCount = 1;//2;//must be < connections
 		
 		//holds new requests
-		Pipe<NetRequestSchema>[] input = new Pipe[inputsCount];		
+		Pipe<NetRequestSchema>[] input = new Pipe[inputsCount];
+		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);
 		
-		Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, inputsCount, base2SimultaniousConnections, outputsCount, maxPartialResponses, input);
+		ClientCoordinator clientCoord = new ClientCoordinator(base2SimultaniousConnections, maxPartialResponses, isTLS);		
+		
+		int responseUnwrapUnits = 1;//To be driven by core count
+		int requestWrapUnits = 1;//To be driven by core count
+		
+		
+		Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections, outputsCount, maxPartialResponses, input,
+				                                           clientCoord, responseUnwrapUnits, requestWrapUnits,
+				                                           8, 8);
 		     
 		PipeCleanerStage<NetResponseSchema> cleaner = new PipeCleanerStage<>(gm, toReactor, "Reactor");
-		final StageScheduler scheduler = setupScheduler(gm);
-		
+		final StageScheduler scheduler = setupScheduler(gm, serverCoord, clientCoord);
+
 		
 		long start = System.currentTimeMillis();
 		
 		scheduler.startup();
 		
         runTestData(testFile, testFileSize, maxListeners, input, cleaner, scheduler, start);
+        
 
 	}
 
@@ -115,7 +133,7 @@ public class HTTPSRoundTripTest {
 				//TODO: muti response pattern for PET integration
 				
 				
-				int testSize = 1_000_000;//_000;//
+				int testSize = 1000;
 								//250;
 				              // 250_000;//300_000; //TODO: must be small enough to hold in queue.
 				
@@ -232,119 +250,7 @@ public class HTTPSRoundTripTest {
 				assertEquals(expected, lastCount);
 	}
 
-	@Ignore
-	public void openCloseTest() {
-		
-		//String testFile = "OCILogo.png";
-		{
-			String testFile = "SQRL.svg";
-			
-			boolean isTLS = true;
-			
-			String root = buildStaticFileFolderPath(testFile);
-			
-			GraphManager gm = new GraphManager();
-			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 10_000);
-			//GraphManager.enableBatching(gm);
-			
-		    /////////////////
-		    /////////////////
-			int base2SimultaniousConnections = 13;//8K    //out of memory 14 - 16K connection
-			
-			final int totalUsersCount = 1<<base2SimultaniousConnections;
-			
-		//	final int totalUsersCount = maxListeners;// + 20;//30;//max users attached from this client, one input and one response pipe for each of these.
-			
-			//base2SimultaniousConnections+=7;
-			//bits needed to hold all the possible users
-			
-			
-			
-			//TODO: the stages must STAY if there is work to do an NOT return !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			
-			//This must be large enough for both partials and new handshakes.
-			int maxPartialResponsesServer = 16;//16;//8; //this must be larger for large connections to ensure an open pipe is always available.
-			gm = defineServer(isTLS, root, gm, maxPartialResponsesServer);     
-		    
-		    /////////////////
-			int maxPartialResponsesClient = 16;  //can and should be less than the number of client users
-			int testSize = 0;
-			
-			
-			//extra 500mb.
-			ClientConnectionManager ccm = new ClientConnectionManager(base2SimultaniousConnections, maxPartialResponsesClient);
-			IntHashTable listenerPipeLookup = new IntHashTable(base2SimultaniousConnections);
-			
-			
-		  	
-			
-//			
-//			//client output count of pipes, this is the max count of handshakes from this client since they block all following content.
-//			final int outputsCount = 8;//should be < client connections,  number of pipes getting wrappers and sent out put stream 
-//			
-//			//holds new requests
-//			Pipe<NetRequestSchema>[] input = new Pipe[totalUsersCount];		//TODO: add one here!!!
-//			
-//			Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, totalUsersCount, base2SimultaniousConnections, outputsCount, maxPartialResponsesClient, input);
-//			assert(toReactor.length == input.length);
-//			
-//			//TODO: test without encryption to find pure latency of framework.
-//			
-//			//2K is optimal? balance between handshake and optimizatios, 256 calls per client ..68 ms per result so 174ms for all + 268 latency , 442ms
-//			int testSize = 100_000;//1<<11;//1_000_000; //for small values the overhead of the handshake is in the way?
-//			
-//			///93  268ms
-//			
-//			
-//			RegulatedLoadTestStage client = new RegulatedLoadTestStage(gm, toReactor, input, testSize);
-//			
-			
-			//use a single client or few pipe instances to open and close many different clients
-			
-			
-			if (base2SimultaniousConnections<=7) {
-				GraphManager.exportGraphDotFile(gm, "HTTPSRoundTripTest");			
-		    	MonitorConsoleStage.attach(gm); 
-			}
-		    
-		    
-			final StageScheduler scheduler = setupScheduler(gm);
-			
-			long start = System.currentTimeMillis();
-			scheduler.startup();
-		
-		    
-		    /////////////////
-		    /////////////////
-		try {
-			Thread.sleep(30_000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	//		GraphManager.blockUntilStageBeginsShutdown(gm,  client);		
-		
-		//	hist.outputPercentileDistribution(System.out, 0d);
-			
-			
-		//	System.out.println("total bytes returned:"+cleaner.getTotalBlobCount()+" expected "+expectedData); //434_070  23_930_000
-			
-			long duration = System.currentTimeMillis()-start;
-				
-			
-			System.out.println("duration: "+duration);
-			if (testSize>0) {
-				float msPerCall = duration/(float)testSize;
-				System.out.println("ms per call: "+msPerCall);		
-				System.out.println("calls per sec: "+(1000f/msPerCall));
-			}
-			scheduler.shutdown();
-			scheduler.awaitTermination(3, TimeUnit.SECONDS);
-		}
-		System.gc();
-				
-		
-	}
+
 	
 	
 	@Ignore
@@ -352,47 +258,77 @@ public class HTTPSRoundTripTest {
 				
 //		String testFile = "OCILogo.png";
 		{
-			String testFile = "SQRL.svg";
+			//String testFile = "SQRL.svg";
+			String testFile = "groovySum.json"; //shows that JSON works and finds the limiter
 			
-			boolean isTLS = true;
+			
+			boolean isTLS = false;//false;//
 			
 			String root = buildStaticFileFolderPath(testFile);
 			
 	    	GraphManager gm = new GraphManager();
-	    	GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 10_000);
+	    	GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 900);
+	    	
 	    	//GraphManager.enableBatching(gm);
 	    	
 	        /////////////////
 	        /////////////////
-	    	int base2SimultaniousConnections = 11;//14;//7;//12;//14;//16K
+	    	int base2SimultaniousConnections = 6;//TODO: 14 is out of memory. 9 hang crash
+	    	
+	    	//TODO: we need a better test that has each users interaction of 10 then wait for someone else to get in while still connected.
+	    	//TODO: urgent need to kill off expired pipe usages.
+	    	//TODO: urgent must split testing client and server!!
+	    	//each client pipe is 1 user no more.
 	    	
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
+	    	final int loadMultiplier = 10_000;//100_000;//100_000;
 	    	
-	    //	final int totalUsersCount = maxListeners;// + 20;//30;//max users attached from this client, one input and one response pipe for each of these.
+	    	//TODO: this number must be the limit of max simuantious handshakes.
+	    	int maxPartialResponsesServer = 64; //input lines to server (should be large)
+	    	int maxPartialResponsesClient = 64; //input lines to client (should be large)
 	    	
-	    	//base2SimultaniousConnections+=7;
-	    	//bits needed to hold all the possible users
+	    	//client output count of pipes, this is the max count of handshakes from this client since they block all following content.
+	    	final int clientOutputCount = 1;//8;//8;//should be < client connections,  number of pipes getting wrappers and sent out put stream 
+
+	    	final int maxConnectionBitsOnServer = 15;//32K simulanious connections on server
 	    	
-	    	
-	    	
-	    	//TODO: the stages must STAY if there is work to do an NOT return !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	    	int requestUnwrapUnits = 2;  //server unwrap units - need more for handshaks and more for posts
+	    	int responseWrapUnits = isTLS?4:32;   //server wrap units - need more for get requests, NOTE also number of pipes when TLS is OFF going to ServerWriter
+	    	int pipesPerOutputEngine = 1;//multiplier against server wrap units for max simultanus user responses.
+	    		    	
 	    	
 	    	//This must be large enough for both partials and new handshakes.
-	    	int maxPartialResponsesServer = 6;//16;//16;//8; //this must be larger for large connections to ensure an open pipe is always available.
-	    	gm = defineServer(isTLS, root, gm, maxPartialResponsesServer);     
+			ServerCoordinator serverCoord = new ServerCoordinator(groups, 8443, maxConnectionBitsOnServer, maxPartialResponsesServer);
+		
+	    	
+	    	gm = defineServer(isTLS, root, gm, maxPartialResponsesServer, requestUnwrapUnits, responseWrapUnits, pipesPerOutputEngine, serverCoord);     
 	        
 	        /////////////////
 	      	
-			
-			int maxPartialResponsesClient = 16;  //can and should be less than the number of client users
-			
-			//client output count of pipes, this is the max count of handshakes from this client since they block all following content.
-			final int outputsCount = 8;//should be < client connections,  number of pipes getting wrappers and sent out put stream 
+	    	
+	    	int clientResponseUnwrapUnits = 4;//To be driven by core count,  this is for consuming get responses
+	    	int clientRequestWrapUnits = 4;//To be driven by core count, this is for production of post requests
+
+	    	int responseQueue = 64; //longer to support all the requesters, if this is short it may hang on write...
+	    	int requestQueue = 16;
+	    	
+	    	//TODO: buffer is overflow to stop from dropping messages must make buffers bigge?
+	    	int inFlightLimit = 3000;//when set to much more it disconnects.
+						
 			
 			//holds new requests
-			Pipe<NetRequestSchema>[] input = new Pipe[totalUsersCount];		//TODO: add one here!!!
+			Pipe<NetRequestSchema>[] input = new Pipe[totalUsersCount];
+			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);
 			
-			Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, totalUsersCount, base2SimultaniousConnections, outputsCount, maxPartialResponsesClient, input);
+			int usersBits = 0;//this feature does not work.
+			int usersPerPipe = 1<<usersBits;  
+			ClientCoordinator clientCoord = new ClientCoordinator(base2SimultaniousConnections<<usersBits, maxPartialResponsesClient, isTLS);		//TODO: add one here!!!
+								
+			
+			
+			Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections, clientOutputCount, maxPartialResponsesClient, 
+					                                           input, clientCoord, clientResponseUnwrapUnits, clientRequestWrapUnits,
+					                                           requestQueue, responseQueue);
 			assert(toReactor.length == input.length);
 			
 			//TODO: test without encryption to find pure latency of framework.
@@ -400,20 +336,17 @@ public class HTTPSRoundTripTest {
 			//NOTE: must test with the same or more test size than the users we want to test above.
 			
 			//2K is optimal? balance between handshake and optimizatios, 256 calls per client ..68 ms per result so 174ms for all + 268 latency , 442ms
-			int testSize = totalUsersCount*1; 
+			int testSize = totalUsersCount*loadMultiplier; 
+		
+			RegulatedLoadTestStage client = new RegulatedLoadTestStage(gm, toReactor, input, testSize, inFlightLimit, "/"+testFile, usersPerPipe);
 			
-			///93  268ms
-			
-			
-			RegulatedLoadTestStage client = new RegulatedLoadTestStage(gm, toReactor, input, testSize);
-			
-			if (base2SimultaniousConnections<=7) {
+			if (base2SimultaniousConnections<=6) {
 				GraphManager.exportGraphDotFile(gm, "HTTPSRoundTripTest");			
 	        	MonitorConsoleStage.attach(gm); 
 			}
 	        
 	        
-			final StageScheduler scheduler = setupScheduler(gm);
+			final StageScheduler scheduler = setupScheduler(gm, serverCoord, clientCoord);
 			
 			long start = System.currentTimeMillis();
 			scheduler.startup();
@@ -461,7 +394,8 @@ public class HTTPSRoundTripTest {
 	}
 
 
-	private GraphManager defineServer(boolean isTLS, String root, GraphManager gm, int maxSimultaniousClients) {
+	private GraphManager defineServer(boolean isTLS, String root, GraphManager gm, int maxSimultaniousClients, int requestUnwrapUnits, int responseWrapUnits,  int pipesPerOutputEngine,
+			ServerCoordinator coordinator) {
 		final String path = root;
     	
     	ModuleConfig config = new ModuleConfig() {
@@ -483,13 +417,15 @@ public class HTTPSRoundTripTest {
  			}        
          	
          };
-    	    	
-        gm = NetGraphBuilder.buildHTTPTLSServerGraph(isTLS, gm, groups, maxSimultaniousClients, apps, config, 8443);
+
+         int socketWriters = 1;
+         
+        gm = NetGraphBuilder.buildHTTPServerGraph(isTLS, gm, groups, maxSimultaniousClients, apps, config, coordinator, requestUnwrapUnits, responseWrapUnits, pipesPerOutputEngine, socketWriters);
 		return gm;
 	}
 
 
-	private StageScheduler setupScheduler(GraphManager gm) {
+	private StageScheduler setupScheduler(GraphManager gm, final ServerCoordinator serverCoord, final ClientCoordinator clientCoord) {
 
        
         final StageScheduler scheduler = new ThreadPerStageScheduler(gm);
@@ -503,6 +439,9 @@ public class HTTPSRoundTripTest {
             public void run() {
                     scheduler.shutdown();
                     scheduler.awaitTermination(1, TimeUnit.SECONDS);
+
+                    serverCoord.shutdown();
+                    clientCoord.shutdown();
             }
         });
 		return scheduler;
@@ -510,39 +449,51 @@ public class HTTPSRoundTripTest {
 	
 
 
-	private Pipe<NetResponseSchema>[] defineClient(boolean isTLS, GraphManager gm, final int inputsCount, int bitsPlusHashRoom,
-			final int outputsCount, int maxPartialResponses, Pipe<NetRequestSchema>[] input) {
+	private Pipe<NetResponseSchema>[] defineClient(boolean isTLS, GraphManager gm, int bitsPlusHashRoom,
+			int outputsCount, int maxPartialResponses, Pipe<NetRequestSchema>[] input, ClientCoordinator ccm, int responseUnwrapUnits, int requestWrapUnits,
+			int requestQueue, int responseQueue) {
+				
+		int requestQueueBytes = 1<<4;
+		int responseQueueBytes = 1<<18;
+		
+		//one of these per unwrap unit and per partial message, there will be many of these normally so they should not be too large
+		//however should be deeper if we are sending lots of messages
+		int netRespQueue = 16;
+		int netRespSize = 1<<17;//must be just larger than the socket buffer
 
-		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);
+		int httpRequestQueueBytes = 1<<13;
+		int httpRequetQueueSize = 256;
 		
-		ClientConnectionManager ccm = new ClientConnectionManager(bitsPlusHashRoom, maxPartialResponses);
-		IntHashTable listenerPipeLookup = new IntHashTable(bitsPlusHashRoom);
+		int usersPerPipe = 10; //need to set hash lookup.
+
 		
-		int i = input.length;
-		while (--i>=0) {
-			IntHashTable.setItem(listenerPipeLookup, i, i);//put this key on that pipe
-			
+		//create more pipes if more wrapers were requested.
+		if (requestWrapUnits>outputsCount) {
+			outputsCount = requestWrapUnits;
 		}
-
+		//out to the server, one of these for every client user
+		PipeConfig<NetRequestSchema> netRequestConfig = new PipeConfig<NetRequestSchema>(NetRequestSchema.instance, requestQueue, requestQueueBytes);
+		//System.err.println("in "+netRequestConfig);
+		//back from server, one of these for every client user.
+		PipeConfig<NetResponseSchema> netResponseConfig = new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, responseQueue, responseQueueBytes);
+		//System.err.println("out "+netResponseConfig);	
 		
+		
+		IntHashTable listenerPipeLookup = new IntHashTable(bitsPlusHashRoom+2); //bigger for more speed.
+		
+		
+		int i = input.length;//*usersPerPipe;
+		while (--i>=0) {
+			IntHashTable.setItem(listenerPipeLookup, i, i/*%input.length*/);//put this key on that pipe			
+		}				
 		
 		//second pipe which also impacts latency		
-		PipeConfig<NetPayloadSchema> clientNetRequestConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,256,1<<13); 
-
-		//must be large enough for handshake plus this is the primary pipe after the socket so it must be a little larger.
-		PipeConfig<NetPayloadSchema> clientNetResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 256, 1<<15);	
-		
+		PipeConfig<NetPayloadSchema> httpRequestConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,httpRequetQueueSize,httpRequestQueueBytes); 
 		
 		//////////////
 		//these 2 are small since we have so many
 		/////////////
 		
-		//out to the server, one of these for every client user
-		PipeConfig<NetRequestSchema> netRequestConfig = new PipeConfig<NetRequestSchema>(NetRequestSchema.instance, 4, 1<<4);
-		//System.err.println("in "+netRequestConfig);
-		//back from server, one of these for every client user.
-		PipeConfig<NetResponseSchema> netResponseConfig = new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, 4, 1<<13);
-		//System.err.println("out "+netResponseConfig);		
 		
 		//responses from the server	
 		Pipe<NetResponseSchema>[] toReactor = new Pipe[input.length];	
@@ -552,27 +503,34 @@ public class HTTPSRoundTripTest {
 			toReactor[m] = new Pipe<NetResponseSchema>(netResponseConfig);
 			input[m] = new Pipe<NetRequestSchema>(netRequestConfig);	
 		}
+
 		
 		Pipe<NetPayloadSchema>[] clientRequests = new Pipe[outputsCount];
 		int r = outputsCount;
 		while (--r>=0) {
-			clientRequests[r] = new Pipe<NetPayloadSchema>(clientNetRequestConfig);		
+			clientRequests[r] = new Pipe<NetPayloadSchema>(httpRequestConfig);		
 		}
 		
-		int responseUnwrapUnits = 4;
-		int requestWrapUnits = 4;
-		
+
 		NetGraphBuilder.buildHTTPClientGraph(isTLS, gm, 
 				                             maxPartialResponses, ccm, listenerPipeLookup,
-				                             clientNetResponseConfig,
+				                             netRespQueue,netRespSize,
 											 clientRequests, 
 											 toReactor, 
 											 responseUnwrapUnits, requestWrapUnits);
 
-		HTTPClientRequestStage requestStage = new HTTPClientRequestStage(gm, ccm, input, clientRequests);
+		new HTTPClientRequestStage(gm, ccm, input, clientRequests);
+		
+		//TODO: JUST LIKE GROUPS THESE CAN NOT ACCESS ccm AT THE SAME TIME.
+//		Pipe[][] inputs = Pipe.splitPipes(2, input);
+//		Pipe[][] requests = Pipe.splitPipes(2, clientRequests);
+//				
+//		
+//		new HTTPClientRequestStage(gm, ccm, inputs[0], requests[0]);
+//		new HTTPClientRequestStage(gm, ccm, inputs[1], requests[1]);
+//				
 		
 		return toReactor;
-		
 	}
 
 	

@@ -6,6 +6,9 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.util.MemberHolder;
 import com.ociweb.pronghorn.util.PoolIdx;
@@ -16,6 +19,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
     //TODO: replace to hold ServerConnection
 	private final ServiceObjectHolder<ServerConnection>[] socketHolder;
+	
+	private final static Logger logger = LoggerFactory.getLogger(ServerCoordinator.class);
     
     private final Selector[]                           selectors;
     private final MemberHolder[]                       subscriptions;
@@ -42,7 +47,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
 	private final PoolIdx responsePipeLinePool;
     
-    public ServerCoordinator(int socketGroups, int port, int maxPartialResponses, int maxConnectionsBits) {
+    public ServerCoordinator(int socketGroups, int port, int maxConnectionsBits, int maxPartialResponses) {
         this.socketHolder      = new ServiceObjectHolder[socketGroups];    
         this.selectors         = new Selector[socketGroups];
         
@@ -61,10 +66,19 @@ public class ServerCoordinator extends SSLConnectionHolder {
         
     }
     
+    public void shutdown() {
+    	
+    	logger.info("Server pipe pool:\n {}",responsePipeLinePool);
+    	    	
+    }
+    
 	public int responsePipeLineIdx(long ccId) {
 		return responsePipeLinePool.get(ccId);
 	}
 	
+	public int checkForResponsePipeLineIdx(long ccId) {
+		return responsePipeLinePool.getIfReserved(ccId);
+	}	
 	
 	public void releaseResponsePipeLineIdx(long ccId) {
 		responsePipeLinePool.release(ccId);
@@ -99,9 +113,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
     }
     
     public static ServiceObjectHolder<ServerConnection> getSocketChannelHolder(ServerCoordinator that, int idx) {
-        while (null==that.socketHolder[idx]) {//TODO: may need to find more elegant way to do this but this will probably do just fine.
-            Thread.yield();//we have a race that happens on graph building so is may have to wait here.
-        }
         return that.socketHolder[idx];
     }
     
@@ -157,12 +168,14 @@ public class ServerCoordinator extends SSLConnectionHolder {
         int i = that.socketHolder.length;
         ServiceObjectHolder<ServerConnection>[] localSocketHolder=that.socketHolder;
         while (--i>=0) {
-             ServiceObjectHolder<ServerConnection> holder = localSocketHolder[i];                         
-             int openConnections = (int)(ServiceObjectHolder.getSequenceCount(holder) - ServiceObjectHolder.getRemovalCount(holder));
-             if (openConnections<minValue /*&& Pipe.hasRoomForWrite(localOutputs[i])*/ ) {
-                 minValue = openConnections;
-                 minIdx = i;
-             } 
+             ServiceObjectHolder<ServerConnection> holder = localSocketHolder[i];    
+             if (null!=holder) {
+	             int openConnections = (int)(ServiceObjectHolder.getSequenceCount(holder) - ServiceObjectHolder.getRemovalCount(holder));
+	             if (openConnections<minValue /*&& Pipe.hasRoomForWrite(localOutputs[i])*/ ) {
+	                 minValue = openConnections;
+	                 minIdx = i;
+	             } 
+             }
           }
           return minIdx;
     }

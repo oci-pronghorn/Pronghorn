@@ -253,7 +253,6 @@ public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, 
 		
 	}
 	
-    //TODO:  YF this is the method to be implemented natively 
 	private void goCompute(int typeMask, 
 			               int[] rowSlab, long rowPosition, int rowMask, int length, 
 			               int[][] colSlabs, int[] colPositions, int colMask, 

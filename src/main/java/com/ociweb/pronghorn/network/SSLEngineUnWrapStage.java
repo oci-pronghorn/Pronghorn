@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -16,7 +16,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	private final SSLConnectionHolder ccm;
 	private final Pipe<NetPayloadSchema>[] encryptedContent; 
 	private final Pipe<NetPayloadSchema>[] outgoingPipeLines;
-	private final Pipe<NetParseAckSchema> handshakeAck; //to allow for the release of the pipe when we do not need it.
+	private final Pipe<ReleaseSchema> handshakeRelease; //to allow for the release of the pipe when we do not need it.
 	private final Pipe<NetPayloadSchema>  handshakePipe;
 	private ByteBuffer[]                          buffers;
 	private ByteBuffer[]                          workspace;
@@ -34,13 +34,13 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	public SSLEngineUnWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, 
 			                       Pipe<NetPayloadSchema>[] encryptedContent, 
 			                       Pipe<NetPayloadSchema>[] outgoingPipeLines,
-			                       Pipe<NetParseAckSchema> ack,
+			                       Pipe<ReleaseSchema> relesePipe,
 			                       Pipe<NetPayloadSchema> handshakePipe, boolean isServer, int groupId) {
-		super(graphManager, encryptedContent, join(outgoingPipeLines, handshakePipe, ack));
+		super(graphManager, encryptedContent, join(outgoingPipeLines, handshakePipe, relesePipe));
 		this.ccm = ccm;
 		this.encryptedContent = encryptedContent;
 		this.outgoingPipeLines = outgoingPipeLines;
-		this.handshakeAck = ack;
+		this.handshakeRelease = relesePipe;
 		
 		assert(outgoingPipeLines.length>0);
 		assert(encryptedContent.length>0);
@@ -51,38 +51,9 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 		this.isServer = isServer;
 		this.groupId = groupId;
 		this.shutdownCount = encryptedContent.length;
+
 	}
 
-	public SSLEngineUnWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, 
-            Pipe<NetPayloadSchema>[] encryptedContent, 
-            Pipe<NetPayloadSchema>[] outgoingPipeLines,
-            Pipe<NetParseAckSchema> ack,
-            boolean isServer, int groupId) {
-		super(graphManager, encryptedContent, join(outgoingPipeLines,ack));
-		this.ccm = ccm;
-		this.encryptedContent = encryptedContent;
-		this.outgoingPipeLines = outgoingPipeLines;
-		this.handshakeAck = ack;
-		this.handshakePipe = null;
-		this.isServer = isServer;
-		this.groupId = groupId;
-		assert(encryptedContent.length == outgoingPipeLines.length);
-		
-		int minOut = minVarLength(outgoingPipeLines);
-		int maxIn  = maxVarLength(encryptedContent);
-		if (maxIn*2>minOut) {
-			//unwrap is an all or nothing operation, if we have left over data in the roller and we combine it
-			//with the most recent read then the output target may require 2x the payload space, so the pipes must be built to hold this.
-			throw new UnsupportedOperationException("output payloads must be 2x larger than input payloads, in:"+maxIn+" out:"+minOut);
-		}
-		
-//		//TODO: could see a nice performance improvment if we can bump this up.
-//		if (maxIn > SSLUtil.MAX_ENCRYPTED_PACKET_LENGTH) {
-//			throw new UnsupportedOperationException("max buffer to decrypt must be less than "+SSLUtil.MAX_ENCRYPTED_PACKET_LENGTH+" but "+maxIn+" was used. (Limitiation from OpenSSL)");
-//		}
-		
-		
-	}
 	
 	@Override
 	public void startup() {
@@ -147,7 +118,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 				workspace[0].clear();
 				workspace[1].clear();
 				
-				int temp = SSLUtil.engineUnWrap(ccm, source, target, rolling, workspace, isServer ? handshakePipe : null, handshakeAck, secureBuffer, groupId);			
+				int temp = SSLUtil.engineUnWrap(ccm, source, target, rolling, workspace, handshakePipe, handshakeRelease, secureBuffer, groupId, isServer);			
 				if (temp<0) {
 					if (--shutdownCount == 0) {
 						requestShutdown();

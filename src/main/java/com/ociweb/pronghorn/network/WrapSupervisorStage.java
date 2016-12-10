@@ -1,11 +1,14 @@
 package com.ociweb.pronghorn.network;
 
+import javax.net.ssl.SSLEngineResult.HandshakeStatus;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -16,7 +19,8 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stage
     
     private static final int SIZE_OF_TO_CHNL = Pipe.sizeOf(ServerResponseSchema.instance, ServerResponseSchema.MSG_TOCHANNEL_100);
-
+    private static final byte[] EMPTY = new byte[0];
+    
 	private static Logger logger = LoggerFactory.getLogger(WrapSupervisorStage.class);
 
     private final Pipe<ServerResponseSchema>[] dataToSend;
@@ -44,8 +48,12 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
     public final int poolMod;
     public final int maxOuputSize;
     public final int plainSize = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
-    
-    
+    private int shutdownCount;
+
+    private final boolean isTLS;
+	private final int groupId = 0; //TODO: pass in on construction, must know group to look up SSL connection.
+	
+	
     /**
      * 
      * Data arrives from random input pipes, but each message has a channel id and squence id.
@@ -56,14 +64,15 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
      * @param inputPipes
      * @param coordinator
      */
-    public WrapSupervisorStage(GraphManager graphManager, Pipe<ServerResponseSchema>[] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator) {
+    public WrapSupervisorStage(GraphManager graphManager, Pipe<ServerResponseSchema>[] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator, boolean isTLS) {
         super(graphManager, inputPipes, outgoingPipes);
       
         this.dataToSend = inputPipes;
         this.outgoingPipes = outgoingPipes;
         this.coordinator = coordinator;
-        
+        this.isTLS = isTLS;
         this.poolMod = outgoingPipes.length;
+        this.shutdownCount = dataToSend.length;
         
         if (minVarLength(outgoingPipes) < maxVarLength(inputPipes)) {
         	throw new UnsupportedOperationException("All output pipes must support variable length fields equal to or larger than all input pipes");
@@ -89,11 +98,10 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
 		}
 	}
     
-    @Override
+	@Override
     public void run() {
 
     	boolean didWork;
-    	
     	do {
 	    	didWork = false;
 	        int c = dataToSend.length;
@@ -123,15 +131,43 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
 	                int sequenceNo = 0;
 	                if (peekMsgId>=0) {
 	                    long channelId = Pipe.peekLong(sourcePipe, 1);
+	                    myPipe = outgoingPipes[(int)(channelId % poolMod)];
 	                    sequenceNo = Pipe.peekInt(sourcePipe,  3);
 	                     
-	                    
-	                    int expected = expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)];                
-	                    
+	                   // logger.trace("wrap super is routing finished message for id {} ",channelId);
+	                     
+	                    if (isTLS) {
+		                    SSLConnection con = coordinator.get(channelId, groupId);
+		                    
+		                    HandshakeStatus hanshakeStatus = con.getEngine().getHandshakeStatus();
+		                    do {
+			                    if (HandshakeStatus.NEED_TASK == hanshakeStatus) {
+			                         Runnable task;
+			      		             while ((task = con.getEngine().getDelegatedTask()) != null) {
+			      		                	task.run(); 
+			      		             }
+			      		           hanshakeStatus = con.getEngine().getHandshakeStatus();
+			                    } 
+			                    
+			                    if (HandshakeStatus.NEED_WRAP == hanshakeStatus) {
+			                    	if (PipeWriter.tryWriteFragment(myPipe, NetPayloadSchema.MSG_PLAIN_210) ) {
+			    						PipeWriter.writeLong(myPipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, con.getId());
+			    						PipeWriter.writeLong(myPipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, SSLUtil.HANDSHAKE_POS); //signal that WRAP is needed 
+			    						PipeWriter.writeBytes(myPipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204, EMPTY);
+			    						PipeWriter.publishWrites(myPipe);	
+			    					} else {
+			    						//no room to request wrap, try later
+			                        	break;
+			    					}
+			                    } 
+		                    } while ((HandshakeStatus.NEED_TASK == hanshakeStatus) || (HandshakeStatus.NEED_WRAP == hanshakeStatus));
+		                    assert(HandshakeStatus.NEED_UNWRAP != hanshakeStatus) : "Unexpected unwrap request";	                    
+	                    }
 	                    
 	                    //read the next non-blocked pipe, sequenceNo is never reset to zero
 	                    //every number is used even if there is an exception upon write.
-	                    boolean isBlocked = false;//sequenceNo!=expected;  //TODO: urgent must fix ordering 
+	                    int expected = expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)];                
+	                    boolean isBlocked = false;//sequenceNo!=expected;  //TODO: URGENT must fix ordering before adding 2 modules 
 	                    //TODO: add support for blocked by id  until it is empty.
 	                    
 	                    if (isBlocked) {
@@ -146,8 +182,7 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
 	                    //////////////////////
 	                    int requestContext = Pipe.peekInt(sourcePipe, 6);
 	                    
-	                    myPipe = outgoingPipes[(int)(channelId % poolMod)];
-	                    
+	                    	                    
 	                    if (0 != ((UPGRADE_MASK|CLOSE_CONNECTION_MASK) & requestContext)) {
 	                    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {
 	                    		break;
@@ -156,17 +191,19 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
 	                    	if (!Pipe.hasRoomForWrite(myPipe, plainSize)) {
 	                    		break;
 	                    	}	                    	
-	                    }
-	                    
+	                    }                    
 	                    
 	                } else {
-	                	//TODO: add count down of shutdown !!
-	                	
 	                	Pipe.takeMsgIdx(sourcePipe);
 	                	Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
 	                	Pipe.releaseReadLock(sourcePipe);
-	                	requestShutdown();
-	                	return;
+	                	
+	                	if (--shutdownCount<=0) {
+	                		requestShutdown();
+	                		return;
+	                	} else {
+	                		continue;
+	                	}
 	                }
 	                
 	                ////////////////////////////////////////////////////
@@ -194,6 +231,9 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
 	                     //byteVector is payload
 	                     int meta = Pipe.takeRingByteMetaData(sourcePipe); //for string and byte array
 	                     int len = Pipe.takeRingByteLen(sourcePipe);
+	                     
+	                     //logger.info("in pairs but why so unbalanced, super writes to pipe len:"+len+" chnl "+channelId);
+	                     
 	                     int requestContext = Pipe.takeInt(sourcePipe); //high 1 upgrade, 1 close low 20 target pipe	                     
 	                     int blobMask = Pipe.blobMask(sourcePipe);
 						 byte[] blob = Pipe.blob(sourcePipe);
@@ -239,7 +279,9 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
 		 /////////////
 		 //write out the content
 		 /////////////
-		                      
+		 
+		 //logger.info("write content from super to wrapper sizse {} for {}",len,channelId);
+		 
 		 int plainSize = Pipe.addMsgIdx(myPipe, NetPayloadSchema.MSG_PLAIN_210);
 		 Pipe.addLongValue(channelId, myPipe);
 		 Pipe.addLongValue(Pipe.getWorkingTailPosition(myPipe), myPipe);

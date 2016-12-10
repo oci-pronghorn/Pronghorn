@@ -16,7 +16,7 @@ import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
-import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -49,7 +49,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private       int[]                       inputLengths;
     private       boolean[]                   isOpen;
         
-    private final Pipe<NetParseAckSchema> ackStop;
+    private final Pipe<ReleaseSchema> releasePipe;
     
     private final Pipe<HTTPRequestSchema>[] outputs;
 
@@ -69,8 +69,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     //TODO: need error if two strings are added to the same place?? or not
     //TODO: all the parts to the same message will share the same sequence no
 
-    //NOTE: TODO: BBB for values mis-routed here we need a target stage to uprage connection and set the port
-    
     private final HTTPSpecification<T,R,V,H> httpSpec;
         
     private int headerIdUpgrade    = HTTPHeaderKeyDefaults.UPGRADE.ordinal();
@@ -88,19 +86,19 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     //total all into one master DataInputReader
        
     
-    public static HTTP1xRouterStage newInstance(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<NetParseAckSchema> ackStop,
+    public static HTTP1xRouterStage newInstance(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<ReleaseSchema> ackStop,
                                               CharSequence[] paths, long[] headers, int[] messageIds) {
         
        return new HTTP1xRouterStage<HTTPContentTypeDefaults ,HTTPHeaderKeyDefaults, HTTPRevisionDefaults, HTTPVerbDefaults>(gm,input,outputs, ackStop, paths, headers, messageIds,
                                    HTTPSpecification.defaultSpec()  ); 
     }
 
-	public HTTP1xRouterStage(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<NetParseAckSchema> ackStop,
+	public HTTP1xRouterStage(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<ReleaseSchema> ackStop,
                            CharSequence[] paths, long[] headers, int[] messageIds, 
                            HTTPSpecification<T,R,V,H> httpSpec) {
         super(gm,input,join(outputs,ackStop));
         this.inputs = input;
-        this.ackStop = ackStop;        
+        this.releasePipe = ackStop;        
         this.outputs = outputs;
         this.messageIds = messageIds;
         this.requestHeaderMask = headers;
@@ -295,15 +293,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	            
 	        }
     	} while (didWork!=0);    
-	        
-	        
-	//        if (0==openCount) {
-	  //          requestShutdown();
-	   //         return;
-	     //   }
-	 //       Thread.yield();
-    //	}
-    	
+
     }
 
     
@@ -327,7 +317,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             TrieParserReader.parseSetup(trieReader, Pipe.blob(selectedInput), inputBlobPos[idx], inputLengths[idx], Pipe.blobMask(selectedInput));
             final int idx1 = idx;
             final long channel1 = channel; 
-            
             consumeAvail(idx1, selectedInput, channel1, inputBlobPos[idx1], inputLengths[idx1]);
             return 1;
         }
@@ -381,8 +370,12 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
     if (verbId<0) {
         if (TrieParserReader.parseHasContentLength(trieReader)<=0) { //TODO: how long until we timeout and abandon this partial data??
             //not error, must wait for more content and try again.
+        	logger.info("waiting for {}",channel);
+            
             return false;
         } else {
+            
+        	logger.info("ERROR ZZZZZZZZZZZ  {}",channel);
             
             //TODO: send error
             
@@ -393,14 +386,10 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
   //  TrieParserReader.debugAsUTF8(trieReader, System.out,3000, false);
     final int routeId = (int)TrieParserReader.parseNext(trieReader, urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
     if (routeId<0) {
-        if (TrieParserReader.parseHasContentLength(trieReader)<=0) {
-            //not error, must wait for more content and try again.
-            return false;            
-        } else {
-            
-            //TODO: send error
-            
-        }
+    	//not error, must wait for more content and try again.
+    	logger.info("C waiting for {}",channel);
+        
+    	return false; 
     }
  
     Pipe<HTTPRequestSchema> staticRequestPipe = outputs[routeId];
@@ -417,16 +406,6 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
         Pipe.addIntValue(sequenceNo++, staticRequestPipe); //sequence                    // Write 1   4
         Pipe.addIntValue(verbId, staticRequestPipe);   // Verb                           // Write 1   5
         
-        
-//        try {
-//        	//System.out.print("captured data:");
-//			TrieParserReader.writeCapturedValuesToAppendable(trieReader,System.out);
-//			//System.out.println();
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-        
         writeURLParamsToField(trieReader, blobWriter[routeId]);                          //write 2   7
        
         int httpRevisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap);  //  GET /hello/x?x=3 HTTP/1.1 
@@ -436,9 +415,12 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
                 //ROLL BACK THE WRITE
                 Pipe.resetHead(staticRequestPipe);
                 //not error, must wait for more content and try again.
+                logger.info("B waiting for {}",channel);
+                
                 return false;            
             } else {
                  
+            	logger.info("ERROR XXXXXXXXXXXXXXX  {}",channel);
                 
                 
                 //TODO: send error
@@ -453,6 +435,9 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
         if (ServerCoordinator.INCOMPLETE_RESPONSE_MASK == requestContext) {   
             //try again later, not complete.
             Pipe.resetHead(staticRequestPipe);
+            
+            logger.info("A waiting for {}",channel);
+            
             return false;
         }        
         Pipe.addIntValue(requestContext, staticRequestPipe); // request context     // Write 1   11
@@ -460,19 +445,22 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
         int consumed = Pipe.publishWrites(staticRequestPipe);                        // Write 1   12
         assert(consumed>=0);        
         Pipe.confirmLowLevelWrite(staticRequestPipe, size);     
-        
-        
-        if (true && this.inputSlabPos[idx]!=-1 && trieReader.sourceLen==0) { 
+
+        if (trieReader.sourceLen==0 && 
+        	Pipe.contentRemaining(selectedInput)==0) { //added second rule to minimize release messages
         	
-        	if (Pipe.hasRoomForWrite(ackStop)) {
-        		int s = Pipe.addMsgIdx(ackStop, NetParseAckSchema.MSG_PARSEACK_100);
-        		Pipe.addLongValue(channel,ackStop);
-        		Pipe.addLongValue(this.inputSlabPos[idx],ackStop);
-        		Pipe.confirmLowLevelWrite(ackStop, s);
-        		Pipe.publishWrites(ackStop);
+        	assert(inputSlabPos[idx]>=0);
+        	//logger.info("send ack for {}",channel);
+        	
+        	if (Pipe.hasRoomForWrite(releasePipe)) {
+        		int s = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASE_100);
+        		Pipe.addLongValue(channel,releasePipe);
+        		Pipe.addLongValue(inputSlabPos[idx],releasePipe);
+        		Pipe.confirmLowLevelWrite(releasePipe, s);
+        		Pipe.publishWrites(releasePipe);
         		this.inputSlabPos[idx]=-1;
         	} else {
-				logger.error("B server no room for ack of {} {}",channel,ackStop);
+				logger.error("BBBBBBBBBBBBBBBBB server no room for ack of {} {}",channel,releasePipe);
 			}
         } 
         
@@ -515,7 +503,7 @@ private int accumulateRunningBytes(int idx, Pipe<NetPayloadSchema> selectedInput
         if (NetPayloadSchema.MSG_PLAIN_210 == messageIdx) {
             long channel   = Pipe.takeLong(selectedInput);
             this.inputSlabPos[idx] = Pipe.takeLong(selectedInput);
-            
+          
             int meta       = Pipe.takeRingByteMetaData(selectedInput);
             assert(Pipe.byteBackingArray(meta, selectedInput) == Pipe.blob(selectedInput));
             
@@ -551,6 +539,11 @@ private int accumulateRunningBytes(int idx, Pipe<NetPayloadSchema> selectedInput
             
             Pipe.readNextWithoutReleasingReadLock(selectedInput); 
             
+            if (-1 == inputSlabPos[idx]) {
+            	//TODO: this is written too soon and should only be done after consumption.
+            	inputSlabPos[idx] = Pipe.getWorkingTailPosition(selectedInput); //working and was tested since this is low level with unrleased block.
+            }
+            assert(inputSlabPos[idx]!=-1);
         } else {
             assert(-1 == messageIdx) : "messageIdx:"+messageIdx;
             Pipe.confirmLowLevelRead(selectedInput, Pipe.EOF_SIZE);
@@ -681,7 +674,7 @@ private boolean hasNoActiveChannel(int idx) {
                 //this is the normal most frequent case                    
             } else {
             	
-            	if (true) { //TODO: add support for this.
+            	if (true) { 
             		throw new UnsupportedOperationException("only simple rest calls can be made, non should require the header values.");
             	}
             	

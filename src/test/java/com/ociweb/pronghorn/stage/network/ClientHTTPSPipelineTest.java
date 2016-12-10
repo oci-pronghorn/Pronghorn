@@ -7,10 +7,10 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.ociweb.pronghorn.network.ClientConnectionManager;
+import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.HTTPClientRequestStage;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
-import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
@@ -42,7 +42,7 @@ public class ClientHTTPSPipelineTest {
 
 		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);
 		
-		ClientConnectionManager ccm = new ClientConnectionManager(base2SimultaniousConnections,inputsCount);
+		ClientCoordinator ccm = new ClientCoordinator(base2SimultaniousConnections,inputsCount);
 		IntHashTable listenerPipeLookup = new IntHashTable(base2SimultaniousConnections+2);
 		
 		System.out.println("listeners "+maxListeners);
@@ -57,8 +57,7 @@ public class ClientHTTPSPipelineTest {
 		
 		PipeConfig<NetRequestSchema> netREquestConfig = new PipeConfig<NetRequestSchema>(NetRequestSchema.instance, 30,1<<9);
 		PipeConfig<NetPayloadSchema> clientNetRequestConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,4,16000); 
-		
-		PipeConfig<NetPayloadSchema> clientNetResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 10, 1<<16); 		
+				
 		PipeConfig<NetResponseSchema> netResponseConfig = new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, 10, 1<<15); //if this backs up we get an error TODO: fix
 
 		
@@ -89,7 +88,7 @@ public class ClientHTTPSPipelineTest {
 		
 		NetGraphBuilder.buildHTTPClientGraph(true, gm, 
 				                             maxPartialResponses, ccm, listenerPipeLookup, 
-				                             clientNetResponseConfig,
+				                             10,1<<15,
 											 clientRequests, 
 											 toReactor, 2, 2);
 		

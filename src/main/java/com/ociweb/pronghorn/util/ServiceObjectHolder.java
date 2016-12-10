@@ -224,14 +224,14 @@ public class ServiceObjectHolder<T> {
             x++;
             if (index==hardStop) {
             	
-//            	//dump the service objects and determine if we have the same entry twice?
-//            	int s = data.size;
-//            	while (--s>=0) {
-//            		System.err.println("   "+s+" "+data.serviceObjectLookupCounts[s]+" valid: "+validator.isValid(data.serviceObjectValues[s]));
-//            		
-//            	}
+            	//dump the service objects and determine if we have the same entry twice?
+            	int s = data.size;
+            	while (--s>=0) {
+            		System.err.println("   "+s+" "+data.serviceObjectLookupCounts[s]+" valid: "+validator.isValid(data.serviceObjectValues[s]));
+            		
+            	}
             	
-            	System.err.println("Error, we hit the hard stop after looking all around mask "+data.mask+" checked "+x+" min indxx "+(data.mask&minCountIndex)+"  "+validator.isValid(data.serviceObjectValues[(int)(data.mask&minCountIndex)]));
+            	new Exception("Error, we hit the hard stop after looking all around mask "+data.mask+" checked "+x+" min indxx "+(data.mask&minCountIndex)+"  "+validator.isValid(data.serviceObjectValues[(int)(data.mask&minCountIndex)])).printStackTrace();;
             	//do not grow instead return the negative value of the least used object
             	return -minCountIndex;
                

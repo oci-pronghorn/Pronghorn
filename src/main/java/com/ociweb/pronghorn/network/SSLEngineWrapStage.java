@@ -24,7 +24,8 @@ public class SSLEngineWrapStage extends PronghornStage {
 	private int           calls;
 	private final boolean isServer;
 	private int           shutdownCount;
-	private final int     SIZE_HANDSHAKE_AND_DISCONNECT;
+	private static final int     SIZE_HANDSHAKE_AND_DISCONNECT = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_DISCONNECT_203)
+														+Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_DISCONNECT_203);
 	private final int     groupId;
 	
 	
@@ -33,11 +34,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 		
 		super(graphManager, plainContent, encryptedContent);
 
-		shutdownCount = plainContent.length;
-		SIZE_HANDSHAKE_AND_DISCONNECT = Pipe.sizeOf(encryptedContent[0], NetPayloadSchema.MSG_DISCONNECT_203)
-				+Pipe.sizeOf(encryptedContent[0], NetPayloadSchema.MSG_DISCONNECT_203);
-		
-		logger.info("WRAP FOUND DISCONNECT MESSAGE B");
+		shutdownCount = plainContent.length;		
 		
 		this.ccm = ccm;
 		this.encryptedContent = encryptedContent;

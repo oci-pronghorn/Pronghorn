@@ -42,19 +42,18 @@ public class ServerNewConnectionStage extends PronghornStage{
     static final int connectMessageSize = ServerConnectionSchema.FROM.fragScriptSize[ServerConnectionSchema.MSG_SERVERCONNECTION_100];
     private ServerCoordinator coordinator;
     private Pipe<ServerConnectionSchema> newClientConnections;
-    
-    
-    //TODO: not sure these are right at all.
-    private String host="localhost";
-	private int port=8443;
-	  
-	private final int maxConnections;//prevents input pipes from sharing encrypted data, must be large engough to split up the users.
-    
-    public ServerNewConnectionStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<ServerConnectionSchema> newClientConnections, int maxConnections) {
+    private final boolean isTLS;
+
+	      
+	public static ServerNewConnectionStage newIntance(GraphManager graphManager, ServerCoordinator coordinator, Pipe<ServerConnectionSchema> newClientConnections, boolean isTLS) {
+		return new ServerNewConnectionStage(graphManager,coordinator,newClientConnections,isTLS);
+	}
+	
+    public ServerNewConnectionStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<ServerConnectionSchema> newClientConnections, boolean isTLS) {
         super(graphManager, NONE, newClientConnections);
         this.coordinator = coordinator;
         this.newClientConnections = newClientConnections;
-        this.maxConnections = maxConnections;
+        this.isTLS = isTLS;
     }
     
 
@@ -129,20 +128,14 @@ public class ServerNewConnectionStage extends PronghornStage{
                       
                       try {                          
                           channel.configureBlocking(false);
-                          channel.setOption(StandardSocketOptions.TCP_NODELAY, true);
-                        //  channel.setOption(StandardSocketOptions.SO_RCVBUF,1<<20);
-                          
-                          
-                   //       System.out.println("buffer size:"+        channel.socket().getReceiveBufferSize());// channel.getOption(StandardSocketOptions.SO_RCVBUF) );
-                          
-                      //    System.out.println(     channel.supportedOptions()  );
-                          
-                      //    channel.setOption(StandardSocketOptions.SO_LINGER, 3);     
+                          channel.setOption(StandardSocketOptions.TCP_NODELAY, true);  
+                         // channel.setOption(StandardSocketOptions.SO_SNDBUF, 1<<16); //for heavy testing we avoid overloading client by making this smaller.
                                                     
+                         // logger.info("send buffer size {} ",  channel.getOption(StandardSocketOptions.SO_SNDBUF));
+                          
                           ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator, targetPipeIdx);
                           
-                          final long channelId = holder.lookupInsertPosition();
-                          
+                          final long channelId = holder.lookupInsertPosition();                          
                           
                           //System.err.println("lookup insert channel position:" +channelId+" out of "+holder.size());
                           
@@ -154,24 +147,20 @@ public class ServerNewConnectionStage extends PronghornStage{
                               return;
                           }
 						  
-						  SSLEngine sslEngine = SSLEngineFactory.createSSLEngine();//// not needed for server? host, port);
-						  sslEngine.setUseClientMode(false); //here just to be complete and clear
-						//  sslEngine.setNeedClientAuth(true); //only if the auth is required to have a connection
-						 // sslEngine.setWantClientAuth(true); //the auth is optional
-						  sslEngine.setNeedClientAuth(false); //required for openSSL/boringSSL
+                          SSLEngine sslEngine = null;
+                          if (isTLS) {
+							  sslEngine = SSLEngineFactory.createSSLEngine();//// not needed for server? host, port);
+							  sslEngine.setUseClientMode(false); //here just to be complete and clear
+							//  sslEngine.setNeedClientAuth(true); //only if the auth is required to have a connection
+							 // sslEngine.setWantClientAuth(true); //the auth is optional
+							  sslEngine.setNeedClientAuth(false); //required for openSSL/boringSSL
+							  sslEngine.beginHandshake();
+                          }
 						  
 						  
-						  sslEngine.beginHandshake();
-						  
-						 // logger.info("server new connection attached for new id {} ",channelId);
+						  //logger.debug("server new connection attached for new id {} ",channelId);
 						  
 						  holder.setValue(channelId, new ServerConnection(sslEngine, channel, channelId));
-   
-                          //NOTE: for servers that do not require an upgrade we can set this to the needed pipe right now.
-						  
-						//  This is bad because we have hardcoded each channel to a pipe this will not work due to needing more connections per pipe than we have.
-                          ServerCoordinator.setTargetUpgradePipeIdx(coordinator, targetPipeIdx, channelId, (int)(channelId % maxConnections)); //default for all
-
                                                                                                                             
                          // logger.info("register new data to selector for pipe {}",targetPipeIdx);
                           Selector selector2 = ServerCoordinator.getSelector(coordinator, targetPipeIdx);

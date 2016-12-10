@@ -26,6 +26,18 @@ public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
     public static PipeCleanerStage newInstance(GraphManager gm, Pipe pipe) {
         return new PipeCleanerStage(gm, pipe);
     }
+
+    public static PipeCleanerStage newInstance(GraphManager gm, Pipe[] pipes) {
+        return new PipeCleanerStage(gm, pipes, "");
+    }
+
+    public static PipeCleanerStage newInstance(GraphManager gm, Pipe pipe, String label) {
+        return new PipeCleanerStage(gm, pipe, label);
+    }
+
+    public static PipeCleanerStage newInstance(GraphManager gm, Pipe[] pipes, String label) {
+        return new PipeCleanerStage(gm, pipes, label);
+    }
     
     //NOTE: this should be extended to produce a diagnostic stage 
     public PipeCleanerStage(GraphManager graphManager, Pipe<T> input) { 

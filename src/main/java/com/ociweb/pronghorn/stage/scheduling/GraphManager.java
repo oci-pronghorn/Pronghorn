@@ -1175,15 +1175,15 @@ public class GraphManager {
 	}
 	
 	public static void exportGraphDotFile(GraphManager gm, String filename) {
-		exportGraphDotFile(gm,filename,null);
+		exportGraphDotFile(gm,filename,null,null);
 	}
 	
-    public static void exportGraphDotFile(GraphManager gm, String filename, int[] percentileValues) {
+    public static void exportGraphDotFile(GraphManager gm, String filename, int[] percentileValues, int[] traffic) {
         FileOutputStream fost;
         try {
             fost = new FileOutputStream(filename);
             PrintWriter pw = new PrintWriter(fost);
-            gm.writeAsDOT(gm, pw, percentileValues);
+            gm.writeAsDOT(gm, pw, percentileValues, traffic);
             pw.close();
             
             
@@ -1209,10 +1209,10 @@ public class GraphManager {
     }
   
     public static void writeAsDOT(GraphManager m, Appendable target) {
-    	writeAsDOT(m,target,null);
+    	writeAsDOT(m,target,null,null);
     }
     
-	public static void writeAsDOT(GraphManager m, Appendable target, int[] percentileValues) {
+	public static void writeAsDOT(GraphManager m, Appendable target, int[] percentileValues, int[] traffic) {
 	    try {
 	    
 	        target.append("digraph {\n");
@@ -1309,7 +1309,12 @@ public class GraphManager {
 		                	int pctFull = percentileValues[pipe.id];
 		                	Appendables.appendValue(target.append(" Full:"), pctFull).append("% ");		                		                	
 		                }
-		                
+		                if (null!=traffic) {
+		                	int trafficCount = traffic[pipe.id];
+		                	if (0!=trafficCount) {
+		                		Appendables.appendValue(target.append(" Traf:"), trafficCount).append(" ");	
+		                	}
+		                }
 		                
 		                if (minMessagesOnPipe==maxMessagesOnPipe) {
 		                    Appendables.appendValue(target," [",minMessagesOnPipe,"]");
@@ -1326,12 +1331,11 @@ public class GraphManager {
 		                
 		                if (null!=percentileValues) {		                	
 		                	int pctFull = percentileValues[pipe.id];
-		                	if (pctFull>=40) {
+		                	if (pctFull>=60) {
+		                		target.append(",color=red");	    
+		                	} else if (pctFull>=40) {
 		                		target.append(",color=orange");	    
 		                	} else {
-		                		if (pctFull>=60) {
-			                		target.append(",color=red");	    
-			                	}	
 		                	}
 		                }
 		                

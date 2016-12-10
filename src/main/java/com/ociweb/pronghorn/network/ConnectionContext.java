@@ -14,6 +14,7 @@ public class ConnectionContext {
 
 	public void setChannelId(long channelId) {
 		this.channelId = channelId;
-	}    
+	}
+
     
 }

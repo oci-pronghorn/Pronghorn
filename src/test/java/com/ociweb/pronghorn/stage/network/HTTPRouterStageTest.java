@@ -8,7 +8,7 @@ import org.junit.Test;
 import com.ociweb.pronghorn.network.HTTP1xRouterStage;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
-import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
@@ -51,10 +51,10 @@ public class HTTPRouterStageTest {
         Pipe<NetPayloadSchema> rawRequestPipe = new Pipe<NetPayloadSchema>(rawRequestPipeConfig);               
         Pipe[] pipes = new Pipe[]{ rawRequestPipe};
         
-        PipeConfig<NetParseAckSchema> ackConfig = new PipeConfig<NetParseAckSchema>(NetParseAckSchema.instance);
-		Pipe<NetParseAckSchema> ack = new Pipe<NetParseAckSchema>(ackConfig );
+        PipeConfig<ReleaseSchema> ackConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance);
+		Pipe<ReleaseSchema> ack = new Pipe<ReleaseSchema>(ackConfig );
         
-		PipeCleanerStage<NetParseAckSchema> cleaner = new PipeCleanerStage<NetParseAckSchema>(gm, ack);
+		PipeCleanerStage<ReleaseSchema> cleaner = new PipeCleanerStage<ReleaseSchema>(gm, ack);
         
         PronghornStage stage = ClientHTTPRequestDataGeneratorStage.newInstance(gm, rawRequestPipe, iterations, paths);  
         HTTP1xRouterStage stage2 = buildRouterStage(gm, apps, appPipeConfig, pipes, ack);
@@ -98,7 +98,7 @@ public class HTTPRouterStageTest {
     }
 
     private HTTP1xRouterStage buildRouterStage(GraphManager gm, final int apps,
-            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pipe<NetPayloadSchema>[] pipes, Pipe<NetParseAckSchema> ack) {
+            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pipe<NetPayloadSchema>[] pipes, Pipe<ReleaseSchema> ack) {
         Pipe[] routedAppPipes = new Pipe[apps];
         long[] appHeaders = new long[apps];
         int[] msgIds = new int[apps];

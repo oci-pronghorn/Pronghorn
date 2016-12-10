@@ -27,26 +27,35 @@ public class RegulatedLoadTestStage extends PronghornStage{
 	private Histogram histRoundTrip;
 	private Histogram histInFlight;
 	
-	long total = 0;
+	long totalMs = 0;
 	long inFlight = 0;
-	long start;
+	long totalReceived = 0;
+	long totalExpected;
 	
-	final int stepSize = 1<<17;
-	final int usersPerPipe = 1; //bumping this up creates more users while using the same pipe count //TODO: rethink this it does not work.
+	long start;
+	long lastTime = System.currentTimeMillis();
+
+	private final int limit;
+	private String testFile;
+	
+	private final int usersPerPipe;
 
 	
-	protected RegulatedLoadTestStage(GraphManager graphManager, Pipe<NetResponseSchema>[] inputs, Pipe<NetRequestSchema>[] outputs, int testSize) {
+	protected RegulatedLoadTestStage(GraphManager graphManager, Pipe<NetResponseSchema>[] inputs, Pipe<NetRequestSchema>[] outputs, 
+			                          int testSize, int inFlightLimit, String fileRequest, int usersPerPipe) {
 		super(graphManager, inputs, outputs);
 		
+		this.usersPerPipe = usersPerPipe;
+		this.testFile = fileRequest;
 		assert (inputs.length==outputs.length);
-		
+		this.limit = inFlightLimit;
 		this.inputs = inputs;
 		this.outputs = outputs;
 		this.count = testSize/inputs.length;
 		logger.info("Each pipe will be given a total of {} requests.",count);
 		
 		
-		GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 200_000_000, this); //5x per second
+	//	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 200_000_000, this); //5x per second
 	}
 	
 	@Override
@@ -57,7 +66,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		
 	//	histInFlight.copyCorrectedForCoordinatedOmission(expectedIntervalBetweenValueSamples)
 		
-		times = new long[inputs.length][count];
+		times = new long[inputs.length][count*usersPerPipe];
 		
 		shutdownCount = inputs.length;
 		toSend = new int[outputs.length];
@@ -65,6 +74,8 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		
 		received = new int[inputs.length];
 		Arrays.fill(received, count*usersPerPipe);
+		
+		totalExpected = inputs.length * ((long)count*(long)usersPerPipe);
 		
 		start = System.currentTimeMillis();
 	}
@@ -83,12 +94,25 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		
 	}
 
+	long lastChecked = 0;
+	
 	@Override
 	public void run() {
-		String testFile = "/SQRL.svg";
-	//	String testFile = "/OCILogo.png";
 		
-
+		long now = System.currentTimeMillis();
+		
+		if (now-lastTime > 90_000) {
+			logger.error("ZZZZZZZZZZZZZZZZZZZZZZZ test is frozen, in flight {}",inFlight);
+			
+			int i = inputs.length;
+			while (--i>=0) {
+				System.err.println((inputs.length-i)+" "+received[i]+"  "+toSend[i]);
+			}
+			
+			
+			System.exit(-1);
+		}
+		
 		//while (true)
 		{
 			
@@ -103,9 +127,10 @@ public class RegulatedLoadTestStage extends PronghornStage{
 				int j = usersPerPipe;
 				while (--j >= 0) {
 				
-					i = outputs.length;
+					i = inputs.length;
 					while (--i>=0) {
 						
+						//System.out.println(inputs[i]);
 						if (Pipe.hasContentToRead(inputs[i])) {
 							int msg = Pipe.takeMsgIdx(inputs[i]);
 							
@@ -134,23 +159,27 @@ public class RegulatedLoadTestStage extends PronghornStage{
 			
 							
 							didWork = true;	
-												
-							int recIdx = --received[i];
+							lastTime = now;
 							
-							//	System.err.println("xxxxxxxx  "+recIdx);
+							inFlight--;
+							totalReceived++;
+							
+							int recIdx = --received[i];
+
+						  
 								long duration = System.nanoTime() - times[i][recIdx];
 								
-								inFlight--;
-								total+=duration;
+								totalMs+=duration;
 								
 								if (duration < 4_000_000_000L) {
 									histRoundTrip.recordValue(duration);
 								}
-								
+						  
+						    
 								histInFlight.recordValue(inFlight);
 								
 				
-								if (recIdx == 0) {
+								if (recIdx <=0 ) {
 									System.out.println("shutdown "+shutdownCount+" "+i);
 									if (--shutdownCount == 0) {
 										System.out.println("XXXXXXX full shutdown now "+shutdownCount);
@@ -161,6 +190,17 @@ public class RegulatedLoadTestStage extends PronghornStage{
 			
 						}	
 					}
+				}
+			}
+			
+			boolean debug = true;
+			if (debug) {
+								
+				if (lastChecked!=totalReceived) {
+					float pct = (100L*totalReceived)/(float)totalExpected;
+					
+					System.out.println("total load test received "+totalReceived+"  "+pct+"%"); //TODO: what is the total expected.
+					lastChecked = totalReceived;
 				}
 			}
 			
@@ -186,7 +226,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 
 			
 			didWork = true;
-			while (inFlight<200 && didWork) {  //250 maxes out the network connection for 3.3K file
+			while (inFlight<limit && didWork) {  //250 maxes out the network connection for 3.3K file
 				didWork = false;
 			
 				int j = usersPerPipe;
@@ -195,29 +235,34 @@ public class RegulatedLoadTestStage extends PronghornStage{
 					i = outputs.length;
 					while (--i >= 0) {
 	
-						if (toSend[i]>0 && Pipe.hasRoomForWrite(outputs[i])) {	
+						if (toSend[i]>0 && inFlight<limit && Pipe.hasRoomForWrite(outputs[i])) {	
 									
 							int size = Pipe.addMsgIdx(outputs[i], NetRequestSchema.MSG_HTTPGET_100);
-							
+
 							toSend[i]--;	
 							inFlight++;
 							didWork = true;
+							lastTime = now;
 	
 							Pipe.addIntValue(8443, outputs[i]);
 							Pipe.addUTF8("127.0.0.1", outputs[i]);
 							Pipe.addUTF8(testFile, outputs[i]);
-							Pipe.addIntValue(i + (j * stepSize), outputs[i]);            //TODO: need to add additinal connections per round per connection.
+							
+							Pipe.addIntValue(i + (j * outputs.length), outputs[i]);            //TODO: need to add additinal connections per round per connection.
 	
 							times[i][toSend[i]] = System.nanoTime();
 							
 							Pipe.confirmLowLevelWrite(outputs[i], size);
 							Pipe.publishWrites(outputs[i]);
 							
-							if (0==toSend[i]) {
-								System.out.println("finished requesting "+i);
-							}
+//							if (0==toSend[i]) {
+//								System.out.println("finished requesting "+i);
+//							}
+							
 						}					
-					}				
+					}
+					
+					
 				}
 			}
 					

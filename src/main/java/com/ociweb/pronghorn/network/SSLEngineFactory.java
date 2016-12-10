@@ -97,8 +97,7 @@ public class SSLEngineFactory {
         TrustManagerFactory trustFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         trustFactory.init(trustStore);
         return trustFactory;
-    }
-	
+    }	
 
     public static SSLEngine createSSLEngine(String host, int port) {
     	return service.createSSLEngineClient(host, port);

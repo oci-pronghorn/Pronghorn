@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit;
 import com.ociweb.pronghorn.network.HTTPModuleFileReadStage;
 import com.ociweb.pronghorn.network.ModuleConfig;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
@@ -52,7 +53,14 @@ public class HTTPServer {
         	
         	
         };
-		gm = NetGraphBuilder.buildHTTPTLSServerGraph(true, gm, groups, 2, apps, config, 8443); 
+        
+        int requestUnwrapUnits = 1;
+        int responseWrapUnits = 1;
+        int outputPipes = 2;
+        int socketWriters = 1;
+        
+		ServerCoordinator coordinator = new ServerCoordinator(groups, 8443, 15, 2);//32K simulanious connections on server. 
+		gm = NetGraphBuilder.buildHTTPServerGraph(true, gm, groups, 2, apps, config, coordinator, requestUnwrapUnits, responseWrapUnits, outputPipes, socketWriters); 
 		//gm = NetGraphBuilder.buildHTTPServerGraph(gm, groups, apps);
         
         
