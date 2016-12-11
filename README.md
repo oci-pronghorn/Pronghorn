@@ -92,7 +92,7 @@ NOTE: this is being proved out in the PronghornGateway project.
     <dependency>
       <groupId>com.ociweb</groupId>
       <artifactId>Pronghorn</artifactId>
-      <version>0.0.1-SNAPSHOT</version>
+      <version>0.0.10-SNAPSHOT</version>
     </dependency> 
    
   Also add this public repository to your pom or settings.
@@ -114,6 +114,7 @@ NOTE: this is being proved out in the PronghornGateway project.
 
 ------------------------------------------
 
+For more technical details please check out the Specification.md file.
 Looking for the release jar? This project is under active development.
 
 Please consider getting involved and sponsoring the completion of [Pronghorn](mailto:info@ociweb.com;?subject=Pronghorn%20Sponsor%20Inquiry)
