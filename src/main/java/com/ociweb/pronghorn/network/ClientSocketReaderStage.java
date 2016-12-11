@@ -4,155 +4,317 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
+
+import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.network.schema.NetParseAckSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
+import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class ClientSocketReaderStage extends PronghornStage {	
 	
-	private final ClientConnectionManager ccm;
-	private final Pipe<NetPayloadSchema>[] output2;
-	private final Pipe<NetParseAckSchema> parseAck;
-	private Logger log = LoggerFactory.getLogger(ClientSocketReaderStage.class);
+	private final ClientCoordinator ccm;
+	private final Pipe<NetPayloadSchema>[] output;
+	private final Pipe<ReleaseSchema>[] releasePipes;
+	private final static Logger logger = LoggerFactory.getLogger(ClientSocketReaderStage.class);
 
+	private long start;
+	private long totalBytes=0;
+	private boolean isTLS;
+	private final static int KNOWN_BLOCK_ENDING = -1;
+	private Set<SelectionKey> keySet;
 	
-	protected ClientSocketReaderStage(GraphManager graphManager, ClientConnectionManager ccm, Pipe<NetParseAckSchema> parseAck, Pipe<NetPayloadSchema>[] output) {
+	public ClientSocketReaderStage(GraphManager graphManager, ClientCoordinator ccm, Pipe<ReleaseSchema>[] parseAck, Pipe<NetPayloadSchema>[] output, boolean isTLS) {
 		super(graphManager, parseAck, output);
 		this.ccm = ccm;
-		this.output2 = output;
-		this.parseAck = parseAck;
+		this.output = output;
+		this.releasePipes = parseAck;
+		this.isTLS = isTLS;
 		
-		//assert(ccm.resposePoolSize() == output.length);
-
 		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
+	//	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 100, this); //run constant since we have a small input buffer.
+		
+
 	}
 
 	@Override
 	public void startup() {
-		//this thread must no delay to take things out of the buffer
-		//Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
+		start = System.currentTimeMillis();
+	}
+	
+	@Override
+	public void shutdown() {
+		long duration = System.currentTimeMillis()-start;
+		
+		logger.info("Client Bytes Read: {} kb/sec {} ",totalBytes, (8*totalBytes)/duration);
+		
 	}
 
+	int maxWarningCount = 10;
+	
+	
 	@Override
 	public void run() {
-
 		try {
-					
-			Selector selector = ccm.selector();
-			if (selector.selectNow()>0) {			
+			
+			int didWork=1;
+			
+			do {	
+				didWork--;
 				
-				Set<SelectionKey> keySet = selector.selectedKeys();
-				Iterator<SelectionKey> keyIterator = keySet.iterator();
-				while (keyIterator.hasNext()) {				
-					SelectionKey selectionKey = keyIterator.next();
-					
-					if (!selectionKey.isValid()) {
-						keyIterator.remove();
-						System.err.println("key invalid");
-						continue;
-					}
-					
-					ClientConnection cc = (ClientConnection)selectionKey.attachment();
-					
-				    if (cc.isValid()) {
-				    				    	
-				    	int pipeIdx = ccm.responsePipeLineIdx(cc.getId());
-				    	if (pipeIdx>=0) {
-				    		//was able to reserve a pipe run 
-					    	Pipe<NetPayloadSchema> target = output2[pipeIdx];
-					    	
-//					    	while (!PipeWriter.hasRoomForWrite(target)) {
-//					    		Thread.yield();
-//					    	}
-					    	
-					    	if (PipeWriter.hasRoomForWrite(target)) {	    	
-						    	
-					    		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = PipeWriter.wrappedUnstructuredLayoutBufferOpen(target,NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_PAYLOAD_203);
-					    							    		
-					    		int readCount = 0;
-						    	long temp=0;
-						    	do {
-									temp = cc.readfromSocketChannel(wrappedUnstructuredLayoutBufferOpen);
-									
-									//log.debug("reading {} from socket",temp);
+				boolean sentData = false;
 				
-						    		if (temp>0) {
-						    			readCount+=temp;
-						    		} else {
-						    			if (temp<0 && readCount==0) {
-						    				readCount=-1;
-						    			}
-						    			break;
-						    		}
-						     	} while (true);
-						    	
-						    	if (readCount>0) {	
-						    		//log.debug("read count from socket {} vs {} ",readCount,  wrappedUnstructuredLayoutBufferOpen.position()-p);
-						    		//we read some data so send it			    					    		
-						    		if (PipeWriter.tryWriteFragment(target, NetPayloadSchema.MSG_ENCRYPTED_200)) try {
-						    			PipeWriter.writeLong(target, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201, cc.getId() );
-						    			PipeWriter.wrappedUnstructuredLayoutBufferClose(target, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_PAYLOAD_203, readCount);
-						    		    //log.info("from socket published          {} bytes ",readCount);
-						    		} finally {
-						    			PipeWriter.publishWrites(target);
-						    		} else {
-						    			throw new RuntimeException("Internal error");
-						    		}
-						    		
+
+					ClientConnection cc;
+					if (null!=(cc  = ccm.nextValidConnection() )) {
+
+
+					    if (cc.isValid()) {
+					    		
+					    	
+					    	//process handshake before reserving one of the pipes
+					    	if (isTLS) {
+					    		
+					    		HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
+					    		//logger.info("has data for {} {} {}",cc,cc.isValid(),handshakeStatus);
+					    		
+					    		
+					    		 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
+						                Runnable task;//TODO: there is anopporuntity to have this done by a different stage in the future.
+						                while ((task = cc.getEngine().getDelegatedTask()) != null) {
+						                	task.run();
+						                }
+						                handshakeStatus = cc.getEngine().getHandshakeStatus();
+								 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
+									 consumeRelease();
+									 assert(-1 == ccm.checkForResponsePipeLineIdx(cc.getId())) : "should have already been relased";								 
+
+//									 if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
+//						    				logger.warn("waiting on wrap, need more pipes????");
+//						    			}
+									 continue;//one of the other pipes can do work
+								 }	
+					    				    		 
+					    		 
+						    	 if (false && handshakeStatus!=HandshakeStatus.FINISHED && handshakeStatus!=HandshakeStatus.NOT_HANDSHAKING) {
+						    			//TOOD: this has been triggered
+						    			assert(-1 == ccm.checkForResponsePipeLineIdx(cc.getId())) : "expected NO reserved pipe for "+cc.id+" with handshake of "+handshakeStatus;
+						    	 }
+					    	}
+
+					    	SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();//selectionKey.channel();
+					    	
+					    	//holds the pipe until we gather all the data and got the end of the parse.
+					    	consumeRelease();
+					    	int pipeIdx = ccm.responsePipeLineIdx(cc.getId());//picks any open pipe to keep the decryption busy
+					    	if (pipeIdx<0) {				    	
+					    		consumeRelease();
+					    		pipeIdx = ccm.responsePipeLineIdx(cc.getId()); //try again.
+					    		if (pipeIdx<0) {
+//					    			if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
+//					    				logger.warn("bump up maxPartialResponsesClient count, performance is slowed due to waiting for available input pipe on client");
+//					    			}
+					    			continue;//we can not allocate a new pipe but on of the other previously assigned pipes may be empty so continue here.
+					    		}				    		
+					    	}
+					    	
+					    	//logger.trace("pipe idx {} ",pipeIdx);
+					    	
+					    	if (pipeIdx>=0) {
+					    		//was able to reserve a pipe run 
+						    	Pipe<NetPayloadSchema> target = output[pipeIdx];
+						    	if (PipeWriter.hasRoomForWrite(target)) {	    	
+							    	
+						    		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = PipeWriter.wrappedUnstructuredLayoutBufferOpen(target,
+																				    				isTLS ?
+																				    				NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_PAYLOAD_203 :
+																				    				NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204
+																				    				);
+						    			
+						    		//TODO: add assert that target bufer is larger than socket buffer.
+						    		//TODO: warning note cast to int.
+						    		int readCount = (int)socketChannel.read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
+						    									    	
+							    	boolean fullBuffer = wrappedUnstructuredLayoutBufferOpen[0].remaining()==0 && wrappedUnstructuredLayoutBufferOpen[1].remaining()==0;
+							    	
+							    	//logger.trace("client reading {} for id {} fullbuffer {}",readCount,cc.getId(),fullBuffer);
+							    	
+							    	if (readCount>0) {
+							    		sentData =  true;							    		
+							    		totalBytes += readCount;						    		
+							    		//we read some data so send it		
+							    	
+							    		//logger.info("totalbytes consumed by client {} ",totalBytes);
+							    		
+							    	//	logger.info("client reading {} for id {}",readCount,cc.getId());
+							    		
+							    		if (isTLS) {
+								    		
+								    		if (PipeWriter.tryWriteFragment(target, NetPayloadSchema.MSG_ENCRYPTED_200)) {try {
+								    			PipeWriter.writeLong(target, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201, cc.getId() );
+								    			PipeWriter.wrappedUnstructuredLayoutBufferClose(target, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_PAYLOAD_203, readCount);
+								    		//    logger.info("from socket published          {} bytes for connection {} ",readCount,cc);
+								    		} finally {
+								    			PipeWriter.publishWrites(target);
+								    		}} else {
+								    			PipeWriter.wrappedUnstructuredLayoutBufferCancel(target);
+								    			logger.error("client is dropping incomming data. XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+								    			throw new RuntimeException("Internal error");
+								    		}
+								    		
+							    		} else {
+							    			
+							    			if (PipeWriter.tryWriteFragment(target, NetPayloadSchema.MSG_PLAIN_210)) {try {
+								    			PipeWriter.writeLong(target, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, cc.getId() );
+								    			PipeWriter.writeLong(target, NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, KNOWN_BLOCK_ENDING);						    			
+								    			PipeWriter.wrappedUnstructuredLayoutBufferClose(target, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204, readCount);
+								    		  //  logger.info("from socket published          {} bytes for connection {} ",readCount,cc);
+								    		} finally {
+								    			PipeWriter.publishWrites(target);
+								    		}} else {
+								    			PipeWriter.wrappedUnstructuredLayoutBufferCancel(target);
+								    			logger.error("client is dropping incomming data. XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+								    			throw new RuntimeException("Internal error");
+								    		}						    			
+							    		}						    		
+							    		
+							    	} else {
+							    		//nothing to send so let go of byte buffer.
+							    		PipeWriter.wrappedUnstructuredLayoutBufferCancel(target);						    		
+							    	}
+							    	
+							    	//TODO: what if client always reads every expected socket?
+							    	//only remove if we took all the data TODO: and if nothing has come in for that selector in a while??? or only if disconnected?
+							    	if (!fullBuffer && readCount<=0) { 
+							    	    //iff we have extra room for more data and we did not read anything, only then do we remove this from the iterator
+							    		//this ensures that we have checked at least one additional time to ensure nothing in flight is lost.
+							    //		keyIterator.remove();  
+							    	} else {
+							    		
+//										 if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
+//							    				logger.warn("not removed must go around again");
+//							    			}
+							    	}
+							    	
 						    	} else {
-						    		//nothing to send so let go of byte buffer.
-						    		PipeWriter.wrappedUnstructuredLayoutBufferCancel(target);
+						    		
+						    		 //if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
+						    		//		logger.warn("we have no room on the pipe to write to {} {}.",cc.getId(),target);
+						    		//	}
 						    		
 						    	}
-					    	} //else we try again
-				    	}
-				    } else {
-				    	System.err.println("not valid cc closed");
-				    	//try again later
-				    }
-				    keyIterator.remove();//always remove we will be told again next time we call for select	    	
-				}	
-			}
-
-			//ack can only come back after we sent some data and therefore the key is on the set.
-			//for each ack find the matching key and remove it.
-			
-			//TODO keep with the reader, we stop reading when we get this signal.
-			while (PipeReader.tryReadFragment(parseAck)) try {
-
-				if (PipeReader.getMsgIdx(parseAck)==NetParseAckSchema.MSG_PARSEACK_100) {				
-									
-					long finishedConnectionId = PipeReader.readLong(parseAck, NetParseAckSchema.MSG_PARSEACK_100_FIELD_CONNECTIONID_1);
+					    	} else {
+					    		//not an error, just try again later.
+					    		
+								 if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
+					    				logger.warn("odd we should not be here for this test.");
+					    			}
+					    	}
+					    } else {
+					    	logger.info("connection was no longer valid so this value has been removed.");
+					    //	keyIterator.remove();
+					    }
+					    
+					}	
 					
-					ClientConnection clientConnection = (ClientConnection)ccm.get(finishedConnectionId, 0);
-					//only remove after all the in flight messages are consumed
-					if ((null==clientConnection) || (clientConnection.incResponsesReceived())) {
-						assert((null==clientConnection) || (clientConnection.getId()==finishedConnectionId));
-						//connection may still be open but we will release the pipeline
-						ccm.releaseResponsePipeLineIdx(finishedConnectionId);
+					if (sentData) {
+						didWork++;
 					}
-				}
-				
-			} finally {
-				PipeReader.releaseReadLock(parseAck);
-			}
-
+			
+			} while(didWork>0);
 			
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+				
+		boolean debug = false;
+		if (debug) {
+			if (lastTotalBytes!=totalBytes) {
+				System.err.println("Client reader total bytes :"+totalBytes);
+				lastTotalBytes =totalBytes;
+			}
+		}
+	}
+	
+	long lastTotalBytes = 0;
+
+	private boolean hasData(Selector selector) throws IOException {
 		
+		if (null==keySet || keySet.isEmpty()) {
+			int x = selector.selectNow();
+			//logger.trace("new select of {} values",x);
+			assert(selector.isOpen());
+			keySet = selector.selectedKeys();
+			
+		} //else {
+		//	logger.trace("size {}", keySet.size());
+		//}
 		
+		boolean isEmpty = keySet.isEmpty();
+		
+		return !isEmpty;
+	}
+	
+   //must be called often to keep empty.
+	private void consumeRelease() {
+		
+		int i = releasePipes.length;
+		while (--i>=0) {			
+			Pipe<ReleaseSchema> ack = releasePipes[i];			
+			while (Pipe.hasContentToRead(ack)) {
+				int id = Pipe.takeMsgIdx(ack);
+				if (id == ReleaseSchema.MSG_RELEASE_100) {
+					long finishedConnectionId = Pipe.takeLong(ack);
+					long pos = Pipe.takeLong(ack);
+
+					///////////////////////////////////////////////////
+	    			//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
+	    			int pipeIdx = ccm.checkForResponsePipeLineIdx(finishedConnectionId);
+					if (pipeIdx>=0 && Pipe.headPosition(output[pipeIdx]) == pos) {
+	    				ccm.releaseResponsePipeLineIdx(finishedConnectionId);
+	    				
+	    				//TODO: upon release must prioritize the re-open.
+	    				//logger.info("did release for {}",finishedConnectionId);
+	    				
+	    			} else {
+	    				if (pipeIdx>=0) {
+	    					if (pos>Pipe.headPosition(output[pipeIdx])) {
+	    						logger.info("GGGGGGGGGGGGGGGGGGGGGGGGGGgg unable to release pipe {} pos {} expected {}",pipeIdx,pos,Pipe.headPosition(output[pipeIdx]));
+	    						//	System.exit(-1);
+	    					} else {
+	    						HandshakeStatus handshakeStatus = ccm.get(finishedConnectionId, 0).engine.getHandshakeStatus();
+					    		if (handshakeStatus!=HandshakeStatus.FINISHED && handshakeStatus!=HandshakeStatus.NOT_HANDSHAKING) {
+					    			//TOOD: this has been triggered
+					    			assert(-1 == ccm.checkForResponsePipeLineIdx(finishedConnectionId)) : "expected no reserved pipe for "+finishedConnectionId+" with handshake of "+handshakeStatus;
+					    		}
+	    						
+					    		//logger.info("no client side release {} ",releasePipes[i]);
+	    						
+	    						//this is the expected case where we have already put data on this pipe so it can not be released.
+	    					}
+	    				}
+	    			}
+	    			
+	    			Pipe.confirmLowLevelRead(ack, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
+				} else {
+					assert(-1 == id);
+					Pipe.confirmLowLevelRead(ack, Pipe.EOF_SIZE);
+				}
+				Pipe.releaseReadLock(ack);
+			}
+			
+		}
 		
 	}
 

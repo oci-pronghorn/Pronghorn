@@ -5,6 +5,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -16,6 +19,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     private long[] lastRun;
     private long maxRate;
     private final PronghornStage[] stages;
+    private static final Logger logger = LoggerFactory.getLogger(NonThreadScheduler.class);
 
     private long nextRun = 0; //keeps times of the last pass so we need not check again
         
@@ -49,6 +53,12 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         super(graphManager);
         this.stages = stages;       
     }    
+    
+    public void checkForException() {
+    	if (firstException!=null) {
+    		throw new RuntimeException(firstException);
+    	}
+    }
     
     @Override
     public void startup() {
@@ -239,7 +249,10 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 		        		GraphManager.initAllPipes(graphManager, stage.stageId);
 		        		
 		        		 try {
-		                	 stage.startup();
+		                	 logger.debug("begin startup of    {}",stage);
+		        			 stage.startup();
+		        			 logger.debug("finished startup of {}",stage);
+		        			 
 		                	 //client work is complete so move stage of stage to started.
 		                	 GraphManager.setStateToStarted(graphManager, stage.stageId);
 		                	 unInitCount--;
@@ -461,10 +474,13 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     @Override
     public void shutdown() {
     	shutdownRequested.set(true);
-    	GraphManager.terminateInputStages(graphManager);	
+    
+  //if this still works in 2018 delete this line.  	
+  //  	GraphManager.terminateInputStages(graphManager);	
     	
 	    int s = stages.length;
-        while (--s>=0 && !shutdownRequested.get()) {        	
+        while (--s>=0) {
+        		//ensure every non terminated stage gets shutdown called.
         		if (null!=stages[s] && !GraphManager.isStageTerminated(graphManager, stages[s].stageId)) {
         			stages[s].shutdown();
         			GraphManager.setStateToShutdown(graphManager, stages[s].stageId); 

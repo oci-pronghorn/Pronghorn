@@ -7,6 +7,8 @@ import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATS
 import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_TAIL_3;
 import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4;
 
+import java.util.Arrays;
+
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
@@ -23,7 +25,8 @@ public class MonitorConsoleStage extends PronghornStage {
 	private final Pipe[] inputs;
 	private GraphManager graphManager;
 	private int[] percentileValues; 
-	
+	private int[] trafficValues; 
+		
 	private Histogram[] hists; ///TODO: replace with HDRHistogram
 
 	
@@ -49,6 +52,7 @@ public class MonitorConsoleStage extends PronghornStage {
 	public void startup() {
 		super.startup();
 		percentileValues = new int[Pipe.totalRings()+1];
+		trafficValues = new int[Pipe.totalRings()+1];
 		
 		int p = Thread.currentThread().getPriority();
 		Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
@@ -105,36 +109,38 @@ public class MonitorConsoleStage extends PronghornStage {
 				
 			boolean inBounds = true;//value>80 || value < 1;
             long sampleCount = hists[i].getTotalCount();
+            PronghornStage producer = GraphManager.getRingProducer(graphManager,  inputs[i].id);
             
-            if (inBounds && (sampleCount>=2)) {
-				PronghornStage producer = GraphManager.getRingProducer(graphManager,  inputs[i].id);
-				//NOTE: may need to walk up tree till we find this object, (future feature)
-				String ringName;
-				long published = 0;
-				if (producer instanceof RingBufferMonitorStage) {
-					ringName = ((RingBufferMonitorStage)producer).getObservedRingName();
-					published = ((RingBufferMonitorStage)producer).getObservedRingPublishedCount();
+            String ringName = "Unknown";
+            long published = 0;
+            if (producer instanceof RingBufferMonitorStage) {
+            	
+            	published = ((RingBufferMonitorStage)producer).getObservedRingPublishedCount();
+            	trafficValues[ ((RingBufferMonitorStage)producer).getObservedRingId() ] = (int)published;
+            	
+	            if (inBounds && (sampleCount>=1)) {
+					//NOTE: may need to walk up tree till we find this object, (future feature)
+						ringName = ((RingBufferMonitorStage)producer).getObservedRingName();
+						
+						percentileValues[ ((RingBufferMonitorStage)producer).getObservedRingId() ] = (int)avg;
 					
-					percentileValues[ ((RingBufferMonitorStage)producer).getObservedRingId() ] = (int)pctile;
-					
-				} else {
-					ringName = "Unknown";
-				}
-				
-				while (ringName.length()<60) {
-					ringName=ringName+" ";
-				}
-				
-				
-				
-				System.out.println("    "+i+" "+ringName+" Queue Fill "+pctile+"% Average:"+avg+"%    samples:"+sampleCount+"  totalPublished:"+published);
-
+	            }
             }
+            
+            writeToConsole(i, pctile, avg, sampleCount, ringName, published);
+            
 		}
 				
 		//Send in pipe depth data		
-		GraphManager.exportGraphDotFile(graphManager, "MonitorResults", percentileValues);
+		GraphManager.exportGraphDotFile(graphManager, "MonitorResults", percentileValues, trafficValues);
 		
+	}
+
+	private void writeToConsole(int i, long pctile, long avg, long sampleCount, String ringName, long published) {
+		while (ringName.length()<60) {
+			ringName=ringName+" ";
+		}            
+		System.out.println("    "+i+" "+ringName+" Queue Fill "+pctile+"% Average:"+avg+"%    samples:"+sampleCount+"  totalPublished:"+published);
 	}
 
 	private static final Long defaultMonitorRate = Long.valueOf(50000000);

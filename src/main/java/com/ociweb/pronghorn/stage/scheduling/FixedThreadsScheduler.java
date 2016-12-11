@@ -91,10 +91,6 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    
 	    stageArrays=null;
 	    
-	    
-	    //TODO: build dot file? ///////////////////////////////////////
-	    //GraphManager.writeAsDOT(graphManager, System.out);
-	    
 	    //clean up now before we begin.
 		System.gc();
 		

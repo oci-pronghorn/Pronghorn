@@ -80,6 +80,7 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 	
 	@Override
 	public void run() {		
+		
 		processAvailData(this);
 	}
 
@@ -92,20 +93,24 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 				recordCopyComplete(this, tempByteTail, totalBytesCopy);			
 			}	
 		}
+		
 	}
 	
 	private static <S extends MessageSchema> void processAvailData(ReplicatorStage<S> ss) {
-
+		
 		if (0==ss.totalPrimaryCopy) {
+
+			
 	        findStableCutPoint(ss);			
 	        //we have established the point that we can read up to, this value is changed by the writer on the other side
 										
 			//get the start and stop locations for the copy
 			//now find the point to start reading from, this is moved forward with each new read.
-			if ((ss.totalPrimaryCopy = (ss.headPos - ss.cachedTail)) <= 0) {
+			if ((ss.totalPrimaryCopy = (ss.headPos - ss.cachedTail)) <= 0) {				
 				assert(ss.totalPrimaryCopy==0);
 				return; //nothing to copy so come back later
 			}
+			
 			//clear the flags for which targets have room
 			int i = ss.working.length;
 			ss.workingPos = i;
@@ -124,12 +129,12 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 			recordCopyComplete(ss, ss.tempByteTail, ss.totalBytesCopy);			
 		}					
 		
-		return; //finished all the copy  for now
+
 	}
 
 	private static <S extends MessageSchema> void recordCopyComplete(ReplicatorStage<S> ss, int tempByteTail, int totalBytesCopy) {
 		//release tail so data can be written
-		
+
 		int i = Pipe.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
 		Pipe.setBytesWorkingTail(ss.source, i);
         Pipe.setBytesTail(ss.source, i);   
@@ -161,7 +166,7 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 			                   int byteTailPos, int primaryTailPos, 
 			                   int totalPrimaryCopy, 
 			                   int totalBytesCopy) {
-
+		
 		int j = 0;
 		int c = 0;
 		int[] working = ss.working;
@@ -169,7 +174,7 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 		while (j<limit) {
 			
 			if (!Pipe.hasRoomForWrite(ss.targets[working[j]], totalPrimaryCopy)) {
-			 	working[c++] = working[j];
+			 	working[c++] = working[j];		
 			} else {
 			    Pipe.confirmLowLevelWrite(ss.targets[working[j]], totalPrimaryCopy);	
 				copyData(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ss.targets[working[j]]);				

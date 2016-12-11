@@ -344,6 +344,8 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
         activeChannelHigh = Pipe.takeInt(input);
         activeChannelLow  = Pipe.takeInt(input); 
    
+ //       logger.info("file request for channel {} {}", activeChannelHigh, activeChannelLow);
+        
         activeSequenceId = Pipe.takeInt(input);
         int verb = Pipe.takeInt(input);
         
@@ -486,7 +488,7 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
                     
             
         } catch (IOException e) {
-            System.err.println(input);
+        	logger.debug("IO Exception pipe {}",input);
             logger.error("IO Exception on file {} ",pathString);
             throw new RuntimeException(e);
         }
@@ -499,6 +501,9 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
             activePayloadSizeRemaining = fileSizes[pathId];
             int status = 200;
                         
+          //  logger.info("begin file response for channel {} {}", activeChannelHigh, activeChannelLow);
+
+            
             totalBytes += publishHeaderMessage(requestContext, sequence, VERB_GET==verb ? 0 : requestContext, 
             		                           status, output, activeChannelHigh, activeChannelLow,  
                                                httpSpec, httpRevision, type[pathId], fileSizeAsBytes[pathId],  etagBytes[pathId]); 
@@ -579,6 +584,8 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
 
     
     private void writeBodiesWhileRoom(int channelHigh, int channelLow, int sequence, Pipe<ServerResponseSchema> localOutput, FileChannel localFileChannel, int pathId) throws IOException {
+    	final boolean supportInFlightCopy = true;
+    	
        if (null != localFileChannel) {
          long localPos = activePosition;
        //  logger.info("write body {} {}",Pipe.hasRoomForWrite(localOutput), localOutput);
@@ -595,8 +602,9 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
              
             int blobPosition = (int)PipeHashTable.getItem(outputHash, fcId[pathId]);
             
+            
             final int headBlobPosInPipe = Pipe.storeBlobWorkingHeadPosition(localOutput);
-            if (true && blobPosition>0 && (fileSizes[pathId]<Pipe.blobMask(localOutput))) { //WARNING: still needs more testing TODO: confirm it works for all layouts.
+            if (supportInFlightCopy && blobPosition>0 && (fileSizes[pathId]<Pipe.blobMask(localOutput))) { //WARNING: still needs more testing TODO: confirm it works for all layouts.
             	
             	//data is still in the output buffer so copy it from there.
             	int len = Math.min((int)activePayloadSizeRemaining, localOutput.maxAvgVarLen);

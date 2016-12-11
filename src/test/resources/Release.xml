@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
 
-   <template name="ParseAck" id="100">   
+   <template name="Release" id="100">   
      <uInt64 name="ConnectionID" id="1"/>
+     <uInt64 name="Position" id="2"/>
    </template>
          
 </templates>

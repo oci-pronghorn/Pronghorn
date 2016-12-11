@@ -6,8 +6,12 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.util.MemberHolder;
+import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
 
@@ -15,6 +19,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
     //TODO: replace to hold ServerConnection
 	private final ServiceObjectHolder<ServerConnection>[] socketHolder;
+	
+	private final static Logger logger = LoggerFactory.getLogger(ServerCoordinator.class);
     
     private final Selector[]                           selectors;
     private final MemberHolder[]                       subscriptions;
@@ -39,9 +45,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public final static int CLOSE_CONNECTION_MASK        = 1<<CLOSE_CONNECTION_SHIFT;
 	public final static int UPGRADE_MASK                 = 1<<UPGRADE_CONNECTION_SHIFT;
 
-
+	private final PoolIdx responsePipeLinePool;
     
-    public ServerCoordinator(int socketGroups, int port) {
+    public ServerCoordinator(int socketGroups, int port, int maxConnectionsBits, int maxPartialResponses) {
         this.socketHolder      = new ServiceObjectHolder[socketGroups];    
         this.selectors         = new Selector[socketGroups];
         
@@ -50,12 +56,37 @@ public class ServerCoordinator extends SSLConnectionHolder {
         this.port              = port;
         this.upgradePipeLookup        = new int[socketGroups][];
         this.connectionContext = new ConnectionContext[socketGroups][];
-        this.channelBits       = 12; //max of 4096 open connections per stage
+        this.channelBits       = maxConnectionsBits;
         this.channelBitsSize   = 1<<channelBits;
         this.channelBitsMask   = channelBitsSize-1;
         this.address           = new InetSocketAddress("127.0.0.1",port);
         
+    	this.responsePipeLinePool = new PoolIdx(maxPartialResponses); 
+    	
+        
     }
+    
+    public void shutdown() {
+    	
+    	logger.info("Server pipe pool:\n {}",responsePipeLinePool);
+    	    	
+    }
+    
+	public int responsePipeLineIdx(long ccId) {
+		return responsePipeLinePool.get(ccId);
+	}
+	
+	public int checkForResponsePipeLineIdx(long ccId) {
+		return responsePipeLinePool.getIfReserved(ccId);
+	}	
+	
+	public void releaseResponsePipeLineIdx(long ccId) {
+		responsePipeLinePool.release(ccId);
+	}
+	
+	public int resposePoolSize() {
+		return responsePipeLinePool.length();
+	}
     
 
 	@Override
@@ -77,14 +108,11 @@ public class ServerCoordinator extends SSLConnectionHolder {
         }
         
         that.upgradePipeLookup[idx] = new int[that.channelBitsSize];
-        return that.socketHolder[idx] = new ServiceObjectHolder(that.channelBits, ServerConnection.class, new SocketValidator(), false/*Do not grow*/);
+        return that.socketHolder[idx] = new ServiceObjectHolder<ServerConnection>(that.channelBits, ServerConnection.class, new SocketValidator(), false/*Do not grow*/);
         
     }
     
     public static ServiceObjectHolder<ServerConnection> getSocketChannelHolder(ServerCoordinator that, int idx) {
-        while (null==that.socketHolder[idx]) {//TODO: may need to find more elegant way to do this but this will probably do just fine.
-            Thread.yield();//we have a race that happens on graph building so is may have to wait here.
-        }
         return that.socketHolder[idx];
     }
     
@@ -92,23 +120,19 @@ public class ServerCoordinator extends SSLConnectionHolder {
         return subscriptions[idx] = new MemberHolder(100);
     }
     
-    public static class SocketValidator implements ServiceObjectValidator<SocketChannel> {
+    public static class SocketValidator implements ServiceObjectValidator<ServerConnection> {
 
         @Override
-        public boolean isValid(SocketChannel serviceObject) {            
-            return serviceObject.isConnectionPending() || 
-                   serviceObject.isConnected();
+        public boolean isValid(ServerConnection serviceObject) {            
+            return serviceObject.socketChannel.isConnectionPending() || 
+                   serviceObject.socketChannel.isConnected();
         }
 
         @Override
-        public void dispose(SocketChannel t) {            
-            try {
-                if (t.isOpen()) {
+        public void dispose(ServerConnection t) {
+                if (t.socketChannel.isOpen()) {
                     t.close();
                 }
-            } catch (IOException e) {
-                //ignore since we are wanting this object to get garbage collected anyway.
-            }            
         }
         
     }
@@ -118,9 +142,14 @@ public class ServerCoordinator extends SSLConnectionHolder {
     public static int[] getUpgradedPipeLookupArray(ServerCoordinator that, int idx) {
         return that.upgradePipeLookup[idx];
     }
+    
+    @Deprecated//Not needed bad idea
     public static void setTargetUpgradePipeIdx(ServerCoordinator coordinator, int groupId, long channelId, int idxValue) {
         coordinator.upgradePipeLookup[groupId][(int)(coordinator.channelBitsMask & channelId)] = idxValue;
     }
+    
+    
+    @Deprecated
     public static int getTargetUpgradePipeIdx(ServerCoordinator coordinator, int groupId, long channelId) {
         return coordinator.upgradePipeLookup[groupId][(int)(coordinator.channelBitsMask & channelId)];
     }
@@ -139,12 +168,14 @@ public class ServerCoordinator extends SSLConnectionHolder {
         int i = that.socketHolder.length;
         ServiceObjectHolder<ServerConnection>[] localSocketHolder=that.socketHolder;
         while (--i>=0) {
-             ServiceObjectHolder<ServerConnection> holder = localSocketHolder[i];                         
-             int openConnections = (int)(ServiceObjectHolder.getSequenceCount(holder) - ServiceObjectHolder.getRemovalCount(holder));
-             if (openConnections<minValue /*&& Pipe.hasRoomForWrite(localOutputs[i])*/ ) {
-                 minValue = openConnections;
-                 minIdx = i;
-             } 
+             ServiceObjectHolder<ServerConnection> holder = localSocketHolder[i];    
+             if (null!=holder) {
+	             int openConnections = (int)(ServiceObjectHolder.getSequenceCount(holder) - ServiceObjectHolder.getRemovalCount(holder));
+	             if (openConnections<minValue /*&& Pipe.hasRoomForWrite(localOutputs[i])*/ ) {
+	                 minValue = openConnections;
+	                 minIdx = i;
+	             } 
+             }
           }
           return minIdx;
     }

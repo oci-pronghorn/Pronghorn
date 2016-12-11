@@ -12,6 +12,7 @@
   
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <tls.artifact>Ph-TLS-pureJava</tls.artifact>  <!--  Ph-TLS-boringSSL  Ph-TLS-pureJava  --> 
   </properties>
   
   <profiles>
@@ -24,6 +25,9 @@
             <additionalparam>-Xdoclint:none</additionalparam>
         </properties>
     </profile>
+    
+       
+	
  </profiles>
   
   <dependencies>
@@ -32,6 +36,13 @@
             <artifactId>PronghornPipes</artifactId>
             <version>[0.0.8,0.1.0)</version>
         </dependency> 
+        
+             <dependency>
+            	<groupId>com.ociweb</groupId>
+            	<artifactId>${tls.artifact}</artifactId>
+            	<version>0.0.1</version>
+       		 </dependency>
+        
       	<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>

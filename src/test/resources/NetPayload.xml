@@ -8,6 +8,7 @@
   
    <template name="Plain" id="210">
      <uInt64 name="ConnectionId" id="201"/>
+     <uInt64 name="Position" id="206"/>
      <byteVector name="Payload" id="204"/>
    </template>    
   

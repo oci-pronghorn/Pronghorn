@@ -453,7 +453,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			}
 			
 			stage.run();
-		} while (!isShuttingDown && !GraphManager.isStageShuttingDown(localGM, stageId));		
+		} while (continueRunning(this, stage));
+		//Still testing removal of this which seemed incorrect,  } while (!isShuttingDown && !GraphManager.isStageShuttingDown(localGM, stageId));		
 	}
 
 }

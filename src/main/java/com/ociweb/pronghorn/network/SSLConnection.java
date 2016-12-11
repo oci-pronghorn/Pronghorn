@@ -19,7 +19,7 @@ public class SSLConnection {
 	protected boolean isValid = true;
 
 	protected int localRunningBytesProduced;
-	
+	private long lastNetworkBeginWait = 0;
 
 	protected boolean isDisconnecting = false;
 	protected static boolean isShuttingDown =  false;
@@ -30,6 +30,9 @@ public class SSLConnection {
 		this.id = id;
 	}
 	
+	public String toString() {
+		return engine.getSession().toString()+" id:"+id;
+	}
 	
     //should only be closed by the socket writer logic or TLS handshake may be disrupted causing client to be untrusted.
 	public boolean close() {
@@ -78,6 +81,22 @@ public class SSLConnection {
 
 	public SocketChannel getSocketChannel() {
 		return socketChannel;
+	}
+
+
+	public void clearWaitingForNetwork() {
+		lastNetworkBeginWait=0;
+	}
+
+
+	public long durationWaitingForNetwork() {
+		long now = System.nanoTime();
+		if (0 == lastNetworkBeginWait) {
+			lastNetworkBeginWait=now;
+			return 0;
+		} else {
+			return now - lastNetworkBeginWait;
+		}
 	}
 
 

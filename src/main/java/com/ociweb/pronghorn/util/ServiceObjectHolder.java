@@ -101,12 +101,16 @@ public class ServiceObjectHolder<T> {
         this.validator = validator;
         this.data = new ServiceObjectData<T>(initialBits, clazz);
         this.shouldGrow = shouldGrow;
+        
+        //new Exception("new").printStackTrace();
     }    
     
     public ServiceObjectHolder(Class<T> clazz, ServiceObjectValidator<T> validator, boolean shouldGrow) {
         this.validator = validator;
         this.data = new ServiceObjectData<T>(DEFAULT_BITS, clazz);
         this.shouldGrow = shouldGrow;
+        
+        //new Exception("new").printStackTrace();
     }  
     
     
@@ -196,13 +200,14 @@ public class ServiceObjectHolder<T> {
         //Not thread safe, must be called by one thread or sequentially    
         long index = -1;
         int modIdx =-1;
-        
+         
         long localSequenceCount = sequenceCounter;
         long hardStop = localSequenceCount + data.size;
         
         long minCount = Long.MAX_VALUE;
         long  minCountIndex = -1;
         
+        int x = 0;
         do {
             //if we end up passing over all the members find which is the least used.
             if (-1 != index) {
@@ -216,8 +221,18 @@ public class ServiceObjectHolder<T> {
             index = ++localSequenceCount;
             modIdx = data.mask & (int)index;
         
+            x++;
             if (index==hardStop) {
-            	//do not grow instead return the negative value of the least used objectr
+            	
+            	//dump the service objects and determine if we have the same entry twice?
+            	int s = data.size;
+            	while (--s>=0) {
+            		System.err.println("   "+s+" "+data.serviceObjectLookupCounts[s]+" valid: "+validator.isValid(data.serviceObjectValues[s]));
+            		
+            	}
+            	
+            	new Exception("Error, we hit the hard stop after looking all around mask "+data.mask+" checked "+x+" min indxx "+(data.mask&minCountIndex)+"  "+validator.isValid(data.serviceObjectValues[(int)(data.mask&minCountIndex)])).printStackTrace();;
+            	//do not grow instead return the negative value of the least used object
             	return -minCountIndex;
                
             }
@@ -286,7 +301,8 @@ public class ServiceObjectHolder<T> {
     }
     
     public long size() {
-        return sequenceCounter;
+    	return data.size;
+        //return sequenceCounter;
     }
     
 

@@ -10,7 +10,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class RingBufferMonitorStage extends PronghornStage {
 
-	private final Pipe observedRingBuffer;
+	private final Pipe observedPipe;
 	private final Pipe notifyRingBuffer;
 	private final GraphManager gm;
 		
@@ -24,7 +24,7 @@ public class RingBufferMonitorStage extends PronghornStage {
 	public RingBufferMonitorStage(GraphManager gm, Pipe observedRingBuffer, Pipe notifyRingBuffer) {
 		//the observed ring buffer is NOT an input
 		super(gm, NONE, notifyRingBuffer); 
-		this.observedRingBuffer = observedRingBuffer;
+		this.observedPipe = observedRingBuffer;
 		this.notifyRingBuffer = notifyRingBuffer;
 		this.gm = gm;
 		
@@ -45,10 +45,10 @@ public class RingBufferMonitorStage extends PronghornStage {
 		if (PipeWriter.tryWriteFragment(notifyRingBuffer, MSG_RINGSTATSAMPLE_100)) {
 			
 			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_MS_1, System.currentTimeMillis());
-			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_HEAD_2, Pipe.headPosition(observedRingBuffer));
-			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_TAIL_3, Pipe.tailPosition(observedRingBuffer));
-			PipeWriter.writeInt(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4, observedRingBuffer.lastMsgIdx);	
-			PipeWriter.writeInt(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_BUFFERSIZE_5, observedRingBuffer.sizeOfSlabRing);
+			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_HEAD_2, Pipe.headPosition(observedPipe));
+			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_TAIL_3, Pipe.tailPosition(observedPipe));
+			PipeWriter.writeInt(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4, observedPipe.lastMsgIdx);	
+			PipeWriter.writeInt(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_BUFFERSIZE_5, observedPipe.sizeOfSlabRing);
 			
 			PipeWriter.publishWrites(notifyRingBuffer);
 			assert(Pipe.headPosition(notifyRingBuffer)==Pipe.workingHeadPosition(notifyRingBuffer)) : "publish did not clean up, is the publish batching? it should not.";
@@ -58,14 +58,14 @@ public class RingBufferMonitorStage extends PronghornStage {
 
 	public String getObservedRingName() {
 		//NOTE: is this really the right graph, may need to get the graph from the producer or consumer of the observedRingBuffer!!
-		return GraphManager.getRingName(gm, observedRingBuffer);
+		return GraphManager.getRingName(gm, observedPipe);
 	}
 	
 	public long getObservedRingPublishedCount() {
-		return Pipe.headPosition(observedRingBuffer);
+		return Pipe.headPosition(observedPipe);
 	}
 	
 	public int getObservedRingId() {
-		return observedRingBuffer.id;
+		return observedPipe.id;
 	}
 }
