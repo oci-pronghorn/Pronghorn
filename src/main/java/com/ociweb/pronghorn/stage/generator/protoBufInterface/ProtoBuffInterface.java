@@ -1,8 +1,6 @@
 package com.ociweb.pronghorn.stage.generator.protoBufInterface;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.pipe.MessageSchema;
-import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
+import com.ociweb.pronghorn.pipe.*;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
@@ -43,7 +41,7 @@ public class ProtoBuffInterface {
     private String gmName = "gm";
     private String messageSchemaName = "messageSchema";
     private String fromName = "FROM";
-
+    private int variableCount = 0;
     GraphManager gm;
     FieldReferenceOffsetManager from;
 
@@ -88,12 +86,26 @@ public class ProtoBuffInterface {
         target.close();
     }
 
-    private static void generateGetter(String varName, String varType, Appendable target) {
+    private void generateGetter(String varName, String varType, Appendable target) {
         try {
             //make variable name go to camel case
             String varNameCamel = varName.substring(0, 1).toUpperCase() + varName.substring(1);
             //Getter method generated
             target.append(tab + tab + "public " + varType + " get" + varNameCamel + "(){\n");
+            //if not primed, try read, so that it can be done each message
+            target.append("           if (!query.isPrimed){\n" +
+                    "             while(!PipeReader.tryReadFragment(outPipe)){\n" +
+                    "             }\n" +
+                    "             query.isPrimed = true;\n" +
+                    "           }\n");
+
+            //release read lock if you have accessed them all already
+            target.append("      gettersAccessed++;\n" +
+                    "      if (gettersAccessed == " + variableCount + ") {\n" +
+                    "        query.isPrimed = false;\n" +
+                    "        gettersAccessed = 0;\n" +
+                    "        PipeReader.releaseReadLock(outPipe);\n" +
+                    "      }\n");
             //return variable, close off, end line.
             if (varType == "int")
                 target.append(tab + tab + tab + "return PipeReader.readInt(query.inPipe, query." + varName + "loc); \n");
@@ -120,7 +132,7 @@ public class ProtoBuffInterface {
                     + ") {\n");
             target.append(
                     "                if (!query.isPrimed){\n" +
-                            "                    PipeWriter.tryWriteFragment(inPipe, 0);\n" +
+                            "                    while (!PipeWriter.tryWriteFragment(inPipe, 0)) {}\n" +
                             "                    query.isPrimed = true;\n" +
                             "                }\n");
             if (varType == "int")
@@ -147,10 +159,13 @@ public class ProtoBuffInterface {
             int type = TokenBuilder.extractType(tokens[i]);
             if (TypeMask.isLong(type)) {
                 interfaceTarget.append(tab + tab + "private final int " + scriptNames[i] + "loc = FROM.getLoc(\"" + messageName + "\", \"" + scriptNames[i] + "\");\n");
+                variableCount++;
             } else if (TypeMask.isInt(type)) {
                 interfaceTarget.append(tab + tab + "private final int " + scriptNames[i] + "loc = FROM.getLoc(\"" + messageName + "\", \"" + scriptNames[i] + "\");\n");
+                variableCount++;
             } else if (TypeMask.isText(type)) {
                 interfaceTarget.append(tab + tab + "private final int " + scriptNames[i] + "loc = FROM.getLoc(\"" + messageName + "\", \"" + scriptNames[i] + "\");\n");
+                variableCount++;
             }
         }
     }
@@ -159,9 +174,11 @@ public class ProtoBuffInterface {
         try {
             interfaceTarget.append(
                     "        private GraphManager gm;\n" +
-                    "        private Pipe<MessageSchemaDynamic> inPipe;\n" +
-                    "        private Pipe<MessageSchemaDynamic> outPipe;\n" +
-                    "        private Pipe<RawDataSchema> transmittedPipe;\n" +
+                    "        private final static MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(FROM);\n" +
+                    "        private final static Pipe<MessageSchemaDynamic> inPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));\n" +
+                    "        private final static Pipe<MessageSchemaDynamic> outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));\n" +
+                    "        private final static Pipe<RawDataSchema> transmittedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));\n" +
+                    "        private final static Pipe<RawDataSchema> receivedPipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));\n" +
                     "        private GroceryExampleEncoderStage enc;\n" +
                     "        private GroceryExampleDecoderStage dec;\n" +
                     "        private boolean isWriting;\n" +
@@ -242,8 +259,21 @@ public class ProtoBuffInterface {
 
 
     private void generateInnerClass(Appendable target, String className) throws IOException{
-        target.append(tab).append("public class ").append(className).append("{\n");
-        target.append(tab+tab).append("private ").append(interfaceClassName).append(" query;\n");
+        target.append(tab).append("public static final class ").append(className).append("{\n");
+        target.append("      public static InventoryDetails messages;\n" +
+                "      public static GroceryQueryProvider query;\n" +
+                "      static {\n" +
+                "          GraphManager gm = new GraphManager();\n" +
+                "          receivedPipe.initBuffers();\n" +
+                "          query = new GroceryQueryProvider(gm, receivedPipe);\n" +
+                "          messages = new InventoryDetails();\n" +
+                "      }\n" +
+                "      private int gettersAccessed = 0;\n" +
+                "\n" +
+                "      public static InventoryDetails parseFrom(InputStream in){\n" +
+                "            query.in = in;\n" +
+                "          return Builder.messages;\n" +
+                "      }\n");
         generateGetters();
         generateAdditionalMethods(interfaceTarget);
         generateBuilderClass(interfaceTarget);
@@ -251,21 +281,21 @@ public class ProtoBuffInterface {
     }
 
     private void generateBuilderClass(Appendable target) throws IOException{
-        target.append(tab+tab).append("public class Builder{\n")
-                .append(tab+tab+tab).append("private ").append(innerClassName).append(" messages;\n")
-                .append(tab+tab+tab).append("private ").append(interfaceClassName).append(" query;\n");
+        target.append(tab+tab).append("public static final class Builder{\n")
+                .append(tab+tab+tab).append("public static ").append(innerClassName).append(" messages;\n")
+                .append(tab+tab+tab).append("public static ").append(interfaceClassName).append(" query;\n")
+                .append("\n" +
+                        "      static {\n" +
+                        "        GraphManager gm = new GraphManager();\n" +
+                        "        query = new GroceryQueryProvider(true, gm);\n" +
+                        "        messages = new InventoryDetails();\n" +
+                        "      }\n");
         generateBuilderConstructor(target);
         target.append(tab + tab + "}\n");
     }
 
     private void generateBuilderConstructor(Appendable target) throws IOException{
-        target.append(tab+tab+tab).append("private Builder(){\n")
-                .append(tab+tab+tab+tab).append("GraphManager ").append(gmName).append("= new GraphManager();\n")
-                .append(tab+tab+tab+tab).append("Pipe<RawDataSchema> ").append(sharedPipeName)
-                .append(" = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance));\n")
-                .append(tab+tab+tab+tab).append("query = new ").append(interfaceClassName).append("(true, ")
-                .append(gmName).append(", " + sharedPipeName + ");\n")
-                .append(tab+tab+tab).append("}\n\n");
+        target.append(tab+tab+tab).append("private Builder(){}\n");
 
         generateSetters();
         generateBuild(target);
@@ -275,18 +305,27 @@ public class ProtoBuffInterface {
         target.append(tab + "public void run(){\n");
         target.append(tab+tab).append("if(" + isWritingName + "){\n");
         target.append(tab+tab+tab).append("while(Pipe.contentRemaining(" + sharedPipeName + ") > 0){\n")
+                .append(tab + tab + tab + "int msg = Pipe.takeMsgIdx(transmittedPipe);")
                 .append(tab+tab+tab+tab).append("try{\n")
                 .append(tab+tab+tab+tab+tab).append("Pipe.writeFieldToOutputStream(" + sharedPipeName + ", " + outputStreamName +");\n")
                 .append(tab+tab+tab+tab).append("} catch (IOException e) {\n")
                 .append(tab+tab+tab+tab+tab).append("e.printStackTrace();\n")
                 .append(tab+tab+tab+tab).append("}\n")
+                .append(tab+tab+tab+"Pipe.releaseReadLock(transmittedPipe);\n")
+                .append(tab+tab+tab+"Pipe.confirmLowLevelRead(transmittedPipe, Pipe.sizeOf(transmittedPipe, msg));\n")
                 .append(tab+tab+tab).append("}\n")
                 .append(tab+tab).append("} else{\n")
                 .append(tab+tab+tab).append("try{\n")
-                .append(tab+tab+tab+tab).append("while(" + inputStreamName + ".available() > 0 && Pipe.contentRemaining(" + sharedPipeName + ") > 0){\n")
-                .append(tab+tab+tab+tab+tab).append("Pipe.readFieldFromInputStream(").append(sharedPipeName + ", ").append(inputStreamName + ", ")
-                .append(inputStreamName + ".available());\n")
+                .append(tab+tab+tab + "boolean isOpen = true;\n")
+                .append(tab+tab+tab + "while (in == null){}\n")
+                .append(tab+tab+tab+tab).append("while(" + inputStreamName + ".available() > 0 &&  Pipe.hasRoomForWrite(receivedPipe) && isOpen){\n")
+                .append(tab+tab+tab+tab+tab+ "int size = Pipe.addMsgIdx(receivedPipe, 0);\n")
+                .append(tab+tab+tab+tab+tab+ "isOpen = Pipe.readFieldFromInputStream(receivedPipe, in, in.available());\n")
+                .append(tab+tab+tab+tab+tab+ "Pipe.publishWrites(receivedPipe);\n")
+                .append(tab+tab+tab+tab+tab+ "Pipe.confirmLowLevelWrite(receivedPipe, size);\n")
                 .append(tab+tab+tab+tab).append("}\n")
+                .append("        if (!isOpen){\n" +
+                        "          Pipe.publishEOF(receivedPipe);}\n")
                 .append(tab+tab+tab).append("} catch (IOException e) {\n")
                 .append(tab+tab+tab+tab).append("e.printStackTrace();\n")
                 .append(tab+tab+tab).append("}\n")
@@ -304,13 +343,10 @@ public class ProtoBuffInterface {
     private void generate3ArgConstructor(Appendable target) throws IOException{
         target.append(tab + "public ").append(interfaceClassName)
                 .append("(Boolean ").append(isWritingName + ", ")
-                .append("GraphManager ").append(gmName + ", ")
-                .append("Pipe<RawDataSchema> ").append(sharedPipeName +"){\n");
+                .append("GraphManager ").append(gmName + "){\n");
 
         target.append(tab+tab).append("super(").append(gmName + ", ").append(sharedPipeName + ", ").append("NONE);\n")
                 .append(tab+tab).append("this." + isWritingName).append(" = " + isWritingName + ";\n")
-                .append(tab+tab).append("MessageSchemaDynamic ").append(messageSchemaName).append(" = new MessageSchemaDynamic(" + fromName + ");\n")
-                .append(tab+tab).append(inPipeName).append(" = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(" + messageSchemaName + "));\n")
                 .append(tab+tab).append(inPipeName).append(".initBuffers();\n")
                 .append(tab+tab).append(encoderInstanceName).append(" = new ").append(encoderClassName + "(")
                 .append(gmName + ", ").append(inPipeName + ", ").append(sharedPipeName + ");\n")
@@ -327,8 +363,6 @@ public class ProtoBuffInterface {
 
         target.append(tab+tab).append("super(").append(gmName + ", ").append("NONE, ").append(sharedPipeName + ");\n")
                 .append(tab+tab).append("this." + isWritingName).append(" = false;\n")
-                .append(tab+tab).append("MessageSchemaDynamic ").append(messageSchemaName).append(" = new MessageSchemaDynamic(" + fromName + ");\n")
-                .append(tab+tab).append(outPipeName).append(" = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(" + messageSchemaName + "));\n")
                 .append(tab+tab).append(outPipeName).append(".initBuffers();\n")
                 .append(tab+tab).append(decoderInstanceName).append(" = new ").append(decoderClassName + "(")
                 .append(gmName + ", ").append(sharedPipeName + ", ").append(outPipeName + ");\n")
@@ -339,21 +373,12 @@ public class ProtoBuffInterface {
 
     private void generateAdditionalMethods(Appendable target) throws IOException{
         target.append(tab + "public Builder newBuilder(){\n")
-                .append(tab+tab).append("Builder builder = new Builder();\n")
-                .append(tab+tab).append("this.query = builder.query;\n")
-                .append(tab+tab).append("builder.messages = this;\n")
-                .append(tab+tab).append("return builder;\n")
+                .append(tab+tab).append("return new Builder();")
                 .append(tab + "}\n\n");
 
         target.append(tab + "public InventoryDetails writeTo(OutputStream ").append(outputStreamName + "){\n")
-                .append(tab+tab).append("GraphManager ").append(gmName).append(" = new GraphManager();\n")
-                .append(tab+tab).append("Pipe<RawDataSchema> ").append(sharedPipeName)
-                .append("= new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance, 100, 300));\n")
-                .append(tab+tab).append(sharedPipeName).append(".initBuffers();\n")
-                .append(tab+tab).append(interfaceClassName).append(" query = new ").append(interfaceClassName).append("(" + gmName)
-                .append(" ," + sharedPipeName).append(");\n")
-                .append(tab+tab).append("query." + outputStreamName).append(" = " + outputStreamName).append(";\n")
-                .append(tab+tab).append("PipeWriter.publishWrites(").append(inPipeName + ");\n")
+                .append(tab+tab).append("Builder.query.out = out;\n")
+                .append(tab+tab+"PipeWriter.publishWrites(inPipe);\n")
                 .append(tab+tab).append("return this;\n")
                 .append(tab + "}\n\n");
     }
@@ -364,7 +389,6 @@ public class ProtoBuffInterface {
                 .append("import com.ociweb.pronghorn.pipe.build.GroceryExampleEncoderStage;\n")
                 .append("import com.ociweb.pronghorn.stage.PronghornStage;\n")
                 .append("import com.ociweb.pronghorn.stage.scheduling.GraphManager;\n")
-                .append("import java.util.LinkedList;\n")
                 .append("import java.io.IOException;\n")
                 .append("import java.io.OutputStream;\n")
                 .append("import java.io.InputStream;\n")
