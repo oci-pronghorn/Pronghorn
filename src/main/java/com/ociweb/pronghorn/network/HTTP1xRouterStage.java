@@ -435,9 +435,6 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
         if (ServerCoordinator.INCOMPLETE_RESPONSE_MASK == requestContext) {   
             //try again later, not complete.
             Pipe.resetHead(staticRequestPipe);
-            
-            logger.info("A waiting for {}",channel);
-            
             return false;
         }        
         Pipe.addIntValue(requestContext, staticRequestPipe); // request context     // Write 1   11

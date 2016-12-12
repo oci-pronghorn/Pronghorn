@@ -126,7 +126,6 @@ public class SSLEngineWrapStage extends PronghornStage {
 					PipeReader.tryReadFragment(sourcePipe);
 					PipeReader.releaseReadLock(sourcePipe);
 					if (--shutdownCount<=0) {
-						System.err.println("shutdown SSLEngineWrap");
 						requestShutdown();
 						break;
 					}

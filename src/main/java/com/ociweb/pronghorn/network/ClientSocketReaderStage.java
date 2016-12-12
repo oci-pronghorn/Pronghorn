@@ -41,13 +41,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 		this.output = output;
 		this.releasePipes = parseAck;
 		this.isTLS = isTLS;
-		
-		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
-	//	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 100, this); //run constant since we have a small input buffer.
-		
 
 	}
-
+	
 	@Override
 	public void startup() {
 		start = System.currentTimeMillis();
@@ -66,8 +62,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	
 	@Override
 	public void run() {
-		try {
-			
+
 			int didWork=1;
 			
 			do {	
@@ -77,7 +72,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 				
 
 					ClientConnection cc;
-					if (null!=(cc  = ccm.nextValidConnection() )) {
+					
+					//making this an if causes hang on large files!  TODO: urgent fix.
+					while (null!=(cc  = ccm.nextValidConnection() )) { //TODO: do not use this global counter it may allow for skiping that we need to clenup??
 
 
 					    if (cc.isValid()) {
@@ -113,7 +110,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    	 }
 					    	}
 
-					    	SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();//selectionKey.channel();
 					    	
 					    	//holds the pipe until we gather all the data and got the end of the parse.
 					    	consumeRelease();
@@ -144,8 +140,14 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    			
 						    		//TODO: add assert that target bufer is larger than socket buffer.
 						    		//TODO: warning note cast to int.
-						    		int readCount = (int)socketChannel.read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
-						    									    	
+						    		int readCount=-1; 
+						    		try {
+						    			SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();//selectionKey.channel();
+						    			readCount = (int)socketChannel.read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
+						    		} catch (IOException ioex) {
+						    			logger.info("unable to read socket, may not be an error. ",ioex);
+						    			//will continue with readCount of -1;
+						    		}
 							    	boolean fullBuffer = wrappedUnstructuredLayoutBufferOpen[0].remaining()==0 && wrappedUnstructuredLayoutBufferOpen[1].remaining()==0;
 							    	
 							    	//logger.trace("client reading {} for id {} fullbuffer {}",readCount,cc.getId(),fullBuffer);
@@ -194,19 +196,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    		PipeWriter.wrappedUnstructuredLayoutBufferCancel(target);						    		
 							    	}
 							    	
-							    	//TODO: what if client always reads every expected socket?
-							    	//only remove if we took all the data TODO: and if nothing has come in for that selector in a while??? or only if disconnected?
-							    	if (!fullBuffer && readCount<=0) { 
-							    	    //iff we have extra room for more data and we did not read anything, only then do we remove this from the iterator
-							    		//this ensures that we have checked at least one additional time to ensure nothing in flight is lost.
-							    //		keyIterator.remove();  
-							    	} else {
-							    		
-//										 if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
-//							    				logger.warn("not removed must go around again");
-//							    			}
-							    	}
-							    	
 						    	} else {
 						    		
 						    		 //if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
@@ -233,10 +222,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 					}
 			
 			} while(didWork>0);
-			
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+
 				
 		boolean debug = false;
 		if (debug) {

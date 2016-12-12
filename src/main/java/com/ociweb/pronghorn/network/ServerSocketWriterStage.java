@@ -143,8 +143,8 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    			writeToChannel(x);    
 	    			if (null != writeToChannel[x]) {
 	    				
-	    				//TODO: nice feature to add.
-	    			//	logger.info("write was not completed so we have the opportunity to grow data");
+	    				//TODO: nice feature to add. however it never happens.
+	    			//	logger.info("write was not completed so we have the opportunity to grow data??");
 	    				
 	    			}
 	    			
@@ -217,6 +217,8 @@ public class ServerSocketWriterStage extends PronghornStage {
 		}
 	}
 
+	private final boolean enableWriteBatching = true;
+	
     private void loadPayloadForXmit(final int msgIdx, final int idx) {
         
     	final boolean takeTail = NetPayloadSchema.MSG_PLAIN_210 == msgIdx;
@@ -236,7 +238,6 @@ public class ServerSocketWriterStage extends PronghornStage {
         int len = Pipe.takeRingByteLen(pipe);
         
         ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator, groupIdx);
-        final boolean enableBatching = false;
         
         if (null!=socketHolder) {
 	        ServerConnection serverConnection = socketHolder.get(channelId);
@@ -259,7 +260,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        //In order to maximize throughput take all the messages which are gong to the same location.
 		        
 		        //if there is content and this content is also a message to send and we still have room in the working buffer and the channel is the same then we can batch it.
-		        while (enableBatching && Pipe.hasContentToRead(pipe) && 
+		        while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
 		            Pipe.peekInt(pipe)==msgIdx && 
 		            workingBuffers[idx].remaining()>pipe.maxAvgVarLen && 
 		            Pipe.peekLong(pipe, 1)==channelId ) {
@@ -346,6 +347,8 @@ public class ServerSocketWriterStage extends PronghornStage {
         if (null!=releasePipe) {
         	if (Pipe.hasRoomForWrite(releasePipe)) {
         		publishRelease(releasePipe, activeIds[idx], activeTails[idx]!=-1?activeTails[idx]: Pipe.tailPosition(dataToSend[idx]));
+        	} else {
+        		logger.info("potential hang from failure to release pipe");
         	}
         }
     }

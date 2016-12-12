@@ -1307,12 +1307,15 @@ public class GraphManager {
 		                
 		                if (null!=percentileValues) {		                	
 		                	int pctFull = percentileValues[pipe.id];
-		                	Appendables.appendValue(target.append(" Full:"), pctFull).append("% ");		                		                	
+		                	Appendables.appendValue(target.append(" Full:"), pctFull).append("% ");
+		                	if (pctFull!=0) {
+		                		Appendables.appendValue(target,"@", (pctFull*(long)pipe.sizeOfSlabRing/100L)).append(" ");
+		                	}
 		                }
 		                if (null!=traffic) {
 		                	int trafficCount = traffic[pipe.id];
 		                	if (0!=trafficCount) {
-		                		Appendables.appendValue(target.append(" Traf:"), trafficCount).append(" ");	
+		                		Appendables.appendValue(target.append(" Vol:"), trafficCount).append(" ");	
 		                	}
 		                }
 		                

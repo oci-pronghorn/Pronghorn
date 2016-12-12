@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.network;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
+import org.HdrHistogram.EncodableHistogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +32,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private final Pipe<NetPayloadSchema>[] input; 
 	private final Pipe<NetResponseSchema>[] output;
 	private long[] inputPosition;
+	private long[] blockedPosition;
+	private int[]  blockedOpenCount;
+	private int[]  blockedLen;
+	private int[]  blockedState;
+	
+	
+	
 	private final Pipe<ReleaseSchema> ackStop;
 	private final HTTPSpecification<?,?,?,?> httpSpec;
 	private final int END_OF_HEADER_ID;
@@ -86,7 +94,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		this.ackStop = ackStop;
 		this.httpSpec = httpSpec;
 		this.listenerPipeLookup = listenerPipeLookup;
-		
+		//this.supportsBatchedRelease = false;
 		this.totalBytes = new int[input.length];
 		
 		int i = input.length;
@@ -109,6 +117,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		  payloadLengthData = new long[input.length];
 		  ccIdData = new long[input.length];
 		  inputPosition = new long[input.length];
+		  blockedPosition = new long[input.length];
+		  blockedOpenCount = new int[input.length];
+		  blockedLen = new int[input.length];
+		  blockedState = new int[input.length];
 		  
 		  trieReader = new TrieParserReader(4);//max fields we support capturing.
 		  int x;
@@ -280,13 +292,34 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//we have data which must be parsed and we know the output pipe, eg the connection was not closed				
 						foundWork = true;		
 						
-						assert(0==cc.getUserId() || IntHashTable.hasItem(listenerPipeLookup, cc.getUserId())) : "no value found for "+cc.getUserId();
-						short item = (short)IntHashTable.getItem(listenerPipeLookup, cc.getUserId());
+						//assert(0==cc.getUserId() || IntHashTable.hasItem(listenerPipeLookup, cc.getUserId())) : "no value found for "+cc.getUserId();
 						
-						//System.err.println("reading data from "+item+" for user "+cc.getUserId()+" "+cc.id);
-						
-						targetPipe = output[item]; 					
+						targetPipe = output[(short)IntHashTable.getItem(listenerPipeLookup, cc.getUserId())]; 					
 						assert (0!=positionMemoData[stateIdx] || !Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
+												
+						///////////////////////
+						//the fastest code is the code which is never run
+						//do not parse again if nothing has changed
+						////////////////////////
+						final long headPos = Pipe.headPosition(pipe);
+						
+						//TODO: this same approach should be used in server
+						if (blockedPosition[i] == headPos && blockedLen[i] == trieReader.sourceLen) {
+					
+							if (blockedOpenCount[i]==0 && PipeWriter.hasRoomForWrite(targetPipe) && blockedState[i] == positionMemoData[stateIdx] ) {								
+								//we have the same data but we do have room for write so continue to try parse again
+								//blockedPosition[i] = 0;	
+								blockedOpenCount[i]++;
+							} else {							
+								continue;// do not parse again since nothing has changed	
+							}
+						} else {
+							//did not eq last so we have more data and should attempt parse again
+							blockedPosition[i] = headPos;
+							blockedOpenCount[i] = 0;
+							blockedLen[i] = trieReader.sourceLen;
+							blockedState[i] =  positionMemoData[stateIdx];
+						}
 						
 					}
 				} else {	
@@ -317,13 +350,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						continue;
 					}
 					
-					assert(0==cc.getUserId() || IntHashTable.hasItem(listenerPipeLookup, cc.getUserId())) : "no value found for "+cc.getUserId();
-					
-					
-					short item = (short)IntHashTable.getItem(listenerPipeLookup, cc.getUserId());
-					targetPipe = output[item];
-					
-					
+					//assert(0==cc.getUserId() || IntHashTable.hasItem(listenerPipeLookup, cc.getUserId())) : "no value found for "+cc.getUserId();
+										
+					targetPipe = output[(short)IntHashTable.getItem(listenerPipeLookup, cc.getUserId())];					
 					assert (0!=positionMemoData[stateIdx] || !Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
 					
 					//append the new data
@@ -384,18 +413,17 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 //				}
 				
 				
+				//TODO: only try to parse this pipe again if it has new additional data,  add this key feature to save cycles.
+				
+				
+				
 				switch (state) {
 					case 0:////HTTP/1.1 200 OK              FIRST LINE REVISION AND STATUS NUMBER
-						assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
-						int startingLength1 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-						runLength = 0;
 						if (!PipeWriter.hasRoomForWrite(targetPipe)) {
-							//logger.info("no room to write to target");
-							
-							assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
-							
 							break;
 						}
+						int startingLength1 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
+						runLength = 0;
 						boolean isLongEnough = trieReader.sourceLen>=MAX_VALID_HEADER;
 						final int revisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap);
 						if (revisionId>=0) {
@@ -545,15 +573,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								    PipeWriter.writeLong(targetPipe, NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
 	
 								    //logger.info("**************** end of headers length values is {}",payloadLengthData[i]);
-								    
-								    
+								    								    
 									if (payloadLengthData[i]<0) {
 										positionMemoData[stateIdx]= state= 3;	
 										payloadLengthData[i] = 0;//starting chunk size.
 									} else {
-										//assert(30==payloadLengthData[i]);
-										
-									    //logger.info("*********************** simple length payload size was {} we have {} for {}",payloadLengthData[i],trieReader.sourceLen,ccId);
 										positionMemoData[stateIdx]= state= 2;									
 									}
 									foundEnd = true;
@@ -566,10 +590,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								Pipe.releasePendingAsReadLock(pipe, consumed);
 								assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
 								subBytes(consumed, pipe, i, trieReader.sourceLen);
-//								if (pipe.contentRemaining(pipe)>0  &&  !Pipe.hasContentToRead(pipe)) {
-//									throw new RuntimeException("no match");	
-//								}
-								
+
 								assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
 								
 							} else {
@@ -676,7 +697,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							DataOutputBlobWriter<NetResponseSchema> writer3 = PipeWriter.outputStream(targetPipe);
 							do {
 								
-							//	logger.info("****************************  chunk remainining {} ",chunkRemaining);
+								//logger.info("****************************  chunk remainining {} ",chunkRemaining);
 								
 								if (0==chunkRemaining) {
 									
@@ -836,13 +857,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			}
 			
 		} while(foundWork);
-	
-//		int i = input.length;
-//		while (--i>=0) {
-//			//logger.info("                                                                               exit with remaning bytes of {} ",Pipe.releasePendingCount(input[i]));
-//			assert(0==Pipe.releasePendingCount(input[i])) : "DID NOT EXIT WITH ZERO FOR "+i+" "+Pipe.releasePendingCount(input[i]);
-//		}
-		
+
 	}
 
 	private boolean finishAndRelease(boolean foundWork, int i, final int stateIdx, long ccId,
@@ -864,14 +879,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			foundWork |= true;						
 			positionMemoData[stateIdx] = 0; //next state	
 		}
-//		
-//		
-//		if (positionMemoData[stateIdx] == 0) {
-//			int maxFrags = pipe.sizeOfSlabRing/FieldReferenceOffsetManager.minFragmentSize(NetPayloadSchema.FROM);
-//			
-//			logger.info("END Pipe release count: {} byte {} for id {} maxFrags {}", Pipe.releasePendingCount(pipe), Pipe.releasePendingByteCount(pipe), ccId, maxFrags);
-//		}
-		
 		
 		return foundWork;
 	}

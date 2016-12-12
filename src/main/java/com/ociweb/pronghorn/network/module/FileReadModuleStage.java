@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.network;
+package com.ociweb.pronghorn.network.module;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,6 +16,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.AbstractRestStage;
+import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
@@ -39,13 +41,13 @@ import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
 
 //Minimal memory usage and leverages SSD.
-public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
+public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                                         R extends Enum<R> & HTTPRevision,
                                         V extends Enum<V> & HTTPVerb,
                                         H extends Enum<H> & HTTPHeaderKey> extends AbstractRestStage<T,R,V,H> {
 
     
-    private final static Logger logger = LoggerFactory.getLogger(HTTPModuleFileReadStage.class);
+    private final static Logger logger = LoggerFactory.getLogger(FileReadModuleStage.class);
     private final int maxTotalPathLength = 65535;
     private final int maxFileCount = 256;
     
@@ -90,7 +92,8 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
     private IntHashTable fileExtensionTable;
     private static final int extHashShift = 3; //note hash map watches first 13 bits only,  4.3 chars 
  
-        
+	private final boolean supportInFlightCopy = true;
+	
     //move to the rest of the context constants
     private static final int OPEN_FILECHANNEL_BITS = 6; //64 open files, no more
     private static final int OPEN_FILECHANNEL_SIZE = 1<<OPEN_FILECHANNEL_BITS;
@@ -99,11 +102,11 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
     private final static int VERB_GET = 0;
     private final static int VERB_HEAD = 1;
         
-    public static HTTPModuleFileReadStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, String rootPath) {
-        return new HTTPModuleFileReadStage(graphManager, input, output, httpSpec, rootPath);
+    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, String rootPath) {
+        return new FileReadModuleStage(graphManager, input, output, httpSpec, rootPath);
     }
     
-    public HTTPModuleFileReadStage(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, 
+    public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, 
                                    HTTPSpecification<T,R,V,H> httpSpec,
                                    String rootPath) {
         
@@ -584,7 +587,7 @@ public class HTTPModuleFileReadStage<   T extends Enum<T> & HTTPContentType,
 
     
     private void writeBodiesWhileRoom(int channelHigh, int channelLow, int sequence, Pipe<ServerResponseSchema> localOutput, FileChannel localFileChannel, int pathId) throws IOException {
-    	final boolean supportInFlightCopy = true;
+
     	
        if (null != localFileChannel) {
          long localPos = activePosition;

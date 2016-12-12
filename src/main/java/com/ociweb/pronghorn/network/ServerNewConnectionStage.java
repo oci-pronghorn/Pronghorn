@@ -128,9 +128,11 @@ public class ServerNewConnectionStage extends PronghornStage{
                       
                       try {                          
                           channel.configureBlocking(false);
-                          channel.setOption(StandardSocketOptions.TCP_NODELAY, true);  
+                          //channel.setOption(StandardSocketOptions.TCP_NODELAY, true);  
                          // channel.setOption(StandardSocketOptions.SO_SNDBUF, 1<<16); //for heavy testing we avoid overloading client by making this smaller.
-                                                    
+                                     
+                          channel.socket().setTcpNoDelay(true);
+                          
                          // logger.info("send buffer size {} ",  channel.getOption(StandardSocketOptions.SO_SNDBUF));
                           
                           ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator, targetPipeIdx);

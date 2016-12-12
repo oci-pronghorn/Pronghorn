@@ -7,13 +7,13 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.ociweb.pronghorn.network.HTTPModuleFileReadStage;
 import com.ociweb.pronghorn.network.HTTP1xRouterStage;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.module.FileReadModuleStage;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
@@ -124,7 +124,7 @@ public class PipelineIntegrationTest {
             if (testRoutingOnly) {
                 PipeCleanerStage.newInstance(gm, routedAppPipes[i]);
             } else {
-                HTTPModuleFileReadStage fielStage = HTTPModuleFileReadStage.newInstance(gm, routedAppPipes[i], new Pipe<ServerResponseSchema>(responseConfig), HTTPSpecification.defaultSpec(), testDataFiles.tempDirectory.toString());  
+                FileReadModuleStage fielStage = FileReadModuleStage.newInstance(gm, routedAppPipes[i], new Pipe<ServerResponseSchema>(responseConfig), HTTPSpecification.defaultSpec(), testDataFiles.tempDirectory.toString());  
                 PipeCleanerStage.newInstance(gm, gm.getOutputPipe(gm, fielStage));
             }            
         }

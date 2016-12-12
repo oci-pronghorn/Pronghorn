@@ -9,10 +9,10 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.ociweb.pronghorn.network.HTTPModuleFileReadStage;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.module.FileReadModuleStage;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -54,7 +54,7 @@ public class HTTPModuleFileReadStageTest {
         //PipeCleanerStage.newInstance(gm, requestPipe);//generates about 15m req/sec
                 
         //can not be watched, does not shutdown.
-        HTTPModuleFileReadStage<?, ?, ?, ?> watch = HTTPModuleFileReadStage.newInstance(gm, requestPipe, responsePipe, HTTPSpecification.defaultSpec(), gs.tempFolder());
+        FileReadModuleStage<?, ?, ?, ?> watch = FileReadModuleStage.newInstance(gm, requestPipe, responsePipe, HTTPSpecification.defaultSpec(), gs.tempFolder());
 
         responsePipe.initBuffers();        
         
@@ -118,7 +118,7 @@ public class HTTPModuleFileReadStageTest {
     
     @Test
     public void testFileExtCollide() {
-        IntHashTable table = HTTPModuleFileReadStage.buildFileExtHashTable(HTTPContentTypeDefaults.class);
+        IntHashTable table = FileReadModuleStage.buildFileExtHashTable(HTTPContentTypeDefaults.class);
        
         final AtomicInteger count = new AtomicInteger();
         
@@ -130,7 +130,7 @@ public class HTTPModuleFileReadStageTest {
              
              HTTPContentTypeDefaults type = HTTPContentTypeDefaults.values()[value];
              
-             Assert.assertEquals( HTTPModuleFileReadStage.extHash(type.fileExtension()), key);
+             Assert.assertEquals( FileReadModuleStage.extHash(type.fileExtension()), key);
 
              count.incrementAndGet();             
               

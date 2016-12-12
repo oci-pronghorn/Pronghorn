@@ -43,6 +43,8 @@ public class NetGraphBuilder {
 		//must be large enough for handshake plus this is the primary pipe after the socket so it must be a little larger.
 		PipeConfig<NetPayloadSchema> clientNetResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, responseQueue, responseSize); 	
 		
+		//pipe holds data as it is parsed so making it larger is helpfull
+		PipeConfig<NetPayloadSchema> clientHTTPResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, responseQueue*4, responseSize*2); 	
 		
 		
 		///////////////////
@@ -64,7 +66,7 @@ public class NetGraphBuilder {
 			int k = maxPartialResponses;
 			while (--k>=0) {
 				socketResponse[k] = new Pipe<NetPayloadSchema>(clientNetResponseConfig);
-				clearResponse[k] = new Pipe<NetPayloadSchema>(clientNetResponseConfig.blobGrow2x());
+				clearResponse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig);
 			}
 		} else {
 			socketResponse = new Pipe[maxPartialResponses];
@@ -72,7 +74,7 @@ public class NetGraphBuilder {
 			
 			int k = maxPartialResponses;
 			while (--k>=0) {
-				socketResponse[k] = new Pipe<NetPayloadSchema>(clientNetResponseConfig);
+				socketResponse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig);
 			}
 		}
 			
@@ -138,9 +140,19 @@ public class NetGraphBuilder {
 			wrappedClientRequests = PronghornStage.join(wrappedClientRequests,hanshakePipes);
 		}
 		
-		ClientSocketWriterStage socketWriteStage = new ClientSocketWriterStage(gm, ccm, wrappedClientRequests);
-	    GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketWriter", socketWriteStage);
 		
+		int clientWriters = 2;
+		
+		Pipe[][] clientRequests = Pipe.splitPipes(clientWriters, wrappedClientRequests);
+		
+		int i = clientWriters;
+		
+		while (--i>=0) {		
+			ClientSocketWriterStage socketWriteStage = new ClientSocketWriterStage(gm, ccm, clientRequests[i]);
+	    	GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketWriter", socketWriteStage);
+		}	    
+	    
+	    
 	}
 
 	
@@ -148,15 +160,13 @@ public class NetGraphBuilder {
 	//TODO: review each stage for opportunities to use batch combine logic, (eg n in a row). May go a lot faster for single power users. future feature.
 	
 	public static GraphManager buildHTTPServerGraph(boolean isTLS, GraphManager graphManager, int groups,
-			int maxSimultaniousClients, int apps, ModuleConfig ac, ServerCoordinator coordinator, int requestUnwrapUnits, int responseWrapUnits, int pipesPerWrapUnit, int socketWriters) {
+			int maxSimultaniousClients, ModuleConfig ac, ServerCoordinator coordinator, int requestUnwrapUnits, int responseWrapUnits, int pipesPerWrapUnit, int socketWriters) {
 
 		PipeConfig<ServerConnectionSchema> newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 10);
         PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 1024, 1<<15);///if payload is smaller than average file size will be slower
       
         //byte buffer must remain small because we will have a lot of these for all the partial messages
-        PipeConfig<NetPayloadSchema> incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 2, 1<<15); //Do not make to large or latency goes up
-        
-        PipeConfig<ServerResponseSchema> outgoingDataConfig = new PipeConfig<ServerResponseSchema>(ServerResponseSchema.instance, 2048, 1<<15);//from module to  supervisor
+        PipeConfig<NetPayloadSchema> incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 4, 1<<20); //Make same as network buffer in bytes!??   Do not make to large or latency goes up
         
         //must be large to hold high volumes of throughput.  //NOTE: effeciency of supervisor stage controls how long this needs to be
         PipeConfig<NetPayloadSchema> toWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 1024, 1<<15); //from super should be 2x of super input //must be 1<<15 at a minimum for handshake
@@ -176,13 +186,12 @@ public class NetGraphBuilder {
         int g = groups;
         while (--g >= 0) {//create each connection group            
             
-            Pipe<ServerResponseSchema>[] fromModule = new Pipe[apps];
+            Pipe<ServerResponseSchema>[][] fromModule = new Pipe[ac.moduleCount()][];            
             
+            Pipe<HTTPRequestSchema>[] toModules = new Pipe[ac.moduleCount()];
             
-            Pipe<HTTPRequestSchema>[] toModule = new Pipe[apps];
-            
-            long[] headers = new long[apps];
-            int[] msgIds = new int[apps];
+            long[] headers = new long[ac.moduleCount()];
+            int[] msgIds = new int[ac.moduleCount()];
                         
              
             encryptedIncomingGroup[g] = buildPipes(maxSimultaniousClients, incomingDataConfig);
@@ -231,26 +240,20 @@ public class NetGraphBuilder {
             
             /////////////////////////
             ///////////////////////
-            a = apps;
+            a = ac.moduleCount();
             CharSequence[] paths = new CharSequence[a];
             
             while (--a>=0) { //create every app for this connection group
-                
-            	fromModule[a] = new Pipe<ServerResponseSchema>(outgoingDataConfig); //TODO: we can have any number of froms URGENT, we need to define elsewhere.
-                
-                
-                toModule[a] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig);
-				
-                //We only support a single component now, the static file loader
-			//	
-                headers[a] = ac.addModule(a, graphManager, toModule[a], fromModule[a], HTTPSpecification.defaultSpec());
-                
+                                              
+                toModules[a] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig);				
+                headers[a] = ac.addModule(a, graphManager, toModules[a], HTTPSpecification.defaultSpec());                
+                fromModule[a] = ac.outputPipes(a);                 
                 paths[a] =  ac.getPathRoute(a);//"/%b";  //"/WebSocket/connect",
                 
                 msgIds[a] =  HTTPRequestSchema.MSG_FILEREQUEST_200;
             }
             Pipe[] plainPipe = planIncomingGroup[g];//countTap(graphManager, planIncomingGroup[g],"Server-unwrap-to-router");
-            HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainPipe, toModule, acks[acks.length-1], paths, headers, msgIds);        
+            HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainPipe, toModules, acks[acks.length-1], paths, headers, msgIds);        
             GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
             //////////////////////////
             //////////////////////////
@@ -259,12 +262,14 @@ public class NetGraphBuilder {
             int y = pipesPerWrapUnit;
             int z = responseWrapUnits;
             
-            Pipe[] fromSuperPipes = new Pipe[z*y];
-            Pipe[] toWiterPipes;
+            Pipe[] singlePipe = new Pipe[z*y];
+            Pipe[][] fromSupers = new Pipe[][]{singlePipe};
+            
+            Pipe[] toWiterPipes = null;
             
             if (isTLS) {
 	            
-	            toWiterPipes = new Pipe[(z*y) + requestUnwrapUnits ]; //one extra for handshakes if needed
+	            toWiterPipes = new Pipe[(z*y) + requestUnwrapUnits ]; //extras for handshakes if needed
 	            
 	            int toWriterPos = 0;
 	            int fromSuperPos = 0;
@@ -287,7 +292,7 @@ public class NetGraphBuilder {
 		            	toWrapperPipes[w] = new Pipe<NetPayloadSchema>(toWraperConfig);
 		            	fromWrapperPipes[w] = new Pipe<NetPayloadSchema>(fromWraperConfig); 
 		            	toWiterPipes[toWriterPos++] = fromWrapperPipes[w];
-		            	fromSuperPipes[fromSuperPos++] = toWrapperPipes[w];
+		            	fromSupers[0][fromSuperPos++] = toWrapperPipes[w]; //TODO: this zero is wrong because it should be the count of apps.
 		            }
 		            
 		            Pipe[] tapToWrap = toWrapperPipes;//countTap(graphManager, toWrapperPipes,"Server-super-to-wrap");
@@ -304,23 +309,36 @@ public class NetGraphBuilder {
 	            
 	            
             } else {
-            	
-            	int i = fromSuperPipes.length;
-            	while (-- i>= 0) {
-            		fromSuperPipes[i]=new Pipe<NetPayloadSchema>(fromWraperConfig);            		
-            	}
-            	toWiterPipes = fromSuperPipes;      	
-            
+            	a = ac.moduleCount();
+                while (--a>=0) {
+	            	int i = fromSupers[a].length;
+	            	while (-- i>= 0) {
+	            		fromSupers[a][i]=new Pipe<NetPayloadSchema>(fromWraperConfig);            		
+	            	}
+	            	toWiterPipes = fromSupers[a];      	
+                }
             }            
             
-            Pipe[] tapMod = fromModule;//countTap(graphManager, fromModule, "Server-module-to-supervior");
             
-            WrapSupervisorStage wrapSuper = new WrapSupervisorStage(graphManager, tapMod, fromSuperPipes, coordinator, isTLS);//ensure order           
+            ///////////////////
+            //we always have a super to ensure order regardless of TLS
+            //a single supervisor will group all the modules responses together.
+            ///////////////////
+            
+            a = ac.moduleCount(); //TODO: this seems wrong we should have 1 supervisor.
+            while (--a>=0) {
+            	WrapSupervisorStage wrapSuper = new WrapSupervisorStage(graphManager, fromModule[a], fromSupers[a], coordinator, isTLS);//ensure order           
+            }
+            
+            ///////////////
+            //all the writer stages
+            ///////////////
             
             
-            Pipe[][] req = Pipe.splitPipes(socketWriters, toWiterPipes);	
+            Pipe[][] req = Pipe.splitPipes(socketWriters, toWiterPipes);	//TODO: for multiple apps this is also not yet ready.
             int w = socketWriters;
             while (--w>=0) {
+            	
             	ServerSocketWriterStage writerStage = new ServerSocketWriterStage(graphManager, coordinator, req[w], g); //pump bytes out
                 GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketWriter", writerStage);
                	

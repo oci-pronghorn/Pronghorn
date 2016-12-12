@@ -74,6 +74,9 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
         this.poolMod = outgoingPipes.length;
         this.shutdownCount = dataToSend.length;
         
+        this.supportsBatchedPublish = false;
+        this.supportsBatchedRelease = false;
+        
         if (minVarLength(outgoingPipes) < maxVarLength(inputPipes)) {
         	throw new UnsupportedOperationException("All output pipes must support variable length fields equal to or larger than all input pipes");
         }

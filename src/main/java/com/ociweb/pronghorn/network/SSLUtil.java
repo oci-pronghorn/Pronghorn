@@ -105,13 +105,15 @@ public class SSLUtil {
 				} else {
 					//connection was closed before handshake completed 
 				    if (Status.CLOSED == status) {
-				    	logger.warn("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX unable to write due to coosed status, DO NOT EXPECT RESPOSNE.");
+				    	cc.close();
+				    	//already closed, NOTE we should release this from reserved pipe pools
+				    //	logger.warn("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX unable to write due to coosed status, DO NOT EXPECT RESPOSNE.");
 				    	//no need to cancel wrapped buffer it was already done by wrapResultStatusState
 				    	return;
+				    } else {
+				    	logger.info("HANDSHAKE unable to wrap {} {} {} ",status, cc.getClass().getSimpleName(), cc.engine, new Exception());
+						throw new RuntimeException();		
 				    }
-					logger.info("HANDSHAKE unable to wrap {} {} {} ",status, cc.getClass().getSimpleName(), cc.engine, new Exception());
-					throw new RuntimeException();		
-					
 				}
 			
 				//TODO: can the wraps be one message on outgoign pipe??? yes as long as we have wrap requesets in a row, close on first non wrap request. faster as well.
@@ -133,7 +135,7 @@ public class SSLUtil {
 		} catch (Throwable t) {
 			//ignore we are closing this connection
 		}
-		ClientConnection.logger.error("Unable to encrypt closed conection, in server:{}",sslex,isServer);
+		ClientConnection.logger.error("Unable to encrypt closed conection, in server:{}",isServer, sslex);
 	}
 
 	public static Status wrapResultStatusState(Pipe<NetPayloadSchema> target, ByteBuffer buffer,
@@ -236,7 +238,9 @@ public class SSLUtil {
 	private static SSLEngineResult gatherPipeDataForUnwrap(Pipe<NetPayloadSchema> source, ByteBuffer rolling,
 															SSLConnection cc, final ByteBuffer[] targetBuffer, boolean isServer) {
 		SSLEngineResult result=null;
-				
+		
+		rolling.limit(rolling.capacity()); //Not sure why this is required but the limit is getting set too small somewhere above...
+			
 		//TODO: upon exception this is not getting closed !!
 		ByteBuffer[] inputs = PipeReader.wrappedUnstructuredLayoutBuffer(source, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_PAYLOAD_203);
 		
@@ -261,6 +265,12 @@ public class SSLUtil {
 				
 				
 			} else {
+
+				if (rolling.position()+inZero.remaining()>rolling.limit()) {
+					logger.info("overflow of byte buffer error. target {} source {}",rolling,inZero);
+					throw new UnsupportedOperationException("Logic error above, this should be prevent before arrival here.");
+					
+				}
 				
 				//add this new content onto the end before use.				
 				rolling.put(inZero);
@@ -739,21 +749,13 @@ public class SSLUtil {
 				}
 				
 				if (rolling.position()>0) {
-					logger.info("ok but with rolling {} for id {} ",rolling,cc.id);
+					logger.info("ok but with rolling {} for id {} probably should unwrap this data before leaving if possible ",rolling,cc.id);
 				}
 				
 			} else if (status==Status.CLOSED){
 				if (cc.localRunningBytesProduced==0) {
 					PipeWriter.wrappedUnstructuredLayoutBufferCancel(target);							
-				} else {
-					System.err.println("AAA Xxxxxxxxxxxxxxxxxx found some data to send ERROR: must publish this");					
-					
-				}
-				
-				if (rolling.position()>0) {
-					logger.info("closed but with rolling {} for id {} ",rolling,cc.id);
-				}
-				
+				} 
 				try {
 					 cc.getEngine().closeOutbound();
 					 handShakeUnWrapIfNeeded(cc, source, rolling, workspace, handshakePipe, secureBuffer, isServer);
@@ -762,6 +764,10 @@ public class SSLUtil {
 					cc.isValid = false;
 					ClientConnection.logger.warn("Error closing connection ",e);
 				}				
+				//clear the rolling for the next user/call since this one is closed
+				rolling.clear();
+				cc.close();
+				
 			} else if (status==Status.BUFFER_UNDERFLOW) {
 				
 //				if (rolling.position()>0) {

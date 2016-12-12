@@ -2,7 +2,6 @@ package com.ociweb.pronghorn;
 
 import java.util.concurrent.TimeUnit;
 
-import com.ociweb.pronghorn.network.HTTPModuleFileReadStage;
 import com.ociweb.pronghorn.network.ModuleConfig;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.network.ServerCoordinator;
@@ -11,9 +10,11 @@ import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.module.FileReadModuleStage;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
@@ -35,13 +36,16 @@ public class HTTPServer {
         
         ModuleConfig config = new ModuleConfig() {
 
+            
+            PipeConfig<ServerResponseSchema> outgoingDataConfig = new PipeConfig<ServerResponseSchema>(ServerResponseSchema.instance, 2048, 1<<15);//from module to  supervisor
+            Pipe<ServerResponseSchema> output = new Pipe<ServerResponseSchema>(outgoingDataConfig);
+            
 			@Override
 			public long addModule(int a, GraphManager graphManager, Pipe<HTTPRequestSchema> input,
-					Pipe<ServerResponseSchema> output,
 					HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> spec) {
 				
-				HTTPModuleFileReadStage.newInstance(graphManager, input, output, spec, "/home/nate/elmForm");
 				
+				FileReadModuleStage.newInstance(graphManager, input, output, spec, "/home/nate/elmForm");				
 				//return needed headers
 				return 0;
 			}
@@ -49,6 +53,16 @@ public class HTTPServer {
 			@Override
 			public CharSequence getPathRoute(int a) {
 				return "/%b";
+			}
+
+			@Override
+			public Pipe<ServerResponseSchema>[] outputPipes(int a) {
+				return new Pipe[]{output};
+			}
+
+			@Override
+			public int moduleCount() {
+				return 1;
 			}
         	
         	
@@ -60,7 +74,7 @@ public class HTTPServer {
         int socketWriters = 1;
         
 		ServerCoordinator coordinator = new ServerCoordinator(groups, 8443, 15, 2);//32K simulanious connections on server. 
-		gm = NetGraphBuilder.buildHTTPServerGraph(true, gm, groups, 2, apps, config, coordinator, requestUnwrapUnits, responseWrapUnits, outputPipes, socketWriters); 
+		gm = NetGraphBuilder.buildHTTPServerGraph(true, gm, groups, 2, config, coordinator, requestUnwrapUnits, responseWrapUnits, outputPipes, socketWriters); 
 		//gm = NetGraphBuilder.buildHTTPServerGraph(gm, groups, apps);
         
         

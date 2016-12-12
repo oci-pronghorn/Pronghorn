@@ -58,6 +58,11 @@ public class RegulatedLoadTestStage extends PronghornStage{
 	//	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 200_000_000, this); //5x per second
 	}
 	
+	
+	public long totalReceived() {
+		return totalReceived;
+	}
+	
 	@Override
 	public void startup() {
 		
@@ -87,7 +92,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		//System.out.println("average ns "+avg);
 		
 		
-		histRoundTrip.outputPercentileDistribution(System.out, 1_000.0); //showing microseconds.
+		histRoundTrip.outputPercentileDistribution(System.out, 1_000_000.0); //showing ms.
 		
 		histInFlight.outputPercentileDistribution(System.out, 1d);
 		
@@ -182,7 +187,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 								if (recIdx <=0 ) {
 									System.out.println("shutdown "+shutdownCount+" "+i);
 									if (--shutdownCount == 0) {
-										System.out.println("XXXXXXX full shutdown now "+shutdownCount);
+										logger.info("XXXXXXX full shutdown now "+shutdownCount);
 										requestShutdown();
 										return;
 									}
@@ -248,16 +253,17 @@ public class RegulatedLoadTestStage extends PronghornStage{
 							Pipe.addUTF8("127.0.0.1", outputs[i]);
 							Pipe.addUTF8(testFile, outputs[i]);
 							
-							Pipe.addIntValue(i + (j * outputs.length), outputs[i]);            //TODO: need to add additinal connections per round per connection.
+							Pipe.addIntValue(i + (j * outputs.length), outputs[i]);            //TODO: need to add additional connections per round per connection.
 	
 							times[i][toSend[i]] = System.nanoTime();
 							
 							Pipe.confirmLowLevelWrite(outputs[i], size);
 							Pipe.publishWrites(outputs[i]);
 							
-//							if (0==toSend[i]) {
-//								System.out.println("finished requesting "+i);
-//							}
+							//if (0==toSend[i]) {
+								
+								//								System.out.println("finished requesting "+i);
+							//}
 							
 						}					
 					}

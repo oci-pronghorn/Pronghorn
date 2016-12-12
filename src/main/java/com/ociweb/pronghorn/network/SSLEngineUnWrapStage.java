@@ -48,6 +48,8 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 		
 		this.handshakePipe = handshakePipe;
 		
+		this.supportsBatchedPublish = false;
+		
 		this.isServer = isServer;
 		this.groupId = groupId;
 		this.shutdownCount = encryptedContent.length;

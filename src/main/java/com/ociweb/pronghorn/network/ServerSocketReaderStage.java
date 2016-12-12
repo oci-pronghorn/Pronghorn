@@ -134,9 +134,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 						 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
 							 releasePipesForUse();
 							 assert(-1 == coordinator.checkForResponsePipeLineIdx(cc.getId())) : "should have already been relased";	
-							 if (true) {
-								 throw new UnsupportedOperationException("this is now the only placde to do this wrap...");
-							 }
 							 continue;//one of the other pipes can do work
 						 }
 					}
@@ -272,6 +269,10 @@ public class ServerSocketReaderStage extends PronghornStage {
             		this.coordinator.releaseResponsePipeLineIdx(channelId);
             	
                     recordErrorAndClose(sourceChannel, e);
+                    
+                    new Exception("exited app").printStackTrace();
+                    System.exit(-1);
+                    
                     return -1;
             }
         } else {
