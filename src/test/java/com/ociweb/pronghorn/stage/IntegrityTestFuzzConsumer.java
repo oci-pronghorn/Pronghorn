@@ -22,27 +22,31 @@ public class IntegrityTestFuzzConsumer extends PronghornStage {
     @Override
     public void run(){
         while(Pipe.contentRemaining(input) > 0){
-            Pipe.takeMsgIdx(input);
-            result.setLength(0);
+            switch(Pipe.takeMsgIdx(input)){
+                case 0:
+                    result.setLength(0);
 
-            result.append(Pipe.takeInt(input) + ",");
-            result.append(Pipe.takeInt(input) + ",");
-            result.append(Pipe.takeInt(input) + ",");
-            result.append(Pipe.takeInt(input) + ",");
+                    result.append(Pipe.takeInt(input) + ",");
+                    result.append(Pipe.takeInt(input) + ",");
+                    result.append(Pipe.takeInt(input) + ",");
+                    result.append(Pipe.takeInt(input) + ",");
 
-            result.append(Pipe.takeLong(input) + ",");
-            result.append(Pipe.takeLong(input) + ",");
-            result.append(Pipe.takeLong(input) + ",");
-            result.append(Pipe.takeLong(input));
+                    result.append(Pipe.takeLong(input) + ",");
+                    result.append(Pipe.takeLong(input) + ",");
+                    result.append(Pipe.takeLong(input) + ",");
+                    result.append(Pipe.takeLong(input));
 
-            StringBuilder optional = new StringBuilder();
-            StringBuilder notOptional = new StringBuilder();
+                    StringBuilder optional = new StringBuilder();
+                    StringBuilder notOptional = new StringBuilder();
 
-            Pipe.readASCII(input, Appendables.truncate(optional), Pipe.takeRingByteMetaData(input), Pipe.takeRingByteLen(input));
-            Pipe.readASCII(input, Appendables.truncate(notOptional), Pipe.takeRingByteMetaData(input), Pipe.takeRingByteLen(input));
+                    Pipe.readASCII(input, Appendables.truncate(optional), Pipe.takeRingByteMetaData(input), Pipe.takeRingByteLen(input));
+                    Pipe.readASCII(input, Appendables.truncate(notOptional), Pipe.takeRingByteMetaData(input), Pipe.takeRingByteLen(input));
 
-            Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, 0));
-            Pipe.releaseReadLock(input);
+                    Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, 0));
+                    Pipe.releaseReadLock(input);
+                default:
+                    requestShutdown();
+            }
         }
     }
 }
