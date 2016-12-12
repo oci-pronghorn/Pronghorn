@@ -69,15 +69,15 @@ public class IntHashTable {
 	 * @param key
 	 */
 	public static int getItem(IntHashTable ht, int key) {
+		return (int)(scanForItem(key, ht.mask, MurmurHash.hash32finalizer(key), ht.data, ht.data[MurmurHash.hash32finalizer(key) & ht.mask]) >> 32);
+	}
 
-		int mask = ht.mask;
-		int hash = MurmurHash.hash32finalizer(key);
-		long[] data2 = ht.data;
-		long block = data2[hash & mask];
+	private static long scanForItem(int key, int mask, int hash, long[] data2, long block) {
+		
 		while ((block != 0) && ((int)block) != key) { 			
 			block = data2[++hash & mask];
 		}
-		return (int)(block >> 32);
+		return block;
 	}
 	    
 	public static boolean hasItem(IntHashTable ht, int key) {

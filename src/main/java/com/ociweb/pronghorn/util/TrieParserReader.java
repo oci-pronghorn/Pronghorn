@@ -374,47 +374,30 @@ public class TrieParserReader {
         initForQuery(reader, trie, source, sourcePos);
         
         boolean hasSafePoint = false;
+        int t = 0;
                 
         top:
-        while (reader.type != TrieParser.TYPE_END) {  
-            int t = reader.type;
-            if (t==TrieParser.TYPE_BRANCH_VALUE) {    
-                
-                
-//                if (0 == (0xFF & source[sourceMask & reader.localSourcePos] & trie.data[reader.pos++])) {
-//                    int inc = ((((int)trie.data[reader.pos++])<<15) | (0x7FFF&trie.data[reader.pos]) + 1);
-//                    reader.pos += inc; 
-//                } else {
-//                    reader.pos += 2;
-//                }
-                
-                //TODO: we compute both sides of jump when we do not need to
-                
+        while ((t=reader.type) != TrieParser.TYPE_END) {  
+           
+            if (t==TrieParser.TYPE_BRANCH_VALUE) {   
+                //TODO: we compute both sides of jump when we do not need to                
                 reader.pos = TrieParser.jumpOnBit((short) source[sourceMask & reader.localSourcePos], trie.data[reader.pos++], (((int)trie.data[reader.pos++])<<15) | (0x7FFF&trie.data[reader.pos]), reader.pos);
-               
-                
-                
-    //            short critera = trie.data[reader.pos++];
-            
-      //          reader.pos = 1 + (( (~((((short) source[sourceMask & reader.localSourcePos] & (0xFF & critera))-1)>>>8) ^ critera>>>8)) & ((((int)trie.data[reader.pos++])<<15) | (0x7FFF&trie.data[reader.pos]))) + reader.pos;
-                
-            
-            
+                   
             } else if (t == TrieParser.TYPE_RUN) {                
                 //run
                 int run = trie.data[reader.pos++];        
                 if (!(trie.skipDeepChecks && !hasSafePoint && 0==reader.altStackPos)) {
                     int r = scanForMismatch(reader, source, sourceMask, trie.data, run);
                     if (r>=0) {
-                        if (hasSafePoint) {
-                            return useSafePoint(reader);
+                        if (!hasSafePoint) {
+                        	if (reader.altStackPos > 0) {                                
+                        		tryNextChoiceOnStack(reader, trie.data);
+                        		continue top;                                
+                        	} else {
+                        		return unfoundResult;
+                        	}
                         } else {
-                            if (reader.altStackPos > 0) {                                
-                                tryNextChoiceOnStack(reader, trie.data);
-                                continue top;                                
-                            } else {
-                                return unfoundResult;
-                            }
+                        	return useSafePoint(reader);
                         }
                     }    
                 } else {
@@ -428,8 +411,7 @@ public class TrieParserReader {
                 recordSafePointEnd(reader, reader.localSourcePos, reader.pos, trie);  
                 hasSafePoint = true;
                 reader.pos += trie.SIZE_OF_RESULT;
-                if (sourceLength != reader.runLength) {
-                } else {
+                if (sourceLength == reader.runLength) {
                     return useSafePointNow(reader);
                 }   
                 
@@ -582,7 +564,7 @@ public class TrieParserReader {
                    // System.out.println("c");
                     break;
                 }
-                if (!equalsNone(newStop, reader.workingMultiStops, stopCount)) {
+                if (!valueNotFoundInArray(newStop, reader.workingMultiStops, stopCount)) {
                     //System.out.println("d");
                     break;//safety until the below issue detected by the assert is fixed.
                 }
@@ -737,7 +719,7 @@ public class TrieParserReader {
                 b.append((char)source[sourceMask & x]);
             }
             
-        } while (--lim >= 0 && equalsNone(source[sourceMask & x++], stopValues, stopValuesCount ) );         
+        } while (--lim >= 0 && valueNotFoundInArray(source[sourceMask & x++], stopValues, stopValuesCount ) );         
         int len = (x-sourcePos)-1;
                 
         if (lim<0) {//not found!
@@ -749,8 +731,9 @@ public class TrieParserReader {
         return x;
     }
     
-    private static boolean equalsNone(short value, short[] data, int count) {
+    private static boolean valueNotFoundInArray(short value, short[] data, int count) {
         int i = count;
+        //System.err.println("searhing run of "+count); checked and found it 1
         while (--i>=0) {
             if (value == data[i]) {
                 return false;
