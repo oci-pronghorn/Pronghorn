@@ -4,10 +4,12 @@ import com.ociweb.pronghorn.code.LoaderUtil;
 import com.ociweb.pronghorn.pipe.*;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.stage.IntegrityFuzzGenerator;
+import com.ociweb.pronghorn.stage.IntegrityTestFuzzConsumer;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
+import org.junit.Assert;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
@@ -97,15 +99,22 @@ public class EncodeDecodeRuntimeTest {
         IntegrityFuzzGenerator random1 = new IntegrityFuzzGenerator(gm, inPipe);
         econstructor.newInstance(gm, inPipe, sharedPipe);
         dconstructor.newInstance(gm, sharedPipe, outPipe);
-        ConsoleJSONDumpStage json = new ConsoleJSONDumpStage(gm, outPipe);
+        StringBuilder result = new StringBuilder();
+        IntegrityTestFuzzConsumer consumer = new IntegrityTestFuzzConsumer(gm, outPipe, result);
 
         ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
         scheduler.startup();
 
 
-        GraphManager.blockUntilStageBeginsShutdown(gm,json);
+        //GraphManager.blockUntilStageBeginsShutdown(gm,json);
         scheduler.shutdown();
         scheduler.awaitTermination(10, TimeUnit.SECONDS);
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        Assert.assertTrue("44633,2,42363,41696,15806,2,35054,46050".equals(result.toString()));
 
     }
 

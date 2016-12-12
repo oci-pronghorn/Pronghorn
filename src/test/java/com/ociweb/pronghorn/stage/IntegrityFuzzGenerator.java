@@ -77,8 +77,6 @@ public class IntegrityFuzzGenerator extends PronghornStage{
                 Pipe.confirmLowLevelWrite(output, 18);
                 Pipe.publishWrites(output);
 
-                System.out.println("Ints: " + deltaInt + ", " + incrementInt + ", " + copyInt + ", " + defaultInt + "\n" +
-                                    "Longs: " + deltaLong + ", " + incrementLong + ", " + copyLong + ", " + defaultLong);
             }
             else {
                 Pipe.spinBlockForRoom(output, Pipe.EOF_SIZE);
