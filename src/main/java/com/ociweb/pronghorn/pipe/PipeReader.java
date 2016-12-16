@@ -596,6 +596,10 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		return StackStateWalker.hasContentToRead(pipe) && (expected == Pipe.readValue(Pipe.slab(pipe),pipe.mask,pipe.ringWalker.nextWorkingTail));
 	}
 
+	public static boolean peekNotMsg(Pipe pipe, int expected) {			
+		return StackStateWalker.hasContentToRead(pipe) && (expected != Pipe.readValue(Pipe.slab(pipe),pipe.mask,pipe.ringWalker.nextWorkingTail));
+	}
+	
 	public static int peekInt(Pipe pipe, int loc) {			
 		assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
