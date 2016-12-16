@@ -81,7 +81,7 @@ public class ServerNewConnectionStage extends PronghornStage{
             channel.register(selector, SelectionKey.OP_ACCEPT); 
             
             
-            System.out.println("ServerNewConnectionStage is now ready on  https:/"+endPoint+"/index.html");
+            System.out.println("Server is now ready on  http"+(isTLS?"s":"")+":/"+endPoint+"/");
         } catch (BindException be) {
             String msg = be.getMessage();
             if (msg.contains("already in use")) {

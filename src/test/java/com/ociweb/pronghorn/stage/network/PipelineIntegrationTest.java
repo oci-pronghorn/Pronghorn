@@ -124,7 +124,7 @@ public class PipelineIntegrationTest {
             if (testRoutingOnly) {
                 PipeCleanerStage.newInstance(gm, routedAppPipes[i]);
             } else {
-                FileReadModuleStage fielStage = FileReadModuleStage.newInstance(gm, routedAppPipes[i], new Pipe<ServerResponseSchema>(responseConfig), HTTPSpecification.defaultSpec(), testDataFiles.tempDirectory.toString());  
+                FileReadModuleStage fielStage = FileReadModuleStage.newInstance(gm, routedAppPipes[i], new Pipe<ServerResponseSchema>(responseConfig), HTTPSpecification.defaultSpec(), testDataFiles.tempDirectory);  
                 PipeCleanerStage.newInstance(gm, gm.getOutputPipe(gm, fielStage));
             }            
         }

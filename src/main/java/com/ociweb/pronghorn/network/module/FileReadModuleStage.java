@@ -76,7 +76,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private int         activePathId;
     private long        activePayloadSizeRemaining;
     
-    private final String folderRoot;
+    private final String folderRootString;
+    private final File   folderRoot;
+    
     private int pathCount;
     private long totalBytes;
     
@@ -102,20 +104,21 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private final static int VERB_GET = 0;
     private final static int VERB_HEAD = 1;
         
-    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, String rootPath) {
+    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, File rootPath) {
         return new FileReadModuleStage(graphManager, input, output, httpSpec, rootPath);
     }
     
     public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, 
                                    HTTPSpecification<T,R,V,H> httpSpec,
-                                   String rootPath) {
+                                   File rootPath) {
         
         super(graphManager, input, output, httpSpec);
         this.input = input;
         this.output = output;
         this.fileSystem = FileSystems.getDefault();
-        this.folderRoot = rootPath;
-                
+        this.folderRootString = rootPath.toString();
+        this.folderRoot = rootPath;       
+        
        // System.out.println("RootFolder: "+folderRoot);
         
         assert( httpSpec.verbMatches(VERB_GET, "GET") );
@@ -221,12 +224,12 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         this.readOptions = new HashSet<OpenOption>();
         this.readOptions.add(StandardOpenOption.READ);
         
-        File rootFileDirectory = new File(folderRoot);
+        File rootFileDirectory = folderRoot;
         if (!rootFileDirectory.isDirectory()) {
             throw new UnsupportedOperationException("This must be a folder: "+folderRoot);
         }
 
-        int rootSize = folderRoot.endsWith("/") || folderRoot.endsWith("\\") ? folderRoot.length() : folderRoot.length()+1;
+        int rootSize = folderRootString.endsWith("/") || folderRootString.endsWith("\\") ? folderRootString.length() : folderRootString.length()+1;
         
         collectAllKnownFiles(rootFileDirectory, rootSize);
         activeFileChannel = null;//NOTE: above method sets activeFileChannel and it must be cleared before run starts.
@@ -254,6 +257,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     
     private int setupUnseenFile(TrieParser trie, String pathString, int rootSize) {
         
+    			logger.info("loading new file: "+pathString);
                 int newPathId;
                 try {
                     Path path = fileSystem.getPath(pathString);
@@ -296,36 +300,45 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     @Override
     public void run() {
    
-        try {
-            
-            writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, activeSequenceId, output, activeFileChannel, activePathId);
-
-        } catch (IOException ioex) {
-            disconnectDueToError(activeReadMessageSize, output, ioex);
-        }
-          
-   //     System.out.println((null==activeFileChannel) + " &&  "+Pipe.hasContentToRead(input)+ " && "+ Pipe.hasRoomForWrite(output));
-        
-        while (null==activeFileChannel && Pipe.hasContentToRead(input) && Pipe.hasRoomForWrite(output)) {
-            
-            int msgIdx = Pipe.takeMsgIdx(input); 
-            if (msgIdx == HTTPRequestSchema.MSG_FILEREQUEST_200) {
-                activeReadMessageSize = Pipe.sizeOf(input, msgIdx);
-                beginReadingNextRequest();                    
-            } else {
-                if (-1 != msgIdx) {
-                    throw new UnsupportedOperationException("Unexpected message "+msgIdx);
-                }
-                
-                Pipe.publishEOF(output);
-                requestShutdown(); 
-                return; 
-            }
-        }            
-        if (null == activeFileChannel) {
-            //only done when nothing is open.
-            checkForHotReplace();
-        }
+    	int count = 10_000;//take a break after this many cycles even if we have data.
+    	boolean didWork = false;
+    	do {
+    	
+	        try {
+	            
+	            didWork |= writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, activeSequenceId, output, activeFileChannel, activePathId);
+	
+	        } catch (IOException ioex) {
+	            disconnectDueToError(activeReadMessageSize, output, ioex);
+	        }
+	          
+	   //     System.out.println((null==activeFileChannel) + " &&  "+Pipe.hasContentToRead(input)+ " && "+ Pipe.hasRoomForWrite(output));
+	        
+	        assert(recordIncomingState(!Pipe.hasContentToRead(input)));
+	        assert(recordOutgoingState(!Pipe.hasRoomForWrite(output)));
+	        
+	        while (null==activeFileChannel && Pipe.hasContentToRead(input) && Pipe.hasRoomForWrite(output)) {
+	        	didWork = true;
+	            int msgIdx = Pipe.takeMsgIdx(input); 
+	            if (msgIdx == HTTPRequestSchema.MSG_FILEREQUEST_200) {
+	                activeReadMessageSize = Pipe.sizeOf(input, msgIdx);
+	                beginReadingNextRequest();                    
+	            } else {
+	                if (-1 != msgIdx) {
+	                    throw new UnsupportedOperationException("Unexpected message "+msgIdx);
+	                }
+	                
+	                Pipe.publishEOF(output);
+	                requestShutdown(); 
+	                return; 
+	            }
+	        }            
+	        if (null == activeFileChannel) {
+	            //only done when nothing is open.
+	            checkForHotReplace();
+	        }
+	        
+    	} while(--count>0 && didWork);
     }
 
     private void checkForHotReplace() {
@@ -454,7 +467,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         int newPathId;
         try {
             String pathString = Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString();
-            Path path = fileSystem.getPath(folderRoot, pathString);          
+            Path path = fileSystem.getPath(folderRootString, pathString);          
             
             provider.checkAccess(path);
             newPathId = ++pathCount;
@@ -585,9 +598,12 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             }
     }
 
+    int inFlight = 0;
+    int fromDisk = 0;
     
-    private void writeBodiesWhileRoom(int channelHigh, int channelLow, int sequence, Pipe<ServerResponseSchema> localOutput, FileChannel localFileChannel, int pathId) throws IOException {
+    private boolean writeBodiesWhileRoom(int channelHigh, int channelLow, int sequence, Pipe<ServerResponseSchema> localOutput, FileChannel localFileChannel, int pathId) throws IOException {
 
+    	boolean didWork = false;
     	
        if (null != localFileChannel) {
          long localPos = activePosition;
@@ -595,6 +611,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
          
          while (Pipe.hasRoomForWrite(localOutput)) {
                            
+        	 didWork = true;
+        	 
              // NEW IDEA
              // long copyDistance = Pipe.blobMask(output) & (blobPosition - originalBlobPosition);
              // System.out.println(copyDistance+" vs "+Pipe.blobMask(output)); //NOTE: copy time limits throughput to 40Gbps so larger files can not do 1M msg per second
@@ -608,7 +626,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             
             final int headBlobPosInPipe = Pipe.storeBlobWorkingHeadPosition(localOutput);
             if (supportInFlightCopy && blobPosition>0 && (fileSizes[pathId]<Pipe.blobMask(localOutput))) { //WARNING: still needs more testing TODO: confirm it works for all layouts.
-            	
+            	inFlight++;
             	//data is still in the output buffer so copy it from there.
             	int len = Math.min((int)activePayloadSizeRemaining, localOutput.maxAvgVarLen);
                 
@@ -618,14 +636,14 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                 publishBodyPart(channelHigh, channelLow, sequence, localOutput, len);   
                 localPos += len;
             } else {
+            	fromDisk++;
             	assert(localFileChannel.isOpen());
             	assert(localFileChannel.position() == localPos) : "independent file position check does not match";
             	//must read from file system
                 long len;
                 if ((len=localFileChannel.read(Pipe.wrappedWritingBuffers(headBlobPosInPipe, localOutput))) >= 0) {
                     
-                	//Not yet complete 
-                	logger.info("FileReadStage wrote out {} total file size {} curpos {} ",len,localFileChannel.size(),localFileChannel.position());
+                	//logger.info("FileReadStage wrote out {} total file size {} curpos {} ",len,localFileChannel.size(),localFileChannel.position());
                                     	
                 	assert(len<Integer.MAX_VALUE);
                     publishBodyPart(channelHigh, channelLow, sequence, localOutput, (int)len);   
@@ -641,7 +659,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                     Pipe.unstoreBlobWorkingHeadPosition(localOutput);
                     PipeHashTable.replaceItem(outputHash, fcId[pathId], positionOfFileDataBegin() );
               
-                    return;
+                    return didWork;
                 }
             }
             
@@ -652,7 +670,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
          
                 //now store the location of this new data so we can use it as the cache later                
                 PipeHashTable.replaceItem(outputHash, fcId[pathId], positionOfFileDataBegin());
-                return;
+                return didWork;
             }
             
             
@@ -660,6 +678,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
          }
          activePosition = localPos;
        } 
+       return didWork;
     }
 
 
@@ -694,7 +713,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 
     @Override
     public void shutdown() {
-        System.out.println("total bytes out "+totalBytes);
+    	assert(reportRecordedStates(getClass().getSimpleName()));
+    	logger.info("total bytes out {} inFlight {} fromDisk {} ",totalBytes, inFlight, fromDisk);
     }
 
 }

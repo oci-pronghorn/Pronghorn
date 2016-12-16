@@ -249,15 +249,14 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				
 				Pipe<NetPayloadSchema> pipe = input[i];
 	
+		        assert(recordIncomingState(!Pipe.hasContentToRead(pipe)));		       
 				assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
 				assert(totalBytes[i] == Pipe.releasePendingByteCount(pipe)) : totalBytes[i]+" != "+Pipe.releasePendingByteCount(pipe); 
-				
-				
+								
 				/////////////////////////////////////////////////////////////
 				//ensure we have the right backing array, and mask (no position change)
 				/////////////////////////////////////////////////////////////
-				TrieParserReader.parseSetup(trieReader,Pipe.blob(pipe),Pipe.blobMask(pipe));
-									
+				TrieParserReader.parseSetup(trieReader,Pipe.blob(pipe),Pipe.blobMask(pipe));							
 				
 				ClientConnection cc = null;
 				
@@ -290,11 +289,14 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						}
 						
 						//we have data which must be parsed and we know the output pipe, eg the connection was not closed				
-						foundWork = true;		
+							
 						
 						//assert(0==cc.getUserId() || IntHashTable.hasItem(listenerPipeLookup, cc.getUserId())) : "no value found for "+cc.getUserId();
 						
-						targetPipe = output[(short)IntHashTable.getItem(listenerPipeLookup, cc.getUserId())]; 					
+						targetPipe = output[(short)IntHashTable.getItem(listenerPipeLookup, cc.getUserId())]; 		
+						
+						assert(recordOutgoingState(!Pipe.hasRoomForWrite(targetPipe)));
+						 
 						assert (0!=positionMemoData[stateIdx] || !Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
 												
 						///////////////////////
@@ -319,6 +321,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							blockedOpenCount[i] = 0;
 							blockedLen[i] = trieReader.sourceLen;
 							blockedState[i] =  positionMemoData[stateIdx];
+							foundWork = true;
 						}
 						
 					}
@@ -326,9 +329,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					//we have new data
 					
 					assert(positionMemoData[lenIdx] == Pipe.releasePendingByteCount(pipe)) : positionMemoData[lenIdx]+" != "+Pipe.releasePendingByteCount(pipe);
-					
-					
-					foundWork = true;//new data found to consume, add it to the trie parser
+										
 					
 					int msgIdx = Pipe.takeMsgIdx(pipe);
 					//assert(NetPayloadSchema.MSG_PLAIN_210==msgIdx): "msgIdx "+msgIdx+"  "+pipe;
@@ -349,6 +350,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						positionMemoData[memoIdx+1] = 0;//wipe out existing data
 						continue;
 					}
+					foundWork = true;//new data found to consume, add it to the trie parser
 					
 					//assert(0==cc.getUserId() || IntHashTable.hasItem(listenerPipeLookup, cc.getUserId())) : "no value found for "+cc.getUserId();
 										
@@ -374,8 +376,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					
 
 					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-					
-					
+										
 					
 					//System.err.println(positionMemoData[lenIdx]+" vs "+pipe.byteMask);
 					
@@ -899,6 +900,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		} else {
 			return false;
 		}
+	}
+	
+	@Override
+	public void shutdown() {
+		assert(reportRecordedStates(getClass().getSimpleName()));
 	}
 
 }

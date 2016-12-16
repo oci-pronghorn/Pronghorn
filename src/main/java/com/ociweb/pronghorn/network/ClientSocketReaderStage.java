@@ -24,7 +24,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class ClientSocketReaderStage extends PronghornStage {	
 	
-	private final ClientCoordinator ccm;
+	private final ClientCoordinator coordinator;
 	private final Pipe<NetPayloadSchema>[] output;
 	private final Pipe<ReleaseSchema>[] releasePipes;
 	private final static Logger logger = LoggerFactory.getLogger(ClientSocketReaderStage.class);
@@ -34,14 +34,18 @@ public class ClientSocketReaderStage extends PronghornStage {
 	private boolean isTLS;
 	private final static int KNOWN_BLOCK_ENDING = -1;
 	private Set<SelectionKey> keySet;
+	private final int maxClients;
 	
-	public ClientSocketReaderStage(GraphManager graphManager, ClientCoordinator ccm, Pipe<ReleaseSchema>[] parseAck, Pipe<NetPayloadSchema>[] output, boolean isTLS) {
+	public ClientSocketReaderStage(GraphManager graphManager, ClientCoordinator coordinator, Pipe<ReleaseSchema>[] parseAck, Pipe<NetPayloadSchema>[] output, boolean isTLS) {
 		super(graphManager, parseAck, output);
-		this.ccm = ccm;
+		this.coordinator = coordinator;
 		this.output = output;
 		this.releasePipes = parseAck;
 		this.isTLS = isTLS;
-
+		this.maxClients = coordinator.maxClientConnections();		
+		
+		coordinator.setStart(this);
+		
 	}
 	
 	@Override
@@ -58,8 +62,11 @@ public class ClientSocketReaderStage extends PronghornStage {
 	}
 
 	int maxWarningCount = 10;
-	
-	
+	@Override
+	public void requestShutdown() {
+		logger.info("requesting shutdown");
+		super.requestShutdown();
+	}
 	@Override
 	public void run() {
 
@@ -67,18 +74,16 @@ public class ClientSocketReaderStage extends PronghornStage {
 			
 			do {	
 				didWork--;
-				
-				boolean sentData = false;
-				
-
+		
 					ClientConnection cc;
 					
-					//making this an if causes hang on large files!  TODO: urgent fix.
-					while (null!=(cc  = ccm.nextValidConnection() )) { //TODO: do not use this global counter it may allow for skiping that we need to clenup??
+					int cpos = maxClients;
+					int openCount = 0;
+					while (--cpos>=0) { 
+						cc = coordinator.getClientConnectionByPosition(cpos);
 
-
-					    if (cc.isValid()) {
-					    		
+					    if (cc!=null && cc.isValid()) {
+		//			        openCount++;		
 					    	
 					    	//process handshake before reserving one of the pipes
 					    	if (isTLS) {
@@ -95,7 +100,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 						                handshakeStatus = cc.getEngine().getHandshakeStatus();
 								 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
 									 consumeRelease();
-									 assert(-1 == ccm.checkForResponsePipeLineIdx(cc.getId())) : "should have already been relased";								 
+									 assert(-1 == coordinator.checkForResponsePipeLineIdx(cc.getId())) : "should have already been relased";								 
 
 //									 if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
 //						    				logger.warn("waiting on wrap, need more pipes????");
@@ -106,17 +111,17 @@ public class ClientSocketReaderStage extends PronghornStage {
 					    		 
 						    	 if (false && handshakeStatus!=HandshakeStatus.FINISHED && handshakeStatus!=HandshakeStatus.NOT_HANDSHAKING) {
 						    			//TOOD: this has been triggered
-						    			assert(-1 == ccm.checkForResponsePipeLineIdx(cc.getId())) : "expected NO reserved pipe for "+cc.id+" with handshake of "+handshakeStatus;
+						    			assert(-1 == coordinator.checkForResponsePipeLineIdx(cc.getId())) : "expected NO reserved pipe for "+cc.id+" with handshake of "+handshakeStatus;
 						    	 }
 					    	}
 
 					    	
 					    	//holds the pipe until we gather all the data and got the end of the parse.
 					    	consumeRelease();
-					    	int pipeIdx = ccm.responsePipeLineIdx(cc.getId());//picks any open pipe to keep the decryption busy
+					    	int pipeIdx = coordinator.responsePipeLineIdx(cc.getId());//picks any open pipe to keep the decryption busy
 					    	if (pipeIdx<0) {				    	
 					    		consumeRelease();
-					    		pipeIdx = ccm.responsePipeLineIdx(cc.getId()); //try again.
+					    		pipeIdx = coordinator.responsePipeLineIdx(cc.getId()); //try again.
 					    		if (pipeIdx<0) {
 //					    			if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
 //					    				logger.warn("bump up maxPartialResponsesClient count, performance is slowed due to waiting for available input pipe on client");
@@ -153,7 +158,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    	//logger.trace("client reading {} for id {} fullbuffer {}",readCount,cc.getId(),fullBuffer);
 							    	
 							    	if (readCount>0) {
-							    		sentData =  true;							    		
+							    		
 							    		totalBytes += readCount;						    		
 							    		//we read some data so send it		
 							    	
@@ -211,16 +216,15 @@ public class ClientSocketReaderStage extends PronghornStage {
 					    			}
 					    	}
 					    } else {
-					    	logger.info("connection was no longer valid so this value has been removed.");
+					    	//logger.info("connection was no longer valid so this value has been removed.");
 					    //	keyIterator.remove();
 					    }
 					    
 					}	
-					
-					if (sentData) {
-						didWork++;
+					if (openCount>0) {
+						didWork = 1; 
 					}
-			
+				
 			} while(didWork>0);
 
 				
@@ -266,9 +270,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 					///////////////////////////////////////////////////
 	    			//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
-	    			int pipeIdx = ccm.checkForResponsePipeLineIdx(finishedConnectionId);
+	    			int pipeIdx = coordinator.checkForResponsePipeLineIdx(finishedConnectionId);
 					if (pipeIdx>=0 && Pipe.headPosition(output[pipeIdx]) == pos) {
-	    				ccm.releaseResponsePipeLineIdx(finishedConnectionId);
+	    				coordinator.releaseResponsePipeLineIdx(finishedConnectionId);
 	    				
 	    				//TODO: upon release must prioritize the re-open.
 	    				//logger.info("did release for {}",finishedConnectionId);
@@ -279,10 +283,10 @@ public class ClientSocketReaderStage extends PronghornStage {
 	    						logger.info("GGGGGGGGGGGGGGGGGGGGGGGGGGgg unable to release pipe {} pos {} expected {}",pipeIdx,pos,Pipe.headPosition(output[pipeIdx]));
 	    						//	System.exit(-1);
 	    					} else {
-	    						HandshakeStatus handshakeStatus = ccm.get(finishedConnectionId, 0).engine.getHandshakeStatus();
+	    						HandshakeStatus handshakeStatus = coordinator.get(finishedConnectionId, 0).engine.getHandshakeStatus();
 					    		if (handshakeStatus!=HandshakeStatus.FINISHED && handshakeStatus!=HandshakeStatus.NOT_HANDSHAKING) {
 					    			//TOOD: this has been triggered
-					    			assert(-1 == ccm.checkForResponsePipeLineIdx(finishedConnectionId)) : "expected no reserved pipe for "+finishedConnectionId+" with handshake of "+handshakeStatus;
+					    			assert(-1 == coordinator.checkForResponsePipeLineIdx(finishedConnectionId)) : "expected no reserved pipe for "+finishedConnectionId+" with handshake of "+handshakeStatus;
 					    		}
 	    						
 					    		//logger.info("no client side release {} ",releasePipes[i]);

@@ -198,14 +198,21 @@ public class SSLUtil {
 					PipeWriter.tryWriteFragment(target, NetPayloadSchema.MSG_ENCRYPTED_200);
 					PipeWriter.wrappedUnstructuredLayoutBufferClose(target, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_PAYLOAD_203, result2.bytesProduced());
 					
+				} else if (status == Status.BUFFER_OVERFLOW){
+				
+					logger.info("ZZZZZ Buffer overflow {} ",buffer);
+					System.exit(-1);
+					
 				} else {
 					
 					PipeWriter.wrappedUnstructuredLayoutBufferCancel(target);	
 					if (status == Status.CLOSED) {
 						return status;
 					} else {
+						
 						throw new UnsupportedOperationException("unexpected status of "+status);
 						//ERROR?
+						
 					}
 				}
 				
@@ -623,21 +630,36 @@ public class SSLUtil {
 		int didWork = 0;
 		boolean cameFromHandshake = false;
 		while (PipeReader.hasContentToRead(source) ) {
+		//while (Pipe.hasContentToRead(source) ) {
+					
 			
 			//TODO: check the handshake output for backed up data.
-			if (!PipeWriter.hasRoomForWrite(target)) {								
+			if (!PipeWriter.hasRoomForWrite(target)) {		
+			//if (!Pipe.hasRoomForWrite(target)) {		
+						
 				return didWork;//try again later when there is room in the output
 			}			
 				
 			SSLConnection cc = null;
-			if (!PipeReader.peekMsg(source, -1)) {
+			if (PipeReader.peekNotMsg(source, -1)) { //if we have nothing this also passes which is not desireaable.
+		//	if (Pipe.peekNotMsg(source, -1)) {	
+				//Pipe.peek
+			
+				//plain or encrypted data??
+								
+				//cc = ccm.get(Pipe.peekLong(source, 1), groupId);				
 				cc = ccm.get(PipeReader.peekLong(source, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201), groupId);
 				
 				if (null==cc || !cc.isValid) {
 					logger.info("sever {} ignored closed connection {}",isServer,cc);
 					//do not process this message because the connection has dropped
+					
+					//CONSUME THE MESSAGE WITH LOW LEVEL.
+					
 					PipeReader.tryReadFragment(source);
 					PipeReader.releaseReadLock(source);
+					
+					
 					continue;
 				}
 

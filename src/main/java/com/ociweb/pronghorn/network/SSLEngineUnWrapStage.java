@@ -29,7 +29,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	private int groupId;
 	private int shutdownCount;
 	
-	private int idx = 1;
+	private int idx;
 	
 	public SSLEngineUnWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, 
 			                       Pipe<NetPayloadSchema>[] encryptedContent, 
@@ -59,6 +59,8 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	
 	@Override
 	public void startup() {
+		
+		idx = encryptedContent.length;
 		
 		//must allocate buffers for the out of order content 
 		int c = encryptedContent.length;
@@ -95,16 +97,16 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 		
 		do {
 			didWork=0;
-		
-			//int i = encryptedContent.length;
+
+			int m = 100;//maximum iterations before taking a short break.
 			
-			//int tmp = idx;
-			idx = encryptedContent.length;
-			while (//--idx != tmp) { //
-					--idx >= 0) {
+			while ((--idx>=0) && (--m>=0)) {
 				
 				Pipe<NetPayloadSchema> source = encryptedContent[idx];
 				Pipe<NetPayloadSchema> target = outgoingPipeLines[idx];
+				
+		        assert(recordIncomingState(!Pipe.hasContentToRead(source)));
+		        assert(recordOutgoingState(!Pipe.hasRoomForWrite(target)));
 				
 				
 //				//TODO: is there a debug method we can write for this in general?
@@ -120,20 +122,26 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 				workspace[0].clear();
 				workspace[1].clear();
 				
+				///TODO: URGENT REWIRTE TO LOW LEVEL API SINCE LARGE SERVER CALLS VERY OFTEN.
+				
 				int temp = SSLUtil.engineUnWrap(ccm, source, target, rolling, workspace, handshakePipe, handshakeRelease, secureBuffer, groupId, isServer);			
 				if (temp<0) {
 					if (--shutdownCount == 0) {
 						requestShutdown();
 						return;
 					}
-					
+					break;
+				} else {				
+					didWork |= temp;
 				}
-				didWork |= temp;
-//				if (0==idx) {
-//					idx=encryptedContent.length;
-//				}
 		
 			}			
+			
+			//loop back arround
+			if (idx<=0) {
+				idx= encryptedContent.length;
+			}
+			
 		} while (didWork!=0);
 		
 		
@@ -148,18 +156,8 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	@Override
 	public void shutdown() {
 		
-//		if (isServer) {
-//			new Exception("XXXXXXXXXXXXXXXXXXXXXXXXXX shut down server unwrap check the pipes ").printStackTrace();
-//			int i = buffers.length;
-//			while (--i>=0) {
-//				System.err.println("XXXXXXXXXXXXXXXXXXxxxxxx " +buffers[i]);
-//				System.err.println("XXXXXXXXXXXXXXXXXXINxxxx " +encryptedContent[i]+" "+Pipe.contentRemaining(encryptedContent[i])); //has ODD work tail??
-//				System.err.println("XXXXXXXXXXXXXXXXXXOUTxxx " +outgoingPipeLines[i]+" "+Pipe.contentRemaining(outgoingPipeLines[i]));
-//				
-//				
-//			}
-//		}
-//		
+		assert(reportRecordedStates(getClass().getSimpleName()));
+
 		
 		int i = buffers.length;
 		while (--i>=0) {

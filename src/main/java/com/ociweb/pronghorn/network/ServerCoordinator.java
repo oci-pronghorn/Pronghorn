@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.util.MemberHolder;
 import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
@@ -47,7 +48,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
 	private final PoolIdx responsePipeLinePool;
     
-    public ServerCoordinator(int socketGroups, int port, int maxConnectionsBits, int maxPartialResponses) {
+    public ServerCoordinator(int socketGroups, String bindHost, int port, int maxConnectionsBits, int maxPartialResponses) {
         this.socketHolder      = new ServiceObjectHolder[socketGroups];    
         this.selectors         = new Selector[socketGroups];
         
@@ -59,19 +60,33 @@ public class ServerCoordinator extends SSLConnectionHolder {
         this.channelBits       = maxConnectionsBits;
         this.channelBitsSize   = 1<<channelBits;
         this.channelBitsMask   = channelBitsSize-1;
-        this.address           = new InetSocketAddress("127.0.0.1",port);
+        this.address           = new InetSocketAddress(bindHost,port);
         
     	this.responsePipeLinePool = new PoolIdx(maxPartialResponses); 
     	
+    	SSLEngineFactory.init();
+    	
         
     }
     
+    private PronghornStage firstStage;
+    
     public void shutdown() {
     	
-    	logger.info("Server pipe pool:\n {}",responsePipeLinePool);
+    	if (null!=firstStage) {
+    		firstStage.requestShutdown();
+    		firstStage = null;
+    	}
+   
+    	
+    //	logger.trace("Server pipe pool:\n {}",responsePipeLinePool);
     	    	
     }
-    
+
+	public void setStart(PronghornStage startStage) {
+		this.firstStage = startStage;
+	}
+	
 	public int responsePipeLineIdx(long ccId) {
 		return responsePipeLinePool.get(ccId);
 	}

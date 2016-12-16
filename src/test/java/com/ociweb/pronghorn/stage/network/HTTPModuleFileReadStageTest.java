@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.stage.network;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -54,7 +55,7 @@ public class HTTPModuleFileReadStageTest {
         //PipeCleanerStage.newInstance(gm, requestPipe);//generates about 15m req/sec
                 
         //can not be watched, does not shutdown.
-        FileReadModuleStage<?, ?, ?, ?> watch = FileReadModuleStage.newInstance(gm, requestPipe, responsePipe, HTTPSpecification.defaultSpec(), gs.tempFolder());
+        FileReadModuleStage<?, ?, ?, ?> watch = FileReadModuleStage.newInstance(gm, requestPipe, responsePipe, HTTPSpecification.defaultSpec(), new File(gs.tempFolder()));
 
         responsePipe.initBuffers();        
         

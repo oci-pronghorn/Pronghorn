@@ -32,6 +32,9 @@ public class RegulatedLoadTestStage extends PronghornStage{
 	long totalReceived = 0;
 	long totalExpected;
 	
+	int port;
+	String host;
+	
 	long start;
 	long lastTime = System.currentTimeMillis();
 
@@ -42,7 +45,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 
 	
 	protected RegulatedLoadTestStage(GraphManager graphManager, Pipe<NetResponseSchema>[] inputs, Pipe<NetRequestSchema>[] outputs, 
-			                          int testSize, int inFlightLimit, String fileRequest, int usersPerPipe) {
+			                          int testSize, int inFlightLimit, String fileRequest, int usersPerPipe, int port, String host) {
 		super(graphManager, inputs, outputs);
 		
 		this.usersPerPipe = usersPerPipe;
@@ -54,7 +57,8 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		this.count = testSize/inputs.length;
 		logger.info("Each pipe will be given a total of {} requests.",count);
 		
-		
+		this.port = port;
+		this.host = host;
 	//	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 200_000_000, this); //5x per second
 	}
 	
@@ -249,8 +253,8 @@ public class RegulatedLoadTestStage extends PronghornStage{
 							didWork = true;
 							lastTime = now;
 	
-							Pipe.addIntValue(8443, outputs[i]);
-							Pipe.addUTF8("127.0.0.1", outputs[i]);
+							Pipe.addIntValue(port, outputs[i]);
+							Pipe.addUTF8(host, outputs[i]);
 							Pipe.addUTF8(testFile, outputs[i]);
 							
 							Pipe.addIntValue(i + (j * outputs.length), outputs[i]);            //TODO: need to add additional connections per round per connection.

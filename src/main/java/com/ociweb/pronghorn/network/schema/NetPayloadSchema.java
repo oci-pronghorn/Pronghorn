@@ -20,12 +20,15 @@ public class NetPayloadSchema extends MessageSchema {
     public static final int MSG_ENCRYPTED_200 = 0x00000000;
     public static final int MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201 = 0x00800001;
     public static final int MSG_ENCRYPTED_200_FIELD_PAYLOAD_203 = 0x01c00003;
+    
     public static final int MSG_PLAIN_210 = 0x00000004;
     public static final int MSG_PLAIN_210_FIELD_CONNECTIONID_201 = 0x00800001;
     public static final int MSG_PLAIN_210_FIELD_POSITION_206 = 0x00800003;
     public static final int MSG_PLAIN_210_FIELD_PAYLOAD_204 = 0x01c00005;
+    
     public static final int MSG_DISCONNECT_203 = 0x00000009;
     public static final int MSG_DISCONNECT_203_FIELD_CONNECTIONID_201 = 0x00800001;
+    
     public static final int MSG_UPGRADE_207 = 0x0000000c;
     public static final int MSG_UPGRADE_207_FIELD_CONNECTIONID_201 = 0x00800001;
     public static final int MSG_UPGRADE_207_FIELD_NEWROUTE_205 = 0x00000003;

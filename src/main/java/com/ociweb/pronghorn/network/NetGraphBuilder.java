@@ -28,13 +28,13 @@ public class NetGraphBuilder {
 			IntHashTable listenerPipeLookup, 
 			int responseQueue, int responseSize, Pipe<NetPayloadSchema>[] requests,
 			Pipe<NetResponseSchema>[] responses) {
-		buildHTTPClientGraph(isTLS, gm, maxPartialResponses, ccm, listenerPipeLookup, responseQueue, responseSize, requests, responses, 2, 2);
+		buildHTTPClientGraph(isTLS, gm, maxPartialResponses, ccm, listenerPipeLookup, responseQueue, responseSize, requests, responses, 2, 2, 2);
 	}
 	
 	public static void buildHTTPClientGraph(boolean isTLS, GraphManager gm, int maxPartialResponses, ClientCoordinator ccm,
 			IntHashTable listenerPipeLookup, 
 			int responseQueue, int responseSize, Pipe<NetPayloadSchema>[] requests,
-			Pipe<NetResponseSchema>[] responses, int responseUnwrapCount, int clientWrapperCount) {
+			Pipe<NetResponseSchema>[] responses, int responseUnwrapCount, int clientWrapperCount, int clientWriters) {
 		
 		
 		PipeConfig<ReleaseSchema> parseAckConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance, 2048, 0);
@@ -141,7 +141,6 @@ public class NetGraphBuilder {
 		}
 		
 		
-		int clientWriters = 2;
 		
 		Pipe[][] clientRequests = Pipe.splitPipes(clientWriters, wrappedClientRequests);
 		
@@ -160,19 +159,23 @@ public class NetGraphBuilder {
 	//TODO: review each stage for opportunities to use batch combine logic, (eg n in a row). May go a lot faster for single power users. future feature.
 	
 	public static GraphManager buildHTTPServerGraph(boolean isTLS, GraphManager graphManager, int groups,
-			int maxSimultaniousClients, ModuleConfig ac, ServerCoordinator coordinator, int requestUnwrapUnits, int responseWrapUnits, int pipesPerWrapUnit, int socketWriters) {
+			int maxSimultaniousClients, ModuleConfig ac, ServerCoordinator coordinator, int requestUnwrapUnits, int responseWrapUnits, 
+			int pipesPerWrapUnit, int socketWriters, int serverInputBlobs, int serverBlobToEncrypt, int serverBlobToWrite) {
 
+		
 		PipeConfig<ServerConnectionSchema> newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 10);
-        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 1024, 1<<15);///if payload is smaller than average file size will be slower
+		
+		//Why? the router is helped with lots of extra room for write?  - may need to be bigger for posts.
+        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 4096, 1<<9);///if payload is smaller than average file size will be slower
       
         //byte buffer must remain small because we will have a lot of these for all the partial messages
-        PipeConfig<NetPayloadSchema> incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 4, 1<<20); //Make same as network buffer in bytes!??   Do not make to large or latency goes up
+        PipeConfig<NetPayloadSchema> incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 4, serverInputBlobs);//make larger if we are suporting posts. 1<<20); //Make same as network buffer in bytes!??   Do not make to large or latency goes up
         
         //must be large to hold high volumes of throughput.  //NOTE: effeciency of supervisor stage controls how long this needs to be
-        PipeConfig<NetPayloadSchema> toWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 1024, 1<<15); //from super should be 2x of super input //must be 1<<15 at a minimum for handshake
+        PipeConfig<NetPayloadSchema> toWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 1024, serverBlobToEncrypt); //from super should be 2x of super input //must be 1<<15 at a minimum for handshake
         
         //olso used when the TLS is not enabled                 must be less than the outgoing buffer size of socket?
-        PipeConfig<NetPayloadSchema> fromWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 512, 1<<17);  //must be 1<<15 at a minimum for handshake
+        PipeConfig<NetPayloadSchema> fromWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 512, serverBlobToWrite);  //must be 1<<15 at a minimum for handshake
                 
         PipeConfig<NetPayloadSchema> handshakeDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 32, 1<<15); //must be 1<<15 at a minimum for handshake
         
@@ -197,7 +200,7 @@ public class NetGraphBuilder {
             encryptedIncomingGroup[g] = buildPipes(maxSimultaniousClients, incomingDataConfig);
             
             if (isTLS) {
-            	planIncomingGroup[g] = buildPipes(maxSimultaniousClients, incomingDataConfig.grow2x());
+            	planIncomingGroup[g] = buildPipes(maxSimultaniousClients, incomingDataConfig);
             } else {
             	planIncomingGroup[g] = encryptedIncomingGroup[g];
             }

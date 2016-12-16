@@ -82,6 +82,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private int totalShortestRequest;
     private int shutdownCount;
     
+    private int idx;
+    
     //read all messages and they must have the same channelID
     //total all into one master DataInputReader
        
@@ -119,6 +121,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     @Override
     public void startup() {
         
+    	idx = inputs.length;
+    	
         //keeps the channel used by this pipe to ensure these are never mixed.
         //also used to release the subscription? TODO: this may be a race condition, not sure ...
         inputChannels = new long[inputs.length];
@@ -272,13 +276,13 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     @Override
     public void run() {
     	int didWork;
-    	//TODO: keep routing while we have work.    	
+   	
     	do { 
     		didWork = 0;
-	        int i = inputs.length;
 	   
-	        while (--i>=0) {
-	            int result = singlePipe(i);
+    		int m = 100;//max iterations before taking a break
+	        while (--idx>=0 && --m>=0) {
+	            int result = singlePipe(idx);
 	            
 	            if (result<0) {
 	            	if (--shutdownCount==0) {
@@ -292,6 +296,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	            
 	            
 	        }
+	        if (idx<=0) {
+	        	idx = inputs.length;
+	        }
+	        
     	} while (didWork!=0);    
 
     }
@@ -309,6 +317,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
                 return -1;
                 
             }
+            //if (Integer.MAX_VALUE==messageIdx) { //not sure we should not optimize this return...
+            //	return 0;//still testing
+           // }
         }
         
         long channel   = inputChannels[idx];
@@ -317,8 +328,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             TrieParserReader.parseSetup(trieReader, Pipe.blob(selectedInput), inputBlobPos[idx], inputLengths[idx], Pipe.blobMask(selectedInput));
             final int idx1 = idx;
             final long channel1 = channel; 
-            consumeAvail(idx1, selectedInput, channel1, inputBlobPos[idx1], inputLengths[idx1]);
-            return 1;
+            return consumeAvail(idx1, selectedInput, channel1, inputBlobPos[idx1], inputLengths[idx1]);            
         }
         
 //        if (!isOpen[idx] && 0==inputLengths[idx]) {
@@ -330,10 +340,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     }
 
 
-    private void consumeAvail(final int idx, Pipe<NetPayloadSchema> selectedInput, final long channel, int p,
-            int l) {
-        int consumed;
-           consumed = 0;
+    private int consumeAvail(final int idx, Pipe<NetPayloadSchema> selectedInput, final long channel, int p, int l) {
+        
+    	    int consumed = 0;
             final long toParseLength = TrieParserReader.parseHasContentLength(trieReader);
             assert(toParseLength>=0) : "length is "+toParseLength+" and input was "+l;
             
@@ -352,8 +361,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
                 assert(l>=0) : "length is "+l;
             }
 
-        inputBlobPos[idx]=p;
-        inputLengths[idx]=l;
+	        inputBlobPos[idx]=p;
+	        inputLengths[idx]=l;
+	        
+	        return consumed>0?1:0;
     }
 
 
@@ -387,8 +398,6 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
     final int routeId = (int)TrieParserReader.parseNext(trieReader, urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
     if (routeId<0) {
     	//not error, must wait for more content and try again.
-    	logger.info("C waiting for {}",channel);
-        
     	return false; 
     }
  

@@ -290,19 +290,28 @@ public class ServiceObjectHolder<T> {
     /**
      * Given the index value return the value object or null.
      * 
-     * @param index
+     * @param key
      */
-    public T get(final long index) {  
+    public T get(final long key) {  
         //must ensure we use the same instance for the work
         ServiceObjectData<T> localData = data;
         
-        int modIdx = localData.mask & (int)index;
-        return (index != localData.serviceObjectKeys[modIdx] ? null : localData.serviceObjectValues[modIdx]);
+        int modIdx = localData.mask & (int)key;
+        return (key != localData.serviceObjectKeys[modIdx] ? null : localData.serviceObjectValues[modIdx]);
     }
     
-    public long size() {
+    public int size() {
     	return data.size;
-        //return sequenceCounter;
+    }
+    
+    public T getByPosition(int position) {    	
+    	ServiceObjectData<T> localData = data;
+        T result = localData.serviceObjectValues[position];
+        if (null!=result && validator.isValid(result)) {
+        	return result;
+        } else {
+        	return null;
+        }
     }
     
 

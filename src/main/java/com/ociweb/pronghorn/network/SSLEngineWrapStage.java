@@ -53,7 +53,14 @@ public class SSLEngineWrapStage extends PronghornStage {
 		int c = plainContent.length;
 		secureBuffers = new ByteBuffer[c];
 		while (--c>=0) {
-			secureBuffers[c] = ByteBuffer.allocate(plainContent[c].maxAvgVarLen*2);
+						
+			int bufferSize = plainContent[c].maxAvgVarLen;
+			int min = 1<<15;
+			if (bufferSize<min) {
+				bufferSize = min; //if its too small for use fix this minimum size
+			}
+						
+			secureBuffers[c] = ByteBuffer.allocateDirect(bufferSize);
 		}				
 		
 	}
@@ -73,7 +80,11 @@ public class SSLEngineWrapStage extends PronghornStage {
 				final Pipe<NetPayloadSchema> targetPipe = encryptedContent[i];
 				final Pipe<NetPayloadSchema> sourcePipe = plainContent[i];
 				
+
+		        assert(recordIncomingState(!Pipe.hasContentToRead(sourcePipe)));
+		        assert(recordOutgoingState(!Pipe.hasRoomForWrite(targetPipe)));
 				
+		        
 //				//no content to wrap on server
 //				if (Pipe.contentRemaining(sourcePipe)>0) {
 //					System.err.println(sourcePipe);
@@ -141,7 +152,9 @@ public class SSLEngineWrapStage extends PronghornStage {
 
     @Override
     public void shutdown() {
-    	
+    	    	
+		assert(reportRecordedStates(getClass().getSimpleName()));
+		
     	int j = encryptedContent.length;
     	while (--j>=0) {
     		PipeWriter.publishEOF(encryptedContent[j]);

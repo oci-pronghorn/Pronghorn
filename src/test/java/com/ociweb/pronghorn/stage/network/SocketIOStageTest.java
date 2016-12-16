@@ -58,7 +58,8 @@ public class SocketIOStageTest {
 		
         GraphManager gm = new GraphManager();
         
-        ServerCoordinator serverCoordinator = new ServerCoordinator(socketGroups, port, maxConnBits, maxtPartials);
+        String bindHost = "127.0.0.1";
+        ServerCoordinator serverCoordinator = new ServerCoordinator(socketGroups, bindHost, port, maxConnBits, maxtPartials);
 		ClientCoordinator clientCoordinator = new ClientCoordinator(                    maxConnBits, maxtPartials, false);
 		
 		
@@ -138,8 +139,8 @@ public class SocketIOStageTest {
         PipeConfig<NetPayloadSchema> payloadPipeConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 20, 32768);
         PipeConfig<ReleaseSchema> releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,10);
         
-        
-		ServerCoordinator serverCoordinator = new ServerCoordinator(socketGroups, port, maxConnBits, maxtPartials);
+        String bindHost = "127.0.0.1";
+		ServerCoordinator serverCoordinator = new ServerCoordinator(socketGroups, bindHost, port, maxConnBits, maxtPartials);
 		ClientCoordinator clientCoordinator = new ClientCoordinator(                    maxConnBits, maxtPartials,false);
 					
 		///

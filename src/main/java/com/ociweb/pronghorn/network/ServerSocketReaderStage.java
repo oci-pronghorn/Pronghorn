@@ -56,6 +56,7 @@ public class ServerSocketReaderStage extends PronghornStage {
         this.releasePipes = ack;
         this.isTLS = isTLS;
         this.messageType = isTLS ? NetPayloadSchema.MSG_ENCRYPTED_200 : NetPayloadSchema.MSG_PLAIN_210;
+        coordinator.setStart(this);
     }
 
     @Override

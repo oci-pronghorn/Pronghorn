@@ -71,7 +71,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 			while (--i>=0) {
 								
 				if (connections[i]!=null) {
-					System.err.println("first write did not finish");
+	//PHI hit this on network TODO: urgent.				System.err.println("first write did not finish");
 					tryWrite(i);
 					if (connections[i]==null) {
 						didWork = true;

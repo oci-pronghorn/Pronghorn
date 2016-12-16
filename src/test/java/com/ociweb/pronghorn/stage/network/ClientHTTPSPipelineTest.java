@@ -90,7 +90,7 @@ public class ClientHTTPSPipelineTest {
 				                             maxPartialResponses, ccm, listenerPipeLookup, 
 				                             10,1<<15,
 											 clientRequests, 
-											 toReactor, 2, 2);
+											 toReactor, 2, 2, 2);
 		
 		i = toReactor.length;
 		PipeCleanerStage[] cleaners = new PipeCleanerStage[i];

@@ -13,7 +13,7 @@ import com.ociweb.pronghorn.util.Appendables;
 
 public abstract class PronghornStage {
 	
-	private static final Logger log = LoggerFactory.getLogger(PronghornStage.class);
+	private static final Logger logger = LoggerFactory.getLogger(PronghornStage.class);
 	public static final Pipe[] NONE = new Pipe[0];
 	
 	//What if we only have 1 because this is the first or last stage?
@@ -39,7 +39,44 @@ public abstract class PronghornStage {
 			return false;
 		}
 	}
+	
+	private int outgoingNoRoom;
+	private int outgoingRoom;
+	private int incomingNoContent;
+	private int incomingContent;
+	
+	protected boolean recordOutgoingState(boolean noRoom) {
+		if (noRoom) {
+			outgoingNoRoom++;
+		} else {
+			outgoingRoom++;
+		}
+		return true;
+	}
 
+	
+	protected boolean recordIncomingState(boolean noContent) {
+		if (noContent) {
+			incomingNoContent++;
+		} else {
+			incomingContent++;
+		}
+		return true;
+	}
+	
+	protected boolean reportRecordedStates(String label) {
+		
+		int totalOut = outgoingNoRoom+outgoingRoom;
+		if (totalOut>0) {
+			logger.info("{} outgoing  NoRoom:{}    Room:{}     Total:{}  Blocked:{}%",label, outgoingNoRoom, outgoingRoom, totalOut, 100f*outgoingNoRoom/(outgoingNoRoom+outgoingRoom));
+		}
+		int totalIn = incomingNoContent+incomingContent;
+		if(totalIn>0) {
+			logger.info("{} incoming  NoContent:{} Content:{}  Total:{}  Blocked:{}%",label, incomingNoContent, incomingContent, totalIn, 100f*incomingNoContent/(incomingNoContent+incomingContent));
+		}
+		return true;
+	}
+	
     /**
      * @return the maximum variable length supported across all the pipes
      */
@@ -108,7 +145,7 @@ public abstract class PronghornStage {
 		int i = inputs.length;
 		while (--i>=0) {
 			if (null==inputs[i]) {
-				log.warn("null found at index {} in array of Pipes",i);
+				logger.warn("null found at index {} in array of Pipes",i);
 				return false;
 			}
 		}

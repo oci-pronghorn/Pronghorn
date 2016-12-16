@@ -251,7 +251,25 @@ public class GraphManager {
 		if  (j>0) {
 			result = false;
 			while (--j>=0) {
-				StageScheduler.log.error("{} never completed startup()",neverStarted[j]);
+				StageScheduler.log.error("{} never completed startup",neverStarted[j]);
+			}
+		}		
+		
+		PronghornStage[] neverShutdown = GraphManager.allStagesByState(m, GraphManagerStageStateData.STAGE_STARTED);
+		j = neverShutdown.length;
+		if  (j>0) {
+			result = false;
+			while (--j>=0) {
+				StageScheduler.log.error("{} never started shutdown",neverShutdown[j]);
+			}
+		}
+		
+		PronghornStage[] neverTerminated = GraphManager.allStagesByState(m, GraphManagerStageStateData.STAGE_STOPPING);
+		j = neverTerminated.length;
+		if  (j>0) {
+			result = false;
+			while (--j>=0) {
+				StageScheduler.log.error("{} never finished shutdown",neverTerminated[j]);
 			}
 		}		
 		

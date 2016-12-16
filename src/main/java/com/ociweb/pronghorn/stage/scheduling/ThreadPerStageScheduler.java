@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.stage.PronghornStage;
 
 public class ThreadPerStageScheduler extends StageScheduler {
-	private static final Logger log = LoggerFactory.getLogger(ThreadPerStageScheduler.class);
+	private static final Logger logger = LoggerFactory.getLogger(ThreadPerStageScheduler.class);
 	
 	private ExecutorService executorService; 
 	private volatile boolean isShuttingDown = false;
@@ -78,6 +78,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	}
 	
 	public void shutdown(){	
+		if (isShuttingDown) {
+			return;
+		}
 		try {
 		    unscheduledLock.unlock();
 		} catch (Throwable t) {
@@ -96,6 +99,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	 */
 	public boolean awaitTermination(long timeout, TimeUnit unit) {
 		
+		if (executorService.isShutdown()){
+			return true;
+		}
 	    try {
 	        unscheduledLock.unlock();
 	    } catch (Throwable t) {
@@ -120,7 +126,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		    if (null==firstException) {
                 throw new RuntimeException(e);
             }
-			log.error("awaitTermination", e);
+			logger.error("awaitTermination", e);
 			return false;
 		} finally {
 		    if (null!=firstException) {
@@ -165,9 +171,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
                 try {
                     
                     //TODO: need to record state so we know the failure point
-                    log.trace("block on initRings:"+stage.getClass().getSimpleName());                  
+                    logger.trace("block on initRings:"+stage.getClass().getSimpleName());                  
                     GraphManager.initAllPipes(graphManager, stage.stageId);                   
-                    log.trace("finished on initRings:"+stage.getClass().getSimpleName());
+                    logger.trace("finished on initRings:"+stage.getClass().getSimpleName());
                     
                     Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
                     stage.startup();
@@ -190,6 +196,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
                     //shutdown will always be called no matter how the stage was exited.
                     try {
                         if (null!=stage) {
+                        	//logger.info("called shutdown on stage {} ",stage);
                             stage.shutdown();   
                         }
                     } catch(Throwable t) {
@@ -209,7 +216,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
                     }
                 }            
                 
-                GraphManager.reportError(graphManager, stage, t, log);
+                GraphManager.reportError(graphManager, stage, t, logger);
             }
             
         };
@@ -233,9 +240,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				try {
 					
 					//TODO: need to record state so we know the failure point
-					log.trace("block on initRings:"+stage.getClass().getSimpleName());					
+					logger.trace("block on initRings:"+stage.getClass().getSimpleName());					
 					GraphManager.initAllPipes(graphManager, stage.stageId);					
-					log.trace("finished on initRings:"+stage.getClass().getSimpleName());
+					logger.trace("finished on initRings:"+stage.getClass().getSimpleName());
 					
 					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
 					stage.startup();
@@ -254,6 +261,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					//shutdown will always be called no matter how the stage was exited.
 					try {
 					    if (null!=stage) {
+					    	//logger.info("called shutdown on stage {} ",stage);
 					        stage.shutdown();	
 					    }
 					} catch(Throwable t) {
@@ -272,19 +280,19 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				        firstException = t;
 				    }
 				}   	                
-                log.error("Stacktrace",t);
+                logger.error("Stacktrace",t);
                 
                 if (null==stage) {
-                    log.error("Stage was never initialized");
+                    logger.error("Stage was never initialized");
                 } else {
                 
     				int inputcount = GraphManager.getInputPipeCount(graphManager, stage);
-    				log.error("Unexpected error in stage "+stage.stageId+" "+stage.getClass().getSimpleName()+" inputs:"+inputcount);
+    				logger.error("Unexpected error in stage "+stage.stageId+" "+stage.getClass().getSimpleName()+" inputs:"+inputcount);
     				
     				int i = inputcount;
     				while (--i>=0) {
     				    
-    				    log.error("left input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
+    				    logger.error("left input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
     				    
     				}
     				
@@ -316,9 +324,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			public void run() {
 				try {	
 					
-					log.trace("block on initRings:{}",stage.getClass().getSimpleName());
+					logger.trace("block on initRings:{}",stage.getClass().getSimpleName());
 					GraphManager.initAllPipes(graphManager, stage.stageId);
-					log.trace("finished on initRings:{}",stage.getClass().getSimpleName());
+					logger.trace("finished on initRings:{}",stage.getClass().getSimpleName());
 					
 					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);				
 					stage.startup();
@@ -331,8 +339,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				        } catch (BrokenBarrierException e) {
 				        }
 					
-					runPeriodicLoop(nsScheduleRate/1_000_000l, (int)(nsScheduleRate%1_000_000l), stage);	
-			
+					runPeriodicLoop(nsScheduleRate/1_000_000l, (int)(nsScheduleRate%1_000_000l), stage);
+					
+					//logger.info("called shutdown on stage {} ",stage);
 					stage.shutdown();
 					GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
 							
@@ -344,7 +353,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
     				    }
 				    }				    
 				    
-				    GraphManager.reportError(graphManager, stage, t, log);
+				    GraphManager.reportError(graphManager, stage, t, logger);
 				    
 					GraphManager.shutdownNeighborRings(graphManager, stage);
 					Thread.currentThread().interrupt();

@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
@@ -25,15 +26,26 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	private final PoolIdx responsePipeLinePool;
 	private Selector selector;
 	private static final Logger logger = LoggerFactory.getLogger(ClientCoordinator.class);
-		
+	private PronghornStage firstStage;
+	
 	public final boolean isTLS;
 	//TOOD: may keep internal pipe of "in flight" URLs to be returned with the results...
 	
     public void shutdown() {
     	
+    	if (null!=firstStage) {
+    		firstStage.requestShutdown();
+    		firstStage=null;
+    	}
     	logger.info("Client pipe pool:\n {}",responsePipeLinePool);
     	    	
     }
+    
+
+	public void setStart(PronghornStage startStage) {
+		this.firstStage = startStage;
+	}
+	
     
 	public ClientCoordinator(int connectionsInBits, int maxPartialResponses) { 
 		this(connectionsInBits,maxPartialResponses,true);
@@ -145,6 +157,15 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		return connections.next();
 	}
 	
+	public int maxClientConnections() {
+		return connections.size();		
+	}
+	
+	public ClientConnection getClientConnectionByPosition(int pos) {
+		return connections.getByPosition(pos);
+	}
+	
+	
 	public Selector selector() {
 		if (null==selector) {
 			try {
@@ -209,7 +230,5 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		return cc;
 	}
 
-
-	
 	
 }

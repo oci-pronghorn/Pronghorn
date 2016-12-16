@@ -6,6 +6,7 @@ import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 
+import javax.annotation.Resource;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 
@@ -33,8 +34,11 @@ public class SSLEngineFactory {
 	static {
 		
 		try {
-			keyManagerFactory = createKeyManagers("./src/main/resources/client.jks", "storepass", "keypass");
-			trustManagerFactory = createTrustManagers("./src/main/resources/trustedCerts.jks", "storepass");
+			InputStream keyInputStream = SSLEngineFactory.class.getResourceAsStream("/client.jks"); //new FileInputStream("./src/main/resources/client.jks")
+			InputStream trustInputStream = SSLEngineFactory.class.getResourceAsStream("/trustedCerts.jks"); //new FileInputStream("./src/main/resources/trustedCerts.jks")
+						
+			keyManagerFactory = createKeyManagers(keyInputStream, "storepass", "keypass");
+			trustManagerFactory = createTrustManagers(trustInputStream, "storepass");
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}		
@@ -51,6 +55,14 @@ public class SSLEngineFactory {
 		
 	}
 	
+	public static void init() {
+		//NOTE: does not appear to do anything but this call ensure that the static values are all setup by the time this is called.
+		assert(null!=service);
+		assert(maxEncryptedContentLength>0);
+		assert(null!=keyManagerFactory);
+		assert(null!=trustManagerFactory);		
+	}
+	
     /**
      * Creates the key managers required to initiate the {@link SSLContext}, using a JKS keystore as an input.
      *
@@ -60,8 +72,7 @@ public class SSLEngineFactory {
      * @return {@link KeyManager} array that will be used to initiate the {@link SSLContext}.
      * @throws Exception
      */
-    private static KeyManagerFactory createKeyManagers(String filepath, String keystorePassword, String keyPassword) throws Exception {
-    	InputStream keyStoreIS = new FileInputStream(filepath);
+    private static KeyManagerFactory createKeyManagers(InputStream keyStoreIS, String keystorePassword, String keyPassword) throws Exception {
 
     	KeyStore keyStore = KeyStore.getInstance("JKS");
         try {
@@ -84,9 +95,8 @@ public class SSLEngineFactory {
      * @return {@link TrustManager} array, that will be used to initiate the {@link SSLContext}.
      * @throws Exception
      */
-    private static TrustManagerFactory createTrustManagers(String filepath, String keystorePassword) throws Exception {
+    private static TrustManagerFactory createTrustManagers(InputStream trustStoreIS, String keystorePassword) throws Exception {
         KeyStore trustStore = KeyStore.getInstance("JKS");
-        InputStream trustStoreIS = new FileInputStream(filepath);
         try {
             trustStore.load(trustStoreIS, keystorePassword.toCharArray());            
         } finally {
@@ -106,6 +116,8 @@ public class SSLEngineFactory {
     public static SSLEngine createSSLEngine() {
     	return service.createSSLEngineServer();
     }
+
+
     
 
 	

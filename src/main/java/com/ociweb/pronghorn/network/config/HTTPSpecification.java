@@ -12,7 +12,7 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
     public final Class<H> supportedHTTPHeaders;
     
     public final int maxVerbLength;
-   ;
+   
     public final int headerCount;
     public final H[] headers;
     public final T[] contentTypes;
@@ -45,6 +45,7 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         //find ordinal values and max length
         int maxVerbLength = 0;
         verbs = supportedHTTPVerbs.getEnumConstants();
+        assert(null!=verbs);
         int j = verbs.length;
         int localGet = 0;
         int localHead = 0;
