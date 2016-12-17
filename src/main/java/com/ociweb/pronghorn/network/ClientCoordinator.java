@@ -93,10 +93,9 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 //		if (result<0) {
 //			String host = Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask).toString();
 //			System.err.println("lookup "+host+":"+port+"   user "+userId);
-//			if (!host.contains(".")) {
-//				new Exception().printStackTrace();
-//				System.exit(-1);
-//			}
+//		
+//			System.err.println("GUID: "+Arrays.toString(Arrays.copyOfRange(guidWorkspace,0,len)));
+//			System.err.println(hostTrie);
 //			
 //		}
 		
@@ -205,8 +204,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				
 				//logger.debug("saving new client connectino for "+connectionId);
 				
-				ccm.connections.setValue(connectionId, cc);				
-				ccm.hostTrie.setValue(cc.GUID(), connectionId);
+				ccm.connections.setValue(connectionId, cc);	
+				ccm.hostTrie.setValue(cc.GUID(), 0, cc.GUIDLength(), Integer.MAX_VALUE, connectionId);			
 				
 			} catch (IOException ex) {
 				logger.warn("handshake problems with new connection {}:{}",host,port,ex);				

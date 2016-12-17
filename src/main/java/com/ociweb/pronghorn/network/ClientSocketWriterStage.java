@@ -104,7 +104,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 								
 								ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);
 								
-	
+								assert(connections[i]==null);
 								//copy done here to avoid GC and memory allocation done by socketChannel
 								buffers[i].clear();
 								buffers[i].put(writeHolder[0]);
@@ -185,6 +185,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 										ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);
 							
+
+										assert(connections[i]==null);
 										//copy done here to avoid GC and memory allocation done by socketChannel
 										buffers[i].clear();
 										buffers[i].put(writeHolder[0]);
@@ -300,7 +302,40 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private void tryWrite(int i) {
 		assert(buffers[i].hasRemaining()) : "please, do not call if there is nothing to write.";		
 		try {
-			connections[i].getSocketChannel().write(buffers[i]);
+			
+			//TODO: duplicated this FROM the server
+			boolean debugWithSlowWrites = false;
+			if (!debugWithSlowWrites) {
+				connections[i].getSocketChannel().write(buffers[i]);
+			} else {
+				//write only this many bytes over the network at a time
+				int max = 18; 
+				
+				ByteBuffer buf = ByteBuffer.wrap(new byte[max]);
+				buf.clear();
+				
+				int j = max;
+				int c = buffers[i].remaining();
+				int p = buffers[i].position();
+				while (--c>=0 && --j>=0) {
+					buf.put(buffers[i].get(p++));
+				}
+				buffers[i].position(p);
+				
+				buf.flip();
+				int expected = buf.limit();
+		//		System.out.println(this.stageId+" wrote: \n"+new String(buf.array(),buf.position(),buf.remaining()));
+				
+				while (buf.hasRemaining()) {
+					int len = connections[i].getSocketChannel().write(buf);
+					if (len>0) {
+						expected-=len;
+					}
+				}
+				if (expected!=0) {
+					throw new UnsupportedOperationException();
+				}
+			}
 		} catch (IOException e) {
 			logger.info("excption while writing to socket. ",e);
 			connections[i].close();

@@ -163,7 +163,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         ///
         
         urlMap = new TrieParser(1024,true);  //TODO: build size needed for these URLs dynamically 
-        headerMap = new TrieParser(2048,true);//true skips deep checks we have an unknown value that gets picked for unexpected headers
+        headerMap = new TrieParser(2048,false);//do not skip deep checks, we do not know which new headers may appear.
         
         verbMap = new TrieParser(256,false);//does deep check
         revisionMap = new TrieParser(256,true); //avoid deep check
@@ -310,6 +310,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         Pipe<NetPayloadSchema> selectedInput = inputs[idx];     
 
         if (isOpen[idx]) {
+        	
             int messageIdx = accumulateRunningBytes(idx, selectedInput);
             if (messageIdx < 0) {
                 isOpen[idx] = false;
@@ -324,11 +325,14 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         
         long channel   = inputChannels[idx];
         if (channel >= 0) {
+        	
+        	//logger.info("setup parse for channel {}",channel);
+        	
             assert(inputLengths[idx]>=0) : "length is "+inputLengths[idx]; 
             TrieParserReader.parseSetup(trieReader, Pipe.blob(selectedInput), inputBlobPos[idx], inputLengths[idx], Pipe.blobMask(selectedInput));
-            final int idx1 = idx;
+         
             final long channel1 = channel; 
-            return consumeAvail(idx1, selectedInput, channel1, inputBlobPos[idx1], inputLengths[idx1]);            
+            return consumeAvail(idx, selectedInput, channel1, inputBlobPos[idx], inputLengths[idx]);            
         }
         
 //        if (!isOpen[idx] && 0==inputLengths[idx]) {
@@ -346,6 +350,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             final long toParseLength = TrieParserReader.parseHasContentLength(trieReader);
             assert(toParseLength>=0) : "length is "+toParseLength+" and input was "+l;
             
+            //TODO: check out client code and note how we do not attempt parse if no NEW data has been provided.
             if (toParseLength>=totalShortestRequest && route(trieReader, channel, idx, selectedInput)) {
                 consumed = (int)(toParseLength - TrieParserReader.parseHasContentLength(trieReader));           
                 Pipe.releasePendingAsReadLock(selectedInput, consumed);
@@ -370,38 +375,48 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
 private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<NetPayloadSchema> selectedInput) {    
     
-	// TrieParserReader.debugAsUTF8(trieReader, System.out,3000, false);
+//	boolean showHeader = true;
+//    if (showHeader) {
+//    	System.out.println("///////////////// HEADER ///////////////////");
+//    	TrieParserReader.debugAsUTF8(trieReader, System.out, trieReader.sourceLen, false); //shows that we did not get all the datas	
+//    	System.out.println("\n///////////////////////////////////////////");
+//    }
+
+	//TODO: URGENT this parser must allow for letting go of what has already been parsed,
 	
 	
-    final int verbId = (int)TrieParserReader.parseNext(trieReader, verbMap);     //  GET /hello/x?x=3 HTTP/1.1 
-  
-    //TODO: compare with client...
-    
-    
+    final int verbId = (int)TrieParserReader.parseNext(trieReader, verbMap);     //  GET /hello/x?x=3 HTTP/1.1     
     if (verbId<0) {
-        if (TrieParserReader.parseHasContentLength(trieReader)<=0) { //TODO: how long until we timeout and abandon this partial data??
+    //	return false;//waiting for rest of data
+    	
+     //   if (TrieParserReader.parseHasContentLength(trieReader)<=5) { //TODO: how long until we timeout and abandon this partial data??
             //not error, must wait for more content and try again.
-        	logger.info("waiting for {}",channel);
+ //       	logger.info("waiting for {} verb",channel);
             
+        	//TODO: is this rolling back the head as needed???
+        	
             return false;
-        } else {
-            
-        	logger.info("ERROR ZZZZZZZZZZZ  {}",channel);
-            
+       // } else {
+        	
+        //	logger.info("is this an ERROR ZZZZZZZZZZZ  {}",channel);
             //TODO: send error
             
-        }
+       // 	return false;
+       // }
         
     }
     
   //  TrieParserReader.debugAsUTF8(trieReader, System.out,3000, false);
     final int routeId = (int)TrieParserReader.parseNext(trieReader, urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
     if (routeId<0) {
+//    	logger.info("A waiting for {} route",channel);
+    	
     	//not error, must wait for more content and try again.
     	return false; 
     }
  
     Pipe<HTTPRequestSchema> staticRequestPipe = outputs[routeId];
+    //System.out.println("static target "+routeId+" at head "+Pipe.headPosition(staticRequestPipe)); //TODO: nothing is written since we do not get enought data.
 
     Pipe.markHead(staticRequestPipe);//holds in case we need to abandon our writes
     
@@ -417,24 +432,27 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
         
         writeURLParamsToField(trieReader, blobWriter[routeId]);                          //write 2   7
        
+        int sp = trieReader.sourcePos;
+        int sl = trieReader.sourceLen;
+        
         int httpRevisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap);  //  GET /hello/x?x=3 HTTP/1.1 
         
         if (httpRevisionId<0) { 
-            if (TrieParserReader.parseHasContentLength(trieReader)<=0) {
+  //          if (TrieParserReader.parseHasContentLength(trieReader)<=5) {
                 //ROLL BACK THE WRITE
                 Pipe.resetHead(staticRequestPipe);
                 //not error, must wait for more content and try again.
-                logger.info("B waiting for {}",channel);
+  //              logger.info("B waiting for {} {} {} room for write {}",channel, sp, sl, Pipe.hasRoomForWrite(staticRequestPipe));
                 
                 return false;            
-            } else {
-                 
-            	logger.info("ERROR XXXXXXXXXXXXXXX  {}",channel);
-                
-                
-                //TODO: send error
-                
-            }  
+//            } else {
+//            	Pipe.resetHead(staticRequestPipe); 
+//            	logger.info("is this an ERROR XXXXXXXXXXXXXXX  {}",channel);
+//                
+//                
+//                //TODO: send error
+//                return false;
+//            }  
 
         }
         
@@ -496,6 +514,12 @@ private int accumulateRunningBytes(int idx, Pipe<NetPayloadSchema> selectedInput
     
     int messageIdx = Integer.MAX_VALUE;
 
+//    logger.info("accumulate data rules {} && ({} || {} || {})",
+//    		     Pipe.hasContentToRead(selectedInput), 
+//    		     hasNoActiveChannel(idx), 
+//    		     hasReachedEndOfStream(selectedInput), 
+//    		     hasContinuedData(idx, selectedInput) );
+    
     while (Pipe.hasContentToRead(selectedInput) && //NOTE has content to read looks at slab position between last read and new head.
             
             (hasNoActiveChannel(idx) ||      //if we do not have an active channel
@@ -511,19 +535,19 @@ private int accumulateRunningBytes(int idx, Pipe<NetPayloadSchema> selectedInput
             this.inputSlabPos[idx] = Pipe.takeLong(selectedInput);
           
             int meta       = Pipe.takeRingByteMetaData(selectedInput);
-            assert(Pipe.byteBackingArray(meta, selectedInput) == Pipe.blob(selectedInput));
-            
             int length     = Pipe.takeRingByteLen(selectedInput);
+            int pos        = Pipe.bytePosition(meta, selectedInput, length);                                            
+            
+            assert(Pipe.byteBackingArray(meta, selectedInput) == Pipe.blob(selectedInput));            
             assert(length>0) : "value:"+length;
             assert(Pipe.validateVarLength(selectedInput, length));
             
-            int pos        = Pipe.bytePosition(meta, selectedInput, length);                                            
 
             if (-1 == inputChannels[idx]) {
                 //assign
                 inputChannels[idx]  = channel;
                 inputLengths[idx]   = length;
-                inputBlobPos[idx] = pos;
+                inputBlobPos[idx]   = pos;
      
                 assert(inputLengths[idx]<selectedInput.sizeOfBlobRing);
             } else {
@@ -546,17 +570,19 @@ private int accumulateRunningBytes(int idx, Pipe<NetPayloadSchema> selectedInput
             Pipe.readNextWithoutReleasingReadLock(selectedInput); 
             
             if (-1 == inputSlabPos[idx]) {
-            	//TODO: this is written too soon and should only be done after consumption.
             	inputSlabPos[idx] = Pipe.getWorkingTailPosition(selectedInput); //working and was tested since this is low level with unrleased block.
             }
             assert(inputSlabPos[idx]!=-1);
         } else {
             assert(-1 == messageIdx) : "messageIdx:"+messageIdx;
+            if (-1 != messageIdx) {
+            	throw new UnsupportedOperationException("bad id "+messageIdx);
+            }
+            
             Pipe.confirmLowLevelRead(selectedInput, Pipe.EOF_SIZE);
             Pipe.readNextWithoutReleasingReadLock(selectedInput);
             return messageIdx;//do not loop again just exit now
-        }
-        
+        }        
     }
  
     return messageIdx;
@@ -629,8 +655,16 @@ private boolean hasNoActiveChannel(int idx) {
         boolean isDone = false;
         int remainingLen;
         while ((remainingLen=TrieParserReader.parseHasContentLength(trieReader))>0){
+        
+        	boolean watch = false;
+        	int alen=trieReader.sourceLen;
+        	int apos=trieReader.sourcePos;
+        	if (12==trieReader.sourceLen) {
+        		watch = true;        		
+        	}
         	int headerId = (int)TrieParserReader.parseNext(trieReader, headerMap);
-    
+        	       	
+        	
             if (END_OF_HEADER_ID == headerId) {
                 if (iteration==0) {
                     throw new RuntimeException("should not have found end of header");
@@ -668,6 +702,16 @@ private boolean hasNoActiveChannel(int idx) {
             	
               
             } else if (headerIdConnection == headerId) {
+            	if (watch) {
+
+            		trieReader.sourceLen = alen;
+            		trieReader.sourcePos = apos;
+            		int temp = (int)TrieParserReader.parseNext(trieReader, headerMap);
+               	 
+            		System.err.println("length to parse from "+trieReader.sourceLen+"  "+headerId+"=="+temp);
+            		
+            	}
+            	
                 requestContext = applyKeepAliveOrCloseToContext(requestContext);                
             }
             
@@ -714,6 +758,9 @@ private boolean hasNoActiveChannel(int idx) {
 		//clear internal mask bit, may need other http2 settings.
 		
 		int len = TrieParserReader.capturedFieldByte(trieReader, 0, 1);
+		
+		//logger.warn("Connection: {}",TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, new StringBuilder()) ); 
+		
 		switch(len) {
 		    case 'l': //close
 		        requestContext |= ServerCoordinator.CLOSE_CONNECTION_MASK;                        
@@ -722,8 +769,12 @@ private boolean hasNoActiveChannel(int idx) {
 		        requestContext &= (~ServerCoordinator.CLOSE_CONNECTION_MASK);                        
 		        break;
 		    default:
-		        //unknown
-		    	logger.warn("connection :  {}",TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, new StringBuilder()) );                
+		        //unknown  TODO: URGENT fix we should not have gotten here there is a TrieParse error which allows this to select the wrong tag!!
+		    	logger.warn("Fix TrieParser query:   Connection: {}",TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, new StringBuilder()) );             
+		    	
+		    	//logger.warn("ERROR: {}",TrieParserReader.capturedFieldBytesAsUTF8Debug(trieReader, 0, new StringBuilder()) );
+		    	return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+		    	
 		} 
 		
 		//TODO: add flag to keep this going if we find no conection??

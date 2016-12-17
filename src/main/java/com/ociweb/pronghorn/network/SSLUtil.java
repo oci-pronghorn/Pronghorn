@@ -681,7 +681,7 @@ public class SSLUtil {
 						sendRelease(source, ack, cc);
 					} else {						
 						logger.error("is server {}  YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYy warning no release sent {} {} ",isServer,rolling.position(),Pipe.contentRemaining(source));
-						cameFromHandshake = true;
+					//	cameFromHandshake = true;
 					}
 				} else {
 					didWork = 1;

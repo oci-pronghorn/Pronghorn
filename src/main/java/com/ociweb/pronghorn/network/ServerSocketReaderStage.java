@@ -96,7 +96,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
         if (hasNewDataToRead()) {
         	
-        	logger.debug("found new data to read on "+groupIdx);
+        	//logger.info("found new data to read on "+groupIdx);
             
             Iterator<SelectionKey>  keyIterator = selector.selectedKeys().iterator();   
             
@@ -147,7 +147,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 					responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
 					if (responsePipeLineIdx<0) {
 //		    			if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
-//		    				logger.warn("bump up maxPartialResponsesServer count, performance is slowed due to waiting for available input pipe on client");
+		    				logger.warn("bump up maxPartialResponsesServer count, performance is slowed due to waiting for available input pipe on client");
 //		    			}
 						continue;//try other connections which may already have pipes, this one can not reserve a pipe now.
 					}
@@ -236,24 +236,18 @@ public class ServerSocketReaderStage extends PronghornStage {
     
     //returns -1 for did not start, 0 for started, and 1 for finished all.
     public int pumpByteChannelIntoPipe(SocketChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe) {
-
-//    	int x = 0;
-//    	while (!Pipe.hasRoomForWrite(targetPipe)) {
-//    		Thread.yield();
-//    		if (++x>1000000) {
-//    			throw new UnsupportedOperationException("why is this pipe backed up?");
-//    		}
-//    	}
     	
         //keep appending messages until the channel is empty or the pipe is full
         if (Pipe.hasRoomForWrite(targetPipe)) {          
-        	//logger.info("pump one ");
+        	//logger.info("pump block for {} ",channelId);
             try {                
                 
                 long len;//if data is read then we build a record around it
                 //NOTE: the byte buffer is no longer than the valid maximum length but may be shorter based on end of wrap arround
                 ByteBuffer[] b = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(targetPipe), targetPipe);
-                               
+                       
+                //TODO: URGENT needs to keep write open while running in this loop then do a single publish flush if possible. small writes are bad clogging the system.
+                
                 if ((len = sourceChannel.read(b))>0) {
                 	boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;
                 	
@@ -270,19 +264,17 @@ public class ServerSocketReaderStage extends PronghornStage {
             		this.coordinator.releaseResponsePipeLineIdx(channelId);
             	
                     recordErrorAndClose(sourceChannel, e);
-                    
-                    new Exception("exited app").printStackTrace();
-                    System.exit(-1);
-                    
+                        
                     return -1;
             }
         } else {
+        	logger.info("no room to write on server for {}, check that data is getting released or that larger blocks are written here {} ",channelId, targetPipe);
         	return -1;
         }
     }
 
     private void recordErrorAndClose(ReadableByteChannel sourceChannel, IOException e) {
-          logger.error("unable to read",e);
+       //   logger.error("unable to read",e);
           //may have been closed while reading so stop
           if (null!=sourceChannel) {
               try {
@@ -310,8 +302,8 @@ public class ServerSocketReaderStage extends PronghornStage {
        // logger.info("server read {} bytes for id {}",len,channelId);
         
         //only works for real UTF8
-        //logger.info("server got: "+Appendables.appendUTF8(new StringBuilder(), Pipe.blob(targetPipe), originalBlobPosition, len, Pipe.blobMask(targetPipe)));
-  
+      //  logger.info("{} server got: "+Appendables.appendUTF8(new StringBuilder(), Pipe.blob(targetPipe), originalBlobPosition, (int)len, Pipe.blobMask(targetPipe)),channelId);
+       // System.out.println();
 //EXAMPLE REQUEST        
 //        GET /index.html HTTP/1.1
 //        Host: 127.0.0.1:8081

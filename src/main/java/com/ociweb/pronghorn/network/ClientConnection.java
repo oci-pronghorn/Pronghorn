@@ -32,6 +32,7 @@ public class ClientConnection extends SSLConnection {
 	private SelectionKey key; //only registered after handshake is complete.
 
 	private final byte[] connectionGUID;
+	private final int    connectionGUIDLength;
 	
 	private final int pipeIdx;
 	
@@ -90,7 +91,7 @@ public class ClientConnection extends SSLConnection {
 		
 		// RFC 1035 the length of a FQDN is limited to 255 characters
 		this.connectionGUID = new byte[(2*host.length())+6];
-		buildGUID(connectionGUID, hostBacking, hostPos, hostLen, hostMask, port, userId);
+		this.connectionGUIDLength = buildGUID(connectionGUID, hostBacking, hostPos, hostLen, hostMask, port, userId);
 		this.pipeIdx = pipeIdx;
 		this.userId = userId;
 		this.host = host;
@@ -193,6 +194,9 @@ public class ClientConnection extends SSLConnection {
 	
 	public byte[] GUID() {
 		return connectionGUID;
+	}
+	public int GUIDLength() {
+		return connectionGUIDLength;
 	}
 	
 	/**

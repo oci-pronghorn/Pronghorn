@@ -257,7 +257,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     
     private int setupUnseenFile(TrieParser trie, String pathString, int rootSize) {
         
-    			logger.info("loading new file: "+pathString);
+    		//	logger.trace("loading new file: "+pathString);
                 int newPathId;
                 try {
                     Path path = fileSystem.getPath(pathString);
