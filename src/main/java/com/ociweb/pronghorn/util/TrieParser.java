@@ -423,9 +423,10 @@ public class TrieParser {
                         int runPos = pos++;
                         int run = data[runPos];
                               
+                        int r = run;
                         if (sourceLength < run+length) {
                             
-                            int r = sourceLength-length;
+                            r = sourceLength-length;
                             assert(r<run);
                             int afterWhileLength = length+r;
                             int afterWhileRun    = run-r;
@@ -461,7 +462,7 @@ public class TrieParser {
                             return;
                         }                        
                         
-                        int r = run;
+                      //  int r = run;
                         while (--r >= 0) {
                             
                             byte sourceByte = source[sourceMask & sourcePos++];

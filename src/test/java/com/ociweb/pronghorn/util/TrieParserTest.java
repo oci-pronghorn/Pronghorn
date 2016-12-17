@@ -346,7 +346,7 @@ public class TrieParserTest {
         TrieParserReader.capturedFieldBytes(reader, 0, expected, 0, 7);
         assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(expected) );
   
-        assertEquals(value3, TrieParserReader.query(reader,map,toParseEnd3, 0, toParseEnd3.length, 7));
+        assertEquals(-1, TrieParserReader.query(reader,map,toParseEnd3, 0, toParseEnd3.length, 7));
         
         TrieParserReader.capturedFieldBytes(reader, 0, expected, 0, 7);
         assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(expected) );
@@ -446,7 +446,7 @@ public class TrieParserTest {
         assertEquals("helloworld".length(), TrieParserReader.parseHasContentLength(reader));
         
         assertEquals(value1, TrieParserReader.parseNext(reader, map));
-        assertEquals(value2, TrieParserReader.parseNext(reader, map));
+        assertEquals(-1, TrieParserReader.parseNext(reader, map));
         
                 
     }

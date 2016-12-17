@@ -173,6 +173,9 @@ public class TrieParserReader {
         that.sourceBacking = source;
         that.sourcePos     = offset;
         that.sourceLen     = length;
+        if (that.sourceLen<0) {
+        	throw new RuntimeException("parse must never go past the end of the avialable data yet length is now "+that.sourceLen);
+        }
         that.sourceMask    = mask;        
     }
     
@@ -183,6 +186,9 @@ public class TrieParserReader {
     
     public static void parseSetupGrow(TrieParserReader that, int additionalLength) {
     	that.sourceLen += additionalLength;
+        if (that.sourceLen<0) {
+        	throw new RuntimeException("parse must never go past the end of the avialable data yet length is now "+that.sourceLen);
+        }
     	assert(that.sourceLen<=that.sourceMask) : "length is out of bounds";
     }
     
@@ -202,6 +208,9 @@ public class TrieParserReader {
     public static void loadPositionMemo(TrieParserReader that, int[] source, int offset) {
    		that.sourcePos = source[offset];
    		that.sourceLen = source[offset+1];
+        if (that.sourceLen<0) {
+        	throw new RuntimeException("parse must never go past the end of the avialable data yet length is now "+that.sourceLen);
+        }
     }
     
     
@@ -292,6 +301,9 @@ public class TrieParserReader {
     	int len = Math.min(count, reader.sourceLen);
         reader.sourcePos += len;
         reader.sourceLen -= len;
+        if (reader.sourceLen<0) {
+        	throw new RuntimeException("parse must never go past the end of the avialable data yet length is now "+reader.sourceLen);
+        }
         return len;
     }
     
@@ -302,7 +314,9 @@ public class TrieParserReader {
     	DataOutputBlobWriter.write(writer, reader.sourceBacking, reader.sourcePos, len, reader.sourceMask);    	
     	reader.sourcePos += len;
         reader.sourceLen -= len;       
-        
+        if (reader.sourceLen<0) {
+        	throw new RuntimeException("parse must never go past the end of the avialable data yet length is now "+reader.sourceLen);
+        }
         return len;
     }
     
@@ -380,12 +394,16 @@ public class TrieParserReader {
         while ((t=reader.type) != TrieParser.TYPE_END) {  
            
             if (t==TrieParser.TYPE_BRANCH_VALUE) {   
-                //TODO: we compute both sides of jump when we do not need to                
-                reader.pos = TrieParser.jumpOnBit((short) source[sourceMask & reader.localSourcePos], trie.data[reader.pos++], (((int)trie.data[reader.pos++])<<15) | (0x7FFF&trie.data[reader.pos]), reader.pos);
-                   
+            	if (reader.runLength<sourceLength) {
+            		//TODO: we compute both sides of jump when we do not need to                
+            		reader.pos = TrieParser.jumpOnBit((short) source[sourceMask & reader.localSourcePos], trie.data[reader.pos++], (((int)trie.data[reader.pos++])<<15) | (0x7FFF&trie.data[reader.pos]), reader.pos);
+            	} else {
+            		return unfoundResult;
+            	}
             } else if (t == TrieParser.TYPE_RUN) {                
                 //run
-                int run = trie.data[reader.pos++];        
+                final int run = trie.data[reader.pos++];    
+                
                 if (!(trie.skipDeepChecks && !hasSafePoint && 0==reader.altStackPos)) {
                     int r = scanForMismatch(reader, source, sourceMask, trie.data, run);
                     if (r>=0) {
@@ -399,12 +417,20 @@ public class TrieParserReader {
                         } else {
                         	return useSafePoint(reader);
                         }
-                    }    
+                    } 
+                              
                 } else {
+                         
                     reader.pos += run;
                     reader.localSourcePos += run; 
                 }
                 reader.runLength += run;
+                
+                //we did not have the room to match.
+                if (reader.runLength > sourceLength) {
+                	return unfoundResult;
+                }
+                                
                 
             } else if (t == TrieParser.TYPE_SAFE_END) {                    
                 
@@ -416,28 +442,44 @@ public class TrieParserReader {
                 }   
                 
             } else if (t == TrieParser.TYPE_VALUE_BYTES) {
-               
-                parseBytes(reader, trie, source, sourceLength, sourceMask);
-                
-                if (reader.localSourcePos<0) {
-                    if (reader.altStackPos > 0) {
-                        //try other path
-                        //reset all the values to the other path and continue from the top
-                        
-                        tryNextChoiceOnStack(reader, trie.data);
-                        continue top;
-                        
-                    } else {
-                        return unfoundResult;
-                    }
+
+                if (reader.runLength<sourceLength) {
+	                parseBytes(reader, trie, source, sourceLength, sourceMask);
+	                                
+	                if (-1 == reader.localSourcePos) {
+	                	//we may have data on the stack but we have reached the END of the data
+	                	//so until we get more data we do not know the exact match to be applied
+	                	while (reader.altStackPos > 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
+	                		tryNextChoiceOnStack(reader, trie.data);
+	                	}
+	                	if (reader.altStackPos == 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
+	                		return unfoundResult;
+	                	}
+	                	
+	                    continue top;
+	                }
+                } else {
+                	//we may have data on the stack but we have reached the END of the data
+                	//so until we get more data we do not know the exact match to be applied
+                  	while (reader.altStackPos > 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
+                		tryNextChoiceOnStack(reader, trie.data);
+                	}
+                	if (reader.altStackPos == 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
+                		return unfoundResult;
+                	}
+                	
+                    continue top;
                 }
             } else if (t == TrieParser.TYPE_VALUE_NUMERIC) {       
-            	
-            	int temp = parseNumeric(reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, (int)trie.data[reader.pos++]);
-            	if (temp<0) {
+            	if (reader.runLength<sourceLength) {
+	            	int temp = parseNumeric(reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, (int)trie.data[reader.pos++]);
+	            	if (temp<0) {
+	            		return unfoundResult;
+	            	}            	
+	                reader.localSourcePos = temp;
+            	} else {
             		return unfoundResult;
-            	}            	
-                reader.localSourcePos = temp;
+            	}
                 
             } else if (t == TrieParser.TYPE_ALT_BRANCH) {
                  processAltBranch(reader, trie.data);                 
@@ -457,25 +499,30 @@ public class TrieParserReader {
         
     }
 
-    private static void parseBytes(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
-            int sourceMask) {
-        short stopValue = trie.data[reader.pos++];
-        
-        int stopCount = 0;
-        
-        reader.workingMultiContinue[stopCount] = reader.pos;
-        reader.workingMultiStops[stopCount++] = stopValue;
-                                
-        if (reader.altStackPos>0) {
-            stopCount = scanAllStackPos(reader, reader.localSourcePos, trie.data, reader.runLength, stopCount);
-        }
-        
-        if (stopCount>1) {
-            reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, reader.workingMultiStops, stopCount);                    
-            reader.pos = adjustConntinueFrom(reader, source, reader.localSourcePos, sourceMask, reader.pos, stopCount);
-        } else {
-            reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, stopValue);
-        }
+    private static void parseBytes(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength, int sourceMask) {
+    	long maxCapture = sourceLength-reader.runLength;
+    	if (maxCapture>0) {
+	        short stopValue = trie.data[reader.pos++];
+	        
+	        int stopCount = 0;
+	        
+	        reader.workingMultiContinue[stopCount] = reader.pos;
+	        reader.workingMultiStops[stopCount++] = stopValue;
+	                                
+	        if (reader.altStackPos>0) {
+	            stopCount = scanAllStackPos(reader, reader.localSourcePos, trie.data, reader.runLength, stopCount);
+	        }
+	
+	        
+	        if (stopCount>1) {
+				reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, maxCapture, sourceMask, reader.workingMultiStops, stopCount);                    
+	            reader.pos = adjustConntinueFrom(reader, source, reader.localSourcePos, sourceMask, reader.pos, stopCount);
+	        } else {
+	            reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, maxCapture, sourceMask, stopValue);
+	        }
+    	} else {
+    		reader.localSourcePos = -1;
+    	}
     }
 
     private static void initForQuery(TrieParserReader reader, TrieParser trie, byte[] source, int sourcePos) {
@@ -527,8 +574,7 @@ public class TrieParserReader {
         reader.type = localData[reader.pos++];
     }
 
-    private static int scanForMismatch(TrieParserReader reader, byte[] source, int sourceMask, short[] localData,
-            int run) {
+    private static int scanForMismatch(TrieParserReader reader, byte[] source, int sourceMask, short[] localData, int run) {
    
         int r = run;
         while ((--r >= 0) && (localData[reader.pos++] == source[sourceMask & reader.localSourcePos++]) ) {
@@ -605,14 +651,12 @@ public class TrieParserReader {
         if (type == TrieParser.TYPE_ALT_BRANCH) {
             
             pos++;
-            if (1 != TrieParser.BRANCH_JUMP_SIZE ) {
-                assert(localData[pos]>=0): "bad value "+localData[pos];
-                assert(localData[pos+1]>=0): "bad value "+localData[pos+1];
-                
-                altBranch(localData, reader, pos, offset, (((int)localData[pos++])<<15) | (0x7FFF&localData[pos++]), localData[pos], runLength); 
-            } else {
-                altBranch(localData, reader, pos, offset, localData[pos++], localData[pos], runLength);                                   
-            }
+    
+            assert(localData[pos]>=0): "bad value "+localData[pos];
+            assert(localData[pos+1]>=0): "bad value "+localData[pos+1];
+            
+            altBranch(localData, reader, pos, offset, (((int)localData[pos++])<<15) | (0x7FFF&localData[pos++]), localData[pos], runLength); 
+
             
         } else {
             
@@ -687,6 +731,7 @@ public class TrieParserReader {
         reader.safeReturnValue = TrieParser.readEndValue(trie.data, pos, trie.SIZE_OF_RESULT);
         reader.safeCapturedPos = reader.capturedPos;
         reader.saveCapturedLen = reader.sourceLen;
+        
         reader.safeSourcePos = localSourcePos;        
         
         
@@ -698,13 +743,15 @@ public class TrieParserReader {
 
         int x = sourcePos;
         int lim = (int)Math.min(remainingLen, sourceMask);
+        boolean noStop = true;
         do {
-        } while (--lim >= 0 && stopValue!=source[sourceMask & x++]);         
+        } while (--lim >= 0 && (noStop=(stopValue!=source[sourceMask & x++])));         
         int len = (x-sourcePos)-1;
-                
-        if (lim<0) {//not found!
+
+        if (noStop) {//not found!
             return -1;
         }
+        reader.runLength += (len);
         reader.capturedPos = extractedBytesRange(reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);                
         return x;
     }
@@ -713,20 +760,16 @@ public class TrieParserReader {
 
         int x = sourcePos;
         int lim = (int)Math.min(remainingLen, sourceMask);
-        StringBuilder b=new StringBuilder();
+    
+        boolean noStop = true;
         do {
-            if (lim>0) {
-                b.append((char)source[sourceMask & x]);
-            }
-            
-        } while (--lim >= 0 && valueNotFoundInArray(source[sourceMask & x++], stopValues, stopValuesCount ) );         
+        } while (--lim >= 0 && (noStop=valueNotFoundInArray(source[sourceMask & x++], stopValues, stopValuesCount )) );         
         int len = (x-sourcePos)-1;
-                
-        if (lim<0) {//not found!
-            int z = (int)Math.min(remainingLen, sourceMask);
- //           System.out.println("not found in scan of "+z+"  "+b);
+
+        if (noStop) {//not found!
             return -1;
         }
+        reader.runLength += (len);
         reader.capturedPos = extractedBytesRange(reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);                
         return x;
     }
@@ -976,6 +1019,21 @@ public class TrieParserReader {
 
     }
    
+    public static <A extends Appendable> A capturedFieldBytesAsUTF8Debug(TrieParserReader reader, int idx, A target) {
+        
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int bpos = reader.capturedValues[pos++];
+        int blen = reader.capturedValues[pos++];
+        int bmsk = reader.capturedValues[pos++];
+        
+        return Appendables.appendUTF8(target, reader.capturedBlobArray, bpos-10, blen+20, bmsk);
+
+
+    }
+    
     public static int writeCapturedValuesToPipe(TrieParserReader reader, Pipe<?> target) {
         int limit = reader.capturedPos;
         int[] localCapturedValues = reader.capturedValues;
@@ -1046,17 +1104,37 @@ public class TrieParserReader {
                 target.writeShort(l);
                 
          //       logger.info("captured text: {}", Appendables.appendUTF8(new StringBuilder(), reader.capturedBlobArray, p, l, m));
-                
-                
+                                
                 DataOutputBlobWriter.write(target,reader.capturedBlobArray,p,l,m);
                                 
             } else {
                 
-                target.writeInt(type);
-                target.writeInt(localCapturedValues[i++]);
-                target.writeInt(localCapturedValues[i++]);
-                target.writeInt(localCapturedValues[i++]);
+            	boolean isDot = false; //TOOD: can we know this?
+            	
+            	int sign = type;
+            	long value1 = localCapturedValues[i++];
+                long value2 = localCapturedValues[i++]; 
                 
+                int meta = localCapturedValues[i++]; 
+            	int base = meta>>16;
+                int len  = meta&0xFFFF;
+            	
+                long value = sign*((value1<<32)|value2);
+                int  position;                
+                if (isDot) {
+                	if (base!=10) {
+                		throw new UnsupportedOperationException("Can not support decimal point values with hex.");
+                	}
+                	position = -len;                	
+                } else {
+                	position = 0;
+                }
+                            
+                
+                target.writePackedLong(value);
+                target.writeByte(position);
+                
+ 
             }            
         }
         return totalBytes;

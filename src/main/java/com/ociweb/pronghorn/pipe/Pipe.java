@@ -2491,6 +2491,14 @@ public class Pipe<T extends MessageSchema> {
        // assert(pipe.slabRingTail.workingTailPos.value<Pipe.workingHeadPosition(pipe)) : " tail is "+pipe.slabRingTail.workingTailPos.value+" but head is "+Pipe.workingHeadPosition(pipe);
     	return pipe.lastMsgIdx = readValue(pipe.slabRing, pipe.mask, pipe.slabRingTail.workingTailPos.value++);
     }
+    
+    public static <S extends MessageSchema> boolean peekMsg(Pipe<S> pipe, int expected) {
+        return Pipe.hasContentToRead(pipe) && peekInt(pipe)==expected;    	
+    }
+    
+    public static <S extends MessageSchema> boolean peekNotMsg(Pipe<S> pipe, int expected) {
+        return Pipe.hasContentToRead(pipe) && peekInt(pipe)!=expected;    	
+    }    
 
     public static <S extends MessageSchema> int peekInt(Pipe<S> pipe) {
     	assert(Pipe.hasContentToRead(pipe)) : "results would not be repeatable";
