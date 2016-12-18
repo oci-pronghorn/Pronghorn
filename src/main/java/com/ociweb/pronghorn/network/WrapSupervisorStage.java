@@ -192,6 +192,7 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
 	                    	}
 	                    } else {
 	                    	if (!Pipe.hasRoomForWrite(myPipe, plainSize)) {
+	                    	//	logger.info("output pipe has NO ROOM {} ",myPipe);
 	                    		break;
 	                    	}	                    	
 	                    }                    
@@ -289,6 +290,7 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
 		 Pipe.addLongValue(channelId, myPipe);
 		 Pipe.addLongValue(Pipe.getWorkingTailPosition(myPipe), myPipe);
 		 Pipe.addByteArrayWithMask(myPipe, blobMask, len, blob, bytePosition);
+		 
 		 Pipe.confirmLowLevelWrite(myPipe, plainSize);
 		 Pipe.publishWrites(myPipe);
 		 

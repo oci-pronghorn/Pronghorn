@@ -39,7 +39,7 @@ public enum HTTPContentTypeDefaults implements HTTPContentType {
     JPG("image/jpeg","jpg"),
     JPEG("image/jpeg","jpeg"),
     JPE("image/jpeg","jpe"),    
-    JSON("application/json","json"),    
+    JSON("application/json","json"),
     JS("application/x-javascript","js"),
     LATEX("application/x-latex","latex"),
     LHA("application/octet-stream","lha"),

@@ -50,8 +50,6 @@ public class ServerSocketWriterStage extends PronghornStage {
     private long activeIds[]; 
     private int activeMessageIds[];    
   
-    private long writeBlockedCount = 0;
-    
     private long totalBytesWritten = 0;
     
     private int    activePipe = 0;
@@ -113,22 +111,23 @@ public class ServerSocketWriterStage extends PronghornStage {
     
     @Override
     public void shutdown() {
-    	
-    	System.out.println("UNABLE TO WRITE BLOCKED COUNT "+ 	writeBlockedCount);
-    	
+
     }
     
     @Override
     public void run() {
        
+    	
     	boolean didWork = false;
     	do {
     		didWork = false;
 	    	int x = dataToSend.length;
 	    	while (--x>=0) {
+	    		//logger.info("server socket writer run {}",x);
 	    		
 	    		if (null == writeToChannel[x]) {
 	    			if ( Pipe.hasContentToRead(dataToSend[x])) {
+	    			//	logger.info("data to read for {}",x);
 	    				didWork = true;
 		            	int activeMessageId = Pipe.takeMsgIdx(dataToSend[x]);
 		            			            	
@@ -137,8 +136,13 @@ public class ServerSocketWriterStage extends PronghornStage {
 		            	if (activeMessageId < 0) {
 		            		return;
 		            	}
-	    			}
+	    			}// else {
+	    			//	logger.info("no data to read {} {} ",x,dataToSend[x]);
+	    			//}
 	    		} else {
+	    			
+	    			//logger.info("write the channel");
+	    			
 	    			didWork = true;
 	    			writeToChannel(x);    
 	    			if (null != writeToChannel[x]) {
@@ -170,6 +174,8 @@ public class ServerSocketWriterStage extends PronghornStage {
 	private void processMessage(int activeMessageId, int idx) {
 		
 		activeMessageIds[idx] = activeMessageId;
+		
+		//logger.info("sever to write {}",activeMessageId);
 		
 		if ( (NetPayloadSchema.MSG_PLAIN_210 == activeMessageId) ||
 		     (NetPayloadSchema.MSG_ENCRYPTED_200 == activeMessageId) ) {
@@ -309,22 +315,82 @@ public class ServerSocketWriterStage extends PronghornStage {
 
     private void writeToChannel(int idx) {
 
-	        try {
-	        	int bytesWritten = writeToChannel[idx].write(workingBuffers[idx]);	  
-	        	if (bytesWritten>0) {
-	        		totalBytesWritten+=bytesWritten;
-	        	}
+    		boolean debugWithSlowWrites = false;
+    	
+    		//System.err.println(workingBuffers[idx]);
+    		
+    		if (!debugWithSlowWrites) {
+		        try {
+		        	int bytesWritten = writeToChannel[idx].write(workingBuffers[idx]);	  
+		        	if (bytesWritten>0) {
+		        		totalBytesWritten+=bytesWritten;
+		        	}
+		        	if (!workingBuffers[idx].hasRemaining()) {
+		        		markDoneAndRelease(idx);
+		        	} 
+		        } catch (IOException e) {
+		        	closeChannel(writeToChannel[idx]);
+		            //unable to write to this socket, treat as closed
+		            markDoneAndRelease(idx);
+		            //logger.trace("unable to write to channel",e);
+		        }
+    		} else {
+    			
+				//write only this many bytes over the network at a time
+				int max = 1_000;
+						 //worked: 20_000; 
+				         //this value works: 190_000; 
+				
+				ByteBuffer buf = ByteBuffer.wrap(new byte[max]);
+				buf.clear();
+				
+			//	workingBuffers[idx].flip();
+				//System.err.println("length for buffer "+workingBuffers[idx].position());
+				
+				int j = max;
+				int c = workingBuffers[idx].remaining();
+//				if (c>max) {
+//					System.err.println("need <"+max+" but size was "+c);
+//				}
+				
+				int p = workingBuffers[idx].position();
+				while (--c>=0 && --j>=0) {
+					buf.put(workingBuffers[idx].get(p++));
+				}
+				workingBuffers[idx].position(p);
+				
+				
+				
+				buf.flip();
+				int expected = buf.limit();
+				
+		//		System.out.println(this.stageId+" wrote: \n"+new String(buf.array(),buf.position(),buf.remaining()));
+				
+				while (buf.hasRemaining()) {
+					try {
+						int len = writeToChannel[idx].write(buf);
+						if (len>0) {
+							expected -= len;
+							totalBytesWritten += len;
+						}
+					} catch (IOException e) {
+						closeChannel(writeToChannel[idx]);
+			            //unable to write to this socket, treat as closed
+			            markDoneAndRelease(idx);
+			            logger.info("unable to write to channel",e);
+					}
+				}
+				if (expected!=0) {
+					throw new UnsupportedOperationException();
+				}
+							
 	        	if (!workingBuffers[idx].hasRemaining()) {
 	        		markDoneAndRelease(idx);
-	        	} else {
-	        		writeBlockedCount++;
 	        	}
-	        } catch (IOException e) {
-	        	closeChannel(writeToChannel[idx]);
-	            //unable to write to this socket, treat as closed
-	            markDoneAndRelease(idx);
-	            //logger.trace("unable to write to channel",e);
-	        }
+    			
+    		}	        
+	        
+	        
 
     }
 

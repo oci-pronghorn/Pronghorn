@@ -242,22 +242,21 @@ public class ServerSocketReaderStage extends PronghornStage {
         	//logger.info("pump block for {} ",channelId);
             try {                
                 
-                long len;//if data is read then we build a record around it
+                long len=0;//if data is read then we build a record around it
                 //NOTE: the byte buffer is no longer than the valid maximum length but may be shorter based on end of wrap arround
                 ByteBuffer[] b = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(targetPipe), targetPipe);
                        
                 //TODO: URGENT needs to keep write open while running in this loop then do a single publish flush if possible. small writes are bad clogging the system.
-                
-                if ((len = sourceChannel.read(b))>0) {
-                	boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;
-                	
-                	publishData(targetPipe, channelId, len);  
-                	 
-                	return fullTarget?0:1; //only for 1 can we be sure we read all the data
-                } else {
-                	 Pipe.unstoreBlobWorkingHeadPosition(targetPipe);//we did not use or need the writing buffers above.
-                	 return 1;//yes we are done
-                }
+                long temp = 0;
+                do {
+                	temp = sourceChannel.read(b);
+                	if (temp>0){
+                		len+=temp;
+                	}            
+           //     	System.err.println(temp+"  for channel "+channelId); //this seems to show that this loop is not needed because the data is already grouped?? BUT could do larger groups going arround.
+                } while (temp>0);
+                      
+                return publishOrAbandon(channelId, targetPipe, len, b, temp>=0);
 
             } catch (IOException e) {
             	
@@ -268,10 +267,31 @@ public class ServerSocketReaderStage extends PronghornStage {
                     return -1;
             }
         } else {
-        	logger.info("no room to write on server for {}, check that data is getting released or that larger blocks are written here {} ",channelId, targetPipe);
+//        	try {
+//        		Thread.yield();
+//				Thread.sleep(10000);
+//			} catch (InterruptedException e) {
+//			}
+//        	
+////        	logger.info("no room to write on server for {}, check that data is getting released or that larger blocks are written here {} ",channelId, targetPipe);
+////        	
+////       		logger.error("FORCED EXIT");
+////       		System.exit(-1);
+////        	
         	return -1;
         }
     }
+
+	private int publishOrAbandon(long channelId, Pipe<NetPayloadSchema> targetPipe, long len, ByteBuffer[] b, boolean isOpen) {
+		if (len>0) {
+			boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;                	
+			publishData(targetPipe, channelId, len);                  	 
+			return (fullTarget&&isOpen) ? 0 : 1; //only for 1 can we be sure we read all the data
+		} else {
+			 Pipe.unstoreBlobWorkingHeadPosition(targetPipe);//we did not use or need the writing buffers above.
+			 return 1;//yes we are done
+		}
+	}
 
     private void recordErrorAndClose(ReadableByteChannel sourceChannel, IOException e) {
        //   logger.error("unable to read",e);
@@ -296,28 +316,16 @@ public class ServerSocketReaderStage extends PronghornStage {
         if (NetPayloadSchema.MSG_PLAIN_210 == messageType) {
         	Pipe.addLongValue(-1, targetPipe);
         }
+
         
         int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);
-       
-       // logger.info("server read {} bytes for id {}",len,channelId);
+
+//ONLY VALID FOR UTF8
+//        boolean showRequests = true;
+//        if (showRequests) {
+//        	logger.info("//////////////////Server read for channel {} \n{}\n/////////////////////",channelId, Appendables.appendUTF8(new StringBuilder(), targetPipe.blobRing, originalBlobPosition, (int)len, targetPipe.blobMask));               
+//        }
         
-        //only works for real UTF8
-      //  logger.info("{} server got: "+Appendables.appendUTF8(new StringBuilder(), Pipe.blob(targetPipe), originalBlobPosition, (int)len, Pipe.blobMask(targetPipe)),channelId);
-       // System.out.println();
-//EXAMPLE REQUEST        
-//        GET /index.html HTTP/1.1
-//        Host: 127.0.0.1:8081
-//        Connection: keep-alive
-//        Cache-Control: max-age=0
-//        Upgrade-Insecure-Requests: 1
-//        User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/53.0.2785.143 Chrome/53.0.2785.143 Safari/537.36
-//        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
-//        DNT: 1
-//        Accept-Encoding: gzip, deflate, sdch
-//        Accept-Language: en-US,en;q=0.8
-//        Cookie: shellInABox=3:101010
-
-
         
         Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)len, targetPipe);  
         

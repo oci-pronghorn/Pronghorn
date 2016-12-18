@@ -538,7 +538,10 @@ public class SSLUtil {
 	public static boolean engineWrap(SSLConnectionHolder ccm, Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer, int groupId) {
 		
 		boolean didWork = false;
-				
+			
+//		if (!PipeWriter.hasRoomForWrite(target)) {
+//			logger.info("no room for wrap write on {} server {}",target,isServer);
+//		}
 		
 		while (PipeWriter.hasRoomForWrite(target) && PipeReader.peekMsg(source, NetPayloadSchema.MSG_PLAIN_210) ) {
 			

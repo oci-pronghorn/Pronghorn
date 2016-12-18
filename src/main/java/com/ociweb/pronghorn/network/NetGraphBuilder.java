@@ -130,15 +130,23 @@ public class NetGraphBuilder {
 				}
 			}
 			
+			//change order of pipes for split later
+			//interleave the handshakes.
+			c = hanshakePipes.length;
+			Pipe[][] tPipes = Pipe.splitPipes(c, wrappedClientRequests);
+			while (--c>=0) {
+				tPipes[c] = PronghornStage.join(tPipes[c], hanshakePipes[c]);
+			}
+			wrappedClientRequests = PronghornStage.join(tPipes);
+			////////////////////////////
+				
+			
+			
 		} else {
 			wrappedClientRequests = requests;
 		}
 		//////////////////////////
 		///////////////////////////
-		
-		if (isTLS) { //add in the handshake pipes.
-			wrappedClientRequests = PronghornStage.join(wrappedClientRequests,hanshakePipes);
-		}
 		
 		
 		
@@ -172,7 +180,7 @@ public class NetGraphBuilder {
       
         //byte buffer must remain small because we will have a lot of these for all the partial messages
         //TODO: if we get a series of very short messages this will fill up causing a hang. TODO: we can get parser to release and/or server reader to combine.
-        PipeConfig<NetPayloadSchema> incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 40, serverInputBlobs);//make larger if we are suporting posts. 1<<20); //Make same as network buffer in bytes!??   Do not make to large or latency goes up
+        PipeConfig<NetPayloadSchema> incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 140, serverInputBlobs);//make larger if we are suporting posts. 1<<20); //Make same as network buffer in bytes!??   Do not make to large or latency goes up
         
         //must be large to hold high volumes of throughput.  //NOTE: effeciency of supervisor stage controls how long this needs to be
         PipeConfig<NetPayloadSchema> toWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 1024, serverBlobToEncrypt); //from super should be 2x of super input //must be 1<<15 at a minimum for handshake
@@ -259,7 +267,7 @@ public class NetGraphBuilder {
                 msgIds[a] =  HTTPRequestSchema.MSG_FILEREQUEST_200;
             }
             Pipe[] plainPipe = planIncomingGroup[g];//countTap(graphManager, planIncomingGroup[g],"Server-unwrap-to-router");
-            HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainPipe, toModules, acks[acks.length-1], paths, headers, msgIds);        
+            HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainPipe, toModules, acks[acks.length-1], paths, headers, msgIds, coordinator);        
             GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
             //////////////////////////
             //////////////////////////

@@ -309,7 +309,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 				connections[i].getSocketChannel().write(buffers[i]);
 			} else {
 				//write only this many bytes over the network at a time
-				int max = 18; 
+				int max = 50; 
 				
 				ByteBuffer buf = ByteBuffer.wrap(new byte[max]);
 				buf.clear();
@@ -335,12 +335,18 @@ public class ClientSocketWriterStage extends PronghornStage {
 				if (expected!=0) {
 					throw new UnsupportedOperationException();
 				}
+				
+				//logger.info("remaining to write {} for {}",buffers[i].remaining(),i);
+				
 			}
 		} catch (IOException e) {
 			logger.info("excption while writing to socket. ",e);
 			connections[i].close();
 		}
 		if (!buffers[i].hasRemaining()) {
+			
+			//logger.info("write clear {}",i);
+			
 			connections[i]=null;
 		}
 	}

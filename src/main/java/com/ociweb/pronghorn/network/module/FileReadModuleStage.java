@@ -296,7 +296,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         return localExtTable;
     }
 
-
+    
     @Override
     public void run() {
    
@@ -312,7 +312,11 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 	            disconnectDueToError(activeReadMessageSize, output, ioex);
 	        }
 	          
-	   //     System.out.println((null==activeFileChannel) + " &&  "+Pipe.hasContentToRead(input)+ " && "+ Pipe.hasRoomForWrite(output));
+//	        if (!Pipe.hasRoomForWrite(output)) {
+//	        	logger.info("can not write out no room: {}",output);
+//	        }
+	        
+	     // logger.info((null==activeFileChannel) + " &&  "+Pipe.hasContentToRead(input)+ " && "+ Pipe.hasRoomForWrite(output));
 	        
 	        assert(recordIncomingState(!Pipe.hasContentToRead(input)));
 	        assert(recordOutgoingState(!Pipe.hasRoomForWrite(output)));

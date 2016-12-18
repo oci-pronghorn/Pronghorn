@@ -142,11 +142,13 @@ public class HTTPSRoundTripTest {
 		
 		int responseUnwrapUnits = 1;//To be driven by core count
 		int requestWrapUnits = 1;//To be driven by core count
+
+		int clientWriterStages = 2; //writer instances;
 		
 		
 		Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections, outputsCount, maxPartialResponses, input,
 				                                           clientCoord, responseUnwrapUnits, requestWrapUnits,
-				                                           8, 8);
+				                                           8, 8, clientWriterStages);
 		     
 		PipeCleanerStage<NetResponseSchema> cleaner = new PipeCleanerStage<>(gm, toReactor, "Reactor");
 		final StageScheduler scheduler = setupScheduler(gm, serverCoord, clientCoord);
@@ -298,16 +300,16 @@ public class HTTPSRoundTripTest {
 	}
 
 
-	
+	//TODO: require small memory round trip tests for cloudbees
 	
 	@Ignore
 	public void roundTripTest2() {
 				
 		{
 			
-			boolean isTLS = true;//true;//false;//
+			boolean isTLS = true;
 	    	GraphManager gm = new GraphManager();
-	    	GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1_000);//NOTE: larger values here allows for more effecient scheculeing and bigger "batches"
+	    	GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);//NOTE: larger values here allows for more effecient scheculeing and bigger "batches"
 	    	
 	    	//GraphManager.enableBatching(gm);
 	    	
@@ -321,7 +323,7 @@ public class HTTPSRoundTripTest {
 	    	//each client pipe is 1 user no more.
 	    	
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
-	    	final int loadMultiplier = 50_000;//100_000;//100_000;
+	    	final int loadMultiplier = 100_000;//100_000;//100_000;
 	    	
 	    	//TODO: this number must be the limit of max simuantious handshakes.
 	    	int maxPartialResponsesClient = 32; //input lines to client (should be large)
@@ -351,29 +353,31 @@ public class HTTPSRoundTripTest {
 	        /////////////////
 	      	
 	    	
-	    	int clientResponseUnwrapUnits = 4;//To be driven by core count,  this is for consuming get responses
-	    	int clientRequestWrapUnits = isTLS?8:16;//To be driven by core count, this is for production of post requests, more pipes if we have no wrappers?
+	    	int clientResponseUnwrapUnits = 2;//To be driven by core count,  this is for consuming get responses
+	    	int clientRequestWrapUnits = isTLS?4:8;//To be driven by core count, this is for production of post requests, more pipes if we have no wrappers?
 
-	    	int responseQueue = 16; //bigger to lower response latency
-	    	int requestQueue = 8;
+	    	int responseQueue = 32; //bigger to lower response latency
+	    	int requestQueue = 16;
 	    	
 	    	//TODO: buffer is overflow to stop from dropping messages must make buffers bigge?
-	    	int inFlightLimit = 100_000;///000;//24_000;//when set to much more it disconnects.
+	    	int inFlightLimit = 10_000_000;///000;//24_000;//when set to much more it disconnects.
 						
 			
 			//holds new requests
 			Pipe<NetRequestSchema>[] input = new Pipe[totalUsersCount];
-			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);
+			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 40_000);
 			
 			int usersBits = 0;//this feature does not work.
 			int usersPerPipe = 1<<usersBits;  
 			ClientCoordinator clientCoord = new ClientCoordinator(base2SimultaniousConnections+usersBits, maxPartialResponsesClient, isTLS);	
-											
+
+			int clientWriterStages = 2; //writer instances;
+						
 			
 			
 			Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections+usersBits+1, clientOutputCount, maxPartialResponsesClient, 
 					                                           input, clientCoord, clientResponseUnwrapUnits, clientRequestWrapUnits,
-					                                           requestQueue, responseQueue);
+					                                           requestQueue, responseQueue, clientWriterStages);
 			assert(toReactor.length == input.length);
 			
 			//TODO: test without encryption to find pure latency of framework.
@@ -541,7 +545,7 @@ public class HTTPSRoundTripTest {
 
 	private Pipe<NetResponseSchema>[] defineClient(boolean isTLS, GraphManager gm, int bitsPlusHashRoom,
 			int outputsCount, int maxPartialResponses, Pipe<NetRequestSchema>[] input, ClientCoordinator ccm, int responseUnwrapUnits, int requestWrapUnits,
-			int requestQueue, int responseQueue) {
+			int requestQueue, int responseQueue, int clientWriterStages) {
 				
 		int requestQueueBytes = 1<<4;
 		int responseQueueBytes = 1<<18;
@@ -556,8 +560,6 @@ public class HTTPSRoundTripTest {
 		
 		int usersPerPipe = 10; //need to set hash lookup.
 
-		int clientWriterStages = 12;
-		
 		//create more pipes if more wrapers were requested.
 		if (requestWrapUnits>outputsCount) {
 			outputsCount = requestWrapUnits;
@@ -632,7 +634,7 @@ public class HTTPSRoundTripTest {
 		{
 			
 			int port = 8443;
-			String host = "10.201.200.24";//:8443/SQRL.svg127.0.0.1";
+			String host = "10.10.10.134";//" "10.10.10.244";//:8443/SQRL.svg127.0.0.1";
 			boolean isTLS = true;
 					
 			
@@ -693,12 +695,14 @@ public class HTTPSRoundTripTest {
 			int usersBits = 0;//this feature does not work.
 			int usersPerPipe = 1<<usersBits;  
 			final ClientCoordinator clientCoord = new ClientCoordinator(base2SimultaniousConnections+usersBits, maxPartialResponsesClient, isTLS);	
-											
+
+			int clientWriterStages = 2; //writer instances;
+									
 			
 			
 			Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections+usersBits+1, clientOutputCount, maxPartialResponsesClient, 
 					                                           input, clientCoord, clientResponseUnwrapUnits, clientRequestWrapUnits,
-					                                           requestQueue, responseQueue);
+					                                           requestQueue, responseQueue, clientWriterStages);
 			assert(toReactor.length == input.length);
 			
 			//TODO: test without encryption to find pure latency of framework.

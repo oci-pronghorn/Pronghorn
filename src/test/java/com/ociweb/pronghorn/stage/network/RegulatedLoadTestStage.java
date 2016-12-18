@@ -110,7 +110,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		
 		long now = System.currentTimeMillis();
 		
-		if (now-lastTime > 90_000) {
+		if (now-lastTime > 30_000) {
 			logger.error("ZZZZZZZZZZZZZZZZZZZZZZZ test is frozen, in flight {}",inFlight);
 			
 			int i = inputs.length;

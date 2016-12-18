@@ -133,7 +133,7 @@ public class PipelineIntegrationTest {
 		Pipe<ReleaseSchema> ack = new Pipe<ReleaseSchema>(ackConfig );
         PipeCleanerStage.newInstance(gm, ack);
 		
-        HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, routedAppPipes, ack, paths, appHeaders, msgIds);
+        HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, routedAppPipes, ack, paths, appHeaders, msgIds, null);
         return stage;
     }
 
