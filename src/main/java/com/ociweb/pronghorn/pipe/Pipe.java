@@ -341,8 +341,13 @@ public class Pipe<T extends MessageSchema> {
     public final int id;
     public final int sizeOfSlabRing;
     public final int sizeOfBlobRing;
+    @Deprecated
     public final int mask;
+    public final int slabMask;
+    @Deprecated
     public final int byteMask;
+    public final int blobMask;
+    
     public final byte bitsOfSlabRing;
     public final byte bitsOfBlogRing;
     public final int maxAvgVarLen;
@@ -481,13 +486,13 @@ public class Pipe<T extends MessageSchema> {
 //cas: naming.  This should be consistent with the maxByteSize, i.e., maxFixedSize or whatever.
         //single buffer size for every nested set of groups, must be set to support the largest need.
         this.sizeOfSlabRing = 1 << primaryBits;
-        this.mask = Math.max(1, sizeOfSlabRing - 1);  //mask can no be any smaller than 1
-
+        this.slabMask = Math.max(1, sizeOfSlabRing - 1);  //mask can no be any smaller than 1
+        this.mask = slabMask;
         //single text and byte buffers because this is where the variable-length data will go.
 
         this.sizeOfBlobRing =  1 << byteBits;
-        this.byteMask = Math.max(1, sizeOfBlobRing - 1); //mask can no be any smaller than 1
-
+        this.blobMask = Math.max(1, sizeOfBlobRing - 1); //mask can no be any smaller than 1
+        this.byteMask= blobMask;
         FieldReferenceOffsetManager from = MessageSchema.from(config.schema); 
 
         this.blobConstBuffer = byteConstants;

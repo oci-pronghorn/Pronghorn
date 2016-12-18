@@ -338,9 +338,16 @@ public class TrieParser {
         setValue(0, data, Pipe.byteBackingArray(meta, p), Pipe.bytePosition(meta, p, length), length, Pipe.blobMask(p), value);
     }
        
+    private int longestKnown = 0;
+    
+    public int longestKnown() {
+    	return longestKnown;
+    }
     
     private void setValue(int pos, short[] data, byte[] source, int sourcePos, final int sourceLength, int sourceMask, long value) {
         
+    	longestKnown = Math.max(longestKnown, sourceLength);
+    	
         assert(value >= 0);
         assert(value <= 0x7FFF_FFFF); 
 

@@ -239,8 +239,9 @@ public class TrieParserReader {
              if (maxLen<that.sourceLen) {
                  a.append("...");
              }
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+        	//this was not UTF8 so dump the chars
+			Appendables.appendArray(target, '[', that.sourceBacking, pos, that.sourceMask, ']', Math.min(maxLen, that.sourceLen));
         }
         return pos;
     }
@@ -310,13 +311,10 @@ public class TrieParserReader {
     public static int parseCopy(TrieParserReader reader, long count, DataOutputBlobWriter<?> writer) {
         
     	int len = (int)Math.min(count, (long)reader.sourceLen);    	
-
     	DataOutputBlobWriter.write(writer, reader.sourceBacking, reader.sourcePos, len, reader.sourceMask);    	
     	reader.sourcePos += len;
-        reader.sourceLen -= len;       
-        if (reader.sourceLen<0) {
-        	throw new RuntimeException("parse must never go past the end of the avialable data yet length is now "+reader.sourceLen);
-        }
+        reader.sourceLen -= len;     
+        assert(reader.sourceLen>=0);
         return len;
     }
     
@@ -1018,7 +1016,23 @@ public class TrieParserReader {
 
 
     }
-   
+
+    //parse the capture text as a query against yet another trie
+    public static <A extends Appendable> long capturedFieldQuery(TrieParserReader reader, int idx, TrieParser trie) {
+        
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int bpos = reader.capturedValues[pos++];
+        int blen = reader.capturedValues[pos++];
+        int bmsk = reader.capturedValues[pos++];
+        
+        return query(reader, trie, reader.capturedBlobArray, bpos, blen, bmsk, -1);
+
+    }
+    
+    
     public static <A extends Appendable> A capturedFieldBytesAsUTF8Debug(TrieParserReader reader, int idx, A target) {
         
         int pos = idx*4;
