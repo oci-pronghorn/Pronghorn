@@ -208,9 +208,10 @@ public class TrieParserReader {
     public static void loadPositionMemo(TrieParserReader that, int[] source, int offset) {
    		that.sourcePos = source[offset];
    		that.sourceLen = source[offset+1];
-        if (that.sourceLen<0) {
-        	throw new RuntimeException("parse must never go past the end of the avialable data yet length is now "+that.sourceLen);
-        }
+//TOOD: make assert??   		
+//        if (that.sourceLen<0) {
+//        	throw new RuntimeException("parse must never go past the end of the avialable data yet length is now "+that.sourceLen);
+//        }
     }
     
     
@@ -256,17 +257,16 @@ public class TrieParserReader {
     
     
     public static long parseNext(TrieParserReader reader, TrieParser trie) {
-        
-        int debugPos = reader.sourcePos;
-        int debugLen = reader.sourceLen;
-                
+   
         long result =  query(reader, trie, reader.sourceBacking, reader.sourcePos, reader.sourceLen, reader.sourceMask, -1);
-        
-        boolean debug = false;
-        if (result==-1 && debug) {            
-            reportError(reader, debugPos, debugLen);
-        }
-        
+
+		//Hack for now
+		if (reader.sourceLen<0) {
+			//logger.info("warning trieReader is still walking past end");
+			//TODO: URGENT FIX requred, this is an error in the trieReader the pattern "%b: %b\r\n" goes past the end and must be invalidated
+			return -1;//invalidate any selection
+		}
+		
         return result;
                 
     }
@@ -403,11 +403,12 @@ public class TrieParserReader {
                 final int run = trie.data[reader.pos++];    
                 
                 if (!(trie.skipDeepChecks && !hasSafePoint && 0==reader.altStackPos)) {
+                	//scan returns -1 for a perfect match
                     int r = scanForMismatch(reader, source, sourceMask, trie.data, run);
                     if (r>=0) {
-                        if (!hasSafePoint) {
+                        if (!hasSafePoint) {                       	
                         	if (reader.altStackPos > 0) {                                
-                        		tryNextChoiceOnStack(reader, trie.data);
+                        		loadupNextChoiceFromStack(reader, trie.data);
                         		continue top;                                
                         	} else {
                         		return unfoundResult;
@@ -432,6 +433,12 @@ public class TrieParserReader {
                 
             } else if (t == TrieParser.TYPE_SAFE_END) {                    
                 
+            	
+              //important check just before returning the selected value TODO: need more testing.
+//                 if (reader.sourceLen < 0) {
+//                	return unfoundResult;
+//                }
+            	
                 recordSafePointEnd(reader, reader.localSourcePos, reader.pos, trie);  
                 hasSafePoint = true;
                 reader.pos += trie.SIZE_OF_RESULT;
@@ -448,7 +455,7 @@ public class TrieParserReader {
 	                	//we may have data on the stack but we have reached the END of the data
 	                	//so until we get more data we do not know the exact match to be applied
 	                	while (reader.altStackPos > 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
-	                		tryNextChoiceOnStack(reader, trie.data);
+	                		loadupNextChoiceFromStack(reader, trie.data);
 	                	}
 	                	if (reader.altStackPos == 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
 	                		return unfoundResult;
@@ -460,7 +467,7 @@ public class TrieParserReader {
                 	//we may have data on the stack but we have reached the END of the data
                 	//so until we get more data we do not know the exact match to be applied
                   	while (reader.altStackPos > 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
-                		tryNextChoiceOnStack(reader, trie.data);
+                		loadupNextChoiceFromStack(reader, trie.data);
                 	}
                 	if (reader.altStackPos == 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
                 		return unfoundResult;
@@ -491,6 +498,7 @@ public class TrieParserReader {
 
         reader.sourceLen -= (reader.localSourcePos-reader.sourcePos);
         reader.sourcePos = reader.localSourcePos;
+       
         
         return TrieParser.readEndValue(trie.data,reader.pos, trie.SIZE_OF_RESULT);
         
@@ -560,7 +568,7 @@ public class TrieParserReader {
         return reader.safeReturnValue;
     }
 
-    private static void tryNextChoiceOnStack(TrieParserReader reader, short[] localData) {
+    private static void loadupNextChoiceFromStack(TrieParserReader reader, short[] localData) {
         //try other path
         //reset all the values to the other path and continue from the top
         
