@@ -199,7 +199,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	public void addBytes(int len, Pipe pipe, int i, int sourceLen) {
 		assert(len>0) : "bad len "+len;
 		totalBytes[i]+=len;
-		assert(totalBytes[i] == Pipe.releasePendingByteCount(pipe)) : totalBytes[i]+" != "+Pipe.releasePendingByteCount(pipe); 
+		//TEST REMOVED		assert(totalBytes[i] == Pipe.releasePendingByteCount(pipe)) : totalBytes[i]+" != "+Pipe.releasePendingByteCount(pipe); 
 		assert(totalBytes[i] == sourceLen) : totalBytes[i]+" != "+sourceLen;
 		//logger.info("expected {} actual {} pos {} {}",totalBytes[i], Pipe.releasePendingByteCount(pipe), Pipe.tailPosition(pipe), i);
 		//logger.info("{} vs {} ",totalBytes[i],sourceLen);
@@ -209,7 +209,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	public void subBytes(int len, Pipe pipe, int i, int sourceLen) {
 		assert(len>=0) : "bad len "+len;
 		totalBytes[i]-=len;
-		assert(totalBytes[i] == Pipe.releasePendingByteCount(pipe)) : totalBytes[i]+" != "+Pipe.releasePendingByteCount(pipe);
+//		assert(totalBytes[i] == Pipe.releasePendingByteCount(pipe)) : totalBytes[i]+" != "+Pipe.releasePendingByteCount(pipe);
 		assert(totalBytes[i] == sourceLen) : totalBytes[i]+" != "+sourceLen;
 		//logger.info("expected {} actual {} pos {} {} ",totalBytes[i], Pipe.releasePendingByteCount(pipe), Pipe.tailPosition(pipe), i);
 		///logger.info("{} vs {} ",totalBytes[i],sourceLen);
@@ -238,8 +238,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				Pipe<NetPayloadSchema> pipe = input[i];
 	
 		        assert(recordIncomingState(!Pipe.hasContentToRead(pipe)));		       
-				assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
-				assert(totalBytes[i] == Pipe.releasePendingByteCount(pipe)) : totalBytes[i]+" != "+Pipe.releasePendingByteCount(pipe); 
+//TEST REMOVED				assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
+//TEST REMOVED				assert(totalBytes[i] == Pipe.releasePendingByteCount(pipe)) : totalBytes[i]+" != "+Pipe.releasePendingByteCount(pipe); 
 								
 				/////////////////////////////////////////////////////////////
 				//ensure we have the right backing array, and mask (no position change)
@@ -252,14 +252,14 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				
 					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 					
-					assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe)+" pos "+trieReader.sourcePos+"  "+pipe;
+					//TEST REMOVED					assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe)+" pos "+trieReader.sourcePos+"  "+pipe;
 					
 					if (trieReader.sourceLen==0 &&        //we have no old data
 						0==positionMemoData[stateIdx]) {  //our state is back to step 0 looking for new data
 						//We have no data in the local buffer and 
 						//We have no data on this pipe so go check the next one.
 						
-						assert(0==Pipe.releasePendingByteCount(pipe)) : "pending data to release of "+Pipe.releasePendingByteCount(pipe)+" yet sourceLen is zero???";
+						//TEST REMOVED						assert(0==Pipe.releasePendingByteCount(pipe)) : "pending data to release of "+Pipe.releasePendingByteCount(pipe)+" yet sourceLen is zero???";
 						assert(0==totalBytes[i]) : "error total bytes "+totalBytes[i];
 						
 						continue;
@@ -317,7 +317,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				} else {	
 					//we have new data
 					
-					assert(positionMemoData[lenIdx] == Pipe.releasePendingByteCount(pipe)) : positionMemoData[lenIdx]+" != "+Pipe.releasePendingByteCount(pipe);
+					//TEST REMOVED					assert(positionMemoData[lenIdx] == Pipe.releasePendingByteCount(pipe)) : positionMemoData[lenIdx]+" != "+Pipe.releasePendingByteCount(pipe);
 										
 					
 					int msgIdx = Pipe.takeMsgIdx(pipe);
@@ -355,10 +355,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					//logger.info("parse new data of {} for connection {}",len,cc.getId());
 	
 					if (positionMemoData[lenIdx]==0) {
-						if (pos<positionMemoData[posIdx]) {
-							System.err.println("going backwards "+pos+" "+positionMemoData[posIdx]+"  "+mask);
-						}
-						
 						positionMemoData[posIdx] = pos;
 						positionMemoData[lenIdx] = len;
 					} else {				
@@ -381,7 +377,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					Pipe.readNextWithoutReleasingReadLock(pipe);	
 					
 					addBytes(len, pipe, i, trieReader.sourceLen);
-					assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
+					//TEST REMOVED				assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
 		
 					if (-1==inputPosition[i]) {
 						//this may or may not be the end of a complete message, must hold it just in case it is.
@@ -475,38 +471,23 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						int headerId=0;
 						//stay here and read all the headers if possible
 						do {
-							assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
+//							assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
 							
 							int startingLength = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	
 												
+							int len = trieReader.sourceLen;
 							headerId = (int)TrieParserReader.parseNext(trieReader, headerMap);	
-
+						
+									
 							if (headerId>=0) {					
-								
 								
 								if (END_OF_HEADER_ID != headerId) {
 									//only some headers are supported the rest are ignored									
-									specialHeaderProcessing(i, writer, headerId);									
+									specialHeaderProcessing(i, writer, headerId, len);									
 									//do not change state we want to come back here.									
 								} else {
 									foundWork = true; //if not end then we would rather exit stage and pick up more data
-									state = endOfHeaderProcessing(i, stateIdx, targetPipe, ccId, writer);
-									
-									if (2==state && payloadLengthData[i]==0) {
-										logger.info("error the payload length is zero");
-										
-										
-										StringBuilder builder = new StringBuilder();
-										trieReader.sourcePos-=140;
-										trieReader.sourceLen+=140;										
-										TrieParserReader.debugAsUTF8(trieReader, builder, 280);										
-										new Exception(builder.toString()).printStackTrace();
-										
-										
-										System.err.println("FORCE EXIT");
-										System.exit(-1);
-										
-									}
+									state = endOfHeaderProcessing(i, stateIdx, targetPipe, ccId, writer);					
 								}
 								
 								TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
@@ -514,7 +495,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								int consumed = startingLength - trieReader.sourceLen;
 							
 								Pipe.releasePendingAsReadLock(pipe, consumed);
-								assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
+						//TESTING REMOVED		assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
 								subBytes(consumed, pipe, i, trieReader.sourceLen);
 							} 
 						} while (headerId>=0 && state==1);
@@ -560,7 +541,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 																	
 									payloadLengthData[i] = lengthRemaining;
 									
-									assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
+									//TEST REMOVED							assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
 																	
 	
 									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
@@ -576,7 +557,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									
 									foundWork = finishAndRelease(true, i, stateIdx, ccId, pipe, cc); 
 									
-									assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);							
+									//TEST REMOVED						assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);							
 									break;
 								} else {
 									assert(lengthRemaining>0);
@@ -737,7 +718,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				}
 				
 				
-				assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
+//TEST REMOVED				assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
 				
 			}
 			
@@ -767,7 +748,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		return state;
 	}
 
-	private void specialHeaderProcessing(int i, DataOutputBlobWriter<NetResponseSchema> writer, int headerId) {
+	private void specialHeaderProcessing(int i, DataOutputBlobWriter<NetResponseSchema> writer, int headerId, int len) {
 		switch (headerId) {
 			case H_TRANSFER_ENCODING:
 				//logger.info("xxxxxxxxxx chunked ");
@@ -798,10 +779,15 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				break;
 			default:
 				if (headerId ==UNSUPPORTED_HEADER_ID) {
-					StringBuilder unknown = new StringBuilder();					
-					TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, unknown);
+					StringBuilder headerName = new StringBuilder();					
+					TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, headerName); //in TRIE if we have any exact matches that run short must no pick anything.
 					
-					logger.info("WARNING unsupported header found: {}",unknown);
+					StringBuilder headerValue = new StringBuilder();					
+					TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 1, headerValue); //in TRIE if we have any exact matches that run short must no pick anything.
+										
+					logger.info("WARNING unsupported header found: {}: {}",headerName, headerValue);
+					logger.info("length avail when parsed {}",len);
+					
 				}
 				break;
 		}

@@ -18,7 +18,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	private final Pipe<NetPayloadSchema>[] outgoingPipeLines;
 	private final Pipe<ReleaseSchema> handshakeRelease; //to allow for the release of the pipe when we do not need it.
 	private final Pipe<NetPayloadSchema>  handshakePipe;
-	private ByteBuffer[]                          buffers;
+	private ByteBuffer[]                          rollings;
 	private ByteBuffer[]                          workspace;
 	private Logger logger = LoggerFactory.getLogger(SSLEngineUnWrapStage.class);
 	
@@ -64,12 +64,12 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 		
 		//must allocate buffers for the out of order content 
 		int c = encryptedContent.length;
-		buffers = new ByteBuffer[c];
+		rollings = new ByteBuffer[c];
 		while (--c>=0) {
 		//	int size = SSLUtil.MAX_ENCRYPTED_PACKET_LENGTH;//
 			int size = encryptedContent[c].maxAvgVarLen*2;
 			
-			buffers[c] = ByteBuffer.allocateDirect(size);
+			rollings[c] = ByteBuffer.allocateDirect(size);
 			
 //			if (size > SSLUtil.MAX_ENCRYPTED_PACKET_LENGTH) {
 //				throw new UnsupportedOperationException("max buffer to decrypt must be less than "+SSLUtil.MAX_ENCRYPTED_PACKET_LENGTH+" but "+size+" was used. (Limitiation from OpenSSL)");
@@ -104,10 +104,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 				
 				Pipe<NetPayloadSchema> source = encryptedContent[idx];
 				Pipe<NetPayloadSchema> target = outgoingPipeLines[idx];
-				
-		        assert(recordIncomingState(!Pipe.hasContentToRead(source)));
-		        assert(recordOutgoingState(!Pipe.hasRoomForWrite(target)));
-				
+
 				
 //				//TODO: is there a debug method we can write for this in general?
 //				//no content to wrap on server
@@ -118,13 +115,10 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 //					System.err.println("output data unwrapped "+isServer+"  "+idx+" target "+target.contentRemaining(target));
 //				}
 				
-				ByteBuffer rolling = buffers[idx];			
-				workspace[0].clear();
-				workspace[1].clear();
 				
 				///TODO: URGENT REWIRTE TO LOW LEVEL API SINCE LARGE SERVER CALLS VERY OFTEN.
 				
-				int temp = SSLUtil.engineUnWrap(ccm, source, target, rolling, workspace, handshakePipe, handshakeRelease, secureBuffer, groupId, isServer);			
+				int temp = SSLUtil.engineUnWrap(ccm, source, target, rollings[idx], workspace, handshakePipe, handshakeRelease, secureBuffer, groupId, isServer);			
 				if (temp<0) {
 					if (--shutdownCount == 0) {
 						requestShutdown();
@@ -156,14 +150,12 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	@Override
 	public void shutdown() {
 		
-		assert(reportRecordedStates(getClass().getSimpleName()));
-
 		
-		int i = buffers.length;
+		int i = rollings.length;
 		while (--i>=0) {
 			
-			if (buffers[i].position()>0) {
-				logger.warn("unwrap found unconsumed data in buffer {} of value {} ",i, buffers[i]);
+			if (rollings[i].position()>0) {
+				logger.warn("unwrap found unconsumed data in buffer {} of value {} ",i, rollings[i]);
 			}
 			
 		}

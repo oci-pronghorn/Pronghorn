@@ -56,6 +56,10 @@ public class ServerSocketWriterStage extends PronghornStage {
     
     private int bufferMultiplier = 4;
 
+
+	private final boolean debugWithSlowWrites = false; //TODO: set from coordinator, NOTE: this is a critical piece of the tests
+	private final int debugMaxBlockSize = 7;//50000;
+	
     
     /**
      * 
@@ -315,9 +319,6 @@ public class ServerSocketWriterStage extends PronghornStage {
 
     private void writeToChannel(int idx) {
 
-    		boolean debugWithSlowWrites = false;
-    	
-    		//System.err.println(workingBuffers[idx]);
     		
     		if (!debugWithSlowWrites) {
 		        try {
@@ -329,42 +330,28 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        		markDoneAndRelease(idx);
 		        	} 
 		        } catch (IOException e) {
+		        	//logger.trace("unable to write to channel",e);
 		        	closeChannel(writeToChannel[idx]);
 		            //unable to write to this socket, treat as closed
 		            markDoneAndRelease(idx);
-		            //logger.trace("unable to write to channel",e);
 		        }
     		} else {
-    			
-				//write only this many bytes over the network at a time
-				int max = 1_000;
-						 //worked: 20_000; 
-				         //this value works: 190_000; 
 				
-				ByteBuffer buf = ByteBuffer.wrap(new byte[max]);
+				ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);
 				buf.clear();
 				
-			//	workingBuffers[idx].flip();
-				//System.err.println("length for buffer "+workingBuffers[idx].position());
-				
-				int j = max;
+				int j = debugMaxBlockSize;
 				int c = workingBuffers[idx].remaining();
-//				if (c>max) {
-//					System.err.println("need <"+max+" but size was "+c);
-//				}
-				
+
 				int p = workingBuffers[idx].position();
 				while (--c>=0 && --j>=0) {
 					buf.put(workingBuffers[idx].get(p++));
 				}
 				workingBuffers[idx].position(p);
-				
-				
+								
 				
 				buf.flip();
 				int expected = buf.limit();
-				
-		//		System.out.println(this.stageId+" wrote: \n"+new String(buf.array(),buf.position(),buf.remaining()));
 				
 				while (buf.hasRemaining()) {
 					try {
@@ -374,10 +361,12 @@ public class ServerSocketWriterStage extends PronghornStage {
 							totalBytesWritten += len;
 						}
 					} catch (IOException e) {
+						//logger.error("unable to write to channel {} '{}'",e,e.getLocalizedMessage());
 						closeChannel(writeToChannel[idx]);
 			            //unable to write to this socket, treat as closed
 			            markDoneAndRelease(idx);
-			            logger.info("unable to write to channel",e);
+			            
+			            return;
 					}
 				}
 				if (expected!=0) {

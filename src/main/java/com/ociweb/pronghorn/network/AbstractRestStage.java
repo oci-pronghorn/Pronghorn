@@ -156,9 +156,10 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
 //                writer.write('\n');
 //            }          
             
-            writer.write(CACHE_CONTROL_NO_CACHE);
-            writer.write(PRAGMA_NO_CACHE);
-            writer.write(EXPIRES_ZERO);
+            //turns off all client caching
+//            writer.write(CACHE_CONTROL_NO_CACHE);
+//            writer.write(PRAGMA_NO_CACHE);
+//            writer.write(EXPIRES_ZERO);
             
             //line three
             if (null!=typeBytes) {

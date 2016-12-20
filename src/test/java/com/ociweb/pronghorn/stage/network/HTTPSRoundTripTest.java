@@ -307,9 +307,11 @@ public class HTTPSRoundTripTest {
 				
 		{
 			
-			boolean isTLS = true;
+			boolean isTLS = false;
 	    	GraphManager gm = new GraphManager();
-	    	GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);//NOTE: larger values here allows for more effecient scheculeing and bigger "batches"
+	    	
+	    	//TODO: will big sleeps show the backed up pipes more clearly? TODO: must be tuned for pipe lenghths?
+	    	GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 3_000);//NOTE: larger values here allows for more effecient scheculeing and bigger "batches"
 	    	
 	    	//GraphManager.enableBatching(gm);
 	    	
@@ -323,15 +325,17 @@ public class HTTPSRoundTripTest {
 	    	//each client pipe is 1 user no more.
 	    	
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
-	    	final int loadMultiplier = 100_000;//100_000;//100_000;
+	    	final int loadMultiplier = isTLS? 100_000 : 3_000_000;//100_000;//100_000;
 	    	
 	    	//TODO: this number must be the limit of max simuantious handshakes.
 	    	int maxPartialResponsesClient = 32; //input lines to client (should be large)
 	    	
 	    	//client output count of pipes, this is the max count of handshakes from this client since they block all following content.
-	    	final int clientOutputCount = 1;//8;//8;//should be < client connections,  number of pipes getting wrappers and sent out put stream 
+	    	final int clientOutputCount = 32;//8;//8;//should be < client connections,  number of pipes getting wrappers and sent out put stream 
 	    	
-	    	
+	    	final int clientWriterStages = 4; //writer instances;
+			
+	    	//387K with 2
 
 			//		String testFile = "OCILogo.png";
 		//	String testFile = "SQRL.svg"; 
@@ -356,22 +360,20 @@ public class HTTPSRoundTripTest {
 	    	int clientResponseUnwrapUnits = 2;//To be driven by core count,  this is for consuming get responses
 	    	int clientRequestWrapUnits = isTLS?4:8;//To be driven by core count, this is for production of post requests, more pipes if we have no wrappers?
 
-	    	int responseQueue = 32; //bigger to lower response latency
+	    	int responseQueue = 64;
 	    	int requestQueue = 16;
 	    	
 	    	//TODO: buffer is overflow to stop from dropping messages must make buffers bigge?
-	    	int inFlightLimit = 10_000_000;///000;//24_000;//when set to much more it disconnects.
+	    	int inFlightLimit = 100_000_000;///000;//24_000;//when set to much more it disconnects.
 						
 			
 			//holds new requests
 			Pipe<NetRequestSchema>[] input = new Pipe[totalUsersCount];
-			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 40_000);
 			
 			int usersBits = 0;//this feature does not work.
 			int usersPerPipe = 1<<usersBits;  
 			ClientCoordinator clientCoord = new ClientCoordinator(base2SimultaniousConnections+usersBits, maxPartialResponsesClient, isTLS);	
 
-			int clientWriterStages = 2; //writer instances;
 						
 			
 			
@@ -489,10 +491,11 @@ public class HTTPSRoundTripTest {
 		 	
 		 };
 		
-		 int serverInputBlobs = 1<<11;
+		 //the typical rec buffer is about 1<<19
+		 int serverInputBlobs = 1<<17; //when small THIS has a big slow-down effect and it appears as the client getting backed up.
 		 
-		 int serverBlobToEncrypt = 1<<14;
-		 int serverBlobToWrite = 1<<16;
+		 int serverBlobToEncrypt = 1<<13;
+		 int serverBlobToWrite = 1<<15;
 			
 		 NetGraphBuilder.buildHTTPServerGraph(isTLS, gm, groups, maxPartialResponsesServer, config, serverCoord, serverRequestUnwrapUnits, serverResponseWrapUnits, serverPipesPerOutputEngine, 
 				                              serverSocketWriters, serverInputBlobs, serverBlobToEncrypt, serverBlobToWrite);
@@ -548,17 +551,17 @@ public class HTTPSRoundTripTest {
 			int requestQueue, int responseQueue, int clientWriterStages) {
 				
 		int requestQueueBytes = 1<<4;
+		
 		int responseQueueBytes = 1<<18;
 		
 		//one of these per unwrap unit and per partial message, there will be many of these normally so they should not be too large
 		//however should be deeper if we are sending lots of messages
-		int netRespQueue = 16;
-		int netRespSize = 1<<17;//must be just larger than the socket buffer
+		int netRespQueue = 128;
+		int netRespSize = 1<<16;//must be just larger than the socket buffer
 
-		int httpRequestQueueBytes = 1<<12;
-		int httpRequetQueueSize = 128;
+		int httpRequestQueueBytes = 1<<10;
+		int httpRequetQueueSize = 64;
 		
-		int usersPerPipe = 10; //need to set hash lookup.
 
 		//create more pipes if more wrapers were requested.
 		if (requestWrapUnits>outputsCount) {

@@ -33,7 +33,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	private long totalBytes=0;
 	private boolean isTLS;
 	private final static int KNOWN_BLOCK_ENDING = -1;
-	private Set<SelectionKey> keySet;
+
 	private final int maxClients;
 	
 	public ClientSocketReaderStage(GraphManager graphManager, ClientCoordinator coordinator, Pipe<ReleaseSchema>[] parseAck, Pipe<NetPayloadSchema>[] output, boolean isTLS) {
@@ -100,19 +100,14 @@ public class ClientSocketReaderStage extends PronghornStage {
 						                handshakeStatus = cc.getEngine().getHandshakeStatus();
 								 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
 									 consumeRelease();
-									 assert(-1 == coordinator.checkForResponsePipeLineIdx(cc.getId())) : "should have already been relased";								 
-
-//									 if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
-//						    				logger.warn("waiting on wrap, need more pipes????");
-//						    			}
+									 
+								//	 if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
+						    	//			logger.warn("waiting on wrap, need more pipes???? {}",cc.id);
+						    	//		}
 									 continue;//one of the other pipes can do work
 								 }	
 					    				    		 
 					    		 
-						    	 if (false && handshakeStatus!=HandshakeStatus.FINISHED && handshakeStatus!=HandshakeStatus.NOT_HANDSHAKING) {
-						    			//TOOD: this has been triggered
-						    			assert(-1 == coordinator.checkForResponsePipeLineIdx(cc.getId())) : "expected NO reserved pipe for "+cc.id+" with handshake of "+handshakeStatus;
-						    	 }
 					    	}
 
 					    	
@@ -171,7 +166,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 								    		if (PipeWriter.tryWriteFragment(target, NetPayloadSchema.MSG_ENCRYPTED_200)) {try {
 								    			PipeWriter.writeLong(target, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201, cc.getId() );
 								    			PipeWriter.wrappedUnstructuredLayoutBufferClose(target, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_PAYLOAD_203, readCount);
-								    		//    logger.info("from socket published          {} bytes for connection {} ",readCount,cc);
+								    		  //  logger.info("from socket published          {} bytes for connection {} ",readCount,cc);
 								    		} finally {
 								    			PipeWriter.publishWrites(target);
 								    		}} else {
@@ -239,22 +234,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 	
 	long lastTotalBytes = 0;
 
-	private boolean hasData(Selector selector) throws IOException {
-		
-		if (null==keySet || keySet.isEmpty()) {
-			int x = selector.selectNow();
-			//logger.trace("new select of {} values",x);
-			assert(selector.isOpen());
-			keySet = selector.selectedKeys();
-			
-		} //else {
-		//	logger.trace("size {}", keySet.size());
-		//}
-		
-		boolean isEmpty = keySet.isEmpty();
-		
-		return !isEmpty;
-	}
 	
    //must be called often to keep empty.
 	private void consumeRelease() {
@@ -271,16 +250,17 @@ public class ClientSocketReaderStage extends PronghornStage {
 					///////////////////////////////////////////////////
 	    			//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
 	    			int pipeIdx = coordinator.checkForResponsePipeLineIdx(finishedConnectionId);
-					if (pipeIdx>=0 && Pipe.headPosition(output[pipeIdx]) == pos) {
+					if (pipeIdx>=0 && Pipe.workingHeadPosition(output[pipeIdx]) == pos) {
+						assert(Pipe.contentRemaining(output[pipeIdx])==0);
 	    				coordinator.releaseResponsePipeLineIdx(finishedConnectionId);
 	    				
 	    				//TODO: upon release must prioritize the re-open.
-	    				//logger.info("did release for {}",finishedConnectionId);
+	    				//logger.info("XXXXXXXXXXXXXXXXXX did release for id {} at pos {} {} ",finishedConnectionId,pos,output[pipeIdx]);
 	    				
 	    			} else {
 	    				if (pipeIdx>=0) {
 	    					if (pos>Pipe.headPosition(output[pipeIdx])) {
-	    						logger.info("GGGGGGGGGGGGGGGGGGGGGGGGGGgg unable to release pipe {} pos {} expected {}",pipeIdx,pos,Pipe.headPosition(output[pipeIdx]));
+	    						logger.info("out of bounds pos value!!, GGGGGGGGGGGGGGGGGGGGGGGGGGgg unable to release pipe {} pos {} expected {}",pipeIdx,pos,Pipe.headPosition(output[pipeIdx]));
 	    						//	System.exit(-1);
 	    					} else {
 	    						HandshakeStatus handshakeStatus = coordinator.get(finishedConnectionId, 0).engine.getHandshakeStatus();

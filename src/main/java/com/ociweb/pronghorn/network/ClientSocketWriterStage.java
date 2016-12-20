@@ -26,6 +26,11 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private long start;
 	private long totalBytes=0;
 	
+	//reqired for simulation of "slow" networks  TODO: read this from the client coordinator?
+	private final boolean debugWithSlowWrites = false;
+	private final int     debugMaxBlockSize = 50; 
+	
+	
 	
 	public static ClientSocketWriterStage newInstance(GraphManager graphManager, ClientCoordinator ccm, Pipe<NetPayloadSchema>[] input) {
 		return new ClientSocketWriterStage(graphManager, ccm, input);
@@ -46,7 +51,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		connections = new ClientConnection[i];
 		buffers = new ByteBuffer[i];
 		while (--i>=0) {
-			buffers[i] = ByteBuffer.allocateDirect(input[i].maxAvgVarLen*BUF_SIZE);
+			buffers[i] = ByteBuffer.allocateDirect(input[i].maxAvgVarLen*BUF_SIZE); //TODO: allocate 1 large block then split into buffers?
 		}
 		start = System.currentTimeMillis();		
 	}
@@ -110,12 +115,13 @@ public class ClientSocketWriterStage extends PronghornStage {
 								buffers[i].put(writeHolder[0]);
 								buffers[i].put(writeHolder[1]);
 								
-//								boolean enableWriteBatching = true;
-//								boolean takeTail = false;
-								
+								assert(writeHolder[0].remaining()==0);
+								assert(writeHolder[1].remaining()==0);
+																
 								Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
 								Pipe.releaseReadLock(pipe);
 								
+//								boolean enableWriteBatching = true;
 //								System.err.println(enableWriteBatching+" && "+
 //								                 Pipe.hasContentToRead(pipe)+" && "+
 //							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
@@ -191,18 +197,23 @@ public class ClientSocketWriterStage extends PronghornStage {
 										buffers[i].clear();
 										buffers[i].put(writeHolder[0]);
 										buffers[i].put(writeHolder[1]);
-										
+
+										assert(writeHolder[0].remaining()==0);
+										assert(writeHolder[1].remaining()==0);
+																				
 										Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
 										Pipe.releaseReadLock(pipe);
 										
-//										boolean enableWriteBatching = true;
-
-//										System.err.println(enableWriteBatching+" && "+
-//								                 Pipe.hasContentToRead(pipe)+" && "+
-//							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
-//					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
-//					            		         (Pipe.peekLong(pipe, 1)==channelId) );
 										
+										
+										
+//										boolean enableWriteBatching = true;
+//
+////										System.err.println(enableWriteBatching+" && "+
+////								                 Pipe.hasContentToRead(pipe)+" && "+
+////							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
+////					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
+////					            		         (Pipe.peekLong(pipe, 1)==channelId) );										
 //										 while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
 //										            Pipe.peekInt(pipe)==msgIdx && 
 //										            		buffers[i].remaining()>pipe.maxAvgVarLen && 
@@ -219,13 +230,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 //										        	if (takeTail) {
 //										        		workingTail=Pipe.takeLong(pipe);
 //										        	}
-//										        	
-////										            if (takeTail) {
-////										            	activeTails[idx] =  Pipe.takeLong(pipe);
-////										            } else {
-////										            	activeTails[idx] = -1;
-////										            }
-//										            
+//										        											            
 //										            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 //										            int len2 = Pipe.takeRingByteLen(pipe);
 //										            ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
@@ -303,18 +308,15 @@ public class ClientSocketWriterStage extends PronghornStage {
 		assert(buffers[i].hasRemaining()) : "please, do not call if there is nothing to write.";		
 		try {
 			
-			//TODO: duplicated this FROM the server
-			boolean debugWithSlowWrites = false;
 			if (!debugWithSlowWrites) {
+				assert(buffers[i].isDirect());
 				connections[i].getSocketChannel().write(buffers[i]);
 			} else {
 				//write only this many bytes over the network at a time
-				int max = 50; 
-				
-				ByteBuffer buf = ByteBuffer.wrap(new byte[max]);
+				ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);
 				buf.clear();
 				
-				int j = max;
+				int j = debugMaxBlockSize;
 				int c = buffers[i].remaining();
 				int p = buffers[i].position();
 				while (--c>=0 && --j>=0) {

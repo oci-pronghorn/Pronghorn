@@ -352,9 +352,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             final long toParseLength = TrieParserReader.parseHasContentLength(trieReader);
             assert(toParseLength>=0) : "length is "+toParseLength+" and input was "+l;
             
-            //TODO: can be if and may give better performance, needs testing.
-            while (route(trieReader, channel, idx, selectedInput)) {
-            	assert(TrieParserReader.parseHasContentLength(trieReader)>0);
+            //NOTE: not sure why but IF here is much faster than WHILE but both can work.
+            if (toParseLength>0 && route(trieReader, channel, idx, selectedInput)) {
             	
                 int newTotalConsumed = (int)(toParseLength - TrieParserReader.parseHasContentLength(trieReader));           
                 int consumed = newTotalConsumed-totalConsumed;

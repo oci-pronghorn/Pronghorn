@@ -39,12 +39,12 @@ public class SocketIOStageTest {
 	private final int[] testSizes = new int[]{1,2,4,8,16,32,64,128,256,512,1024,2048,4069,8192,16384,32768};
 	
 	
-	@Ignore //debug why this does not complete
+	@Ignore //TODO: debug why this does not complete
 	public void roundTripATest() {		
 		roundTripTest(true, 14089);		
 	}
 
-	@Ignore //debug why this does not complete
+	@Ignore //TODO: debug why this does not complete
 	public void roundTripBTest() {		
 		roundTripTest(false, 15089);		
 	}
