@@ -78,7 +78,9 @@ public class NetGraphBuilder {
 			}
 		}
 			
-		int a = 1 + (isTLS?responseUnwrapCount:0);
+		final int responseParsers = 1; //NOTE: can not be changed because only 1 can bs supported
+		
+		int a = responseParsers + (isTLS?responseUnwrapCount:0);
 		Pipe[] acks = new Pipe[a];
 		while (--a>=0) {
 			acks[a] =  new Pipe<ReleaseSchema>(parseAckConfig);	
@@ -105,10 +107,10 @@ public class NetGraphBuilder {
 			
 		}		
 		
-		//This is one client routing the responses to multiple listeners
 		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, acks[acks.length-1], listenerPipeLookup, ccm, HTTPSpecification.defaultSpec());
 		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
-			
+
+		
 		
 		//////////////////////////////
 		//////////////////////////////
@@ -202,7 +204,6 @@ public class NetGraphBuilder {
             
             Pipe<ServerResponseSchema>[][] fromModule = new Pipe[ac.moduleCount()][];            
             
-            Pipe<HTTPRequestSchema>[] toModules = new Pipe[ac.moduleCount()];
             
             long[] headers = new long[ac.moduleCount()];
             int[] msgIds = new int[ac.moduleCount()];
@@ -219,8 +220,9 @@ public class NetGraphBuilder {
             
             PipeConfig<ReleaseSchema> ackConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,2048);
    
+            int routerCount = 2;
             
-            int a = 1+(isTLS?requestUnwrapUnits:0);
+            int a = routerCount+(isTLS?requestUnwrapUnits:0);
     		Pipe[] acks = new Pipe[a];
     		while (--a>=0) {
     			acks[a] =  new Pipe<ReleaseSchema>(ackConfig);	
@@ -256,19 +258,42 @@ public class NetGraphBuilder {
             ///////////////////////
             a = ac.moduleCount();
             CharSequence[] paths = new CharSequence[a];
+
+            Pipe<HTTPRequestSchema>[][] toModules = new Pipe[ac.moduleCount()][routerCount];
             
             while (--a>=0) { //create every app for this connection group
                                               
-                toModules[a] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig);				
+            	int r = routerCount;
+            	while (--r>=0) {
+            		toModules[a][r] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig);		
+            	}
+            	
                 headers[a] = ac.addModule(a, graphManager, toModules[a], HTTPSpecification.defaultSpec());                
                 fromModule[a] = ac.outputPipes(a);                 
                 paths[a] =  ac.getPathRoute(a);//"/%b";  //"/WebSocket/connect",
                 
                 msgIds[a] =  HTTPRequestSchema.MSG_FILEREQUEST_200;
             }
-            Pipe[] plainPipe = planIncomingGroup[g];//countTap(graphManager, planIncomingGroup[g],"Server-unwrap-to-router");
-            HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainPipe, toModules, acks[acks.length-1], paths, headers, msgIds, coordinator);        
-            GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
+ 
+            Pipe[][] plainSplit = Pipe.splitPipes(routerCount, planIncomingGroup[g]);
+ 
+            int acksBase = acks.length-1;
+            int r = routerCount;
+            while (--r>=0) {
+            	
+            	a = ac.moduleCount();
+            	Pipe<HTTPRequestSchema>[] toAllModules = new Pipe[a];
+            	while (--a>=0) {
+            		toAllModules[a] = toModules[a][r]; //cross cut this matrix
+            	}
+            	
+            	HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], toAllModules, acks[acksBase-r], paths, headers, msgIds);        
+            	GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
+            	
+            }
+            
+            
+            
             //////////////////////////
             //////////////////////////
           

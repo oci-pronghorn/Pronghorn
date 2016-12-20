@@ -42,11 +42,11 @@ public class HTTPServer {
             Pipe<ServerResponseSchema> output = new Pipe<ServerResponseSchema>(outgoingDataConfig);
             
 			@Override
-			public long addModule(int a, GraphManager graphManager, Pipe<HTTPRequestSchema> input,
+			public long addModule(int a, GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs,
 					HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> spec) {
 				
 				
-				FileReadModuleStage.newInstance(graphManager, input, output, spec, new File("/home/nate/elmForm"));				
+				FileReadModuleStage.newInstance(graphManager, inputs, output, spec, new File("/home/nate/elmForm"));				
 				//return needed headers
 				return 0;
 			}

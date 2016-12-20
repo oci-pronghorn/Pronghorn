@@ -46,10 +46,10 @@ public class RegulatedLoadTestStage extends PronghornStage{
 	private final String expected=null;//"{\"x\":9,\"y\":17,\"groovySum\":26}";
 	
 	private final int usersPerPipe;
-
+	private final String label;
 	
 	protected RegulatedLoadTestStage(GraphManager graphManager, Pipe<NetResponseSchema>[] inputs, Pipe<NetRequestSchema>[] outputs, 
-			                          int testSize, int inFlightLimit, String fileRequest, int usersPerPipe, int port, String host) {
+			                          int testSize, int inFlightLimit, String fileRequest, int usersPerPipe, int port, String host, String label) {
 		super(graphManager, inputs, outputs);
 		
 		this.usersPerPipe = usersPerPipe;
@@ -61,6 +61,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		this.count = testSize/inputs.length;
 		logger.info("Each pipe will be given a total of {} requests.",count);
 		
+		this.label = label;
 		this.port = port;
 		this.host = host;
 	//	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, 200_000_000, this); //5x per second
@@ -218,7 +219,8 @@ public class RegulatedLoadTestStage extends PronghornStage{
 								
 				int pct = (int)((100L*totalReceived)/(float)totalExpected);
 				if (lastChecked!=pct) {
-					Appendables.appendValue(System.out, "Test completed ", pct, "%\n");
+					System.out.print(label);
+					Appendables.appendValue(System.out, " test completed ", pct, "%\n");
 					lastChecked = pct;
 				}
 			}

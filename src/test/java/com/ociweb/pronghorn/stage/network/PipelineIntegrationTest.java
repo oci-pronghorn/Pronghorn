@@ -124,7 +124,7 @@ public class PipelineIntegrationTest {
             if (testRoutingOnly) {
                 PipeCleanerStage.newInstance(gm, routedAppPipes[i]);
             } else {
-                FileReadModuleStage fielStage = FileReadModuleStage.newInstance(gm, routedAppPipes[i], new Pipe<ServerResponseSchema>(responseConfig), HTTPSpecification.defaultSpec(), testDataFiles.tempDirectory);  
+                FileReadModuleStage fielStage = FileReadModuleStage.newInstance(gm, new Pipe[]{routedAppPipes[i]}, new Pipe<ServerResponseSchema>(responseConfig), HTTPSpecification.defaultSpec(), testDataFiles.tempDirectory);  
                 PipeCleanerStage.newInstance(gm, gm.getOutputPipe(gm, fielStage));
             }            
         }
@@ -133,7 +133,7 @@ public class PipelineIntegrationTest {
 		Pipe<ReleaseSchema> ack = new Pipe<ReleaseSchema>(ackConfig );
         PipeCleanerStage.newInstance(gm, ack);
 		
-        HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, routedAppPipes, ack, paths, appHeaders, msgIds, null);
+        HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, routedAppPipes, ack, paths, appHeaders, msgIds);
         return stage;
     }
 

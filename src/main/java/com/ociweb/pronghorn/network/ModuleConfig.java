@@ -15,7 +15,7 @@ public interface ModuleConfig {
 
 	int moduleCount();
 	
-	long addModule(int a, GraphManager graphManager, Pipe<HTTPRequestSchema> input, 
+	long addModule(int a, GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, 
 				   HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> spec);
 
 	CharSequence getPathRoute(int a);

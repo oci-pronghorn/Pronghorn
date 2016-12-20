@@ -157,6 +157,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	      //Load the supported header keys
 	      ///////////////////////////
 	      headerMap = new TrieParser(2048,false);//deep check on to detect unexpected headers.
+	 
 	      HTTPHeaderKey[] shr =  httpSpec.headers;
 	      x = shr.length;
 	      while (--x >= 0) {
@@ -164,7 +165,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	          CharSequence key = shr[x].getKey();
 	          headerMap.setUTF8Value(key, "\n",shr[x].ordinal());  
 	          headerMap.setUTF8Value(key, "\r\n",shr[x].ordinal());	          
-	      }
+	      }    
+	
 	      headerMap.setUTF8Value("%b: %b\n", UNSUPPORTED_HEADER_ID);  //TODO: urgent the insert of this conditional breaks on the wrong point
 	      headerMap.setUTF8Value("%b: %b\r\n", UNSUPPORTED_HEADER_ID);	  //TODO: urgent the insert of this conditional breaks on the wrong point
 	      
@@ -495,7 +497,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								int consumed = startingLength - trieReader.sourceLen;
 							
 								Pipe.releasePendingAsReadLock(pipe, consumed);
-						//TESTING REMOVED		assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
+;
 								subBytes(consumed, pipe, i, trieReader.sourceLen);
 							} 
 						} while (headerId>=0 && state==1);
@@ -540,10 +542,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									subBytes(consumed, pipe, i, trieReader.sourceLen);
 																	
 									payloadLengthData[i] = lengthRemaining;
-									
-									//TEST REMOVED							assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
-																	
-	
+							
 									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 								}
 								
@@ -556,8 +555,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									
 									
 									foundWork = finishAndRelease(true, i, stateIdx, ccId, pipe, cc); 
-									
-									//TEST REMOVED						assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);							
 									break;
 								} else {
 									assert(lengthRemaining>0);

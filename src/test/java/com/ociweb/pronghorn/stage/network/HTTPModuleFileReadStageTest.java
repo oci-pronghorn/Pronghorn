@@ -55,7 +55,7 @@ public class HTTPModuleFileReadStageTest {
         //PipeCleanerStage.newInstance(gm, requestPipe);//generates about 15m req/sec
                 
         //can not be watched, does not shutdown.
-        FileReadModuleStage<?, ?, ?, ?> watch = FileReadModuleStage.newInstance(gm, requestPipe, responsePipe, HTTPSpecification.defaultSpec(), new File(gs.tempFolder()));
+        FileReadModuleStage<?, ?, ?, ?> watch = FileReadModuleStage.newInstance(gm, new Pipe[]{requestPipe}, responsePipe, HTTPSpecification.defaultSpec(), new File(gs.tempFolder()));
 
         responsePipe.initBuffers();        
         

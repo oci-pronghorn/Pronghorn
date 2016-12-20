@@ -81,8 +81,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     private final int END_OF_HEADER_ID;
     private final int UNKNOWN_HEADER_ID;
-    private final ServerCoordinator coordinator;
-    
+  
     
     private int totalShortestRequest;
     private int shutdownCount;
@@ -96,15 +95,15 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
        
     
     public static HTTP1xRouterStage newInstance(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<ReleaseSchema> ackStop,
-                                              CharSequence[] paths, long[] headers, int[] messageIds, ServerCoordinator coordinator) {
+                                              CharSequence[] paths, long[] headers, int[] messageIds) {
         
        return new HTTP1xRouterStage<HTTPContentTypeDefaults ,HTTPHeaderKeyDefaults, HTTPRevisionDefaults, HTTPVerbDefaults>(gm,input,outputs, ackStop, paths, headers, messageIds,
-                                   HTTPSpecification.defaultSpec(), coordinator); 
+                                   HTTPSpecification.defaultSpec()); 
     }
 
 	public HTTP1xRouterStage(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<ReleaseSchema> ackStop,
                              CharSequence[] paths, long[] headers, int[] messageIds, 
-                             HTTPSpecification<T,R,V,H> httpSpec, ServerCoordinator coordinator) {
+                             HTTPSpecification<T,R,V,H> httpSpec) {
         super(gm,input,join(outputs,ackStop));
         this.inputs = input;
         this.releasePipe = ackStop;        
@@ -112,8 +111,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         this.messageIds = messageIds;
         this.requestHeaderMask = headers;
         this.shutdownCount = inputs.length;
-        this.coordinator=coordinator;
-        
+
         this.httpSpec = httpSpec;
         
         this.paths = paths;
@@ -326,6 +324,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             }
         }
         
+        //TODO: if we did not accumulate anything and the parser has done what it can then we should NOT attempt parse again for this IDX
+        //   if we blocked on output do it again? check for blocked output earlier to avoid query parse?
+        
+        
         long channel   = inputChannels[idx];
         if (channel >= 0) {
         	
@@ -352,37 +354,48 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             final long toParseLength = TrieParserReader.parseHasContentLength(trieReader);
             assert(toParseLength>=0) : "length is "+toParseLength+" and input was "+l;
             
-            //NOTE: not sure why but IF here is much faster than WHILE but both can work.
-            if (toParseLength>0 && route(trieReader, channel, idx, selectedInput)) {
-            	
-                int newTotalConsumed = (int)(toParseLength - TrieParserReader.parseHasContentLength(trieReader));           
-                int consumed = newTotalConsumed-totalConsumed;
-                totalConsumed = newTotalConsumed;
-                p += consumed;
-                l -= consumed;
-
-                Pipe.releasePendingAsReadLock(selectedInput, consumed);
-                assert(l == trieReader.sourceLen);
-                inputBlobPos[idx]=p;
-          
-                if (inputBlobPos[idx]>inputBlobPosLimit[idx]) {
-                	new Exception("position is out of bounds "+inputBlobPos[idx]+" vs "+inputBlobPosLimit[idx]).printStackTrace();;
-                }
-                if (l<0) {
-                	new Exception("can not consume more than length "+l).printStackTrace();
-                }
-      
-                inputLengths[idx]=l;
-                
-                if (l<=0) {
-                	inputChannels[idx] = -1;
-                	return 0;//must cause a wait to accumulate more
-                	
-                }
-                
-                
+            if (toParseLength>0) {
+	            final int result = parseHTTP(trieReader, channel, idx, selectedInput); 
+            	if (SUCCESS == result) {
+	            	
+	                int newTotalConsumed = (int)(toParseLength - TrieParserReader.parseHasContentLength(trieReader));           
+	                int consumed = newTotalConsumed-totalConsumed;
+	                totalConsumed = newTotalConsumed;
+	                p += consumed;
+	                l -= consumed;
+	
+	                Pipe.releasePendingAsReadLock(selectedInput, consumed);
+	                assert(l == trieReader.sourceLen);
+	                inputBlobPos[idx]=p;
+	          
+	                if (inputBlobPos[idx]>inputBlobPosLimit[idx]) {
+	                	new Exception("position is out of bounds "+inputBlobPos[idx]+" vs "+inputBlobPosLimit[idx]).printStackTrace();;
+	                }
+	                if (l<0) {
+	                	new Exception("can not consume more than length "+l).printStackTrace();
+	                }
+	      
+	                inputLengths[idx]=l;
+	                
+	                if (l<=0) {
+	                	inputChannels[idx] = -1;
+	                	return 0;//must cause a wait to accumulate more
+	                	
+	                }	                
+	                
+	           } else if (NEED_MORE_DATA == result){
+	        	   
+	        	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
+	        	   
+	           } else {
+	        	   
+	        	   int pipeToWatch = (-result);
+	        	   
+	        	   //TRY AGAIN AFTER PIPE CLEARS
+	        	   
+	        	   
+	           }
             }
-            
            
             
             //TODO: make this into an assert, this should not happen because it would be caught  by now inside the route method.
@@ -393,8 +406,18 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	        return totalConsumed>0?1:0;
     }
 
+    
+ private final static int NEED_MORE_DATA = 2;
+ private final static int SUCCESS = 1;
+ 
+ 
 
-private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<NetPayloadSchema> selectedInput) {    
+// -1 no room on output pipe (do not call again until the pipe is clear, send back pipe to watch)
+//  2 need more data to parse (do not call again until data to parse arrives)
+//  1 success
+// <=0 for wating on this output pipe to have room (the pipe idx is negative)
+ 
+private int parseHTTP(TrieParserReader trieReader, long channel, int idx, Pipe<NetPayloadSchema> selectedInput) {    
     
 //	boolean showHeader = true;
 //    if (showHeader) {
@@ -413,13 +436,13 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
 	int tempPos = trieReader.sourcePos;
     final int verbId = (int)TrieParserReader.parseNext(trieReader, verbMap);     //  GET /hello/x?x=3 HTTP/1.1     
     if (verbId<0) {
-    		if (tempLen < (verbMap.longestKnown()+1)) { //added 1 for the space which mush appear after
+    		if (tempLen < (verbMap.longestKnown()+1)) { //added 1 for the space which must appear after
     	//		logger.info("A. waiting on verb for {}",channel);
-    			return false;    			
+    			return NEED_MORE_DATA;    			
     		} else {
     			if (trieReader.sourceLen<0) {
     		//		logger.info("B. waiting on verb for {}",channel);
-    		    	return false;
+    		    	return NEED_MORE_DATA;
     		    }
     			//we have bad data we have been sent, there is enough data yet the verb was not found
     			trieReader.sourceLen = tempLen;
@@ -440,11 +463,11 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
     if (routeId<0) {
     	if (tempLen < MAX_URL_LENGTH) {
  //   		logger.info("A. waiting on route for {}",channel);
-			return false;    			
+			return NEED_MORE_DATA;    			
 		} else {
 		    if (trieReader.sourceLen<0) {
 //		    	logger.info("B. waiting on route for {}",channel);
-		    	return false;
+		    	return NEED_MORE_DATA;
 		    } 
 			//we have bad data we have been sent, there is enough data yet the verb was not found
 			trieReader.sourceLen = tempLen;
@@ -460,7 +483,7 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
  
     //if thie above code went past the end OR if there is not enough room for an empty header  line maker then return
     if (trieReader.sourceLen<2) {
-    	return false;
+    	return NEED_MORE_DATA;
     }    	
     
     Pipe<HTTPRequestSchema> staticRequestPipe = outputs[routeId];
@@ -487,13 +510,13 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
         	if (tempLen < (revisionMap.longestKnown()+1)) { //added 1 for the space which must appear after
         		Pipe.resetHead(staticRequestPipe);
    //     		logger.info("A. waiting on revision for {}",channel);
-    			return false;    			
+    			return NEED_MORE_DATA;    			
     		} else {
     			//not an error we just looked past the end
     		    if (trieReader.sourceLen<0) {
    /// 		    	    logger.info("B. waiting on revision for {}",channel);
     		    	    Pipe.resetHead(staticRequestPipe);
-    			    	return false;
+    			    	return NEED_MORE_DATA;
     			}    
     			//we have bad data we have been sent, there is enough data yet the verb was not found
     			trieReader.sourceLen = tempLen;
@@ -515,13 +538,13 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
             //try again later, not complete.
             Pipe.resetHead(staticRequestPipe);
      //       logger.info("A. waiting on headers for {}",channel);
-            return false;
+            return NEED_MORE_DATA;
         }        
 		//not an error we just looked past the end and need more data
 	    if (trieReader.sourceLen<0) {
 	 //   	logger.info("B. waiting on headers for {}",channel);
 	    	    Pipe.resetHead(staticRequestPipe);
-		    	return false;
+		    	return NEED_MORE_DATA;
 		} 
         Pipe.addIntValue(requestContext, staticRequestPipe); // request context     // Write 1   11
         
@@ -550,10 +573,10 @@ private boolean route(TrieParserReader trieReader, long channel, int idx, Pipe<N
     } else {
     	//logger.info("No room, waiting for {} {}",channel, staticRequestPipe);
         //no room try again later
-        return false;
+        return -routeId;
     }
     
-   return true;
+   return SUCCESS;
 }
 
 private void badClientError(long channel) {

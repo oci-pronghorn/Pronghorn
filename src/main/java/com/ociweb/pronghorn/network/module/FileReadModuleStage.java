@@ -51,7 +51,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private final int maxTotalPathLength = 65535;
     private final int maxFileCount = 256;
     
-    private final Pipe<HTTPRequestSchema> input;    
+    private final Pipe<HTTPRequestSchema>[] inputs;    
     private final Pipe<ServerResponseSchema> output;
     private PipeHashTable outputHash;
 
@@ -75,6 +75,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private int         activeRequestContext;
     private int         activePathId;
     private long        activePayloadSizeRemaining;
+    private int         inIdx;
+    
     
     private final String folderRootString;
     private final File   folderRoot;
@@ -104,16 +106,16 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private final static int VERB_GET = 0;
     private final static int VERB_HEAD = 1;
         
-    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, File rootPath) {
-        return new FileReadModuleStage(graphManager, input, output, httpSpec, rootPath);
+    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, File rootPath) {
+        return new FileReadModuleStage(graphManager, inputs, output, httpSpec, rootPath);
     }
     
-    public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, 
+    public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema> output, 
                                    HTTPSpecification<T,R,V,H> httpSpec,
                                    File rootPath) {
         
-        super(graphManager, input, output, httpSpec);
-        this.input = input;
+        super(graphManager, inputs, output, httpSpec);
+        this.inputs = inputs; //TODO: fix hack must walk all.
         this.output = output;
         this.fileSystem = FileSystems.getDefault();
         this.folderRootString = rootPath.toString();
@@ -124,6 +126,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         assert( httpSpec.verbMatches(VERB_GET, "GET") );
         assert( httpSpec.verbMatches(VERB_HEAD, "HEAD") );
         
+        this.inIdx = inputs.length;
             
     }
     //TODO: use PipeHashTable to pull back values that are on the outgoing pipe for use again.
@@ -299,50 +302,52 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     
     @Override
     public void run() {
-   
-    	int count = 10_000;//take a break after this many cycles even if we have data.
-    	boolean didWork = false;
-    	do {
     	
-	        try {
-	            
-	            didWork |= writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, activeSequenceId, output, activeFileChannel, activePathId);
-	
-	        } catch (IOException ioex) {
-	            disconnectDueToError(activeReadMessageSize, output, ioex);
-	        }
-	          
-//	        if (!Pipe.hasRoomForWrite(output)) {
-//	        	logger.info("can not write out no room: {}",output);
-//	        }
-	        
-	     // logger.info((null==activeFileChannel) + " &&  "+Pipe.hasContentToRead(input)+ " && "+ Pipe.hasRoomForWrite(output));
-	        
-	        assert(recordIncomingState(!Pipe.hasContentToRead(input)));
-	        assert(recordOutgoingState(!Pipe.hasRoomForWrite(output)));
-	        
-	        while (null==activeFileChannel && Pipe.hasContentToRead(input) && Pipe.hasRoomForWrite(output)) {
-	        	didWork = true;
-	            int msgIdx = Pipe.takeMsgIdx(input); 
-	            if (msgIdx == HTTPRequestSchema.MSG_FILEREQUEST_200) {
-	                activeReadMessageSize = Pipe.sizeOf(input, msgIdx);
-	                beginReadingNextRequest();                    
-	            } else {
-	                if (-1 != msgIdx) {
-	                    throw new UnsupportedOperationException("Unexpected message "+msgIdx);
-	                }
-	                
-	                Pipe.publishEOF(output);
-	                requestShutdown(); 
-	                return; 
-	            }
-	        }            
-	        if (null == activeFileChannel) {
-	            //only done when nothing is open.
-	            checkForHotReplace();
-	        }
-	        
-    	} while(--count>0 && didWork);
+   
+    	boolean didWork = false;
+    	do {    	
+    			
+    			if (null==activeFileChannel) {
+    				if(--inIdx<0) {
+    					inIdx = inputs.length-1;
+    				}
+    			}
+    			
+    			Pipe<HTTPRequestSchema> input = inputs[inIdx];
+    			
+		        try {
+		            
+		            didWork |= writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, activeSequenceId, output, activeFileChannel, activePathId, input);
+		
+		        } catch (IOException ioex) {
+		            disconnectDueToError(activeReadMessageSize, output, ioex, input);
+		        }
+  
+		        assert(recordIncomingState(!Pipe.hasContentToRead(input)));
+		        assert(recordOutgoingState(!Pipe.hasRoomForWrite(output)));
+		        
+		        while (null==activeFileChannel && Pipe.hasContentToRead(input) && Pipe.hasRoomForWrite(output)) {
+		        	didWork = true;
+		            int msgIdx = Pipe.takeMsgIdx(input); 
+		            if (msgIdx == HTTPRequestSchema.MSG_FILEREQUEST_200) {
+		                activeReadMessageSize = Pipe.sizeOf(input, msgIdx);
+		                beginReadingNextRequest(input);                    
+		            } else {
+		                if (-1 != msgIdx) {
+		                    throw new UnsupportedOperationException("Unexpected message "+msgIdx);
+		                }
+		                
+		                Pipe.publishEOF(output);
+		                requestShutdown(); 
+		                return; 
+		            }
+		        }            
+		        if (null == activeFileChannel) {
+		            //only done when nothing is open.
+		            checkForHotReplace();
+		        }
+		      
+    	} while(didWork);
     }
 
     private void checkForHotReplace() {
@@ -353,7 +358,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         
     }
 
-    private void beginReadingNextRequest() {
+    private void beginReadingNextRequest(Pipe<HTTPRequestSchema> input) {
         //channel
         //sequence
         //verb  
@@ -397,7 +402,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
       	  
         	//send 404
         	//publishError(requestContext, sequence, status, writer, localOutput, channelIdHigh, channelIdLow, httpSpec, revision, contentType);
-        	publishErrorHeader(httpRevision, activeRequestContext, activeSequenceId, 404);  
+        	publishErrorHeader(httpRevision, activeRequestContext, activeSequenceId, 404, input);  
         	
         //	throw new UnsupportedOperationException("File not found: "+ Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString());
         } else {
@@ -412,7 +417,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 	        //ready to read the file from fileChannel and use type in type[pathId]
 	        //////////////////////////
 	        if (pathId>=0) {
-	            beginSendingFile(httpRevision, activeRequestContext, pathId, verb, activeSequenceId);
+	            beginSendingFile(httpRevision, activeRequestContext, pathId, verb, activeSequenceId, input);
 	        } else {
 	            publishErrorHeader(httpRevision, activeRequestContext, 0, activeSequenceId, null);
 	        }
@@ -508,14 +513,13 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                     
             
         } catch (IOException e) {
-        	logger.debug("IO Exception pipe {}",input);
             logger.error("IO Exception on file {} ",pathString);
             throw new RuntimeException(e);
         }
     }
  
     
-    private void beginSendingFile(int httpRevision, int requestContext, int pathId, int verb, int sequence) {
+    private void beginSendingFile(int httpRevision, int requestContext, int pathId, int verb, int sequence, Pipe<HTTPRequestSchema> input) {
         try {                                               
             //reposition to beginning of the file to be loaded and sent.
             activePayloadSizeRemaining = fileSizes[pathId];
@@ -535,13 +539,13 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             
                    
             try{              
-                publishBodiesMessage(verb, sequence, pathId);
+                publishBodiesMessage(verb, sequence, pathId, input);
             } catch (IOException ioex) {
-                disconnectDueToError(activeReadMessageSize, output, ioex);
+                disconnectDueToError(activeReadMessageSize, output, ioex, input);
             }     
             
         } catch (Exception e) {
-            publishErrorHeader(httpRevision, requestContext, pathId, sequence, e);
+            publishErrorHeader(httpRevision, requestContext, pathId, sequence, e, input);
         }        
     }
 
@@ -549,7 +553,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 		return PipeHashTable.getLowerBounds(outputHash)-1+output.sizeOfBlobRing;
 	}
 
-    private void publishErrorHeader(int httpRevision, int requestContext, int pathId, int sequence, Exception e) {
+    private void publishErrorHeader(int httpRevision, int requestContext, int pathId, int sequence, Exception e, Pipe<HTTPRequestSchema> input) {
         if (null != e) {
             logger.error("Unable to read file for sending.",e);
         }
@@ -563,7 +567,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         Pipe.releaseReadLock(input);
     }
 
-    private void publishErrorHeader(int httpRevision, int requestContext, int sequence, int code) {
+    private void publishErrorHeader(int httpRevision, int requestContext, int sequence, int code, Pipe<HTTPRequestSchema> input) {
         logger.warn("published error "+code);
         publishError(requestContext, sequence, code, output, activeChannelHigh, activeChannelLow, httpSpec, httpRevision, -1);
         
@@ -571,7 +575,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         Pipe.releaseReadLock(input);
     }
     
-    private void disconnectDueToError(int releaseSize, Pipe<ServerResponseSchema> localOutput, IOException ioex) {
+    private void disconnectDueToError(int releaseSize, Pipe<ServerResponseSchema> localOutput, IOException ioex, Pipe<HTTPRequestSchema> input) {
         logger.error("Unable to complete file transfer to client ",ioex);
                 
         //now implement an unexpected disconnect of the connection since we had an IO failure.
@@ -586,12 +590,12 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         activeFileChannel = null;
     }
     
-    private void publishBodiesMessage(int verb, int sequence, int pathId) throws IOException {
+    private void publishBodiesMessage(int verb, int sequence, int pathId, Pipe<HTTPRequestSchema> input) throws IOException {
             if (VERB_GET == verb) { //head does not get body
 
                 activePosition = 0;
                 activeFileChannel.position(0);
-                writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, sequence, output, activeFileChannel, pathId);                             
+                writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, sequence, output, activeFileChannel, pathId, input);                             
 
             } else if (VERB_HEAD == verb){
                 activeFileChannel = null;
@@ -605,7 +609,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     int inFlight = 0;
     int fromDisk = 0;
     
-    private boolean writeBodiesWhileRoom(int channelHigh, int channelLow, int sequence, Pipe<ServerResponseSchema> localOutput, FileChannel localFileChannel, int pathId) throws IOException {
+    private boolean writeBodiesWhileRoom(int channelHigh, int channelLow, int sequence, Pipe<ServerResponseSchema> localOutput, FileChannel localFileChannel, int pathId, Pipe<HTTPRequestSchema> input) throws IOException {
 
     	boolean didWork = false;
     	
