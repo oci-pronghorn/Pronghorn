@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.network;
 
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
+import java.util.Arrays;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
@@ -23,11 +24,13 @@ public class TLSService {
 	private final TrustManager[] trustManagers;
 	
 	//protocol The SSL/TLS protocol to be used. Java 1.6 will only run with up to TLSv1 protocol. Java 1.7 or higher also supports TLSv1.1 and TLSv1.2 protocols.
-	private static final String PROTOCOL = "TLSv1.2";
+	private static final String PROTOCOL    = "TLSv1.2";
+	private static final String PROTOCOL1_3 = "TLSv1.3"; //check Java version and move up to this ASAP.
+	
 	private static final boolean TRUST_ALL = true;
 	
 	private String[] cipherSuits;
-	private String[] protocols = new String[]{"TLSv1.2"}; //[SSLv2Hello, TLSv1, TLSv1.1, TLSv1.2]
+	private String[] protocols = new String[]{PROTOCOL}; //[SSLv2Hello, TLSv1, TLSv1.1, TLSv1.2]
     
 	
 	public TLSService(KeyManagerFactory keyManagerFactory, TrustManagerFactory trustManagerFactory) {
@@ -63,7 +66,8 @@ public class TLSService {
 	        context = SSLContext.getInstance(PROTOCOL);
 			context.init(keyManagers, trustManagers, new SecureRandom());
 			
-			
+			//run once first to determine which cypher suites we will be using.
+			createSSLEngineServer();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
@@ -71,7 +75,7 @@ public class TLSService {
 	}
 	
 	public int maxEncryptedContentLength() {
-		return Integer.MAX_VALUE;
+		return 33305;//java TLS engine requested this value;//Integer.MAX_VALUE;
 	}
 	
     public SSLEngine createSSLEngineClient(String host, int port) {
@@ -88,7 +92,6 @@ public class TLSService {
     	SSLEngine result = context.createSSLEngine();
     	result.setEnabledCipherSuites(filterCipherSuits(result)); 
     	result.setEnabledProtocols(protocols);
-    	
     	return result;
     }
     
@@ -128,8 +131,8 @@ public class TLSService {
 		return !enabledCipherSuites[i].contains("DES_") &&
 			   !enabledCipherSuites[i].contains("EXPORT") && 
 			   !enabledCipherSuites[i].contains("AES128") && 
-			 //  !enabledCipherSuites[i].contains("AES 128") &&
-			  // !enabledCipherSuites[i].contains("RSA") && 
+			  // !enabledCipherSuites[i].contains("_DHE_") && //hack which should not remain. //TODO: we need to sort to put ECC first.
+			 //  !enabledCipherSuites[i].contains("_RSA_") && //testing  ECDSA, requires  ECDSA certificate first!!
 			   !enabledCipherSuites[i].contains("NULL");
 		
 	}
