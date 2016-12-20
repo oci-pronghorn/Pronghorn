@@ -32,6 +32,9 @@ public class PipeConfig<T extends MessageSchema> {
         FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<slabBits);
      }
 	     
+     public long totalBytesAllocated() {
+    	 return (1L<<blobBits)+(4L<<slabBits);
+     }
      
      public byte slabBits() {
     	 return slabBits;

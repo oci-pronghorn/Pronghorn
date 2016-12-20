@@ -752,15 +752,19 @@ public class TrieParserReader {
         boolean noStop = true;
         do {
         } while (--lim >= 0 && (noStop=(stopValue!=source[sourceMask & x++])));         
-        int len = (x-sourcePos)-1;
 
         if (noStop) {//not found!
             return -1;
         }
+        return parseBytesFound(reader, sourcePos, sourceMask, x);
+    }
+
+	private static int parseBytesFound(TrieParserReader reader, final int sourcePos, final int sourceMask, int x) {
+		int len = (x-sourcePos)-1;
         reader.runLength += (len);
         reader.capturedPos = extractedBytesRange(reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);                
         return x;
-    }
+	}
     
     private static int parseBytes(TrieParserReader reader, final byte[] source, final int sourcePos, long remainingLen, final int sourceMask, final short[] stopValues, final int stopValuesCount) {              
 
