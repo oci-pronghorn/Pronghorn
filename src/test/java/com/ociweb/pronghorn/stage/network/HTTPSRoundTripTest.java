@@ -310,7 +310,8 @@ public class HTTPSRoundTripTest {
 			boolean isTLS = false;
 			int port = 8443;
 			String host = //"10.201.200.24";//phi
-					      "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
+					      "10.10.10.244";
+					      //  "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
 			
 			boolean useLocalServer = false;
 
@@ -332,12 +333,12 @@ public class HTTPSRoundTripTest {
 	    	
 	    	/////////////////
 	        /////////////////
-	    	int base2SimultaniousConnections = 4;  	
+	    	int base2SimultaniousConnections = 3;  	
 	    		    	
 	    	//TODO: this number must be the limit of max simuantious handshakes.
-	    	int maxPartialResponsesClient = 16; //input lines to client (should be large)
-	    	final int clientOutputCount = 16;//should be < client connections,  number of pipes getting wrappers and sent out put stream 
-	    	final int clientWriterStages = 4; //writer instances;	
+	    	int maxPartialResponsesClient = 8; //input lines to client (should be large)
+	    	final int clientOutputCount = 8;//should be < client connections,  number of pipes getting wrappers and sent out put stream 
+	    	final int clientWriterStages = 2; //writer instances;	
 	    	
 	    	
 	    	/////////////
@@ -351,14 +352,14 @@ public class HTTPSRoundTripTest {
 	    	int responseQueue = 64;
 	    	int requestQueue = 16;
 
-	    	int clientCount = 1;
+	    	int clientCount = 4;
 	    	
 	    	//////////////
 	    	
 	    	//TODO: lower this value until we see pipes get released when completed, if not then we will starve out new requests. NOTE: needs better solution.
 	    	int inFlightLimit = 100_000_000;///000;//24_000;//when set to much more it disconnects.
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
-	    	final int loadMultiplier = isTLS? 100_000 : 3_000_000;//100_000;//100_000;
+	    	final int loadMultiplier = isTLS? 100_000 : 300_000;//100_000;//100_000;
 
 	    		    	
 	    	ClientCoordinator[] clientCoords = new ClientCoordinator[clientCount];
@@ -374,7 +375,7 @@ public class HTTPSRoundTripTest {
 			
 			
 			if (base2SimultaniousConnections<=6) {
-				GraphManager.exportGraphDotFile(gm, "HTTPSRoundTripTest");			
+				//GraphManager.exportGraphDotFile(gm, "HTTPSRoundTripTest");			
 	        	MonitorConsoleStage.attach(gm); 
 			}
 			final ServerCoordinator serverCoord1 = serverCoord;
