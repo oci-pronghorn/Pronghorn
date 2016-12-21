@@ -187,7 +187,7 @@ public class NetGraphBuilder {
         //must be large to hold high volumes of throughput.  //NOTE: effeciency of supervisor stage controls how long this needs to be
         PipeConfig<NetPayloadSchema> toWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 1024, serverBlobToEncrypt); //from super should be 2x of super input //must be 1<<15 at a minimum for handshake
         
-        //olso used when the TLS is not enabled                 must be less than the outgoing buffer size of socket?
+        //also used when the TLS is not enabled                 must be less than the outgoing buffer size of socket?
         PipeConfig<NetPayloadSchema> fromWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 512, serverBlobToWrite);  //must be 1<<15 at a minimum for handshake
                 
         PipeConfig<NetPayloadSchema> handshakeDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 32, 1<<15); //must be 1<<15 at a minimum for handshake

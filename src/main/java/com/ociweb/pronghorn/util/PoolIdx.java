@@ -6,6 +6,10 @@ public class PoolIdx  {
 
     private final long[] keys;
     private final byte[] locked;
+    private long locksTaken = 0;
+    private long locksReleased = 0;
+    private Runnable firstUsage;
+    private Runnable noLocks;
     
     public PoolIdx(int length) {
         this.keys = new long[length];
@@ -41,6 +45,13 @@ public class PoolIdx  {
         return -1;
     }
     
+    public void setFirstUsageCallback(Runnable run) {
+    	firstUsage = run;
+    }
+    
+    public void setNoLocksCallback(Runnable run) {
+    	noLocks = run;
+    }
     
     public int get(long key) {   
     	
@@ -64,6 +75,10 @@ public class PoolIdx  {
 
     private int startNewLock(long key, int idx) {
         if (idx>=0) {
+        	if (0==locksTaken && firstUsage!=null) {
+        		firstUsage.run();
+        	}
+        	locksTaken++;
             locked[idx] = 1;
             keys[idx] = key;
             return idx;
@@ -76,6 +91,11 @@ public class PoolIdx  {
         int i = keys.length;
         while (--i>=0) {
             if (key==keys[i]) {
+            	locksReleased++;
+            	//System.err.println("locks tken "+locksTaken+" and released "+locksReleased);
+            	if ((locksReleased==locksTaken) && (noLocks!=null)) {
+            		noLocks.run();
+            	}
                 locked[i] = 0;
                 return;
             }
@@ -83,12 +103,7 @@ public class PoolIdx  {
     }
     
     public int locks() {
-        int count = 0;
-        int j = locked.length;
-        while (--j>=0) {
-            count += locked[j];
-        }
-        return count;
+        return (int)(locksTaken-locksReleased);
     }
     
     

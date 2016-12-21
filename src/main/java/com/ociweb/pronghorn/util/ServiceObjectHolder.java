@@ -128,6 +128,7 @@ public class ServiceObjectHolder<T> {
     	
     }
     
+    
     /**
      * Add new service object and return the index to retrieve the object later.
      * 
@@ -145,7 +146,7 @@ public class ServiceObjectHolder<T> {
         
         long minCount = Long.MAX_VALUE;
         long  minCountIndex = -1;
-        
+
         do {
             //if we end up passing over all the members find which is the least used.
             if (-1 != index) {

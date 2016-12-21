@@ -417,9 +417,10 @@ public class HTTPClientRequestStage extends PronghornStage {
 			                               DataOutputBlobWriter<NetPayloadSchema> writer, CharSequence implementationVersion, long length) {
 		DataOutputBlobWriter.write(writer, REV11_AND_HOST, 0, REV11_AND_HOST.length, Integer.MAX_VALUE); //encodeAsUTF8(writer," HTTP/1.1\r\nHost: ");
 		DataOutputBlobWriter.write(writer,hostBack,hostPos,hostLen,hostMask);
-		DataOutputBlobWriter.write(writer, LINE_AND_USER_AGENT, 0, LINE_AND_USER_AGENT.length, Integer.MAX_VALUE);//DataOutputBlobWriter.encodeAsUTF8(writer,"\r\nUser-Agent: Pronghorn/");
+		
+	//	DataOutputBlobWriter.write(writer, LINE_AND_USER_AGENT, 0, LINE_AND_USER_AGENT.length, Integer.MAX_VALUE);//DataOutputBlobWriter.encodeAsUTF8(writer,"\r\nUser-Agent: Pronghorn/");
+	//	DataOutputBlobWriter.encodeAsUTF8(writer,implementationVersion);
 
-		DataOutputBlobWriter.encodeAsUTF8(writer,implementationVersion);
 		if (length>0) {
 			
 			Appendables.appendValue(writer.append("\r\nContent-Length: "), length); //does the same as below...			

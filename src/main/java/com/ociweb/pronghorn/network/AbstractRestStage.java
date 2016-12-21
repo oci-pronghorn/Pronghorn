@@ -148,7 +148,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
             }
             
             //line two
-            writer.write(SERVER);
+    //        writer.write(SERVER);
             
 //            if (null!=etagBytes) {
 //                writer.write(ETAG);

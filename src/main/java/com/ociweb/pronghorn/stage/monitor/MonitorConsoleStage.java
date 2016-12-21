@@ -7,15 +7,12 @@ import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATS
 import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_TAIL_3;
 import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4;
 
-import java.util.Arrays;
+import org.HdrHistogram.Histogram;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeReader;
-
-import org.HdrHistogram.*;
-
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -27,8 +24,9 @@ public class MonitorConsoleStage extends PronghornStage {
 	private int[] percentileValues; 
 	private int[] trafficValues; 
 		
-	private Histogram[] hists; ///TODO: replace with HDRHistogram
+	private Histogram[] hists; 
 
+	private boolean recorderOn=true;
 	
 	public MonitorConsoleStage(GraphManager graphManager, Pipe ... inputs) {
 		super(graphManager, inputs, NONE);
@@ -46,6 +44,13 @@ public class MonitorConsoleStage extends PronghornStage {
 				throw new UnsupportedOperationException("Can only write to ring buffer that is expecting montior records.");
 			}
 		}
+	}
+	
+	public void setRecorderOn(boolean isOn) {
+		this.recorderOn = isOn;
+	}
+	public boolean isRecorderOn() {
+		return this.recorderOn;
 	}
 
 	@Override
@@ -90,9 +95,10 @@ public class MonitorConsoleStage extends PronghornStage {
 				
 				long pctFull = (100*(head-tail))/ringSize;
 				//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
-												
-				hists[i].recordValue(pctFull>=0 ? pctFull<=100 ? pctFull : 99 : 0);
 				
+				if (recorderOn) {
+					hists[i].recordValue(pctFull>=0 ? pctFull<=100 ? pctFull : 99 : 0);
+				}
 				PipeReader.releaseReadLock(ring);
 			}
 		}

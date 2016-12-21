@@ -552,12 +552,16 @@ private int parseHTTP(TrieParserReader trieReader, long channel, int idx, Pipe<N
         assert(consumed>=0);        
         Pipe.confirmLowLevelWrite(staticRequestPipe, size);     
 
-        if (trieReader.sourceLen==0 && 
-        	Pipe.contentRemaining(selectedInput)==0) { //added second rule to minimize release messages
+        if (trieReader.sourceLen==0 && inputSlabPos[idx]!=0) { //added second rule to minimize release messages  Pipe.isEndOfPipe(output[pipeIdx], Pipe.headPosition(output[pipeIdx]))) 
         	
         	assert(inputSlabPos[idx]>=0);
         	//logger.info("send ack for {}",channel);
-        	
+        	if (!Pipe.hasRoomForWrite(releasePipe)) {
+        		logger.info("warning, to prevent hang we must write this message, write fewer or make pipe longer.");
+        		//NOTE must spin lock for room, must write or this system may hang.
+        		Pipe.spinBlockForRoom(releasePipe, Pipe.sizeOf(releasePipe, ReleaseSchema.MSG_RELEASE_100));
+        		
+        	}
         	if (Pipe.hasRoomForWrite(releasePipe)) {
         		int s = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASE_100);
         		Pipe.addLongValue(channel,releasePipe);

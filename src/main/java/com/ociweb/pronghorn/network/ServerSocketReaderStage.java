@@ -188,13 +188,15 @@ public class ServerSocketReaderStage extends PronghornStage {
 	    			
 	    			///////////////////////////////////////////////////
 	    			//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
-	    			if (pipeIdx>=0 && (Pipe.headPosition(output[pipeIdx]) == pos)  ) {
+	    			if (pipeIdx>=0 && (Pipe.headPosition(output[pipeIdx]) == pos)) {
 	    				coordinator.releaseResponsePipeLineIdx(idToClear);
+	    				//logger.info("did release for {}",idToClear);
 
 	    		    //TODO: these release ofen before opening a new oen must check priorty for this connection...		
-	    			//	logger.info("did release for {}",idToClear);
 	    				
 	    			} else {
+	    				//logger.info("no release for {}",idToClear); //what about EOF is that blocking the relase.
+	    				
 	    				if (pipeIdx>=0) {
 	    					if (pos>Pipe.headPosition(output[pipeIdx])) {
 	    						System.err.println("EEEEEEEEEEEEEEEEEEEEEEEEe  got ack but did not release on server. pipe "+pipeIdx+" pos "+pos+" expected "+Pipe.headPosition(output[pipeIdx]) );

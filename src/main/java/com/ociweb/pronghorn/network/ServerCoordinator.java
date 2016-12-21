@@ -103,6 +103,13 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		return responsePipeLinePool.length();
 	}
     
+	public void setFirstUsage(Runnable run) {
+		responsePipeLinePool.setFirstUsageCallback(run);
+	}
+	
+	public void setLastUsage(Runnable run) {
+		responsePipeLinePool.setNoLocksCallback(run);
+	}
 
 	@Override
 	public SSLConnection get(long id, int groupId) {

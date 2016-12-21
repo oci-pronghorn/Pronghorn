@@ -302,11 +302,10 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     
     @Override
     public void run() {
-    	
-   
-    	boolean didWork;
+    
+    	boolean didWork=false;
     	do {    	
-    		    didWork = false;
+    	//	didWork = false;//be sure we exit if we do no work.
     		
     			if (null==activeFileChannel) {
     				if(--inIdx<0) {
@@ -318,7 +317,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     			
 		        try {
 		            
-		            didWork |= writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, activeSequenceId, output, activeFileChannel, activePathId, input);
+		            didWork = writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, activeSequenceId, output, activeFileChannel, activePathId, input);
 		
 		        } catch (IOException ioex) {
 		            disconnectDueToError(activeReadMessageSize, output, ioex, input);
@@ -328,15 +327,18 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 		        assert(recordOutgoingState(!Pipe.hasRoomForWrite(output)));
 		        
 		        while (null==activeFileChannel && Pipe.hasContentToRead(input) && Pipe.hasRoomForWrite(output)) {
-		        	didWork = true;
 		            int msgIdx = Pipe.takeMsgIdx(input); 
 		            if (msgIdx == HTTPRequestSchema.MSG_FILEREQUEST_200) {
+		            	didWork = true;
+		            	
 		                activeReadMessageSize = Pipe.sizeOf(input, msgIdx);
 		                beginReadingNextRequest(input);                    
 		            } else {
 		                if (-1 != msgIdx) {
 		                    throw new UnsupportedOperationException("Unexpected message "+msgIdx);
 		                }
+		                Pipe.confirmLowLevelRead(input, Pipe.EOF_SIZE);
+		                Pipe.releaseReadLock(input);
 		                
 		                Pipe.publishEOF(output);
 		                requestShutdown(); 
@@ -346,6 +348,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 		        if (null == activeFileChannel) {
 		            //only done when nothing is open.
 		            checkForHotReplace();
+		        } else {
+		        	didWork = true; //stay while we have active files open
 		        }
 		      
     	} while(didWork);
