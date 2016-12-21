@@ -310,18 +310,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							blockedPosition[i] = headPos;
 							blockedOpenCount[i] = 0;
 							blockedLen[i] = trieReader.sourceLen;
-							blockedState[i] =  positionMemoData[stateIdx];
-							foundWork = true;
-														
+							blockedState[i] =  positionMemoData[stateIdx];							
 						}
 						
 					}
 				} else {	
 					//we have new data
-					
-					//TEST REMOVED					assert(positionMemoData[lenIdx] == Pipe.releasePendingByteCount(pipe)) : positionMemoData[lenIdx]+" != "+Pipe.releasePendingByteCount(pipe);
-										
-					
+			
 					int msgIdx = Pipe.takeMsgIdx(pipe);
 					//assert(NetPayloadSchema.MSG_PLAIN_210==msgIdx): "msgIdx "+msgIdx+"  "+pipe;
 			
@@ -341,10 +336,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						positionMemoData[memoIdx+1] = 0;//wipe out existing data
 						continue;
 					}
-					foundWork = true;//new data found to consume, add it to the trie parser
-					
-					//assert(0==cc.getUserId() || IntHashTable.hasItem(listenerPipeLookup, cc.getUserId())) : "no value found for "+cc.getUserId();
-										
+				
 					targetPipe = output[(short)IntHashTable.getItem(listenerPipeLookup, cc.getUserId())];					
 					assert (0!=positionMemoData[stateIdx] || !Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
 					
@@ -409,9 +401,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 //					System.exit(-1);
 //					//return;
 //				}
-				
-			//	System.err.println("parse "+state);
-				
+	
 				//TODO: only try to parse this pipe again if it has new additional data,  add this key feature to save cycles.
 				
 				

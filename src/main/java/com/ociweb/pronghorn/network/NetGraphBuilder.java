@@ -196,7 +196,9 @@ public class NetGraphBuilder {
         Pipe[][] planIncomingGroup = new Pipe[groups][];
         Pipe[][] handshakeIncomingGroup = new Pipe[groups][];
         
-        
+        if (ac.moduleCount()==0) {
+        	throw new UnsupportedOperationException("Must be using at least 1 module to startup.");
+        }
         
         
         int g = groups;

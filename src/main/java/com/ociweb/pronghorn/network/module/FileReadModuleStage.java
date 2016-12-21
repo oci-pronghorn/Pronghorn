@@ -304,9 +304,10 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     public void run() {
     	
    
-    	boolean didWork = false;
+    	boolean didWork;
     	do {    	
-    			
+    		    didWork = false;
+    		
     			if (null==activeFileChannel) {
     				if(--inIdx<0) {
     					inIdx = inputs.length-1;

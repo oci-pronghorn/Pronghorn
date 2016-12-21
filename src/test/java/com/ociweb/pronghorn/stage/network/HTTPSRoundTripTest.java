@@ -302,16 +302,17 @@ public class HTTPSRoundTripTest {
 
 	//TODO: require small memory round trip tests for cloudbees
 	
-	@Ignore
+	@Test
 	public void roundTripTest2() {
 				
 		{
 			
 			boolean isTLS = false;
 			int port = 8443;
-			String host = "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
+			String host = //"10.201.200.24";//phi
+					      "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
 			
-			boolean useLocalServer = true;
+			boolean useLocalServer = false;
 
 			
 			GraphManager gm = new GraphManager();
@@ -336,7 +337,7 @@ public class HTTPSRoundTripTest {
 	    	//TODO: this number must be the limit of max simuantious handshakes.
 	    	int maxPartialResponsesClient = 16; //input lines to client (should be large)
 	    	final int clientOutputCount = 16;//should be < client connections,  number of pipes getting wrappers and sent out put stream 
-	    	final int clientWriterStages = 2; //writer instances;	
+	    	final int clientWriterStages = 4; //writer instances;	
 	    	
 	    	
 	    	/////////////
@@ -350,6 +351,7 @@ public class HTTPSRoundTripTest {
 	    	int responseQueue = 64;
 	    	int requestQueue = 16;
 
+	    	int clientCount = 1;
 	    	
 	    	//////////////
 	    	
@@ -358,7 +360,6 @@ public class HTTPSRoundTripTest {
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
 	    	final int loadMultiplier = isTLS? 100_000 : 3_000_000;//100_000;//100_000;
 
-	    	int clientCount = 2;
 	    		    	
 	    	ClientCoordinator[] clientCoords = new ClientCoordinator[clientCount];
 	    	RegulatedLoadTestStage[] clients = new RegulatedLoadTestStage[clientCount];
