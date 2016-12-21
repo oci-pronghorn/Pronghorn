@@ -173,10 +173,7 @@ public class TrieParserReader {
         that.sourceBacking = source;
         that.sourcePos     = offset;
         that.sourceLen     = length;
-        if (that.sourceLen<0) {
-        	throw new RuntimeException("parse must never go past the end of the avialable data yet length is now "+that.sourceLen);
-        }
-        that.sourceMask    = mask;        
+         that.sourceMask    = mask;        
     }
     
     public static void parseSetup(TrieParserReader that, byte[] source, int mask) {
@@ -186,9 +183,6 @@ public class TrieParserReader {
     
     public static void parseSetupGrow(TrieParserReader that, int additionalLength) {
     	that.sourceLen += additionalLength;
-        if (that.sourceLen<0) {
-        	throw new RuntimeException("parse must never go past the end of the avialable data yet length is now "+that.sourceLen);
-        }
     	assert(that.sourceLen<=that.sourceMask) : "length is out of bounds";
     }
     
@@ -208,10 +202,7 @@ public class TrieParserReader {
     public static void loadPositionMemo(TrieParserReader that, int[] source, int offset) {
    		that.sourcePos = source[offset];
    		that.sourceLen = source[offset+1];
-//TOOD: make assert??   		
-//        if (that.sourceLen<0) {
-//        	throw new RuntimeException("parse must never go past the end of the avialable data yet length is now "+that.sourceLen);
-//        }
+
     }
     
     
@@ -302,9 +293,7 @@ public class TrieParserReader {
     	int len = Math.min(count, reader.sourceLen);
         reader.sourcePos += len;
         reader.sourceLen -= len;
-        if (reader.sourceLen<0) {
-        	throw new RuntimeException("parse must never go past the end of the avialable data yet length is now "+reader.sourceLen);
-        }
+
         return len;
     }
     
@@ -416,10 +405,8 @@ public class TrieParserReader {
                         } else {
                         	return useSafePoint(reader);
                         }
-                    } 
-                              
-                } else {
-                         
+                    }         
+                } else { 
                     reader.pos += run;
                     reader.localSourcePos += run; 
                 }
@@ -434,7 +421,7 @@ public class TrieParserReader {
             } else if (t == TrieParser.TYPE_SAFE_END) {                    
                 
             	
-              //important check just before returning the selected value TODO: need more testing.
+//              //important check just before returning the selected value TODO: need more testing.
 //                 if (reader.sourceLen < 0) {
 //                	return unfoundResult;
 //                }
