@@ -302,7 +302,7 @@ public class HTTPSRoundTripTest {
 
 	//TODO: require small memory round trip tests for cloudbees
 	
-	@Test
+	@Ignore
 	public void roundTripTest2() {
 				
 		{
