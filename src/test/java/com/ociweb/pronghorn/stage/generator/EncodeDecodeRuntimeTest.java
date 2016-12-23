@@ -10,6 +10,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
@@ -61,7 +62,7 @@ public class EncodeDecodeRuntimeTest {
 
     }
 
-    @Test
+    @Ignore
     public void runTimeTest() throws IOException, SAXException, ParserConfigurationException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException {
         GraphManager gm = new GraphManager();
 

@@ -132,7 +132,7 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
 	                int peekMsgId = Pipe.peekInt(sourcePipe, 0);
 	                Pipe<NetPayloadSchema> myPipe = null;
 	                int sequenceNo = 0;
-	                if (peekMsgId>=0) {
+	                if (peekMsgId>=0 && ServerResponseSchema.MSG_SKIP_300!=peekMsgId) {
 	                    long channelId = Pipe.peekLong(sourcePipe, 1);
 	                    myPipe = outgoingPipes[(int)(channelId % poolMod)];
 	                    sequenceNo = Pipe.peekInt(sourcePipe,  3);
@@ -198,15 +198,28 @@ public class WrapSupervisorStage extends PronghornStage { //AKA re-ordering stag
 	                    }                    
 	                    
 	                } else {
-	                	Pipe.takeMsgIdx(sourcePipe);
-	                	Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
-	                	Pipe.releaseReadLock(sourcePipe);
+	                	int idx = Pipe.takeMsgIdx(sourcePipe);
 	                	
-	                	if (--shutdownCount<=0) {
-	                		requestShutdown();
-	                		return;
-	                	} else {
+	                	if (ServerResponseSchema.MSG_SKIP_300 ==idx) {
+	                		
+	                		int meta = Pipe.takeRingByteMetaData(sourcePipe);
+	                		int len = Pipe.takeRingByteLen(sourcePipe);
+	                		Pipe.bytePosition(meta, sourcePipe, len); //this does the skipping
+	                		
+	                		Pipe.confirmLowLevelRead(sourcePipe,Pipe.sizeOf(ServerResponseSchema.instance, idx));
+		                	Pipe.releaseReadLock(sourcePipe);
+		                	
 	                		continue;
+	                	} else {	
+		                	Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
+		                	Pipe.releaseReadLock(sourcePipe);
+		                	
+		                	if (--shutdownCount<=0) {
+		                		requestShutdown();
+		                		return;
+		                	} else {
+		                		continue;
+		                	}
 	                	}
 	                }
 	                

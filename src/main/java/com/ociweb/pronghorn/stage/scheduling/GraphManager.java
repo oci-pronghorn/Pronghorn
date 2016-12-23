@@ -26,10 +26,13 @@ import com.ociweb.pronghorn.util.Appendables;
 public class GraphManager {
 	
 	private static final String CHECK_GRAPH_CONSTRUCTION = "Check graph construction";
+	
+	private final static int INIT_RINGS = 32;
+	private final static int INIT_STAGES = 32;
 
     private class GraphManagerStageStateData {
 		private Object lock = new Object();	
-		private byte[] stageStateArray = new byte[0];
+		private byte[] stageStateArray = new byte[INIT_STAGES];
 		
 		public final static byte STAGE_NEW = 0;
 		public final static byte STAGE_STARTED = 1;
@@ -50,9 +53,6 @@ public class GraphManager {
 	public final static String UNSCHEDULED   = "UNSCHEDULED";//new nota for stages that should never get a thread (experimental)
 	public final static String THREAD_GROUP  = "THREAD_GROUP";   //new nota for stages that do not give threads back (experimental)
 	
-	
-	private final static int INIT_RINGS = 32;
-	private final static int INIT_STAGES = 32;
 	
 	private final static Logger log = LoggerFactory.getLogger(GraphManager.class);
 				
@@ -79,7 +79,12 @@ public class GraphManager {
 	
 	//for lookup of Stage from Stage id
 	private PronghornStage[]  stageIdToStage = new PronghornStage[INIT_STAGES];
-			
+	private long[] stageStartTimeMs = new long[INIT_STAGES];
+	private long[] stageShutdownTimeMs = new long[INIT_STAGES];
+	private long[] stageRunMS = new long[INIT_STAGES]; 
+	
+	
+	
 	//This object is shared with all clones
 	private final GraphManagerStageStateData stageStateData;
 	
@@ -404,36 +409,17 @@ public class GraphManager {
 		result[idx] = value;
 		return result;
 	}
-	
-	private static Pipe[] setValue(Pipe[] target, int idx, Pipe value) {		
-		Pipe[] result = target;
-		if (idx>=target.length) {
-			result = Arrays.copyOf(target, (1+idx)*2); //double the array
-		}
-		result[idx] = value;
-		return result;
-	}
-	
-	private static PronghornStage[] setValue(PronghornStage[] target, int idx, PronghornStage value) {		
-		PronghornStage[] result = target;
-		if (idx>=target.length) {
-			result = Arrays.copyOf(target, (1+idx)*2); //double the array
-		}
-		result[idx] = value;
-		return result;
-	}	
-	
-	private static Object[] setValue(Object[] target, int idx, Object value) {		
-		Object[] result = target;
-		if (idx>=target.length) {
-			result = Arrays.copyOf(target, (1+idx)*2); //double the array
-		}
-		result[idx] = value;
-		return result;
-	}	
-	
-	private static byte[] setValue(byte[] target, int idx, final byte value) {		
 		
+	private static <T> T[] setValue(T[] target, int idx, T value) {		
+		T[] result = target;
+		if (idx>=target.length) {
+			result = Arrays.copyOf(target, (1+idx)*2); //double the array
+		}
+		result[idx] = value;
+		return (T[])result;
+	}	
+	
+	private static byte[] setValue(byte[] target, int idx, final byte value) {
 		byte[] result = target;
 		if (idx>=target.length) {
 			int limit = (1+idx)*2;
@@ -445,7 +431,28 @@ public class GraphManager {
 		return result;
 	}
 	
-
+	private static long[] setValue(long[] target, int idx, final long value) {
+		long[] result = target;
+		if (idx>=target.length) {
+			int limit = (1+idx)*2;
+			result = Arrays.copyOf(target, limit); //double the array
+			Arrays.fill(result, target.length, limit, (byte)-1);
+		}		
+		result[idx] = value;
+		return result;
+	}
+	
+	private static long[] incValue(long[] target, int idx, final long value) {
+		long[] result = target;
+		if (idx>=target.length) {
+			int limit = (1+idx)*2;
+			result = Arrays.copyOf(target, limit); //double the array
+			Arrays.fill(result, target.length, limit, (byte)-1);
+		}		
+		result[idx] += value;
+		return result;
+	}
+	
 	public static void register(GraphManager gm, PronghornStage stage, Pipe[] inputs, Pipe[] outputs) {
 		
 		synchronized(gm.lock) {
@@ -668,6 +675,7 @@ public class GraphManager {
 	public static void setStateToStarted(GraphManager gm, int stageId) {
 		synchronized(gm.stageStateData.lock) {
 			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_STARTED);
+			gm.stageStartTimeMs=setValue(gm.stageStartTimeMs,stageId,System.currentTimeMillis());
 		}
 	}
 	
@@ -675,6 +683,7 @@ public class GraphManager {
 		synchronized(gm.stageStateData.lock) {
 			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_TERMINATED);
 			//	assert(recordInputsAndOutputValuesForValidation(gm, stage.stageId));
+			gm.stageShutdownTimeMs=setValue(gm.stageShutdownTimeMs,stageId,System.currentTimeMillis());
 		}
 	}
 	
@@ -1213,13 +1222,13 @@ public class GraphManager {
                 return;
             }
             
-            result = Runtime.getRuntime().exec("circo -Tsvg -o"+filename+".circo.svg "+filename);
+//            result = Runtime.getRuntime().exec("circo -Tsvg -o"+filename+".circo.svg "+filename);
+//            
+//            if (0!=result.waitFor()) {
+//                return;
+//            }
             
-            if (0!=result.waitFor()) {
-                return;
-            }
-            
-        } catch (Exception e) {
+        } catch (Throwable e) {
             System.out.println("No runtime graph produced.");
         }
        
@@ -1261,17 +1270,37 @@ public class GraphManager {
 	            		b.append(" \""+stageName+"\",");
 	            		
 	            	}
-	            	
-	            	//TODO: we need to group the nodes and edges with the same THREAD_GROUP under a subgraph cluster
-	                //  subgraph cluster_1 {
+
 	            	Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
 	            	
 	                target.append("\"").append(stageName).append("\"[label=\"").append(stage.toString().replace("Stage","").replace(" ", "\n"));
 	                if (null!=group) {
 	                	target.append(" grp:"+group);
 	                }
+	                //if supported give PCT used
+	                long runMs = m.stageRunMS[stage.stageId];
+	                int pct = 0;
+	                if (runMs!=0){
+	                	if (runMs<0) {
+	                		target.append(" CPU 100%");
+	                	} else {
+	                		pct = (int)((1000L*runMs)/ (m.stageShutdownTimeMs[stage.stageId] - m.stageStartTimeMs[stage.stageId] ));
+	                		if (pct>0) {
+	                			Appendables.appendValue(target," CPU ",pct/10,".");
+	                			Appendables.appendValue(target,"",pct%10,"%");	            			
+	                		}
+	                	}
+	                }
+	                target.append("\"");
 	                
-	                target.append("\"]\n");
+	                if (pct>=800) {
+                		target.append(",color=red");	    
+                	} else if (pct>=600) {
+                		target.append(",color=orange");	    
+                	} else {
+                	}
+	                
+	                target.append("]\n");
 	                	                
 	            }
 	        }
@@ -1737,6 +1766,14 @@ public class GraphManager {
         }
         return true;
     }
+
+	public static void accumRunTime(GraphManager graphManager, int stageId, long duration) {
+		graphManager.stageRunMS = incValue(graphManager.stageRunMS,stageId, duration);
+	}
+
+	public static void accumRunTimeAll(GraphManager graphManager, int stageId) {
+		graphManager.stageRunMS = setValue(graphManager.stageRunMS,stageId,-1);//flag for 100%
+	}
 
 
 	

@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
   
+  
+  
+  
    <template name="ToChannel" id="100">    
         <uInt64 name="ChannelId"   id="21">
             <delta/>
@@ -38,6 +41,10 @@
         	     	    1 upgrade pipe bit
         	  -->
         </uInt32>
+   </template>
+    
+   <template name="Skip" id="300">
+		<byteVector name="Payload" id="25"/>     
    </template>
     
     

@@ -175,7 +175,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
                     GraphManager.initAllPipes(graphManager, stage.stageId);                   
                     logger.trace("finished on initRings:"+stage.getClass().getSimpleName());
                     
-                    Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
+                    Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);                    
                     stage.startup();
                     GraphManager.setStateToStarted(graphManager, stage.stageId);
                     
@@ -369,7 +369,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
         do {
             stage.run();
         } while (continueRunning(this, stage));
-	    
+        GraphManager.accumRunTimeAll(graphManager, stage.stageId);
 	}
 	
 	private final void runLoop(final PronghornStage stage) {
@@ -384,8 +384,13 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				            //before doing yield must push any batched up writes & reads
 				            Thread.yield(); 
 				    }
+				   
+				    long start = System.nanoTime();
 					stage.run();					
-					
+					long duration = System.nanoTime()-start;
+					if (duration>0) {
+						GraphManager.accumRunTime(graphManager, stage.stageId, (duration+500_000L)/1_000_000L);
+					}
 				} while (continueRunning(this, stage));
 	    		
 	    	} else {
@@ -410,8 +415,13 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		            //before doing yield must push any batched up writes & reads
 		            Thread.yield();
 		    }
+		    
+		    long start = System.nanoTime();
 			stage.run();			
-			
+			long duration = System.nanoTime()-start;
+			if (duration>0) {
+				GraphManager.accumRunTime(graphManager, stage.stageId, (duration+500_000L)/1_000_000L);
+			}
 			
 		} while (continueRunning(this, stage));
 	}
@@ -460,8 +470,12 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					return;
 				}
 			}
-			
+			long start = System.nanoTime();
 			stage.run();
+			long duration = System.nanoTime()-start;
+			if (duration>0) {
+				GraphManager.accumRunTime(graphManager, stage.stageId, (duration+500_000L)/1_000_000L);
+			}
 		} while (continueRunning(this, stage));
 		//Still testing removal of this which seemed incorrect,  } while (!isShuttingDown && !GraphManager.isStageShuttingDown(localGM, stageId));		
 	}

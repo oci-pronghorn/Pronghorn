@@ -36,6 +36,7 @@ public class StaticFileRequestGeneratorStage extends PronghornStage {
     private int sequence;
     
     private int pathIdx;
+    private long requestCounts;
 
     
     private final TestDataFiles testDataFiles;
@@ -60,7 +61,7 @@ public class StaticFileRequestGeneratorStage extends PronghornStage {
     }
     
     public void startup() {
-        pathIdx = fileCount;
+        pathIdx = testDataFiles.testFilePaths.length;
         writer = new DataOutputBlobWriter<HTTPRequestSchema>(output);
           
     }
@@ -80,13 +81,16 @@ public class StaticFileRequestGeneratorStage extends PronghornStage {
             
             if (--pathIdx < 0) {
                 if (--count < 0) {
-                    System.out.println("generator has finished");
+                	
+                	Pipe.publishEOF(output);
                     requestShutdown();
+                    System.out.println("total generated file requets "+requestCounts);
                     return;
                 } 
                 pathIdx = testDataFiles.testFilePaths.length-1;
             }
             
+            requestCounts++;
             int size = Pipe.addMsgIdx(output, HTTPRequestSchema.MSG_FILEREQUEST_200);
             Pipe.addLongValue(0, output); //channelId
             Pipe.addIntValue(sequence++, output); //sequence            

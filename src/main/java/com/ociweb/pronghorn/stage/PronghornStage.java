@@ -24,7 +24,7 @@ public abstract class PronghornStage {
 	private GraphManager graphManager;	
 	protected boolean supportsBatchedRelease = true;
 	protected boolean supportsBatchedPublish = true;
-				
+	
 	@Override
 	public int hashCode() {
 		return hash;
@@ -234,14 +234,7 @@ public abstract class PronghornStage {
 		if (!GraphManager.isStageShuttingDown(graphManager, stageId)) {
 			GraphManager.setStateToStopping(graphManager, stageId);
 		}
-		
-//TODO: if this is not causing any problmes in 2018 we should delete this block.		
-//		//if this stage is a PRODUCER then we go directly to the shutdown state to ensure the thread ignores any incoming messages
-//		//all other stages must wait for the queues to empy before the move into the shutdown state.		
-//		if (null != GraphManager.getNota(graphManager, stageId, GraphManager.PRODUCER, null)) {
-//		    GraphManager.setStateToShutdown(graphManager, stageId);
-//		}
-		
+
 	}
 
 	/**

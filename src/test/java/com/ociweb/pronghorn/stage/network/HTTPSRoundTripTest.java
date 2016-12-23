@@ -303,17 +303,18 @@ public class HTTPSRoundTripTest {
 	//TODO: require small memory round trip tests for cloudbees
 	
 	@Ignore
+	//@Test
 	public void roundTripTest2() {
 				
 		{
 			
-			boolean isTLS = false;
+			boolean isTLS = false;//true;
 			int port = 8443;
-			String host = //"10.201.200.24";//phi
-					      "10.10.10.244";
-					      //  "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
+			String host =  //"10.201.200.24";//phi
+					      //"10.10.10.244";
+					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
 			
-			boolean useLocalServer = false;
+			boolean useLocalServer = true;//
 
 			
 			GraphManager gm = new GraphManager();

@@ -81,7 +81,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
 
     protected int publishHeaderMessage(int originalRequestContext, int sequence, int thisRequestContext, int status,                                     
                                         Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow,
-                                        HTTPSpecification<T,R,V, H> httpSpec, int revision, int contentType, byte[] localSizeAsBytes, byte[] localETagBytes) {
+                                        HTTPSpecification<T,R,V,H> httpSpec, byte[] revision, byte[] contentType, byte[] localSizeAsBytes, byte[] localETagBytes) {
         
         int headerSize = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
         
@@ -91,7 +91,10 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         
         DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.outputStream(localOutput);
         writer.openField();
-        writeHeader(httpSpec.revisions[revision].getBytes(), status, originalRequestContext, localETagBytes,  httpSpec.contentTypes[contentType].getBytes(), localSizeAsBytes, writer);
+        writeHeader(revision, 
+        		    status, originalRequestContext, localETagBytes,  
+        		    contentType, 
+        		    localSizeAsBytes, writer);
         int bytesLength = writer.closeLowLevelField();
         
         Pipe.addIntValue( thisRequestContext , localOutput); //empty request context, set the full value last. 
@@ -129,7 +132,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     
     
     //TODO: build better constants for these values needed.
-    public void writeHeader(byte[] revisionBytes, int status, int requestContext, byte[] etagBytes, byte[] typeBytes, byte[] lenAsBytes, DataOutputBlobWriter<ServerResponseSchema> writer) {
+    public static void writeHeader(byte[] revisionBytes, int status, int requestContext, byte[] etagBytes, byte[] typeBytes, byte[] lenAsBytes, DataOutputBlobWriter<ServerResponseSchema> writer) {
              
             //line one
             writer.write(revisionBytes);

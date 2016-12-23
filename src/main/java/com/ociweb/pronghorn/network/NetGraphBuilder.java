@@ -174,11 +174,14 @@ public class NetGraphBuilder {
 			int maxSimultaniousClients, ModuleConfig ac, ServerCoordinator coordinator, int requestUnwrapUnits, int responseWrapUnits, 
 			int pipesPerWrapUnit, int socketWriters, int serverInputBlobs, int serverBlobToEncrypt, int serverBlobToWrite) {
 
+
+        int routerCount = 4;
+        
 		
 		PipeConfig<ServerConnectionSchema> newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 10);
 		
 		//Why? the router is helped with lots of extra room for write?  - may need to be bigger for posts.
-        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 4096, 1<<9);///if payload is smaller than average file size will be slower
+        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 1024, 1<<8);///if payload is smaller than average file size will be slower
       
         //byte buffer must remain small because we will have a lot of these for all the partial messages
         //TODO: if we get a series of very short messages this will fill up causing a hang. TODO: we can get parser to release and/or server reader to combine.
@@ -221,9 +224,7 @@ public class NetGraphBuilder {
             
             
             PipeConfig<ReleaseSchema> ackConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,2048);
-   
-            int routerCount = 2;
-            
+               
             int a = routerCount+(isTLS?requestUnwrapUnits:0);
     		Pipe[] acks = new Pipe[a];
     		while (--a>=0) {
