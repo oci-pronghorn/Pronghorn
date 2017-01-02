@@ -89,6 +89,8 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         Pipe.addIntValue(channelIdLow, localOutput);
         Pipe.addIntValue(sequence, localOutput);        
         
+//        logger.info("publish rest response for channel {} {} and seq {}",channelIdHigh, channelIdLow, sequence);
+        
         DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.outputStream(localOutput);
         writer.openField();
         writeHeader(revision, 

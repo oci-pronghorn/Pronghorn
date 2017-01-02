@@ -6,33 +6,38 @@ import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.schema.NetRequestSchema;
+import com.ociweb.pronghorn.network.ClientCoordinator;
+import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.TrieParserReader;
 
 
 public class RegulatedLoadTestStage extends PronghornStage{
 
-	private static final int HANG_TIMEOUT_MS = 930_000;
+	private static final int HANG_TIMEOUT_MS = 40_000;
 
 	private static final Logger logger = LoggerFactory.getLogger(RegulatedLoadTestStage.class);
 	
 	private Pipe<NetResponseSchema>[] inputs;
-	private Pipe<NetRequestSchema>[] outputs;
+	private Pipe<ClientHTTPRequestSchema>[] outputs;
 	private int[]                    toSend;
 	private int[]                    received;
 	private final int                 count;
 	private int                      shutdownCount;
 	private long[][]                 times;
 	private Histogram histRoundTrip;
+	private final ClientCoordinator clientCoord;
 	
 	long totalMs = 0;
 	long inFlight = 0;
 	long totalReceived = 0;
 	long totalExpected;
+	
+	private long[] connectionIdCache; 
 	
 	int port;
 	String host;
@@ -48,10 +53,12 @@ public class RegulatedLoadTestStage extends PronghornStage{
 	private final int usersPerPipe;
 	private final String label;
 	
-	protected RegulatedLoadTestStage(GraphManager graphManager, Pipe<NetResponseSchema>[] inputs, Pipe<NetRequestSchema>[] outputs, 
-			                          int testSize, int inFlightLimit, String fileRequest, int usersPerPipe, int port, String host, String label) {
+	
+	protected RegulatedLoadTestStage(GraphManager graphManager, Pipe<NetResponseSchema>[] inputs, Pipe<ClientHTTPRequestSchema>[] outputs, 
+			                          int testSize, int inFlightLimit, String fileRequest, int usersPerPipe, int port, String host, String label, ClientCoordinator clientCoord) {
 		super(graphManager, inputs, outputs);
 		
+		this.clientCoord = clientCoord;
 		this.usersPerPipe = usersPerPipe;
 		this.testFile = fileRequest;
 		assert (inputs.length==outputs.length);
@@ -75,6 +82,9 @@ public class RegulatedLoadTestStage extends PronghornStage{
 	@Override
 	public void startup() {
 		
+		connectionIdCache = new long[100];
+		Arrays.fill(connectionIdCache, -1);
+		
 		histRoundTrip = new Histogram(40_000_000_000L,0);
 		
 	//	histInFlight.copyCorrectedForCoordinatedOmission(expectedIntervalBetweenValueSamples)
@@ -91,6 +101,8 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		totalExpected = inputs.length * ((long)count*(long)usersPerPipe);
 		
 		start = System.currentTimeMillis();
+		
+		
 	}
 	
 	@Override
@@ -100,12 +112,16 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		//System.out.println("average ns "+avg);
 		
 		
-		histRoundTrip.outputPercentileDistribution(System.out, 1_000_000.0); //showing ms.
+		histRoundTrip.outputPercentileDistribution(System.out, 1_000.0); //showing micro seconds.
 		
 	}
 
 	long lastChecked = 0;
-	StringBuilder workspace = new StringBuilder();
+	StringBuilder workspaceSB = new StringBuilder();
+	
+	byte[] buff = new byte[64];
+	byte[] workspace = new byte[256];
+	TrieParserReader hostTrieReader = new TrieParserReader();
 	
 	@Override
 	public void run() {
@@ -117,7 +133,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 			
 			int i = inputs.length;
 			while (--i>=0) {
-				System.err.println((inputs.length-i)+" "+received[i]+"  "+toSend[i]);
+				System.err.println((inputs.length-i)+" Pending Rec:"+received[i]+" Pending Send:"+toSend[i]);
 			}
 			
 			
@@ -155,9 +171,9 @@ public class RegulatedLoadTestStage extends PronghornStage{
 									
 									
 									if (null!=expected) {
-										workspace.setLength(0);
+										workspaceSB.setLength(0);
 										int headerSkip = 8;
-										Appendables.appendUTF8(workspace, inputs[i].blobRing, pos+headerSkip, len-headerSkip, inputs[i].blobMask);								
+										Appendables.appendUTF8(workspaceSB, inputs[i].blobRing, pos+headerSkip, len-headerSkip, inputs[i].blobMask);								
 										String tested = workspace.toString().trim();
 										if (!expected.equals(tested)) {
 											System.err.println("A error no match "+expected);
@@ -257,24 +273,55 @@ public class RegulatedLoadTestStage extends PronghornStage{
 					while (--i >= 0) {
 	
 						if (toSend[i]>0 && inFlight<limit && Pipe.hasRoomForWrite(outputs[i])) {	
-									
-							int size = Pipe.addMsgIdx(outputs[i], NetRequestSchema.MSG_HTTPGET_100);
 
+							int userId = i + (j * outputs.length); 
+							int msdIdx;
+														
+							
+							long connectionId = connectionIdCache[userId];
+														
+							
+							if (connectionId == -1) {
+								byte[] hByte = host.getBytes();
+								System.arraycopy(hByte, 0, buff, 0, hByte.length);
+								connectionId = clientCoord.lookup(buff, 0, hByte.length, 6, port, userId, workspace, hostTrieReader);								
+								assert(connectionId>0);
+								connectionIdCache[userId] = connectionId;	
+							}							
+							
+							if (connectionId>=0) {
+								msdIdx = ClientHTTPRequestSchema.MSG_FASTHTTPGET_200;
+							} else {
+								msdIdx = ClientHTTPRequestSchema.MSG_HTTPGET_100;
+							}
+							
+							
+							int size = Pipe.addMsgIdx(outputs[i], msdIdx);
+														   
+
+							
 							toSend[i]--;	
 							inFlight++;
 							didWork = true;
 							lastTime = now;
 	
+							Pipe.addIntValue(userId, outputs[i]);  
 							Pipe.addIntValue(port, outputs[i]);
 							Pipe.addUTF8(host, outputs[i]);
-							Pipe.addUTF8(testFile, outputs[i]);
+
+							if (connectionId>=0) {
+								Pipe.addLongValue(connectionId, outputs[i]);
+							}
 							
-							Pipe.addIntValue(i + (j * outputs.length), outputs[i]);            //TODO: need to add additional connections per round per connection.
-	
+							Pipe.addUTF8(testFile, outputs[i]);						
+						
+							
 							times[i][toSend[i]] = System.nanoTime();
 							
 							Pipe.confirmLowLevelWrite(outputs[i], size);
 							Pipe.publishWrites(outputs[i]);
+
+				//			System.err.println("write "+msdIdx+" for size "+size+"   "+outputs[i]);
 							
 							//if (0==toSend[i]) {
 								

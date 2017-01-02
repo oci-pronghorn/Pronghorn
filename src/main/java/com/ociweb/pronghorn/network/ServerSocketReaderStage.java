@@ -7,6 +7,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+import java.util.Set;
 
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
@@ -15,9 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
@@ -41,6 +40,8 @@ public class ServerSocketReaderStage extends PronghornStage {
     private int pendingSelections = 0;
     private final boolean isTLS;
     
+//    private long nextTime = 0;
+//    private long bytesConsumed=0;
 
     private ServiceObjectHolder<ServerConnection> holder;
     
@@ -85,9 +86,19 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     private int maxWarningCount = 20;
     
+    private int selectorSize = -10;
+    
     @Override
     public void run() {
         
+//    	long now = System.currentTimeMillis();
+//    	if (now>nextTime) {    		
+//    		//if one backs up we will never read the others... TOOD: this is very bad... Urgent, bad connection must be killed before stopping others.
+//    		System.err.println("Server Socket read "+bytesConsumed+" selector size "+selectorSize+" pending "+pendingSelections);  //TODO: we stopped reading data so the client stops sending it.  		
+//    		nextTime = now+3_000;
+//    	}
+    	
+    	
     	releasePipesForUse();    	
     	
         ////////////////////////////////////////
@@ -98,7 +109,11 @@ public class ServerSocketReaderStage extends PronghornStage {
         	
         	//logger.info("found new data to read on "+groupIdx);
             
-            Iterator<SelectionKey>  keyIterator = selector.selectedKeys().iterator();   
+            Set<SelectionKey> selectedKeys = selector.selectedKeys();
+            
+            selectorSize = selectedKeys.size();
+            
+			Iterator<SelectionKey>  keyIterator = selectedKeys.iterator();   
             
             while (keyIterator.hasNext()) {                
                 
@@ -119,7 +134,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 					
 					SSLConnection cc = coordinator.get(channelId, groupIdx);
 						
-					if (null!=cc.getEngine()) {
+					if (null!=cc && null!=cc.getEngine()) {
 						HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
 			    		
 			    		if (false && handshakeStatus!=HandshakeStatus.FINISHED && handshakeStatus!=HandshakeStatus.NOT_HANDSHAKING) {
@@ -141,7 +156,14 @@ public class ServerSocketReaderStage extends PronghornStage {
 				}
 					
 				releasePipesForUse();
-				int responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
+				
+				int responsePipeLineIdx = coordinator.checkForResponsePipeLineIdx(channelId);
+				
+				final boolean newBeginning = (responsePipeLineIdx<0);
+								
+				//this release is required in case we are swapping pipe lines, we ensure that the latest sequence no is stored.
+				releasePipesForUse();
+				responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
 				if (-1 == responsePipeLineIdx) { //handshake is dropped by input buffer at these loads?
 					releasePipesForUse();
 					responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
@@ -152,8 +174,33 @@ public class ServerSocketReaderStage extends PronghornStage {
 						continue;//try other connections which may already have pipes, this one can not reserve a pipe now.
 					}
 				}
+					
+				Pipe<NetPayloadSchema> targetPipe = output[responsePipeLineIdx];
+				
+				if (newBeginning) {				
+					SSLConnection cc = coordinator.get(channelId, groupIdx);
+					if (Pipe.hasRoomForWrite(targetPipe) && null!=cc) {
+									
+						int size = Pipe.addMsgIdx(targetPipe, NetPayloadSchema.MSG_BEGIN_208);
+						Pipe.addIntValue(cc.getSequenceNo(), targetPipe);						
+						Pipe.confirmLowLevelWrite(targetPipe, size);
+						Pipe.publishWrites(targetPipe);
 								
-				Pipe<NetPayloadSchema> targetPipe = output[responsePipeLineIdx]; //TODO: add support for groupIdx here? each group needs its own pool....  
+					} else {
+						if (cc == null) {
+							//closed connection							
+						} else {
+							//this odd case should not happen
+							logger.info("this pipe should have been empty since its a new beginning, yet we did not have room for write?");
+						}
+						//try again later but since its a new beginning let go to get it again later
+						coordinator.releaseResponsePipeLineIdx(channelId);
+						return;
+					}
+				}				
+				
+			//	logger.info("pump data");
+				
 				int pumpState = pumpByteChannelIntoPipe(socketChannel, channelId, targetPipe); 
                 if (pumpState<0) {//consumes from channel until it has no more or pipe has no more room
                 	//pipe full do again later
@@ -162,8 +209,15 @@ public class ServerSocketReaderStage extends PronghornStage {
 //	    				logger.warn("pipe full go again later");
 //	    			}
                 	
-                	return;
+                	//TOOD: if thiis continues long term we must kill the connection rather than let the other connnections suffer.
+                	//      note this should not have happened however becaue the router should have detected the fault.
+       //         	 System.err.println("unable to write to pipe "+targetPipe);
+                	
+                	//MUST NOT return instead we must read the others even if one gets full.
+                	continue;
                 } else if (pumpState>0) {
+              //  	logger.info("sennt data block");
+    				
                 	assert(1==pumpState) : "Can only remove if all the data is known to be consumed";
                 	keyIterator.remove();//only remove if we have consumed the data !!
                 	pendingSelections--;
@@ -179,40 +233,65 @@ public class ServerSocketReaderStage extends PronghornStage {
 			Pipe<ReleaseSchema> a = releasePipes[i];
 			while (Pipe.hasContentToRead(a)) {
 	    						
-	    		int id = Pipe.takeMsgIdx(a);
-	    		if (id == ReleaseSchema.MSG_RELEASE_100) {
-	    			long idToClear = Pipe.takeLong(a); //PipeReader.readLong(a, NetParseAckSchema.MSG_PARSEACK_100_FIELD_CONNECTIONID_1);
-	    			long pos = Pipe.takeLong(a);//PipeReader.readLong(a, NetParseAckSchema.MSG_PARSEACK_100_FIELD_POSITION_2);
+	    		int msgIdx = Pipe.takeMsgIdx(a);
+	    		
+	    		if (msgIdx == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {
 	    			
-	    			int pipeIdx = coordinator.checkForResponsePipeLineIdx(idToClear);
+	    			long idToClear = Pipe.takeLong(a);
+	    			long pos = Pipe.takeLong(a);	    			
+	    			int seq = Pipe.takeInt(a);	    				    			
+	    			releaseIfUnused(msgIdx, idToClear, pos, seq);
+	    			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASEWITHSEQ_101));
 	    			
-	    			///////////////////////////////////////////////////
-	    			//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
-	    			if (pipeIdx>=0 && (Pipe.headPosition(output[pipeIdx]) == pos)) {
-	    				coordinator.releaseResponsePipeLineIdx(idToClear);
-	    				//logger.info("did release for {}",idToClear);
-
-	    		    //TODO: these release ofen before opening a new oen must check priorty for this connection...		
-	    				
-	    			} else {
-	    				//logger.info("no release for {}",idToClear); //what about EOF is that blocking the relase.
-	    				
-	    				if (pipeIdx>=0) {
-	    					if (pos>Pipe.headPosition(output[pipeIdx])) {
-	    						System.err.println("EEEEEEEEEEEEEEEEEEEEEEEEe  got ack but did not release on server. pipe "+pipeIdx+" pos "+pos+" expected "+Pipe.headPosition(output[pipeIdx]) );
-	    						//System.exit(-1);
-	    					} else {
-	    						//this is the expected case where more data came in for this pipe
-	    					}
-	    				}
-	    			}
+	    		} else if (msgIdx == ReleaseSchema.MSG_RELEASE_100) {
+	    			
+	    			logger.info("warning, legacy release use detected");
+	    			
+	    			long idToClear = Pipe.takeLong(a);
+	    			long pos = Pipe.takeLong(a);	    					
+	    			releaseIfUnused(msgIdx, idToClear, pos, -1);
 	    			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
+	    			
 	    		} else {
-	    			assert(-1==id);
+	    			
+	    			assert(-1==msgIdx);
+	    			//requestShutdown(); //TODO: we should not shutdown if release is the end?
 	    			Pipe.confirmLowLevelRead(a, Pipe.EOF_SIZE);
+	    			
 	    		}
 	    		Pipe.releaseReadLock(a);	    		
 	    	}
+		}
+	}
+
+	//TODO: these release ofen before opening a new oen must check priorty for this connection...		
+	private void releaseIfUnused(int id, long idToClear, long pos, int seq) {
+		int pipeIdx = coordinator.checkForResponsePipeLineIdx(idToClear);
+		
+		///////////////////////////////////////////////////
+		//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
+		if (pipeIdx>=0 && (Pipe.headPosition(output[pipeIdx]) == pos)) {
+			coordinator.releaseResponsePipeLineIdx(idToClear);
+			//logger.info("did release for {}",idToClear);
+			
+			if (id == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {				
+				SSLConnection conn = coordinator.get(idToClear, groupIdx);
+				if (null!=conn) {					
+					conn.setSequenceNo(seq);//only set when we release a pipe
+				}
+			}			
+			
+		} else {
+			//logger.info("no release for {}",idToClear); //what about EOF is that blocking the relase.
+			
+			if (pipeIdx>=0) {
+				if (pos>Pipe.headPosition(output[pipeIdx])) {
+					System.err.println("EEEEEEEEEEEEEEEEEEEEEEEEe  got ack but did not release on server. pipe "+pipeIdx+" pos "+pos+" expected "+Pipe.headPosition(output[pipeIdx]) );
+					//System.exit(-1);
+				} else {
+					//this is the expected case where more data came in for this pipe
+				}
+			}
 		}
 	}
 
@@ -286,10 +365,12 @@ public class ServerSocketReaderStage extends PronghornStage {
 
 	private int publishOrAbandon(long channelId, Pipe<NetPayloadSchema> targetPipe, long len, ByteBuffer[] b, boolean isOpen) {
 		if (len>0) {
-			boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;                	
+			boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;   
+//			bytesConsumed+=len;
 			publishData(targetPipe, channelId, len);                  	 
 			return (fullTarget&&isOpen) ? 0 : 1; //only for 1 can we be sure we read all the data
 		} else {
+			 logger.info("abandon one record");
 			 Pipe.unstoreBlobWorkingHeadPosition(targetPipe);//we did not use or need the writing buffers above.
 			 return 1;//yes we are done
 		}
@@ -314,11 +395,10 @@ public class ServerSocketReaderStage extends PronghornStage {
         
         int size = Pipe.addMsgIdx(targetPipe,messageType);               
         Pipe.addLongValue(channelId, targetPipe);  
-
+             
         if (NetPayloadSchema.MSG_PLAIN_210 == messageType) {
         	Pipe.addLongValue(-1, targetPipe);
         }
-
         
         int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);
 

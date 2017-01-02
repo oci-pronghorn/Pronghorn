@@ -5,9 +5,9 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.network.schema.ReleaseSchema;
-import com.ociweb.pronghorn.network.schema.NetRequestSchema;
+import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
 
 public class SchemaValidationTest {
@@ -33,8 +33,8 @@ public class SchemaValidationTest {
 	    
     @Test
     public void messageNetRequestSchemaFROMTest() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/NetRequest.xml", NetRequestSchema.instance));
-        assertTrue(FROMValidation.testForMatchingLocators(NetRequestSchema.instance));
+        assertTrue(FROMValidation.testForMatchingFROMs("/ClientHTTPRequest.xml", ClientHTTPRequestSchema.instance));
+        assertTrue(FROMValidation.testForMatchingLocators(ClientHTTPRequestSchema.instance));
     }
     
 }

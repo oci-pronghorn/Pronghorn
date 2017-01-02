@@ -205,7 +205,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        }
 		    }	                    
 		    
-		} else if (NetPayloadSchema.MSG_UPGRADE_207 == activeMessageId) {
+		} else if (NetPayloadSchema.MSG_UPGRADE_307 == activeMessageId) {
 			
 			final long channelId = Pipe.takeLong(dataToSend[idx]);
 			final int newRoute = Pipe.takeInt(dataToSend[idx]);
@@ -236,7 +236,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     	
         Pipe<NetPayloadSchema> pipe = dataToSend[idx];
         final long channelId = Pipe.takeLong(pipe);
-        
+                
         activeIds[idx] = channelId;
         if (takeTail) {
         	activeTails[idx] =  Pipe.takeLong(pipe);
@@ -247,6 +247,8 @@ public class ServerSocketWriterStage extends PronghornStage {
         int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
         int len = Pipe.takeRingByteLen(pipe);
         
+        //System.err.println(this.stageId+"writer Ch:"+channelId+" len:"+len+" from pipe "+idx);
+                
         ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator, groupIdx);
         
         if (null!=socketHolder) {

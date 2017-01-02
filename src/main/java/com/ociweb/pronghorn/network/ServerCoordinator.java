@@ -5,6 +5,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.util.MemberHolder;
 import com.ociweb.pronghorn.util.PoolIdx;
+import com.ociweb.pronghorn.util.PoolIdxPredicate;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
 
@@ -32,7 +34,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     public final int                                  channelBitsSize;
     public final int                                  channelBitsMask;
 
-    private final int port;
+    private final int                                  port;
     private final InetSocketAddress                    address;
 
     public final static int INCOMPLETE_RESPONSE_SHIFT    = 28;
@@ -47,8 +49,12 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public final static int UPGRADE_MASK                 = 1<<UPGRADE_CONNECTION_SHIFT;
 
 	private final PoolIdx responsePipeLinePool;
+	private final int maxPartialResponses;
+	private final int routerCount;
+
+	private final int[] routerLookup;
     
-    public ServerCoordinator(int socketGroups, String bindHost, int port, int maxConnectionsBits, int maxPartialResponses) {
+    public ServerCoordinator(int socketGroups, String bindHost, int port, int maxConnectionsBits, int maxPartialResponses, int routerCount) {
         this.socketHolder      = new ServiceObjectHolder[socketGroups];    
         this.selectors         = new Selector[socketGroups];
         
@@ -63,6 +69,11 @@ public class ServerCoordinator extends SSLConnectionHolder {
         this.address           = new InetSocketAddress(bindHost,port);
         
     	this.responsePipeLinePool = new PoolIdx(maxPartialResponses); 
+    	
+    	this.maxPartialResponses = maxPartialResponses;
+    	this.routerCount = routerCount;
+    	this.routerLookup = Pipe.splitGroups(routerCount, maxPartialResponses);
+    	
     	
     	SSLEngineFactory.init();
     	
@@ -88,15 +99,59 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	}
 	
 	public int responsePipeLineIdx(long ccId) {
-		return responsePipeLinePool.get(ccId);
+		//SSLConnection cc = get(ccId, 0);
+		
+		
+		final int expectedRoute =  ((int)ccId)%routerCount;	
+		final int expected = ((int)ccId)%maxPartialResponses;
+
+		PoolIdxPredicate isOk = new PoolIdxPredicate() {
+			
+			@Override
+			public boolean isOk(final int i) {
+
+				//System.err.println(Arrays.toString(routerLookup )+"  "+i+" expected route "+routerLookup[i]);
+				
+				//this approach is better however it is causing an error
+				// looking for 322791 but found lower 319786 for connection 31
+				//return expectedRoute == routerLookup[i]; //TODO: need unit test on splitter to ensure match first.
+				
+				return i == expected;
+			}
+		};
+		
+		//this forces the same connection to take the same path every time which enforces order HOWEVER.
+		// we need only restrict it to the same Router but how to know that?
+		
+		int result =  responsePipeLinePool.get(ccId, isOk); //TODO: must get the connection to remember this router and stay here, unless we have writting ot this point....
+
+
+		//TODO: these two values must match, teh result should not be zero.
+		
+//		int expectedR = 31 & (int)ccId;
+//		
+//		
+//		if (expectedR != result) {
+//			System.err.println(ccId+"  should match "+result+" "+expectedR);
+//			System.err.println("FORCE EXIT ZERO DETECTED");
+//			System.exit(-1);
+//			
+//		}
+		
+	//	assert(result==expected);
+		
+		
+//		System.err.println("   "+result+"  "+expected+"  "+expectedRoute);
+		
+		return result;
 	}
 	
 	public int checkForResponsePipeLineIdx(long ccId) {
 		return responsePipeLinePool.getIfReserved(ccId);
 	}	
 	
-	public void releaseResponsePipeLineIdx(long ccId) {
-		responsePipeLinePool.release(ccId);
+	public void releaseResponsePipeLineIdx(long ccId) {		
+		responsePipeLinePool.release(ccId);	
 	}
 	
 	public int resposePoolSize() {

@@ -77,10 +77,12 @@ public class HTTPServer {
 
 		int serverBlobToEncrypt = 1<<14;
 		int serverBlobToWrite = 1<<16;
-        
+		 int routerCount = 4;	
+		 
 		String bindHost = "127.0.0.1";
-		ServerCoordinator coordinator = new ServerCoordinator(groups, bindHost, 8443, 15, 2);//32K simulanious connections on server. 
-		gm = NetGraphBuilder.buildHTTPServerGraph(true, gm, groups, 2, config, coordinator, requestUnwrapUnits, responseWrapUnits, outputPipes, socketWriters, serverInputBlobs, serverBlobToEncrypt, serverBlobToWrite); 
+		ServerCoordinator coordinator = new ServerCoordinator(groups, bindHost, 8443, 15, 2, routerCount);//32K simulanious connections on server. 
+		gm = NetGraphBuilder.buildHTTPServerGraph(true, gm, groups, 2, config, coordinator, requestUnwrapUnits, responseWrapUnits, outputPipes, socketWriters, 
+				64, serverInputBlobs, 2048, serverBlobToEncrypt, 1024, serverBlobToWrite, routerCount); 
 		//gm = NetGraphBuilder.buildHTTPServerGraph(gm, groups, apps);
         
         

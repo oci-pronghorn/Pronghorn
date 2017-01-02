@@ -648,10 +648,17 @@ public class SSLUtil {
 		return didWork;
 	}
 
+	
+	//TODO: urgent unwrap sequence numbers are broken?
+	//      do not know when to increement????
+	//      do not know how share with client???
+	
 	public static int engineUnWrap(SSLConnectionHolder ccm, Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target, 
 			                        ByteBuffer rolling, ByteBuffer[] workspace, Pipe<NetPayloadSchema> handshakePipe, Pipe<ReleaseSchema> releasePipe, 
 			                        ByteBuffer secureBuffer, int groupId, boolean isServer) {
-
+		
+		///TODO: URGENT REWIRTE TO LOW LEVEL API SINCE LARGE SERVER CALLS VERY OFTEN.
+		
 		int didWork = 0;
 		
 		while (PipeReader.hasContentToRead(source) ) {
@@ -666,7 +673,7 @@ public class SSLUtil {
 			}			
 				
 			SSLConnection cc = null;
-			if (PipeReader.peekNotMsg(source, -1)) { //if we have nothing this also passes which is not desireaable.
+			if (PipeReader.peekNotMsg(source, -1, NetPayloadSchema.MSG_BEGIN_208)) { //if we have nothing this also passes which is not desireaable.
 		//	if (Pipe.peekNotMsg(source, -1)) {	
 				//Pipe.peek
 			
@@ -715,6 +722,19 @@ public class SSLUtil {
 					assert(HandshakeStatus.NOT_HANDSHAKING ==  cc.getEngine().getHandshakeStatus()) : "handshake status is "+cc.getEngine().getHandshakeStatus();
 					//we can begin processing data now.
 				}
+			} else {
+				//this is EOF or the Begin message to be relayed
+				if (PipeReader.peekMsg(source, NetPayloadSchema.MSG_BEGIN_208)) {
+					
+					if (!PipeReader.tryMoveSingleMessage(source, target)) {
+						throw new UnsupportedOperationException("should not have happend because we checked for space at top of this method.");
+					}
+					PipeReader.releaseReadLock(source);
+					//only need to release the read, the write has already been published to target
+					continue;
+				}
+				
+				
 			}
 			
 			assert(rolling.limit()==rolling.capacity());

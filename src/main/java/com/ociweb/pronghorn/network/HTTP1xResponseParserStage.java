@@ -3,7 +3,6 @@ package com.ociweb.pronghorn.network;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
-import org.HdrHistogram.EncodableHistogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,17 +12,14 @@ import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -200,22 +196,14 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	  
 	public void addBytes(int len, Pipe pipe, int i, int sourceLen) {
 		assert(len>0) : "bad len "+len;
-		totalBytes[i]+=len;
-		//TEST REMOVED		assert(totalBytes[i] == Pipe.releasePendingByteCount(pipe)) : totalBytes[i]+" != "+Pipe.releasePendingByteCount(pipe); 
+		totalBytes[i]+=len; 
 		assert(totalBytes[i] == sourceLen) : totalBytes[i]+" != "+sourceLen;
-		//logger.info("expected {} actual {} pos {} {}",totalBytes[i], Pipe.releasePendingByteCount(pipe), Pipe.tailPosition(pipe), i);
-		//logger.info("{} vs {} ",totalBytes[i],sourceLen);
-		
 	}
 	
 	public void subBytes(int len, Pipe pipe, int i, int sourceLen) {
 		assert(len>=0) : "bad len "+len;
 		totalBytes[i]-=len;
-//		assert(totalBytes[i] == Pipe.releasePendingByteCount(pipe)) : totalBytes[i]+" != "+Pipe.releasePendingByteCount(pipe);
 		assert(totalBytes[i] == sourceLen) : totalBytes[i]+" != "+sourceLen;
-		//logger.info("expected {} actual {} pos {} {} ",totalBytes[i], Pipe.releasePendingByteCount(pipe), Pipe.tailPosition(pipe), i);
-		///logger.info("{} vs {} ",totalBytes[i],sourceLen);
-		
 	}
 	
 	@Override
@@ -239,9 +227,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				
 				Pipe<NetPayloadSchema> pipe = input[i];
 	
-		        assert(recordIncomingState(!Pipe.hasContentToRead(pipe)));		       
-//TEST REMOVED				assert(positionMemoData[(i<<2)+1] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[(i<<2)+1]+" != "+Pipe.releasePendingByteCount(input[i]);
-//TEST REMOVED				assert(totalBytes[i] == Pipe.releasePendingByteCount(pipe)) : totalBytes[i]+" != "+Pipe.releasePendingByteCount(pipe); 
+		        assert(recordIncomingState(!Pipe.hasContentToRead(pipe)));		      
 								
 				/////////////////////////////////////////////////////////////
 				//ensure we have the right backing array, and mask (no position change)
@@ -253,15 +239,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				if (!Pipe.hasContentToRead(pipe)) {
 				
 					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-					
-					//TEST REMOVED					assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe)+" pos "+trieReader.sourcePos+"  "+pipe;
-					
+		
 					if (trieReader.sourceLen==0 &&        //we have no old data
 						0==positionMemoData[stateIdx]) {  //our state is back to step 0 looking for new data
 						//We have no data in the local buffer and 
 						//We have no data on this pipe so go check the next one.
-						
-						//TEST REMOVED						assert(0==Pipe.releasePendingByteCount(pipe)) : "pending data to release of "+Pipe.releasePendingByteCount(pipe)+" yet sourceLen is zero???";
+			
 						assert(0==totalBytes[i]) : "error total bytes "+totalBytes[i];
 						
 						continue;
@@ -274,7 +257,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						if (null==cc) {	//skip data the connection was closed		
 							TrieParserReader.parseSkip(trieReader, trieReader.sourceLen);
 							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-							logger.info("must reset all resources");
+							logger.info("not done, still must reset all resources like the rollers");
 							continue;
 						}
 						
@@ -355,7 +338,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						positionMemoData[lenIdx] += len;
 					}
 					
-					assert(positionMemoData[lenIdx]<pipe.blobMask(pipe)) : "error "+len+" should be < "+pipe.blobMask(pipe);
+					assert(positionMemoData[lenIdx]<Pipe.blobMask(pipe)) : "error "+len+" should be < "+pipe.blobMask(pipe);
 					
 
 					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
@@ -371,7 +354,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					Pipe.readNextWithoutReleasingReadLock(pipe);	
 					
 					addBytes(len, pipe, i, trieReader.sourceLen);
-					//TEST REMOVED				assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
 		
 					if (-1==inputPosition[i]) {
 						//this may or may not be the end of a complete message, must hold it just in case it is.
@@ -380,12 +362,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					assert(inputPosition[i]!=-1);
 				}
 	
-				
-//				if (positionMemoData[lenIdx]!= trieReader.sourceLen) {
-//					System.err.println("no match values...............");
-//				}
-				
-				
 				int state = positionMemoData[stateIdx];
 
 //				storeState(state,cc.getUserId());
@@ -403,7 +379,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 //				}
 	
 				//TODO: only try to parse this pipe again if it has new additional data,  add this key feature to save cycles.
-				
+				 
 				
 				
 				 switch (state) {
@@ -440,18 +416,19 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							if (trieReader.sourceLen<(revisionMap.longestKnown()+1)) {
 								break;//not an error just needs more data.
 							} else {
+								//TODO: rollback to the last length run and start again because the value was too long?? ,, how would we know this???
 								
 								StringBuilder builder = new StringBuilder();
-				    			TrieParserReader.debugAsUTF8(trieReader, builder, revisionMap.longestKnown()*2,false);
-				    			logger.warn("{} looking for HTTP revision but found:\n{}\n\n",cc.id,builder);
-								
-				    			//TODO: close connection, bad behavior on server;
-				    			System.err.println("FORCED EXIT");
-				    			System.exit(-1);
-								
+								TrieParserReader.debugAsUTF8(trieReader, builder, revisionMap.longestKnown()*2,false);
+								logger.warn("{} looking for HTTP revision but found:\n{}\n\n",cc.id,builder);
+								///////////////////////////////////
+								//server is behaving badly so shut the connection
+								//////////////////////////////////
+								cc.close();								
+								TrieParserReader.parseSkip(trieReader, trieReader.sourceLen);
+								TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 							}
 							
-							assert(positionMemoData[i<<2] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[i<<2]+" != "+Pipe.releasePendingByteCount(input[i]);
 							break;
 						}
 						
@@ -479,7 +456,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//do not change state we want to come back here.									
 								} else {
 									foundWork = true; //if not end then we would rather exit stage and pick up more data
-									state = endOfHeaderProcessing(i, stateIdx, targetPipe, ccId, writer);					
+									state = endOfHeaderProcessing(i, stateIdx, targetPipe, ccId, writer);		
+
 								}
 								
 								TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
@@ -495,7 +473,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						if (headerId<0) {
 							TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 							
-							if (trieReader.sourceLen<MAX_VALID_HEADER) {
+							if (trieReader.sourceLen<MAX_VALID_HEADER) {								
 								break;//not an error just needs more data.
 							} else {
 								StringBuilder builder = new StringBuilder();
@@ -515,15 +493,25 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					case 2: //PAYLOAD READING WITH LENGTH
 							if (2==state) {
 								long lengthRemaining = payloadLengthData[i];
+								
+								String temp = ("starting length: "+lengthRemaining+" vs "+trieReader.sourceLen);
+								if (lengthRemaining<=0) {
+									System.err.println("odd length "+lengthRemaining);
+								}
+															
 								final DataOutputBlobWriter<NetResponseSchema> writer2 = PipeWriter.outputStream(targetPipe);
 								
 								if (lengthRemaining>0) {
-									
-									final int minimumCopy = 64;
-									if (trieReader.sourceLen<lengthRemaining && lengthRemaining<minimumCopy ) {
-										break;//do not bother until we have more
-									}
+							
+									//adding confusion, may not help performance after all, delete this block.
+//									final int minimumCopy = 64;
+//									if (trieReader.sourceLen<lengthRemaining && lengthRemaining<minimumCopy ) {
+//										break;//do not bother until we have more
+//									}
 										
+									//payload
+									//Appendables.appendUTF8(temp2, targetPipe.blobRing, trieReader.sourcePos,  (int)lengthRemaining,  targetPipe.blobMask);
+									
 									//logger.info("** payload reading with length");
 									final int consumed = TrieParserReader.parseCopy(trieReader, lengthRemaining, writer2);
 									lengthRemaining -= consumed;
@@ -531,10 +519,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									Pipe.releasePendingAsReadLock(pipe, consumed); 
 									subBytes(consumed, pipe, i, trieReader.sourceLen);
 																	
-									payloadLengthData[i] = lengthRemaining;
 							
 									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 								}
+								payloadLengthData[i] = lengthRemaining;
 								
 								if (0 == lengthRemaining) {
 									//NOTE: input is low level, TireParser is using low level take
@@ -542,8 +530,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									writer2.closeHighLevelField(NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3);
 									positionMemoData[stateIdx] = state = 5;
 									PipeWriter.publishWrites(targetPipe);	
-									
-									
+														
 									foundWork = finishAndRelease(true, i, stateIdx, ccId, pipe, cc); 
 									break;
 								} else {
@@ -638,9 +625,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										int len = writer3.closeHighLevelField(NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3);
 										positionMemoData[stateIdx] = state = 5;
 										PipeWriter.publishWrites(targetPipe);	
+							
 										foundWork = finishAndRelease(foundWork, i, stateIdx, ccId, pipe, cc); 
-										
-										
+																				
 										assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe)+" pos "+trieReader.sourcePos+"  "+pipe;
 										
 										
@@ -730,7 +717,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			positionMemoData[stateIdx]= state= 3;	
 			payloadLengthData[i] = 0;//starting chunk size.
 		} else {
-			positionMemoData[stateIdx]= state= 2;									
+			positionMemoData[stateIdx]= state= 2;			
 		}
 		return state;
 	}
@@ -753,15 +740,21 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			case H_CONTENT_TYPE:										
 				writer.writeShort((short)H_CONTENT_TYPE);
 				//TODO: another way to do this is to merge the typeMap into the header map on constuction, this should improve performance by doing single pass.
+				int oldPos = trieReader.sourcePos;
 				int type = (int)TrieParserReader.capturedFieldQuery(trieReader, 0, typeMap);
 				if (type<0) {
-					//TODO: URGENT fix non of the types are getting recognized by the client code, 
+//					//TODO: URGENT fix non of the types are getting recognized by the client code, 
 //					StringBuilder captured = new StringBuilder();
 //					TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, captured);
 //					logger.info("Unable to recognize content type {} ",captured);
 				}				
 				writer.writeShort((short)type);
-				
+
+				if (oldPos!=trieReader.sourcePos) {
+					throw new RuntimeException();
+				}
+				//positionMemoData[stateIdx]
+						
 				
 				break;
 			default:
@@ -786,7 +779,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			Pipe<NetPayloadSchema> pipe, ClientConnection cc) {
 		
 		assert(5==positionMemoData[stateIdx]);
-		
+
 		//only ack when all the data held has been consumed.
 		if (trieReader.sourceLen<=0 &&
 		    Pipe.contentRemaining(pipe)==0) {	//added second rule to minimize release messages.

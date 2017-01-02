@@ -185,6 +185,21 @@ public abstract class PronghornStage {
         return p;
     }
     
+
+    
+   public static Pipe[] join(Pipe[][][] pipes) {
+        
+        int j = pipes.length;
+        Pipe[][] p = new Pipe[j][];
+        while (--j>=0) {        	
+        	Pipe[][] temp = pipes[j];        	        	
+            p[j] = join(temp);           
+            
+        }        
+        return join(p);
+    }
+    
+    
      public static Pipe[] join(Pipe[] pipes, Pipe ... additional) {
         
         int totalCount = pipes.length+additional.length;

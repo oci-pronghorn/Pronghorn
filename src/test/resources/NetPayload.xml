@@ -16,10 +16,13 @@
      <uInt64 name="ConnectionId" id="201"/>
    </template>
    
-   <template name="Upgrade" id="207">
+   <template name="Upgrade" id="307">
      <uInt64 name="ConnectionId" id="201"/>
      <uInt32 name="NewRoute" id="205"/>
+   </template>  
+      
+   <template name="Begin" id="208">
+     <int32 name="SequnceNo" id="209"/>
    </template>
-   
       
 </templates>

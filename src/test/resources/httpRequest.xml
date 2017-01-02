@@ -9,8 +9,8 @@
             <delta/>
         </uInt64>
                         
-        <uInt32 name="Sequence" id="26">
-        </uInt32>
+        <int32 name="Sequence" id="26">
+        </int32>
         
         <uInt32 name="Verb" id="23">
         </uInt32>
@@ -29,8 +29,8 @@
             <delta/>
         </uInt64>
         
-        <uInt32 name="Sequence" id="26">
-        </uInt32>
+        <int32 name="Sequence" id="26">
+        </int32>
         
         <uInt32 name="Verb" id="23">
         </uInt32>

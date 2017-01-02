@@ -3,39 +3,64 @@
 
 
    <template name="HTTPGet" id="100">   
+     <uInt32 name="Listener" id="10"/>
      <uInt32 name="Port" id="1"/>
      <string name="Host" id="2" charset="unicode"/>
      <string name="Path" id="3" charset="unicode"/>
-     <uInt32 name="Listener" id="10"/>
    </template>
    
+    <template name="FastHTTPGet" id="200">   
+     <uInt32 name="Listener" id="10"/>
+     <uInt32 name="Port" id="1"/>
+     <string name="Host" id="2" charset="unicode"/>
+     <uInt64 name="ConnectionId" id="20"/>     
+     <string name="Path" id="3" charset="unicode"/>
+   </template>
+
    <template name="HTTPPost" id="101">
+     <uInt32 name="Listener" id="10"/>
      <uInt32 name="Port" id="1"/>
      <string name="Host" id="2" charset="unicode"/>
      <string name="Path" id="3" charset="unicode"/>
      <byteVector name="Payload" id="5"/>
-     <uInt32 name="Listener" id="10"/>
    </template>   
   
    <template name="HTTPPostChunked" id="102">
+     <uInt32 name="Listener" id="10"/>
      <uInt32 name="Port" id="1"/>
      <string name="Host" id="2" charset="unicode"/>
      <string name="Path" id="3" charset="unicode"/>
      <uInt64 name="TotalLength" id = "6"/>
      <byteVector name="PayloadChunk" id="5"/>
-     <uInt32 name="Listener" id="10"/>
    </template>   
 
    <template name="HTTPPostChunk" id="103">
-     <byteVector name="PayloadChunk" id="5"/>
      <uInt32 name="Listener" id="10"/>
+     <byteVector name="PayloadChunk" id="5"/>
    </template>     
   
    <template name="Close" id="104">
+     <uInt32 name="Listener" id="10"/>
    	 <uInt32 name="Port" id="1"/>
      <string name="Host" id="2" charset="unicode"/>
-     <uInt32 name="Listener" id="10"/>
    </template>
-  
+      
+   <template name="FastHTTPPost" id="201">
+     <uInt32 name="Listener" id="10"/>
+     <uInt32 name="Port" id="1"/>
+     <string name="Host" id="2" charset="unicode"/>
+     <uInt64 name="ConnectionId" id="20"/>
+     <string name="Path" id="3" charset="unicode"/>
+     <byteVector name="Payload" id="5"/>
+   </template>     
+      
+   <template name="FastClose" id="204">
+     <uInt32 name="Listener" id="10"/>
+   	 <uInt32 name="Port" id="1"/>
+     <uInt64 name="ConnectionId" id="20"/>
+     <string name="Host" id="2" charset="unicode"/>
+   </template>
+
+      
       
 </templates>

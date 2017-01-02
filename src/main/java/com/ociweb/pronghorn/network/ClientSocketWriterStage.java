@@ -31,6 +31,10 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private final int     debugMaxBlockSize = 50; 
 	
 	
+//	private long nextTime = 0;
+//	private int xA = 0;
+//	private int xB = 0;
+	
 	
 	public static ClientSocketWriterStage newInstance(GraphManager graphManager, ClientCoordinator ccm, Pipe<NetPayloadSchema>[] input) {
 		return new ClientSocketWriterStage(graphManager, ccm, input);
@@ -71,6 +75,13 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 		do {
 			didWork = false;
+			
+//			long now = System.currentTimeMillis();
+//			if (now>nextTime) {				
+//				logger.info("total written from client "+totalBytes+"  A:"+xA+" B:"+xB);
+//				nextTime = now + 5_000;
+//			}
+//			
 						
 			int i = input.length;
 			while (--i>=0) {
@@ -85,6 +96,13 @@ public class ClientSocketWriterStage extends PronghornStage {
 					}
 				} else {
 					Pipe<NetPayloadSchema> pipe = input[i];
+					
+//					if (connections[1]!=null) {
+//						xA++;
+//					}
+//					if (!Pipe.hasContentToRead(pipe)) {
+//						xB++;
+//					}
 					
 					int msgIdx = -1;
 					//if here helps balance out the traffic so no single users gets backed up.
@@ -269,9 +287,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 										
 										tryWrite(i);
 									} else {
-										logger.error("GGGGGGGGGGGGGGGggggg client lost connection and did not send datafor {} ", channelId);
-										//TODO: this in important case to test.
-										//can not send this connection was lost
+										//can not send this connection was lost, consume and drop the data to get it off the pipe
 										Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
 										Pipe.releaseReadLock(pipe);
 										continue;
@@ -305,12 +321,13 @@ public class ClientSocketWriterStage extends PronghornStage {
 	}
 
 	private void tryWrite(int i) {
-		assert(buffers[i].hasRemaining()) : "please, do not call if there is nothing to write.";		
+		assert(buffers[i].hasRemaining()) : "please, do not call if there is nothing to write.";	
+		int value = -10;
 		try {
 			
 			if (!debugWithSlowWrites) {
 				assert(buffers[i].isDirect());
-				connections[i].getSocketChannel().write(buffers[i]);
+				value = connections[i].getSocketChannel().write(buffers[i]);
 			} else {
 				//write only this many bytes over the network at a time
 				ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);
@@ -350,6 +367,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 			//logger.info("write clear {}",i);
 			
 			connections[i]=null;
+		} else {
+	//		logger.info("unable to finish write still has {} outstanding for {} upon write got {} ",buffers[i].remaining(),i,value);
+			
 		}
 	}
 

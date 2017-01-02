@@ -54,6 +54,9 @@ public class StaticFileRequestGeneratorStage extends PronghornStage {
         
         //Must be done extra early so other stages can see these files, so we do it here in the constuctor before startup.
         this.testDataFiles = new TestDataFiles(new File(System.getProperty("java.io.tmpdir"),"staticFileRequestGeneratorStage"), fileCount, fileSize);
+        
+        //System.out.println("requsted files "+fileCount+" generated "+testDataFiles.testFilePaths.length+" total "+(fileCount*iterations));
+        
     }
     
     public String tempFolder() {
@@ -77,10 +80,12 @@ public class StaticFileRequestGeneratorStage extends PronghornStage {
     @Override
     public void run() {
         
+    	
+    	
         while (Pipe.hasRoomForWrite(output)) {
             
             if (--pathIdx < 0) {
-                if (--count < 0) {
+                if (--count <= 0) {
                 	
                 	Pipe.publishEOF(output);
                     requestShutdown();
@@ -90,9 +95,10 @@ public class StaticFileRequestGeneratorStage extends PronghornStage {
                 pathIdx = testDataFiles.testFilePaths.length-1;
             }
             
+            
             requestCounts++;
             int size = Pipe.addMsgIdx(output, HTTPRequestSchema.MSG_FILEREQUEST_200);
-            Pipe.addLongValue(0, output); //channelId
+            Pipe.addLongValue(pathIdx, output); //channelId, but we use  pathIdx  for easy testing
             Pipe.addIntValue(sequence++, output); //sequence            
             Pipe.addIntValue(verb.ordinal(), output); //verb
             

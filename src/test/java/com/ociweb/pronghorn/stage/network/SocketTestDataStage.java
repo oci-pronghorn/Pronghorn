@@ -7,6 +7,8 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 import org.junit.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SocketTestDataStage extends PronghornStage {
 
@@ -20,6 +22,8 @@ public class SocketTestDataStage extends PronghornStage {
 	private int[] bytesPerUser;
 	private int expectedBytesPerUser;
 		
+	private final static Logger logger = LoggerFactory.getLogger(SocketTestDataStage.class);
+	
 	public SocketTestDataStage(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<ReleaseSchema> releasePipe, 
 			                    boolean encryptedContent, int testUsers, int[] testSeeds, int[] testSizes) {
 		super(gm,input,releasePipe);
@@ -71,21 +75,25 @@ public class SocketTestDataStage extends PronghornStage {
 		}
 	}
 
-	private static int testNewData(Pipe<NetPayloadSchema> pipe, Pipe release, boolean encrytpedContent, int[] bytesPerUser) {
+	private static int testNewData(Pipe<NetPayloadSchema> pipe, Pipe<ReleaseSchema> release, boolean encrytpedContent, int[] bytesPerUser) {
 		
 		int count = 0;
 		while (Pipe.hasContentToRead(pipe) && Pipe.hasRoomForWrite(release)) {
 			
-			switch (Pipe.takeMsgIdx(pipe)) {
+			int msgIdx = Pipe.takeMsgIdx(pipe);
+			//logger.info("------- consume msg Idx: {}",msgIdx);
+			
+			switch (msgIdx) {
 			
 				case NetPayloadSchema.MSG_DISCONNECT_203:
 					throw new UnsupportedOperationException("Not expected in test");
 					//break;
 				case NetPayloadSchema.MSG_ENCRYPTED_200:
 					{
+					//	logger.info("----- reading encrypted");
 					Assert.assertTrue(encrytpedContent);
 					long conId = Pipe.takeLong(pipe);
-					
+										
 					int meta = Pipe.takeRingByteMetaData(pipe);
 					int len = Pipe.takeRingByteLen(pipe);		
 					int pos = Pipe.bytePosition(meta, pipe, len);
@@ -104,9 +112,12 @@ public class SocketTestDataStage extends PronghornStage {
 					break;
 				case NetPayloadSchema.MSG_PLAIN_210:
 					{
+				//	logger.info("----- reading plain");
+						
 					Assert.assertFalse(encrytpedContent);
 					
 					long conId = Pipe.takeLong(pipe);
+										
 					long position = Pipe.takeLong(pipe);
 					
 
@@ -127,9 +138,15 @@ public class SocketTestDataStage extends PronghornStage {
 					count += len;
 					}	
 					break;
-				case NetPayloadSchema.MSG_UPGRADE_207:
+				case NetPayloadSchema.MSG_UPGRADE_307:
 					throw new UnsupportedOperationException("Not expected in test");
-					//break;
+				case NetPayloadSchema.MSG_BEGIN_208:
+					
+					int seq = Pipe.takeInt(pipe);					
+					Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(NetPayloadSchema.instance,NetPayloadSchema.MSG_BEGIN_208));
+					Pipe.releaseReadLock(pipe);
+										
+					break;
 				case -1:
 					Pipe.confirmLowLevelRead(pipe, Pipe.EOF_SIZE);
 					Pipe.releaseReadLock(pipe);
@@ -142,9 +159,10 @@ public class SocketTestDataStage extends PronghornStage {
 
 	private static void publishRelease(Pipe pipe, long conId, long position) {
 		assert(position!=-1);
-		int size = Pipe.addMsgIdx(pipe, ReleaseSchema.MSG_RELEASE_100);
+		int size = Pipe.addMsgIdx(pipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101);
 		Pipe.addLongValue(conId, pipe);
 		Pipe.addLongValue(position, pipe);
+		Pipe.addIntValue(0, pipe);
 		Pipe.confirmLowLevelWrite(pipe, size);
 		Pipe.publishWrites(pipe);
 	}

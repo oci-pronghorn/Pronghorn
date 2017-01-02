@@ -12,7 +12,7 @@ import com.ociweb.pronghorn.network.HTTPClientRequestStage;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
-import com.ociweb.pronghorn.network.schema.NetRequestSchema;
+import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
@@ -55,14 +55,14 @@ public class ClientHTTPSPipelineTest {
 		//IntHashTable.setItem(listenerPipeLookup, 42, 0);//put on pipe 0
 		
 		
-		PipeConfig<NetRequestSchema> netREquestConfig = new PipeConfig<NetRequestSchema>(NetRequestSchema.instance, 30,1<<9);
+		PipeConfig<ClientHTTPRequestSchema> netREquestConfig = new PipeConfig<ClientHTTPRequestSchema>(ClientHTTPRequestSchema.instance, 30,1<<9);
 		PipeConfig<NetPayloadSchema> clientNetRequestConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,4,16000); 
 				
 		PipeConfig<NetResponseSchema> netResponseConfig = new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, 10, 1<<15); //if this backs up we get an error TODO: fix
 
 		
 		//holds new requests
-		Pipe<NetRequestSchema>[] input = new Pipe[inputsCount];		
+		Pipe<ClientHTTPRequestSchema>[] input = new Pipe[inputsCount];		
 		//responses from the server	
 		Pipe<NetResponseSchema>[] toReactor = new Pipe[maxListeners];	
 		
@@ -75,7 +75,7 @@ public class ClientHTTPSPipelineTest {
 		
 		int k = inputsCount;
 		while (--k>=0) {
-            input[k] = new Pipe<NetRequestSchema>(netREquestConfig);	
+            input[k] = new Pipe<ClientHTTPRequestSchema>(netREquestConfig);	
 		}	
 		
 		Pipe<NetPayloadSchema>[] clientRequests = new Pipe[outputsCount];
@@ -130,12 +130,12 @@ public class ClientHTTPSPipelineTest {
 	//	int b = 0;
 		while (requests>0 && System.currentTimeMillis()<timeout) {
 						
-			Pipe<NetRequestSchema> pipe = input[0];
-			if (PipeWriter.tryWriteFragment(pipe, NetRequestSchema.MSG_HTTPGET_100)) {
-				PipeWriter.writeUTF8(pipe, NetRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2, "encrypted.google.com");
-				PipeWriter.writeInt(pipe, NetRequestSchema.MSG_HTTPGET_100_FIELD_LISTENER_10,  requests%maxListeners);
-				PipeWriter.writeUTF8(pipe, NetRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3, "/");
-				PipeWriter.writeInt(pipe, NetRequestSchema.MSG_HTTPGET_100_FIELD_PORT_1, 443);
+			Pipe<ClientHTTPRequestSchema> pipe = input[0];
+			if (PipeWriter.tryWriteFragment(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100)) {
+				PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2, "encrypted.google.com");
+				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_LISTENER_10,  requests%maxListeners);
+				PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3, "/");
+				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PORT_1, 443);
 				PipeWriter.publishWrites(pipe);
 
 				requests--;

@@ -49,15 +49,15 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 
     
     private final static Logger logger = LoggerFactory.getLogger(FileReadModuleStage.class);
-    private final int maxTotalPathLength = 65535;
+    
+
     private final int maxFileCount = 256;
     
     private final Pipe<HTTPRequestSchema>[] inputs;    
     private final Pipe<ServerResponseSchema> output;
     private PipeHashTable outputHash;
 
-    private final FileSystem fileSystem;    
-    private FileSystemProvider provider;
+    private final FileSystem fileSystem;  
     private Set<OpenOption> readOptions;
     
     private TrieParser pathCache;
@@ -117,9 +117,17 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     
     private int reuseMask;
     
-        
+    //TODO: order supervisor needs more pipes to stop blocks
+    //TODO: this class needs to extract the file load path
+    
+    
+    
     public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, File rootPath) {
         return new FileReadModuleStage(graphManager, inputs, output, httpSpec, rootPath);
+    }
+    
+    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, File rootPath) {
+        return new FileReadModuleStage(graphManager, new Pipe[]{input}, output, httpSpec, rootPath);
     }
     
     public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema> output, 
@@ -130,7 +138,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         this.inputs = inputs; //TODO: fix hack must walk all.
         this.output = output;
         this.fileSystem = FileSystems.getDefault();
+        
         this.folderRootString = rootPath.toString();
+        
         this.folderRoot = rootPath;       
         
        // System.out.println("RootFolder: "+folderRoot);
@@ -216,34 +226,34 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     
     @Override
     public void startup() {
-        
-        this.outputHash = new PipeHashTable(hashTableBits);
-        this.fileExtensionTable = buildFileExtHashTable(httpSpec.supportedHTTPContentTypes);
 
+    	//local state
+        this.outputHash = new PipeHashTable(hashTableBits);
+        this.pathCacheReader = new TrieParserReader();
+        this.channelHolder = new ServiceObjectHolder<FileChannel>(OPEN_FILECHANNEL_BITS, FileChannel.class, new FileChannelValidator() , false);
+        
+        
+        //shared immutable state
+        
+        this.fileExtensionTable = buildFileExtHashTable(httpSpec.supportedHTTPContentTypes);
+        
         this.paths = new Path[maxFileCount];
         this.fcId = new long[maxFileCount];
         this.fileSizes = new long[maxFileCount];
         this.fileSizeAsBytes = new byte[maxFileCount][];
         this.etagBytes = new byte[maxFileCount][];
-        this.type = new int[maxFileCount];
-        this.pathCache = new TrieParser(maxTotalPathLength, 2, false, false);
-        this.pathCacheReader = new TrieParserReader();
-         
-
-        this.channelHolder = new ServiceObjectHolder<FileChannel>(OPEN_FILECHANNEL_BITS, FileChannel.class, new FileChannelValidator() , false);
+        this.type = new int[maxFileCount];        
                 
-        this.provider = fileSystem.provider();
         this.readOptions = new HashSet<OpenOption>();
         this.readOptions.add(StandardOpenOption.READ);
-        
-        File rootFileDirectory = folderRoot;
-        if (!rootFileDirectory.isDirectory()) {
-            throw new UnsupportedOperationException("This must be a folder: "+folderRoot);
-        }
 
-        int rootSize = folderRootString.endsWith("/") || folderRootString.endsWith("\\") ? folderRootString.length() : folderRootString.length()+1;
         
-        collectAllKnownFiles(rootFileDirectory, rootSize);
+        //TODO: pull out as common object for all instances
+        TrieParser pc = buildTrieParser(folderRootString, folderRoot);
+        
+        
+        this.pathCache = pc;
+        
         activeFileChannel = null;//NOTE: above method sets activeFileChannel and it must be cleared before run starts.
   
         //build private ring buffer of outgoing data files
@@ -262,8 +272,22 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         reusePositionConsume=0;
     }
 
+	private TrieParser buildTrieParser(String root, File folderRoot) {
+		final int maxTotalPathLength = 65535;
+        TrieParser pc = new TrieParser(maxTotalPathLength, 2, false, false);
+        File rootFileDirectory = folderRoot;
+        if (!rootFileDirectory.isDirectory()) {
+            throw new UnsupportedOperationException("This must be a folder: "+folderRoot);
+        }
 
-    private void collectAllKnownFiles(File root, int rootSize) {
+        int rootSize = root.endsWith("/") || root.endsWith("\\") ? root.length() : root.length()+1;
+        
+        collectAllKnownFiles(rootFileDirectory, rootSize, pc);
+		return pc;
+	}
+
+
+    private void collectAllKnownFiles(File root, int rootSize, TrieParser pathCache) {
         File[] children = root.listFiles();
         
         int i = children.length;
@@ -272,26 +296,26 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             File child = children[i];
             if ((!child.isHidden()) && child.canRead()) {                
                 if (child.isDirectory()) {
-                    collectAllKnownFiles(child, rootSize);
+                    collectAllKnownFiles(child, rootSize, pathCache);
                 } else {
-                    setupUnseenFile(pathCache,child.toString(), rootSize);                   
+                    setupUnseenFile(pathCache, child.toString(), rootSize, fileSystem);                   
                 }       
             }
         }
     }
     
     
-    private int setupUnseenFile(TrieParser trie, String pathString, int rootSize) {
+    private int setupUnseenFile(TrieParser trie, String pathString, int rootSize, FileSystem fileSystem) {
         
     		//	logger.trace("loading new file: "+pathString);
                 int newPathId;
                 try {
                     Path path = fileSystem.getPath(pathString);
-                    provider.checkAccess(path);
+                    fileSystem.provider().checkAccess(path);
                     newPathId = ++pathCount;
                     byte[] asBytes = pathString.getBytes();
                     
-                    logger.debug("FileReadStage is loading {} ",pathString);  
+                    //logger.debug("FileReadStage is loading {} ",pathString);  
                                         
                     setupUnseenFile(trie, asBytes.length-rootSize, asBytes, rootSize, Integer.MAX_VALUE, newPathId, pathString, path);
                 } catch (IOException e) {
@@ -410,10 +434,11 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         
         activeChannelHigh = Pipe.takeInt(input);
         activeChannelLow  = Pipe.takeInt(input); 
-   
- //       logger.info("file request for channel {} {}", activeChannelHigh, activeChannelLow);
-        
+           
         activeSequenceId = Pipe.takeInt(input);
+        
+//        logger.info("file request for channel {} {} seq {} ", activeChannelHigh, activeChannelLow, activeSequenceId);
+
         int verb = Pipe.takeInt(input);
         
                  
@@ -511,7 +536,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         	assert(	paths[pathId].toFile().isFile() );
         	assert(	paths[pathId].toFile().exists() );
         	        			
-            activeFileChannel = provider.newFileChannel(paths[pathId], readOptions);
+            activeFileChannel = fileSystem.provider().newFileChannel(paths[pathId], readOptions);
             fcId[pathId] = channelHolder.add(activeFileChannel);
             fileSizes[pathId] = activeFileChannel.size();
         } catch (IOException e) {
@@ -526,7 +551,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             String pathString = Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString();
             Path path = fileSystem.getPath(folderRootString, pathString);          
             
-            provider.checkAccess(path);
+            fileSystem.provider().checkAccess(path);
             newPathId = ++pathCount;
             setupUnseenFile(trie, bytesLength, bytesBackingArray, bytesPosition, bytesMask, newPathId, pathString, path);
             
@@ -551,7 +576,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 
             StringBuilder builder = new StringBuilder();
             
-            activeFileChannel = provider.newFileChannel(paths[pathId] = path, readOptions);
+            activeFileChannel = fileSystem.provider().newFileChannel(paths[pathId] = path, readOptions);
             fcId[pathId] = channelHolder.add(activeFileChannel);
             etagBytes[pathId] = Appendables.appendHexDigits(builder, fcId[pathId]).toString().getBytes();
                         
@@ -662,6 +687,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     int inFlightCopy = 0;    
     int fromDisk = 0;
     
+    long lastTime = 0;
+    
     
     private boolean writeBodiesWhileRoom(int channelHigh, int channelLow, int sequence, Pipe<ServerResponseSchema> localOutput, FileChannel localFileChannel, int pathId, Pipe<HTTPRequestSchema> input) throws IOException {
 
@@ -670,6 +697,17 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
        if (null != localFileChannel) {
          long localPos = activePosition;
        //  logger.info("write body {} {}",Pipe.hasRoomForWrite(localOutput), localOutput);
+         
+         
+         boolean debug = false;
+         if (debug) {
+	         long now = System.currentTimeMillis();
+	         if (now>lastTime) {	        	 
+	        		logger.info("total bytes out {} inFlightRef {} inFlightCopy {} fromDisk {} ",totalBytes, inFlightRef, inFlightCopy, fromDisk);	        	 
+	        	 lastTime = now+2_000;
+	         }
+         }
+         
          
          while (Pipe.hasRoomForWrite(localOutput, Pipe.sizeOf(ServerResponseSchema.instance, ServerResponseSchema.MSG_SKIP_300)+Pipe.sizeOf(ServerResponseSchema.instance, ServerResponseSchema.MSG_TOCHANNEL_100)  )) {
                            

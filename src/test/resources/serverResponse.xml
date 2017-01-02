@@ -9,8 +9,8 @@
             <delta/>
         </uInt64>
         
-        <uInt32 name="SequenceNo" id="23">
-        </uInt32>
+        <int32 name="SequenceNo" id="23">
+        </int32>
         
 		<byteVector name="Payload" id="25"/>
         <uInt32 name="RequestContext" id="24"> <!-- this field must be last -->
@@ -29,8 +29,8 @@
             <delta/>
         </uInt64>
         
-        <uInt32 name="SequenceNo" id="23"><!-- applicable to subscription only -->
-        </uInt32>
+        <int32 name="SequenceNo" id="23"><!-- applicable to subscription only -->
+        </int32>
         
         <byteVector name="Payload" id="25"/>
         <uInt32 name="RequestContext" id="24"> <!-- this field must be last -->

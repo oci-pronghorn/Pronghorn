@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.network;
 
-public class ConnectionContext {
+public final class ConnectionContext {
 
     private long channelId;
     

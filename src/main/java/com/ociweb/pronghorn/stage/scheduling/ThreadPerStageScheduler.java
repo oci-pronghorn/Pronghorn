@@ -421,7 +421,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			long duration = System.nanoTime()-start;
 			if (duration>0) {
 				GraphManager.accumRunTime(graphManager, stage.stageId, (duration+500_000L)/1_000_000L);
-			}
+			} 
 			
 		} while (continueRunning(this, stage));
 	}

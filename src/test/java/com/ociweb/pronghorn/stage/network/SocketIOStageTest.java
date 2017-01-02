@@ -13,6 +13,7 @@ import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.ServerNewConnectionStage;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
@@ -54,12 +55,14 @@ public class SocketIOStageTest {
         
         PipeConfig<ServerConnectionSchema> newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 30);  
         PipeConfig<NetPayloadSchema> payloadPipeConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 20, 32768);
+        PipeConfig<NetPayloadSchema> payloadServerPipeConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 20, 32768);
         PipeConfig<ReleaseSchema> releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,10);
 		
         GraphManager gm = new GraphManager();
         
         String bindHost = "127.0.0.1";
-        ServerCoordinator serverCoordinator = new ServerCoordinator(socketGroups, bindHost, port, maxConnBits, maxtPartials);
+        int routerCount = 1;
+        ServerCoordinator serverCoordinator = new ServerCoordinator(socketGroups, bindHost, port, maxConnBits, maxtPartials, routerCount);
 		ClientCoordinator clientCoordinator = new ClientCoordinator(                    maxConnBits, maxtPartials, false);
 		
 		
@@ -87,7 +90,7 @@ public class SocketIOStageTest {
 		    Pipe<NetPayloadSchema>[] output = new Pipe[maxtPartials];
 		    int p = maxtPartials;
 		    while (--p>=0) {
-		    	output[p]=new Pipe<NetPayloadSchema>(payloadPipeConfig);
+		    	output[p]=new Pipe<NetPayloadSchema>(payloadServerPipeConfig);
 		    }	    
 		    Pipe[] releasePipes = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};        
 			ServerSocketReaderStage.newInstance(gm, releasePipes, output, serverCoordinator, socketGroupId, encryptedContent);	
@@ -107,7 +110,7 @@ public class SocketIOStageTest {
 		    	response[z]=new Pipe<NetPayloadSchema>(payloadPipeConfig);
 		    }
 		    new ClientSocketReaderStage(gm, clientCoordinator, releasePipes, response, encryptedContent);
-			watch = new SocketTestDataStage(gm, response, releasePipes[0], encryptedContent, testUsers, testSeeds, testSizes); 
+			watch = new SocketClientTestDataStage(gm, response, releasePipes[0], encryptedContent, testUsers, testSeeds, testSizes); 
 		}
 		
 	    MonitorConsoleStage.attach(gm);
@@ -137,10 +140,13 @@ public class SocketIOStageTest {
         
         PipeConfig<ServerConnectionSchema> newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 30);  
         PipeConfig<NetPayloadSchema> payloadPipeConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 20, 32768);
+        PipeConfig<NetPayloadSchema> payloadServerPipeConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 20, 32768);
+        
         PipeConfig<ReleaseSchema> releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,10);
         
         String bindHost = "127.0.0.1";
-		ServerCoordinator serverCoordinator = new ServerCoordinator(socketGroups, bindHost, port, maxConnBits, maxtPartials);
+        int routerCount = 1;
+		ServerCoordinator serverCoordinator = new ServerCoordinator(socketGroups, bindHost, port, maxConnBits, maxtPartials, routerCount);
 		ClientCoordinator clientCoordinator = new ClientCoordinator(                    maxConnBits, maxtPartials,false);
 					
 		///
@@ -156,7 +162,7 @@ public class SocketIOStageTest {
 	    Pipe<NetPayloadSchema>[] output = new Pipe[maxtPartials];
 	    int p = maxtPartials;
 	    while (--p>=0) {
-	    	output[p]=new Pipe<NetPayloadSchema>(payloadPipeConfig);
+	    	output[p]=new Pipe<NetPayloadSchema>(payloadServerPipeConfig);
 	    }
 	    
 	    Pipe[] acks = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};        

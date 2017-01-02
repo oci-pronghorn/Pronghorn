@@ -20,6 +20,7 @@ public class SSLConnection {
 
 	protected int localRunningBytesProduced;
 	private long lastNetworkBeginWait = 0;
+	private int sequenceNo;
 
 	protected boolean isDisconnecting = false;
 	protected static boolean isShuttingDown =  false;
@@ -98,6 +99,21 @@ public class SSLConnection {
 			return now - lastNetworkBeginWait;
 		}
 	}
+
+	public void setSequenceNo(int seq) {
+//		if (seq<sequenceNo) {
+//			log.info("FORCE EXIT value rolled back {}for chanel{} ",seq,id);
+//			System.exit(-1);
+//		}
+		//	log.info("setSequenceNo {} for chanel {}",seq,id);
+		sequenceNo = seq;
+	}
+	
+	public int getSequenceNo() {
+		//  log.info("getSequenceNo {} for chanel {}",sequenceNo,id);
+		return sequenceNo;
+	}
+	
 
 
 	

@@ -84,11 +84,15 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	 * @return -1 if the host port and userId are not found
 	 */
 	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int userId) {	
+		return lookup(hostBack,hostPos,hostLen,hostMask,port, userId, guidWorkspace, hostTrieReader);
+	}
+	
+	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int userId, byte[] workspace, TrieParserReader reader) {	
 		//TODO: lookup by userID then by port then by host??? may be a better approach instead of guid 
-		int len = ClientConnection.buildGUID(guidWorkspace, hostBack, hostPos, hostLen, hostMask, port, userId);	
+		int len = ClientConnection.buildGUID(workspace, hostBack, hostPos, hostLen, hostMask, port, userId);	
 		
 		
-		long result = TrieParserReader.query(hostTrieReader, hostTrie, guidWorkspace, 0, len, Integer.MAX_VALUE);
+		long result = TrieParserReader.query(reader, hostTrie, workspace, 0, len, Integer.MAX_VALUE);
 		
 //		if (result<0) {
 //			String host = Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask).toString();
@@ -99,6 +103,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 //			
 //		}
 		
+		assert(0!=result) : "connection ids must be postive or negative if not found";
 		return result;
 	}
 	
@@ -181,7 +186,16 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		
 		long connectionId = ccm.lookup(hostBack,hostPos,hostLen,hostMask, port, userId);			
 		
+		return openConnection(ccm, hostBack, hostPos, hostLen, hostMask, port, userId, pipeIdx, handshakeBegin,	connectionId);
+	}
+
+
+	public static ClientConnection openConnection(ClientCoordinator ccm, byte[] hostBack, int hostPos, int hostLen,
+			int hostMask, int port, int userId, int pipeIdx, Pipe<NetPayloadSchema>[] handshakeBegin,
+			long connectionId) {
+		
 		ClientConnection cc = null;
+		
 		if (-1 == connectionId || null == (cc = (ClientConnection) ccm.connections.get(connectionId))) { //NOTE: using straight get since un finished connections may not be valid.
 						
 			//logger.warn("Unable to lookup connection");
