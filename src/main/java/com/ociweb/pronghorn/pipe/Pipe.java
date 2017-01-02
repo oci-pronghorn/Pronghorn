@@ -930,6 +930,43 @@ public class Pipe<T extends MessageSchema> {
 		return result;
 				
 	}
+    
+    //TODO: URGENT we need a unit test to ensure split pipes and split groups give the same splitting results.
+    
+    /**
+     * matching the above splitPipes logic this method produces an inverse lookup array to determine group given a single index.
+     * 
+     * @param groups
+     * @param fullLen
+     * @return array to look up which group a value is in
+     */
+    public static int[] splitGroups(final int groups, final int fullLen) {
+		
+    	int c = 0;
+		int[] result = new int[fullLen];
+			
+		int last = 0;
+		
+		for(int p = 1;p<groups;p++) {			
+			int nextLimit = (p*fullLen)/groups;			
+			int plen = nextLimit-last;	
+			
+			while (--plen>=0) {
+				result[c++] = p-1;
+			}
+		    
+			last = nextLimit;
+		}
+		int plen = fullLen-last;
+	    
+		while (--plen>=0) {
+			result[c++] = groups-1;
+		}
+		
+		return result;
+				
+	}
+    
 
 	public static <S extends MessageSchema> void writeFieldToOutputStream(Pipe<S> pipe, OutputStream out) throws IOException {
         int meta = Pipe.takeRingByteMetaData(pipe);
@@ -2327,6 +2364,7 @@ public class Pipe<T extends MessageSchema> {
 		return pos + Pipe.bytesReadBase(pipe);
 	}
 
+	
 	/*
 	 * WARNING: this method has side effect of moving byte pointer.
 	 */
@@ -2340,6 +2378,11 @@ public class Pipe<T extends MessageSchema> {
 
     @Deprecated
     public static <S extends MessageSchema> int bytePositionGen(int meta, Pipe<S> pipe) {
+    	return convertToPosition(meta,pipe);
+    }
+    
+    //WARNING: this has no side effect
+    public static <S extends MessageSchema> int convertToPosition(int meta, Pipe<S> pipe) {
     	return restorePosition(pipe, meta & RELATIVE_POS_MASK);
     }
 
@@ -2505,6 +2548,10 @@ public class Pipe<T extends MessageSchema> {
         return Pipe.hasContentToRead(pipe) && peekInt(pipe)!=expected;    	
     }    
 
+    public static <S extends MessageSchema> boolean peekMsg(Pipe<S> pipe, int expected1, int expected2) {
+        return Pipe.hasContentToRead(pipe) && (peekInt(pipe)==expected1 || peekInt(pipe)==expected2);
+    }
+    
     public static <S extends MessageSchema> int peekInt(Pipe<S> pipe) {
     	assert(Pipe.hasContentToRead(pipe)) : "results would not be repeatable";
         return readValue(pipe.slabRing,pipe.mask,pipe.slabRingTail.workingTailPos.value);
@@ -2648,7 +2695,9 @@ public class Pipe<T extends MessageSchema> {
 
     	assert(pipe.slabRingHead.workingHeadPos.value >= Pipe.headPosition(pipe));
     	assert(pipe.llWrite.llwConfirmedWrittenPosition<=Pipe.headPosition(pipe) || 
-    		   pipe.slabRingHead.workingHeadPos.value<=pipe.llWrite.llwConfirmedWrittenPosition) : "Unsupported mix of high and low level API. NextHead>head and workingHead>nextHead "+pipe;
+    		   pipe.slabRingHead.workingHeadPos.value<=pipe.llWrite.llwConfirmedWrittenPosition) :
+    			   "Possible unsupported mix of high and low level API. NextHead>head and workingHead>nextHead "+pipe+" nextHead "+pipe.llWrite.llwConfirmedWrittenPosition+"\n"+
+    		       "OR the XML field types may not match the accessor methods in use.";
     	assert(validateFieldCount(pipe)) : "No fragment could be found with this field count, check for missing or extra fields.";
 
     	publishHeadPositions(pipe);
@@ -2922,7 +2971,7 @@ public class Pipe<T extends MessageSchema> {
 	}
 
 	public static <S extends MessageSchema> long confirmLowLevelWrite(Pipe<S> output, int size) { 
-	 
+	 //TODO: add assert to confirm size matches what was written??
 	    assert(size>=0) : "unsupported size "+size;
 	    
 	    assert((output.llRead.llwConfirmedReadPosition+output.mask) <= Pipe.workingHeadPosition(output)) : " confirmed writes must be less than working head position writes:"
@@ -2955,7 +3004,7 @@ public class Pipe<T extends MessageSchema> {
 	}
 
 	private static <S extends MessageSchema> boolean contentToLowLevelReadSlow(Pipe<S> pipe, long target, LowLevelAPIWritePositionCache llWrite) {
-		return (llWrite.llwHeadPosCache = pipe.slabRingHead.headPos.get()) > target; 
+		return (llWrite.llwHeadPosCache = pipe.slabRingHead.headPos.get()) > target;  
 	}
 
 	public static <S extends MessageSchema> long confirmLowLevelRead(Pipe<S> pipe, long size) {

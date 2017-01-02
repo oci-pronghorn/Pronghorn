@@ -53,6 +53,7 @@ public class IntHashTable {
 		}
 		
 		if (0 != temp) {
+		//	System.err.println("held prev value of "+temp+" when setting "+value);
 			return false; //do not set item if it holds a previous value.
 		}		
 		

@@ -475,7 +475,8 @@ public class TrieParserReader {
                 
             } else if (t == TrieParser.TYPE_ALT_BRANCH) {
                  processAltBranch(reader, trie.data);                 
-            } else  {                
+            } else  {       
+            	//return unfoundResult;
                 logger.error(trie.toString());
                 throw new UnsupportedOperationException("Bad jump length now at position "+(reader.pos-1)+" type found "+reader.type);
             }

@@ -675,6 +675,9 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	    } else {
 	        Pipe.decBatchRelease(pipe);//sequence fragments must cause this number to move
 	    }
+	    //ensure that the working value does not fall behind the new published tail position.
+	    //this allows peek by direct offset to be supported when needed
+	    Pipe.setWorkingTailPosition(pipe, Pipe.tailPosition(pipe));
 	}
 
 	
