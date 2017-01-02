@@ -339,14 +339,20 @@ public class TrieParser {
     }
        
     private int longestKnown = 0;
+    private int shortestKnown = 0;
     
     public int longestKnown() {
     	return longestKnown;
     }
     
+    public int shortestKnown() {
+    	return shortestKnown;
+    }
+    
     private void setValue(int pos, short[] data, byte[] source, int sourcePos, final int sourceLength, int sourceMask, long value) {
         
     	longestKnown = Math.max(longestKnown, sourceLength);
+    	shortestKnown = Math.max(shortestKnown, sourceLength);
     	
         assert(value >= 0);
         assert(value <= 0x7FFF_FFFF); 
