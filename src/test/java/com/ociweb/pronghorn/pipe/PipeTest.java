@@ -12,9 +12,7 @@ import static com.ociweb.pronghorn.pipe.Pipe.tailPosition;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
 import static com.ociweb.pronghorn.pipe.Pipe.takeValue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
@@ -417,4 +415,55 @@ public class PipeTest {
 		
 	}    
     
+	
+	@Test
+	public void splitsAgreementTest() {
+		//
+		//the splitGroups must match the same distribution as splitPipes
+		//
+		for(int fullLen = 1; fullLen<70; fullLen++) {
+			
+			for(int groups = 1; groups<fullLen; groups++) {
+				
+				int[] index = Pipe.splitGroups(groups, fullLen);
+				
+				Pipe[] pipes = new Pipe[fullLen];
+				int f = fullLen;
+				while (--f>=0) {
+					pipes[f] = new Pipe(new PipeConfig(RawDataSchema.instance));
+				}
+				
+				Pipe[][] splits = Pipe.splitPipes(groups, pipes);
+				
+				//test split 
+				int x = fullLen;
+				while (--x>=0) {			
+					Pipe p = pipes[x];
+					int whereToFind = index[x];			
+					Pipe[] expectedIn = splits[whereToFind];			
+					assertTrue(contains(expectedIn, p));
+					
+					int r = groups;
+					while (--r>=0) {
+						if (r!=whereToFind) {
+							assertFalse(contains(splits[r], p));
+						}				
+					}			
+					
+				}
+			}
+		}
+	}
+
+
+	private boolean contains(Pipe[] expectedIn, Pipe p) {
+		int x = expectedIn.length;
+		while (--x>=0) {
+			if (expectedIn[x]==p) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
 }

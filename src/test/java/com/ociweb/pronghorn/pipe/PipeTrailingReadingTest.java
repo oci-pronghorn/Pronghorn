@@ -179,8 +179,10 @@ public class PipeTrailingReadingTest {
         }
     }
 
-	private int testAccumulateConsume(int baseTailPos, final int MSG_PAYLOAD_SIZE, Pipe<RawDataSchema> dataPipe, int consumeBlockSize,
+	private int testAccumulateConsume(final int baseTailPos, final int MSG_PAYLOAD_SIZE, Pipe<RawDataSchema> dataPipe, int consumeBlockSize,
 			int accumulateCount, int consumeCount) {
+		
+		assertEquals(baseTailPos, Pipe.getWorkingTailPosition(dataPipe));
 		
 		final int expectedTailMovement = accumulateCount*Pipe.sizeOf(RawDataSchema.instance, RawDataSchema.MSG_CHUNKEDSTREAM_1);
 		for(int i=0;i<accumulateCount;i++) {
@@ -197,21 +199,10 @@ public class PipeTrailingReadingTest {
         	assertEquals(i+1, Pipe.releasePendingCount(dataPipe));
         	
         }
-        assertEquals(baseTailPos, Pipe.tailPosition(dataPipe));
-		assertEquals(baseTailPos+ expectedTailMovement, Pipe.getWorkingTailPosition(dataPipe));
-        
-        int totalBytesInLargeTest = accumulateCount*MSG_PAYLOAD_SIZE;
-        
-        for(int i=0;i<consumeCount;i++) {
-        	
+
+        for(int i=0;i<consumeCount;i++) {        	
         	Pipe.releasePendingAsReadLock(dataPipe, consumeBlockSize);
-        	
-        	totalBytesInLargeTest-=consumeBlockSize;
-        	int expectedMessages = (int)Math.ceil(totalBytesInLargeTest/(float)MSG_PAYLOAD_SIZE);
-        	assertEquals(expectedMessages,Pipe.releasePendingCount(dataPipe) );
         }
-        assertEquals(baseTailPos+ expectedTailMovement, Pipe.tailPosition(dataPipe));
-        
         //return new base
         return baseTailPos+expectedTailMovement;
 	}

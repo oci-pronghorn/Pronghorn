@@ -412,40 +412,30 @@ public class TrieParserReader {
                 
             } else if (t==TrieParser.TYPE_BRANCH_VALUE) {   
             	if (reader.runLength<sourceLength) {              
-            		reader.pos = TrieParser.jumpOnBit((short) source[sourceMask & reader.localSourcePos], trie.data[reader.pos++], (((int)trie.data[reader.pos++])<<15) | (0x7FFF&trie.data[reader.pos]), reader.pos);
+            		short[] data = trie.data;
+					reader.pos = TrieParser.jumpOnBit((short) source[sourceMask & reader.localSourcePos], data[reader.pos++], (((int)data[reader.pos++])<<15) | (0x7FFF&data[reader.pos]), reader.pos);
             	} else {
             		return unfoundResult;
             	}
             } else if (t == TrieParser.TYPE_ALT_BRANCH) {
-            	processAltBranch(reader, trie.data);   
-
+            	processAltBranch(reader, trie.data);
             } else if (t == TrieParser.TYPE_VALUE_BYTES) {
 
                 if (reader.runLength<sourceLength) {
 	                parseBytes(reader, trie, source, sourceLength, sourceMask);
 	                                
 	                if (-1 == reader.localSourcePos) {
-	                	//we may have data on the stack but we have reached the END of the data
-	                	//so until we get more data we do not know the exact match to be applied
-	                	while (reader.altStackPos > 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
-	                		loadupNextChoiceFromStack(reader, trie.data);
-	                	}
+	                	skipAllValBytesOnStack(reader, trie);
 	                	if (reader.altStackPos == 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
 	                		return unfoundResult;
-	                	}
-	                	
+	                	}	                	
 	                    continue top;
 	                }
                 } else {
-                	//we may have data on the stack but we have reached the END of the data
-                	//so until we get more data we do not know the exact match to be applied
-                  	while (reader.altStackPos > 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
-                		loadupNextChoiceFromStack(reader, trie.data);
-                	}
+                	skipAllValBytesOnStack(reader, trie);
                 	if (reader.altStackPos == 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
                 		return unfoundResult;
-                	}
-                	
+                	}                	
                     continue top;
                 }
             } else if (t == TrieParser.TYPE_VALUE_NUMERIC) {       
@@ -465,8 +455,7 @@ public class TrieParserReader {
                 reader.pos += trie.SIZE_OF_RESULT;
                 if (sourceLength == reader.runLength) {
                     return useSafePointNow(reader);
-                }  
-                                           
+                }                                             
             } else  {       
                 logger.error(trie.toString());
                 throw new UnsupportedOperationException("Bad jump length now at position "+(reader.pos-1)+" type found "+reader.type);
@@ -485,6 +474,14 @@ public class TrieParserReader {
         
         
     }
+
+	private static void skipAllValBytesOnStack(TrieParserReader reader, TrieParser trie) {
+		//we may have data on the stack but we have reached the END of the data
+		//so until we get more data we do not know the exact match to be applied
+		while (reader.altStackPos > 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
+			loadupNextChoiceFromStack(reader, trie.data);
+		}
+	}
 
     private static void parseBytes(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength, int sourceMask) {
     	long maxCapture = sourceLength-reader.runLength;
@@ -633,9 +630,8 @@ public class TrieParserReader {
         return pos;
     }
 
-    static void recurseAltBranch(short[] localData, TrieParserReader reader, int pos, int offset, int runLength) {
-        int type = localData[pos];
-        if (type == TrieParser.TYPE_ALT_BRANCH) {
+    private static void recurseAltBranch(short[] localData, TrieParserReader reader, int pos, int offset, int runLength) {
+        if ((int) localData[pos] == TrieParser.TYPE_ALT_BRANCH) {
             
             pos++;
     
@@ -645,46 +641,8 @@ public class TrieParserReader {
             altBranch(localData, reader, pos, offset, (((int)localData[pos++])<<15) | (0x7FFF&localData[pos++]), localData[pos], runLength); 
 
             
-        } else {
-            
+        } else {            
             pushAlt(reader, pos, offset, runLength);
-//            if (type == TrieParser.TYPE_VALUE_BYTES) {
-//                
-//                int j = 0;//TODO: can replace with keeping track of this value instead of scanning for it.
-//                while (j< reader.altStackPos ) {
-//                    if (localData[reader.altStackC[j]] != TrieParser.TYPE_VALUE_BYTES){
-//                        break;
-//                    }
-//                    j++;
-//                }
-//                
-//                if (j<reader.altStackPos) {
-//                    
-//                    System.out.println("now tested:"+j+" "+reader.altStackExtractCount);
-//                                        
-//                    assert(j==reader.altStackExtractCount);
-//                    
-//                    //swap j with reader.altStackPos-1;
-//                    int k = reader.altStackPos-1;
-//                 
-//                    int a = reader.altStackA[k];
-//                    int b = reader.altStackB[k];
-//                    int c = reader.altStackC[k];
-//                    
-//                    reader.altStackA[j] = a;
-//                    reader.altStackB[j] = b;
-//                    reader.altStackC[j] = c;
-//                            
-//                    reader.altStackExtractCount++;
-//                }
-//                //TODO: when the top of the stack is a bytes extract keep peeking and take all the stop values together.
-//                
-//            }
-            
-            
-            
-            
-            
         }
     }
     

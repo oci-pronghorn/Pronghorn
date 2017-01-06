@@ -71,27 +71,37 @@ public class PendingReleaseData {
     public static <S extends MessageSchema> void releasePendingAsReadRelease(PendingReleaseData that, Pipe<S> pipe, int consumed) {
 
         int idx=0;
-        
-        int pLen = 0;
-        while (that.pendingReleaseCount>0 && (consumed>0 || that.pendingLength[that.pendingReleaseMask & that.pendingReleaseTail]<=0) ) {
+        final int mask = that.pendingReleaseMask;
+        final int[] pendingLength2 = that.pendingLength;
+   
+        int rc = that.pendingReleaseCount;
+        int rt = that.pendingReleaseTail;
+		while (rc>0 && (consumed>0 || pendingLength2[mask & rt]<=0) ) {
             
-            idx = that.pendingReleaseMask & that.pendingReleaseTail;
+            idx = mask & that.pendingReleaseTail;
             
-            pLen = Math.max(0, that.pendingLength[idx]);
-            
-            if (pLen>consumed) {
-                that.pendingLength[idx] = pLen-consumed;
+            int tmp = pendingLength2[idx];
+            if (tmp>consumed) {
+            	pendingLength2[idx] = tmp-consumed;
+            	that.pendingReleaseCount=rc;
+            	that.pendingReleaseTail=rt;
                 return;
+            }            
+
+            if (tmp>0) {
+            	consumed -= tmp;
             }
-            consumed -= pLen;
-            that.pendingLength[idx]=0;
+            
+            pendingLength2[idx]=0;
             
             Pipe.releaseBatchedReads(pipe, 
                                              that.pendingBlobReleaseRing[idx], 
                                              that.pendingSlabReleaseRing[idx]);
-            that.pendingReleaseCount--;
-            that.pendingReleaseTail++;
+            rc--;
+            rt++;
         }
+		that.pendingReleaseCount=rc;
+		that.pendingReleaseTail=rt;
     }
     
 }

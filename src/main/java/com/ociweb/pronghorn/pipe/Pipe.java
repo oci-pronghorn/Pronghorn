@@ -2609,6 +2609,7 @@ public class Pipe<T extends MessageSchema> {
  
         if (decBatchRelease(pipe)<=0) { 
            setBytesTail(pipe, workingBlobRingTailPosition);
+           
            //NOTE: the working tail is in use as part of the read and should not be modified
            //      this method only modifies the externally visible tail to let writers see it.
            pipe.slabRingTail.tailPos.lazySet(nextWorkingTail);
