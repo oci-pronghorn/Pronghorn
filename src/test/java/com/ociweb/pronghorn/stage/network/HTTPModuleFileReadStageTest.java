@@ -181,7 +181,7 @@ public class HTTPModuleFileReadStageTest {
       
     }
     
-    @Test
+    @Ignore
     public void rapidValidReadLoadTest() {
         
         GraphManager gm = new GraphManager();

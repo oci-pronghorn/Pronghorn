@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.network.module;
 
-import java.nio.channels.UnsupportedAddressTypeException;
-
 import com.ociweb.pronghorn.network.AbstractRestStage;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKey;

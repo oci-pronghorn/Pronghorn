@@ -284,9 +284,14 @@ public class RegulatedLoadTestStage extends PronghornStage{
 							if (connectionId == -1) {
 								byte[] hByte = host.getBytes();
 								System.arraycopy(hByte, 0, buff, 0, hByte.length);
-								connectionId = clientCoord.lookup(buff, 0, hByte.length, 6, port, userId, workspace, hostTrieReader);								
-								assert(connectionId>0);
-								connectionIdCache[userId] = connectionId;	
+								
+								try {
+									connectionId = clientCoord.lookup(buff, 0, hByte.length, 6, port, userId, workspace, hostTrieReader);
+									assert(connectionId>0);
+									connectionIdCache[userId] = connectionId;	
+								} catch (Throwable t) {
+									//ignore and try again later, for now let connectionId remain as -1
+								}
 							}							
 							
 							if (connectionId>=0) {

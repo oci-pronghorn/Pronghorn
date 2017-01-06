@@ -31,7 +31,7 @@ public class SocketIOStageTest {
     private final int socketGroupId = 0; //we only have the 0th reader in use.
     private final int maxtPartials = 5;//0; 
     private final int maxConnBits = 15;
-	private final int testUsers = 17;
+	private final int testUsers = 12;
 	////
 	////test data, these are seeds and sizes to be sent in order by each user
 	////

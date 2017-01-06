@@ -49,10 +49,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public final static int UPGRADE_MASK                 = 1<<UPGRADE_CONNECTION_SHIFT;
 
 	private final PoolIdx responsePipeLinePool;
-	private final int maxPartialResponses;
-	private final int routerCount;
-
-	private final int[] routerLookup;
+	public final int maxPartialResponses;
+	public final int[] routerLookup;
     
     public ServerCoordinator(int socketGroups, String bindHost, int port, int maxConnectionsBits, int maxPartialResponses, int routerCount) {
         this.socketHolder      = new ServiceObjectHolder[socketGroups];    
@@ -71,7 +69,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	this.responsePipeLinePool = new PoolIdx(maxPartialResponses); 
     	
     	this.maxPartialResponses = maxPartialResponses;
-    	this.routerCount = routerCount;
+
     	this.routerLookup = Pipe.splitGroups(routerCount, maxPartialResponses);
     	
     	
@@ -98,56 +96,22 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		this.firstStage = startStage;
 	}
 	
-	public int responsePipeLineIdx(long ccId) {
-		//SSLConnection cc = get(ccId, 0);
+	
+	public void debugResponsePipeLine() {
+		logger.info(responsePipeLinePool.toString());
+	}
+	
+	public int responsePipeLineIdx(final long ccId) {
+	
+		//TODO: not garbage free, need to invert this 		
+		PoolIdxPredicate isOk = new PipeLineFilter(ccId);
 		
-		
-		final int expectedRoute =  ((int)ccId)%routerCount;	
-		final int expected = ((int)ccId)%maxPartialResponses;
+		return responsePipeLinePool.get(ccId, isOk); //TODO: must get the connection to remember this router and stay here, unless we have writting ot this point....
 
-		PoolIdxPredicate isOk = new PoolIdxPredicate() {
-			
-			@Override
-			public boolean isOk(final int i) {
-
-				//System.err.println(Arrays.toString(routerLookup )+"  "+i+" expected route "+routerLookup[i]);
-				
-				//this approach is better however it is causing an error
-				// looking for 322791 but found lower 319786 for connection 31
-				//return expectedRoute == routerLookup[i]; //TODO: need unit test on splitter to ensure match first.
-				
-				return i == expected;
-			}
-		};
-		
-		//this forces the same connection to take the same path every time which enforces order HOWEVER.
-		// we need only restrict it to the same Router but how to know that?
-		
-		int result =  responsePipeLinePool.get(ccId, isOk); //TODO: must get the connection to remember this router and stay here, unless we have writting ot this point....
-
-
-		//TODO: these two values must match, teh result should not be zero.
-		
-//		int expectedR = 31 & (int)ccId;
-//		
-//		
-//		if (expectedR != result) {
-//			System.err.println(ccId+"  should match "+result+" "+expectedR);
-//			System.err.println("FORCE EXIT ZERO DETECTED");
-//			System.exit(-1);
-//			
-//		}
-		
-	//	assert(result==expected);
-		
-		
-//		System.err.println("   "+result+"  "+expected+"  "+expectedRoute);
-		
-		return result;
 	}
 	
 	public int checkForResponsePipeLineIdx(long ccId) {
-		return responsePipeLinePool.getIfReserved(ccId);
+		return PoolIdx.getIfReserved(responsePipeLinePool,ccId);
 	}	
 	
 	public void releaseResponsePipeLineIdx(long ccId) {		
@@ -197,7 +161,24 @@ public class ServerCoordinator extends SSLConnectionHolder {
         return subscriptions[idx] = new MemberHolder(100);
     }
     
-    public static class SocketValidator implements ServiceObjectValidator<ServerConnection> {
+    private final class PipeLineFilter implements PoolIdxPredicate {
+		
+    	private final int idx;
+		private final int validValue;
+
+		private PipeLineFilter(long ccId) {
+			this.idx = ((int)ccId)%maxPartialResponses;
+			this.validValue = routerLookup[idx];
+		}
+
+		@Override
+		public boolean isOk(final int i) {
+			//return idx == i;//
+			return validValue == routerLookup[i]; 
+		}
+	}
+
+	public static class SocketValidator implements ServiceObjectValidator<ServerConnection> {
 
         @Override
         public boolean isValid(ServerConnection serviceObject) {            

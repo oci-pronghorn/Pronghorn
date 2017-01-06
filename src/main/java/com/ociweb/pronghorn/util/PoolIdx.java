@@ -1,8 +1,6 @@
 package com.ociweb.pronghorn.util;
 
-import java.util.Arrays;
-
-public class PoolIdx  {
+public final class PoolIdx  {
 
     private final long[] keys;
     private final byte[] locked;
@@ -20,26 +18,45 @@ public class PoolIdx  {
     	return keys.length;
     }
     
-    public String toString() {    	
-    	return "Keys:"+Arrays.toString(keys)+"\n"+
-    	       "Lcks:"+Arrays.toString(locked)+"\n";    	
+    public String toString() { 
+    	StringBuilder builder = new StringBuilder();
+    	
+    	for(int i = 0;i<keys.length;i++) {
+    		
+    		builder.append(" I:");
+    		Appendables.appendValue(builder, i);
+    		
+    		builder.append(" K:");
+    		Appendables.appendValue(builder, keys[i]);
+    		
+    		builder.append(" L:");
+    		Appendables.appendValue(builder, locked[i]);
+    		builder.append("\n");
+    	}
+    	return builder.toString();
     }    
     
     public int getIfReserved(long key) {   
+    	return getIfReserved(this,key);
+    }
+    
+    public static int getIfReserved(PoolIdx that, long key) {   
     	
-        int i = keys.length;
+    	long[] localKeys = that.keys;
+    	byte[] localLocked = that.locked;
+        int i = localKeys.length;
         int idx = -1;
         //linear search for this key. TODO: if member array is 100 or bigger we should consider hashTable
         while (--i>=0) {
             //found and returned member that matches key and was locked
-            if (key == keys[i] && 1 == locked[i]) {
-                return i;
+            if (0 == localLocked[i] || key != localKeys[i] ) {
+            	//this slot was not locked so remember it
+            	//we may want to use this slot if key is not found.
+            	if (idx < 0 && 0 == localLocked[i]) {
+            		idx = i;
+            	}
             } else {
-                //this slot was not locked so remember it
-                //we may want to use this slot if key is not found.
-                if (idx < 0 && 0 == locked[i]) {
-                    idx = i;
-                }
+            	return i;//this is the rare case
             }
         }
         return -1;

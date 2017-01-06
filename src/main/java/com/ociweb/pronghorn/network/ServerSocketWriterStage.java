@@ -180,16 +180,17 @@ public class ServerSocketWriterStage extends PronghornStage {
 		activeMessageIds[idx] = activeMessageId;
 		
 		//logger.info("sever to write {}",activeMessageId);
-		
+				
 		if ( (NetPayloadSchema.MSG_PLAIN_210 == activeMessageId) ||
 		     (NetPayloadSchema.MSG_ENCRYPTED_200 == activeMessageId) ) {
 			            		
 			loadPayloadForXmit(activeMessageId, idx);
-			writeToChannel(idx);
+			if (null!=writeToChannel[idx]) {
+				writeToChannel(idx);
+			}
 		
 		} else if (NetPayloadSchema.MSG_DISCONNECT_203 == activeMessageId) {
-		
-			
+					
 			final long channelId = Pipe.takeLong(dataToSend[idx]);
 			//logger.info("DISCONNECT MESSAGE FOUND BY SOCKET WRITER {} ",channelId);
 			
@@ -216,7 +217,13 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    Pipe.confirmLowLevelRead(dataToSend[idx], Pipe.sizeOf(dataToSend[idx], activeMessageId));
 		    Pipe.releaseReadLock(dataToSend[idx]);
 		    assert(Pipe.contentRemaining(dataToSend[idx])>=0);
-		                      
+		    
+		} else if (NetPayloadSchema.MSG_BEGIN_208 == activeMessageId) {
+			
+			int seqNo = Pipe.takeInt(dataToSend[idx]);
+			Pipe.confirmLowLevelRead(dataToSend[idx], Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_BEGIN_208));
+			Pipe.releaseReadLock(dataToSend[idx]);
+			
 		} else if (activeMessageId < 0) {
 		    
 			Pipe.confirmLowLevelRead(dataToSend[idx], Pipe.EOF_SIZE);
@@ -324,7 +331,8 @@ public class ServerSocketWriterStage extends PronghornStage {
     		
     		if (!debugWithSlowWrites) {
 		        try {
-		        	int bytesWritten = writeToChannel[idx].write(workingBuffers[idx]);	  
+		        	ByteBuffer buf = workingBuffers[idx];
+					int bytesWritten = writeToChannel[idx].write(buf);	  
 		        	if (bytesWritten>0) {
 		        		totalBytesWritten+=bytesWritten;
 		        	}
@@ -400,25 +408,30 @@ public class ServerSocketWriterStage extends PronghornStage {
        
     	workingBuffers[idx].clear();
     	writeToChannel[idx]=null;
-        
+        int sequenceNo = 0;//not available here
         if (null!=releasePipe) {
         	if (Pipe.hasRoomForWrite(releasePipe)) {
-        		publishRelease(releasePipe, activeIds[idx], activeTails[idx]!=-1?activeTails[idx]: Pipe.tailPosition(dataToSend[idx]));
+        		publishRelease(releasePipe, activeIds[idx],
+        				        activeTails[idx]!=-1?activeTails[idx]: Pipe.tailPosition(dataToSend[idx]),
+        				        sequenceNo);
         	} else {
         		logger.info("potential hang from failure to release pipe");
         	}
         }
     }
 
+    
 
-	private static void publishRelease(Pipe<ReleaseSchema> pipe, long conId, long position) {
+	private static void publishRelease(Pipe<ReleaseSchema> pipe, long conId, long position, int sequenceNo) {
 		assert(position!=-1);
 		//logger.debug("sending release for {} at position {}",conId,position);
 		
-		int size = Pipe.addMsgIdx(pipe, ReleaseSchema.MSG_RELEASE_100);
+		int size = Pipe.addMsgIdx(pipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101);
 		Pipe.addLongValue(conId, pipe);
 		Pipe.addLongValue(position, pipe);
+		Pipe.addIntValue(sequenceNo, pipe);
 		Pipe.confirmLowLevelWrite(pipe, size);
 		Pipe.publishWrites(pipe);
+				
 	}
 }

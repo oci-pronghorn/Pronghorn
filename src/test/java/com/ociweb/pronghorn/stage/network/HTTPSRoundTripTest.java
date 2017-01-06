@@ -307,7 +307,7 @@ public class HTTPSRoundTripTest {
 	//TODO: URGENT must detect when we get the type wrong but with low level API attempt to use values!!
 	
 	@Ignore
-	//@Test
+//	@Test
 	public void roundTripTest2() {
 				
 		{
@@ -329,7 +329,7 @@ public class HTTPSRoundTripTest {
 			//NOTE: larger values here allows for more effecient scheculeing and bigger "batches"
 			//NOTE: smaller values here will allow for slightly lower latency values
 			//NOTE: by sleeping less we get more work done per stage, sometimes
-			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 40_000); //this is in ns
+			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 100_000); //this is in ns
 			
 	    	//TODO: we need a better test that has each users interaction of 10 then wait for someone else to get in while still connected.
 	    	//TODO: urgent need to kill off expired pipe usages.
@@ -342,14 +342,16 @@ public class HTTPSRoundTripTest {
 	    		serverCoord = exampleServerSetup(isTLS, gm, testFile);
 	    	}
 	    	
+	    	//64 Simultaneous clients with 32 Simultaneous open pipes in server.  TODO: URGENT fix. 
+	    	
 	    	/////////////////
 	        /////////////////
-	    	int base2SimultaniousConnections = 4;  	
-	    	int clientCount = 2;
+	    	int base2SimultaniousConnections = 6; //TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
+	    	int clientCount = 4;
 	    		    	
 	    	//TODO: this number must be the limit of max simuantious handshakes.
-	    	int maxPartialResponsesClient = 16; //input lines to client (should be large)
-	    	final int clientOutputCount = 16;//should be < client connections,  number of pipes getting wrappers and sent out put stream 
+	    	int maxPartialResponsesClient = 1<<base2SimultaniousConnections; //input lines to client (should be large)
+	    	final int clientOutputCount = 1<<base2SimultaniousConnections;//should be < client connections,  number of pipes getting wrappers and sent out put stream 
 	    	final int clientWriterStages = 2; //writer instances;	
 	    	
 	    	
@@ -368,7 +370,7 @@ public class HTTPSRoundTripTest {
 	    	//////////////
 	    	
 	    	//TODO: lower this value until we see pipes get released when completed, if not then we will starve out new requests. NOTE: needs better solution.
-	    	int inFlightLimit = 100_000;///000;//24_000;//when set to much more it disconnects.
+	    	int inFlightLimit = 8_000;///000;//24_000;//when set to much more it disconnects.
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
 	    	final int loadMultiplier = isTLS? 100_000 : 2_000_000;//100_000;//100_000;
 
@@ -475,8 +477,9 @@ public class HTTPSRoundTripTest {
 			int usersPerPipe = 1<<usersBits;  
 			ClientCoordinator clientCoord = new ClientCoordinator(base2SimultaniousConnections+usersBits, maxPartialResponsesClient, isTLS);						
 			
+			int extraHashBits = 2;
 			
-			Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections+usersBits+1, clientOutputCount, maxPartialResponsesClient, 
+			Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections+usersBits+extraHashBits, clientOutputCount, maxPartialResponsesClient, 
 					                                           input, clientCoord, clientResponseUnwrapUnits, clientRequestWrapUnits,
 					                                           requestQueue, responseQueue, clientWriterStages, netRespQueue, netRespSize);
 			assert(toReactor.length == input.length);
@@ -502,12 +505,12 @@ public class HTTPSRoundTripTest {
 		
 		 //the typical rec buffer is about 1<<19
 		final int serverInputBlobs = 1<<17; //when small THIS has a big slow-down effect and it appears as the client getting backed up.
-		final int serverInputMsg = 64;
+		final int serverInputMsg = 128;
 		 
 		final int serverMsgToEncrypt = 256; //only used for TLS
 		final int serverBlobToEncrypt = 1<<12;
 		 
-		final int serverMsgToWrite = 256; //this pipe gets full in short bursts, 
+		final int serverMsgToWrite = 1024; //this pipe gets full in short bursts, 
 		final int serverBlobToWrite = 1<<12; //Used for both TLS and NON-TLS
 		 
 		final int routerCount = 4;
@@ -632,7 +635,7 @@ public class HTTPSRoundTripTest {
 				
 		int requestQueueBytes = 1<<4;
 		
-		int responseQueueBytes = 1<<18;
+		int responseQueueBytes = 1<<15;
 		
 		int httpRequestQueueBytes = 1<<10;
 		int httpRequetQueueSize = 64;
@@ -649,7 +652,7 @@ public class HTTPSRoundTripTest {
 		PipeConfig<NetResponseSchema> netResponseConfig = new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, responseQueue, responseQueueBytes);
 		//System.err.println("out "+netResponseConfig);	
 		
-		
+		System.err.println("Bits for pipe lookup "+bitsPlusHashRoom);
 		IntHashTable listenerPipeLookup = new IntHashTable(bitsPlusHashRoom); //bigger for more speed.
 		
 		

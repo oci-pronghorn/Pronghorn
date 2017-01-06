@@ -101,10 +101,10 @@ public class SSLConnection {
 	}
 
 	public void setSequenceNo(int seq) {
-//		if (seq<sequenceNo) {
-//			log.info("FORCE EXIT value rolled back {}for chanel{} ",seq,id);
-//			System.exit(-1);
-//		}
+		if (seq<sequenceNo) {
+			log.info("FORCE EXIT value rolled back {}for chanel{} ",seq,id);
+			System.exit(-1);
+		}
 		//	log.info("setSequenceNo {} for chanel {}",seq,id);
 		sequenceNo = seq;
 	}
