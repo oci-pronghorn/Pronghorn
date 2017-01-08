@@ -440,11 +440,9 @@ public class TrieParserReader {
                 }
             } else if (t == TrieParser.TYPE_VALUE_NUMERIC) {       
 		            	if (reader.runLength<sourceLength) {
-			            	int temp = parseNumeric(reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, (int)trie.data[reader.pos++]);
-			            	if (temp<0) {
+		            		if ((reader.localSourcePos = parseNumeric(reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, (int)trie.data[reader.pos++]))<0) {			            	
 			            		return unfoundResult;
-			            	}            	
-			                reader.localSourcePos = temp;
+			            	}    
 		            	} else {
 		            		return unfoundResult;
 		            	}
@@ -499,8 +497,9 @@ public class TrieParserReader {
 	
 	        
 	        if (stopCount>1) {
-				reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, maxCapture, sourceMask, reader.workingMultiStops, stopCount);                    
-	            reader.pos = adjustConntinueFrom(reader, source, reader.localSourcePos, sourceMask, reader.pos, stopCount);
+				if ((reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, maxCapture, sourceMask, reader.workingMultiStops, stopCount)) >=0) {                    
+					reader.pos = continueFromWithMatchingStop(reader, reader.pos, (short) source[sourceMask&(reader.localSourcePos-1)], reader.workingMultiStops, stopCount);
+				}
 	        } else {
 	            reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, maxCapture, sourceMask, stopValue);
 	        }
@@ -527,16 +526,17 @@ public class TrieParserReader {
 
     private static void processAltBranch(TrieParserReader reader, short[] localData) {
         assert(localData[reader.pos]>=0): "bad value "+localData[reader.pos];
-         assert(localData[reader.pos+1]>=0): "bad value "+localData[reader.pos+1];
+        assert(localData[reader.pos+1]>=0): "bad value "+localData[reader.pos+1];
              
          altBranch(localData, reader, reader.pos, reader.localSourcePos, (((int)localData[reader.pos++])<<15) | (0x7FFF&localData[reader.pos++]), localData[reader.pos], reader.runLength); 
  
+  // 2,3,4      System.err.println("stack depth "+reader.altStackPos);
          
          //pop off the top of the stack and use that value.
          reader.localSourcePos     = reader.altStackA[--reader.altStackPos];
-         reader.capturedPos = reader.altStackB[reader.altStackPos];
-         reader.pos         = reader.altStackC[reader.altStackPos];
-         reader.runLength   = reader.altStackD[reader.altStackPos];
+         reader.capturedPos        = reader.altStackB[reader.altStackPos];
+         reader.pos                = reader.altStackC[reader.altStackPos];
+         reader.runLength          = reader.altStackD[reader.altStackPos];
     }
 
     private static long useSafePointNow(TrieParserReader reader) {
@@ -613,22 +613,15 @@ public class TrieParserReader {
         return stopCount;
     }
 
-    private static int adjustConntinueFrom(TrieParserReader reader, byte[] source, int localSourcePos, int sourceMask,
-            int pos, int stopCount) {
-        if (localSourcePos>=0) {
-            //determine where to now continue from
-            short selected = source[sourceMask&(localSourcePos-1)];
-            int j = stopCount;
-            while (--j>=0) {
-                if (selected== reader.workingMultiStops[j]) {
-                    pos = reader.workingMultiContinue[j];
-                    break;
-                }
-            }
-            assert(j>=0):"should have found value";
-        }
-        return pos;
-    }
+    private static int continueFromWithMatchingStop(TrieParserReader reader, final int pos, short selected,	short[] workingMultiStops2, int j) {
+		while (--j>=0) {
+			if (selected == workingMultiStops2[j]) {
+		        return reader.workingMultiContinue[j];
+		    }
+		}
+		assert(j>=0):"should have found value";
+		return pos;
+	}
 
     private static void recurseAltBranch(short[] localData, TrieParserReader reader, int pos, int offset, int runLength) {
         if ((int) localData[pos] == TrieParser.TYPE_ALT_BRANCH) {
@@ -670,8 +663,8 @@ public class TrieParserReader {
         
         reader.altStackA[reader.altStackPos] = offset;
         reader.altStackB[reader.altStackPos] = reader.capturedPos;
-        reader.altStackC[reader.altStackPos++] = pos;        
-        reader.altStackD[reader.altStackPos] = runLength;
+        reader.altStackC[reader.altStackPos] = pos;        
+        reader.altStackD[reader.altStackPos++] = runLength;
     }
 
     private static void recordSafePointEnd(TrieParserReader reader, int localSourcePos, int pos, TrieParser trie) {

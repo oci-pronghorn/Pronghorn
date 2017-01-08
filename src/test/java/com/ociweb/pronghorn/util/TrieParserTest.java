@@ -80,7 +80,7 @@ public class TrieParserTest {
     byte[] dataBytesMultiBytes2 = new byte[]{100,103,'%','b','\r','\n'};
     byte[] dataBytesMultiBytes3 = new byte[]{100,102,'%','b','\n',0,0,0};//wraps
     
-    byte[] dataBytesMultiBytesValue1 = new byte[]{100,102,10,11,12,'\r','\n'};
+    byte[] dataBytesMultiBytesValue1 = new byte[]{100,102,10,11,12,'\r','\n'};//xxxxxxxx
     byte[] dataBytesMultiBytesValue2 = new byte[]{100,103,20,21,22,23,'\r','\n'};
     byte[] dataBytesMultiBytesValue3 = new byte[]{100,103,30,31,'\r','\n'};
     
@@ -105,10 +105,11 @@ public class TrieParserTest {
         
         assertEquals(value2, TrieParserReader.query(reader,map,dataBytesMultiBytesValue2, 0, dataBytesMultiBytesValue2.length, 15));
         
-        map.setValue(dataBytesMultiBytes3, 0, 5, 7, value3);
+        map.setValue(dataBytesMultiBytes3, 0, 5, 7, value3); //the /n is added last it takes priority and gets selected below.
         assertFalse(map.toString(),map.toString().contains("ERROR"));
-        
-        assertEquals(value1, TrieParserReader.query(reader,map,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15));
+                
+        //NOTE: that %b\n is shorter and 'simpler; than %b\r\n so the first is chosen and the \r becomes part of the captured data.
+        assertEquals(value3, TrieParserReader.query(reader,map,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15));
         assertEquals(value2, TrieParserReader.query(reader,map,dataBytesMultiBytesValue2, 0, dataBytesMultiBytesValue2.length, 15));
         assertEquals(value2, TrieParserReader.query(reader,map,dataBytesMultiBytesValue3, 0, dataBytesMultiBytesValue3.length, 15));
                         
@@ -346,7 +347,7 @@ public class TrieParserTest {
         TrieParserReader.capturedFieldBytes(reader, 0, expected, 0, 7);
         assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(expected) );
   
-        assertEquals(-1, TrieParserReader.query(reader,map,toParseEnd3, 0, toParseEnd3.length, 7));
+        assertEquals(value3, TrieParserReader.query(reader,map,toParseEnd3, 0, toParseEnd3.length, 7));
         
         TrieParserReader.capturedFieldBytes(reader, 0, expected, 0, 7);
         assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(expected) );
