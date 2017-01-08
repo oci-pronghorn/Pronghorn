@@ -62,6 +62,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private long[] payloadLengthData;
 	private long[] ccIdData;
 	
+	private int[] runningHeaderBytes;
+	
 	
 	private static final int H_TRANSFER_ENCODING = 4;	
 	private static final int H_CONTENT_LENGTH = 5;
@@ -116,6 +118,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		  blockedLen = new int[input.length];
 		  blockedState = new int[input.length];
 		  
+		  runningHeaderBytes = new int[input.length];
+		  
+		  
 		  trieReader = new TrieParserReader(4);//max fields we support capturing.
 		  int x;
 		  
@@ -130,7 +135,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	      HTTPRevision[] revs = httpSpec.supportedHTTPRevisions.getEnumConstants();
 	      x = revs.length;               
 	      while (--x >= 0) {
-	            int b = revisionMap.setUTF8Value(revs[x].getKey(), " %u %b\n", revs[x].ordinal());   
+	            int b = revisionMap.setUTF8Value(revs[x].getKey(), " %u %b\n", revs[x].ordinal());    //\n must be first because we prefer to have it pick \r\n
 	            revisionMap.setUTF8Value(revs[x].getKey(), " %u %b\r\n", revs[x].ordinal());
 	      }
 	      
@@ -140,33 +145,33 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	      
 	      typeMap = new TrieParser(4096,true);	//TODO: set switch to turn on off the deep check skip      
 	      
+	      typeMap.setUTF8Value("%b\n", 0); //\n must be first because we prefer to have it pick \r\n
+	      typeMap.setUTF8Value("%b\r\n", 0);
 	      HTTPContentType[] types = httpSpec.contentTypes;
 	      x = types.length;
 	      while (--x >= 0) {		    	  
+	    	  typeMap.setUTF8Value(types[x].contentType(),"\n", types[x].ordinal());  //\n must be first because we prefer to have it pick \r\n
 	    	  typeMap.setUTF8Value(types[x].contentType(),"\r\n", types[x].ordinal());	 
-	    	  typeMap.setUTF8Value(types[x].contentType(),"\n", types[x].ordinal());
 	      }
-	      typeMap.setUTF8Value("%b\r\n", 0);
-	      typeMap.setUTF8Value("%b\n", 0);
 	      
 	      ///////////////////////////
 	      //Load the supported header keys
 	      ///////////////////////////
 	      headerMap = new TrieParser(2048,false);//deep check on to detect unexpected headers.
 	 
+	      headerMap.setUTF8Value("%b: %b\n", UNSUPPORTED_HEADER_ID);  //\n must be first because we prefer to have it pick \r\n  
+	      headerMap.setUTF8Value("%b: %b\r\n", UNSUPPORTED_HEADER_ID);	 
 	      HTTPHeaderKey[] shr =  httpSpec.headers;
 	      x = shr.length;
 	      while (--x >= 0) {
 	          //must have tail because the first char of the tail is required for the stop byte
 	          CharSequence key = shr[x].getKey();
-	          headerMap.setUTF8Value(key, "\n",shr[x].ordinal());  
+	          headerMap.setUTF8Value(key, "\n",shr[x].ordinal());   //\n must be first because we prefer to have it pick \r\n
 	          headerMap.setUTF8Value(key, "\r\n",shr[x].ordinal());	          
 	      }    
 	
-	      headerMap.setUTF8Value("%b: %b\n", UNSUPPORTED_HEADER_ID);  //TODO: urgent the insert of this conditional breaks on the wrong point
-	      headerMap.setUTF8Value("%b: %b\r\n", UNSUPPORTED_HEADER_ID);	  //TODO: urgent the insert of this conditional breaks on the wrong point
 	      
-	      headerMap.setUTF8Value("\n", END_OF_HEADER_ID); //Detecting this first but not right!! we did not close the revision??
+	      headerMap.setUTF8Value("\n", END_OF_HEADER_ID);  //\n must be first because we prefer to have it pick \r\n
 	      headerMap.setUTF8Value("\r\n", END_OF_HEADER_ID);	        
  	      
 	      chunkMap = new TrieParser(128,true);
@@ -265,6 +270,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 						
 						//assert(0==cc.getUserId() || IntHashTable.hasItem(listenerPipeLookup, cc.getUserId())) : "no value found for "+cc.getUserId();
+						
+				//		cc.getPipe
+						
 						
 						//convert long id to the pipe index.
 						targetPipe = output[(short)IntHashTable.getItem(listenerPipeLookup, cc.getUserId())]; 		
@@ -411,7 +419,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 							int consumed = startingLength1 - trieReader.sourceLen;						
 							
-							Pipe.releasePendingAsReadLock(pipe, consumed); //TODO: doing this so often is slowing int vs teh other implementation.
+							runningHeaderBytes[i] = consumed;
+							
+//							Pipe.releasePendingAsReadLock(pipe, consumed); //TODO: doing this so often is slowing int vs teh other implementation.
 							
 							subBytes(consumed, pipe, i, trieReader.sourceLen);
 
@@ -461,14 +471,22 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								} else {
 									state = endOfHeaderProcessing(i, stateIdx, targetPipe, ccId, writer);		
 
+									if (3==state) {
+										//release all header bytes, we will do each chunk on its own.
+										assert(runningHeaderBytes[i]>0);								
+										Pipe.releasePendingAsReadLock(pipe, runningHeaderBytes[i]); 
+										runningHeaderBytes[i] = 0;
+									}
+									
 								}
 								
 								TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 								
 								int consumed = startingLength - trieReader.sourceLen;
 							
-								Pipe.releasePendingAsReadLock(pipe, consumed);
-
+								assert(runningHeaderBytes[i]>0);
+								runningHeaderBytes[i] += consumed;
+								
 								subBytes(consumed, pipe, i, trieReader.sourceLen);
 							} 
 						} while (headerId>=0 && state==1);
@@ -512,7 +530,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									final int consumed = TrieParserReader.parseCopy(trieReader, lengthRemaining, writer2);
 									lengthRemaining -= consumed;
 							
-									Pipe.releasePendingAsReadLock(pipe, consumed); 
+									assert(runningHeaderBytes[i]>0);
+									runningHeaderBytes[i] += consumed;		
+									
+									Pipe.releasePendingAsReadLock(pipe, runningHeaderBytes[i]); 
+								
 									subBytes(consumed, pipe, i, trieReader.sourceLen);
 																	
 							
@@ -539,6 +561,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							}
 	
 					case 3: //PAYLOAD READING WITH CHUNKS	
+						
+						
 						    assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
 							long chunkRemaining = payloadLengthData[i];
 							DataOutputBlobWriter<NetResponseSchema> writer3 = PipeWriter.outputStream(targetPipe);
@@ -728,7 +752,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										    
 		if (payloadLengthData[i]<0) {
 			positionMemoData[stateIdx]= state= 3;	
-			payloadLengthData[i] = 0;//starting chunk size.
+			payloadLengthData[i] = 0;//starting chunk size.			
+
 		} else {
 			positionMemoData[stateIdx]= state= 2;			
 		}

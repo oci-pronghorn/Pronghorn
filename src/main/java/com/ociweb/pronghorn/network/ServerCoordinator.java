@@ -116,6 +116,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	
 	public void releaseResponsePipeLineIdx(long ccId) {		
 		responsePipeLinePool.release(ccId);	
+		//logger.info("after release we have {} locks",responsePipeLinePool.locks());
 	}
 	
 	public int resposePoolSize() {

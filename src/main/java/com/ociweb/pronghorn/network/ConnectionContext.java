@@ -16,5 +16,5 @@ public final class ConnectionContext {
 		this.channelId = channelId;
 	}
 
-    
+
 }

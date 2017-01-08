@@ -113,7 +113,20 @@ public class SSLConnection {
 		//  log.info("getSequenceNo {} for chanel {}",sequenceNo,id);
 		return sequenceNo;
 	}
+
+	private int poolReservation=-1;
 	
+	public void setPoolReservation(int value) {
+		poolReservation = value;
+	}
+	
+	public int getPoolReservation() {
+		return poolReservation;
+	}
+	
+	public void clearPoolReservation() {
+		poolReservation = -1;
+	}
 
 
 	

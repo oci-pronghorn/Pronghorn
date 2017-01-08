@@ -130,12 +130,12 @@ public class ServerSocketReaderStage extends PronghornStage {
 	                
 	                //get the context object so we know what the channel identifier is
 	                ConnectionContext connectionContext = (ConnectionContext)selection.attachment();                
-					long channelId = connectionContext.getChannelId();
+					final long channelId = connectionContext.getChannelId();
 	                				
 					
+					SSLConnection cc = coordinator.get(channelId, groupIdx);
 					if (isTLS) {
 						
-						SSLConnection cc = coordinator.get(channelId, groupIdx);
 							
 						if (null!=cc && null!=cc.getEngine()) {
 							HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
@@ -156,7 +156,10 @@ public class ServerSocketReaderStage extends PronghornStage {
 						
 			//		releasePipesForUse();
 					
-					int responsePipeLineIdx = coordinator.checkForResponsePipeLineIdx(channelId);					
+					int responsePipeLineIdx = cc.getPoolReservation(); 
+							//coordinator.checkForResponsePipeLineIdx(channelId);	
+					
+					
 					final boolean newBeginning = (responsePipeLineIdx<0);
 							
 					if (newBeginning) {
@@ -176,40 +179,18 @@ public class ServerSocketReaderStage extends PronghornStage {
 								continue;//try other connections which may already have pipes, this one can not reserve a pipe now.
 							}
 						}
+						
+						cc.setPoolReservation(responsePipeLineIdx);
+						
 					}
 						
 					Pipe<NetPayloadSchema> targetPipe = output[responsePipeLineIdx];
 					
-					if (newBeginning) {	
-						
-						//logger.info("NEW ALLOCATION OF PIPE {}",  targetPipe );
-						
-						SSLConnection cc = coordinator.get(channelId, groupIdx);
-						if (Pipe.hasRoomForWrite(targetPipe) && null!=cc) {
-										
-							int size = Pipe.addMsgIdx(targetPipe, NetPayloadSchema.MSG_BEGIN_208);
-							Pipe.addIntValue(cc.getSequenceNo(), targetPipe);						
-							Pipe.confirmLowLevelWrite(targetPipe, size);
-							Pipe.publishWrites(targetPipe);
-									
-						} else {
-							
-							logger.info("odd new but no room {}",targetPipe);
-							
-							if (cc == null) {
-								//closed connection							
-							} else {
-								//this odd case should not happen
-								logger.info("this pipe should have been empty since its a new beginning, yet we did not have room for write?");
-							}
-							coordinator.releaseResponsePipeLineIdx(channelId);
-							continue;
-						}
-					}				
+					
 					
 				//	logger.info("pump data");
 					
-					int pumpState = pumpByteChannelIntoPipe(socketChannel, channelId, targetPipe); 
+					int pumpState = pumpByteChannelIntoPipe(socketChannel, channelId, targetPipe, newBeginning, cc); 
 	                if (pumpState<0) {//consumes from channel until it has no more or pipe has no more room
 	                	//pipe full do again later
 	                	
@@ -328,11 +309,11 @@ public class ServerSocketReaderStage extends PronghornStage {
 		int pipeIdx = coordinator.checkForResponsePipeLineIdx(idToClear);
 		//if we can not look it  up then we can not release it?
 		
-	//	logger.info("new release for {} {}",pipeIdx, idToClear);
 		
 		///////////////////////////////////////////////////
 		//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
 		if (pipeIdx>=0 && (Pipe.headPosition(output[pipeIdx]) == pos)) {
+		//	logger.info("NEW RELEASE for pipe {} connection {}",pipeIdx, idToClear);
 			coordinator.releaseResponsePipeLineIdx(idToClear);
 			
 			assert( 0 == Pipe.releasePendingByteCount(output[pipeIdx]));
@@ -343,16 +324,18 @@ public class ServerSocketReaderStage extends PronghornStage {
 				if (null!=conn) {					
 					conn.setSequenceNo(seq);//only set when we release a pipe
 				}
+				conn.clearPoolReservation();
+				
 			} else {
 				logger.info("legacy release detected, error...");
 			}
 			
 		} else {
-			
+			logger.info("SKIP RELEASE for pipe {} connection {}",pipeIdx, idToClear);
 			
 			if (pipeIdx>=0) {
 				
-		//		logger.info(pipeIdx+"  no release for pipe {} release head position {}",output[pipeIdx],pos); //what about EOF is that blocking the relase.
+				logger.info(pipeIdx+"  no release for pipe {} release head position {}",output[pipeIdx],pos); //what about EOF is that blocking the relase.
 
 				if (pos>Pipe.headPosition(output[pipeIdx])) {
 					System.err.println("EEEEEEEEEEEEEEEEEEEEEEEEe  got ack but did not release on server. pipe "+pipeIdx+" pos "+pos+" expected "+Pipe.headPosition(output[pipeIdx]) );
@@ -390,7 +373,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     }
     
     //returns -1 for did not start, 0 for started, and 1 for finished all.
-    public int pumpByteChannelIntoPipe(SocketChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe) {
+    public int pumpByteChannelIntoPipe(SocketChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, SSLConnection cc) {
     	
         //keep appending messages until the channel is empty or the pipe is full
         if (Pipe.hasRoomForWrite(targetPipe)) {          
@@ -410,8 +393,8 @@ public class ServerSocketReaderStage extends PronghornStage {
                 	}            
            //     	System.err.println(temp+"  for channel "+channelId); //this seems to show that this loop is not needed because the data is already grouped?? BUT could do larger groups going arround.
                 } while (temp>0);
-                      
-                return publishOrAbandon(channelId, targetPipe, len, b, temp>=0);
+                                      
+                return publishOrAbandon(channelId, targetPipe, len, b, temp>=0, newBeginning, cc);
 
             } catch (IOException e) {
             	
@@ -437,15 +420,46 @@ public class ServerSocketReaderStage extends PronghornStage {
         }
     }
 
-	private int publishOrAbandon(long channelId, Pipe<NetPayloadSchema> targetPipe, long len, ByteBuffer[] b, boolean isOpen) {
+	private int publishOrAbandon(long channelId, Pipe<NetPayloadSchema> targetPipe, long len, ByteBuffer[] b, boolean isOpen, boolean newBeginning, SSLConnection cc) {
 		if (len>0) {
+			
+			if (newBeginning) {	
+								
+			//	logger.info("NEW ALLOCATION OF PIPE for connection {}     {}",  cc.id, targetPipe );
+				
+				if (Pipe.hasRoomForWrite(targetPipe)) {//WARNING we have mixed two messages here !!! we wrote the bytes for the next already 
+								
+					int size = Pipe.addMsgIdx(targetPipe, NetPayloadSchema.MSG_BEGIN_208);
+					Pipe.addIntValue(cc.getSequenceNo(), targetPipe);						
+					Pipe.confirmLowLevelWrite(targetPipe, size);
+					Pipe.publishWrites(targetPipe);
+							
+				} else {
+					//TODO: make this an assert....
+					logger.info("internal error, picked up new pipe but it has data {}",targetPipe);
+					throw new UnsupportedOperationException();
+				}
+			}				
+			
+			
+			
 			boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;   
 //			bytesConsumed+=len;
 			publishData(targetPipe, channelId, len);                  	 
+//			logger.info("wrote {} bytess to pipe {} ", len,targetPipe);
 			return (fullTarget&&isOpen) ? 0 : 1; //only for 1 can we be sure we read all the data
 		} else {
-			 logger.info("abandon one record, did not publish because length was {}",len);
+//			 logger.info("abandon one record, did not publish because length was {}    {}",len,targetPipe);
 			 Pipe.unstoreBlobWorkingHeadPosition(targetPipe);//we did not use or need the writing buffers above.
+			 
+             if (newBeginning) { //Gatling does this a lot, TODO: we should optimize this case.
+             	//we will abandon but we also must release the reservation because it was never used
+             	coordinator.releaseResponsePipeLineIdx(channelId);
+             	SSLConnection conn = coordinator.get(channelId, groupIdx);
+             	conn.clearPoolReservation();
+             //	logger.info("client is sending zero bytes, ZERO LENGTH RELESE OF UNUSED PIPE  FOR {}", channelId);
+             }
+			 
 			 return 1;//yes we are done
 		}
 	}

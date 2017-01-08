@@ -188,11 +188,11 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         totalShortestRequest = 0;//count bytes for the shortest known request, this opmization helps prevent parse attempts when its clear that there is not enough data.
         int localShortest;
         
-        headerMap.setUTF8Value("\n", END_OF_HEADER_ID); //Detecting this first but not right!! we did not close the revision??
+        headerMap.setUTF8Value("\n", END_OF_HEADER_ID);  //\n must be first because we prefer to have it pick \r\n
         headerMap.setUTF8Value("\r\n", END_OF_HEADER_ID);
         
         //TODO: this addition is slowing down the performance, must investigate
-        headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //TODO: bug in trie if we attemp to set this first...
+        headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be first because we prefer to have it pick \r\n
         headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
 
         //Load the supported header keys
@@ -200,7 +200,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         x = shr.length;
         while (--x >= 0) {
             //must have tail because the first char of the tail is required for the stop byte
-            headerMap.setUTF8Value(shr[x].getKey(), "\n",shr[x].ordinal());
+            headerMap.setUTF8Value(shr[x].getKey(), "\n",shr[x].ordinal()); //\n must be first because we prefer to have it pick \r\n
             headerMap.setUTF8Value(shr[x].getKey(), "\r\n",shr[x].ordinal());
         }     
 
@@ -213,7 +213,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         x = revs.length;
         localShortest = Integer.MAX_VALUE;                
         while (--x >= 0) {
-            int b = revisionMap.setUTF8Value(revs[x].getKey(), "\n", revs[x].ordinal());
+            int b = revisionMap.setUTF8Value(revs[x].getKey(), "\n", revs[x].ordinal()); //\n must be first because we prefer to have it pick \r\n
             if (b<localShortest) {
                 localShortest = b;
             }            

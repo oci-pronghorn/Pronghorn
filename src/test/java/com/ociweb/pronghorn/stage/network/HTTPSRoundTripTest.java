@@ -16,6 +16,7 @@ import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.HTTPClientRequestStage;
 import com.ociweb.pronghorn.network.ModuleConfig;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.SSLConnection;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
@@ -307,7 +308,7 @@ public class HTTPSRoundTripTest {
 	//TODO: URGENT must detect when we get the type wrong but with low level API attempt to use values!!
 	
 	@Ignore
-//	@Test
+	//@Test
 	public void roundTripTest2() {
 				
 		{
@@ -346,7 +347,7 @@ public class HTTPSRoundTripTest {
 	    	
 	    	/////////////////
 	        /////////////////
-	    	int base2SimultaniousConnections = 6; //TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
+	    	int base2SimultaniousConnections = 3;//6; //TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
 	    	int clientCount = 4;
 	    		    	
 	    	//TODO: this number must be the limit of max simuantious handshakes.
@@ -370,9 +371,9 @@ public class HTTPSRoundTripTest {
 	    	//////////////
 	    	
 	    	//TODO: lower this value until we see pipes get released when completed, if not then we will starve out new requests. NOTE: needs better solution.
-	    	int inFlightLimit = 8_000;///000;//24_000;//when set to much more it disconnects.
+	    	int inFlightLimit = 16_000;
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
-	    	final int loadMultiplier = isTLS? 100_000 : 2_000_000;//100_000;//100_000;
+	    	final int loadMultiplier = isTLS? 100_000 : 3_000_000;//100_000;//100_000;
 
 	    		    	
 			//one of these per unwrap unit and per partial message, there will be many of these normally so they should not be too large
@@ -658,7 +659,9 @@ public class HTTPSRoundTripTest {
 		
 		int i = input.length;//*usersPerPipe;
 		while (--i>=0) {
-			IntHashTable.setItem(listenerPipeLookup, i, i/*%input.length*/);//put this key on that pipe			
+			IntHashTable.setItem(listenerPipeLookup, i, i/*%input.length*/);//put this key on that pipe		
+
+			
 		}				
 		
 		//second pipe which also impacts latency		
