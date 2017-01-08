@@ -91,7 +91,11 @@ public class ServerNewConnectionStage extends PronghornStage{
             }
             throw new RuntimeException(be);
         } catch (IOException e) {
-            
+           if (e.getMessage().contains("Unresolved address")) {
+        	   System.out.println("Unresolved host address  http"+(isTLS?"s":""));
+           }
+        	
+        	
            throw new RuntimeException(e);
            
         }
