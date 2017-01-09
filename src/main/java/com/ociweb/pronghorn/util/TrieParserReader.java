@@ -493,13 +493,10 @@ public class TrieParserReader {
 	                                
 	        if (reader.altStackPos>0) {
 	            stopCount = scanAllStackPos(reader, reader.localSourcePos, trie.data, reader.runLength, stopCount);
-	        }
-	
+	        }	
 	        
-	        if (stopCount>1) {
-				if ((reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, maxCapture, sourceMask, reader.workingMultiStops, stopCount)) >=0) {                    
-					reader.pos = continueFromWithMatchingStop(reader, reader.pos, (short) source[sourceMask&(reader.localSourcePos-1)], reader.workingMultiStops, stopCount);
-				}
+	        if (stopCount>1) {				
+	        	parseBytesMultiStops(reader, source, sourceMask, maxCapture, stopCount, reader.localSourcePos, reader.workingMultiStops);	        					
 	        } else {
 	            reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, maxCapture, sourceMask, stopValue);
 	        }
@@ -507,6 +504,28 @@ public class TrieParserReader {
     		reader.localSourcePos = -1;
     	}
     }
+
+	private static void parseBytesMultiStops(TrieParserReader reader, byte[] source, int sourceMask, long maxCapture, int stopCount, final int sourcePos, final short[] stopValues) {
+		
+		assert(stopValues.length>0);
+		
+		int x = sourcePos;
+		int lim = (int)Math.min(maxCapture, sourceMask);
+		
+		int stopIdx = -1;
+		do {
+		} while (--lim >= 0 && (-1== (stopIdx=indexOfMatchInArray(source[sourceMask & x++], stopValues, stopCount ))) );	
+		
+		if (-1==stopIdx) {//not found!
+			reader.localSourcePos =-1;
+		} else {
+			int len = (x-sourcePos)-1;
+			reader.runLength += (len);
+			reader.capturedPos = extractedBytesRange(reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);  
+			reader.localSourcePos = x;
+			reader.pos = reader.workingMultiContinue[stopIdx];
+		}
+	}
 
     private static void initForQuery(TrieParserReader reader, TrieParser trie, byte[] source, int sourcePos) {
         reader.capturedPos = 0;
@@ -527,16 +546,32 @@ public class TrieParserReader {
     private static void processAltBranch(TrieParserReader reader, short[] localData) {
         assert(localData[reader.pos]>=0): "bad value "+localData[reader.pos];
         assert(localData[reader.pos+1]>=0): "bad value "+localData[reader.pos+1];
-             
-         altBranch(localData, reader, reader.pos, reader.localSourcePos, (((int)localData[reader.pos++])<<15) | (0x7FFF&localData[reader.pos++]), localData[reader.pos], reader.runLength); 
- 
-  // 2,3,4      System.err.println("stack depth "+reader.altStackPos);
+        	
+    	//the extracted (byte or number) is ALWAYS local so push LOCAL position on stack and take the JUMP        	
+    	
+        int pos = reader.pos;
+		int offset = reader.localSourcePos;
+		int jump = (((int)localData[reader.pos++])<<15) | (0x7FFF&localData[reader.pos++]); 
+		int runLength = reader.runLength;
+	    assert(jump>0) : "Jump must be postitive but found "+jump;
+    	
+	    int aLocal = pos+ TrieParser.BRANCH_JUMP_SIZE;
+	    int bJump  = pos+jump+ TrieParser.BRANCH_JUMP_SIZE;
+	   
+	    int localType = localData[aLocal];   		    
+	    assert(TrieParser.TYPE_VALUE_BYTES == localType || 
+	    	   TrieParser.TYPE_VALUE_NUMERIC  == localType ||
+	    	   TrieParser.TYPE_ALT_BRANCH == localType
+	    	   );  // local can only be one of the capture types or a branch leaning to those exclusively.
+  		    
+	    
+	    //push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
+	    pushAlt(reader, aLocal, offset, runLength);
+	    
+	    //take the jump   		    
+	    reader.pos = bJump;
+   
          
-         //pop off the top of the stack and use that value.
-         reader.localSourcePos     = reader.altStackA[--reader.altStackPos];
-         reader.capturedPos        = reader.altStackB[reader.altStackPos];
-         reader.pos                = reader.altStackC[reader.altStackPos];
-         reader.runLength          = reader.altStackD[reader.altStackPos];
     }
 
     private static long useSafePointNow(TrieParserReader reader) {
@@ -594,7 +629,7 @@ public class TrieParserReader {
                    // System.out.println("c");
                     break;
                 }
-                if (!valueNotFoundInArray(newStop, reader.workingMultiStops, stopCount)) {
+                if (-1 != indexOfMatchInArray(newStop, reader.workingMultiStops, stopCount)) {
                     //System.out.println("d");
                     break;//safety until the below issue detected by the assert is fixed.
                 }
@@ -613,51 +648,6 @@ public class TrieParserReader {
         return stopCount;
     }
 
-    private static int continueFromWithMatchingStop(TrieParserReader reader, final int pos, short selected,	short[] workingMultiStops2, int j) {
-		while (--j>=0) {
-			if (selected == workingMultiStops2[j]) {
-		        return reader.workingMultiContinue[j];
-		    }
-		}
-		assert(j>=0):"should have found value";
-		return pos;
-	}
-
-    private static void recurseAltBranch(short[] localData, TrieParserReader reader, int pos, int offset, int runLength) {
-        if ((int) localData[pos] == TrieParser.TYPE_ALT_BRANCH) {
-            
-            pos++;
-    
-            assert(localData[pos]>=0): "bad value "+localData[pos];
-            assert(localData[pos+1]>=0): "bad value "+localData[pos+1];
-            
-            altBranch(localData, reader, pos, offset, (((int)localData[pos++])<<15) | (0x7FFF&localData[pos++]), localData[pos], runLength); 
-
-            
-        } else {            
-            pushAlt(reader, pos, offset, runLength);
-        }
-    }
-    
-    static void altBranch(short[] localData, TrieParserReader reader, int pos, int offset, int jump, int peekNextType, int runLength) {
-        assert(jump>0) : "Jump must be postitive but found "+jump;
-        
-        //put extract first so its at the bottom of the stack
-        if (TrieParser.TYPE_VALUE_BYTES == peekNextType || TrieParser.TYPE_VALUE_NUMERIC==peekNextType) {
-            //Take the Jump value first, the local value has an extraction.
-            //push the LocalValue
-        	altBranchLeftRight(localData, reader, offset, runLength, pos+ TrieParser.BRANCH_JUMP_SIZE, pos+jump+ TrieParser.BRANCH_JUMP_SIZE);           
-        } else {
-            //Take the Local value first
-            //push the JumpValue
-        	altBranchLeftRight(localData, reader, offset, runLength, pos+jump+ TrieParser.BRANCH_JUMP_SIZE, pos+ TrieParser.BRANCH_JUMP_SIZE);
-        }
-    }
-
-	private static void altBranchLeftRight(short[] localData, TrieParserReader reader, int offset, int runLength, int a, int b) {
-		recurseAltBranch(localData, reader, a, offset, runLength);
-		recurseAltBranch(localData, reader, b, offset, runLength);
-	}
 
     static void pushAlt(TrieParserReader reader, int pos, int offset, int runLength) {
         
@@ -701,33 +691,14 @@ public class TrieParserReader {
         return x;
 	}
     
-    private static int parseBytes(TrieParserReader reader, final byte[] source, final int sourcePos, long remainingLen, final int sourceMask, final short[] stopValues, final int stopValuesCount) {              
-
-        int x = sourcePos;
-        int lim = (int)Math.min(remainingLen, sourceMask);
-    
-        boolean noStop = true;
-        do {
-        } while (--lim >= 0 && (noStop=valueNotFoundInArray(source[sourceMask & x++], stopValues, stopValuesCount )) );         
-        int len = (x-sourcePos)-1;
-
-        if (noStop) {//not found!
-            return -1;
-        }
-        reader.runLength += (len);
-        reader.capturedPos = extractedBytesRange(reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);                
-        return x;
-    }
-    
-    private static boolean valueNotFoundInArray(short value, short[] data, int count) {
-        int i = count;
+    private static int indexOfMatchInArray(short value, short[] data, int i) {
         //System.err.println("searhing run of "+count); checked and found it 1
         while (--i>=0) {
             if (value == data[i]) {
-                return false;
+                return i;
             }
         }
-        return true;
+        return i;
     }
 
     private static int extractedBytesRange(int[] target, int pos, int sourcePos, int sourceLen, int sourceMask) {

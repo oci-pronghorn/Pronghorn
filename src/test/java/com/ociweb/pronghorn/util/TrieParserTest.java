@@ -881,7 +881,12 @@ public class TrieParserTest {
         TrieParserReader.capturedFieldInts(reader, 0, target, 0);
         assertEquals(1,target[0]); //positive
         
-        //System.out.println(Arrays.toString(target));
+        //////////////////////////////////////TESTING DUMP
+        //System.out.println(map);
+        //THESE TWO PROBLEMS ARE THE PRIMARY CAAUSE OF OUR SLOWDOWNS.
+        //An ALT_BRANCH happens at the front due to immmediage %d capture
+        //An ALT_BRANCH also happens due to both \n and \r\n endings 
+        ////////////
         
         assertEquals(0,target[1]);//no high int        
         assertEquals(1234,target[2]);
@@ -1061,16 +1066,7 @@ public class TrieParserTest {
              fail(e.getMessage());
           }     
          
-//         TrieParserReader.debugAsUTF8(reader, System.out);
-//         System.out.println();
-         
-         assertEquals(1,TrieParserReader.parseNext(reader, trie));
-         
-//         TrieParserReader.debugAsUTF8(reader, System.out);
-//         System.out.println();
-//         
-//         System.out.println(trie);
-         
+         assertEquals(1,TrieParserReader.parseNext(reader, trie));         
          assertEquals(2,TrieParserReader.parseNext(reader, trie));
          
          assertFalse(TrieParserReader.parseHasContent(reader));

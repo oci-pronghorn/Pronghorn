@@ -373,8 +373,12 @@ public class TrieParser {
                         if (NO_ESCAPE_SUPPORT!=ESCAPE_BYTE && ESCAPE_BYTE==v && ESCAPE_BYTE!=source[sourceMask & (1+sourcePos)] ) {
                             //we have found an escape sequence so we must insert a branch here we cant branch on a value
                             
-                            fieldExtractionsCount++; 
-                            insertAtBranchValue(0, data, pos-1, source, sourcePos, sourceLength-length, sourceMask, value, false); 
+                            fieldExtractionsCount++;
+							final int sourcePos1 = sourcePos;
+							final int sourceLength1 = sourceLength-length; 
+                            assert(sourceLength1>=1);
+							          
+							writeEnd(data, writeRuns(data, insertAltBranch(0, data, pos-1, source, sourcePos1, sourceLength1, sourceMask), source, sourcePos1, sourceLength1, sourceMask), value); 
                             maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                             return;
                             
@@ -408,9 +412,10 @@ public class TrieParser {
                 				
                 				break;
                     		}
-                    	}                        
-                        
-                        insertAtBranchValue(0, data, pos-1, source, sourcePos, sourceLength-length, sourceMask, value, false);
+                    	}
+					    final int insertLengthNumericCapture = sourceLength-length;
+                        assert(insertLengthNumericCapture>=1);
+					    writeEnd(data, writeRuns(data, insertAltBranch(0, data, pos-1, source, sourcePos, insertLengthNumericCapture, sourceMask), source, sourcePos, insertLengthNumericCapture, sourceMask), value);
                         return;
 
                     case TYPE_VALUE_BYTES:
@@ -420,7 +425,9 @@ public class TrieParser {
                     	if ('%'!=source[sourceMask & sourcePos]     ||
                     		'b'!=source[sourceMask & (sourcePos+1)] ||
                     		data[pos]!=source[sourceMask & (sourcePos+2)] ) {   	
-                    		insertAtBranchValue(0, data, pos-1, source, sourcePos, sourceLength-length, sourceMask, value, false);
+                    		final int insertLengthBytesCapture = sourceLength-length;								
+							assert(insertLengthBytesCapture>=1);					           
+							writeEnd(data, writeRuns(data, insertAltBranch(0, data, pos-1, source, sourcePos, insertLengthBytesCapture, sourceMask), source, sourcePos, insertLengthBytesCapture, sourceMask), value);
                     		return;
                     		
                     	} else {
@@ -452,8 +459,10 @@ public class TrieParser {
              
                                     //confirm second value is not also the escape byte so we do have a command
                                     if (ESCAPE_BYTE != sourceByte) {
-                                        fieldExtractionsCount++; //this count can be off by buried extractions.
-                                        insertAtBranchValue(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun, sourcePos-2,false);                                    
+                                        fieldExtractionsCount++;
+                                        
+										insertAtBranchValueAlt(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun,	sourcePos-2); //TODO: this count can be off by buried extractions.      
+									                                   
                                         maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                                         return;
                                     } else {
@@ -463,7 +472,8 @@ public class TrieParser {
                                 }                                
                                 
                                 if (data[pos++] != sourceByte) {
-                                    insertAtBranchValue(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun, sourcePos-1,true);
+                                    insertAtBranchValueByte(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun, sourcePos-1);    		
+					
                                     maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                                     return;
                                 }
@@ -485,7 +495,8 @@ public class TrieParser {
                                 if (ESCAPE_BYTE != sourceByte) {
                                     //sourceByte holds the specific command
                                     fieldExtractionsCount++;
-                                    insertAtBranchValue(pos+1, data, source, sourceLength, sourceMask, value, length, runPos, run, r, sourcePos-2,false);                                        
+									insertAtBranchValueAlt(pos+1, data, source, sourceLength, sourceMask, value, length, runPos, run, r,	sourcePos-2);
+								                                       
                                     maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                                     return;
                                 } else {
@@ -495,7 +506,8 @@ public class TrieParser {
                             }                            
                             
                             if (data[pos++] != sourceByte) {
-                                insertAtBranchValue(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r, sourcePos-1,true);
+                                insertAtBranchValueByte(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r, sourcePos-1);    		
+			
                                 maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                                 return;
                             }
@@ -723,24 +735,38 @@ public class TrieParser {
         data[runLenPos] -= sourceLength;//previous run is shortened buy the length of this new run
         return pos;
     }
-    
 
-    private void insertAtBranchValue(final int pos, short[] data, byte[] source, int sourceLength, int sourceMask, long value, int length, int runPos, int run, int r1, final int sourceCharPos, boolean branchOnByte) {
-        
-    	if (++r1 == run) {
-            int p = pos-3;
-            if (p < 0) {
-                p = 0;
-            }
-            r1 = 0; //keep entire run and do not split it.
-            insertAtBranchValue(r1, data, p, source, sourceCharPos, sourceLength-length, sourceMask, value, branchOnByte); 
-        } else {
-            short temp = (short)(run-r1);
-            data[runPos] = temp;
-            int computedRemainingLength = sourceLength-(length+temp);
-            insertAtBranchValue(r1, data, pos-1, source, sourceCharPos, computedRemainingLength , sourceMask, value, branchOnByte);
-        }
-    }
+	private void insertAtBranchValueAlt(final int pos, short[] data, byte[] source, int sourceLength, int sourceMask,
+			long value, int length, int runPos, int run, int r1, final int sourceCharPos) {
+		r1++;
+		if (r1 == run) {
+			final int insertLength = sourceLength - length;
+			assert(insertLength>=1);
+		           
+			writeEnd(data, writeRuns(data, insertAltBranch(0, data, pos>=3 ? pos-3 : 0, source, sourceCharPos, insertLength, sourceMask), source, sourceCharPos, insertLength, sourceMask), value);
+		} else {
+			final int insertLength = sourceLength - (length+(data[runPos] = (short)(run-r1)));
+			assert(insertLength>=1);
+           
+			writeEnd(data, writeRuns(data, insertAltBranch(r1, data, pos-1, source, sourceCharPos, insertLength, sourceMask), source, sourceCharPos, insertLength, sourceMask), value);
+		}
+	}
+
+	private void insertAtBranchValueByte(final int pos, short[] data, byte[] source, int sourceLength, int sourceMask,
+			long value, int length, int runPos, int run, int r1, final int sourceCharPos) {
+		r1++;
+		if (r1 == run) {
+			final int sourceLength1 = sourceLength - length;
+			assert(sourceLength1>=1);
+			
+			writeEnd(data, writeRuns(data, insertByteBranch(0, data, pos>=3 ? pos-3 : 0, source, sourceCharPos, sourceLength1, sourceMask), source, sourceCharPos, sourceLength1, sourceMask), value);
+		} else {
+			final int sourceLength1 = sourceLength - (length+(data[runPos] = (short)(run-r1)));
+			assert(sourceLength1>=1);
+	    
+			writeEnd(data, writeRuns(data, insertByteBranch(r1, data, pos-1, source, sourceCharPos, sourceLength1, sourceMask), source, sourceCharPos, sourceLength1, sourceMask), value);
+		}
+	}
 
 
     private int stepOverBytes(byte[] source, int sourcePos, int sourceMask, final short stop) {
@@ -813,29 +839,37 @@ public class TrieParser {
         assert(sourceLength>=1);
    
         if (branchOnByte) {        
-            final int requiredRoom = SIZE_OF_END_1 + SIZE_OF_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);
-                        
-            final int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
-            pos = writeBranch(TYPE_BRANCH_VALUE, data, pos, requiredRoom, findSingleBitMask((short) source[sourcePos & sourceMask], data[oldValueIdx]));
-        } else {
-            
-            int requiredRoom = SIZE_OF_END_1 + SIZE_OF_ALT_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);  
-            final int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
+            pos = insertByteBranch(danglingByteCount, data, pos, source, sourcePos, sourceLength, sourceMask);
+        } else {            
+            pos = insertAltBranch(danglingByteCount, data, pos, source, sourcePos, sourceLength, sourceMask);            
+        }       
 
-            requiredRoom -= SIZE_OF_ALT_BRANCH;//subtract the size of the branch operator
-            data[pos++] = TYPE_ALT_BRANCH;         
-            
-            assert(2==BRANCH_JUMP_SIZE);              
-            data[pos++] = (short)(0x7FFF&(requiredRoom>>15));          
-            data[pos++] = (short)(0x7FFF&requiredRoom);
-            
-        }
-        
-        pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);
-
-        writeEnd(data, pos, value);
+        writeEnd(data, writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask), value);
         
     }
+
+	private int insertByteBranch(int danglingByteCount, short[] data, int pos, byte[] source, final int sourcePos,
+			final int sourceLength, int sourceMask) {
+		final int requiredRoom = SIZE_OF_END_1 + SIZE_OF_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);
+		            
+		final int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
+		pos = writeBranch(TYPE_BRANCH_VALUE, data, pos, requiredRoom, findSingleBitMask((short) source[sourcePos & sourceMask], data[oldValueIdx]));
+		return pos;
+	}
+
+	private int insertAltBranch(int danglingByteCount, short[] data, int pos, byte[] source, final int sourcePos, final int sourceLength, int sourceMask) {
+		
+		int requiredRoom = SIZE_OF_END_1 + SIZE_OF_ALT_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);  
+		final int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
+
+		requiredRoom -= SIZE_OF_ALT_BRANCH;//subtract the size of the branch operator
+		data[pos++] = TYPE_ALT_BRANCH;         
+		
+		assert(2==BRANCH_JUMP_SIZE);              
+		data[pos++] = (short)(0x7FFF&(requiredRoom>>15));          
+		data[pos++] = (short)(0x7FFF&requiredRoom);
+		return pos;
+	}
 
 
     private short findSingleBitMask(short a, short b) {
