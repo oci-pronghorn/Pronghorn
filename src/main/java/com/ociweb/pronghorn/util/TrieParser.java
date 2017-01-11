@@ -83,10 +83,11 @@ public class TrieParser {
     //   starts with / if not return 1
     static final byte NUMERIC_FLAG_RATIONAL =  8;
     
-    private final int MAX_TEXT_LENGTH = 4096;
     
     final short[] data;
     private int limit = 0;
+
+    private final int MAX_TEXT_LENGTH = 4096;
     private Pipe<RawDataSchema> pipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance,3,MAX_TEXT_LENGTH));
     
     private int maxExtractedFields = 0;//out of all the byte patterns known what is the maximum # of extracted fields from any of them.
@@ -120,8 +121,7 @@ public class TrieParser {
             ESCAPE_BYTE = '%';
         } else {
             ESCAPE_BYTE = NO_ESCAPE_SUPPORT;
-        }
-        
+        }        
         
     }
     
@@ -277,6 +277,233 @@ public class TrieParser {
         return i;
     }
 
+    
+    public StringBuilder toDOT(StringBuilder builder) {
+    	
+    	builder.append("digraph {\n");    	
+    	
+        int i = 0;
+        while (i<limit) {
+        	
+        	Appendables.appendValue(builder, "node", i, "[label=\"");
+        	//each type will add its label details and close the line
+        	//after closing the line links can also be added to other jump points       	
+        	        	
+            switch (data[i]) {
+                case TYPE_SAFE_END:
+                    i = toDotSafe(builder, i);
+                    break;
+                case TYPE_ALT_BRANCH:
+                    i = toDotAltBranch(builder, i);
+                    break;                    
+                case TYPE_BRANCH_VALUE:
+                    i = toDotBranchValue(builder, i);
+                    break;
+                case TYPE_VALUE_NUMERIC:
+                    i = toDotNumeric(builder, i);
+                    break;
+                case TYPE_VALUE_BYTES:
+                    i = toDotBytes(builder, i);
+                    break;
+                case TYPE_RUN:
+                    i = toDotRun(builder, i);  
+                    break;
+                case TYPE_END:
+                    i = toDotEnd(builder, i);
+                    break;
+                default:
+                    int remaining = limit-i;
+                    builder.append("ERROR Unrecognized value, remaining "+remaining+"\n");
+                    if (remaining<100) {
+                        builder.append("Remaining:"+Arrays.toString(Arrays.copyOfRange(data, i, limit))+"\n" );
+                    }
+                    
+                    return builder;
+            }            
+        }
+        
+        builder.append("}\n");        
+        
+        return builder;
+    }
+    
+    
+    private int toDotSafe(StringBuilder builder, int i) {
+        
+    	int start = i;
+    	
+    	builder.append("SAFE");
+        i++;//builder.append(data[i]).append("[").append(i++).append("], ");
+        int s = SIZE_OF_RESULT;
+        while (--s >= 0) {        
+            builder.append(data[i]).append("[").append(i++).append("], ");
+        }
+        
+        //end of label
+        builder.append("\"]\n");
+             
+        Appendables.appendValue(builder,"node", start);
+        builder.append("->");
+        Appendables.appendValue(builder,"node", i, "\n"); //local
+        
+        
+        return i;
+    }
+
+    private int toDotNumeric(StringBuilder builder, int i) {
+        
+    	int start = i;
+    	
+    	builder.append("EXTRACT_NUMBER");
+        builder.append(data[i]).append("[").append(i++).append("], ");
+        
+        builder.append(data[i]).append("[").append(i++).append("]");
+               
+        
+        //end of label
+        builder.append("\"]\n");
+        
+        Appendables.appendValue(builder,"node", start);
+        builder.append("->");
+        Appendables.appendValue(builder,"node", i, "\n"); //local
+        
+        return i;
+        
+    }
+    
+    private int toDotBytes(StringBuilder builder, int i) {
+    	
+    	int start = i;
+    	
+        builder.append("EXTRACT_BYTES");
+        builder.append(data[i]).append("[").append(i++).append("], ");
+        
+        builder.append(data[i]).append("[").append(i++).append("]");
+        
+        
+        //end of label
+        builder.append("\"]\n");
+        
+        Appendables.appendValue(builder,"node", start);
+        builder.append("->");
+        Appendables.appendValue(builder,"node", i, "\n"); //local
+        
+        return i;
+    }
+    
+    
+    private int toDotEnd(StringBuilder builder, int i) {
+        builder.append("END");
+        i++;//builder.append(data[i]).append("[").append(i++).append("], ");
+        int s = SIZE_OF_RESULT;
+        while (--s >= 0) {        
+            builder.append(data[i]).append("[").append(i++).append("]");
+        }        
+        
+        //end of label
+        builder.append("\"]\n");        
+        
+        return i;
+    }
+
+
+    private int toDotRun(StringBuilder builder, int i) {
+    	
+    	int start = i;
+    	
+        //builder.append("RUN of ");
+        i++;//builder.append(data[i]).append("[").append(i++).append("], ");
+        int len = data[i];
+        Appendables.appendValue(builder,"RUN of ", len, "\n");
+        i++;//builder.append(data[i]).append("[").append(i++).append("]\n ");
+                
+        while (--len >= 0) {
+        	        	            
+        	if ((data[i]>=32) && (data[i]<=126)) {
+                builder.append((char)data[i]); 
+            } else {
+            	builder.append("{").append(data[i]).append("}");
+            }            
+            i++;
+        }        
+        
+        
+        //end of label
+        builder.append("\"]\n");
+        
+        Appendables.appendValue(builder,"node", start);
+        builder.append("->");
+        Appendables.appendValue(builder,"node", i, "\n"); //local
+        
+        return i;
+    }
+
+    private int toDotAltBranch(StringBuilder builder, int i) {
+    	
+    	int start = i;
+    	
+        builder.append("ALT_BRANCH");
+        builder.append(data[i]).append("[").append(i++).append("], "); //TYPE
+      
+        //assert(data[i]>=0);
+        builder.append(data[i]).append("[").append(i++).append("], ");//JUMP
+        builder.append(data[i]).append("[").append(i++).append("]");  //JUMP
+      
+        
+        //end of label
+        builder.append("\"]\n");
+                        
+        //add jumps
+        
+        Appendables.appendValue(builder,"node", start);
+        builder.append("->");
+        Appendables.appendValue(builder,"node", i, "\n"); //local
+        
+        
+        Appendables.appendValue(builder,"node", start);
+        int destination = i + ((((int)data[i-2])<<15) | (0x7FFF&data[i-1]));
+        builder.append("->");
+        Appendables.appendValue(builder,"node", destination, "\n"); //jump
+        
+        
+        return i;
+    }
+
+    private int toDotBranchValue(StringBuilder builder, int i) {
+    	
+    	int start = i;
+    	
+        builder.append("BRANCH ON BIT\n");
+        i++;//  builder.append(data[i]).append("[").append(i++).append("], "); //TYPE
+        
+        builder.append(" bit:");
+        String bits = ("00000000"+Integer.toBinaryString(data[i]));  //TODO: THIS IS A HACK FOR NOW, MOVE TO Appendables. we need binary support there.       
+        builder.append(bits.substring(bits.length()-8,bits.length()));
+        i++;//builder.append("[").append(i++).append("], "); //MASK FOR CHAR
+      
+        i++;//builder.append(data[i]).append("[").append(i++).append("], "); //JUMP
+        i++;//builder.append(data[i]).append("[").append(i++).append("]");//JUMP
+                
+        //end of label
+        builder.append("\"]\n");
+        
+        
+        //add jumps
+        
+        Appendables.appendValue(builder,"node", start);
+        builder.append("->");
+        Appendables.appendValue(builder,"node", i, "\n"); //local
+        
+        Appendables.appendValue(builder,"node", start);
+        int destination = i + ((((int)data[i-2])<<15) | (0x7FFF&data[i-1]));
+        builder.append("->");
+        Appendables.appendValue(builder,"node", destination, "\n"); //jump
+                
+        return i;
+    }
+   
+    
+    
     
     static int jumpOnBit(short source, short critera, int jump, int pos) {
     	
@@ -653,19 +880,22 @@ public class TrieParser {
 
 
     private void convertEndToNewSafePoint(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, long value) {
-        //convert end to safe
+        //convert end to safe, pos is now at the location of SIZE_OF_RESULT data
         
         if (data[pos-1] != TYPE_END) {
             throw new UnsupportedOperationException();
         }
-        data[--pos] = TYPE_SAFE_END; //change to a safe
+        data[--pos] = TYPE_SAFE_END; //change to a safe and move pos back to beginning of this.
 
         //now insert the needed run 
-        makeRoomForInsert(0, data, pos, SIZE_OF_END_1 + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask));    
-        pos += SIZE_OF_SAFE_END;
+        int requiredRoom = SIZE_OF_END_1 + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);             
+      
+		makeRoomForInsert(0, data, pos, requiredRoom); //after the safe point we make room for our new run and end
+		pos += SIZE_OF_SAFE_END;
 
         pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);        
         pos = writeEnd(data, pos, value);
+
     }
 
     /**
@@ -758,12 +988,10 @@ public class TrieParser {
 		if (r1 == run) {
 			final int sourceLength1 = sourceLength - length;
 			assert(sourceLength1>=1);
-			
 			writeEnd(data, writeRuns(data, insertByteBranch(0, data, pos>=3 ? pos-3 : 0, source, sourceCharPos, sourceLength1, sourceMask), source, sourceCharPos, sourceLength1, sourceMask), value);
 		} else {
 			final int sourceLength1 = sourceLength - (length+(data[runPos] = (short)(run-r1)));
 			assert(sourceLength1>=1);
-	    
 			writeEnd(data, writeRuns(data, insertByteBranch(r1, data, pos-1, source, sourceCharPos, sourceLength1, sourceMask), source, sourceCharPos, sourceLength1, sourceMask), value);
 		}
 	}
@@ -834,24 +1062,24 @@ public class TrieParser {
     }
 
 
-    private void insertAtBranchValue(int danglingByteCount, short[] data, int pos, byte[] source, final int sourcePos,final int sourceLength, int sourceMask, long value, boolean branchOnByte) {
-
-        assert(sourceLength>=1);
-   
-        if (branchOnByte) {        
-            pos = insertByteBranch(danglingByteCount, data, pos, source, sourcePos, sourceLength, sourceMask);
-        } else {            
-            pos = insertAltBranch(danglingByteCount, data, pos, source, sourcePos, sourceLength, sourceMask);            
-        }       
-
-        writeEnd(data, writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask), value);
-        
-    }
+//    private void insertAtBranchValue(int danglingByteCount, short[] data, int pos, byte[] source, final int sourcePos,final int sourceLength, int sourceMask, long value, boolean branchOnByte) {
+//
+//        assert(sourceLength>=1);
+//   
+//        if (branchOnByte) {        
+//            pos = insertByteBranch(danglingByteCount, data, pos, source, sourcePos, sourceLength, sourceMask);
+//        } else {            
+//            pos = insertAltBranch(danglingByteCount, data, pos, source, sourcePos, sourceLength, sourceMask);            
+//        }       
+//
+//        writeEnd(data, writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask), value);
+//        
+//    }
 
 	private int insertByteBranch(int danglingByteCount, short[] data, int pos, byte[] source, final int sourcePos,
 			final int sourceLength, int sourceMask) {
 		final int requiredRoom = SIZE_OF_END_1 + SIZE_OF_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);
-		            
+		            		
 		final int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
 		pos = writeBranch(TYPE_BRANCH_VALUE, data, pos, requiredRoom, findSingleBitMask((short) source[sourcePos & sourceMask], data[oldValueIdx]));
 		return pos;
@@ -889,6 +1117,7 @@ public class TrieParser {
 
     private int makeRoomForInsert(int danglingByteCount, short[] data, int pos, int requiredRoom) {
                 
+    	
         int len = limit - pos;
         if (danglingByteCount > 0) {
             requiredRoom+=SIZE_OF_RUN; //added because we will prepend this with a TYPE_RUN header to close the dangling bytes
@@ -930,24 +1159,22 @@ public class TrieParser {
                     break;
                 case TYPE_BRANCH_VALUE:
                     {
-                        int jmp = 1==BRANCH_JUMP_SIZE?  data[i+2] : (((int)data[i+2]) << 15)|(0x7FFF&data[i+3]);
+                        int jmp = (((int)data[i+2]) << 15)|(0x7FFF&data[i+3]);
                         
                         int newPos = SIZE_OF_BRANCH+i+jmp;
                         if (newPos > limit) {
                             
+                        	//System.err.println("byte jmp "+ jmp+" adjusted to new jump of "+(jmp+requiredRoom));
+                        	//System.err.println("byte jmp target "+ (i+4+jmp)+" adjusted to new jump targe of "+(i+4+jmp+requiredRoom));
+                        	
+                        	
                             //adjust this value because it jumps over the new inserted block
                             jmp += requiredRoom; 
                             
-                                                 
-                            if (1==BRANCH_JUMP_SIZE) {
-                                if (jmp > 0x7FFF) {
-                                    throw new UnsupportedOperationException("This content is too large, use shorter content or modify this code to make multiple jumps.");
-                                }
-                                data[i+2] = (short)(0x7FFF&(jmp));
-                            } else {
-                                data[i+2] = (short)(0x7FFF&(jmp>>15));
-                                data[i+3] = (short)(0x7FFF&(jmp));
-                            }
+                            data[i+2] = (short)(0x7FFF&(jmp>>15));
+                            data[i+3] = (short)(0x7FFF&(jmp));
+
+                            
                             
                             
                         }
@@ -956,24 +1183,19 @@ public class TrieParser {
                     break;     
                 case TYPE_ALT_BRANCH:
                     {
-                        int jmp = 1==BRANCH_JUMP_SIZE?  data[i+1] : (((int)data[i+1]) << 15)|(0x7FFF&data[i+2]);
+                        int jmp = (((int)data[i+1]) << 15)|(0x7FFF&data[i+2]);
                                        
                            int newPos = SIZE_OF_ALT_BRANCH+i+jmp;
                            if (newPos > limit) {
+                        	   
+                        	   //System.err.println("alt jmp "+jmp+" adjusted to new jump of "+(jmp+requiredRoom));
+                        	   
                                //adjust this value because it jumps over the new inserted block
                                jmp += requiredRoom; 
-                               
-
-                               if (1==BRANCH_JUMP_SIZE ) {
-                                   if (jmp > 0x7FFF) {
-                                       throw new UnsupportedOperationException("This content is too large, use shorter content or modify this code to make multiple jumps.");
-                                   }
-                                   data[i+1] = (short)(0x7FFF&(jmp));
-                               } else {
-                                   data[i+1] = (short)(0x7FFF&(jmp>>15));
-                                   data[i+2] = (short)(0x7FFF&(jmp));
-                               }
-                               
+             
+                               data[i+1] = (short)(0x7FFF&(jmp>>15));
+                               data[i+2] = (short)(0x7FFF&(jmp));
+                                                          
                            }
                            i += SIZE_OF_ALT_BRANCH;
                     }

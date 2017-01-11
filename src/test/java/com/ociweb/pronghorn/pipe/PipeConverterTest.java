@@ -18,19 +18,22 @@ public class PipeConverterTest {
         byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
         byte byteRingSizeInBits = 16;
         
-        Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, RawDataSchema.instance));
-        ring.initBuffers();
+        Pipe<RawDataSchema> pipe = new Pipe<RawDataSchema>(new PipeConfig(RawDataSchema.instance, primaryRingSizeInBits, byteRingSizeInBits));
+        pipe.initBuffers();
                 
-        Pipe.validateVarLength(ring, 10);
+        Pipe.validateVarLength(pipe, 10);
         
-        Pipe.addLongAsASCII(ring, 1234567890);
-        Pipe.publishWrites(ring);
+        int size = Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+        Pipe.addLongAsASCII(pipe, 1234567890);
+        Pipe.confirmLowLevelWrite(pipe, size);
+        Pipe.publishWrites(pipe);
         
-        int meta = Pipe.takeRingByteMetaData(ring);
-        int len = Pipe.takeRingByteLen(ring);
+        Pipe.takeMsgIdx(pipe);
+        int meta = Pipe.takeRingByteMetaData(pipe);
+        int len = Pipe.takeRingByteLen(pipe);
         
         StringBuilder target = new StringBuilder();
-        Pipe.readASCII(ring, target, meta, len);
+        Pipe.readASCII(pipe, target, meta, len);
         
         assertEquals("1234567890",target.toString());
                 
@@ -42,20 +45,23 @@ public class PipeConverterTest {
         byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
         byte byteRingSizeInBits = 16;
         
-        Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
-        ring.initBuffers();
-        ring.reset(0,0);
+        Pipe<RawDataSchema> pipe = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
+        pipe.initBuffers();
+        pipe.reset(0,0);
         
-        Pipe.validateVarLength(ring, 10);
+        Pipe.validateVarLength(pipe, 10);
                 
-        Pipe.addIntAsASCII(ring, 1234567890);
-        Pipe.publishWrites(ring);
+        int size = Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+        Pipe.addIntAsASCII(pipe, 1234567890);
+        Pipe.confirmLowLevelWrite(pipe, size);
+        Pipe.publishWrites(pipe);
         
-        int meta = Pipe.takeRingByteMetaData(ring);
-        int len = Pipe.takeRingByteLen(ring);
+        Pipe.takeMsgIdx(pipe);
+        int meta = Pipe.takeRingByteMetaData(pipe);
+        int len = Pipe.takeRingByteLen(pipe);
         
         StringBuilder target = new StringBuilder();
-        Pipe.readASCII(ring, target, meta, len);
+        Pipe.readASCII(pipe, target, meta, len);
         
         assertEquals("1234567890",target.toString());
                 

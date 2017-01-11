@@ -80,6 +80,70 @@ public class AppendablesTest {
                 
     }
     
-    
+	@Test
+	public void splitterTest() {
+		
+		String input = "/hello/this/is/text";
+		
+		CharSequence[] result = Appendables.split(input, '/');
+				
+		assertTrue("".equals(result[0]));
+		assertTrue("hello".equals(result[1]));
+		assertTrue("this".equals(result[2]));
+		assertTrue("is".equals(result[3]));
+		assertTrue("text".equals(result[4]));
+		
+	}
+	
+	
+	@Test
+	public void appendDecimalPostivieTest() {
+		
+		 long m = 12345;
+		 
+		 StringBuilder target = new StringBuilder();
+		 
+		 target.setLength(0);		 
+		 Appendables.appendDecimalValue(target, m, 2);
+		 assertEquals("1234500",target.toString());
+		 
+		 target.setLength(0);		 
+		 Appendables.appendDecimalValue(target, m, 0);
+		 assertEquals("12345",target.toString());
+		 
+		 target.setLength(0);		 
+		 Appendables.appendDecimalValue(target, m, -2);
+		 assertEquals("123.45",target.toString());
+		 
+		 target.setLength(0);		 
+		 Appendables.appendDecimalValue(target, m, -6);
+		 assertEquals(".012345",target.toString());
+		 		
+	}
+	
+	@Test
+	public void appendDecimalNegativeTest() {
+		
+		 long m = -12345;
+		 
+		 StringBuilder target = new StringBuilder();
+		 
+		 target.setLength(0);		 
+		 Appendables.appendDecimalValue(target, m, 2);
+		 assertEquals("-1234500",target.toString());
+		 
+		 target.setLength(0);		 
+		 Appendables.appendDecimalValue(target, m, 0);
+		 assertEquals("-12345",target.toString());
+		 
+		 target.setLength(0);		 
+		 Appendables.appendDecimalValue(target, m, -2);
+		 assertEquals("-123.45",target.toString());
+		 
+		 target.setLength(0);		 
+		 Appendables.appendDecimalValue(target, m, -6);
+		 assertEquals("-.012345",target.toString());
+		 		
+	}
     
 }

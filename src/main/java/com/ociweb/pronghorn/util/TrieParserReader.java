@@ -384,6 +384,11 @@ public class TrieParserReader {
                 //run
                 final int run = trie.data[reader.pos++];    
                 
+                //we will not have the room to do a match.
+                if (reader.runLength+run > sourceLength && !hasSafePoint && 0==reader.altStackPos) {
+                	return unfoundResult;
+                }                   
+                
                 if (!(trie.skipDeepChecks && !hasSafePoint && 0==reader.altStackPos)) {
                 	//scan returns -1 for a perfect match
                     int r = scanForMismatch(reader, source, sourceMask, trie.data, run);
@@ -404,48 +409,33 @@ public class TrieParserReader {
                     reader.localSourcePos += run; 
                 }
                 reader.runLength += run;
-                
-                //we did not have the room to match.
-                if (reader.runLength > sourceLength) {
-                	return unfoundResult;
-                }              
+          
                 
             } else if (t==TrieParser.TYPE_BRANCH_VALUE) {   
             	if (reader.runLength<sourceLength) {              
-            		short[] data = trie.data;
-					reader.pos = TrieParser.jumpOnBit((short) source[sourceMask & reader.localSourcePos], data[reader.pos++], (((int)data[reader.pos++])<<15) | (0x7FFF&data[reader.pos]), reader.pos);
+            		processByteBranch(reader, trie, source, sourceMask);
             	} else {
             		return unfoundResult;
             	}
             } else if (t == TrieParser.TYPE_ALT_BRANCH) {
             	processAltBranch(reader, trie.data);
-            } else if (t == TrieParser.TYPE_VALUE_BYTES) {
-
+            } else if (t == TrieParser.TYPE_VALUE_BYTES) {            	
                 if (reader.runLength<sourceLength) {
-	                parseBytes(reader, trie, source, sourceLength, sourceMask);
-	                                
+	                parseBytes(reader, trie, source, sourceLength, sourceMask);	                                
 	                if (-1 == reader.localSourcePos) {
-	                	skipAllValBytesOnStack(reader, trie);
-	                	if (reader.altStackPos == 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
-	                		return unfoundResult;
-	                	}	                	
-	                    continue top;
+	                	return unfoundResult;
 	                }
                 } else {
-                	skipAllValBytesOnStack(reader, trie);
-                	if (reader.altStackPos == 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
-                		return unfoundResult;
-                	}                	
-                    continue top;
+              		return unfoundResult;
                 }
             } else if (t == TrieParser.TYPE_VALUE_NUMERIC) {       
-		            	if (reader.runLength<sourceLength) {
-		            		if ((reader.localSourcePos = parseNumeric(reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, (int)trie.data[reader.pos++]))<0) {			            	
-			            		return unfoundResult;
-			            	}    
-		            	} else {
-		            		return unfoundResult;
-		            	}
+            	if (reader.runLength<sourceLength) {
+            		if ((reader.localSourcePos = parseNumeric(reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, (int)trie.data[reader.pos++]))<0) {			            	
+	            		return unfoundResult;
+	            	}    
+            	} else {
+            		return unfoundResult;
+            	}
             }  else if (t == TrieParser.TYPE_SAFE_END) {                    
                 
                 recordSafePointEnd(reader, reader.localSourcePos, reader.pos, trie);  
@@ -455,12 +445,8 @@ public class TrieParserReader {
                     return useSafePointNow(reader);
                 }                                             
             } else  {       
-                logger.error(trie.toString());
-                throw new UnsupportedOperationException("Bad jump length now at position "+(reader.pos-1)+" type found "+reader.type);
+                reportError(reader, trie);
             }
-	            	
-	        
-           
             reader.type = trie.data[reader.pos++]; 
         }
 
@@ -473,12 +459,15 @@ public class TrieParserReader {
         
     }
 
-	private static void skipAllValBytesOnStack(TrieParserReader reader, TrieParser trie) {
-		//we may have data on the stack but we have reached the END of the data
-		//so until we get more data we do not know the exact match to be applied
-		while (reader.altStackPos > 0 && reader.type==TrieParser.TYPE_VALUE_BYTES) {
-			loadupNextChoiceFromStack(reader, trie.data);
-		}
+	private static void reportError(TrieParserReader reader, TrieParser trie) {
+		logger.error(trie.toString());
+		throw new UnsupportedOperationException("Bad jump length now at position "+(reader.pos-1)+" type found "+reader.type);
+	}
+
+	private static void processByteBranch(TrieParserReader reader, TrieParser trie, byte[] source, int sourceMask) {
+		short[] data = trie.data;
+		int p = reader.pos;
+		reader.pos = TrieParser.jumpOnBit((short) source[sourceMask & reader.localSourcePos], data[p++], (((int)data[p++])<<15) | (0x7FFF&data[p]), p);
 	}
 
     private static void parseBytes(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength, int sourceMask) {
@@ -593,11 +582,15 @@ public class TrieParserReader {
         reader.type = localData[reader.pos++];
     }
 
-    private static int scanForMismatch(TrieParserReader reader, byte[] source, int sourceMask, short[] localData, int run) {
+    private static int scanForMismatch(TrieParserReader reader, byte[] source, final int sourceMask, short[] localData, int run) {
    
         int r = run;
-        while ((--r >= 0) && (localData[reader.pos++] == source[sourceMask & reader.localSourcePos++]) ) {
+        int t1 = reader.pos;
+        int t2 = reader.localSourcePos;
+        while ((--r >= 0) && (localData[t1++] == source[sourceMask & t2++]) ) {
         }
+        reader.pos = t1;
+        reader.localSourcePos = t2;
         return r;
     }
 

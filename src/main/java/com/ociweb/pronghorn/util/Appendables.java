@@ -172,6 +172,65 @@ public class Appendables {
 		}
     }
 
+    public static <A extends Appendable> A appendDecimalValue(A target, long m, int e) {
+    	
+    	int digits = 18;    		
+    	long tens = 1_000_000_000_000_000_000L;
+    	
+    	long value = m;    	
+    	int g = -e;
+    	boolean useParensForNeg = false;
+    	
+    	try {    		
+	        
+	        boolean isNegative = value<0;
+	        if (isNegative) {
+	        	if (useParensForNeg) {
+	        		target.append("(-");
+	        	} else {
+	        		target.append("-");
+	        	}
+	        	
+	            value = -value;
+	        }
+	        
+	        long nextValue = value;
+	        int orAll = 0; //this is to remove the leading zeros
+	        while (tens>1) {
+	            int digit = (int)(nextValue/tens);
+	            orAll |= digit;
+	            if (0!=orAll || digits<g) {
+	                target.append((char)('0'+digit));
+	            }
+	            
+	            if (digits == g) {
+	            	target.append('.');
+	            }
+	            
+	            nextValue = nextValue%tens;
+	            tens /= 10;
+	            digits--;
+	        }
+	        target.append((char)('0'+nextValue));
+	    
+	        int f = e;
+	        while (f>0) {
+	        	target.append('0');
+	        	f--;
+	        }	    
+	        
+	        if (isNegative && useParensForNeg) {
+	        	target.append(')');
+	        }
+	        
+	        return target;
+	        
+	        
+    	} catch (IOException ex) {
+			throw new RuntimeException(ex); 
+		}
+    }
+    
     public static <A extends Appendable> A appendValue(A target, int value) {
     	try {
 	        int tens = 1000000000;
@@ -354,6 +413,29 @@ public class Appendables {
 	        }
 	        
 	        int nextValue = value;
+	        while (tens>1) {
+	            target.append((char)('0'+(nextValue/tens)));
+	            nextValue = nextValue%tens;
+	            tens /= 10;
+	        }
+	        target.append((char)('0'+nextValue));
+	        
+	        return target;
+    	} catch (IOException ex) {
+    		
+    		throw new RuntimeException(ex); 
+    	}
+    }
+    
+    public static <A extends Appendable> A appendFixedDecimalDigits(A target, long value, int tens) {
+
+    	try {
+	        if (value<0) {
+	            target.append('-');
+	            value = -value;
+	        }
+	        
+	        long nextValue = value;
 	        while (tens>1) {
 	            target.append((char)('0'+(nextValue/tens)));
 	            nextValue = nextValue%tens;

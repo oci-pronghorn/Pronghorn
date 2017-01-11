@@ -17,6 +17,7 @@ import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.pipe.util.PaddedAtomicLong;
+import com.ociweb.pronghorn.util.Appendables;
 
 
 //cas: comment -- general for full file.
@@ -908,7 +909,33 @@ public class Pipe<T extends MessageSchema> {
 
 
 
-    public static Pipe[][] splitPipes(int pipeCount, Pipe[] socketResponse) {
+	public static <S extends MessageSchema> int addIntAsASCII(Pipe<S> output, int value) {
+		validateVarLength(output, 12);
+		return addLongAsUTF8(output, value);
+	}
+
+    
+	public static <S extends MessageSchema> int addLongAsASCII(Pipe<S> output, long value) {
+		return addLongAsUTF8(output, value);
+	}
+
+    public static <S extends MessageSchema> int addLongAsUTF8(Pipe<S> digitBuffer, long length) {
+    	  validateVarLength(digitBuffer, 21);
+	      DataOutputBlobWriter<S> outputStream = Pipe.outputStream(digitBuffer);
+	      outputStream.openField();
+	      Appendables.appendValue(outputStream, length);
+	      return outputStream.closeLowLevelField();	
+	}
+
+    public static <S extends MessageSchema> int addLongAsUTF8(Pipe<S> digitBuffer, int length) {
+  	  validateVarLength(digitBuffer, 21);
+	      DataOutputBlobWriter<S> outputStream = Pipe.outputStream(digitBuffer);
+	      outputStream.openField();
+	      Appendables.appendValue(outputStream, length);
+	      return outputStream.closeLowLevelField();	
+	}
+    
+	public static Pipe[][] splitPipes(int pipeCount, Pipe[] socketResponse) {
 		
 		Pipe[][] result = new Pipe[pipeCount][];
 			
@@ -1583,21 +1610,6 @@ public class Pipe<T extends MessageSchema> {
 	    return (int)(Pipe.BYTES_WRAP_MASK&(pos+value));
 	}
 	
-	public static <S extends MessageSchema> void addLongAsASCII(Pipe<S> outputRing, long value) {
-		validateVarLength(outputRing, 21);
-		int max = 21 + outputRing.blobRingHead.byteWorkingHeadPos.value;
-		int len = leftConvertLongToASCII(outputRing, value, max);
-		addBytePosAndLen(outputRing, outputRing.blobRingHead.byteWorkingHeadPos.value, len);
-		outputRing.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(len + outputRing.blobRingHead.byteWorkingHeadPos.value);
-	}
-
-	public static <S extends MessageSchema> void addIntAsASCII(Pipe<S> outputRing, int value) {
-		validateVarLength(outputRing, 12);
-		int max = 12 + outputRing.blobRingHead.byteWorkingHeadPos.value;
-		int len = leftConvertIntToASCII(outputRing, value, max);
-		addBytePosAndLen(outputRing, outputRing.blobRingHead.byteWorkingHeadPos.value, len);
-		outputRing.blobRingHead.byteWorkingHeadPos.value = Pipe.BYTES_WRAP_MASK&(len + outputRing.blobRingHead.byteWorkingHeadPos.value);
-	}
 
 	/**
      * All bytes even those not yet committed.
@@ -1764,6 +1776,7 @@ public class Pipe<T extends MessageSchema> {
 		}
 	}
 
+	@Deprecated //use the Appendables methods
 	public static <S extends MessageSchema> int leftConvertIntToASCII(Pipe<S> pipe, int value, int idx) {
 		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
 		//this will leave a gap but that is not a problem.
@@ -1793,6 +1806,7 @@ public class Pipe<T extends MessageSchema> {
 		return length;
 	}
 
+	@Deprecated //use the Appendables methods
 	public static <S extends MessageSchema> int leftConvertLongToASCII(Pipe<S> pipe, long value,	int idx) {
 		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
 		//this will leave a gap but that is not a problem.

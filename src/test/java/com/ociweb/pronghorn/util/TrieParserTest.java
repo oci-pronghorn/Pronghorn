@@ -197,17 +197,17 @@ public class TrieParserTest {
         TrieParserReader reader = new TrieParserReader(3);
         TrieParser map = new TrieParser(1000);
         
-        map.setValue(wrapping(data1,4), 0, 3, 15, value1);                                          //added  101,102,103
+        map.setValue(wrapping(data1,4), 0, 3, 15, value1);                                          //1  added  101,102,103
         assertFalse(map.toString(),map.toString().contains("ERROR"));
         
-        map.setValue(wrapping(dataBytesExtractEnd,4), 0, dataBytesExtractEnd.length, 15, value2);   //added  100,101,102,'%','b',127
+        map.setValue(wrapping(dataBytesExtractEnd,4), 0, dataBytesExtractEnd.length, 15, value2);   //2  added  100,101,102,'%','b',127
         assertFalse(map.toString(),map.toString().contains("ERROR"));
         
-        map.setValue(wrapping(dataBytesExtractEnd2,4), 0, dataBytesExtractEnd2.length, 15, value4); //added  100,101,102,'%','b',127,102
+        map.setValue(wrapping(dataBytesExtractEnd2,4), 0, dataBytesExtractEnd2.length, 15, value4); //4  added  100,101,102,'%','b',127,102
         assertFalse("\n"+map.toString(),map.toString().contains("ERROR"));
         
-        map.setValue(data1, 2, 3, 7, value3);
-        
+        map.setValue(data1, 2, 3, 7, value3);                                                       //3  added  103,104,105
+                
         assertEquals(value1, TrieParserReader.query(reader, map, wrapping(data1,4), 0, 3, 15));
         
         assertEquals(value3, TrieParserReader.query(reader, map, wrapping(data1,4), 2, 3, 15));
@@ -952,6 +952,96 @@ public class TrieParserTest {
         assertEquals(69, actualLimit);
         
     }
+    
+    @Test
+    public void testToDot() {
+        
+        TrieParser map = new TrieParser(1000);        
+        
+        map.setValue(wrapping(data1,3), 0, 3, 7,  value2);    // 101,102,103
+        map.setValue(wrapping(data1,3), 0, 8, 7,  value1);    // 101,102,103,104,105,106,107,108    
+        
+        //System.out.println(map.toDOT(new StringBuilder()));
+        
+        map.setValue(wrapping(data2,3),  1, 7, 7, value1);    // 107,108,109,110,111,112,113
+        map.setValue(wrapping(data3,3),  1, 7, 7, value2);    // 107,108,109,120,121,122,123
+        
+        //System.out.println(map.toDOT(new StringBuilder()));
+        
+        
+        map.setValue(wrapping(data2b,3), 1, 7, 7, value3);    // 107,108,109,110,111,118,119
+        map.setValue(wrapping(data3b,3), 1, 7, 7, value4);    // 107,108,109,120,121,(byte)128,(byte)129
+        
+        String actual = map.toDOT(new StringBuilder()).toString();
+        
+             
+
+        String expected = "digraph {\n"+
+        		"node0[label=\"BRANCH ON BIT\n"+
+        		" bit:00001000\"]\n"+
+        		"node0->node4\n"+
+        		"node0->node53\n"+
+        		"node4[label=\"RUN of 3\n"+
+        		"klm\"]\n"+
+        		"node4->node9\n"+
+        		"node9[label=\"BRANCH ON BIT\n"+
+        		" bit:00010000\"]\n"+
+        		"node9->node13\n"+
+        		"node9->node33\n"+
+        		"node13[label=\"RUN of 2\n"+
+        		"xy\"]\n"+
+        		"node13->node17\n"+
+        		"node17[label=\"BRANCH ON BIT\n"+
+        		" bit:10000000\"]\n"+
+        		"node17->node21\n"+
+        		"node17->node27\n"+
+        		"node21[label=\"RUN of 2\n"+
+        		"{-128}{-127}\"]\n"+
+        		"node21->node25\n"+
+        		"node25[label=\"END47[26]\"]\n"+
+        		"node27[label=\"RUN of 2\n"+
+        		"z{\"]\n"+
+        		"node27->node31\n"+
+        		"node31[label=\"END23[32]\"]\n"+
+        		"node33[label=\"RUN of 2\n"+
+        		"no\"]\n"+
+        		"node33->node37\n"+
+        		"node37[label=\"BRANCH ON BIT\n"+
+        		" bit:00000100\"]\n"+
+        		"node37->node41\n"+
+        		"node37->node47\n"+
+        		"node41[label=\"RUN of 2\n"+
+        		"vw\"]\n"+
+        		"node41->node45\n"+
+        		"node45[label=\"END35[46]\"]\n"+
+        		"node47[label=\"RUN of 2\n"+
+        		"pq\"]\n"+
+        		"node47->node51\n"+
+        		"node51[label=\"END10[52]\"]\n"+
+        		"node53[label=\"RUN of 3\n"+
+        		"efg\"]\n"+
+        		"node53->node58\n"+
+        		"node58[label=\"SAFE23[59], \"]\n"+
+        		"node58->node60\n"+
+        		"node60[label=\"RUN of 5\n"+
+        		"hijkl\"]\n"+
+        		"node60->node67\n"+
+        		"node67[label=\"END10[68]\"]\n"+
+        		"}\n";
+        
+        
+        if (!expected.equals(actual)) {
+            System.out.println("String expected = \""+(actual.replace("\"", "\\\"").replace("\n", "\\n\"+\n\"")  ));
+        }
+        
+        assertEquals(expected,actual);
+        
+        
+        int actualLimit = map.getLimit();
+        assertEquals(69, actualLimit);
+        
+    }
+    
     
     @Test
     public void testDisabledEscapedEscape() {
