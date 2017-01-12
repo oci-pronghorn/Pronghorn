@@ -173,7 +173,7 @@ public class TrieParserReader {
         that.sourceBacking = source;
         that.sourcePos     = offset;
         that.sourceLen     = length;
-         that.sourceMask    = mask;        
+        that.sourceMask    = mask;        
     }
     
     public static void parseSetup(TrieParserReader that, byte[] source, int mask) {

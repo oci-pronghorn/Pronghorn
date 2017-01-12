@@ -32,7 +32,9 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         this.length    = PipeReader.readBytesLength(pipe, loc);
         this.position  = PipeReader.readBytesPosition(pipe, loc);
         this.backing   = PipeReader.readBytesBackingArray(pipe, loc);        
-        this.bytesLimit = pipe.byteMask & (position + length);
+        this.bytesLimit = pipe.blobMask & (position + length);
+        
+        assert(Pipe.validatePipeBlobHasDataToRead(pipe, position, length));
 
     }
     
@@ -46,7 +48,9 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         that.length    = Pipe.takeRingByteLen(that.pipe);
         that.position = Pipe.bytePosition(meta, that.pipe, that.length);
         that.backing   = Pipe.byteBackingArray(meta, that.pipe);               
-        that.bytesLimit = that.pipe.byteMask & (that.position + that.length);
+        that.bytesLimit = that.pipe.blobMask & (that.position + that.length);
+        
+        assert(Pipe.validatePipeBlobHasDataToRead(that.pipe, that.position, that.length));
         
         return that.length;
     }

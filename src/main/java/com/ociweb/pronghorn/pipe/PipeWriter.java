@@ -282,7 +282,7 @@ public class PipeWriter {
 		//publish writes			
 		Pipe.setBytesHead(pipe, Pipe.getBlobWorkingHeadPosition(pipe));		
 		Pipe.publishWorkingHeadPosition(pipe, Pipe.workingHeadPosition(pipe));
-		
+
 		Pipe.beginNewPublishBatch(pipe);
 	}
 

@@ -140,7 +140,7 @@ public class Pipe<T extends MessageSchema> {
          *
          * TODO:M add asserts that implement the claim found above in the comments.
          */
-        long llwConfirmedWrittenPosition;
+        long llrConfirmedPosition;
 
         // TODO: Determine is this is going to be used -- if not, delete it.
         LowLevelAPIWritePositionCache() {
@@ -155,7 +155,7 @@ public class Pipe<T extends MessageSchema> {
         /**
          * Holds the last position that has been officially read.
          */
-        long llwConfirmedReadPosition;
+        long llwConfirmedPosition;
 
         // TODO: Determine is this is going to be used -- if not, delete it.
         LowLevelAPIReadPositionCache() {
@@ -677,7 +677,7 @@ public class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> int bytesReadBase(Pipe<S> rb) {
-        assert(rb.blobReadBase<=rb.byteMask);
+        assert(rb.blobReadBase<=rb.blobMask);
     	return rb.blobReadBase;
     }
         
@@ -685,12 +685,12 @@ public class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> pipe, int bytesConsumed) {
         assert(bytesConsumed>=0) : "Bytes consumed must be positive";
         //base has future pos added to it so this value must be masked and kept as small as possible
-        pipe.blobReadBase = pipe.byteMask & (pipe.blobReadBase+bytesConsumed);
+        pipe.blobReadBase = pipe.blobMask & (pipe.blobReadBase+bytesConsumed);
     }
     
     public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> pipe) {
         //base has future pos added to it so this value must be masked and kept as small as possible
-        pipe.blobReadBase = pipe.byteMask & PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);
+        pipe.blobReadBase = pipe.blobMask & PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);
     }
     
     //;
@@ -784,8 +784,8 @@ public class Pipe<T extends MessageSchema> {
         //This target is a counter that marks if there is room to write more data into the ring without overwriting other data.
         llWrite.llwHeadPosCache = toPos;
         llRead.llrTailPosCache = toPos;
-        llRead.llwConfirmedReadPosition = toPos - sizeOfSlabRing;// TODO: hack test,  mask;//must be mask to ensure zero case works.
-        llWrite.llwConfirmedWrittenPosition = toPos;
+        llRead.llwConfirmedPosition = toPos - sizeOfSlabRing;// TODO: hack test,  mask;//must be mask to ensure zero case works.
+        llWrite.llrConfirmedPosition = toPos;
 
         try {
         this.blobRing = new byte[sizeOfBlobRing];
@@ -890,8 +890,8 @@ public class Pipe<T extends MessageSchema> {
         if (null!=llWrite) {
             llWrite.llwHeadPosCache = structuredPos;
             llRead.llrTailPosCache = structuredPos;
-            llRead.llwConfirmedReadPosition = structuredPos -  sizeOfSlabRing;//mask;sss  TODO: hack test.
-            llWrite.llwConfirmedWrittenPosition = structuredPos;
+            llRead.llwConfirmedPosition = structuredPos -  sizeOfSlabRing;//mask;sss  TODO: hack test.
+            llWrite.llrConfirmedPosition = structuredPos;
         }
 
         blobRingHead.byteWorkingHeadPos.value = unstructuredPos;
@@ -908,6 +908,96 @@ public class Pipe<T extends MessageSchema> {
     }
 
 
+
+	public static <S extends MessageSchema> boolean validatePipeBlobHasDataToRead(Pipe<S> pipe, int blobPos, int length) {
+		
+		assert(length>=0) : "bad lenght:"+length;
+		if (length==0) {
+			return true;//nothing to check in this case.
+		}
+		
+	    int mHead = Pipe.blobMask(pipe) & Pipe.getBlobHeadPosition(pipe);
+	    int mTail = Pipe.blobMask(pipe) & Pipe.getBlobTailPosition(pipe);
+	    //ensure that starting at testPos up to testLen is all contained between tail and head
+	        
+	    int mStart = Pipe.blobMask(pipe) & blobPos;
+	    int stop = mStart+length;
+	    int mStop = Pipe.blobMask(pipe) & stop;
+	         
+	    //we have 4 cases where position and length can be inside (inbetween tail and head)
+	    //these cases are all drawn below  pllll is the content starting at position p and
+	    //running with p for the full length
+	    
+	    //Head - where new data can be written (can only write up to tail)
+	    //Tail - where data is consumed (can only consume up to head)
+	    
+	    
+	    if (stop >= pipe.sizeOfBlobRing) {
+					////////////////////////////////////////////////////////////
+					//pppppppppppp      H                      T     ppppppppp//
+					////////////////////////////////////////////////////////////
+	        assert(mStop<=mHead)  : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+	        assert(mTail<=mStart)  : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+	        assert(mHead<=mStart) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+	        assert(mHead<mTail)   : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+	        assert(mStop<=mHead)  : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+	       
+	        return (mStop<=mHead)
+	        		&&(mTail<=mStart)
+	        		&&(mHead<=mStart)
+	        		&&(mHead<mTail)
+	        		&&(mStop<=mHead);
+	        
+	    } else {
+	      if (mHead>mTail) {
+					////////////////////////////////////////////////////////////
+					//        T     pppppppppppppppppppppp            H       //
+					////////////////////////////////////////////////////////////
+	    	 assert(mTail<mHead)  : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+	    	 assert(mTail<=mStart): "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+	    	 assert(mTail<=mStop) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+	    	 assert(mStop<=mHead) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+	    	 assert(stop<=pipe.sizeOfBlobRing) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+	    	  
+	    	 return (mTail<mHead)
+	    			 &&(mTail<=mStart)
+	    			 &&(mTail<=mStop)
+	    			 &&(mStop<=mHead)
+	    			 &&(stop<=pipe.sizeOfBlobRing);
+	    	 
+	      } else {
+				if (mStart>=mTail) {
+		    	  
+					////////////////////////////////////////////////////////////
+					//                  H                      T     pppppppp //
+					////////////////////////////////////////////////////////////
+				    assert(mHead<mTail) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+				    assert(mTail<=mStart): "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;			
+					assert(stop<=pipe.sizeOfBlobRing) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+					
+					return (mHead<mTail)
+							&&(mTail<=mStart)
+							&&(stop<=pipe.sizeOfBlobRing);
+					
+				} else {
+				    	  
+					////////////////////////////////////////////////////////////
+					//pppppppppppp      H                      T              //
+					////////////////////////////////////////////////////////////
+				    assert(mStart<mHead) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+				    assert(mStop<=mHead) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+				    assert(mHead<mTail)  : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+					assert(stop<=pipe.sizeOfBlobRing) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask;
+	
+					return (mStart<mHead)
+							&&(mStop<=mHead)
+							&&(mHead<mTail)
+							&&(stop<=pipe.sizeOfBlobRing);
+					
+				}
+	      }
+	    }
+	}
 
 	public static <S extends MessageSchema> int addIntAsASCII(Pipe<S> output, int value) {
 		validateVarLength(output, 12);
@@ -1078,6 +1168,9 @@ public class Pipe<T extends MessageSchema> {
     	int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
     	int endPos = writeToPos+output.maxAvgVarLen;
     	    	
+    	assert(verifyHasRoomForWrite(output.maxAvgVarLen, output));
+    	    	
+    	
     	ByteBuffer aBuf = output.wrappedBlobWritingRingA; //Get the blob array as a wrapped byte buffer     
 		aBuf.limit(aBuf.capacity());
 		aBuf.position(writeToPos);   
@@ -1085,7 +1178,7 @@ public class Pipe<T extends MessageSchema> {
 		
 		ByteBuffer bBuf = output.wrappedBlobWritingRingB; //Get the blob array as a wrapped byte buffer     
 		bBuf.position(0);   
-		bBuf.limit(endPos>output.sizeOfBlobRing ? output.byteMask & endPos: 0);
+		bBuf.limit(endPos>output.sizeOfBlobRing ? output.blobMask & endPos: 0);
 		
 		return output.wrappedWritingBuffers;
     }
@@ -1093,9 +1186,29 @@ public class Pipe<T extends MessageSchema> {
 
 
     public static <S extends MessageSchema> void moveBlobPointerAndRecordPosAndLength(int originalBlobPosition, int len, Pipe<S> output) {
+    	
+    	assert(verifyHasRoomForWrite(len, output));    	
+    	
+    	//blob head position is moved forward
         Pipe.addAndGetBytesWorkingHeadPosition(output, len);
+        //record the new start and length to the slab for this blob
         Pipe.addBytePosAndLen(output, originalBlobPosition, len);
     }
+
+	private static <S extends MessageSchema> boolean verifyHasRoomForWrite(int len, Pipe<S> output) {
+				
+		int h = getBlobWorkingHeadPosition(output)&output.blobMask;
+    	int t = getBlobTailPosition(output)&output.blobMask;
+    	int consumed;
+    	if (h>=t) {
+    		consumed = len+(h-t);
+			assert(consumed<=output.blobMask) : "length too large for existing data ";
+    	} else {
+    		consumed = len+h+(output.sizeOfBlobRing-t);
+			assert(consumed<=output.blobMask) : "length is too large for existing data  "+len+" + t:"+t+" h:"+h+" max "+output.blobMask;
+    	}
+    	return (consumed<=output.blobMask);
+	}
 
 
     @Deprecated
@@ -1112,7 +1225,7 @@ public class Pipe<T extends MessageSchema> {
         	buffer.limit(position+len);        	
         } else {
         	buffer = wrappedBlobRingA(pipe);
-        	int position = pipe.byteMask & restorePosition(pipe,meta);
+        	int position = pipe.blobMask & restorePosition(pipe,meta);
         	buffer.clear();
         	buffer.position(position);
         	//use the end of the buffer if the length runs past it.
@@ -1135,7 +1248,7 @@ public class Pipe<T extends MessageSchema> {
         	buffer.limit(0);
         } else {
         	buffer = wrappedBlobRingB(pipe);
-        	int position = pipe.byteMask & restorePosition(pipe,meta);
+        	int position = pipe.blobMask & restorePosition(pipe,meta);
         	buffer.clear();
             //position is zero
         	int endPos = position+len;
@@ -1159,8 +1272,10 @@ public class Pipe<T extends MessageSchema> {
 
 	private static <S extends MessageSchema> void wrappedReadingBuffersRing(Pipe<S> pipe, int meta, int len) {
 		
-		final int position = pipe.byteMask & restorePosition(pipe,meta);
+		final int position = pipe.blobMask & restorePosition(pipe,meta);
 		final int endPos = position+len;
+		
+	    assert(Pipe.validatePipeBlobHasDataToRead(pipe, position, len));
 		
 		ByteBuffer aBuf = wrappedBlobRingA(pipe);
 		aBuf.clear();
@@ -1489,7 +1604,7 @@ public class Pipe<T extends MessageSchema> {
 	        } else {
 
 	            byte[] buffer = pipe.blobRing;
-	            int mask = pipe.byteMask;
+	            int mask = pipe.blobMask;
 	            int pos = restorePosition(pipe, meta);
 
 	            while (--len >= 0) {
@@ -1503,6 +1618,21 @@ public class Pipe<T extends MessageSchema> {
 	        return true;
 	    }
 	
+	   public static boolean isEqual(byte[] aBack, int aPos, int aMask, 
+			                         byte[] bBack, int bPos, int bMask, int len) {
+
+		   while (--len>=0) {
+			   byte a = aBack[(aPos+len)&aMask];
+			   byte b = bBack[(bPos+len)&bMask];
+			   if (a!=b) {
+				   return false;
+			   }
+		   }
+		   return true;
+		   
+	   }
+
+	   
 	private static <S extends MessageSchema,  A extends Appendable> A readASCIIRing(Pipe<S> pipe, int len, A target, int pos) {
 		byte[] buffer = pipe.blobRing;
 		int mask = pipe.byteMask;
@@ -2324,8 +2454,8 @@ public class Pipe<T extends MessageSchema> {
     
     //must be called by low-level API when starting a new message
     public static <S extends MessageSchema> int addMsgIdx(Pipe<S> pipe, int msgIdx) {
-         assert(Pipe.workingHeadPosition(pipe)<(Pipe.tailPosition(pipe)+pipe.mask)) : "Working position is now writing into published(unreleased) tail "+
-                Pipe.workingHeadPosition(pipe)+"<"+Pipe.tailPosition(pipe)+"+"+pipe.mask+" total "+((Pipe.tailPosition(pipe)+pipe.mask));
+         assert(Pipe.workingHeadPosition(pipe)<(Pipe.tailPosition(pipe)+pipe.slabMask)) : "Working position is now writing into published(unreleased) tail "+
+                Pipe.workingHeadPosition(pipe)+"<"+Pipe.tailPosition(pipe)+"+"+pipe.slabMask+" total "+((Pipe.tailPosition(pipe)+pipe.slabMask));
         
          assert(pipe.slabRingHead.workingHeadPos.value <= ((long)pipe.sizeOfSlabRing)+Pipe.tailPosition(pipe)) : 
                 "Tail is at: "+Pipe.tailPosition(pipe)+" and Head at: "+pipe.slabRingHead.workingHeadPos.value+" but they are too far apart because the pipe is only of size: "+pipe.sizeOfSlabRing+
@@ -2340,7 +2470,7 @@ public class Pipe<T extends MessageSchema> {
             	 
      	 assert(null != pipe.slabRing) : "Pipe must be init before use";
      	 
-		 pipe.slabRing[pipe.mask & (int)pipe.slabRingHead.workingHeadPos.value++] = msgIdx;
+		 pipe.slabRing[pipe.slabMask & (int)pipe.slabRingHead.workingHeadPos.value++] = msgIdx;
 		 return Pipe.from(pipe).fragDataSize[msgIdx];
 		 
 	}
@@ -2373,7 +2503,7 @@ public class Pipe<T extends MessageSchema> {
 	}
 	
 
-	public static <S extends MessageSchema> int restorePosition(Pipe<S> pipe, int pos) {
+	static <S extends MessageSchema> int restorePosition(Pipe<S> pipe, int pos) {
 		assert(pos>=0);
 		return pos + Pipe.bytesReadBase(pipe);
 	}
@@ -2385,14 +2515,9 @@ public class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> int bytePosition(int meta, Pipe<S> pipe, int len) {
     	int pos =  restorePosition(pipe, meta & RELATIVE_POS_MASK);
         if (len>=0) {
-            pipe.blobRingTail.byteWorkingTailPos.value =  pipe.byteMask & (len+pipe.blobRingTail.byteWorkingTailPos.value);
+            pipe.blobRingTail.byteWorkingTailPos.value =  pipe.blobMask & (len+pipe.blobRingTail.byteWorkingTailPos.value);
         }        
         return pos;
-    }
-
-    @Deprecated
-    public static <S extends MessageSchema> int bytePositionGen(int meta, Pipe<S> pipe) {
-    	return convertToPosition(meta,pipe);
     }
     
     //WARNING: this has no side effect
@@ -2709,9 +2834,9 @@ public class Pipe<T extends MessageSchema> {
 		pipe.blobWriteLastConsumedPos = pipe.blobRingHead.byteWorkingHeadPos.value;
 
     	assert(pipe.slabRingHead.workingHeadPos.value >= Pipe.headPosition(pipe));
-    	assert(pipe.llWrite.llwConfirmedWrittenPosition<=Pipe.headPosition(pipe) || 
-    		   pipe.slabRingHead.workingHeadPos.value<=pipe.llWrite.llwConfirmedWrittenPosition) :
-    			   "Possible unsupported mix of high and low level API. NextHead>head and workingHead>nextHead "+pipe+" nextHead "+pipe.llWrite.llwConfirmedWrittenPosition+"\n"+
+    	assert(pipe.llWrite.llrConfirmedPosition<=Pipe.headPosition(pipe) || 
+    		   pipe.slabRingHead.workingHeadPos.value<=pipe.llWrite.llrConfirmedPosition) :
+    			   "Possible unsupported mix of high and low level API. NextHead>head and workingHead>nextHead "+pipe+" nextHead "+pipe.llWrite.llrConfirmedPosition+"\n"+
     		       "OR the XML field types may not match the accessor methods in use.";
     	assert(validateFieldCount(pipe)) : "No fragment could be found with this field count, check for missing or extra fields.";
 
@@ -2883,6 +3008,7 @@ public class Pipe<T extends MessageSchema> {
 	 */
 	public static <S extends MessageSchema> void publishWorkingHeadPosition(Pipe<S> pipe, long workingHeadPos) {
 		pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value = workingHeadPos);
+				
 	}
 
 	public static <S extends MessageSchema> long tailPosition(Pipe<S> pipe) {
@@ -2968,12 +3094,12 @@ public class Pipe<T extends MessageSchema> {
 	//we do not need to fetch it again and this reduces contention on the CAS with the reader.
 	//This is an important performance feature of the low level API and should not be modified.
     public static <S extends MessageSchema> boolean hasRoomForWrite(Pipe<S> pipe, int size) {
-        return roomToLowLevelWrite(pipe, pipe.llRead.llwConfirmedReadPosition+size);
+        return roomToLowLevelWrite(pipe, pipe.llRead.llwConfirmedPosition+size);
     }
     
     public static <S extends MessageSchema> boolean hasRoomForWrite(Pipe<S> pipe) {
         assert(null != pipe.slabRing) : "Pipe must be init before use";
-        return roomToLowLevelWrite(pipe, pipe.llRead.llwConfirmedReadPosition+FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe)));
+        return roomToLowLevelWrite(pipe, pipe.llRead.llwConfirmedPosition+FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe)));
     }    
     
 	private static <S extends MessageSchema> boolean roomToLowLevelWrite(Pipe<S> pipe, long target) {
@@ -2986,30 +3112,56 @@ public class Pipe<T extends MessageSchema> {
 	}
 
 	public static <S extends MessageSchema> long confirmLowLevelWrite(Pipe<S> output, int size) { 
-	 //TODO: add assert to confirm size matches what was written??
+	 
 	    assert(size>=0) : "unsupported size "+size;
 	    
-	    assert((output.llRead.llwConfirmedReadPosition+output.mask) <= Pipe.workingHeadPosition(output)) : " confirmed writes must be less than working head position writes:"
-	                                                +(output.llRead.llwConfirmedReadPosition+output.mask)+" workingHead:"+Pipe.workingHeadPosition(output)+
+	    assert((output.llRead.llwConfirmedPosition+output.slabMask) <= Pipe.workingHeadPosition(output)) : " confirmed writes must be less than working head position writes:"
+	                                                +(output.llRead.llwConfirmedPosition+output.slabMask)+" workingHead:"+Pipe.workingHeadPosition(output)+
 	                                                " \n CHECK that Pipe is written same fields as message defines and skips none!";
 	   
-	    return  output.llRead.llwConfirmedReadPosition += size;
+	    assert(verifySize(output, size));
+	   	    
+	    return  output.llRead.llwConfirmedPosition += size;
 
 	}
 
+	private static <S extends MessageSchema> boolean verifySize(Pipe<S> output, int size) {
+		try {
+			assert(Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition]) == size) : "Did not write the same size fragment as expected, double check message.";
+		} catch (ArrayIndexOutOfBoundsException aiex) {
+			//ignore, caused by some poor unit tests which need to be re-written.
+		}
+		return true;
+	}
+
+	//helper method always uses the right size but that value needs to be found so its a bit slower than if you already knew the size and passed it in
+	public static <S extends MessageSchema> long confirmLowLevelWrite(Pipe<S> output) { 
+		 
+	    
+	    assert((output.llRead.llwConfirmedPosition+output.slabMask) <= Pipe.workingHeadPosition(output)) : " confirmed writes must be less than working head position writes:"
+	                                                +(output.llRead.llwConfirmedPosition+output.slabMask)+" workingHead:"+Pipe.workingHeadPosition(output)+
+	                                                " \n CHECK that Pipe is written same fields as message defines and skips none!";
+	   
+	    return  output.llRead.llwConfirmedPosition += Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition]);
+
+	}
+	
+	
 	//do not use with high level API, is dependent on low level confirm calls.
 	public static <S extends MessageSchema> boolean hasContentToRead(Pipe<S> pipe, int size) {
         //optimized for the other method without size. this is why the -1 is there and we use > for target comparison.
-        return contentToLowLevelRead2(pipe, pipe.llWrite.llwConfirmedWrittenPosition+size-1, pipe.llWrite); 
+        return contentToLowLevelRead2(pipe, pipe.llWrite.llrConfirmedPosition+size-1, pipe.llWrite); 
     }
     
 	//this method can only be used with low level api navigation loop
     public static <S extends MessageSchema> boolean hasContentToRead(Pipe<S> pipe) {
         assert(null != pipe.slabRing) : "Pipe must be init before use";
-        boolean result = contentToLowLevelRead2(pipe, pipe.llWrite.llwConfirmedWrittenPosition, pipe.llWrite);
+        final boolean result = contentToLowLevelRead2(pipe, pipe.llWrite.llrConfirmedPosition, pipe.llWrite);
         
-        //there are times when result can be false but we have data which relate to our holding the position for some other reason. only when we hold back releases.
-        assert(!result || result ==  (Pipe.contentRemaining(pipe)>0) ) : result+" != "+Pipe.contentRemaining(pipe)+">0";
+//        //there are times when result can be false but we have data which relate to our holding the position for some other reason. only when we hold back releases.
+//        assert(!result || result ==  (Pipe.contentRemaining(pipe)>0) ) : result+" != "+Pipe.contentRemaining(pipe)+">0    "
+//                     +pipe+"\n      hpCache:"+pipe.llWrite.llwHeadPosCache+"  writtenPos:"+pipe.llWrite.llwConfirmedWrittenPosition+"\n   "+
+//                    " pending release bytes "+Pipe.releasePendingByteCount(pipe); //value llWrite.llwHeadPosCache  is not written by high level API , can not mix???
         return result;
     }
 
@@ -3027,11 +3179,11 @@ public class Pipe<T extends MessageSchema> {
 	     //not sure if this assert is true in all cases
 	  //  assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value+Pipe.EOF_SIZE) : "size was far too large, past known data";
 	  //  assert(input.llWrite.llwConfirmedWrittenPosition + size >= input.slabRingTail.tailPos.get()) : "size was too small, under known data";   
-		return (pipe.llWrite.llwConfirmedWrittenPosition += size);
+		return (pipe.llWrite.llrConfirmedPosition += size);
 	}
 
     public static <S extends MessageSchema> void setWorkingHeadTarget(Pipe<S> pipe) {
-        pipe.llWrite.llwConfirmedWrittenPosition =  Pipe.getWorkingTailPosition(pipe);
+        pipe.llWrite.llrConfirmedPosition =  Pipe.getWorkingTailPosition(pipe);
     }
 
     public static <S extends MessageSchema> int getBlobTailPosition(Pipe<S> pipe) {
@@ -3195,6 +3347,10 @@ public class Pipe<T extends MessageSchema> {
 	public static int unstoreBlobWorkingHeadPosition(Pipe<?> target) {
 		assert(-1 != target.activeBlobHead) : "can not unstore value not saved";
 		int result = target.activeBlobHead;
+		
+		//TODO: this may be the problem, check all the rollbacks.
+		assert (target.activeBlobHead == Pipe.getBlobWorkingHeadPosition(target)) : target.activeBlobHead+" vs "+Pipe.getBlobWorkingHeadPosition(target); //TODO: new thing to test
+
 		target.activeBlobHead = -1;
 		return result;
 	}
