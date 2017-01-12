@@ -2,14 +2,12 @@ package com.ociweb.pronghorn.network.module;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -19,27 +17,23 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.AbstractRestStage;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
-import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
-import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
-import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
-import com.ociweb.pronghorn.pipe.DataInputBlobReader;
-import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.pipe.util.hash.PipeHashTable;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
-import com.ociweb.pronghorn.util.TrieParser;
-import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
+import com.ociweb.pronghorn.util.TrieParser;
+import com.ociweb.pronghorn.util.TrieParserReader;
 
 //Minimal memory usage and leverages SSD.
 public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
@@ -79,6 +73,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private long        activeMessageStart;
     private int         inIdx;
     
+    private final int MAX_TEXT_LENGTH = 64;
+    private final Pipe<RawDataSchema> digitBuffer = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance,3,MAX_TEXT_LENGTH));
     
     private final String folderRootString;
     private final File   folderRoot;
@@ -232,6 +228,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         this.pathCacheReader = new TrieParserReader();
         this.channelHolder = new ServiceObjectHolder<FileChannel>(OPEN_FILECHANNEL_BITS, FileChannel.class, new FileChannelValidator() , false);
         
+        this.digitBuffer.initBuffers();
         
         //shared immutable state
         
@@ -582,14 +579,41 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                         
             fileSizes[pathId] = activeFileChannel.size();   
             builder.setLength(0);
-            fileSizeAsBytes[pathId] = Appendables.appendValue(builder, fileSizes[pathId]).toString().getBytes(); //TODO: there is a better way to do this
-                    
+            
+            
+            //OLD: there is a better way to do this, the code is commented out below.
+            //fileSizeAsBytes[pathId] = Appendables.appendValue(builder, fileSizes[pathId]).toString().getBytes();                    
+			populateLengthAsBytes(pathId);           
+            
             
         } catch (IOException e) {
             logger.error("IO Exception on file {} ",pathString);
             throw new RuntimeException(e);
         }
     }
+
+	private void populateLengthAsBytes(int pathId) {
+		int addSize = Pipe.addMsgIdx(digitBuffer, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+		int digitsLen = Pipe.addLongAsUTF8(digitBuffer, fileSizes[pathId]);
+		Pipe.publishWrites(digitBuffer);
+		Pipe.confirmLowLevelWrite(digitBuffer, addSize);
+							          
+		int msgId = Pipe.takeMsgIdx(digitBuffer); 
+		int meta = Pipe.takeRingByteMetaData(digitBuffer);
+		
+		int lenAsBytesLen = Pipe.takeRingByteLen(digitBuffer);
+		int lenAsBytesPos = Pipe.bytePosition(meta, digitBuffer, lenAsBytesLen);
+		byte[] lenAsBytes = Pipe.byteBackingArray(meta, digitBuffer);
+		int lenAsBytesMask = Pipe.blobMask(digitBuffer);
+		  
+		assert(digitsLen == lenAsBytesLen) : "byte written should be the same as bytes consumed";
+		  
+		Pipe.confirmLowLevelRead(digitBuffer, Pipe.sizeOf(RawDataSchema.instance,RawDataSchema.MSG_CHUNKEDSTREAM_1));
+		Pipe.releaseReadLock(digitBuffer);
+		
+		fileSizeAsBytes[pathId] = new byte[lenAsBytesLen];
+		Pipe.copyBytesFromToRing(lenAsBytes, lenAsBytesPos, lenAsBytesMask, fileSizeAsBytes[pathId], 0, Integer.MAX_VALUE, lenAsBytesLen);
+	}
  
     
     private void beginSendingFile(int httpRevision, int requestContext, int pathId, int verb, int sequence, Pipe<HTTPRequestSchema> input) {
@@ -606,7 +630,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             
             totalBytes += publishHeaderMessage(requestContext, sequence, VERB_GET==verb ? 0 : requestContext, 
             		                           status, output, activeChannelHigh, activeChannelLow,  
-                                               httpSpec, revision, contentType, fileSizeAsBytes[pathId],  etagBytes[pathId]); 
+                                               httpSpec, revision, contentType, 
+                                               fileSizeAsBytes[pathId], 0, fileSizeAsBytes[pathId].length, Integer.MAX_VALUE, 
+                                               etagBytes[pathId]); 
             
                         
             //This allows any previous saved values to be automatically removed upon lookup when they are out of range.
@@ -764,7 +790,13 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 	            	
              	}
             	
-            	if (tempPos>=lowerBound && tempFcId == targetFile) {
+            	boolean useRef = false; ///TODO: DO NOT turn on until this gets fixed, its very bad.
+            	if (useRef && tempPos>=lowerBound && tempFcId == targetFile) {
+            		
+            		//this feature is not working now  TODO: urgent test and fix.
+            		assert(Pipe.isEqual(blob, (int)tempPos, blobMask, blob, prevBlobPos, blobMask, len)) : "existing data must match data to copy";
+            		            		
+            		
             		inFlightRef++;
             		int skip = (int)(tempPos-headBlobPosInPipe+localPos);
             		            		

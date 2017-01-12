@@ -80,6 +80,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private final int END_OF_HEADER_ID;
     private final int UNKNOWN_HEADER_ID;
   
+    private int[] inputCounts;
     
     private int totalShortestRequest;
     private int shutdownCount;
@@ -119,13 +120,14 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         		
         supportsBatchedPublish = false;
         supportsBatchedRelease = false;
-    }
-    
+    }    
     
     @Override
     public void startup() {
         
     	idx = inputs.length;
+    	
+    	inputCounts = new int[inputs.length];
     	
         //keeps the channel used by this pipe to ensure these are never mixed.
         //also used to release the subscription? TODO: this may be a race condition, not sure ...
@@ -188,22 +190,21 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         totalShortestRequest = 0;//count bytes for the shortest known request, this opmization helps prevent parse attempts when its clear that there is not enough data.
         int localShortest;
         
-        headerMap.setUTF8Value("\n", END_OF_HEADER_ID);  //\n must be first because we prefer to have it pick \r\n
         headerMap.setUTF8Value("\r\n", END_OF_HEADER_ID);
-        
-        //TODO: this addition is slowing down the performance, must investigate
-        headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be first because we prefer to have it pick \r\n
-        headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
-
+        headerMap.setUTF8Value("\n", END_OF_HEADER_ID);  //\n must be last because we prefer to have it pick \r\n
+    
         //Load the supported header keys
         H[] shr =  httpSpec.supportedHTTPHeaders.getEnumConstants();
         x = shr.length;
         while (--x >= 0) {
             //must have tail because the first char of the tail is required for the stop byte
-            headerMap.setUTF8Value(shr[x].getKey(), "\n",shr[x].ordinal()); //\n must be first because we prefer to have it pick \r\n
             headerMap.setUTF8Value(shr[x].getKey(), "\r\n",shr[x].ordinal());
+            headerMap.setUTF8Value(shr[x].getKey(), "\n",shr[x].ordinal()); //\n must be last because we prefer to have it pick \r\n
         }     
-
+        //unknowns are the least important and must be added last 
+        headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
+        headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be last because we prefer to have it pick \r\n
+        
         
         //a request may have NO header with just the end marker so add one
         totalShortestRequest+=1;
@@ -213,11 +214,11 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         x = revs.length;
         localShortest = Integer.MAX_VALUE;                
         while (--x >= 0) {
-            int b = revisionMap.setUTF8Value(revs[x].getKey(), "\n", revs[x].ordinal()); //\n must be first because we prefer to have it pick \r\n
+        	revisionMap.setUTF8Value(revs[x].getKey(), "\r\n", revs[x].ordinal());
+            int b = revisionMap.setUTF8Value(revs[x].getKey(), "\n", revs[x].ordinal()); //\n must be last because we prefer to have it pick \r\n
             if (b<localShortest) {
                 localShortest = b;
             }            
-            revisionMap.setUTF8Value(revs[x].getKey(), "\r\n", revs[x].ordinal());
         }
         totalShortestRequest += localShortest; //add shortest revision
                   
@@ -299,10 +300,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	            		return;
 	            	}
 	            	
-	            } else {
+	            } else {	            		            	
 	            	didWork+=result;
 	            }
-	            
 	            
 	        }
 	        if (idx<=0) {
@@ -318,21 +318,19 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     public int singlePipe(final int idx) {
         Pipe<NetPayloadSchema> selectedInput = inputs[idx];     
 
-        if (isOpen[idx]) {        	
+        if (isOpen[idx]) {  
+
             int messageIdx = accumulateRunningBytes(idx, selectedInput);
             if (messageIdx < 0) {
+            	logger.info("detected EOF for {}",idx);
             	//accumulate these before shutdown?? also wait for all data to be consuemd.
                 isOpen[idx] = false;
                 if (inputLengths[idx]<=0) {
                 	return -1;
                 }
             }
-        }
-        
-//        //on hang every input channel is closed??????
-//        logger.info("XXXXXXXXXXXXXXXXXXXxx "+Arrays.toString(inputChannels)+" "+Arrays.toString(isOpen)+" "+Arrays.toString(inputLengths));
-//        logger.info(inputSlabPos[idx]+"this pipe "+selectedInput);
-        
+        }        
+
         
         //TODO: if we did not accumulate anything and the parser has done what it can then we should NOT attempt parse again for this IDX
         //   if we blocked on output do it again? check for blocked output earlier to avoid query parse?
@@ -347,50 +345,27 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         
         if (channel >= 0) {
         	int result = 0;
- //TOOD: urgent       	logger.info("call to consume"); //never called on multi connecion hang??
+
+        	assert(inputLengths[idx]>0) : "length is "+inputLengths[idx]; 
+       	
+        	assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
+        	
+        	TrieParserReader.parseSetup(trieReader, Pipe.blob(selectedInput), inputBlobPos[idx], inputLengths[idx], Pipe.blobMask(selectedInput));	   
+        	validateNext(trieReader, idx);
         	do {
-	            assert(inputLengths[idx]>=0) : "length is "+inputLengths[idx]; 
-	            TrieParserReader.parseSetup(trieReader, Pipe.blob(selectedInput), inputBlobPos[idx], inputLengths[idx], Pipe.blobMask(selectedInput));	         
-	            result = consumeAvail(idx, selectedInput, channel, inputBlobPos[idx], inputLengths[idx]);
-	           
+        		assert(inputLengths[idx]>0) : "length is "+inputLengths[idx]; 
+	            result = consumeAvail(idx, selectedInput, channel, inputBlobPos[idx], inputLengths[idx]);	           
         	} while (result>0);
+        	
+        	assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
 
         	return result;
-        } else {
-//        	//resend release??
-//        	logger.info("XXXXXXXXXXXXXXXXxxx resent release");
-//       	inputSlabPos[idx] = Pipe.getWorkingTailPosition(selectedInput);
-//        	
-//        	//TODO: can not send release because we do not know the input channel any longer..
-//        	sendRelease(channel, idx);
-//        	
+        } 
 
-//        	if (lastReleaseIdx>=0) {
-//        		logger.info(lastReleaseSkipped+"  "+lastReleaseLen+"   "+lastReleaseChnl+"  "+lastReleasePos+" vs "+inputSlabPos[lastReleaseIdx]+" pipe "+lastReleased);
-//        		logger.info("expected {} actual {}",lastReleaseExpected,lastReleaseActual);
-//        	//	sendRelease(lastReleaseChnl, lastReleaseIdx);
-//        	}
-//        	
-        }
-        
-        
-        
-//        if (!isOpen[idx] && 0==inputLengths[idx]) {
-//            Pipe.publishWorkingTailPosition(selectedInput, Pipe.headPosition(selectedInput));//wipe out pipe.       
-//
-//            return 1;
-//        }        
+    
         return 0;
     }
 
-    boolean lastReleaseSkipped;
-    int lastReleaseLen = 0;
-    long lastReleaseChnl = -1;
-    long lastReleasePos = -10;    
-    int lastReleaseIdx = -1;
-    Pipe lastReleased = null;
-    int lastReleaseExpected = -1;
-    int lastReleaseActual = -1;
     
     private int consumeAvail(final int idx, Pipe<NetPayloadSchema> selectedInput, final long channel, int p, int l) {
         
@@ -404,46 +379,48 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	            	
 	                int newTotalConsumed = (int)(toParseLength - TrieParserReader.parseHasContentLength(trieReader));           
 	                int consumed = newTotalConsumed-totalConsumed;
+	                
+	                if (ServerCoordinator.TEST_RECORDS && 73!=consumed) {
+	                	logger.info("expected consume of 73 but found {}",consumed);
+	                	logger.info("CONSUMED FORCE EXIT ");
+	            		System.exit(-1);
+	                }
+	                
+	                
 	                totalConsumed = newTotalConsumed;
 	                p += consumed;
 	                l -= consumed;
 	
 	                Pipe.releasePendingAsReadLock(selectedInput, consumed);
-	                
-	                
+	               
+//	                if (ServerCoordinator.TEST_RECORDS && l>0) {
+//				            	char ch = (char)selectedInput.blobRing[p&selectedInput.blobMask];
+//				            	if (ch!='G') {
+//					            		logger.info("AFTER FORCE EXIT ON BAD DATA {} should be G previous char was {} remaining len is {} ",ch,(char)selectedInput.blobRing[(p-1)&selectedInput.blobMask],l);
+//					            		System.exit(-1);
+//				            	}
+//	                }
 	                assert(l == trieReader.sourceLen);
 	                inputBlobPos[idx]=p;
-	          
-	                if (inputBlobPos[idx]>inputBlobPosLimit[idx]) {
-	                	new Exception("position is out of bounds "+inputBlobPos[idx]+" vs "+inputBlobPosLimit[idx]).printStackTrace();;
-	                }
-	                if (l<0) {
-	                	new Exception("can not consume more than length "+l).printStackTrace();
-	                }
+	                assert(trieReader.sourcePos==inputBlobPos[idx]);
+	                validateNext(trieReader, idx);
+	                
+	                assert(boundsCheck(idx, l));
+	                
 	                inputLengths[idx]=l;	                
+	                
+	                assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
 	                
 	                if (l==0) {
 	                	inputChannels[idx] = -1;//must clear since we are at a safe release point
 	                	                        //next read will start with new postion.
 	                		//send release if appropriate
-	                	    lastReleaseLen = trieReader.sourceLen;
-	                	    lastReleaseChnl = channel;
-	                	    lastReleasePos = inputSlabPos[idx];
-	                	    lastReleaseIdx = idx;
-	                	    lastReleased = selectedInput;
-	                	    
+	         
 	                		if ((trieReader.sourceLen<=0) && consumedAllOfActiveFragment(selectedInput, p)) { 
-	                			lastReleaseSkipped = false;
-	                			
+	                				                			
 	                			assert(0==Pipe.releasePendingByteCount(selectedInput));
 								sendRelease(channel, idx);
 														
-							} else {
-								lastReleaseSkipped = true;
-								lastReleaseExpected = Pipe.blobMask(selectedInput)&Pipe.getWorkingBlobRingTailPosition(selectedInput);
-								lastReleaseActual = Pipe.blobMask(selectedInput)&p;
-								
-								
 							}
 
 	                	//when we have no more data to consume we must exit this loop and get more.
@@ -467,14 +444,20 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	           }
             }
            
+            assert(inputLengths[idx] <= (selectedInput.blobMask+(selectedInput.blobMask>>1))) : "This data should have been parsed but was not understood, check parser and/or sender for corruption.";
             
-            //TODO: make this into an assert, this should not happen because it would be caught  by now inside the route method.
-            if (inputLengths[idx] >  (selectedInput.blobMask+(selectedInput.blobMask>>1))) {
-            	throw new UnsupportedOperationException("This data should have been parsed but was not understood, check parser and/or sender for corruption.");
-            }
-
 	        return totalConsumed>0?1:0;
     }
+
+	private boolean boundsCheck(final int idx, int l) {
+		if (inputBlobPos[idx]>inputBlobPosLimit[idx]) {
+			new Exception("position is out of bounds "+inputBlobPos[idx]+" vs "+inputBlobPosLimit[idx]).printStackTrace();;
+		}
+		if (l<0) {
+			new Exception("can not consume more than length "+l).printStackTrace();
+		}
+		return true;
+	}
 
     
     //TODO: this appears to be required to make this work with the shared routers however it also seems to break  multiple connections???
@@ -516,14 +499,28 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
 	
 	int tempLen = trieReader.sourceLen;
 	int tempPos = trieReader.sourcePos;
-    final int verbId = (int)TrieParserReader.parseNext(trieReader, verbMap);     //  GET /hello/x?x=3 HTTP/1.1     
+    
+	if (tempLen<=0) {
+		return NEED_MORE_DATA;
+	}
+	
+	validateNext(trieReader, idx);
+
+//	char ch = (char)selectedInput.blobRing[trieReader.sourcePos&selectedInput.blobMask];
+//	if (ch!='G') {
+//		logger.info("AT TOP FORCE EXIT ON BAD DATA {} SHOULD BE G PREVIOUS VALUE WAS {} len {} ",ch, (char)selectedInput.blobRing[(trieReader.sourcePos-1)&selectedInput.blobMask], trieReader.sourceLen);
+//		System.exit(-1);
+//	}
+	
+	
+	final int verbId = (int)TrieParserReader.parseNext(trieReader, verbMap);     //  GET /hello/x?x=3 HTTP/1.1     
     if (verbId<0) {
     		if (tempLen < (verbMap.longestKnown()+1)) { //added 1 for the space which must appear after
- //   			logger.info("A. waiting on verb for {}",channel);
+    //			logger.info("A. waiting on verb for {}",channel);
     			return NEED_MORE_DATA;    			
     		} else {
     			if (trieReader.sourceLen<0) {
- //   				logger.info("B. waiting on verb for {}",channel);
+    //				logger.info("B. waiting on verb for {}",channel);
     		    	return NEED_MORE_DATA;
     		    }
     			//we have bad data we have been sent, there is enough data yet the verb was not found
@@ -531,11 +528,12 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
     			trieReader.sourcePos = tempPos;
     			
     			StringBuilder builder = new StringBuilder();
+    			    			
     			TrieParserReader.debugAsUTF8(trieReader, builder, verbMap.longestKnown()*2);    			
-    			logger.warn("{} looking for verb but found:\n{}\n\n",channel,builder);
+    			logger.warn("{} looking for verb but found:\n{} at position {} from pipe {} \n\n",channel,builder,tempPos,selectedInput);
     		    			
     			badClientError(channel);
-    			    			
+    			    		    			
     		}
     }
     
@@ -544,7 +542,7 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
     final int routeId = (int)TrieParserReader.parseNext(trieReader, urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
     if (routeId<0) {
     	if (tempLen < MAX_URL_LENGTH) {
- //   		logger.info("A. waiting on route for {}",channel);
+//   		logger.info("A. waiting on route for {}",channel);
 			return NEED_MORE_DATA;    			
 		} else {
 		    if (trieReader.sourceLen<0) {
@@ -565,7 +563,7 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
  
     //if thie above code went past the end OR if there is not enough room for an empty header  line maker then return
     if (trieReader.sourceLen<2) {
-//    	logger.info("D. waiting on route for {}",channel);
+   // 	logger.info("D. waiting on route for {}",channel);
     	return NEED_MORE_DATA;
     }    	
     
@@ -592,12 +590,12 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
         if (httpRevisionId<0) { 
         	if (tempLen < (revisionMap.longestKnown()+1)) { //added 1 for the space which must appear after
         		Pipe.resetHead(outputPipe);
-      // 		logger.info("A. waiting on revision for {}",channel);
+   //    		logger.info("A. waiting on revision for {}",channel);
     			return NEED_MORE_DATA;    			
     		} else {
     			//not an error we just looked past the end
     		    if (trieReader.sourceLen<0) {
-    	//	    	    logger.info("B. waiting on revision for {}",channel);
+    //		    	    logger.info("B. waiting on revision for {}",channel);
     		    	    Pipe.resetHead(outputPipe);
     			    	return NEED_MORE_DATA;
     			}    
@@ -620,7 +618,7 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
         if (ServerCoordinator.INCOMPLETE_RESPONSE_MASK == requestContext) {   
             //try again later, not complete.
             Pipe.resetHead(outputPipe);
-//            logger.info("A. waiting on headers for {}",channel);
+   //         logger.info("A. waiting on headers for {}",channel);
             return NEED_MORE_DATA;
         }        
 		//not an error we just looked past the end and need more data
@@ -636,14 +634,26 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
         Pipe.confirmLowLevelWrite(outputPipe, size); 
         sequences[idx]++; //increment the sequence since we have now published the route.
 
+        validateNext(trieReader, idx);
+        //logger.info("normal finish");
+        
         
     } else {
-    	//logger.info("No room, waiting for {} {}",channel, outputPipe);
+ //   	logger.info("No room, waiting for {} {}",channel, outputPipe);
         //no room try again later
         return -routeId;
     }
     
+   inputCounts[idx]++; 
+   validateNext(trieReader, idx);
    return SUCCESS;
+}
+
+private void validateNext(TrieParserReader trieReader, int idx) {
+	StringBuilder temp = new StringBuilder();
+	TrieParserReader.debugAsUTF8(trieReader, temp, 4,false);
+	boolean expr = trieReader.sourceLen<=0 || temp.charAt(0)=='G';
+	assert expr :"bad first bytes detected as "+temp+" on input count "+inputCounts[idx];
 }
 
 private void sendRelease(long channel, final int idx) {
@@ -709,7 +719,6 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
 //	    		     hasReachedEndOfStream(selectedInput), 
 //	    		     hasContinuedData(idx, selectedInput) );
 	    
-	    
 
     
     while (Pipe.hasContentToRead(selectedInput) && //NOTE has content to read looks at slab position between last read and new head.
@@ -717,9 +726,12 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
             (hasNoActiveChannel(idx) ||      //if we do not have an active channel
              hasReachedEndOfStream(selectedInput) || //if we have reached the end of the stream
               hasContinuedData(idx, selectedInput) 
-           )     
+           )
+            
           ) {
     
+
+    	
         
         messageIdx = Pipe.takeMsgIdx(selectedInput);
         
@@ -734,17 +746,17 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
             
             assert(Pipe.byteBackingArray(meta, selectedInput) == Pipe.blob(selectedInput));            
             assert(length>0) : "value:"+length;
-            assert(Pipe.validateVarLength(selectedInput, length));
+            assert(length<=selectedInput.maxAvgVarLen);
             
             boolean freshStart = (-1 == inputChannels[idx]);
             
         //    System.out.println("accumulate length: "+length+" for "+channel+" begin:"+freshStart);
 
-            if (inputBlobPos[idx]>inputBlobPosLimit[idx]) {
-            	new Exception("position is out of bounds "+inputBlobPos[idx]+" vs "+inputBlobPosLimit[idx]).printStackTrace();;
-            }
+            assert(inputBlobPos[idx]<=inputBlobPosLimit[idx]) : "position is out of bounds.";
             
 			if (freshStart) {
+				
+				assert(inputLengths[idx]<=0) : "expected to be 0 or negative but found "+inputLengths[idx];
 				
 				//assign
                 inputChannels[idx]  = channel;
@@ -752,19 +764,23 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
                 inputBlobPos[idx]   = pos;
                 inputBlobPosLimit[idx]=pos+length;
                 
+                assert('G'== Pipe.blob(selectedInput)[pos&selectedInput.blobMask]) : "expected a GET";
+
                 assert(inputLengths[idx]<selectedInput.sizeOfBlobRing);
+                assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
             } else {
                 //confirm match
                 assert(inputChannels[idx] == channel) : "Internal error, mixed channels";
                    
                 //grow position
+                assert(inputLengths[idx]>0) : "not expected to be 0 or negative but found "+inputLengths[idx];
                 inputLengths[idx] += length; 
                 inputBlobPosLimit[idx]+=length;
-                
-                assert(inputLengths[idx]<Pipe.blobMask(selectedInput)) : "When we roll up is must always be smaller than ring";
+
+                assert(inputLengths[idx] < Pipe.blobMask(selectedInput)) : "When we roll up is must always be smaller than ring "+inputLengths[idx]+" is too large for "+Pipe.blobMask(selectedInput);
                                 
-                //may only read up to safe point where head is
-                assert(validatePipePositions(selectedInput, inputBlobPos[idx], inputLengths[idx]));
+                //may only read up to safe point where head is       
+                assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
                                 
             }
 
@@ -814,26 +830,14 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
         	}
         }        
     }
+    
+
  
     return messageIdx;
 }
 
 
-private boolean validatePipePositions(Pipe<NetPayloadSchema> selectedInput, int p, int l) {
-    int head = Pipe.getBlobRingHeadPosition(selectedInput);
-    int mhead = Pipe.blobMask(selectedInput) & head;
-    int mstart = Pipe.blobMask(selectedInput) & p;
-    int stop = mstart+l;
-    int mstop = Pipe.blobMask(selectedInput) & stop;
-         
-    if (stop >= selectedInput.sizeOfBlobRing) {
-       assert(mstop<=mhead) : "Pipe:"+selectedInput;
-       assert(mhead<=mstart) : "Pipe:"+selectedInput;
-    } else {
-       assert(stop<=mhead || mhead<=mstart) : "mhead :"+mhead+" between "+mstart+" and "+stop+"\nPipe:"+selectedInput;                 
-    }
-    return true;
-}
+
 
 
 private boolean hasContinuedData(int idx, Pipe<NetPayloadSchema> selectedInput) {
@@ -896,7 +900,9 @@ private boolean hasNoActiveChannel(int idx) {
         	
             if (END_OF_HEADER_ID == headerId) {
                 if (iteration==0) {
-                    throw new RuntimeException("should not have found end of header");
+                	//needs more data 
+                	return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
+                	//      throw new RuntimeException("should not have found end of header");
                 } else {
                      assignMissingHeadersNull(staticRequestPipe, headerMask, basePos, offsets);
                 }             

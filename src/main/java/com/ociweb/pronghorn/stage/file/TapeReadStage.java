@@ -186,7 +186,7 @@ public class TapeReadStage extends PronghornStage {
                 Pipe.publishWorkingHeadPosition(target, targetSlabPos);
                                
                 //only set this AFTER we have established the head positions.
-                Pipe.confirmLowLevelWrite(target, slabInProgress); //TODO: this is still not helping.
+                Pipe.confirmLowLevelWrite(target, Pipe.sizeOf(target, RawDataSchema.MSG_CHUNKEDSTREAM_1));
                 slabInProgress=-1;
             }
              

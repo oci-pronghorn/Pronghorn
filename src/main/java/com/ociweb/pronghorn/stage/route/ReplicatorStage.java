@@ -176,7 +176,7 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 			if (!Pipe.hasRoomForWrite(ss.targets[working[j]], totalPrimaryCopy)) {
 			 	working[c++] = working[j];		
 			} else {
-			    Pipe.confirmLowLevelWrite(ss.targets[working[j]], totalPrimaryCopy);	
+			    Pipe.confirmLowLevelWriteUnchecked(ss.targets[working[j]], totalPrimaryCopy);	
 				copyData(ss, byteTailPos, totalBytesCopy, primaryTailPos, totalPrimaryCopy, ss.targets[working[j]]);				
 			}
 			j++;

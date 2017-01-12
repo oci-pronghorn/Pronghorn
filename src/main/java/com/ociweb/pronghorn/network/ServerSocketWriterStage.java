@@ -15,6 +15,7 @@ import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 
 public class ServerSocketWriterStage extends PronghornStage {
@@ -52,10 +53,13 @@ public class ServerSocketWriterStage extends PronghornStage {
   
     private long totalBytesWritten = 0;
     
-    private int    activePipe = 0;
     
     private int bufferMultiplier = 4;
 
+
+	private static final boolean enableWriteBatching = true;  
+    
+    private StringBuilder[] accumulators;
 
 	private final boolean debugWithSlowWrites = false; //TODO: set from coordinator, NOTE: this is a critical piece of the tests
 	private final int debugMaxBlockSize = 7;//50000;
@@ -99,6 +103,16 @@ public class ServerSocketWriterStage extends PronghornStage {
     
     @Override
     public void startup() {
+    	
+		if (ServerCoordinator.TEST_RECORDS) {
+			int i = dataToSend.length;
+			accumulators = new StringBuilder[i];
+			while (--i >= 0) {
+				accumulators[i]=new StringBuilder();					
+			}
+		}
+    	
+    	
     	
     	int c = dataToSend.length;
     	writeToChannel = new SocketChannel[c];
@@ -234,7 +248,6 @@ public class ServerSocketWriterStage extends PronghornStage {
 		}
 	}
 
-	private final boolean enableWriteBatching = true;
 	
     private void loadPayloadForXmit(final int msgIdx, final int idx) {
         
@@ -254,6 +267,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
         int len = Pipe.takeRingByteLen(pipe);
         
+        
         //System.err.println(this.stageId+"writer Ch:"+channelId+" len:"+len+" from pipe "+idx);
                 
         ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator, groupIdx);
@@ -272,6 +286,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        workingBuffers[idx].clear();
 		        workingBuffers[idx].put(writeBuffs[0]);
 		        workingBuffers[idx].put(writeBuffs[1]);
+		        
+		        assert(!writeBuffs[0].hasRemaining());
+		        assert(!writeBuffs[1].hasRemaining());
 		        		       		        
 		        Pipe.confirmLowLevelRead(dataToSend[idx], msgSize);
 		        Pipe.releaseReadLock(dataToSend[idx]);
@@ -303,10 +320,20 @@ public class ServerSocketWriterStage extends PronghornStage {
 		            
 			        workingBuffers[idx].put(writeBuffs2[0]);
 			        workingBuffers[idx].put(writeBuffs2[1]);
+			        
+			        assert(!writeBuffs2[0].hasRemaining());
+			        assert(!writeBuffs2[1].hasRemaining());
+			        
 		        		
 			        Pipe.confirmLowLevelRead(pipe, msgSize);
 			        Pipe.releaseReadLock(pipe);
 		        }	        
+		        
+		        if (ServerCoordinator.TEST_RECORDS) {
+		        	ByteBuffer temp = workingBuffers[idx].duplicate();
+		        	temp.flip();
+		        	testValidContent(idx, temp);
+		        }
 		        
 		      //  logger.info("total bytes written {} ",totalBytesWritten);
 		        
@@ -326,13 +353,126 @@ public class ServerSocketWriterStage extends PronghornStage {
                 
     }
 
+    int totalB;
+	private void testValidContent(final int idx, ByteBuffer buf) {
+	
+		if (ServerCoordinator.TEST_RECORDS) {
+							
+			
+			boolean confirmExpectedRequests = true;
+			if (confirmExpectedRequests) {
+			
+				 
+				int pos = buf.position();
+				int len = buf.remaining();
+				
+				
+				while (--len>=0) {
+					totalB++;
+					accumulators[idx].append((char)buf.get(pos++));
+				}
+				
+			//	Appendables.appendUTF8(accumulators[idx], buf.array(), pos, len, Integer.MAX_VALUE);						    				
+				
+				while (accumulators[idx].length() >= ServerCoordinator.expectedOK.length()) {
+					
+				   int c = startsWith(accumulators[idx],ServerCoordinator.expectedOK); 
+				   if (c>0) {
+					   
+					   String remaining = accumulators[idx].substring(c*ServerCoordinator.expectedOK.length());
+					   accumulators[idx].setLength(0);
+					   accumulators[idx].append(remaining);							    					   
+					   
+					   
+				   } else {
+					   logger.info("A"+Arrays.toString(ServerCoordinator.expectedOK.getBytes()));
+					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, ServerCoordinator.expectedOK.length()).toString().getBytes()   ));
+					   
+					   logger.info("FORCE EXIT ERROR exlen {} BAD BYTE BUFFER at {}",ServerCoordinator.expectedOK.length(),totalB);
+					   System.out.println(accumulators[idx].subSequence(0, ServerCoordinator.expectedOK.length()).toString());
+					   System.exit(-1);
+					   	
+					   
+					   
+				   }
+				
+					
+				}
+			}
+			
+			
+		}
+	}
+    
+	private void testValidContent(final int idx, Pipe<NetPayloadSchema> pipe, int meta, int len) {
+	
+		if (ServerCoordinator.TEST_RECORDS) {
+			
+			//write pipeIdx identifier.
+			//Appendables.appendUTF8(System.out, target.blobRing, originalBlobPosition, readCount, target.blobMask);
+			
+			int pos = Pipe.convertToPosition(meta, pipe);
+			    				
+			
+			boolean confirmExpectedRequests = true;
+			if (confirmExpectedRequests) {
+				Appendables.appendUTF8(accumulators[idx], pipe.blobRing, pos, len, pipe.blobMask);						    				
+				
+				while (accumulators[idx].length() >= ServerCoordinator.expectedOK.length()) {
+					
+				   int c = startsWith(accumulators[idx],ServerCoordinator.expectedOK); 
+				   if (c>0) {
+					   
+					   String remaining = accumulators[idx].substring(c*ServerCoordinator.expectedOK.length());
+					   accumulators[idx].setLength(0);
+					   accumulators[idx].append(remaining);							    					   
+					   
+					   
+				   } else {
+					   logger.info("A"+Arrays.toString(ServerCoordinator.expectedOK.getBytes()));
+					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, ServerCoordinator.expectedOK.length()).toString().getBytes()   ));
+					   
+					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos,ServerCoordinator.expectedOK.length());
+					   System.out.println(accumulators[idx].subSequence(0, ServerCoordinator.expectedOK.length()).toString());
+					   System.exit(-1);
+					   	
+					   
+					   
+				   }
+				
+					
+				}
+			}
+			
+			
+		}
+	}
+    
+	private int startsWith(StringBuilder stringBuilder, String expected2) {
+		
+		int count = 0;
+		int rem = stringBuilder.length();
+		int base = 0;
+		while(rem>=expected2.length()) {
+			int i = expected2.length();
+			while (--i>=0) {
+				if (stringBuilder.charAt(base+i)!=expected2.charAt(i)) {
+					return count;
+				}
+			}
+			base+=expected2.length();
+			rem-=expected2.length();
+			count++;
+		}
+		return count;
+	}
+
     private void writeToChannel(int idx) {
 
     		
     		if (!debugWithSlowWrites) {
 		        try {
-		        	ByteBuffer buf = workingBuffers[idx];
-					int bytesWritten = writeToChannel[idx].write(buf);	  
+		        	int bytesWritten = writeToChannel[idx].write(workingBuffers[idx]);	  
 		        	if (bytesWritten>0) {
 		        		totalBytesWritten+=bytesWritten;
 		        	}
@@ -410,6 +550,10 @@ public class ServerSocketWriterStage extends PronghornStage {
     	writeToChannel[idx]=null;
         int sequenceNo = 0;//not available here
         if (null!=releasePipe) {
+        	if (!Pipe.hasRoomForWrite(releasePipe)) {
+        		logger.info("warning must block until pipe is free or we may create a hang condition.");
+        		Pipe.spinBlockForRoom(releasePipe, Pipe.sizeOf(releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101));
+        	}        	
         	if (Pipe.hasRoomForWrite(releasePipe)) {
         		publishRelease(releasePipe, activeIds[idx],
         				        activeTails[idx]!=-1?activeTails[idx]: Pipe.tailPosition(dataToSend[idx]),

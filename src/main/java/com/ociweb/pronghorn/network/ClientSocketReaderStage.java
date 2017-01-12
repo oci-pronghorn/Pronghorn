@@ -2,11 +2,8 @@ package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.Arrays;
 
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
@@ -16,11 +13,9 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
-import com.ociweb.pronghorn.pipe.PipeWriter;
-import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class ClientSocketReaderStage extends PronghornStage {	
 	
@@ -35,6 +30,12 @@ public class ClientSocketReaderStage extends PronghornStage {
 	private final static int KNOWN_BLOCK_ENDING = -1;
 
 	private final int maxClients;
+	
+
+	
+	private StringBuilder[] accumulators; //for testing only
+	
+	
 	
 	public ClientSocketReaderStage(GraphManager graphManager, ClientCoordinator coordinator, Pipe<ReleaseSchema>[] parseAck, Pipe<NetPayloadSchema>[] output, boolean isTLS) {
 		super(graphManager, parseAck, output);
@@ -51,6 +52,15 @@ public class ClientSocketReaderStage extends PronghornStage {
 	@Override
 	public void startup() {
 		start = System.currentTimeMillis();
+		
+		if (ClientCoordinator.TEST_RECORDS) {
+			int i = output.length;
+			accumulators = new StringBuilder[i];
+			while (--i >= 0) {			
+				accumulators[i]=new StringBuilder();					
+			}
+		}
+		
 	}
 	
 	@Override
@@ -130,30 +140,59 @@ public class ClientSocketReaderStage extends PronghornStage {
 					    	if (pipeIdx>=0) {
 					    		//was able to reserve a pipe run 
 						    	Pipe<NetPayloadSchema> target = output[pipeIdx];
-						    	if (PipeWriter.hasRoomForWrite(target)) {	    	
-							    	
-						    		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = PipeWriter.wrappedUnstructuredLayoutBufferOpen(target,
-																				    				isTLS ?
-																				    				NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_PAYLOAD_203 :
-																				    				NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204
-																				    				);
-						    			
+						    	
+					/////////////////////////////
+						    	//TOOD: client socket reader must be LL api same as server, we can not mix consumer
+			        /////////////////////////////
+						    	
+						    	
+						    	
+						    	
+						    	
+						    	if (Pipe.hasRoomForWrite(target) 
+										//what if thie corruption is from the server??
+										//&& ((target.blobMask- Pipe.releasePendingByteCount(target)) > target.maxAvgVarLen)
+										//&& Pipe.getBlobHeadPosition(target) == Pipe.getBlobTailPosition(target)
+										
+										
+										) {
+						    					    		
+						    								    		
+						    		//these buffers are only big enought to accept 1 target.maxAvgVarLen
+						    		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target);
+						    
+						    		int r1 = wrappedUnstructuredLayoutBufferOpen[0].remaining();
+						    		int r2 = wrappedUnstructuredLayoutBufferOpen[1].remaining();
+						    		
+						    		
 						    		//TODO: add assert that target bufer is larger than socket buffer.
 						    		//TODO: warning note cast to int.
 						    		int readCount=-1; 
 						    		try {
-						    			SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();//selectionKey.channel();
+						    			SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();//selectionKey.channel();						    									    			
 						    			readCount = (int)socketChannel.read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
+						    			
+						    			assert(readCount<target.maxAvgVarLen);
+						    			
 						    		} catch (IOException ioex) {
 						    			logger.info("unable to read socket, may not be an error. ",ioex);
 						    			//will continue with readCount of -1;
 						    		}
-							    	boolean fullBuffer = wrappedUnstructuredLayoutBufferOpen[0].remaining()==0 && wrappedUnstructuredLayoutBufferOpen[1].remaining()==0;
+							    //	boolean fullBuffer = wrappedUnstructuredLayoutBufferOpen[0].remaining()==0 && wrappedUnstructuredLayoutBufferOpen[1].remaining()==0;
+			
+						    		
+						    		if (readCount<0) {
+						    			logger.info("ERROR WE AHVE HIT THE END OF THE STREAM");
+						    		}
+						    		
+						    		int countRead = (r2-wrappedUnstructuredLayoutBufferOpen[1].remaining()) + (r1-wrappedUnstructuredLayoutBufferOpen[0].remaining());
+						    		assert(countRead==readCount): countRead+" vs "+readCount;
+						    				
 							    	
 							    	//logger.trace("client reading {} for id {} fullbuffer {}",readCount,cc.getId(),fullBuffer);
 							    	
 							    	if (readCount>0) {
-							    		
+							    		assert(readCount<=target.maxAvgVarLen);
 							    		totalBytes += readCount;						    		
 							    		//we read some data so send it		
 							    	
@@ -162,38 +201,41 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    	//	logger.info("client reading {} for id {}",readCount,cc.getId());
 							    		
 							    		if (isTLS) {
-								    		
-								    		if (PipeWriter.tryWriteFragment(target, NetPayloadSchema.MSG_ENCRYPTED_200)) {try {
-								    			PipeWriter.writeLong(target, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201, cc.getId() );
-								    			PipeWriter.wrappedUnstructuredLayoutBufferClose(target, NetPayloadSchema.MSG_ENCRYPTED_200_FIELD_PAYLOAD_203, readCount);
-								    		  //  logger.info("from socket published          {} bytes for connection {} ",readCount,cc);
-								    		} finally {
-								    			PipeWriter.publishWrites(target);
-								    		}} else {
-								    			PipeWriter.wrappedUnstructuredLayoutBufferCancel(target);
-								    			logger.error("client is dropping incomming data. XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
-								    			throw new RuntimeException("Internal error");
-								    		}
-								    		
-							    		} else {
+							    			assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
 							    			
-							    			if (PipeWriter.tryWriteFragment(target, NetPayloadSchema.MSG_PLAIN_210)) {try {
-								    			PipeWriter.writeLong(target, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, cc.getId() );
-								    			PipeWriter.writeLong(target, NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, KNOWN_BLOCK_ENDING);						    			
-								    			PipeWriter.wrappedUnstructuredLayoutBufferClose(target, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204, readCount);
-								    		  //  logger.info("from socket published          {} bytes for connection {} ",readCount,cc);
-								    		} finally {
-								    			PipeWriter.publishWrites(target);
-								    		}} else {
-								    			PipeWriter.wrappedUnstructuredLayoutBufferCancel(target);
-								    			logger.error("client is dropping incomming data. XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
-								    			throw new RuntimeException("Internal error");
-								    		}						    			
+							    			Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
+							    			Pipe.addLongValue(cc.getId(), target);
+							    			
+							    			int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
+							    			Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)readCount, target);
+							    			
+							    			Pipe.confirmLowLevelWrite(target, Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_ENCRYPTED_200));
+							    			Pipe.publishWrites(target);
+							    										    		
+							    		} else {
+							    			assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
+							    			
+							    			Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
+							    			Pipe.addLongValue(cc.getId(), target);         //connection
+							    			Pipe.addLongValue(KNOWN_BLOCK_ENDING, target); //position
+							    			
+							    			int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
+							    			Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)readCount, target);
+							    			
+							    			if (ClientCoordinator.TEST_RECORDS) {
+							    				validateContent(pipeIdx, target, readCount, originalBlobPosition);
+							    			}		
+							    			
+							    			Pipe.confirmLowLevelWrite(target, Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210));
+							    			Pipe.publishWrites(target);
+					    			
+										    			
 							    		}						    		
 							    		
 							    	} else {
+							    		//logger.info("zero read detected client side..");
 							    		//nothing to send so let go of byte buffer.
-							    		PipeWriter.wrappedUnstructuredLayoutBufferCancel(target);						    		
+							    		Pipe.unstoreBlobWorkingHeadPosition(target);						    		
 							    	}
 							    	
 						    	} else {
@@ -231,7 +273,71 @@ public class ClientSocketReaderStage extends PronghornStage {
 			}
 		}
 	}
+
+	private void validateContent(int pipeIdx, Pipe<NetPayloadSchema> target, int readCount, int originalBlobPosition) {
+		
+		if (ClientCoordinator.TEST_RECORDS) {
+			
+			//write pipeIdx identifier.
+			//Appendables.appendUTF8(System.out, target.blobRing, originalBlobPosition, readCount, target.blobMask);
+			
+			
+			boolean confirmExpectedRequests = true;
+			if (confirmExpectedRequests) {
+				Appendables.appendUTF8(accumulators[pipeIdx], target.blobRing, originalBlobPosition, readCount, target.blobMask);						    				
+				
+				while (accumulators[pipeIdx].length() >= ClientCoordinator.expectedOK.length()) {
+					
+				   int c = startsWith(accumulators[pipeIdx],ClientCoordinator.expectedOK); 
+				   if (c>0) {
+					   
+					   String remaining = accumulators[pipeIdx].substring(c*ClientCoordinator.expectedOK.length());
+					   accumulators[pipeIdx].setLength(0);
+					   accumulators[pipeIdx].append(remaining);							    					   
+					   
+					   
+				   } else {
+					   logger.info("A"+Arrays.toString(ClientCoordinator.expectedOK.getBytes()));
+					   logger.info("B"+Arrays.toString(accumulators[pipeIdx].subSequence(0, ClientCoordinator.expectedOK.length()).toString().getBytes()   ));
+					   
+					   logger.info("FORCE EXIT ERROR at {} exlen {}",originalBlobPosition,ClientCoordinator.expectedOK.length());
+					   System.out.println(accumulators[pipeIdx].subSequence(0, ClientCoordinator.expectedOK.length()).toString());
+					   System.exit(-1);
+					   	
+					   
+					   
+				   }
+				
+					
+				}
+			}
+			
+			
+		}
+	}
 	
+
+	
+	
+	private int startsWith(StringBuilder stringBuilder, String expected2) {
+		
+		int count = 0;
+		int rem = stringBuilder.length();
+		int base = 0;
+		while(rem>=expected2.length()) {
+			int i = expected2.length();
+			while (--i>=0) {
+				if (stringBuilder.charAt(base+i)!=expected2.charAt(i)) {
+					return count;
+				}
+			}
+			base+=expected2.length();
+			rem-=expected2.length();
+			count++;
+		}
+		return count;
+	}
+
 	long lastTotalBytes = 0;
 
 	

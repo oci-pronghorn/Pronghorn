@@ -330,7 +330,7 @@ public class HTTPSRoundTripTest {
 			//NOTE: larger values here allows for more effecient scheculeing and bigger "batches"
 			//NOTE: smaller values here will allow for slightly lower latency values
 			//NOTE: by sleeping less we get more work done per stage, sometimes
-			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 100_000); //this is in ns
+			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 10_000); //this is in ns
 			
 	    	//TODO: we need a better test that has each users interaction of 10 then wait for someone else to get in while still connected.
 	    	//TODO: urgent need to kill off expired pipe usages.
@@ -342,9 +342,7 @@ public class HTTPSRoundTripTest {
 	    	if (useLocalServer) {
 	    		serverCoord = exampleServerSetup(isTLS, gm, testFile);
 	    	}
-	    	
-	    	//64 Simultaneous clients with 32 Simultaneous open pipes in server.  TODO: URGENT fix. 
-	    	
+
 	    	/////////////////
 	        /////////////////
 	    	int base2SimultaniousConnections = 3;//6; //TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
@@ -353,7 +351,7 @@ public class HTTPSRoundTripTest {
 	    	//TODO: this number must be the limit of max simuantious handshakes.
 	    	int maxPartialResponsesClient = 1<<base2SimultaniousConnections; //input lines to client (should be large)
 	    	final int clientOutputCount = 1<<base2SimultaniousConnections;//should be < client connections,  number of pipes getting wrappers and sent out put stream 
-	    	final int clientWriterStages = 2; //writer instances;	
+	    	final int clientWriterStages = 1; //writer instances;	
 	    	
 	    	
 	    	/////////////
@@ -370,17 +368,22 @@ public class HTTPSRoundTripTest {
 	    	
 	    	//////////////
 	    	
-	    	//TODO: lower this value until we see pipes get released when completed, if not then we will starve out new requests. NOTE: needs better solution.
-	    	int inFlightLimit = 16_000;
+	    	//TODO: we have a startup race condition when we push to hard in the client, for high values this is getting corrupt data in the client.
+	    	int inFlightLimit = 8_000_000; //client reader seems to be corrupting heavy data...
+	    	
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
 	    	final int loadMultiplier = isTLS? 100_000 : 3_000_000;//100_000;//100_000;
 
 	    		    	
 			//one of these per unwrap unit and per partial message, there will be many of these normally so they should not be too large
 			//however should be deeper if we are sending lots of messages
-			int netRespQueue = 42;
-			int netRespSize = 1<<12;//must be just larger than the socket buffer
-	    	
+			int netRespQueue = 12;
+			
+			//TODO: to ensure we do not loop back arround (overflow bug to be fixed) this value is set large.
+			int netRespSize = 1<<19;//17;//must be just larger than the socket buffer //TODO: test this when the socket is opened as an assert, must confirm this value is large enought.
+			//TODO: even with this there is still corruption in the clientSocketReader...
+			
+			
 	    	ClientCoordinator[] clientCoords = new ClientCoordinator[clientCount];
 	    	RegulatedLoadTestStage[] clients = new RegulatedLoadTestStage[clientCount];
 	    	
@@ -435,15 +438,12 @@ public class HTTPSRoundTripTest {
 				clientCoords[c].shutdown();
 				totalReceived += clients[c].totalReceived();
 			}
+
+			long duration = System.currentTimeMillis()-start;
+	
 			if (null!=serverCoord) {
 				serverCoord.shutdown();
 			}
-			
-			//TODO: all the data is back now so the stages should be free to shutdown, 
-			//      do we have any which remain in run??	
-			
-			long duration = System.currentTimeMillis()-start;
-	
 			scheduler.shutdown();
 			scheduler.awaitTermination(2, TimeUnit.SECONDS);
 			
@@ -451,16 +451,15 @@ public class HTTPSRoundTripTest {
 			
 		//	hist.outputPercentileDistribution(System.out, 0d);
 			
-			
 		//	System.out.println("total bytes returned:"+cleaner.getTotalBlobCount()+" expected "+expectedData); //434_070  23_930_000
 							
 			
-			System.out.println("duration: "+duration);			
-			
+			System.out.println("duration: "+duration);
 			
 			float msPerCall = duration/(float)totalReceived;
-			System.out.println("ms per call: "+msPerCall);		
-			System.out.println("calls per sec: "+(1000f/msPerCall));
+			float nsPerCall = 1000000f*msPerCall;
+			System.out.println("ns per call: "+nsPerCall);		
+			System.out.println("calls per sec: "+(1000f/msPerCall)); //task manager its self can slow down results so avoid running it during test.
 			
 		}
 	}
@@ -497,22 +496,23 @@ public class HTTPSRoundTripTest {
 		final int serverRequestUnwrapUnits 		= 2; //server unwrap units - need more for handshaks and more for posts
 		final int serverResponseWrapUnits 		= 8;
 		final int serverPipesPerOutputEngine 	= isTLS?1:4;//multiplier against server wrap units for max simultanus user responses.
-		final int serverSocketWriters           = 2;
+		final int serverSocketWriters           = 1;
 		
 		//drives the cached data from the file loader.
-		final int messagesToOrderingSuper       = 2048;	    		
-		final int messageSizeToOrderingSuper    = 1<<8;	    		
+		final int messagesToOrderingSuper       = 4096;	    		
+		final int messageSizeToOrderingSuper    = 1<<9;	    		
 		
 		
 		 //the typical rec buffer is about 1<<19
-		final int serverInputBlobs = 1<<17; //when small THIS has a big slow-down effect and it appears as the client getting backed up.
-		final int serverInputMsg = 128;
+		//TODO: to ensure we do not loop back arround (overflow bug to be fixed) this value is set large.
+		final int serverInputBlobs = 1<<15;//23;////19; //when small THIS has a big slow-down effect and it appears as the client getting backed up.
+		final int serverInputMsg = 6;//80; 
 		 
 		final int serverMsgToEncrypt = 256; //only used for TLS
 		final int serverBlobToEncrypt = 1<<12;
 		 
-		final int serverMsgToWrite = 1024; //this pipe gets full in short bursts, 
-		final int serverBlobToWrite = 1<<12; //Used for both TLS and NON-TLS
+		final int serverMsgToWrite = 2048; //this pipe gets full in short bursts, 
+		final int serverBlobToWrite = 1<<13; //Used for both TLS and NON-TLS
 		 
 		final int routerCount = 4;
 		

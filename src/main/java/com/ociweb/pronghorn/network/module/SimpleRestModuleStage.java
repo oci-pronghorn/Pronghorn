@@ -11,9 +11,11 @@ import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class SimpleRestModuleStage<   T extends Enum<T> & HTTPContentType,
+public class SimpleRestModuleStage<                 T extends Enum<T> & HTTPContentType,
 													R extends Enum<R> & HTTPRevision,
 													V extends Enum<V> & HTTPVerb,
 													H extends Enum<H> & HTTPHeaderKey> extends AbstractRestStage<T,R,V,H> {
@@ -22,6 +24,9 @@ public class SimpleRestModuleStage<   T extends Enum<T> & HTTPContentType,
     private final Pipe<HTTPRequestSchema> input;    
     private final Pipe<ServerResponseSchema> output;
     private final SimpleRestLogic logic;
+    
+    private final int MAX_TEXT_LENGTH = 64;
+    private final Pipe<RawDataSchema> digitBuffer = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance,3,MAX_TEXT_LENGTH));
     
 	protected SimpleRestModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output,
 			HTTPSpecification<T, R, V, H> httpSpec, SimpleRestLogic logic) {
@@ -32,8 +37,13 @@ public class SimpleRestModuleStage<   T extends Enum<T> & HTTPContentType,
 		this.logic = logic;
 		
 	}
-
+	
 	@Override
+	public void startup() {
+		digitBuffer.initBuffers();
+	}
+
+    @Override
 	public void run() {
 		
 		
@@ -42,32 +52,90 @@ public class SimpleRestModuleStage<   T extends Enum<T> & HTTPContentType,
 			
 			int id = Pipe.takeMsgIdx(input);
 			if (HTTPRequestSchema.MSG_RESTREQUEST_300==id) {
-		
-				long channelId = Pipe.takeLong(input); //pass along
-				int  sequenceId = Pipe.takeInt(input); //pass along, critical to ensure ordering.				
-				int  verb = Pipe.takeInt(input); 
-				DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.inputStream(input);
-				inputStream.openLowLevelAPIField();
+
+				final DataInputBlobReader<HTTPRequestSchema> inputStream = Pipe.inputStream(input);
+				final DataOutputBlobWriter<ServerResponseSchema> outputStream = Pipe.outputStream(output);
+				
+				//TODO: since this is on the same input/output pipes it can be the same instance.
+				RestResponder<T> responder = new RestResponder<T>() {
+					
+					@Override
+					public DataOutputBlobWriter<ServerResponseSchema> beginResponse(int status, T contentType, int length) {
+						
+						final long channelId = Pipe.takeLong(input); //pass along
+						final int  sequenceId = Pipe.takeInt(input); //pass along, critical to ensure ordering.			
+						
+						
+						final int  verb = Pipe.takeInt(input); 
+						inputStream.openLowLevelAPIField();
+						final int revision = Pipe.takeInt(input); //not used...
+						final int context =  Pipe.peekInt(input); //do not move pointer forward since we will read it a gain later
+														
+						
+						Pipe.addMsgIdx(output, ServerResponseSchema.MSG_TOCHANNEL_100);
+						Pipe.addLongValue(channelId, output);
+						Pipe.addIntValue(sequenceId, output);						
+						outputStream.openField();
+						
+						byte[] revisionBytes = httpSpec.revisions[revision].getBytes();
+						
+						
+						byte[] etagBytes = null;//TODO: nice feature to add later
+						
+						
+						writeHeaderImpl(outputStream, status, contentType, length, context, revisionBytes, etagBytes);
+						
+						
+						return outputStream;
+					}
+
+					private void writeHeaderImpl(final DataOutputBlobWriter<ServerResponseSchema> outputStream,
+							int status, T contentType, int length, final int context, byte[] revisionBytes,
+							byte[] etagBytes) {
+						
+						byte[] lenAsBytes = null;//TODO: nice feature to add of knowing length up front.
+						int lenAsBytesPos = 0;
+					    int lenAsBytesLen = 0;
+					    int lenAsBytesMask = 0;
+					
+						if (length>=0) {
+											
+							  int addSize = Pipe.addMsgIdx(digitBuffer, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+							  int digitsLen = Pipe.addLongAsUTF8(digitBuffer, length);
+						      Pipe.publishWrites(digitBuffer);
+						      Pipe.confirmLowLevelWrite(digitBuffer, addSize);
+												          
+					          int msgIdx = Pipe.takeMsgIdx(digitBuffer); 
+					          int meta = Pipe.takeRingByteMetaData(digitBuffer);
+					          lenAsBytesLen = Pipe.takeRingByteLen(digitBuffer);
+					          lenAsBytesPos = Pipe.bytePosition(meta, digitBuffer, lenAsBytesLen);
+					          lenAsBytes = Pipe.byteBackingArray(meta, digitBuffer);
+					          lenAsBytesMask = Pipe.blobMask(digitBuffer);
+					          
+					          assert(digitsLen == lenAsBytesLen) : "byte written should be the same as bytes consumed";
+					          
+					          Pipe.confirmLowLevelRead(digitBuffer, Pipe.sizeOf(RawDataSchema.instance,RawDataSchema.MSG_CHUNKEDSTREAM_1));
+					          Pipe.releaseReadLock(digitBuffer);
+														
+						}						
+						
+						
+						writeHeader(revisionBytes, status, context, etagBytes, contentType.getBytes(), 
+								    lenAsBytes, lenAsBytesPos, lenAsBytesLen, lenAsBytesMask, 
+								    outputStream);
+					}
+					
+				};
 				
 				
-				
-				int writeSize = Pipe.addMsgIdx(output, ServerResponseSchema.MSG_TOCHANNEL_100);
-				Pipe.addLongValue(channelId, output);
-				Pipe.addIntValue(sequenceId, output);
-			
-				
-				DataOutputBlobWriter<ServerResponseSchema> outputStream = Pipe.outputStream(output);
-				outputStream.openField();
-				
-				logic.process(inputStream,outputStream);
-							
+				logic.process(inputStream, responder); //client can read input stream and do work before telling responder status etc.
+											
 				outputStream.closeLowLevelField();
-							
-				int revision = Pipe.takeInt(input); //not used...
-				int context = Pipe.takeInt(input); //pass along, can close conection if we desire
+			
+				final int context = Pipe.takeInt(input);				
 				Pipe.addIntValue(context, output);
 				
-				Pipe.confirmLowLevelWrite(output, writeSize);
+				Pipe.confirmLowLevelWrite(output, Pipe.sizeOf(ServerResponseSchema.instance, ServerResponseSchema.MSG_TOCHANNEL_100));
 				Pipe.publishWrites(output);
 				
 				Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, id));

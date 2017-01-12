@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.network;
 import java.io.IOException;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +12,7 @@ import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class ClientSocketWriterStage extends PronghornStage {
 	
@@ -26,6 +28,11 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private long start;
 	private long totalBytes=0;
 	
+	//FOR HEAVY LOAD TESTING THIS FEATURE MUST BE SWITCHED ON.
+	private static final boolean enableWriteBatching = true;
+	
+	
+	
 	//reqired for simulation of "slow" networks  TODO: read this from the client coordinator?
 	private final boolean debugWithSlowWrites = false;
 	private final int     debugMaxBlockSize = 50; 
@@ -34,6 +41,10 @@ public class ClientSocketWriterStage extends PronghornStage {
 //	private long nextTime = 0;
 //	private int xA = 0;
 //	private int xB = 0;
+	
+
+
+    private StringBuilder[] accumulators;//for testing only
 	
 	
 	public static ClientSocketWriterStage newInstance(GraphManager graphManager, ClientCoordinator ccm, Pipe<NetPayloadSchema>[] input) {
@@ -50,6 +61,16 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	@Override
 	public void startup() {
+		
+		if (ClientCoordinator.TEST_RECORDS) {
+			int j = input.length;
+			accumulators = new StringBuilder[j];
+			while (--j >= 0) {
+				accumulators[j]=new StringBuilder();					
+			}
+		}
+		
+		
 		int BUF_SIZE = 4;
 		int i = input.length;
 		connections = new ClientConnection[i];
@@ -139,44 +160,44 @@ public class ClientSocketWriterStage extends PronghornStage {
 								Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
 								Pipe.releaseReadLock(pipe);
 								
-//								boolean enableWriteBatching = true;
-//								System.err.println(enableWriteBatching+" && "+
-//								                 Pipe.hasContentToRead(pipe)+" && "+
-//							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
-//					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
-//					            		         (Pipe.peekLong(pipe, 1)==channelId) );
-//								
-//						        while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
-//							            Pipe.peekInt(pipe)==msgIdx && 
-//							            		buffers[i].remaining()>pipe.maxAvgVarLen && 
-//							            Pipe.peekLong(pipe, 1)==channelId ) {
-//							        			        	
-//							        	//logger.trace("opportunity found to batch writes going to {} ",channelId);
-//							        	
-//							        	int m = Pipe.takeMsgIdx(pipe);
-//							        	assert(m==msgIdx): "internal error";
-//							        	long c = Pipe.takeLong(pipe);
-//							        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
-//							        	
-//							        	
-////							            if (takeTail) {
-////							            	activeTails[idx] =  Pipe.takeLong(pipe);
-////							            } else {
-////							            	activeTails[idx] = -1;
-////							            }
-//							            
-//							            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
-//							            int len2 = Pipe.takeRingByteLen(pipe);
-//							            ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
-//							            
-//							            buffers[i].put(writeBuffs2[0]);
-//							            buffers[i].put(writeBuffs2[1]);
-//							        		
-//							            System.err.println("did it here");
-//							            
-//								        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
-//								        Pipe.releaseReadLock(pipe);
-//							        }	
+								boolean enableWriteBatching = true;
+								System.err.println(enableWriteBatching+" && "+
+								                 Pipe.hasContentToRead(pipe)+" && "+
+							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
+					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
+					            		         (Pipe.peekLong(pipe, 1)==channelId) );
+								
+						        while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
+							            Pipe.peekInt(pipe)==msgIdx && 
+							            		buffers[i].remaining()>pipe.maxAvgVarLen && 
+							            Pipe.peekLong(pipe, 1)==channelId ) {
+							        			        	
+							        	//logger.trace("opportunity found to batch writes going to {} ",channelId);
+							        	
+							        	int m = Pipe.takeMsgIdx(pipe);
+							        	assert(m==msgIdx): "internal error";
+							        	long c = Pipe.takeLong(pipe);
+							        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
+							        	
+							        	
+//							            if (takeTail) {
+//							            	activeTails[idx] =  Pipe.takeLong(pipe);
+//							            } else {
+//							            	activeTails[idx] = -1;
+//							            }
+							            
+							            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
+							            int len2 = Pipe.takeRingByteLen(pipe);
+							            ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
+							            
+							            buffers[i].put(writeBuffs2[0]);
+							            buffers[i].put(writeBuffs2[1]);
+							        		
+							            System.err.println("did it here");
+							            
+								        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
+								        Pipe.releaseReadLock(pipe);
+							        }	
 								
 								buffers[i].flip();	
 								connections[i] = cc;
@@ -199,7 +220,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 							long workingTail = Pipe.takeLong(pipe);
 							
 							int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
-							int len = Pipe.takeRingByteLen(pipe);
+							int len  = Pipe.takeRingByteLen(pipe);
 	
 						    	if (SSLUtil.HANDSHAKE_POS != workingTail) {
 		 							
@@ -222,48 +243,48 @@ public class ClientSocketWriterStage extends PronghornStage {
 										Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
 										Pipe.releaseReadLock(pipe);
 										
+//										System.err.println(enableWriteBatching+" && "+
+//								                 Pipe.hasContentToRead(pipe)+" && "+
+//							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
+//					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
+//					            		         (Pipe.peekLong(pipe, 1)==channelId) );										
+										 while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
+										            Pipe.peekInt(pipe)==msgIdx && 
+										            		buffers[i].remaining()>pipe.maxAvgVarLen && 
+										            Pipe.peekLong(pipe, 1)==channelId ) {
+										        			        	
+										        	//logger.trace("opportunity found to batch writes going to {} ",channelId);
+										        	
+										        	int m = Pipe.takeMsgIdx(pipe);
+										        	assert(m==msgIdx): "internal error";
+										        	long c = Pipe.takeLong(pipe);
+										        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
+										        	
+										        	boolean takeTail = true;
+										        	if (takeTail) {
+										        		workingTail=Pipe.takeLong(pipe);
+										        	}
+										        											            
+										            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
+										            int len2 = Pipe.takeRingByteLen(pipe);
+										            ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
+										            
+										            buffers[i].put(writeBuffs2[0]);
+										            buffers[i].put(writeBuffs2[1]);
+										        		
+										      //      System.err.println("did it here");
+										            
+											        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
+											        Pipe.releaseReadLock(pipe);
+										        }											
 										
 										
-										
-//										boolean enableWriteBatching = true;
-//
-////										System.err.println(enableWriteBatching+" && "+
-////								                 Pipe.hasContentToRead(pipe)+" && "+
-////							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
-////					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
-////					            		         (Pipe.peekLong(pipe, 1)==channelId) );										
-//										 while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
-//										            Pipe.peekInt(pipe)==msgIdx && 
-//										            		buffers[i].remaining()>pipe.maxAvgVarLen && 
-//										            Pipe.peekLong(pipe, 1)==channelId ) {
-//										        			        	
-//										        	//logger.trace("opportunity found to batch writes going to {} ",channelId);
-//										        	
-//										        	int m = Pipe.takeMsgIdx(pipe);
-//										        	assert(m==msgIdx): "internal error";
-//										        	long c = Pipe.takeLong(pipe);
-//										        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
-//										        	
-//										        	boolean takeTail = true;
-//										        	if (takeTail) {
-//										        		workingTail=Pipe.takeLong(pipe);
-//										        	}
-//										        											            
-//										            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
-//										            int len2 = Pipe.takeRingByteLen(pipe);
-//										            ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
-//										            
-//										            buffers[i].put(writeBuffs2[0]);
-//										            buffers[i].put(writeBuffs2[1]);
-//										        		
-//										      //      System.err.println("did it here");
-//										            
-//											        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
-//											        Pipe.releaseReadLock(pipe);
-//										        }											
-//										
-										
-										
+										if (ClientCoordinator.TEST_RECORDS) {	
+							    			ByteBuffer temp = buffers[i].duplicate();
+							    			temp.flip();
+							    			testValidContent(i, temp);
+										}
+											
 										
 										//System.err.println("write size of "+buffers[i].position());
 										
@@ -361,6 +382,10 @@ public class ClientSocketWriterStage extends PronghornStage {
 		} catch (IOException e) {
 			logger.info("excption while writing to socket. ",e);
 			connections[i].close();
+			
+			logger.info("FORCED EXIT");
+			System.exit(-1);
+			
 		}
 		if (!buffers[i].hasRemaining()) {
 			
@@ -372,5 +397,76 @@ public class ClientSocketWriterStage extends PronghornStage {
 			
 		}
 	}
+	
+	
+    int totalB;
+	private void testValidContent(final int idx, ByteBuffer buf) {
+		
+		if (ClientCoordinator.TEST_RECORDS) {							
+			
+			boolean confirmExpectedRequests = true;
+			if (confirmExpectedRequests) {
+			
+				 
+				int pos = buf.position();
+				int len = buf.remaining();
+				
+				
+				while (--len>=0) {
+					totalB++;
+					accumulators[idx].append((char)buf.get(pos++));
+				}
+				
+			//	Appendables.appendUTF8(accumulators[idx], buf.array(), pos, len, Integer.MAX_VALUE);						    				
+				
+				while (accumulators[idx].length() >= ClientCoordinator.expectedGet.length()) {
+					
+				   int c = startsWith(accumulators[idx],ClientCoordinator.expectedGet); 
+				   if (c>0) {
+					   
+					   String remaining = accumulators[idx].substring(c*ClientCoordinator.expectedGet.length());
+					   accumulators[idx].setLength(0);
+					   accumulators[idx].append(remaining);							    					   
+					   
+					   
+				   } else {
+					   logger.info("A"+Arrays.toString(ClientCoordinator.expectedGet.getBytes()));
+					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, ClientCoordinator.expectedGet.length()).toString().getBytes()   ));
+					   
+					   logger.info("FORCE EXIT ERROR exlen {} BAD BYTE BUFFER at {}",ClientCoordinator.expectedGet.length(),totalB);
+					   System.out.println(accumulators[idx].subSequence(0, ClientCoordinator.expectedGet.length()).toString());
+					   System.exit(-1);
+					   	
+					   
+					   
+				   }
+				
+					
+				}
+			}
+			
+			
+		}
+	}
+    
+	private int startsWith(StringBuilder stringBuilder, String expected2) {
+		
+		int count = 0;
+		int rem = stringBuilder.length();
+		int base = 0;
+		while(rem>=expected2.length()) {
+			int i = expected2.length();
+			while (--i>=0) {
+				if (stringBuilder.charAt(base+i)!=expected2.charAt(i)) {
+					return count;
+				}
+			}
+			base+=expected2.length();
+			rem-=expected2.length();
+			count++;
+		}
+		return count;
+	}
+	
 
 }

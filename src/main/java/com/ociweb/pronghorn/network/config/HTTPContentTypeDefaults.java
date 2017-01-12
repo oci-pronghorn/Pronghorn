@@ -97,7 +97,7 @@ public enum HTTPContentTypeDefaults implements HTTPContentType {
     VCD("application/x-cdlink","vcd"),
     WAV("audio/wav","wav"),
     WAVX("audio/x-wav","wav",true),    
-    XLS("pplication/vnd.ms-excel","xls"),
+    XLS("application/vnd.ms-excel","xls"),
     XML("application/xml","xml"),
     Z("application/x-compress","Z"),  
     ZIPX("application/x-compressed-zip","zip",true),

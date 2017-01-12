@@ -9,8 +9,7 @@ import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
-import com.ociweb.pronghorn.pipe.PipeWriter;
+
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
@@ -60,7 +59,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 		
 		int i = output.length;
 		while (--i>=0) {
-			PipeWriter.publishEOF(output[i]);
+			Pipe.spinBlockForRoom(output[i], Pipe.EOF_SIZE);
+			Pipe.publishEOF(output[i]);
 		}
 	}
 	
@@ -100,7 +100,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 			if (unused>disconnectTimeoutMS) {
 				
 				Pipe<NetPayloadSchema> pipe = output[con.requestPipeLineIdx()];
-				if (PipeWriter.hasRoomForWrite(pipe)) {
+				if (Pipe.hasRoomForWrite(pipe)) {
 					//close the least used connection
 					cleanCloseConnection(con, pipe);				
 				}
@@ -126,13 +126,13 @@ public class HTTPClientRequestStage extends PronghornStage {
 //		    		   );
 		    
 		    
-	        if (PipeReader.hasContentToRead(requestPipe)         
+	        if (Pipe.hasContentToRead(requestPipe)         
 	             && hasOpenConnection(requestPipe, output, ccm, findAPipeWithRoom(output))
-	             && PipeReader.tryReadFragment(requestPipe) ){
+	             ){
 	  	    	        	
 	        	//Need peek to know if this will block.
 	 	        		        	
-	            int msgIdx = PipeReader.getMsgIdx(requestPipe);
+	            final int msgIdx = Pipe.takeMsgIdx(requestPipe);
 	            
 	            didWork = true;
 	        
@@ -156,7 +156,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 								}
 								
 								requestShutdown();
-								PipeReader.releaseReadLock(requestPipe);
+								Pipe.confirmLowLevelRead(requestPipe, Pipe.EOF_SIZE);
+								Pipe.releaseReadLock(requestPipe);
 								return false;
 								
 							case ClientHTTPRequestSchema.MSG_CLOSE_104:
@@ -182,20 +183,33 @@ public class HTTPClientRequestStage extends PronghornStage {
 					                	clientConnection.incRequestsSent();//count of messages can only be done here.
 										Pipe<NetPayloadSchema> outputPipe = output[outIdx];
 						                				                	
-						                if (PipeWriter.tryWriteFragment(outputPipe, NetPayloadSchema.MSG_PLAIN_210) ) {
+										  if (Pipe.hasRoomForWrite(outputPipe) ) {
 						                    	
-						                	PipeWriter.writeLong(outputPipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, clientConnection.id);
-						                 	PipeWriter.writeLong(outputPipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, 0);
+								          
+											  int pSize = Pipe.addMsgIdx(outputPipe, NetPayloadSchema.MSG_PLAIN_210); 	
+											  
+											  Pipe.addLongValue(clientConnection.id, outputPipe); //, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, clientConnection.id);
+								              Pipe.addLongValue(0, outputPipe); // NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, 0);
+							                 							                 	
 						                 	
-						                 	
-						                	DataOutputBlobWriter<NetPayloadSchema> activeWriter = PipeWriter.outputStream(outputPipe);
+						                	DataOutputBlobWriter<NetPayloadSchema> activeWriter = Pipe.outputStream(outputPipe);
 						                	DataOutputBlobWriter.openField(activeWriter);
 											
 						                	DataOutputBlobWriter.encodeAsUTF8(activeWriter,"GET");
 						                	
-						                	int len = PipeReader.readBytesLength(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3);					                	
-						                	int  first = PipeReader.readBytesPosition(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3);					                	
-						                	boolean prePendSlash = (0==len) || ('/' != PipeReader.readBytesBackingArray(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3)[first&Pipe.blobMask(requestPipe)]);  
+						                	int userId = Pipe.takeInt(requestPipe);
+						                	int port   = Pipe.takeInt(requestPipe);
+						                	int hostMeta = Pipe.takeRingByteMetaData(requestPipe);
+						                	int hostLen  = Pipe.takeRingByteLen(requestPipe);
+						                	int hostPos = Pipe.bytePosition(hostMeta, requestPipe, hostLen);
+						                	long connId = Pipe.takeLong(requestPipe);
+						                							                	
+						                	
+						                	int meta = Pipe.takeRingByteMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3
+						                	int len  = Pipe.takeRingByteLen(requestPipe);
+						                    int first = Pipe.bytePosition(meta, requestPipe, len);
+						                							                						                	
+						                	boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[first&Pipe.blobMask(requestPipe)]);  
 						                	
 											if (prePendSlash) { //NOTE: these can be pre-coverted to bytes so we need not convert on each write. may want to improve.
 												DataOutputBlobWriter.encodeAsUTF8(activeWriter," /");
@@ -204,17 +218,18 @@ public class HTTPClientRequestStage extends PronghornStage {
 											}
 											
 											//Reading from UTF8 field and writing to UTF8 encoded field so we are doing a direct copy here.
-											PipeReader.readBytes(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3, activeWriter);
+											Pipe.readBytes(requestPipe, activeWriter, meta, len);//, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3, activeWriter);
 											
-						            		final byte[] hostBack = PipeReader.readBytesBackingArray(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_HOST_2);
-						            		final int hostPos = PipeReader.readBytesPosition(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_HOST_2);
-						            		final int hostLen = PipeReader.readBytesLength(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_HOST_2);
-						            		final int hostMask = Pipe.blobMask(requestPipe);	
+						            		final byte[] hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);//, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_HOST_2);
+						            		final int hostMask    = Pipe.blobMask(requestPipe);	
 											
 											finishWritingHeader(hostBack, hostPos, hostLen, hostMask, activeWriter, implementationVersion, 0);
-						                	DataOutputBlobWriter.closeHighLevelField(activeWriter, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
-						                					                	
-						                	PipeWriter.publishWrites(outputPipe);
+						  
+											
+						                	DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
+					                		
+						                	Pipe.confirmLowLevelWrite(outputPipe,pSize);
+						                	Pipe.publishWrites(outputPipe);
 						                	
 						                    //logger.info("published the get request {}",outputPipe);
 						                	
@@ -242,21 +257,31 @@ public class HTTPClientRequestStage extends PronghornStage {
 						                	clientConnection.incRequestsSent();//count of messages can only be done here.
 											Pipe<NetPayloadSchema> outputPipe = output[outIdx];
 							                				                	
-							                if (PipeWriter.tryWriteFragment(outputPipe, NetPayloadSchema.MSG_PLAIN_210) ) {
+											  if (Pipe.hasRoomForWrite(outputPipe) ) {
 							                    	
-							                	PipeWriter.writeLong(outputPipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, clientConnection.id);
-							                 	PipeWriter.writeLong(outputPipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, 0);
+								               	int pSize = Pipe.addMsgIdx(outputPipe, NetPayloadSchema.MSG_PLAIN_210);
+							                   	
+								               	Pipe.addLongValue(clientConnection.id, outputPipe); //, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, clientConnection.id);
+								               	Pipe.addLongValue(0, outputPipe); // NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, 0);
 							                 	
 							                 	
-							                	DataOutputBlobWriter<NetPayloadSchema> activeWriter = PipeWriter.outputStream(outputPipe);
+							                	DataOutputBlobWriter<NetPayloadSchema> activeWriter = Pipe.outputStream(outputPipe);
 							                	DataOutputBlobWriter.openField(activeWriter);
 												
 							                	DataOutputBlobWriter.encodeAsUTF8(activeWriter,"GET");
 							                	
-							                	int len = PipeReader.readBytesLength(requestPipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3);					                	
-							                	int  first = PipeReader.readBytesPosition(requestPipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3);					                	
-							                	boolean prePendSlash = (0==len) || ('/' != PipeReader.readBytesBackingArray(requestPipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3)[first&Pipe.blobMask(requestPipe)]);  
+							                	int userId = Pipe.takeInt(requestPipe);
+							                	int port   = Pipe.takeInt(requestPipe);
+							                	int hostMeta = Pipe.takeRingByteMetaData(requestPipe);
+							                	int hostLen  = Pipe.takeRingByteLen(requestPipe);
+							                	int hostPos = Pipe.bytePosition(hostMeta, requestPipe, hostLen);
 							                	
+							                  	int meta = Pipe.takeRingByteMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3
+							                	int len  = Pipe.takeRingByteLen(requestPipe);
+							                    int first = Pipe.bytePosition(meta, requestPipe, len);					                	
+							                
+							                    boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[first&Pipe.blobMask(requestPipe)]);
+
 												if (prePendSlash) { //NOTE: these can be pre-coverted to bytes so we need not convert on each write. may want to improve.
 													DataOutputBlobWriter.encodeAsUTF8(activeWriter," /");
 												} else {
@@ -264,19 +289,19 @@ public class HTTPClientRequestStage extends PronghornStage {
 												}
 												
 												//Reading from UTF8 field and writing to UTF8 encoded field so we are doing a direct copy here.
-												PipeReader.readBytes(requestPipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3, activeWriter);
-												
-							            		final byte[] hostBack = PipeReader.readBytesBackingArray(requestPipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2);
-							            		final int hostPos = PipeReader.readBytesPosition(requestPipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2);
-							            		final int hostLen = PipeReader.readBytesLength(requestPipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2);
-							            		final int hostMask = Pipe.blobMask(requestPipe);	
+												Pipe.readBytes(requestPipe, activeWriter, meta, len);//, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3, activeWriter);
+										
+							            		final byte[] hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);//, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2);
+							            		final int hostMask    = Pipe.blobMask(requestPipe);	
+							            		
 												
 												finishWritingHeader(hostBack, hostPos, hostLen, hostMask, activeWriter, implementationVersion, 0);
-							                	DataOutputBlobWriter.closeHighLevelField(activeWriter, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
+							                
 							                					                	
-							                	PipeWriter.publishWrites(outputPipe);
-							                	
-							                    //logger.info("published the get request {}",outputPipe);
+							                	DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
+						                		
+							                	Pipe.confirmLowLevelWrite(outputPipe,pSize);
+							                	Pipe.publishWrites(outputPipe);
 							                	
 							                					                	
 							                } else {
@@ -298,19 +323,28 @@ public class HTTPClientRequestStage extends PronghornStage {
 					                	clientConnection.incRequestsSent();//count of messages can only be done here.
 										Pipe<NetPayloadSchema> outputPipe = output[outIdx];
 					                
-						                if (PipeWriter.tryWriteFragment(outputPipe, NetPayloadSchema.MSG_PLAIN_210) ) {
+						                if (Pipe.hasRoomForWrite(outputPipe) ) {
 					                    	
-						                	PipeWriter.writeLong(outputPipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, clientConnection.id);
+						                	int pSize = Pipe.addMsgIdx(outputPipe, NetPayloadSchema.MSG_PLAIN_210);
+						                	Pipe.addLongValue(clientConnection.id, outputPipe); //NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, clientConnection.id);
 						                	
-						                	DataOutputBlobWriter<NetPayloadSchema> activeWriter = PipeWriter.outputStream(outputPipe);
+						                	DataOutputBlobWriter<NetPayloadSchema> activeWriter = Pipe.outputStream(outputPipe);
 						                	DataOutputBlobWriter.openField(activeWriter);
 						                			                
 						                	DataOutputBlobWriter.encodeAsUTF8(activeWriter,"POST");
 						                	
-						                	int len = PipeReader.readBytesLength(requestPipe,ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3);					                	
-						                	int  first = PipeReader.readBytesPosition(requestPipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3);					                	
-						                	boolean prePendSlash = (0==len) || ('/' != PipeReader.readBytesBackingArray(requestPipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3)[first&Pipe.blobMask(requestPipe)]);  
+						                	int userId = Pipe.takeInt(requestPipe);
+						                	int port   = Pipe.takeInt(requestPipe);
+						                	int hostMeta = Pipe.takeRingByteMetaData(requestPipe);
+						                	int hostLen  = Pipe.takeRingByteLen(requestPipe);
+						                	int hostPos = Pipe.bytePosition(hostMeta, requestPipe, hostLen);
 						                	
+						                  	int meta = Pipe.takeRingByteMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3
+						                	int len  = Pipe.takeRingByteLen(requestPipe);
+						                    int first = Pipe.bytePosition(meta, requestPipe, len);					                	
+						                
+						                    boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[first&Pipe.blobMask(requestPipe)]);
+						              
 											if (prePendSlash) { //NOTE: these can be pre-coverted to bytes so we need not convert on each write. may want to improve.
 												DataOutputBlobWriter.encodeAsUTF8(activeWriter," /");
 											} else {
@@ -318,9 +352,12 @@ public class HTTPClientRequestStage extends PronghornStage {
 											}
 											
 											//Reading from UTF8 field and writing to UTF8 encoded field so we are doing a direct copy here.
-											PipeReader.readBytes(requestPipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3, activeWriter);
+											Pipe.readBytes(requestPipe, activeWriter, meta, len);//, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PATH_3, activeWriter);
 											
-											long length = PipeReader.readBytesLength(requestPipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PAYLOAD_5);
+											
+											int payloadMeta = Pipe.takeRingByteMetaData(requestPipe); //MSG_HTTPPOST_101_FIELD_PAYLOAD_5
+											int payloadLen  = Pipe.takeRingByteMetaData(requestPipe);
+											
 											
 											//For chunked must pass in -1
 
@@ -328,18 +365,17 @@ public class HTTPClientRequestStage extends PronghornStage {
 											//TODO: we also need support for chunking which will need multiple mesage fragments
 											//TODO: need new message type for chunking/streaming post
 											
-						            		final byte[] hostBack = PipeReader.readBytesBackingArray(requestPipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_HOST_2);
-						            		final int hostPos = PipeReader.readBytesPosition(requestPipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_HOST_2);
-						            		final int hostLen = PipeReader.readBytesLength(requestPipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_HOST_2);
-						            		final int hostMask = Pipe.blobMask(requestPipe);
+						            		final byte[] hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);//, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2);
+						            		final int hostMask    = Pipe.blobMask(requestPipe);	
 											
-											finishWritingHeader(hostBack, hostPos, hostLen, hostMask, activeWriter, implementationVersion, length);
+											finishWritingHeader(hostBack, hostPos, hostLen, hostMask, activeWriter, implementationVersion, payloadLen);
 											
-											PipeReader.readBytes(requestPipe, ClientHTTPRequestSchema.MSG_HTTPPOST_101_FIELD_PAYLOAD_5, activeWriter);
+											Pipe.readBytes(requestPipe, activeWriter, payloadMeta, payloadLen); //MSG_HTTPPOST_101_FIELD_PAYLOAD_5
 											
-						                	DataOutputBlobWriter.closeHighLevelField(activeWriter, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
-						                					                	
-						                	PipeWriter.publishWrites(outputPipe);
+						                	DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
+						                		
+						                	Pipe.confirmLowLevelWrite(outputPipe,pSize);
+						                	Pipe.publishWrites(outputPipe);
 						                					                	
 						                } else {
 						                	System.err.println("unable to write");
@@ -354,7 +390,9 @@ public class HTTPClientRequestStage extends PronghornStage {
 	            
 	            }
 			
-				PipeReader.releaseReadLock(requestPipe);	
+				
+				Pipe.confirmLowLevelRead(requestPipe, Pipe.sizeOf(requestPipe, msgIdx));
+				Pipe.releaseReadLock(requestPipe);	
 
 
 	        }	            
@@ -370,9 +408,11 @@ public class HTTPClientRequestStage extends PronghornStage {
 		//must be done first before we send the message
 		connectionToKill.beginDisconnect();
 
-		if (PipeWriter.tryWriteFragment(pipe, NetPayloadSchema.MSG_DISCONNECT_203) ) {
-		    PipeWriter.writeLong(pipe, NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, connectionToKill.getId());
-			PipeWriter.publishWrites(pipe);
+		if (Pipe.hasRoomForWrite(pipe) ) {
+			int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_DISCONNECT_203);
+			Pipe.addLongValue(connectionToKill.getId(), pipe);//   NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, connectionToKill.getId());
+			Pipe.confirmLowLevelWrite(pipe, size);
+			Pipe.publishWrites(pipe);
 		} else {
 			throw new RuntimeException("Unable to send request, outputPipe is full");
 		}
@@ -389,7 +429,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 				activeOutIdx = 0;
 			}
 			//does this one have room
-			if (PipeWriter.hasRoomForWrite(output[activeOutIdx])) {
+			if (Pipe.hasRoomForWrite(output[activeOutIdx])) {
 				result = activeOutIdx;
 				break;
 			}
@@ -470,7 +510,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		
 		outIdx = activeConnection.requestPipeLineIdx(); //this should be done AFTER any handshake logic
 		Pipe<NetPayloadSchema> pipe = output[outIdx];
-		if (!PipeWriter.hasRoomForWrite(pipe)) {
+		if (!Pipe.hasRoomForWrite(pipe)) {
 			return false;
 		}
 		return true;
@@ -481,7 +521,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		//all outputs must have room for EOF processing
 		int i = output.length;
 		while (--i>=0) {
-			if (!PipeWriter.hasRoomForWrite(output[i])) {
+			if (!Pipe.hasRoomForWrite(output[i])) {
 				return false;
 			}
 		}

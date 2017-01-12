@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.network;
 
-import java.io.IOException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,13 +29,13 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
 
 	protected final HTTPSpecification<T,R,V, H> httpSpec;
     
-    protected static final byte[] OK_200        = " 200 OK\n".getBytes();
-    protected static final byte[] Not_Found_404 = " 404 Not Found\n".getBytes();
+    protected static final byte[] OK_200        = " 200 OK\r\n".getBytes();
+    protected static final byte[] Not_Found_404 = " 404 Not Found\r\n".getBytes();
     
-    protected static final byte[] X_400 = " 400 OK\n".getBytes();
-    protected static final byte[] X_500 = " 500 OK\n".getBytes();
+    protected static final byte[] X_400 = " 400 OK\r\n".getBytes();
+    protected static final byte[] X_500 = " 500 OK\r\n".getBytes();
     
-    protected static final byte[] SERVER = "Server: Pronghorn\n".getBytes();//Apache/1.3.3.7 (Unix) (Red-Hat/Linux)".getBytes();
+    protected static final byte[] SERVER = "Server: Pronghorn\r\n".getBytes();//Apache/1.3.3.7 (Unix) (Red-Hat/Linux)".getBytes();
     protected static final byte[] ETAG = "ETag:".getBytes();
     
     protected static final byte[] ZERO = new byte[] {'0'};
@@ -46,8 +44,8 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     
     
     protected static final byte[][] CONNECTION = new byte[][] {
-        "Connection: open\n".getBytes(),
-        "Connection: close\n".getBytes()
+        "Connection: open\r\n".getBytes(),
+        "Connection: close\r\n".getBytes()
     };
     
     protected static final byte[] CONTENT_TYPE = "Content-Type: ".getBytes();
@@ -81,7 +79,9 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
 
     protected int publishHeaderMessage(int originalRequestContext, int sequence, int thisRequestContext, int status,                                     
                                         Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow,
-                                        HTTPSpecification<T,R,V,H> httpSpec, byte[] revision, byte[] contentType, byte[] localSizeAsBytes, byte[] localETagBytes) {
+                                        HTTPSpecification<T,R,V,H> httpSpec, byte[] revision, byte[] contentType, 
+                                        byte[] localSizeAsBytes, int localSizeAsBytesPos, int localSizeAsBytesLen, int localSizeAsByteMask, 
+                                        byte[] localETagBytes) {
         
         int headerSize = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
         
@@ -96,7 +96,8 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         writeHeader(revision, 
         		    status, originalRequestContext, localETagBytes,  
         		    contentType, 
-        		    localSizeAsBytes, writer);
+        		    localSizeAsBytes, localSizeAsBytesPos, localSizeAsBytesLen, localSizeAsByteMask, 
+        		    writer);
         int bytesLength = writer.closeLowLevelField();
         
         Pipe.addIntValue( thisRequestContext , localOutput); //empty request context, set the full value last. 
@@ -121,7 +122,9 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         
         DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.outputStream(localOutput);        
         writer.openField();
-        writeHeader(httpSpec.revisions[revision].getBytes(), status, requestContext, null, contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), ZERO, writer);
+        writeHeader(httpSpec.revisions[revision].getBytes(), status, requestContext, null, contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), 
+        		    ZERO, 0, 1, 1,
+        		    writer);
         writer.closeLowLevelField();          
 
         Pipe.addIntValue(requestContext , localOutput); //empty request context, set the full value last.                        
@@ -134,7 +137,9 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     
     
     //TODO: build better constants for these values needed.
-    public static void writeHeader(byte[] revisionBytes, int status, int requestContext, byte[] etagBytes, byte[] typeBytes, byte[] lenAsBytes, DataOutputBlobWriter<ServerResponseSchema> writer) {
+    public static void writeHeader(byte[] revisionBytes, int status, int requestContext, byte[] etagBytes, byte[] typeBytes, 
+    		                       byte[] lenAsBytes, int lenAsBytesPos, int lenAsBytesLen, int  lenAsBytesMask,
+    		                       DataOutputBlobWriter<ServerResponseSchema> writer) {
              
             //line one
             writer.write(revisionBytes);
@@ -176,9 +181,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
             //line four
             if (null!=lenAsBytes) {
                 writer.write(CONTENT_LENGTH);
-                writer.write(lenAsBytes);
-                
-                //logger.debug("returning payload of length:{}",new String(lenAsBytes));
+                DataOutputBlobWriter.write(writer, lenAsBytes, lenAsBytesPos, lenAsBytesLen, lenAsBytesMask);
                 writer.write(RETURN_NEWLINE);
             }
             

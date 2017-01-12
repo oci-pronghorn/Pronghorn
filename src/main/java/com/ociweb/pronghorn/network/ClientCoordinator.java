@@ -28,6 +28,24 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	private static final Logger logger = LoggerFactory.getLogger(ClientCoordinator.class);
 	private PronghornStage firstStage;
 	
+	public static boolean TEST_RECORDS = false;
+	
+	static {
+		
+	}
+
+	
+    public final static String expectedGet = "GET /groovySum.json HTTP/1.1\r\n"+
+									  	     "Host: 127.0.0.1\r\n"+
+										     "Connection: keep-alive\r\n"+
+										     "\r\n";
+	public final static String expectedOK = "HTTP/1.1 200 OK\r\n"+
+											"Content-Type: application/json\r\n"+
+											"Content-Length: 30\r\n"+
+											"Connection: open\r\n"+
+											"\r\n"+
+											"{\"x\":9,\"y\":17,\"groovySum\":26}\n";
+	
 	public final boolean isTLS;
 	//TOOD: may keep internal pipe of "in flight" URLs to be returned with the results...
 	

@@ -140,16 +140,18 @@ public class RegulatedLoadTestStage extends PronghornStage{
 			System.exit(-1);
 		}
 		
-		//while (true)
+		//int x = 3;
+		
+		//while (--x>=0) 
 		{
 			
 			int i;
 			
 			boolean didWork;
-			
+						
 			didWork = true;
 			while (didWork) {
-				didWork = false;
+				didWork=false;
 				
 				int j = usersPerPipe;
 				while (--j >= 0) {
@@ -159,6 +161,8 @@ public class RegulatedLoadTestStage extends PronghornStage{
 						
 						//System.out.println(inputs[i]);
 						if (Pipe.hasContentToRead(inputs[i])) {
+							didWork=true;
+							
 							int msg = Pipe.takeMsgIdx(inputs[i]);
 							
 							switch (msg) {
@@ -198,7 +202,6 @@ public class RegulatedLoadTestStage extends PronghornStage{
 							Pipe.releaseReadLock(inputs[i]);
 			
 							
-							didWork = true;	
 							lastTime = now;
 							
 							inFlight--;
@@ -206,24 +209,20 @@ public class RegulatedLoadTestStage extends PronghornStage{
 							
 							int recIdx = --received[i];
 
-						  
-								long duration = System.nanoTime() - times[i][recIdx];
-								
+							if (recIdx > 0 ) {
+								long duration = System.nanoTime() - times[i][recIdx];								
 								totalMs+=duration;
-								
 								if (duration < 4_000_000_000L) {
 									histRoundTrip.recordValue(duration);
+								}								
+							} else {
+								System.out.println("shutdown "+shutdownCount+" "+i);
+								if (--shutdownCount == 0) {
+									logger.info("XXXXXXX full shutdown now "+shutdownCount);
+									requestShutdown();
+									return;
 								}
-						  
-				
-								if (recIdx <=0 ) {
-									System.out.println("shutdown "+shutdownCount+" "+i);
-									if (--shutdownCount == 0) {
-										logger.info("XXXXXXX full shutdown now "+shutdownCount);
-										requestShutdown();
-										return;
-									}
-								}
+							}
 			
 						}	
 					}
@@ -235,9 +234,18 @@ public class RegulatedLoadTestStage extends PronghornStage{
 								
 				int pct = (int)((100L*totalReceived)/(float)totalExpected);
 				if (lastChecked!=pct) {
-					System.out.print(label);
-					Appendables.appendValue(System.out, " test completed ", pct, "%\n");
-					lastChecked = pct;
+				
+					if (pct>96 || pct>=(lastChecked+5)) {
+					
+						long perMS = totalReceived/(now-start);					
+						
+						System.out.print(label);
+						Appendables.appendValue(System.out, " test completed ", pct, "% ");
+						Appendables.appendValue(System.out, " rpms ", perMS, "\n");
+										
+						lastChecked = pct;
+					}
+					
 				}
 			}
 			
@@ -273,6 +281,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 					while (--i >= 0) {
 	
 						if (toSend[i]>0 && inFlight<limit && Pipe.hasRoomForWrite(outputs[i])) {	
+							didWork = true;
 
 							int userId = i + (j * outputs.length); 
 							int msdIdx;
@@ -307,7 +316,6 @@ public class RegulatedLoadTestStage extends PronghornStage{
 							
 							toSend[i]--;	
 							inFlight++;
-							didWork = true;
 							lastTime = now;
 	
 							Pipe.addIntValue(userId, outputs[i]);  

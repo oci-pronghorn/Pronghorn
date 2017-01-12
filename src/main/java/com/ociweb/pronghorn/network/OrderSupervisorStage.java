@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
@@ -59,8 +58,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
     private final boolean isTLS;
 	private final int groupId = 0; //TODO: pass in on construction, must know group to look up SSL connection.
-	
-	
+
+    private StringBuilder[] accumulators; //for testing only
+    
+    
     /**
      * 
      * Data arrives from random input pipes, but each message has a channel id and squence id.
@@ -104,6 +105,17 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	@Override
     public void startup() {                
         expectedSquenceNos = new int[coordinator.channelBitsSize];//room for 1 per active channel connection
+        
+        
+        if (ServerCoordinator.TEST_RECORDS) {
+			int i = outgoingPipes.length;
+			accumulators = new StringBuilder[i];
+			while (--i >= 0) {
+				accumulators[i]=new StringBuilder();					
+			}
+        }
+		
+        
     }
 	
 	@Override
@@ -137,8 +149,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 //	        	nextTime = now + 500;
 //	        }
 	        
-	        int blockedCount = 0;
-	        
 	        while (--c >= 0) {
 	        	final Pipe<ServerResponseSchema> sourcePipe = dataToSend[c];
 	        	
@@ -157,7 +167,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	        	//      if we ensure it is balanced then this data will also get balanced.
 	        		        		        	
 	            while (Pipe.hasContentToRead(sourcePipe)) {
-	            	
+	           
 	                //peek to see if the next message should be blocked, eg out of order, if so skip to the next pipe
 	                int peekMsgId = Pipe.peekInt(sourcePipe, 0);
 	                Pipe<NetPayloadSchema> myPipe = null;
@@ -165,6 +175,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	                int sequenceNo = 0;
 	                long channelId = -2;
 	                if (peekMsgId>=0 && ServerResponseSchema.MSG_SKIP_300!=peekMsgId) {
+	                	didWork = true;
 	                	
 	                    channelId = Pipe.peekLong(sourcePipe, 1);
 	                    
@@ -180,7 +191,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
                    // 		xb++;
                     		break;
                     	}
-                    	didWork = true;
                     	
                     	
 	                    sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
@@ -191,19 +201,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	                 //   System.err.println("channel ID mask "+Integer.toHexString(coordinator.channelBitsMask));
 	                    
 	                    int expected = expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)];                
-	                    if (sequenceNo!=expected) {
-               	
-	                    	//TODO: eventually everything becomes blocked not sure why??
-	                    	if (++blockedCount==dataToSend.length) {
-	                    		//TOOD: this is an urgent issue.
-	                    		logger.info("Hang detected, every incoming pipe is blocked on something.... (pipe count must be larger)");
-	                    	}
-	                    	
-	                    	if (sequenceNo<expected) {
-	                    		logger.info("looking for {} but found lower {} for connection {} ",expected, sequenceNo, channelId);
-	                    	}
-	                    		                    	
-//	                    	xa++;
+	                    if (sequenceNo!=expected) {          
+	                    	assert(sequenceNo>=expected) : "found smaller than expected sequenceNo, they should never roll back";	 
 	                    	break;
 	                    }	                  
 
@@ -282,9 +281,16 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 						 int bytePosition = Pipe.bytePosition(meta, sourcePipe, len);
 						 
 						 //view in the console what we just wrote out to the next stage.
+						 //System.out.println("id "+myPipeIdx);
 						 //Appendables.appendUTF8(System.out, blob, bytePosition, len, blobMask);
 						 
-						
+						 if (ServerCoordinator.TEST_RECORDS) {
+							 //check 
+							 testValidContent(myPipeIdx, sourcePipe, meta, len);
+							 
+							 //testValidContentQuick(sourcePipe, meta, len);
+						 }
+						 
 						 
 	                     writeToNextStage(myPipe, channelId, len, requestContext, blobMask, blob, bytePosition);                     
 	                     
@@ -310,6 +316,102 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     }
 
 
+	private void testValidContentQuick(final Pipe<ServerResponseSchema> sourcePipe, int meta, int len) {
+		int pos = Pipe.convertToPosition(meta, sourcePipe);
+		 
+		 char ch = (char)sourcePipe.blobRing[sourcePipe.blobMask&pos];
+		 if (ch=='H') {
+			 if (89!=len) {
+				 logger.info("ERROR FORCE EXIT B {}",len);
+				 System.exit(-1);
+			 }
+			// System.err.println("h "+len);
+			 
+		 } else if (ch=='{') {			 
+			 if (30!=len) {
+				 logger.info("ERROR FORCE EXIT A {}",len);
+				 System.exit(-1);
+			 }
+ 			// System.err.println("{ "+len);
+			 
+		 } else  {
+			 System.err.println(ch);
+			 logger.info("ERROR FORCE EXIT odd unexpected char in incomming pipe");
+			 System.exit(-1);
+		 }
+		
+		 char ch2 = (char)sourcePipe.blobRing[sourcePipe.blobMask&(pos+len-1)];
+		 if (ch2!=10) {
+			 System.err.println(ch2);
+			 logger.info("ERROR FORCE EXIT2");
+			 System.exit(-1);
+		 }
+	}
+	
+	private void testValidContent(final int idx, Pipe<?> pipe, int meta, int len) {
+		
+		if (ServerCoordinator.TEST_RECORDS) {
+			
+			//write pipeIdx identifier.
+			//Appendables.appendUTF8(System.out, target.blobRing, originalBlobPosition, readCount, target.blobMask);
+			
+			int pos = Pipe.convertToPosition(meta, pipe);
+			    				
+			
+			boolean confirmExpectedRequests = true;
+			if (confirmExpectedRequests) {
+				Appendables.appendUTF8(accumulators[idx], pipe.blobRing, pos, len, pipe.blobMask);						    				
+				
+				while (accumulators[idx].length() >= ServerCoordinator.expectedOK.length()) {
+					
+				   int c = startsWith(accumulators[idx],ServerCoordinator.expectedOK); 
+				   if (c>0) {
+					   
+					   String remaining = accumulators[idx].substring(c*ServerCoordinator.expectedOK.length());
+					   accumulators[idx].setLength(0);
+					   accumulators[idx].append(remaining);							    					   
+					   
+					   
+				   } else {
+					   logger.info("A"+Arrays.toString(ServerCoordinator.expectedOK.getBytes()));
+					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, ServerCoordinator.expectedOK.length()).toString().getBytes()   ));
+					   
+					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos, ServerCoordinator.expectedOK.length());
+					   System.out.println(accumulators[idx].subSequence(0, ServerCoordinator.expectedOK.length()).toString());
+					   System.exit(-1);
+					   	
+					   
+					   
+				   }
+				
+					
+				}
+			}
+			
+			
+		}
+	}
+    
+	private int startsWith(StringBuilder stringBuilder, String expected2) {
+		
+		int count = 0;
+		int rem = stringBuilder.length();
+		int base = 0;
+		while(rem>=expected2.length()) {
+			int i = expected2.length();
+			while (--i>=0) {
+				if (stringBuilder.charAt(base+i)!=expected2.charAt(i)) {
+					return count;
+				}
+			}
+			base+=expected2.length();
+			rem-=expected2.length();
+			count++;
+		}
+		return count;
+	}
+
+
 	private void handshakeProcessing(Pipe<NetPayloadSchema> myPipe, long channelId) {
 		SSLConnection con = coordinator.get(channelId, groupId);
 		
@@ -324,12 +426,15 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    } 
 		    
 		    if (HandshakeStatus.NEED_WRAP == hanshakeStatus) {
-		    	if (PipeWriter.tryWriteFragment(myPipe, NetPayloadSchema.MSG_PLAIN_210) ) {
-					PipeWriter.writeLong(myPipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, con.getId());
-					PipeWriter.writeLong(myPipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, SSLUtil.HANDSHAKE_POS); //signal that WRAP is needed 
-					PipeWriter.writeBytes(myPipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204, EMPTY);
-					PipeWriter.publishWrites(myPipe);	
-				} else {
+		    	if (Pipe.hasRoomForWrite(myPipe)) {
+		    		int size = Pipe.addMsgIdx(myPipe, NetPayloadSchema.MSG_PLAIN_210);
+		    		Pipe.addLongValue(con.getId(), myPipe);//connection
+		    		Pipe.addLongValue(SSLUtil.HANDSHAKE_POS, myPipe); //signal that WRAP is needed 
+		    		Pipe.addByteArray(EMPTY, 0, 0, myPipe);
+		    		Pipe.confirmLowLevelWrite(myPipe, size);
+		    		Pipe.publishWrites(myPipe);
+		    		
+		    	} else {
 					//no room to request wrap, try later
 		        	break;
 				}
@@ -359,6 +464,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 /////////////
 		 //write out the content
 		 /////////////
+		 
 		 
 		 //logger.info("write content from super to wrapper sizse {} for {}",len,channelId);
 		 

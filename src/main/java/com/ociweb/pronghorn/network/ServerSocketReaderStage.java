@@ -8,7 +8,6 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.Set;
 
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -16,10 +15,9 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
@@ -42,6 +40,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     private int pendingSelections = 0;
     private final boolean isTLS;
+
+    private StringBuilder[] accumulators;
+    
     
 //    private long nextTime = 0;
 //    private long bytesConsumed=0;
@@ -66,6 +67,14 @@ public class ServerSocketReaderStage extends PronghornStage {
     @Override
     public void startup() {
 
+    	if (ServerCoordinator.TEST_RECORDS) {
+			int i = output.length;
+			accumulators = new StringBuilder[i];
+			while (--i >= 0) {
+				accumulators[i]=new StringBuilder();					
+			}
+    	}
+		
         holder = ServerCoordinator.newSocketChannelHolder(coordinator, groupIdx);
                 
         try {
@@ -331,11 +340,11 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}
 			
 		} else {
-			logger.info("SKIP RELEASE for pipe {} connection {}",pipeIdx, idToClear);
+			//logger.info("SKIP RELEASE for pipe {} connection {}",pipeIdx, idToClear);
 			
 			if (pipeIdx>=0) {
 				
-				logger.info(pipeIdx+"  no release for pipe {} release head position {}",output[pipeIdx],pos); //what about EOF is that blocking the relase.
+			//	logger.info(pipeIdx+"  no release for pipe {} release head position {}",output[pipeIdx],pos); //what about EOF is that blocking the relase.
 
 				if (pos>Pipe.headPosition(output[pipeIdx])) {
 					System.err.println("EEEEEEEEEEEEEEEEEEEEEEEEe  got ack but did not release on server. pipe "+pipeIdx+" pos "+pos+" expected "+Pipe.headPosition(output[pipeIdx]) );
@@ -384,6 +393,9 @@ public class ServerSocketReaderStage extends PronghornStage {
                 //NOTE: the byte buffer is no longer than the valid maximum length but may be shorter based on end of wrap arround
                 ByteBuffer[] b = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(targetPipe), targetPipe);
                        
+                int r1 = b[0].remaining();
+                int r2 = b[1].remaining();
+                
                 //TODO: URGENT needs to keep write open while running in this loop then do a single publish flush if possible. small writes are bad clogging the system.
                 long temp = 0;
                 do {
@@ -394,6 +406,10 @@ public class ServerSocketReaderStage extends PronghornStage {
            //     	System.err.println(temp+"  for channel "+channelId); //this seems to show that this loop is not needed because the data is already grouped?? BUT could do larger groups going arround.
                 } while (temp>0);
                                       
+                int readCount = (r1-b[0].remaining())+(r2-b[1].remaining());
+                assert(readCount == len) : "server "+readCount+" vs "+len;
+                
+                
                 return publishOrAbandon(channelId, targetPipe, len, b, temp>=0, newBeginning, cc);
 
             } catch (IOException e) {
@@ -445,7 +461,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			
 			boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;   
 //			bytesConsumed+=len;
-			publishData(targetPipe, channelId, len);                  	 
+			publishData(targetPipe, channelId, len, cc);                  	 
 //			logger.info("wrote {} bytess to pipe {} ", len,targetPipe);
 			return (fullTarget&&isOpen) ? 0 : 1; //only for 1 can we be sure we read all the data
 		} else {
@@ -477,7 +493,7 @@ public class ServerSocketReaderStage extends PronghornStage {
           }
     }
 
-    private void publishData(Pipe<NetPayloadSchema> targetPipe, long channelId, long len) {
+    private void publishData(Pipe<NetPayloadSchema> targetPipe, long channelId, long len, SSLConnection cc) {
 
     	assert(len<Integer.MAX_VALUE) : "Error: blocks larger than 2GB are not yet supported";
         
@@ -490,6 +506,10 @@ public class ServerSocketReaderStage extends PronghornStage {
         
         int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);
 
+        if (ServerCoordinator.TEST_RECORDS) {
+           testValidContent(cc.getPoolReservation(), targetPipe, originalBlobPosition, (int)len);
+        }
+        
 //ONLY VALID FOR UTF8
 //        boolean showRequests = true;
 //        if (showRequests) {
@@ -507,5 +527,68 @@ public class ServerSocketReaderStage extends PronghornStage {
         Pipe.publishWrites(targetPipe);
         
     }
+    
+    
+	private void testValidContent(final int idx, Pipe<NetPayloadSchema> pipe, int pos, int len) {
+		
+		if (ServerCoordinator.TEST_RECORDS) {
+			
+			//write pipeIdx identifier.
+			//Appendables.appendUTF8(System.out, target.blobRing, originalBlobPosition, readCount, target.blobMask);
+		
+			
+			boolean confirmExpectedRequests = true;
+			if (confirmExpectedRequests) {
+				Appendables.appendUTF8(accumulators[idx], pipe.blobRing, pos, len, pipe.blobMask);						    				
+				
+				while (accumulators[idx].length() >= ServerCoordinator.expectedGet.length()) {
+					
+				   int c = startsWith(accumulators[idx],ServerCoordinator.expectedGet); 
+				   if (c>0) {
+					   
+					   String remaining = accumulators[idx].substring(c*ServerCoordinator.expectedGet.length());
+					   accumulators[idx].setLength(0);
+					   accumulators[idx].append(remaining);							    					   
+					   
+					   
+				   } else {
+					   logger.info("A"+Arrays.toString(ServerCoordinator.expectedGet.getBytes()));
+					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, ServerCoordinator.expectedGet.length()).toString().getBytes()   ));
+					   
+					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos,ServerCoordinator.expectedGet.length());
+					   System.out.println(accumulators[idx].subSequence(0, ServerCoordinator.expectedGet.length()).toString());
+					   System.exit(-1);
+					   	
+					   
+					   
+				   }
+				
+					
+				}
+			}
+			
+			
+		}
+	}
+    
+	private int startsWith(StringBuilder stringBuilder, String expected2) {
+		
+		int count = 0;
+		int rem = stringBuilder.length();
+		int base = 0;
+		while(rem>=expected2.length()) {
+			int i = expected2.length();
+			while (--i>=0) {
+				if (stringBuilder.charAt(base+i)!=expected2.charAt(i)) {
+					return count;
+				}
+			}
+			base+=expected2.length();
+			rem-=expected2.length();
+			count++;
+		}
+		return count;
+	}
+    
     
 }
