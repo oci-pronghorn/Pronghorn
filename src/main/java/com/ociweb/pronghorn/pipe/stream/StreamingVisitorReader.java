@@ -84,9 +84,6 @@ public class StreamingVisitorReader {
 		        //move the position up but exclude the one byte that we already added on
 		        Pipe.setWorkingTailPosition(inputRing, Pipe.getWorkingTailPosition(inputRing)+ (dataSize-startPos) - 1 );//Subtract one so release reads can get the byte count
 
-		        //add the bytes consumed by this fragment, this is always the last value in the fragment
-		        Pipe.addAndGetBytesWorkingTailPosition(inputRing, Pipe.primaryBuffer(inputRing)[(int) (inputRing.mask&(Pipe.getWorkingTailPosition(inputRing)-1))]);
-
 		        Pipe.releaseReadLock(inputRing);
 		}
 

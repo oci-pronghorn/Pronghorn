@@ -106,6 +106,7 @@ public class PipeTrailingReadingTest {
             
             //do not release any until we reach this point.
             if (c<releaseTrigger) {
+            	
                 Pipe.releasePendingAsReadLock(dataPipe, bytesInMessage);
                 totalBytesInFlight-=bytesInMessage;
             }
