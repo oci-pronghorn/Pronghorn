@@ -603,9 +603,9 @@ public class TrieParserReader {
         return reader.safeReturnValue;
     }
 
-    private static int scanAllStackPos(TrieParserReader reader, int localSourcePos, short[] localData, int runLength,
-            int stopCount) {
-        int i = reader.altStackPos;  //TODO: fix this method is taking 20% of load.
+    private static int scanAllStackPos(TrieParserReader reader, int localSourcePos, short[] localData, int runLength, int stopCount) {
+    	
+         int i = reader.altStackPos; 
          while (--i>=0) {
             if (localData[reader.altStackC[i]] == TrieParser.TYPE_VALUE_BYTES) {
                 short newStop = localData[reader.altStackC[i]+1];
@@ -622,13 +622,12 @@ public class TrieParserReader {
                    // System.out.println("c");
                     break;
                 }
+                                
+                //ensure newStop is not already in the list of stops.
                 if (-1 != indexOfMatchInArray(newStop, reader.workingMultiStops, stopCount)) {
                     //System.out.println("d");
-                    break;//safety until the below issue detected by the assert is fixed.
+                    break;
                 }
-                
-                //TODO: insert must branch after matching byte extract NOT before
-                //assert(equalsNone(newStop, reader.workingMultiStops, stopCount)) : "Trie did not insert correctly, should only have one of these.";
                 
                 reader.workingMultiContinue[stopCount] = reader.altStackC[i]+2;
                 reader.workingMultiStops[stopCount++] = newStop;

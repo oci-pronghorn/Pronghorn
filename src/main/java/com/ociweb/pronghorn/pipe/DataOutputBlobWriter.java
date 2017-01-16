@@ -371,6 +371,11 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         writer.activePosition+=sourceLen;
     }
 
+    public static void write(DataOutputBlobWriter writer, byte[] source, int sourceOff, int sourceLen) {
+        Pipe.copyBytesFromArrayToRing(source, sourceOff, writer.byteBuffer, writer.activePosition, writer.byteMask, sourceLen); 
+        writer.activePosition+=sourceLen;
+    }
+    
     ////////
     //low level copy from reader to writer
     ///////

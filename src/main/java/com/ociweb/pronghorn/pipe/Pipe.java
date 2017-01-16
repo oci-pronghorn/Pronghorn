@@ -371,7 +371,7 @@ public class Pipe<T extends MessageSchema> {
     PendingReleaseData pendingReleases;//only used when we want to release blob data async from our walking of each fragment
     
 
-    private final SlabRingTail slabRingTail = new SlabRingTail(); //primary working and public
+    final SlabRingTail slabRingTail = new SlabRingTail(); //primary working and public
     private final BlobRingTail blobRingTail = new BlobRingTail(); //primary working and public
 
     //these values are only modified and used when replay is NOT in use
@@ -440,7 +440,7 @@ public class Pipe<T extends MessageSchema> {
 
 	//hold the batch positions, when the number reaches zero the records are send or released
 	private int batchReleaseCountDown = 0;
-	private int batchReleaseCountDownInit = 0;
+	int batchReleaseCountDownInit = 0;
 	private int batchPublishCountDown = 0;
 	private int batchPublishCountDownInit = 0;
 	//cas: jdoc -- This is the first mention of batch(ing).  It would really help the maintainer's comprehension of what
@@ -677,8 +677,7 @@ public class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> int bytesReadBase(Pipe<S> pipe) {
-        assert(pipe.blobReadBase<=pipe.blobMask);
-        
+        assert(pipe.blobReadBase<=pipe.blobMask);        
         assert(validateInsideData(pipe, pipe.blobReadBase));
         
     	return pipe.blobReadBase;
@@ -702,7 +701,7 @@ public class Pipe<T extends MessageSchema> {
         assert(bytesConsumed>=0) : "Bytes consumed must be positive";
         //base has future pos added to it so this value must be masked and kept as small as possible
         pipe.blobReadBase = pipe.blobMask & (pipe.blobReadBase+bytesConsumed);
-        assert(validateInsideData(pipe, pipe.blobReadBase));
+        assert(validateInsideData(pipe, pipe.blobReadBase)) : "consumed "+bytesConsumed+" bytes using mask "+pipe.blobMask+" new base is "+pipe.blobReadBase;
     }
     
     public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> pipe) {
@@ -1486,32 +1485,32 @@ public class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> ByteBuffer readBytes(Pipe<S> pipe, ByteBuffer target, int meta, int len) {
-		if (meta < 0) {
-	        return readBytesConst(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
+		if (meta >= 0) {
+			return readBytesRing(pipe,len,target,restorePosition(pipe,meta));
 	    } else {
-	        return readBytesRing(pipe,len,target,restorePosition(pipe,meta));
+	    	return readBytesConst(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
 	    }
 	}
     
     public static <S extends MessageSchema> DataOutputBlobWriter<?> readBytes(Pipe<S> pipe, DataOutputBlobWriter<?> target, int meta, int len) {
-		if (meta < 0) {
-	        return readBytesConst(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
+		if (meta >= 0) {
+			return readBytesRing(pipe,len,target,restorePosition(pipe,meta));
 	    } else {
-	        return readBytesRing(pipe,len,target,restorePosition(pipe,meta));
+	    	return readBytesConst(pipe,len,target,PipeReader.POS_CONST_MASK & meta);
 	    }
 	}
 
     public static <S extends MessageSchema> void readBytes(Pipe<S> pipe, byte[] target, int targetIdx, int targetMask, int meta, int len) {
-		if (meta < 0) {
-			//NOTE: constByteBuffer does not wrap so we do not need the mask
-			copyBytesFromToRing(pipe.blobConstBuffer, PipeReader.POS_CONST_MASK & meta, 0xFFFFFFFF, target, targetIdx, targetMask, len);
+		if (meta >= 0) {
+			copyBytesFromToRing(pipe.blobRing,restorePosition(pipe,meta),pipe.blobMask,target,targetIdx,targetMask,len);
 	    } else {
-			copyBytesFromToRing(pipe.blobRing,restorePosition(pipe,meta),pipe.byteMask,target,targetIdx,targetMask,len);
+	    	//NOTE: constByteBuffer does not wrap so we do not need the mask
+	    	copyBytesFromToRing(pipe.blobConstBuffer, PipeReader.POS_CONST_MASK & meta, 0xFFFFFFFF, target, targetIdx, targetMask, len);
 	    }
 	}
 
 	private static <S extends MessageSchema> ByteBuffer readBytesRing(Pipe<S> pipe, int len, ByteBuffer target, int pos) {
-		int mask = pipe.byteMask;
+		int mask = pipe.blobMask;
 		byte[] buffer = pipe.blobRing;
 
         int tStart = pos & mask;
@@ -1528,18 +1527,20 @@ public class Pipe<T extends MessageSchema> {
 	}
 	
 	private static <S extends MessageSchema> DataOutputBlobWriter<?> readBytesRing(Pipe<S> pipe, int len, DataOutputBlobWriter<?> target, int pos) {
-		int mask = pipe.byteMask;
-		byte[] buffer = pipe.blobRing;
-
-        int tStart = pos & mask;
-        int len1 = 1+mask - tStart;
-
-		if (len1>=len) {
-			target.write(buffer, mask&pos, len);
-		} else {
-			target.write(buffer, mask&pos, len1);
-			target.write(buffer, 0, len-len1);
-		}
+				
+		DataOutputBlobWriter.write(target, pipe.blobRing, pos, len, pipe.blobMask);
+		
+		//could use this code to make something similar for writing to  DataOutput or output stream?
+//		int mask = pipe.blobMask;
+//		byte[] buffer = pipe.blobRing;
+//        int len1 = 1+mask - (pos & mask);
+//
+//		if (len1>=len) {
+//			target.write(buffer, mask&pos, len);
+//		} else {
+//			target.write(buffer, mask&pos, len1);
+//			target.write(buffer, 0, len-len1);
+//		}
 
 	    return target;
 	}
@@ -1816,6 +1817,9 @@ public class Pipe<T extends MessageSchema> {
 		copyIntsFromToRingMasked(source, sourceloc & sourceMask, (sourceloc + length) & sourceMask, target, targetloc & targetMask, (targetloc + length) & targetMask, length);
 	}
 
+	public static void copyBytesFromArrayToRing(byte[] source, int sourceloc, byte[] target, int targetloc, int targetMask, int length) {
+		copyBytesFromToRingMasked(source, sourceloc, (sourceloc + length), target, targetloc & targetMask, (targetloc + length) & targetMask,	length);
+	}
 
 	private static void copyBytesFromToRingMasked(byte[] source,
 			final int rStart, final int rStop, byte[] target, final int tStart,
@@ -2371,7 +2375,7 @@ public class Pipe<T extends MessageSchema> {
 
 	public static <S extends MessageSchema> void addByteArrayWithMask(final Pipe<S> outputRing, int mask, int len, byte[] data, int offset) {
 		validateVarLength(outputRing, len);
-		copyBytesFromToRing(data,offset,mask,outputRing.blobRing,PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos),outputRing.byteMask, len);
+		copyBytesFromToRing(data,offset,mask,outputRing.blobRing,PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos),outputRing.blobMask, len);
 		addBytePosAndLenSpecial(outputRing, PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos),len);
 		PaddedInt.set(outputRing.blobRingHead.byteWorkingHeadPos, BYTES_WRAP_MASK&(PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos) + len));
 	}
@@ -2409,7 +2413,7 @@ public class Pipe<T extends MessageSchema> {
     	assert(sourceLen>=0);
     	validateVarLength(rbRingBuffer, sourceLen);
 
-    	copyBytesFromToRing(source, sourceIdx, Integer.MAX_VALUE, rbRingBuffer.blobRing, rbRingBuffer.blobRingHead.byteWorkingHeadPos.value, rbRingBuffer.byteMask, sourceLen);
+    	copyBytesFromToRing(source, sourceIdx, Integer.MAX_VALUE, rbRingBuffer.blobRing, rbRingBuffer.blobRingHead.byteWorkingHeadPos.value, rbRingBuffer.blobMask, sourceLen);
 
     	addBytePosAndLen(rbRingBuffer, rbRingBuffer.blobRingHead.byteWorkingHeadPos.value, sourceLen);
         rbRingBuffer.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rbRingBuffer.blobRingHead.byteWorkingHeadPos.value + sourceLen);

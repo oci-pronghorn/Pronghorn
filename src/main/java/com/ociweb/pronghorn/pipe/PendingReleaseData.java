@@ -58,14 +58,36 @@ public class PendingReleaseData {
     }
 
     public static <S extends MessageSchema> void releaseAllPendingReadRelease(PendingReleaseData that, Pipe<S> pipe) {
-        while (that.pendingReleaseCount>0) {
-            int idx = that.pendingReleaseMask & that.pendingReleaseTail++;
-            Pipe.releaseBatchedReads(pipe, 
-                                             that.pendingBlobReleaseRing[idx], 
-                                             that.pendingSlabReleaseRing[idx]);
-            that.pendingReleaseCount--;
-        }
+    	
+    	if (pipe.batchReleaseCountDownInit<=0) {
+    		nonBatchedReleaseAll(that, pipe);
+    	} else { 
+	        batchedReleaseAll(that, pipe);
+    	}
     }
+
+	private static <S extends MessageSchema> void batchedReleaseAll(PendingReleaseData that, Pipe<S> pipe) {
+		while (that.pendingReleaseCount>0) {
+		    int idx = that.pendingReleaseMask & that.pendingReleaseTail++;
+			Pipe.releaseBatchedReads(pipe, 
+					 that.pendingBlobReleaseRing[idx], 
+					 that.pendingSlabReleaseRing[idx]);
+
+		    that.pendingReleaseCount--;
+		}
+	}
+
+	private static <S extends MessageSchema> void nonBatchedReleaseAll(PendingReleaseData that, Pipe<S> pipe) {
+		//simple case when we do not batch.
+		int c = that.pendingReleaseCount;
+		if (c>0) {
+			that.pendingReleaseTail+=c;	    		
+			int idx = that.pendingReleaseMask & (that.pendingReleaseTail-1);	    		 
+			Pipe.setBytesTail(pipe, that.pendingBlobReleaseRing[idx]);
+			pipe.slabRingTail.tailPos.lazySet(that.pendingSlabReleaseRing[idx]);
+			that.pendingReleaseCount = 0;
+		}
+	}
     
     //releases as the bytes are consumed, this can be called as many times as needed.
     public static <S extends MessageSchema> void releasePendingAsReadRelease(PendingReleaseData that, Pipe<S> pipe, int consumed) {
