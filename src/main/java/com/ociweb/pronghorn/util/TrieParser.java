@@ -107,7 +107,12 @@ public class TrieParser {
         this(size, 1, skipDeepChecks, true);
         
     }
+    
     public TrieParser(int size, int resultSize, boolean skipDeepChecks, boolean supportsExtraction) {
+    	this(size,resultSize,skipDeepChecks,supportsExtraction,false);
+    }
+    
+    public TrieParser(int size, int resultSize, boolean skipDeepChecks, boolean supportsExtraction, boolean ignoreCase) {
         this.data = new short[size];
         this.pipe.initBuffers();
         
@@ -122,7 +127,8 @@ public class TrieParser {
         } else {
             ESCAPE_BYTE = NO_ESCAPE_SUPPORT;
         }        
-        
+            	
+        this.caseRuleMask =  ignoreCase ? (byte)0xDF : (byte)0xFF;   
     }
     
     
@@ -567,6 +573,8 @@ public class TrieParser {
        
     private int longestKnown = 0;
     private int shortestKnown = 0;
+
+	public final byte caseRuleMask;
     
     public int longestKnown() {
     	return longestKnown;
@@ -1101,7 +1109,7 @@ public class TrieParser {
 
 
     private short findSingleBitMask(short a, short b) {
-        int mask = 1<<5; //default of sign bit, only used when nothing replaces it.        
+        int mask = 1<<5; //default of sign bit, only used when nothing replaces it. (critical for case insensitivity)       
         int i = 8; 
         while (--i>=0) {            
             if (5!=i) { //sign bit, we do not use it unless all the others are tested first                
