@@ -39,12 +39,27 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 									  	     "Host: 127.0.0.1\r\n"+
 										     "Connection: keep-alive\r\n"+
 										     "\r\n";
+    
 	public final static String expectedOK = "HTTP/1.1 200 OK\r\n"+
 											"Content-Type: application/json\r\n"+
 											"Content-Length: 30\r\n"+
 											"Connection: open\r\n"+
 											"\r\n"+
 											"{\"x\":9,\"y\":17,\"groovySum\":26}\n";
+	
+//	public final static String expectedOK = "HTTP/1.1 200 OK\r\n"+
+//											"Server: nginx/1.10.0 (Ubuntu)\r\n"+
+//											"Date: Mon, 16 Jan 2017 19:20:04 GMT\r\n"+
+//											"Content-Type: application/json\r\n"+
+//											"Content-Length: 30\r\n"+
+//											"Last-Modified: Mon, 16 Jan 2017 16:50:59 GMT\r\n"+
+//											"Connection: keep-alive\r\n"+
+//											"ETag: \"587cf9f3-1e\"\r\n"+
+//											"Accept-Ranges: bytes\r\n"+	
+//											"\r\n"+
+//											"{\"x\":9,\"y\":17,\"groovySum\":26}\n";
+	
+	
 	
 	public final boolean isTLS;
 	//TOOD: may keep internal pipe of "in flight" URLs to be returned with the results...
@@ -55,7 +70,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
     		firstStage.requestShutdown();
     		firstStage=null;
     	}
-    	logger.info("Client pipe pool:\n {}",responsePipeLinePool);
+   // 	logger.info("Client pipe pool:\n {}",responsePipeLinePool);
     	    	
     }
     
@@ -222,7 +237,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			
 			if (connectionId<0 || pipeIdx<0) {
 				
-				logger.warn("too many open connection, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
+				//logger.warn("too many open connection, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
 				//do not open instead we should attempt to close this one to provide room.
 				return null;
 			}
@@ -242,23 +257,31 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			} catch (IOException ex) {
 				logger.warn("handshake problems with new connection {}:{}",host,port,ex);				
 				connectionId = Long.MIN_VALUE;
+				return null;
 			}
 							                	
 		}
 		
-		if (null!=cc && !cc.isRegistered()) {
-			try {
-				if (!cc.isFinishConnect()) {
-					cc = null;//try again later
-				} else {
-					cc.registerForUse(ccm.selector(), handshakeBegin, ccm.isTLS);
-				}
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		}		
+		if (cc.isRegistered()) {
+			return cc;
+		}
+		//not registered
+		return doRegister(ccm, handshakeBegin, cc);
+	}
 
-		return cc;
+
+	private static ClientConnection doRegister(ClientCoordinator ccm, Pipe<NetPayloadSchema>[] handshakeBegin,
+			ClientConnection cc) {
+		try {
+			if (!cc.isFinishConnect()) {
+				cc = null;//try again later
+			} else {
+				cc.registerForUse(ccm.selector(), handshakeBegin, ccm.isTLS);
+			}
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+return cc;
 	}
 
 	

@@ -42,19 +42,111 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                                         H extends Enum<H> & HTTPHeaderKey> extends AbstractRestStage<T,R,V,H> {
 
     
-    private final static Logger logger = LoggerFactory.getLogger(FileReadModuleStage.class);
-    
+    public static class FileReadModuleStageData {
+		private Set<OpenOption> readOptions;
+		private TrieParser pathCache;
+		private Path[] paths;
+		private long[] fcId;
+		private long[] fileSizes;
+		private byte[][] fileSizeAsBytes;
+		private byte[][] etagBytes;
+		private int[] type;
+		public final FileSystem fileSystem = FileSystems.getDefault();
+		
+		//move to external utility
+	    private IntHashTable fileExtensionTable;
+	    public static final int extHashShift = 3; //note hash map watches first 13 bits only,  4.3 chars 
 
-    private final int maxFileCount = 256;
+		public FileReadModuleStageData(HTTPSpecification httpSpec) {
+		  	        
+	        fileExtensionTable = buildFileExtHashTable(httpSpec.supportedHTTPContentTypes);
+	        
+	        int maxFileCount = 128;       
+	        setPaths(new Path[maxFileCount]);
+	        setFcId(new long[maxFileCount]);
+	        setFileSizes(new long[maxFileCount]);
+	        setFileSizeAsBytes(new byte[maxFileCount][]);
+	        setEtagBytes(new byte[maxFileCount][]);
+	        setType(new int[maxFileCount]); 
+			
+	        
+	        setReadOptions(new HashSet<OpenOption>());
+	        getReadOptions().add(StandardOpenOption.READ);
+		}
+
+
+		public Set<OpenOption> getReadOptions() {
+			return readOptions;
+		}
+
+		public void setReadOptions(Set<OpenOption> readOptions) {
+			this.readOptions = readOptions;
+		}
+
+		public TrieParser getPathCache() {
+			return pathCache;
+		}
+
+		public void setPathCache(TrieParser pathCache) {
+			this.pathCache = pathCache;
+		}
+
+		public Path[] getPaths() {
+			return paths;
+		}
+
+		public void setPaths(Path[] paths) {
+			this.paths = paths;
+		}
+
+		public long[] getFcId() {
+			return fcId;
+		}
+
+		public void setFcId(long[] fcId) {
+			this.fcId = fcId;
+		}
+
+		public long[] getFileSizes() {
+			return fileSizes;
+		}
+
+		public void setFileSizes(long[] fileSizes) {
+			this.fileSizes = fileSizes;
+		}
+
+		public byte[][] getFileSizeAsBytes() {
+			return fileSizeAsBytes;
+		}
+
+		public void setFileSizeAsBytes(byte[][] fileSizeAsBytes) {
+			this.fileSizeAsBytes = fileSizeAsBytes;
+		}
+
+		public byte[][] getEtagBytes() {
+			return etagBytes;
+		}
+
+		public void setEtagBytes(byte[][] etagBytes) {
+			this.etagBytes = etagBytes;
+		}
+
+		public int[] getType() {
+			return type;
+		}
+
+		public void setType(int[] type) {
+			this.type = type;
+		}
+	}
+
+
+	private final static Logger logger = LoggerFactory.getLogger(FileReadModuleStage.class);
     
     private final Pipe<HTTPRequestSchema>[] inputs;    
     private final Pipe<ServerResponseSchema> output;
     private PipeHashTable outputHash;
 
-    private final FileSystem fileSystem;  
-    private Set<OpenOption> readOptions;
-    
-    private TrieParser pathCache;
     private TrieParserReader pathCacheReader;
     
     private ServiceObjectHolder<FileChannel> channelHolder;
@@ -83,18 +175,11 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private long totalBytes;
     
     
-    private Path[] paths;
-    private long[] fcId; 
-    private long[] fileSizes;
-    private byte[][] fileSizeAsBytes;
-    private byte[][] etagBytes;
-    private int[] type;  //type,  
-    
-    //move to external utility
-    private IntHashTable fileExtensionTable;
-    private static final int extHashShift = 3; //note hash map watches first 13 bits only,  4.3 chars 
+    private FileReadModuleStageData data;
  
-	private final boolean supportInFlightCopy = true;
+	private static final boolean supportInFlightCopy = true;
+	private static final boolean supportInFlightCopyByRef = false;
+	
 	
     //move to the rest of the context constants
     private static final int OPEN_FILECHANNEL_BITS = 6; //64 open files, no more
@@ -116,7 +201,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     //TODO: order supervisor needs more pipes to stop blocks
     //TODO: this class needs to extract the file load path
     
-    
+    //TOOD: we need FileChannel objects to be per instance? what about the FC id??
     
     public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, File rootPath) {
         return new FileReadModuleStage(graphManager, inputs, output, httpSpec, rootPath);
@@ -133,7 +218,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         super(graphManager, inputs, output, httpSpec);
         this.inputs = inputs; //TODO: fix hack must walk all.
         this.output = output;
-        this.fileSystem = FileSystems.getDefault();
+        
         
         this.folderRootString = rootPath.toString();
         
@@ -145,6 +230,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         assert( httpSpec.verbMatches(VERB_HEAD, "HEAD") );
         
         this.inIdx = inputs.length;
+        
+        
             
     }
     //TODO: use PipeHashTable to pull back values that are on the outgoing pipe for use again.
@@ -188,7 +275,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         int result = back[mask&(x-1)];
         int c;
         while((--len >= 0) && ('.' != (c = back[--x & mask])) ) {   
-            result = (result << extHashShift) ^ (0x1F & c); //mask to ignore sign                       
+            result = (result << FileReadModuleStageData.extHashShift) ^ (0x1F & c); //mask to ignore sign                       
         }        
         return result;
     }
@@ -197,7 +284,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         int len = cs.length();        
         int result = cs.charAt(len-1);//init with the last value, will be used twice.    
         while(--len >= 0) {
-            result = (result << extHashShift) ^ (0x1F &  cs.charAt(len)); //mask to ignore sign    
+            result = (result << FileReadModuleStageData.extHashShift) ^ (0x1F &  cs.charAt(len)); //mask to ignore sign    
         }        
         return result;
     }
@@ -230,26 +317,35 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         
         this.digitBuffer.initBuffers();
         
-        //shared immutable state
+
         
-        this.fileExtensionTable = buildFileExtHashTable(httpSpec.supportedHTTPContentTypes);
+        //TODO: this full block needs to be shared.
+        File rootFileDirectory = folderRoot;
+        if (!rootFileDirectory.isDirectory()) {
+        	throw new UnsupportedOperationException("This must be a folder: "+folderRoot);
+        }
+        File[] children = rootFileDirectory.listFiles();
         
-        this.paths = new Path[maxFileCount];
-        this.fcId = new long[maxFileCount];
-        this.fileSizes = new long[maxFileCount];
-        this.fileSizeAsBytes = new byte[maxFileCount][];
-        this.etagBytes = new byte[maxFileCount][];
-        this.type = new int[maxFileCount];        
-                
-        this.readOptions = new HashSet<OpenOption>();
-        this.readOptions.add(StandardOpenOption.READ);
+
+        final int maxTotalPathLength = 1<<16;;
+        
+        this.data = new FileReadModuleStageData(httpSpec);
+        
 
         
         //TODO: pull out as common object for all instances
-        TrieParser pc = buildTrieParser(folderRootString, folderRoot);
+		TrieParser pc = new TrieParser(maxTotalPathLength, 2, false, false);
+		this.data.setPathCache(pc);
+		
+		int rootSize = folderRootString.endsWith("/") || folderRootString.endsWith("\\") ? folderRootString.length() : folderRootString.length()+1;
+				
+		collectAllKnownFiles(rootSize, pc, children);
+
         
+		
+		
+		
         
-        this.pathCache = pc;
         
         activeFileChannel = null;//NOTE: above method sets activeFileChannel and it must be cleared before run starts.
   
@@ -269,40 +365,25 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         reusePositionConsume=0;
     }
 
-	private TrieParser buildTrieParser(String root, File folderRoot) {
-		final int maxTotalPathLength = 65535;
-        TrieParser pc = new TrieParser(maxTotalPathLength, 2, false, false);
-        File rootFileDirectory = folderRoot;
-        if (!rootFileDirectory.isDirectory()) {
-            throw new UnsupportedOperationException("This must be a folder: "+folderRoot);
-        }
 
-        int rootSize = root.endsWith("/") || root.endsWith("\\") ? root.length() : root.length()+1;
-        
-        collectAllKnownFiles(rootFileDirectory, rootSize, pc);
-		return pc;
-	}
-
-
-    private void collectAllKnownFiles(File root, int rootSize, TrieParser pathCache) {
-        File[] children = root.listFiles();
-        
-        int i = children.length;
+    private void collectAllKnownFiles(int rootSize, TrieParser pathCache, File[] children) {
+		int i = children.length;
+		StringBuilder builder = new StringBuilder();
       //  System.out.println("collect from "+root+" "+i);
         while (--i>=0) {
             File child = children[i];
             if ((!child.isHidden()) && child.canRead()) {                
                 if (child.isDirectory()) {
-                    collectAllKnownFiles(child, rootSize, pathCache);
+                    collectAllKnownFiles(rootSize, pathCache, child.listFiles());
                 } else {
-                    setupUnseenFile(pathCache, child.toString(), rootSize, fileSystem);                   
+                    setupUnseenFile(pathCache, child.toString(), rootSize, data.fileSystem, builder);                   
                 }       
             }
         }
-    }
+	}
     
     
-    private int setupUnseenFile(TrieParser trie, String pathString, int rootSize, FileSystem fileSystem) {
+    private int setupUnseenFile(TrieParser trie, String pathString, int rootSize, FileSystem fileSystem, StringBuilder builder) {
         
     		//	logger.trace("loading new file: "+pathString);
                 int newPathId;
@@ -314,7 +395,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                     
                     //logger.debug("FileReadStage is loading {} ",pathString);  
                                         
-                    setupUnseenFile(trie, asBytes.length-rootSize, asBytes, rootSize, Integer.MAX_VALUE, newPathId, pathString, path);
+                    setupUnseenFile(trie, asBytes.length-rootSize, asBytes, rootSize, Integer.MAX_VALUE, newPathId, pathString, path, builder);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -462,7 +543,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         
         
         
-        int pathId = selectActiveFileChannel(pathCacheReader, pathCache, bytesLength-2, bytesBackingArray, bytesPosition+2, bytesMask);
+        int pathId = selectActiveFileChannel(pathCacheReader, data.getPathCache(), bytesLength-2, bytesBackingArray, bytesPosition+2, bytesMask);
                 
         //Appendables.appendUTF8(System.err, bytesBackingArray, bytesPosition+2, bytesLength-2, bytesMask);
         //System.err.println("new path "+pathId);
@@ -502,25 +583,21 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             bytesPosition++;
             bytesLength--;
         }     
-        //TODO: this is very slow !!
+       
         int pathId = (int)TrieParserReader.query(trieReader, trie, 
                                                          bytesBackingArray, 
                                                          bytesPosition, 
                                                          bytesLength, bytesMask, -1 );      
         
         if (pathId >= 0) {
-            if (null!=(activeFileChannel = channelHolder.getValid(fcId[pathId]))) {
+            if (null!=(activeFileChannel = channelHolder.getValid(data.getFcId()[pathId]))) {
             } else {
                 findAgainFileChannel(pathId);
             }
-            return pathId;
-        } else {
-            //////////////////
-            //we have never seen this path before and need to establish the new one
-            ////////////////////
-            return setupUnseenFile(trie, bytesLength, bytesBackingArray, bytesPosition, bytesMask);
-            
+        } else {        	
+        	logger.info("requested file {} not found", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString());
         }
+        return pathId;
         
     }
 
@@ -530,60 +607,39 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         //////////////
         try {
         	
-        	assert(	paths[pathId].toFile().isFile() );
-        	assert(	paths[pathId].toFile().exists() );
+        	assert(	data.getPaths()[pathId].toFile().isFile() );
+        	assert(	data.getPaths()[pathId].toFile().exists() );
         	        			
-            activeFileChannel = fileSystem.provider().newFileChannel(paths[pathId], readOptions);
-            fcId[pathId] = channelHolder.add(activeFileChannel);
-            fileSizes[pathId] = activeFileChannel.size();
+            activeFileChannel = data.fileSystem.provider().newFileChannel(data.getPaths()[pathId], data.getReadOptions());
+            data.getFcId()[pathId] = channelHolder.add(activeFileChannel);
+            data.getFileSizes()[pathId] = activeFileChannel.size();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private int setupUnseenFile(TrieParser trie, final int bytesLength, final byte[] bytesBackingArray,
-                                final int bytesPosition, final int bytesMask) {
-        int newPathId;
-        try {
-            String pathString = Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString();
-            Path path = fileSystem.getPath(folderRootString, pathString);          
-            
-            fileSystem.provider().checkAccess(path);
-            newPathId = ++pathCount;
-            setupUnseenFile(trie, bytesLength, bytesBackingArray, bytesPosition, bytesMask, newPathId, pathString, path);
-            
-        } catch (IOException e) {
-            activeFileChannel = null;
-            newPathId = -1;
-        }
-        return newPathId;
-    }
-
     private void setupUnseenFile(TrieParser trie, final int bytesLength, final byte[] bytesBackingArray,
-            final int bytesPosition, final int bytesMask, int pathId, String pathString, Path path) {
+                                final int bytesPosition, final int bytesMask, int pathId, String pathString, Path path, StringBuilder builder) {
         try {
             //only set this new value if the file exists
             trie.setValue(bytesBackingArray, bytesPosition, bytesLength, bytesMask, pathId);
             
             //NOTE: the type will be 0 zero when not found
-            if (pathId>type.length) {
-                throw new UnsupportedOperationException("FileReader only supports "+type.length+" files, attempted to add more than this.");
+            if (pathId>data.getType().length) {
+                throw new UnsupportedOperationException("FileReader only supports "+data.getType().length+" files, attempted to add more than this.");
             }
-            type[pathId] = IntHashTable.getItem(fileExtensionTable, extHash(bytesBackingArray,bytesPosition, bytesLength, bytesMask));
+            data.getType()[pathId] = IntHashTable.getItem(data.fileExtensionTable, extHash(bytesBackingArray,bytesPosition, bytesLength, bytesMask));
 
-            StringBuilder builder = new StringBuilder();
-            
-            activeFileChannel = fileSystem.provider().newFileChannel(paths[pathId] = path, readOptions);
-            fcId[pathId] = channelHolder.add(activeFileChannel);
-            etagBytes[pathId] = Appendables.appendHexDigits(builder, fcId[pathId]).toString().getBytes();
-                        
-            fileSizes[pathId] = activeFileChannel.size();   
             builder.setLength(0);
             
+            FileChannel activeFileChannel = data.fileSystem.provider().newFileChannel(data.getPaths()[pathId] = path, data.getReadOptions());
+            data.getFcId()[pathId] = channelHolder.add(activeFileChannel);
+            data.getEtagBytes()[pathId] = Appendables.appendHexDigits(builder, data.getFcId()[pathId]).toString().getBytes();
+                        
+            data.getFileSizes()[pathId] = activeFileChannel.size();   
+            builder.setLength(0);
             
-            //OLD: there is a better way to do this, the code is commented out below.
-            //fileSizeAsBytes[pathId] = Appendables.appendValue(builder, fileSizes[pathId]).toString().getBytes();                    
-			populateLengthAsBytes(pathId);           
+			data.getFileSizeAsBytes()[pathId] = Appendables.appendValue(builder, data.fileSizes[pathId]).toString().getBytes();  
             
             
         } catch (IOException e) {
@@ -591,48 +647,25 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             throw new RuntimeException(e);
         }
     }
-
-	private void populateLengthAsBytes(int pathId) {
-		int addSize = Pipe.addMsgIdx(digitBuffer, RawDataSchema.MSG_CHUNKEDSTREAM_1);
-		int digitsLen = Pipe.addLongAsUTF8(digitBuffer, fileSizes[pathId]);
-		Pipe.publishWrites(digitBuffer);
-		Pipe.confirmLowLevelWrite(digitBuffer, addSize);
-							          
-		int msgId = Pipe.takeMsgIdx(digitBuffer); 
-		int meta = Pipe.takeRingByteMetaData(digitBuffer);
-		
-		int lenAsBytesLen = Pipe.takeRingByteLen(digitBuffer);
-		int lenAsBytesPos = Pipe.bytePosition(meta, digitBuffer, lenAsBytesLen);
-		byte[] lenAsBytes = Pipe.byteBackingArray(meta, digitBuffer);
-		int lenAsBytesMask = Pipe.blobMask(digitBuffer);
-		  
-		assert(digitsLen == lenAsBytesLen) : "byte written should be the same as bytes consumed";
-		  
-		Pipe.confirmLowLevelRead(digitBuffer, Pipe.sizeOf(RawDataSchema.instance,RawDataSchema.MSG_CHUNKEDSTREAM_1));
-		Pipe.releaseReadLock(digitBuffer);
-		
-		fileSizeAsBytes[pathId] = new byte[lenAsBytesLen];
-		Pipe.copyBytesFromToRing(lenAsBytes, lenAsBytesPos, lenAsBytesMask, fileSizeAsBytes[pathId], 0, Integer.MAX_VALUE, lenAsBytesLen);
-	}
  
     
     private void beginSendingFile(int httpRevision, int requestContext, int pathId, int verb, int sequence, Pipe<HTTPRequestSchema> input) {
         try {                                               
             //reposition to beginning of the file to be loaded and sent.
-            activePayloadSizeRemaining = fileSizes[pathId];
+            activePayloadSizeRemaining = data.getFileSizes()[pathId];
             int status = 200;
                         
           //  logger.info("begin file response for channel {} {}", activeChannelHigh, activeChannelLow);
 
             //TODO: slow...
             byte[] revision = httpSpec.revisions[httpRevision].getBytes();
-            byte[] contentType = httpSpec.contentTypes[type[pathId]].getBytes();
+            byte[] contentType = httpSpec.contentTypes[data.getType()[pathId]].getBytes();
             
             totalBytes += publishHeaderMessage(requestContext, sequence, VERB_GET==verb ? 0 : requestContext, 
             		                           status, output, activeChannelHigh, activeChannelLow,  
                                                httpSpec, revision, contentType, 
-                                               fileSizeAsBytes[pathId], 0, fileSizeAsBytes[pathId].length, Integer.MAX_VALUE, 
-                                               etagBytes[pathId]); 
+                                               data.getFileSizeAsBytes()[pathId], 0, data.getFileSizeAsBytes()[pathId].length, Integer.MAX_VALUE, 
+                                               data.getEtagBytes()[pathId]); 
             
                         
             //This allows any previous saved values to be automatically removed upon lookup when they are out of range.
@@ -664,7 +697,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         int errorStatus = null==e? 400:500;
         
         publishError(requestContext, sequence, errorStatus, output, activeChannelHigh, activeChannelLow, httpSpec,
-                httpRevision, type[pathId]);
+                httpRevision, data.getType()[pathId]);
         
         Pipe.confirmLowLevelRead(input, activeReadMessageSize);
         Pipe.releaseReadLock(input);
@@ -747,13 +780,13 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
              //even if this only happens 20% of the time it will stil make a noticable impact in speed.
              /////////
              
-             final int oldBlobPosition = (int)PipeHashTable.getItem(outputHash, fcId[pathId]);
+             final int oldBlobPosition = (int)PipeHashTable.getItem(outputHash, data.getFcId()[pathId]);
             
-            final int headBlobPosInPipe = Pipe.storeBlobWorkingHeadPosition(localOutput);
+            int headBlobPosInPipe = Pipe.storeBlobWorkingHeadPosition(localOutput);
             int blobMask = Pipe.blobMask(localOutput);
 			if (supportInFlightCopy && 
 					/*Only use if the file was written previously*/ oldBlobPosition>0 && 
-					/*Only use if the full file can be found */fileSizes[pathId]<blobMask) { 
+					/*Only use if the full file can be found */data.getFileSizes()[pathId]<blobMask) { 
             
             	//do not copy more than 1 fragment at this time
             	int len = Math.min((int)activePayloadSizeRemaining, localOutput.maxAvgVarLen);
@@ -766,10 +799,12 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             	//choose between zero copy re-use and arrayCopy re-use
             	////////////////////////////////////////////
             	
-            	final long targetFile = fcId[pathId];
+            	final long targetFile = data.getFcId()[pathId];
             	final long lowerBound = headBlobPosInPipe;
             	long tempFcId = -1;
             	long tempPos = -1;
+            	
+
             	if (reusePosition>reuseRing.length && Pipe.getBlobHeadPosition(localOutput)>localOutput.sizeOfBlobRing) {
 	            	long cursor = reusePositionConsume;
 	            	int iter = reuseRing.length>>1; // /4
@@ -790,25 +825,51 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 	            	
              	}
             	
-            	boolean useRef = false; ///TODO: DO NOT turn on until this gets fixed, its very bad.
-            	if (useRef && tempPos>=lowerBound && tempFcId == targetFile) {
+            	final int countOfBytesToSkip = (int)(localPos+tempPos-headBlobPosInPipe);
+
+            	
+            	if (supportInFlightCopyByRef 
+            			&& tempPos >= lowerBound 
+            			&& tempFcId == targetFile 
+            			&& countOfBytesToSkip>=0 && countOfBytesToSkip<localOutput.maxAvgVarLen //Never jump full ring, and we really should only jump if the value is "near" us, within 1 message fragment
+            			) { 
             		
-            		//this feature is not working now  TODO: urgent test and fix.
-            		assert(Pipe.isEqual(blob, (int)tempPos, blobMask, blob, prevBlobPos, blobMask, len)) : "existing data must match data to copy";
-            		            		
+ 
+//            		Appendables.appendUTF8(System.out, blob, (int)tempPos, len, blobMask);
+//            		System.out.println();
+//
+//            		            		
             		
             		inFlightRef++;
-            		int skip = (int)(tempPos-headBlobPosInPipe+localPos);
             		            		
             		int size = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_SKIP_300);
-            		Pipe.addBytePosAndLenSpecial(localOutput, Pipe.bytesWriteBase(localOutput), skip);
+            		
+            		Pipe.addAndGetBytesWorkingHeadPosition(localOutput, countOfBytesToSkip);//he head is moved becauase we want to skip these bytes.
+            		
+					Pipe.addBytePosAndLen(localOutput, Pipe.unstoreBlobWorkingHeadPosition(localOutput), countOfBytesToSkip);
             		Pipe.confirmLowLevelWrite(localOutput, size);
             		Pipe.publishWrites(localOutput);
-            	
+            	               		
+            		headBlobPosInPipe = Pipe.storeBlobWorkingHeadPosition(localOutput);
+            		
+//        			Appendables.appendUTF8(System.out, blob, headBlobPosInPipe, len, blobMask);
+//        			System.out.println(headBlobPosInPipe+" "+len+" "+blobMask);        			
+
+
+            		assert((blobMask&headBlobPosInPipe)==(blobMask&(localPos+tempPos))): (blobMask&headBlobPosInPipe)+" vs "+(blobMask&(localPos+tempPos));
+            		
+            		//assert(Appendables.appendUTF8(new StringBuilder(), blob, headBlobPosInPipe, len, blobMask).toString().equals("{\"x\":9,\"y\":17,\"groovySum\":26}\n")) : (headBlobPosInPipe&blobMask)+" error at "+headBlobPosInPipe+" mask "+blobMask+" value "+Appendables.appendUTF8(new StringBuilder(), blob, headBlobPosInPipe, len, blobMask);
+            		
+            		
+            		
             		//nothing to copy, position is now set up.
             	} else {
             		inFlightCopy++;
             		Pipe.copyBytesFromToRing(blob, prevBlobPos, blobMask, blob, headBlobPosInPipe, blobMask, len);
+            		
+            		//assert(Appendables.appendUTF8(new StringBuilder(), blob, headBlobPosInPipe, len, blobMask).toString().equals("{\"x\":9,\"y\":17,\"groovySum\":26}\n")) : "error at "+headBlobPosInPipe+" mask "+blobMask+" value "+Appendables.appendUTF8(new StringBuilder(), blob, headBlobPosInPipe, len, blobMask);
+            		
+            		
             	}
     
                 activeMessageStart = publishBodyPart(channelHigh, channelLow, sequence, localOutput, len);   
@@ -850,9 +911,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                     assert(activeMessageStart>=0);
                    
                     long dataPos = positionOfFileDataBegin();
-                    PipeHashTable.replaceItem(outputHash, fcId[pathId], dataPos);
+                    PipeHashTable.replaceItem(outputHash, data.getFcId()[pathId], dataPos);
                     //store this because we may get to use it again.
-                    reuseRing[reuseMask&(int)reusePosition++] = fcId[pathId];
+                    reuseRing[reuseMask&(int)reusePosition++] = data.getFcId()[pathId];
                     reuseRing[reuseMask&(int)reusePosition++] = localOutput.sizeOfBlobRing+dataPos;
                     //clear value
                     activeMessageStart=-1;
@@ -874,9 +935,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                 
                 long dataPos = positionOfFileDataBegin();
                 
-                PipeHashTable.replaceItem(outputHash, fcId[pathId], dataPos);
+                PipeHashTable.replaceItem(outputHash, data.getFcId()[pathId], dataPos);
                 //store this because we may get to use it again.
-                reuseRing[reuseMask&(int)reusePosition++] = fcId[pathId];
+                reuseRing[reuseMask&(int)reusePosition++] = data.getFcId()[pathId];
                 reuseRing[reuseMask&(int)reusePosition++] = localOutput.sizeOfBlobRing+dataPos;
                 
                 

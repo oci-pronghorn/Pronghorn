@@ -17,6 +17,10 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
     ACCEPT_DATETIME("Accept-Datetime: %b"),
     AUTHORIZATION("Authorization: %b"),
     CACHE_CONTROL("Cache-Control: %b"),
+    DATE("Date: %b"),//nginx
+    LAST_MODIFIED("Last-Modified: %b"),//nginx
+    ETAG("ETag: %b"),//nginx
+    ACCEPT_RANGES("Accept-Ranges: %b"),//nginx
     EXPECT("Expect: %b"),
     FORWARDED("Forwarded: %b"),
     FROM("From: %b"),

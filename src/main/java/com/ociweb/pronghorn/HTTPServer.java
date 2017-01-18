@@ -81,8 +81,12 @@ public class HTTPServer {
 		 
 		String bindHost = "127.0.0.1";
 		ServerCoordinator coordinator = new ServerCoordinator(groups, bindHost, 8443, 15, 2, routerCount);//32K simulanious connections on server. 
-		gm = NetGraphBuilder.buildHTTPServerGraph(true, gm, groups, 2, config, coordinator, requestUnwrapUnits, responseWrapUnits, outputPipes, socketWriters, 
-				64, serverInputBlobs, 2048, serverBlobToEncrypt, 1024, serverBlobToWrite, routerCount); 
+		int serverInputMsg = 64;
+		int serverMsgToEncrypt = 2048;
+		int serverMsgToWrite = 1024;
+		gm = NetGraphBuilder.buildHTTPServerGraph(true, gm, groups, 2, config, coordinator, requestUnwrapUnits,
+				responseWrapUnits, outputPipes, socketWriters, 
+				serverInputMsg, serverInputBlobs, serverMsgToEncrypt, serverBlobToEncrypt, serverMsgToWrite, serverBlobToWrite, routerCount); 
 		//gm = NetGraphBuilder.buildHTTPServerGraph(gm, groups, apps);
         
         

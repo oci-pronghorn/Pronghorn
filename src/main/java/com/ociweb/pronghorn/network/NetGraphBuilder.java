@@ -171,13 +171,17 @@ public class NetGraphBuilder {
 	//TODO: review each stage for opportunities to use batch combine logic, (eg n in a row). May go a lot faster for single power users. future feature.
 	
 	public static GraphManager buildHTTPServerGraph(boolean isTLS, GraphManager graphManager, int groups,
-			int maxSimultaniousClients, ModuleConfig ac, ServerCoordinator coordinator, int requestUnwrapUnits, int responseWrapUnits, 
-			int pipesPerWrapUnit, int socketWriters, int serverInputMsg, int serverInputBlobs, int serverMsgToEncrypt, int serverBlobToEncrypt, int serverMsgToWrite, int serverBlobToWrite, int routerCount) {
+			int maxSimultanious, ModuleConfig ac, ServerCoordinator coordinator, int requestUnwrapUnits, int responseWrapUnits, 
+			int pipesPerWrapUnit, int socketWriters, int serverInputMsg, int serverInputBlobs, 
+			int serverMsgToEncrypt, int serverBlobToEncrypt, int serverMsgToWrite, int serverBlobToWrite, int routerCount) {
+		
+		int fromRouterMsg = 512;
+		int fromRouterSize = 1<<8;
 		
 		PipeConfig<ServerConnectionSchema> newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 10);
 		
 		//Why? the router is helped with lots of extra room for write?  - may need to be bigger for posts.
-        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, 1024, 1<<8);///if payload is smaller than average file size will be slower
+        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, fromRouterMsg, fromRouterSize);///if payload is smaller than average file size will be slower
       
         //byte buffer must remain small because we will have a lot of these for all the partial messages
         //TODO: if we get a series of very short messages this will fill up causing a hang. TODO: we can get parser to release and/or server reader to combine.
@@ -189,7 +193,7 @@ public class NetGraphBuilder {
         //also used when the TLS is not enabled                 must be less than the outgoing buffer size of socket?
         PipeConfig<NetPayloadSchema> fromWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, serverMsgToWrite, serverBlobToWrite);  //must be 1<<15 at a minimum for handshake
                 
-        PipeConfig<NetPayloadSchema> handshakeDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, 32, 1<<15); //must be 1<<15 at a minimum for handshake
+        PipeConfig<NetPayloadSchema> handshakeDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, maxSimultanious>>1, 1<<15); //must be 1<<15 at a minimum for handshake
         
         Pipe[][] encryptedIncomingGroup = new Pipe[groups][];
         Pipe[][] planIncomingGroup = new Pipe[groups][];
@@ -203,10 +207,10 @@ public class NetGraphBuilder {
         int g = groups;
         while (--g >= 0) {//create each connection group            
              
-            encryptedIncomingGroup[g] = buildPipes(maxSimultaniousClients, incomingDataConfig);
+            encryptedIncomingGroup[g] = buildPipes(maxSimultanious, incomingDataConfig);
             
             if (isTLS) {
-            	planIncomingGroup[g] = buildPipes(maxSimultaniousClients, incomingDataConfig);
+            	planIncomingGroup[g] = buildPipes(maxSimultanious, incomingDataConfig);
             } else {
             	planIncomingGroup[g] = encryptedIncomingGroup[g];
             }
@@ -238,10 +242,8 @@ public class NetGraphBuilder {
             
 
             //create the modules
-                        
-                        
-            //TODO: create n modules             
-            int modMultiplier = 1;  //TODO: this is not going to work so we are taking a new approach       
+                                 
+            int modMultiplier = 1;  //TODO: remove    
             
             Pipe<HTTPRequestSchema>[][][] toModules = new Pipe[modMultiplier][ac.moduleCount()][routerCount];
             
@@ -368,7 +370,7 @@ public class NetGraphBuilder {
             ///////////////////
 
             //TODO: this from super should not be zero?? what why is that?
-           	OrderSupervisorStage wrapSuper = new OrderSupervisorStage(graphManager, fromModule, fromSupers[0], coordinator, isTLS);//ensure order           
+           	OrderSupervisorStage wrapSuper = new OrderSupervisorStage(graphManager, fromModule, fromSupers[g], coordinator, isTLS);//ensure order           
             
             ///////////////
             //all the writer stages

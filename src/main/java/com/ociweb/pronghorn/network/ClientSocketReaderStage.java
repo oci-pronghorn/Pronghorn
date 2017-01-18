@@ -145,17 +145,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    	//TOOD: client socket reader must be LL api same as server, we can not mix consumer
 			        /////////////////////////////
 						    	
-						    	
-						    	
-						    	
-						    	
-						    	if (Pipe.hasRoomForWrite(target) 
-										//what if thie corruption is from the server??
-										//&& ((target.blobMask- Pipe.releasePendingByteCount(target)) > target.maxAvgVarLen)
-										//&& Pipe.getBlobHeadPosition(target) == Pipe.getBlobTailPosition(target)
-										
-										
-										) {
+						    	if (Pipe.hasRoomForWrite(target)) {
 						    					    		
 						    								    		
 						    		//these buffers are only big enought to accept 1 target.maxAvgVarLen
@@ -180,14 +170,13 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    		}
 							    //	boolean fullBuffer = wrappedUnstructuredLayoutBufferOpen[0].remaining()==0 && wrappedUnstructuredLayoutBufferOpen[1].remaining()==0;
 			
-						    		
-						    		if (readCount<0) {
-						    			logger.info("ERROR WE AHVE HIT THE END OF THE STREAM");
-						    		}
-						    		
-						    		int countRead = (r2-wrappedUnstructuredLayoutBufferOpen[1].remaining()) + (r1-wrappedUnstructuredLayoutBufferOpen[0].remaining());
-						    		assert(countRead==readCount): countRead+" vs "+readCount;
-						    				
+//						    		
+//						    		if (readCount<0) {
+//						    			
+//						    			logger.info("HIT THE END OF THE STREAM, closed connection must have been requested in header");
+//						    		}
+//						    		
+						 						    				
 							    	
 							    	//logger.trace("client reading {} for id {} fullbuffer {}",readCount,cc.getId(),fullBuffer);
 							    	
@@ -221,7 +210,12 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    			
 							    			int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
 							    			Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)readCount, target);
-							    			
+				
+//		boolean showResponse = true;
+//		if (showResponse) {
+//			   			Appendables.appendUTF8(System.err, target.blobRing, originalBlobPosition, readCount, target.blobMask);
+//		}
+		
 							    			if (ClientCoordinator.TEST_RECORDS) {
 							    				validateContent(pipeIdx, target, readCount, originalBlobPosition);
 							    			}		

@@ -18,7 +18,7 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class RegulatedLoadTestStage extends PronghornStage{
 
-	private static final int HANG_TIMEOUT_MS = 40_000;
+	private static final int HANG_TIMEOUT_MS = 20_000;
 
 	private static final Logger logger = LoggerFactory.getLogger(RegulatedLoadTestStage.class);
 	
@@ -60,6 +60,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		
 		this.clientCoord = clientCoord;
 		this.usersPerPipe = usersPerPipe;
+		assert(1 == usersPerPipe);
 		this.testFile = fileRequest;
 		assert (inputs.length==outputs.length);
 		this.limit = inFlightLimit;
@@ -140,9 +141,9 @@ public class RegulatedLoadTestStage extends PronghornStage{
 			System.exit(-1);
 		}
 		
-		//int x = 3;
+	//	int x = 3;
 		
-		//while (--x>=0) 
+	//	while (--x>=0) 
 		{
 			
 			int i;
@@ -163,7 +164,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 						if (Pipe.hasContentToRead(inputs[i])) {
 							didWork=true;
 							
-							int msg = Pipe.takeMsgIdx(inputs[i]);
+							final int msg = Pipe.takeMsgIdx(inputs[i]);
 							
 							switch (msg) {
 								case NetResponseSchema.MSG_RESPONSE_101:
@@ -216,7 +217,15 @@ public class RegulatedLoadTestStage extends PronghornStage{
 									histRoundTrip.recordValue(duration);
 								}								
 							} else {
-								System.out.println("shutdown "+shutdownCount+" "+i);
+								if (0!=toSend[i]) {
+									throw new RuntimeException("received more responses than sent requests");
+								}
+								
+//								if (Pipe.contentRemaining(inputs[i])==0) {
+//									throw new RuntimeException("expected pipe to be empty upon last response but found "+inputs[i]);
+//								}
+								
+								
 								if (--shutdownCount == 0) {
 									logger.info("XXXXXXX full shutdown now "+shutdownCount);
 									requestShutdown();

@@ -9,6 +9,7 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
@@ -43,6 +44,11 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     private StringBuilder[] accumulators;
     
+
+    private int maxWarningCount = 20;
+    
+    private int selectorSize = -10;
+    private ArrayList<SelectionKey> doneSelectors= new ArrayList<SelectionKey>(100);
     
 //    private long nextTime = 0;
 //    private long bytesConsumed=0;
@@ -84,6 +90,7 @@ public class ServerSocketReaderStage extends PronghornStage {
         }
         //logger.debug("selector is registered for pipe {}",pipeIdx);
         
+        
     }
     
     @Override
@@ -96,10 +103,13 @@ public class ServerSocketReaderStage extends PronghornStage {
         logger.warn("server reader has shut down");
     }
 
-    private int maxWarningCount = 20;
     
-    private int selectorSize = -10;
-    private ArrayList<SelectionKey> doneSelectors= new ArrayList<SelectionKey>(100);
+    private final Consumer<SelectionKey> selectionKeyAction = new Consumer<SelectionKey>(){
+			@Override
+			public void accept(SelectionKey selection) {
+				processSelection(selection); 
+			}
+    };    
     
     @Override
     public void run() {
@@ -113,8 +123,6 @@ public class ServerSocketReaderStage extends PronghornStage {
     	
     		{	
     	
-	    	releasePipesForUse();    	
-	    	
 	        ////////////////////////////////////////
 	        ///Read from socket
 	        ////////////////////////////////////////
@@ -124,105 +132,17 @@ public class ServerSocketReaderStage extends PronghornStage {
 	        	
 	        	//logger.info("found new data to read on "+groupIdx);
 	            
-	            selectedKeys = selector.selectedKeys();
+	           selectedKeys = selector.selectedKeys();
 	            
-	            selectorSize = selectedKeys.size();
-	            doneSelectors.clear();
+	           selectorSize = selectedKeys.size();
+	           assert(selectorSize>0);
+	           doneSelectors.clear();	            
 	            
-	           for (SelectionKey selection: selectedKeys) {	
-
-	                assert(0 != (SelectionKey.OP_READ & selection.readyOps())) : "only expected read"; 
-	                SocketChannel socketChannel = (SocketChannel)selection.channel();
-	           
-	                //logger.info("is blocking {} open {} ", selection.channel().isBlocking(),socketChannel.isOpen());
-	                
-	                
-	                //get the context object so we know what the channel identifier is
-	                ConnectionContext connectionContext = (ConnectionContext)selection.attachment();                
-					final long channelId = connectionContext.getChannelId();
-	                				
-					
-					SSLConnection cc = coordinator.get(channelId, groupIdx);
-					if (isTLS) {
-						
-							
-						if (null!=cc && null!=cc.getEngine()) {
-							HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
-	
-				    		 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
-					                Runnable task;//TODO: there is anopporuntity to have this done by a different stage in the future.
-					                while ((task = cc.getEngine().getDelegatedTask()) != null) {
-					                	task.run();
-					                }
-					                handshakeStatus = cc.getEngine().getHandshakeStatus();
-							 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
-								 releasePipesForUse();
-								 assert(-1 == coordinator.checkForResponsePipeLineIdx(cc.getId())) : "should have already been relased";	
-								 continue;//one of the other pipes can do work
-							 }
-						}
-					}
-						
-			//		releasePipesForUse();
-					
-					int responsePipeLineIdx = cc.getPoolReservation(); 
-							//coordinator.checkForResponsePipeLineIdx(channelId);	
-					
-					
-					final boolean newBeginning = (responsePipeLineIdx<0);
-							
-					if (newBeginning) {
-						//this release is required in case we are swapping pipe lines, we ensure that the latest sequence no is stored.
-						releasePipesForUse();
-						responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
-						if (-1 == responsePipeLineIdx) { //handshake is dropped by input buffer at these loads?
-							releasePipesForUse();
-							responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
-							if (responsePipeLineIdx<0) {
-								
-//								itemsWithNoPipeCount++;
-						
-		//		    			if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
-	//			    				logger.warn("bump up maxPartialResponsesServer count, performance is slowed due to waiting for available input pipe on client");
-		//		    			}
-								continue;//try other connections which may already have pipes, this one can not reserve a pipe now.
-							}
-						}
-						
-						cc.setPoolReservation(responsePipeLineIdx);
-						
-					}
-						
-					Pipe<NetPayloadSchema> targetPipe = output[responsePipeLineIdx];
-					
-					
-					
-				//	logger.info("pump data");
-					
-					int pumpState = pumpByteChannelIntoPipe(socketChannel, channelId, targetPipe, newBeginning, cc); 
-	                if (pumpState<0) {//consumes from channel until it has no more or pipe has no more room
-	                	//pipe full do again later
-	                	
-	//	    			if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
-	//	    				logger.warn("pipe full go again later");
-	//	    			}
-	                	
-	                	//TOOD: if thiis continues long term we must kill the connection rather than let the other connnections suffer.
-	                	//      note this should not have happened however becaue the router should have detected the fault.
-	       //         	 System.err.println("unable to write to pipe "+targetPipe);
-	                	
-	                	//MUST NOT return instead we must read the others even if one gets full.
-	                	continue;
-	                } else if (pumpState>0) {
-	              //  	logger.info("sennt data block");
-	    				
-	                	assert(1==pumpState) : "Can only remove if all the data is known to be consumed";
-	                	doneSelectors.add(selection);//add to list for removal
-	                	pendingSelections--;
-	                }
-	                releasePipesForUse();
-	            }
+			   selectedKeys.forEach(selectionKeyAction);
 	            
+//	           for (SelectionKey selection: selectedKeys) {
+//	                processSelection(selection); 
+//	            }	            
 		        
 		        if (null!=selectedKeys) {
 			        if (pendingSelections==0) {
@@ -230,45 +150,88 @@ public class ServerSocketReaderStage extends PronghornStage {
 			        } else {
 			        	selectedKeys.removeAll(doneSelectors);
 			        }
-		        }
-	            
-//	            if (itemCount>0 && itemsWithNoPipeCount==itemCount) {
-////	            	//TOOD: this case is NOT hung we are just waiting for pipes to clear.
-////	            	logger.info("server is hung trying to read new connection, connections without pipes {} ", itemsWithNoPipeCount);
-////
-////	            	//TODO: when the router can NOT parse it must inc the suspect counter for that connection
-////	            	//      THEN when we get here we kill off the most suspect connection we find in order to continue
-////	            	
-////	            	//TODO: we need a spair pipe here to wrap back arround and "cache" the incoming data to prevent this case, or at least post pone it when we get heavy load.
-////	 	            	
-////	            	coordinator.debugResponsePipeLine();
-////	            	int o = output.length;
-////	            	while (--o>=0) {
-////	            		System.err.println(o+"     "+output[o]);
-////	            	}
-////					
-////	            	Iterator<SelectionKey>  keyIterator2 = selectedKeys.iterator();   
-////		            
-////		            while (keyIterator2.hasNext()) {    
-////		            
-////		            	SelectionKey sel = keyIterator2.next();
-////		            	ConnectionContext connectionContext = (ConnectionContext)sel.attachment();   
-////		            	int idx = (int)connectionContext.getChannelId() % (coordinator.maxPartialResponses);
-////		            	int route = coordinator.routerLookup[idx];
-////		            	
-////						System.err.println("unable to find pipe for id "+connectionContext.getChannelId()+"  "+ idx+" router "+route);
-////		            	
-////		            }
-//	            	
-//	            }
-	            
-	           // System.out.println(itemCount+" vs no pipes "+itemsWithNoPipeCount);
-	            
-	        }
-
-	        
+		        } 
+		        
+	        }	        
     	}
     }
+
+	private void processSelection(SelectionKey selection) {
+		assert(0 != (SelectionKey.OP_READ & selection.readyOps())) : "only expected read"; 
+		SocketChannel socketChannel = (SocketChannel)selection.channel();
+         
+		//logger.info("is blocking {} open {} ", selection.channel().isBlocking(),socketChannel.isOpen());
+		
+		
+		//get the context object so we know what the channel identifier is
+		ConnectionContext connectionContext = (ConnectionContext)selection.attachment();                
+		final long channelId = connectionContext.getChannelId();
+						
+		
+		SSLConnection cc = coordinator.get(channelId, groupIdx);
+		boolean processWork = true;
+		if (isTLS) {
+				
+			if (null!=cc && null!=cc.getEngine()) {
+				HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
+
+				 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
+		                Runnable task;//TODO: there is anopporuntity to have this done by a different stage in the future.
+		                while ((task = cc.getEngine().getDelegatedTask()) != null) {
+		                	task.run();
+		                }
+		                handshakeStatus = cc.getEngine().getHandshakeStatus();
+				 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
+					 releasePipesForUse();
+					 assert(-1 == coordinator.checkForResponsePipeLineIdx(cc.getId())) : "should have already been relased";
+					 processWork = false;
+				 }
+			}
+		}
+			
+		//the normal case is to do this however we do need to skip for TLS wrap
+		if (processWork) {
+				
+				int responsePipeLineIdx = cc.getPoolReservation(); 
+						//coordinator.checkForResponsePipeLineIdx(channelId);	
+				
+				
+				final boolean newBeginning = (responsePipeLineIdx<0);
+						
+				if (newBeginning) {
+					//this release is required in case we are swapping pipe lines, we ensure that the latest sequence no is stored.
+					releasePipesForUse();
+					responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
+					if (-1 == responsePipeLineIdx) { //handshake is dropped by input buffer at these loads?
+						releasePipesForUse();
+						responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
+						if (responsePipeLineIdx<0) {
+							
+//								itemsWithNoPipeCount++;								
+//		    			if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
+//			    				logger.warn("bump up maxPartialResponsesServer count, performance is slowed due to waiting for available input pipe on client");
+//		    			}
+						}
+					}
+					if (responsePipeLineIdx>=0) {
+						cc.setPoolReservation(responsePipeLineIdx);
+					}
+				}
+					
+				if (responsePipeLineIdx>=0) {
+					int pumpState = pumpByteChannelIntoPipe(socketChannel, channelId, output[responsePipeLineIdx], newBeginning, cc, selection); 
+		            if (pumpState>0) {
+		            	assert(1==pumpState) : "Can only remove if all the data is known to be consumed";
+		            	doneSelectors.add(selection);//add to list for removal
+		            	pendingSelections--;
+		            	releasePipesForUse();
+		            } else if (0==pumpState) {
+		            	releasePipesForUse();	                	
+		            }	   
+				}
+		        
+		}
+	}
 
 	private void releasePipesForUse() {
 		int i = releasePipes.length;
@@ -381,8 +344,10 @@ public class ServerSocketReaderStage extends PronghornStage {
         }
     }
     
+    
+    
     //returns -1 for did not start, 0 for started, and 1 for finished all.
-    public int pumpByteChannelIntoPipe(SocketChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, SSLConnection cc) {
+    public int pumpByteChannelIntoPipe(SocketChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, SSLConnection cc, SelectionKey selection) {
     	
         //keep appending messages until the channel is empty or the pipe is full
         if (Pipe.hasRoomForWrite(targetPipe)) {          
@@ -396,20 +361,38 @@ public class ServerSocketReaderStage extends PronghornStage {
                 int r1 = b[0].remaining();
                 int r2 = b[1].remaining();
                 
-                //TODO: URGENT needs to keep write open while running in this loop then do a single publish flush if possible. small writes are bad clogging the system.
-                long temp = 0;
-                do {
-                	temp = sourceChannel.read(b);
-                	if (temp>0){
-                		len+=temp;
-                	}            
-           //     	System.err.println(temp+"  for channel "+channelId); //this seems to show that this loop is not needed because the data is already grouped?? BUT could do larger groups going arround.
-                } while (temp>0);
-                                      
+                final long temp = sourceChannel.read(b);
+                
+//            	tempBuf.clear();
+//            	final long temp = sourceChannel.read(tempBuf);
+//            	tempBuf.flip(); 	
+//            	int space = b[0].remaining();
+//            	if (temp<=space) {
+//            		b[0].put(tempBuf);
+//            	} else {
+//            		int limit = tempBuf.limit();                	
+//            		tempBuf.limit(tempBuf.position()+space);
+//            		b[0].put(tempBuf);
+//            		tempBuf.limit(limit);
+//            		b[1].put(tempBuf);
+//            		
+//            	}
+            	
+            	
+            	if (temp>0){
+            		len+=temp;
+            	}            
+                 
                 int readCount = (r1-b[0].remaining())+(r2-b[1].remaining());
                 assert(readCount == len) : "server "+readCount+" vs "+len;
                 
-                
+                if (temp<0) {
+                	//client was disconnected so release all our resources to ensure they can be used by new connections.
+                	selection.cancel();                	
+                	coordinator.releaseResponsePipeLineIdx(cc.id);    
+    				cc.clearPoolReservation();
+                	
+                }
                 return publishOrAbandon(channelId, targetPipe, len, b, temp>=0, newBeginning, cc);
 
             } catch (IOException e) {
@@ -468,13 +451,18 @@ public class ServerSocketReaderStage extends PronghornStage {
 //			 logger.info("abandon one record, did not publish because length was {}    {}",len,targetPipe);
 			 Pipe.unstoreBlobWorkingHeadPosition(targetPipe);//we did not use or need the writing buffers above.
 			 
-             if (newBeginning) { //Gatling does this a lot, TODO: we should optimize this case.
+             if (isOpen && newBeginning) { //Gatling does this a lot, TODO: we should optimize this case.
              	//we will abandon but we also must release the reservation because it was never used
              	coordinator.releaseResponsePipeLineIdx(channelId);
              	SSLConnection conn = coordinator.get(channelId, groupIdx);
              	conn.clearPoolReservation();
              //	logger.info("client is sending zero bytes, ZERO LENGTH RELESE OF UNUSED PIPE  FOR {}", channelId);
              }
+             
+             if (!isOpen) {
+            	 cc.close();
+             }
+             
 			 
 			 return 1;//yes we are done
 		}
@@ -506,6 +494,8 @@ public class ServerSocketReaderStage extends PronghornStage {
         
         int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(targetPipe);
 
+        
+        
         if (ServerCoordinator.TEST_RECORDS) {
            testValidContent(cc.getPoolReservation(), targetPipe, originalBlobPosition, (int)len);
         }

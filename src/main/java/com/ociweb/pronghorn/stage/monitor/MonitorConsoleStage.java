@@ -15,6 +15,7 @@ import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 
 
 public class MonitorConsoleStage extends PronghornStage {
@@ -119,21 +120,21 @@ public class MonitorConsoleStage extends PronghornStage {
             
             String ringName = "Unknown";
             long published = 0;
+            long allocated = 0;
             if (producer instanceof RingBufferMonitorStage) {
             	
-            	published = ((RingBufferMonitorStage)producer).getObservedRingPublishedCount();
-            	trafficValues[ ((RingBufferMonitorStage)producer).getObservedRingId() ] = (int)published;
+            	published = ((RingBufferMonitorStage)producer).getObservedPipePublishedCount();
+            	allocated = ((RingBufferMonitorStage)producer).getObservedPipeBytesAllocated();
+            	trafficValues[ ((RingBufferMonitorStage)producer).getObservedPipeId() ] = (int)published;
+            	ringName = ((RingBufferMonitorStage)producer).getObservedPipeName();
             	
 	            if (inBounds && (sampleCount>=1)) {
-					//NOTE: may need to walk up tree till we find this object, (future feature)
-						ringName = ((RingBufferMonitorStage)producer).getObservedRingName();
-						
-						percentileValues[ ((RingBufferMonitorStage)producer).getObservedRingId() ] = (int)avg;
+					percentileValues[ ((RingBufferMonitorStage)producer).getObservedPipeId() ] = (int)avg;
 					
 	            }
             }
             
-            writeToConsole(i, pctile, avg, sampleCount, ringName, published);
+            writeToConsole(i, pctile, avg, sampleCount, ringName, published, allocated);
             
 		}
 				
@@ -142,11 +143,37 @@ public class MonitorConsoleStage extends PronghornStage {
 		
 	}
 
-	private void writeToConsole(int i, long pctile, long avg, long sampleCount, String ringName, long published) {
+	private void writeToConsole(int i, long pctile, long avg, long sampleCount, String ringName, long published, long allocated) {
 		while (ringName.length()<60) {
 			ringName=ringName+" ";
 		}            
-		System.out.println("    "+i+" "+ringName+" Queue Fill "+pctile+"% Average:"+avg+"%    samples:"+sampleCount+"  totalPublished:"+published);
+		
+		Appendables.appendValue(System.out, "    ", i, " ");
+		System.out.append(ringName);
+		Appendables.appendValue(System.out, " Queue Fill ", pctile, "%");
+		Appendables.appendValue(System.out, " Average:", avg, "%"); 
+		Appendables.appendValue(System.out, "    samples:", sampleCount);
+		Appendables.appendValue(System.out, "  totalPublished:",published);
+		
+		if (allocated>(1<<30)) {
+			int gb = (int)(allocated>>30);
+			Appendables.appendValue(System.out, "  allocated:",gb,"GB");
+		} else {
+			if (allocated>(1<<20)) {
+				int mb = (int)(allocated>>20);
+				Appendables.appendValue(System.out, "  allocated:",mb,"MB");				
+			} else {
+				if (allocated>(1<<10)) {
+					int kb = (int)(allocated>>10);
+					Appendables.appendValue(System.out, "  allocated:",kb,"KB");
+				} else {
+					Appendables.appendValue(System.out, "  allocated:",allocated,"B");
+				}
+			}
+		}
+		System.out.println();
+		
+		
 	}
 
 	private static final Long defaultMonitorRate = Long.valueOf(50000000);

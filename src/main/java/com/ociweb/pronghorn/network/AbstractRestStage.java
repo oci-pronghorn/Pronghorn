@@ -43,6 +43,23 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     private static final Logger logger = LoggerFactory.getLogger(AbstractRestStage.class);
     
     
+    
+//    HTTP/1.1 200 OK
+//    Server: nginx/1.10.0 (Ubuntu)
+//    Date: Mon, 16 Jan 2017 17:18:27 GMT
+//    Content-Type: application/json
+//    Content-Length: 30
+//    Last-Modified: Mon, 16 Jan 2017 16:50:59 GMT
+//    Connection: keep-alive
+//    ETag: "587cf9f3-1e"
+//    Accept-Ranges: bytes
+//
+//    {"x":9,"y":17,"groovySum":26}
+    
+   private static final byte[] EXTRA_STUFF = "Date: Mon, 16 Jan 2017 17:18:27 GMT\r\nLast-Modified: Mon, 16 Jan 2017 16:50:59 GMT\r\nETag: \"587cf9f3-1e\"\r\nAccept-Ranges: bytes\r\n".getBytes();
+    
+    
+    
     protected static final byte[][] CONNECTION = new byte[][] {
         "Connection: open\r\n".getBytes(),
         "Connection: close\r\n".getBytes()
@@ -188,6 +205,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
             //line five            
             int closeIdx = 1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT);
             writer.write(CONNECTION[closeIdx]);
+            writer.write(EXTRA_STUFF);
             writer.write(RETURN_NEWLINE);
             //now ready for content
     

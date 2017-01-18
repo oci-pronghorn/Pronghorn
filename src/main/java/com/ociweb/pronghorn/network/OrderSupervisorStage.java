@@ -85,13 +85,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         this.supportsBatchedPublish = false;
         this.supportsBatchedRelease = false;
         
-//        this.lastLenWritten = new int[outgoingPipes.length];
-//        this.lastXXXWritten = new long[outgoingPipes.length];
-//        this.lastYYYWritten = new long[outgoingPipes.length];
-        
-        
-   //     Arrays.fill(lastLenWritten,-1);
-        
         if (minVarLength(outgoingPipes) < maxVarLength(this.dataToSend)) {
         	throw new UnsupportedOperationException("All output pipes must support variable length fields equal to or larger than all input pipes");
         }
@@ -114,7 +107,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				accumulators[i]=new StringBuilder();					
 			}
         }
-		
         
     }
 	
@@ -137,6 +129,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	@Override
     public void run() {
 
+		
+		
     	boolean didWork;
     	do {
 	    	didWork = false;
@@ -165,155 +159,228 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	        	
 	        	//NOTE: this is only a problem because the router takes all the messages from 1 connection before doing the next.
 	        	//      if we ensure it is balanced then this data will also get balanced.
-	        		        		        	
-	            while (Pipe.hasContentToRead(sourcePipe)) {
-	           
-	                //peek to see if the next message should be blocked, eg out of order, if so skip to the next pipe
-	                int peekMsgId = Pipe.peekInt(sourcePipe, 0);
-	                Pipe<NetPayloadSchema> myPipe = null;
-	                int myPipeIdx = -1;
-	                int sequenceNo = 0;
-	                long channelId = -2;
-	                if (peekMsgId>=0 && ServerResponseSchema.MSG_SKIP_300!=peekMsgId) {
-	                	didWork = true;
-	                	
-	                    channelId = Pipe.peekLong(sourcePipe, 1);
-	                    
-	                    //TODO: can we make the OrderSuper combine writes to avoid these pipe getting so full. they spike to 100% at times.
-	                    		
-	                    myPipeIdx = (int)(channelId % poolMod);
-	                    myPipe = outgoingPipes[myPipeIdx];
-	                    
-	                    ///////////////////////////////
-	                    //quit early if the pipe is full, NOTE: the order super REQ long output pipes
-	                    ///////////////////////////////
-                    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {
-                   // 		xb++;
-                    		break;
-                    	}
-                    	
-                    	
-	                    sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
-                    
-	                    //read the next non-blocked pipe, sequenceNo is never reset to zero
-	                    //every number is used even if there is an exception upon write.
-	                    
-	                 //   System.err.println("channel ID mask "+Integer.toHexString(coordinator.channelBitsMask));
-	                    
-	                    int expected = expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)];                
-	                    if (sequenceNo!=expected) {          
-	                    	assert(sequenceNo>=expected) : "found smaller than expected sequenceNo, they should never roll back";	 
-	                    	break;
-	                    }	                  
-
-	                    if (isTLS) {
-		                    handshakeProcessing(myPipe, channelId);	                    
-	                    }
-	                     
-	                    
-	                } else {
-	                	didWork = true;
-	                	////////////////
-	                	//these consume data but do not write out to pipes
-	                	////////////////
-	                	int idx = Pipe.takeMsgIdx(sourcePipe);
-	                	
-	                	if (ServerResponseSchema.MSG_SKIP_300 ==idx) {
-
-	    	            	
-	                		int meta = Pipe.takeRingByteMetaData(sourcePipe);
-	                		int len = Pipe.takeRingByteLen(sourcePipe);
-	                		Pipe.bytePosition(meta, sourcePipe, len); //this does the skipping
-	                		
-	                		Pipe.confirmLowLevelRead(sourcePipe,Pipe.sizeOf(ServerResponseSchema.instance, idx));
-		                	Pipe.releaseReadLock(sourcePipe);
-		                	
-	                		continue;
-	                	} else {	
-		                	Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
-		                	Pipe.releaseReadLock(sourcePipe);
-		                	
-		                	if (--shutdownCount<=0) {
-		                		requestShutdown();
-		                		return;
-		                	} else {
-		                		continue;
-		                	}
-	                	}
-	                }
-	                
-	                ////////////////////////////////////////////////////
-	                //we now know that this work should be done and that there is room to put it out on the pipe
-	                //so do it already
-	                ////////////////////////////////////////////////////
-	                //the EOF message has already been taken so no need to check 
-	                //all remaning messages start with the connection id
-	                
-	                long value = channelId;
-	                final int activeMessageId = Pipe.takeMsgIdx(sourcePipe);
-	                          	                
-	                assert(peekMsgId == activeMessageId);
-	                final long oldChannelId = channelId;
-	                
-	                channelId = Pipe.takeLong(sourcePipe);
-	                
-	                assert(oldChannelId == channelId) : ("channel mismatch "+oldChannelId+" "+channelId);
-	                
-	            	
-	            	
-	    //TOOD: can we combine multiple message into the same  block going out to the same destination????
-	            	
-	            	
-	                //most common case by far so we put it first
-	                if (ServerResponseSchema.MSG_TOCHANNEL_100 == activeMessageId ) {
-	                	                	             	  
-	                	 int expSeq = Pipe.takeInt(sourcePipe); //sequence number
-	                	 assert(sequenceNo == expSeq);
-	                	 
-	                     //byteVector is payload
-	                     int meta = Pipe.takeRingByteMetaData(sourcePipe); //for string and byte array
-	                     int len = Pipe.takeRingByteLen(sourcePipe);
-	                    
-	     	                     
-	                     int requestContext = Pipe.takeInt(sourcePipe); //high 1 upgrade, 1 close low 20 target pipe	                     
-	                     int blobMask = Pipe.blobMask(sourcePipe);
-						 byte[] blob = Pipe.byteBackingArray(meta, sourcePipe);
-						 int bytePosition = Pipe.bytePosition(meta, sourcePipe, len);
-						 
-						 //view in the console what we just wrote out to the next stage.
-						 //System.out.println("id "+myPipeIdx);
-						 //Appendables.appendUTF8(System.out, blob, bytePosition, len, blobMask);
-						 
-						 if (ServerCoordinator.TEST_RECORDS) {
-							 //check 
-							 testValidContent(myPipeIdx, sourcePipe, meta, len);
-							 
-							 //testValidContentQuick(sourcePipe, meta, len);
-						 }
-						 
-						 
-	                     writeToNextStage(myPipe, channelId, len, requestContext, blobMask, blob, bytePosition);                     
-	                     
-	                     //TODO: it would be nice to roll up multiple writes if possible to minimize overhead
-	                     
-	                     Pipe.confirmLowLevelRead(sourcePipe, SIZE_OF_TO_CHNL);	                     
-	                     Pipe.releaseReadLock(sourcePipe);
-	                     
-	                   
-	                	
-	                	
-	                } else {
-	                	
-	                	throw new UnsupportedOperationException("not yet implemented "+activeMessageId);
-	                	
-	                }    
-	            }
+	        		        
+	        	
+	            didWork = processPipe(didWork, sourcePipe);
 	            
             	
 	            
 	        }  
     	} while (didWork);
     }
+
+
+	private boolean processPipe(boolean didWork, final Pipe<ServerResponseSchema> sourcePipe) {
+		
+		while (Pipe.hasContentToRead(sourcePipe)) {
+
+		    //peek to see if the next message should be blocked, eg out of order, if so skip to the next pipe
+		    int peekMsgId = Pipe.peekInt(sourcePipe, 0);
+		    Pipe<NetPayloadSchema> myPipe = null;
+		    int myPipeIdx = -1;
+		    int sequenceNo = 0;
+		    long channelId = -2;
+		    if (peekMsgId>=0 && ServerResponseSchema.MSG_SKIP_300!=peekMsgId) {
+		    	didWork = true;
+		    	
+		        channelId = Pipe.peekLong(sourcePipe, 1);
+		        
+		        //TODO: can we make the OrderSuper combine writes to avoid these pipe getting so full. they spike to 100% at times.
+		        		
+		        myPipeIdx = (int)(channelId % poolMod);
+		        myPipe = outgoingPipes[myPipeIdx];
+		        
+		        ///////////////////////////////
+		        //quit early if the pipe is full, NOTE: the order super REQ long output pipes
+		        ///////////////////////////////
+		    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {
+		   // 		xb++;
+		    		break;
+		    	}
+		    	
+		    	
+		        sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
+		    
+		        //read the next non-blocked pipe, sequenceNo is never reset to zero
+		        //every number is used even if there is an exception upon write.
+		        
+		     //   System.err.println("channel ID mask "+Integer.toHexString(coordinator.channelBitsMask));
+		        
+		        int expected = expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)];                
+		        if (sequenceNo!=expected) {          
+		        	assert(sequenceNo>=expected) : "found smaller than expected sequenceNo, they should never roll back";	 
+		        	break;
+		        }	                  
+
+		        if (isTLS) {
+		            handshakeProcessing(myPipe, channelId);	                    
+		        }
+		         
+		        
+		    } else {
+		    	didWork = true;
+		    	
+
+			    
+		    	////////////////
+		    	//these consume data but do not write out to pipes
+		    	////////////////
+		    	int idx = Pipe.takeMsgIdx(sourcePipe);
+		    	
+		    	if (ServerResponseSchema.MSG_SKIP_300 ==idx) {
+
+		    		skipDataBlock(sourcePipe, idx);
+		        	
+		    		continue;
+		    	} else {	
+		        	Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
+		        	Pipe.releaseReadLock(sourcePipe);
+		        	
+		        	if (--shutdownCount<=0) {
+		        		requestShutdown();
+		        		break;
+		        	} else {
+		        		continue;
+		        	}
+		    	}
+		    }
+		    
+		    copyDataBlock(sourcePipe, peekMsgId, myPipe, myPipeIdx, sequenceNo, channelId);
+		}
+		return didWork;
+	}
+
+
+	private void copyDataBlock(final Pipe<ServerResponseSchema> sourcePipe, int peekMsgId,
+			Pipe<NetPayloadSchema> myPipe, int myPipeIdx, int sequenceNo, long channelId) {
+		////////////////////////////////////////////////////
+		//we now know that this work should be done and that there is room to put it out on the pipe
+		//so do it already
+		////////////////////////////////////////////////////
+		//the EOF message has already been taken so no need to check 
+		//all remaning messages start with the connection id
+		{
+		    long value = channelId;
+		    final int activeMessageId = Pipe.takeMsgIdx(sourcePipe);
+		              	                
+		    assert(peekMsgId == activeMessageId);
+		    final long oldChannelId = channelId;
+		    
+		    long channelId2 = Pipe.takeLong(sourcePipe);
+		    
+		    assert(oldChannelId == channelId2) : ("channel mismatch "+oldChannelId+" "+channelId2);
+		    
+			
+			
+   //TOOD: can we combine multiple message into the same  block going out to the same destination????
+			
+			
+		    //most common case by far so we put it first
+		    if (ServerResponseSchema.MSG_TOCHANNEL_100 == activeMessageId ) {
+		    	                	             	  
+		    	 publishDataBlock(sourcePipe, myPipe, myPipeIdx, sequenceNo, channelId2);
+		    	
+		    } else {
+		    	
+		    	throw new UnsupportedOperationException("not yet implemented "+activeMessageId);
+		    	
+		    } 
+		}
+	}
+
+
+	private void skipDataBlock(final Pipe<ServerResponseSchema> sourcePipe, int idx) {
+		//logger.info("processing skip");
+		//logger.info("debug: tail "+mTail+" head  "+mHead+" readBase "+readBase);
+		
+		
+		int meta = Pipe.takeRingByteMetaData(sourcePipe);
+		int len = Pipe.takeRingByteLen(sourcePipe);
+		Pipe.bytePosition(meta, sourcePipe, len); //this does the skipping
+		
+		//logger.info(" new base "+Pipe.bytesReadBase(sourcePipe)+" skipped bytes "+len);
+		
+		Pipe.confirmLowLevelRead(sourcePipe,Pipe.sizeOf(ServerResponseSchema.instance, idx));
+		Pipe.releaseReadLock(sourcePipe);
+	}
+
+
+	private void publishDataBlock(final Pipe<ServerResponseSchema> sourcePipe, Pipe<NetPayloadSchema> myPipe,
+			int myPipeIdx, int sequenceNo, long channelId) {
+		int expSeq = Pipe.takeInt(sourcePipe); //sequence number
+		 assert(sequenceNo == expSeq);
+		 
+		 //byteVector is payload
+		 int meta = Pipe.takeRingByteMetaData(sourcePipe); //for string and byte array
+		 int len = Pipe.takeRingByteLen(sourcePipe);
+		
+		         
+		 int requestContext = Pipe.takeInt(sourcePipe); //high 1 upgrade, 1 close low 20 target pipe	                     
+		 int blobMask = Pipe.blobMask(sourcePipe);
+		 byte[] blob = Pipe.byteBackingArray(meta, sourcePipe);
+		 int bytePosition = Pipe.bytePosition(meta, sourcePipe, len);
+		 
+		 //view in the console what we just wrote out to the next stage.
+		 //System.out.println("id "+myPipeIdx);
+		 //Appendables.appendUTF8(System.out, blob, bytePosition, len, blobMask);
+		 
+		 if (ServerCoordinator.TEST_RECORDS) {
+			 //check 
+			 testValidContent(myPipeIdx, sourcePipe, meta, len);
+			 
+			 //testValidContentQuick(sourcePipe, meta, len);
+		 }
+		 
+		 Pipe.confirmLowLevelRead(sourcePipe, SIZE_OF_TO_CHNL);	                     
+		 Pipe.readNextWithoutReleasingReadLock(sourcePipe);//we will look ahead to see what we can combine into a single read
+		 
+		 
+		 //TODO: peek here to see if making a larger block is even possible, because we have skip gap this may not work out very well.
+		 //TODO: this copy is the hot point in the code because we are calling it too many times with SMALL copies
+		 //TODO: it would be nice to roll up multiple writes if possible to minimize overhead KEY UPGRADE HERE.
+		 
+		 //TODO: we need the oder super to combine the parts into 1 write if possible.
+		 //TODO: skip over any skip and do 2 copies to a single target.
+		 
+		 //we can just bump up len OR do 2 blocks?
+		 
+
+		 
+		 
+		 //If a response was sent as muliple parts all part of the same sequence number then we roll them up as a single write when possible.
+		 while (Pipe.peekMsg(sourcePipe, ServerResponseSchema.MSG_TOCHANNEL_100) 
+				 && Pipe.peekLong(sourcePipe, 1) == channelId 
+			 	 && Pipe.peekInt(sourcePipe, 3)==expSeq 
+			     && (len+Pipe.peekInt(sourcePipe, 5)<myPipe.maxAvgVarLen)  ) {
+					 //this is still part of the current response so combine them together
+					 
+					 Pipe.takeMsgIdx(sourcePipe);
+					 Pipe.takeLong(sourcePipe);
+					 Pipe.takeInt(sourcePipe);
+					 int meta2 = Pipe.takeRingByteMetaData(sourcePipe); //for string and byte array
+					 int pos2 = Pipe.bytePosition(meta2, sourcePipe, len);
+					 assert(pos2==(len+bytePosition)) : "Expected data directly follow from header";
+					 
+					 int len2 = Pipe.takeRingByteLen(sourcePipe);
+					 len+=len2;
+					 
+					 requestContext = Pipe.takeInt(sourcePipe); //this replaces the previous context read
+		
+					 Pipe.confirmLowLevelRead(sourcePipe, SIZE_OF_TO_CHNL);	 
+					 Pipe.readNextWithoutReleasingReadLock(sourcePipe);
+					 
+		 }
+		 
+		 
+		 writeToNextStage(myPipe, channelId, len, requestContext, blobMask, blob, bytePosition); 
+		 
+		 //TODO: we should also look at the module definition logic so we can have mutiple OrderSuper instances (this is the first solution).
+		 
+		 Pipe.releaseAllPendingReadLock(sourcePipe); //now done consuming the bytes so release the pending read lock release.
+		 
+		 
+		 //Pipe.releaseReadLock(sourcePipe);
+	}
 
 
 	private void testValidContentQuick(final Pipe<ServerResponseSchema> sourcePipe, int meta, int len) {

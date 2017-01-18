@@ -322,7 +322,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
             int messageIdx = accumulateRunningBytes(idx, selectedInput);
             if (messageIdx < 0) {
-            	logger.info("detected EOF for {}",idx);
+            	//logger.info("detected EOF for {}",idx);
             	//accumulate these before shutdown?? also wait for all data to be consuemd.
                 isOpen[idx] = false;
                 if (inputLengths[idx]<=0) {
@@ -351,7 +351,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         	assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
         	
         	TrieParserReader.parseSetup(trieReader, Pipe.blob(selectedInput), inputBlobPos[idx], inputLengths[idx], Pipe.blobMask(selectedInput));	   
-        	validateNext(trieReader, idx);
+        	assert(validateNextByte(trieReader, idx));
         	do {
         		assert(inputLengths[idx]>0) : "length is "+inputLengths[idx]; 
 	            result = consumeAvail(idx, selectedInput, channel, inputBlobPos[idx], inputLengths[idx]);	           
@@ -403,12 +403,17 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	                assert(l == trieReader.sourceLen);
 	                inputBlobPos[idx]=p;
 	                assert(trieReader.sourcePos==inputBlobPos[idx]);
-	                validateNext(trieReader, idx);
+	                assert(validateNextByte(trieReader, idx));
 	                
 	                assert(boundsCheck(idx, l));
 	                
 	                inputLengths[idx]=l;	                
 	                
+	                //TODO: add checks to ensure that the tail and head only move foreward.
+	                
+	                assert(trieReader.sourceLen == Pipe.releasePendingByteCount(selectedInput));
+	                
+	                //the release pending above should keep them in algnment and the ounstanding should match
 	                assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
 	                
 	                if (l==0) {
@@ -504,7 +509,7 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
 		return NEED_MORE_DATA;
 	}
 	
-	validateNext(trieReader, idx);
+	assert(validateNextByte(trieReader, idx));
 
 //	char ch = (char)selectedInput.blobRing[trieReader.sourcePos&selectedInput.blobMask];
 //	if (ch!='G') {
@@ -634,7 +639,7 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
         Pipe.confirmLowLevelWrite(outputPipe, size); 
         sequences[idx]++; //increment the sequence since we have now published the route.
 
-        validateNext(trieReader, idx);
+        assert(validateNextByte(trieReader, idx));
         //logger.info("normal finish");
         
         
@@ -645,15 +650,16 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
     }
     
    inputCounts[idx]++; 
-   validateNext(trieReader, idx);
+   assert(validateNextByte(trieReader, idx));
    return SUCCESS;
 }
 
-private void validateNext(TrieParserReader trieReader, int idx) {
+private boolean validateNextByte(TrieParserReader trieReader, int idx) {
 	StringBuilder temp = new StringBuilder();
 	TrieParserReader.debugAsUTF8(trieReader, temp, 4,false);
 	boolean expr = trieReader.sourceLen<=0 || temp.charAt(0)=='G';
 	assert expr :"bad first bytes detected as "+temp+" on input count "+inputCounts[idx];
+	return true;
 }
 
 private void sendRelease(long channel, final int idx) {

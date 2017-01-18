@@ -117,6 +117,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 					}
 				} else {
 					Pipe<NetPayloadSchema> pipe = input[i];
+					assert(pipe.bytesReadBase(pipe)>=0);
 					
 //					if (connections[1]!=null) {
 //						xA++;
@@ -217,12 +218,12 @@ public class ClientSocketWriterStage extends PronghornStage {
 							long channelId = Pipe.takeLong(pipe);
 							ClientConnection cc = (ClientConnection)ccm.get(channelId, 0);
 							
-							long workingTail = Pipe.takeLong(pipe);
+							long workingTailPosition = Pipe.takeLong(pipe);
 							
 							int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 							int len  = Pipe.takeRingByteLen(pipe);
 	
-						    	if (SSLUtil.HANDSHAKE_POS != workingTail) {
+						    	if (SSLUtil.HANDSHAKE_POS != workingTailPosition) {
 		 							
 									if (null!=cc) {
 
@@ -239,8 +240,10 @@ public class ClientSocketWriterStage extends PronghornStage {
 
 										assert(writeHolder[0].remaining()==0);
 										assert(writeHolder[1].remaining()==0);
-																				
-										Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
+																		
+										final int fragSize = Pipe.sizeOf(pipe, msgIdx);
+										
+										Pipe.confirmLowLevelRead(pipe, fragSize);
 										Pipe.releaseReadLock(pipe);
 										
 //										System.err.println(enableWriteBatching+" && "+
@@ -259,11 +262,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 										        	assert(m==msgIdx): "internal error";
 										        	long c = Pipe.takeLong(pipe);
 										        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
-										        	
-										        	boolean takeTail = true;
-										        	if (takeTail) {
-										        		workingTail=Pipe.takeLong(pipe);
-										        	}
+										        	workingTailPosition=Pipe.takeLong(pipe);
 										        											            
 										            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 										            int len2 = Pipe.takeRingByteLen(pipe);
@@ -274,9 +273,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 										        		
 										      //      System.err.println("did it here");
 										            
-											        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
+											        Pipe.confirmLowLevelRead(pipe, fragSize);
 											        Pipe.releaseReadLock(pipe);
-										        }											
+								        }											
 										
 										
 										if (ClientCoordinator.TEST_RECORDS) {	
@@ -333,7 +332,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 					} finally {
 						didWork = true;
 						
-					}			
+					}	
+					assert(pipe.bytesReadBase(pipe)>=0);
 				}
 				
 			}

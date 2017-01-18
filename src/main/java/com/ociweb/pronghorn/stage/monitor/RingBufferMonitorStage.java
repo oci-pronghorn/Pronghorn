@@ -56,16 +56,20 @@ public class RingBufferMonitorStage extends PronghornStage {
 		}
 	}
 
-	public String getObservedRingName() {
+	public String getObservedPipeName() {
 		//NOTE: is this really the right graph, may need to get the graph from the producer or consumer of the observedRingBuffer!!
 		return GraphManager.getRingName(gm, observedPipe);
 	}
 	
-	public long getObservedRingPublishedCount() {
+	public long getObservedPipePublishedCount() {
 		return Pipe.headPosition(observedPipe);
 	}
 	
-	public int getObservedRingId() {
+	public long getObservedPipeBytesAllocated() {
+		return observedPipe.config().totalBytesAllocated();
+	}
+	
+	public int getObservedPipeId() {
 		return observedPipe.id;
 	}
 }
