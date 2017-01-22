@@ -589,33 +589,33 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	 */
 	public static boolean peekEquals(Pipe pipe, int loc, int expected) {			
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
-		return StackStateWalker.hasContentToRead(pipe) && (expected == Pipe.readValue(Pipe.slab(pipe),pipe.mask,pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc)));
+		return StackStateWalker.hasContentToRead(pipe) && (expected == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc)));
 	}
 	
 	public static boolean peekMsg(Pipe pipe, int expected) {			
-		return StackStateWalker.hasContentToRead(pipe) && (expected == Pipe.readValue(Pipe.slab(pipe),pipe.mask,pipe.ringWalker.nextWorkingTail));
+		return StackStateWalker.hasContentToRead(pipe) && (expected == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail));
 	}
 
 	public static boolean peekNotMsg(Pipe pipe, int expected) {			
-		return StackStateWalker.hasContentToRead(pipe) && (expected != Pipe.readValue(Pipe.slab(pipe),pipe.mask,pipe.ringWalker.nextWorkingTail));
+		return StackStateWalker.hasContentToRead(pipe) && (expected != Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail));
 	}
 	
 	public static boolean peekNotMsg(Pipe pipe, int expected1, int expected2) {			
 		return StackStateWalker.hasContentToRead(pipe) && 
-			(expected1 != Pipe.readValue(Pipe.slab(pipe),pipe.mask,pipe.ringWalker.nextWorkingTail)) && 
-			(expected2 != Pipe.readValue(Pipe.slab(pipe),pipe.mask,pipe.ringWalker.nextWorkingTail));
+			(expected1 != Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail)) && 
+			(expected2 != Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail));
 	}
 	
 	public static int peekInt(Pipe pipe, int loc) {			
 		assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
-		return Pipe.readValue(Pipe.slab(pipe),pipe.mask,pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc));
+		return Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc));
 	}
 	
 	public static long peekLong(Pipe pipe, int loc) {
 		assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.LongSigned, TypeMask.LongSignedOptional, TypeMask.LongUnsigned, TypeMask.LongUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
-		return Pipe.readLong(Pipe.slab(pipe),pipe.mask,pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc));
+		return Pipe.readLong(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc));
 	}
 	
 	public static <A extends Appendable> A peekUTF8(Pipe pipe, int loc, A target) {
@@ -628,13 +628,13 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     	assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
-        return Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc)+1)];// second int is always the length
+        return Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc)+1)];// second int is always the length
     }
 	
     public static int peekDataPosition(Pipe pipe, int loc) {
     	assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
-        return Pipe.restorePosition(pipe,Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc))]);
+        return Pipe.restorePosition(pipe,Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc))]);
     }
 	
 	//this impl only works for simple case where every message is one fragment. 
@@ -660,7 +660,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	}
 
     private static int bytesConsumed(Pipe pipe) {
-        return Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.nextWorkingTail-1)];
+        return Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.nextWorkingTail-1)];
     }
 
 	public static void releaseReadLock(Pipe pipe) {

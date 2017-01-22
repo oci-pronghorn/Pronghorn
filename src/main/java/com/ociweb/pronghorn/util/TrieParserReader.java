@@ -185,6 +185,7 @@ public class TrieParserReader {
         that.sourceBacking = source;
         that.sourceMask    = mask;        
     }
+
     
     public static void parseSetupGrow(TrieParserReader that, int additionalLength) {
     	that.sourceLen += additionalLength;
@@ -886,7 +887,7 @@ public class TrieParserReader {
 
          assert((reader.capturedValues[pos]&0xFFFF) != 0) : "No number was found, no digits were parsed.";
          
-         return value;
+         return value*sign; //TODO: needs unit test to cover positive and negative numbers.
     }
 
 

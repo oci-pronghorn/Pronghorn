@@ -934,7 +934,7 @@ public class Pipe<T extends MessageSchema> {
 		}
 		
 		//we know that we are looking for a non zero length
-		assert(Pipe.getBlobHeadPosition(pipe)!=Pipe.getBlobTailPosition(pipe)) : "Needs "+length+"but pipe is empty and can not have any data: "+pipe;
+		assert(Pipe.getBlobHeadPosition(pipe)!=Pipe.getBlobTailPosition(pipe)) : "Needs "+length+" but pipe is empty and can not have any data: "+pipe;
 		
 		
 	    int mHead = Pipe.blobMask(pipe) & Pipe.getBlobHeadPosition(pipe);
@@ -1183,6 +1183,10 @@ public class Pipe<T extends MessageSchema> {
     		target.limit(0);
     	}
         return target;
+    }
+      
+    public static <S extends MessageSchema> ByteBuffer[] wrappedWritingBuffers(Pipe<S> output) {
+    	return wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(output),output);
     }
     
     public static <S extends MessageSchema> ByteBuffer[] wrappedWritingBuffers(int originalBlobPosition, Pipe<S> output) {
@@ -1574,6 +1578,27 @@ public class Pipe<T extends MessageSchema> {
         }
     }
 
+   
+   public static <S extends MessageSchema> void skipNextFragment(Pipe<S> pipe) {
+		   
+	   skipNextFragment(pipe, Pipe.takeMsgIdx(pipe));
+	   
+   }
+
+	public static <S extends MessageSchema> void skipNextFragment(Pipe<S> pipe, int msgIdx) {
+		   long pos = Pipe.getWorkingTailPosition(pipe);
+		   int msgSize = Pipe.sizeOf(pipe, msgIdx);
+		   int msgBytesConsumed = Pipe.slab(pipe)[ Pipe.blobMask(pipe) & (int)(pos+msgSize-2) ]; 
+
+		   //position for the bytes consumed is stepped over and we have already moved forward by size of messageIdx header so substract 2.	   
+		   pipe.slabRingTail.workingTailPos.value += (msgSize-2); 
+		   pipe.blobRingTail.byteWorkingTailPos.value =  pipe.blobMask & (msgBytesConsumed + pipe.blobRingTail.byteWorkingTailPos.value);
+		   
+		   Pipe.confirmLowLevelRead(pipe, msgSize);
+		   Pipe.releaseReadLock(pipe);
+	}
+		   
+   
 	public static <S extends MessageSchema> boolean isEqual(Pipe<S> pipe, CharSequence charSeq, int meta, int len) {
 		if (len!=charSeq.length()) {
 			return false;
