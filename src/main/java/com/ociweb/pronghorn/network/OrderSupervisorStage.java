@@ -357,11 +357,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					 Pipe.takeMsgIdx(sourcePipe);
 					 Pipe.takeLong(sourcePipe);
 					 Pipe.takeInt(sourcePipe);
-					 int meta2 = Pipe.takeRingByteMetaData(sourcePipe); //for string and byte array
-					 int pos2 = Pipe.bytePosition(meta2, sourcePipe, len);
-					 assert(pos2==(len+bytePosition)) : "Expected data directly follow from header";
 					 
+					 int meta2 = Pipe.takeRingByteMetaData(sourcePipe); //for string and byte array
 					 int len2 = Pipe.takeRingByteLen(sourcePipe);
+					 
+					 int pos2 = Pipe.bytePosition(meta2, sourcePipe, len2); //moves pointer
+	 
 					 len+=len2;
 					 
 					 requestContext = Pipe.takeInt(sourcePipe); //this replaces the previous context read
@@ -479,7 +480,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 
-	private void handshakeProcessing(Pipe<NetPayloadSchema> myPipe, long channelId) {
+	private void handshakeProcessing(Pipe<NetPayloadSchema> pipe, long channelId) {
 		SSLConnection con = coordinator.get(channelId, groupId);
 		
 		HandshakeStatus hanshakeStatus = con.getEngine().getHandshakeStatus();
@@ -493,13 +494,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    } 
 		    
 		    if (HandshakeStatus.NEED_WRAP == hanshakeStatus) {
-		    	if (Pipe.hasRoomForWrite(myPipe)) {
-		    		int size = Pipe.addMsgIdx(myPipe, NetPayloadSchema.MSG_PLAIN_210);
-		    		Pipe.addLongValue(con.getId(), myPipe);//connection
-		    		Pipe.addLongValue(SSLUtil.HANDSHAKE_POS, myPipe); //signal that WRAP is needed 
-		    		Pipe.addByteArray(EMPTY, 0, 0, myPipe);
-		    		Pipe.confirmLowLevelWrite(myPipe, size);
-		    		Pipe.publishWrites(myPipe);
+		    	if (Pipe.hasRoomForWrite(pipe)) {
+		    		int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
+		    		Pipe.addLongValue(con.getId(), pipe);//connection
+		    		Pipe.addLongValue(System.currentTimeMillis(), pipe);
+		    		Pipe.addLongValue(SSLUtil.HANDSHAKE_POS, pipe); //signal that WRAP is needed 
+		    		Pipe.addByteArray(EMPTY, 0, 0, pipe);
+		    		Pipe.confirmLowLevelWrite(pipe, size);
+		    		Pipe.publishWrites(pipe);
 		    		
 		    	} else {
 					//no room to request wrap, try later
@@ -537,7 +539,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 
 		 int plainSize = Pipe.addMsgIdx(myPipe, NetPayloadSchema.MSG_PLAIN_210);
 		 Pipe.addLongValue(channelId, myPipe);
-		 		 
+		 Pipe.addLongValue(System.currentTimeMillis(), myPipe);
 		 Pipe.addLongValue(Pipe.getWorkingTailPosition(myPipe), myPipe);
 		 Pipe.addByteArrayWithMask(myPipe, blobMask, len, blob, bytePosition);
 		 

@@ -121,14 +121,12 @@ public class SocketIOStageTest {
 		run(gm, watch);
 	}
 		
-	@Ignore
-	//@Test
+	@Ignore //broke when we added the arrival time field
 	public void clientToServerSocketATest() {
 		clientToServerSocketTest(true,13081);
 	}
 
-	@Ignore
-	//@Test
+	@Ignore //broke when we added the arrival time field
 	public void clientToServerSocketBTest() {
 		clientToServerSocketTest(false,12082);
 	}

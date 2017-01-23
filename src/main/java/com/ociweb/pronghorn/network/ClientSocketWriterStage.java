@@ -96,47 +96,34 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 		do {
 			didWork = false;
-			
-//			long now = System.currentTimeMillis();
-//			if (now>nextTime) {				
-//				logger.info("total written from client "+totalBytes+"  A:"+xA+" B:"+xB);
-//				nextTime = now + 5_000;
-//			}
-//			
-						
+		
 			int i = input.length;
 			while (--i>=0) {
 								
 				if (connections[i]!=null) {
-	//PHI hit this on network TODO: urgent.				System.err.println("first write did not finish");
+
 					tryWrite(i);
 					if (connections[i]==null) {
 						didWork = true;
-//						i++; //run me again to check for new content
-//						continue;
+						i++; //run me again to check for new content
+						continue;
 					}
 				} else {
 					Pipe<NetPayloadSchema> pipe = input[i];
 					assert(pipe.bytesReadBase(pipe)>=0);
-					
-//					if (connections[1]!=null) {
-//						xA++;
-//					}
-//					if (!Pipe.hasContentToRead(pipe)) {
-//						xB++;
-//					}
 					
 					int msgIdx = -1;
 					//if here helps balance out the traffic so no single users gets backed up.
 					if (connections[i]==null && Pipe.hasContentToRead(pipe)) try {			
 	
 						msgIdx = Pipe.takeMsgIdx(pipe);
-						
+												
 						//System.err.println("data to read "+Pipe.contentRemaining(input[i])+"    "+PipeReader.getMsgIdx(input[i]));
 														
 						if (NetPayloadSchema.MSG_ENCRYPTED_200 == msgIdx) {
 											
 							final long channelId = Pipe.takeLong(pipe);
+							final long arrivalTime = Pipe.takeLong(pipe);
 							int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 							int len = Pipe.takeRingByteLen(pipe);
 
@@ -161,12 +148,13 @@ public class ClientSocketWriterStage extends PronghornStage {
 								Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
 								Pipe.releaseReadLock(pipe);
 								
-								boolean enableWriteBatching = true;
-								System.err.println(enableWriteBatching+" && "+
-								                 Pipe.hasContentToRead(pipe)+" && "+
-							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
-					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
-					            		         (Pipe.peekLong(pipe, 1)==channelId) );
+//								System.err.println(enableWriteBatching+" && "+
+//								                 Pipe.hasContentToRead(pipe)+" && "+
+//							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
+//					            		         (buffers[i].remaining()>pipe.maxAvgVarLen)+" && "+ 
+//					            		         (Pipe.peekLong(pipe, 1)==channelId) );
+								
+								cc.recordSentTime(System.nanoTime());
 								
 						        while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
 							            Pipe.peekInt(pipe)==msgIdx && 
@@ -178,31 +166,26 @@ public class ClientSocketWriterStage extends PronghornStage {
 							        	int m = Pipe.takeMsgIdx(pipe);
 							        	assert(m==msgIdx): "internal error";
 							        	long c = Pipe.takeLong(pipe);
+							        	long aTime = Pipe.takeLong(pipe);
+							        	
 							        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
-							        	
-							        	
-//							            if (takeTail) {
-//							            	activeTails[idx] =  Pipe.takeLong(pipe);
-//							            } else {
-//							            	activeTails[idx] = -1;
-//							            }
-							            
+
 							            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 							            int len2 = Pipe.takeRingByteLen(pipe);
 							            ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
 							            
 							            buffers[i].put(writeBuffs2[0]);
 							            buffers[i].put(writeBuffs2[1]);
-							        		
-							            System.err.println("did it here");
-							            
+							        									            
 								        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
 								        Pipe.releaseReadLock(pipe);
+								        
+								        cc.recordSentTime(System.nanoTime());
 							        }	
 								
 								buffers[i].flip();	
 								connections[i] = cc;
-								
+		
 								tryWrite(i);
 
 							} else {
@@ -216,6 +199,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 						} else if (NetPayloadSchema.MSG_PLAIN_210 == msgIdx) {
 							
 							long channelId = Pipe.takeLong(pipe);
+							long arrivalTime = Pipe.takeLong(pipe);
 							ClientConnection cc = (ClientConnection)ccm.get(channelId, 0);
 							
 							long workingTailPosition = Pipe.takeLong(pipe);
@@ -246,6 +230,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 										Pipe.confirmLowLevelRead(pipe, fragSize);
 										Pipe.releaseReadLock(pipe);
 										
+										cc.recordSentTime(System.nanoTime());
+										
 //										System.err.println(enableWriteBatching+" && "+
 //								                 Pipe.hasContentToRead(pipe)+" && "+
 //							                     (Pipe.peekInt(pipe)==msgIdx)+" && "+ 
@@ -261,6 +247,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 										        	int m = Pipe.takeMsgIdx(pipe);
 										        	assert(m==msgIdx): "internal error";
 										        	long c = Pipe.takeLong(pipe);
+										        	
+										        	long aTime = Pipe.takeLong(pipe);
+										        	
 										        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
 										        	workingTailPosition=Pipe.takeLong(pipe);
 										        											            
@@ -275,6 +264,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 										            
 											        Pipe.confirmLowLevelRead(pipe, fragSize);
 											        Pipe.releaseReadLock(pipe);
+											        
+											        cc.recordSentTime(System.nanoTime());
 								        }											
 										
 										
@@ -364,7 +355,6 @@ public class ClientSocketWriterStage extends PronghornStage {
 				
 				buf.flip();
 				int expected = buf.limit();
-		//		System.out.println(this.stageId+" wrote: \n"+new String(buf.array(),buf.position(),buf.remaining()));
 				
 				while (buf.hasRemaining()) {
 					int len = connections[i].getSocketChannel().write(buf);
@@ -392,10 +382,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 			//logger.info("write clear {}",i);
 			
 			connections[i]=null;
-		} else {
-	//		logger.info("unable to finish write still has {} outstanding for {} upon write got {} ",buffers[i].remaining(),i,value);
-			
-		}
+		} 
 	}
 	
 	

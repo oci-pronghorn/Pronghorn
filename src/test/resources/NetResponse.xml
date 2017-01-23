@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+<templates>
    
    <template name="Response" id="101">
      <uInt64 name="ConnectionId" id="1"/>

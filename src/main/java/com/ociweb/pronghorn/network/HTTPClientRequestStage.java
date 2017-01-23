@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.network;
 
+import java.util.Arrays;
+
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
 import org.slf4j.Logger;
@@ -25,7 +27,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 	private final long disconnectTimeoutMS = 10_000;  //TODO: set with param
 	private long nextUnusedCheck = 0;
 	
-	private int activeOutIdx = 0;
+
 			
 	private static final String implementationVersion = PronghornStage.class.getPackage().getImplementationVersion()==null?"unknown":PronghornStage.class.getPackage().getImplementationVersion();
 		
@@ -126,22 +128,24 @@ public class HTTPClientRequestStage extends PronghornStage {
 		    	  
 		    boolean didWork = false;
 
-//			    	
-//		    logger.info("top of whiile {} {} {} {}",
-//		    		PipeReader.hasContentToRead(requestPipe)
-//		    		   );
 		    
+		    
+	///	    logger.info("send for active pipe {} has content to read {} ",activePipe,Pipe.hasContentToRead(requestPipe));
 		    
 	        if (Pipe.hasContentToRead(requestPipe)         
-	             && hasOpenConnection(requestPipe, output, ccm, findAPipeWithRoom(output))
+	             && hasOpenConnection(requestPipe, output, ccm)
 	             ){
 	  	    	        	
+	        	// logger.info("send for active pipe {}",activePipe);
+	        	
 	        	//Need peek to know if this will block.
 	 	        		        	
 	            final int msgIdx = Pipe.takeMsgIdx(requestPipe);
 	            
 	            didWork = true;
 	        
+	     //       logger.info("write client for {}",msgIdx);
+	            
 	            //TODO: remove this switch???
 				switch (msgIdx) {
 							case -1:
@@ -154,9 +158,11 @@ public class HTTPClientRequestStage extends PronghornStage {
 								
 		                	break;		
 	            			case ClientHTTPRequestSchema.MSG_FASTHTTPGET_200:
-	    	            		processFastGetLogic(now, requestPipe);
+	            				//logger.info("write FAST GET");
+	            				processFastGetLogic(now, requestPipe);
 	    	            	break;
 	            	        case ClientHTTPRequestSchema.MSG_HTTPGET_100:
+	            	        	//logger.info("write GET");
 	            				processGetLogic(now, requestPipe);
 	            				break;
 	            			case ClientHTTPRequestSchema.MSG_HTTPPOST_101:
@@ -191,6 +197,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		        	
 		        	int pSize = Pipe.addMsgIdx(outputPipe, NetPayloadSchema.MSG_PLAIN_210);
 		        	Pipe.addLongValue(clientConnection.id, outputPipe); //NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, clientConnection.id);
+		        	Pipe.addLongValue(System.currentTimeMillis(), outputPipe);
 		        	
 		        	DataOutputBlobWriter<NetPayloadSchema> activeWriter = Pipe.outputStream(outputPipe);
 		        	DataOutputBlobWriter.openField(activeWriter);
@@ -268,10 +275,12 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 					Pipe<NetPayloadSchema> outputPipe = output[outIdx];
 	
-		                	
+				long pos = Pipe.workingHeadPosition(outputPipe);
+					
 		               	int pSize = Pipe.addMsgIdx(outputPipe, NetPayloadSchema.MSG_PLAIN_210);
 		               	
 		               	Pipe.addLongValue(clientConnection.id, outputPipe); //, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, clientConnection.id);
+		               	Pipe.addLongValue(System.currentTimeMillis(), outputPipe);
 		               	Pipe.addLongValue(0, outputPipe); // NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, 0);
 		             	
 		             	
@@ -309,7 +318,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 		            
 		            					                	
 		            	DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
-		        		
+		
+		            	
 		            	Pipe.confirmLowLevelWrite(outputPipe,pSize);
 		            	Pipe.publishWrites(outputPipe);
 		       
@@ -327,9 +337,7 @@ public class HTTPClientRequestStage extends PronghornStage {
   
 		        	clientConnection.setLastUsedTime(now);
 		        	int outIdx = clientConnection.requestPipeLineIdx();
-		        	
-		        	//logger.info("sent get request down pipe {} ",outIdx);
-		        	
+			        	
 		        	clientConnection.incRequestsSent();//count of messages can only be done here.
 					assert(Pipe.hasRoomForWrite(output[outIdx]));
 				
@@ -344,10 +352,13 @@ public class HTTPClientRequestStage extends PronghornStage {
 	private void publishGet(Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection clientConnection,
 			Pipe<NetPayloadSchema> outputPipe) {
 		
+		long pos = Pipe.workingHeadPosition(outputPipe);
+		
 		int pSize = Pipe.addMsgIdx(outputPipe, NetPayloadSchema.MSG_PLAIN_210); 	
 		  
-		  Pipe.addLongValue(clientConnection.id, outputPipe); //, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, clientConnection.id);
-		  Pipe.addLongValue(0, outputPipe); // NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, 0);
+		Pipe.addLongValue(clientConnection.id, outputPipe); //, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, clientConnection.id);
+		Pipe.addLongValue(System.currentTimeMillis(), outputPipe);
+		Pipe.addLongValue(0, outputPipe); // NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, 0);
 		 							                 	
 		
 		DataOutputBlobWriter<NetPayloadSchema> activeWriter = Pipe.outputStream(outputPipe);
@@ -390,11 +401,12 @@ public class HTTPClientRequestStage extends PronghornStage {
   
 		
 		DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
-		
+
 		Pipe.confirmLowLevelWrite(outputPipe,pSize);
 		Pipe.publishWrites(outputPipe);
 		
-		//logger.info("published the get request {}",outputPipe);
+		
+
 	}
 
 
@@ -439,38 +451,23 @@ public class HTTPClientRequestStage extends PronghornStage {
 	}
 
 
-	private int findAPipeWithRoom(Pipe<NetPayloadSchema>[] output) {
-		int result = -1;
-		//if we go around once and find nothing then stop looking
-		int i = output.length;
-		while (--i>=0) {
-			//next idx		
-			if (++activeOutIdx == output.length) {
-				activeOutIdx = 0;
-			}
-			//does this one have room
-			if (Pipe.hasRoomForWrite(output[activeOutIdx])) {
-				result = activeOutIdx;
-				break;
-			}
-		}
-		return result;
-	}
 
 
 	ClientConnection activeConnection =  null;
 	
 	//has side effect fo storing the active connectino as a member so it neeed not be looked up again later.
 	private boolean hasOpenConnection(Pipe<ClientHTTPRequestSchema> requestPipe, 
-											Pipe<NetPayloadSchema>[] output, ClientCoordinator ccm, int outIdx) {
+											Pipe<NetPayloadSchema>[] output, ClientCoordinator ccm) {
 
 		int msgIdx = Pipe.peekInt(requestPipe);
-		
 		
 		if (Pipe.peekMsg(requestPipe, -1)) {
 			return hasRoomForEOF(output);
 		}
 
+		//logger.info("out idx {} requestPipe {} ",outIdx, requestPipe);
+		
+		
 		assert (msgIdx==ClientHTTPRequestSchema.MSG_FASTHTTPGET_200 || msgIdx==ClientHTTPRequestSchema.MSG_HTTPGET_100 ) : "bad msgIdx of "+msgIdx+" at "+Pipe.getWorkingTailPosition(requestPipe)+"  "+requestPipe;
 		
 		int userId = Pipe.peekInt(requestPipe,   1); //user id always after the msg idx
@@ -493,7 +490,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 		//	System.err.println("first lookup connection "+connectionId);
  		}
 		
-		activeConnection = ClientCoordinator.openConnection(ccm, hostBack, hostPos, hostLen, hostMask, port, userId, outIdx, output, connectionId);
+ 		
+		activeConnection = ClientCoordinator.openConnection(ccm, hostBack, hostPos, hostLen, hostMask, port, userId, output, connectionId);
 				
 		
 		if (null != activeConnection) {
@@ -502,11 +500,23 @@ public class HTTPClientRequestStage extends PronghornStage {
 				
 				//If this connection needs to complete a hanshake first then do that and do not send the request content yet.
 				HandshakeStatus handshakeStatus = activeConnection.getEngine().getHandshakeStatus();
-				if (HandshakeStatus.FINISHED!=handshakeStatus && HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus) {
+				if (HandshakeStatus.FINISHED!=handshakeStatus && HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus /* && HandshakeStatus.NEED_WRAP!=handshakeStatus*/) {
+					
+					
+				//	System.err.println("no hanshake "+activeConnection.id+" status "+handshakeStatus);
+					
+					
 					activeConnection = null;
+					
 					return false;
 				}
-	
+				if ( HandshakeStatus.NEED_WRAP==handshakeStatus) {
+					
+					//TODO: send wrap request???
+					
+				}
+				
+				
 			}
 			
 		} else {
@@ -524,13 +534,14 @@ public class HTTPClientRequestStage extends PronghornStage {
 //				}
 //			}
 		
+			//System.err.println("no connection");
 			return false;
 		}
 		
 		
-		outIdx = activeConnection.requestPipeLineIdx(); //this should be done AFTER any handshake logic
-		Pipe<NetPayloadSchema> pipe = output[outIdx];
-		if (!Pipe.hasRoomForWrite(pipe)) {
+		int outIdx = activeConnection.requestPipeLineIdx(); //this should be done AFTER any handshake logic
+		if (!Pipe.hasRoomForWrite(output[outIdx])) {
+			//System.err.println("no room for write to "+pipe);
 			return false;
 		}
 		return true;

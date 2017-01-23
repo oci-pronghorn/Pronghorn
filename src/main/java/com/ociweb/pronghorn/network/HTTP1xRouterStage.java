@@ -671,7 +671,7 @@ private void sendRelease(long channel, final int idx) {
 	if (!Pipe.hasRoomForWrite(releasePipe)) {
 		logger.info("warning, to prevent hang we must write this message, write fewer or make pipe longer.");
 		//NOTE must spin lock for room, must write or this system may hang.
-		Pipe.spinBlockForRoom(releasePipe, Pipe.sizeOf(releasePipe, ReleaseSchema.MSG_RELEASE_100));	    		
+		Pipe.spinBlockForRoom(releasePipe, Pipe.sizeOf(releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101));	    		
 	}
 
 	if (Pipe.hasRoomForWrite(releasePipe)) {	   
@@ -735,15 +735,14 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
            )
             
           ) {
-    
 
-    	
         
         messageIdx = Pipe.takeMsgIdx(selectedInput);
         
         if (NetPayloadSchema.MSG_PLAIN_210 == messageIdx) {
             long channel   = Pipe.takeLong(selectedInput);
-
+            long arrivalTime = Pipe.takeLong(selectedInput);
+            
             this.inputSlabPos[idx] = Pipe.takeLong(selectedInput);            
           
             int meta       = Pipe.takeRingByteMetaData(selectedInput);
@@ -827,7 +826,7 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
         	} else {
 	            assert(-1 == messageIdx) : "messageIdx:"+messageIdx;
 	            if (-1 != messageIdx) {
-	            	throw new UnsupportedOperationException("bad id "+messageIdx);
+	            	throw new UnsupportedOperationException("bad id "+messageIdx+" raw data  \n"+selectedInput);
 	            }
 	            
 	            Pipe.confirmLowLevelRead(selectedInput, Pipe.EOF_SIZE);

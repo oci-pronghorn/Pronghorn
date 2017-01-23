@@ -7,18 +7,17 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
-import com.ociweb.pronghorn.pipe.PipeWriter;
+
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class SSLEngineWrapStage extends PronghornStage {
 
-	private final SSLConnectionHolder        ccm;
+	private final SSLConnectionHolder      ccm;
 	private final Pipe<NetPayloadSchema>[] encryptedContent; 
 	private final Pipe<NetPayloadSchema>[] plainContent;
-	private ByteBuffer[]                         secureBuffers;
-	private Logger                               logger = LoggerFactory.getLogger(SSLEngineWrapStage.class);
+	private ByteBuffer[]                   secureBuffers;
+	private Logger                         logger = LoggerFactory.getLogger(SSLEngineWrapStage.class);
 	
 	private long          totalNS;
 	private int           calls;
@@ -92,7 +91,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 				
 				try {
 					didWork |= SSLUtil.engineWrap(ccm, sourcePipe, targetPipe, secureBuffers[i], isServer, groupId);	
-					
+			
 				} catch (Throwable t) {
 					t.printStackTrace();
 					requestShutdown();
@@ -105,33 +104,41 @@ public class SSLEngineWrapStage extends PronghornStage {
 				//close the connection logic
 				//if connection is open we must finish the handshake.
 				////////////////////////////////////
-				if (PipeWriter.hasRoomForFragmentOfSize(targetPipe, SIZE_HANDSHAKE_AND_DISCONNECT)
-					&& PipeReader.peekMsg(sourcePipe, NetPayloadSchema.MSG_DISCONNECT_203)) {
+				if (Pipe.hasRoomForWrite(targetPipe, SIZE_HANDSHAKE_AND_DISCONNECT)
+					&& Pipe.peekMsg(sourcePipe, NetPayloadSchema.MSG_DISCONNECT_203)) {
 					
 					//logger.info("WRAP FOUND DISCONNECT MESSAGE A server:"+isServer);
 					
-					PipeReader.tryReadFragment(sourcePipe);
-					long connectionId = PipeReader.readLong(sourcePipe, NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201);
+					int msgId = Pipe.takeMsgIdx(sourcePipe);
+					assert(NetPayloadSchema.MSG_DISCONNECT_203 == msgId);
+										
+					long connectionId = Pipe.takeLong(sourcePipe); //NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201);
+					long time = System.currentTimeMillis();
 					
 					SSLConnection connection = ccm.get(connectionId, groupId);
 					if (null!=connection) {
 						assert(connection.isDisconnecting()) : "should only receive disconnect messages on connections which are disconnecting.";
-						SSLUtil.handShakeWrapIfNeeded(connection, targetPipe, secureBuffers[i], isServer);					
+						SSLUtil.handShakeWrapIfNeeded(connection, targetPipe, secureBuffers[i], isServer, time);					
 					}				
 					
-					PipeWriter.tryWriteFragment(targetPipe, NetPayloadSchema.MSG_DISCONNECT_203);
-					PipeWriter.writeLong(targetPipe, NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, connectionId);
-					PipeWriter.publishWrites(targetPipe);
+					Pipe.addMsgIdx(targetPipe, NetPayloadSchema.MSG_DISCONNECT_203);
+					Pipe.addLongValue(connectionId, targetPipe); // NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, connectionId);
 					
-					PipeReader.releaseReadLock(sourcePipe);
+					Pipe.confirmLowLevelWrite(targetPipe, Pipe.sizeOf(targetPipe, NetPayloadSchema.MSG_DISCONNECT_203));
+					Pipe.publishWrites(targetPipe);
+										
+					Pipe.confirmLowLevelRead(sourcePipe, Pipe.sizeOf(sourcePipe, msgId));
+					Pipe.releaseReadLock(sourcePipe);
 				} 
 				
 				///////////////////////////
 				//shutdown this stage logic
 				///////////////////////////
-				if (PipeReader.peekMsg(sourcePipe, -1)) {
-					PipeReader.tryReadFragment(sourcePipe);
-					PipeReader.releaseReadLock(sourcePipe);
+				if (Pipe.peekMsg(sourcePipe, -1)) {
+					int msg = Pipe.takeInt(sourcePipe);
+					assert(-1 == msg);
+					Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
+					Pipe.releaseReadLock(sourcePipe);
 					if (--shutdownCount<=0) {
 						requestShutdown();
 						break;
@@ -151,7 +158,7 @@ public class SSLEngineWrapStage extends PronghornStage {
     	    	
     	int j = encryptedContent.length;
     	while (--j>=0) {
-    		PipeWriter.publishEOF(encryptedContent[j]);
+    		Pipe.publishEOF(encryptedContent[j]);
     	}    	
     	
     	boolean debug=false;

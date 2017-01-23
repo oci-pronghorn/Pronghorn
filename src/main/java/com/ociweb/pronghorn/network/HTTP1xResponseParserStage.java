@@ -28,6 +28,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private final Pipe<NetPayloadSchema>[] input; 
 	private final Pipe<NetResponseSchema>[] output;
 	private long[] inputPosition;
+	private long[] arrivalTimeAtPosition;
 	private long[] blockedPosition;
 	private int[]  blockedOpenCount;
 	private int[]  blockedLen;
@@ -119,6 +120,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		  payloadLengthData = new long[input.length];
 		  ccIdData = new long[input.length];
 		  inputPosition = new long[input.length];
+		  arrivalTimeAtPosition = new long[input.length];
 		  blockedPosition = new long[input.length];
 		  blockedOpenCount = new int[input.length];
 		  blockedLen = new int[input.length];
@@ -267,6 +269,14 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					//assert(NetPayloadSchema.MSG_PLAIN_210==msgIdx): "msgIdx "+msgIdx+"  "+pipe;
 			
 					ccId = Pipe.takeLong(pipe);
+					
+					//TODO: is this held too long??????
+					long arrivalTemp = Pipe.takeLong(pipe);
+					//if already set do not set again, we want the leading edge of the data arrival.
+					if (arrivalTimeAtPosition[i]<=0) {
+						arrivalTimeAtPosition[i] = arrivalTemp;
+					}
+					//TODO: how long is this waiting? is it very old?
 					inputPosition[i] = Pipe.takeLong(pipe);
 										
 					ccIdData[i] = ccId;
@@ -303,10 +313,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					//logger.info("parse new data of {} for connection {}",len,cc.getId());
 	
 					if (positionMemoData[lenIdx]==0) {
-						assert(positionMemoData[posIdx] == pos) : "new pos "+pos+" should be the same as where we left off "+positionMemoData[posIdx];
-	
-						positionMemoData[posIdx] = pos;
-						
+						positionMemoData[posIdx] = pos;						
 						positionMemoData[lenIdx] = len;
 					} else {				
 						positionMemoData[lenIdx] += len;
@@ -463,7 +470,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									
 	
 						positionMemoData[stateIdx] = state = 5;
-						foundWork += finishAndRelease(i, stateIdx, ccId, pipe, cc); 
+						foundWork += finishAndRelease(i, stateIdx, pipe, cc); 
 						
 						TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 						
@@ -646,7 +653,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 														
 									assert(trieReader.sourceLen<=0 || input[i].blobRing[input[i].blobMask&trieReader.sourcePos]=='H') :"bad next value of "+(int)input[i].blobRing[input[i].blobMask&trieReader.sourcePos];
 									
-									foundWork += finishAndRelease(i, stateIdx, ccId, pipe, cc); 
+									foundWork += finishAndRelease(i, stateIdx, pipe, cc); 
 									state = positionMemoData[stateIdx];
 									
 									if (initial>=0) {
@@ -748,7 +755,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										Pipe.confirmLowLevelWrite(targetPipe, Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101));
 										Pipe.publishWrites(targetPipe);	
 							
-										foundWork += finishAndRelease(i, stateIdx, ccId, pipe, cc); 
+										foundWork += finishAndRelease(i, stateIdx, pipe, cc); 
 										
 										if (initial>=0) {
 											lastMessageParseSize(trieReader.sourcePos-initial);
@@ -805,7 +812,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					case 5: //END SEND ACK
 						logger.info("source position {} state {} ",trieReader.sourcePos,state);
 						
-					    foundWork += finishAndRelease(i, stateIdx, ccId, pipe, cc);
+					    foundWork += finishAndRelease(i, stateIdx, pipe, cc);
 						if (initial>=0) {
 						    lastMessageParseSize(trieReader.sourcePos-initial);
 						}
@@ -979,7 +986,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		logger.info("length avail when parsed {}",len);
 	}
 
-	private int finishAndRelease(int i, final int stateIdx, long ccId,
+	private int finishAndRelease(int i, final int stateIdx,
 			Pipe<NetPayloadSchema> pipe, ClientConnection cc) {
 		
 		assert(5==positionMemoData[stateIdx]);
@@ -989,7 +996,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		if (trieReader.sourceLen<=0 &&
 		    Pipe.contentRemaining(pipe)==0) {	//added second rule to minimize release messages.
 			//TODO: if not sent we should stay on ack step.
-			foundWork = sendRelease(stateIdx, ccId, inputPosition, i);
+			
+			foundWork = sendRelease(stateIdx, cc.id, inputPosition, i);
 			//may return without setting ack because pipe is full.	
 			if (positionMemoData[stateIdx] != 0) {
 				logger.info("not finished {})",cc.id);
@@ -998,7 +1006,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		} else {
 			foundWork = 1;						
 			positionMemoData[stateIdx] = 0; //next state	
-
+			cc.recordArrivalTime(arrivalTimeAtPosition[i]);
+			arrivalTimeAtPosition[i] = 0;
 		}
 		
 		if (ServerCoordinator.TEST_RECORDS &&  trieReader.sourceLen>0) {

@@ -256,7 +256,8 @@ public class ServerSocketWriterStage extends PronghornStage {
     	
         Pipe<NetPayloadSchema> pipe = dataToSend[idx];
         final long channelId = Pipe.takeLong(pipe);
-                
+        final long arrivalTime = Pipe.takeLong(pipe);        
+        
         activeIds[idx] = channelId;
         if (takeTail) {
         	activeTails[idx] =  Pipe.takeLong(pipe);
@@ -306,6 +307,8 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        	int m = Pipe.takeMsgIdx(pipe);
 		        	assert(m==msgIdx): "internal error";
 		        	long c = Pipe.takeLong(pipe);
+		        	
+		        	long aTime = Pipe.takeLong(pipe);
 		        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
 		        	
 		        	

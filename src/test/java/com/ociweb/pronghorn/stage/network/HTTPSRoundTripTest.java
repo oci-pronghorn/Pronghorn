@@ -378,10 +378,13 @@ public class HTTPSRoundTripTest {
 	    		serverCoord = exampleServerSetup(isTLS, gm, testFile, host, port);
 	    	}
 
+	    	///TODO: when we have more clients than the server has pertials for TLS we can get a repetable hang situation.
+	    	//       confirm hanshake pipe releases
+	    	
 	    	/////////////////
 	        /////////////////
-	    	int base2SimultaniousConnections = 2;//6; //TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
-	    	int clientCount = 8;
+	    	int base2SimultaniousConnections = 3;//TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
+	    	int clientCount = 4;
 	    		    	
 	    	//TODO: this number must be the limit of max simuantious handshakes.
 	    	int maxPartialResponsesClient = 1<<base2SimultaniousConnections; //input lines to client (should be large)
@@ -395,19 +398,16 @@ public class HTTPSRoundTripTest {
 	    	//client output count of pipes, this is the max count of handshakes from this client since they block all following content.
 	    	
 			
-	    	int clientResponseUnwrapUnits = 2;//To be driven by core count,  this is for consuming get responses
-	    	int clientRequestWrapUnits = isTLS?4:8;//To be driven by core count, this is for production of post requests, more pipes if we have no wrappers?
+	    	int clientResponseUnwrapUnits = 2;//maxPartialResponsesClient;//To be driven by core count,  this is for consuming get responses
+	    	int clientRequestWrapUnits = 2;//maxPartialResponsesClient;//isTLS?4:8;//To be driven by core count, this is for production of post requests, more pipes if we have no wrappers?
 	    	int requestQueue = 96; 
 
 	    	int responseQueue = 64; //is this used for both socket writer and http builder? seems like this is not even used..
 	    	
 	    	//////////////
-	    	
-	    	//TODO: we have a startup race condition when we push to hard in the client, for high values this is getting corrupt data in the client.
-	    	int inFlightLimit = 14_000;//14_000;//_000;//512_000;//1800;//4_000_000; //client reader seems to be corrupting heavy data...
-	    	
+
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
-	    	final int loadMultiplier = isTLS? 100_000 : 1_000_000;
+	    	final int loadMultiplier = isTLS? 100_000 : 2_000_000;
 
 	    		    	
 			//one of these per unwrap unit and per partial message, there will be many of these normally so they should not be too large
@@ -426,8 +426,8 @@ public class HTTPSRoundTripTest {
 	    	while (--cc>=0) {	    	
 		    	singleClientSetup(isTLS, gm, base2SimultaniousConnections, totalUsersCount, loadMultiplier,
 						maxPartialResponsesClient, clientOutputCount, clientWriterStages, testFile, port, host,
-						clientResponseUnwrapUnits, clientRequestWrapUnits, responseQueue, requestQueue, inFlightLimit,
-						clientCoords, clients, cc, netRespQueue, netRespSize);
+						clientResponseUnwrapUnits, clientRequestWrapUnits, responseQueue, requestQueue, clientCoords,
+						clients, cc, netRespQueue, netRespSize);
 	    	}
 			
 				    	
@@ -503,12 +503,12 @@ public class HTTPSRoundTripTest {
 			final int totalUsersCount, final int loadMultiplier, int maxPartialResponsesClient,
 			final int clientOutputCount, final int clientWriterStages, final String testFile, int port, String host,
 			int clientResponseUnwrapUnits, int clientRequestWrapUnits, int responseQueue, int requestQueue,
-			int inFlightLimit, ClientCoordinator[] clientCoords, RegulatedLoadTestStage[] clients, int x, int netRespQueue, int netRespSize) {
+			ClientCoordinator[] clientCoords, RegulatedLoadTestStage[] clients, int x, int netRespQueue, int netRespSize) {
 		{
 			//holds new requests
 			Pipe<ClientHTTPRequestSchema>[] input = new Pipe[totalUsersCount];
 			
-			int usersBits = 0;//this feature does not work.
+			int usersBits = 0;//TODO: this feature does not work. but must be fixed now to test 20K simultanious connections.
 			int usersPerPipe = 1<<usersBits;  
 			ClientCoordinator clientCoord = new ClientCoordinator(base2SimultaniousConnections+usersBits, maxPartialResponsesClient, isTLS);						
 			
@@ -526,7 +526,7 @@ public class HTTPSRoundTripTest {
 					                                           requestQueue, requestQueueBytes, responseQueue, responseQueueBytes,
 					                                           clientWriterStages, netRespQueue, netRespSize, httpRequestQueueSize,httpRequestQueueBytes);
 			assert(toReactor.length == input.length);
-			clients[x] = new RegulatedLoadTestStage(gm, toReactor, input, totalUsersCount*loadMultiplier, inFlightLimit, "/"+testFile, usersPerPipe, port, host,"reg"+x, clientCoord);
+			clients[x] = new RegulatedLoadTestStage(gm, toReactor, input, totalUsersCount*loadMultiplier, "/"+testFile, usersPerPipe, port, host, "reg"+x,clientCoord);
 			clientCoords[x]=clientCoord;
 		}
 	}
@@ -534,11 +534,11 @@ public class HTTPSRoundTripTest {
 	private ServerCoordinator exampleServerSetup(boolean isTLS, GraphManager gm, final String testFile, String bindHost, int bindPort) {
 		final String pathRoot = buildStaticFileFolderPath(testFile);
 		
-		final int maxPartialResponsesServer     = 16; //input lines to server (should be large)
+		final int maxPartialResponsesServer     = 32; //input lines to server (should be large)
 		final int maxConnectionBitsOnServer 	= 12;//8K simulanious connections on server	    	
 		final int serverRequestUnwrapUnits 		= 2; //server unwrap units - need more for handshaks and more for posts
-		final int serverResponseWrapUnits 		= 8;
-		final int serverPipesPerOutputEngine 	= isTLS?1:4;//multiplier against server wrap units for max simultanus user responses.
+		final int serverResponseWrapUnits 		= 4;
+		final int serverPipesPerOutputEngine 	= isTLS?8:2;//multiplier against server wrap units for max simultanus user responses.
 		final int serverSocketWriters           = 1;
 		
 		//drives the cached data from the file loader.
@@ -551,7 +551,7 @@ public class HTTPSRoundTripTest {
 		final int serverInputBlobs = 1<<16;//23;////19; //when small THIS has a big slow-down effect and it appears as the client getting backed up.
 		final int serverInputMsg = 4; 
 		 
-		final int serverMsgToEncrypt = 32; //only used for TLS
+		final int serverMsgToEncrypt = 256;  //from the SUPER, TODO: when too small the super looks to blame but its these pipe behind it, must investigate better notifications.
 		final int serverBlobToEncrypt = 1<<12;
 		 
 		final int serverMsgToWrite = 1024;///this pipe gets full in short bursts and greatly impacts how much the server gets backed up. 

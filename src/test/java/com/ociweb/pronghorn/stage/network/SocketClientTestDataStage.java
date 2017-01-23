@@ -85,6 +85,7 @@ public class SocketClientTestDataStage extends PronghornStage {
 					{
 					Assert.assertTrue(encrytpedContent);
 					long conId = Pipe.takeLong(pipe);
+					long arrivalTime = Pipe.takeLong(pipe);
 					
 					int meta = Pipe.takeRingByteMetaData(pipe);
 					int len = Pipe.takeRingByteLen(pipe);		
@@ -107,6 +108,7 @@ public class SocketClientTestDataStage extends PronghornStage {
 					Assert.assertFalse(encrytpedContent);
 					
 					long conId = Pipe.takeLong(pipe);
+					long arrivalTime = Pipe.takeLong(pipe);
 					long position = Pipe.takeLong(pipe);
 					
 

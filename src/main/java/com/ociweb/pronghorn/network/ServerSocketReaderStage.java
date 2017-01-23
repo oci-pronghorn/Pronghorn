@@ -252,7 +252,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	    			
 	    		} else if (msgIdx == ReleaseSchema.MSG_RELEASE_100) {
 	    			
-	    			logger.info("warning, legacy release use detected");
+	    			logger.info("warning, legacy (client side) release use detected in the server.");
 	    			
 	    			long idToClear = Pipe.takeLong(a);
 	    			long pos = Pipe.takeLong(a);	    					
@@ -440,7 +440,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 				}
 			}				
 			
-			
+	//		logger.info("normal publish for connection {}     {}     {} channelID {} ",  cc.id, targetPipe, messageType, channelId );
+			assert(cc.id == channelId) : "should match "+cc.id+" vs "+channelId;
 			
 			boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;   
 //			bytesConsumed+=len;
@@ -485,9 +486,10 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     	assert(len<Integer.MAX_VALUE) : "Error: blocks larger than 2GB are not yet supported";
         
-        int size = Pipe.addMsgIdx(targetPipe,messageType);               
+        int size = Pipe.addMsgIdx(targetPipe, messageType);               
         Pipe.addLongValue(channelId, targetPipe);  
-             
+        Pipe.addLongValue(System.currentTimeMillis(), targetPipe);
+        
         if (NetPayloadSchema.MSG_PLAIN_210 == messageType) {
         	Pipe.addLongValue(-1, targetPipe);
         }

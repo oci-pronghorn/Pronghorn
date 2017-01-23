@@ -23,7 +23,7 @@ public class SocketTestGenStage extends PronghornStage {
 	
 	private int userIdx;
 	private int testIdx;
-	private int pipeIdx;
+
 	private final int port;
 	
 	public SocketTestGenStage(GraphManager gm, Pipe<NetPayloadSchema>[] pipe, int testUsers, int[] testSeeds, int[] testSizes, ClientCoordinator clientCoordinator, int port) {
@@ -37,7 +37,7 @@ public class SocketTestGenStage extends PronghornStage {
 		
 		this.userIdx = testUsers-1;
 		this.testIdx = testSeeds.length-1;
-		this.pipeIdx = pipe.length-1;
+
 		
 		this.clientCoordinator = clientCoordinator;
 	}
@@ -54,7 +54,7 @@ public class SocketTestGenStage extends PronghornStage {
 			//crazy connection open logic  (need to simplify)
 			/////////
 			ClientConnection connection = clientCoordinator.openConnection(clientCoordinator, hostBytes, 0, hostBytes.length, Integer.MAX_VALUE, 
-					                                                     port, userIdx, pipeIdx, pipe);			
+					                                                     port, userIdx, pipe);			
 			if (null==connection) { //returns non null if this connection is open and ready for use.
 				return;//try again later
 			}
@@ -71,9 +71,6 @@ public class SocketTestGenStage extends PronghornStage {
 			///////////////
 			//inc to next test datum
 			///////////////
-			if (--pipeIdx<0) {
-			   pipeIdx = pipe.length-1;
-			}
 			
 			if (--userIdx<0) {
 				userIdx = testUsers-1;					
@@ -97,6 +94,7 @@ public class SocketTestGenStage extends PronghornStage {
 			
 			int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
 			Pipe.addLongValue(connectionId, pipe);
+			Pipe.addLongValue(System.currentTimeMillis(), pipe);
 			Pipe.addLongValue(0, pipe);
 			
 			byte[] payload = new byte[testSize];

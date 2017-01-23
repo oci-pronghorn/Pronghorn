@@ -72,11 +72,13 @@ public class ClientSocketReaderStage extends PronghornStage {
 	}
 
 	int maxWarningCount = 10;
+	
 	@Override
 	public void requestShutdown() {
 		logger.info("requesting shutdown");
 		super.requestShutdown();
 	}
+	
 	@Override
 	public void run() {
 
@@ -140,11 +142,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 					    	if (pipeIdx>=0) {
 					    		//was able to reserve a pipe run 
 						    	Pipe<NetPayloadSchema> target = output[pipeIdx];
-						    	
-					/////////////////////////////
-						    	//TOOD: client socket reader must be LL api same as server, we can not mix consumer
-			        /////////////////////////////
-						    	
+	
 						    	if (Pipe.hasRoomForWrite(target)) {
 						    					    		
 						    								    		
@@ -192,13 +190,14 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    		if (isTLS) {
 							    			assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
 							    			
-							    			Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
+							    			int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);
 							    			Pipe.addLongValue(cc.getId(), target);
+							    			Pipe.addLongValue(System.nanoTime(), target);
 							    			
 							    			int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
 							    			Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)readCount, target);
 							    			
-							    			Pipe.confirmLowLevelWrite(target, Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_ENCRYPTED_200));
+							    			Pipe.confirmLowLevelWrite(target, size);
 							    			Pipe.publishWrites(target);
 							    										    		
 							    		} else {
@@ -206,6 +205,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    			
 							    			Pipe.addMsgIdx(target, NetPayloadSchema.MSG_PLAIN_210);
 							    			Pipe.addLongValue(cc.getId(), target);         //connection
+							    			Pipe.addLongValue(System.nanoTime(), target);
 							    			Pipe.addLongValue(KNOWN_BLOCK_ENDING, target); //position
 							    			
 							    			int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
@@ -378,7 +378,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	    			
 	    			Pipe.confirmLowLevelRead(ack, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
 				} else {
-					assert(-1 == id);
+					assert(-1 == id) : "unexpected id of "+id;
 					Pipe.confirmLowLevelRead(ack, Pipe.EOF_SIZE);
 				}
 				Pipe.releaseReadLock(ack);

@@ -109,10 +109,10 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 //				//TODO: is there a debug method we can write for this in general?
 //				//no content to wrap on server
 //				if (Pipe.contentRemaining(source)>0) {
-//					System.err.println("input data to be unwrapped "+isServer+" "+idx+" source "+source.contentRemaining(source));
+//					logger.info("input data to be unwrapped "+isServer+" "+idx+" source "+source.contentRemaining(source));
 //				}
 //				if (Pipe.contentRemaining(target)>0) { //TODO: why is this negative?
-//					System.err.println("output data unwrapped "+isServer+"  "+idx+" target "+target.contentRemaining(target));
+//					logger.info("output data unwrapped "+isServer+"  "+idx+" target "+target.contentRemaining(target));
 //				}
 							
 				

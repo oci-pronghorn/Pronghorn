@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+<templates>
 
    <template name="Encrypted" id="200">
      <uInt64 name="ConnectionId" id="201"/>
+     <uInt64 name="ArrivalTime" id="210"/>
      <byteVector name="Payload" id="203"/>
    </template>   
   
    <template name="Plain" id="210">
      <uInt64 name="ConnectionId" id="201"/>
+     <uInt64 name="ArrivalTime" id="210"/>
      <uInt64 name="Position" id="206"/>
      <byteVector name="Payload" id="204"/>
    </template>    

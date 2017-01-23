@@ -5,25 +5,25 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.UnresolvedAddressException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
+import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
-import com.ociweb.pronghorn.pipe.PipeWriter;
+
 
 public class ClientConnection extends SSLConnection {
+
+	private static final long MAX_HIST_VALUE = 40_000_000_000L;
 
 	static final Logger logger = LoggerFactory.getLogger(ClientConnection.class);
 
@@ -49,6 +49,15 @@ public class ClientConnection extends SSLConnection {
 	private long closeTimeLimit = Long.MAX_VALUE;
 	private long TIME_TILL_CLOSE = 10_000;
 
+	private final int maxInFlightBits = 9;	//only allow 512 messages in flight at a time.
+	public final int maxInFlight = 1<<maxInFlightBits;
+	private final int maxInFlightMask = maxInFlight-1;
+	
+	private int inFlightSentPos;
+	private int inFlightRespPos;
+	private long[] inFlightTimes = new long[maxInFlight];
+	
+	
 	
 	static {
 		
@@ -231,23 +240,42 @@ public class ClientConnection extends SSLConnection {
 	                	task.run(); 
 	             }
 			} else if (HandshakeStatus.NEED_WRAP == handshake) {
-												
-				int i = handshakeBegin.length;
-				while (--i>=0) {
-					Pipe<NetPayloadSchema> pipe = handshakeBegin[i];
-
-					if (PipeWriter.tryWriteFragment(pipe, NetPayloadSchema.MSG_PLAIN_210) ) {
+								
+				
+				int c= (int)getId()%handshakeBegin.length;				
+				
+				int j = handshakeBegin.length;
+				while (--j>=0) {
 						
-						PipeWriter.writeLong(pipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, getId());
-						PipeWriter.writeLong(pipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, SSLUtil.HANDSHAKE_POS); //signal that WRAP is needed 
-						PipeWriter.writeBytes(pipe, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204, EMPTY);
-						PipeWriter.publishWrites(pipe);	
+					
+					Pipe<NetPayloadSchema> pipe = handshakeBegin[c];
+					assert(null!=pipe);
+					
+					if (Pipe.hasRoomForWrite(pipe)) {
+					//	logger.info("request wrap for id {} to pipe {}",getId(), pipe);
+						int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
+						Pipe.addLongValue(getId(), pipe);
+						Pipe.addLongValue(System.currentTimeMillis(), pipe);
+						Pipe.addLongValue(SSLUtil.HANDSHAKE_POS, pipe);
+						Pipe.addByteArray(EMPTY, 0, 0, pipe);
+						Pipe.confirmLowLevelWrite(pipe, size);
+						Pipe.publishWrites(pipe);
 						
 						//we did it, hurrah
-						break;							
-					}						
-				}
-				if (i<0) {
+						break;
+					} else {
+						logger.info("ERROR SCKIPPED THE REQUEST TO WRAP WRITE!!!!!!!!");
+					}
+					
+					if (--c<0) {
+						c = handshakeBegin.length-1;
+					}
+					
+				}				
+				
+				
+				
+				if (j<0) {
 					throw new UnsupportedOperationException("unable to wrap handshake no pipes are avilable.");
 				}				
 				
@@ -286,6 +314,7 @@ public class ClientConnection extends SSLConnection {
 
 
 	public void beginDisconnect() {
+
 		try {
 			 isDisconnecting = true;
 			 getEngine().closeOutbound();
@@ -294,199 +323,51 @@ public class ClientConnection extends SSLConnection {
 			close();
 		}
 	}
+
+	
+	
+	
+	private Histogram histRoundTrip = new Histogram(MAX_HIST_VALUE,0);
+	
+	
+	public Histogram histogram() {
+		return histRoundTrip;
+	}
+	
+	
+	volatile int sentCount = 0;
+	volatile int recCount = 0;
+	
+	public int inFlightCount() {
+		return (int)(sentCount-recCount);
+	}
+	
+	public int respCount() {
+		return recCount;
+	}
+	
+	public int reqCount() {
+		return sentCount;
+	}
+	
+	public void recordSentTime(long time) {
+		sentCount++;		
+		inFlightTimes[++inFlightSentPos & maxInFlightMask] = time;		
+	}
+
+	public void recordArrivalTime(long time) {
+		recCount++;
+		long value = time-inFlightTimes[++inFlightRespPos & maxInFlightMask];
+		if (value>=0 && value<MAX_HIST_VALUE) {
+			histRoundTrip.recordValue(value);
+		}
+	}
 		
 	
 
-	
-	
-	
+
 	
 
-//	//TODO: needs more review to convert this into a garbage free version
-//    private boolean doHandshake(SocketChannel socketChannel, SSLEngine engine) throws IOException {
-//
-//        SSLEngineResult result;
-//        HandshakeStatus handshakeStatus;
-//
-//        // NioSslPeer's fields myAppData and peerAppData are supposed to be large enough to hold all message data the peer
-//        // will send and expects to receive from the other peer respectively. Since the messages to be exchanged will usually be less
-//        // than 16KB long the capacity of these fields should also be smaller. Here we initialize these two local buffers
-//        // to be used for the handshake, while keeping client's buffers at the same size.
-//        int appBufferSize = engine.getSession().getApplicationBufferSize()*2;
-//        
-//        ByteBuffer handshakePeerAppData = ByteBuffer.allocate(appBufferSize);
-//        
-//        SSLSession session = engine.getSession();
-//        ByteBuffer myNetData = ByteBuffer.allocate(Math.max(1<<14, session.getPacketBufferSize()));
-//        
-//        //These are the check sizes we read from the server.
-//        ByteBuffer peerNetData = ByteBuffer.allocate(Math.max(1<<15, session.getPacketBufferSize()));
-//        
-//        myNetData.clear();
-//        peerNetData.clear();
-//        
-//      //only one.  System.err.println("call to handshake");
-//        
-//        handshakeStatus = engine.getHandshakeStatus();
-//        while (handshakeStatus != SSLEngineResult.HandshakeStatus.FINISHED && 
-//        	   handshakeStatus != SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING) {
-//        	
-//        	//TODO: call this block based on in/out pipe status.
-//        	//if (handshakeStatus!= HandshakeStatus.NEED_UNWRAP)
-//        	//System.err.println("do handshake status "+handshakeStatus);
-//        	
-//        	/*
-//        	 * for client we have
-//        	 *          do handshake status NEED_WRAP
-//						do handshake status NEED_TASK
-//						do handshake status NEED_TASK
-//						do handshake status NEED_TASK
-//						do handshake status NEED_TASK
-//						do handshake status NEED_WRAP
-//						do handshake status NEED_WRAP
-//						do handshake status NEED_WRAP
-//
-//                        Plus Many many NEED_UNWRAP.
-//        	 * 
-//        	 * 
-//        	 */
-//        	
-//        	
-//            switch (handshakeStatus) {
-//	            case NEED_UNWRAP:
-//	            	
-//	            	int temp = 0;
-//	            	do {
-//	            		temp = socketChannel.read(peerNetData); //TODO: update to be non blocking. read from PIPE in.
-//	            	} while (temp>0);
-//	            	
-//	            //	System.err.println("unwrapped:"+temp); //this is often zero!!!
-//	            	
-//	            	
-//	            	
-//	            	
-//	            	
-//	            	
-//	                if (temp < 0) {
-//	                    if (engine.isInboundDone() && engine.isOutboundDone()) {
-//	                        return false;
-//	                    }	                    
-//	                    handshakeStatus = closeInboundCloseOutbound(engine);
-//	                    break;
-//	                }
-//	                peerNetData.flip();
-//	                try {
-//	                	
-//	                    result = engine.unwrap(peerNetData, handshakePeerAppData);
-//	                    
-//	                    //we never see the data but the unwrap process is using this space for work!
-//	                    if (handshakePeerAppData.position()>0) {
-//	                    	System.err.println("unwrapped dropped data"+handshakePeerAppData.position());
-//	                    }
-//	                    
-//	                    peerNetData.compact();//bad 
-//	                    handshakeStatus = result.getHandshakeStatus();
-//	                    	                    
-//	                } catch (SSLException sslException) {
-//	                	if (!isShuttingDown) {
-//	                		log.error("A problem was encountered while processing the data that caused the SSLEngine to abort. Will try to properly close connection...", sslException);
-//	                	}
-//	                    engine.closeOutbound();
-//	                    handshakeStatus = engine.getHandshakeStatus();
-//	                    break;
-//	                }
-//	                
-//	                
-//	                Status status = result.getStatus();
-//	         	    if (Status.CLOSED == status) {
-//	         	       if (engine.isOutboundDone()) {
-//	         	    	 //  System.err.println("done");
-//	                    	return false;	
-//	                    } else {
-//	                        engine.closeOutbound();
-//	                        handshakeStatus = engine.getHandshakeStatus();
-//	                        //System.err.println(handshakeStatus);
-//	                    }
-//	         	    	
-//	         	    } else if (Status.BUFFER_OVERFLOW == status) {
-//	         	    	throw new UnsupportedOperationException("Buffer overflow, the peerAppData must be larger or the server is sending responses too large");
-//	         	    } else if (Status.BUFFER_UNDERFLOW == status) {
-//		         	   	if (peerNetData.position() == peerNetData.limit()) {
-//	                		throw new UnsupportedOperationException("Should not happen but ByteBuffer was too small upon construction");
-//	                	} else {
-//	                		//do nothing since the server is not yet talking to us.
-//	                	}
-//	         	    }
-//	                             
-//	                
-//	                
-//	                break;
-//	            case NEED_WRAP:
-//	                myNetData.clear();
-//	                try {
-//	                    result = engine.wrap(noData, myNetData);
-//	                   
-//	                    
-//	                    handshakeStatus = result.getHandshakeStatus();
-//	                } catch (SSLException sslException) {
-//	                    log.error("A problem was encountered while processing the data that caused the SSLEngine to abort. Will try to properly close connection...", sslException);
-//	                    engine.closeOutbound();
-//	                    handshakeStatus = engine.getHandshakeStatus();
-//	                    break;
-//	                }
-//	                
-//	                
-//	                status = result.getStatus();
-//	                
-//	                
-//	                //write out if ok or closed.
-//	                
-//	                if (Status.OK == status || Status.CLOSED == status) {
-//	                	
-//	                	myNetData.flip();
-//	                	
-//	                	try {
-//		                    while (myNetData.hasRemaining()) {
-//		                        socketChannel.write(myNetData); //TODO: update to be non blocking. Write to PIPE out
-//		                    }
-//		                    
-//		                    if (Status.CLOSED == status) {
-//		                    	 peerNetData.clear();
-//		                    }
-//		                    
-//	                	} catch (Exception e) {
-//	                		 log.warn("Unable to write to socket",e);
-//	                		 handshakeStatus = engine.getHandshakeStatus();
-//	                	}
-//	                	                                	
-//	                } else if (Status.BUFFER_OVERFLOW == status) {
-//	                	 throw new UnsupportedOperationException("Buffer overflow, the pipe must be larger or the server is sending responses too large");
-//	                } else if (Status.BUFFER_UNDERFLOW == status) {
-//	                	 throw new SSLException("Buffer underflow occured after a wrap. I don't think we should ever get here.");
-//	                }
-//	                               
-//	                
-//	                
-//	                break;
-//	            case NEED_TASK:
-//	                Runnable task;
-//	                while ((task = engine.getDelegatedTask()) != null) {
-//	                	task.run(); //NOTE: could be run in parallel but we only have 1 thread now
-//	                }
-//	                handshakeStatus = engine.getHandshakeStatus();
-//	                break;
-//	            case FINISHED:
-//	                break;
-//	            case NOT_HANDSHAKING:
-//	                break;
-//	            default:
-//	                throw new IllegalStateException("Invalid SSL status: " + handshakeStatus);
-//	        }
-//        }
-//
-//        return true;
-//
-//    }
 
 
 

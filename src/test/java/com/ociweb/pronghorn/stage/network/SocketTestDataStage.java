@@ -93,6 +93,7 @@ public class SocketTestDataStage extends PronghornStage {
 					//	logger.info("----- reading encrypted");
 					Assert.assertTrue(encrytpedContent);
 					long conId = Pipe.takeLong(pipe);
+					long arrivalTime = Pipe.takeLong(pipe);
 										
 					int meta = Pipe.takeRingByteMetaData(pipe);
 					int len = Pipe.takeRingByteLen(pipe);		
@@ -117,6 +118,7 @@ public class SocketTestDataStage extends PronghornStage {
 					Assert.assertFalse(encrytpedContent);
 					
 					long conId = Pipe.takeLong(pipe);
+					long arrivalTime = Pipe.takeLong(pipe);
 										
 					long position = Pipe.takeLong(pipe);
 					

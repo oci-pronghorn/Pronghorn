@@ -3,7 +3,11 @@ package com.ociweb.pronghorn.network;
 import java.io.IOException;
 import java.nio.channels.Selector;
 import java.util.Arrays;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +24,11 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 public class ClientCoordinator extends SSLConnectionHolder implements ServiceObjectValidator<ClientConnection>{
 
 	private final ServiceObjectHolder<ClientConnection> connections;
+	
+	private final ReentrantReadWriteLock hostTrieLock = new ReentrantReadWriteLock();
 	private final TrieParser hostTrie;
+	
+	
 	private final TrieParserReader hostTrieReader;
 	private final byte[] guidWorkspace = new byte[6+512];
 	private final PoolIdx responsePipeLinePool;
@@ -72,6 +80,23 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
     	}
    // 	logger.info("Client pipe pool:\n {}",responsePipeLinePool);
     	    	
+    	logger.info("Begin hisogram build");
+    	
+    	Histogram histRoundTrip = new Histogram(40_000_000_000L,0);
+    	
+    	int c = 5;
+    	ClientConnection cc = connections.next();
+    	do {
+    		if (null!=cc) {
+    			histRoundTrip.add(cc.histogram());
+    		}
+    			
+    	} while (--c>=0 && null!=(cc = connections.next()));
+    	
+    	//
+    	histRoundTrip.outputPercentileDistribution(System.out, 1.0); 
+    	
+    	
     }
     
 
@@ -124,20 +149,24 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		//TODO: lookup by userID then by port then by host??? may be a better approach instead of guid 
 		int len = ClientConnection.buildGUID(workspace, hostBack, hostPos, hostLen, hostMask, port, userId);	
 		
-		
-		long result = TrieParserReader.query(reader, hostTrie, workspace, 0, len, Integer.MAX_VALUE);
-		
-//		if (result<0) {
-//			String host = Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask).toString();
-//			System.err.println("lookup "+host+":"+port+"   user "+userId);
-//		
-//			System.err.println("GUID: "+Arrays.toString(Arrays.copyOfRange(guidWorkspace,0,len)));
-//			System.err.println(hostTrie);
-//			
-//		}
-		
-		assert(0!=result) : "connection ids must be postive or negative if not found";
-		return result;
+		hostTrieLock.readLock().lock();
+		try {
+			long result = TrieParserReader.query(reader, hostTrie, workspace, 0, len, Integer.MAX_VALUE);
+			
+	//		if (result<0) {
+	//			String host = Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask).toString();
+	//			System.err.println("lookup "+host+":"+port+"   user "+userId);
+	//		
+	//			System.err.println("GUID: "+Arrays.toString(Arrays.copyOfRange(guidWorkspace,0,len)));
+	//			System.err.println(hostTrie);
+	//			
+	//		}
+			
+			assert(0!=result) : "connection ids must be postive or negative if not found";
+			return result;
+		} finally {
+			hostTrieLock.readLock().unlock();
+		}
 	}
 	
 	
@@ -215,58 +244,96 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 
 	public static ClientConnection openConnection(ClientCoordinator ccm, byte[] hostBack, int hostPos, int hostLen, int hostMask,
-			                                      int port, int userId, int pipeIdx, Pipe<NetPayloadSchema>[] handshakeBegin) {				
+			                                      int port, int userId, Pipe<NetPayloadSchema>[] handshakeBegin) {				
 		
 		long connectionId = ccm.lookup(hostBack,hostPos,hostLen,hostMask, port, userId);			
 		
-		return openConnection(ccm, hostBack, hostPos, hostLen, hostMask, port, userId, pipeIdx, handshakeBegin,	connectionId);
+		return openConnection(ccm, hostBack, hostPos, hostLen, hostMask, port, userId, handshakeBegin,	connectionId);
 	}
 
 
+	private static int findAPipeWithRoom(Pipe<NetPayloadSchema>[] output, int activeOutIdx) {
+		int result = -1;
+		//if we go around once and find nothing then stop looking
+		int i = output.length;
+		while (--i>=0) {
+			//next idx		
+			if (++activeOutIdx == output.length) {
+				activeOutIdx = 0;
+			}
+			//does this one have room
+			if (Pipe.hasRoomForWrite(output[activeOutIdx])) {
+				result = activeOutIdx;
+				break;
+			}
+		}
+		return result;
+	}
+	
+	ReentrantLock openConnectionLock = new ReentrantLock();
+	
 	public static ClientConnection openConnection(ClientCoordinator ccm, byte[] hostBack, int hostPos, int hostLen,
-			int hostMask, int port, int userId, int pipeIdx, Pipe<NetPayloadSchema>[] handshakeBegin,
+			int hostMask, int port, int userId, Pipe<NetPayloadSchema>[] outputs,
 			long connectionId) {
+		
+		
 		
 		ClientConnection cc = null;
 		
-		if (-1 == connectionId || null == (cc = (ClientConnection) ccm.connections.get(connectionId))) { //NOTE: using straight get since un finished connections may not be valid.
-						
-			//logger.warn("Unable to lookup connection");
-			
-			connectionId = ccm.lookupInsertPosition();
-			
-			if (connectionId<0 || pipeIdx<0) {
-				
-				//logger.warn("too many open connection, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
-				//do not open instead we should attempt to close this one to provide room.
-				return null;
-			}
-			
-		
-			String host = Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask).toString(); //TODO: not GC free
+		//TODO: must check this with the profiler.
+		if (ccm.openConnectionLock.tryLock()) {
 			try {
+				if (-1 == connectionId || null == (cc = (ClientConnection) ccm.connections.get(connectionId))) { //NOTE: using straight get since un finished connections may not be valid.
+								
+					//logger.warn("Unable to lookup connection");
+					
+					connectionId = ccm.lookupInsertPosition();
+					
+					int pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length));
+					if (connectionId<0 || pipeIdx<0) {
+						
+						//logger.warn("too many open connection, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
+						//do not open instead we should attempt to close this one to provide room.
+						return null;
+					}
+					
 				
-		    	//create new connection because one was not found or the old one was closed
-				cc = new ClientConnection(host, hostBack, hostPos, hostLen, hostMask, port, userId, pipeIdx, connectionId);
-				
-				//logger.debug("saving new client connectino for "+connectionId);
-				
-				ccm.connections.setValue(connectionId, cc);	
-				ccm.hostTrie.setValue(cc.GUID(), 0, cc.GUIDLength(), Integer.MAX_VALUE, connectionId);			
-				
-			} catch (IOException ex) {
-				logger.warn("handshake problems with new connection {}:{}",host,port,ex);				
-				connectionId = Long.MIN_VALUE;
-				return null;
+					String host = Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask).toString(); //TODO: not GC free
+					try {
+						
+				    	//create new connection because one was not found or the old one was closed
+						cc = new ClientConnection(host, hostBack, hostPos, hostLen, hostMask, port, userId, pipeIdx, connectionId);
+						
+						//logger.debug("saving new client connectino for "+connectionId);
+						
+						ccm.connections.setValue(connectionId, cc);	
+						
+						ccm.hostTrieLock.writeLock().lock();
+						try {
+							ccm.hostTrie.setValue(cc.GUID(), 0, cc.GUIDLength(), Integer.MAX_VALUE, connectionId);
+						} finally {
+							ccm.hostTrieLock.writeLock().unlock();
+						}
+						
+					} catch (IOException ex) {
+						logger.warn("handshake problems with new connection {}:{}",host,port,ex);				
+						connectionId = Long.MIN_VALUE;
+						return null;
+					}
+									                	
+				}
+			
+				if (cc.isRegistered()) {
+					return cc;
+				}
+				//not registered
+				return doRegister(ccm, outputs, cc);
+			} finally {
+				ccm.openConnectionLock.unlock();
 			}
-							                	
+		} else {
+			return null;//try again later
 		}
-		
-		if (cc.isRegistered()) {
-			return cc;
-		}
-		//not registered
-		return doRegister(ccm, handshakeBegin, cc);
 	}
 
 
@@ -281,7 +348,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-return cc;
+		return cc;
 	}
 
 	
