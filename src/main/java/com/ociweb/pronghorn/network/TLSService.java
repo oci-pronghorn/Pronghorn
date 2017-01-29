@@ -116,7 +116,7 @@ public class TLSService {
 	    		if (containsPerfectForward(enabledCipherSuites, i)) {
 	    			if (doesNotContainWeakCipher(enabledCipherSuites, i)) {
 	    				
-	    				System.out.println("Cipher: "+enabledCipherSuites[i]);
+	    			//	System.out.println("Cipher: "+enabledCipherSuites[i]);
 	    				
 	    				temp[j++]=enabledCipherSuites[i];
 	    			}
