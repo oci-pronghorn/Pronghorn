@@ -17,6 +17,7 @@ public class PendingReleaseData {
         pendingBlobReleaseRing = new int[pendingReleaseSize];
         pendingSlabReleaseRing = new long[pendingReleaseSize];
         pendingLength = new int[pendingReleaseSize];
+        
     }
 
     public static void appendPendingReadRelease(PendingReleaseData that, long slabTail, int blobTail, int fragBytesLen) {

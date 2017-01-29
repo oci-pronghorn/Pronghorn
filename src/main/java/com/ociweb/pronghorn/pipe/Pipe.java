@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.pipe.Pipe.PaddedInt;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
@@ -353,6 +354,9 @@ public class Pipe<T extends MessageSchema> {
     public final byte bitsOfBlogRing;
     public final int maxAvgVarLen;
     private final T schema;
+    
+    private final boolean usingHighLevelAPI;
+    
 
     //TODO: B, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
     //            the time slices of the graph will need to be kept for all rings to reconstruct history later.
@@ -464,9 +468,13 @@ public class Pipe<T extends MessageSchema> {
     //helper method for those stages that are not watching for the poison pill.
 	private long knownPositionOfEOF = Long.MAX_VALUE;
 	
+	public Pipe(PipeConfig<T> config) {
+		this(config,true);
+	}
     	
-    public Pipe(PipeConfig<T> config) {
+    public Pipe(PipeConfig<T> config, boolean usingHighLevelAPI) {
 
+    	this.usingHighLevelAPI = usingHighLevelAPI;
         byte primaryBits = config.slabBits;
         byte byteBits = config.blobBits;
         byte[] byteConstants = config.byteConst;
@@ -785,7 +793,9 @@ public class Pipe<T extends MessageSchema> {
 	    
 	    
 	    //NOTE: this is only needed for high level API, if only low level is in use it would be nice to not create this 
-        this.ringWalker = new StackStateWalker(MessageSchema.from(schema), sizeOfSlabRing);
+	    if (usingHighLevelAPI) {
+	    	this.ringWalker = new StackStateWalker(MessageSchema.from(schema), sizeOfSlabRing);
+	    }
 	    
         assert(slabRingHead.workingHeadPos.value == slabRingHead.headPos.get());
         assert(slabRingTail.workingTailPos.value == slabRingTail.tailPos.get());
@@ -2794,7 +2804,7 @@ public class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> void batchedReleasePublish(Pipe<S> pipe, int blobTail, long slabTail) {
-        assert(pipe.ringWalker.cursor<=0 && !PipeReader.isNewMessage(pipe.ringWalker)) : "Unsupported mix of high and low level API.  ";
+        assert(null==pipe.ringWalker || pipe.ringWalker.cursor<=0 && !PipeReader.isNewMessage(pipe.ringWalker)) : "Unsupported mix of high and low level API.  ";
         releaseBatchedReads(pipe, blobTail, slabTail);
     }
     
@@ -2886,6 +2896,21 @@ public class Pipe<T extends MessageSchema> {
 		return consumed;
     }
 
+    public static <S extends MessageSchema> int publishWrites(Pipe<S> pipe, int optionalHiddenTrailingBytes) {
+        
+    	//add a few extra bytes on the end of the blob so we can "hide" information between fragments.
+    	assert(optionalHiddenTrailingBytes>=0) : "only zero or positive values supported";
+		PaddedInt.maskedAdd(pipe.blobRingHead.byteWorkingHeadPos, optionalHiddenTrailingBytes, Pipe.BYTES_WRAP_MASK);
+    	    	
+    	//happens at the end of every fragment
+        int consumed = writeTrailingCountOfBytesConsumed(pipe, pipe.slabRingHead.workingHeadPos.value++); //increment because this is the low-level API calling
+        assert(consumed<pipe.maxAvgVarLen) : "When hiding data it must stay below the max var length threshold when added to the rest of the fields.";        
+        
+		publishWritesBatched(pipe);
+		return consumed;
+    }
+    
+    
     public static <S extends MessageSchema> void publishWritesBatched(Pipe<S> pipe) {
         //single length field still needs to move this value up, so this is always done
 		pipe.blobWriteLastConsumedPos = pipe.blobRingHead.byteWorkingHeadPos.value;
@@ -3104,9 +3129,14 @@ public class Pipe<T extends MessageSchema> {
 	public static <S extends MessageSchema> int writeTrailingCountOfBytesConsumed(Pipe<S> pipe, long pos) {
 
 		int consumed = pipe.blobRingHead.byteWorkingHeadPos.value - pipe.blobWriteLastConsumedPos;	
+		
+		if (consumed<0) {			
+			consumed = (1+consumed)+Integer.MAX_VALUE;			
+		}	
+		assert(consumed>=0) : "consumed was "+consumed;
 		//log.trace("wrote {} bytes consumed to position {}",consumed,pos);
 		
-		pipe.slabRing[pipe.mask & (int)pos] = consumed>=0 ? consumed : consumed&BYTES_WRAP_MASK;
+		pipe.slabRing[pipe.slabMask & (int)pos] = consumed;
 		pipe.blobWriteLastConsumedPos = pipe.blobRingHead.byteWorkingHeadPos.value;
 		return consumed;
 	}

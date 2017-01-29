@@ -857,14 +857,23 @@ public class FieldReferenceOffsetManager {
     
         target.append("    new String[]{");
         isFirst = true;
+        int runCount = 0;
         for(String tmp:from.fieldNameScript) {
             if (!isFirst) {
-                target.append(',');
+            	if (runCount<80) {
+            		target.append(',');
+            		runCount++;
+            	} else {
+            		target.append(",\n    ");
+            		runCount=0;
+            	}
             } 
             if (null==tmp) {
                 target.append("null");
+                runCount += 4;
             } else {
                 target.append('"').append(tmp).append('\"');
+                runCount += (tmp.length()+2);
             }
             isFirst = false;
         }
@@ -878,14 +887,23 @@ public class FieldReferenceOffsetManager {
     
         target.append("    new String[]{");
         isFirst = true;
+        runCount = 0;
         for(String tmp:from.dictionaryNameScript) {
             if (!isFirst) {
-                target.append(',');
+            	if (runCount<80) {
+            		target.append(',');
+            		runCount += 1;
+            	} else {
+            		target.append(",\n    ");
+            		runCount=0;
+            	}
             } 
             if (null==tmp) {
-                target.append("null");
+                target.append("null"); 
+                runCount += 4;
             } else {
                 target.append('"').append(tmp).append('\"');
+                runCount += (tmp.length()+2);
             }
             isFirst = false;
         }
@@ -910,7 +928,7 @@ public class FieldReferenceOffsetManager {
     }
 
     public static String buildMsgConstName(FieldReferenceOffsetManager encodedFrom, int expectedMsgIdx) {
-        return "MSG_"+encodedFrom.fieldNameScript[expectedMsgIdx].toUpperCase().replace(' ','_')+"_"+encodedFrom.fieldIdScript[expectedMsgIdx];
+        return "MSG_"+encodedFrom.fieldNameScript[expectedMsgIdx].toUpperCase().replace('/', '_').replace(' ','_')+"_"+encodedFrom.fieldIdScript[expectedMsgIdx];
     }
      
 }

@@ -53,7 +53,7 @@ class StackStateWalker {
 	        this.from = from;
 	        this.activeWriteFragmentStack = new long[from.maximumFragmentStackDepth];
 	        this.activeReadFragmentStack = new long[from.maximumFragmentStackDepth];
-     
+
 	}
 
     static void setMsgIdx(StackStateWalker rw, int idx, long llwHeadPosCache) {
