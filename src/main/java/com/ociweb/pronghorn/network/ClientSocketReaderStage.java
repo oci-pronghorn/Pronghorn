@@ -125,7 +125,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 					    	
 					    	//holds the pipe until we gather all the data and got the end of the parse.
 					    	consumeRelease();
-					    	int pipeIdx = coordinator.responsePipeLineIdx(cc.getId());//picks any open pipe to keep the decryption busy
+					    	int pipeIdx = coordinator.responsePipeLineIdx(cc.getId());//picks any open pipe to keep the system busy
 					    	if (pipeIdx<0) {				    	
 					    		consumeRelease();
 					    		pipeIdx = coordinator.responsePipeLineIdx(cc.getId()); //try again.
@@ -351,7 +351,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 	    			//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
 	    			int pipeIdx = coordinator.checkForResponsePipeLineIdx(finishedConnectionId);
 					if (pipeIdx>=0 && Pipe.workingHeadPosition(output[pipeIdx]) == pos) {
-						assert(Pipe.contentRemaining(output[pipeIdx])==0);
+						assert(Pipe.contentRemaining(output[pipeIdx])==0) : "unexpected content on pipe detected";
+						assert(!Pipe.isInBlobFieldWrite(output[pipeIdx])) : "unexpected open blob field write detected";
+						
 	    				coordinator.releaseResponsePipeLineIdx(finishedConnectionId);
 	    				
 	    				//TODO: upon release must prioritize the re-open.

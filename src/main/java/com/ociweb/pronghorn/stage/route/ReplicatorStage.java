@@ -29,6 +29,10 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 	int byteTailPos;
 	int totalBytesCopy;
 	
+	public static <T extends MessageSchema> void instance(GraphManager gm, Pipe<T> source, Pipe<T> ... targets) {
+		new ReplicatorStage(gm,source,targets);
+	}
+	
 	public ReplicatorStage(GraphManager gm, Pipe<T> source, Pipe<T> ... targets) {
 		super(gm,source,targets);
 		

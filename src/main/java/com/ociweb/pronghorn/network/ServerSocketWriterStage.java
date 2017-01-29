@@ -152,7 +152,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		            	processMessage(activeMessageId, x);
 		            	
 		            	if (activeMessageId < 0) {
-		            		return;
+		            		continue;
 		            	}
 	    			}// else {
 	    			//	logger.info("no data to read {} {} ",x,dataToSend[x]);
@@ -244,7 +244,8 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    Pipe.releaseReadLock(dataToSend[idx]);
 		    assert(Pipe.contentRemaining(dataToSend[idx])>=0);
 		    
-		    requestShutdown();	                    
+		    //comes from muliple pipes so this can not be done yet.
+		    //requestShutdown();	                    
 		}
 	}
 
@@ -475,6 +476,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     		
     		if (!debugWithSlowWrites) {
 		        try {
+		        	//assert(workingBuffers[idx] instanceof sun.nio.ch.DirectBuffer) : "should be direct??";
 		        	int bytesWritten = writeToChannel[idx].write(workingBuffers[idx]);	  
 		        	if (bytesWritten>0) {
 		        		totalBytesWritten+=bytesWritten;

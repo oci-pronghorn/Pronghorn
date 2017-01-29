@@ -1,117 +1,123 @@
 package com.ociweb.pronghorn;
 
-import java.io.File;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.concurrent.TimeUnit;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.ModuleConfig;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.network.ServerCoordinator;
-import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
-import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
-import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
-import com.ociweb.pronghorn.network.config.HTTPSpecification;
-import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
-import com.ociweb.pronghorn.network.module.FileReadModuleStage;
-import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
-import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 
 public class HTTPServer {
 
-    private static final int groups = 3;
-    private static final int apps = 1; 
-      
-    public HTTPServer() {     
-  
-    }  
-    
-    public static void main(String[] args) {
-        
-    	GraphManager gm = new GraphManager();
-    	GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1_000_000);
-          	
-        
-        ModuleConfig config = new ModuleConfig() {
-
-            
-            PipeConfig<ServerResponseSchema> outgoingDataConfig = new PipeConfig<ServerResponseSchema>(ServerResponseSchema.instance, 2048, 1<<15);//from module to  supervisor
-            Pipe<ServerResponseSchema> output = new Pipe<ServerResponseSchema>(outgoingDataConfig);
-            
-			@Override
-			public long addModule(int a, GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs,
-					HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> spec) {
+	private static final Logger logger = LoggerFactory.getLogger(HTTPServer.class);
+	
+	
+	public static void startupHTTPServer(boolean large, ModuleConfig config, String bindHost, int port, boolean isTLS) {
 				
+		boolean debug = false;
+		
+		if (!isTLS) {
+			logger.warn("TLS has been progamatically switched off");
+		}
+		
+		GraphManager gm = new GraphManager();
+		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1_250);
+						
+		///////////////
+	    //BUILD THE SERVER
+	    ////////////////		
+		final ServerCoordinator serverCoord = NetGraphBuilder.httpServerSetup(isTLS, bindHost, port, gm, large, config);
+					
+		if (debug) {
+			////////////////
+			///FOR DEBUG GENERATE A PICTURE OF THE SERVER
+			////////////////	
+			final MonitorConsoleStage attach =  MonitorConsoleStage.attach(gm);
+		}
+		
+		////////////////
+		//CREATE A SCHEDULER TO RUN THE SERVER
+		////////////////
+		final StageScheduler scheduler = new ThreadPerStageScheduler(gm);
 				
-				FileReadModuleStage.newInstance(graphManager, inputs, output, spec, new File("/home/nate/elmForm"));				
-				//return needed headers
-				return 0;
-			}
+		//////////////////
+		//UPON CTL-C SHUTDOWN OF SERVER DO A CLEAN SHUTDOWN
+		//////////////////
+	    Runtime.getRuntime().addShutdownHook(new Thread() {
+	        public void run() {
+	        		//soft shutdown
+	        	    serverCoord.shutdown();
+	                try {
+						Thread.sleep(500);
+					} catch (InterruptedException e) {
+						
+					}
+	                //harder shutdown
+	        		scheduler.shutdown();
+	        		//hard shutdown
+	                scheduler.awaitTermination(1, TimeUnit.SECONDS);
+	
+	        }
+	    });
+		
+	    ///////////////// 
+	    //START RUNNING THE SERVER
+	    /////////////////        
+	    scheduler.startup();
+	}
 
-			@Override
-			public CharSequence getPathRoute(int a) {
-				return "/%b";
-			}
 
-			@Override
-			public Pipe<ServerResponseSchema>[] outputPipes(int a) {
-				return new Pipe[]{output};
-			}
+	public static String buildStaticFileFolderPath(String testFile) {
+		URL dir = ClassLoader.getSystemResource(testFile);
+		String root = "";	//file:/home/nate/Pronghorn/target/test-classes/OCILogo.png
+						
+		try {
+		
+			String uri = dir.toURI().toString();
+			uri = uri.replace("jar:","");
+			uri = uri.replace("file:","");
+			
+			root = uri.substring(0, uri.lastIndexOf('/'));
+			
+		} catch (URISyntaxException e) {						
+			e.printStackTrace();
+		}
+		return root;
+	}
 
-			@Override
-			public int moduleCount() {
-				return 1;
-			}
-        	
-        	
-        };
-        
-        int requestUnwrapUnits = 1;
-        int responseWrapUnits = 1;
-        int outputPipes = 2;
-        int socketWriters = 1;
-        int serverInputBlobs = 1<<11;
 
-		int serverBlobToEncrypt = 1<<14;
-		int serverBlobToWrite = 1<<16;
-		 int routerCount = 4;	
-		 
-		String bindHost = "127.0.0.1";
-		ServerCoordinator coordinator = new ServerCoordinator(groups, bindHost, 8443, 15, 2, routerCount);//32K simulanious connections on server. 
-		int serverInputMsg = 64;
-		int serverMsgToEncrypt = 2048;
-		int serverMsgToWrite = 1024;
-		gm = NetGraphBuilder.buildHTTPServerGraph(true, gm, groups, 2, config, coordinator, requestUnwrapUnits,
-				responseWrapUnits, outputPipes, socketWriters, 
-				serverInputMsg, serverInputBlobs, serverMsgToEncrypt, serverBlobToEncrypt, serverMsgToWrite, serverBlobToWrite, routerCount); 
-		//gm = NetGraphBuilder.buildHTTPServerGraph(gm, groups, apps);
-        
-        
-        GraphManager.exportGraphDotFile(gm, "RealHTTPServer");
-        
-       
-        MonitorConsoleStage.attach(gm);
-        
-        
-        
-        final ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
-        
-        scheduler.startup();                
-        
-               
-        
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            public void run() {
-                    scheduler.shutdown();
-                    scheduler.awaitTermination(1, TimeUnit.MINUTES);
-            }
-        });
-        
+	public static String reportChoice(final String longName, final String shortName, final String value) {
+	    System.out.print(longName);
+	    System.out.print(" ");
+	    System.out.print(shortName);
+	    System.out.print(" ");
+	    System.out.println(value);
+	    return value;
+	}
 
-        
-        
-    }
+
+	public static String getOptArg(String longName, String shortName, String[] args, String defaultValue) {
+	    
+	    String prev = null;
+	    for (String token : args) {
+	        if (longName.equals(prev) || shortName.equals(prev)) {
+	            if (token == null || token.trim().length() == 0 || token.startsWith("-")) {
+	                return defaultValue;
+	            }
+	            return reportChoice(longName, shortName, token.trim());
+	        }
+	        prev = token;
+	    }
+	    return reportChoice(longName, shortName, defaultValue);
+	}
+
+
 }

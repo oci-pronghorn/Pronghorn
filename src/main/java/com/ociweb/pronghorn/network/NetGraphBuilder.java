@@ -1,5 +1,16 @@
 package com.ociweb.pronghorn.network;
 
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Enumeration;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
@@ -23,6 +34,8 @@ import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 import com.ociweb.pronghorn.util.Pool;
 
 public class NetGraphBuilder {
+	
+	private static final Logger logger = LoggerFactory.getLogger(NetGraphBuilder.class);	
 	
 	public static void buildHTTPClientGraph(boolean isTLS, GraphManager gm, int maxPartialResponses, ClientCoordinator ccm,
 			IntHashTable listenerPipeLookup, 
@@ -65,8 +78,8 @@ public class NetGraphBuilder {
 					
 			int k = maxPartialResponses;
 			while (--k>=0) {
-				socketResponse[k] = new Pipe<NetPayloadSchema>(clientNetResponseConfig);
-				clearResponse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig);
+				socketResponse[k] = new Pipe<NetPayloadSchema>(clientNetResponseConfig,false);
+				clearResponse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig,false);
 			}
 		} else {
 			socketResponse = new Pipe[maxPartialResponses];
@@ -74,7 +87,7 @@ public class NetGraphBuilder {
 			
 			int k = maxPartialResponses;
 			while (--k>=0) {
-				socketResponse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig);
+				socketResponse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig,false);
 			}
 		}
 			
@@ -83,7 +96,7 @@ public class NetGraphBuilder {
 		int a = responseParsers + (isTLS?responseUnwrapCount:0);
 		Pipe[] acks = new Pipe[a];
 		while (--a>=0) {
-			acks[a] =  new Pipe<ReleaseSchema>(parseAckConfig);	
+			acks[a] =  new Pipe<ReleaseSchema>(parseAckConfig,false);	
 		}
 
 		ClientSocketReaderStage socketReaderStage = new ClientSocketReaderStage(gm, ccm, acks, socketResponse, isTLS);
@@ -100,7 +113,7 @@ public class NetGraphBuilder {
 			hanshakePipes = new Pipe[c];
 			
 			while (--c>=0) {
-				hanshakePipes[c] = new Pipe<NetPayloadSchema>(requests[0].config()); 
+				hanshakePipes[c] = new Pipe<NetPayloadSchema>(requests[0].config(),false); 
 				SSLEngineUnWrapStage unwrapStage = new SSLEngineUnWrapStage(gm, ccm, sr[c], cr[c], acks[c], hanshakePipes[c], false, 0);
 				GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "UnWrap", unwrapStage);
 			}
@@ -119,7 +132,7 @@ public class NetGraphBuilder {
 			wrappedClientRequests = new Pipe[requests.length];	
 			int j = requests.length;
 			while (--j>=0) {								
-				wrappedClientRequests[j] = new Pipe<NetPayloadSchema>(requests[j].config());
+				wrappedClientRequests[j] = new Pipe<NetPayloadSchema>(requests[j].config(),false);
 			}
 			
 			int c = clientWrapperCount;			
@@ -173,15 +186,17 @@ public class NetGraphBuilder {
 	public static GraphManager buildHTTPServerGraph(boolean isTLS, GraphManager graphManager, int groups,
 			int maxSimultanious, ModuleConfig ac, ServerCoordinator coordinator, int requestUnwrapUnits, int responseWrapUnits, 
 			int pipesPerWrapUnit, int socketWriters, int serverInputMsg, int serverInputBlobs, 
-			int serverMsgToEncrypt, int serverBlobToEncrypt, int serverMsgToWrite, int serverBlobToWrite, int routerCount) {
+			int serverMsgToEncrypt, int serverBlobToEncrypt, int serverMsgToWrite, int serverBlobToWrite, int routerCount, 
+			int fromRouterMsg, int fromRouterBlob, int releaseMsg) {
 		
-		int fromRouterMsg = 512;
-		int fromRouterSize = 1<<8;
-		
+        
+        
+        PipeConfig<ReleaseSchema> releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,releaseMsg);
+        
 		PipeConfig<ServerConnectionSchema> newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 10);
 		
 		//Why? the router is helped with lots of extra room for write?  - may need to be bigger for posts.
-        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, fromRouterMsg, fromRouterSize);///if payload is smaller than average file size will be slower
+        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, fromRouterMsg, fromRouterBlob);///if payload is smaller than average file size will be slower
       
         //byte buffer must remain small because we will have a lot of these for all the partial messages
         //TODO: if we get a series of very short messages this will fill up causing a hang. TODO: we can get parser to release and/or server reader to combine.
@@ -214,14 +229,12 @@ public class NetGraphBuilder {
             } else {
             	planIncomingGroup[g] = encryptedIncomingGroup[g];
             }
-            
-            
-            PipeConfig<ReleaseSchema> ackConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,2048);
+    
                
             int a = routerCount+(isTLS?requestUnwrapUnits:0);
     		Pipe[] acks = new Pipe[a];
     		while (--a>=0) {
-    			acks[a] =  new Pipe<ReleaseSchema>(ackConfig);	
+    			acks[a] =  new Pipe<ReleaseSchema>(releaseConfig, false);	
     		}
                        
             //reads from the socket connection
@@ -258,10 +271,11 @@ public class NetGraphBuilder {
 	            		            	
 	            	int r = routerCount;
 	            	while (--r >= 0) {
-	            		toModules[m][a][r] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig);		
+	            		toModules[m][a][r] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig,false);		
 	            	}            	
 	                headers[m][a]    = ac.addModule(a, graphManager, toModules[m][a], HTTPSpecification.defaultSpec());   
-	                fromModule[m][a] = ac.outputPipes(a);   
+	                fromModule[m][a] = ac.outputPipes(a);  
+	                	                
 	                assert(null!=fromModule[m][a] && fromModule[m][a].length>0);
 	                paths[m][a]      = ac.getPathRoute(a);//"/%b";  //"/WebSocket/connect",                
 	                msgIds[m][a]     =  HTTPRequestSchema.MSG_FILEREQUEST_200;	                
@@ -334,8 +348,8 @@ public class NetGraphBuilder {
 		            Pipe[] fromWrapperPipes = new Pipe[w];            
 		            
 		            while (--w>=0) {	
-		            	toWrapperPipes[w] = new Pipe<NetPayloadSchema>(toWraperConfig);
-		            	fromWrapperPipes[w] = new Pipe<NetPayloadSchema>(fromWraperConfig); 
+		            	toWrapperPipes[w] = new Pipe<NetPayloadSchema>(toWraperConfig,false);
+		            	fromWrapperPipes[w] = new Pipe<NetPayloadSchema>(fromWraperConfig,false); 
 		            	toWiterPipes[toWriterPos++] = fromWrapperPipes[w];
 		            	fromSupers[g][fromSuperPos++] = toWrapperPipes[w]; //TODO: this zero is wrong because it should be the count of apps.
 		            }
@@ -357,7 +371,7 @@ public class NetGraphBuilder {
 
             	int i = fromSupers[g].length;
             	while (-- i>= 0) {
-            		fromSupers[g][i]=new Pipe<NetPayloadSchema>(fromWraperConfig);            		
+            		fromSupers[g][i]=new Pipe<NetPayloadSchema>(fromWraperConfig,false);            		
             	}
             	toWiterPipes = fromSupers[g];      	
             
@@ -388,7 +402,7 @@ public class NetGraphBuilder {
            
         }
               
-        Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(newConnectionsConfig);        
+        Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(newConnectionsConfig,false);        
         ServerNewConnectionStage newConStage = new ServerNewConnectionStage(graphManager, coordinator, newConnectionsPipe, isTLS); 
         PipeCleanerStage<ServerConnectionSchema> dump = new PipeCleanerStage<>(graphManager, newConnectionsPipe); //IS this important data?
         
@@ -441,6 +455,151 @@ public class NetGraphBuilder {
 			result[i] = new Pipe(incomingDataConfig);
 		}
 		return result;
+	}
+
+	public static List<InetAddress> homeAddresses(boolean noIPV6) {
+		List<InetAddress> addrList = new ArrayList<InetAddress>();
+		try {
+			Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();			
+			while (networkInterfaces.hasMoreElements()) {
+				NetworkInterface ifc = networkInterfaces.nextElement();
+				try {
+					if(ifc.isUp()) {						
+						Enumeration<InetAddress> addrs = ifc.getInetAddresses();
+						while (addrs.hasMoreElements()) {
+							InetAddress addr = addrs.nextElement();						
+							byte[] addrBytes = addr.getAddress();
+							if (noIPV6) {								
+								if (16 == addrBytes.length) {
+									continue;
+								}							
+							}							
+							if (addrBytes.length==4) {
+								if (addrBytes[0]==127 && addrBytes[1]==0 && addrBytes[2]==0 && addrBytes[3]==1) {
+									continue;
+								}								
+							}
+							addrList.add(addr);
+						}						
+					}
+				} catch (SocketException e) {
+					//ignore
+				}
+			}			
+		} catch (SocketException e1) {
+			//ignore.
+		}
+		
+		Comparator<? super InetAddress> comp = new Comparator<InetAddress>() {
+			@Override
+			public int compare(InetAddress o1, InetAddress o2) {
+				return Integer.compare(o2.getAddress()[0], o2.getAddress()[0]);
+			} //decending addresses			
+		};
+		addrList.sort(comp);
+		return addrList;
+	}
+
+	public static ServerCoordinator httpServerSetup(boolean isTLS, String bindHost, int port, GraphManager gm, boolean large, ModuleConfig config) {
+		
+		int cores = Runtime.getRuntime().availableProcessors();
+		if (cores>64) {
+			cores = cores >> 2;
+		}
+		if (cores<4) {
+			cores = 4;
+		}
+		
+		logger.info("cores in use {}", cores);
+		
+		
+		final int maxPartialResponsesServer;
+		final int maxConnectionBitsOnServer; 	
+		final int serverRequestUnwrapUnits;
+		final int serverResponseWrapUnits;
+		final int serverPipesPerOutputEngine;
+		final int serverSocketWriters;
+		final int groups;
+		final int serverInputBlobs; 
+		final int serverBlobToEncrypt;
+		final int serverBlobToWrite;
+		final int serverInputMsg;
+		
+		final int serverMsgToEncrypt;
+		final int serverOutputMsg;
+			
+		final int fromRouterMsg;
+		final int fromRouterBlob;
+		final int routerCount;
+		final int releaseMsg;
+		
+		if (large) {
+			maxPartialResponsesServer     = 32;//256;    // (big memory consumption!!) concurrent partial messages 
+			maxConnectionBitsOnServer 	  = 22;       //4M open connections on server	    	
+			groups                        = 1;
+			
+			serverInputMsg                = 20;
+			serverInputBlobs              = 1<<16;
+			
+			serverBlobToEncrypt           = 1<<12;
+			serverMsgToEncrypt            = 512;
+			
+			serverBlobToWrite             = 1<<16;
+			serverOutputMsg               = 256;
+			
+			fromRouterMsg 				  = 1024;
+			fromRouterBlob 				  = 1<<8;
+			
+			serverSocketWriters           = 2;
+			routerCount                   = 4;	
+			releaseMsg                    = 512;
+						
+			serverRequestUnwrapUnits      = isTLS?cores/4:2;  //server unwrap units - need more for handshaks and more for posts
+			serverResponseWrapUnits 	  = isTLS?cores:4;    //server wrap units
+			serverPipesPerOutputEngine 	  = isTLS?8:8;//multiplier against server wrap units for max simultanus user responses.
+			
+		} else {	//small
+			maxPartialResponsesServer     = 32;    //16 concurrent partial messages 
+			maxConnectionBitsOnServer     = 12;    //4k  open connections on server	    	
+			groups                        = 1;	
+		
+			serverInputMsg                = 128; //if this is not large enough we may starve out clients...
+			serverInputBlobs              = 1<<7;  
+			
+			serverMsgToEncrypt            = 32;
+			serverBlobToEncrypt           = 1<<15; //Must NOT be smaller than the file write output (modules) ??? ONLY WHEN WE ARE USE ING TLS
+			
+			serverOutputMsg               = 64; //important for outgoing data and greatly impacts performance
+			serverBlobToWrite             = 1<<10; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
+			
+			fromRouterMsg 			      = 128; //impacts performance
+			fromRouterBlob				  = 1<<7;
+			
+			serverSocketWriters           = 1;
+			routerCount                   = 4;	
+			releaseMsg                    = 512;
+						
+			serverRequestUnwrapUnits      = isTLS?cores/4:2;  //server unwrap units - need more for handshaks and more for posts
+			serverResponseWrapUnits 	  = isTLS?cores:4;    //server wrap units
+			serverPipesPerOutputEngine 	  = isTLS?8:8;//multiplier against server wrap units for max simultanus user responses.
+		}
+		
+
+		
+		
+		 
+		 //This must be large enough for both partials and new handshakes.
+	
+		ServerCoordinator serverCoord = new ServerCoordinator(groups, bindHost, port, maxConnectionBitsOnServer, maxPartialResponsesServer, routerCount);	
+		
+		
+		
+		
+		buildHTTPServerGraph(isTLS, gm, groups, maxPartialResponsesServer, config, serverCoord,
+				                             serverRequestUnwrapUnits, serverResponseWrapUnits, serverPipesPerOutputEngine, serverSocketWriters, 
+				                            serverInputMsg, serverInputBlobs, serverMsgToEncrypt, serverBlobToEncrypt, serverOutputMsg,
+				                              serverBlobToWrite, routerCount, fromRouterMsg, fromRouterBlob, releaseMsg );
+		return serverCoord;
 	}
 	
 }

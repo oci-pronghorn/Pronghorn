@@ -120,8 +120,8 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         Pipe.addIntValue( thisRequestContext , localOutput); //empty request context, set the full value last. 
         
         Pipe.confirmLowLevelWrite(localOutput, headerSize);
-        Pipe.publishWrites(localOutput);
-        
+        int consumed = Pipe.publishWrites(localOutput);
+        assert(consumed == bytesLength) : "header bytes length of "+bytesLength+" but total sent was "+consumed;
         //logger.debug("published header");
         
         return bytesLength;

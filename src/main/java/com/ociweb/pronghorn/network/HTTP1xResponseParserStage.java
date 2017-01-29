@@ -218,6 +218,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	//TODO: must detected overflow and underflow parse conditions here and send error or abandon.
 	
 	
+	int responseCount = 0;
+	
 	
 	@Override
 	public void run() {
@@ -260,7 +262,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					
 					       //TOOD: this second condition above should NOT be required but under heavy load this spins and never comes back..
 					//we have new data
-					
+			
 					int msgIdx = Pipe.takeMsgIdx(pipe);
 					if (msgIdx<0) {
 						throw new UnsupportedOperationException("no support for shutdown");
@@ -302,8 +304,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					}
 				
 					targetPipe = output[(short)IntHashTable.getItem(listenerPipeLookup, cc.getUserId())];					
-					assert (0!=positionMemoData[stateIdx] || !Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
-					
+	
 					//append the new data
 					int meta = Pipe.takeRingByteMetaData(pipe);
 					int len = Pipe.takeRingByteLen(pipe);
@@ -375,11 +376,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//we have data which must be parsed and we know the output pipe, eg the connection was not closed						
 						//convert long id to the pipe index.
 						targetPipe = output[(short)IntHashTable.getItem(listenerPipeLookup, cc.getUserId())]; 		
-						
-						assert(recordOutgoingState(!Pipe.hasRoomForWrite(targetPipe)));
-						 
-						assert (0!=positionMemoData[stateIdx] || !Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
-												
+							
 						///////////////////////
 						//the fastest code is the code which is never run
 						//do not parse again if nothing has changed
@@ -413,7 +410,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 //					}
 				}
 	
-
+			
 				
 				if (Pipe.hasContentToRead(pipe) || positionMemoData[lenIdx]>pipe.maxAvgVarLen   ) {
 					foundWork++;//do not leave if we are backed up
@@ -422,13 +419,24 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				
 				int state = positionMemoData[stateIdx];
 
+				if (state==0) { //TODO: are two sharing the same pipe?
+					assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
+				}
+				
+				
 
 			//	logger.info("before test position {} state {} ",trieReader.sourcePos,state);
 				
 				//because the messages come in different sized headers this can not be used to test the NETTY.
 				boolean testingMode = true; //not working with chunked trailing byte
 				
-				if (testingMode) {
+				//TODO: must support multiple file requests, responses are in order? so we can provide this with a script fileA, fileB fileC then repeat.
+				//      periodic confirm file and each file has seen header lengths to check.
+				
+				//TODO: only turn on feature after first 1000 or so normal requests with checks
+				
+				//almost always take this if when testing.
+				if (((++responseCount&0xFFF)!=0) && testingMode) {
 					int lastMessageParseSize = -1;
 					int p = lastMessageParseSizeCount;
 					while (--p>=0) {
@@ -453,8 +461,15 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
 						Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
 						
+						
 						DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);
+						try {
 						DataOutputBlobWriter.openField(writer);
+						} catch (Exception e) {
+							System.err.println("open write for "+cc.id+" and user "+cc.getUserId());
+							
+							throw e;
+						}
 						
 						writer.writeShort(200);//OK
 						
@@ -510,7 +525,18 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 							payloadLengthData[i] = 0;//clear payload length rules, to be populated by headers
 							
-							beginResponseMessage(targetPipe, ccId);
+							{
+								//because we have started writign the response we MUST do extra cleanup later.
+								Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
+								Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
+								
+								//TODO: this is a serious client parse problem, we CAN NOT pick up new connection ID until this one is finished!!!
+								//      breaks on multi user since we hold this open...  TODO: must be fixed by reservation and the ClientSocketReader.....
+								
+								DataOutputBlobWriter<NetResponseSchema> writer1 = Pipe.outputStream(targetPipe);							
+								DataOutputBlobWriter.openField(writer1);							
+								TrieParserReader.writeCapturedShort(trieReader, 0, writer1); //status code	
+							}
 							
 							positionMemoData[stateIdx]= ++state;
 							
@@ -845,17 +871,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		lastMessageParseSizes[lastMessageParseSizeCount++] = size;		
 	}
 
-	private void beginResponseMessage(Pipe<NetResponseSchema> targetPipe, long ccId) {
-		{
-			//because we have started writign the response we MUST do extra cleanup later.
-			Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
-			Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
-			
-			DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);							
-			DataOutputBlobWriter.openField(writer);							
-			TrieParserReader.writeCapturedShort(trieReader, 0, writer); //status code	
-		}
-	}
+	
 
 //	private boolean hasDataToParse() {
 //		int i = input.length;

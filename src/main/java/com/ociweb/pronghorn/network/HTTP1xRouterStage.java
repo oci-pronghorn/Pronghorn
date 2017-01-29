@@ -935,7 +935,7 @@ private boolean hasNoActiveChannel(int idx) {
                 
                 //clear internal mask bit
             	
-            	logger.warn("upgrade reqeust deteced but not yet implemented.");
+            	logger.warn("Upgrade reqeust deteced but not yet implemented.");
             } else if (headerIdContentLength == headerId) {
             	
             	logger.warn("post or payload not yet implemented, content length detected");

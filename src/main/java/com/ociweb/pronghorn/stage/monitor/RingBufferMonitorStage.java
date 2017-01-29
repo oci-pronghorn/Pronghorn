@@ -43,7 +43,7 @@ public class RingBufferMonitorStage extends PronghornStage {
 	public void run() {
 		//if we can't write then do it again on the next cycle, and skip this data point.
 		if (PipeWriter.tryWriteFragment(notifyRingBuffer, MSG_RINGSTATSAMPLE_100)) {
-			
+			//TODO: convert to low level for more cycles...
 			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_MS_1, System.currentTimeMillis());
 			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_HEAD_2, Pipe.headPosition(observedPipe));
 			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_TAIL_3, Pipe.tailPosition(observedPipe));
@@ -53,6 +53,8 @@ public class RingBufferMonitorStage extends PronghornStage {
 			PipeWriter.publishWrites(notifyRingBuffer);
 			assert(Pipe.headPosition(notifyRingBuffer)==Pipe.workingHeadPosition(notifyRingBuffer)) : "publish did not clean up, is the publish batching? it should not.";
 			
+		} else {
+			//if unable to write then the values are dropped.
 		}
 	}
 

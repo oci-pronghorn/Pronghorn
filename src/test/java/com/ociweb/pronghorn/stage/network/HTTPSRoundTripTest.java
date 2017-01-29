@@ -126,7 +126,7 @@ public class HTTPSRoundTripTest {
 		 int routerCount = 4;	
 		 
 		gm1 = NetGraphBuilder.buildHTTPServerGraph(isTLS, gm1, groups, maxListeners, config, serverCoord, requestUnwrapUnits, 
-				    responseWrapUnits, pipesPerOutputEngine, socketWriters, 64, serverInputBlobs, 2048, serverBlobToEncrypt, 1024, serverBlobToWrite, routerCount);
+				    responseWrapUnits, pipesPerOutputEngine, socketWriters, 64, serverInputBlobs, 2048, serverBlobToEncrypt, 1024, serverBlobToWrite, routerCount, 512, 1<<8, 256);
  
     	gm = gm1;     
         
@@ -353,11 +353,13 @@ public class HTTPSRoundTripTest {
 					      //"10.10.10.244";
 					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
 			
-			boolean useLocalServer = true;//
+			boolean useLocalServer = false;//
 
 			
 			
 			GraphManager gm = new GraphManager();
+			
+		//	gm.enableBatching(gm);
 	    	
 	    	//TODO: will big sleeps show the backed up pipes more clearly? TODO: must be tuned for pipe lenghths?
 	    	
@@ -383,11 +385,11 @@ public class HTTPSRoundTripTest {
 	    	
 	    	/////////////////
 	        /////////////////
-	    	int base2SimultaniousConnections = 3;//TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
-	    	int clientCount = 4;
+	    	int base2SimultaniousConnections = 4;//TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
+	    	int clientCount = 2;
 	    		    	
 	    	//TODO: this number must be the limit of max simuantious handshakes.
-	    	int maxPartialResponsesClient = 1<<base2SimultaniousConnections; //input lines to client (should be large)
+	    	int maxPartialResponsesClient = (1<<base2SimultaniousConnections); //input lines to client (should be large)
 	    	final int clientOutputCount = 1<<base2SimultaniousConnections;//should be < client connections,  number of pipes getting wrappers and sent out put stream 
 	    	final int clientWriterStages = 1; //writer instances;	
 	    	
@@ -400,14 +402,14 @@ public class HTTPSRoundTripTest {
 			
 	    	int clientResponseUnwrapUnits = 2;//maxPartialResponsesClient;//To be driven by core count,  this is for consuming get responses
 	    	int clientRequestWrapUnits = 2;//maxPartialResponsesClient;//isTLS?4:8;//To be driven by core count, this is for production of post requests, more pipes if we have no wrappers?
-	    	int requestQueue = 96; 
+	    	int requestQueue = 256; 
 
-	    	int responseQueue = 64; //is this used for both socket writer and http builder? seems like this is not even used..
+	    	int responseQueue = 256; //is this used for both socket writer and http builder? seems like this is not even used..
 	    	
 	    	//////////////
 
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
-	    	final int loadMultiplier = isTLS? 100_000 : 2_000_000;
+	    	final int loadMultiplier = isTLS? 100_000 : 1_000_000;
 
 	    		    	
 			//one of these per unwrap unit and per partial message, there will be many of these normally so they should not be too large
@@ -508,7 +510,7 @@ public class HTTPSRoundTripTest {
 			//holds new requests
 			Pipe<ClientHTTPRequestSchema>[] input = new Pipe[totalUsersCount];
 			
-			int usersBits = 0;//TODO: this feature does not work. but must be fixed now to test 20K simultanious connections.
+			int usersBits = 0;//2; //TODO: not working they stomp on same client pipe?
 			int usersPerPipe = 1<<usersBits;  
 			ClientCoordinator clientCoord = new ClientCoordinator(base2SimultaniousConnections+usersBits, maxPartialResponsesClient, isTLS);						
 			
@@ -518,7 +520,7 @@ public class HTTPSRoundTripTest {
 			
 			
 			int httpRequestQueueBytes = 1<<8;
-			int httpRequestQueueSize = 64;
+			int httpRequestQueueSize = 256;
 				
 			
 			Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections+usersBits+extraHashBits, clientOutputCount, maxPartialResponsesClient, 
@@ -538,11 +540,11 @@ public class HTTPSRoundTripTest {
 		final int maxConnectionBitsOnServer 	= 12;//8K simulanious connections on server	    	
 		final int serverRequestUnwrapUnits 		= 2; //server unwrap units - need more for handshaks and more for posts
 		final int serverResponseWrapUnits 		= 4;
-		final int serverPipesPerOutputEngine 	= isTLS?8:2;//multiplier against server wrap units for max simultanus user responses.
-		final int serverSocketWriters           = 1;
+		final int serverPipesPerOutputEngine 	= isTLS?8:8;//multiplier against server wrap units for max simultanus user responses.
+		final int serverSocketWriters           = 2;
 		
 		//drives the cached data from the file loader.
-		final int messagesToOrderingSuper       = 2048;	    		
+		final int messagesToOrderingSuper       = 4096;	    		
 		final int messageSizeToOrderingSuper    = 1<<10;	    		
 		
 		
@@ -551,14 +553,21 @@ public class HTTPSRoundTripTest {
 		final int serverInputBlobs = 1<<16;//23;////19; //when small THIS has a big slow-down effect and it appears as the client getting backed up.
 		final int serverInputMsg = 4; 
 		 
-		final int serverMsgToEncrypt = 256;  //from the SUPER, TODO: when too small the super looks to blame but its these pipe behind it, must investigate better notifications.
-		final int serverBlobToEncrypt = 1<<12;
+		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+		final int serverMsgToEncrypt = 512;  //from the SUPER
+		final int serverBlobToEncrypt = 1<<14;
 		 
-		final int serverMsgToWrite = 1024;///this pipe gets full in short bursts and greatly impacts how much the server gets backed up. 
-		final int serverBlobToWrite = 1<<10; //Used for both TLS and NON-TLS
+		final int serverMsgToWrite = 256;//1024;///this pipe gets full in short bursts and greatly impacts how much the server gets backed up. 
+		final int serverBlobToWrite = 1<<12; //Used for both TLS and NON-TLS
 		//TODO: must make sure that the super can send parts if required in multiple mesages...
 		 
 		final int routerCount = 4;
+		
+		
+	    int fromRouterMsg = 1024;
+		int fromRouterBlob = 1<<8;
+		
+		int releaseMsg = 256;
 		
 		//This must be large enough for both partials and new handshakes.
 		
@@ -622,10 +631,10 @@ public class HTTPSRoundTripTest {
 		 	
 		 };
 	
+
 		
-			
-		 NetGraphBuilder.buildHTTPServerGraph(isTLS, gm, groups, maxPartialResponsesServer, config, serverCoord, serverRequestUnwrapUnits, serverResponseWrapUnits, serverPipesPerOutputEngine, 
-				                              serverSocketWriters, serverInputMsg, serverInputBlobs, serverMsgToEncrypt, serverBlobToEncrypt, serverMsgToWrite, serverBlobToWrite, routerCount);
+		NetGraphBuilder.buildHTTPServerGraph(isTLS, gm, groups, maxPartialResponsesServer, config, serverCoord, serverRequestUnwrapUnits, serverResponseWrapUnits, serverPipesPerOutputEngine, 
+				                              serverSocketWriters, serverInputMsg, serverInputBlobs, serverMsgToEncrypt, serverBlobToEncrypt, serverMsgToWrite, serverBlobToWrite, routerCount, fromRouterMsg, fromRouterBlob, releaseMsg);
 		 return serverCoord;
 	}
 	

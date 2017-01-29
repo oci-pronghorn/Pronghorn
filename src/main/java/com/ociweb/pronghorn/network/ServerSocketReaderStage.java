@@ -148,7 +148,14 @@ public class ServerSocketReaderStage extends PronghornStage {
 			        if (pendingSelections==0) {
 			        	selectedKeys.clear();
 			        } else {
-			        	selectedKeys.removeAll(doneSelectors);
+			        	
+			        	//sad but this is the best way to remove these without allocating a new iterator
+			        	// the selectedKeys.removeAll(doneSelectors); will produce garbage upon every call
+			        	int c = doneSelectors.size();
+			        	while (--c>=0) {
+			        		selectedKeys.remove(doneSelectors.get(c));
+			        	}
+			        	
 			        }
 		        } 
 		        
@@ -224,15 +231,18 @@ public class ServerSocketReaderStage extends PronghornStage {
 		            	assert(1==pumpState) : "Can only remove if all the data is known to be consumed";
 		            	doneSelectors.add(selection);//add to list for removal
 		            	pendingSelections--;
-		            	releasePipesForUse();
-		            } else if (0==pumpState) {
-		            	releasePipesForUse();	                	
-		            }	   
+		            }
+		          
+		            if ((++rMask&0x3F)==0) {
+		             releasePipesForUse(); //must run but not on every pass
+		            }
 				}
 		        
 		}
 	}
 
+	private int rMask = 0;
+	
 	private void releasePipesForUse() {
 		int i = releasePipes.length;
 		while (--i>=0) {
@@ -318,8 +328,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 			//	throw new UnsupportedOperationException("not released pos did not match "+ pos+" in "+output[pipeIdx]);
 				
 			} else {
-				
-				throw new UnsupportedOperationException("not released could not find "+idToClear);
+				//probably already cleared and closed
+				logger.trace("WARNING: not released, could not find "+idToClear);
 			}
 		}
 	}

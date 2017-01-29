@@ -56,7 +56,7 @@ public class ServiceObjectHolder<T> {
             this.serviceObjectKeys = new long[size];
             this.serviceObjectValues = (T[]) Array.newInstance(clazz, size);
             this.serviceObjectLookupCounts = new long[size];
-        }
+         }
 
         @SuppressWarnings("unchecked")
         public ServiceObjectData(ServiceObjectData<T> data, int growthFactor) {

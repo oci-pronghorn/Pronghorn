@@ -129,22 +129,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	@Override
     public void run() {
 
-		
-		
-    	boolean didWork;
+    	boolean haveWork;
     	do {
-	    	didWork = false;
+	    	haveWork = false;
 	        int c = dataToSend.length;
-	        
-	        
-//	        long now = System.currentTimeMillis();
-//	        if (now>nextTime) {	        	
-//	        	logger.info("A:{} B:{} C:{}",xa,xb,xc);
-//	        	nextTime = now + 500;
-//	        }
+
 	        
 	        while (--c >= 0) {
-	        	final Pipe<ServerResponseSchema> sourcePipe = dataToSend[c];
+	        	
 	        	
 	        	//WARNING a single response sits on the pipe and its output is full so nothing happens until it is cleared.
 	        	//System.err.println("process pipe: "+c+" of "+dataToSend.length);
@@ -161,18 +153,20 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	        	//      if we ensure it is balanced then this data will also get balanced.
 	        		        
 	        	
-	            didWork = processPipe(didWork, sourcePipe);
+	            haveWork |= processPipe(dataToSend[c]);
 	            
             	
 	            
 	        }  
-    	} while (didWork);
+    	} while (haveWork);
     }
 
 
-	private boolean processPipe(boolean didWork, final Pipe<ServerResponseSchema> sourcePipe) {
+	private boolean processPipe(final Pipe<ServerResponseSchema> sourcePipe) {
 		
+		boolean didWork = false;
 		while (Pipe.hasContentToRead(sourcePipe)) {
+			didWork = true;
 
 		    //peek to see if the next message should be blocked, eg out of order, if so skip to the next pipe
 		    int peekMsgId = Pipe.peekInt(sourcePipe, 0);
@@ -181,23 +175,17 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    int sequenceNo = 0;
 		    long channelId = -2;
 		    if (peekMsgId>=0 && ServerResponseSchema.MSG_SKIP_300!=peekMsgId) {
-		    	didWork = true;
 		    	
-		        channelId = Pipe.peekLong(sourcePipe, 1);
-		        
-		        //TODO: can we make the OrderSuper combine writes to avoid these pipe getting so full. they spike to 100% at times.
-		        		
+		        channelId = Pipe.peekLong(sourcePipe, 1);		        
 		        myPipeIdx = (int)(channelId % poolMod);
 		        myPipe = outgoingPipes[myPipeIdx];
 		        
 		        ///////////////////////////////
 		        //quit early if the pipe is full, NOTE: the order super REQ long output pipes
 		        ///////////////////////////////
-		    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {
-		   // 		xb++;
+		    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {		    		
 		    		break;
-		    	}
-		    	
+		    	}		    	
 		    	
 		        sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
 		    
@@ -208,7 +196,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        
 		        int expected = expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)];                
 		        if (sequenceNo!=expected) {          
-		        	assert(sequenceNo>=expected) : "found smaller than expected sequenceNo, they should never roll back";	 
+		        	assert(sequenceNo>=expected) : "found smaller than expected sequenceNo, they should never roll back";
 		        	break;
 		        }	                  
 
@@ -218,9 +206,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		         
 		        
 		    } else {
-		    	didWork = true;
-		    	
-
 			    
 		    	////////////////
 		    	//these consume data but do not write out to pipes
@@ -251,8 +236,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 
-	private void copyDataBlock(final Pipe<ServerResponseSchema> sourcePipe, int peekMsgId,
-			Pipe<NetPayloadSchema> myPipe, int myPipeIdx, int sequenceNo, long channelId) {
+	private void copyDataBlock(final Pipe<ServerResponseSchema> input, int peekMsgId,
+							   final Pipe<NetPayloadSchema> output, int myPipeIdx, int sequenceNo, long channelId) {
 		////////////////////////////////////////////////////
 		//we now know that this work should be done and that there is room to put it out on the pipe
 		//so do it already
@@ -261,12 +246,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		//all remaning messages start with the connection id
 		{
 		    long value = channelId;
-		    final int activeMessageId = Pipe.takeMsgIdx(sourcePipe);
+		    final int activeMessageId = Pipe.takeMsgIdx(input);
 		              	                
 		    assert(peekMsgId == activeMessageId);
 		    final long oldChannelId = channelId;
 		    
-		    long channelId2 = Pipe.takeLong(sourcePipe);
+		    long channelId2 = Pipe.takeLong(input);
 		    
 		    assert(oldChannelId == channelId2) : ("channel mismatch "+oldChannelId+" "+channelId2);
 		    
@@ -278,7 +263,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    //most common case by far so we put it first
 		    if (ServerResponseSchema.MSG_TOCHANNEL_100 == activeMessageId ) {
 		    	                	             	  
-		    	 publishDataBlock(sourcePipe, myPipe, myPipeIdx, sequenceNo, channelId2);
+		    	 publishDataBlock(input, output, myPipeIdx, sequenceNo, channelId2);
 		    	
 		    } else {
 		    	
@@ -305,20 +290,20 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 
-	private void publishDataBlock(final Pipe<ServerResponseSchema> sourcePipe, Pipe<NetPayloadSchema> myPipe,
-			int myPipeIdx, int sequenceNo, long channelId) {
-		int expSeq = Pipe.takeInt(sourcePipe); //sequence number
+	private void publishDataBlock(final Pipe<ServerResponseSchema> input, Pipe<NetPayloadSchema> output, int myPipeIdx, int sequenceNo, long channelId) {
+		
+		 int expSeq = Pipe.takeInt(input); //sequence number
 		 assert(sequenceNo == expSeq);
 		 
 		 //byteVector is payload
-		 int meta = Pipe.takeRingByteMetaData(sourcePipe); //for string and byte array
-		 int len = Pipe.takeRingByteLen(sourcePipe);
+		 int meta = Pipe.takeRingByteMetaData(input); //for string and byte array
+		 int len = Pipe.takeRingByteLen(input);
 		
 		         
-		 int requestContext = Pipe.takeInt(sourcePipe); //high 1 upgrade, 1 close low 20 target pipe	                     
-		 int blobMask = Pipe.blobMask(sourcePipe);
-		 byte[] blob = Pipe.byteBackingArray(meta, sourcePipe);
-		 int bytePosition = Pipe.bytePosition(meta, sourcePipe, len);
+		 int requestContext = Pipe.takeInt(input); //high 1 upgrade, 1 close low 20 target pipe	                     
+		 int blobMask = Pipe.blobMask(input);
+		 byte[] blob = Pipe.byteBackingArray(meta, input);
+		 int bytePosition = Pipe.bytePosition(meta, input, len);
 		 
 		 //view in the console what we just wrote out to the next stage.
 		 //System.out.println("id "+myPipeIdx);
@@ -326,61 +311,49 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 
 		 if (ServerCoordinator.TEST_RECORDS) {
 			 //check 
-			 testValidContent(myPipeIdx, sourcePipe, meta, len);
+			 testValidContent(myPipeIdx, input, meta, len);
 			 
 			 //testValidContentQuick(sourcePipe, meta, len);
 		 }
 		 
-		 Pipe.confirmLowLevelRead(sourcePipe, SIZE_OF_TO_CHNL);	                     
-		 Pipe.readNextWithoutReleasingReadLock(sourcePipe);//we will look ahead to see what we can combine into a single read
-		 
-		 
-		 //TODO: peek here to see if making a larger block is even possible, because we have skip gap this may not work out very well.
-		 //TODO: this copy is the hot point in the code because we are calling it too many times with SMALL copies
-		 //TODO: it would be nice to roll up multiple writes if possible to minimize overhead KEY UPGRADE HERE.
-		 
-		 //TODO: we need the oder super to combine the parts into 1 write if possible.
-		 //TODO: skip over any skip and do 2 copies to a single target.
-		 
-		 //we can just bump up len OR do 2 blocks?
-		 
-
+		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	                     
+		 Pipe.readNextWithoutReleasingReadLock(input);//we will look ahead to see what we can combine into a single read
 		 
 		 
 		 //If a response was sent as muliple parts all part of the same sequence number then we roll them up as a single write when possible.
-		 while (Pipe.peekMsg(sourcePipe, ServerResponseSchema.MSG_TOCHANNEL_100) 
-				 && Pipe.peekLong(sourcePipe, 1) == channelId 
-			 	 && Pipe.peekInt(sourcePipe, 3)==expSeq 
-			     && (len+Pipe.peekInt(sourcePipe, 5)<myPipe.maxAvgVarLen)  ) {
+		 while ( Pipe.peekMsg(input, ServerResponseSchema.MSG_TOCHANNEL_100) 
+			 	 && Pipe.peekInt(input, 3) == expSeq 
+			 	 && Pipe.peekLong(input, 1) == channelId 
+			     && ((len+Pipe.peekInt(input, 5))<output.maxAvgVarLen)  ) {
 					 //this is still part of the current response so combine them together
 					 
-					 Pipe.takeMsgIdx(sourcePipe);
-					 Pipe.takeLong(sourcePipe);
-					 Pipe.takeInt(sourcePipe);
+					 Pipe.takeMsgIdx(input);
+					 Pipe.takeLong(input);
+					
 					 
-					 int meta2 = Pipe.takeRingByteMetaData(sourcePipe); //for string and byte array
-					 int len2 = Pipe.takeRingByteLen(sourcePipe);
+					 Pipe.takeInt(input);
 					 
-					 int pos2 = Pipe.bytePosition(meta2, sourcePipe, len2); //moves pointer
+					 int meta2 = Pipe.takeRingByteMetaData(input); //for string and byte array
+					 int len2 = Pipe.takeRingByteLen(input);
+					 
+					 Pipe.bytePosition(meta2, input, len2); //moves pointer
 	 
 					 len+=len2;
 					 
-					 requestContext = Pipe.takeInt(sourcePipe); //this replaces the previous context read
+					 requestContext = Pipe.takeInt(input); //this replaces the previous context read
 		
-					 Pipe.confirmLowLevelRead(sourcePipe, SIZE_OF_TO_CHNL);	 
-					 Pipe.readNextWithoutReleasingReadLock(sourcePipe);
+					 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	 
+					 Pipe.readNextWithoutReleasingReadLock(input);
 					 
 		 }
-		 
-		 
-		 writeToNextStage(myPipe, channelId, len, requestContext, blobMask, blob, bytePosition); 
+		 		 
+		 final long time = 0;//field not used by server...
+		 writeToNextStage(output, channelId, len, requestContext, blobMask, blob, bytePosition, time); 
 		 
 		 //TODO: we should also look at the module definition logic so we can have mutiple OrderSuper instances (this is the first solution).
 		 
-		 Pipe.releaseAllPendingReadLock(sourcePipe); //now done consuming the bytes so release the pending read lock release.
-		 
-		 
-		 //Pipe.releaseReadLock(sourcePipe);
+		 Pipe.releaseAllPendingReadLock(input); //now done consuming the bytes so release the pending read lock release.
+
 	}
 
 
@@ -513,8 +486,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 
-	private void writeToNextStage(Pipe<NetPayloadSchema> myPipe, final long channelId, int len, int requestContext,
-			int blobMask, byte[] blob, int bytePosition) {
+	private void writeToNextStage(Pipe<NetPayloadSchema> output, final long channelId, int len, int requestContext,
+			int blobMask, byte[] blob, int bytePosition, long time) {
 		/////////////
 		 //if needed write out the upgrade message
 		 ////////////
@@ -522,11 +495,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 if (0 != (UPGRADE_MASK & requestContext)) {
 			 
 			 //the next response should be routed to this new location
-			 int upgSize = Pipe.addMsgIdx(myPipe, NetPayloadSchema.MSG_UPGRADE_307);
-			 Pipe.addLongValue(channelId, myPipe);
-			 Pipe.addIntValue(UPGRADE_TARGET_PIPE_MASK & requestContext, myPipe);;
-			 Pipe.confirmLowLevelWrite(myPipe, upgSize);
-			 Pipe.publishWrites(myPipe);
+			 int upgSize = Pipe.addMsgIdx(output, NetPayloadSchema.MSG_UPGRADE_307);
+			 Pipe.addLongValue(channelId, output);
+			 Pipe.addIntValue(UPGRADE_TARGET_PIPE_MASK & requestContext, output);;
+			 Pipe.confirmLowLevelWrite(output, upgSize);
+			 Pipe.publishWrites(output);
 			 
 		 }
 		                	
@@ -537,14 +510,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 
 		 //logger.info("write content from super to wrapper sizse {} for {}",len,channelId);
 		 
-		 int plainSize = Pipe.addMsgIdx(myPipe, NetPayloadSchema.MSG_PLAIN_210);
-		 Pipe.addLongValue(channelId, myPipe);
-		 Pipe.addLongValue(System.currentTimeMillis(), myPipe);
-		 Pipe.addLongValue(Pipe.getWorkingTailPosition(myPipe), myPipe);
-		 Pipe.addByteArrayWithMask(myPipe, blobMask, len, blob, bytePosition);
+		 int plainSize = Pipe.addMsgIdx(output, NetPayloadSchema.MSG_PLAIN_210);
+		 Pipe.addLongValue(channelId, output);
+		 Pipe.addLongValue(time, output);
+		 Pipe.addLongValue(Pipe.getWorkingTailPosition(output), output);
+		 Pipe.addByteArrayWithMask(output, blobMask, len, blob, bytePosition);
 		 
-		 Pipe.confirmLowLevelWrite(myPipe, plainSize);
-		 Pipe.publishWrites(myPipe);
+		 Pipe.confirmLowLevelWrite(output, plainSize);
+		 Pipe.publishWrites(output);
 		 
 		 if (0 != (END_RESPONSE_MASK & requestContext)) {
 		    //we have finished all the chunks for this request so the sequence number will now go up by one	
@@ -563,10 +536,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 
 			 //logger.info("CLOSE CONNECTION DETECTED IN WRAP SUPER");
 		     
-			 int disSize = Pipe.addMsgIdx(myPipe, NetPayloadSchema.MSG_DISCONNECT_203);
-			 Pipe.addLongValue(channelId, myPipe);
-			 Pipe.confirmLowLevelWrite(myPipe, disSize);
-			 Pipe.publishWrites(myPipe);
+			 int disSize = Pipe.addMsgIdx(output, NetPayloadSchema.MSG_DISCONNECT_203);
+			 Pipe.addLongValue(channelId, output);
+			 Pipe.confirmLowLevelWrite(output, disSize);
+			 Pipe.publishWrites(output);
 			 
 		 }
 	}

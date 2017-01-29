@@ -8,6 +8,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -23,6 +24,7 @@ import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
@@ -172,13 +174,15 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private final File   folderRoot;
     
     private int pathCount;
-    private long totalBytes;
-    
+
+    private long trailingReader;
+    private long trailingBlobReader;
+    private long totalBytesWritten; 
     
     private FileReadModuleStageData data;
  
 	private static final boolean supportInFlightCopy = true;
-	private static final boolean supportInFlightCopyByRef = false;
+	private static final boolean supportInFlightCopyByRef = false;  //TODO: must be fixed before turned on, not needed yet...
 	
 	
     //move to the rest of the context constants
@@ -190,13 +194,6 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private final static int VERB_HEAD = 1;
     
     
-    private final int hashTableBits = 15; //must hold all the expected files total in bits
-    
-    private long[] reuseRing;
-    private long reusePosition;
-    private long reusePositionConsume;
-    
-    private int reuseMask;
     
     //TODO: order supervisor needs more pipes to stop blocks
     //TODO: this class needs to extract the file load path
@@ -219,6 +216,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         this.inputs = inputs; //TODO: fix hack must walk all.
         this.output = output;
         
+        this.trailingReader = 0;
+        this.trailingBlobReader = 0;
         
         this.folderRootString = rootPath.toString();
         
@@ -311,7 +310,6 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     public void startup() {
 
     	//local state
-        this.outputHash = new PipeHashTable(hashTableBits);
         this.pathCacheReader = new TrieParserReader();
         this.channelHolder = new ServiceObjectHolder<FileChannel>(OPEN_FILECHANNEL_BITS, FileChannel.class, new FileChannelValidator() , false);
         
@@ -326,6 +324,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         }
         File[] children = rootFileDirectory.listFiles();
         
+        this.outputHash = new PipeHashTable(17);
 
         final int maxTotalPathLength = 1<<16;;
         
@@ -354,15 +353,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         int items = 1+(output.sizeOfBlobRing/2);//based on smallest expected response
                 
         int fields = 2; //pos and file id  
-        
-        //this is a guess because payload size may be very large or very small so we do not know what may be in the old blob buffer.        
-        int reuseRingBits = (int)Math.ceil(Math.log(items*fields)/Math.log(2));
-        int reuseRingSize = 1<<reuseRingBits;
-        
-        reuseMask= reuseRingSize-1;
-        reuseRing=new long[reuseRingSize];
-        reusePosition=0;
-        reusePositionConsume=0;
+
     }
 
 
@@ -661,12 +652,14 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             byte[] revision = httpSpec.revisions[httpRevision].getBytes();
             byte[] contentType = httpSpec.contentTypes[data.getType()[pathId]].getBytes();
             
-            totalBytes += publishHeaderMessage(requestContext, sequence, VERB_GET==verb ? 0 : requestContext, 
+            int bytesConsumed = publishHeaderMessage(requestContext, sequence, VERB_GET==verb ? 0 : requestContext, 
             		                           status, output, activeChannelHigh, activeChannelLow,  
                                                httpSpec, revision, contentType, 
                                                data.getFileSizeAsBytes()[pathId], 0, data.getFileSizeAsBytes()[pathId].length, Integer.MAX_VALUE, 
                                                data.getEtagBytes()[pathId]); 
-            
+
+            totalBytesWritten = totalBytesWritten + bytesConsumed;
+     //       assert(totalBytesWritten>=Pipe.getBlobWorkingHeadPosition(output)) : totalBytesWritten+" must be >= "+Pipe.getBlobWorkingHeadPosition(output);
                         
             //This allows any previous saved values to be automatically removed upon lookup when they are out of range.
             PipeHashTable.setLowerBounds(outputHash, Pipe.getBlobWorkingHeadPosition(output) - output.blobMask );     
@@ -736,7 +729,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             } else if (VERB_HEAD == verb){
                 activeFileChannel = null;
                 Pipe.confirmLowLevelRead(input, activeReadMessageSize);
-                totalBytes += Pipe.releaseReadLock(input);
+                Pipe.releaseReadLock(input);
             } else {
                 throw new UnsupportedOperationException("Unknown Verb, File reader only supports get and head");
             }
@@ -762,7 +755,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
          if (debug) {
 	         long now = System.currentTimeMillis();
 	         if (now>lastTime) {	        	 
-	        		logger.info("total bytes out {} inFlightRef {} inFlightCopy {} fromDisk {} ",totalBytes, inFlightRef, inFlightCopy, fromDisk);	        	 
+	        		logger.info("total bytes out {} inFlightRef {} inFlightCopy {} fromDisk {} ",totalBytesWritten, inFlightRef, inFlightCopy, fromDisk);	        	 
 	        	 lastTime = now+2_000;
 	         }
          }
@@ -772,7 +765,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                            
         	 didWork = true;
         	 
-             // NEW IDEA
+             final long fcId = data.getFcId()[pathId];
+			// NEW IDEA
              // long copyDistance = Pipe.blobMask(output) & (blobPosition - originalBlobPosition);
              // System.out.println(copyDistance+" vs "+Pipe.blobMask(output)); //NOTE: copy time limits throughput to 40Gbps so larger files can not do 1M msg per second
              // TOOD: BBBB, add messages with gap field to support full zero copy approach to reading the cache.
@@ -780,13 +774,14 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
              //even if this only happens 20% of the time it will stil make a noticable impact in speed.
              /////////
              
-             final int oldBlobPosition = (int)PipeHashTable.getItem(outputHash, data.getFcId()[pathId]);
+             final int oldBlobPosition = (int)PipeHashTable.getItem(outputHash, fcId);
             
             int headBlobPosInPipe = Pipe.storeBlobWorkingHeadPosition(localOutput);
             int blobMask = Pipe.blobMask(localOutput);
+			final long fileSize = data.getFileSizes()[pathId];
 			if (supportInFlightCopy && 
 					/*Only use if the file was written previously*/ oldBlobPosition>0 && 
-					/*Only use if the full file can be found */data.getFileSizes()[pathId]<blobMask) { 
+					/*Only use if the full file can be found */fileSize<blobMask) { 
             
             	//do not copy more than 1 fragment at this time
             	int len = Math.min((int)activePayloadSizeRemaining, localOutput.maxAvgVarLen);
@@ -798,86 +793,127 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             	/////////////////////////////////////////////
             	//choose between zero copy re-use and arrayCopy re-use
             	////////////////////////////////////////////
-            	
-            	final long targetFile = data.getFcId()[pathId];
-            	final long lowerBound = headBlobPosInPipe;
-            	long tempFcId = -1;
-            	long tempPos = -1;
-            	
-
-            	if (reusePosition>reuseRing.length && Pipe.getBlobHeadPosition(localOutput)>localOutput.sizeOfBlobRing) {
-	            	long cursor = reusePositionConsume;
-	            	int iter = reuseRing.length>>1; // /4
-	     
-	             	//skip values so we only ahve to check them once.
-	             	do {
-	              		tempFcId = reuseRing[reuseMask&(int)cursor++];
-	            		tempPos  = reuseRing[reuseMask&(int)cursor++];	             	
-	             	} while (tempPos<lowerBound);
-	             	cursor-=2;
-	             		             	
-	             	reusePositionConsume = cursor;
-	             		         
-	            	do {      
-	            		tempFcId = reuseRing[reuseMask&(int)cursor++];
-	            		tempPos  = reuseRing[reuseMask&(int)cursor++];
-	            	} while (--iter>=0 && (tempPos<lowerBound || tempFcId!=targetFile ));	
+                boolean foundFile = false;
+                int countOfBytesToSkip = 0;
+                
+                if (supportInFlightCopyByRef) {
 	            	
-             	}
-            	
-            	final int countOfBytesToSkip = (int)(localPos+tempPos-headBlobPosInPipe);
+	            	final int blobWorkingHeadPosition = Pipe.getBlobWorkingHeadPosition(localOutput);
+	            	assert(totalBytesWritten>=blobWorkingHeadPosition) : totalBytesWritten+" must be >= "+blobWorkingHeadPosition;
+					final int maskedBlobWorkingHeadPosition = blobWorkingHeadPosition&Pipe.blobMask(localOutput);;
+	            	
+	            	final long workingHead = Pipe.workingHeadPosition(localOutput);
+	            	int[] slab = Pipe.slab(localOutput);
+	            	while ((trailingReader < workingHead) //do not get ahead of where we are writing.            			
+	            			&& (
+	            					(trailingBlobReader < (totalBytesWritten-((long) localOutput.sizeOfBlobRing )))            			   
+	            			   )            			
+	            			) {       
+	            		
+	            		int msgIdx = slab[Pipe.slabMask(localOutput)&(int)trailingReader];
+	            		trailingReader+=Pipe.sizeOf(ServerResponseSchema.instance, msgIdx);
+	            		trailingBlobReader=trailingBlobReader+slab[Pipe.slabMask(localOutput)&(int)(trailingReader-1)];
+	            		
+	            	}
+	            	//now look ahead to find a potential match
+	            		            	
+	            	long checkPos = trailingReader;
+	                long checkBob = trailingBlobReader;
+	                long limit = checkBob+(8 * localOutput.maxAvgVarLen);
+                
+
+                
+//                System.err.println("DDDD blob "+trailingBlobReader+" < "+totalBytesWritten+"-"+ localOutput.sizeOfBlobRing+"      "+trailingReader+"<"+workingHead+
+//                		          "   trailing write "+(Pipe.blobMask(localOutput)&trailingBlobReader)+" vs "+(Pipe.blobMask(localOutput)&blobWorkingHeadPosition));
+//               
+
+                
+                	
+                	int y = 0;
+	                while (checkPos<=workingHead && checkBob<limit) {
+	                	
+	                	y++;
+	                	
+	                	int msgIdx = slab[Pipe.slabMask(localOutput)&(int)checkPos];
+	                	assert(msgIdx == ServerResponseSchema.MSG_TOCHANNEL_100);
+	                	
+	                	int size = Pipe.sizeOf(ServerResponseSchema.instance, msgIdx);                	
+	                	
+	            		int bytesConsumed = slab[Pipe.slabMask(localOutput)&(int)(size+checkPos-1)]; 
+	            		
+	            		int b = (int)checkBob&Pipe.blobMask(localOutput);
+	            		if (b<maskedBlobWorkingHeadPosition) {
+	            			b+=localOutput.sizeOfBlobRing;
+	            		}
+	
+	            		int skipSize = b-maskedBlobWorkingHeadPosition; 
+	            	      		            		
+	            		
+	            		int peekFcIdx = (int)(checkBob+bytesConsumed-8)&Pipe.blobMask(localOutput);
+	            		
+	            		///////////////////////// TODO: add these ideas....
+	            		//if we find an equal64 no match followed by a match it is either
+	            		// 1. the full message right after the header
+	            		// 2. the first chunk of the messge right after the header
+	            		/////////////////////////
+	            		
+	            		
+	            		if ((bytesConsumed == (8+fileSize)) && totalBytesWritten>localOutput.sizeOfBlobRing && equal64(blob, Pipe.blobMask(localOutput), peekFcIdx, fcId) ) {
+	
+	            			foundFile = true;
+	            			
+	         //   			System.err.println("might work match.. "+skipSize+" "+trailingBlobReader);
+	            			
+	            			countOfBytesToSkip = skipSize;
+	            			
+	            			break;//found one do not continue;
+	            		}
+	
+	            		
+	            		checkPos+=size;
+	            		checkBob+=bytesConsumed;                	
+	                	
+	                }
+	                
+	 //               System.err.println("value "+y);
+	                
+                }
 
             	
-            	if (supportInFlightCopyByRef 
-            			&& tempPos >= lowerBound 
-            			&& tempFcId == targetFile 
-            			&& countOfBytesToSkip>=0 && countOfBytesToSkip<localOutput.maxAvgVarLen //Never jump full ring, and we really should only jump if the value is "near" us, within 1 message fragment
-            			) { 
-            		
- 
-//            		Appendables.appendUTF8(System.out, blob, (int)tempPos, len, blobMask);
-//            		System.out.println();
-//
-//            		            		
+            	if (supportInFlightCopyByRef && foundFile) {           	
             		
             		inFlightRef++;
             		            		
+         //   		System.err.println("found one more in flight copy"+inFlightRef);
+            		
             		int size = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_SKIP_300);
             		
             		Pipe.addAndGetBytesWorkingHeadPosition(localOutput, countOfBytesToSkip);//he head is moved becauase we want to skip these bytes.
             		
 					Pipe.addBytePosAndLen(localOutput, Pipe.unstoreBlobWorkingHeadPosition(localOutput), countOfBytesToSkip);
             		Pipe.confirmLowLevelWrite(localOutput, size);
-            		Pipe.publishWrites(localOutput);
-            	               		
+            		int consumed = Pipe.publishWrites(localOutput);
+            	    assert(countOfBytesToSkip==consumed); 
+            	    
+            	    totalBytesWritten = totalBytesWritten+countOfBytesToSkip;//for accounting we must add this just as though we wrote it.
+            		
             		headBlobPosInPipe = Pipe.storeBlobWorkingHeadPosition(localOutput);
-            		
-//        			Appendables.appendUTF8(System.out, blob, headBlobPosInPipe, len, blobMask);
-//        			System.out.println(headBlobPosInPipe+" "+len+" "+blobMask);        			
 
 
-            		assert((blobMask&headBlobPosInPipe)==(blobMask&(localPos+tempPos))): (blobMask&headBlobPosInPipe)+" vs "+(blobMask&(localPos+tempPos));
-            		
-            		//assert(Appendables.appendUTF8(new StringBuilder(), blob, headBlobPosInPipe, len, blobMask).toString().equals("{\"x\":9,\"y\":17,\"groovySum\":26}\n")) : (headBlobPosInPipe&blobMask)+" error at "+headBlobPosInPipe+" mask "+blobMask+" value "+Appendables.appendUTF8(new StringBuilder(), blob, headBlobPosInPipe, len, blobMask);
-            		
-            		
-            		
-            		//nothing to copy, position is now set up.
-            	} else {
+            	} else 
+            	{
             		inFlightCopy++;
-            		Pipe.copyBytesFromToRing(blob, prevBlobPos, blobMask, blob, headBlobPosInPipe, blobMask, len);
-            		
-            		//assert(Appendables.appendUTF8(new StringBuilder(), blob, headBlobPosInPipe, len, blobMask).toString().equals("{\"x\":9,\"y\":17,\"groovySum\":26}\n")) : "error at "+headBlobPosInPipe+" mask "+blobMask+" value "+Appendables.appendUTF8(new StringBuilder(), blob, headBlobPosInPipe, len, blobMask);
-            		
-            		
+            		Pipe.copyBytesFromToRing(blob, prevBlobPos, blobMask, blob, headBlobPosInPipe, blobMask, len);  
             	}
     
-                activeMessageStart = publishBodyPart(channelHigh, channelLow, sequence, localOutput, len);   
+                activeMessageStart = publishBodyPart(channelHigh, channelLow, sequence, localOutput, len, data.getFcId()[pathId]);   
                 
                // System.err.println("coped data body from "+(output.blobMask&prevBlobPos)+" to "+(output.blobMask&headBlobPosInPipe)+" remaining "+activePayloadSizeRemaining);
                 
 				localPos += len;
-            } else {
+            } else 
+            
+            {
             	fromDisk++;
             	//logger.info("copied the file from disk {} times",fromDisk);
             	assert(localFileChannel.isOpen());
@@ -890,7 +926,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                 	//logger.info("FileReadStage wrote out {} total file size {} curpos {} ",len,localFileChannel.size(),localFileChannel.position());
                                     	
                 	assert(len<Integer.MAX_VALUE);
-                	activeMessageStart = publishBodyPart(channelHigh, channelLow, sequence, localOutput, (int)len);    
+                	activeMessageStart = publishBodyPart(channelHigh, channelLow, sequence, localOutput, (int)len, data.getFcId()[pathId]);    
                     
                 	localPos += len;
                                         
@@ -902,7 +938,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         			//finish the end of file send
         			//////////////////////////////////
                     Pipe.confirmLowLevelRead(input, activeReadMessageSize);
-                    totalBytes += Pipe.releaseReadLock(input);//returns count of bytes used by this fragment                 
+                                        
+                    Pipe.releaseReadLock(input);//returns count of bytes used by this fragment                 
+                                                          
                     activeFileChannel = null;
                     //now store the location of this new data.
                     Pipe.unstoreBlobWorkingHeadPosition(localOutput);
@@ -912,9 +950,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                    
                     long dataPos = positionOfFileDataBegin();
                     PipeHashTable.replaceItem(outputHash, data.getFcId()[pathId], dataPos);
-                    //store this because we may get to use it again.
-                    reuseRing[reuseMask&(int)reusePosition++] = data.getFcId()[pathId];
-                    reuseRing[reuseMask&(int)reusePosition++] = localOutput.sizeOfBlobRing+dataPos;
+
                     //clear value
                     activeMessageStart=-1;
                     
@@ -926,8 +962,11 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 			//finish the end of file send
 			//////////////////////////////////
             if (activePayloadSizeRemaining<=0) {
+            	
                 Pipe.confirmLowLevelRead(input, activeReadMessageSize);
-                totalBytes += Pipe.releaseReadLock(input);//returns count of bytes used by this fragment                 
+                                
+                Pipe.releaseReadLock(input);//returns count of bytes used by this fragment    
+                                
                 activeFileChannel = null;
          
                 //now store the location of this new data so we can use it as the cache later   
@@ -936,19 +975,14 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                 long dataPos = positionOfFileDataBegin();
                 
                 PipeHashTable.replaceItem(outputHash, data.getFcId()[pathId], dataPos);
-                //store this because we may get to use it again.
-                reuseRing[reuseMask&(int)reusePosition++] = data.getFcId()[pathId];
-                reuseRing[reuseMask&(int)reusePosition++] = localOutput.sizeOfBlobRing+dataPos;
-                
-                
+
                 //clear value
                 activeMessageStart=-1;
                 
                 return didWork;
-            } else {
-            	logger.info("unable to complete write, remaining bytes for this file {} ",activePayloadSizeRemaining);
-            }
-            
+            } else {            	
+            	logger.trace("remaining bytes for this file {}, will write the rest on next pass",activePayloadSizeRemaining); //positive bytes required            	
+            }           
             
                 
          }
@@ -961,10 +995,11 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 	 * 
 	 * previousPos holds the last known time that this exact same payload was sent, this allows consumers to avoid a deep equals check.
 	 */
-    private long publishBodyPart(int channelHigh, int channelLow, int sequence, Pipe<ServerResponseSchema> localOutput, int len) {
+    private long publishBodyPart(int channelHigh, int channelLow, int sequence, Pipe<ServerResponseSchema> localOutput, int len, long fcId) {
 
         
-    	long messageStartPosition = Pipe.workingHeadPosition(localOutput);
+    	final long messageStartPosition = Pipe.workingHeadPosition(localOutput);
+    	final int initBlob = Pipe.getBlobWorkingHeadPosition(localOutput);
     	
         int payloadMsgSize = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
 
@@ -972,14 +1007,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         Pipe.addIntValue(channelLow, localOutput);
         
         Pipe.addIntValue(sequence, localOutput);       
-        
-        
-        
-        int originalBlobPosition = Pipe.unstoreBlobWorkingHeadPosition(localOutput);
-        
-        //logger.info("publish body part from {} for len of {} ", originalBlobPosition, len);
+                
    
-        Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, len, localOutput);
+        Pipe.moveBlobPointerAndRecordPosAndLength(Pipe.unstoreBlobWorkingHeadPosition(localOutput), len, localOutput);
 
         //NOTE: this field is last so we can return failure and close connection.
         if (  (activePayloadSizeRemaining -= len) > 0) {
@@ -989,17 +1019,54 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         }
         
         Pipe.confirmLowLevelWrite(localOutput, payloadMsgSize);
-        Pipe.publishWrites(localOutput);
+        
+        if (supportInFlightCopyByRef) {
+	        //we can hide 8 bytes here between the data files.
+	        write64(Pipe.blob(localOutput),Pipe.blobMask(localOutput), Pipe.getBlobWorkingHeadPosition(localOutput), fcId);
+	        
+	        totalBytesWritten = totalBytesWritten + Pipe.publishWrites(localOutput,8);
+	        assert(totalBytesWritten>=Pipe.getBlobWorkingHeadPosition(output)) : totalBytesWritten+" must be >= "+Pipe.getBlobWorkingHeadPosition(output);        
+	        
+	        assert (equal64(Pipe.blob(localOutput),Pipe.blobMask(localOutput), initBlob+Pipe.slab(localOutput)[Pipe.slabMask(localOutput)&((int)messageStartPosition+payloadMsgSize-1)]-8, fcId));
+        } else {
+        	 totalBytesWritten = totalBytesWritten + Pipe.publishWrites(localOutput);
+        	
+        }
         
         return messageStartPosition;
     }
 
+    private static void write64(byte[] buf, int mask, int pos, long v) {
+    	    	
+        buf[mask & pos++] = (byte)(v >>> 56);
+        buf[mask & pos++] = (byte)(v >>> 48);
+        buf[mask & pos++] = (byte)(v >>> 40);
+        buf[mask & pos++] = (byte)(v >>> 32);
+        buf[mask & pos++] = (byte)(v >>> 24);
+        buf[mask & pos++] = (byte)(v >>> 16);
+        buf[mask & pos++] = (byte)(v >>> 8);
+        buf[mask & pos++] = (byte) v;
+    }
+    
+    private static boolean equal64(byte[] buf, int mask, int pos, long v) {
+
+        return
+    	(buf[mask & pos++] == (byte)(v >>> 56)) &&
+        (buf[mask & pos++] == (byte)(v >>> 48)) &&
+        (buf[mask & pos++] == (byte)(v >>> 40)) &&
+        (buf[mask & pos++] == (byte)(v >>> 32)) &&
+        (buf[mask & pos++] == (byte)(v >>> 24)) &&
+        (buf[mask & pos++] == (byte)(v >>> 16)) &&
+        (buf[mask & pos++] == (byte)(v >>> 8)) &&
+        (buf[mask & pos++] == (byte) v);
+    }
+    
 
     @Override
     public void shutdown() {
     	assert(reportRecordedStates(getClass().getSimpleName()));
     	logger.info("total calls to run: {} avgFilesPerRun: {}",totalRunCalls,(totalFiles/totalRunCalls));
-    	logger.info("total bytes out {} inFlightRef {} inFlightCopy {} fromDisk {} ",totalBytes, inFlightRef, inFlightCopy, fromDisk);
+    	logger.info("total bytes out {} inFlightRef {} inFlightCopy {} fromDisk {} ",totalBytesWritten, inFlightRef, inFlightCopy, fromDisk);
     }
 
 }

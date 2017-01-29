@@ -20,7 +20,7 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class RegulatedLoadTestStage extends PronghornStage{
 
-	private static final int HANG_TIMEOUT_MS = 40_000;
+	private static final int HANG_TIMEOUT_MS = 10_000;
 
 	private static final Logger logger = LoggerFactory.getLogger(RegulatedLoadTestStage.class);
 	
@@ -122,15 +122,15 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		//System.out.println("average ns "+avg);
 
 		
-		int c = connectionIdCache.length;
-		while (--c>=0) {
-			if (-1 != connectionIdCache[c]) {
-				ClientConnection cc = (ClientConnection)clientCoord.get(connectionIdCache[c], 0);
-				if (null != cc) {				
-					logger.info("totals from {} sent {}  rec {}  inFlight {} toSend {} expectedToRec {} ",cc.getId(), cc.reqCount(), cc.respCount(), cc.inFlightCount(), toSend[c], toRecieve[c]);				
-				}
-			}
-		}			
+//		int c = connectionIdCache.length;
+//		while (--c>=0) {
+//			if (-1 != connectionIdCache[c]) {
+//				ClientConnection cc = (ClientConnection)clientCoord.get(connectionIdCache[c], 0);
+//				if (null != cc) {				
+//					logger.info("totals from {} sent {}  rec {}  inFlight {} toSend {} expectedToRec {} ",cc.getId(), cc.reqCount(), cc.respCount(), cc.inFlightCount(), toSend[c], toRecieve[c]);				
+//				}
+//			}
+//		}			
 				
 				
 				
@@ -146,29 +146,33 @@ public class RegulatedLoadTestStage extends PronghornStage{
 	@Override
 	public void run() {
 		
-		long now = System.currentTimeMillis();
+		long firstTime = System.currentTimeMillis();
+		long now = firstTime;
 		
 		if (now-lastTime > HANG_TIMEOUT_MS) {
 		
+			logger.info("CRITICAL ERROR: Test is frozen");
 			 int r = toRecieve.length;
 			 while (--r>=0) {
 				 if (toRecieve[r]>0) {
 					 logger.info("still need {} for user {} ",toRecieve[r],r);
 				 }
 			 }		
-			
-			throw new RuntimeException("ZZZZZZZZZZZZZZZZZZZZZZZ test is frozen");
+			 requestShutdown();
+			 return;
 		}
 
-			assert(inputs.length == outputs.length);
-							
-			consumeAllResults(now);
-			
+		assert(inputs.length == outputs.length);
+						
+		int i;
+		boolean foundWork = consumeAllResults(now);		
+		do {			
 			printProgress(now);
-	
-			sendPendingRequests(now);
-	
+			sendPendingRequests(now);				
+			foundWork = consumeAllResults(now);
+			now = System.currentTimeMillis();
 			
+		} while (foundWork);
 	}
 
 
@@ -271,95 +275,89 @@ public class RegulatedLoadTestStage extends PronghornStage{
 	}
 
 
-	private void consumeAllResults(long now) {
+	private boolean consumeAllResults(long now) {
+		boolean didWork = false;
 		int i;
-		boolean didWork;
-		didWork = true;
-		while (didWork) {
-			didWork=false;
-			
-			int usr = usersPerPipe;
-			while (--usr >= 0) {
-			
-				i = inputs.length;
-				while (--i>=0) {
-					final int userId = i + (usr * outputs.length); 
-					
-					//System.out.println(inputs[i]);
-					if (Pipe.hasContentToRead(inputs[i])) {
-						didWork=true;
-										
-						final int msg = Pipe.takeMsgIdx(inputs[i]);
-						
-						switch (msg) {
-							case NetResponseSchema.MSG_RESPONSE_101:
-								long conId = Pipe.takeLong(inputs[i]);
-										
-	//							int dataUser = userId;
-
-								//TODO: this is a serious issue we request on 1 pipe but they come back on another....
-								int dataUser2 = userIdFromConnectionId[(int)conId];
-								
-//								if (1==usersPerPipe) {
-//									long connectionId = connectionIdCache[userId];
-//									if (-1!=connectionId && connectionId!=conId) {
-//										throw new UnsupportedOperationException("data user "+dataUser2+"  "+connectionId+" != "+conId+"  users per pipe "+usersPerPipe);
-//									}
-//								}
-								
-								int meta = Pipe.takeRingByteMetaData(inputs[i]); //TODO: DANGER, write helper method that does this for low level users.
-								int len = Pipe.takeRingByteLen(inputs[i]);
-								int pos = Pipe.bytePosition(meta, inputs[i], len);
-								
-								
-								//TOODO: need userId for the conId;
-								
-								totalReceived++;
-								if (--toRecieve[dataUser2]==0) {
-									if (--shutdownCount == 0) {
-										//logger.info("XXXXXXX full shutdown now "+shutdownCount);
-										requestShutdown();
-										return;
-									}
-									
-									//System.out.println("shutodown remaning "+shutdownCount+" for user "+userId);
-								}
-								
-								
-																	
-								if (null!=expected) {
-									workspaceSB.setLength(0);
-									int headerSkip = 8;
-									Appendables.appendUTF8(workspaceSB, inputs[i].blobRing, pos+headerSkip, len-headerSkip, inputs[i].blobMask);								
-									String tested = workspace.toString().trim();
-									if (!expected.equals(tested)) {
-										System.err.println("A error no match "+expected);
-										System.err.println("B error no match "+tested);											
-									}
-								}
-								
-								break;
-							case NetResponseSchema.MSG_CLOSED_10:
-								
-								int meta2 = Pipe.takeRingByteMetaData(inputs[i]);
-								int len2 = Pipe.takeRingByteLen(inputs[i]);
-								Pipe.bytePosition(meta2, inputs[i], len2);
-								
-								Pipe.takeInt(inputs[i]);
-								break;
-							case -1:
-								//EOF
-								break;
-							default:
-								throw new UnsupportedOperationException(msg+"  "+inputs[i].toString());
-						}
-						Pipe.confirmLowLevelRead(inputs[i], Pipe.sizeOf(inputs[i], msg));
-						Pipe.releaseReadLock(inputs[i]);
-									
-						lastTime = now;			
+		int usr = usersPerPipe;
+		while (--usr >= 0) {
 		
-					}	
-				}
+			i = inputs.length;
+			while (--i>=0) {
+
+				Pipe<NetResponseSchema> pipe = inputs[i];
+				
+				while (Pipe.hasContentToRead(pipe)) {
+					
+					didWork=true;
+									
+					final int msg = Pipe.takeMsgIdx(pipe);
+					
+					switch (msg) {
+						case NetResponseSchema.MSG_RESPONSE_101:
+							long conId = Pipe.takeLong(pipe);
+			
+							//TODO: this is a serious issue we request on 1 pipe but they come back on another....
+							int userIdx = userIdFromConnectionId[(int)conId];
+							
+							int meta = Pipe.takeRingByteMetaData(inputs[i]); //TODO: DANGER, write helper method that does this for low level users.
+							int len = Pipe.takeRingByteLen(pipe);
+							int pos = Pipe.bytePosition(meta, pipe, len);
+							
+							totalReceived++;
+							if (--toRecieve[userIdx]==0) {
+								if (--shutdownCount == 0) {
+									//logger.info("XXXXXXX full shutdown now "+shutdownCount);
+									requestShutdown();
+									break;
+								}
+								
+								//System.out.println("shutodown remaning "+shutdownCount+" for user "+userId);
+							}
+							
+							
+							if (false) {									
+								testExpectedValues(i, len, pos);
+							}
+							
+							break;
+						case NetResponseSchema.MSG_CLOSED_10:
+							
+							int meta2 = Pipe.takeRingByteMetaData(pipe);
+							int len2 = Pipe.takeRingByteLen(pipe);
+							Pipe.bytePosition(meta2, pipe, len2);
+							
+							Pipe.takeInt(pipe);
+							break;
+						case -1:
+							//EOF
+							break;
+						default:
+							throw new UnsupportedOperationException(msg+"  "+pipe.toString());
+					}
+					Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(NetResponseSchema.instance, msg));
+					Pipe.releaseReadLock(pipe);
+								
+					lastTime = now;			
+
+				}	
+				
+				
+				
+			}
+		}
+		return didWork;
+	}
+
+
+	private void testExpectedValues(int i, int len, int pos) {
+		if (null!=expected) {
+			workspaceSB.setLength(0);
+			int headerSkip = 8;
+			Appendables.appendUTF8(workspaceSB, inputs[i].blobRing, pos+headerSkip, len-headerSkip, inputs[i].blobMask);								
+			String tested = workspace.toString().trim();
+			if (!expected.equals(tested)) {
+				System.err.println("A error no match "+expected);
+				System.err.println("B error no match "+tested);											
 			}
 		}
 	}

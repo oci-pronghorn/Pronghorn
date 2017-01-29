@@ -246,8 +246,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	public static ClientConnection openConnection(ClientCoordinator ccm, byte[] hostBack, int hostPos, int hostLen, int hostMask,
 			                                      int port, int userId, Pipe<NetPayloadSchema>[] handshakeBegin) {				
 		
-		long connectionId = ccm.lookup(hostBack,hostPos,hostLen,hostMask, port, userId);			
-		
+		long connectionId = ccm.lookup(hostBack,hostPos,hostLen,hostMask, port, userId);
+						
 		return openConnection(ccm, hostBack, hostPos, hostLen, hostMask, port, userId, handshakeBegin,	connectionId);
 	}
 
@@ -270,19 +270,14 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		return result;
 	}
 	
-	ReentrantLock openConnectionLock = new ReentrantLock();
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, byte[] hostBack, int hostPos, int hostLen,
 			int hostMask, int port, int userId, Pipe<NetPayloadSchema>[] outputs,
 			long connectionId) {
 		
-		
-		
+				
 		ClientConnection cc = null;
-		
-		//TODO: must check this with the profiler.
-		if (ccm.openConnectionLock.tryLock()) {
-			try {
+
 				if (-1 == connectionId || null == (cc = (ClientConnection) ccm.connections.get(connectionId))) { //NOTE: using straight get since un finished connections may not be valid.
 								
 					//logger.warn("Unable to lookup connection");
@@ -310,6 +305,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 						
 						ccm.hostTrieLock.writeLock().lock();
 						try {
+						//	System.err.println(System.identityHashCode(ccm)+" users can not share connection IDs, set user "+userId+" to connection "+connectionId);
+							
 							ccm.hostTrie.setValue(cc.GUID(), 0, cc.GUIDLength(), Integer.MAX_VALUE, connectionId);
 						} finally {
 							ccm.hostTrieLock.writeLock().unlock();
@@ -328,12 +325,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				}
 				//not registered
 				return doRegister(ccm, outputs, cc);
-			} finally {
-				ccm.openConnectionLock.unlock();
-			}
-		} else {
-			return null;//try again later
-		}
+
 	}
 
 

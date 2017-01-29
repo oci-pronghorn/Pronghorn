@@ -98,7 +98,7 @@ public class MonitorConsoleStage extends PronghornStage {
 				//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
 				
 				if (recorderOn) {
-					hists[i].recordValue(pctFull>=0 ? pctFull<=100 ? pctFull : 99 : 0);
+					hists[i].recordValue(pctFull>=0 ? (pctFull<=100 ? pctFull : 99) : 0);
 				}
 				PipeReader.releaseReadLock(ring);
 			}
@@ -111,7 +111,8 @@ public class MonitorConsoleStage extends PronghornStage {
 		int i = hists.length;
 		while (--i>=0) {
 			
-			long pctile = hists[i].getValueAtPercentile(80); 
+			long pctile = hists[i].getValueAtPercentile(96); //do not change: this is the 80-20 rule applied twice
+			
 			long avg = (long)hists[i].getMean();
 				
 			boolean inBounds = true;//value>80 || value < 1;
@@ -129,7 +130,7 @@ public class MonitorConsoleStage extends PronghornStage {
             	ringName = ((RingBufferMonitorStage)producer).getObservedPipeName();
             	
 	            if (inBounds && (sampleCount>=1)) {
-					percentileValues[ ((RingBufferMonitorStage)producer).getObservedPipeId() ] = (int)avg;
+					percentileValues[ ((RingBufferMonitorStage)producer).getObservedPipeId() ] = (int)pctile;
 					
 	            }
             }
@@ -176,7 +177,7 @@ public class MonitorConsoleStage extends PronghornStage {
 		
 	}
 
-	private static final Long defaultMonitorRate = Long.valueOf(50000000);
+	private static final Long defaultMonitorRate = Long.valueOf(50_000_000); //50 ms
 	private static final PipeConfig defaultMonitorRingConfig = new PipeConfig(PipeMonitorSchema.instance, 30, 0);
 	
 	public static MonitorConsoleStage attach(GraphManager gm) {

@@ -118,12 +118,12 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		logger.info(responsePipeLinePool.toString());
 	}
 	
+	private PipeLineFilter isOk = new PipeLineFilter();
+	//NOT thread safe only called by ServerSocketReaderStage
 	public int responsePipeLineIdx(final long ccId) {
 	
-		//TODO: not garbage free, need to invert this 		
-		PoolIdxPredicate isOk = new PipeLineFilter(ccId);
-		
-		return responsePipeLinePool.get(ccId, isOk); //TODO: must get the connection to remember this router and stay here, unless we have writting ot this point....
+		isOk.setId(ccId); //object resuse prevents CG here
+		return responsePipeLinePool.get(ccId, isOk);
 
 	}
 	
@@ -181,17 +181,20 @@ public class ServerCoordinator extends SSLConnectionHolder {
     
     private final class PipeLineFilter implements PoolIdxPredicate {
 		
-    	private final int idx;
-		private final int validValue;
+    	private int idx;
+		private int validValue;
 
-		private PipeLineFilter(long ccId) {
+		private PipeLineFilter() {
+			
+		}
+
+		public void setId(long ccId) {
 			this.idx = ((int)ccId)%maxPartialResponses;
 			this.validValue = routerLookup[idx];
 		}
 
 		@Override
 		public boolean isOk(final int i) {
-			//return idx == i;//
 			return validValue == routerLookup[i]; 
 		}
 	}
