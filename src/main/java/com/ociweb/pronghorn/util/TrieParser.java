@@ -84,7 +84,8 @@ public class TrieParser {
     static final byte NUMERIC_FLAG_RATIONAL =  8;
     
     
-    final short[] data;
+    private final boolean fixedSize;
+    short[] data; 
     private int limit = 0;
 
     private final int MAX_TEXT_LENGTH = 4096;
@@ -114,6 +115,8 @@ public class TrieParser {
     
     public TrieParser(int size, int resultSize, boolean skipDeepChecks, boolean supportsExtraction, boolean ignoreCase) {
         this.data = new short[size];
+        this.fixedSize = false; //if its not fixed size then the .data array will grow as needed.
+        
         this.pipe.initBuffers();
         
         this.SIZE_OF_RESULT               = resultSize;        //custom result size for this instance
@@ -145,7 +148,7 @@ public class TrieParser {
     }
     
     public void setValue(byte[] source, int offset, int length, int mask, long value) {
-        setValue(0, data, source, offset, length, mask, value);        
+        setValue(0, source, offset, length, mask, value);        
     }
     
     public int getMaxExtractedFields() {
@@ -568,7 +571,7 @@ public class TrieParser {
 
 
     private void setValue(Pipe p, int meta, int length, long value) {
-        setValue(0, data, Pipe.byteBackingArray(meta, p), Pipe.bytePosition(meta, p, length), length, Pipe.blobMask(p), value);
+        setValue(0, Pipe.byteBackingArray(meta, p), Pipe.bytePosition(meta, p, length), length, Pipe.blobMask(p), value);
     }
        
     private int longestKnown = 0;
@@ -584,7 +587,7 @@ public class TrieParser {
     	return shortestKnown;
     }
     
-    private void setValue(int pos, short[] data, byte[] source, int sourcePos, final int sourceLength, int sourceMask, long value) {
+    private void setValue(int pos, byte[] source, int sourcePos, final int sourceLength, int sourceMask, long value) {
         
     	longestKnown = Math.max(longestKnown, sourceLength);
     	shortestKnown = Math.max(shortestKnown, sourceLength);
@@ -613,7 +616,7 @@ public class TrieParser {
 							final int sourceLength1 = sourceLength-length; 
                             assert(sourceLength1>=1);
 							          
-							writeEnd(data, writeRuns(data, insertAltBranch(0, data, pos-1, source, sourcePos1, sourceLength1, sourceMask), source, sourcePos1, sourceLength1, sourceMask), value); 
+							writeEnd(writeRuns(insertAltBranch(0, data, pos-1, source, sourcePos1, sourceLength1, sourceMask), source, sourcePos1, sourceLength1, sourceMask), value); 
                             maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                             return;
                             
@@ -650,7 +653,7 @@ public class TrieParser {
                     	}
 					    final int insertLengthNumericCapture = sourceLength-length;
                         assert(insertLengthNumericCapture>=1);
-					    writeEnd(data, writeRuns(data, insertAltBranch(0, data, pos-1, source, sourcePos, insertLengthNumericCapture, sourceMask), source, sourcePos, insertLengthNumericCapture, sourceMask), value);
+					    writeEnd(writeRuns(insertAltBranch(0, data, pos-1, source, sourcePos, insertLengthNumericCapture, sourceMask), source, sourcePos, insertLengthNumericCapture, sourceMask), value);
                         return;
 
                     case TYPE_VALUE_BYTES:
@@ -662,7 +665,7 @@ public class TrieParser {
                     		data[pos]!=source[sourceMask & (sourcePos+2)] ) {   	
                     		final int insertLengthBytesCapture = sourceLength-length;								
 							assert(insertLengthBytesCapture>=1);					           
-							writeEnd(data, writeRuns(data, insertAltBranch(0, data, pos-1, source, sourcePos, insertLengthBytesCapture, sourceMask), source, sourcePos, insertLengthBytesCapture, sourceMask), value);
+							writeEnd(writeRuns(insertAltBranch(0, data, pos-1, source, sourcePos, insertLengthBytesCapture, sourceMask), source, sourcePos, insertLengthBytesCapture, sourceMask), value);
                     		return;
                     		
                     	} else {
@@ -707,7 +710,7 @@ public class TrieParser {
                                 }                                
                                 
                                 if (data[pos++] != sourceByte) {
-                                    insertAtBranchValueByte(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun, sourcePos-1);    		
+                                    insertAtBranchValueByte(pos, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun, sourcePos-1);    		
 					
                                     maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                                     return;
@@ -741,7 +744,7 @@ public class TrieParser {
                             }                            
                             
                             if (data[pos++] != sourceByte) {
-                                insertAtBranchValueByte(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r, sourcePos-1);    		
+                                insertAtBranchValueByte(pos, source, sourceLength, sourceMask, value, length, runPos, run, r, sourcePos-1);    		
 			
                                 maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                                 return;
@@ -756,7 +759,7 @@ public class TrieParser {
                         if (sourceLength>length) {
                             convertEndToNewSafePoint(pos, data, source, sourcePos, sourceLength-length, sourceMask, value);               
                         } else {
-                            writeEndValue(data, pos, value);
+                            writeEndValue(pos, value);
                         }
                         maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount); //TODO: should this only be for the normal end??
                         return;
@@ -768,7 +771,7 @@ public class TrieParser {
                             pos += SIZE_OF_RESULT;
                             break;                            
                         } else {
-                            pos = writeEndValue(data, pos, value);
+                            pos = writeEndValue(pos, value);
                             maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                             return;
                         }
@@ -780,8 +783,8 @@ public class TrieParser {
             }
         } else {
             //Start case where we insert the first run;
-            pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);
-            limit = Math.max(limit, writeEnd(data, pos, value));
+            pos = writeRuns( pos, source, sourcePos, sourceLength, sourceMask);
+            limit = Math.max(limit, writeEnd(pos, value));
         }
         
         
@@ -898,11 +901,11 @@ public class TrieParser {
         //now insert the needed run 
         int requiredRoom = SIZE_OF_END_1 + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);             
       
-		makeRoomForInsert(0, data, pos, requiredRoom); //after the safe point we make room for our new run and end
+		makeRoomForInsert(0, pos, requiredRoom); //after the safe point we make room for our new run and end
 		pos += SIZE_OF_SAFE_END;
 
-        pos = writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask);        
-        pos = writeEnd(data, pos, value);
+        pos = writeRuns(pos, source, sourcePos, sourceLength, sourceMask);        
+        pos = writeEnd(pos, value);
 
     }
 
@@ -964,12 +967,12 @@ public class TrieParser {
     private int insertNewSafePoint(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, long value, int runLenPos) {
         //convert end to safe
         
-        makeRoomForInsert(sourceLength, data, pos, SIZE_OF_SAFE_END);
+        makeRoomForInsert(sourceLength, pos, SIZE_OF_SAFE_END);
         
         data[pos++] = TYPE_SAFE_END;
-        pos = writeEndValue(data, pos, value);
+        pos = writeEndValue(pos, value);
 
-        pos = writeRunHeader(data, pos, sourceLength);
+        pos = writeRunHeader(pos, sourceLength);
         data[runLenPos] -= sourceLength;//previous run is shortened buy the length of this new run
         return pos;
     }
@@ -981,26 +984,26 @@ public class TrieParser {
 			final int insertLength = sourceLength - length;
 			assert(insertLength>=1);
 		           
-			writeEnd(data, writeRuns(data, insertAltBranch(0, data, pos>=3 ? pos-3 : 0, source, sourceCharPos, insertLength, sourceMask), source, sourceCharPos, insertLength, sourceMask), value);
+			writeEnd(writeRuns(insertAltBranch(0, data, pos>=3 ? pos-3 : 0, source, sourceCharPos, insertLength, sourceMask), source, sourceCharPos, insertLength, sourceMask), value);
 		} else {
 			final int insertLength = sourceLength - (length+(data[runPos] = (short)(run-r1)));
 			assert(insertLength>=1);
            
-			writeEnd(data, writeRuns(data, insertAltBranch(r1, data, pos-1, source, sourceCharPos, insertLength, sourceMask), source, sourceCharPos, insertLength, sourceMask), value);
+			writeEnd(writeRuns(insertAltBranch(r1, data, pos-1, source, sourceCharPos, insertLength, sourceMask), source, sourceCharPos, insertLength, sourceMask), value);
 		}
 	}
 
-	private void insertAtBranchValueByte(final int pos, short[] data, byte[] source, int sourceLength, int sourceMask,
+	private void insertAtBranchValueByte(final int pos, byte[] source, int sourceLength, int sourceMask,
 			long value, int length, int runPos, int run, int r1, final int sourceCharPos) {
 		r1++;
 		if (r1 == run) {
 			final int sourceLength1 = sourceLength - length;
 			assert(sourceLength1>=1);
-			writeEnd(data, writeRuns(data, insertByteBranch(0, data, pos>=3 ? pos-3 : 0, source, sourceCharPos, sourceLength1, sourceMask), source, sourceCharPos, sourceLength1, sourceMask), value);
+			writeEnd(writeRuns(insertByteBranch(0, pos>=3 ? pos-3 : 0, source, sourceCharPos, sourceLength1, sourceMask), source, sourceCharPos, sourceLength1, sourceMask), value);
 		} else {
 			final int sourceLength1 = sourceLength - (length+(data[runPos] = (short)(run-r1)));
 			assert(sourceLength1>=1);
-			writeEnd(data, writeRuns(data, insertByteBranch(r1, data, pos-1, source, sourceCharPos, sourceLength1, sourceMask), source, sourceCharPos, sourceLength1, sourceMask), value);
+			writeEnd(writeRuns(insertByteBranch(r1, pos-1, source, sourceCharPos, sourceLength1, sourceMask), source, sourceCharPos, sourceLength1, sourceMask), value);
 		}
 	}
 
@@ -1084,19 +1087,20 @@ public class TrieParser {
 //        
 //    }
 
-	private int insertByteBranch(int danglingByteCount, short[] data, int pos, byte[] source, final int sourcePos,
+	private int insertByteBranch(int danglingByteCount, int pos, byte[] source, final int sourcePos,
 			final int sourceLength, int sourceMask) {
 		final int requiredRoom = SIZE_OF_END_1 + SIZE_OF_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);
 		            		
-		final int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
-		pos = writeBranch(TYPE_BRANCH_VALUE, data, pos, requiredRoom, findSingleBitMask((short) source[sourcePos & sourceMask], data[oldValueIdx]));
+		final int oldValueIdx = makeRoomForInsert(danglingByteCount, pos, requiredRoom);
+		byte c = source[sourcePos & sourceMask];
+		pos = writeBranch(TYPE_BRANCH_VALUE, pos, requiredRoom, findSingleBitMask((short) c, this.data[oldValueIdx]));
 		return pos;
 	}
 
 	private int insertAltBranch(int danglingByteCount, short[] data, int pos, byte[] source, final int sourcePos, final int sourceLength, int sourceMask) {
 		
 		int requiredRoom = SIZE_OF_END_1 + SIZE_OF_ALT_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);  
-		final int oldValueIdx = makeRoomForInsert(danglingByteCount, data, pos, requiredRoom);
+		final int oldValueIdx = makeRoomForInsert(danglingByteCount, pos, requiredRoom);
 
 		requiredRoom -= SIZE_OF_ALT_BRANCH;//subtract the size of the branch operator
 		data[pos++] = TYPE_ALT_BRANCH;         
@@ -1123,7 +1127,7 @@ public class TrieParser {
         return (short)(( 0xFF00&((mask&b)-1) ) | mask); //high byte is on when A matches mask
     }
 
-    private int makeRoomForInsert(int danglingByteCount, short[] data, int pos, int requiredRoom) {
+    private int makeRoomForInsert(int danglingByteCount, int pos, int requiredRoom) {
                 
     	
         int len = limit - pos;
@@ -1140,9 +1144,9 @@ public class TrieParser {
         
         int newPos = pos + requiredRoom;
         assert(pos>=0);
-        assert(pos+len<data.length);
-        if (newPos+len>data.length) {
-        	throw new UnsupportedOperationException("allocated length of "+data.length+" is too short to add all the patterns");
+        int neededLen = newPos+len+SIZE_OF_RUN;
+        if (neededLen > data.length) {
+        	growDataLen(neededLen);        	
         }       
         System.arraycopy(data, pos, data, newPos, len);
         
@@ -1155,6 +1159,22 @@ public class TrieParser {
         }
         return newPos;
     }
+
+	private void growDataLen(int neededLen) {
+		if (this.fixedSize) {
+			throw new UnsupportedOperationException("allocated length of "+data.length+" is too short to add all the patterns");
+		} else {
+			int newLen = data.length*2;
+			if (newLen < neededLen) {
+				newLen = neededLen;
+			}       		
+			
+			short[] newData = new short[newLen];
+			System.arraycopy(data, 0, newData, 0, data.length);        		
+			data = newData;
+			
+		}
+	}
 
 
     private void updatePreviousJumpDistances(int i, short[] data, int limit, int requiredRoom) {
@@ -1229,7 +1249,7 @@ public class TrieParser {
     }
 
 
-    private int writeBranch(byte type, short[] data, int pos, int requiredRoom, short criteria) {
+    private int writeBranch(byte type, int pos, int requiredRoom, short criteria) {
                 
         requiredRoom -= SIZE_OF_BRANCH;//subtract the size of the branch operator
         data[pos++] = type;
@@ -1243,13 +1263,13 @@ public class TrieParser {
     }
 
 
-    private int writeEnd(short[] data, int pos, long value) {
+    private int writeEnd(int pos, long value) {
         data[pos++] = TYPE_END;
-        return writeEndValue(data, pos, value);
+        return writeEndValue(pos, value);
     }
 
 
-    private int writeEndValue(short[] data, int pos, long value) {
+    private int writeEndValue(int pos, long value) {
         
         int s = SIZE_OF_RESULT;
         while (--s >= 0) {        
@@ -1269,26 +1289,32 @@ public class TrieParser {
         return result;
     }
  
-    private int writeBytesExtract(short[] data, int pos, short stop) {
+    private int writeBytesExtract(int pos, short stop) {
         data[pos++] = TYPE_VALUE_BYTES;
         data[pos++] = stop;
         return pos;
     }
     
-    private int writeNumericExtract(short[] data, int pos, int type) {
+    private int writeNumericExtract(int pos, int type) {
         data[pos++] = TYPE_VALUE_NUMERIC;
         data[pos++] = buildNumberBits((byte)type);
         return pos;
     }
  
-    private int writeRuns(short[] data, int pos, byte[] source, int sourcePos, int sourceLength, int sourceMask) {
+    private int writeRuns(int pos, byte[] source, int sourcePos, int sourceLength, int sourceMask) {
        if (0 == sourceLength) {
            return pos;
        }
        
+       //check for room first.
+       int neededLen = pos+sourceLength+SIZE_OF_RUN;
+       if (neededLen>data.length) {
+    	   growDataLen(neededLen); 
+       }
+       
        assert(ESCAPE_BYTE != source[sourceMask & (sourcePos+sourceLength-1)]) : "Escape byte is always followed by something and can not be last.";
               
-       pos = writeRunHeader(data, pos, sourceLength);
+       pos = writeRunHeader(pos, sourceLength);
        int runLenPos = pos-1;
        int runLeft = sourceLength;
        int sourceStop = sourceLength+sourcePos;
@@ -1309,18 +1335,18 @@ public class TrieParser {
                           
                           if (ESCAPE_CMD_BYTES == value) {
                               byte stop = source[sourceMask & sourcePos++];
-                              pos = writeBytesExtract(data, pos, stop);
+                              pos = writeBytesExtract(pos, stop);
                               
                               //Recursion used to complete the rest of the run.
                               int remainingLength = runLeft-2;
                               if (remainingLength > 0) {
-                                  pos = writeRuns(data, pos, source, sourcePos, remainingLength, sourceMask);
+                                  pos = writeRuns(pos, source, sourcePos, remainingLength, sourceMask);
                               }
                           } else {
-                              pos = writeNumericExtract(data, pos, value);                                                            
+                              pos = writeNumericExtract(pos, value);                                                            
                               int remainingLength = runLeft-1;                                                         
                               if (remainingLength > 0) {
-                                  pos = writeRuns(data, pos, source, sourcePos, remainingLength, sourceMask);
+                                  pos = writeRuns(pos, source, sourcePos, remainingLength, sourceMask);
                               }
                           }
                           return pos;
@@ -1340,7 +1366,7 @@ public class TrieParser {
        return pos;
     }
 
-    private int writeRunHeader(short[] data, int pos, int sourceLength) {
+    private int writeRunHeader(int pos, int sourceLength) {
         
         if (sourceLength > 0x7FFF || sourceLength < 1) {
             throw new UnsupportedOperationException("does not support strings beyond this length "+0x7FFF+" value was "+sourceLength);

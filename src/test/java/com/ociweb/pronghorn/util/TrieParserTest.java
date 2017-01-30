@@ -87,7 +87,7 @@ public class TrieParserTest {
     @Test 
     public void testExtractMultiBytes() {
         TrieParserReader reader = new TrieParserReader(3);
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
   
                 
         map.setValue(toParseEnd, 0, toParseEnd.length, 15, value4);
@@ -137,7 +137,7 @@ public class TrieParserTest {
     @Test 
     public void testExtractBytesEnd() {
         TrieParserReader reader = new TrieParserReader(3);
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
         
         map.setValue(data1, 0, 3, 7, value1); //101,102,103
         assertFalse(map.toString(),map.toString().contains("ERROR"));
@@ -165,7 +165,7 @@ public class TrieParserTest {
     @Test 
     public void testExtractBytesEnd2a() {
         TrieParserReader reader = new TrieParserReader(3);
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
         
         map.setValue(data1, 0, 3, 7, value1);
         
@@ -195,7 +195,7 @@ public class TrieParserTest {
     @Test 
     public void testExtractBytesEnd2b() {
         TrieParserReader reader = new TrieParserReader(3);
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
         
         map.setValue(wrapping(data1,4), 0, 3, 15, value1);                                          //1  added  101,102,103
         assertFalse(map.toString(),map.toString().contains("ERROR"));
@@ -226,7 +226,7 @@ public class TrieParserTest {
     @Test 
     public void testExtractBytesEndAll() {
         TrieParserReader reader = new TrieParserReader(3);
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
         
         map.setValue(wrapping(data1,4), 0, 3, 15, value1);                                          //added  101,102,103
         assertFalse(map.toString(),map.toString().contains("ERROR"));
@@ -364,7 +364,7 @@ public class TrieParserTest {
     public void testNonBranchInsert() {
     	
     	TrieParserReader reader = new TrieParserReader(3);
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
         map.setUTF8Value("Hello: %u\r",   value2); //FYI, one should not see one of these in the wild often.
         map.setUTF8Value("Hello: %u\r\n", value3); //This just ends later so there is no branch 
         
@@ -382,7 +382,7 @@ public class TrieParserTest {
     public void testOrder1Insert() {
     	
     	TrieParserReader reader = new TrieParserReader(3);
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
         map.setUTF8Value("%bb\n",   value2); 
         String a = map.toString();
         map.setUTF8Value("ab\n",    value3);  
@@ -396,7 +396,7 @@ public class TrieParserTest {
     public void testOrder2Insert() {
     	
     	TrieParserReader reader = new TrieParserReader(3);
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
         map.setUTF8Value("ab\n",    value3);  
         map.setUTF8Value("%bb\n",   value2); 
         map.setUTF8Value("bb\n",    value3);     
@@ -480,7 +480,7 @@ public class TrieParserTest {
     @Test 
     public void testExtractBytesMiddle() {
         TrieParserReader reader = new TrieParserReader(3);
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
         
         map.setValue(data1, 0, 3, Integer.MAX_VALUE, value1);
         assertFalse(map.toString(),map.toString().contains("ERROR"));
@@ -514,7 +514,7 @@ public class TrieParserTest {
     @Test 
     public void testExtractBytesBeginning() {
         TrieParserReader reader = new TrieParserReader(3);
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
         
         map.setValue(wrapping(data1,3), 0, 3, 7, value1);
         
@@ -546,7 +546,7 @@ public class TrieParserTest {
     public void testSimpleMultipleParse() {
     
         TrieParserReader reader = new TrieParserReader();
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
         
         byte[] a = "StringA".getBytes();
         byte[] b = "BytesB".getBytes();
@@ -570,7 +570,7 @@ public class TrieParserTest {
     public void testExtractMultipleParse() {
     
         TrieParserReader reader = new TrieParserReader(3);
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
         
         byte[] a = "StringA%b ".getBytes();
         byte[] b = "BytesB%b ".getBytes();
@@ -604,7 +604,7 @@ public class TrieParserTest {
     public void testSimpleValueReplace() {
         
         TrieParserReader reader = new TrieParserReader();
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
                 
         map.setValue(data1, 0, 3, 7, value1);        
         assertEquals(value1, TrieParserReader.query(reader,map,data1, 0, 3, 7));
@@ -618,7 +618,7 @@ public class TrieParserTest {
     public void testSimpleValueReplaceWrapping() {
         
         TrieParserReader reader = new TrieParserReader();
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(16);
         
         
         map.setValue(data1, 5, 5, 7, value1);        
@@ -633,7 +633,7 @@ public class TrieParserTest {
     public void testTwoNonOverlapValuesWithReplace() {
         
         TrieParserReader reader = new TrieParserReader();
-        TrieParser map = new TrieParser(1000);        
+        TrieParser map = new TrieParser(16);        
         
         map.setValue(data1, 1, 3, 7, value1);
         map.setValue(data2, 1, 3, 7, value2);
@@ -654,7 +654,7 @@ public class TrieParserTest {
     public void testTwoNonOverlapValuesWrappingWithReplace() {
         
         TrieParserReader reader = new TrieParserReader();
-        TrieParser map = new TrieParser(1000);        
+        TrieParser map = new TrieParser(16);        
         
         map.setValue(data1, 5, 5, 7, value1);
         map.setValue(data2, 5, 5, 7, value2);
@@ -676,7 +676,7 @@ public class TrieParserTest {
     public void testTwoOverlapValues() {
         
         TrieParserReader reader = new TrieParserReader();
-        TrieParser map = new TrieParser(1000);        
+        TrieParser map = new TrieParser(16);        
         
         map.setValue(data2, 2, 5, 7, value1);
         map.setValue(data3, 2, 5, 7, value2);
@@ -697,7 +697,7 @@ public class TrieParserTest {
     public void testThreeOverlapValues() {
         
         TrieParserReader reader = new TrieParserReader();
-        TrieParser map = new TrieParser(1000);        
+        TrieParser map = new TrieParser(16);        
         
         map.setValue(data3, 2, 5, 7, value2);
         map.setValue(data4, 2, 5, 7, value3);
@@ -722,7 +722,7 @@ public class TrieParserTest {
     public void testInsertBeforeBranch() {
         
         TrieParserReader reader = new TrieParserReader();
-        TrieParser map = new TrieParser(1000);        
+        TrieParser map = new TrieParser(16);        
         
         map.setValue(data3, 0, 6, 7, value1);
         map.setValue(data4, 0, 6, 7, value2);
@@ -748,7 +748,7 @@ public class TrieParserTest {
     public void testInsertAfterBothBranchs() {
         
         TrieParserReader reader = new TrieParserReader();
-        TrieParser map = new TrieParser(1000);        
+        TrieParser map = new TrieParser(16);        
         
         map.setValue(data2,  1, 7, 7, value1);
         map.setValue(data3,  1, 7, 7, value2);
@@ -805,7 +805,7 @@ public class TrieParserTest {
     public void testShortRootInsertThenLongInsert() {
         
         TrieParserReader reader = new TrieParserReader();
-        TrieParser map = new TrieParser(1000);        
+        TrieParser map = new TrieParser(16);        
         
         map.setValue(data1, 0, 3, 7, value2);
         
@@ -833,7 +833,7 @@ public class TrieParserTest {
     public void testByteExtractExample() {
         
         TrieParserReader reader = new TrieParserReader(10);
-        TrieParser map = new TrieParser(1000);  
+        TrieParser map = new TrieParser(16);  
         
         byte[] b1 = "X-Wap-Profile:%b\r\n".getBytes();
 
@@ -909,7 +909,7 @@ public class TrieParserTest {
     @Test
     public void testToString() {
         
-        TrieParser map = new TrieParser(1000);        
+        TrieParser map = new TrieParser(16);        
         
         map.setValue(wrapping(data1,3), 0, 3, 7, value2);
         map.setValue(wrapping(data1,3), 0, 8, 7, value1);
@@ -956,7 +956,7 @@ public class TrieParserTest {
     @Test
     public void testToDot() {
         
-        TrieParser map = new TrieParser(1000);        
+        TrieParser map = new TrieParser(16);        
         
         map.setValue(wrapping(data1,3), 0, 3, 7,  value2);    // 101,102,103
         map.setValue(wrapping(data1,3), 0, 8, 7,  value1);    // 101,102,103,104,105,106,107,108    
@@ -1233,7 +1233,7 @@ public class TrieParserTest {
 //    @Test
 //    public void testVisitor() {
 //        
-//        SequentialTrieParser map = new SequentialTrieParser(1000);        
+//        SequentialTrieParser map = new SequentialTrieParser(16);        
 //        
 //        map.setValue(data1, 0, 3, 7, value2);
 //        map.setValue(data1, 0, 8, 7, value1);
