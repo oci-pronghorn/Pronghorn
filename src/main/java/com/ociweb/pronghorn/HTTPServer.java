@@ -75,7 +75,7 @@ public class HTTPServer {
 	}
 
 
-	public static String buildStaticFileFolderPath(String testFile) {
+	public static String buildStaticFileFolderPath(String testFile, boolean fullPath) {
 		URL dir = ClassLoader.getSystemResource(testFile);
 		String root = "";	//file:/home/nate/Pronghorn/target/test-classes/OCILogo.png
 						
@@ -85,7 +85,7 @@ public class HTTPServer {
 			uri = uri.replace("jar:","");
 			uri = uri.replace("file:","");
 			
-			root = uri.substring(0, uri.lastIndexOf('/'));
+			root = fullPath ? uri.toString() : uri.substring(0, uri.lastIndexOf('/'));
 			
 		} catch (URISyntaxException e) {						
 			e.printStackTrace();

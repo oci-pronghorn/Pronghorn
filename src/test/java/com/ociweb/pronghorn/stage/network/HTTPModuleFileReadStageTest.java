@@ -109,7 +109,7 @@ public class HTTPModuleFileReadStageTest {
 	        		long length = PipeReader.readBytesLength(responsePipe, ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_PAYLOAD_25);
 
 	        		boolean isBody = (fileSize==length);
-	        		assertEquals(expectedBody,isBody);
+	        		assertEquals(expectedBody, isBody);
 	        		expectedBody = !isBody; //if we got a body we expect a header, if we got a header we expect a body.
 	        		if (isBody) {
 	        			totalFiles++;

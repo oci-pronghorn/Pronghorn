@@ -414,17 +414,7 @@ public class ServerSocketReaderStage extends PronghornStage {
                     return -1;
             }
         } else {
-//        	try {
-//        		Thread.yield();
-//				Thread.sleep(10000);
-//			} catch (InterruptedException e) {
-//			}
-//        	
-////        	logger.info("no room to write on server for {}, check that data is getting released or that larger blocks are written here {} ",channelId, targetPipe);
-////        	
-////       		logger.error("FORCED EXIT");
-////       		System.exit(-1);
-////        	
+
         	return -1;
         }
     }

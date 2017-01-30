@@ -44,7 +44,7 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         
         //find ordinal values and max length
         int maxVerbLength = 0;
-        verbs = supportedHTTPVerbs.getEnumConstants();
+        this.verbs = supportedHTTPVerbs.getEnumConstants();
         assert(null!=verbs);
         int j = verbs.length;
         int localGet = 0;

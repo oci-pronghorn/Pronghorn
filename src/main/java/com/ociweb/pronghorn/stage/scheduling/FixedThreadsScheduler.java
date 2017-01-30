@@ -243,7 +243,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    while (--k >= 0) {
 	    	if (null!=stageArrays[k]) {
 	    		
-	    		//System.err.println("NonThreadScheduler for "+Arrays.toString(stageArrays[k]) );
+	    		logger.info("NonThreadScheduler for "+Arrays.toString(stageArrays[k]) );
 	    		
 	    		ntsArray[ntsIdx++]=new NonThreadScheduler(graphManager, stageArrays[k]);	    		     
 	    	}

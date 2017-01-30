@@ -122,6 +122,7 @@ public class SimpleRestModuleStage<                 T extends Enum<T> & HTTPCont
 						
 						writeHeader(revisionBytes, status, context, etagBytes, contentType.getBytes(), 
 								    lenAsBytes, lenAsBytesPos, lenAsBytesLen, lenAsBytesMask, 
+								    false, null, 0,0,0,
 								    outputStream);
 					}
 					

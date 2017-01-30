@@ -172,6 +172,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     
     private final String folderRootString;
     private final File   folderRoot;
+    private int defaultPathId;
+    private String defaultPathFile;
+    private byte[] defaultPathBytes;
     
     private int pathCount;
 
@@ -219,9 +222,13 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         this.trailingReader = 0;
         this.trailingBlobReader = 0;
         
-        this.folderRootString = rootPath.toString();
         
-        this.folderRoot = rootPath;       
+        this.folderRoot = rootPath.isDirectory()? rootPath: rootPath.getParentFile();       
+        this.folderRootString = folderRoot.toString();
+        
+        if (rootPath.isFile()) {
+        	defaultPathFile = rootPath.toString();
+        }
         
        // System.out.println("RootFolder: "+folderRoot);
         
@@ -316,6 +323,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         this.digitBuffer.initBuffers();
         
 
+       
         
         //TODO: this full block needs to be shared.
         File rootFileDirectory = folderRoot;
@@ -383,6 +391,11 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                     fileSystem.provider().checkAccess(path);
                     newPathId = ++pathCount;
                     byte[] asBytes = pathString.getBytes();
+                    
+                    if (pathString.equals(defaultPathFile)) {
+                    	defaultPathId = newPathId;
+                    	defaultPathBytes = Arrays.copyOfRange(asBytes, rootSize, asBytes.length);
+                    }
                     
                     //logger.debug("FileReadStage is loading {} ",pathString);  
                                         
@@ -575,10 +588,15 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             bytesLength--;
         }     
        
-        int pathId = (int)TrieParserReader.query(trieReader, trie, 
+        int pathId;
+        if (bytesLength>0 || defaultPathId==-1) {
+        	pathId = (int)TrieParserReader.query(trieReader, trie, 
                                                          bytesBackingArray, 
                                                          bytesPosition, 
-                                                         bytesLength, bytesMask, -1 );      
+                                                         bytesLength, bytesMask, -1 );    
+        } else {       		
+       	    pathId = defaultPathId;       		
+        }
         
         if (pathId >= 0) {
             if (null!=(activeFileChannel = channelHolder.getValid(data.getFcId()[pathId]))) {
@@ -645,7 +663,15 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             //reposition to beginning of the file to be loaded and sent.
             activePayloadSizeRemaining = data.getFileSizes()[pathId];
             int status = 200;
+            boolean reportServer = true;
                         
+            byte[] contLoc = null;
+            int    contLocLen = 0;            
+            if (pathId==defaultPathId) {
+            	contLoc = defaultPathBytes;
+            	contLocLen = defaultPathBytes.length;
+            }
+            
           //  logger.info("begin file response for channel {} {}", activeChannelHigh, activeChannelLow);
 
             //TODO: slow...
@@ -656,7 +682,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             		                           status, output, activeChannelHigh, activeChannelLow,  
                                                httpSpec, revision, contentType, 
                                                data.getFileSizeAsBytes()[pathId], 0, data.getFileSizeAsBytes()[pathId].length, Integer.MAX_VALUE, 
-                                               data.getEtagBytes()[pathId]); 
+                                               data.getEtagBytes()[pathId],
+                                               reportServer, contLoc, 0,contLocLen,Integer.MAX_VALUE                           
+            		); 
 
             totalBytesWritten = totalBytesWritten + bytesConsumed;
      //       assert(totalBytesWritten>=Pipe.getBlobWorkingHeadPosition(output)) : totalBytesWritten+" must be >= "+Pipe.getBlobWorkingHeadPosition(output);

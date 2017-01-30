@@ -353,7 +353,7 @@ public class HTTPSRoundTripTest {
 					      //"10.10.10.244";
 					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
 			
-			boolean useLocalServer = false;//
+			boolean useLocalServer = true;//
 
 			
 			
@@ -439,10 +439,12 @@ public class HTTPSRoundTripTest {
 			}
 			final ServerCoordinator serverCoord1 = serverCoord;
 			final ClientCoordinator[] clientCoord = clientCoords;
-			final StageScheduler scheduler = new ThreadPerStageScheduler(gm);
+			
+			
 			
 			//TODO:: fix this to limit threads in use
-			//final StageScheduler scheduler = new FixedThreadsScheduler(gm, 16);
+//			final StageScheduler scheduler = new FixedThreadsScheduler(gm, 128);
+			final StageScheduler scheduler = new ThreadPerStageScheduler(gm);
 			        
 			               
 			//TODO: add this to scheduler so its done everywehre by default!!  TODO: urgent.

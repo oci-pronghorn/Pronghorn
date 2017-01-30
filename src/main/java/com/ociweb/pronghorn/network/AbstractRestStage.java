@@ -35,8 +35,8 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     protected static final byte[] X_400 = " 400 OK\r\n".getBytes();
     protected static final byte[] X_500 = " 500 OK\r\n".getBytes();
     
-    protected static final byte[] SERVER = "Server: Pronghorn\r\n".getBytes();//Apache/1.3.3.7 (Unix) (Red-Hat/Linux)".getBytes();
-    protected static final byte[] ETAG = "ETag:".getBytes();
+    protected static final byte[] SERVER = "Server: GreenLightning\r\n".getBytes();//Apache/1.3.3.7 (Unix) (Red-Hat/Linux)".getBytes();
+    protected static final byte[] ETAG = "ETag: ".getBytes();
     
     protected static final byte[] ZERO = new byte[] {'0'};
     
@@ -67,7 +67,8 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     
     protected static final byte[] CONTENT_TYPE = "Content-Type: ".getBytes();
     protected static final byte[] CONTENT_LENGTH = "Content-Length: ".getBytes();
-    
+    protected static final byte[] CONTENT_LOCATION = "Content-Location: ".getBytes();
+        
     
     protected AbstractRestStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs, HTTPSpecification<T,R,V,H> httpSpec) {
         super(graphManager,inputs,outputs);
@@ -98,7 +99,10 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
                                         Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow,
                                         HTTPSpecification<T,R,V,H> httpSpec, byte[] revision, byte[] contentType, 
                                         byte[] localSizeAsBytes, int localSizeAsBytesPos, int localSizeAsBytesLen, int localSizeAsByteMask, 
-                                        byte[] localETagBytes) {
+                                        byte[] localETagBytes, boolean reportServer,
+                                        byte[] contLocBytes, int contLocBytesPos, int contLocBytesLen, int contLocBytesMask
+                                            		
+    		) {
         
         int headerSize = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
         
@@ -114,6 +118,8 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         		    status, originalRequestContext, localETagBytes,  
         		    contentType, 
         		    localSizeAsBytes, localSizeAsBytesPos, localSizeAsBytesLen, localSizeAsByteMask, 
+        		    reportServer,
+        		    contLocBytes, contLocBytesPos, contLocBytesLen,  contLocBytesMask,
         		    writer);
         int bytesLength = writer.closeLowLevelField();
         
@@ -140,7 +146,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.outputStream(localOutput);        
         writer.openField();
         writeHeader(httpSpec.revisions[revision].getBytes(), status, requestContext, null, contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), 
-        		    ZERO, 0, 1, 1,
+        		    ZERO, 0, 1, 1, false, null, 0,0,0,
         		    writer);
         writer.closeLowLevelField();          
 
@@ -155,7 +161,8 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     
     //TODO: build better constants for these values needed.
     public static void writeHeader(byte[] revisionBytes, int status, int requestContext, byte[] etagBytes, byte[] typeBytes, 
-    		                       byte[] lenAsBytes, int lenAsBytesPos, int lenAsBytesLen, int  lenAsBytesMask,
+    		                       byte[] lenAsBytes, int lenAsBytesPos, int lenAsBytesLen, int  lenAsBytesMask, boolean server,
+    		                       byte[] contLocBytes, int contLocBytesPos, int contLocBytesLen, int contLocBytesMask,
     		                       DataOutputBlobWriter<ServerResponseSchema> writer) {
              
             //line one
@@ -175,13 +182,22 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
             }
             
             //line two
-    //        writer.write(SERVER);
+            if (server) {
+            	writer.write(SERVER);
+            }
             
-//            if (null!=etagBytes) {
-//                writer.write(ETAG);
-//                writer.write(etagBytes); //ETag: "3f80f-1b6-3e1cb03b"
-//                writer.write('\n');
-//            }          
+            if (null!=etagBytes) {
+                writer.write(ETAG);
+                writer.write(etagBytes); //ETag: "3f80f-1b6-3e1cb03b"
+                writer.write(RETURN_NEWLINE);
+            }          
+            
+            // CONTENT_LOCATION
+            if (null!=contLocBytes) {
+                writer.write(CONTENT_LOCATION);
+                DataOutputBlobWriter.write(writer, contLocBytes, contLocBytesPos, contLocBytesLen, contLocBytesMask);
+                writer.write(RETURN_NEWLINE);
+            }
             
             //turns off all client caching
 //            writer.write(CACHE_CONTROL_NO_CACHE);

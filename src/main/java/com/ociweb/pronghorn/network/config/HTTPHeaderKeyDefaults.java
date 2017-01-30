@@ -10,6 +10,7 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
     TRANSFER_ENCODING("Transfer-Encoding: chunked"), //Transfer-Encoding: chunked
     CONTENT_LENGTH("Content-Length: %u"), //note this captures an integer not a string
     CONTENT_TYPE("Content-Type: %b"),
+    CONTENT_LOCATION("Content-Location: %b"),
     ACCEPT("Accept: %b"),
     ACCEPT_CHARSET("Accept-Charset: %b"),
     ACCEPT_LANGUAGE("Accept-Language: %b"),
