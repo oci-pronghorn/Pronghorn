@@ -156,10 +156,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    		//TODO: add assert that target bufer is larger than socket buffer.
 						    		//TODO: warning note cast to int.
 						    		int readCount=-1; 
-						    		try {
-						    			SocketChannel socketChannel = (SocketChannel)cc.getSocketChannel();//selectionKey.channel();						    									    			
-						    			readCount = (int)socketChannel.read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
-						    			
+						    		try {					    									    			
+						    			readCount = (int)((SocketChannel)cc.getSocketChannel()).read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
 						    			assert(readCount<target.maxAvgVarLen);
 						    			
 						    		} catch (IOException ioex) {
@@ -179,6 +177,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    	//logger.trace("client reading {} for id {} fullbuffer {}",readCount,cc.getId(),fullBuffer);
 							    	
 							    	if (readCount>0) {
+							    		
+							    		openCount++;
+							    		
 							    		assert(readCount<=target.maxAvgVarLen);
 							    		totalBytes += readCount;						    		
 							    		//we read some data so send it		

@@ -116,8 +116,8 @@ public class ClientConnection extends SSLConnection {
 	//	this.getSocketChannel().setOption(StandardSocketOptions.SO_KEEPALIVE, true);
 	
 	//	this.getSocketChannel().setOption(StandardSocketOptions.TCP_NODELAY, true);
-		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<16); 
-		this.getSocketChannel().setOption(StandardSocketOptions.SO_SNDBUF, 1<<16); 
+		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<19); 
+	//	this.getSocketChannel().setOption(StandardSocketOptions.SO_SNDBUF, 1<<16); 
 		
 				
 	//	logger.info("client recv buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF)); //default 43690

@@ -47,17 +47,23 @@ public class NetGraphBuilder {
 	public static void buildHTTPClientGraph(boolean isTLS, GraphManager gm, int maxPartialResponses, ClientCoordinator ccm,
 			IntHashTable listenerPipeLookup, 
 			int responseQueue, int responseSize, Pipe<NetPayloadSchema>[] requests,
-			Pipe<NetResponseSchema>[] responses, int responseUnwrapCount, int clientWrapperCount, int clientWriters) {
+			Pipe<NetResponseSchema>[] responses, int responseUnwrapCount, int clientWrapperCount, int clientWriters
+			) {
 		
+		int httpResponseSize = 64;
+		int httpResponseBlob = 1<<19;
 		
-		PipeConfig<ReleaseSchema> parseAckConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance, 2048, 0);
+		int releaseSize = 2048;
+		
+		PipeConfig<ReleaseSchema> parseReleaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance, releaseSize, 0);
 		
 
 		//must be large enough for handshake plus this is the primary pipe after the socket so it must be a little larger.
 		PipeConfig<NetPayloadSchema> clientNetResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, responseQueue, responseSize); 	
 		
+		
 		//pipe holds data as it is parsed so making it larger is helpfull
-		PipeConfig<NetPayloadSchema> clientHTTPResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, responseQueue*4, responseSize*2); 	
+		PipeConfig<NetPayloadSchema> clientHTTPResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, httpResponseSize, httpResponseBlob); 	
 		
 		
 		///////////////////
@@ -96,12 +102,12 @@ public class NetGraphBuilder {
 		int a = responseParsers + (isTLS?responseUnwrapCount:0);
 		Pipe[] acks = new Pipe[a];
 		while (--a>=0) {
-			acks[a] =  new Pipe<ReleaseSchema>(parseAckConfig,false);	
+			acks[a] =  new Pipe<ReleaseSchema>(parseReleaseConfig,false);	
 		}
-
+		
 		ClientSocketReaderStage socketReaderStage = new ClientSocketReaderStage(gm, ccm, acks, socketResponse, isTLS);
 		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketReader", socketReaderStage);		
-
+		
 		
 		Pipe[] hanshakePipes = null;
 		if (isTLS) {
@@ -256,32 +262,37 @@ public class NetGraphBuilder {
 
             //create the modules
                                  
-            int modMultiplier = 1;  //TODO: remove    
             
-            Pipe<HTTPRequestSchema>[][][] toModules = new Pipe[modMultiplier][ac.moduleCount()][routerCount];
+            Pipe<HTTPRequestSchema>[][] toModules = new Pipe[ac.moduleCount()][routerCount];
+            Pipe<ServerResponseSchema>[][][] fromModule = new Pipe[routerCount][ac.moduleCount()][]; 
             
-            long[][] headers = new long[modMultiplier][ac.moduleCount()];
-            Pipe<ServerResponseSchema>[][][] fromModule = new Pipe[modMultiplier][ac.moduleCount()][]; 
-            CharSequence[][] paths = new CharSequence[modMultiplier][ac.moduleCount()];
-            int[][] msgIds = new int[modMultiplier][ac.moduleCount()];
+            long[] headers = new long[ac.moduleCount()];
+            CharSequence[][] paths = new CharSequence[1][ac.moduleCount()];
+            int[][] msgIds = new int[1][ac.moduleCount()];
 
-            int m = modMultiplier;
-            while (--m >= 0) {
-	            while (--a >= 0) { //create every app for this connection group   
-	            		            	
-	            	int r = routerCount;
-	            	while (--r >= 0) {
-	            		toModules[m][a][r] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig,false);		
-	            	}            	
-	                headers[m][a]    = ac.addModule(a, graphManager, toModules[m][a], HTTPSpecification.defaultSpec());   
-	                fromModule[m][a] = ac.outputPipes(a);  
-	                	                
-	                assert(null!=fromModule[m][a] && fromModule[m][a].length>0);
-	                paths[m][a]      = ac.getPathRoute(a);//"/%b";  //"/WebSocket/connect",                
-	                msgIds[m][a]     =  HTTPRequestSchema.MSG_FILEREQUEST_200;	                
-	                
-	            }
+  
+            while (--a >= 0) { //create every app for this connection group   
+            		            	
+            	int r = routerCount;
+            	while (--r >= 0) {
+            		toModules[a][r] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig,false);		
+            	}            	
+                headers[a]    = ac.addModule(a, graphManager, toModules[a], HTTPSpecification.defaultSpec());  
+                
+                
+                Pipe<ServerResponseSchema>[][] outputPipes = ac.outputPipes(a);
+                int i = outputPipes.length;
+                assert(i==routerCount);
+      
+                while (--i>=0) {
+                	fromModule[i][a] = outputPipes[i];  
+                }    
+                
+                paths[0][a]      = ac.getPathRoute(a);//"/%b";  //"/WebSocket/connect",                
+                msgIds[0][a]     =  HTTPRequestSchema.MSG_FILEREQUEST_200;	                
+                
             }
+
             
             ////////////////
             ////////////////
@@ -293,12 +304,11 @@ public class NetGraphBuilder {
             while (--r>=0) {
             	
             	a = ac.moduleCount();
-            	Pipe<HTTPRequestSchema>[][] toAllModules = new Pipe[modMultiplier][a];
-            	while (--a>=0) {            		
-            		m = modMultiplier;
-            		while (--m>=0) {
-            			toAllModules[m][a] = toModules[m][a][r]; //cross cut this matrix
-            		}            		
+            	Pipe<HTTPRequestSchema>[][] toAllModules = new Pipe[1][a];
+            	while (--a>=0) {           		
+
+            			toAllModules[0][a] = toModules[a][r]; //cross cut this matrix
+         		
             	}
             	
             	//the router knows the index of toAllModules matches the index of the appropriate path.
@@ -307,7 +317,7 @@ public class NetGraphBuilder {
             	
             	//TODO: must provide multiple request pipes. mod these by the connection id
             	
-            	HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], toAllModules, acks[acksBase-r], paths[0], headers[0], msgIds[0]);        
+            	HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], toAllModules, acks[acksBase-r], paths[0], headers, msgIds[0]);        
             	GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
             	
             }
@@ -383,8 +393,12 @@ public class NetGraphBuilder {
             //a single supervisor will group all the modules responses together.
             ///////////////////
 
-            //TODO: this from super should not be zero?? what why is that?
-           	OrderSupervisorStage wrapSuper = new OrderSupervisorStage(graphManager, fromModule, fromSupers[g], coordinator, isTLS);//ensure order           
+            Pipe[][] orderedOutput = Pipe.splitPipes(routerCount, fromSupers[g]);
+            int k = routerCount;
+            while (--k>=0) {
+                        
+            	OrderSupervisorStage wrapSuper = new OrderSupervisorStage(graphManager, fromModule[k], orderedOutput[k], coordinator, isTLS);//ensure order           
+            }
             
             ///////////////
             //all the writer stages

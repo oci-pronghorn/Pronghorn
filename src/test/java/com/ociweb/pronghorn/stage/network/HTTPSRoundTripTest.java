@@ -72,13 +72,11 @@ public class HTTPSRoundTripTest {
     	final int maxListeners = 1<<base2SimultaniousConnections;
     	String bindHost = "127.0.0.1";
 		ServerCoordinator serverCoord = new ServerCoordinator(groups, bindHost, 8443, 15, maxListeners,1);//32K simulanious connections on server. 
+
     	
-    	//TODO: the stages must STAY if there is work to do an NOT return !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    	
-    	
-		 int requestUnwrapUnits = 1;
-		 int responseWrapUnits = 4; //only have 4 users now...
-		 int pipesPerOutputEngine = 1;
+		int requestUnwrapUnits = 1;
+		int responseWrapUnits = 4; //only have 4 users now...
+		int pipesPerOutputEngine = 1;
 		GraphManager gm1 = gm;
 		final String path = root;
 		
@@ -88,15 +86,19 @@ public class HTTPSRoundTripTest {
 		
 		    
 		    final PipeConfig<ServerResponseSchema> outgoingDataConfig = new PipeConfig<ServerResponseSchema>(ServerResponseSchema.instance, 2048, 1<<15);//from module to  supervisor
-		    final Pipe<ServerResponseSchema> output = new Pipe<ServerResponseSchema>(outgoingDataConfig);
+		    Pipe<ServerResponseSchema>[][] outputs;
 		    
 			@Override
 			public long addModule(int a, 
 					GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs,
 					HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> spec) {
 				
-				FileReadModuleStage.newInstance(graphManager, inputs, output, spec, new File(path));
-				
+				int i = inputs.length;
+				outputs = new Pipe[i][1];
+				while (--i>=0) {
+					outputs[i][0] = new Pipe<ServerResponseSchema>(outgoingDataConfig);
+					FileReadModuleStage.newInstance(graphManager, inputs[i], outputs[i][0], spec, new File(path));
+				}
 				//return needed headers
 				return 0;
 			}
@@ -107,8 +109,8 @@ public class HTTPSRoundTripTest {
 			}
 		
 			@Override
-			public Pipe<ServerResponseSchema>[] outputPipes(int a) {
-				return new Pipe[]{output};
+			public Pipe<ServerResponseSchema>[][] outputPipes(int a) {			
+				return outputs;
 			}
 		
 			@Override
@@ -385,7 +387,7 @@ public class HTTPSRoundTripTest {
 	    	
 	    	/////////////////
 	        /////////////////
-	    	int base2SimultaniousConnections = 4;//TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
+	    	int base2SimultaniousConnections = 5;//TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
 	    	int clientCount = 2;
 	    		    	
 	    	//TODO: this number must be the limit of max simuantious handshakes.
@@ -538,11 +540,11 @@ public class HTTPSRoundTripTest {
 	private ServerCoordinator exampleServerSetup(boolean isTLS, GraphManager gm, final String testFile, String bindHost, int bindPort) {
 		final String pathRoot = buildStaticFileFolderPath(testFile);
 		
-		final int maxPartialResponsesServer     = 32; //input lines to server (should be large)
+		final int maxPartialResponsesServer     = 64; //input lines to server (should be large)
 		final int maxConnectionBitsOnServer 	= 12;//8K simulanious connections on server	    	
 		final int serverRequestUnwrapUnits 		= 2; //server unwrap units - need more for handshaks and more for posts
 		final int serverResponseWrapUnits 		= 4;
-		final int serverPipesPerOutputEngine 	= isTLS?8:8;//multiplier against server wrap units for max simultanus user responses.
+		final int serverPipesPerOutputEngine 	= isTLS?8:16;//multiplier against server wrap units for max simultanus user responses.
 		final int serverSocketWriters           = 2;
 		
 		//drives the cached data from the file loader.
@@ -582,7 +584,7 @@ public class HTTPSRoundTripTest {
 		    final PipeConfig<ServerResponseSchema> fileServerOutgoingDataConfig = new PipeConfig<ServerResponseSchema>(ServerResponseSchema.instance, messagesToOrderingSuper, messageSizeToOrderingSuper);//from module to  supervisor
 		    
 		    //TODO: build array groups and return?
-		    Pipe<ServerResponseSchema>[] staticFileOutputs;
+		    Pipe<ServerResponseSchema>[][] staticFileOutputs;
 		    
 			@Override
 			public long addModule(int a, 
@@ -597,17 +599,25 @@ public class HTTPSRoundTripTest {
 					//the file server is stateless therefore we can build 1 instance for every input pipe
 					int instances = inputs.length;
 					
-					staticFileOutputs = new Pipe[instances];
+					staticFileOutputs = new Pipe[instances][1];
 					
 					int i = instances;
 					while (--i>=0) {
-						staticFileOutputs[i] = new Pipe<ServerResponseSchema>(fileServerOutgoingDataConfig);
-						FileReadModuleStage.newInstance(graphManager, inputs[i], staticFileOutputs[i], spec, new File(pathRoot));					
+						staticFileOutputs[i][0] = new Pipe<ServerResponseSchema>(fileServerOutgoingDataConfig);
+						FileReadModuleStage.newInstance(graphManager, inputs[i], staticFileOutputs[i][0], spec, new File(pathRoot));					
 					}
 				
 				} else {
-					staticFileOutputs = new Pipe[]{ new Pipe<ServerResponseSchema>(fileServerOutgoingDataConfig) };					
-					FileReadModuleStage.newInstance(graphManager, inputs, staticFileOutputs[0], spec, new File(pathRoot));
+					
+					//TODO:need to update..
+					
+					//multiples into the file router and out!!!!!
+					
+					//staticFileOutputs = new Pipe[1][]{ new Pipe<ServerResponseSchema>(fileServerOutgoingDataConfig) };					
+					//FileReadModuleStage.newInstance(graphManager, inputs, staticFileOutputs[0], spec, new File(pathRoot));
+					
+					
+					
 				}
 				
 				//return needed headers
@@ -622,7 +632,10 @@ public class HTTPSRoundTripTest {
 		//TODO: add input pipes to be defined here as well??
 			
 			@Override
-			public Pipe<ServerResponseSchema>[] outputPipes(int a) {
+			public Pipe<ServerResponseSchema>[][] outputPipes(int a) {
+				
+				//
+				
 				return staticFileOutputs;
 			}
 		

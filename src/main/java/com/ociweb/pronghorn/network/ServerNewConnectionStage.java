@@ -133,11 +133,11 @@ public class ServerNewConnectionStage extends PronghornStage{
                       try {                          
                           channel.configureBlocking(false);
                           //channel.setOption(StandardSocketOptions.TCP_NODELAY, true);  
-                       //   channel.setOption(StandardSocketOptions.SO_SNDBUF, 1<<18); //for heavy testing we avoid overloading client by making this smaller.
-                        //  channel.setOption(StandardSocketOptions.SO_RCVBUF, 1<<18);
+                          //channel.setOption(StandardSocketOptions.SO_RCVBUF, 1<<19);
+                          //channel.setOption(StandardSocketOptions.SO_SNDBUF, 1<<19); //for heavy testing we avoid overloading client by making this smaller.
                           
-                  		//logger.info("server recv buffer size {} ",  channel.getOption(StandardSocketOptions.SO_RCVBUF)); //default  531000
-                		//logger.info("server send buffer size {} ",  channel.getOption(StandardSocketOptions.SO_SNDBUF)); //default 1313280
+                  	//	logger.info("server recv buffer size {} ",  channel.getOption(StandardSocketOptions.SO_RCVBUF)); //default  531000
+                	//	logger.info("server send buffer size {} ",  channel.getOption(StandardSocketOptions.SO_SNDBUF)); //default 1313280
                 		
                 		
                       //    channel.socket().setTcpNoDelay(true);

@@ -20,6 +20,6 @@ public interface ModuleConfig {
 
 	CharSequence getPathRoute(int a);
 
-	Pipe<ServerResponseSchema>[] outputPipes(int a);
+	Pipe<ServerResponseSchema>[][] outputPipes(int a);
 
 }

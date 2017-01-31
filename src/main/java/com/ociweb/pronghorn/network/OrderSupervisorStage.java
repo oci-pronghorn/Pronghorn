@@ -72,7 +72,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
      * @param inputPipes
      * @param coordinator
      */
-    public OrderSupervisorStage(GraphManager graphManager, Pipe<ServerResponseSchema>[][][] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator, boolean isTLS) {
+    public OrderSupervisorStage(GraphManager graphManager, Pipe<ServerResponseSchema>[][] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator, boolean isTLS) {
         super(graphManager, join(inputPipes), outgoingPipes);      
         this.dataToSend = join(inputPipes);
         

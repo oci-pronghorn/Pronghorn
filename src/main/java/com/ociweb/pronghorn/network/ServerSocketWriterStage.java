@@ -54,7 +54,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     private long totalBytesWritten = 0;
     
     
-    private int bufferMultiplier = 4;
+    private int bufferMultiplier = 128; //NOTE: larger buffer allows for faster xmit.
 
 
 	private static final boolean enableWriteBatching = true;  
@@ -135,7 +135,6 @@ public class ServerSocketWriterStage extends PronghornStage {
     @Override
     public void run() {
        
-    	
     	boolean didWork = false;
     	do {
     		didWork = false;
@@ -158,7 +157,6 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    			//	logger.info("no data to read {} {} ",x,dataToSend[x]);
 	    			//}
 	    		} else {
-	    			
 	    			//logger.info("write the channel");
 	    			
 	    			didWork = true;
@@ -296,7 +294,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        Pipe.releaseReadLock(dataToSend[idx]);
 		        
 		        //In order to maximize throughput take all the messages which are gong to the same location.
-		        
+
 		        //if there is content and this content is also a message to send and we still have room in the working buffer and the channel is the same then we can batch it.
 		        while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
 		            Pipe.peekInt(pipe)==msgIdx && 
@@ -327,11 +325,11 @@ public class ServerSocketWriterStage extends PronghornStage {
 			        
 			        assert(!writeBuffs2[0].hasRemaining());
 			        assert(!writeBuffs2[1].hasRemaining());
-			        
-		        		
+			        		        		
 			        Pipe.confirmLowLevelRead(pipe, msgSize);
 			        Pipe.releaseReadLock(pipe);
-		        }	        
+			      
+		        }	 
 		        
 		        if (ServerCoordinator.TEST_RECORDS) {
 		        	ByteBuffer temp = workingBuffers[idx].duplicate();
