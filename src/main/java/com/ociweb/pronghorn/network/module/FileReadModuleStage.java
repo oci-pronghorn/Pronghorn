@@ -301,7 +301,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         
         @Override
         public boolean isValid(FileChannel t) {
-            return t.isOpen();
+            return t!=null && t.isOpen();
         }
 
         @Override
