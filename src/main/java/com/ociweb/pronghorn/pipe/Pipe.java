@@ -1217,9 +1217,11 @@ public class Pipe<T extends MessageSchema> {
 		
 		return output.wrappedWritingBuffers;
     }
-   
-
-
+ 
+    public static <S extends MessageSchema> void moveBlobPointerAndRecordPosAndLength(int len, Pipe<S> output) {
+    	moveBlobPointerAndRecordPosAndLength(Pipe.unstoreBlobWorkingHeadPosition(output), len, output);
+    }
+    
     public static <S extends MessageSchema> void moveBlobPointerAndRecordPosAndLength(int originalBlobPosition, int len, Pipe<S> output) {
     	
     	assert(verifyHasRoomForWrite(len, output));    	

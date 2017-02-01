@@ -551,19 +551,52 @@ public class TrieParserReader {
 	                         
 	        //TODO: join the stack building here with the parseBytesMultiStops to shortcut cases to eliminated depth.
 	        if (reader.altStackPos>0) {
-	            stopCount = scanAllStackPos(reader, reader.localSourcePos, trie.data, reader.runLength, stopCount);
+	            short[] localData = trie.data;
+				int stopCount1 = stopCount;
+				int i = reader.altStackPos; 
+				 while (--i>=0) {
+				    if (localData[reader.altStackC[i]] == TrieParser.TYPE_VALUE_BYTES) {
+				        short newStop = localData[reader.altStackC[i]+1];
+				        
+				        if (reader.capturedPos != reader.altStackB[i]) {//part of the same path.
+				            //System.out.println("a");
+				            break;
+				        }
+				        if (reader.localSourcePos != reader.altStackA[i]) {//part of the same path.
+				           // System.out.println("b");
+				            break;
+				        }
+				        if (reader.runLength != reader.altStackD[i]){
+				           // System.out.println("c");
+				            break;
+				        }
+				                        
+				        //ensure newStop is not already in the list of stops.
+				       
+				        if (-1 != indexOfMatchInArray(newStop, reader.workingMultiStops, stopCount1)) {               
+				            break;
+				        }
+				        
+				        reader.workingMultiContinue[stopCount1] = reader.altStackC[i]+2;
+				        reader.workingMultiStops[stopCount1++] = newStop;
+				        
+				        //taking this one
+				        reader.altStackPos--;
+				        
+				    }
+				}
+				stopCount = stopCount1;
 	        }	
 	        
 	        if (stopCount>1) {				
-	        	final short[] stopValues = reader.workingMultiStops;
-				assert(stopValues.length>0);
+	        	assert(reader.workingMultiStops.length>0);
 				
 				int x = reader.localSourcePos;
 				int lim = (int)Math.min(maxCapture, sourceMask);
 				
 				int stopIdx = -1;
 				do {  //TODO: this while must be combined with the above todo.
-				} while (--lim >= 0 && (-1== (stopIdx=indexOfMatchInArray(source[sourceMask & x++], stopValues, stopCount ))) );	
+				} while (--lim >= 0 && (-1== (stopIdx=indexOfMatchInArray(source[sourceMask & x++], reader.workingMultiStops, stopCount ))) );	
 				
 				assignParseBytesResults(reader, sourceMask, reader.localSourcePos, x, stopIdx);	        					
 	        } else {
@@ -677,44 +710,6 @@ public class TrieParserReader {
         
         return reader.safeReturnValue;
     }
-
-    private static int scanAllStackPos(TrieParserReader reader, int localSourcePos, short[] localData, int runLength, int stopCount) {
-    	
-         int i = reader.altStackPos; 
-         while (--i>=0) {
-            if (localData[reader.altStackC[i]] == TrieParser.TYPE_VALUE_BYTES) {
-                short newStop = localData[reader.altStackC[i]+1];
-                
-                if (reader.capturedPos != reader.altStackB[i]) {//part of the same path.
-                    //System.out.println("a");
-                    break;
-                }
-                if (localSourcePos != reader.altStackA[i]) {//part of the same path.
-                   // System.out.println("b");
-                    break;
-                }
-                if (runLength != reader.altStackD[i]){
-                   // System.out.println("c");
-                    break;
-                }
-                                
-                //ensure newStop is not already in the list of stops.
-               
-                if (-1 != indexOfMatchInArray(newStop, reader.workingMultiStops, stopCount)) {               
-                    break;
-                }
-                
-                reader.workingMultiContinue[stopCount] = reader.altStackC[i]+2;
-                reader.workingMultiStops[stopCount++] = newStop;
-                
-                //taking this one
-                reader.altStackPos--;
-                
-            }
-        }
-        return stopCount;
-    }
-
 
     static void pushAlt(TrieParserReader reader, int pos, int offset, int runLength) {
         
