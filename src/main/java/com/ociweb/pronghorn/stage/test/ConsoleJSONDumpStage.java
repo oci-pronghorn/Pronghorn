@@ -18,6 +18,14 @@ public class ConsoleJSONDumpStage<T extends MessageSchema> extends PronghornStag
 	private StreamingVisitorReader reader;
 	private PrintStream out = System.out;
 
+	public void newInstance(GraphManager graphManager, Pipe<T> input) {
+		new ConsoleJSONDumpStage(graphManager, input);
+	}
+	
+	public void newInstance(GraphManager graphManager, Pipe<T> input, PrintStream out) {
+		new ConsoleJSONDumpStage(graphManager, input, out);
+	}
+	
 	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input) {
 		super(graphManager, input, NONE);
 		this.input = input;
@@ -74,4 +82,16 @@ public class ConsoleJSONDumpStage<T extends MessageSchema> extends PronghornStag
 		}
 	}
 
+	//TODO: fix this.
+//	[ConsoleJSONDumpStage id:3] ERROR com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler - Unexpected error in ConsoleJSONDumpStage #3 which has 1 inputs and 0 outputs
+//	java.lang.AssertionError: tail 0 readBase 16356 head 30
+//		at com.ociweb.pronghorn.pipe.Pipe.validateInsideData(Pipe.java:700)
+//		at com.ociweb.pronghorn.pipe.Pipe.markBytesReadBase(Pipe.java:712)
+//		at com.ociweb.pronghorn.pipe.Pipe.releaseReadLock(Pipe.java:2783)
+//		at com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader.run(StreamingVisitorReader.java:87)
+//		at com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage.run(ConsoleJSONDumpStage.java:64)
+//		at com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler.runPeriodicLoop(ThreadPerStageScheduler.java:474)
+//		at com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler.access$500(ThreadPerStageScheduler.java:17)
+//		at com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler$3.run(ThreadPerStageScheduler.java:342)
+//		at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)
 }
