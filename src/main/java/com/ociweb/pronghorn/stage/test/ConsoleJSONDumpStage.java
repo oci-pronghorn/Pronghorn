@@ -18,11 +18,11 @@ public class ConsoleJSONDumpStage<T extends MessageSchema> extends PronghornStag
 	private StreamingVisitorReader reader;
 	private PrintStream out = System.out;
 
-	public void newInstance(GraphManager graphManager, Pipe<T> input) {
+	public static void newInstance(GraphManager graphManager, Pipe input) {
 		new ConsoleJSONDumpStage(graphManager, input);
 	}
 	
-	public void newInstance(GraphManager graphManager, Pipe<T> input, PrintStream out) {
+	public static void newInstance(GraphManager graphManager, Pipe input, PrintStream out) {
 		new ConsoleJSONDumpStage(graphManager, input, out);
 	}
 	
