@@ -685,7 +685,7 @@ public class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> int bytesReadBase(Pipe<S> pipe) {
-        assert(pipe.blobReadBase<=pipe.blobMask);        
+          
         assert(validateInsideData(pipe, pipe.blobReadBase));
         
     	return pipe.blobReadBase;
@@ -693,6 +693,7 @@ public class Pipe<T extends MessageSchema> {
     
     private static <S extends MessageSchema> boolean validateInsideData(Pipe<S> pipe, int value) {
 		
+
 	    int mHead = Pipe.blobMask(pipe) & Pipe.getBlobHeadPosition(pipe);
 	    int mTail = Pipe.blobMask(pipe) & Pipe.getBlobTailPosition(pipe);
 	    int mValue = Pipe.blobMask(pipe) & value;
@@ -708,7 +709,8 @@ public class Pipe<T extends MessageSchema> {
 	public static <S extends MessageSchema> void markBytesReadBase(Pipe<S> pipe, int bytesConsumed) {
         assert(bytesConsumed>=0) : "Bytes consumed must be positive";
         //base has future pos added to it so this value must be masked and kept as small as possible
-        pipe.blobReadBase = pipe.blobMask & (pipe.blobReadBase+bytesConsumed);
+                
+        pipe.blobReadBase = Pipe.BYTES_WRAP_MASK & (pipe.blobReadBase+bytesConsumed);
         assert(validateInsideData(pipe, pipe.blobReadBase)) : "consumed "+bytesConsumed+" bytes using mask "+pipe.blobMask+" new base is "+pipe.blobReadBase;
     }
     
@@ -1309,7 +1311,7 @@ public class Pipe<T extends MessageSchema> {
 
 	private static <S extends MessageSchema> void wrappedReadingBuffersRing(Pipe<S> pipe, int meta, int len) {
 		
-		final int position = bytePosition(meta,pipe,len);//MUST call this one which creates side effect of assuming this data is consumed
+		final int position = pipe.blobMask&bytePosition(meta,pipe,len);//MUST call this one which creates side effect of assuming this data is consumed
 		final int endPos = position+len;
 		
 	    assert(Pipe.validatePipeBlobHasDataToRead(pipe, position, len));
@@ -1322,7 +1324,7 @@ public class Pipe<T extends MessageSchema> {
 		
 		ByteBuffer bBuf = wrappedBlobRingB(pipe);
 		bBuf.clear();
-		bBuf.limit(endPos > pipe.sizeOfBlobRing ? pipe.byteMask & endPos : 0 ); 
+		bBuf.limit(endPos > pipe.sizeOfBlobRing ? pipe.blobMask & endPos : 0 ); 
 				
 	}
 
@@ -2579,7 +2581,7 @@ public class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> int bytePosition(int meta, Pipe<S> pipe, int len) {
     	int pos =  restorePosition(pipe, meta & RELATIVE_POS_MASK);
         if (len>=0) {
-            pipe.blobRingTail.byteWorkingTailPos.value =  pipe.blobMask & (len+pipe.blobRingTail.byteWorkingTailPos.value);
+        	Pipe.addAndGetBytesWorkingTailPosition(pipe, len);
         }        
         return pos;
     }
@@ -2793,7 +2795,7 @@ public class Pipe<T extends MessageSchema> {
         assert(Pipe.contentRemaining(pipe)>=0);
         PendingReleaseData.appendPendingReadRelease(pipe.pendingReleases,
                                                     pipe.slabRingTail.workingTailPos.value, 
-                                                    pipe.blobRingTail.byteWorkingTailPos.value, 
+                                                    pipe.blobRingTail.byteWorkingTailPos.value = pipe.blobReadBase, 
                                                     bytesConsumedByFragment);
         assert(validateInsideData(pipe, pipe.blobReadBase));
         return bytesConsumedByFragment;   

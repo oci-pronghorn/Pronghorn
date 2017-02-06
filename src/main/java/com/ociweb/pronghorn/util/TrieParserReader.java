@@ -540,14 +540,21 @@ public class TrieParserReader {
 	}
 
     private static void parseBytes(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength, int sourceMask) {
-    	long maxCapture = sourceLength-reader.runLength;
+    	
+    	short[] localWorkingMultiStops = reader.workingMultiStops;
+    	
+    	int localRunLength = reader.runLength;
+    	long maxCapture = sourceLength-localRunLength;
+    	int localSourcePos = reader.localSourcePos;
+    	int localCaputuredPos = reader.capturedPos;
+    	
     	if (maxCapture>0) {
 	        short stopValue = trie.data[reader.pos++];
 	        
 	        int stopCount = 0;
 	        
 	        reader.workingMultiContinue[stopCount] = reader.pos;
-	        reader.workingMultiStops[stopCount++] = stopValue;
+	        localWorkingMultiStops[stopCount++] = stopValue;
 	                         
 	        //TODO: join the stack building here with the parseBytesMultiStops to shortcut cases to eliminated depth.
 	        if (reader.altStackPos>0) {
@@ -558,27 +565,27 @@ public class TrieParserReader {
 				    if (localData[reader.altStackC[i]] == TrieParser.TYPE_VALUE_BYTES) {
 				        short newStop = localData[reader.altStackC[i]+1];
 				        
-				        if (reader.capturedPos != reader.altStackB[i]) {//part of the same path.
+				        if (localCaputuredPos != reader.altStackB[i]) {//part of the same path.
 				            //System.out.println("a");
 				            break;
 				        }
-				        if (reader.localSourcePos != reader.altStackA[i]) {//part of the same path.
+				        if (localSourcePos != reader.altStackA[i]) {//part of the same path.
 				           // System.out.println("b");
 				            break;
 				        }
-				        if (reader.runLength != reader.altStackD[i]){
+				        if (localRunLength != reader.altStackD[i]){
 				           // System.out.println("c");
 				            break;
 				        }
 				                        
 				        //ensure newStop is not already in the list of stops.
 				       
-				        if (-1 != indexOfMatchInArray(newStop, reader.workingMultiStops, stopCount1)) {               
+				        if (-1 != indexOfMatchInArray(newStop, localWorkingMultiStops, stopCount1)) {               
 				            break;
 				        }
 				        
 				        reader.workingMultiContinue[stopCount1] = reader.altStackC[i]+2;
-				        reader.workingMultiStops[stopCount1++] = newStop;
+				        localWorkingMultiStops[stopCount1++] = newStop;
 				        
 				        //taking this one
 				        reader.altStackPos--;
@@ -589,16 +596,16 @@ public class TrieParserReader {
 	        }	
 	        
 	        if (stopCount>1) {				
-	        	assert(reader.workingMultiStops.length>0);
+	        	assert(localWorkingMultiStops.length>0);
 				
-				int x = reader.localSourcePos;
+				int x = localSourcePos;
 				int lim = (int)Math.min(maxCapture, sourceMask);
 				
 				int stopIdx = -1;
 				do {  //TODO: this while must be combined with the above todo.
-				} while (--lim >= 0 && (-1== (stopIdx=indexOfMatchInArray(source[sourceMask & x++], reader.workingMultiStops, stopCount ))) );	
+				} while (--lim >= 0 && (-1== (stopIdx=indexOfMatchInArray(source[sourceMask & x++], localWorkingMultiStops, stopCount ))) );	
 				
-				assignParseBytesResults(reader, sourceMask, reader.localSourcePos, x, stopIdx);	        					
+				assignParseBytesResults(reader, sourceMask, localSourcePos, x, stopIdx);	        					
 	        } else {
 	            reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, maxCapture, sourceMask, stopValue);
 	        }
