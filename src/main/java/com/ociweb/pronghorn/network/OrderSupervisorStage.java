@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -166,6 +167,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		
 		boolean didWork = false;
 		while (Pipe.hasContentToRead(sourcePipe)) {
+			assert(Pipe.bytesReadBase(sourcePipe)>=0);
+						
 			didWork = true;
 
 		    //peek to see if the next message should be blocked, eg out of order, if so skip to the next pipe
@@ -183,7 +186,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        ///////////////////////////////
 		        //quit early if the pipe is full, NOTE: the order super REQ long output pipes
 		        ///////////////////////////////
-		    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {		    		
+		    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {	
+		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		    		break;
 		    	}		    	
 		    	
@@ -197,6 +201,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        int expected = expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)];                
 		        if (sequenceNo!=expected) {          
 		        	assert(sequenceNo>=expected) : "found smaller than expected sequenceNo, they should never roll back";
+		        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		        	break;
 		        }	                  
 
@@ -204,6 +209,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		            handshakeProcessing(myPipe, channelId);	                    
 		        }
 		         
+		        assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		        
 		    } else {
 			    
@@ -213,9 +219,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	int idx = Pipe.takeMsgIdx(sourcePipe);
 		    	
 		    	if (ServerResponseSchema.MSG_SKIP_300 ==idx) {
-
+		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		    		skipDataBlock(sourcePipe, idx);
-		        	
+		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		    		continue;
 		    	} else {	
 		        	Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
@@ -223,14 +229,17 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	
 		        	if (--shutdownCount<=0) {
 		        		requestShutdown();
+		        		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		        		break;
 		        	} else {
+		        		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		        		continue;
 		        	}
 		    	}
 		    }
-		    
+		    assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		    copyDataBlock(sourcePipe, peekMsgId, myPipe, myPipeIdx, sequenceNo, channelId);
+		    assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		}
 		return didWork;
 	}
@@ -238,6 +247,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	private void copyDataBlock(final Pipe<ServerResponseSchema> input, int peekMsgId,
 							   final Pipe<NetPayloadSchema> output, int myPipeIdx, int sequenceNo, long channelId) {
+		 
+		assert(Pipe.bytesReadBase(input)>=0);
+		 
 		////////////////////////////////////////////////////
 		//we now know that this work should be done and that there is room to put it out on the pipe
 		//so do it already
@@ -271,6 +283,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	
 		    } 
 		}
+		assert(Pipe.bytesReadBase(input)>=0);
 	}
 
 
@@ -281,7 +294,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		
 		int meta = Pipe.takeRingByteMetaData(sourcePipe);
 		int len = Pipe.takeRingByteLen(sourcePipe);
-		Pipe.bytePosition(meta, sourcePipe, len); //this does the skipping
+		Pipe.addAndGetBytesWorkingTailPosition(sourcePipe, len);//this does the skipping
 		
 		//logger.info(" new base "+Pipe.bytesReadBase(sourcePipe)+" skipped bytes "+len);
 		
@@ -292,6 +305,15 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	private void publishDataBlock(final Pipe<ServerResponseSchema> input, Pipe<NetPayloadSchema> output, int myPipeIdx, int sequenceNo, long channelId) {
 		
+		
+		 //////////////////////////
+		 //output pipe is accumulating this data before it has even stared the message to be sent
+		 //this is required in order to "skip over" the extra tags used eg "hidden" between messages by some modules.
+		 /////////////////////////
+		 DataOutputBlobWriter<NetPayloadSchema> outputStream = Pipe.outputStream(output);
+		 DataOutputBlobWriter.openField(outputStream);
+		 /////////////////////////
+		
 		 int expSeq = Pipe.takeInt(input); //sequence number
 		 assert(sequenceNo == expSeq);
 		 
@@ -301,9 +323,15 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		
 		         
 		 int requestContext = Pipe.takeInt(input); //high 1 upgrade, 1 close low 20 target pipe	                     
-		 int blobMask = Pipe.blobMask(input);
+		 final int blobMask = Pipe.blobMask(input);
 		 byte[] blob = Pipe.byteBackingArray(meta, input);
-		 int bytePosition = Pipe.bytePosition(meta, input, len);
+		  
+		 int hiddenBytes = 0;// 8; //how can we possibly know this number??
+		 
+		 int bytePosition = Pipe.bytePosition(meta, input, len+hiddenBytes); //also move the position forward
+		
+		 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, blobMask);
+		 
 		 
 		 //view in the console what we just wrote out to the next stage.
 		 //System.out.println("id "+myPipeIdx);
@@ -316,43 +344,59 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 //testValidContentQuick(sourcePipe, meta, len);
 		 }
 		 
+		 int temp = Pipe.bytesReadBase(input);
 		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	                     
 		 Pipe.readNextWithoutReleasingReadLock(input);//we will look ahead to see what we can combine into a single read
 		 
+		 assert(Pipe.bytesReadBase(input)!=temp) : "old base "+temp+" new base "+Pipe.bytesReadBase(input);
 		 
+		 int y = 0;
 		 //If a response was sent as muliple parts all part of the same sequence number then we roll them up as a single write when possible.
 		 while ( Pipe.peekMsg(input, ServerResponseSchema.MSG_TOCHANNEL_100) 
 			 	 && Pipe.peekInt(input, 3) == expSeq 
 			 	 && Pipe.peekLong(input, 1) == channelId 
 			     && ((len+Pipe.peekInt(input, 5))<output.maxAvgVarLen)  ) {
 					 //this is still part of the current response so combine them together
-					 
-					 Pipe.takeMsgIdx(input);
-					 Pipe.takeLong(input);
 					
+			 y++;
+			 
+					 int msgId = Pipe.takeMsgIdx(input); //msgIdx
+					 long conId = Pipe.takeLong(input); //connectionId;
+					 int seq = Pipe.takeInt(input);
+					
+					 assert(ServerResponseSchema.MSG_TOCHANNEL_100 == msgId);
+					 assert(channelId == conId);
+					 assert(seq == expSeq);
 					 
-					 Pipe.takeInt(input);
 					 
 					 int meta2 = Pipe.takeRingByteMetaData(input); //for string and byte array
 					 int len2 = Pipe.takeRingByteLen(input);
+					 len+=len2;//keep running count so we can sure not to overflow the output
+
 					 
-					 Pipe.bytePosition(meta2, input, len2); //moves pointer
-	 
-					 len+=len2;
+					 int bytePosition2 = Pipe.bytePosition(meta2, input, len2+hiddenBytes); //move the byte pointer forward
 					 
+					 DataOutputBlobWriter.write(outputStream, blob, bytePosition2, len2, blobMask);
+					 						 
 					 requestContext = Pipe.takeInt(input); //this replaces the previous context read
 		
 					 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	 
+					 
 					 Pipe.readNextWithoutReleasingReadLock(input);
 					 
+					 
 		 }
-		 		 
+		 assert(Pipe.bytesReadBase(input)>=0);
+		 
 		 final long time = 0;//field not used by server...
+		 
 		 writeToNextStage(output, channelId, len, requestContext, blobMask, blob, bytePosition, time); 
 		 
+		 assert(Pipe.bytesReadBase(input)>=0);
 		 //TODO: we should also look at the module definition logic so we can have mutiple OrderSuper instances (this is the first solution).
-		 
 		 Pipe.releaseAllPendingReadLock(input); //now done consuming the bytes so release the pending read lock release.
+		 assert(0==Pipe.releasePendingByteCount(input));
+		 assert(Pipe.bytesReadBase(input)>=0);
 
 	}
 
@@ -492,7 +536,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 //if needed write out the upgrade message
 		 ////////////
 		 
-		 if (0 != (UPGRADE_MASK & requestContext)) {
+		 if (0 != (UPGRADE_MASK & requestContext)) { //NOTE: must NOT use var length field, we are accumulating for plain writes
 			 
 			 //the next response should be routed to this new location
 			 int upgSize = Pipe.addMsgIdx(output, NetPayloadSchema.MSG_UPGRADE_307);
@@ -514,7 +558,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 Pipe.addLongValue(channelId, output);
 		 Pipe.addLongValue(time, output);
 		 Pipe.addLongValue(Pipe.getWorkingTailPosition(output), output);
-		 Pipe.addByteArrayWithMask(output, blobMask, len, blob, bytePosition);
+
+		 DataOutputBlobWriter<NetPayloadSchema> outputStream = Pipe.outputStream(output);
+		 DataOutputBlobWriter.closeLowLevelField(outputStream);
 		 
 		 Pipe.confirmLowLevelWrite(output, plainSize);
 		 Pipe.publishWrites(output);

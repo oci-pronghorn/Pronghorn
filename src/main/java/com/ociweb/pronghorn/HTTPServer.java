@@ -29,7 +29,7 @@ public class HTTPServer {
 		}
 		
 		GraphManager gm = new GraphManager();
-		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1_250);
+		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1_250); 
 						
 		///////////////
 	    //BUILD THE SERVER

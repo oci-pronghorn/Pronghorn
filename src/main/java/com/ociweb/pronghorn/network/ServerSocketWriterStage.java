@@ -47,14 +47,19 @@ public class ServerSocketWriterStage extends PronghornStage {
     
     private ByteBuffer workingBuffers[];
     private SocketChannel writeToChannel[];
+    private long          writeToChannelId[];
+    private int           writeToChannelMsg[];
+    private int           writeToChannelTTL[];
+    			    		
+    
     private long activeTails[];
     private long activeIds[]; 
     private int activeMessageIds[];    
   
     private long totalBytesWritten = 0;
     
-    
-    private int bufferMultiplier = 128; //NOTE: larger buffer allows for faster xmit.
+    //TODO: add param for small to use just 4 ??
+    private int bufferMultiplier = 12; //NOTE: larger buffer allows for faster xmit.
 
 
 	private static final boolean enableWriteBatching = true;  
@@ -116,12 +121,19 @@ public class ServerSocketWriterStage extends PronghornStage {
     	
     	int c = dataToSend.length;
     	writeToChannel = new SocketChannel[c];
+    	writeToChannelId = new long[c];
+    	writeToChannelMsg = new int[c];
+    	writeToChannelTTL = new int[c];
+    	
     	workingBuffers = new ByteBuffer[c];
     	activeTails = new long[c];
     	activeIds = new long[c];
     	activeMessageIds = new int[c];
+    	int capacity = bufferMultiplier*maxVarLength(dataToSend);
+    	//System.err.println("allocating "+capacity+" for "+c);
+    	
     	while (--c>=0) {    	
-    		workingBuffers[c] = ByteBuffer.allocateDirect(bufferMultiplier*maxVarLength(dataToSend));    		
+			workingBuffers[c] = ByteBuffer.allocateDirect(capacity);    		
     	}
     	Arrays.fill(activeTails, -1);
     	
@@ -143,7 +155,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    		//logger.info("server socket writer run {}",x);
 	    		
 	    		if (null == writeToChannel[x]) {
-	    			if ( Pipe.hasContentToRead(dataToSend[x])) {
+	    			if (Pipe.hasContentToRead(dataToSend[x])) {
 	    			//	logger.info("data to read for {}",x);
 	    				didWork = true;
 		            	int activeMessageId = Pipe.takeMsgIdx(dataToSend[x]);
@@ -158,16 +170,43 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    			//}
 	    		} else {
 	    			//logger.info("write the channel");
+	    			    			
+	    			boolean hasRoomToWrite = workingBuffers[x].capacity()-workingBuffers[x].limit() > dataToSend[x].maxAvgVarLen;
+	    				        			
 	    			
-	    			didWork = true;
-	    			writeToChannel(x);    
-	    			if (null != writeToChannel[x]) {
+	    			if (--writeToChannelTTL[x]<=0 || !hasRoomToWrite) {
+	    				writeToChannelMsg[x] = -1;
+		    			didWork = true;
+		    			writeToChannel(x); 
+		   		    			
+	    			} else {
 	    				
-	    				//TODO: nice feature to add. however it never happens.
-	    			//	logger.info("write was not completed so we have the opportunity to grow data??");
+	    		
+	    				//unflip
+	    				int p = workingBuffers[x].limit();
+	    				workingBuffers[x].limit(workingBuffers[x].capacity());
+	    				workingBuffers[x].position(p);	    				
+	    				
+	    				int h = 0;
+	    				while (	isNextMessageMergeable(dataToSend[x], writeToChannelMsg[x], x, writeToChannelId[x], false) ) {
+	    					h++;
+	    					//logger.info("opportunity found to batch writes going to {} ", writeToChannelId[x]);
+	    						    					
+	    					mergeNextMessage(writeToChannelMsg[x], x, dataToSend[x], writeToChannelId[x]);
+	    						    					
+	    				}	
+	    				if (h>0) {
+	    					Pipe.releaseAllPendingReadLock(dataToSend[x]);
+	    				}
+	    				workingBuffers[x].flip();
+	    				
+//	    				if ( Pipe.hasContentToRead(dataToSend[x]) || h==0) { //TODO: or if end disoverd?	    				
+//		    				writeToChannelMsg[x] = -1;		    				
+//			    			didWork = true;
+//			    			writeToChannel(x); 
+//	    				}
 	    				
 	    			}
-	    			
 	    			
 	    		}    		
 	    		
@@ -197,9 +236,9 @@ public class ServerSocketWriterStage extends PronghornStage {
 		     (NetPayloadSchema.MSG_ENCRYPTED_200 == activeMessageId) ) {
 			            		
 			loadPayloadForXmit(activeMessageId, idx);
-			if (null!=writeToChannel[idx]) {
-				writeToChannel(idx);
-			}
+//			if (null!=writeToChannel[idx]) {
+//				writeToChannel(idx);
+//			}
 		
 		} else if (NetPayloadSchema.MSG_DISCONNECT_203 == activeMessageId) {
 					
@@ -277,8 +316,13 @@ public class ServerSocketWriterStage extends PronghornStage {
 	        	        
 	        //only write if this connection is still valid
 	        if (null != serverConnection) {        
-				writeToChannel[idx] = serverConnection.getSocketChannel(); //ChannelId or SubscriptionId      
-		        
+				
+	        	writeToChannel[idx] = serverConnection.getSocketChannel(); //ChannelId or SubscriptionId      
+	        	writeToChannelId[idx] = channelId;
+	        	writeToChannelMsg[idx] = msgIdx;
+	        	writeToChannelTTL[idx] = 8;
+	        	
+	        	
 		        //logger.debug("write {} to socket for id {}",len,channelId);
 		        
 		        ByteBuffer[] writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
@@ -291,45 +335,22 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        assert(!writeBuffs[1].hasRemaining());
 		        		       		        
 		        Pipe.confirmLowLevelRead(dataToSend[idx], msgSize);
-		        Pipe.releaseReadLock(dataToSend[idx]);
+		        
+		        Pipe.readNextWithoutReleasingReadLock(dataToSend[idx]);
+		        //Pipe.releaseReadLock(dataToSend[idx]);
 		        
 		        //In order to maximize throughput take all the messages which are gong to the same location.
 
 		        //if there is content and this content is also a message to send and we still have room in the working buffer and the channel is the same then we can batch it.
-		        while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
-		            Pipe.peekInt(pipe)==msgIdx && 
-		            workingBuffers[idx].remaining()>pipe.maxAvgVarLen && 
-		            Pipe.peekLong(pipe, 1)==channelId ) {
-		        			        	
+		        while (enableWriteBatching && isNextMessageMergeable(pipe, msgIdx, idx, channelId, false) ) {		        			        	
 		        	//logger.trace("opportunity found to batch writes going to {} ",channelId);
 		        	
-		        	int m = Pipe.takeMsgIdx(pipe);
-		        	assert(m==msgIdx): "internal error";
-		        	long c = Pipe.takeLong(pipe);
-		        	
-		        	long aTime = Pipe.takeLong(pipe);
-		        	assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
-		        	
-		        	
-		            if (takeTail) {
-		            	activeTails[idx] =  Pipe.takeLong(pipe);
-		            } else {
-		            	activeTails[idx] = -1;
-		            }
-		            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
-		            int len2 = Pipe.takeRingByteLen(pipe);
-		            ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
-		            
-			        workingBuffers[idx].put(writeBuffs2[0]);
-			        workingBuffers[idx].put(writeBuffs2[1]);
-			        
-			        assert(!writeBuffs2[0].hasRemaining());
-			        assert(!writeBuffs2[1].hasRemaining());
-			        		        		
-			        Pipe.confirmLowLevelRead(pipe, msgSize);
-			        Pipe.releaseReadLock(pipe);
-			      
-		        }	 
+		        	mergeNextMessage(msgIdx, idx, pipe, channelId);
+			        			      
+		        }	
+		        
+		        Pipe.releaseAllPendingReadLock(dataToSend[idx]);
+		        
 		        
 		        if (ServerCoordinator.TEST_RECORDS) {
 		        	ByteBuffer temp = workingBuffers[idx].duplicate();
@@ -354,6 +375,54 @@ public class ServerSocketWriterStage extends PronghornStage {
         }
                 
     }
+
+	private void mergeNextMessage(final int msgIdx, final int idx, Pipe<NetPayloadSchema> pipe, final long channelId) {
+		
+		final boolean takeTail = NetPayloadSchema.MSG_PLAIN_210 == msgIdx;
+		
+		int m = Pipe.takeMsgIdx(pipe);
+		assert(m==msgIdx): "internal error";
+		long c = Pipe.takeLong(pipe);
+		
+		long aTime = Pipe.takeLong(pipe);
+		assert(c==channelId): "Internal error expected "+channelId+" but found "+c;
+		
+		
+		if (takeTail) {
+			activeTails[idx] =  Pipe.takeLong(pipe);
+		} else {
+			activeTails[idx] = -1;
+		}
+		int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
+		int len2 = Pipe.takeRingByteLen(pipe);
+		ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
+		
+		workingBuffers[idx].put(writeBuffs2[0]);
+		workingBuffers[idx].put(writeBuffs2[1]);
+		
+		assert(!writeBuffs2[0].hasRemaining());
+		assert(!writeBuffs2[1].hasRemaining());
+				        		
+		Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(NetPayloadSchema.instance, msgIdx));
+		Pipe.readNextWithoutReleasingReadLock(dataToSend[idx]);
+	}
+
+	private boolean isNextMessageMergeable(Pipe<NetPayloadSchema> pipe, final int msgIdx, final int idx, final long channelId, boolean debug) {
+
+		if (debug) {
+		    logger.info("Data {} {} {} {} ",
+		    		    Pipe.hasContentToRead(pipe),
+		    		    Pipe.peekInt(pipe)==msgIdx,
+		    		    workingBuffers[idx].remaining()>pipe.maxAvgVarLen,
+		    		    Pipe.peekLong(pipe, 1)==channelId	    		
+		    		);
+		}
+		
+		return  Pipe.hasContentToRead(pipe) && 
+				Pipe.peekInt(pipe)==msgIdx && 
+				workingBuffers[idx].remaining()>pipe.maxAvgVarLen && 
+				Pipe.peekLong(pipe, 1)==channelId;
+	}
 
     int totalB;
 	private void testValidContent(final int idx, ByteBuffer buf) {
@@ -476,12 +545,19 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        try {
 		        	//assert(workingBuffers[idx] instanceof sun.nio.ch.DirectBuffer) : "should be direct??";
 		        	int bytesWritten = writeToChannel[idx].write(workingBuffers[idx]);	  
+		        	
+		        	//short blocks of bytes written may be slowdown!!
+		        	//System.err.println("wrote bytes:" + bytesWritten);
+		        	
+		        	//TODO: urgent hold some writes until we have more, but do write immidiate if we have seen a different connection id.
+		        	
 		        	if (bytesWritten>0) {
 		        		totalBytesWritten+=bytesWritten;
 		        	}
 		        	if (!workingBuffers[idx].hasRemaining()) {
 		        		markDoneAndRelease(idx);
 		        	} 
+		        
 		        } catch (IOException e) {
 		        	//logger.trace("unable to write to channel",e);
 		        	closeChannel(writeToChannel[idx]);

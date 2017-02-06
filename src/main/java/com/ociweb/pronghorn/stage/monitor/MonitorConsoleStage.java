@@ -181,7 +181,7 @@ public class MonitorConsoleStage extends PronghornStage {
 	private static final PipeConfig defaultMonitorRingConfig = new PipeConfig(PipeMonitorSchema.instance, 30, 0);
 	
 	public static MonitorConsoleStage attach(GraphManager gm) {
-		return attach(gm,defaultMonitorRate,defaultMonitorRingConfig);
+		return attach(gm,defaultMonitorRate,defaultMonitorRingConfig); //TODO:graphiz can hang must replace with js version...
 	}
 	
 	public static MonitorConsoleStage attach(GraphManager gm, long rate) {

@@ -310,7 +310,7 @@ public class HTTPSRoundTripTest {
 	//TODO: URGENT must detect when we get the type wrong but with low level API attempt to use values!!
 	
 	@Ignore
-	//@Test
+//	@Test
 	public void roundTripTest2() {
 				
 		{ //Netty bench 14,000 1m  1.5GB  32users
@@ -369,7 +369,7 @@ public class HTTPSRoundTripTest {
 			//NOTE: larger values here allows for more effecient scheculeing and bigger "batches"
 			//NOTE: smaller values here will allow for slightly lower latency values
 			//NOTE: by sleeping less we get more work done per stage, sometimes
-			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1_200); //this is in ns
+			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1_000); //this is in ns
 			
 	    	//TODO: we need a better test that has each users interaction of 10 then wait for someone else to get in while still connected.
 	    	//TODO: urgent need to kill off expired pipe usages.
@@ -388,7 +388,7 @@ public class HTTPSRoundTripTest {
 	    	/////////////////
 	        /////////////////
 	    	int base2SimultaniousConnections = 5;//TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
-	    	int clientCount = 2;
+	    	int clientCount = 1;
 	    		    	
 	    	//TODO: this number must be the limit of max simuantious handshakes.
 	    	int maxPartialResponsesClient = (1<<base2SimultaniousConnections); //input lines to client (should be large)
@@ -540,12 +540,12 @@ public class HTTPSRoundTripTest {
 	private ServerCoordinator exampleServerSetup(boolean isTLS, GraphManager gm, final String testFile, String bindHost, int bindPort) {
 		final String pathRoot = buildStaticFileFolderPath(testFile);
 		
-		final int maxPartialResponsesServer     = 64; //input lines to server (should be large)
+		final int maxPartialResponsesServer     = 32; //input lines to server (should be large)
 		final int maxConnectionBitsOnServer 	= 12;//8K simulanious connections on server	    	
 		final int serverRequestUnwrapUnits 		= 2; //server unwrap units - need more for handshaks and more for posts
 		final int serverResponseWrapUnits 		= 4;
-		final int serverPipesPerOutputEngine 	= isTLS?8:16;//multiplier against server wrap units for max simultanus user responses.
-		final int serverSocketWriters           = 2;
+		final int serverPipesPerOutputEngine 	= isTLS?8:8;//multiplier against server wrap units for max simultanus user responses.
+		final int serverSocketWriters           = 1;
 		
 		//drives the cached data from the file loader.
 		final int messagesToOrderingSuper       = 4096;	    		
@@ -561,7 +561,7 @@ public class HTTPSRoundTripTest {
 		final int serverMsgToEncrypt = 512;  //from the SUPER
 		final int serverBlobToEncrypt = 1<<14;
 		 
-		final int serverMsgToWrite = 256;//1024;///this pipe gets full in short bursts and greatly impacts how much the server gets backed up. 
+		final int serverMsgToWrite = 2048;//1024;///this pipe gets full in short bursts and greatly impacts how much the server gets backed up. 
 		final int serverBlobToWrite = 1<<12; //Used for both TLS and NON-TLS
 		//TODO: must make sure that the super can send parts if required in multiple mesages...
 		 

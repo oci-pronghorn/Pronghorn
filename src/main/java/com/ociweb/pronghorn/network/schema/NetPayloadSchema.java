@@ -28,10 +28,10 @@ public class NetPayloadSchema extends MessageSchema {
     public static final int MSG_PLAIN_210_FIELD_POSITION_206 = 0x00800005;
     public static final int MSG_PLAIN_210_FIELD_PAYLOAD_204 = 0x01c00007;
     
-    public static final int MSG_DISCONNECT_203 = 0x0000000b;
+    public static final int MSG_DISCONNECT_203 = 0x0000000b;  //NOTE: must NOT use var length field, we are accumulating for plain writes
     public static final int MSG_DISCONNECT_203_FIELD_CONNECTIONID_201 = 0x00800001;
     
-    public static final int MSG_UPGRADE_307 = 0x0000000e;
+    public static final int MSG_UPGRADE_307 = 0x0000000e;  //NOTE: must NOT use var length field, we are accumulating for plain writes
     public static final int MSG_UPGRADE_307_FIELD_CONNECTIONID_201 = 0x00800001;
     public static final int MSG_UPGRADE_307_FIELD_NEWROUTE_205 = 0x00000003;
     

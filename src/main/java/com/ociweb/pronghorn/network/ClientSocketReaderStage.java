@@ -147,7 +147,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    					    		
 						    								    		
 						    		//these buffers are only big enought to accept 1 target.maxAvgVarLen
-						    		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target);
+						    		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(target);
 						    
 						    		int r1 = wrappedUnstructuredLayoutBufferOpen[0].remaining();
 						    		int r2 = wrappedUnstructuredLayoutBufferOpen[1].remaining();
@@ -161,6 +161,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    			assert(readCount<target.maxAvgVarLen);
 						    			
 						    		} catch (IOException ioex) {
+						    	
 						    			logger.info("unable to read socket, may not be an error. ",ioex);
 						    			//will continue with readCount of -1;
 						    		}

@@ -185,7 +185,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private FileReadModuleStageData data;
  
 	private static final boolean supportInFlightCopy = true;
-	private static final boolean supportInFlightCopyByRef = false;  //TODO: must be fixed before turned on, not needed yet...
+	private static final boolean supportInFlightCopyByRef = false;  //TODO: why do we only find a few of these?
 	
 
     private final int initialMaxTotalPathLength = 1<<14;
@@ -863,17 +863,16 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 //                		          "   trailing write "+(Pipe.blobMask(localOutput)&trailingBlobReader)+" vs "+(Pipe.blobMask(localOutput)&blobWorkingHeadPosition));
 //               
 
-                
-                	
                 	int y = 0;
 	                while (checkPos<=workingHead && checkBob<limit) {
 	                	
 	                	y++;
 	                	
-	                	int msgIdx = slab[Pipe.slabMask(output)&(int)checkPos];
-	                	assert(msgIdx == ServerResponseSchema.MSG_TOCHANNEL_100);
+	                	final int msgIdx = slab[Pipe.slabMask(output)&(int)checkPos];
+	                	assert(msgIdx == ServerResponseSchema.MSG_TOCHANNEL_100 ||
+	                		   msgIdx == ServerResponseSchema.MSG_SKIP_300) : "read id was 0x"+Integer.toHexString(msgIdx)+" pass "+y;
 	                	
-	                	int size = Pipe.sizeOf(ServerResponseSchema.instance, msgIdx);                	
+	                	final int size = Pipe.sizeOf(ServerResponseSchema.instance, msgIdx);                	
 	                	
 	            		int bytesConsumed = slab[Pipe.slabMask(output)&(int)(size+checkPos-1)]; 
 	            		
@@ -882,7 +881,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 	            			b+=output.sizeOfBlobRing;
 	            		}
 	
-	            		int skipSize = b-maskedBlobWorkingHeadPosition; 
+	            		int skipSize = b - maskedBlobWorkingHeadPosition; 
 	            	      		            		
 	            		
 	            		int peekFcIdx = (int)(checkBob+bytesConsumed-8)&Pipe.blobMask(output);
@@ -894,7 +893,10 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 	            		/////////////////////////
 	            		
 	            		
-	            		if ((bytesConsumed == (8+fileSize)) && totalBytesWritten>output.sizeOfBlobRing && equal64(blob, Pipe.blobMask(output), peekFcIdx, fcId) ) {
+	            		if ((bytesConsumed == (8+fileSize))
+	            			&& msgIdx == ServerResponseSchema.MSG_TOCHANNEL_100
+	            			&& totalBytesWritten>output.sizeOfBlobRing 
+	            			&& equal64(blob, Pipe.blobMask(output), peekFcIdx, fcId) ) {
 	
 	            			foundFile = true;
 	            			
