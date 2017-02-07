@@ -99,6 +99,13 @@ public class TrieParser {
     private int[] altStackA = new int[MAX_ALT_DEPTH];
     private int[] altStackB = new int[MAX_ALT_DEPTH];
     
+
+	//used for detection of parse errors, eg do we need more data or did something bad happen.
+	private int maxBytesCapturable      = 500; //largest text
+	private int maxNumericLenCapturable = 20; //largest numeric.
+    
+
+	
     
     public TrieParser(int size) {
         this(size, 1, true, true);
@@ -514,12 +521,9 @@ public class TrieParser {
     
     
     
-    static int jumpOnBit(short source, short critera, int jump, int pos) {
-    	
-    	//System.out.println(" JumpOn Critera:  "+Integer.toBinaryString(critera));
-    	
-        return 1 + (( (~(((source & (0xFF & critera))-1)>>>8) ^ critera>>>8)) & jump) + pos;
-    }
+    static int computeJumpMask(short source, short critera) {
+		return ~(((source & (0xFF & critera))-1)>>>8) ^ critera>>>8;
+	}
 
     public int setUTF8Value(CharSequence cs, int value) {
         
@@ -575,7 +579,7 @@ public class TrieParser {
     }
        
     private int longestKnown = 0;
-    private int shortestKnown = 0;
+    private int shortestKnown = Integer.MAX_VALUE;
 
 	public final byte caseRuleMask;
     
@@ -589,8 +593,10 @@ public class TrieParser {
     
     private void setValue(int pos, byte[] source, int sourcePos, final int sourceLength, int sourceMask, long value) {
         
-    	longestKnown = Math.max(longestKnown, sourceLength);
-    	shortestKnown = Math.max(shortestKnown, sourceLength);
+    	
+    	
+    	longestKnown = Math.max(longestKnown, computeMax(source, sourcePos, sourceLength, sourceMask));
+    	shortestKnown = Math.min(shortestKnown, sourceLength);
     	
         assert(value >= 0);
         assert(value <= 0x7FFF_FFFF); 
@@ -622,7 +628,8 @@ public class TrieParser {
                             
                         } else {
                             int pos1 = pos;
-                            pos = jumpOnBit((short) v, data[pos1++], (((int)data[pos1++])<<15) | (0x7FFF&data[pos1]), pos1);   
+							int jumpMask = computeJumpMask((short) v, data[pos1++]);
+                            pos = 0==jumpMask? 1+pos1 : 1+(jumpMask&((((int)data[pos1++])<<15) | (0x7FFF&data[pos1])))+pos1;   
                         
                         }
                         break;
@@ -790,7 +797,57 @@ public class TrieParser {
         
     }
 
-    void recurseAltBranch(short[] localData, int pos, int offset) {
+	
+    private int computeMax(byte[] source, int pos, int len, int mask) {
+    	//int values can be long and we follow the same limits as the parser
+
+    
+    	int total = 0;
+    	int i = len;
+    	boolean escapeDetected = false;
+    	while (--i>=0) {
+    		
+    		byte value = source[mask & pos++];
+    		
+    	    if (ESCAPE_BYTE == value) {
+    	    	//if we have escape we turn it off, if off we turn it on
+    	    	escapeDetected = !escapeDetected;
+    	    	if (!escapeDetected) {
+    	    		total++;
+    	    	}
+    	    } else {
+    	    	if (escapeDetected) {
+	    	    	
+	    	    	if (ESCAPE_CMD_BYTES == value) {
+	    	    		total += maxBytesCapturable;
+	    	    	} else if (ESCAPE_CMD_DECIMAL == value ||
+	    	    			   ESCAPE_CMD_RATIONAL == value ||
+	    	    			   ESCAPE_CMD_SIGNED_DEC == value ||
+	    	    			   ESCAPE_CMD_SIGNED_HEX == value ||
+	    	    			   ESCAPE_CMD_UNSIGNED_DEC == value ||
+	    	    			   ESCAPE_CMD_UNSIGNED_HEX == value
+	    	    			) {
+	    	    		total += maxNumericLenCapturable;
+                    	} else {
+	    	    		total++;
+	    	    	}
+    	    	} else {
+    	    		total++;
+    	    	}
+    	    }
+    	}
+    	return total;
+	}
+    
+	public void setMaxBytesCapturable(int value) {
+		maxBytesCapturable = value;
+	}
+	
+    public void setMaxNumericLengthCapturable(int value) {
+    	maxNumericLenCapturable = value;
+	}
+
+	void recurseAltBranch(short[] localData, int pos, int offset) {
         int type = localData[pos];
         if (type == TrieParser.TYPE_ALT_BRANCH) {
             

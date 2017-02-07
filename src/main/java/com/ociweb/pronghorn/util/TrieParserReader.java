@@ -290,17 +290,18 @@ public class TrieParserReader {
     private static void reportError(TrieParserReader reader, int debugPos, int debugLen) {
         String input = "";
   
-        input = Appendables.appendUTF8(new StringBuilder(), 
+        input = debugContent(reader, debugPos, debugLen);
+
+        System.out.println("pos:"+debugPos+" len:"+debugLen+" unable to parse:\n'"+input+"'");
+    }
+
+	private static String debugContent(TrieParserReader reader, int debugPos, int debugLen) {
+		return Appendables.appendUTF8(new StringBuilder(), 
                                        reader.sourceBacking, 
                                        debugPos, 
                                        Math.min(500,(int)debugLen), 
                                        reader.sourceMask).toString();
-
-
-        
-        
-        System.out.println("pos:"+debugPos+" len:"+debugLen+" unable to parse:\n'"+input+"'");
-    }
+	}
 
     public static void logNextTextToParse(TrieParserReader reader) {
         StringBuilder builder = new StringBuilder();
@@ -449,11 +450,17 @@ public class TrieParserReader {
 
         if (reader.normalExit) {
         	reader.sourceLen -= (reader.localSourcePos-reader.sourcePos);
-        	reader.sourcePos = reader.localSourcePos;
-        	        	
+        	reader.sourcePos = reader.localSourcePos;        	        	
         	return TrieParser.readEndValue(trie.data,reader.pos, trie.SIZE_OF_RESULT);
         	       	 
         } else {
+        	//unable to parse this case
+        	//determine if we have an error or need more data        	
+        	assert(reader.sourceLen <= trie.longestKnown()) : "Check the parse tree, this text was not parsable. "+debugContent(reader, reader.sourcePos, reader.sourceLen);
+        	if (reader.sourceLen > trie.longestKnown()) {
+        		logger.info("WARNING: input data can not be parsed and the pipeline has stopped at this point. {}",debugContent(reader, reader.sourcePos, reader.sourceLen) ,new Exception());
+        	} //else we just need more data.
+        	
         	return reader.result;
         }        
         
@@ -463,7 +470,7 @@ public class TrieParserReader {
 			int sourceMask, final long unfoundResult, boolean hasSafePoint, int t) {
 		if (t==TrieParser.TYPE_BRANCH_VALUE) {   
 			if (reader.runLength<sourceLength) {              
-				processByteBranch(reader, trie, source, sourceMask);
+				processByteBranchImpl(reader, source, sourceMask, trie.data, reader.pos);
 			} else {
 				reader.normalExit=false;
 				reader.result = unfoundResult;
@@ -533,10 +540,9 @@ public class TrieParserReader {
 		throw new UnsupportedOperationException("Bad jump length now at position "+(reader.pos-1)+" type found "+reader.type);
 	}
 
-	private static void processByteBranch(TrieParserReader reader, TrieParser trie, byte[] source, int sourceMask) {
-		short[] data = trie.data;
-		int p = reader.pos;
-		reader.pos = TrieParser.jumpOnBit((short) source[sourceMask & reader.localSourcePos], data[p++], (((int)data[p++])<<15) | (0x7FFF&data[p]), p);
+	private static void processByteBranchImpl(TrieParserReader reader, byte[] source, int sourceMask, short[] data,	int p) {
+		int jumpMask = TrieParser.computeJumpMask((short) source[sourceMask & reader.localSourcePos], data[p++]);
+		reader.pos = 0!=jumpMask?  1+(jumpMask&((((int)data[p++])<<15) | (0x7FFF&data[p])))+p : 1+p ;
 	}
 
     private static void parseBytes(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength, int sourceMask) {

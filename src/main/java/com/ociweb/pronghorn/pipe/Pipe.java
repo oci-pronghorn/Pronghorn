@@ -1241,7 +1241,7 @@ public class Pipe<T extends MessageSchema> {
     	int consumed;
     	if (h>=t) {
     		consumed = len+(h-t);
-			assert(consumed<=output.blobMask) : "length too large for existing data ";
+			assert(consumed<=output.blobMask) : "length too large for existing data, proposed addition "+len+" head "+h+" tail "+t;
     	} else {
     		consumed = len+h+(output.sizeOfBlobRing-t);
 			assert(consumed<=output.blobMask) : "length is too large for existing data  "+len+" + t:"+t+" h:"+h+" max "+output.blobMask;
@@ -2782,16 +2782,18 @@ public class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> int releaseReadLock(Pipe<S> pipe) {
         int bytesConsumedByFragment = takeInt(pipe);
         assert(bytesConsumedByFragment>=0) : "Bytes consumed by fragment must never be negative, was fragment written correctly?, is read positioned correctly?";
-        Pipe.markBytesReadBase(pipe, bytesConsumedByFragment);
+        Pipe.markBytesReadBase(pipe, bytesConsumedByFragment);  //the base has been moved so we can also use it below.
         assert(Pipe.contentRemaining(pipe)>=0); 
-        batchedReleasePublish(pipe, pipe.blobRingTail.byteWorkingTailPos.value, pipe.slabRingTail.workingTailPos.value);
+        batchedReleasePublish(pipe, 
+        		              pipe.blobRingTail.byteWorkingTailPos.value = pipe.blobReadBase, 
+        		              pipe.slabRingTail.workingTailPos.value);
         assert(validateInsideData(pipe, pipe.blobReadBase));
         return bytesConsumedByFragment;        
     }
     
     public static <S extends MessageSchema> int readNextWithoutReleasingReadLock(Pipe<S> pipe) {
         int bytesConsumedByFragment = takeInt(pipe); 
-        Pipe.markBytesReadBase(pipe, bytesConsumedByFragment);
+        Pipe.markBytesReadBase(pipe, bytesConsumedByFragment); //the base has been moved so we can also use it below.
         assert(Pipe.contentRemaining(pipe)>=0);
         PendingReleaseData.appendPendingReadRelease(pipe.pendingReleases,
                                                     pipe.slabRingTail.workingTailPos.value, 
