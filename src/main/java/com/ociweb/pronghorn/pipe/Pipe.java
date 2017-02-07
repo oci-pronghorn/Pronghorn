@@ -1182,8 +1182,7 @@ public class Pipe<T extends MessageSchema> {
         int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
         target.limit(target.capacity());
         target.position(writeToPos);   
-        int maxLimit = output.maxAvgVarLen>>1; ///TOOD: add constant in pipe for this..
-        target.limit(Math.min(target.capacity(), writeToPos+maxLimit)); //ensure we stop at end of wrap or max var length 
+        target.limit(Math.min(target.capacity(), writeToPos+output.maxVarLen)); //ensure we stop at end of wrap or max var length 
         return target;
     }
 
@@ -1193,7 +1192,7 @@ public class Pipe<T extends MessageSchema> {
         target.position(0);   
         int endPos = writeToPos+output.maxAvgVarLen;
     	if (endPos>output.sizeOfBlobRing) {
-    		target.limit(output.byteMask & endPos);
+    		target.limit(output.blobMask & endPos);
     	} else {
     		target.limit(0);
     	}
@@ -1206,11 +1205,10 @@ public class Pipe<T extends MessageSchema> {
     
     public static <S extends MessageSchema> ByteBuffer[] wrappedWritingBuffers(int originalBlobPosition, Pipe<S> output) {
     	int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
-    	int maxLimit = output.maxAvgVarLen>>1;
     	
-    	int endPos = writeToPos+maxLimit;
+    	int endPos = writeToPos+output.maxVarLen;
     	    	
-    	assert(verifyHasRoomForWrite(maxLimit, output));
+    	assert(verifyHasRoomForWrite(output.maxVarLen, output));
     	    	
     	
     	ByteBuffer aBuf = output.wrappedBlobWritingRingA; //Get the blob array as a wrapped byte buffer     
