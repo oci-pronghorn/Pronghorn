@@ -353,6 +353,7 @@ public class Pipe<T extends MessageSchema> {
     public final byte bitsOfSlabRing;
     public final byte bitsOfBlogRing;
     public final int maxAvgVarLen;
+    public final int maxVarLen;//to be used when copying data in dense chunks.
     private final T schema;
     
     private final boolean usingHighLevelAPI;
@@ -517,6 +518,7 @@ public class Pipe<T extends MessageSchema> {
             //two together are below the threshold rather than each alone
             maxAvgVarLen = sizeOfBlobRing/maxVarCount;
         }
+        maxVarLen = maxAvgVarLen>>1;//half of the max, this is pleanty large and will not max out the data structures.
     }
  
     private AtomicBoolean isInBlobFieldWrite = new AtomicBoolean(false);
@@ -1180,7 +1182,8 @@ public class Pipe<T extends MessageSchema> {
         int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
         target.limit(target.capacity());
         target.position(writeToPos);   
-        target.limit(Math.min(target.capacity(), writeToPos+output.maxAvgVarLen )); //ensure we stop at end of wrap or max var length 
+        int maxLimit = output.maxAvgVarLen>>1; ///TOOD: add constant in pipe for this..
+        target.limit(Math.min(target.capacity(), writeToPos+maxLimit)); //ensure we stop at end of wrap or max var length 
         return target;
     }
 
@@ -1203,9 +1206,11 @@ public class Pipe<T extends MessageSchema> {
     
     public static <S extends MessageSchema> ByteBuffer[] wrappedWritingBuffers(int originalBlobPosition, Pipe<S> output) {
     	int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
-    	int endPos = writeToPos+output.maxAvgVarLen;
+    	int maxLimit = output.maxAvgVarLen>>1;
+    	
+    	int endPos = writeToPos+maxLimit;
     	    	
-    	assert(verifyHasRoomForWrite(output.maxAvgVarLen, output));
+    	assert(verifyHasRoomForWrite(maxLimit, output));
     	    	
     	
     	ByteBuffer aBuf = output.wrappedBlobWritingRingA; //Get the blob array as a wrapped byte buffer     
@@ -1241,7 +1246,7 @@ public class Pipe<T extends MessageSchema> {
     	int consumed;
     	if (h>=t) {
     		consumed = len+(h-t);
-			assert(consumed<=output.blobMask) : "length too large for existing data, proposed addition "+len+" head "+h+" tail "+t;
+			assert(consumed<=output.blobMask) : "length too large for existing data, proposed addition "+len+" head "+h+" tail "+t+" "+output+" "+Pipe.contentRemaining(output);
     	} else {
     		consumed = len+h+(output.sizeOfBlobRing-t);
 			assert(consumed<=output.blobMask) : "length is too large for existing data  "+len+" + t:"+t+" h:"+h+" max "+output.blobMask;

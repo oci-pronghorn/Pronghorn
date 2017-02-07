@@ -185,7 +185,7 @@ public class RingStreams {
 		assert (Pipe.from(outputRing) == RawDataSchema.FROM);
 		int step = RawDataSchema.FROM.fragDataSize[0];
 		int fill =  1 + outputRing.mask - step;
-		int maxBlockSize = outputRing.maxAvgVarLen;
+		int maxBlockSize = outputRing.maxVarLen;
 		
 		long targetTailValue = headPosition(outputRing)-fill;
 		long tailPosCache = tailPosition(outputRing);

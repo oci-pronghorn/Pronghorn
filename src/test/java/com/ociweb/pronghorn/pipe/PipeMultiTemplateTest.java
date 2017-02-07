@@ -111,16 +111,16 @@ public class PipeMultiTemplateTest {
 		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
 		ring.initBuffers();
 		//Setup the test data sizes derived from the templates used
-		byte[] target = new byte[ring.maxAvgVarLen];
+		byte[] target = new byte[ring.maxVarLen];
 		
 		
 		int LARGEST_MESSAGE_SIZE = FROM.fragDataSize[MSG_SAMPLE_LOC];    
         int testSize = ((1<<primaryRingSizeInBits)/LARGEST_MESSAGE_SIZE)-2;
         
         if (useHighLevelToPopulate) {
-            populateRingBufferHighLevel(ring, ring.maxAvgVarLen, testSize);
+            populateRingBufferHighLevel(ring, ring.maxVarLen, testSize);
         } else {
-        	populateRingBufferLowLevel(ring, ring.maxAvgVarLen, testSize);
+        	populateRingBufferLowLevel(ring, ring.maxVarLen, testSize);
         }
        
         //now read the data back
@@ -128,7 +128,7 @@ public class PipeMultiTemplateTest {
         while (PipeReader.tryReadFragment(ring)) {
         	if (PipeReader.isNewMessage(ring)) {
         		--k;
-        		int expectedLength = (ring.maxAvgVarLen*k)/testSize;	
+        		int expectedLength = (ring.maxVarLen*k)/testSize;	
         		
         		int msgLoc = PipeReader.getMsgIdx(ring);
         		if (msgLoc<0) {
@@ -203,16 +203,16 @@ public class PipeMultiTemplateTest {
 		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
 		ring.initBuffers();
 		//Setup the test data sizes derived from the templates used
-		byte[] target = new byte[ring.maxAvgVarLen];
+		byte[] target = new byte[ring.maxVarLen];
 		
 		
 		int LARGEST_MESSAGE_SIZE = FROM.fragDataSize[MSG_SAMPLE_LOC];    
         int testSize = ((1<<primaryRingSizeInBits)/LARGEST_MESSAGE_SIZE)-2;
         
         if (useHighLevelToPopulate) {
-            populateRingBufferHighLevel(ring, ring.maxAvgVarLen, testSize);
+            populateRingBufferHighLevel(ring, ring.maxVarLen, testSize);
         } else {
-        	populateRingBufferLowLevel(ring, ring.maxAvgVarLen, testSize);
+        	populateRingBufferLowLevel(ring, ring.maxVarLen, testSize);
         }
        
         //now read the data back
@@ -225,7 +225,7 @@ public class PipeMultiTemplateTest {
         while (Pipe.hasContentToRead(ring, 1)) {
         	        	
     		--k;
-    		int expectedLength = (ring.maxAvgVarLen*k)/testSize;	
+    		int expectedLength = (ring.maxVarLen*k)/testSize;	
     		
     		final int msgLoc =  Pipe.takeMsgIdx(ring);
     		if (msgLoc<0) {

@@ -17,7 +17,7 @@ public class RingOutputStream extends OutputStream implements AutoCloseable {
 	
 	public RingOutputStream(Pipe pipe) {
 		this.pipe = pipe;
-		blockSize = pipe.maxAvgVarLen;
+		blockSize = pipe.maxVarLen;
 		
 		if (Pipe.from(pipe) != RawDataSchema.FROM) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
