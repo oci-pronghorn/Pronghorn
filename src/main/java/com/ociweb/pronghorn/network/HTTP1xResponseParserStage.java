@@ -436,7 +436,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				//TODO: only turn on feature after first 1000 or so normal requests with checks
 				
 				//almost always take this if when testing.
-				if (((++responseCount&0xFFF)!=0) && testingMode) {
+				final int mask = 0xFFFFF;
+				if (((++responseCount&mask)!=0) && testingMode) {
 					int lastMessageParseSize = -1;
 					int p = lastMessageParseSizeCount;
 					while (--p>=0) {

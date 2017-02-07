@@ -310,7 +310,7 @@ public class HTTPSRoundTripTest {
 	//TODO: URGENT must detect when we get the type wrong but with low level API attempt to use values!!
 	
 	@Ignore
-//	@Test
+	//@Test
 	public void roundTripTest2() {
 				
 		{ //Netty bench 14,000 1m  1.5GB  32users
@@ -411,7 +411,7 @@ public class HTTPSRoundTripTest {
 	    	//////////////
 
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
-	    	final int loadMultiplier = isTLS? 100_000 : 1_000_000;
+	    	final int loadMultiplier = isTLS? 100_000 : 2_000_000;
 
 	    		    	
 			//one of these per unwrap unit and per partial message, there will be many of these normally so they should not be too large
@@ -548,7 +548,7 @@ public class HTTPSRoundTripTest {
 		final int serverSocketWriters           = 1;
 		
 		//drives the cached data from the file loader.
-		final int messagesToOrderingSuper       = 4096;	    		
+		final int messagesToOrderingSuper       = 1<<12;//3;//4096;	    		
 		final int messageSizeToOrderingSuper    = 1<<10;	    		
 		
 		

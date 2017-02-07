@@ -43,12 +43,14 @@ public class RegulatedLoadTestStage extends PronghornStage{
 	private int[]  userIdFromConnectionId;
 	
 	int port;
-	String host;
+	final String host;
+	private byte[] hostBytes;
 	
 	long start;
 	long lastTime = System.currentTimeMillis();
 
-	private String testFile;
+	private final String testFile;
+	private byte[] testFileBytes;
 	
 	private final String expected=null;//"{\"x\":9,\"y\":17,\"groovySum\":26}";
 	
@@ -64,6 +66,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		this.usersPerPipe = usersPerPipe;
 
 		this.testFile = fileRequest;
+		this.testFileBytes = fileRequest.getBytes();
 		assert (inputs.length==outputs.length);
 		
 		this.inputs = inputs;
@@ -74,6 +77,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		this.label = label;
 		this.port = port;
 		this.host = host;
+		this.hostBytes = host.getBytes();
 
 		supportsBatchedPublish = false;
 		supportsBatchedRelease = false;
@@ -228,10 +232,9 @@ public class RegulatedLoadTestStage extends PronghornStage{
 									
 								boolean useSlow = (connectionId == -1); 
 								if (useSlow) {
-									byte[] hByte = host.getBytes();
-									System.arraycopy(hByte, 0, buff, 0, hByte.length);
+									System.arraycopy(hostBytes, 0, buff, 0, hostBytes.length);
 									
-									connectionId = clientCoord.lookup(buff, 0, hByte.length, 6, port, userId, workspace, hostTrieReader);
+									connectionId = clientCoord.lookup(buff, 0, hostBytes.length, 6, port, userId, workspace, hostTrieReader);
 									
 									if (-1!=connectionIdCache[userId]) {
 										throw new UnsupportedOperationException("already set ");
@@ -255,13 +258,13 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		
 								Pipe.addIntValue(userId, outputs[i]);  
 								Pipe.addIntValue(port, outputs[i]);
-								Pipe.addUTF8(host, outputs[i]);
+								Pipe.addByteArray(hostBytes, 0, hostBytes.length, outputs[i]); // old	Pipe.addUTF8(host, outputs[i]);
 
 								if (!useSlow) {
 									Pipe.addLongValue(connectionId, outputs[i]);
 								}
 								
-								Pipe.addUTF8(testFile, outputs[i]);						
+								Pipe.addByteArray(testFileBytes, 0, testFileBytes.length, outputs[i]); //Pipe.addUTF8(testFile, outputs[i]);						
 							
 								Pipe.confirmLowLevelWrite(outputs[i], size);
 								Pipe.publishWrites(outputs[i]);

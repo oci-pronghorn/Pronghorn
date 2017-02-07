@@ -441,7 +441,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     	int iterations = inputs.length;
     	boolean didWork=false;
     	do {    	
-    	//	didWork = false;//be sure we exit if we do no work.
+    		didWork = false;//be sure we exit if we do no work.
     		
     			if (null==activeFileChannel) {
     				if(--inIdx<0) {
@@ -757,8 +757,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private void publishBodiesMessage(int verb, int sequence, int pathId, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) throws IOException {
             if (VERB_GET == verb) { //head does not get body
 
-                activePosition = 0;
-                activeFileChannel.position(0);
+                activePosition = 0;              
                 writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, sequence, activeFileChannel, pathId, input, output);                             
 
             } else if (VERB_HEAD == verb){
@@ -838,27 +837,21 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 	            	assert(totalBytesWritten>=blobWorkingHeadPosition) : totalBytesWritten+" must be >= "+blobWorkingHeadPosition;
 					final int maskedBlobWorkingHeadPosition = blobWorkingHeadPosition&Pipe.blobMask(output);;
 	            	
+					final int blobSize = output.sizeOfBlobRing;
+					final int slabMask = Pipe.slabMask(output);
 	            	final long workingHead = Pipe.workingHeadPosition(output);
 	            	int[] slab = Pipe.slab(output);
-	            	while ((trailingReader < workingHead) //do not get ahead of where we are writing.            			
-	            			&& (
-	            					(trailingBlobReader < (totalBytesWritten-((long) output.sizeOfBlobRing )))            			   
-	            			   )            			
-	            			) {       
-	            		
-	            		int msgIdx = slab[Pipe.slabMask(output)&(int)trailingReader];
-	            		trailingReader+=Pipe.sizeOf(ServerResponseSchema.instance, msgIdx);
-	            		trailingBlobReader=trailingBlobReader+slab[Pipe.slabMask(output)&(int)(trailingReader-1)];
-	            		
-	            	}
-	            	//now look ahead to find a potential match
-	            		            	
-	            	long checkPos = trailingReader;
+	            	
+	            	final long bytesWrittenLimmit = (totalBytesWritten-((long) blobSize ));
+	            	
+	            	long checkPos = moveAhead(slabMask, workingHead, slab, bytesWrittenLimmit);
+	            	
+	            	trailingReader = checkPos;
 	                long checkBob = trailingBlobReader;
-	                long limit = checkBob+(8 * output.maxAvgVarLen);
-                
-
-                
+	                long limit = checkBob + (2 * output.maxAvgVarLen);
+                                
+	               // System.out.println(output.maxAvgVarLen);
+	                
 //                System.err.println("DDDD blob "+trailingBlobReader+" < "+totalBytesWritten+"-"+ localOutput.sizeOfBlobRing+"      "+trailingReader+"<"+workingHead+
 //                		          "   trailing write "+(Pipe.blobMask(localOutput)&trailingBlobReader)+" vs "+(Pipe.blobMask(localOutput)&blobWorkingHeadPosition));
 //               
@@ -895,8 +888,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 	            		
 	            		if ((bytesConsumed == (8+fileSize))
 	            			&& msgIdx == ServerResponseSchema.MSG_TOCHANNEL_100
-	            			&& totalBytesWritten>output.sizeOfBlobRing 
-	            			&& equal64(blob, Pipe.blobMask(output), peekFcIdx, fcId) ) {
+	            			&& equal64(blob, Pipe.blobMask(output), peekFcIdx, fcId) 
+	            			
+	            				) {
 	
 	            			foundFile = true;
 	            			
@@ -905,7 +899,17 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 	            			countOfBytesToSkip = skipSize;
 	            			
 	            			break;//found one do not continue;
-	            		}
+	            		} 
+	            		//else {
+//	            			
+//	            			System.out.println(       			
+//	            					             (bytesConsumed == (8+fileSize))
+//	    	            					+" && "+ (msgIdx == ServerResponseSchema.MSG_TOCHANNEL_100)
+//	    	 //           					+" && "+ (totalBytesWritten>output.sizeOfBlobRing) 
+//	    	            					+" && "+ equal64(blob, Pipe.blobMask(output), peekFcIdx, fcId) 
+//	            					);
+	            			
+	            	//	}
 	
 	            		
 	            		checkPos+=size;
@@ -952,6 +956,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             } else 
             
             {
+            	if (activePosition==0) {
+            		activeFileChannel.position(0); //NOTE: we are careful to only do this when we are reading from disk.
+            	}
             	fromDisk++;
             	//logger.info("copied the file from disk {} times",fromDisk);
             	assert(localFileChannel.isOpen());
@@ -1028,6 +1035,22 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
        } 
        return didWork;
     }
+
+	private long moveAhead(final int slabMask, final long workingHead, int[] slab, final long bytesWrittenLimmit) {
+		long checkPos = trailingReader;
+		while ((checkPos < workingHead) //do not get ahead of where we are writing.            			
+				&& (
+						(trailingBlobReader < bytesWrittenLimmit)            			   
+				   )            			
+				) {
+			
+			checkPos += Pipe.sizeOf(ServerResponseSchema.instance, slab[slabMask&(int)checkPos]);
+			trailingBlobReader = trailingBlobReader+slab[slabMask&(int)(checkPos-1)];
+			
+		}
+		//now look ahead to find a potential match
+		return checkPos;
+	}
 
 	/*
 	 * 

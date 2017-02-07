@@ -325,10 +325,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 int requestContext = Pipe.takeInt(input); //high 1 upgrade, 1 close low 20 target pipe	                     
 		 final int blobMask = Pipe.blobMask(input);
 		 byte[] blob = Pipe.byteBackingArray(meta, input);
-		  
-		 int hiddenBytes = 0;// 8; //how can we possibly know this number??
-		 
-		 int bytePosition = Pipe.bytePosition(meta, input, len+hiddenBytes); //also move the position forward
+
+		 int bytePosition = Pipe.bytePosition(meta, input, len); //also move the position forward
 		
 		 DataOutputBlobWriter.write(outputStream, blob, bytePosition, len, blobMask);
 		 
@@ -345,8 +343,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 }
 		 
 		 int temp = Pipe.bytesReadBase(input);
-		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	                     
-		 Pipe.readNextWithoutReleasingReadLock(input);//we will look ahead to see what we can combine into a single read
+		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	   
+		 
+		 Pipe.releaseReadLock(input);
+		 //Pipe.readNextWithoutReleasingReadLock(input);//we will look ahead to see what we can combine into a single read
 		 
 		 assert(Pipe.bytesReadBase(input)!=temp) : "old base "+temp+" new base "+Pipe.bytesReadBase(input);
 		 
@@ -374,7 +374,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					 len+=len2;//keep running count so we can sure not to overflow the output
 
 					 
-					 int bytePosition2 = Pipe.bytePosition(meta2, input, len2+hiddenBytes); //move the byte pointer forward
+					 int bytePosition2 = Pipe.bytePosition(meta2, input, len2); //move the byte pointer forward
 					 
 					 DataOutputBlobWriter.write(outputStream, blob, bytePosition2, len2, blobMask);
 					 						 
@@ -382,8 +382,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		
 					 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	 
 					 
-					 Pipe.readNextWithoutReleasingReadLock(input);
-					 
+					 //Pipe.readNextWithoutReleasingReadLock(input);
+					 Pipe.releaseReadLock(input);
 					 
 		 }
 		 assert(Pipe.bytesReadBase(input)>=0);
@@ -394,7 +394,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 //TODO: we should also look at the module definition logic so we can have mutiple OrderSuper instances (this is the first solution).
-		 Pipe.releaseAllPendingReadLock(input); //now done consuming the bytes so release the pending read lock release.
+//		 Pipe.releaseAllPendingReadLock(input); //now done consuming the bytes so release the pending read lock release.
 		 assert(0==Pipe.releasePendingByteCount(input));
 		 assert(Pipe.bytesReadBase(input)>=0);
 

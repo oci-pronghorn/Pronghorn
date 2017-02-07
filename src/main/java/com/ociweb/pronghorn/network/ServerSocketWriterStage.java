@@ -49,7 +49,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     private SocketChannel writeToChannel[];
     private long          writeToChannelId[];
     private int           writeToChannelMsg[];
-    private int           writeToChannelTTL[];
+    private int           writeToChannelTTL[]; //TODO: this must be time based not count based.
     			    		
     
     private long activeTails[];
@@ -59,7 +59,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     private long totalBytesWritten = 0;
     
     //TODO: add param for small to use just 4 ??
-    private int bufferMultiplier = 12; //NOTE: larger buffer allows for faster xmit.
+    private int bufferMultiplier = 16;//12; //NOTE: larger buffer allows for faster xmit.
 
 
 	private static final boolean enableWriteBatching = true;  
@@ -320,7 +320,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	        	writeToChannel[idx] = serverConnection.getSocketChannel(); //ChannelId or SubscriptionId      
 	        	writeToChannelId[idx] = channelId;
 	        	writeToChannelMsg[idx] = msgIdx;
-	        	writeToChannelTTL[idx] = 8;
+	        	writeToChannelTTL[idx] = 16;
 	        	
 	        	
 		        //logger.debug("write {} to socket for id {}",len,channelId);
