@@ -3,6 +3,9 @@ package com.ociweb.pronghorn.pipe;
 import java.io.IOException;
 import java.util.Arrays;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
@@ -48,6 +51,9 @@ public class FieldReferenceOffsetManager {
     	
 	public final String name;
 	public final boolean hasSimpleMessagesOnly;
+	
+	private final static Logger logger = LoggerFactory.getLogger(FieldReferenceOffsetManager.class);
+	
 	
 	
 	//Maximum stack depth of nested groups is 32.
@@ -130,6 +136,10 @@ public class FieldReferenceOffsetManager {
             fragDepth = new int[scriptTokens.length];
             
             maxVarFieldPerUnit = buildFragScript(scriptTokens, preableBytes);
+            
+            
+           // logger.info("{} max var field per unit {} ",name, maxVarFieldPerUnit);
+            
             
             //walk all the depths to find the deepest point.
             int m = 0; 
@@ -437,7 +447,8 @@ public class FieldReferenceOffsetManager {
 		if (0==from.maxVarFieldPerUnit) {
 			return 0;
 		}
-		int maxVarCount = (int)Math.ceil(mx*from.maxVarFieldPerUnit);
+		
+		int maxVarCount = (int)Math.ceil((float)mx*from.maxVarFieldPerUnit);
 		//we require at least 2 fields to ensure that the average approach works in all cases
 		if (maxVarCount < 2) {
 			// 2 = size * perUnit

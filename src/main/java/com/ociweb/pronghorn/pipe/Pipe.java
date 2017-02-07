@@ -352,6 +352,8 @@ public class Pipe<T extends MessageSchema> {
     
     public final byte bitsOfSlabRing;
     public final byte bitsOfBlogRing;
+    
+    @Deprecated //old name
     public final int maxAvgVarLen;
     public final int maxVarLen;//to be used when copying data in dense chunks.
     private final T schema;
@@ -512,13 +514,12 @@ public class Pipe<T extends MessageSchema> {
             maxAvgVarLen = 0; //no fragments had any variable-length fields so we never allow any
         } else {
             //given outer ring buffer this is the maximum number of var fields that can exist at the same time.
-            int mx = sizeOfSlabRing;
-            int maxVarCount = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, mx);
+            int maxVarCount = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, sizeOfSlabRing);
             //to allow more almost 2x more flexibility in variable-length bytes we track pairs of writes and ensure the
             //two together are below the threshold rather than each alone
-            maxAvgVarLen = sizeOfBlobRing/maxVarCount;
+            maxAvgVarLen = blobMask/maxVarCount;
         }
-        maxVarLen = maxAvgVarLen>>1;//half of the max, this is pleanty large and will not max out the data structures.
+        maxVarLen = maxAvgVarLen;
     }
  
     private AtomicBoolean isInBlobFieldWrite = new AtomicBoolean(false);

@@ -13,7 +13,11 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 
 public class TrieParserReader {
     
-    private static final Logger logger = LoggerFactory.getLogger(TrieParserReader.class);
+    private static final int LONGEST_LONG_HEX_DIGITS = 16;
+
+	private static final int LONGEST_LONG_DIGITS = 19;
+
+	private static final Logger logger = LoggerFactory.getLogger(TrieParserReader.class);
     
     private byte[] sourceBacking;
     public int    sourcePos;
@@ -840,12 +844,15 @@ public class TrieParserReader {
                     intLength++;
                     continue;
                 } else {
+                	if (intLength>=sourceLength) {
+                		return -1; //we are waiting for more digits in the feed.  //TODO: add unit test to ensure we do not get partial parse on end of string.
+                	}
                     break;
                 }
             }  while (true);
-            if (intLength>19) {
+            if (intLength>LONGEST_LONG_DIGITS) {
                 //ERROR
-                
+            	return -1;
             }
         } else {
             base = 16;
@@ -865,11 +872,14 @@ public class TrieParserReader {
                     intLength++;
                     continue;
                 } else {
+                	if (intLength>=sourceLength) {
+                		return -1; //we are waiting for more digits in the feed.
+                	}
                     break;
                 }
             }  while (true);
             
-            if (intLength>16) {
+            if (intLength>LONGEST_LONG_HEX_DIGITS) {
                 //ERROR
             	return -1;
             }
