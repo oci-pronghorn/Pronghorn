@@ -402,12 +402,38 @@ public class TrieParserReader {
             return unfoundResult;
         }
         
-        initForQuery(reader, trie, source, sourcePos, unfoundResult);
-        
-        boolean hasSafePoint = false;
-        int t = 0;   
-        
+        initForQuery(reader, trie, source, sourcePos, unfoundResult);        
+        processEachType(reader, trie, source, sourceLength, sourceMask, unfoundResult);
 
+        if (reader.normalExit) {
+        	return exitUponParse(reader, trie);        	       	 
+        } else {
+        	return exitWithNoParse(reader, trie);
+        }        
+        
+    }
+
+	private static long exitUponParse(TrieParserReader reader, TrieParser trie) {
+		reader.sourceLen -= (reader.localSourcePos-reader.sourcePos);
+		reader.sourcePos = reader.localSourcePos;        	        	
+		return TrieParser.readEndValue(trie.data,reader.pos, trie.SIZE_OF_RESULT);
+	}
+
+	private static long exitWithNoParse(TrieParserReader reader, TrieParser trie) {
+		//unable to parse this case
+		//determine if we have an error or need more data        	
+		assert(reader.sourceLen <= trie.longestKnown()) : "Check the parse tree, this text was not parsable. "+debugContent(reader, reader.sourcePos, reader.sourceLen);
+		if (reader.sourceLen > trie.longestKnown()) {
+			logger.info("WARNING: input data can not be parsed and the pipeline has stopped at this point. {}",debugContent(reader, reader.sourcePos, reader.sourceLen) ,new Exception());
+		} //else we just need more data.
+		
+		return reader.result;
+	}
+
+	private static void processEachType(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
+			int sourceMask, final long unfoundResult) {
+		boolean hasSafePoint = false;
+        int t = 0;
         
         top:
         while ((t=reader.type) != TrieParser.TYPE_END && reader.normalExit) {  
@@ -431,13 +457,11 @@ public class TrieParserReader {
                         		continue top;                                
                         	} else {
                         		reader.normalExit=false;
-                        		reader.result = unfoundResult;
-                     
+                        		reader.result = unfoundResult;                     
                         	}
                         } else {
                         	reader.normalExit=false;
-                        	reader.result = useSafePoint(reader);
-                        	
+                        	reader.result = useSafePoint(reader);                        	
                         }
                     }         
                 } else { 
@@ -451,30 +475,18 @@ public class TrieParserReader {
             }
             reader.type = trie.data[reader.pos++]; 
         }
-
-        if (reader.normalExit) {
-        	reader.sourceLen -= (reader.localSourcePos-reader.sourcePos);
-        	reader.sourcePos = reader.localSourcePos;        	        	
-        	return TrieParser.readEndValue(trie.data,reader.pos, trie.SIZE_OF_RESULT);
-        	       	 
-        } else {
-        	//unable to parse this case
-        	//determine if we have an error or need more data        	
-        	assert(reader.sourceLen <= trie.longestKnown()) : "Check the parse tree, this text was not parsable. "+debugContent(reader, reader.sourcePos, reader.sourceLen);
-        	if (reader.sourceLen > trie.longestKnown()) {
-        		logger.info("WARNING: input data can not be parsed and the pipeline has stopped at this point. {}",debugContent(reader, reader.sourcePos, reader.sourceLen) ,new Exception());
-        	} //else we just need more data.
-        	
-        	return reader.result;
-        }        
-        
-    }
+	}
 
 	private static boolean lessCommonActions(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
 			int sourceMask, final long unfoundResult, boolean hasSafePoint, int t) {
 		if (t==TrieParser.TYPE_BRANCH_VALUE) {   
 			if (reader.runLength<sourceLength) {              
-				processByteBranchImpl(reader, source, sourceMask, trie.data, reader.pos);
+				short[] data = trie.data;
+				int p = reader.pos;
+				
+				int jumpMask = TrieParser.computeJumpMask((short) source[sourceMask & reader.localSourcePos], data[p++]);
+				
+				reader.pos = 0!=jumpMask ? computeJump(data, p, jumpMask) : 1+p;
 			} else {
 				reader.normalExit=false;
 				reader.result = unfoundResult;
@@ -488,8 +500,13 @@ public class TrieParserReader {
 		return hasSafePoint;
 	}
 
+	private static int computeJump(short[] data, int p, int jumpMask) {
+		return 1+(jumpMask&((((int)data[p++])<<15) | (0x7FFF&data[p])))+p;
+	}
+
 	private static boolean lessCommonActions2(TrieParserReader reader, TrieParser trie, byte[] source,
 			long sourceLength, int sourceMask, final long unfoundResult, boolean hasSafePoint, int t) {
+		
 		if (t == TrieParser.TYPE_VALUE_BYTES) {            	
 		    if (reader.runLength<sourceLength) {
 		        parseBytes(reader, trie, source, sourceLength, sourceMask);	                                
@@ -544,12 +561,7 @@ public class TrieParserReader {
 		throw new UnsupportedOperationException("Bad jump length now at position "+(reader.pos-1)+" type found "+reader.type);
 	}
 
-	private static void processByteBranchImpl(TrieParserReader reader, byte[] source, int sourceMask, short[] data,	int p) {
-		int jumpMask = TrieParser.computeJumpMask((short) source[sourceMask & reader.localSourcePos], data[p++]);
-		reader.pos = 0!=jumpMask?  1+(jumpMask&((((int)data[p++])<<15) | (0x7FFF&data[p])))+p : 1+p ;
-	}
-
-    private static void parseBytes(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength, int sourceMask) {
+	private static void parseBytes(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength, int sourceMask) {
     	
     	short[] localWorkingMultiStops = reader.workingMultiStops;
     	
