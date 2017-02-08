@@ -548,7 +548,7 @@ public class HTTPSRoundTripTest {
 		final int serverSocketWriters           = 1;
 		
 		//drives the cached data from the file loader.
-		final int messagesToOrderingSuper       = 1<<12;//3;//4096;	    		
+		final int messagesToOrderingSuper       = 1<<13;//3;//4096;	    		
 		final int messageSizeToOrderingSuper    = 1<<10;	    		
 		
 		
@@ -565,7 +565,7 @@ public class HTTPSRoundTripTest {
 		final int serverBlobToWrite = 1<<12; //Used for both TLS and NON-TLS
 		//TODO: must make sure that the super can send parts if required in multiple mesages...
 		 
-		final int routerCount = 4;
+		final int routerCount = 8;
 		
 		
 	    int fromRouterMsg = 1024;

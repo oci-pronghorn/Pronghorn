@@ -49,11 +49,13 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private       int[]                    inputBlobPosLimit;
     
     private       int[]                    inputLengths;
+    private       boolean[]                needsData;
     private       boolean[]                isOpen;
         
     private final Pipe<ReleaseSchema> releasePipe;
     
     private final Pipe<HTTPRequestSchema>[] outputs;
+    private int   waitForOutputOn = -1;
 
     private final int[]                     messageIds;
     private DataOutputBlobWriter<HTTPRequestSchema>[] blobWriter;
@@ -106,7 +108,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         super(gm,input,join(outputs[0],ackStop));
         this.inputs = input;
         this.releasePipe = ackStop;        
-        this.outputs = outputs[0];
+        this.outputs = outputs[0]; //TODO: this is not right, we must combine the outputs???
         this.messageIds = messageIds;
         this.requestHeaderMask = headers;
         this.shutdownCount = inputs.length;
@@ -136,6 +138,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         inputBlobPos = new int[inputs.length];
         inputBlobPosLimit = new int[inputs.length];
         inputLengths = new int[inputs.length];
+        needsData = new boolean[inputs.length];
         isOpen = new boolean[inputs.length];
         Arrays.fill(isOpen, true);
         
@@ -285,30 +288,49 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     @Override
     public void run() {
+    	
+        if (waitForOutputOn>=0) { //hack test
+        	
+        	if (Pipe.hasRoomForWrite(outputs[waitForOutputOn])) {
+        		waitForOutputOn=-1;
+        	} else {
+        		return;//output is backed up so go do something else.
+        	}
+        }
+    	
     	int didWork;
    	
     	do { 
     		didWork = 0;
 	   
+    		int localIdx = idx;
     		int m = 100;//max iterations before taking a break
-	        while (--idx>=0 && --m>=0) {
-	            int result = singlePipe(idx);
-	            
-	            if (result<0) {
-	            	if (--shutdownCount<=0) {
-	            		requestShutdown();
-	            		return;
-	            	}
-	            	
-	            } else {	            		            	
-	            	didWork+=result;
-	            }
-	            
-	        }
-	        if (idx<=0) {
-	        	idx = inputs.length;
-	        }
-	        
+    		do {
+		        while (--localIdx>=0 && --m>=0) {
+		            int result = singlePipe(localIdx);
+		            
+		            if (result<0) {
+		            	if (--shutdownCount<=0) {
+		            		requestShutdown();
+		            		return;
+		            	}
+		            	
+		            } else {	            		            	
+		            	didWork+=result;
+		            }
+		            
+		            if (waitForOutputOn>=0) { //abandon until the output pipe is cleared.
+		            	idx = localIdx;
+		            	return;
+		            } 
+		            
+		            
+		        }
+		        if (localIdx<=0) {
+		        	localIdx = inputs.length;
+		        }
+    		} while (--m>=0);
+    		idx = localIdx;
     	} while (didWork!=0);    
 
     }
@@ -320,6 +342,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
         if (isOpen[idx]) {  
 
+        	int start = inputLengths[idx];
             int messageIdx = accumulateRunningBytes(idx, selectedInput);
             if (messageIdx < 0) {
             	//logger.info("detected EOF for {}",idx);
@@ -329,6 +352,17 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
                 	return -1;
                 }
             }
+            
+            ///TODO: only do this if we had to stop parse looking for data URGENT next.
+            if (needsData[idx]) {
+	            if (inputLengths[idx]==start) {
+	            	//we got no data so move on to the next
+	            	return 0;
+	            } else {
+	            	needsData[idx]=false;
+	            }
+            }
+            
         }        
 
         
@@ -433,18 +467,12 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
                 		return 0;//must cause a wait to accumulate more
 	                }
 	           } else if (NEED_MORE_DATA == result){
-	        	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
-	        //	      logger.info("need more data");
+	        	   needsData[idx]=true;      	   //TRY AGAIN AFTER WE PARSE MORE DATA IN.
 	        	   return 0;//this is the only way to pick up more data, eg. exit the outer loop with zero.
 	        	   
 	           } else {
 	        	   //TRY AGAIN AFTER PIPE CLEARS
-	        	   
-	        	   int pipeToWatch = (-result);
-      	   
-	        	   
-	        	//   logger.info("outgoing pipe blocked");
-	        	   
+	        	   waitForOutputOn = (-result);
 	        	   return 0;//exit to take a break while pipe is full.
 	           }
             }
@@ -500,8 +528,6 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
 //    	System.out.println("...\n///////////////////////////////////////////");
 //    }
 
-	//TODO: URGENT this parser must allow for letting go of what has already been parsed,
-	
 	int tempLen = trieReader.sourceLen;
 	int tempPos = trieReader.sourcePos;
     
