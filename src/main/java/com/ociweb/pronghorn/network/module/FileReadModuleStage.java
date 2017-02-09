@@ -159,6 +159,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private int         activeChannelLow;
     
     private long        activePosition;
+    private boolean     activeNeedsStartReposition=false;
     private int         activeReadMessageSize;
     private int         activeSequenceId;
     private int         activeRequestContext;
@@ -385,8 +386,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     
     private int setupUnseenFile(TrieParser trie, String pathString, final int rootSize, FileSystem fileSystem, StringBuilder builder) {
         
-    		//	logger.trace("loading new file: "+pathString);
-                int newPathId;
+    			//logger.info("loading new file: "+pathString);
+            
+    			int newPathId;
                 try {
                     Path path = fileSystem.getPath(pathString);
                     fileSystem.provider().checkAccess(path);
@@ -626,6 +628,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         	assert(	data.getPaths()[pathId].toFile().isFile() );
         	assert(	data.getPaths()[pathId].toFile().exists() );
         	        			
+        	//logger.info("looking for {}",data.getPaths()[pathId]);
+        	
             activeFileChannel = data.fileSystem.provider().newFileChannel(data.getPaths()[pathId], data.getReadOptions());
             data.getFcId()[pathId] = channelHolder.add(activeFileChannel);
             data.getFileSizes()[pathId] = activeFileChannel.size();
@@ -669,6 +673,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         try {                                               
             //reposition to beginning of the file to be loaded and sent.
             activePayloadSizeRemaining = data.getFileSizes()[pathId];
+            
+           // logger.info("full file size {} ",activePayloadSizeRemaining);
+            
             int status = 200;
             boolean reportServer = true;
                         
@@ -757,7 +764,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private static void publishBodiesMessage(FileReadModuleStage that, int verb, int sequence, int pathId, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) throws IOException {
             if (VERB_GET == verb) { //head does not get body
 
-                that.activePosition = 0;              
+                that.activePosition = 0; 
+                that.activeNeedsStartReposition = true;
+               
                 that.writeBodiesWhileRoom(that.activeChannelHigh, that.activeChannelLow, sequence, that.activeFileChannel, pathId, input, output);                             
 
             } else {
@@ -914,8 +923,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                 
 				localPos += len;
             } else {
-            	if (activePosition==0) {
+            	if (activeNeedsStartReposition) {
             		activeFileChannel.position(0); //NOTE: we are careful to only do this when we are reading from disk.
+            		activeNeedsStartReposition = false;
             	}
             	fromDisk++;
             	//logger.info("copied the file from disk {} times",fromDisk);
