@@ -172,7 +172,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private final Pipe<RawDataSchema> digitBuffer = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance,3,MAX_TEXT_LENGTH));
     
     private final String folderRootString;
-    private final File   folderRoot;
+    private final File   folderRootFile;
+   
     private int defaultPathId;
     private String defaultPathFile;
     private byte[] defaultPathBytes;
@@ -198,8 +199,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 
     private final static int VERB_GET = 0;
     private final static int VERB_HEAD = 1;
-    
-    
+
     
     //TODO: order supervisor needs more pipes to stop blocks
     //TODO: this class needs to extract the file load path
@@ -210,8 +210,16 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         return new FileReadModuleStage(graphManager, inputs, output, httpSpec, rootPath);
     }
     
+    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] output, HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceRootFolder, String resourceDefaultPath) {
+        return new FileReadModuleStage(graphManager, inputs, output, httpSpec, resourceRootFolder, resourceDefaultPath);
+    }
+    
     public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, File rootPath) {
         return new FileReadModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, rootPath);
+    }
+    
+    public static FileReadModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceRootFolder, String resourceDefaultPath) {
+        return new FileReadModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, resourceRootFolder, resourceDefaultPath);
     }
     
     public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
@@ -220,29 +228,44 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         
         super(graphManager, inputs, outputs, httpSpec);
         this.inputs = inputs; //TODO: fix hack must walk all.
-        this.outputs = outputs;
-        
+        this.outputs = outputs;        
         this.trailingReader = 0;
         this.trailingBlobReader = 0;
+        assert( httpSpec.verbMatches(VERB_GET, "GET") );
+        assert( httpSpec.verbMatches(VERB_HEAD, "HEAD") );      
+        this.inIdx = inputs.length;
         
         
-        this.folderRoot = rootPath.isFile()? rootPath.getParentFile() : rootPath;       
-        this.folderRootString = folderRoot.toString();
+        this.folderRootFile = rootPath.isFile()? rootPath.getParentFile() : rootPath;       
+        this.folderRootString = folderRootFile.toString();
         
         if (rootPath.isFile()) {
         	defaultPathFile = rootPath.toString();
         }
-        
-        System.out.println("RootFolder: "+folderRoot);
-        
-        assert( httpSpec.verbMatches(VERB_GET, "GET") );
-        assert( httpSpec.verbMatches(VERB_HEAD, "HEAD") );
-        
-        this.inIdx = inputs.length;
-        
-        
+                          
             
     }
+    
+    
+    public FileReadModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
+            HTTPSpecification<T,R,V,H> httpSpec,
+            String resourceRootFolder, String resourceDefaultPath) {
+
+		super(graphManager, inputs, outputs, httpSpec);
+		this.inputs = inputs; //TODO: fix hack must walk all.
+		this.outputs = outputs;        
+		this.trailingReader = 0;
+		this.trailingBlobReader = 0;
+		assert( httpSpec.verbMatches(VERB_GET, "GET") );
+		assert( httpSpec.verbMatches(VERB_HEAD, "HEAD") );      
+		this.inIdx = inputs.length;
+				
+		this.folderRootFile = null;//when this value is null we can only check the resources....  
+		this.folderRootString = resourceRootFolder;
+		this.defaultPathFile = resourceDefaultPath;
+	
+	}
+    
     //TODO: use PipeHashTable to pull back values that are on the outgoing pipe for use again.
     
     //TODO: parse ahead to determine if we have the same request in a row, then prefix the send with the additional channel IDs
@@ -326,16 +349,15 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         this.digitBuffer.initBuffers();
         
         //TODO: this full block needs to be shared.
-        File rootFileDirectory = folderRoot;
-
-        File[] children = rootFileDirectory.listFiles();
+        
+        
+        File[] children = null==folderRootFile ? null : folderRootFile.listFiles();
         
         this.outputHash = new PipeHashTable(17);
 
         
         this.data = new FileReadModuleStageData(httpSpec);
         
-
         
         //TODO: pull out as common object for all instances
 		TrieParser pc = new TrieParser(initialMaxTotalPathLength, 2, false, false);
@@ -610,8 +632,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         } else {  
         	
         	
-        	
-        	
+        	        	
         	
         	logger.info("requested file {} not found", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString());
         }

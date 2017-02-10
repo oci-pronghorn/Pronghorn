@@ -548,24 +548,26 @@ public class NetGraphBuilder {
 		final int releaseMsg;
 		
 		if (large) {
+			
+			
 			maxPartialResponsesServer     = 32;//256;    // (big memory consumption!!) concurrent partial messages 
 			maxConnectionBitsOnServer 	  = 22;       //4M open connections on server	    	
 			groups                        = 1;
 			
 			serverInputMsg                = 20;
-			serverInputBlobs              = 1<<16;
+			serverInputBlobs              = 1<<14;
 			
-			serverBlobToEncrypt           = 1<<12;
-			serverMsgToEncrypt            = 512;
+			serverMsgToEncrypt            = 128;
+			serverBlobToEncrypt           = 1<<14;
 			
-			serverBlobToWrite             = 1<<16;
-			serverOutputMsg               = 256;
+			serverOutputMsg               = 512;
+			serverBlobToWrite             = 1<<12;
 			
-			fromRouterMsg 				  = 1024;
-			fromRouterBlob 				  = 1<<8;
+			fromRouterMsg 				  = 2048;//impacts performance
+			fromRouterBlob 				  = 1<<10;
 			
 			serverSocketWriters           = 2;
-			routerCount                   = 4;	
+			routerCount                   = 8;	
 			releaseMsg                    = 512;
 						
 			serverRequestUnwrapUnits      = isTLS?cores/4:2;  //server unwrap units - need more for handshaks and more for posts
@@ -577,21 +579,21 @@ public class NetGraphBuilder {
 			maxConnectionBitsOnServer     = 12;    //4k  open connections on server	    	
 			groups                        = 1;	
 		
-			serverInputMsg                = 128; //if this is not large enough we may starve out clients...
-			serverInputBlobs              = 1<<7;  
+			serverInputMsg                = 8; 
+			serverInputBlobs              = 1<<8;  
 			
 			serverMsgToEncrypt            = 32;
 			serverBlobToEncrypt           = 1<<15; //Must NOT be smaller than the file write output (modules) ??? ONLY WHEN WE ARE USE ING TLS
 			
-			serverOutputMsg               = 64; //important for outgoing data and greatly impacts performance
+			serverOutputMsg               = 128; //important for outgoing data and greatly impacts performance
 			serverBlobToWrite             = 1<<10; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
 			
-			fromRouterMsg 			      = 128; //impacts performance
+			fromRouterMsg 			      = 2048; //impacts performance
 			fromRouterBlob				  = 1<<7;
 			
 			serverSocketWriters           = 1;
-			routerCount                   = 4;	
-			releaseMsg                    = 512;
+			routerCount                   = 2;	
+			releaseMsg                    = 256;
 						
 			serverRequestUnwrapUnits      = isTLS?cores/4:2;  //server unwrap units - need more for handshaks and more for posts
 			serverResponseWrapUnits 	  = isTLS?cores:4;    //server wrap units
