@@ -571,6 +571,10 @@ public class Pipe<T extends MessageSchema> {
         return pipe.schema == schema;
     }
     
+    public static <S extends MessageSchema> boolean isForSameSchema(Pipe<S> pipeA, Pipe<S> pipeB) {
+        return pipeA.schema == pipeB.schema;
+    }
+    
     public static <S extends MessageSchema> boolean isForDynamicSchema(Pipe<S> pipe) {
         return pipe.schema instanceof MessageSchemaDynamic;
     }
