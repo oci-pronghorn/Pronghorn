@@ -567,7 +567,7 @@ public class NetGraphBuilder {
 			fromRouterBlob 				  = 1<<10;
 			
 			serverSocketWriters           = 2;
-			routerCount                   = 8;	
+			routerCount                   = 8;
 			releaseMsg                    = 512;
 						
 			serverRequestUnwrapUnits      = isTLS?cores/4:2;  //server unwrap units - need more for handshaks and more for posts
@@ -591,8 +591,9 @@ public class NetGraphBuilder {
 			fromRouterMsg 			      = 2048; //impacts performance
 			fromRouterBlob				  = 1<<7;
 			
+			routerCount                   = 4;
+
 			serverSocketWriters           = 1;
-			routerCount                   = 2;	
 			releaseMsg                    = 256;
 						
 			serverRequestUnwrapUnits      = isTLS?cores/4:2;  //server unwrap units - need more for handshaks and more for posts

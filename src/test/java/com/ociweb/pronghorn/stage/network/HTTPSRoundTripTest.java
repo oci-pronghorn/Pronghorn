@@ -35,8 +35,10 @@ import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.scheduling.ColorMinusScheduler;
 import com.ociweb.pronghorn.stage.scheduling.FixedThreadsScheduler;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.NonThreadScheduler;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import com.ociweb.pronghorn.stage.test.ConsoleSummaryStage;
@@ -346,10 +348,15 @@ public class HTTPSRoundTripTest {
 			
 			// 1/2 memory over netty and 5x faster
 			
+			//feb checks
+			//nginx    260K  with  160MB
+			
+			//GL small   505K        52MB  
+			//GL large   1.26M       1.1GB
+			//netty      160K        1.6GB  (not TLS) 
 			
 			
-			
-			boolean isTLS = false;
+			boolean isTLS = true;
 			int port = 8080;//8443;
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";
@@ -369,17 +376,19 @@ public class HTTPSRoundTripTest {
 			//NOTE: larger values here allows for more effecient scheculeing and bigger "batches"
 			//NOTE: smaller values here will allow for slightly lower latency values
 			//NOTE: by sleeping less we get more work done per stage, sometimes
-			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1_000); //this is in ns
+			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 10_000); //this is in ns, can be as low as 1_200 but it should be larger when using the fixed thread scheudler.
 			
 	    	//TODO: we need a better test that has each users interaction of 10 then wait for someone else to get in while still connected.
 	    	//TODO: urgent need to kill off expired pipe usages.
 	    	
 	    	//GraphManager.enableBatching(gm);
 	    	
-	    	final String testFile = "groovySum.json"; 
+			 
+			boolean isLarge = true;
+	    	final String testFile = "groovySum.json";
 	    	ServerCoordinator serverCoord = null;
 	    	if (useLocalServer) {
-	    		serverCoord = exampleServerSetup(isTLS, gm, testFile, host, port);
+	    		serverCoord = exampleServerSetup(isTLS, gm, testFile, host, port, isLarge);
 	    	}
 
 	    	///TODO: when we have more clients than the server has pertials for TLS we can get a repetable hang situation.
@@ -387,8 +396,8 @@ public class HTTPSRoundTripTest {
 	    	
 	    	/////////////////
 	        /////////////////
-	    	int base2SimultaniousConnections = 5;//TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
-	    	int clientCount = 1;
+	    	int base2SimultaniousConnections = 4;//TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
+	    	int clientCount = 2;
 	    		    	
 	    	//TODO: this number must be the limit of max simuantious handshakes.
 	    	int maxPartialResponsesClient = (1<<base2SimultaniousConnections); //input lines to client (should be large)
@@ -411,7 +420,7 @@ public class HTTPSRoundTripTest {
 	    	//////////////
 
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
-	    	final int loadMultiplier = isTLS? 100_000 : 2_000_000;
+	    	final int loadMultiplier = isTLS? 100_000 : 1_000_000;// 2_000_000;
 
 	    		    	
 			//one of these per unwrap unit and per partial message, there will be many of these normally so they should not be too large
@@ -434,20 +443,18 @@ public class HTTPSRoundTripTest {
 						clients, cc, netRespQueue, netRespSize);
 	    	}
 			
-				    	
-			if (base2SimultaniousConnections<=6) {
+			//if (base2SimultaniousConnections<=6) {
 				//GraphManager.exportGraphDotFile(gm, "HTTPSRoundTripTest");			
 	        	MonitorConsoleStage.attach(gm); 
-			}
+			//}
+	    	
 			final ServerCoordinator serverCoord1 = serverCoord;
 			final ClientCoordinator[] clientCoord = clientCoords;
 			
 			
-			
-			//TODO:: fix this to limit threads in use
-//			final StageScheduler scheduler = new FixedThreadsScheduler(gm, 128);
-			final StageScheduler scheduler = new ThreadPerStageScheduler(gm);
-			        
+			final StageScheduler scheduler = new FixedThreadsScheduler(gm, 6);//hangs with 20??  //TODO: ONE OF THESE MUST STILL BE IN HANG WITH NO PROGRESS...
+		//	final StageScheduler scheduler = new ThreadPerStageScheduler(gm);
+	
 			               
 			//TODO: add this to scheduler so its done everywehre by default!!  TODO: urgent.
 			Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -472,6 +479,7 @@ public class HTTPSRoundTripTest {
 	        /////////////////
 	        /////////////////
 	
+			
 			long totalReceived = 0;
 			int c = clientCoords.length;
 			while (--c>=0) {
@@ -488,7 +496,7 @@ public class HTTPSRoundTripTest {
 			scheduler.shutdown();
 			scheduler.awaitTermination(2, TimeUnit.SECONDS);
 			
-		//	GraphManager.validShutdown(gm);
+		
 			
 		//	hist.outputPercentileDistribution(System.out, 0d);
 			
@@ -537,46 +545,18 @@ public class HTTPSRoundTripTest {
 		}
 	}
 
-	private ServerCoordinator exampleServerSetup(boolean isTLS, GraphManager gm, final String testFile, String bindHost, int bindPort) {
+	private ServerCoordinator exampleServerSetup(boolean isTLS, GraphManager gm, final String testFile, String bindHost, int bindPort, boolean isLarge) {
 		final String pathRoot = buildStaticFileFolderPath(testFile);
+		
+
 		
 		final int maxPartialResponsesServer     = 32; //input lines to server (should be large)
 		final int maxConnectionBitsOnServer 	= 12;//8K simulanious connections on server	    	
-		final int serverRequestUnwrapUnits 		= 2; //server unwrap units - need more for handshaks and more for posts
-		final int serverResponseWrapUnits 		= 4;
-		final int serverPipesPerOutputEngine 	= isTLS?8:8;//multiplier against server wrap units for max simultanus user responses.
-		final int serverSocketWriters           = 1;
-		
-		//drives the cached data from the file loader.
 		final int messagesToOrderingSuper       = 1<<13;//3;//4096;	    		
 		final int messageSizeToOrderingSuper    = 1<<10;	    		
+
 		
-		
-		 //the typical rec buffer is about 1<<19
-		//TODO: to ensure we do not loop back arround (overflow bug to be fixed) this value is set large.
-		final int serverInputBlobs = 1<<16;//23;////19; //when small THIS has a big slow-down effect and it appears as the client getting backed up.
-		final int serverInputMsg = 4; 
-		 
-		// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-		final int serverMsgToEncrypt = 512;  //from the SUPER
-		final int serverBlobToEncrypt = 1<<14;
-		 
-		final int serverMsgToWrite = 2048;//1024;///this pipe gets full in short bursts and greatly impacts how much the server gets backed up. 
-		final int serverBlobToWrite = 1<<12; //Used for both TLS and NON-TLS
-		//TODO: must make sure that the super can send parts if required in multiple mesages...
-		 
-		final int routerCount = 8;
-		
-		
-	    int fromRouterMsg = 1024;
-		int fromRouterBlob = 1<<8;
-		
-		int releaseMsg = 256;
-		
-		//This must be large enough for both partials and new handshakes.
-		
-		ServerCoordinator serverCoord = new ServerCoordinator(groups, bindHost, bindPort, maxConnectionBitsOnServer, maxPartialResponsesServer, routerCount);
-				
+
 		//using the basic no-fills API
 		ModuleConfig config = new ModuleConfig() { 
 		
@@ -646,10 +626,8 @@ public class HTTPSRoundTripTest {
 		 	
 		 };
 	
+		 ServerCoordinator serverCoord = NetGraphBuilder.httpServerSetup(isTLS, bindHost, bindPort, gm, isLarge, config);
 
-		
-		NetGraphBuilder.buildHTTPServerGraph(isTLS, gm, groups, maxPartialResponsesServer, config, serverCoord, serverRequestUnwrapUnits, serverResponseWrapUnits, serverPipesPerOutputEngine, 
-				                              serverSocketWriters, serverInputMsg, serverInputBlobs, serverMsgToEncrypt, serverBlobToEncrypt, serverMsgToWrite, serverBlobToWrite, routerCount, fromRouterMsg, fromRouterBlob, releaseMsg);
 		 return serverCoord;
 	}
 	

@@ -68,6 +68,9 @@ public class ServerSocketReaderStage extends PronghornStage {
         this.isTLS = isTLS;
         this.messageType = isTLS ? NetPayloadSchema.MSG_ENCRYPTED_200 : NetPayloadSchema.MSG_PLAIN_210;
         coordinator.setStart(this);
+        
+        GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
+        
     }
 
     @Override
@@ -97,8 +100,10 @@ public class ServerSocketReaderStage extends PronghornStage {
     public void shutdown() {
         int i = output.length;
         while (--i >= 0) {
-        	Pipe.spinBlockForRoom(output[i], Pipe.EOF_SIZE);
-            Pipe.publishEOF(output[i]);                
+        	if (Pipe.isInit(output[i])) {
+        		Pipe.spinBlockForRoom(output[i], Pipe.EOF_SIZE);
+            	Pipe.publishEOF(output[i]);  
+        	}
         }
         logger.warn("server reader has shut down");
     }
@@ -126,9 +131,12 @@ public class ServerSocketReaderStage extends PronghornStage {
 	        ////////////////////////////////////////
 	        ///Read from socket
 	        ////////////////////////////////////////
+
+    	    //max cycles before we take a break.
+	    	int maxIterations = 100; //important or this stage will take all the resources.
 	    	
 	    	Set<SelectionKey> selectedKeys=null;
-	        while (hasNewDataToRead()) {
+	        while (--maxIterations>=0 && hasNewDataToRead()) {
 	        	
 	        	//logger.info("found new data to read on "+groupIdx);
 	            

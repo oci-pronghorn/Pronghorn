@@ -20,7 +20,7 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class RegulatedLoadTestStage extends PronghornStage{
 
-	private static final int HANG_TIMEOUT_MS = Integer.MAX_VALUE;//10_000;
+	private static final int HANG_TIMEOUT_MS = 60_000;//Integer.MAX_VALUE;//10_000;
 
 	private static final Logger logger = LoggerFactory.getLogger(RegulatedLoadTestStage.class);
 	

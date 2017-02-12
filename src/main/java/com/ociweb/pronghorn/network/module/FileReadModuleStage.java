@@ -463,10 +463,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     	totalRunCalls++;
     	
     	int iterations = inputs.length;
-    	boolean didWork=false;
-    	do {    	
-    		didWork = false;//be sure we exit if we do no work.
-    		
+    	int didWork=0;
+    	do {    
     			if (null==activeFileChannel) {
     				if(--inIdx<0) {
     					inIdx = inputs.length-1;
@@ -476,10 +474,10 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     			Pipe<HTTPRequestSchema> input = inputs[inIdx];
     			Pipe<ServerResponseSchema> output = outputs[inIdx];
     			
-		        try {
-		            
-		            didWork = writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, activeSequenceId, activeFileChannel, activePathId, input, output);
-		
+		        try {		            
+		            if (writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, activeSequenceId, activeFileChannel, activePathId, input, output)) {
+		            	didWork++;
+		            }
 		        } catch (IOException ioex) {
 		            disconnectDueToError(activeReadMessageSize, ioex, input, output);
 		        }
@@ -492,7 +490,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 		            filesDone++;
 		        	int msgIdx = Pipe.takeMsgIdx(input); 
 		            if (msgIdx == HTTPRequestSchema.MSG_FILEREQUEST_200) {
-		            	didWork = true;
+		            	didWork++;
 		            	
 		                activeReadMessageSize = Pipe.sizeOf(input, msgIdx);
 		                beginReadingNextRequest(input, output);                    
@@ -513,11 +511,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 		        if (null == activeFileChannel) {
 		            //only done when nothing is open.
 		            checkForHotReplace();
-		        } else {
-		        	didWork = true; //stay while we have active files open
 		        }
 		      
-    	} while(didWork || --iterations>=0); //we will run iteration loops of did work false.
+    	} while(didWork>-2 && --iterations>=0); 
 
     }
 
@@ -1162,8 +1158,10 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     @Override
     public void shutdown() {
     	assert(reportRecordedStates(getClass().getSimpleName()));
-    	logger.info("total calls to run: {} avgFilesPerRun: {}",totalRunCalls,(totalFiles/totalRunCalls));
-    	logger.info("total bytes out {} inFlightRef {} inFlightCopy {} fromDisk {} ",totalBytesWritten, inFlightRef, inFlightCopy, fromDisk);
+    	if (totalRunCalls!=0) {
+    		logger.info("total calls to run: {} avgFilesPerRun: {}",totalRunCalls,(totalFiles/totalRunCalls));
+    		logger.info("total bytes out {} inFlightRef {} inFlightCopy {} fromDisk {} ",totalBytesWritten, inFlightRef, inFlightCopy, fromDisk);
+    	}
     }
 
 }

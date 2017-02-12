@@ -116,21 +116,19 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 		int i = outgoingPipes.length;
 		while (--i>=0) {
-			Pipe.spinBlockForRoom(outgoingPipes[i], Pipe.EOF_SIZE);  //TODO: this is a re-occuring pattern perhaps this belongs in the base class since every actor does it.
-			Pipe.publishEOF(outgoingPipes[i]);
+			if (null!=outgoingPipes[i] && Pipe.isInit(outgoingPipes[i])) {
+				Pipe.spinBlockForRoom(outgoingPipes[i], Pipe.EOF_SIZE);  //TODO: this is a re-occuring pattern perhaps this belongs in the base class since every actor does it.
+				Pipe.publishEOF(outgoingPipes[i]);
+			}
 		}
 	}
-    
-//	int xa = 0;
-//	int xb = 0;
-//	int xc = 0;
-//	long nextTime = 0;
-	
+
 	
 	@Override
     public void run() {
 
     	boolean haveWork;
+    	int maxIterations = 1000;
     	do {
 	    	haveWork = false;
 	        int c = dataToSend.length;
@@ -159,7 +157,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
             	
 	            
 	        }  
-    	} while (haveWork);
+    	} while (--maxIterations>0 && haveWork);
     }
 
 

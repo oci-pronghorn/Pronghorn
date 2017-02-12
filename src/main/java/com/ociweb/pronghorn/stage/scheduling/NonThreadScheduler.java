@@ -8,6 +8,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.module.FileReadModuleStage;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -17,6 +18,8 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     private AtomicBoolean shutdownRequested;
     private long[] rates;
     private long[] lastRun;
+    
+    
     private long maxRate;
     private final PronghornStage[] stages;
     private static final Logger logger = LoggerFactory.getLogger(NonThreadScheduler.class);
@@ -43,21 +46,34 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     private boolean isInternalEmpty = false; //always starts as no empty to be safe.
     private boolean someAreRateLimited = false;
     private AtomicInteger isRunning = new AtomicInteger(0);
+    private final GraphManager graphManager;
+    private String name = "";
+    private PronghornStage lastRunStage = null;
+
+	private static final boolean debugNonReturningStages = false;
+	
 
     public NonThreadScheduler(GraphManager graphManager) {
         super(graphManager);        
-        this.stages = GraphManager.allStages(graphManager);        
+        this.stages = GraphManager.allStages(graphManager);
+        this.graphManager = graphManager;
     }
     
-    public NonThreadScheduler(GraphManager graphManager, PronghornStage[] stages) {
+    public NonThreadScheduler(GraphManager graphManager, PronghornStage[] stages, String name) {
         super(graphManager);
         this.stages = stages;       
+        this.graphManager = graphManager;
+        this.name = name;
     }    
     
     public void checkForException() {
     	if (firstException!=null) {
     		throw new RuntimeException(firstException);
     	}
+    }
+    
+    public String name() {
+    	return name;
     }
     
     @Override
@@ -278,6 +294,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         
         rates = new long[stageCount+1];
         lastRun = new long[stageCount+1];
+       
         
         int idx = stageCount;
         while (--idx >= 0) {               
@@ -315,38 +332,38 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     @Override
     public void run() {   
     	
-    	   //TODO: we want to monitor pipe content and flip execution order if they are full.
+    	//TODO: we want to monitor pipe content and flip execution order if they are full.
     	
     	
     	if (nextRun>0) {
     		
-    		//TODO: this new feature is causing a hang in some cases, Must debug.
-    		if (false && !isInternalEmpty) {
-    			
-    			//before we set or scan for empty record the head positions, if they still match later then we will know its empty.
-    	        syncInputHeadValues(producerInputPipes, producerInputPipeHeads);
-    	        syncInputHeadValues(inputPipes, inputPipeHeads);
-    			
-    			// check that all pipes have no content, we have time if not set here it is never set true.
-    			boolean tmp = true;
-    			int i = internalPipes.length;
-    			while (--i>=0) {
-    				if (Pipe.contentRemaining(internalPipes[i])>0) {  
-    					tmp = false;
-    					break;//exit quick we found something.
-    				}
-    			}
-    			//must also scan input pipes
-    			i = inputPipes.length;
-    			while (--i>=0) {
-    				if (Pipe.contentRemaining(inputPipes[i])>0) {  
-    					tmp = false;
-    					break;//exit quick we found something.
-    				}
-    			}
-    			isInternalEmpty = tmp;   
-    			    			
-    		}
+//    		//TODO: this new feature is causing a hang in some cases, Must debug.
+//    		if (/*false &&*/ !isInternalEmpty) {
+//    			
+//    			//before we set or scan for empty record the head positions, if they still match later then we will know its empty.
+//    	        syncInputHeadValues(producerInputPipes, producerInputPipeHeads);
+//    	        syncInputHeadValues(inputPipes, inputPipeHeads);
+//    			
+//    			// check that all pipes have no content, we have time if not set here it is never set true.
+//    			boolean tmp = true;
+//    			int i = internalPipes.length;
+//    			while (--i>=0) {
+//    				if (Pipe.contentRemaining(internalPipes[i])>0) {  
+//    					tmp = false;
+//    					break;//exit quick we found something.
+//    				}
+//    			}
+//    			//must also scan input pipes
+//    			i = inputPipes.length;
+//    			while (--i>=0) {
+//    				if (Pipe.contentRemaining(inputPipes[i])>0) {  
+//    					tmp = false;
+//    					break;//exit quick we found something.
+//    				}
+//    			}
+//    			isInternalEmpty = tmp;   
+//    			    			
+//    		}
     		
     		//we have called run but we know that it can do anything until this time so we must wait
     		long nanoDelay = nextRun-System.nanoTime();
@@ -389,7 +406,9 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     	        	int p = producersIdx.length;
     	        	while (--p>=0) {
     	        		int idx = producersIdx[p];
-    	        		spinDelay = runStage(someAreRateLimited, spinDelay, idx, rates[idx], stages[idx], this);
+    	        		
+    	        		spinDelay = runStage(graphManager, someAreRateLimited, spinDelay, idx, rates[idx], lastRunStage = stages[idx], this);
+    	        		lastRunStage = null;
     	        	}
     	        }
     	        isInternalEmpty = false;
@@ -401,7 +420,8 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
    	        boolean continueRun = false;
             while (--s>=0 && !shutdownRequested.get() && rates!=null) {
             	
-                    nearestNextRun = runStage(someAreRateLimited, nearestNextRun, s, rates[s], stages[s], this);    
+                    nearestNextRun = runStage(graphManager, someAreRateLimited, nearestNextRun, s, rates[s], lastRunStage = stages[s], this); 
+                    lastRunStage = null;
                     
                     //if one is not shutting down then keep going
                     continueRun |= !GraphManager.isStageShuttingDown(graphManager, stages[s].stageId);
@@ -416,15 +436,11 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
              }
     }
 
-	private static long runStage(boolean someAreRateLimited, long nearestNextRun, int s, long rate, PronghornStage stage, NonThreadScheduler that) {
+	private static long runStage(GraphManager graphManager, boolean someAreRateLimited, long nearestNextRun, int s, long rate, PronghornStage stage, NonThreadScheduler that) {
 
-        
-        //TODO: if one is taking all the time must record and log to more easily find this bad player.                    
-        //TODO: time each run and keep a total of which stages take the most time to return, this is a nice debug feature.
-		
-		if (rate>=0) {
-			
-			if (someAreRateLimited && GraphManager.isRateLimited(that.graphManager,  stage.stageId)) {  //NOTE: we may not need second part of this expression..  test this.                  	
+		if (rate>=0) {			
+			if (!someAreRateLimited) {
+			} else {
 				long nsDelay =  GraphManager.delayRequiredNS(that.graphManager,stage.stageId);
 				if (nsDelay>0) {   
 					nearestNextRun = Math.min(nearestNextRun, nsDelay+System.nanoTime());
@@ -433,20 +449,19 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 			}
 			
 			if (rate>0) {
-				//check time and only run if valid
-				long now = System.nanoTime();
-				                    		
-				long nsDelay = (that.lastRun[s]+rate) - now;
-				if (nsDelay<=0) {
-					run(that.graphManager, stage, that);
-					that.lastRun[s] = System.nanoTime();
-				} else {                    			
-					nearestNextRun = Math.min(nearestNextRun, nsDelay+System.nanoTime());
-				}
+				nearestNextRun = runStageWithRate(graphManager, nearestNextRun, s, rate, stage, that);
 			} else {
 				if (0==rate) {
 					nearestNextRun = 0;
+					long now = System.nanoTime();
+					
 					run(that.graphManager, stage, that);   
+					
+					long duration = System.nanoTime()-now;
+					
+					if (duration>0) {
+						GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration);
+					}
 				}
 			}
 		} else {
@@ -455,10 +470,44 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 		return nearestNextRun;
 	}
 
+	private static long runStageWithRate(GraphManager graphManager, long nearestNextRun, int s, long rate, PronghornStage stage, NonThreadScheduler that) {
+		//check time and only run if valid
+		long now = System.nanoTime();
+		                    		
+		long nsDelay = (that.lastRun[s]+rate) - now;
+		if (nsDelay<=0) {
+			run(that.graphManager, stage, that);
+			that.lastRun[s] = now;
+			
+			long duration = System.nanoTime()-now;
+
+			if (duration>0) {
+				GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration);
+			}
+			
+		} else {                    			
+			nearestNextRun = Math.min(nearestNextRun, nsDelay+now);
+		}
+		return nearestNextRun;
+	}
+
 	private static void run(GraphManager graphManager, PronghornStage stage, NonThreadScheduler that) {
 		try {
 			if (!GraphManager.isStageShuttingDown(graphManager, stage.stageId)) {
+				
+				
+				
+				if (debugNonReturningStages) {
+					logger.info("begin run {}",stage);///for debug of hang
+				}
+				
 				stage.run();
+				
+				if (debugNonReturningStages) {
+					logger.info("end run {}",stage);
+				}
+				
+				
 			} else {
 				if (!GraphManager.isStageTerminated(graphManager, stage.stageId)) {
 					 stage.shutdown();
@@ -474,18 +523,19 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     @Override
     public void shutdown() {
     	shutdownRequested.set(true);
-    
-  //if this still works in 2018 delete this line.  	
-  //  	GraphManager.terminateInputStages(graphManager);	
     	
 	    int s = stages.length;
         while (--s>=0) {
         		//ensure every non terminated stage gets shutdown called.
-        		if (null!=stages[s] && !GraphManager.isStageTerminated(graphManager, stages[s].stageId)) {
+        		if (null!=stages[s] && !GraphManager.isStageTerminated(graphManager, stages[s].stageId)) {        			
         			stages[s].shutdown();
         			GraphManager.setStateToShutdown(graphManager, stages[s].stageId); 
-        		}        		
+        		} 
          }
+              
+        if (null!=lastRunStage) {        	
+        	logger.info("ERROR: this stage was called be never returned {}",lastRunStage.getClass().getSimpleName());        	
+        }       
     	
     }
 

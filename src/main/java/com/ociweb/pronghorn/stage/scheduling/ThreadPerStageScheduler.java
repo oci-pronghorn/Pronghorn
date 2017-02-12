@@ -389,7 +389,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					stage.run();					
 					long duration = System.nanoTime()-start;
 					if (duration>0) {
-						GraphManager.accumRunTime(graphManager, stage.stageId, (duration+500_000L)/1_000_000L);
+						GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration);
 					}
 				} while (continueRunning(this, stage));
 	    		
@@ -420,7 +420,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			stage.run();			
 			long duration = System.nanoTime()-start;
 			if (duration>0) {
-				GraphManager.accumRunTime(graphManager, stage.stageId, (duration+500_000L)/1_000_000L);
+				GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration);
 			} 
 			
 		} while (continueRunning(this, stage));
@@ -474,7 +474,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			stage.run();
 			long duration = System.nanoTime()-start;
 			if (duration>0) {
-				GraphManager.accumRunTime(graphManager, stage.stageId, (duration+500_000L)/1_000_000L);
+				GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration);
 			}
 		} while (continueRunning(this, stage));
 		//Still testing removal of this which seemed incorrect,  } while (!isShuttingDown && !GraphManager.isStageShuttingDown(localGM, stageId));		

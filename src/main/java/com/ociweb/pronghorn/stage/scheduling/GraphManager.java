@@ -29,8 +29,11 @@ public class GraphManager {
 	
 	private final static int INIT_RINGS = 32;
 	private final static int INIT_STAGES = 32;
+	
+	private final static Logger logger = LoggerFactory.getLogger(GraphManager.class);
 
     private class GraphManagerStageStateData {
+    	
 		private Object lock = new Object();	
 		private byte[] stageStateArray = new byte[INIT_STAGES];
 		
@@ -44,11 +47,10 @@ public class GraphManager {
     //Nota bene attachments
 	public final static String SCHEDULE_RATE = "SCHEDULE_RATE"; //in ns - this is the delay between calls regardless of how long call takes
 	                                                        //If dependable/regular clock is required run should not return and do it internally.
-	public final static String MONITOR       = "MONITOR"; //this stage is not part of business logic but part of internal monitoring.
-	public final static String PRODUCER      = "PRODUCER";//explicit so it can be found even if it has feedback inputs.
-	public final static String STAGE_NAME    = "STAGE_NAME";
-	public final static String DOT_RANK_NAME = "DOT_RANK_NAME";
-	
+	public final static String MONITOR         = "MONITOR"; //this stage is not part of business logic but part of internal monitoring.
+	public final static String PRODUCER        = "PRODUCER";//explicit so it can be found even if it has feedback inputs.
+	public final static String STAGE_NAME      = "STAGE_NAME";
+	public final static String DOT_RANK_NAME   = "DOT_RANK_NAME";	
 
 	public final static String UNSCHEDULED   = "UNSCHEDULED";//new nota for stages that should never get a thread (experimental)
 	public final static String THREAD_GROUP  = "THREAD_GROUP";   //new nota for stages that do not give threads back (experimental)
@@ -79,9 +81,9 @@ public class GraphManager {
 	
 	//for lookup of Stage from Stage id
 	private PronghornStage[]  stageIdToStage = new PronghornStage[INIT_STAGES];
-	private long[] stageStartTimeMs = new long[INIT_STAGES];
-	private long[] stageShutdownTimeMs = new long[INIT_STAGES];
-	private long[] stageRunMS = new long[INIT_STAGES]; 
+	private long[] stageStartTimeNs = new long[INIT_STAGES];
+	private long[] stageShutdownTimeNs = new long[INIT_STAGES];
+	private long[] stageRunNS = new long[INIT_STAGES]; 
 	
 	
 	
@@ -593,7 +595,10 @@ public class GraphManager {
 		gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
 		gm.stageIdToInputsBeginIdx = setValue(gm.stageIdToInputsBeginIdx, stageId, gm.topInput);
 		gm.stageIdToOutputsBeginIdx = setValue(gm.stageIdToOutputsBeginIdx, stageId, gm.topOutput);			
-		gm.stageIdToNotasBeginIdx = setValue(gm.stageIdToNotasBeginIdx, stageId, gm.topNota);
+		gm.stageIdToNotasBeginIdx = setValue(gm.stageIdToNotasBeginIdx, stageId, gm.topNota);		
+		gm.stageRunNS = setValue(gm.stageRunNS, stageId, 0);
+		gm.stageShutdownTimeNs = setValue(gm.stageShutdownTimeNs, stageId, 0);
+		gm.stageStartTimeNs = setValue(gm.stageStartTimeNs, stageId, 0);
 		
 		//add defaults if a value is not already present
 		int d = gm.defaultsCount;
@@ -675,7 +680,7 @@ public class GraphManager {
 	public static void setStateToStarted(GraphManager gm, int stageId) {
 		synchronized(gm.stageStateData.lock) {
 			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_STARTED);
-			gm.stageStartTimeMs=setValue(gm.stageStartTimeMs,stageId,System.currentTimeMillis());
+			gm.stageStartTimeNs[stageId] = System.nanoTime();
 		}
 	}
 	
@@ -683,7 +688,7 @@ public class GraphManager {
 		synchronized(gm.stageStateData.lock) {
 			gm.stageStateData.stageStateArray = setValue(gm.stageStateData.stageStateArray, stageId, GraphManagerStageStateData.STAGE_TERMINATED);
 			//	assert(recordInputsAndOutputValuesForValidation(gm, stage.stageId));
-			gm.stageShutdownTimeMs=setValue(gm.stageShutdownTimeMs,stageId,System.currentTimeMillis());
+			gm.stageShutdownTimeNs[stageId] = System.nanoTime();
 		}
 	}
 	
@@ -1147,11 +1152,20 @@ public class GraphManager {
 		return getOutputPipe(m, stage, 1);
 	}
 	
+	public static <S extends MessageSchema> Pipe<S> getOutputPipe(GraphManager m, int stageId) {
+		return getOutputPipe(m, stageId, 1);
+	}
+	
 	@SuppressWarnings("unchecked")
     public static <S extends MessageSchema> Pipe<S> getOutputPipe(GraphManager m, PronghornStage stage, int ordinalOutput) {
+		return getOutputPipe(m, stage.stageId, ordinalOutput);
+	}
+	
+	@SuppressWarnings("unchecked")
+    public static <S extends MessageSchema> Pipe<S> getOutputPipe(GraphManager m, int stageId, int ordinalOutput) {
 		
 		int ringId;
-		int idx = m.stageIdToOutputsBeginIdx[stage.stageId];
+		int idx = m.stageIdToOutputsBeginIdx[stageId];
 		while (-1 != (ringId=m.multOutputIds[idx++])) {		
 			if (--ordinalOutput<=0) {
 				return m.pipeIdToPipe[ringId];
@@ -1175,10 +1189,19 @@ public class GraphManager {
 		return getInputPipe(m, stage, 1);
 	}
 	
+	public static <S extends MessageSchema> Pipe<S> getInputPipe(GraphManager m, int stageId) {
+		return getInputPipe(m, stageId, 1);
+	}
+	
 	@SuppressWarnings("unchecked")
-    public static <S extends MessageSchema> Pipe<S> getInputPipe(GraphManager m,	PronghornStage stage, int ordinalInput) {
+    public static <S extends MessageSchema> Pipe<S> getInputPipe(GraphManager m, PronghornStage stage, int ordinalInput) {
+		return getInputPipe(m, stage.stageId, ordinalInput);
+	}
+	
+	@SuppressWarnings("unchecked")
+    public static <S extends MessageSchema> Pipe<S> getInputPipe(GraphManager m, int stageId, int ordinalInput) {
 		int ringId;
-		int idx = m.stageIdToInputsBeginIdx[stage.stageId];
+		int idx = m.stageIdToInputsBeginIdx[stageId];
 		while (-1 != (ringId=m.multInputIds[idx++])) {	
 			if (--ordinalInput<=0) {
 				return m.pipeIdToPipe[ringId];
@@ -1188,8 +1211,12 @@ public class GraphManager {
 	}
 	
 	public static int getInputPipeCount(GraphManager m, PronghornStage stage) {
+		return getInputPipeCount(m, stage.stageId);
+	}
+	
+	public static int getInputPipeCount(GraphManager m, int stageId) {
 		int ringId;
-		int idx = m.stageIdToInputsBeginIdx[stage.stageId];
+		int idx = m.stageIdToInputsBeginIdx[stageId];
 		int count = 0;
 		while (-1 != (ringId=m.multInputIds[idx++])) {	
 			count++;	
@@ -1206,6 +1233,9 @@ public class GraphManager {
 	}
 	
     public static void exportGraphDotFile(GraphManager gm, String filename, int[] percentileValues, int[] traffic) {
+    	
+    //	new Exception("GENERATING NEW DOT FILE "+filename).printStackTrace();
+    	
         FileOutputStream fost;
         try {
             fost = new FileOutputStream(filename);
@@ -1222,14 +1252,8 @@ public class GraphManager {
                 return;
             }
             
-//            result = Runtime.getRuntime().exec("circo -Tsvg -o"+filename+".circo.svg "+filename);
-//            
-//            if (0!=result.waitFor()) {
-//                return;
-//            }
-            
-        } catch (Throwable e) {
-            System.out.println("No runtime graph produced.");
+        } catch (Throwable e) {        	
+        	logger.info("No runtime graph produced. ",e);
         }
        
         
@@ -1278,24 +1302,41 @@ public class GraphManager {
 	                	target.append(" grp:"+group);
 	                }
 	                //if supported give PCT used
-	                long runMs = m.stageRunMS[stage.stageId];
+	                long runNs = m.stageRunNS[stage.stageId];
 	                int pct = 0;
-	                if (runMs!=0){
-	                	if (runMs<0) {
+	                if (runNs!=0){
+	                	if (runNs<0) {
 	                		target.append(" CPU 100%");
 	                	} else {
-	                		pct = (int)((1000L*runMs)/ (m.stageShutdownTimeMs[stage.stageId] - m.stageStartTimeMs[stage.stageId] ));
-	                		if (pct>0) {
-	                			Appendables.appendValue(target," CPU ",pct/10,".");
-	                			Appendables.appendValue(target,"",pct%10,"%");	            			
+	                		long shutdownTime = m.stageShutdownTimeNs[stage.stageId];
+	                		if (shutdownTime<=0) {
+	                			//NOTE: this is required becaue FixedThreadScheduler and NonThreadScheduler quit too early before this gets set.
+	                			shutdownTime = System.nanoTime();
+	                		}
+	                		
+	                		pct = (int)((10_000L*runNs)/ (shutdownTime - m.stageStartTimeNs[stage.stageId] ));
+	                		if (pct>=0) {
+	                			Appendables.appendValue(target," CPU ",pct/100,".");
+	                			Appendables.appendFixedDecimalDigits(target,pct%100,10).append("%");	            			
+	                		} else {
+	                			target.append(" CPU N/A%");
+	                			
+	                			logger.info("A bad % value {} {} {} {}",pct,runNs, m.stageShutdownTimeNs[stage.stageId],  m.stageStartTimeNs[stage.stageId] );
+	                					
 	                		}
 	                	}
+	                } else {
+	                	target.append(" CPU N/A%");
+	                	
+            			logger.info("B bad % value {} {} {} {}",pct,runNs, m.stageShutdownTimeNs[stage.stageId],  m.stageStartTimeNs[stage.stageId] );
+            					
+            			
 	                }
 	                target.append("\"");
 	                
-	                if (pct>=800) {
+	                if (pct>=8000) {
                 		target.append(",color=red");	    
-                	} else if (pct>=600) {
+                	} else if (pct>=6000) {
                 		target.append(",color=orange");	    
                 	} else {
                 	}
@@ -1767,12 +1808,12 @@ public class GraphManager {
         return true;
     }
 
-	public static void accumRunTime(GraphManager graphManager, int stageId, long duration) {
-		graphManager.stageRunMS = incValue(graphManager.stageRunMS,stageId, duration);
+	public static void accumRunTimeNS(GraphManager graphManager, int stageId, long duration) {
+		graphManager.stageRunNS[stageId] += duration; 
 	}
 
-	public static void accumRunTimeAll(GraphManager graphManager, int stageId) {
-		graphManager.stageRunMS = setValue(graphManager.stageRunMS,stageId,-1);//flag for 100%
+	public static void accumRunTimeAll(GraphManager graphManager, int stageId) {		
+		graphManager.stageRunNS[stageId] = -1; //flag for 100%
 	}
 
 

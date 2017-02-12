@@ -21,7 +21,7 @@ public class RingBufferMonitorStage extends PronghornStage {
 	 * @param observedRingBuffer
 	 * @param notifyRingBuffer
 	 */
-	public RingBufferMonitorStage(GraphManager gm, Pipe observedRingBuffer, Pipe notifyRingBuffer) {
+	public RingBufferMonitorStage(GraphManager gm, Pipe observedRingBuffer, Pipe<PipeMonitorSchema> notifyRingBuffer) {
 		//the observed ring buffer is NOT an input
 		super(gm, NONE, notifyRingBuffer); 
 		this.observedPipe = observedRingBuffer;

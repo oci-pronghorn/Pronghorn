@@ -108,13 +108,21 @@ public class MonitorConsoleStage extends PronghornStage {
 	@Override
 	public void shutdown() {
 		
+		//new Exception("SHUTDOWN MonitorConsoleStage ").printStackTrace();
+		
 		int i = hists.length;
 		while (--i>=0) {
-			
+			if (null==hists[i]) {
+				return;
+			}
 			long pctile = hists[i].getValueAtPercentile(96); //do not change: this is the 80-20 rule applied twice
 			
-			long avg = (long)hists[i].getMean();
-				
+			long avg = -1;
+			try {
+				avg = (long)hists[i].getMean();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 			boolean inBounds = true;//value>80 || value < 1;
             long sampleCount = hists[i].getTotalCount();
             PronghornStage producer = GraphManager.getRingProducer(graphManager,  inputs[i].id);
@@ -152,7 +160,9 @@ public class MonitorConsoleStage extends PronghornStage {
 		Appendables.appendValue(System.out, "    ", i, " ");
 		System.out.append(ringName);
 		Appendables.appendValue(System.out, " Queue Fill ", pctile, "%");
-		Appendables.appendValue(System.out, " Average:", avg, "%"); 
+		if (avg>=0) {
+			Appendables.appendValue(System.out, " Average:", avg, "%"); 
+		}
 		Appendables.appendValue(System.out, "    samples:", sampleCount);
 		Appendables.appendValue(System.out, "  totalPublished:",published);
 		
