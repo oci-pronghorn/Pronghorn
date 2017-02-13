@@ -1610,7 +1610,8 @@ public class Pipe<T extends MessageSchema> {
 	public static <S extends MessageSchema> void skipNextFragment(Pipe<S> pipe, int msgIdx) {
 		   long pos = Pipe.getWorkingTailPosition(pipe);
 		   int msgSize = Pipe.sizeOf(pipe, msgIdx);
-		   int msgBytesConsumed = Pipe.slab(pipe)[ Pipe.blobMask(pipe) & (int)(pos+msgSize-2) ]; 
+		   int idx = (int)(pos+msgSize-2);
+		   int msgBytesConsumed = Pipe.slab(pipe)[ Pipe.slabMask(pipe) & idx ]; 
 
 		   //position for the bytes consumed is stepped over and we have already moved forward by size of messageIdx header so substract 2.	   
 		   pipe.slabRingTail.workingTailPos.value += (msgSize-2); 
