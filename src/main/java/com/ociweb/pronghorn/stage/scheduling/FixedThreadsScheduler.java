@@ -65,6 +65,10 @@ public class FixedThreadsScheduler extends StageScheduler {
 	private NonThreadScheduler[] ntsArray;
 	
 	public FixedThreadsScheduler(GraphManager graphManager, int targetThreadCount) {
+		this(graphManager, targetThreadCount, true);
+	}
+	
+	public FixedThreadsScheduler(GraphManager graphManager, int targetThreadCount, boolean enforceLimit) {
 		super(graphManager);
 				
 	    final Comparator<? super Pipe> joinFirstComparator = new JoinFirstComparator(graphManager);
@@ -81,7 +85,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    
 	    //counter for root ids, must not collide with stageIds so we start above that point.	
 	    //this is where we decide which stages will be in which thread groups.
-	    final int rootCounter = hierarchicalClassifier(graphManager, targetThreadCount, pipes, totalThreads);    
+	    final int rootCounter = hierarchicalClassifier(graphManager, targetThreadCount, pipes, totalThreads, enforceLimit);    
 
 	    
 	    PronghornStage[][] stageArrays = buildOrderedArraysOfStages(graphManager, rootCounter);
@@ -111,13 +115,14 @@ public class FixedThreadsScheduler extends StageScheduler {
 		
 	}
 
-	private int hierarchicalClassifier(GraphManager graphManager, int targetThreadCount, Pipe[] pipes, int totalThreads) {
+	private int hierarchicalClassifier(GraphManager graphManager, int targetThreadCount, Pipe[] pipes, int totalThreads, boolean enforceLimit) {
 				
 		int rootCounter =  totalThreads+1;
 		
 		//////////////////////////////////////////////////
 		//before we begin combine all monitior stages on a single thread to minimize disruption across the graph.
 		///////////////////////////////////////////////////
+		//NOTE May test removing this later
 		
 		PronghornStage[] monitors = GraphManager.allStagesByType(graphManager, RingBufferMonitorStage.class);
 		int m = monitors.length;
@@ -125,9 +130,9 @@ public class FixedThreadsScheduler extends StageScheduler {
 			RingBufferMonitorStage rbms = (RingBufferMonitorStage)monitors[m];
 			
 			int outId = GraphManager.getOutputPipe(graphManager, rbms.stageId).id;
-			
+		//	int outId = rbms.getObservedPipeId();//this idea did not work out.
+									
 			int consumerId = GraphManager.getRingConsumer(graphManager, outId).stageId;
-						
     		int consRoot = rootId(consumerId, rootsTable);
     		int prodRoot = rootId(rbms.stageId , rootsTable);
     		if (consRoot!=prodRoot) {
@@ -138,8 +143,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 		///////////////////////////////////////////////
 		//done combining the monitor stages.
 		///////////////////////////////////////////////
-		
-		
+			
 		
 		//loop over pipes once and stop early if total threads is smaller than or matches the target thread count goal
 	    int i = pipes.length;
@@ -150,9 +154,8 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    	int producerId = GraphManager.getRingProducerId(graphManager, ringId);
 	    	//only join stages if they both exist
 	    	if (consumerId>0 && producerId>0) {	  
-	    		
-	    		
-	    		if (isValidToCombine(ringId, consumerId, producerId, graphManager)) {    		
+	    			    		
+	    		if (isValidToCombine(ringId, consumerId, producerId, graphManager)) {
 	    		
 	    		
 		    		//determine if they are already merged in the same tree?
@@ -170,18 +173,56 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    
 	    //////////////////////////
 	    //if needed we do another pass to combine unconnected groups
-	    ///////////////////////
+	    //we combine the 2 smallest then we repeat
+	    //////////////////////	    
 	    
-	    
-	    
-	    
+	    if (enforceLimit) {
+	   
+		    while (totalThreads>targetThreadCount) {
+	
+		    	int[] rootMemberCounter = new int[rootCounter+1]; 
+		    	 buildCountOfStagesForEachThread(graphManager, rootCounter, rootMemberCounter);
+		    	 
+		    	 int smallest1count = Integer.MAX_VALUE;
+		    	 int smallest1root = -1;
+		    	 
+		    	 int smallest2count = Integer.MAX_VALUE;
+		    	 int smallest2root = -1;
+		    	 
+		    	 int j = rootMemberCounter.length;
+		    	 while (--j>=0) {
+		    		 
+		    		 if (rootMemberCounter[j]>0) {
+		    			 
+		    			if (rootMemberCounter[j] <= smallest2count) {
+		    				
+		    				smallest1count = smallest2count;
+		    				smallest1root  = smallest2root;
+		    				
+		    				smallest2count = rootMemberCounter[j];
+		    				smallest2root  = j;
+		    				
+		    			}
+		    		 }
+		    	 }
+		    	 
+		    	 
+		    	 if (smallest1count==Integer.MAX_VALUE) {
+		    		 break;//nothing more could be done
+		    	 } else {
+		    		 rootCounter = combineToSameRoot(rootCounter, smallest1root, smallest2root);
+		    		 totalThreads--;//removed one thread
+		    	 }	
+		    	
+		    }
+	    }
 	    
 	    
 	    
 	    ///////////////////////////
 	    
 	    
-	    
+	    //TODO: further the non-thread scheduler needs to return control more often when we have large sleep times.
 	    
 	    
 	    
@@ -276,9 +317,9 @@ public class FixedThreadsScheduler extends StageScheduler {
 		return rootCounter;
 	}
 
-	private int[] buildCountOfStagesForEachThread(GraphManager graphManager, int rootCounter) {
-		
-	    int[] rootMemberCounter = new int[rootCounter+1]; 
+	private int[] buildCountOfStagesForEachThread(GraphManager graphManager, int rootCounter, int[] rootMemberCounter) {
+		Arrays.fill(rootMemberCounter, 0);
+	   	    
 	    int countStages = GraphManager.countStages(graphManager);
 	    
 		for(int stages=1; stages <= countStages; stages++) { 
@@ -303,8 +344,9 @@ public class FixedThreadsScheduler extends StageScheduler {
 
 	private PronghornStage[][] buildOrderedArraysOfStages(GraphManager graphManager, int rootCounter) {
 	    
+		int[] rootMemberCounter = new int[rootCounter+1]; 
 
-	    int[] rootMemberCounter = buildCountOfStagesForEachThread(graphManager, rootCounter);	    
+	    buildCountOfStagesForEachThread(graphManager, rootCounter, rootMemberCounter);	    
 
 		int stages;
 		PronghornStage[][] stageArrays = new PronghornStage[rootCounter+1][]; //one for every stage plus 1 for our new root working room

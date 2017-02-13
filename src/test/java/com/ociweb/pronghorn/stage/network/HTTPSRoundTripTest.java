@@ -355,14 +355,20 @@ public class HTTPSRoundTripTest {
 			//GL large   1.26M       1.1GB
 			//netty      160K        1.6GB  (not TLS) 
 			
+			//TLS			
+			//nginx    100K with  166M ?  4 clients
 			
-			boolean isTLS = true;
+			//GL small  120K         600MB
+			
+			
+			boolean isTLS = true;//true;
 			int port = 8080;//8443;
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";
 					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
 			
-			boolean useLocalServer = true;//
+			boolean isLarge = false;
+			boolean useLocalServer = false;//
 
 			
 			
@@ -384,7 +390,6 @@ public class HTTPSRoundTripTest {
 	    	//GraphManager.enableBatching(gm);
 	    	
 			 
-			boolean isLarge = true;
 	    	final String testFile = "groovySum.json";
 	    	ServerCoordinator serverCoord = null;
 	    	if (useLocalServer) {
@@ -396,8 +401,8 @@ public class HTTPSRoundTripTest {
 	    	
 	    	/////////////////
 	        /////////////////
-	    	int base2SimultaniousConnections = 4;//TODO: must support multiple simultaninous connections beyond server pipes, Need to share pipes, not enough memory.
-	    	int clientCount = 2;
+	    	int base2SimultaniousConnections = 3;
+	    	int clientCount = 4;
 	    		    	
 	    	//TODO: this number must be the limit of max simuantious handshakes.
 	    	int maxPartialResponsesClient = (1<<base2SimultaniousConnections); //input lines to client (should be large)
@@ -420,7 +425,7 @@ public class HTTPSRoundTripTest {
 	    	//////////////
 
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
-	    	final int loadMultiplier = isTLS? 100_000 : 1_000_000;// 2_000_000;
+	    	final int loadMultiplier = isTLS? 300_000 : 1_000_000;// 2_000_000;
 
 	    		    	
 			//one of these per unwrap unit and per partial message, there will be many of these normally so they should not be too large
@@ -451,9 +456,9 @@ public class HTTPSRoundTripTest {
 			final ServerCoordinator serverCoord1 = serverCoord;
 			final ClientCoordinator[] clientCoord = clientCoords;
 			
-			
-			final StageScheduler scheduler = new FixedThreadsScheduler(gm, 6);//hangs with 20??  //TODO: ONE OF THESE MUST STILL BE IN HANG WITH NO PROGRESS...
-		//	final StageScheduler scheduler = new ThreadPerStageScheduler(gm);
+			//TODO: if they are already split how do I know that wrapper should not be joinged.
+			//final StageScheduler scheduler = new FixedThreadsScheduler(gm, Runtime.getRuntime().availableProcessors(), false);
+			final StageScheduler scheduler = new ThreadPerStageScheduler(gm);
 	
 			               
 			//TODO: add this to scheduler so its done everywehre by default!!  TODO: urgent.

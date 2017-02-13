@@ -579,16 +579,16 @@ public class NetGraphBuilder {
 			maxConnectionBitsOnServer     = 12;    //4k  open connections on server	    	
 			groups                        = 1;	
 		
-			serverInputMsg                = 8; 
-			serverInputBlobs              = 1<<8;  
+			serverInputMsg                = isTLS? 8 : 8; 
+			serverInputBlobs              = isTLS? 1<<15 : 1<<8;  
 			
-			serverMsgToEncrypt            = 32;
+			serverMsgToEncrypt            = 128;
 			serverBlobToEncrypt           = 1<<15; //Must NOT be smaller than the file write output (modules) ??? ONLY WHEN WE ARE USE ING TLS
 			
-			serverOutputMsg               = 128; //important for outgoing data and greatly impacts performance
+			serverOutputMsg               = isTLS?32:128; //important for outgoing data and greatly impacts performance
 			serverBlobToWrite             = 1<<10; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
 			
-			fromRouterMsg 			      = 2048; //impacts performance
+			fromRouterMsg 			      = isTLS?256:2048; //impacts performance
 			fromRouterBlob				  = 1<<7;
 			
 			routerCount                   = 4;
@@ -596,9 +596,9 @@ public class NetGraphBuilder {
 			serverSocketWriters           = 1;
 			releaseMsg                    = 256;
 						
-			serverRequestUnwrapUnits      = isTLS?cores/4:2;  //server unwrap units - need more for handshaks and more for posts
-			serverResponseWrapUnits 	  = isTLS?cores:4;    //server wrap units
-			serverPipesPerOutputEngine 	  = isTLS?8:8;//multiplier against server wrap units for max simultanus user responses.
+			serverRequestUnwrapUnits      = isTLS?4:2;  //server unwrap units - need more for handshaks and more for posts
+			serverResponseWrapUnits 	  = isTLS?8:4;    //server wrap units
+			serverPipesPerOutputEngine 	  = isTLS?4:8;//multiplier against server wrap units for max simultanus user responses.
 		}
 		
 

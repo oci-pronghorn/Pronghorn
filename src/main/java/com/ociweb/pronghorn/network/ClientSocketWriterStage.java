@@ -371,11 +371,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 			}
 		} catch (IOException e) {
 			logger.info("excption while writing to socket. ",e);
-			connections[i].close();
-			
-			logger.info("FORCED EXIT");
-			System.exit(-1);
-			
+			connections[i].close();			
 		}
 		if (!buffers[i].hasRemaining()) {
 			

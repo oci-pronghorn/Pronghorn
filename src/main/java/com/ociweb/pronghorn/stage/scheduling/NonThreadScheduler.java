@@ -81,6 +81,9 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         shutdownRequested = new AtomicBoolean(false);
         
         final int stageCount = stages.length;
+        
+        
+        //TODO: we need to re-order the stages to ensure we run these in order?  This will be important.
 
         //System.err.println("beging stage startup "+this.hashCode());
         startupAllStages(stageCount);
@@ -366,17 +369,23 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 //    		}
     		
     		//we have called run but we know that it can do anything until this time so we must wait
-    		long nanoDelay = nextRun-System.nanoTime();
-    		if (nanoDelay>0) {
-		    	//System.out.println("delay "+nanoDelay);
+    		if (0!=nextRun) {
+	    		long nanoDelay = nextRun-System.nanoTime();
+	    		if (nanoDelay>0) {
+
+	    			if (nanoDelay > 1_000_000) {
+	    				return;//too long to wait so return
+	    			}
+			    	//System.out.println("delay "+nanoDelay);
 		    		try {
 						Thread.sleep(nanoDelay/1_000_000,(int) (nanoDelay%1_000_000));
 					} catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
 						return;
 				    }
+		    		
+	    		}
     		}
-    		    		
     		
     		nextRun = 0;
     	} 
@@ -390,29 +399,29 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         	//confirm that we have work to do before
         	
         	
-        	if (isInternalEmpty && inputPipes.length>0 ) { // if all pipes were emptied on previous run.
-        	
-        		long spinDelay = 1000;		
-        		//sleep thread until something appears on one of these inputs
-    	        while (isSyncInputHeadValues(producerInputPipes, producerInputPipeHeads) && isSyncInputHeadValues(inputPipes, inputPipeHeads) && !isShutdownRequested(this)) {
-    
-    	        	try {
-						Thread.sleep(spinDelay/1000000,(int)spinDelay%1000000); //TODO: review all the stages to pick an appropriate large value.
-					} catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						break;
-					}
-    	        	
-    	        	int p = producersIdx.length;
-    	        	while (--p>=0) {
-    	        		int idx = producersIdx[p];
-    	        		
-    	        		spinDelay = runStage(graphManager, someAreRateLimited, spinDelay, idx, rates[idx], lastRunStage = stages[idx], this);
-    	        		lastRunStage = null;
-    	        	}
-    	        }
-    	        isInternalEmpty = false;
-        	}
+//        	if (isInternalEmpty && inputPipes.length>0 ) { // if all pipes were emptied on previous run.
+//        	
+//        		long spinDelay = 1000;		
+//        		//sleep thread until something appears on one of these inputs
+//    	        while (isSyncInputHeadValues(producerInputPipes, producerInputPipeHeads) && isSyncInputHeadValues(inputPipes, inputPipeHeads) && !isShutdownRequested(this)) {
+//        	        	
+//    	        	try {
+//						Thread.sleep(spinDelay/1000000,(int)spinDelay%1000000); //TODO: review all the stages to pick an appropriate large value.
+//					} catch (InterruptedException e) {
+//						Thread.currentThread().interrupt();
+//						break;
+//					}
+//    	        	
+//    	        	int p = producersIdx.length;
+//    	        	while (--p>=0) {
+//    	        		int idx = producersIdx[p];
+//    	        		
+//    	        		spinDelay = runStage(graphManager, someAreRateLimited, spinDelay, idx, rates[idx], lastRunStage = stages[idx], this);
+//    	        		lastRunStage = null;
+//    	        	}
+//    	        }
+//    	        isInternalEmpty = false;
+//        	}
         	
         	
         	long nearestNextRun = Long.MAX_VALUE;
@@ -425,7 +434,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
                     
                     //if one is not shutting down then keep going
                     continueRun |= !GraphManager.isStageShuttingDown(graphManager, stages[s].stageId);
-                    
+                    Thread.yield();
              }
              if (!continueRun || shutdownRequested.get()) {
             	shutdown();

@@ -908,7 +908,7 @@ public class SSLUtil {
 	         if (status == Status.BUFFER_OVERFLOW) {	
 				//too much data and the buffer is not big enough
 				//this should not happen.
-				logger.info("OVERFLOW, the pipe is not configured to be large enough.");				
+				logger.info("OVERFLOW, the pipe {} is not configured to be large enough.", target.id);				
 				return 0;
 				
 			} else if (status==Status.CLOSED){
