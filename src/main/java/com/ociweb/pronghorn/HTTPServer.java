@@ -11,6 +11,7 @@ import com.ociweb.pronghorn.network.ModuleConfig;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
+import com.ociweb.pronghorn.stage.scheduling.FixedThreadsScheduler;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
@@ -47,6 +48,7 @@ public class HTTPServer {
 		//CREATE A SCHEDULER TO RUN THE SERVER
 		////////////////
 		final StageScheduler scheduler = new ThreadPerStageScheduler(gm);
+	//	final StageScheduler scheduler = new FixedThreadsScheduler(gm, Runtime.getRuntime().availableProcessors(), false);
 				
 		//////////////////
 		//UPON CTL-C SHUTDOWN OF SERVER DO A CLEAN SHUTDOWN

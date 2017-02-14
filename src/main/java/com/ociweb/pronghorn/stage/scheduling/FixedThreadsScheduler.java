@@ -220,12 +220,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    
 	    
 	    ///////////////////////////
-	    
-	    
-	    //TODO: further the non-thread scheduler needs to return control more often when we have large sleep times.
-	    
-	    
-	    
+
 	    threadCount = totalThreads;
 	    //logger.debug("Threads Requested: {} Threads Used: {}",targetThreadCount,threadCount);
 		return rootCounter;
@@ -242,24 +237,20 @@ public class FixedThreadsScheduler extends StageScheduler {
 		}
 		
 				
-		int countOfMachingConsumers = countParallelConsumers(consumerId, producerId, graphManager, p);
-		int countOfMatchingProducers = countParallelProducers(consumerId, producerId, graphManager, p);
-        
-        
-        //the consumer stage has 2 or more of the same pipe schema as this one it consumes so we should not share the same root
-        if (countOfMachingConsumers>=2) {
+		//the consumer stage has 2 or more of the same pipe schema as this one it consumes so we should not share the same root
+        if (countParallelConsumers(consumerId, producerId, graphManager, p)) {
         	return false;
         }
         //the producer stage has 2 or more of the same pipe schema as this one it producers so we should not share the same root.
-        if (countOfMatchingProducers>=2) {
+        if (countParallelProducers(consumerId, producerId, graphManager, p)) {
         	return false;
         }
 		
 		return true;
 	}
 
-	private int countParallelProducers(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
-		int countOfMatchingProducers = 0;
+	private boolean countParallelProducers(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
+		int noMatchCount = 0;
 		int proOutCount = GraphManager.getOutputPipeCount(graphManager, producerId);
         while (--proOutCount>=0) {
 			//all the other output coming from the producer
@@ -269,20 +260,20 @@ public class FixedThreadsScheduler extends StageScheduler {
 			if (Pipe.isForSameSchema(outputPipe, p)) {
 				
 				//determine if they are consumed by the same place or not
-				int conId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
+				int conId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);				
 				if (consumerId  != conId) {
 					//only count if they are not consumed at the same place
-					countOfMatchingProducers++;
+					noMatchCount++;
 				}
 				//else if they are consumed by the same place then the pipes are just for parallel storage not parallel compute
 				
 			}
 		}
-		return countOfMatchingProducers;
+		return noMatchCount>=1;
 	}
 
-	private int countParallelConsumers(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
-		int countOfMachingConsumers = 0;
+	private boolean countParallelConsumers(int consumerId, int producerId, GraphManager graphManager, Pipe p) {
+		int noMatchCount = 0;
 		int conInCount = GraphManager.getInputPipeCount(graphManager, consumerId);
 		while (--conInCount>=0) {
 			//all the other inputs going into the consumer
@@ -295,14 +286,14 @@ public class FixedThreadsScheduler extends StageScheduler {
 				int prodId = GraphManager.getRingProducerId(graphManager, inputPipe.id);
 				if (producerId != prodId) {
 					//only count if they are NOT coming from the same place
-					countOfMachingConsumers++;
+					noMatchCount++;
 					
 				} 
 				//else if they are all from the samme place then pipes are used here for holding parallel work not for CPU intensive activities
 
 			}
 		}
-		return countOfMachingConsumers;
+		return noMatchCount>=1;
 	}
 
 	private int combineToSameRoot(int rootCounter, int consRoot, int prodRoot) {

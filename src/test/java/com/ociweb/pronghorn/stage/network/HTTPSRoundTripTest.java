@@ -352,17 +352,25 @@ public class HTTPSRoundTripTest {
 			//nginx    260K  with  160MB
 			
 			//GL small   505K        52MB  
-			//GL large   1.26M       1.1GB
-			//netty      160K        1.6GB  (not TLS) 
+			//GL large   1.31M       900M
+			//netty      160K        600M  (not TLS) 
 			
 			//TLS			
-			//nginx    100K with  166M ?  4 clients
+			//nginx     100K with     166M ?  4 clients			
+			//GL small  120K          600M
+			//GL large  124K          1.5GB
+			//netty      80K         1.7GB
 			
-			//GL small  120K         600MB
+//			#Java comparison of HTTPs TLS requests per second
+//			 74K RPS, 549 MB RAM - RxNetty
+//			117K RPS, 589 MB RAM - Green Lightning (over 50% more RPS)
+
+			
+			//TODO: RERUN THE NETTY AND GL TESTS WITH RESTRICTED MEMORY TO ENSURE NO EXTRA LARGE NUMBERS...
 			
 			
 			boolean isTLS = true;//true;
-			int port = 8080;//8443;
+			int port = 8443;//8080;//8443; //8080
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";
 					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
@@ -457,7 +465,7 @@ public class HTTPSRoundTripTest {
 			final ClientCoordinator[] clientCoord = clientCoords;
 			
 			//TODO: if they are already split how do I know that wrapper should not be joinged.
-			//final StageScheduler scheduler = new FixedThreadsScheduler(gm, Runtime.getRuntime().availableProcessors(), false);
+		//	final StageScheduler scheduler = new FixedThreadsScheduler(gm, Runtime.getRuntime().availableProcessors(), false);
 			final StageScheduler scheduler = new ThreadPerStageScheduler(gm);
 	
 			               

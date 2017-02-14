@@ -551,28 +551,28 @@ public class NetGraphBuilder {
 			
 			
 			maxPartialResponsesServer     = 32;//256;    // (big memory consumption!!) concurrent partial messages 
-			maxConnectionBitsOnServer 	  = 22;       //4M open connections on server	    	
+			maxConnectionBitsOnServer 	  = 20;       //1M open connections on server	    	
 			groups                        = 1;
 			
 			serverInputMsg                = 20;
 			serverInputBlobs              = 1<<14;
 			
-			serverMsgToEncrypt            = 128;
+			serverMsgToEncrypt            = 512;
 			serverBlobToEncrypt           = 1<<14;
 			
-			serverOutputMsg               = 512;
+			serverOutputMsg               = isTLS?128:512;
 			serverBlobToWrite             = 1<<12;
 			
-			fromRouterMsg 				  = 2048;//impacts performance
+			fromRouterMsg 				  = isTLS?512:2048;//impacts performance
 			fromRouterBlob 				  = 1<<10;
 			
-			serverSocketWriters           = 2;
-			routerCount                   = 8;
+			serverSocketWriters           = isTLS?1:2;
+			routerCount                   = isTLS?2:8;
 			releaseMsg                    = 512;
 						
-			serverRequestUnwrapUnits      = isTLS?cores/4:2;  //server unwrap units - need more for handshaks and more for posts
-			serverResponseWrapUnits 	  = isTLS?cores:4;    //server wrap units
-			serverPipesPerOutputEngine 	  = isTLS?8:8;//multiplier against server wrap units for max simultanus user responses.
+			serverRequestUnwrapUnits      = isTLS?4:2;  //server unwrap units - need more for handshaks and more for posts
+			serverResponseWrapUnits 	  = isTLS?8:4;    //server wrap units
+			serverPipesPerOutputEngine 	  = isTLS?4:8;//multiplier against server wrap units for max simultanus user responses.
 			
 		} else {	//small
 			maxPartialResponsesServer     = 32;    //16 concurrent partial messages 
