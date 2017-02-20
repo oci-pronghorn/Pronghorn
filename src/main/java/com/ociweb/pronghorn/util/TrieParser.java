@@ -647,9 +647,9 @@ public class TrieParser {
                         
                         if ('%'==source[sourceMask & sourcePos]) {                        	
                     		byte second = source[sourceMask & (sourcePos+1)];
-                			if ('u'==second || 'U'==second ||
-                				'.'==second || '/'==second ||
-                				'i'==second || 'I'==second) {
+                			if (ESCAPE_CMD_UNSIGNED_DEC==second || ESCAPE_CMD_UNSIGNED_HEX==second ||
+                				ESCAPE_CMD_DECIMAL==second      || ESCAPE_CMD_RATIONAL==second ||
+                				ESCAPE_CMD_SIGNED_DEC==second   || ESCAPE_CMD_SIGNED_HEX==second) {
                 				
                 				pos++;
                 				length += 2;

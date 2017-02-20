@@ -216,6 +216,17 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     ///////////
     //end of DataOutput methods
     ////////// 
+    
+    public void writeStream(DataInputBlobReader input, int length) {
+    	activePosition += DataInputBlobReader.read(input, byteBuffer, activePosition, length, byteMask);
+    }
+    
+    public static void writeStream(DataOutputBlobWriter that,  DataInputBlobReader input, int length) {
+    	that.activePosition += DataInputBlobReader.read(input, that.byteBuffer, that.activePosition, length, that.byteMask);
+    }
+        
+    /////////////////////
+    /////////////////////
 
     private static int write16(byte[] buf, int mask, int pos, int v) {
         buf[mask & pos++] = (byte)(v >>> 8);
@@ -259,15 +270,13 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
     
     public void writeByteArray(byte[] bytes) {
-        activePosition = writeByteArray(bytes, bytes.length, byteBuffer, byteMask, activePosition);
+        activePosition = writeByteArray(this, bytes, bytes.length, byteBuffer, byteMask, activePosition);
     }
-
-    private int writeByteArray(byte[] bytes, int len, byte[] bufLocal, int mask, int pos) {
+    
+    private static int writeByteArray(DataOutputBlobWriter writer, byte[] bytes, int len, byte[] bufLocal, int mask, int pos) {
         pos = write32(bufLocal, mask, pos, len);
-        for(int i=0;i<len;i++) {
-            bufLocal[mask & pos++] = (byte) bytes[i];
-        }
-        return pos;
+        Pipe.copyBytesFromToRing(bytes, 0, Integer.MAX_VALUE, writer.byteBuffer, pos, writer.byteMask, len); 
+		return pos+len;
     }
 
     public void writeCharArray(char[] chars) {
@@ -366,6 +375,10 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }    
     
+    public void write(byte[] source, int sourceOff, int sourceLen, int sourceMask) {
+    	DataOutputBlobWriter.write(this, source, sourceOff, sourceLen, sourceMask);
+    }
+    
     public static void write(DataOutputBlobWriter writer, byte[] source, int sourceOff, int sourceLen, int sourceMask) {
         Pipe.copyBytesFromToRing(source, sourceOff, sourceMask, writer.byteBuffer, writer.activePosition, writer.byteMask, sourceLen); 
         writer.activePosition+=sourceLen;
@@ -380,11 +393,11 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     //low level copy from reader to writer
     ///////
     
-    public static void writeBytes(DataOutputBlobWriter writer, DataInputBlobReader<RawDataSchema> reader, int length) {
+    public static int writeBytes(DataOutputBlobWriter writer, DataInputBlobReader<RawDataSchema> reader, int length) {
 
-        DataInputBlobReader.read(reader, writer.byteBuffer, writer.activePosition, length, writer.byteMask);        
-        writer.activePosition+=length;
-        
+        int len = DataInputBlobReader.read(reader, writer.byteBuffer, writer.activePosition, length, writer.byteMask);        
+        writer.activePosition+=len;
+        return len;
     }
     
     

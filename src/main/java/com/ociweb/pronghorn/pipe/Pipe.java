@@ -65,7 +65,7 @@ import com.ociweb.pronghorn.util.Appendables;
  */
 public class Pipe<T extends MessageSchema> {
 
-    private static final AtomicInteger ringCounter = new AtomicInteger();
+    private static final AtomicInteger pipeCounter = new AtomicInteger();
     
     /**
      * Holds the active head position information.
@@ -471,6 +471,16 @@ public class Pipe<T extends MessageSchema> {
     //helper method for those stages that are not watching for the poison pill.
 	private long knownPositionOfEOF = Long.MAX_VALUE;
 	
+    
+    private long markedHeadSlab;
+    private int markedHeadBlob;
+    
+    private long markedTailSlab;
+    private int markedTailBlob;
+
+    private int activeBlobHead = -1;
+	
+	
 	public Pipe(PipeConfig<T> config) {
 		this(config,true);
 	}
@@ -488,7 +498,7 @@ public class Pipe<T extends MessageSchema> {
 
         //Assign the immutable universal id value for this specific instance
         //these values are required to keep track of all ring buffers when graphs are built
-        this.id = ringCounter.getAndIncrement();
+        this.id = pipeCounter.getAndIncrement();
 
         this.bitsOfSlabRing = primaryBits;
         this.bitsOfBlogRing = byteBits;
@@ -769,9 +779,13 @@ public class Pipe<T extends MessageSchema> {
 
 
 
+    public static <S extends MessageSchema> int totalPipes() {
+        return pipeCounter.get();
+    }
 
+    @Deprecated
     public static <S extends MessageSchema> int totalRings() {
-        return ringCounter.get();
+        return totalPipes();
     }
 
 	public Pipe<T> initBuffers() {
@@ -3434,16 +3448,13 @@ public class Pipe<T extends MessageSchema> {
     }
 
     
-    private long markedHeadSlab;
-    private int marketHeadBlob;
-    
     /**
      * Hold this position in case we want to abandon what is written
      * @param pipe
      */
     public static void markHead(Pipe pipe) {
         pipe.markedHeadSlab = Pipe.workingHeadPosition(pipe);
-        pipe.marketHeadBlob = Pipe.getBlobWorkingHeadPosition(pipe);
+        pipe.markedHeadBlob = Pipe.getBlobWorkingHeadPosition(pipe);
     }
     
     /**
@@ -3452,11 +3463,28 @@ public class Pipe<T extends MessageSchema> {
      */
     public static void resetHead(Pipe pipe) {
         Pipe.setWorkingHead(pipe, pipe.markedHeadSlab);
-        Pipe.setBytesWorkingHead(pipe, pipe.marketHeadBlob);
-        
+        Pipe.setBytesWorkingHead(pipe, pipe.markedHeadBlob);
     }
-
-    private int activeBlobHead = -1;
+    
+    /**
+     * Hold this position in case we want to re-read this single message
+     * @param pipe
+     */
+    public static void markTail(Pipe pipe) {
+        pipe.markedTailSlab = Pipe.getWorkingTailPosition(pipe);
+        pipe.markedTailBlob = Pipe.getWorkingBlobRingTailPosition(pipe);
+    }
+    
+    /**
+     * abandon what has been read and move back to top of fragment to read again.
+     * MUST be called before confirm of read and never after
+     * @param pipe
+     */
+    public static void resetTail(Pipe pipe) {
+        Pipe.setWorkingTailPosition(pipe, pipe.markedTailSlab);
+        Pipe.setBytesWorkingTail(pipe, pipe.markedTailBlob);
+    }
+    
     
 	public static int storeBlobWorkingHeadPosition(Pipe<?> target) {
 		assert(-1 == target.activeBlobHead) : "can not store second until first is resolved";

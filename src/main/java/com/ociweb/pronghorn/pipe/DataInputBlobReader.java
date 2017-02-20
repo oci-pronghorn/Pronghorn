@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 
+import com.ociweb.pronghorn.util.math.Decimal;
+
 public class DataInputBlobReader<S extends MessageSchema>  extends InputStream implements DataInput {
 
     private final StringBuilder workspace;
@@ -291,7 +293,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     ////
     //support method for direct copy
     ////
-    public static void read(DataInputBlobReader reader, byte[] b, int off, int len, int mask) {
+    public static int read(DataInputBlobReader reader, byte[] b, int off, int len, int mask) {
 
         int max = bytesRemaining(reader);
         if (len > max) {
@@ -299,10 +301,15 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         }
         Pipe.copyBytesFromToRing(reader.backing, reader.position, reader.byteMask, b, off, mask, len);
         reader.position += len;
-
+        return len;
     }
-    
-    
+        
+    public void readInto(DataOutputBlobWriter writer, int length) {
+    	
+    	DataOutputBlobWriter.write(writer, backing, position, length, byteMask);
+    	position += length;
+    	
+    }
     
     
     ///////
@@ -337,6 +344,14 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
 
     public int readPackedInt() {   
         return readPackedInt(this);
+    }
+    
+    public double readDecimalAsDouble() {
+    	return Decimal.asDouble(readPackedLong(), readPackedInt());
+    }
+    
+    public long readDecimalAsLong() {
+    	return Decimal.asLong(readPackedLong(), readPackedInt());
     }
     
     public short readPackedShort() {

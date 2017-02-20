@@ -320,12 +320,23 @@ public class TrieParserReader {
     }
     
     public static int parseSkip(TrieParserReader reader, int count) {
+    	
     	int len = Math.min(count, reader.sourceLen);
         reader.sourcePos += len;
         reader.sourceLen -= len;
 
         return len;
     }
+    
+    public static boolean parseSkipUntil(TrieParserReader reader, int target) {    	
+    	//skip over everything until we match the target, then we can parse from that point
+    	while ((reader.sourceLen > 0) && (reader.sourceBacking[reader.sourcePos & reader.sourceMask] != target )) {
+    		reader.sourcePos++;
+    	}
+    	
+    	return reader.sourceLen > 0;
+    }
+    
     
     public static int parseCopy(TrieParserReader reader, long count, DataOutputBlobWriter<?> writer) {
         
