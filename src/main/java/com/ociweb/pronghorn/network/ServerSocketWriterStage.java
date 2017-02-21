@@ -58,7 +58,7 @@ public class ServerSocketWriterStage extends PronghornStage {
   
     private long totalBytesWritten = 0;
     
-    //TODO: add param for small to use just 4 ??
+    //TODO: add param for small to use just 4 ?? //TODO: this must be changed to max latency wait not fixed cycles, important.
     private int bufferMultiplier = 16;//12; //NOTE: larger buffer allows for faster xmit.
 
 

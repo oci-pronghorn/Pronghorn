@@ -183,6 +183,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private long trailingReader;
     private long trailingBlobReader;
     private long totalBytesWritten; 
+    private int shutdownCount;
     
     private FileReadModuleStageData data;
  
@@ -242,7 +243,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         if (rootPath.isFile()) {
         	defaultPathFile = rootPath.toString();
         }
-                          
+             
+        this.shutdownCount = inputs.length;
             
     }
     
@@ -462,59 +464,66 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     
     	totalRunCalls++;
     	
-    	int iterations = inputs.length;
-    	int didWork=0;
-    	do {    
-    			if (null==activeFileChannel) {
-    				if(--inIdx<0) {
-    					inIdx = inputs.length-1;
-    				}
-    			}
-    			
-    			Pipe<HTTPRequestSchema> input = inputs[inIdx];
-    			Pipe<ServerResponseSchema> output = outputs[inIdx];
-    			
-		        try {		            
-		            if (writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, activeSequenceId, activeFileChannel, activePathId, input, output)) {
-		            	didWork++;
-		            }
-		        } catch (IOException ioex) {
-		            disconnectDueToError(activeReadMessageSize, ioex, input, output);
-		        }
-  
-		        assert(recordIncomingState(!Pipe.hasContentToRead(input)));
-		        assert(recordOutgoingState(!Pipe.hasRoomForWrite(output)));
-		        
-		        int filesDone = 0;
-		        while (null==activeFileChannel && Pipe.hasContentToRead(input) && Pipe.hasRoomForWrite(output)) {
-		            filesDone++;
-		        	int msgIdx = Pipe.takeMsgIdx(input); 
-		            if (msgIdx == HTTPRequestSchema.MSG_FILEREQUEST_200) {
-		            	didWork++;
-		            	
-		                activeReadMessageSize = Pipe.sizeOf(input, msgIdx);
-		                beginReadingNextRequest(input, output);                    
-		            } else {
-		                if (-1 != msgIdx) {
-		                    throw new UnsupportedOperationException("Unexpected message "+msgIdx);
-		                }
-		                Pipe.confirmLowLevelRead(input, Pipe.EOF_SIZE);
-		                Pipe.releaseReadLock(input);
-		                
-		                Pipe.publishEOF(output);
-		                requestShutdown(); 
-		                return; 
-		            }
-		        }       
-		        totalFiles+=filesDone;
-		        
-		        if (null == activeFileChannel) {
-		            //only done when nothing is open.
-		            checkForHotReplace();
-		        }
-		      
-    	} while(didWork>-2 && --iterations>=0); 
-
+    	int didWork = 0;
+    	do {
+    		int iterations = inputs.length;
+	    	didWork=0;
+	    	do {    
+	    			if (null==activeFileChannel) {
+	    				if(--inIdx<0) {
+	    					inIdx = inputs.length-1;
+	    				}
+	    			}
+	    			
+	    			Pipe<HTTPRequestSchema> input = inputs[inIdx];
+	    			Pipe<ServerResponseSchema> output = outputs[inIdx];
+	    			
+			        try {		            
+			            if (writeBodiesWhileRoom(activeChannelHigh, activeChannelLow, activeSequenceId, activeFileChannel, activePathId, input, output)) {
+			            	didWork++;
+			            }
+			        } catch (IOException ioex) {
+			            disconnectDueToError(activeReadMessageSize, ioex, input, output);
+			        }
+	  
+			        assert(recordIncomingState(!Pipe.hasContentToRead(input)));
+			        assert(recordOutgoingState(!Pipe.hasRoomForWrite(output)));
+			        
+			        int filesDone = 0;
+			        while (null==activeFileChannel && Pipe.hasContentToRead(input) && Pipe.hasRoomForWrite(output)) {
+			            filesDone++;
+			        	int msgIdx = Pipe.takeMsgIdx(input); 
+			            if (msgIdx == HTTPRequestSchema.MSG_RESTREQUEST_300) {
+			            	didWork++;
+			            	
+			                activeReadMessageSize = Pipe.sizeOf(input, msgIdx);
+			                beginReadingNextRequest(input, output);                    
+			            } else {
+			                if (-1 != msgIdx) {
+			                    throw new UnsupportedOperationException("Unexpected message "+msgIdx);
+			                }
+			                Pipe.confirmLowLevelRead(input, Pipe.EOF_SIZE);
+			                Pipe.releaseReadLock(input);
+			                
+			                Pipe.publishEOF(output);
+			                
+			                if (--shutdownCount<=0) {
+			                	requestShutdown(); //NOTE: since we have multiple inputs now we must do a countdown before shutdown.
+			                	break;			                	
+			                }
+			            }
+			        }       
+			        totalFiles+=filesDone;
+			        
+			        if (null == activeFileChannel) {
+			            //only done when nothing is open.
+			            checkForHotReplace();
+			        }
+			      
+	    	} while(--iterations>=0); 
+    	} while (didWork>0);
+    	
+    	
     }
 
     

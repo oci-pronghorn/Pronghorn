@@ -37,11 +37,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private final boolean debugWithSlowWrites = false;
 	private final int     debugMaxBlockSize = 50; 
 	
-	
-//	private long nextTime = 0;
-//	private int xA = 0;
-//	private int xB = 0;
-	
+	//NOTE: this is important for high volume testing is must be large enough to push out data at a fast rate.
+	private final int BUF_MULTIPLER = 20; 	//some of these accumulations are small, TODO: apply same fix as we did on the server?
 
 
     private StringBuilder[] accumulators;//for testing only
@@ -71,12 +68,11 @@ public class ClientSocketWriterStage extends PronghornStage {
 		}
 		
 		
-		int BUF_SIZE = 4;
 		int i = input.length;
 		connections = new ClientConnection[i];
 		buffers = new ByteBuffer[i];
 		while (--i>=0) {
-			buffers[i] = ByteBuffer.allocateDirect(input[i].maxAvgVarLen*BUF_SIZE); //TODO: allocate 1 large block then split into buffers?
+			buffers[i] = ByteBuffer.allocateDirect(input[i].maxVarLen*BUF_MULTIPLER); //TODO: allocate 1 large block then split into buffers?
 		}
 		start = System.currentTimeMillis();		
 	}
@@ -266,8 +262,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 											        Pipe.releaseReadLock(pipe);
 											        
 											        cc.recordSentTime(System.nanoTime());
+											      
 								        }											
-										
 										
 										if (ClientCoordinator.TEST_RECORDS) {	
 							    			ByteBuffer temp = buffers[i].duplicate();

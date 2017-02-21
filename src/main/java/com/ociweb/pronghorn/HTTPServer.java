@@ -28,9 +28,10 @@ public class HTTPServer {
 		if (!isTLS) {
 			logger.warn("TLS has been progamatically switched off");
 		}
+		// 78,300
 		
 		GraphManager gm = new GraphManager();
-		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1_250); 
+		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, large ? 20_000 : 2_000_000 );//pi needs larger values...
 						
 		///////////////
 	    //BUILD THE SERVER

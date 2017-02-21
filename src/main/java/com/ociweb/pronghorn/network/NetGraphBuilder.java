@@ -289,7 +289,7 @@ public class NetGraphBuilder {
                 }    
                 
                 paths[0][a]      = ac.getPathRoute(a);//"/%b";  //"/WebSocket/connect",                
-                msgIds[0][a]     =  HTTPRequestSchema.MSG_FILEREQUEST_200;	                
+                msgIds[0][a]     =  HTTPRequestSchema.MSG_RESTREQUEST_300;	                
                 
             }
 
@@ -317,7 +317,9 @@ public class NetGraphBuilder {
             	
             	//TODO: must provide multiple request pipes. mod these by the connection id
             	
-            	HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], toAllModules, acks[acksBase-r], paths[0], headers, msgIds[0]);        
+            	HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(paths[0], headers, HTTPSpecification.defaultSpec()); 
+            	
+            	HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], toAllModules, acks[acksBase-r], routerConfig);        
             	GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
             	
             }
@@ -566,7 +568,7 @@ public class NetGraphBuilder {
 			fromRouterMsg 				  = isTLS?512:2048;//impacts performance
 			fromRouterBlob 				  = 1<<10;
 			
-			serverSocketWriters           = isTLS?1:2;
+			serverSocketWriters           = isTLS?1:4;
 			routerCount                   = isTLS?2:8;
 			releaseMsg                    = 512;
 						

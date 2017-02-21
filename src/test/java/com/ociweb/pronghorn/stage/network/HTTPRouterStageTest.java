@@ -6,7 +6,9 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.network.HTTP1xRouterStage;
+import com.ociweb.pronghorn.network.HTTP1xRouterStageConfig;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
+import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
@@ -102,14 +104,12 @@ public class HTTPRouterStageTest {
             final PipeConfig<HTTPRequestSchema> appPipeConfig, Pipe<NetPayloadSchema>[] pipes, Pipe<ReleaseSchema> ack) {
         Pipe[] routedAppPipes = new Pipe[apps];
         long[] appHeaders = new long[apps];
-        int[] msgIds = new int[apps];
-        
+
         int i = apps;
         while (--i >= 0) {
             routedAppPipes[i] = new Pipe<HTTPRequestSchema>(appPipeConfig);
             appHeaders[i] = 0;//(1<<HTTPHeaderRequestKeyDefaults.UPGRADE.ordinal());//headers needed.
-            msgIds[i] =  HTTPRequestSchema.MSG_FILEREQUEST_200;//  MSG_UNITTESTREQUEST_100;
-            
+   
             GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 10_000, 
                     PipeCleanerStage.newInstance(gm, routedAppPipes[i])
                     
@@ -124,7 +124,9 @@ public class HTTPRouterStageTest {
         Pipe errorPipe = new Pipe(new PipeConfig(RawDataSchema.instance));
         ConsoleJSONDumpStage dump = new ConsoleJSONDumpStage(gm,errorPipe);
         
-		HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, new Pipe[][]{routedAppPipes}, ack, paths, appHeaders, msgIds);
+        HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(paths, appHeaders, HTTPSpecification.defaultSpec()); 
+        
+		HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, new Pipe[][]{routedAppPipes}, ack, routerConfig);
         return stage;
     }
  

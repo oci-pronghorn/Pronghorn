@@ -120,7 +120,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         		    localSizeAsBytes, localSizeAsBytesPos, localSizeAsBytesLen, localSizeAsByteMask, 
         		    reportServer,
         		    contLocBytes, contLocBytesPos, contLocBytesLen,  contLocBytesMask,
-        		    writer);
+        		    writer, 1&(originalRequestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
         int bytesLength = writer.closeLowLevelField();
         
         Pipe.addIntValue( thisRequestContext , localOutput); //empty request context, set the full value last. 
@@ -147,7 +147,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         writer.openField();
         writeHeader(httpSpec.revisions[revision].getBytes(), status, requestContext, null, contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), 
         		    ZERO, 0, 1, 1, false, null, 0,0,0,
-        		    writer);
+        		    writer, 1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
         writer.closeLowLevelField();          
 
         Pipe.addIntValue(requestContext , localOutput); //empty request context, set the full value last.                        
@@ -163,8 +163,8 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     public static void writeHeader(byte[] revisionBytes, int status, int requestContext, byte[] etagBytes, byte[] typeBytes, 
     		                       byte[] lenAsBytes, int lenAsBytesPos, int lenAsBytesLen, int  lenAsBytesMask, boolean server,
     		                       byte[] contLocBytes, int contLocBytesPos, int contLocBytesLen, int contLocBytesMask,
-    		                       DataOutputBlobWriter<ServerResponseSchema> writer) {
-             
+    		                       DataOutputBlobWriter<ServerResponseSchema> writer, int conStateIdx) {
+
             //line one
             writer.write(revisionBytes);
             if (200==status) {
@@ -219,8 +219,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
             }
             
             //line five            
-            int closeIdx = 1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT);
-            writer.write(CONNECTION[closeIdx]);
+            writer.write(CONNECTION[conStateIdx]);
             writer.write(EXTRA_STUFF);
             writer.write(RETURN_NEWLINE);
             //now ready for content

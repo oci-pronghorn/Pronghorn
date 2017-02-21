@@ -62,6 +62,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
     private StringBuilder[] accumulators; //for testing only
     
+    //TODO: URGENT feature for durability and speed.
+    //TODO: next sequence must start on one pipe and continue on that pipe until complete.
+    //      first pipe to start gets to own it. other pipes with same sequence value are dropped as "late"
     
     /**
      * 
@@ -128,7 +131,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     public void run() {
 
     	boolean haveWork;
-    	int maxIterations = 1000;
+    	int maxIterations = 100;
     	do {
 	    	haveWork = false;
 	        int c = dataToSend.length;

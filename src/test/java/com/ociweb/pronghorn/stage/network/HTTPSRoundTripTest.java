@@ -369,14 +369,14 @@ public class HTTPSRoundTripTest {
 			//TODO: RERUN THE NETTY AND GL TESTS WITH RESTRICTED MEMORY TO ENSURE NO EXTRA LARGE NUMBERS...
 			
 			
-			boolean isTLS = true;//true;
-			int port = 8443;//8080;//8443; //8080
+			boolean isTLS = false;//true;
+			int port = 8080;//8443;//8080;//8443; //8080
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";
 					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
 			
-			boolean isLarge = false;
-			boolean useLocalServer = false;//
+			boolean isLarge = true;
+			boolean useLocalServer = true;//
 
 			
 			

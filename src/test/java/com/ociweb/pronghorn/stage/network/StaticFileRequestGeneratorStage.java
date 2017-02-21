@@ -97,7 +97,7 @@ public class StaticFileRequestGeneratorStage extends PronghornStage {
             
             
             requestCounts++;
-            int size = Pipe.addMsgIdx(output, HTTPRequestSchema.MSG_FILEREQUEST_200);
+            int size = Pipe.addMsgIdx(output, HTTPRequestSchema.MSG_RESTREQUEST_300);
             Pipe.addLongValue(pathIdx, output); //channelId, but we use  pathIdx  for easy testing
             Pipe.addIntValue(sequence++, output); //sequence            
             Pipe.addIntValue(verb.ordinal(), output); //verb

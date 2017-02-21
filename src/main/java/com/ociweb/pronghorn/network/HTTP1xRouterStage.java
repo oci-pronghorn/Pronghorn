@@ -27,19 +27,16 @@ import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
-                             H extends Enum<H> & HTTPHeaderKey,
-                             R extends Enum<R> & HTTPRevision,
-                             V extends Enum<V> & HTTPVerb> extends PronghornStage {
+							   R extends Enum<R> & HTTPRevision,
+						       V extends Enum<V> & HTTPVerb,
+                               H extends Enum<H> & HTTPHeaderKey
+                             > extends PronghornStage {
 
   //TODO: double check that this all works iwth ipv6.
     
 	private static final int MAX_URL_LENGTH = 4096;
     private static Logger logger = LoggerFactory.getLogger(HTTP1xRouterStage.class);
-    
-    private TrieParser verbMap;
-    private TrieParser urlMap;
-    private TrieParser headerMap;
-    private TrieParser revisionMap;
+
         
     private TrieParserReader trieReader;
     
@@ -57,9 +54,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private final Pipe<HTTPRequestSchema>[] outputs;
     private int   waitForOutputOn = -1;
 
-    private final int[]                     messageIds;
     private DataOutputBlobWriter<HTTPRequestSchema>[] blobWriter;
-    private long[] requestHeaderMask;
+ 
     private byte[][] headerOffsets;
     private int[][] headerBlankBases;
     private long[] inputSlabPos;
@@ -69,18 +65,12 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     private static int MAX_HEADER = 1<<15;
     
-    private final CharSequence[] paths;
-    
-    //TODO: need error if two strings are added to the same place?? or not
 
-    private final HTTPSpecification<T,R,V,H> httpSpec;
         
     private int headerIdUpgrade    = HTTPHeaderKeyDefaults.UPGRADE.ordinal();
     private int headerIdConnection = HTTPHeaderKeyDefaults.CONNECTION.ordinal();
     private int headerIdContentLength = HTTPHeaderKeyDefaults.CONTENT_LENGTH.ordinal();
-    
-    private final int END_OF_HEADER_ID;
-    private final int UNKNOWN_HEADER_ID;
+
   
     private int[] inputCounts;
     
@@ -88,6 +78,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private int shutdownCount;
     
     private int idx;
+    private final HTTP1xRouterStageConfig<T,R,V,H> config;
+    
 
 	private int groupId;
     
@@ -95,30 +87,29 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     //total all into one master DataInputReader
        
     
-    public static HTTP1xRouterStage newInstance(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, Pipe<ReleaseSchema> ackStop,
-                                              CharSequence[] paths, long[] headers, int[] messageIds) {
+    public static <	T extends Enum<T> & HTTPContentType,
+					R extends Enum<R> & HTTPRevision,
+					V extends Enum<V> & HTTPVerb,
+					H extends Enum<H> & HTTPHeaderKey> 
+    HTTP1xRouterStage<T,R,V,H> newInstance(GraphManager gm, 
+    		                               Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, Pipe<ReleaseSchema> ackStop,
+                                           HTTP1xRouterStageConfig<T,R,V,H> config) {
         
-       return new HTTP1xRouterStage<HTTPContentTypeDefaults ,HTTPHeaderKeyDefaults, HTTPRevisionDefaults, HTTPVerbDefaults>(gm,input,outputs, ackStop, paths, headers, messageIds,
-                                   HTTPSpecification.defaultSpec()); 
+       return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, ackStop, config); 
     }
 
-	public HTTP1xRouterStage(GraphManager gm, Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, Pipe<ReleaseSchema> ackStop,
-                             CharSequence[] paths, long[] headers, int[] messageIds, 
-                             HTTPSpecification<T,R,V,H> httpSpec) {
+	public HTTP1xRouterStage(GraphManager gm, 
+			                 Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, Pipe<ReleaseSchema> ackStop,
+                             HTTP1xRouterStageConfig<T,R,V,H> config) {
+		
         super(gm,input,join(outputs[0],ackStop));
+        this.config = config;
         this.inputs = input;
         this.releasePipe = ackStop;        
         this.outputs = outputs[0]; //TODO: this is not right, we must combine the outputs???
-        this.messageIds = messageIds;
-        this.requestHeaderMask = headers;
+
         this.shutdownCount = inputs.length;
 
-        this.httpSpec = httpSpec;
-        
-        this.paths = paths;
-        
-        END_OF_HEADER_ID  = httpSpec.headerCount+2;//for the empty header found at the bottom of the header
-        UNKNOWN_HEADER_ID = httpSpec.headerCount+1;
         		
         supportsBatchedPublish = false;
         supportsBatchedRelease = false;
@@ -148,17 +139,17 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         
         final int sizeOfVarField = 2;
         
-        int h = requestHeaderMask.length;
+        int h = config.requestHeaderMask.length;
         headerOffsets = new byte[h][];
         headerBlankBases = new int[h][];
         
         while (--h>=0) { 
-            byte[] offsets = new byte[httpSpec.headerCount+1];
+            byte[] offsets = new byte[config.httpSpec.headerCount+1];
             byte runningOffset = 0;
             
-            long mask = requestHeaderMask[h];
+            long mask = config.requestHeaderMask[h];
             int fieldCount = 0;
-            for(int ordinalValue = 0; ordinalValue<=httpSpec.headerCount; ordinalValue++) {
+            for(int ordinalValue = 0; ordinalValue<=config.httpSpec.headerCount; ordinalValue++) {
                 //only set fields for the bits which are on, and do in this order.
                 if (0!=(1&(mask>>ordinalValue))) {
                     offsets[ordinalValue] = runningOffset;
@@ -174,12 +165,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 
         ///
         
-        urlMap = new TrieParser(1024,true);  //TODO: build size needed for these URLs dynamically 
-        headerMap = new TrieParser(2048,false);//do not skip deep checks, we do not know which new headers may appear.
-        
-        verbMap = new TrieParser(256,false);//does deep check
-        revisionMap = new TrieParser(256,true); //avoid deep check
-        
+
         trieReader = new TrieParserReader(16);//max fields we support capturing.
         
         int w = outputs.length;
@@ -193,67 +179,16 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         totalShortestRequest = 0;//count bytes for the shortest known request, this opmization helps prevent parse attempts when its clear that there is not enough data.
         int localShortest;
         
-        headerMap.setUTF8Value("\r\n", END_OF_HEADER_ID);
-        headerMap.setUTF8Value("\n", END_OF_HEADER_ID);  //\n must be last because we prefer to have it pick \r\n
-    
-        //Load the supported header keys
-        H[] shr =  httpSpec.supportedHTTPHeaders.getEnumConstants();
-        x = shr.length;
-        while (--x >= 0) {
-            //must have tail because the first char of the tail is required for the stop byte
-            headerMap.setUTF8Value(shr[x].getKey(), "\r\n",shr[x].ordinal());
-            headerMap.setUTF8Value(shr[x].getKey(), "\n",shr[x].ordinal()); //\n must be last because we prefer to have it pick \r\n
-        }     
-        //unknowns are the least important and must be added last 
-        headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
-        headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be last because we prefer to have it pick \r\n
+
         
         
         //a request may have NO header with just the end marker so add one
         totalShortestRequest+=1;
                 
-        //Load the supported HTTP revisions
-        R[] revs = httpSpec.supportedHTTPRevisions.getEnumConstants();
-        x = revs.length;
-        localShortest = Integer.MAX_VALUE;                
-        while (--x >= 0) {
-        	revisionMap.setUTF8Value(revs[x].getKey(), "\r\n", revs[x].ordinal());
-            int b = revisionMap.setUTF8Value(revs[x].getKey(), "\n", revs[x].ordinal()); //\n must be last because we prefer to have it pick \r\n
-            if (b<localShortest) {
-                localShortest = b;
-            }            
-        }
-        totalShortestRequest += localShortest; //add shortest revision
-                  
-        //Load the supported HTTP verbs
-        V[] verbs = httpSpec.supportedHTTPVerbs.getEnumConstants();
-        x = verbs.length;
-        localShortest = Integer.MAX_VALUE;
-        while (--x >= 0) {
-            int b = verbMap.setUTF8Value(verbs[x].getKey()," ", verbs[x].ordinal());
-            if (b<localShortest) {
-                localShortest = b;
-            }            
-        }
-        totalShortestRequest += localShortest; //add shortest verb
-        
-        //load all the routes
-        x = paths.length;
-        localShortest = Integer.MAX_VALUE;
-        while (--x>=0) {
 
-            int b;
-            int value = x;
-            if (' '==paths[x].charAt(paths[x].length()-1)) {
-                b=urlMap.setUTF8Value(paths[x], value);
-            } else {
-                b=urlMap.setUTF8Value(paths[x], " ",value);
-            }
-            if (b<localShortest) {
-                localShortest = b;
-            } 
-        }
-        totalShortestRequest += localShortest; 
+        totalShortestRequest += config.revisionMap.shortestKnown();
+        totalShortestRequest += config.verbMap.shortestKnown();        
+        totalShortestRequest += config.urlMap.shortestKnown(); 
         
         if (totalShortestRequest<=0) {
             totalShortestRequest = 1;
@@ -329,7 +264,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		        if (localIdx<=0) {
 		        	localIdx = inputs.length;
 		        }
-    		} while (--m>=0);
+    		} while ((--m>=0) && (didWork!=0));
     		idx = localIdx;
     	} while (didWork!=0);    
 
@@ -544,9 +479,9 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
 //	}
 	
 	
-	final int verbId = (int)TrieParserReader.parseNext(trieReader, verbMap);     //  GET /hello/x?x=3 HTTP/1.1     
+	final int verbId = (int)TrieParserReader.parseNext(trieReader, config.verbMap);     //  GET /hello/x?x=3 HTTP/1.1     
     if (verbId<0) {
-    		if (tempLen < (verbMap.longestKnown()+1)) { //added 1 for the space which must appear after
+    		if (tempLen < (config.verbMap.longestKnown()+1)) { //added 1 for the space which must appear after
     //			logger.info("A. waiting on verb for {}",channel);
     			return NEED_MORE_DATA;    			
     		} else {
@@ -560,7 +495,7 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
     			
     			StringBuilder builder = new StringBuilder();
     			    			
-    			TrieParserReader.debugAsUTF8(trieReader, builder, verbMap.longestKnown()*2);    			
+    			TrieParserReader.debugAsUTF8(trieReader, builder, config.verbMap.longestKnown()*2);    			
     			logger.warn("{} looking for verb but found:\n{} at position {} from pipe {} \n\n",channel,builder,tempPos,selectedInput);
     		    			
     			badClientError(channel);
@@ -570,7 +505,7 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
     
 	tempLen = trieReader.sourceLen;
 	tempPos = trieReader.sourcePos;
-    final int routeId = (int)TrieParserReader.parseNext(trieReader, urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
+    final int routeId = (int)TrieParserReader.parseNext(trieReader, config.urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
     if (routeId<0) {
     	if (tempLen < MAX_URL_LENGTH) {
 //   		logger.info("A. waiting on route for {}",channel);
@@ -603,7 +538,7 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
     
     if (Pipe.hasRoomForWrite(outputPipe) ) {
         
-        final int size =  Pipe.addMsgIdx(outputPipe, messageIds[routeId]);        // Write 1   1                         
+        final int size =  Pipe.addMsgIdx(outputPipe, HTTPRequestSchema.MSG_RESTREQUEST_300);        // Write 1   1                         
         Pipe.addLongValue(channel, outputPipe); // Channel                        // Write 2   3        
         
        // System.out.println("wrote ever increasing squence from router of "+sequenceNo);//TODO: should this be per connection instead!!
@@ -616,10 +551,10 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
         
     	tempLen = trieReader.sourceLen;
     	tempPos = trieReader.sourcePos;
-        int httpRevisionId = (int)TrieParserReader.parseNext(trieReader, revisionMap);  //  GET /hello/x?x=3 HTTP/1.1 
+        int httpRevisionId = (int)TrieParserReader.parseNext(trieReader, config.revisionMap);  //  GET /hello/x?x=3 HTTP/1.1 
         
         if (httpRevisionId<0) { 
-        	if (tempLen < (revisionMap.longestKnown()+1)) { //added 1 for the space which must appear after
+        	if (tempLen < (config.revisionMap.longestKnown()+1)) { //added 1 for the space which must appear after
         		Pipe.resetHead(outputPipe);
    //    		logger.info("A. waiting on revision for {}",channel);
     			return NEED_MORE_DATA;    			
@@ -635,7 +570,7 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
     			trieReader.sourcePos = tempPos;
     			
     			StringBuilder builder = new StringBuilder();
-    			TrieParserReader.debugAsUTF8(trieReader, builder, revisionMap.longestKnown()*2);
+    			TrieParserReader.debugAsUTF8(trieReader, builder, config.revisionMap.longestKnown()*2);
     			logger.warn("{} looking for HTTP revision but found:\n{}\n\n",channel,builder);
     		    			
     			badClientError(channel);		
@@ -753,12 +688,15 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
 	    
 
     
-    while (Pipe.hasContentToRead(selectedInput) && //NOTE has content to read looks at slab position between last read and new head.
+    while ( //NOTE has content to read looks at slab position between last read and new head.
             
             (hasNoActiveChannel(idx) ||      //if we do not have an active channel
-             hasReachedEndOfStream(selectedInput) || //if we have reached the end of the stream
-              hasContinuedData(idx, selectedInput) 
+        		hasContinuedData(idx, selectedInput) ||
+             hasReachedEndOfStream(selectedInput)  //if we have reached the end of the stream
            )
+           &&
+           Pipe.hasContentToRead(selectedInput)
+            
             
           ) {
 
@@ -896,7 +834,7 @@ private boolean hasNoActiveChannel(int idx) {
      */
 
     private int parseHeaderFields(final int routeId, Pipe<HTTPRequestSchema> staticRequestPipe, int revisionId, boolean debugMode) {
-        long headerMask = requestHeaderMask[routeId];
+        long headerMask = config.requestHeaderMask[routeId];
         
         int requestContext = keepAliveOrNotContext(revisionId);
                       
@@ -926,10 +864,10 @@ private boolean hasNoActiveChannel(int idx) {
         	if (12==trieReader.sourceLen) {
         		watch = true;        		
         	}
-        	int headerId = (int)TrieParserReader.parseNext(trieReader, headerMap);
+        	int headerId = (int)TrieParserReader.parseNext(trieReader, config.headerMap);
         	       	
         	
-            if (END_OF_HEADER_ID == headerId) {
+            if (config.END_OF_HEADER_ID == headerId) {
                 if (iteration==0) {
                 	//needs more data 
                 	return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
@@ -972,7 +910,7 @@ private boolean hasNoActiveChannel(int idx) {
 
             		trieReader.sourceLen = alen;
             		trieReader.sourcePos = apos;
-            		int temp = (int)TrieParserReader.parseNext(trieReader, headerMap);
+            		int temp = (int)TrieParserReader.parseNext(trieReader, config.headerMap);
                	 
             		System.err.println("length to parse from "+trieReader.sourceLen+"  "+headerId+"=="+temp);
             		

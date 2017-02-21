@@ -437,6 +437,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		int stageId = stage.stageId;
 		GraphManager localGM = graphManager;
 		
+		int iterCount = 0;
 		do {
 			if (msSleep>0) {
 	      	    try {
@@ -476,7 +477,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			if (duration>0) {
 				GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration);
 			}
-		} while (continueRunning(this, stage));
+			
+			//because continueRunning can be expensive we will only check it once every 4 passes.
+		} while (((++iterCount & 0x3)!=0) || continueRunning(this, stage));
 		//Still testing removal of this which seemed incorrect,  } while (!isShuttingDown && !GraphManager.isStageShuttingDown(localGM, stageId));		
 	}
 

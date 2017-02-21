@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.network.module;
 
 import com.ociweb.pronghorn.network.AbstractRestStage;
+import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
@@ -123,7 +124,7 @@ public class SimpleRestModuleStage<                 T extends Enum<T> & HTTPCont
 						writeHeader(revisionBytes, status, context, etagBytes, contentType.getBytes(), 
 								    lenAsBytes, lenAsBytesPos, lenAsBytesLen, lenAsBytesMask, 
 								    false, null, 0,0,0,
-								    outputStream);
+								    outputStream, 1&(context>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
 					}
 					
 				};

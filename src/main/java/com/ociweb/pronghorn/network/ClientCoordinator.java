@@ -276,7 +276,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			long connectionId) {
 		
 				
-		ClientConnection cc = null;
+		        ClientConnection cc = null;
 
 				if (-1 == connectionId || null == (cc = (ClientConnection) ccm.connections.get(connectionId))) { //NOTE: using straight get since un finished connections may not be valid.
 								
