@@ -268,8 +268,6 @@ public class NetGraphBuilder {
             
             long[] headers = new long[ac.moduleCount()];
             CharSequence[][] paths = new CharSequence[1][ac.moduleCount()];
-            int[][] msgIds = new int[1][ac.moduleCount()];
-
   
             while (--a >= 0) { //create every app for this connection group   
             		            	
@@ -289,14 +287,14 @@ public class NetGraphBuilder {
                 }    
                 
                 paths[0][a]      = ac.getPathRoute(a);//"/%b";  //"/WebSocket/connect",                
-                msgIds[0][a]     =  HTTPRequestSchema.MSG_RESTREQUEST_300;	                
-                
+ 
             }
 
             
             ////////////////
             ////////////////
             
+            final HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(paths[0], headers, HTTPSpecification.defaultSpec()); 
  
             //create the routers
             int acksBase = acks.length-1;
@@ -317,7 +315,6 @@ public class NetGraphBuilder {
             	
             	//TODO: must provide multiple request pipes. mod these by the connection id
             	
-            	HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(paths[0], headers, HTTPSpecification.defaultSpec()); 
             	
             	HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], toAllModules, acks[acksBase-r], routerConfig);        
             	GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);

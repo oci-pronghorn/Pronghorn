@@ -433,8 +433,7 @@ public class HTTPSRoundTripTest {
 	    	//////////////
 
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
-	    	final int loadMultiplier = isTLS? 300_000 : 1_000_000;// 2_000_000;
-
+	    	final int loadMultiplier = isTLS? 300_000 : 2_000_000;
 	    		    	
 			//one of these per unwrap unit and per partial message, there will be many of these normally so they should not be too large
 			//however should be deeper if we are sending lots of messages
