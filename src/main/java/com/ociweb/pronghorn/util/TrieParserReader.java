@@ -516,25 +516,25 @@ public class TrieParserReader {
 	}
 
 	private static boolean lessCommonActions2(TrieParserReader reader, TrieParser trie, byte[] source,
-			long sourceLength, int sourceMask, final long unfoundResult, boolean hasSafePoint, int t) {
+			long sourceLength, int sourceMask, final long unfoundResult, final boolean hasSafePoint, int t) {
 		
 		if (t == TrieParser.TYPE_VALUE_BYTES) {            	
-		    if (reader.runLength<sourceLength) {
+		    if (reader.runLength < sourceLength) {
 		        parseBytes(reader, trie, source, sourceLength, sourceMask);	                                
 		        if (-1 == reader.localSourcePos) {
-		        	reader.normalExit=false;
+		        	reader.normalExit = false;
 		        	reader.result = unfoundResult;
 		    
 		        }
 		    } else {
-		    	reader.normalExit=false;
+		    	reader.normalExit = false;
 		    	reader.result = unfoundResult;
 		    
 		    }
+		    return hasSafePoint;
 		} else {
-			hasSafePoint = lessCommonActions3(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint, t);
+			return lessCommonActions3(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint, t);
 		}
-		return hasSafePoint;
 	}
 
 	private static boolean lessCommonActions3(TrieParserReader reader, TrieParser trie, byte[] source,
@@ -594,9 +594,10 @@ public class TrieParserReader {
 	            short[] localData = trie.data;
 				int stopCount1 = stopCount;
 				int i = reader.altStackPos; 
+				int[] localAltStackC = reader.altStackC;
 				 while (--i>=0) {
-				    if (localData[reader.altStackC[i]] == TrieParser.TYPE_VALUE_BYTES) {
-				        short newStop = localData[reader.altStackC[i]+1];
+				    if (localData[localAltStackC[i]] == TrieParser.TYPE_VALUE_BYTES) {
+				        short newStop = localData[localAltStackC[i]+1];
 				        
 				        if (localCaputuredPos != reader.altStackB[i]) {//part of the same path.
 				            //System.out.println("a");
@@ -617,7 +618,7 @@ public class TrieParserReader {
 				            break;
 				        }
 				        
-				        reader.workingMultiContinue[stopCount1] = reader.altStackC[i]+2;
+				        reader.workingMultiContinue[stopCount1] = localAltStackC[i]+2;
 				        localWorkingMultiStops[stopCount1++] = newStop;
 				        
 				        //taking this one
