@@ -11,7 +11,11 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
+import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
+import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
+import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
@@ -192,7 +196,7 @@ public class NetGraphBuilder {
 	public static GraphManager buildHTTPServerGraph(boolean isTLS, GraphManager graphManager, int groups,
 			int maxSimultanious, ModuleConfig ac, ServerCoordinator coordinator, int requestUnwrapUnits, int responseWrapUnits, 
 			int pipesPerWrapUnit, int socketWriters, int serverInputMsg, int serverInputBlobs, 
-			int serverMsgToEncrypt, int serverBlobToEncrypt, int serverMsgToWrite, int serverBlobToWrite, int routerCount, 
+			int serverMsgToEncrypt, int serverBlobToEncrypt, int serverMsgToWrite, int serverBlobToWrite, final int routerCount, 
 			int fromRouterMsg, int fromRouterBlob, int releaseMsg) {
 		
         
@@ -224,6 +228,7 @@ public class NetGraphBuilder {
         	throw new UnsupportedOperationException("Must be using at least 1 module to startup.");
         }
         
+        HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> httpSpec = HTTPSpecification.defaultSpec();
         
         int g = groups;
         while (--g >= 0) {//create each connection group            
@@ -260,41 +265,38 @@ public class NetGraphBuilder {
             Pipe[][] plainSplit = Pipe.splitPipes(routerCount, planIncomingGroup[g]);
             
 
+			final HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(httpSpec); 
             //create the modules
                                  
             
+			int routerLimit = routerCount+(isTLS?requestUnwrapUnits:0);
+			
             Pipe<HTTPRequestSchema>[][] toModules = new Pipe[ac.moduleCount()][routerCount];
             Pipe<ServerResponseSchema>[][][] fromModule = new Pipe[routerCount][ac.moduleCount()][]; 
-            
-            long[] headers = new long[ac.moduleCount()];
-            CharSequence[][] paths = new CharSequence[1][ac.moduleCount()];
   
-            while (--a >= 0) { //create every app for this connection group   
-            		            	
-            	int r = routerCount;
-            	while (--r >= 0) {
+            for(a=0; a<ac.moduleCount(); a++) { 
+            		      
+            	toModules[a] = new Pipe[routerCount];
+            	for(int r=0; r<routerCount; r++) {
             		toModules[a][r] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig,false);		
-            	}            	
-                headers[a]    = ac.addModule(a, graphManager, toModules[a], HTTPSpecification.defaultSpec());  
-                
+            	}                
+            	
+            	routerConfig.registerRoute(ac.getPathRoute(a), ac.addModule(a, graphManager, toModules[a], httpSpec));
                 
                 Pipe<ServerResponseSchema>[][] outputPipes = ac.outputPipes(a);
-                int i = outputPipes.length;
-                assert(i==routerCount);
-      
-                while (--i>=0) {
+                
+                
+                for(int i=0;i<outputPipes.length;i++) {
                 	fromModule[i][a] = outputPipes[i];  
                 }    
-                
-                paths[0][a]      = ac.getPathRoute(a);//"/%b";  //"/WebSocket/connect",                
  
+                
             }
 
             
             ////////////////
             ////////////////
             
-            final HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(paths[0], headers, HTTPSpecification.defaultSpec()); 
  
             //create the routers
             int acksBase = acks.length-1;
@@ -308,13 +310,6 @@ public class NetGraphBuilder {
             			toAllModules[0][a] = toModules[a][r]; //cross cut this matrix
          		
             	}
-            	
-            	//the router knows the index of toAllModules matches the index of the appropriate path.
-            	assert(toAllModules.length == paths.length);
-            	
-            	
-            	//TODO: must provide multiple request pipes. mod these by the connection id
-            	
             	
             	HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], toAllModules, acks[acksBase-r], routerConfig);        
             	GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);

@@ -32,7 +32,11 @@ public class HTTPClientRequestStage extends PronghornStage {
 	private static final String implementationVersion = PronghornStage.class.getPackage().getImplementationVersion()==null?"unknown":PronghornStage.class.getPackage().getImplementationVersion();
 		
 	private static final byte[] EMPTY = new byte[0];
-	private static final byte[] GET_BYTES = "GET".getBytes();
+
+	private static final byte[] GET_BYTES_SPACE = "GET ".getBytes();
+	private static final byte[] GET_BYTES_SPACE_SLASH = "GET /".getBytes();
+	
+	
 	private static final byte[] SPACE_SLASH_BYTES = " /".getBytes();
 	private static final byte[] SPACE_BYTES = " ".getBytes();
 	
@@ -340,22 +344,13 @@ public class HTTPClientRequestStage extends PronghornStage {
 	private void publishGet(Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection clientConnection,
 			Pipe<NetPayloadSchema> outputPipe, long now) {
 		
-		long pos = Pipe.workingHeadPosition(outputPipe);
+		//long pos = Pipe.workingHeadPosition(outputPipe);
 		
 		final int pSize = Pipe.addMsgIdx(outputPipe, NetPayloadSchema.MSG_PLAIN_210); 	
 		  
 		Pipe.addLongValue(clientConnection.id, outputPipe); //, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201, clientConnection.id);
 		Pipe.addLongValue(now, outputPipe);
 		Pipe.addLongValue(0, outputPipe); // NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, 0);
-		 							                 	
-		
-		DataOutputBlobWriter<NetPayloadSchema> activeWriter = Pipe.outputStream(outputPipe);
-		DataOutputBlobWriter.openField(activeWriter);
-		activeWriter.write((int)'G');
-		activeWriter.write((int)'E');
-		activeWriter.write((int)'T');
-		//DataOutputBlobWriter.write(activeWriter,GET_BYTES, 0, GET_BYTES.length);
-		
 		
 		int userId = Pipe.takeInt(requestPipe);
 		int port   = Pipe.takeInt(requestPipe);
@@ -363,31 +358,26 @@ public class HTTPClientRequestStage extends PronghornStage {
 		int hostLen  = Pipe.takeRingByteLen(requestPipe);
 		int hostPos = Pipe.bytePosition(hostMeta, requestPipe, hostLen);
 		long connId = Pipe.takeLong(requestPipe);
-								                	
 		
 		int meta = Pipe.takeRingByteMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3
 		int len  = Pipe.takeRingByteLen(requestPipe);
-		int first = Pipe.bytePosition(meta, requestPipe, len);
-								                						                	
-		boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[first&Pipe.blobMask(requestPipe)]);  
+		boolean prePendSlash = (0==len) || ('/' != Pipe.byteBackingArray(meta, requestPipe)[Pipe.bytePosition(meta, requestPipe, len)&Pipe.blobMask(requestPipe)]);  
 		
+		
+		DataOutputBlobWriter<NetPayloadSchema> activeWriter = Pipe.outputStream(outputPipe);
+		DataOutputBlobWriter.openField(activeWriter);
+
 		if (prePendSlash) { //NOTE: these can be pre-coverted to bytes so we need not convert on each write. may want to improve.
-			activeWriter.write((int)' ');
-			activeWriter.write((int)'/');
-			//DataOutputBlobWriter.write(activeWriter,SPACE_SLASH_BYTES, 0, SPACE_SLASH_BYTES.length);
+			DataOutputBlobWriter.write(activeWriter,GET_BYTES_SPACE_SLASH, 0, GET_BYTES_SPACE_SLASH.length);
+
 		} else {
-			activeWriter.write((int)' ');
-			//DataOutputBlobWriter.write(activeWriter,SPACE_BYTES, 0, SPACE_BYTES.length);
+			DataOutputBlobWriter.write(activeWriter,GET_BYTES_SPACE, 0, GET_BYTES_SPACE.length);
 		}
 		
 		//Reading from UTF8 field and writing to UTF8 encoded field so we are doing a direct copy here.
 		Pipe.readBytes(requestPipe, activeWriter, meta, len);//, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3, activeWriter);
 		
-		final byte[] hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);//, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_HOST_2);
-		final int hostMask    = Pipe.blobMask(requestPipe);	
-		
-		finishWritingHeader(hostBack, hostPos, hostLen, hostMask, activeWriter, implementationVersion, 0);
-  
+		finishWritingHeader(Pipe.byteBackingArray(hostMeta, requestPipe), hostPos, hostLen, Pipe.blobMask(requestPipe), activeWriter, implementationVersion, 0);  
 		
 		DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 
@@ -575,25 +565,27 @@ public class HTTPClientRequestStage extends PronghornStage {
 			                               DataOutputBlobWriter<NetPayloadSchema> writer, CharSequence implementationVersion, long length) {
 		
 		DataOutputBlobWriter.write(writer, REV11_AND_HOST, 0, REV11_AND_HOST.length); //encodeAsUTF8(writer," HTTP/1.1\r\nHost: ");
-		DataOutputBlobWriter.write(writer,hostBack,hostPos,hostLen,hostMask);
+		DataOutputBlobWriter.write(writer, hostBack, hostPos, hostLen, hostMask);
 		
-	//	DataOutputBlobWriter.write(writer, LINE_AND_USER_AGENT, 0, LINE_AND_USER_AGENT.length, Integer.MAX_VALUE);//DataOutputBlobWriter.encodeAsUTF8(writer,"\r\nUser-Agent: Pronghorn/");
-	//	DataOutputBlobWriter.encodeAsUTF8(writer,implementationVersion);
-
+		boolean reportAgent = false;
+		if (reportAgent) {
+			DataOutputBlobWriter.write(writer, LINE_AND_USER_AGENT, 0, LINE_AND_USER_AGENT.length, Integer.MAX_VALUE);//DataOutputBlobWriter.encodeAsUTF8(writer,"\r\nUser-Agent: Pronghorn/");
+			DataOutputBlobWriter.encodeAsUTF8(writer,implementationVersion);
+		}
 		if (length>0) {
 			DataOutputBlobWriter.write(writer, CONTENT_LENGTH, 0, CONTENT_LENGTH.length);
-			Appendables.appendValue(writer, length); //does the same as below...			
-			//DataOutputBlobWriter.encodeAsUTF8(writer,"\r\nContent-Length: "+Long.toString(length));
+			Appendables.appendValue(writer, length);
 		} else if (length<0) {
 			DataOutputBlobWriter.write(writer, CONTENT_CHUNKED, 0, CONTENT_CHUNKED.length);
 		}
 		
-		
-		DataOutputBlobWriter.write(writer, CONNECTION_KEEP_ALIVE_END, 0, CONNECTION_KEEP_ALIVE_END.length);//DataOutputBlobWriter.encodeAsUTF8(writer,"\r\nConnection: keep-alive\r\n\r\n"); //double \r\b marks the end of the header
-	
-		//TODO: is server closing too early, need to send response first? TODO: still not working.
-	//	DataOutputBlobWriter.write(writer, CONNECTION_CLOSE_END, 0, CONNECTION_CLOSE_END.length, Integer.MAX_VALUE);
-		
+		boolean keepOpen = true;
+		if (keepOpen) {
+			DataOutputBlobWriter.write(writer, CONNECTION_KEEP_ALIVE_END, 0, CONNECTION_KEEP_ALIVE_END.length);
+			//DataOutputBlobWriter.encodeAsUTF8(writer,"\r\nConnection: keep-alive\r\n\r\n"); //double \r\b marks the end of the header
+		} else {
+			DataOutputBlobWriter.write(writer, CONNECTION_CLOSE_END, 0, CONNECTION_CLOSE_END.length, Integer.MAX_VALUE);
+		}
 	}
 	
 	

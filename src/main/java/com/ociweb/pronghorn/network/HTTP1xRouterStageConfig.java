@@ -17,15 +17,15 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public final TrieParser verbMap;
     public final TrieParser revisionMap;
     public final TrieParser headerMap;
-    public final long[] requestHeaderMask;
-
+    
+    private long[] requestHeaderMask = new long[4];
+	private int routesCount = 0;
     
     public final int END_OF_HEADER_ID;
     public final int UNKNOWN_HEADER_ID;
 	
-	public HTTP1xRouterStageConfig(CharSequence[] paths, long[] headers, HTTPSpecification<T,R,V,H> httpSpec) {
+	public HTTP1xRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec) {
 		this.httpSpec = httpSpec;
-		this.requestHeaderMask = headers;
 
         this.revisionMap = new TrieParser(256,true); //avoid deep check        
         //Load the supported HTTP revisions
@@ -46,20 +46,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
             verbMap.setUTF8Value(verbs[y].getKey()," ", verbs[y].ordinal());           
         }
         
-        
-        //load all the routes
-        this.urlMap = new TrieParser(1024,1,true,true,true);
-        int x = paths.length;
-        while (--x>=0) {
 
-            int b;
-            int value = x;
-            if (' '==paths[x].charAt(paths[x].length()-1)) {
-                b=urlMap.setUTF8Value(paths[x], value);
-            } else {
-                b=urlMap.setUTF8Value(paths[x], " ",value);
-            }
-        }
                 
         END_OF_HEADER_ID  = httpSpec.headerCount+2;//for the empty header found at the bottom of the header
         UNKNOWN_HEADER_ID = httpSpec.headerCount+1;
@@ -80,6 +67,36 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
         headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be last because we prefer to have it pick \r\n
                 
+        this.urlMap = new TrieParser(512,1,true,true,true);       
+        
+	}
+	
+
+	public int registerRoute(CharSequence route, long headers) {
+		if (' '==route.charAt(route.length()-1)) {
+		    urlMap.setUTF8Value(route, routesCount);
+		} else {
+		    urlMap.setUTF8Value(route, " ",routesCount);
+		}
+		
+		if (routesCount>=requestHeaderMask.length) {
+			int i = requestHeaderMask.length;
+			long[] newArray = new long[i*2]; //only grows on startup as needed
+			System.arraycopy(requestHeaderMask, 0, newArray, 0, i);
+			requestHeaderMask = newArray;
+		}
+		requestHeaderMask[routesCount]=headers;
+		int pipeIdx = routesCount;
+		routesCount++;
+		return pipeIdx;
+	}
+	
+	public int routesCount() {
+		return routesCount;
+	}
+	
+	public long headerMask(int idx) {
+		return requestHeaderMask[idx];
 	}
 	
 	

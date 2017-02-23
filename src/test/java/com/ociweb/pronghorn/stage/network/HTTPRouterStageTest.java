@@ -42,7 +42,13 @@ public class HTTPRouterStageTest {
     @Ignore
     public void rapidValidRequestTest() {
         
-       
+    	HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(HTTPSpecification.defaultSpec()); 
+    	
+    	for(CharSequence route: paths) {
+    		routerConfig.registerRoute(route, 0); //no headers
+    	}
+    	
+    	
         GraphManager gm = new GraphManager();
         
         final int apps = paths.length;
@@ -60,7 +66,7 @@ public class HTTPRouterStageTest {
 		PipeCleanerStage<ReleaseSchema> cleaner = new PipeCleanerStage<ReleaseSchema>(gm, ack);
         
         PronghornStage stage = ClientHTTPRequestDataGeneratorStage.newInstance(gm, rawRequestPipe, iterations, paths);  
-        HTTP1xRouterStage stage2 = buildRouterStage(gm, apps, appPipeConfig, pipes, ack);
+        HTTP1xRouterStage stage2 = buildRouterStage(gm, apps, appPipeConfig, pipes, ack, routerConfig);
                
         runGraph(gm, apps, iterations, stage2);
         
@@ -101,15 +107,15 @@ public class HTTPRouterStageTest {
     }
 
     private HTTP1xRouterStage buildRouterStage(GraphManager gm, final int apps,
-            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pipe<NetPayloadSchema>[] pipes, Pipe<ReleaseSchema> ack) {
-        Pipe[] routedAppPipes = new Pipe[apps];
-        long[] appHeaders = new long[apps];
+            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pipe<NetPayloadSchema>[] pipes, Pipe<ReleaseSchema> ack, HTTP1xRouterStageConfig routerConfig) {
+
+
+    	Pipe[] routedAppPipes = new Pipe[apps];
 
         int i = apps;
         while (--i >= 0) {
             routedAppPipes[i] = new Pipe<HTTPRequestSchema>(appPipeConfig);
-            appHeaders[i] = 0;//(1<<HTTPHeaderRequestKeyDefaults.UPGRADE.ordinal());//headers needed.
-   
+
             GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 10_000, 
                     PipeCleanerStage.newInstance(gm, routedAppPipes[i])
                     
@@ -124,7 +130,6 @@ public class HTTPRouterStageTest {
         Pipe errorPipe = new Pipe(new PipeConfig(RawDataSchema.instance));
         ConsoleJSONDumpStage dump = new ConsoleJSONDumpStage(gm,errorPipe);
         
-        HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(paths, appHeaders, HTTPSpecification.defaultSpec()); 
         
 		HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, new Pipe[][]{routedAppPipes}, ack, routerConfig);
         return stage;

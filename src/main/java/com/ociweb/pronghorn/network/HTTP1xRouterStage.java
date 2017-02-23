@@ -139,7 +139,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         
         final int sizeOfVarField = 2;
         
-        int h = config.requestHeaderMask.length;
+        int h = config.routesCount();
         headerOffsets = new byte[h][];
         headerBlankBases = new int[h][];
         
@@ -147,7 +147,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             byte[] offsets = new byte[config.httpSpec.headerCount+1];
             byte runningOffset = 0;
             
-            long mask = config.requestHeaderMask[h];
+            long mask = config.headerMask(h);
             int fieldCount = 0;
             for(int ordinalValue = 0; ordinalValue<=config.httpSpec.headerCount; ordinalValue++) {
                 //only set fields for the bits which are on, and do in this order.
@@ -834,7 +834,7 @@ private boolean hasNoActiveChannel(int idx) {
      */
 
     private int parseHeaderFields(final int routeId, Pipe<HTTPRequestSchema> staticRequestPipe, int revisionId, boolean debugMode) {
-        long headerMask = config.requestHeaderMask[routeId];
+        long headerMask = config.headerMask(routeId);
         
         int requestContext = keepAliveOrNotContext(revisionId);
                       
