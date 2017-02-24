@@ -517,8 +517,6 @@ public class GraphManager {
 	
 	/**
 	 * Returns all pipes of this time in the same order that they were created in the graph.
-	 * 
-	 * TODO: needs test of ordering.
 	 * @param gm
 	 * @param targetSchema
 	 */
@@ -526,12 +524,37 @@ public class GraphManager {
 	    return pipesOfType(0, gm.pipeIdToPipe.length, gm, targetSchema);
 	}
 
+	public static  <T extends MessageSchema> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema, int minimumPipeId) {
+	    return pipesOfType(0, gm.pipeIdToPipe.length, gm, targetSchema, minimumPipeId);
+	}
+	
 	private static <T extends MessageSchema> Pipe<T>[] pipesOfType(int count, int p, GraphManager gm, T targetSchema) {
 		//pass one to count all the instances
         while (--p>=0) {
             Pipe tp = gm.pipeIdToPipe[p];
             if (null != tp) {
-                if (tp.isForSchema(tp, targetSchema)) {
+                if (Pipe.isForSchema(tp, targetSchema)) {
+                	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchema);
+                	result[(result.length-1)-count] = tp;
+                    return result;
+                }
+            }
+        }
+        
+        if (0==count) {
+        	return EMPTY_PIPE_ARRAY;
+        } else {
+        	return new Pipe[count];
+        }
+	    
+	}
+	
+	private static <T extends MessageSchema> Pipe<T>[] pipesOfType(int count, int p, GraphManager gm, T targetSchema, int minimumPipeId) {
+		//pass one to count all the instances
+        while (--p>=0) {
+            Pipe tp = gm.pipeIdToPipe[p];
+            if (null != tp) {
+                if (Pipe.isForSchema(tp, targetSchema) && tp.id>=minimumPipeId) {
                 	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchema);
                 	result[(result.length-1)-count] = tp;
                     return result;

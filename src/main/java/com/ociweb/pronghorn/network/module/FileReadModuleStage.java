@@ -228,7 +228,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                                    File rootPath) {
         
         super(graphManager, inputs, outputs, httpSpec);
-        this.inputs = inputs; //TODO: fix hack must walk all.
+        this.inputs = inputs; 
         this.outputs = outputs;        
         this.trailingReader = 0;
         this.trailingBlobReader = 0;
@@ -254,7 +254,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             String resourceRootFolder, String resourceDefaultPath) {
 
 		super(graphManager, inputs, outputs, httpSpec);
-		this.inputs = inputs; //TODO: fix hack must walk all.
+		this.inputs = inputs; 
 		this.outputs = outputs;        
 		this.trailingReader = 0;
 		this.trailingBlobReader = 0;

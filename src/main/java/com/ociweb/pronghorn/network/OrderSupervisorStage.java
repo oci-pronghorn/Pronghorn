@@ -30,7 +30,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     private final Pipe<NetPayloadSchema>[] outgoingPipes;
         
         
-    private int[]          expectedSquenceNos;
+    private int[]            expectedSquenceNos;
+    private short[]          expectedSquenceNosPipeIdx;
 
     private final ServerCoordinator coordinator;
     
@@ -48,10 +49,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     public final static int INCOMPLETE_RESPONSE_SHIFT    = 28;
     public final static int INCOMPLETE_RESPONSE_MASK     = 1<<INCOMPLETE_RESPONSE_SHIFT;
     
-//    public int[] lastLenWritten;
-//    public long[] lastXXXWritten;
-//    public long[] lastYYYWritten;
-    
     public final int poolMod;
     public final int maxOuputSize;
     public final int plainSize = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
@@ -61,10 +58,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	private final int groupId = 0; //TODO: pass in on construction, must know group to look up SSL connection.
 
     private StringBuilder[] accumulators; //for testing only
-    
-    //TODO: URGENT feature for durability and speed.
-    //TODO: next sequence must start on one pipe and continue on that pipe until complete.
-    //      first pipe to start gets to own it. other pipes with same sequence value are dropped as "late"
+
+    public static OrderSupervisorStage newInstance(GraphManager graphManager, Pipe<ServerResponseSchema>[] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator, boolean isTLS) {
+    	return new OrderSupervisorStage(graphManager, inputPipes, outgoingPipes, coordinator, isTLS);
+    }
     
     /**
      * 
@@ -77,8 +74,17 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
      * @param coordinator
      */
     public OrderSupervisorStage(GraphManager graphManager, Pipe<ServerResponseSchema>[][] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator, boolean isTLS) {
-        super(graphManager, join(inputPipes), outgoingPipes);      
-        this.dataToSend = join(inputPipes);
+    	this(graphManager,join(inputPipes), outgoingPipes, coordinator, isTLS);
+    }
+    
+    public OrderSupervisorStage(GraphManager graphManager, Pipe<ServerResponseSchema>[] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator, boolean isTLS) {
+        super(graphManager, inputPipes, outgoingPipes);      
+        this.dataToSend = inputPipes;
+        
+        assert(dataToSend.length<=Short.MAX_VALUE) : "can not support more pipes at this time. This code will need to be modified";
+        if (dataToSend.length>Short.MAX_VALUE) {
+        	throw new UnsupportedOperationException("can not support more pipes at this time. This code will need to be modified");
+        }
         
         this.outgoingPipes = outgoingPipes;
         this.coordinator = coordinator;
@@ -101,8 +107,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	@Override
     public void startup() {                
-        expectedSquenceNos = new int[coordinator.channelBitsSize];//room for 1 per active channel connection
-        
+		int totalChannels = coordinator.channelBitsSize; //WARNING: this can be large eg 4 million
+        expectedSquenceNos = new int[totalChannels];//room for 1 per active channel connection
+        expectedSquenceNosPipeIdx = new short[totalChannels];
         
         if (ServerCoordinator.TEST_RECORDS) {
 			int i = outgoingPipes.length;
@@ -155,7 +162,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	        	//      if we ensure it is balanced then this data will also get balanced.
 	        		        
 	        	
-	            haveWork |= processPipe(dataToSend[c]);
+	            haveWork |= processPipe(dataToSend[c], c);
 	            
             	
 	            
@@ -164,7 +171,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     }
 
 
-	private boolean processPipe(final Pipe<ServerResponseSchema> sourcePipe) {
+	private boolean processPipe(final Pipe<ServerResponseSchema> sourcePipe, int pipeIdx) {
 		
 		boolean didWork = false;
 		while (Pipe.hasContentToRead(sourcePipe)) {
@@ -199,12 +206,30 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        
 		     //   System.err.println("channel ID mask "+Integer.toHexString(coordinator.channelBitsMask));
 		        
-		        int expected = expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)];                
-		        if (sequenceNo!=expected) {          
-		        	assert(sequenceNo>=expected) : "found smaller than expected sequenceNo, they should never roll back";
+		        int idx = (int)(channelId & coordinator.channelBitsMask);
+				int expected = expectedSquenceNos[idx];     
+		        if (sequenceNo<expected) {
+		        	//drop the data
+		        	logger.info("skipped older response A");
+		        	Pipe.skipNextFragment(sourcePipe);
+		        	continue;
+		        } else if (expected==sequenceNo) {
+		        	if (-1 == expectedSquenceNosPipeIdx[idx]) {
+		        		expectedSquenceNosPipeIdx[idx]=(short)pipeIdx;
+		        	} else {
+		        		if (expectedSquenceNosPipeIdx[idx] !=(short)pipeIdx) {
+		        			//drop the data
+		        			logger.info("skipped older response B");
+		        			Pipe.skipNextFragment(sourcePipe);
+				        	continue;
+		        		}
+		        	}
+		        } else {
+		        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 		        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		        	break;
-		        }	                  
+		        	break;//does not match
+		        }
+		        
 
 		        if (isTLS) {
 		            handshakeProcessing(myPipe, channelId);	                    
@@ -568,8 +593,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 
 		 if (0 != (END_RESPONSE_MASK & requestContext)) {
 		    //we have finished all the chunks for this request so the sequence number will now go up by one	
-		 	expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)]++;
-		 	
+		 	int idx = (int)(channelId & coordinator.channelBitsMask);
+			expectedSquenceNos[idx]++;
+		 	expectedSquenceNosPipeIdx[idx] = (short)-1;//clear the assumed pipe
 		 //	logger.info("increment expected for chnl {}  to value {} ",channelId, expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)]);
 		 	
 		 } 

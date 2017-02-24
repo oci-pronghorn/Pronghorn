@@ -35,10 +35,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 	private static final byte[] GET_BYTES_SPACE = "GET ".getBytes();
 	private static final byte[] GET_BYTES_SPACE_SLASH = "GET /".getBytes();
-	
-	
-	private static final byte[] SPACE_SLASH_BYTES = " /".getBytes();
-	private static final byte[] SPACE_BYTES = " ".getBytes();
+
 	
     private final boolean isTLS;
 	
@@ -90,7 +87,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 				}
 				
 				//check if some connections have not been used and can be closed.
-				if (now>nextUnusedCheck) {
+				if (now > nextUnusedCheck) {
 					//TODO: URGENT, this is killing of valid connections, but why? debug
 					//	closeUnusedConnections();
 					nextUnusedCheck = now+disconnectTimeoutMS;
@@ -132,14 +129,13 @@ public class HTTPClientRequestStage extends PronghornStage {
 		    Pipe<ClientHTTPRequestSchema> requestPipe = input[activePipe];
 		    	  
 		    boolean didWork = false;
-
 		    
 		    
 	///	    logger.info("send for active pipe {} has content to read {} ",activePipe,Pipe.hasContentToRead(requestPipe));
 		    
-	        if (Pipe.hasContentToRead(requestPipe)) {
-  	        	   didWork = true;	        
+	        while (Pipe.hasContentToRead(requestPipe)) {
 		        	if (hasOpenConnection(requestPipe) ){
+		        		didWork = true;	        
 		  	    	        	
 		        	// logger.info("send for active pipe {}",activePipe);
 		        	
@@ -328,21 +324,14 @@ public class HTTPClientRequestStage extends PronghornStage {
 		    	    ClientConnection clientConnection = activeConnection;
   
 		        	clientConnection.setLastUsedTime(now);
-		        	int outIdx = clientConnection.requestPipeLineIdx();
-			        	
-		        	clientConnection.incRequestsSent();//count of messages can only be done here.
-					assert(Pipe.hasRoomForWrite(output[outIdx]));
-				
-			   	    publishGet(requestPipe, clientConnection, output[outIdx], now);
+		        	clientConnection.incRequestsSent();//count of messages can only be done here.			        	
+		        	publishGet(requestPipe, clientConnection, output[clientConnection.requestPipeLineIdx()], now);
 		    
-		       
-
 		}
 	}
 
 
-	private void publishGet(Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection clientConnection,
-			Pipe<NetPayloadSchema> outputPipe, long now) {
+	private void publishGet(Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection clientConnection, Pipe<NetPayloadSchema> outputPipe, long now) {
 		
 		//long pos = Pipe.workingHeadPosition(outputPipe);
 		
@@ -383,8 +372,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 		Pipe.confirmLowLevelWrite(outputPipe,pSize);
 		Pipe.publishWrites(outputPipe);
-		
-		
+				
 
 	}
 
@@ -512,7 +500,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 				}
 				
 			}
-			return returnHasRoomToWrite();
+			return Pipe.hasRoomForWrite(output[activeConnection.requestPipeLineIdx()]);
 			
 		} else {
 			//this happens often when the profiler is running due to contention for sockets.
@@ -534,11 +522,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 		}
 		
 		
-	}
-
-
-	private boolean returnHasRoomToWrite() {
-		return Pipe.hasRoomForWrite(output[activeConnection.requestPipeLineIdx()]);
 	}
 
 

@@ -82,7 +82,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	@Override
 	public void run() {
 
-			int didWork=1;
+			int didWork = 10;
 			
 			do {	
 				didWork--;
@@ -231,16 +231,11 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    	} else {
 							    		//logger.info("zero read detected client side..");
 							    		//nothing to send so let go of byte buffer.
-							    		Pipe.unstoreBlobWorkingHeadPosition(target);						    		
+							    		Pipe.unstoreBlobWorkingHeadPosition(target);
+							    		//return;
 							    	}
 							    	
-						    	} else {
-						    		
-						    		 //if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
-						    		//		logger.warn("we have no room on the pipe to write to {} {}.",cc.getId(),target);
-						    		//	}
-						    		
-						    	}
+						    	} 
 					    	} else {
 					    		//not an error, just try again later.
 					    		
@@ -254,9 +249,9 @@ public class ClientSocketReaderStage extends PronghornStage {
 					    }
 					    
 					}	
-					if (openCount>0) {
-						didWork = 1; 
-					}
+//					if (openCount>0) {
+//						didWork = 1; 
+//					}
 				
 			} while(didWork>0);
 

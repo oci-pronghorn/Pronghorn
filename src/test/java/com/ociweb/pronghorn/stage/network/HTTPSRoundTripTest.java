@@ -312,7 +312,7 @@ public class HTTPSRoundTripTest {
 	//TODO: URGENT must detect when we get the type wrong but with low level API attempt to use values!!
 	
 	@Ignore
-	///@Test
+	//@Test
 	public void roundTripTest2() {
 				
 		{ //Netty bench 14,000 1m  1.5GB  32users
@@ -369,8 +369,8 @@ public class HTTPSRoundTripTest {
 			//TODO: RERUN THE NETTY AND GL TESTS WITH RESTRICTED MEMORY TO ENSURE NO EXTRA LARGE NUMBERS...
 			
 			
-			boolean isTLS = false;//true;
-			int port = 8080;//8443;//8080;//8443; //8080
+			boolean isTLS = true;//true;
+			int port = isTLS?8443:8080;
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";
 					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
@@ -543,8 +543,8 @@ public class HTTPSRoundTripTest {
 			int responseQueueBytes = 1<<14;
 			
 			
-			int httpRequestQueueBytes = 1<<8;
 			int httpRequestQueueSize = 256;
+			int httpRequestQueueBytes = 1<<15;
 				
 			
 			Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections+usersBits+extraHashBits, clientOutputCount, maxPartialResponsesClient, 

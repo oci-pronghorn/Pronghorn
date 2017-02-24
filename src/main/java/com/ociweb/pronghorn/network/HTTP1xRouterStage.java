@@ -690,13 +690,12 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
     
     while ( //NOTE has content to read looks at slab position between last read and new head.
             
-            (hasNoActiveChannel(idx) ||      //if we do not have an active channel
-        		hasContinuedData(idx, selectedInput) ||
-             hasReachedEndOfStream(selectedInput)  //if we have reached the end of the stream
-           )
-           &&
-           Pipe.hasContentToRead(selectedInput)
-            
+    	   Pipe.hasContentToRead(selectedInput) //must check first to ensure assert is happy
+    	   &&	
+           ( hasNoActiveChannel(idx) ||      //if we do not have an active channel
+        	  hasContinuedData(idx, selectedInput) ||
+              hasReachedEndOfStream(selectedInput)  //if we have reached the end of the stream
+           )           
             
           ) {
 

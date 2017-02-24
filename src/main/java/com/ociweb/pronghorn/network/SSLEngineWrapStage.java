@@ -49,14 +49,14 @@ public class SSLEngineWrapStage extends PronghornStage {
 	public void startup() {
 		
 		//must allocate buffers for the out of order content 
-		int c = plainContent.length;
+		int c = encryptedContent.length;
 		secureBuffers = new ByteBuffer[c];
 		while (--c>=0) {
 						
-			int bufferSize = plainContent[c].maxAvgVarLen;
-			int min = 1<<15;
+			int bufferSize = Math.max(encryptedContent[c].maxVarLen,plainContent[c].maxVarLen);
+			int min = (1<<15)-1;
 			if (bufferSize<min) {
-				bufferSize = min; //if its too small for use fix this minimum size
+				logger.info("ERROR: buffer size must be larger than {} but found {}",min,bufferSize);
 			}
 						
 			secureBuffers[c] = ByteBuffer.allocateDirect(bufferSize);

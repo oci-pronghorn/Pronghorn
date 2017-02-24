@@ -20,7 +20,7 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class RegulatedLoadTestStage extends PronghornStage{
 
-	private static final int HANG_TIMEOUT_MS = 60_000;//Integer.MAX_VALUE;//10_000;
+	private static final int HANG_TIMEOUT_MS = 30_000;//Integer.MAX_VALUE;//10_000;
 
 	private static final Logger logger = LoggerFactory.getLogger(RegulatedLoadTestStage.class);
 	
@@ -56,6 +56,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 	
 	private final int usersPerPipe;
 	private final String label;
+	private final GraphManager graphManager;
 	
 	
 	protected RegulatedLoadTestStage(GraphManager graphManager, Pipe<NetResponseSchema>[] inputs, Pipe<ClientHTTPRequestSchema>[] outputs, 
@@ -64,6 +65,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		
 		this.clientCoord = clientCoord;
 		this.usersPerPipe = usersPerPipe;
+		this.graphManager = graphManager;
 
 		this.testFile = fileRequest;
 		this.testFileBytes = fileRequest.getBytes();
@@ -160,6 +162,14 @@ public class RegulatedLoadTestStage extends PronghornStage{
 			 while (--r>=0) {
 				 if (toRecieve[r]>0) {
 					 logger.info("still need {} for user {} ",toRecieve[r],r);
+					 for(Pipe p : GraphManager.allPipes(graphManager)) {
+						 if (Pipe.contentRemaining(p)>0) {
+							 logger.info("found pipe with data {} ",p);
+						 }
+						 
+					 };
+					 
+					 
 				 }
 			 }		
 			 requestShutdown();

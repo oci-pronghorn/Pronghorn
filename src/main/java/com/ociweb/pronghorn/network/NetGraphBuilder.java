@@ -552,10 +552,10 @@ public class NetGraphBuilder {
 			serverInputBlobs              = 1<<14;
 			
 			serverMsgToEncrypt            = 512;
-			serverBlobToEncrypt           = 1<<14;
+			serverBlobToEncrypt           = 1<<15;
 			
 			serverOutputMsg               = isTLS?128:512;
-			serverBlobToWrite             = 1<<12;
+			serverBlobToWrite             = 1<<15;
 			
 			fromRouterMsg 				  = isTLS?512:2048;//impacts performance
 			fromRouterBlob 				  = 1<<10;
@@ -580,7 +580,7 @@ public class NetGraphBuilder {
 			serverBlobToEncrypt           = 1<<15; //Must NOT be smaller than the file write output (modules) ??? ONLY WHEN WE ARE USE ING TLS
 			
 			serverOutputMsg               = isTLS?32:128; //important for outgoing data and greatly impacts performance
-			serverBlobToWrite             = 1<<10; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
+			serverBlobToWrite             = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
 			
 			fromRouterMsg 			      = isTLS?256:2048; //impacts performance
 			fromRouterBlob				  = 1<<7;
