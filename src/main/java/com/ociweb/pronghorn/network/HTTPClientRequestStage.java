@@ -35,8 +35,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 	private static final byte[] GET_BYTES_SPACE = "GET ".getBytes();
 	private static final byte[] GET_BYTES_SPACE_SLASH = "GET /".getBytes();
-
 	
+		
     private final boolean isTLS;
 	
 	public HTTPClientRequestStage(GraphManager graphManager, 	
@@ -87,7 +87,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 				}
 				
 				//check if some connections have not been used and can be closed.
-				if (now > nextUnusedCheck) {
+				if (now>nextUnusedCheck) {
 					//TODO: URGENT, this is killing of valid connections, but why? debug
 					//	closeUnusedConnections();
 					nextUnusedCheck = now+disconnectTimeoutMS;
@@ -129,11 +129,12 @@ public class HTTPClientRequestStage extends PronghornStage {
 		    Pipe<ClientHTTPRequestSchema> requestPipe = input[activePipe];
 		    	  
 		    boolean didWork = false;
+
 		    
 		    
 	///	    logger.info("send for active pipe {} has content to read {} ",activePipe,Pipe.hasContentToRead(requestPipe));
 		    
-	        while (Pipe.hasContentToRead(requestPipe)) {
+	        if (Pipe.hasContentToRead(requestPipe)) {
 		        	if (hasOpenConnection(requestPipe) ){
 		        		didWork = true;	        
 		  	    	        	
@@ -317,21 +318,20 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 
 	private void processFastGetLogic(long now, Pipe<ClientHTTPRequestSchema> requestPipe) {
-		{
-		        
+    
 		    	//logger.info("request sent to connection id {} for host {}, port {}, userid {} ",connectionId, activeHost, port, userId);
 		    	
-		    	    ClientConnection clientConnection = activeConnection;
-  
+		    	    ClientConnection clientConnection = activeConnection;  
 		        	clientConnection.setLastUsedTime(now);
-		        	clientConnection.incRequestsSent();//count of messages can only be done here.			        	
 		        	publishGet(requestPipe, clientConnection, output[clientConnection.requestPipeLineIdx()], now);
-		    
-		}
+
 	}
 
 
-	private void publishGet(Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection clientConnection, Pipe<NetPayloadSchema> outputPipe, long now) {
+	private void publishGet(Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection clientConnection,
+			Pipe<NetPayloadSchema> outputPipe, long now) {
+		
+		clientConnection.incRequestsSent();//count of messages can only be done here, AFTER requestPipeLineIdx
 		
 		//long pos = Pipe.workingHeadPosition(outputPipe);
 		
@@ -372,7 +372,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 		Pipe.confirmLowLevelWrite(outputPipe,pSize);
 		Pipe.publishWrites(outputPipe);
-				
+		
+		
 
 	}
 
