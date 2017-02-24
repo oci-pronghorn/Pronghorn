@@ -339,7 +339,7 @@ public class SSLUtil {
 					task.run(); //NOTE: could be run in parallel but we only have 1 thread now
 				}
 			} else {
-				    assert(cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP) : "found "+cc.getEngine().getHandshakeStatus();
+				  //  assert(cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_UNWRAP) : "found "+cc.getEngine().getHandshakeStatus();
 				
 					do {
 				//	    ////////////////////////
@@ -812,7 +812,7 @@ public class SSLUtil {
 					//only need to release the read, the write has already been published to target
 					continue;
 				}
-				assert(null!=cc);
+				//assert(null!=cc);
 			}
 			
 			assert(rolling.limit()==rolling.capacity());

@@ -158,7 +158,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    		int readCount=-1; 
 						    		try {					    									    			
 						    			readCount = (int)((SocketChannel)cc.getSocketChannel()).read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
-						    			assert(readCount<target.maxAvgVarLen);
 						    			
 						    		} catch (IOException ioex) {
 						    	
@@ -181,7 +180,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    		
 							    		openCount++;
 							    		
-							    		assert(readCount<=target.maxAvgVarLen);
 							    		totalBytes += readCount;						    		
 							    		//we read some data so send it		
 							    	
