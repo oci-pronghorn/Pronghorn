@@ -13,7 +13,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.pipe.Pipe.PaddedInt;
 import com.ociweb.pronghorn.pipe.token.OperatorMask;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
@@ -65,7 +64,7 @@ import com.ociweb.pronghorn.util.Appendables;
  */
 public class Pipe<T extends MessageSchema> {
 
-    private static final AtomicInteger pipeCounter = new AtomicInteger();
+    private static final AtomicInteger pipeCounter = new AtomicInteger(0);
     
     /**
      * Holds the active head position information.
@@ -957,7 +956,14 @@ public class Pipe<T extends MessageSchema> {
         StackStateWalker.reset(ringWalker, structuredPos);
     }
 
-
+	public static <S extends MessageSchema> Pipe<S>[] buildPipes(int count, PipeConfig<S> comonConfig) {		
+		Pipe[] result = new Pipe[count];
+		int i = count;
+		while (--i>=0) {
+			result[i] = new Pipe<S>(comonConfig);
+		}
+		return (Pipe<S>[])result;
+	}
 
 	public static <S extends MessageSchema> boolean validatePipeBlobHasDataToRead(Pipe<S> pipe, int blobPos, int length) {
 
