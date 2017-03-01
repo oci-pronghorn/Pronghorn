@@ -19,17 +19,16 @@ import com.ociweb.pronghorn.util.ServiceObjectHolder;
 import com.ociweb.pronghorn.util.ServiceObjectValidator;
 
 public class ServerCoordinator extends SSLConnectionHolder {
-
-    //TODO: replace to hold ServerConnection
-	private final ServiceObjectHolder<ServerConnection>[] socketHolder;
 	
 	private final static Logger logger = LoggerFactory.getLogger(ServerCoordinator.class);
     
-    private final Selector[]                           selectors;
-    private final MemberHolder[]                       subscriptions;
-    private final int[][]                              upgradePipeLookup;
-    private final ConnectionContext[][]                connectionContext; //NOTE: ObjectArrays would work very well here!!
+	private ServiceObjectHolder<ServerConnection> socketHolder;
+    private Selector                              selectors;
+    private MemberHolder                          subscriptions;
+    private int[]                                 upgradePipeLookup;
+    private ConnectionContext[]                   connectionContext; //NOTE: ObjectArrays would work very well here!!
             
+    
     public final int                                  channelBits;
     public final int                                  channelBitsSize;
     public final int                                  channelBitsMask;
@@ -69,15 +68,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
 											"{\"x\":9,\"y\":17,\"groovySum\":26}\n";
 	
     
-    public ServerCoordinator(int socketGroups, String bindHost, int port, int maxConnectionsBits, int maxPartialResponses, int routerCount) {
-        this.socketHolder      = new ServiceObjectHolder[socketGroups];    
-        this.selectors         = new Selector[socketGroups];
+    public ServerCoordinator(String bindHost, int port, int maxConnectionsBits, int maxPartialResponses, int routerCount) {
         
-        
-        this.subscriptions     = new MemberHolder[socketGroups];
         this.port              = port;
-        this.upgradePipeLookup        = new int[socketGroups][];
-        this.connectionContext = new ConnectionContext[socketGroups][];
         this.channelBits       = maxConnectionsBits;
         this.channelBitsSize   = 1<<channelBits;
         this.channelBitsMask   = channelBitsSize-1;
@@ -149,8 +142,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	}
 
 	@Override
-	public SSLConnection get(long id, int groupId) {
-		return socketHolder[groupId].get(id);		
+	public SSLConnection get(long id) {
+		return socketHolder.get(id);		
 	}
     
     public InetSocketAddress getAddress() {
@@ -158,25 +151,25 @@ public class ServerCoordinator extends SSLConnectionHolder {
     }
 
     
-    public static ServiceObjectHolder<ServerConnection> newSocketChannelHolder(ServerCoordinator that, int idx) {
-        that.connectionContext[idx] = new ConnectionContext[that.channelBitsSize];
+    public static ServiceObjectHolder<ServerConnection> newSocketChannelHolder(ServerCoordinator that) {
+        that.connectionContext = new ConnectionContext[that.channelBitsSize];
         //must also create these long lived instances, this would be a good use case for StructuredArray and ObjectLayout
         int i = that.channelBitsSize;
         while (--i >= 0) {
-            that.connectionContext[idx][i] = new ConnectionContext();
+            that.connectionContext[i] = new ConnectionContext();
         }
         
-        that.upgradePipeLookup[idx] = new int[that.channelBitsSize];
-        return that.socketHolder[idx] = new ServiceObjectHolder<ServerConnection>(that.channelBits, ServerConnection.class, new SocketValidator(), false/*Do not grow*/);
+        that.upgradePipeLookup = new int[that.channelBitsSize];
+        return that.socketHolder = new ServiceObjectHolder<ServerConnection>(that.channelBits, ServerConnection.class, new SocketValidator(), false/*Do not grow*/);
         
     }
     
-    public static ServiceObjectHolder<ServerConnection> getSocketChannelHolder(ServerCoordinator that, int idx) {
-        return that.socketHolder[idx];
+    public static ServiceObjectHolder<ServerConnection> getSocketChannelHolder(ServerCoordinator that) {
+        return that.socketHolder;
     }
     
-    public MemberHolder newMemberHolder(int idx) {
-        return subscriptions[idx] = new MemberHolder(100);
+    public MemberHolder newMemberHolder() {
+        return subscriptions = new MemberHolder(100);
     }
     
     private final class PipeLineFilter implements PoolIdxPredicate {
@@ -218,50 +211,44 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
 
     
-    public static int[] getUpgradedPipeLookupArray(ServerCoordinator that, int idx) {
-        return that.upgradePipeLookup[idx];
+    public static int[] getUpgradedPipeLookupArray(ServerCoordinator that) {
+        return that.upgradePipeLookup;
     }
     
-    @Deprecated//Not needed bad idea
-    public static void setTargetUpgradePipeIdx(ServerCoordinator coordinator, int groupId, long channelId, int idxValue) {
-        coordinator.upgradePipeLookup[groupId][(int)(coordinator.channelBitsMask & channelId)] = idxValue;
+//    @Deprecated//Not needed bad idea
+//    public static void setTargetUpgradePipeIdx(ServerCoordinator coordinator, int groupId, long channelId, int idxValue) {
+//        coordinator.upgradePipeLookup[groupId][(int)(coordinator.channelBitsMask & channelId)] = idxValue;
+//    }
+//    
+//    
+//    @Deprecated
+//    public static int getTargetUpgradePipeIdx(ServerCoordinator coordinator, int groupId, long channelId) {
+//        return coordinator.upgradePipeLookup[groupId][(int)(coordinator.channelBitsMask & channelId)];
+//    }
+    
+    public static Selector getSelector(ServerCoordinator that) {
+        return that.selectors;
     }
     
-    
-    @Deprecated
-    public static int getTargetUpgradePipeIdx(ServerCoordinator coordinator, int groupId, long channelId) {
-        return coordinator.upgradePipeLookup[groupId][(int)(coordinator.channelBitsMask & channelId)];
-    }
-    
-    public static Selector getSelector(ServerCoordinator that, int idx) {
-        return that.selectors[idx];
-    }
-    
-    public static ConnectionContext selectorKeyContext(ServerCoordinator that, int idx, long channelId) {
-        ConnectionContext context = that.connectionContext[idx][(int)(that.channelBitsMask & channelId)];
+    public static ConnectionContext selectorKeyContext(ServerCoordinator that, long channelId) {
+        ConnectionContext context = that.connectionContext[(int)(that.channelBitsMask & channelId)];
         context.setChannelId(channelId);        
         return context;
     }
 
-    static int scanForOptimalPipe(ServerCoordinator that, int minValue, int minIdx) {
-        int i = that.socketHolder.length;
-        ServiceObjectHolder<ServerConnection>[] localSocketHolder=that.socketHolder;
-        while (--i>=0) {
-             ServiceObjectHolder<ServerConnection> holder = localSocketHolder[i];    
+    static boolean scanForOptimalPipe(ServerCoordinator that) {
+             
+        	ServiceObjectHolder<ServerConnection> holder = that.socketHolder;    
              if (null!=holder) {
-	             int openConnections = (int)(ServiceObjectHolder.getSequenceCount(holder) - ServiceObjectHolder.getRemovalCount(holder));
-	             if (openConnections<minValue /*&& Pipe.hasRoomForWrite(localOutputs[i])*/ ) {
-	                 minValue = openConnections;
-	                 minIdx = i;
-	             } 
+	             return ((int)(ServiceObjectHolder.getSequenceCount(holder) - ServiceObjectHolder.getRemovalCount(holder))) < holder.size(); 
              }
-          }
-          return minIdx;
+     
+          return false;
     }
 
-    public void registerSelector(int pipeIdx, Selector selector) {
-    	assert(null==selectors[pipeIdx]) : "Should not already have a value";
-        selectors[pipeIdx] = selector;
+    public void registerSelector(Selector selector) {
+    	assert(null==selectors) : "Should not already have a value";
+        selectors = selector;
     }
 
 

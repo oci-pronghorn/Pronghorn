@@ -613,7 +613,7 @@ public class SSLUtil {
 	/**
 	 * Encrypt as much as possible based on the data available from the two pipes
 	 */
-	public static boolean engineWrap(SSLConnectionHolder ccm, Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer, int groupId) {
+	public static boolean engineWrap(SSLConnectionHolder ccm, Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer) {
 		
 		boolean didWork = false;
 	
@@ -623,7 +623,7 @@ public class SSLUtil {
 		while (Pipe.hasRoomForWrite(target) && Pipe.peekMsg(source, NetPayloadSchema.MSG_PLAIN_210) ) {
 			didWork = true;
 			
-			final SSLConnection cc = ccm.get(Pipe.peekLong(source, 1), groupId);
+			final SSLConnection cc = ccm.get(Pipe.peekLong(source, 1));
 						
 			if (null==cc || !cc.isValid) {
 				buffer.clear();
@@ -745,7 +745,7 @@ public class SSLUtil {
 				assert(connectionId>0) : "invalid connectionId read "+connectionId+" msgid "+Pipe.peekInt(source);
 				
 				
-				cc = ccm.get(connectionId, groupId); //connection id	
+				cc = ccm.get(connectionId); //connection id	
 				assert(cc.id==connectionId) : "returned wrong object";
 	
 				if (null==cc || !cc.isValid) {

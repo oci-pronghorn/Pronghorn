@@ -62,7 +62,7 @@ public class SocketIOStageTest {
         
         String bindHost = "127.0.0.1";
         int routerCount = 1;
-        ServerCoordinator serverCoordinator = new ServerCoordinator(socketGroups, bindHost, port, maxConnBits, maxtPartials, routerCount);
+        ServerCoordinator serverCoordinator = new ServerCoordinator(bindHost, port, maxConnBits, maxtPartials, routerCount);
 		ClientCoordinator clientCoordinator = new ClientCoordinator(                    maxConnBits, maxtPartials, false);
 		
 		
@@ -93,8 +93,8 @@ public class SocketIOStageTest {
 		    	output[p]=new Pipe<NetPayloadSchema>(payloadServerPipeConfig);
 		    }	    
 		    Pipe[] releasePipes = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};        
-			ServerSocketReaderStage.newInstance(gm, releasePipes, output, serverCoordinator, socketGroupId, encryptedContent);	
-	        new ServerSocketWriterStage(gm, serverCoordinator, output, releasePipes[0], 0); 
+			ServerSocketReaderStage.newInstance(gm, releasePipes, output, serverCoordinator, encryptedContent);	
+	        new ServerSocketWriterStage(gm, serverCoordinator, output, releasePipes[0]); 
         }
 		
 
@@ -145,7 +145,7 @@ public class SocketIOStageTest {
         
         String bindHost = "127.0.0.1";
         int routerCount = 1;
-		ServerCoordinator serverCoordinator = new ServerCoordinator(socketGroups, bindHost, port, maxConnBits, maxtPartials, routerCount);
+		ServerCoordinator serverCoordinator = new ServerCoordinator(bindHost, port, maxConnBits, maxtPartials, routerCount);
 		ClientCoordinator clientCoordinator = new ClientCoordinator(                    maxConnBits, maxtPartials,false);
 					
 		///
@@ -165,7 +165,7 @@ public class SocketIOStageTest {
 	    }
 	    
 	    Pipe[] acks = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};        
-		ServerSocketReaderStage.newInstance(gm, acks, output, serverCoordinator, socketGroupId, encryptedContent);
+		ServerSocketReaderStage.newInstance(gm, acks, output, serverCoordinator, encryptedContent);
         SocketTestDataStage watch = new SocketTestDataStage(gm, output, acks[0], encryptedContent, testUsers, testSeeds, testSizes); 
         
         ////

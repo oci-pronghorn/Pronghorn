@@ -122,7 +122,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		responsePipeLinePool = new PoolIdx(maxPartialResponses); //NOTE: maxPartialResponses should never be greater than response listener count		
 	}
 		
-	public SSLConnection get(long hostId, int groupId) {
+	public SSLConnection get(long hostId) {
 		ClientConnection response = connections.getValid(hostId);
 		if (null == response) {			
 			//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);

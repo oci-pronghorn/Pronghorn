@@ -26,8 +26,6 @@ public class ServerSocketWriterStage extends PronghornStage {
     private final Pipe<ReleaseSchema> releasePipe;
     
     private final ServerCoordinator coordinator;
-    private final int groupIdx;
-    
 
 
     public final static int UPGRADE_TARGET_PIPE_MASK     = (1<<21)-1;
@@ -86,22 +84,19 @@ public class ServerSocketWriterStage extends PronghornStage {
      * @param graphManager
      * @param coordinator
      * @param dataToSend
-     * @param pipeIdx
      */
-    public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<NetPayloadSchema>[] dataToSend, int pipeIdx) {
+    public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<NetPayloadSchema>[] dataToSend) {
         super(graphManager, dataToSend, NONE);
         this.coordinator = coordinator;
-        this.groupIdx = pipeIdx;
         this.dataToSend = dataToSend;
         this.releasePipe = null;
     }
     
     //optional ack mode for testing and other configuraitons..  
     
-    public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<NetPayloadSchema>[] input, Pipe<ReleaseSchema> releasePipe, int groupIdx) {
+    public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<NetPayloadSchema>[] input, Pipe<ReleaseSchema> releasePipe) {
         super(graphManager, input, releasePipe);
         this.coordinator = coordinator;
-        this.groupIdx = groupIdx;
         this.dataToSend = input;
         this.releasePipe = releasePipe;
     }
@@ -249,7 +244,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    Pipe.releaseReadLock(dataToSend[idx]);
 		    assert(Pipe.contentRemaining(dataToSend[idx])>=0);
 		    
-		    ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator, groupIdx);
+		    ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
 		    if (null!=socketHolder) {
 		        ServerConnection serverConnection = socketHolder.get(channelId);	          
 		        if (null!=serverConnection) {
@@ -309,7 +304,7 @@ public class ServerSocketWriterStage extends PronghornStage {
         
         //System.err.println(this.stageId+"writer Ch:"+channelId+" len:"+len+" from pipe "+idx);
                 
-        ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator, groupIdx);
+        ServiceObjectHolder<ServerConnection> socketHolder = ServerCoordinator.getSocketChannelHolder(coordinator);
         
         if (null!=socketHolder) {
 	        ServerConnection serverConnection = socketHolder.get(channelId);

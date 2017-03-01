@@ -14,6 +14,7 @@ import org.junit.Test;
 
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.HTTPClientRequestStage;
+import com.ociweb.pronghorn.network.HTTPServerConfig;
 import com.ociweb.pronghorn.network.ModuleConfig;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.network.SSLConnection;
@@ -47,128 +48,10 @@ import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 public class HTTPSRoundTripTest {
 
 
-    private static final int groups = 1;//2;
     private static final int apps = 1; 
       
     
-	@Ignore
-	public void roundTripTest() {
-				
-//		String testFile = "OCILogo.png";
-//		int    testFileSize = 9572;
-//				
-		boolean isTLS = true;
-		
-		String testFile = "SQRL.svg";
-		int    testFileSize = 0;
-		
-		String root = buildStaticFileFolderPath(testFile);
-		
-    	GraphManager gm = new GraphManager();
-    	GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1000);
-    	GraphManager.enableBatching(gm);
-    	
-        /////////////////
-        /////////////////
-    	int base2SimultaniousConnections = 3;
-    	final int maxListeners = 1<<base2SimultaniousConnections;
-    	String bindHost = "127.0.0.1";
-		ServerCoordinator serverCoord = new ServerCoordinator(groups, bindHost, 8443, 15, maxListeners,1);//32K simulanious connections on server. 
-
-    	
-		int requestUnwrapUnits = 1;
-		int responseWrapUnits = 4; //only have 4 users now...
-		int pipesPerOutputEngine = 1;
-		GraphManager gm1 = gm;
-		final String path = root;
-		
-		
-		//using the basic no-fills API
-		ModuleConfig config = new ModuleConfig() {
-		
-		    
-		    final PipeConfig<ServerResponseSchema> outgoingDataConfig = new PipeConfig<ServerResponseSchema>(ServerResponseSchema.instance, 2048, 1<<15);//from module to  supervisor
-		    Pipe<ServerResponseSchema>[][] outputs;
-		    
-			@Override
-			public long addModule(int a, 
-					GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs,
-					HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> spec) {
-				
-				int i = inputs.length;
-				outputs = new Pipe[i][1];
-				while (--i>=0) {
-					outputs[i][0] = new Pipe<ServerResponseSchema>(outgoingDataConfig);
-					FileReadModuleStage.newInstance(graphManager, inputs[i], outputs[i][0], spec, new File(path));
-				}
-				//return needed headers
-				return 0;
-			}
-		
-			@Override
-			public CharSequence getPathRoute(int a) {
-				return "/%b";
-			}
-		
-			@Override
-			public Pipe<ServerResponseSchema>[][] outputPipes(int a) {			
-				return outputs;
-			}
-		
-			@Override
-			public int moduleCount() {
-				return 1;
-			}        
-		 	
-		 };
-		
-		 int socketWriters = 1;
-		 int serverInputBlobs = 1<<11;
-
-		 int serverBlobToEncrypt = 1<<14;
-		 int serverBlobToWrite = 1<<16;
-		 int routerCount = 4;	
-		 
-		gm1 = NetGraphBuilder.buildHTTPServerGraph(isTLS, gm1, groups, maxListeners, config, serverCoord, requestUnwrapUnits, 
-				    responseWrapUnits, pipesPerOutputEngine, socketWriters, 64, serverInputBlobs, 2048, serverBlobToEncrypt, 1024, serverBlobToWrite, routerCount, 512, 1<<8, 256);
- 
-    	gm = gm1;     
-        
-        /////////////////
-      	
-		final int inputsCount = maxListeners;//4;//also number of max connections		
-		int maxPartialResponses = maxListeners;//4;
-		
-		final int outputsCount = 1;//2;//must be < connections
-		
-		//holds new requests
-		Pipe<ClientHTTPRequestSchema>[] input = new Pipe[inputsCount];
-		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);
-		
-		ClientCoordinator clientCoord = new ClientCoordinator(base2SimultaniousConnections, maxPartialResponses, isTLS);		
-		
-		int responseUnwrapUnits = 1;//To be driven by core count
-		int requestWrapUnits = 1;//To be driven by core count
-
-		int clientWriterStages = 2; //writer instances;
-		
-		
-		Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections, outputsCount, maxPartialResponses, input,
-				                                           clientCoord, responseUnwrapUnits, requestWrapUnits,
-				                                           8, 1<<4, 8, 1<<15, clientWriterStages, 64, 1<<16, 32, 1<<8);
-		     
-		PipeCleanerStage<NetResponseSchema> cleaner = new PipeCleanerStage<>(gm, toReactor, "Reactor");
-		final StageScheduler scheduler = setupScheduler(gm, serverCoord, clientCoord);
-
-		
-		long start = System.currentTimeMillis();
-		
-		scheduler.startup();
-		
-        runTestData(testFile, testFileSize, maxListeners, input, cleaner, scheduler, start);
-        
-
-	}
+	
 
 	private void runTestData(String testFile, int testFileSize, final int maxListeners, Pipe<ClientHTTPRequestSchema>[] input,
 			PipeCleanerStage<NetResponseSchema> cleaner, StageScheduler scheduler, long start) {
@@ -369,7 +252,7 @@ public class HTTPSRoundTripTest {
 			//TODO: RERUN THE NETTY AND GL TESTS WITH RESTRICTED MEMORY TO ENSURE NO EXTRA LARGE NUMBERS...
 			
 			
-			boolean isTLS = true;//true;
+			boolean isTLS = false;//true;
 			int port = isTLS?8443:8080;
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";
@@ -381,9 +264,7 @@ public class HTTPSRoundTripTest {
 			
 			
 			GraphManager gm = new GraphManager();
-			
-		//	gm.enableBatching(gm);
-	    	
+
 	    	//TODO: will big sleeps show the backed up pipes more clearly? TODO: must be tuned for pipe lenghths?
 	    	
 			
@@ -394,9 +275,7 @@ public class HTTPSRoundTripTest {
 			
 	    	//TODO: we need a better test that has each users interaction of 10 then wait for someone else to get in while still connected.
 	    	//TODO: urgent need to kill off expired pipe usages.
-	    	
-	    	//GraphManager.enableBatching(gm);
-	    	
+
 			 
 	    	final String testFile = "groovySum.json";
 	    	ServerCoordinator serverCoord = null;

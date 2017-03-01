@@ -282,7 +282,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					inputPosition[i] = Pipe.takeLong(pipe);
 										
 					ccIdData[i] = ccId;
-					cc = (ClientConnection)ccm.get(ccId, 0);
+					cc = (ClientConnection)ccm.get(ccId);
 								
 					if (null==cc) {		
 						logger.warn("closed connection detected");
@@ -365,7 +365,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//else use the data we have since no new data came in.
 						
 						ccId = ccIdData[i];
-						cc = (ClientConnection)ccm.get(ccId, 0);					
+						cc = (ClientConnection)ccm.get(ccId);					
 						if (null==cc) {	//skip data the connection was closed		
 							TrieParserReader.parseSkip(trieReader, trieReader.sourceLen);
 							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);

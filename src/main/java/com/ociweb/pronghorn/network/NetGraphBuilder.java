@@ -150,7 +150,7 @@ public class NetGraphBuilder {
 			Pipe[][] encrpData = Pipe.splitPipes(c, wrappedClientRequests);
 			while (--c>=0) {			
 				if (encrpData[c].length>0) {
-					SSLEngineWrapStage wrapStage = new  SSLEngineWrapStage(gm, ccm, false, plainData[c], encrpData[c], 0 );
+					SSLEngineWrapStage wrapStage = new  SSLEngineWrapStage(gm, ccm, false, plainData[c], encrpData[c] );
 					GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "Wrap", wrapStage);
 				}
 			}
@@ -190,280 +190,255 @@ public class NetGraphBuilder {
 	}
 
 	
-	
-	//TODO: review each stage for opportunities to use batch combine logic, (eg n in a row). May go a lot faster for single power users. future feature.
-	
-	public static GraphManager buildHTTPServerGraph(boolean isTLS, GraphManager graphManager, int groups,
-			int maxSimultanious, ModuleConfig ac, ServerCoordinator coordinator, int requestUnwrapUnits, int responseWrapUnits, 
-			int pipesPerWrapUnit, int socketWriters, int serverInputMsg, int serverInputBlobs, 
-			int serverMsgToEncrypt, int serverBlobToEncrypt, int serverMsgToWrite, int serverBlobToWrite, final int routerCount, 
-			int fromRouterMsg, int fromRouterBlob, int releaseMsg) {
-		
-        
-        
-        PipeConfig<ReleaseSchema> releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,releaseMsg);
-        
-		PipeConfig<ServerConnectionSchema> newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 10);
-		
-		//Why? the router is helped with lots of extra room for write?  - may need to be bigger for posts.
-        PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, fromRouterMsg, fromRouterBlob);///if payload is smaller than average file size will be slower
-      
-        //byte buffer must remain small because we will have a lot of these for all the partial messages
-        //TODO: if we get a series of very short messages this will fill up causing a hang. TODO: we can get parser to release and/or server reader to combine.
-        PipeConfig<NetPayloadSchema> incomingDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, serverInputMsg, serverInputBlobs);//make larger if we are suporting posts. 1<<20); //Make same as network buffer in bytes!??   Do not make to large or latency goes up
-        
-        //must be large to hold high volumes of throughput.  //NOTE: effeciency of supervisor stage controls how long this needs to be
-        PipeConfig<NetPayloadSchema> toWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, serverMsgToEncrypt, serverBlobToEncrypt); //from super should be 2x of super input //must be 1<<15 at a minimum for handshake
-        
-        //also used when the TLS is not enabled                 must be less than the outgoing buffer size of socket?
-        PipeConfig<NetPayloadSchema> fromWraperConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, serverMsgToWrite, serverBlobToWrite);  //must be 1<<15 at a minimum for handshake
-                
-        PipeConfig<NetPayloadSchema> handshakeDataConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, maxSimultanious>>1, 1<<15); //must be 1<<15 at a minimum for handshake
-        
-        Pipe[][] encryptedIncomingGroup = new Pipe[groups][];
-        Pipe[][] planIncomingGroup = new Pipe[groups][];
-        Pipe[][] handshakeIncomingGroup = new Pipe[groups][];
-        
-        if (ac.moduleCount()==0) {
-        	throw new UnsupportedOperationException("Must be using at least 1 module to startup.");
-        }
-        
-        HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> httpSpec = HTTPSpecification.defaultSpec();
-        
-        int g = groups;
-        while (--g >= 0) {//create each connection group            
-             
-            encryptedIncomingGroup[g] = buildPipes(maxSimultanious, incomingDataConfig);
-            
-            if (isTLS) {
-            	planIncomingGroup[g] = buildPipes(maxSimultanious, incomingDataConfig);
-            } else {
-            	planIncomingGroup[g] = encryptedIncomingGroup[g];
-            }
-    
-               
-            int a = routerCount+(isTLS?requestUnwrapUnits:0);
-    		Pipe[] acks = new Pipe[a];
-    		while (--a>=0) {
-    			acks[a] =  new Pipe<ReleaseSchema>(releaseConfig, false);	
-    		}
-                       
-            //reads from the socket connection
-            ServerSocketReaderStage readerStage = new ServerSocketReaderStage(graphManager, acks, encryptedIncomingGroup[g], coordinator, g, isTLS);
-            GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketReader", readerStage);
-                           
-            if (isTLS) {
-            	populateGraphWithUnWrapStages(graphManager, coordinator, requestUnwrapUnits, handshakeDataConfig,
-            			                      encryptedIncomingGroup, planIncomingGroup, handshakeIncomingGroup, g, acks);
-            }                                 
-            
-            /////////////////////////
-            ///////////////////////
-            a = ac.moduleCount();
 
-            //split up the unencrypted pipes across all the routers
-            Pipe[][] plainSplit = Pipe.splitPipes(routerCount, planIncomingGroup[g]);
-            
-
-			final HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(httpSpec); 
-            //create the modules
-                                 
-            
-			int routerLimit = routerCount+(isTLS?requestUnwrapUnits:0);
-			
-            Pipe<HTTPRequestSchema>[][] toModules = new Pipe[ac.moduleCount()][routerCount];
-            Pipe<ServerResponseSchema>[][][] fromModule = new Pipe[routerCount][ac.moduleCount()][]; 
-  
-            for(a=0; a<ac.moduleCount(); a++) { 
-            		      
-            	toModules[a] = new Pipe[routerCount];
-            	for(int r=0; r<routerCount; r++) {
-            		toModules[a][r] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig,false);		
-            	}                
-            	
-            	routerConfig.registerRoute(ac.getPathRoute(a), ac.addModule(a, graphManager, toModules[a], httpSpec));
-                
-                Pipe<ServerResponseSchema>[][] outputPipes = ac.outputPipes(a);
-                
-                
-                for(int i=0;i<outputPipes.length;i++) {
-                	fromModule[i][a] = outputPipes[i];  
-                }    
- 
-                
-            }
-
-            
-            ////////////////
-            ////////////////
-            
- 
-            //create the routers
-            int acksBase = acks.length-1;
-            int r = routerCount;
-            while (--r>=0) {
-            	
-            	a = ac.moduleCount();
-            	Pipe<HTTPRequestSchema>[][] toAllModules = new Pipe[1][a];
-            	while (--a>=0) {           		
-
-            			toAllModules[0][a] = toModules[a][r]; //cross cut this matrix
-         		
-            	}
-            	
-            	HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], toAllModules, acks[acksBase-r], routerConfig);        
-            	GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
-            	
-            }
-            
-            
-            
-            //////////////////////////
-            //////////////////////////
-          
-            
-            int y = pipesPerWrapUnit;
-            int z = responseWrapUnits;
-            
-            Pipe[] singlePipe = new Pipe[z*y];
-            Pipe[][] fromSupers = new Pipe[][]{singlePipe};
-            
-            Pipe[] toWiterPipes = null;
-            
-            if (isTLS) {
-	            
-	            toWiterPipes = new Pipe[(z*y) + requestUnwrapUnits ]; //extras for handshakes if needed
-	            
-	            int toWriterPos = 0;
-	            int fromSuperPos = 0;
-	            
-	            int remHanshakePipes = requestUnwrapUnits;
-	            
-	            while (--z>=0) {           
-	            	
-	            	//as possible we must mix up the pipes to ensure handshakes go to different writers.
-		            if (--remHanshakePipes>=0) {
-		            	toWiterPipes[toWriterPos++] = handshakeIncomingGroup[g][remHanshakePipes]; //handshakes go directly to the socketWriterStage
-		            }
-	            	
-	            	//
-	            	int w = y;
-		            Pipe[] toWrapperPipes = new Pipe[w];
-		            Pipe[] fromWrapperPipes = new Pipe[w];            
-		            
-		            while (--w>=0) {	
-		            	toWrapperPipes[w] = new Pipe<NetPayloadSchema>(toWraperConfig,false);
-		            	fromWrapperPipes[w] = new Pipe<NetPayloadSchema>(fromWraperConfig,false); 
-		            	toWiterPipes[toWriterPos++] = fromWrapperPipes[w];
-		            	fromSupers[g][fromSuperPos++] = toWrapperPipes[w]; //TODO: this zero is wrong because it should be the count of apps.
-		            }
-		            
-		            Pipe[] tapToWrap = toWrapperPipes;//countTap(graphManager, toWrapperPipes,"Server-super-to-wrap");
-		            Pipe[] tapFromWrap = fromWrapperPipes;//countTap(graphManager, fromWrapperPipes,"Server-wrap-to-write");
-		            
-		            SSLEngineWrapStage wrapStage = new SSLEngineWrapStage(graphManager, coordinator, false, tapToWrap, fromWrapperPipes, g);
-		            GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "Wrap", wrapStage);
-	            }
-	            
-	            //finish up any remaning handshakes
-	            while (--remHanshakePipes>=0) {
-	            	toWiterPipes[toWriterPos++] = handshakeIncomingGroup[g][remHanshakePipes]; //handshakes go directly to the socketWriterStage
-	            }
-	            
-	            
-            } else {
-
-            	int i = fromSupers[g].length;
-            	while (-- i>= 0) {
-            		fromSupers[g][i]=new Pipe<NetPayloadSchema>(fromWraperConfig,false);            		
-            	}
-            	toWiterPipes = fromSupers[g];      	
-            
-            }
-            
-            
-            ///////////////////
-            //we always have a super to ensure order regardless of TLS
-            //a single supervisor will group all the modules responses together.
-            ///////////////////
-
-            Pipe[][] orderedOutput = Pipe.splitPipes(routerCount, fromSupers[g]);
-            int k = routerCount;
-            while (--k>=0) {
-                        
-            	OrderSupervisorStage wrapSuper = new OrderSupervisorStage(graphManager, fromModule[k], orderedOutput[k], coordinator, isTLS);//ensure order           
-            }
-            
-            ///////////////
-            //all the writer stages
-            ///////////////
-            
-            
-            Pipe[][] req = Pipe.splitPipes(socketWriters, toWiterPipes);	//TODO: for multiple apps this is also not yet ready.
-            int w = socketWriters;
-            while (--w>=0) {
-            	
-            	ServerSocketWriterStage writerStage = new ServerSocketWriterStage(graphManager, coordinator, req[w], g); //pump bytes out
-                GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketWriter", writerStage);
-               	
-            }
+	public static GraphManager buildHTTPServerGraph(boolean isTLS, GraphManager graphManager, ModuleConfig modules,
+			                                        ServerCoordinator coordinator, final int routerCount, HTTPServerConfig serverConfig) {
+		                
+   
+        final Pipe[] encryptedIncomingGroup = Pipe.buildPipes(serverConfig.maxPartialResponsesServer, serverConfig.incomingDataConfig);           
            
+        Pipe[] acks = buildSocketReaderStage(isTLS, graphManager, coordinator, routerCount, serverConfig, encryptedIncomingGroup);
+                       
+        Pipe[] handshakeIncomingGroup=null;
+        Pipe[] planIncomingGroup;
+        
+        if (isTLS) {
+        	planIncomingGroup = Pipe.buildPipes(serverConfig.maxPartialResponsesServer, serverConfig.incomingDataConfig);
+        	handshakeIncomingGroup = populateGraphWithUnWrapStages(graphManager, coordinator, serverConfig.serverRequestUnwrapUnits, serverConfig.handshakeDataConfig,
+        			                      encryptedIncomingGroup, planIncomingGroup, acks);
+        } else {
+        	planIncomingGroup = encryptedIncomingGroup;
         }
+        
+
+		////////////////////////
+		//create the working modules
+		//////////////////////////
+
+		if (modules.moduleCount()==0) {
+			throw new UnsupportedOperationException("Must be using at least 1 module to startup.");
+		}
+		
+        Pipe<ServerResponseSchema>[][] fromModule = new Pipe[routerCount][];         
+        Pipe<HTTPRequestSchema>[][] toModules = new Pipe[routerCount][];
+        
+        
+        final HTTP1xRouterStageConfig routerConfig = buildModules(graphManager, modules, routerCount, serverConfig.httpSpec, serverConfig.routerToModuleConfig, fromModule, toModules);
+
+        
+        buildRouters(graphManager, routerCount, planIncomingGroup, acks, toModules, routerConfig);
+     
+        
+        //////////////////////////
+        //create the wrap and write stages
+        //////////////////////////      
+        
+        return buildRemainderOfServerStages(isTLS, graphManager, coordinator, routerCount, serverConfig, handshakeIncomingGroup, fromModule);
+        
+	}
+
+	public static Pipe[] buildSocketReaderStage(boolean isTLS, GraphManager graphManager, ServerCoordinator coordinator,
+			final int routerCount, HTTPServerConfig serverConfig, Pipe[] encryptedIncomingGroup) {
+		int a = routerCount+(isTLS?serverConfig.serverRequestUnwrapUnits:0);
+		Pipe[] acks = new Pipe[a];
+		while (--a>=0) {
+			acks[a] =  new Pipe<ReleaseSchema>(serverConfig.releaseConfig, false);	
+		}
+                   
+        //reads from the socket connection
+        ServerSocketReaderStage readerStage = new ServerSocketReaderStage(graphManager, acks, encryptedIncomingGroup, coordinator, isTLS);
+        GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketReader", readerStage);
+		return acks;
+	}
+
+	public static GraphManager buildRemainderOfServerStages(boolean isTLS, GraphManager graphManager,
+			ServerCoordinator coordinator, final int routerCount, HTTPServerConfig serverConfig,
+			Pipe[] handshakeIncomingGroup, Pipe<ServerResponseSchema>[][] fromModule) {
+		Pipe[] singlePipe = new Pipe[serverConfig.serverResponseWrapUnits * serverConfig.serverPipesPerOutputEngine];
+        Pipe[] fromSupers = singlePipe;
+        
+        Pipe[] toWiterPipes = buildSSLWrapersAsNeeded(isTLS, graphManager, coordinator, serverConfig.serverRequestUnwrapUnits,
+        		serverConfig.toWraperConfig, serverConfig.fromWraperConfig, handshakeIncomingGroup, serverConfig.serverPipesPerOutputEngine, serverConfig.serverResponseWrapUnits, fromSupers);
+                    
+        buildOrderingSupers(isTLS, graphManager, coordinator, routerCount, fromModule, fromSupers);
+        
+        buildSocketWriters(graphManager, coordinator, serverConfig.serverSocketWriters, toWiterPipes);
+
               
-        Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(newConnectionsConfig,false);        
+        Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(serverConfig.newConnectionsConfig,false);        
         ServerNewConnectionStage newConStage = new ServerNewConnectionStage(graphManager, coordinator, newConnectionsPipe, isTLS); 
         PipeCleanerStage<ServerConnectionSchema> dump = new PipeCleanerStage<>(graphManager, newConnectionsPipe); //IS this important data?
         
         return graphManager;
 	}
 
-	private static void populateGraphWithUnWrapStages(GraphManager graphManager, ServerCoordinator coordinator,
-			int requestUnwrapUnits, PipeConfig<NetPayloadSchema> handshakeDataConfig, Pipe[][] encryptedIncomingGroup,
-			Pipe[][] planIncomingGroup, Pipe[][] handshakeIncomingGroup, int g, Pipe[] acks) {
-		handshakeIncomingGroup[g] = new Pipe[requestUnwrapUnits];
+	private static Pipe[] buildSSLWrapersAsNeeded(boolean isTLS, GraphManager graphManager,
+			ServerCoordinator coordinator, int requestUnwrapUnits, PipeConfig<NetPayloadSchema> toWraperConfig,
+			PipeConfig<NetPayloadSchema> fromWraperConfig, Pipe[] handshakeIncomingGroup, int y, int z,
+			Pipe[] fromSupers) {
+		Pipe[] toWiterPipes = null;
+		
+		if (isTLS) {
+		    
+		    toWiterPipes = new Pipe[(z*y) + requestUnwrapUnits ]; //extras for handshakes if needed
+		    
+		    int toWriterPos = 0;
+		    int fromSuperPos = 0;
+		    
+		    int remHanshakePipes = requestUnwrapUnits;
+		    
+		    while (--z>=0) {           
+		    	
+		    	//as possible we must mix up the pipes to ensure handshakes go to different writers.
+		        if (--remHanshakePipes>=0) {
+		        	toWiterPipes[toWriterPos++] = handshakeIncomingGroup[remHanshakePipes]; //handshakes go directly to the socketWriterStage
+		        }
+		    	
+		    	//
+		    	int w = y;
+		        Pipe[] toWrapperPipes = new Pipe[w];
+		        Pipe[] fromWrapperPipes = new Pipe[w];            
+		        
+		        while (--w>=0) {	
+		        	toWrapperPipes[w] = new Pipe<NetPayloadSchema>(toWraperConfig,false);
+		        	fromWrapperPipes[w] = new Pipe<NetPayloadSchema>(fromWraperConfig,false); 
+		        	toWiterPipes[toWriterPos++] = fromWrapperPipes[w];
+		        	fromSupers[fromSuperPos++] = toWrapperPipes[w]; //TODO: this zero is wrong because it should be the count of apps.
+		        }
+		        
+		        Pipe[] tapToWrap = toWrapperPipes;//countTap(graphManager, toWrapperPipes,"Server-super-to-wrap");
+		        Pipe[] tapFromWrap = fromWrapperPipes;//countTap(graphManager, fromWrapperPipes,"Server-wrap-to-write");
+		        
+		        SSLEngineWrapStage wrapStage = new SSLEngineWrapStage(graphManager, coordinator, false, tapToWrap, fromWrapperPipes);
+		        GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "Wrap", wrapStage);
+		    }
+		    
+		    //finish up any remaning handshakes
+		    while (--remHanshakePipes>=0) {
+		    	toWiterPipes[toWriterPos++] = handshakeIncomingGroup[remHanshakePipes]; //handshakes go directly to the socketWriterStage
+		    }
+		    
+		    
+		} else {
+
+			int i = fromSupers.length;
+			while (-- i>= 0) {
+				fromSupers[i] = new Pipe<NetPayloadSchema>(fromWraperConfig,false);            		
+			}
+			toWiterPipes = fromSupers;      	
+		
+		}
+		return toWiterPipes;
+	}
+
+	private static void buildOrderingSupers(boolean isTLS, GraphManager graphManager, ServerCoordinator coordinator,
+			final int routerCount, Pipe<ServerResponseSchema>[][] fromModule, Pipe[] fromSupers) {
+		///////////////////
+		//we always have a super to ensure order regardless of TLS
+		//a single supervisor will group all the modules responses together.
+		///////////////////
+
+		Pipe[][] orderedOutput = Pipe.splitPipes(routerCount, fromSupers);
+		int k = routerCount;
+		while (--k>=0) {
+			OrderSupervisorStage wrapSuper = new OrderSupervisorStage(graphManager, fromModule[k], orderedOutput[k], coordinator, isTLS);//ensure order           
+		}
+	}
+
+	private static void buildSocketWriters(GraphManager graphManager, ServerCoordinator coordinator, int socketWriters,
+			Pipe[] toWiterPipes) {
+		///////////////
+		//all the writer stages
+		///////////////
+		
+		
+		Pipe[][] req = Pipe.splitPipes(socketWriters, toWiterPipes);	
+		int w = socketWriters;
+		while (--w>=0) {
+			
+			ServerSocketWriterStage writerStage = new ServerSocketWriterStage(graphManager, coordinator, req[w]); //pump bytes out
+		    GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "SocketWriter", writerStage);
+		   	
+		}
+	}
+
+	public static void buildRouters(GraphManager graphManager, final int routerCount, Pipe[] planIncomingGroup,
+			Pipe[] acks, 
+			Pipe<HTTPRequestSchema>[][] toModules, 
+			final HTTP1xRouterStageConfig routerConfig) {
+		
+		int a;
+		/////////////////////
+		//create the routers
+		/////////////////////
+		//split up the unencrypted pipes across all the routers
+		Pipe[][] plainSplit = Pipe.splitPipes(routerCount, planIncomingGroup);
+		int acksBase = acks.length-1;
+		int r = routerCount;
+		while (--r>=0) {
+			
+			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], toModules[r], acks[acksBase-r], routerConfig);        
+			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
+			
+		}
+		
+		
+	}
+
+	public static HTTP1xRouterStageConfig buildModules(GraphManager graphManager, ModuleConfig modules,
+			final int routerCount,
+			HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> httpSpec,
+			PipeConfig<HTTPRequestSchema> routerToModuleConfig, Pipe<ServerResponseSchema>[][] fromModule,
+			Pipe<HTTPRequestSchema>[][] toModules) {
+		
+		final HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(httpSpec); 
+		//create the modules
+
+		for(int r=0; r<routerCount; r++) {
+			toModules[r] = new Pipe[modules.moduleCount()];
+		}
+		  
+		//create each module
+		for(int a=0; a<modules.moduleCount(); a++) { 
+			
+			Pipe[] routesTemp = new Pipe[routerCount];
+			for(int r=0; r<routerCount; r++) {
+				routesTemp[r] = toModules[r][a] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig,false);				
+			}
+			//each module can unify of split across routers
+			routerConfig.registerRoute(modules.getPathRoute(a), modules.addModule(a, graphManager, routesTemp, httpSpec));
+		    
+			//one array per each of the routers.
+		    Pipe<ServerResponseSchema>[][] outputPipes = modules.outputPipes(a);
+		  
+		    for(int r=0; r<routerCount; r++) {
+		    	fromModule[r] = PronghornStage.join(outputPipes[r], fromModule[r]);
+		    }
+		    
+		}
+		
+		
+		return routerConfig;
+	}
+
+	public static Pipe[] populateGraphWithUnWrapStages(GraphManager graphManager, ServerCoordinator coordinator,
+			int requestUnwrapUnits, PipeConfig<NetPayloadSchema> handshakeDataConfig, Pipe[] encryptedIncomingGroup,
+			Pipe[] planIncomingGroup, Pipe[] acks) {
+		Pipe[] handshakeIncomingGroup = new Pipe[requestUnwrapUnits];
 		            	
 		int c = requestUnwrapUnits;
-		Pipe[][] in = Pipe.splitPipes(c, encryptedIncomingGroup[g]);
-		Pipe[][] out = Pipe.splitPipes(c, planIncomingGroup[g]);
+		Pipe[][] in = Pipe.splitPipes(c, encryptedIncomingGroup);
+		Pipe[][] out = Pipe.splitPipes(c, planIncomingGroup);
 		
 		while (--c>=0) {
-			handshakeIncomingGroup[g][c] = new Pipe(handshakeDataConfig);
-			SSLEngineUnWrapStage unwrapStage = new SSLEngineUnWrapStage(graphManager, coordinator, in[c], out[c], acks[c], handshakeIncomingGroup[g][c], true, 0);
+			handshakeIncomingGroup[c] = new Pipe(handshakeDataConfig);
+			SSLEngineUnWrapStage unwrapStage = new SSLEngineUnWrapStage(graphManager, coordinator, in[c], out[c], acks[c], handshakeIncomingGroup[c], true, 0);
 			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "UnWrap", unwrapStage);
 		}
-	}
-
-//	private static Pipe[] countTap(GraphManager graphManager, Pipe[] tmps, String label) {
-//		int q = tmps.length;
-//		Pipe[] plainPipe = new Pipe[q];
-//		while (--q>=0) {
-//			//Tap logic
-//			plainPipe[q] = countTap(graphManager, tmps[q], label+" "+tmps[q].id);
-//		
-//		}
-//		return plainPipe;
-//	}
-//
-//	private static <T extends MessageSchema> Pipe<T> countTap(GraphManager gm, Pipe<T> pipe, String label) {
-//				
-//		Pipe<T> p1 = new Pipe(pipe.config().grow2x());
-//		Pipe<T> p2 = new Pipe(pipe.config().grow2x());
-//		
-//		new ReplicatorStage<T>(gm, pipe, p2, p1);
-//		//new ConsoleSummaryStage<>(gm, p1);
-//		new PipeCleanerStage<T>(gm, p1, label);
-//		return p2;
-//	}
-
-	private static Pipe[] buildPipes(int paras, PipeConfig<NetPayloadSchema> incomingDataConfig) {
 		
-		Pipe[] result = new Pipe[paras];
-		int i = paras;
-		while (--i>=0) {
-			result[i] = new Pipe(incomingDataConfig);
-		}
-		return result;
+		return handshakeIncomingGroup;
 	}
+
 
 	public static List<InetAddress> homeAddresses(boolean noIPV6) {
 		List<InetAddress> addrList = new ArrayList<InetAddress>();
@@ -507,109 +482,21 @@ public class NetGraphBuilder {
 		addrList.sort(comp);
 		return addrList;
 	}
-
+	
 	public static ServerCoordinator httpServerSetup(boolean isTLS, String bindHost, int port, GraphManager gm, boolean large, ModuleConfig config) {
-		
-		int cores = Runtime.getRuntime().availableProcessors();
-		if (cores>64) {
-			cores = cores >> 2;
-		}
-		if (cores<4) {
-			cores = 4;
-		}
-		
-		logger.info("cores in use {}", cores);
-		
-		
-		final int maxPartialResponsesServer;
-		final int maxConnectionBitsOnServer; 	
-		final int serverRequestUnwrapUnits;
-		final int serverResponseWrapUnits;
-		final int serverPipesPerOutputEngine;
-		final int serverSocketWriters;
-		final int groups;
-		final int serverInputBlobs; 
-		final int serverBlobToEncrypt;
-		final int serverBlobToWrite;
-		final int serverInputMsg;
-		
-		final int serverMsgToEncrypt;
-		final int serverOutputMsg;
-			
-		final int fromRouterMsg;
-		final int fromRouterBlob;
-		final int routerCount;
-		final int releaseMsg;
-		
-		if (large) {
-			
-			
-			maxPartialResponsesServer     = 32;//256;    // (big memory consumption!!) concurrent partial messages 
-			maxConnectionBitsOnServer 	  = 20;       //1M open connections on server	    	
-			groups                        = 1;
-			
-			serverInputMsg                = 20;
-			serverInputBlobs              = 1<<14;
-			
-			serverMsgToEncrypt            = 512;
-			serverBlobToEncrypt           = 1<<15;
-			
-			serverOutputMsg               = isTLS?128:512;
-			serverBlobToWrite             = 1<<15;
-			
-			fromRouterMsg 				  = isTLS?512:2048;//impacts performance
-			fromRouterBlob 				  = 1<<10;
-			
-			serverSocketWriters           = isTLS?1:4;
-			routerCount                   = isTLS?2:8;
-			releaseMsg                    = 512;
-						
-			serverRequestUnwrapUnits      = isTLS?4:2;  //server unwrap units - need more for handshaks and more for posts
-			serverResponseWrapUnits 	  = isTLS?8:4;    //server wrap units
-			serverPipesPerOutputEngine 	  = isTLS?4:8;//multiplier against server wrap units for max simultanus user responses.
-			
-		} else {	//small
-			maxPartialResponsesServer     = 32;    //16 concurrent partial messages 
-			maxConnectionBitsOnServer     = 12;    //4k  open connections on server	    	
-			groups                        = 1;	
-		
-			serverInputMsg                = isTLS? 8 : 8; 
-			serverInputBlobs              = isTLS? 1<<15 : 1<<8;  
-			
-			serverMsgToEncrypt            = 128;
-			serverBlobToEncrypt           = 1<<15; //Must NOT be smaller than the file write output (modules) ??? ONLY WHEN WE ARE USE ING TLS
-			
-			serverOutputMsg               = isTLS?32:128; //important for outgoing data and greatly impacts performance
-			serverBlobToWrite             = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
-			
-			fromRouterMsg 			      = isTLS?256:2048; //impacts performance
-			fromRouterBlob				  = 1<<7;
-			
-			routerCount                   = 4;
+		return httpServerSetup(isTLS, bindHost, port, gm, large, large ? (isTLS?2:8) : (isTLS?2:4), config);
+	}
 
-			serverSocketWriters           = 1;
-			releaseMsg                    = 256;
-						
-			serverRequestUnwrapUnits      = isTLS?4:2;  //server unwrap units - need more for handshaks and more for posts
-			serverResponseWrapUnits 	  = isTLS?8:4;    //server wrap units
-			serverPipesPerOutputEngine 	  = isTLS?4:8;//multiplier against server wrap units for max simultanus user responses.
-		}
+	public static ServerCoordinator httpServerSetup(boolean isTLS, String bindHost, int port, GraphManager gm, boolean large, int routerCount, ModuleConfig config) {
 		
-
-		
-		
-		 
+		HTTPServerConfig serverConfig = new HTTPServerConfig(large, isTLS);
+				 
 		 //This must be large enough for both partials and new handshakes.
 	
-		ServerCoordinator serverCoord = new ServerCoordinator(groups, bindHost, port, maxConnectionBitsOnServer, maxPartialResponsesServer, routerCount);	
+		ServerCoordinator serverCoord = new ServerCoordinator(bindHost, port, serverConfig.maxConnectionBitsOnServer, serverConfig.maxPartialResponsesServer, routerCount);
 		
+		buildHTTPServerGraph(isTLS, gm, config, serverCoord, routerCount, serverConfig);
 		
-		
-		
-		buildHTTPServerGraph(isTLS, gm, groups, maxPartialResponsesServer, config, serverCoord,
-				                             serverRequestUnwrapUnits, serverResponseWrapUnits, serverPipesPerOutputEngine, serverSocketWriters, 
-				                            serverInputMsg, serverInputBlobs, serverMsgToEncrypt, serverBlobToEncrypt, serverOutputMsg,
-				                              serverBlobToWrite, routerCount, fromRouterMsg, fromRouterBlob, releaseMsg );
 		return serverCoord;
 	}
 	

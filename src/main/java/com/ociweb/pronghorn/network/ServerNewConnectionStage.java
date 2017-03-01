@@ -121,12 +121,12 @@ public class ServerNewConnectionStage extends PronghornStage{
                       if (!Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
                           return;
                       }
-                      
-                      int targetPipeIdx = ServerCoordinator.scanForOptimalPipe(coordinator,Integer.MAX_VALUE, -1);
-                      //if -1 we can not open any new connection on any pipeline.
-                      if (targetPipeIdx<0) {
-                          return;//try again later if the client is still waiting.
+
+                      if (!ServerCoordinator.scanForOptimalPipe(coordinator)) {                    	  
+                    	  return;//try again later if the client is still waiting.
                       }
+                      int targetPipeIdx = 0;//NOTE: this will be needed for rolling out new sites and features atomicly
+                      
                       
                       SocketChannel channel = server.accept();
                       
@@ -144,7 +144,7 @@ public class ServerNewConnectionStage extends PronghornStage{
                           
                          // logger.info("send buffer size {} ",  channel.getOption(StandardSocketOptions.SO_SNDBUF));
                           
-                          ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator, targetPipeIdx);
+                          ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
                           
                           final long channelId = holder.lookupInsertPosition();                          
                           
@@ -174,8 +174,8 @@ public class ServerNewConnectionStage extends PronghornStage{
 						  holder.setValue(channelId, new ServerConnection(sslEngine, channel, channelId));
                                                                                                                             
                          // logger.info("register new data to selector for pipe {}",targetPipeIdx);
-                          Selector selector2 = ServerCoordinator.getSelector(coordinator, targetPipeIdx);
-						  channel.register(selector2, SelectionKey.OP_READ, ServerCoordinator.selectorKeyContext(coordinator, targetPipeIdx, channelId));
+                          Selector selector2 = ServerCoordinator.getSelector(coordinator);
+						  channel.register(selector2, SelectionKey.OP_READ, ServerCoordinator.selectorKeyContext(coordinator, channelId));
     						 
                           //the pipe selected has already been checked to ensure room for the connect message                      
                           Pipe<ServerConnectionSchema> targetPipe = newClientConnections;

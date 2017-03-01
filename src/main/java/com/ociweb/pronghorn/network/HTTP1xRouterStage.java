@@ -97,16 +97,34 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         
        return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, ackStop, config); 
     }
+    
+    public static <	T extends Enum<T> & HTTPContentType,
+	R extends Enum<R> & HTTPRevision,
+	V extends Enum<V> & HTTPVerb,
+	H extends Enum<H> & HTTPHeaderKey> 
+		HTTP1xRouterStage<T,R,V,H> newInstance(GraphManager gm, 
+		                           Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<ReleaseSchema> ackStop,
+		                           HTTP1xRouterStageConfig<T,R,V,H> config) {
+		
+		return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, ackStop, config); 
+	}
 
 	public HTTP1xRouterStage(GraphManager gm, 
-			                 Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, Pipe<ReleaseSchema> ackStop,
+            Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, Pipe<ReleaseSchema> ackStop,
+            HTTP1xRouterStageConfig<T,R,V,H> config) {
+		
+		this(gm, input, join(outputs), ackStop, config);
+		
+	}
+	public HTTP1xRouterStage(GraphManager gm, 
+			                 Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<ReleaseSchema> ackStop,
                              HTTP1xRouterStageConfig<T,R,V,H> config) {
 		
-        super(gm,input,join(outputs[0],ackStop));
+        super(gm,input,join(outputs,ackStop));
         this.config = config;
         this.inputs = input;
         this.releasePipe = ackStop;        
-        this.outputs = outputs[0]; //TODO: this is not right, we must combine the outputs???
+        this.outputs = outputs;
 
         this.shutdownCount = inputs.length;
 

@@ -35,8 +35,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     private final Pipe<NetPayloadSchema>[] output;
     private final Pipe<ReleaseSchema>[] releasePipes;
     private final ServerCoordinator coordinator;
-    private final int groupIdx;
-    
+
     private Selector selector;
 
     private int pendingSelections = 0;
@@ -55,14 +54,14 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     private ServiceObjectHolder<ServerConnection> holder;
     
-    public static ServerSocketReaderStage newInstance(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, int pipeIdx, boolean encrypted) {
-        return new ServerSocketReaderStage(graphManager, ack, output, coordinator, pipeIdx, encrypted);
+    public static ServerSocketReaderStage newInstance(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, boolean encrypted) {
+        return new ServerSocketReaderStage(graphManager, ack, output, coordinator, encrypted);
     }
     
-    public ServerSocketReaderStage(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, int groupIdx, boolean isTLS) {
+    public ServerSocketReaderStage(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, boolean isTLS) {
         super(graphManager, ack, output);
         this.coordinator = coordinator;
-        this.groupIdx = groupIdx;
+
         this.output = output;
         this.releasePipes = ack;
         this.isTLS = isTLS;
@@ -84,10 +83,10 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}
     	}
 		
-        holder = ServerCoordinator.newSocketChannelHolder(coordinator, groupIdx);
+        holder = ServerCoordinator.newSocketChannelHolder(coordinator);
                 
         try {
-            coordinator.registerSelector(groupIdx, selector = Selector.open());
+            coordinator.registerSelector(selector = Selector.open());
         } catch (IOException e) {
            throw new RuntimeException(e);
         }
@@ -183,7 +182,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		final long channelId = connectionContext.getChannelId();
 						
 		
-		SSLConnection cc = coordinator.get(channelId, groupIdx);
+		SSLConnection cc = coordinator.get(channelId);
 		boolean processWork = true;
 		if (isTLS) {
 				
@@ -310,7 +309,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			
 			
 			if (id == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {				
-				SSLConnection conn = coordinator.get(idToClear, groupIdx);
+				SSLConnection conn = coordinator.get(idToClear);
 				if (null!=conn) {					
 					conn.setSequenceNo(seq);//only set when we release a pipe
 				}
@@ -463,7 +462,7 @@ public class ServerSocketReaderStage extends PronghornStage {
              if (isOpen && newBeginning) { //Gatling does this a lot, TODO: we should optimize this case.
              	//we will abandon but we also must release the reservation because it was never used
              	coordinator.releaseResponsePipeLineIdx(channelId);
-             	SSLConnection conn = coordinator.get(channelId, groupIdx);
+             	SSLConnection conn = coordinator.get(channelId);
              	conn.clearPoolReservation();
              //	logger.info("client is sending zero bytes, ZERO LENGTH RELESE OF UNUSED PIPE  FOR {}", channelId);
              }

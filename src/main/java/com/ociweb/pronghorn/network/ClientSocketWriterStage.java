@@ -123,7 +123,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 							int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 							int len = Pipe.takeRingByteLen(pipe);
 
-							ClientConnection cc = (ClientConnection)ccm.get(channelId, 0);
+							ClientConnection cc = (ClientConnection)ccm.get(channelId);
 	
 							if (null!=cc) {
 						        
@@ -196,7 +196,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 							
 							long channelId = Pipe.takeLong(pipe);
 							long arrivalTime = Pipe.takeLong(pipe);
-							ClientConnection cc = (ClientConnection)ccm.get(channelId, 0);
+							ClientConnection cc = (ClientConnection)ccm.get(channelId);
 							
 							long workingTailPosition = Pipe.takeLong(pipe);
 							

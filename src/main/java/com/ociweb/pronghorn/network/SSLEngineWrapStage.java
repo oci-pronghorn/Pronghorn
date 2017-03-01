@@ -25,11 +25,10 @@ public class SSLEngineWrapStage extends PronghornStage {
 	private int           shutdownCount;
 	private static final int     SIZE_HANDSHAKE_AND_DISCONNECT = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_DISCONNECT_203)
 														+Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_DISCONNECT_203);
-	private final int     groupId;
-	
+
 	
 	protected SSLEngineWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, boolean isServer,
-			                     Pipe<NetPayloadSchema>[] plainContent, Pipe<NetPayloadSchema>[] encryptedContent, int  groupId) {
+			                     Pipe<NetPayloadSchema>[] plainContent, Pipe<NetPayloadSchema>[] encryptedContent) {
 		
 		super(graphManager, plainContent, encryptedContent);
 
@@ -40,9 +39,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 		this.plainContent = plainContent;
 		this.isServer = isServer;
 		assert(encryptedContent.length==plainContent.length);
-		
-		this.groupId = groupId;
-		
+				
 	}
 
 	@Override
@@ -90,7 +87,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 //				}
 				
 				try {
-					didWork |= SSLUtil.engineWrap(ccm, sourcePipe, targetPipe, secureBuffers[i], isServer, groupId);	
+					didWork |= SSLUtil.engineWrap(ccm, sourcePipe, targetPipe, secureBuffers[i], isServer);	
 			
 				} catch (Throwable t) {
 					t.printStackTrace();
@@ -115,7 +112,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 					long connectionId = Pipe.takeLong(sourcePipe); //NetPayloadSchema.MSG_DISCONNECT_203_FIELD_CONNECTIONID_201);
 					long time = System.currentTimeMillis();
 					
-					SSLConnection connection = ccm.get(connectionId, groupId);
+					SSLConnection connection = ccm.get(connectionId);
 					if (null!=connection) {
 						assert(connection.isDisconnecting()) : "should only receive disconnect messages on connections which are disconnecting.";
 						SSLUtil.handShakeWrapIfNeeded(connection, targetPipe, secureBuffers[i], isServer, time);					

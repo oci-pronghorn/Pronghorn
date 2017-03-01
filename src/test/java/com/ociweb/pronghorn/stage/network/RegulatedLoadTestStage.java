@@ -235,7 +235,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 						long connectionId = connectionIdCache[userId];
 								
 						{
-							ClientConnection cc = (ClientConnection)clientCoord.get(connectionId, 0);
+							ClientConnection cc = (ClientConnection)clientCoord.get(connectionId);
 			
 							if (null==cc || (toRecieve[userId]-toSend[userId]) < cc.maxInFlight ) {  //limiting in flight
 								didWork = true;

@@ -360,7 +360,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	    						logger.info("out of bounds pos value!!, GGGGGGGGGGGGGGGGGGGGGGGGGGgg unable to release pipe {} pos {} expected {}",pipeIdx,pos,Pipe.headPosition(output[pipeIdx]));
 	    						//	System.exit(-1);
 	    					} else {
-	    						HandshakeStatus handshakeStatus = coordinator.get(finishedConnectionId, 0).engine.getHandshakeStatus();
+	    						HandshakeStatus handshakeStatus = coordinator.get(finishedConnectionId).engine.getHandshakeStatus();
 					    		if (handshakeStatus!=HandshakeStatus.FINISHED && handshakeStatus!=HandshakeStatus.NOT_HANDSHAKING) {
 					    			//TOOD: this has been triggered
 					    			assert(-1 == coordinator.checkForResponsePipeLineIdx(finishedConnectionId)) : "expected no reserved pipe for "+finishedConnectionId+" with handshake of "+handshakeStatus;

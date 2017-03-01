@@ -55,7 +55,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     private int shutdownCount;
 
     private final boolean isTLS;
-	private final int groupId = 0; //TODO: pass in on construction, must know group to look up SSL connection.
 
     private StringBuilder[] accumulators; //for testing only
 
@@ -524,7 +523,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 
 	private void handshakeProcessing(Pipe<NetPayloadSchema> pipe, long channelId) {
-		SSLConnection con = coordinator.get(channelId, groupId);
+		SSLConnection con = coordinator.get(channelId);
 		
 		HandshakeStatus hanshakeStatus = con.getEngine().getHandshakeStatus();
 		do {
