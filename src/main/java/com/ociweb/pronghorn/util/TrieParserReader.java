@@ -443,49 +443,66 @@ public class TrieParserReader {
 
 	private static void processEachType(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
 			int sourceMask, final long unfoundResult) {
+		
 		boolean hasSafePoint = false;
         int t = 0;
         
-        top:
         while ((t=reader.type) != TrieParser.TYPE_END && reader.normalExit) {  
            
            if (t == TrieParser.TYPE_RUN) {                
-                //run
-                final int run = trie.data[reader.pos++];    
-                
-                //we will not have the room to do a match.
-                if (reader.runLength+run > sourceLength && !hasSafePoint && 0==reader.altStackPos) {
-                	reader.normalExit=false;
-                	reader.result = unfoundResult;
-
-                } else if (!(trie.skipDeepChecks && !hasSafePoint && 0==reader.altStackPos)) {
-                	//scan returns -1 for a perfect match
-                    int r = scanForMismatch(reader, source, sourceMask, trie, run);
-                    if (r>=0) {
-                        if (!hasSafePoint) {                       	
-                        	if (reader.altStackPos > 0) {                                
-                        		loadupNextChoiceFromStack(reader, trie.data);
-                        		continue top;                                
-                        	} else {
-                        		reader.normalExit=false;
-                        		reader.result = unfoundResult;                     
-                        	}
-                        } else {
-                        	reader.normalExit=false;
-                        	reader.result = useSafePoint(reader);                        	
-                        }
-                    }         
-                } else { 
-                    reader.pos += run;
-                    reader.localSourcePos += run; 
-                }
-                reader.runLength += run;          
-                
+                parseRun(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint);
             } else {
             	hasSafePoint = lessCommonActions(reader, trie, source, sourceLength, sourceMask, unfoundResult,	hasSafePoint, t);
+            	reader.type = trie.data[reader.pos++]; 
             }
-            reader.type = trie.data[reader.pos++]; 
+           
         }
+	}
+
+	private static void parseRun(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
+			int sourceMask, final long unfoundResult, boolean hasSafePoint) {
+		//run
+		final int run = trie.data[reader.pos++];    
+		
+		//we will not have the room to do a match.
+		if (reader.runLength+run > sourceLength && !hasSafePoint && 0==reader.altStackPos) {
+			reader.normalExit=false;
+			reader.result = unfoundResult;
+			reader.runLength += run;   
+		} else if (!(trie.skipDeepChecks && !hasSafePoint && 0==reader.altStackPos)) {
+			scanForRun(reader, trie, source, sourceMask, unfoundResult, hasSafePoint, run);
+		} else { 
+		    reader.pos += run;
+		    reader.localSourcePos += run; 
+		    reader.runLength += run;
+		    reader.type = trie.data[reader.pos++];
+		}
+	}
+
+	private static void scanForRun(TrieParserReader reader, TrieParser trie, byte[] source, int sourceMask,
+			final long unfoundResult, boolean hasSafePoint, final int run) {
+		//scan returns -1 for a perfect match
+		int r = scanForMismatch(reader, source, sourceMask, trie, run);
+		if (r>=0) {
+		    if (!hasSafePoint) {                       	
+		    	if (reader.altStackPos > 0) {                                
+		    		loadupNextChoiceFromStack(reader, trie.data);                           
+		    	} else {
+		    		reader.normalExit=false;
+		    		reader.result = unfoundResult;                   
+		    		reader.runLength += run;
+		    		reader.type = trie.data[reader.pos++];
+		    	}
+		    } else {
+		    	reader.normalExit=false;
+		    	reader.result = useSafePoint(reader);                        	
+		    	reader.runLength += run;
+		    	reader.type = trie.data[reader.pos++];
+		    }
+		} else {        
+			reader.runLength += run;
+			reader.type = trie.data[reader.pos++];
+		}
 	}
 
 	private static boolean lessCommonActions(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
@@ -516,27 +533,24 @@ public class TrieParserReader {
 	}
 
 	private static boolean lessCommonActions2(TrieParserReader reader, TrieParser trie, byte[] source,
-			long sourceLength, int sourceMask, final long unfoundResult, final boolean hasSafePoint, int t) {
+			final long sourceLength, int sourceMask, final long unfoundResult, final boolean hasSafePoint, int t) {
 		
 		if (t != TrieParser.TYPE_VALUE_BYTES) {            	
 			return lessCommonActions3(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint, t);
 		} else {
-			if (reader.runLength < sourceLength) {
-				
-				parseBytes(reader, trie, source, sourceLength, sourceMask);	 
-				
-				if (-1 == reader.localSourcePos) {
-					reader.normalExit = false;
-					reader.result = unfoundResult;
-					
-				}
-			} else {
-				reader.normalExit = false;
-				reader.result = unfoundResult;
-				
-			}
-			return hasSafePoint;
+			return parseBytesAction(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint);
 		}
+	}
+
+	private static boolean parseBytesAction(final TrieParserReader reader, final TrieParser trie, final byte[] source,
+			final long sourceLength, final int sourceMask, final long unfoundResult, final boolean hasSafePoint) {
+		
+		if ((reader.runLength < sourceLength) && parseBytes(reader, trie, source, sourceLength, sourceMask)) {
+		} else {
+			reader.normalExit = false;
+			reader.result = unfoundResult;
+		}
+		return hasSafePoint;
 	}
 
 	private static boolean lessCommonActions3(TrieParserReader reader, TrieParser trie, byte[] source,
@@ -574,7 +588,7 @@ public class TrieParserReader {
 		throw new UnsupportedOperationException("Bad jump length now at position "+(reader.pos-1)+" type found "+reader.type);
 	}
 
-	private static void parseBytes(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength, int sourceMask) {
+	private static boolean parseBytes(final TrieParserReader reader, final TrieParser trie, final byte[] source, final long sourceLength, final int sourceMask) {
     	
     	short[] localWorkingMultiStops = reader.workingMultiStops;
     	
@@ -592,15 +606,14 @@ public class TrieParserReader {
 	        
 	        localWorkingMultiContinue[stopCount] = reader.pos;
 	        localWorkingMultiStops[stopCount++] = stopValue;
-	                         
-	        //TODO: join the stack building here with the parseBytesMultiStops to shortcut cases to eliminated depth.
+
 	        if (reader.altStackPos>0) {
 	            short[] localData = trie.data;
 				
 				int i = reader.altStackPos; 
-				int[] localAltStackD = reader.altStackD;
+				//int[] localAltStackD = reader.altStackD;
 				int[] localAltStackC = reader.altStackC;
-				int[] localAltStackB = reader.altStackB;
+				//int[] localAltStackB = reader.altStackB;
 				int[] localAltStackA = reader.altStackA;
 				
 				
@@ -623,8 +636,7 @@ public class TrieParserReader {
 //				            break;
 //				        }
 				                        
-				        //ensure newStop is not already in the list of stops.
-				       
+				        //ensure newStop is not already in the list of stops.				       
 				        short newStop = localData[cTemp+1];
 				        if (-1 != indexOfMatchInArray(newStop, localWorkingMultiStops, stopCount)) {               
 				            break;
@@ -643,42 +655,68 @@ public class TrieParserReader {
 	        
 	        if (stopCount>1) {				
 	        	assert(localWorkingMultiStops.length>0);
-				
-				int x = localSourcePos;
-				int lim = (int)Math.min(maxCapture, sourceMask);
-				
-				int stopIdx = -1;
-				
-		//		stopIdx=--lim>=0 ? indexOfMatchInArray(source[sourceMask & x++], localWorkingMultiStops, stopCount ) : -1;
-				
-				//System.err.println("lim "+lim);
-	//			int z = 0;
-				do {  //TODO: this while must be combined with the above todo.
-		//			z++;
-	///				System.err.println("looking for stop: "+source[sourceMask & x]); //TODO: this is very wrong!!!! and needs to be fixed...
+	        	int x = localSourcePos;
+	        	int lim = maxCapture<sourceMask ? (int)maxCapture : sourceMask;//(int)Math.min(maxCapture, sourceMask);	        	
+	        	
+	        	if (stopCount==2) {
+	        		//special case since this happens very often
+	        		
+	        		short s1 = localWorkingMultiStops[0];
+	        		short s2 = localWorkingMultiStops[1];
+	        		
+					do {  
+						
+						int value = source[sourceMask & x++];
+						if (value==s2) {
+							reader.pos = reader.workingMultiContinue[1];
+							return assignParseBytesResults(reader, sourceMask, localSourcePos, x);							
+						} else if (value==s1) {
+							reader.pos = reader.workingMultiContinue[0];						
+							return assignParseBytesResults(reader, sourceMask, localSourcePos, x);						
+						}
+						
+					} while (--lim >= 0);
 					
-				} while (--lim >= 0 && (-1== (stopIdx=indexOfMatchInArray(source[sourceMask & x++], localWorkingMultiStops, stopCount ))) );	
-//				System.err.println(z); //10 iterations???
+					reader.localSourcePos =-1;
+					return false;
+	        		
+	        	} else {
+	        		int stopIdx = -1;
+	        		        		
+					do {  
+					} while (--lim >= 0 && (-1== (stopIdx=indexOfMatchInArray(source[sourceMask & x++], localWorkingMultiStops, stopCount ))) );
 				
-				assignParseBytesResults(reader, sourceMask, localSourcePos, x, stopIdx);	        					
+					return assignParseBytesResults(reader, sourceMask, localSourcePos, x, stopIdx);
+	        	}
 	        } else {
-	            reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, maxCapture, sourceMask, stopValue);
+	        	return -1 != (reader.localSourcePos = parseBytes(reader,source,reader.localSourcePos, maxCapture, sourceMask, stopValue));
 	        }
     	} else {
     		reader.localSourcePos = -1;
+    		return false;
     	}
     }
 
-	private static void assignParseBytesResults(TrieParserReader reader, int sourceMask, final int sourcePos, int x,
-			int stopIdx) {
+	private static boolean assignParseBytesResults(final TrieParserReader reader, final int sourceMask,
+			final int localSourcePos, int x) {
+		int len = (x-localSourcePos)-1;
+		reader.runLength += (len);
+		reader.capturedPos = extractedBytesRange(reader.capturedValues, reader.capturedPos, localSourcePos, len, sourceMask);  
+		reader.localSourcePos = x;
+		return true;
+	}
+
+	private static boolean assignParseBytesResults(TrieParserReader reader, int sourceMask, final int sourcePos, int x, int stopIdx) {
 		if (-1==stopIdx) {//not found!
 			reader.localSourcePos =-1;
+			return false;
 		} else {
 			int len = (x-sourcePos)-1;
 			reader.runLength += (len);
 			reader.capturedPos = extractedBytesRange(reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);  
 			reader.localSourcePos = x;
 			reader.pos = reader.workingMultiContinue[stopIdx];
+			return true;
 		}
 	}
 
