@@ -44,7 +44,10 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                                         H extends Enum<H> & HTTPHeaderKey> extends AbstractRestStage<T,R,V,H> {
 
     
-    public static class FileReadModuleStageData {
+    private static final int SIZE_OF_RESTREQUEST = Pipe.sizeOf(HTTPRequestSchema.instance, HTTPRequestSchema.MSG_RESTREQUEST_300);
+
+
+	public static class FileReadModuleStageData {
 		private Set<OpenOption> readOptions;
 		private TrieParser pathCache;
 		private Path[] paths;
@@ -246,6 +249,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
              
         this.shutdownCount = inputs.length;
             
+        GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "ModuleStage", this);
+        
+        
     }
     
     
@@ -483,7 +489,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 			            	didWork++;
 			            }
 			        } catch (IOException ioex) {
-			            disconnectDueToError(activeReadMessageSize, ioex, input, output);
+			            disconnectDueToError(this, activeReadMessageSize, ioex, input, output);
 			        }
 	  
 			        assert(recordIncomingState(!Pipe.hasContentToRead(input)));
@@ -496,7 +502,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 			            if (msgIdx == HTTPRequestSchema.MSG_RESTREQUEST_300) {
 			            	didWork++;
 			            	
-			                activeReadMessageSize = Pipe.sizeOf(input, msgIdx);
+			                activeReadMessageSize = SIZE_OF_RESTREQUEST;
 			                beginReadingNextRequest(input, output);                    
 			            } else {
 			                if (-1 != msgIdx) {
@@ -559,9 +565,6 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         int bytesLength    = Pipe.takeRingByteLen(input);
         
         assert(0 != bytesLength) : "path must be longer than 0 length";
-        if (0 == bytesLength) {
-            throw new UnsupportedOperationException("path must be longer than 0 length");
-        }
         
         byte[] bytesBackingArray = Pipe.byteBackingArray(meta, input);
         int bytesPosition = Pipe.bytePosition(meta, input, bytesLength);
@@ -738,7 +741,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             try{              
                 publishBodiesMessage(this, verb, sequence, pathId, input, output);
             } catch (IOException ioex) {
-                disconnectDueToError(activeReadMessageSize, ioex, input, output);
+                disconnectDueToError(this, activeReadMessageSize, ioex, input, output);
             }     
             
         } catch (Exception e) {
@@ -772,7 +775,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         Pipe.releaseReadLock(input);
     }
     
-    private void disconnectDueToError(int releaseSize, IOException ioex, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) {
+    private static void disconnectDueToError(FileReadModuleStage that, int releaseSize, IOException ioex, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) {
         logger.error("Unable to complete file transfer to client ",ioex);
                 
         //now implement an unexpected disconnect of the connection since we had an IO failure.
@@ -784,7 +787,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         Pipe.confirmLowLevelRead(input, releaseSize);
         Pipe.releaseReadLock(input);
         
-        activeFileChannel = null;
+        that.activeFileChannel = null;
     }
     
     private static void publishBodiesMessage(FileReadModuleStage that, int verb, int sequence, int pathId, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) throws IOException {

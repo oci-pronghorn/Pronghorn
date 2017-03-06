@@ -253,15 +253,18 @@ public class HTTPSRoundTripTest {
 			
 			
 			boolean isTLS = false;//true;
-			int port = isTLS?8443:8080;
+			int port = 8081;//isTLS?8443:8080;
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";
 					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
 			
 			boolean isLarge = true;
-			boolean useLocalServer = true;//
-
 			
+			boolean useLocalServer = false;//
+
+		//	final String testFile = "groovySum.json";
+
+			final String testFile = "groovyadd/2.3/7.52";
 			
 			GraphManager gm = new GraphManager();
 
@@ -271,13 +274,12 @@ public class HTTPSRoundTripTest {
 			//NOTE: larger values here allows for more effecient scheculeing and bigger "batches"
 			//NOTE: smaller values here will allow for slightly lower latency values
 			//NOTE: by sleeping less we get more work done per stage, sometimes
-			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 10_000); //this is in ns, can be as low as 1_200 but it should be larger when using the fixed thread scheudler.
+			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 1_200); //this is in ns, can be as low as 1_200
 			
 	    	//TODO: we need a better test that has each users interaction of 10 then wait for someone else to get in while still connected.
 	    	//TODO: urgent need to kill off expired pipe usages.
 
 			 
-	    	final String testFile = "groovySum.json";
 	    	ServerCoordinator serverCoord = null;
 	    	if (useLocalServer) {
 	    		serverCoord = exampleServerSetup(isTLS, gm, testFile, host, port, isLarge);
@@ -312,7 +314,7 @@ public class HTTPSRoundTripTest {
 	    	//////////////
 
 	    	final int totalUsersCount = 1<<base2SimultaniousConnections;
-	    	final int loadMultiplier = isTLS? 300_000 : 2_000_000;
+	    	final int loadMultiplier = isTLS? 300_000 : 3_000_000;
 	    		    	
 			//one of these per unwrap unit and per partial message, there will be many of these normally so they should not be too large
 			//however should be deeper if we are sending lots of messages
@@ -441,8 +443,8 @@ public class HTTPSRoundTripTest {
 		
 
 		
-		final int maxPartialResponsesServer     = 32; //input lines to server (should be large)
-		final int maxConnectionBitsOnServer 	= 12;//8K simulanious connections on server	    	
+		//final int maxPartialResponsesServer     = 32; //input lines to server (should be large)
+		//final int maxConnectionBitsOnServer 	= 12;//8K simulanious connections on server	    	
 		final int messagesToOrderingSuper       = 1<<13;//3;//4096;	    		
 		final int messageSizeToOrderingSuper    = 1<<10;	    		
 

@@ -20,7 +20,7 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class RegulatedLoadTestStage extends PronghornStage{
 
-	private static final int HANG_TIMEOUT_MS = 30_000;//Integer.MAX_VALUE;//10_000;
+	private static final int HANG_TIMEOUT_MS = 120_000;//Integer.MAX_VALUE;//10_000;
 
 	private static final Logger logger = LoggerFactory.getLogger(RegulatedLoadTestStage.class);
 	
@@ -212,77 +212,87 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		}
 	}
 
+	
+	int outputIdx = -1;
+	int usr = -1;
 
 	private void sendPendingRequests(long now) {
-		int i;
-		
+				
 		boolean didWork;
 		didWork = true;
 		while (didWork) {  //250 maxes out the network connection for 3.3K file
 			didWork = false;
 		
-			int usr = usersPerPipe;
+			if (usr<0) {
+				usr=usersPerPipe;
+			}
 			while (--usr >= 0) {
 			
-				i = outputs.length;
-				while (--i >= 0) {
-					
-					final int userId = i + (usr * outputs.length); 
-					if (Pipe.hasRoomForWrite(outputs[i]) && (toSend[userId]>0) ) {	
-
-						int msdIdx;													
-						
-						long connectionId = connectionIdCache[userId];
-								
-						{
-							ClientConnection cc = (ClientConnection)clientCoord.get(connectionId);
-			
-							if (null==cc || (toRecieve[userId]-toSend[userId]) < cc.maxInFlight ) {  //limiting in flight
-								didWork = true;
-									
-								boolean useSlow = (connectionId == -1); 
-								if (useSlow) {
-									System.arraycopy(hostBytes, 0, buff, 0, hostBytes.length);
-									
-									connectionId = clientCoord.lookup(buff, 0, hostBytes.length, 6, port, userId, workspace, hostTrieReader);
-									
-									if (-1!=connectionIdCache[userId]) {
-										throw new UnsupportedOperationException("already set ");
-									}
-									connectionIdCache[userId] = connectionId;	
-									assert(connectionId<Integer.MAX_VALUE);
-									if (-1 != connectionId) {
-										userIdFromConnectionId[(int)connectionId] = userId;
-									}
-									msdIdx = ClientHTTPRequestSchema.MSG_HTTPGET_100;
-								} else {
-									msdIdx = ClientHTTPRequestSchema.MSG_FASTHTTPGET_200;										
-								}
-								
-								
-								
-								int size = Pipe.addMsgIdx(outputs[i], msdIdx);
-															   
-
-								lastTime = now;
-		
-								Pipe.addIntValue(userId, outputs[i]);  
-								Pipe.addIntValue(port, outputs[i]);
-								Pipe.addByteArray(hostBytes, 0, hostBytes.length, outputs[i]); // old	Pipe.addUTF8(host, outputs[i]);
-
-								if (!useSlow) {
-									Pipe.addLongValue(connectionId, outputs[i]);
-								}
-								
-								Pipe.addByteArray(testFileBytes, 0, testFileBytes.length, outputs[i]); //Pipe.addUTF8(testFile, outputs[i]);						
-							
-								Pipe.confirmLowLevelWrite(outputs[i], size);
-								Pipe.publishWrites(outputs[i]);
-								toSend[userId]--;
-							}
-						}							
-					}					
+				if (outputIdx<0) {
+					outputIdx = outputs.length;
 				}
+				
+				while (--outputIdx >= 0) {
+					
+					final int userId = outputIdx + (usr * outputs.length); 
+					if (Pipe.hasRoomForWrite(outputs[outputIdx]) ) {	
+						if (toSend[userId]>0) {
+							int msdIdx;													
+							
+							long connectionId = connectionIdCache[userId];
+									
+							{
+								ClientConnection cc = (ClientConnection)clientCoord.get(connectionId);
+				
+								if (null==cc || (toRecieve[userId]-toSend[userId]) < cc.maxInFlight ) {  //limiting in flight
+									didWork = true;
+										
+									boolean useSlow = (connectionId == -1); 
+									if (useSlow) {
+										System.arraycopy(hostBytes, 0, buff, 0, hostBytes.length);
+										
+										connectionId = clientCoord.lookup(buff, 0, hostBytes.length, 6, port, userId, workspace, hostTrieReader);
+										
+										if (-1!=connectionIdCache[userId]) {
+											throw new UnsupportedOperationException("already set ");
+										}
+										connectionIdCache[userId] = connectionId;	
+										assert(connectionId<Integer.MAX_VALUE);
+										if (-1 != connectionId) {
+											userIdFromConnectionId[(int)connectionId] = userId;
+										}
+										msdIdx = ClientHTTPRequestSchema.MSG_HTTPGET_100;
+									} else {
+										msdIdx = ClientHTTPRequestSchema.MSG_FASTHTTPGET_200;										
+									}
+									
+									
+									
+									int size = Pipe.addMsgIdx(outputs[outputIdx], msdIdx);
+																   
+	
+									lastTime = now;
+			
+									Pipe.addIntValue(userId, outputs[outputIdx]);  
+									Pipe.addIntValue(port, outputs[outputIdx]);
+									Pipe.addByteArray(hostBytes, 0, hostBytes.length, outputs[outputIdx]); // old	Pipe.addUTF8(host, outputs[i]);
+	
+									if (!useSlow) {
+										Pipe.addLongValue(connectionId, outputs[outputIdx]);
+									}
+									
+									Pipe.addByteArray(testFileBytes, 0, testFileBytes.length, outputs[outputIdx]); //Pipe.addUTF8(testFile, outputs[i]);						
+								
+									Pipe.confirmLowLevelWrite(outputs[outputIdx], size);
+									Pipe.publishWrites(outputs[outputIdx]);
+									toSend[userId]--;
+								}
+							}
+						}
+					} 
+
+				}
+				
 			}
 		}
 	}

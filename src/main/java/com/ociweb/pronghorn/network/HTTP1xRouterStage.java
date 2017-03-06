@@ -121,11 +121,15 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
                              HTTP1xRouterStageConfig<T,R,V,H> config) {
 		
         super(gm,input,join(outputs,ackStop));
+        assert (outputs.length == config.routesCount());
+        
         this.config = config;
         this.inputs = input;
         this.releasePipe = ackStop;        
         this.outputs = outputs;
 
+        
+        
         this.shutdownCount = inputs.length;
 
         		
@@ -489,13 +493,6 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
 	}
 	
 	assert(validateNextByte(trieReader, idx));
-
-//	char ch = (char)selectedInput.blobRing[trieReader.sourcePos&selectedInput.blobMask];
-//	if (ch!='G') {
-//		logger.info("AT TOP FORCE EXIT ON BAD DATA {} SHOULD BE G PREVIOUS VALUE WAS {} len {} ",ch, (char)selectedInput.blobRing[(trieReader.sourcePos-1)&selectedInput.blobMask], trieReader.sourceLen);
-//		System.exit(-1);
-//	}
-	
 	
 	final int verbId = (int)TrieParserReader.parseNext(trieReader, config.verbMap);     //  GET /hello/x?x=3 HTTP/1.1     
     if (verbId<0) {
@@ -562,9 +559,20 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
        // System.out.println("wrote ever increasing squence from router of "+sequenceNo);//TODO: should this be per connection instead!!
         
         Pipe.addIntValue(sequences[idx], outputPipe); //sequence                    // Write 1   4
-        Pipe.addIntValue(verbId, outputPipe);   // Verb                           // Write 1   5
+        Pipe.addIntValue(verbId, outputPipe);
+		DataOutputBlobWriter<HTTPRequestSchema> writer = blobWriter[routeId];   // Verb                           // Write 1   5
         
-        writeURLParamsToField(trieReader, blobWriter[routeId]);                          //write 2   7
+                                                                                                                 //write 2   7
+        DataOutputBlobWriter.openField(writer); //the beginning of the payload always starts with the URL arguments
+		try {
+		    TrieParserReader.writeCapturedValuesToDataOutput(trieReader,writer);
+		} catch (IOException e) {        
+		    //this exception shoud nevery happen, will not throw writing to field not stream
+			throw new RuntimeException(e); 
+		}
+		
+		////////TODO: rethink this as we test with headers...
+		DataOutputBlobWriter.closeLowLevelField(writer); //TODO: this should NOT be closed yet because the requested headers will be added after this point.  
        
         
     	tempLen = trieReader.sourceLen;
@@ -598,6 +606,9 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
         
         Pipe.addIntValue(httpRevisionId, outputPipe); // Revision Id          // Write 1   8
 
+        ////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////also write the requested headers out to the payload
+        /////////////////////////////////////////////////////////////////////////
         int requestContext = parseHeaderFields(routeId, outputPipe, httpRevisionId, false);  // Write 2   10 //if header is presen
         if (ServerCoordinator.INCOMPLETE_RESPONSE_MASK == requestContext) {   
             //try again later, not complete.
@@ -679,19 +690,6 @@ private void badClientError(long channel) {
 	logger.error("not implemented exiting now");
 	System.exit(-1);
 }
-
-
-private void writeURLParamsToField(TrieParserReader trieReader, DataOutputBlobWriter<HTTPRequestSchema> writer) {
-
-    DataOutputBlobWriter.openField(writer);
-    try {
-        TrieParserReader.writeCapturedValuesToDataOutput(trieReader,writer);
-    } catch (IOException e) {        
-        //ignore, will not throw writing to field not stream
-    }
-    DataOutputBlobWriter.closeLowLevelField(writer);
-}
-
 
 
 private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selectedInput) {

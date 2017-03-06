@@ -64,13 +64,13 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 			
 			int reqTargetSize = source.bitsOfSlabRing+1; //target ring must be 2x bigger than source
 			if (targets[i].bitsOfSlabRing < reqTargetSize) {
-				throw new UnsupportedOperationException("The target ring "+i+" primary bit size must be at least "+reqTargetSize+" but it was "+targets[i].bitsOfSlabRing+
+				throw new UnsupportedOperationException("The target pipe ["+i+"] of "+targets.length+" pipes primary bit size must be at least "+reqTargetSize+" but it was "+targets[i].bitsOfSlabRing+
 						           ". To avoid blocking hang behavior the target rings must always be 2x larger than the source ring.");
 			}
 			
 			reqTargetSize = source.bitsOfBlogRing+1;
 			if (targets[i].bitsOfBlogRing < reqTargetSize) {
-				throw new UnsupportedOperationException("The target ring "+i+" byte bit size must be at least "+reqTargetSize+" but it was "+targets[i].bitsOfBlogRing+
+				throw new UnsupportedOperationException("The target pipe "+i+" byte bit size must be at least "+reqTargetSize+" but it was "+targets[i].bitsOfBlogRing+
 									". To avoid blocking hang behavior the target rings must always be 2x larger than the source ring.");
 			}
 			

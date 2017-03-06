@@ -76,20 +76,20 @@ public class HTTPServerConfig {
 			maxPartialResponsesServer     = 32;//256;    // (big memory consumption!!) concurrent partial messages 
 			maxConnectionBitsOnServer 	  = 20;       //1M open connections on server	    	
 				
-			serverInputMsg                = 20;
+			serverInputMsg                = isTLS? 8 : 64; 
 			serverInputBlobs              = 1<<14;
 			
 			serverMsgToEncrypt            = 512;
 			serverBlobToEncrypt           = 1<<15;
 			
-			serverOutputMsg               = isTLS?128:512;
+			serverOutputMsg               = isTLS? 32:128;
 			serverBlobToWrite             = 1<<15;
 			
 			fromRouterMsg 				  = isTLS?512:2048;//impacts performance
 			fromRouterBlob 				  = 1<<10;
 			
-			serverSocketWriters           = isTLS?1:4;
-			releaseMsg                    = 512;
+			serverSocketWriters           = isTLS?1:2;
+			releaseMsg                    = 1024;
 						
 			serverRequestUnwrapUnits      = isTLS?4:2;  //server unwrap units - need more for handshaks and more for posts
 			serverResponseWrapUnits 	  = isTLS?8:4;    //server wrap units
@@ -99,7 +99,7 @@ public class HTTPServerConfig {
 			maxPartialResponsesServer     = 32;    //16 concurrent partial messages 
 			maxConnectionBitsOnServer     = 12;    //4k  open connections on server	    	
 		
-			serverInputMsg                = isTLS? 8 : 8; 
+			serverInputMsg                = isTLS? 8 : 48; 
 			serverInputBlobs              = isTLS? 1<<15 : 1<<8;  
 			
 			serverMsgToEncrypt            = 128;
@@ -112,7 +112,7 @@ public class HTTPServerConfig {
 			fromRouterBlob				  = 1<<7;
 			
 			serverSocketWriters           = 1;
-			releaseMsg                    = 256;
+			releaseMsg                    = 1024;//256;
 						
 			serverRequestUnwrapUnits      = isTLS?4:2;  //server unwrap units - need more for handshaks and more for posts
 			serverResponseWrapUnits 	  = isTLS?8:4;    //server wrap units

@@ -195,7 +195,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        ///////////////////////////////
 		    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {	
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		    		break;
+		    		//logger.info("no room to write out");
+		    		//break;
+		    		continue;
 		    	}		    	
 		    	
 		        sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
@@ -226,6 +228,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        } else {
 		        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 		        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
+		        	logger.info("not ready for sequence number yet");
 		        	break;//does not match
 		        }
 		        
@@ -247,6 +250,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		    		skipDataBlock(sourcePipe, idx);
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
+		    		logger.info("found skip");
 		    		continue;
 		    	} else {	
 		        	Pipe.confirmLowLevelRead(sourcePipe, Pipe.EOF_SIZE);
@@ -257,12 +261,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		        		break;
 		        	} else {
+		        		logger.info("dec shutdown count");
 		        		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		        		continue;
 		        	}
 		    	}
 		    }
 		    assert(Pipe.bytesReadBase(sourcePipe)>=0);
+		    		    
 		    copyDataBlock(sourcePipe, peekMsgId, myPipe, myPipeIdx, sequenceNo, channelId);
 		    assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		}

@@ -484,7 +484,7 @@ public class NetGraphBuilder {
 	}
 	
 	public static ServerCoordinator httpServerSetup(boolean isTLS, String bindHost, int port, GraphManager gm, boolean large, ModuleConfig config) {
-		return httpServerSetup(isTLS, bindHost, port, gm, large, large ? (isTLS?2:8) : (isTLS?2:4), config);
+		return httpServerSetup(isTLS, bindHost, port, gm, large, large ? (isTLS?2:16) : (isTLS?2:4), config);
 	}
 
 	public static ServerCoordinator httpServerSetup(boolean isTLS, String bindHost, int port, GraphManager gm, boolean large, int routerCount, ModuleConfig config) {
