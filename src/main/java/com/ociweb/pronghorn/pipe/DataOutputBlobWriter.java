@@ -175,16 +175,19 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
 
     @Override
     public void writeUTF(String s) {
-        activePosition = writeUTF(s, s.length(), byteMask, byteBuffer, activePosition);
+        activePosition = writeUTF(this, s, s.length(), byteMask, byteBuffer, activePosition);
+    }
+    
+    public void writeUTF8Text(CharSequence s) {
+    	encodeAsUTF8(this,s);
     }
 
-    private int writeUTF(CharSequence s, int len, int mask, byte[] localBuf, int pos) {
+    private static int writeUTF(DataOutputBlobWriter writer, CharSequence s, int len, int mask, byte[] localBuf, int pos) {
         int origPos = pos;
         pos+=2;
-        int c = 0;
-        while (c < len) {
-            pos = Pipe.encodeSingleChar((int) s.charAt(c++), localBuf, mask, pos);
-        }
+
+        pos = encodeAsUTF8(writer, s, 0, len, mask, localBuf, pos);
+
         write16(localBuf,mask,origPos, (pos-origPos)-2); //writes bytes count up front
         return pos;
     }
@@ -255,7 +258,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     }
     
     public void writeUTF(CharSequence s) {
-        activePosition = writeUTF(s, s.length(), byteMask, byteBuffer, activePosition);
+        activePosition = writeUTF(this, s, s.length(), byteMask, byteBuffer, activePosition);
     }    
     
     public void writeASCII(CharSequence s) {
@@ -370,7 +373,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     private int writeUTFArray(String[] utfs, int len, byte[] bufLocal, int mask, int pos) {
         pos = write32(bufLocal, mask, pos, len);
         for(int i=0;i<len;i++) {
-            pos = writeUTF(utfs[i], utfs[i].length(), mask, bufLocal, pos);
+            pos = writeUTF(this, utfs[i], utfs[i].length(), mask, bufLocal, pos);
         }
         return pos;
     }    

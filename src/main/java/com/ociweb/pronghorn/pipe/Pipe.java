@@ -2548,8 +2548,8 @@ public class Pipe<T extends MessageSchema> {
     
     //must be called by low-level API when starting a new message
     public static <S extends MessageSchema> int addMsgIdx(Pipe<S> pipe, int msgIdx) {
-         assert(Pipe.workingHeadPosition(pipe)<(Pipe.tailPosition(pipe)+pipe.slabMask)) : "Working position is now writing into published(unreleased) tail "+
-                Pipe.workingHeadPosition(pipe)+"<"+Pipe.tailPosition(pipe)+"+"+pipe.slabMask+" total "+((Pipe.tailPosition(pipe)+pipe.slabMask));
+         assert(Pipe.workingHeadPosition(pipe)<(Pipe.tailPosition(pipe)+ pipe.sizeOfSlabRing  /*    pipe.slabMask*/  )) : "Working position is now writing into published(unreleased) tail "+
+                Pipe.workingHeadPosition(pipe)+"<"+Pipe.tailPosition(pipe)+"+"+pipe.sizeOfSlabRing /*pipe.slabMask*/+" total "+((Pipe.tailPosition(pipe)+pipe.slabMask));
         
          assert(pipe.slabRingHead.workingHeadPos.value <= ((long)pipe.sizeOfSlabRing)+Pipe.tailPosition(pipe)) : 
                 "Tail is at: "+Pipe.tailPosition(pipe)+" and Head at: "+pipe.slabRingHead.workingHeadPos.value+" but they are too far apart because the pipe is only of size: "+pipe.sizeOfSlabRing+
@@ -3226,7 +3226,7 @@ public class Pipe<T extends MessageSchema> {
     
 	private static <S extends MessageSchema> boolean roomToLowLevelWrite(Pipe<S> pipe, long target) {
 		//only does second part if the first does not pass
-		return (pipe.llRead.llrTailPosCache >= target) || roomToLowLevelWriteSlow(pipe, target);
+		return (pipe.llRead.llrTailPosCache > target) || roomToLowLevelWriteSlow(pipe, target);
 	}
 
 	private static <S extends MessageSchema> boolean roomToLowLevelWriteSlow(Pipe<S> pipe, long target) {

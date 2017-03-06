@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeWriter;
+import com.ociweb.pronghorn.util.math.Decimal;
 
 public class TrieParserReader {
     
@@ -877,12 +878,13 @@ public class TrieParserReader {
         long intValue = 0;
         byte intLength = 0;
         byte base=10;
-                
+        int  dot=0;//only set to one for NUMERIC_FLAG_DECIMAL        
         
         if (0!= (TrieParser.NUMERIC_FLAG_DECIMAL&numType)) {
+        	dot=1;
             final short c = source[sourceMask & sourcePos];
             if ('.'!=c) {
-                publish(reader, 1, 0, 1, 10);
+                publish(reader, 1, 0, 1, 10, dot);
                 //do not parse numeric
                 return sourcePos;
             } else {
@@ -892,7 +894,7 @@ public class TrieParserReader {
         } else if (0!= (TrieParser.NUMERIC_FLAG_RATIONAL&numType)) {
             final short c = source[sourceMask & sourcePos];
             if ('/'!=c) {
-                publish(reader, 1, 1, 1, 10);
+                publish(reader, 1, 1, 1, 10, dot);
                 //do not parse numeric
                 return sourcePos;
             } else {
@@ -972,18 +974,22 @@ public class TrieParserReader {
 		if (intLength==0) {
 			return -1;
 		}
-        publish(reader, sign, intValue, intLength, base);
+        publish(reader, sign, intValue, intLength, base, dot);
         
         return sourcePos-1;
     }
 
-    private static void publish(TrieParserReader reader, int sign, long numericValue, int intLength, int base) {
+    private static void publish(TrieParserReader reader, int sign, long numericValue, int intLength, int base, int dot) {
         assert(0!=sign);
         
         reader.capturedValues[reader.capturedPos++] = sign;
         reader.capturedValues[reader.capturedPos++] = (int) (numericValue >> 32);
         reader.capturedValues[reader.capturedPos++] = (int) (0xFFFFFFFF &numericValue);
-        reader.capturedValues[reader.capturedPos++] = (base<<16) | (0xFFFF & intLength) ; //Base: 10 or 16, IntLength:  
+        
+        assert(base<=64 && base>=2);
+        assert(dot==1 || dot==0);
+        
+        reader.capturedValues[reader.capturedPos++] = (dot<<31) | (base<<16) | (0xFFFF & intLength) ; //Base: 10 or 16, IntLength:  
         
     }
     
@@ -1145,7 +1151,7 @@ public class TrieParserReader {
             
             int type = localCapturedValues[i++];
             
-            if (0==type) {
+            if (isCapturedByteData(type)) {
                 
                 int p = localCapturedValues[i++];
                 int l = localCapturedValues[i++];
@@ -1182,7 +1188,13 @@ public class TrieParserReader {
     
     
     public static int writeCapturedValuesToDataOutput(TrieParserReader reader, DataOutputBlobWriter target) throws IOException {
-        int limit = reader.capturedPos;
+    	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //NOTE: this method is used by the HTTP1xRouterStage class to write all the captured fields which is key to GreenLightning
+    	//      ensure that any changes here are matched by the methods consuming this DataOutput inside GreenLightnining.
+    	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    	
+    	
+    	int limit = reader.capturedPos;
         int[] localCapturedValues = reader.capturedValues;
         
         
@@ -1192,7 +1204,7 @@ public class TrieParserReader {
             
             int type = localCapturedValues[i++];
             
-            if (0==type) {
+            if (isCapturedByteData(type)) {
                 
                 int p = localCapturedValues[i++];
                 int l = localCapturedValues[i++];
@@ -1200,36 +1212,71 @@ public class TrieParserReader {
                                 
                 totalBytes += l;
                 
-                //if those bytes were utf8 encoded then this matches the same as writeUTF8 without decode/encode
-                target.writeShort(l);
+                //       logger.info("captured text: {}", Appendables.appendUTF8(new StringBuilder(), reader.capturedBlobArray, p, l, m));
                 
-         //       logger.info("captured text: {}", Appendables.appendUTF8(new StringBuilder(), reader.capturedBlobArray, p, l, m));
-                                
+                //if those bytes were utf8 encoded then this matches the same as writeUTF8 without decode/encode                
+                target.writeShort(l); //write the bytes count as a short first, then the UTF-8 encoded string
                 DataOutputBlobWriter.write(target,reader.capturedBlobArray,p,l,m);
                                 
             } else {
                 
-            	boolean isDot = false; //TOOD: can we know this?
             	
             	int sign = type;
             	long value1 = localCapturedValues[i++];
                 long value2 = localCapturedValues[i++]; 
                 
                 int meta = localCapturedValues[i++]; 
-            	int base = meta>>16;
+                boolean isDot = (meta<0);//if high bit is on this is a dot value
+            	byte base = (byte)((meta>>16)&0xFF);
                 int len  = meta&0xFFFF;
             	
                 long value = sign*((value1<<32)|value2);
                 int  position;                
                 if (isDot) {
                 	if (base!=10) {
-                		throw new UnsupportedOperationException("Can not support decimal point values with hex.");
+                		throw new UnsupportedOperationException("Does support decimal point values with hex, please use base 10 decimal.");
                 	}
                 	position = -len;                	
+                
+                //how do we sum this with the previous??
+                	
+                
+                
                 } else {
                 	position = 0;
                 }
-                            
+                    
+                //Jump ahead to combine the dot part of the number if it is found.
+                if (i+4<=limit //if there is following data
+                	&& (!isCapturedByteData(localCapturedValues[i])) //if next data is some kind of number	
+                	&& (localCapturedValues[i+3]<0)) { //if that next data point is a dot
+                	
+                	//grab the dot value and roll it in.
+                	int dsign = localCapturedValues[i++];
+                	long dvalue1 = localCapturedValues[i++];
+                    long dvalue2 = localCapturedValues[i++];                    
+                    int dmeta = localCapturedValues[i++];
+                    
+                	byte dbase = (byte)((dmeta>>16)&0xFF);
+                   	if (dbase!=10) {
+                		throw new UnsupportedOperationException("Does support decimal point values with hex, please use base 10 decimal.");
+                	}
+                	
+                   	if (0 != position) {
+                   		throw new UnsupportedOperationException("Expected left side of . to be a simple integer.");
+                   	}
+                   	
+                    int dlen  = dmeta&0xFFFF;
+                	
+                    long dvalue = dsign*((dvalue1<<32)|dvalue2);
+                    
+                    //shift the integer part up and add the decimal part
+                    value = (value*Decimal.longPow[dlen])+dvalue;
+                                        
+                    //modify positoin to have the right number of points
+                    position = -dlen;  
+                	
+                }              
                 
                 target.writePackedLong(value);
                 target.writeByte(position);
@@ -1239,6 +1286,10 @@ public class TrieParserReader {
         }
         return totalBytes;
     }
+
+	private static boolean isCapturedByteData(int type) {
+		return 0==type;
+	}
     
     public static int writeCapturedValuesToAppendable(TrieParserReader reader, Appendable target) throws IOException {
         int limit = reader.capturedPos;
@@ -1251,7 +1302,7 @@ public class TrieParserReader {
             
             int type = localCapturedValues[i++];
             
-            if (0==type) {
+            if (isCapturedByteData(type)) {
                 
                 int p = localCapturedValues[i++];
                 int l = localCapturedValues[i++];
@@ -1286,7 +1337,7 @@ public class TrieParserReader {
             
             int type = localCapturedValues[i++];
             
-            if (0==type) {
+            if (isCapturedByteData(type)) {
                 
                 int p = localCapturedValues[i++];
                 int l = localCapturedValues[i++];

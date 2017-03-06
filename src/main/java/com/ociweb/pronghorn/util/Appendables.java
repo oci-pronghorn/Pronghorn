@@ -172,10 +172,20 @@ public class Appendables {
 		}
     }
 
-    public static <A extends Appendable> A appendDecimalValue(A target, long m, int e) {
+    static final int digits = 18;    		
+    static final long tens = 1_000_000_000_000_000_000L;
+    
+    
+    static final int digits_small = 8;   
+    static final long tens_small = 100_000_000L;
+    
+    
+    static final int digits_micro = 3;   
+    static final long tens_micro = 1_000L;
+    
+
+    public static <A extends Appendable> A appendDecimalValue(A target, long m, byte e) {
     	
-    	int digits = 18;    		
-    	long tens = 1_000_000_000_000_000_000L;
     	
     	long value = m;    	
     	int g = -e;
@@ -196,28 +206,20 @@ public class Appendables {
 	        
 	        long nextValue = value;
 	        int orAll = 0; //this is to remove the leading zeros
-	        while (tens>1) {
-	            int digit = (int)(nextValue/tens);
-	            orAll |= digit;
-	            if (0!=orAll || digits<g) {
-	                target.append((char)('0'+digit));
-	            }
-	            
-	            if (digits == g) {
-	            	target.append('.');
-	            }
-	            
-	            nextValue = nextValue%tens;
-	            tens /= 10;
-	            digits--;
+	        
+	        long temp = Math.abs(value);
+	        if (temp<tens_micro) {
+	        	decimalValueCollecting(target, digits_micro, tens_micro, g, nextValue, orAll);	        	
+	        } else {
+		        if (temp<tens_small) {		        	
+		        	decimalValueCollecting(target, digits_small, tens_small, g, nextValue, orAll);		        	
+		        } else {
+		        	decimalValueCollecting(target, digits, tens, g, nextValue, orAll);
+		        }
 	        }
-	        target.append((char)('0'+nextValue));
-	    
+	        
 	        int f = e;
-	        while (f>0) {
-	        	target.append('0');
-	        	f--;
-	        }	    
+	        f = appendZeros(target, f);	    
 	        
 	        if (isNegative && useParensForNeg) {
 	        	target.append(')');
@@ -230,6 +232,34 @@ public class Appendables {
 			throw new RuntimeException(ex); 
 		}
     }
+
+	private static <A extends Appendable> int appendZeros(A target, int f) throws IOException {
+		while (f>0) {
+			target.append('0');
+			f--;
+		}
+		return f;
+	}
+
+	private static <A extends Appendable> void decimalValueCollecting(A target, int digits, long tens, int g,
+																		long nextValue, int orAll) throws IOException {
+		while (tens>1) {
+		    int digit = (int)(nextValue/tens);
+		    orAll |= digit;
+		    if (0!=orAll || digits<g) {
+		        target.append((char)('0'+digit));
+		    }
+		    
+		    if (digits == g) {
+		    	target.append('.');
+		    }
+		    
+		    nextValue = nextValue%tens;
+		    tens /= 10;
+		    digits--;
+		}
+		target.append((char)('0'+nextValue));
+	}
     
     public static <A extends Appendable> A appendValue(A target, int value) {
     	try {

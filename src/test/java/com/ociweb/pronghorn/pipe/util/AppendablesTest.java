@@ -104,19 +104,19 @@ public class AppendablesTest {
 		 StringBuilder target = new StringBuilder();
 		 
 		 target.setLength(0);		 
-		 Appendables.appendDecimalValue(target, m, 2);
+		 Appendables.appendDecimalValue(target, m, (byte)2);
 		 assertEquals("1234500",target.toString());
 		 
 		 target.setLength(0);		 
-		 Appendables.appendDecimalValue(target, m, 0);
+		 Appendables.appendDecimalValue(target, m, (byte)0);
 		 assertEquals("12345",target.toString());
 		 
 		 target.setLength(0);		 
-		 Appendables.appendDecimalValue(target, m, -2);
+		 Appendables.appendDecimalValue(target, m, (byte)-2);
 		 assertEquals("123.45",target.toString());
 		 
 		 target.setLength(0);		 
-		 Appendables.appendDecimalValue(target, m, -6);
+		 Appendables.appendDecimalValue(target, m, (byte)-6);
 		 assertEquals(".012345",target.toString());
 		 		
 	}
@@ -129,19 +129,19 @@ public class AppendablesTest {
 		 StringBuilder target = new StringBuilder();
 		 
 		 target.setLength(0);		 
-		 Appendables.appendDecimalValue(target, m, 2);
+		 Appendables.appendDecimalValue(target, m, (byte)2);
 		 assertEquals("-1234500",target.toString());
 		 
 		 target.setLength(0);		 
-		 Appendables.appendDecimalValue(target, m, 0);
+		 Appendables.appendDecimalValue(target, m, (byte)0);
 		 assertEquals("-12345",target.toString());
 		 
 		 target.setLength(0);		 
-		 Appendables.appendDecimalValue(target, m, -2);
+		 Appendables.appendDecimalValue(target, m, (byte)-2);
 		 assertEquals("-123.45",target.toString());
 		 
 		 target.setLength(0);		 
-		 Appendables.appendDecimalValue(target, m, -6);
+		 Appendables.appendDecimalValue(target, m, (byte)-6);
 		 assertEquals("-.012345",target.toString());
 		 		
 	}

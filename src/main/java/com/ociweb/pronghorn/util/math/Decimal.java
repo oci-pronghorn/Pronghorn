@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.util.math;
 
 public class Decimal {
 
-    public static void sum(final long aM, final int aE, final long bM, final int bE, DecimalResult result) {
+    public static void sum(final long aM, final byte aE, final long bM, final byte bE, DecimalResult result) {
     	
 		if (aE==bE) {
 			result.result(aM + bM, bE);
@@ -19,7 +19,7 @@ public class Decimal {
 		
     }
     
-	private static long[] longPow = new long[] {1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 
+	public static long[] longPow = new long[] {1, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000, 
             1_000_000_000, 10_000_000_000L, 100_000_000_000L ,1000_000_000_000L,
             1_000_000_000_000L, 10_000_000_000_000L, 100_000_000_000_000L ,1000_000_000_000_000L,
             1_000_000_000_000_000L, 10_000_000_000_000_000L, 100_000_000_000_000_000L ,1000_000_000_000_000_000L};
