@@ -82,7 +82,7 @@ public class HTTPServerConfig {
 			serverMsgToEncrypt            = 512;
 			serverBlobToEncrypt           = 1<<15;
 			
-			serverOutputMsg               = isTLS? 32:128;
+			serverOutputMsg               = isTLS? 32:512;
 			serverBlobToWrite             = 1<<15;
 			
 			fromRouterMsg 				  = isTLS?512:2048;//impacts performance

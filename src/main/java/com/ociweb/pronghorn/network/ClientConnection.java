@@ -49,7 +49,7 @@ public class ClientConnection extends SSLConnection {
 	private long closeTimeLimit = Long.MAX_VALUE;
 	private long TIME_TILL_CLOSE = 10_000;
 
-	private final int maxInFlightBits = 13;//12;//TODO: must bump up to get 1M 10;	//only allow x messages in flight at a time.
+	private final int maxInFlightBits = 14;//12;//TODO: must bump up to get 1M 10;	//only allow x messages in flight at a time.
 	public final int maxInFlight = 1<<maxInFlightBits;
 	private final int maxInFlightMask = maxInFlight-1;
 	

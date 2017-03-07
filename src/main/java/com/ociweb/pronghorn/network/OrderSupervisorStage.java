@@ -109,6 +109,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		int totalChannels = coordinator.channelBitsSize; //WARNING: this can be large eg 4 million
         expectedSquenceNos = new int[totalChannels];//room for 1 per active channel connection
         expectedSquenceNosPipeIdx = new short[totalChannels];
+        Arrays.fill(expectedSquenceNosPipeIdx, (short)-1);
         
         if (ServerCoordinator.TEST_RECORDS) {
 			int i = outgoingPipes.length;
@@ -196,8 +197,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {	
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		    		//logger.info("no room to write out");
-		    		//break;
-		    		continue;
+		    		break;
 		    	}		    	
 		    	
 		        sequenceNo = Pipe.peekInt(sourcePipe,  3);	                   
@@ -214,13 +214,13 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	logger.info("skipped older response A");
 		        	Pipe.skipNextFragment(sourcePipe);
 		        	continue;
-		        } else if (expected==sequenceNo) {
+		        } else if (expected==sequenceNo) { //TODO: this block is killing off the rest requests, must find out why...
 		        	if (-1 == expectedSquenceNosPipeIdx[idx]) {
 		        		expectedSquenceNosPipeIdx[idx]=(short)pipeIdx;
 		        	} else {
 		        		if (expectedSquenceNosPipeIdx[idx] !=(short)pipeIdx) {
 		        			//drop the data
-		        			logger.info("skipped older response B");
+		        			logger.info("skipped older response B Pipe:{} vs Pipe:{} ",expectedSquenceNosPipeIdx[idx],pipeIdx);
 		        			Pipe.skipNextFragment(sourcePipe);
 				        	continue;
 		        		}
@@ -228,7 +228,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        } else {
 		        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 		        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		        	logger.info("not ready for sequence number yet");
+		        	logger.info("not ready for sequence number yet, looking for "+expected+" but found "+sequenceNo);
+		        	
+		        	System.err.println("EXIT FAST");
+		        	System.exit(-1);
+		        	
 		        	break;//does not match
 		        }
 		        
@@ -336,7 +340,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	private void publishDataBlock(final Pipe<ServerResponseSchema> input, Pipe<NetPayloadSchema> output, int myPipeIdx, int sequenceNo, long channelId) {
 		
-		
+
 		 //////////////////////////
 		 //output pipe is accumulating this data before it has even stared the message to be sent
 		 //this is required in order to "skip over" the extra tags used eg "hidden" between messages by some modules.
@@ -381,12 +385,13 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 
 		 assert(Pipe.bytesReadBase(input)!=temp) : "old base "+temp+" new base "+Pipe.bytesReadBase(input);
 		 
+
 		 int y = 0;
 		 //If a response was sent as muliple parts all part of the same sequence number then we roll them up as a single write when possible.
 		 while ( Pipe.peekMsg(input, ServerResponseSchema.MSG_TOCHANNEL_100) 
 			 	 && Pipe.peekInt(input, 3) == expSeq 
 			 	 && Pipe.peekLong(input, 1) == channelId 
-			     && ((len+Pipe.peekInt(input, 5))<output.maxAvgVarLen)  ) {
+			     && ((len+Pipe.peekInt(input, 5))<output.maxVarLen)  ) {
 					 //this is still part of the current response so combine them together
 					
 			 y++;
@@ -420,7 +425,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 
 		 final long time = 0;//field not used by server...
-		 
+	
 		 writeToNextStage(output, channelId, len, requestContext, blobMask, blob, bytePosition, time); 
 		 
 		 assert(Pipe.bytesReadBase(input)>=0);
@@ -566,7 +571,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		/////////////
 		 //if needed write out the upgrade message
 		 ////////////
-		 
+				 
 		 if (0 != (UPGRADE_MASK & requestContext)) { //NOTE: must NOT use var length field, we are accumulating for plain writes
 			 
 			 //the next response should be routed to this new location

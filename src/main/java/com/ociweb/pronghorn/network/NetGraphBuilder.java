@@ -257,7 +257,7 @@ public class NetGraphBuilder {
 		Pipe[] singlePipe = new Pipe[serverConfig.serverResponseWrapUnits * serverConfig.serverPipesPerOutputEngine];
         Pipe[] fromSupers = singlePipe;
         
-        Pipe[] toWiterPipes = buildSSLWrapersAsNeeded(isTLS, graphManager, coordinator, serverConfig.serverRequestUnwrapUnits,
+        Pipe<NetPayloadSchema>[] toWiterPipes = buildSSLWrapersAsNeeded(isTLS, graphManager, coordinator, serverConfig.serverRequestUnwrapUnits,
         		serverConfig.toWraperConfig, serverConfig.fromWraperConfig, handshakeIncomingGroup, serverConfig.serverPipesPerOutputEngine, serverConfig.serverResponseWrapUnits, fromSupers);
                     
         buildOrderingSupers(isTLS, graphManager, coordinator, routerCount, fromModule, fromSupers);
@@ -346,7 +346,7 @@ public class NetGraphBuilder {
 	}
 
 	private static void buildSocketWriters(GraphManager graphManager, ServerCoordinator coordinator, int socketWriters,
-			Pipe[] toWiterPipes) {
+			Pipe<NetPayloadSchema>[] toWiterPipes) {
 		///////////////
 		//all the writer stages
 		///////////////

@@ -257,7 +257,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				int len3 = Pipe.blobMask(pipe);
 				
 				if (Pipe.hasContentToRead(pipe) 
-						&& 	((positionMemoData[lenIdx]+pipe.maxAvgVarLen+Pipe.releasePendingByteCount(pipe)) < (Pipe.blobMask(pipe) ) )
+						&& 	((positionMemoData[lenIdx]+pipe.maxVarLen+Pipe.releasePendingByteCount(pipe)) < (Pipe.blobMask(pipe) ) )
 						) {//MUST stay less than mask
 					
 					       //TOOD: this second condition above should NOT be required but under heavy load this spins and never comes back..

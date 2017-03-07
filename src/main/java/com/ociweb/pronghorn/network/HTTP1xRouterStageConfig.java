@@ -6,6 +6,7 @@ import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.util.TrieParser;
+import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
                                     R extends Enum<R> & HTTPRevision,
@@ -71,6 +72,14 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         
 	}
 	
+	
+	public void debugURLMap() {
+		
+		String actual = urlMap.toDOT(new StringBuilder()).toString();
+		
+		System.err.println(actual);
+		
+	}
 
 	public int registerRoute(CharSequence route, long headers) {
 		if (' '==route.charAt(route.length()-1)) {
