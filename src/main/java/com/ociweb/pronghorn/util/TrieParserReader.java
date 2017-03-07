@@ -536,22 +536,22 @@ public class TrieParserReader {
 	private static boolean lessCommonActions2(TrieParserReader reader, TrieParser trie, byte[] source,
 			final long sourceLength, int sourceMask, final long unfoundResult, final boolean hasSafePoint, int t) {
 		
-		if (t != TrieParser.TYPE_VALUE_BYTES) {            	
-			return lessCommonActions3(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint, t);
+		if (t == TrieParser.TYPE_VALUE_BYTES) {            	
+			parseBytesAction(reader, trie, source, sourceLength, sourceMask, unfoundResult);
+			return hasSafePoint;
 		} else {
-			return parseBytesAction(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint);
+			return lessCommonActions3(reader, trie, source, sourceLength, sourceMask, unfoundResult, hasSafePoint, t);
 		}
 	}
 
-	private static boolean parseBytesAction(final TrieParserReader reader, final TrieParser trie, final byte[] source,
-			final long sourceLength, final int sourceMask, final long unfoundResult, final boolean hasSafePoint) {
+	private static void parseBytesAction(final TrieParserReader reader, final TrieParser trie, final byte[] source,
+			final long sourceLength, final int sourceMask, final long unfoundResult) {
 		
 		if ((reader.runLength < sourceLength) && parseBytes(reader, trie, source, sourceLength, sourceMask)) {
 		} else {
 			reader.normalExit = false;
 			reader.result = unfoundResult;
 		}
-		return hasSafePoint;
 	}
 
 	private static boolean lessCommonActions3(TrieParserReader reader, TrieParser trie, byte[] source,
@@ -662,12 +662,13 @@ public class TrieParserReader {
 	        	if (stopCount==2) {
 	        		//special case since this happens very often
 	        		
-	        		short s1 = localWorkingMultiStops[0];
-	        		short s2 = localWorkingMultiStops[1];
-	        		
+	        		final short s1 = localWorkingMultiStops[0];
+	        		final short s2 = localWorkingMultiStops[1]; //B DEBUG CAPTURE:keep-alive  B DEBUG CAPTURE:127.0.0.1
+	   
 					do {  
 						
-						int value = source[sourceMask & x++];
+						short value = source[sourceMask & x++];
+						
 						if (value==s2) {
 							reader.pos = reader.workingMultiContinue[1];
 							return assignParseBytesResults(reader, sourceMask, localSourcePos, x);							
@@ -702,6 +703,7 @@ public class TrieParserReader {
 			final int localSourcePos, int x) {
 		int len = (x-localSourcePos)-1;
 		reader.runLength += (len);
+
 		reader.capturedPos = extractedBytesRange(reader.capturedValues, reader.capturedPos, localSourcePos, len, sourceMask);  
 		reader.localSourcePos = x;
 		return true;
@@ -714,6 +716,7 @@ public class TrieParserReader {
 		} else {
 			int len = (x-sourcePos)-1;
 			reader.runLength += (len);
+
 			reader.capturedPos = extractedBytesRange(reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);  
 			reader.localSourcePos = x;
 			reader.pos = reader.workingMultiContinue[stopIdx];
@@ -834,7 +837,7 @@ public class TrieParserReader {
     }
 
     private static int parseBytes(TrieParserReader reader, final byte[] source, final int sourcePos, long remainingLen, final int sourceMask, final short stopValue) {              
-
+    
         int x = sourcePos;
         int lim = (int)Math.min(remainingLen, sourceMask);
         boolean noStop = true;
@@ -849,6 +852,7 @@ public class TrieParserReader {
 
 	private static int parseBytesFound(TrieParserReader reader, final int sourcePos, final int sourceMask, int x) {
 		int len = (x-sourcePos)-1;
+
         reader.runLength += (len);
         reader.capturedPos = extractedBytesRange(reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);                
         return x;

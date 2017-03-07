@@ -176,12 +176,14 @@ public class Appendables {
     static final long tens = 1_000_000_000_000_000_000L;
     
     
-    static final int digits_small = 8;   
-    static final long tens_small = 100_000_000L;
+    static final int digits_small = 6;   
+    static final long tens_small = 1_000_000L;
+    static final long tens_small_limit = tens_small*10;
     
     
-    static final int digits_micro = 3;   
-    static final long tens_micro = 1_000L;
+    static final int digits_micro = 2;   
+    static final long tens_micro = 100L;
+    static final long tens_micro_limit = tens_micro*10;
     
 
     public static <A extends Appendable> A appendDecimalValue(A target, long m, byte e) {
@@ -208,10 +210,10 @@ public class Appendables {
 	        int orAll = 0; //this is to remove the leading zeros
 	        
 	        long temp = Math.abs(value);
-	        if (temp<tens_micro) {
+	        if (temp<tens_micro_limit) {
 	        	decimalValueCollecting(target, digits_micro, tens_micro, g, nextValue, orAll);	        	
 	        } else {
-		        if (temp<tens_small) {		        	
+		        if (temp<tens_small_limit) {		        	
 		        	decimalValueCollecting(target, digits_small, tens_small, g, nextValue, orAll);		        	
 		        } else {
 		        	decimalValueCollecting(target, digits, tens, g, nextValue, orAll);
@@ -241,24 +243,30 @@ public class Appendables {
 		return f;
 	}
 
+	
+	private static char[]dv = new char[] {'0','1','2','3','4','5','6','7','8','9'};
+	
+	
 	private static <A extends Appendable> void decimalValueCollecting(A target, int digits, long tens, int g,
 																		long nextValue, int orAll) throws IOException {
 		while (tens>1) {
+			
 		    int digit = (int)(nextValue/tens);
+		    nextValue = nextValue%tens;
 		    orAll |= digit;
 		    if (0!=orAll || digits<g) {
-		        target.append((char)('0'+digit));
+		        target.append(dv[digit]);//(char)('0'+digit));
 		    }
 		    
 		    if (digits == g) {
 		    	target.append('.');
 		    }
 		    
-		    nextValue = nextValue%tens;
 		    tens /= 10;
 		    digits--;
+		    
 		}
-		target.append((char)('0'+nextValue));
+		target.append(dv[(int)nextValue]);//(char)('0'+nextValue));
 	}
     
     public static <A extends Appendable> A appendValue(A target, int value) {
