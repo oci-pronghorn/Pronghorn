@@ -252,7 +252,7 @@ public class HTTPSRoundTripTest {
 			//TODO: RERUN THE NETTY AND GL TESTS WITH RESTRICTED MEMORY TO ENSURE NO EXTRA LARGE NUMBERS...
 			
 			
-			boolean isTLS = false;//true;
+			boolean isTLS = false;
 			int port = 8081;//isTLS?8443:8080;
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";

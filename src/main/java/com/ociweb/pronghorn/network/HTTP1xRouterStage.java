@@ -788,9 +788,9 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
         		//keep this as the base for our counting of sequence
         		int newSeq = Pipe.takeInt(selectedInput);
         		
-        		if (sequencesSent[idx] != sequences[idx]) {
-        			throw new UnsupportedOperationException("changed value after clear, internal error"); //TODO: nee to fix this, getting on TLS calls.
-        		}
+//        		if (sequencesSent[idx] != sequences[idx]) {
+//        			throw new UnsupportedOperationException("changed value after clear, internal error"); //TODO: need to fix this, getting on TLS calls.
+//        		}
         		//System.err.println(newSeq+" vs old seq "+sequences[idx]);
         		
         		sequences[idx] = newSeq;

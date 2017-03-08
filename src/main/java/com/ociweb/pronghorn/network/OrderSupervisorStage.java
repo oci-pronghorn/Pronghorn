@@ -211,7 +211,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				int expected = expectedSquenceNos[idx];     
 		        if (sequenceNo<expected) {
 		        	//drop the data
-		        	logger.info("skipped older response A");
+		        	//logger.info("skipped older response A");
 		        	Pipe.skipNextFragment(sourcePipe);
 		        	continue;
 		        } else if (expected==sequenceNo) { //TODO: this block is killing off the rest requests, must find out why...
@@ -229,10 +229,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 		        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		        	logger.info("not ready for sequence number yet, looking for "+expected+" but found "+sequenceNo);
-		        	
-		        	System.err.println("EXIT FAST");
-		        	System.exit(-1);
-		        	
+		   		        	
 		        	break;//does not match
 		        }
 		        
