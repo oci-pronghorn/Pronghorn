@@ -435,7 +435,8 @@ public class TrieParserReader {
 		//unable to parse this case
 		//determine if we have an error or need more data        	
 		assert(reader.sourceLen <= trie.longestKnown()) : "Check the parse tree, this text was not parsable. "+debugContent(reader, reader.sourcePos, reader.sourceLen);
-		if (reader.sourceLen > trie.longestKnown()) {
+		boolean debug = false;
+		if (debug && (reader.sourceLen > trie.longestKnown())) {
 			logger.info("WARNING: input data can not be parsed and the pipeline has stopped at this point. {}",debugContent(reader, reader.sourcePos, reader.sourceLen) ,new Exception());
 		} //else we just need more data.
 		
