@@ -226,7 +226,7 @@ public class NetGraphBuilder {
         final HTTP1xRouterStageConfig routerConfig = buildModules(graphManager, modules, routerCount, serverConfig.httpSpec, serverConfig.routerToModuleConfig, fromModule, toModules);
 
         
-        buildRouters(graphManager, routerCount, planIncomingGroup, acks, toModules, routerConfig);
+        buildRouters(graphManager, routerCount, planIncomingGroup, acks, toModules, routerConfig, coordinator);
      
         
         //////////////////////////
@@ -365,7 +365,7 @@ public class NetGraphBuilder {
 	public static void buildRouters(GraphManager graphManager, final int routerCount, Pipe[] planIncomingGroup,
 			Pipe[] acks, 
 			Pipe<HTTPRequestSchema>[][] toModules, 
-			final HTTP1xRouterStageConfig routerConfig) {
+			final HTTP1xRouterStageConfig routerConfig, ServerCoordinator coordinator) {
 		
 		int a;
 		/////////////////////
@@ -377,7 +377,7 @@ public class NetGraphBuilder {
 		int r = routerCount;
 		while (--r>=0) {
 			
-			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], toModules[r], acks[acksBase-r], routerConfig);        
+			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], toModules[r], acks[acksBase-r], routerConfig, coordinator);        
 			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
 			
 		}

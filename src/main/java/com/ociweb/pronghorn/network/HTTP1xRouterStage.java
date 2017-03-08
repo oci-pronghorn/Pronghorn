@@ -79,10 +79,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
     private int idx;
     private final HTTP1xRouterStageConfig<T,R,V,H> config;
-    
+    private final ServerCoordinator coordinator;
 
-	private int groupId;
-    
     //read all messages and they must have the same channelID
     //total all into one master DataInputReader
        
@@ -93,9 +91,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 					H extends Enum<H> & HTTPHeaderKey> 
     HTTP1xRouterStage<T,R,V,H> newInstance(GraphManager gm, 
     		                               Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, Pipe<ReleaseSchema> ackStop,
-                                           HTTP1xRouterStageConfig<T,R,V,H> config) {
+                                           HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator) {
         
-       return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, ackStop, config); 
+       return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, ackStop, config, coordinator); 
     }
     
     public static <	T extends Enum<T> & HTTPContentType,
@@ -104,21 +102,21 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	H extends Enum<H> & HTTPHeaderKey> 
 		HTTP1xRouterStage<T,R,V,H> newInstance(GraphManager gm, 
 		                           Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<ReleaseSchema> ackStop,
-		                           HTTP1xRouterStageConfig<T,R,V,H> config) {
+		                           HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator) {
 		
-		return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, ackStop, config); 
+		return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, ackStop, config, coordinator); 
 	}
 
 	public HTTP1xRouterStage(GraphManager gm, 
             Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, Pipe<ReleaseSchema> ackStop,
-            HTTP1xRouterStageConfig<T,R,V,H> config) {
+            HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator) {
 		
-		this(gm, input, join(outputs), ackStop, config);
+		this(gm, input, join(outputs), ackStop, config, coordinator);
 		
 	}
 	public HTTP1xRouterStage(GraphManager gm, 
 			                 Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<ReleaseSchema> ackStop,
-                             HTTP1xRouterStageConfig<T,R,V,H> config) {
+                             HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator) {
 		
         super(gm,input,join(outputs,ackStop));
         assert (outputs.length == config.routesCount());
@@ -127,7 +125,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         this.inputs = input;
         this.releasePipe = ackStop;        
         this.outputs = outputs;
-
+        this.coordinator = coordinator;
         
         
         this.shutdownCount = inputs.length;
@@ -496,24 +494,27 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
 	
 	final int verbId = (int)TrieParserReader.parseNext(trieReader, config.verbMap);     //  GET /hello/x?x=3 HTTP/1.1     
     if (verbId<0) {
-    		if (tempLen < (config.verbMap.longestKnown()+1)) { //added 1 for the space which must appear after
+    		if (tempLen < (config.verbMap.longestKnown()+1) || (trieReader.sourceLen<0)) { //added 1 for the space which must appear after
     //			logger.info("A. waiting on verb for {}",channel);
     			return NEED_MORE_DATA;    			
     		} else {
-    			if (trieReader.sourceLen<0) {
-    //				logger.info("B. waiting on verb for {}",channel);
-    		    	return NEED_MORE_DATA;
-    		    }
+    			
     			//we have bad data we have been sent, there is enough data yet the verb was not found
     			trieReader.sourceLen = tempLen;
     			trieReader.sourcePos = tempPos;
     			
-    			StringBuilder builder = new StringBuilder();
-    			    			
-    			TrieParserReader.debugAsUTF8(trieReader, builder, config.verbMap.longestKnown()*2);    			
-    			logger.warn("{} looking for verb but found:\n{} at position {} from pipe {} \n\n",channel,builder,tempPos,selectedInput);
-    		    			
+    			boolean debug = false;
+    			if(debug) {
+    				StringBuilder builder = new StringBuilder();    			    			
+    				TrieParserReader.debugAsUTF8(trieReader, builder, config.verbMap.longestKnown()*2);    			
+    				logger.warn("{} looking for verb but found:\n{} at position {} from pipe {} \n\n",channel,builder,tempPos,selectedInput);
+    			}
+    			
+    			trieReader.sourceLen = 0;
+    			trieReader.sourcePos = 0;    			
+    			
     			badClientError(channel);
+    			return SUCCESS;
     			    		    			
     		}
     }
@@ -522,14 +523,11 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
 	tempPos = trieReader.sourcePos;
     final int routeId = (int)TrieParserReader.parseNext(trieReader, config.urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
     if (routeId<0) {
-    	if (tempLen < MAX_URL_LENGTH) {
-//   		logger.info("A. waiting on route for {}",channel);
+
+    	if (tempLen < config.urlMap.longestKnown() || trieReader.sourceLen<0) {
 			return NEED_MORE_DATA;    			
 		} else {
-		    if (trieReader.sourceLen<0) {
-//		    	logger.info("B. waiting on route for {}",channel);
-		    	return NEED_MORE_DATA;
-		    } 
+
 			//we have bad data we have been sent, there is enough data yet the verb was not found
 			trieReader.sourceLen = tempLen;
 			trieReader.sourcePos = tempPos;
@@ -537,8 +535,12 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
 			StringBuilder builder = new StringBuilder();
 			TrieParserReader.debugAsUTF8(trieReader, builder, MAX_URL_LENGTH);			
 			logger.warn("{} looking for URL to route but found:\n\"{}\"\n\n",channel,builder);
-		    			
+		    	
+			trieReader.sourceLen = 0;
+			trieReader.sourcePos = 0;
+			
 			badClientError(channel);
+			return SUCCESS;
 		}
     }
  
@@ -580,17 +582,11 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
         int httpRevisionId = (int)TrieParserReader.parseNext(trieReader, config.revisionMap);  //  GET /hello/x?x=3 HTTP/1.1 
         
         if (httpRevisionId<0) { 
-        	if (tempLen < (config.revisionMap.longestKnown()+1)) { //added 1 for the space which must appear after
-        		Pipe.resetHead(outputPipe);
-   //    		logger.info("A. waiting on revision for {}",channel);
+        	Pipe.resetHead(outputPipe);
+        	if (tempLen < (config.revisionMap.longestKnown()+1) || (trieReader.sourceLen<0) ) { //added 1 for the space which must appear after
     			return NEED_MORE_DATA;    			
     		} else {
-    			//not an error we just looked past the end
-    		    if (trieReader.sourceLen<0) {
-    //		    	    logger.info("B. waiting on revision for {}",channel);
-    		    	    Pipe.resetHead(outputPipe);
-    			    	return NEED_MORE_DATA;
-    			}    
+
     			//we have bad data we have been sent, there is enough data yet the verb was not found
     			trieReader.sourceLen = tempLen;
     			trieReader.sourcePos = tempPos;
@@ -599,7 +595,11 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
     			TrieParserReader.debugAsUTF8(trieReader, builder, config.revisionMap.longestKnown()*2);
     			logger.warn("{} looking for HTTP revision but found:\n{}\n\n",channel,builder);
     		    			
-    			badClientError(channel);		
+    			trieReader.sourceLen = 0;
+    			trieReader.sourcePos = 0;
+    			
+    			badClientError(channel);
+    			return SUCCESS;
     		}
 
         }
@@ -681,14 +681,11 @@ private void sendRelease(long channel, final int idx) {
 }
 
 private void badClientError(long channel) {
-//	SSLConnection con = coordinator.get(channel, groupId);
-//	if (null!=con) {
-//		con.close();
-//	}
-	//TODO: drop connection we have bad player
-	new UnsupportedOperationException("TODO: add drop connection support").printStackTrace();
-	logger.error("not implemented exiting now");
-	System.exit(-1);
+	SSLConnection con = coordinator.get(channel);
+	if (null!=con) {
+		con.clearPoolReservation();		
+		con.close();
+	}
 }
 
 
@@ -792,7 +789,7 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
         		int newSeq = Pipe.takeInt(selectedInput);
         		
         		if (sequencesSent[idx] != sequences[idx]) {
-        			throw new UnsupportedOperationException("changed value after clear, internal error");
+        			throw new UnsupportedOperationException("changed value after clear, internal error"); //TODO: nee to fix this, getting on TLS calls.
         		}
         		//System.err.println(newSeq+" vs old seq "+sequences[idx]);
         		

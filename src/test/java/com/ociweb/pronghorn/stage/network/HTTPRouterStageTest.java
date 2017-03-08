@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import com.ociweb.pronghorn.network.HTTP1xRouterStage;
 import com.ociweb.pronghorn.network.HTTP1xRouterStageConfig;
+import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
@@ -43,6 +44,7 @@ public class HTTPRouterStageTest {
     public void rapidValidRequestTest() {
         
     	HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(HTTPSpecification.defaultSpec()); 
+    	ServerCoordinator coordinator = new ServerCoordinator("127.0.0.1", 8080, 5 ,5 ,1);
     	
     	for(CharSequence route: paths) {
     		routerConfig.registerRoute(route, 0); //no headers
@@ -66,7 +68,7 @@ public class HTTPRouterStageTest {
 		PipeCleanerStage<ReleaseSchema> cleaner = new PipeCleanerStage<ReleaseSchema>(gm, ack);
         
         PronghornStage stage = ClientHTTPRequestDataGeneratorStage.newInstance(gm, rawRequestPipe, iterations, paths);  
-        HTTP1xRouterStage stage2 = buildRouterStage(gm, apps, appPipeConfig, pipes, ack, routerConfig);
+        HTTP1xRouterStage stage2 = buildRouterStage(gm, apps, appPipeConfig, pipes, ack, routerConfig, coordinator);
                
         runGraph(gm, apps, iterations, stage2);
         
@@ -107,7 +109,7 @@ public class HTTPRouterStageTest {
     }
 
     private HTTP1xRouterStage buildRouterStage(GraphManager gm, final int apps,
-            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pipe<NetPayloadSchema>[] pipes, Pipe<ReleaseSchema> ack, HTTP1xRouterStageConfig routerConfig) {
+            final PipeConfig<HTTPRequestSchema> appPipeConfig, Pipe<NetPayloadSchema>[] pipes, Pipe<ReleaseSchema> ack, HTTP1xRouterStageConfig routerConfig, ServerCoordinator coordinator) {
 
 
     	Pipe[] routedAppPipes = new Pipe[apps];
@@ -131,7 +133,7 @@ public class HTTPRouterStageTest {
         ConsoleJSONDumpStage dump = new ConsoleJSONDumpStage(gm,errorPipe);
         
         
-		HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, new Pipe[][]{routedAppPipes}, ack, routerConfig);
+		HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, new Pipe[][]{routedAppPipes}, ack, routerConfig, coordinator);
         return stage;
     }
  
