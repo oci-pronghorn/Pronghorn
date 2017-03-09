@@ -1111,9 +1111,23 @@ public class TrieParserReader {
         
         return Appendables.appendUTF8(target, reader.capturedBlobArray, bpos, blen, bmsk);
 
-
     }
 
+    public static int capturedFieldBytes(TrieParserReader reader, int idx, ByteConsumer target) {
+        
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int bpos = reader.capturedValues[pos++];
+        int blen = reader.capturedValues[pos++];
+        int bmsk = reader.capturedValues[pos++];
+        
+        target.consume(reader.capturedBlobArray, bpos, blen, bmsk);
+        return blen;
+
+    }
+    
     //parse the capture text as a query against yet another trie
     public static <A extends Appendable> long capturedFieldQuery(TrieParserReader reader, int idx, TrieParser trie) {
         
