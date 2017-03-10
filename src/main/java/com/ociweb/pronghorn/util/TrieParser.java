@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.util;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 import org.slf4j.Logger;
@@ -16,10 +17,12 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
  * @author Nathan Tippy
  *
  */
-public class TrieParser {
+public class TrieParser implements Serializable {
         
     
-    private static final Logger logger = LoggerFactory.getLogger(TrieParser.class);
+	private static final long serialVersionUID = -2877089562575447986L;
+
+	private static final Logger logger = LoggerFactory.getLogger(TrieParser.class);
 
     static final byte TYPE_RUN                 = 0x00; //followed by length
     static final byte TYPE_BRANCH_VALUE        = 0x01; //followed by mask & short jump  
@@ -89,7 +92,7 @@ public class TrieParser {
     private int limit = 0;
 
     private final int MAX_TEXT_LENGTH = 4096;
-    private Pipe<RawDataSchema> pipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance,3,MAX_TEXT_LENGTH));
+    private transient Pipe<RawDataSchema> pipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance,3,MAX_TEXT_LENGTH));
     
     private int maxExtractedFields = 0;//out of all the byte patterns known what is the maximum # of extracted fields from any of them.
     
@@ -1129,20 +1132,6 @@ public class TrieParser {
         return sourcePos;
     }
 
-
-//    private void insertAtBranchValue(int danglingByteCount, short[] data, int pos, byte[] source, final int sourcePos,final int sourceLength, int sourceMask, long value, boolean branchOnByte) {
-//
-//        assert(sourceLength>=1);
-//   
-//        if (branchOnByte) {        
-//            pos = insertByteBranch(danglingByteCount, data, pos, source, sourcePos, sourceLength, sourceMask);
-//        } else {            
-//            pos = insertAltBranch(danglingByteCount, data, pos, source, sourcePos, sourceLength, sourceMask);            
-//        }       
-//
-//        writeEnd(data, writeRuns(data, pos, source, sourcePos, sourceLength, sourceMask), value);
-//        
-//    }
 
 	private int insertByteBranch(int danglingByteCount, int pos, byte[] source, final int sourcePos,
 			final int sourceLength, int sourceMask) {
