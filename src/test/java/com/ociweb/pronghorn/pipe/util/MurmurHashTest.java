@@ -78,5 +78,21 @@ public class MurmurHashTest {
 		return Long.toHexString(j)+Long.toHexString(j*13)+Long.toHexString(j*7)+Long.toHexString(j);
 	}
 	
+	@Test
+	public void testASCIITextSameHashAsBytes() {
+		
+		String value = "romance";//for simple ascii string hash should match.
+		byte[] valueBytes = value.getBytes();
+
+		int seed = 123;
+		
+		int hash1 = MurmurHash.hash32(value, seed);
+		int hash2 = MurmurHash.hash32(valueBytes, 0, valueBytes.length, Integer.MAX_VALUE, seed);
+		
+		assertEquals(hash1, hash2);
+		
+		
+	}
+	
 	
 }

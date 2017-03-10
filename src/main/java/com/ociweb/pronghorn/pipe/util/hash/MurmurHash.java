@@ -112,7 +112,7 @@ public class MurmurHash {
         return 0xFF & (int)(array[byteIdx>>1] >> ((byteIdx&0x1)<<3));
     }
     private static int getByte(CharSequence csq, int byteIdx) {
-        return 0xFF & (int)(csq.charAt(byteIdx>>1) >> ((byteIdx&0x1)<<3));
+        return 0xFF & (int)(csq.charAt(byteIdx) ); //assumes ASCII only
     }
     
     
@@ -310,7 +310,7 @@ public class MurmurHash {
     
     public static int hash32(CharSequence charSequence, int inputOffset, int inputLength, int seed) {
         int offset = inputOffset*2;
-        int length = inputLength*2;
+        int length = inputLength;//*2;
                 
         // Initialize the hash to a 'random' value
         int h = seed ^ length;
