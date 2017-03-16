@@ -133,6 +133,28 @@ public class TrieParserTest {
         assertFalse(map.toString(),map.toString().contains("ERROR"));
     }
     
+    @Test 
+    public void testQuotesWithExtractions() {
+        TrieParserReader reader = new TrieParserReader(3);
+        TrieParser map = new TrieParser(1000);
+    
+        map.setUTF8Value("\"%b\"", 1);
+        map.setUTF8Value("\"%b\\", 2);
+        
+        //match first case since it ends in quote
+        byte[] testMatch1 = "\"hello\"             ".getBytes();        
+        assertEquals(1, TrieParserReader.query(reader,map,testMatch1, 0, testMatch1.length, 7));
+        
+        //match second case since it ends in slash
+        byte[] testMatch2 = "\"hello\\             ".getBytes();        
+        assertEquals(2, TrieParserReader.query(reader,map,testMatch2, 0, testMatch2.length, 7));
+        
+        //no match because it does not end with the right char
+        byte[] testMatch3 = "\"hello          ".getBytes();        
+        assertEquals(-1, TrieParserReader.query(reader,map,testMatch3, 0, testMatch3.length, 15));
+          
+        
+    }
     
     @Test 
     public void testExtractBytesEnd() {

@@ -566,6 +566,43 @@ public class Appendables {
 		}
     }
 
+    
+    private final static char[] base64 = new char[]{'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
+    		                                        'Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f',
+    		                                        'g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v',
+    		                                        'w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/'};
+    
+    public static <A extends Appendable> A appendBase64(A target, byte[] backing, int pos, int len, int msk) throws IOException {
+        
+    	int accumulator = 0;
+    	int i = 0;
+    	int shift = -6;
+    	while (i < len) {
+    		
+    		shift+=8; // 2 4 (we now have 10)
+    		accumulator = (accumulator<<8) | (0xFF&backing[msk & pos++]);
+    		i++;
+    
+			while (shift >= 0) {
+				target.append(base64[0x3F&(accumulator>>shift)]);
+				shift -= 6; //took top 6 now shift is at -4, 
+			}   		
+    	}
+    	
+    	while (shift>=0) {
+    		if (shift<6) {
+    			int dif = 6-shift;
+    			accumulator = accumulator<<dif;//just padds the low end with zeros.
+    			shift=0;
+    		}    		
+    		target.append(base64[0x3F&(accumulator>>shift)]);
+			shift -= 6; 		
+    	}
+    	
+    	
+    	return target;
+    }
+    
     public static <A extends Appendable> A appendUTF8(A target, byte[] backing, int pos, int len, int msk) {
     	try {
 	        //TODO: note with very long len plus pos we can still run into a problem. so assert len< maxInt-mask ???

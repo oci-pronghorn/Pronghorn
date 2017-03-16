@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.util.math.Decimal;
 
@@ -54,7 +55,9 @@ public class TrieParserReader {
     private short[] workingMultiStops = new short[MAX_ALT_DEPTH];
     private int[]   workingMultiContinue = new int[MAX_ALT_DEPTH];
     
-    
+    public String toString() {
+    	return "Pos:"+sourcePos+" Len:"+sourceLen;
+    }
     
     //TODO: when looking for N stops or them together as a quick way to avoid a number of checks.
        
@@ -434,7 +437,7 @@ public class TrieParserReader {
 	private static long exitWithNoParse(TrieParserReader reader, TrieParser trie) {
 		//unable to parse this case
 		//determine if we have an error or need more data        	
-		assert(reader.sourceLen <= trie.longestKnown()) : "Check the parse tree, this text was not parsable. "+debugContent(reader, reader.sourcePos, reader.sourceLen);
+		//assert(reader.sourceLen <= trie.longestKnown()) : "Check the parse tree, this text was not parsable. "+debugContent(reader, reader.sourcePos, reader.sourceLen);
 		boolean debug = false;
 		if (debug && (reader.sourceLen > trie.longestKnown())) {
 			logger.info("WARNING: input data can not be parsed and the pipeline has stopped at this point. {}",debugContent(reader, reader.sourcePos, reader.sourceLen) ,new Exception());
@@ -599,6 +602,7 @@ public class TrieParserReader {
     	final int localSourcePos = reader.localSourcePos;
     	int localCaputuredPos = reader.capturedPos;
     	
+    	
     	if (maxCapture>0) {
 	        short stopValue = trie.data[reader.pos++];
 	        
@@ -658,7 +662,7 @@ public class TrieParserReader {
 	        if (stopCount>1) {				
 	        	assert(localWorkingMultiStops.length>0);
 	        	int x = localSourcePos;
-	        	int lim = maxCapture<sourceMask ? (int)maxCapture : sourceMask;//(int)Math.min(maxCapture, sourceMask);	        	
+	        	int lim = maxCapture<=sourceMask ? (int)maxCapture : sourceMask+1;	        	
 	        	
 	        	if (stopCount==2) {
 	        		//special case since this happens very often
@@ -678,7 +682,7 @@ public class TrieParserReader {
 							return assignParseBytesResults(reader, sourceMask, localSourcePos, x);						
 						}
 						
-					} while (--lim >= 0);
+					} while (--lim > 0); 
 					
 					reader.localSourcePos =-1;
 					return false;
@@ -687,7 +691,7 @@ public class TrieParserReader {
 	        		int stopIdx = -1;
 	        		        		
 					do {  
-					} while (--lim >= 0 && (-1== (stopIdx=indexOfMatchInArray(source[sourceMask & x++], localWorkingMultiStops, stopCount ))) );
+					} while ( (-1== (stopIdx=indexOfMatchInArray(source[sourceMask & x++], localWorkingMultiStops, stopCount ))) && (--lim > 0));
 				
 					return assignParseBytesResults(reader, sourceMask, localSourcePos, x, stopIdx);
 	        	}
@@ -760,8 +764,9 @@ public class TrieParserReader {
 	    int localType = localData[aLocal];   		    
 	    assert(TrieParser.TYPE_VALUE_BYTES == localType || 
 	    	   TrieParser.TYPE_VALUE_NUMERIC  == localType ||
+	    	   TrieParser.TYPE_BRANCH_VALUE == localType ||
 	    	   TrieParser.TYPE_ALT_BRANCH == localType
-	    	   );  // local can only be one of the capture types or a branch leaning to those exclusively.
+	    	   ) : "unknown value of: "+localType;  // local can only be one of the capture types or a branch leaning to those exclusively.
   		    
 	    
 	    //push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
@@ -840,10 +845,10 @@ public class TrieParserReader {
     private static int parseBytes(TrieParserReader reader, final byte[] source, final int sourcePos, long remainingLen, final int sourceMask, final short stopValue) {              
     
         int x = sourcePos;
-        int lim = (int)Math.min(remainingLen, sourceMask);
+        int lim = remainingLen<=sourceMask ? (int)remainingLen : sourceMask+1;
         boolean noStop = true;
         do {
-        } while (--lim >= 0 && (noStop=(stopValue!=source[sourceMask & x++])));         
+        } while ( (noStop=(stopValue!=source[sourceMask & x++])) && (--lim > 0));         
 
         if (noStop) {//not found!
             return -1;
@@ -1026,21 +1031,15 @@ public class TrieParserReader {
     
    }
     
-    
-    public static long capturedLongField(TrieParserReader reader, int idx) {
+    public static void parseSetup(TrieParserReader trieReader, int loc, Pipe<?> input) {
     	
-    	 int pos = idx*4;
-         
-         int sign = reader.capturedValues[pos++];
-         assert(sign!=0);
-    	
-         long value = reader.capturedValues[pos++];
-         value = (value<<32) | (0xFFFFFFFF&reader.capturedValues[pos++]);
-
-         assert((reader.capturedValues[pos]&0xFFFF) != 0) : "No number was found, no digits were parsed.";
-         
-         return value*sign; //TODO: needs unit test to cover positive and negative numbers.
+        parseSetup(trieReader, PipeReader.readBytesBackingArray(input, loc), 
+        		               PipeReader.readBytesPosition(input, loc), 
+        		               PipeReader.readBytesLength(input, loc), 
+        		               PipeReader.readBytesMask(input, loc));
     }
+    
+
 
 
     public static void parseSetup(TrieParserReader trieReader, Pipe<?> input) {
@@ -1306,6 +1305,40 @@ public class TrieParserReader {
         return totalBytes;
     }
 
+    public static long capturedDecimalMField(TrieParserReader reader, int idx) {
+    	
+           int pos = idx*4;
+           
+           int sign = reader.capturedValues[pos++];
+           assert(sign!=0);      	
+           return (long) ((reader.capturedValues[pos++]<<32) | (0xFFFFFFFF&reader.capturedValues[pos++]))*sign; 
+    }
+   
+    public static byte capturedDecimalEField(TrieParserReader reader, int idx) {
+    	
+      	  int meta = reader.capturedValues[(idx*4)+3];
+          return (meta<0) ? (byte) -(meta & 0xFFFF) : (byte)0;
+   }
+   
+    
+    
+    public static long capturedLongField(TrieParserReader reader, int idx) {
+    	
+   	 int pos = idx*4;
+        
+        int sign = reader.capturedValues[pos++];
+        assert(sign!=0);
+   	
+        long value = reader.capturedValues[pos++];
+        value = (value<<32) | (0xFFFFFFFF&reader.capturedValues[pos++]);
+
+        int meta = reader.capturedValues[pos];
+      ///  byte dbase = (byte)((meta>>16)&0xFF);
+		assert((meta&0xFFFF) != 0) : "No number was found, no digits were parsed.";
+        
+        return value*sign; //TODO: needs unit test to cover positive and negative numbers.
+   }
+    
 	private static boolean isCapturedByteData(int type) {
 		return 0==type;
 	}
