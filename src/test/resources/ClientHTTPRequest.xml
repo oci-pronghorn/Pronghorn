@@ -22,6 +22,7 @@
      <uInt32 name="Port" id="1"/>
      <string name="Host" id="2" charset="unicode"/>
      <string name="Path" id="3" charset="unicode"/>
+     <string name="Headers" id="7" charset="unicode"/>
      <byteVector name="Payload" id="5"/>
    </template>   
   

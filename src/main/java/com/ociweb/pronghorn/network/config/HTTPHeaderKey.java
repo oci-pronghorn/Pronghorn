@@ -4,5 +4,5 @@ public interface HTTPHeaderKey {
 
     int ordinal();
     CharSequence getKey();  
-    
+    CharSequence getRoot();
 }

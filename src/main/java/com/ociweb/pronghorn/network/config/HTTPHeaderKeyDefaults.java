@@ -35,9 +35,27 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
     SEC_WEBSOCKET_PROTOCOL("Sec-WebSocket-Protocol: %b"),
     SEC_WEBSOCKET_VERSION("Sec-WebSocket-Version: %b"),
     ORIGIN("Origin: %b"),
-    PRAGMA("Pragma: %b"),
-    SERVER("Server: %b"),
+    PRAGMA("Pragma: %b"), //Not matching?
+    SERVER("Server: %b"), //Not matching?
+    STATUS("Status: %i %b"), //Not matching?
+    
     EXPIRES("Expires: %b"),
+    
+//    CONTENT_SECURITY_POLICY("content-security-policy: %b"), //twitter
+    SET_COOKIE("set-cookie: %b"), //twitter
+    STRICT_TRANSPORT_SECURITY("strict-transport-security: %b"), //twitter
+    X_CONNECTION_HASH("x-connection-hash: %b"), //twitter
+    X_RESPONSE_TIME("x-response-time: %b"), //twitter
+    X_XSS_PROTECTION("x-xss-protection: %b"), //twitter
+    X_CONTENT_TYPE_OPTIONS("x-content-type-options: %b"), //twitter
+    X_FRAME_OPTIONS("x-frame-options: %b"), //twitter
+    X_TRANSACTION("x-transaction: %b"), //twitter
+ //   CONTENT_DISPOSITION("content-disposition:  %b"), //twitter
+    X_TSA_REQUEST_BODY_TIME("x-tsa-request-body-time: %b"), //twitter
+    X_TWITTER_RESPONSE_TAGS("x-twitter-response-tags: %b"), //twitter
+    X_UA_COMPATIBLE("x-ua-compatible: %b"), //twitter
+    ML("ml: %b"), //twitter
+    
     X_FORWARD_FOR("X-Forwarded-For: %b"),
     X_FORWARD_HOST("X-Forwarded-Host: %b"),
     X_ONLINE_HOST("X-Online-Host: %b"),
@@ -45,14 +63,30 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
     X_ATT_DEVICEID("X-ATT-DeviceId: %b"),
     X_WAP_PROFILE("X-Wap-Profile: %b");
             
-    private CharSequence key;
+    private CharSequence template;
+    private CharSequence root;
     
-    private HTTPHeaderKeyDefaults(CharSequence headerKey) {
-        key = headerKey;
+    
+    private HTTPHeaderKeyDefaults(CharSequence template) {
+        this.template = template;
+        this.root = template;
+        int i = 0;
+        int lim = template.length()-1;
+        while (i<lim) {
+        	if (template.charAt(i)==':' && template.charAt(i+1)==' ') {
+        		root = template.subSequence(0, i+2);
+        		break;
+        	}
+        	i++;
+        }
     }
     
     public CharSequence getKey() {
-        return key;
+        return template;
+    }
+    
+    public CharSequence getRoot() {
+        return root;
     }
 
 }
