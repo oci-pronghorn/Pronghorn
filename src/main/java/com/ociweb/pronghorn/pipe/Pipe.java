@@ -2288,16 +2288,11 @@ public class Pipe<T extends MessageSchema> {
 	}
 
 	public static <S extends MessageSchema> void addUTF8(CharSequence source, int sourceCharCount, Pipe<S> rb) {
-		addBytePosAndLen(rb, rb.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceCharCount,rb));
+		addBytePosAndLen(rb, rb.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,0, sourceCharCount, rb));
 	}
 
 	public static <S extends MessageSchema> void addUTF8(char[] source, int sourceCharCount, Pipe<S> rb) {
 		addBytePosAndLen(rb, rb.blobRingHead.byteWorkingHeadPos.value, copyUTF8ToByte(source,sourceCharCount,rb));
-	}
-
-	@Deprecated
-	public static <S extends MessageSchema> int copyUTF8ToByte(CharSequence source, int sourceCharCount, Pipe<S> rb) {
-	    return copyUTF8ToByte(source,0, sourceCharCount, rb);
 	}
 
 	/**
@@ -2305,7 +2300,7 @@ public class Pipe<T extends MessageSchema> {
 	 */
    public static <S extends MessageSchema> int copyUTF8ToByte(CharSequence source, int sourceOffset, int sourceCharCount, Pipe<S> pipe) {
         if (sourceCharCount>0) {
-            int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, pipe.blobRing, pipe.byteMask, pipe.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
+            int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, pipe.blobRing, pipe.blobMask, pipe.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
             pipe.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(pipe.blobRingHead.byteWorkingHeadPos.value+byteLength);
             return byteLength;
         } else {
@@ -2326,13 +2321,13 @@ public class Pipe<T extends MessageSchema> {
 	 * WARNING: unlike the ASCII version this method returns bytes written and not the position
 	 */
 	public static <S extends MessageSchema> int copyUTF8ToByte(char[] source, int sourceCharCount, Pipe<S> rb) {
-		int byteLength = Pipe.copyUTF8ToByte(source, 0, rb.blobRing, rb.byteMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
+		int byteLength = Pipe.copyUTF8ToByte(source, 0, rb.blobRing, rb.blobMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
 		rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
 		return byteLength;
 	}
 
 	public static <S extends MessageSchema> int copyUTF8ToByte(char[] source, int sourceOffset, int sourceCharCount, Pipe<S> rb) {
-	    int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, rb.blobRing, rb.byteMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
+	    int byteLength = Pipe.copyUTF8ToByte(source, sourceOffset, rb.blobRing, rb.blobMask, rb.blobRingHead.byteWorkingHeadPos.value, sourceCharCount);
 	    rb.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rb.blobRingHead.byteWorkingHeadPos.value+byteLength);
 	    return byteLength;
 	}

@@ -6,7 +6,7 @@ public interface JSONVisitor<A extends Appendable>  {
 
 	void stringValueComplete();
 
-	A stringName();
+	A stringName(int fieldIdx);
 
 	void stringNameComplete();
 

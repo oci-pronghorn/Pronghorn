@@ -2,8 +2,8 @@ package com.ociweb.pronghorn.util;
 
 import java.io.IOException;
 
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
 
 public class JSONParser {
 
@@ -97,7 +97,7 @@ public class JSONParser {
 
 	private static TrieParser structureBeginParser         = structureBeginParser();
 	private static TrieParser structureArrayEndParser      = structureArrayEndParser();
-	private static TrieParser structureEndObjectParser     = structureEndObjectParser();
+	private static TrieParser structureObjectEndParser     = structureObjectEndParser();
 	private static TrieParser structureNameSeparatorParser = structureNameSeparatorParser();
 	
 	
@@ -168,10 +168,11 @@ public class JSONParser {
 		return trie;
 	}
 	
-	private static TrieParser structureEndObjectParser() {
+	private static TrieParser structureObjectEndParser() {
 		
-		TrieParser trie = new TrieParser(256,1,false,true);
+		TrieParser trie = new TrieParser(128,1,true,false);
 		trie.setValue(endObject, END_OBJECT);
+		trie.setValue(valueSeparator, VALUE_SEPARATOR);
 		return trie;
 	}
 	
@@ -187,7 +188,7 @@ public class JSONParser {
 	
 	private static TrieParser structureArrayEndParser() {
 		
-		TrieParser trie = new TrieParser(256,1,false,true);
+		TrieParser trie = new TrieParser(128,1,true,false);
 		
 		trie.setValue(endArray, END_ARRAY);
 		trie.setValue(valueSeparator, VALUE_SEPARATOR);
@@ -225,8 +226,19 @@ public class JSONParser {
 			parseValueToken(reader, visitor);		
 		} while (TrieParserReader.parseHasContent(reader));
 		
-
 	}
+	
+    public static <A extends Appendable> void parse(DataInputBlobReader<?> input, TrieParserReader reader, JSONVisitor<A> visitor) {
+
+    	DataInputBlobReader.setupParser(input, reader);
+    
+		do {		
+			parseValueToken(reader, visitor);		
+		} while (TrieParserReader.parseHasContent(reader));
+		
+	}
+	
+	
 
 	public static <A extends Appendable> void parse(Pipe pipe, int loc, TrieParserReader reader, JSONVisitor<A> visitor) {
 		
@@ -250,7 +262,7 @@ public class JSONParser {
 		return consumeEscapedString(reader, stringId, visitor.stringValue());
 	}
 
-	private static <A extends Appendable> boolean parseStringNameToken(TrieParserReader reader, JSONVisitor<A> visitor) {
+	private static <A extends Appendable> boolean parseStringNameToken(TrieParserReader reader, int instance, JSONVisitor<A> visitor) {
 		
 		int p = reader.sourcePos;
 		long stringId = TrieParserReader.parseNext(reader, stringBeginParser);
@@ -259,7 +271,7 @@ public class JSONParser {
 			//this is not a string, no match.
 			return false;
 		}
-		return consumeEscapedString(reader, stringId, visitor.stringName());
+		return consumeEscapedString(reader, stringId, visitor.stringName(instance));
 	}
 	
 	private static <A extends Appendable> boolean consumeEscapedString(TrieParserReader reader, long stringId, A target) {
@@ -385,57 +397,67 @@ public class JSONParser {
 		do {
 		} while (TrieParserReader.parseNext(reader, whiteSpaceParser)!=-1);
 		
-		/////////////
-		//grab name
-		////////////
-		if (parseStringNameToken(reader, visitor)) {
-			visitor.stringNameComplete();
-		} else {
-			throw new UnsupportedOperationException("Unable to parse, expected name");
-		}
+		long tokenId;
+		int instance = 0;
+		do {
 		
-		/////////////
-		//white space
-		/////////////
-		do {
-		} while (TrieParserReader.parseNext(reader, whiteSpaceParser)!=-1);
-        	
-		////////////////
-		//name divider
-		/////////////
-		if (-1 == TrieParserReader.parseNext(reader, structureNameSeparatorParser)) {
-			throw new UnsupportedOperationException("Unable to parse, expected end of object");
-		}
-        	
-		/////////////
-		//white space
-		/////////////
-		do {
-		} while (TrieParserReader.parseNext(reader, whiteSpaceParser)!=-1);
-        	
-		//////////////
-		// grab value (recursive)
-		//////////////
-		parseValueToken(reader, visitor);
 		
-		/////////////
-		//white space
-		/////////////
-		do {
-		} while (TrieParserReader.parseNext(reader, whiteSpaceParser)!=-1);
-      
-		/////////////////
-		//end of object
-		/////////////////
-		if (-1 == TrieParserReader.parseNext(reader, structureEndObjectParser)) {
-			throw new UnsupportedOperationException("Unable to parse, expected end of object");
-		}
+			/////////////
+			//grab name
+			////////////
+			if (parseStringNameToken(reader, instance++, visitor)) {
+				visitor.stringNameComplete();
+			} else {
+				throw new UnsupportedOperationException("Unable to parse, expected name");
+			}
+			
+			/////////////
+			//white space
+			/////////////
+			do {
+			} while (TrieParserReader.parseNext(reader, whiteSpaceParser)!=-1);
+	        	
+			////////////////
+			//name divider
+			/////////////
+			if (-1 == TrieParserReader.parseNext(reader, structureNameSeparatorParser)) {
+				throw new UnsupportedOperationException("Unable to parse, expected end of object");
+			}
+	        	
+			/////////////
+			//white space
+			/////////////
+			do {
+			} while (TrieParserReader.parseNext(reader, whiteSpaceParser)!=-1);
+	        	
+			//////////////
+			// grab value (recursive)
+			//////////////
+			parseValueToken(reader, visitor);
+			
+			/////////////
+			//white space
+			/////////////
+			do {
+			} while (TrieParserReader.parseNext(reader, whiteSpaceParser)!=-1);
+	      
+			/////////////////
+			//end of object or next field.
+			/////////////////
+			tokenId = TrieParserReader.parseNext(reader, structureObjectEndParser);
+			
+			if (-1==tokenId) {
+				throw new UnsupportedOperationException("Unable to parse, expected end of object");
+			}
+			
+			/////////////
+		    //white space
+			/////////////
+			do {
+			} while (TrieParserReader.parseNext(reader, whiteSpaceParser)!=-1);
 		
-		/////////////
-		//white space
-		/////////////
-		do {
-		} while (TrieParserReader.parseNext(reader, whiteSpaceParser)!=-1);
+		} while (VALUE_SEPARATOR == tokenId);
+
 		
 		visitor.objectEnd();
 	}

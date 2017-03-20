@@ -32,7 +32,26 @@ public class JSONParserTest {
 		assertEquals("{key:value}",target.toString());
 	}
 
-
+	@Test
+	public void complexTest() {
+				
+		String json = " { \"key\" : \"value\" \n, \"key2\" : \"value2\"}  ";
+		
+		Pipe pipe = buildPopulatedPipe(json);
+			
+		
+		TrieParserReader reader = JSONParser.newReader();
+		StringBuilder target = new StringBuilder();
+		JSONVisitor<StringBuilder> visitor = visitor(target);
+		
+		
+		int msgIdx = Pipe.takeMsgIdx(pipe);
+		JSONParser.parse(pipe, reader, visitor );
+		
+		assertEquals("{key:value,key2:value2}",target.toString());
+	}
+	
+	
 	@Test
 	public void arrayTest() {
 				
@@ -69,7 +88,14 @@ public class JSONParserTest {
 			}
 
 			@Override
-			public A stringName() {
+			public A stringName(int fieldIndex) {
+				if (0!=fieldIndex) {
+					try {
+						target.append(",");
+					} catch (Exception ex) {
+						throw new RuntimeException(ex);
+					}
+				}				
 				return target;
 			}
 

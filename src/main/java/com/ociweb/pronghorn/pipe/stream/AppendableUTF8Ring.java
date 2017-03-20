@@ -35,7 +35,7 @@ public class AppendableUTF8Ring implements Appendable {
         outputTarget+=step;
         Pipe.addMsgIdx(ringBuffer, 0);
 		Pipe.validateVarLength(ringBuffer, csq.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-		Pipe.addBytePosAndLen(ringBuffer, Pipe.getBlobWorkingHeadPosition(ringBuffer), Pipe.copyUTF8ToByte(csq, csq.length(), ringBuffer));
+		Pipe.addBytePosAndLen(ringBuffer, Pipe.getBlobWorkingHeadPosition(ringBuffer), Pipe.copyUTF8ToByte(csq,0, csq.length(), ringBuffer));
 
 		Pipe.publishWrites(ringBuffer);
 
@@ -49,7 +49,7 @@ public class AppendableUTF8Ring implements Appendable {
         outputTarget+=step;
         Pipe.addMsgIdx(ringBuffer, 0);
 		Pipe.validateVarLength(ringBuffer, csq.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-		Pipe.addBytePosAndLen(ringBuffer, Pipe.getBlobWorkingHeadPosition(ringBuffer),  Pipe.copyUTF8ToByte(csq, end-start, ringBuffer));
+		Pipe.addBytePosAndLen(ringBuffer, Pipe.getBlobWorkingHeadPosition(ringBuffer),  Pipe.copyUTF8ToByte(csq,0, end-start, ringBuffer));
 		
 		Pipe.publishWrites(ringBuffer);
 

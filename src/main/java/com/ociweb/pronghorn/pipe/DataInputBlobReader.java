@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 
+import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.math.Decimal;
 
 public class DataInputBlobReader<S extends MessageSchema>  extends InputStream implements DataInput {
@@ -388,6 +390,18 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         assert(a!=0 || v!=0) : "malformed data";
         return (v >= 0) ? readPackedInt((a | v) << 7, buf, mask, that) : a | (v & 0x7F);
     }
+
+	public static void setupParser(DataInputBlobReader<?> input, TrieParserReader reader) {
+
+		
+		Appendables.appendUTF8(System.out, input.backing, input.position, bytesRemaining(input), input.byteMask);
+		System.err.println();
+		
+		
+		
+		TrieParserReader.parseSetup(reader, input.backing, input.position, bytesRemaining(input), input.byteMask); 
+
+	}
     
     
     
