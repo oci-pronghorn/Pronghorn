@@ -25,6 +25,10 @@ public class ConsoleJSONDumpStage<T extends MessageSchema> extends PronghornStag
 		new ConsoleJSONDumpStage(graphManager, input, out);
 	}
 	
+	public static void newInstance(GraphManager graphManager, Pipe input, Appendable out, boolean showBytesAsUTF) {
+		new ConsoleJSONDumpStage(graphManager, input, out, showBytesAsUTF);
+	}
+	
 	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input) {
 		super(graphManager, input, NONE);
 		this.input = input;
