@@ -99,11 +99,11 @@ public class HTTPSRoundTripTest {
 						PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2, "127.0.0.1");
 		
 						int user = requests % maxListeners;
-						PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_LISTENER_10,  //0);
-						                                                                               user);
-						
-						PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3, "/"+testFile);
+						PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_LISTENER_10, user);						
 						PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PORT_1, 8443);
+						PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3, "/"+testFile);
+						PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HEADERS_7, "");
+						
 						PipeWriter.publishWrites(pipe);
 						
 						requests--;				
@@ -253,18 +253,18 @@ public class HTTPSRoundTripTest {
 			
 			
 			boolean isTLS = false;
-			int port = 8081;//isTLS?8443:8080;
+			int port = isTLS?8443:8080;
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";
 					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
 			
 			boolean isLarge = true;
 			
-			boolean useLocalServer = false;//
+			boolean useLocalServer = true;//
 
-		//	final String testFile = "groovySum.json";
+			final String testFile = "groovySum.json";
 
-			final String testFile = "groovyadd/2.3/7.52";
+		//	final String testFile = "groovyadd/2.3/7.52";
 			
 			GraphManager gm = new GraphManager();
 
@@ -283,6 +283,7 @@ public class HTTPSRoundTripTest {
 	    	ServerCoordinator serverCoord = null;
 	    	if (useLocalServer) {
 	    		serverCoord = exampleServerSetup(isTLS, gm, testFile, host, port, isLarge);
+	    		
 	    	}
 
 	    	///TODO: when we have more clients than the server has pertials for TLS we can get a repetable hang situation.
@@ -386,6 +387,8 @@ public class HTTPSRoundTripTest {
 			if (null!=serverCoord) {
 				serverCoord.shutdown();
 			}
+
+			
 			scheduler.shutdown();
 			scheduler.awaitTermination(2, TimeUnit.SECONDS);
 			
@@ -402,6 +405,8 @@ public class HTTPSRoundTripTest {
 			float nsPerCall = 1000000f*msPerCall;
 			System.out.println("ns per call: "+nsPerCall);		
 			System.out.println("calls per sec: "+(1000f/msPerCall)); //task manager its self can slow down results so avoid running it during test.
+			
+			
 			
 		}
 	}

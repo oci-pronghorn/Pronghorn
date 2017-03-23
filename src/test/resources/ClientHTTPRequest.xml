@@ -7,6 +7,7 @@
      <uInt32 name="Port" id="1"/>
      <string name="Host" id="2" charset="unicode"/>
      <string name="Path" id="3" charset="unicode"/>
+     <string name="Headers" id="7" charset="unicode"/>
    </template>
    
     <template name="FastHTTPGet" id="200">   
@@ -15,6 +16,7 @@
      <string name="Host" id="2" charset="unicode"/>
      <uInt64 name="ConnectionId" id="20"/>     
      <string name="Path" id="3" charset="unicode"/>
+     <string name="Headers" id="7" charset="unicode"/>
    </template>
 
    <template name="HTTPPost" id="101">
@@ -52,6 +54,7 @@
      <string name="Host" id="2" charset="unicode"/>
      <uInt64 name="ConnectionId" id="20"/>
      <string name="Path" id="3" charset="unicode"/>
+     <string name="Headers" id="7" charset="unicode"/>
      <byteVector name="Payload" id="5"/>
    </template>     
       

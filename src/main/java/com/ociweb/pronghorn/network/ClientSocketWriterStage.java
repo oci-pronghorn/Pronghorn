@@ -366,8 +366,12 @@ public class ClientSocketWriterStage extends PronghornStage {
 				
 			}
 		} catch (IOException e) {
+			
 			logger.info("excption while writing to socket. ",e);
-			connections[i].close();			
+			
+			this.ccm.releaseResponsePipeLineIdx(connections[i].getId());
+			connections[i].close();
+			connections[i]=null;	
 		}
 		if (!buffers[i].hasRemaining()) {
 			

@@ -281,8 +281,10 @@ public class RegulatedLoadTestStage extends PronghornStage{
 										Pipe.addLongValue(connectionId, outputs[outputIdx]);
 									}
 									
+									//path
 									Pipe.addByteArray(testFileBytes, 0, testFileBytes.length, outputs[outputIdx]); //Pipe.addUTF8(testFile, outputs[i]);						
-								
+									Pipe.addUTF8("", outputs[outputIdx]);//headers
+									
 									Pipe.confirmLowLevelWrite(outputs[outputIdx], size);
 									Pipe.publishWrites(outputs[outputIdx]);
 									toSend[userId]--;

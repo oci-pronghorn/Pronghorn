@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.config.HTTPContentType;
+import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
@@ -33,9 +34,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private int[]  blockedOpenCount;
 	private int[]  blockedLen;
 	private int[]  blockedState;
-	
-	private static final boolean extractType = false;//turned off for load testing of server   TODO: this broken code is a large part of the problem for preformance !!!!!
-		
 	
 	private final Pipe<ReleaseSchema> releasePipe;
 	private final HTTPSpecification<?,?,?,?> httpSpec;
@@ -153,12 +151,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	      //Load the supported content types
 	      ////////////////////////
 	      
-	      typeMap = new TrieParser(4096,true);	//TODO: set switch to turn on off the deep check skip     TODO: must be shared across all instances?? 
+	      typeMap = new TrieParser(4096,1,true,false,true);	//TODO: set switch to turn on off the deep check skip     TODO: must be shared across all instances?? 
 	      
 	      HTTPContentType[] types = httpSpec.contentTypes;
 	      x = types.length;
 	      while (--x >= 0) {		
-	    	//  System.err.println(types[x].contentType());
+	    	  //System.err.println(types[x].contentType());
+	    	
 	    	  typeMap.setUTF8Value(types[x].contentType(),"\r\n", types[x].ordinal());	 
 	    	  typeMap.setUTF8Value(types[x].contentType(),"\n", types[x].ordinal());  //\n must be last because we prefer to have it pick \r\n
 	      }
@@ -253,7 +252,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				ClientConnection cc = null;
 					
 				int len1 = positionMemoData[lenIdx];
-				int len2 = pipe.maxAvgVarLen;
+				int len2 = pipe.maxVarLen;
 				int len3 = Pipe.blobMask(pipe);
 				
 				if (Pipe.hasContentToRead(pipe) 
@@ -366,10 +365,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 						ccId = ccIdData[i];
 						cc = (ClientConnection)ccm.get(ccId);					
-						if (null==cc) {	//skip data the connection was closed		
+						if (null==cc) {	//skip data the connection was closed	
+							ccm.releaseResponsePipeLineIdx(ccId);
+							
 							TrieParserReader.parseSkip(trieReader, trieReader.sourceLen);
 							TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-							logger.info("not done, still must reset all resources like the rollers");
+
 							continue;
 						}
 						
@@ -453,7 +454,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				
 					if (0==state && testingMode && lastMessageParseSize>0 && trieReader.sourceLen>=lastMessageParseSize  && Pipe.hasRoomForWrite(targetPipe)) {
 						//This is a cheat to make the client go faster so we have the required speed to test the server
-											
+						
+						{
 						TrieParserReader.parseSkip(trieReader, (int)(lastMessageParseSize-lastPayloadSize));
 						Pipe.releasePendingAsReadLock(pipe, lastMessageParseSize);
 						
@@ -471,14 +473,19 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 							throw e;
 						}
-						
+			
+						//NOTE: this is fine because its only used when in testing mode.  TODO: more work needs to be done here, predefine the calls.
 						writer.writeShort(200);//OK
 						
-						writer.writeShort((short)H_CONTENT_TYPE);
-						writer.writeShort((short)lastMessageType); //JSONType					
-						writer.writeShort((short)-1); //END OF HEADER FIELDS
-					    TrieParserReader.parseCopy(trieReader, (int)lastPayloadSize, writer);
 						
+						//NOTE: we will need to support addtional header types in the future.
+						writer.writeShort((short)H_CONTENT_TYPE);
+						writer.writeShort((short)lastMessageType); //JSONType
+
+						writer.writeShort((short)-1); //END OF HEADER FIELDS
+
+					    TrieParserReader.parseCopy(trieReader, lastPayloadSize, writer);
+				
 						
 						writer.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
 						Pipe.confirmLowLevelWrite(targetPipe, Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101));
@@ -491,7 +498,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 						
 						//TODO: must tests 1 fraction of the requests.
-						
+						}
 						
 						continue;
 					}
@@ -526,18 +533,18 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							
 							payloadLengthData[i] = 0;//clear payload length rules, to be populated by headers
 							
-							{
-								//because we have started writign the response we MUST do extra cleanup later.
-								Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
-								Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
-								
-								//TODO: this is a serious client parse problem, we CAN NOT pick up new connection ID until this one is finished!!!
-								//      breaks on multi user since we hold this open...  TODO: must be fixed by reservation and the ClientSocketReader.....
-								
-								DataOutputBlobWriter<NetResponseSchema> writer1 = Pipe.outputStream(targetPipe);							
-								DataOutputBlobWriter.openField(writer1);							
-								TrieParserReader.writeCapturedShort(trieReader, 0, writer1); //status code	
-							}
+							
+							//because we have started writign the response we MUST do extra cleanup later.
+							Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
+							Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
+							
+							//TODO: this is a serious client parse problem, we CAN NOT pick up new connection ID until this one is finished!!!
+							//      breaks on multi user since we hold this open...  TODO: must be fixed by reservation and the ClientSocketReader.....
+							
+							DataOutputBlobWriter<NetResponseSchema> writer1 = Pipe.outputStream(targetPipe);							
+							DataOutputBlobWriter.openField(writer1);							
+							TrieParserReader.writeCapturedShort(trieReader, 0, writer1); //status code	
+							
 							
 							positionMemoData[stateIdx]= ++state;
 							
@@ -653,7 +660,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								
 								if (lengthRemaining>0 && trieReader.sourceLen>0) {
 				
-									//logger.info("** payload reading with length");
+									assert(lengthRemaining == TrieParserReader.parseHasContentLength(trieReader));
+
+									//length is not written since this may accumulate and the full field provides the length
 									final int consumed = TrieParserReader.parseCopy(trieReader, lengthRemaining, writer2);
 									lengthRemaining -= consumed;
 							
@@ -944,37 +953,22 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			//other values to write to stream?	
 			case H_CONTENT_TYPE:										
 				writer.writeShort((short)H_CONTENT_TYPE);
-				
-				if (extractType) {				
-					
+		
 					//TODO: another way to do this is to merge the typeMap into the header map on constuction, this should improve performance by doing single pass.
-					int oldPos = trieReader.sourcePos;
-					int oldLen = trieReader.sourceLen;
+					//int oldPos = trieReader.sourcePos;
+					//int oldLen = trieReader.sourceLen;
 					int type = (int)TrieParserReader.capturedFieldQuery(trieReader, 0, typeMap);
 					lastMessageType = type;
 					if (type<0) { 
-	//					StringBuilder captured = new StringBuilder();
-	//					TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, captured);
-	//					logger.info("Unable to recognize content type {} ",captured); //TODO: this is still broken why??
+						StringBuilder captured = new StringBuilder();
+						TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, captured);
+						logger.info("Unable to recognize content type {} ",captured); //TODO: this is still broken why??
 					}				
 					writer.writeShort((short)type);
 	
-					trieReader.sourceLen = oldLen;
-					trieReader.sourcePos = oldPos; //NOTE: should we have to put this back??
-	//				if (oldPos!=trieReader.sourcePos) {
-	//					throw new RuntimeException();
-	//				}
-					//positionMemoData[stateIdx]
-																
-				} else {
-					
-//					StringBuilder temp = new StringBuilder();
-//					TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, temp);
-//					logger.info("{} A {}   captured length: {}",trieReader.sourcePos,httpSpec.headers[headerId], temp.length());
-					
-					writer.writeShort(lastMessageType = -1);
-				}
-				
+					//trieReader.sourceLen = oldLen;
+					//trieReader.sourcePos = oldPos; //NOTE: should we have to put this back??
+			
 				break;
 			default:
 				if (headerId ==UNSUPPORTED_HEADER_ID) {

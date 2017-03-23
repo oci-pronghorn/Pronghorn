@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.stage.test;
 
-import java.io.PrintStream;
-
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitor;
@@ -16,13 +14,14 @@ public class ConsoleJSONDumpStage<T extends MessageSchema> extends PronghornStag
 
 	private StreamingReadVisitor visitor;
 	private StreamingVisitorReader reader;
-	private PrintStream out = System.out;
+	private Appendable out = System.out;
+	private boolean showBytesAsUTF;
 
 	public static void newInstance(GraphManager graphManager, Pipe input) {
 		new ConsoleJSONDumpStage(graphManager, input);
 	}
 	
-	public static void newInstance(GraphManager graphManager, Pipe input, PrintStream out) {
+	public static void newInstance(GraphManager graphManager, Pipe input, Appendable out) {
 		new ConsoleJSONDumpStage(graphManager, input, out);
 	}
 	
@@ -30,25 +29,30 @@ public class ConsoleJSONDumpStage<T extends MessageSchema> extends PronghornStag
 		super(graphManager, input, NONE);
 		this.input = input;
 	}
+	
+	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input, Appendable out) {
+		this(graphManager, input, out, false);
+	}
 
-	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input, PrintStream out) {
+	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input, Appendable out, boolean showBytesAsUTF) {
 		this(graphManager, input);
 		this.out = out;
+		this.showBytesAsUTF = showBytesAsUTF; 
 	}
 
 	@Override
 	public void startup() {
 
 		try{
-            visitor = new StreamingReadVisitorToJSON(out) {
+            visitor = new StreamingReadVisitorToJSON(out, showBytesAsUTF) {
 				@Override
-				public void visitASCII(String name, long id, Appendable value) {
-					assert (((CharSequence)value).length()<=input.maxAvgVarLen) : "Text is too long found "+((CharSequence)value).length();
+				public void visitASCII(String name, long id, CharSequence value) {
+					assert (((CharSequence)value).length()<=input.maxVarLen) : "Text is too long found "+((CharSequence)value).length();
 					super.visitASCII(name, id, value);
 				}
 				@Override
-				public void visitUTF8(String name, long id, Appendable value) {
-					assert (((CharSequence)value).length()<=input.maxAvgVarLen) : "Text is too long found "+((CharSequence)value).length();
+				public void visitUTF8(String name, long id, CharSequence value) {
+					assert (((CharSequence)value).length()<=input.maxVarLen) : "Text is too long found "+((CharSequence)value).length();
 					super.visitUTF8(name, id, value);
 				}
 				@Override
