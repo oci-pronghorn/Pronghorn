@@ -392,15 +392,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     }
 
 	public static void setupParser(DataInputBlobReader<?> input, TrieParserReader reader) {
-
-		
-		Appendables.appendUTF8(System.out, input.backing, input.position, bytesRemaining(input), input.byteMask);
-		System.err.println();
-		
-		
-		
 		TrieParserReader.parseSetup(reader, input.backing, input.position, bytesRemaining(input), input.byteMask); 
-
 	}
     
     

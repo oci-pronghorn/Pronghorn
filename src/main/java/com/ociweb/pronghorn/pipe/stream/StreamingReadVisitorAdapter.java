@@ -57,7 +57,7 @@ public class StreamingReadVisitorAdapter implements StreamingReadVisitor {
 	}
 
 	@Override
-	public void visitUTF8(String name, long id, Appendable value) {
+	public void visitUTF8(String name, long id, CharSequence value) {
 	}
 
 	@Override
@@ -86,7 +86,7 @@ public class StreamingReadVisitorAdapter implements StreamingReadVisitor {
 	}
 
 	@Override
-	public void visitASCII(String name, long id, Appendable value) {
+	public void visitASCII(String name, long id, CharSequence value) {
 	}
 
 	@Override

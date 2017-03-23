@@ -28,6 +28,10 @@ public class IntHashTable {
 		
 	}
 	
+	public static int size(IntHashTable ht) {
+		return ht.mask+1;
+	}
+	
 	public static boolean isEmpty(IntHashTable ht) {
 		return ht.space == ht.mask;
 	}

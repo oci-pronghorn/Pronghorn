@@ -35,12 +35,12 @@ public interface StreamingReadVisitor {
 	void visitDecimal(String name, long id, int exp, long mant);
 	
 	//the ASCII text is written to the target Appendable 
-	Appendable targetASCII(String name, long id);
-	void visitASCII(String name, long id, Appendable value);
+	<A extends Appendable,CharSeqeunce> A targetASCII(String name, long id);
+	void visitASCII(String name, long id, CharSequence value);
 	
 	//the UTF8 text is written to the target Appendable 
-	Appendable targetUTF8(String name, long id);
-	void visitUTF8(String name, long id, Appendable target);
+	<A extends Appendable,CharSeqeunce> A  targetUTF8(String name, long id);
+	void visitUTF8(String name, long id, CharSequence target);
 	
 	//the bytes are are written to the target ByteBuffer that is also returned.
 	ByteBuffer targetBytes(String name, long id, int length);

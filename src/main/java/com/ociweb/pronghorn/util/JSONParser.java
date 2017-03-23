@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.util;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -238,7 +239,15 @@ public class JSONParser {
 		
 	}
 	
-	
+	public static void parse(ByteBuffer byteBuffer, TrieParserReader reader, JSONVisitor visitor) {
+		
+		TrieParserReader.parseSetup(reader, byteBuffer.array(), byteBuffer.position(),  byteBuffer.remaining(), Integer.MAX_VALUE);
+	    
+		do {		
+			parseValueToken(reader, visitor);		
+		} while (TrieParserReader.parseHasContent(reader));
+			
+	}
 
 	public static <A extends Appendable> void parse(Pipe pipe, int loc, TrieParserReader reader, JSONVisitor<A> visitor) {
 		
@@ -461,6 +470,8 @@ public class JSONParser {
 		
 		visitor.objectEnd();
 	}
+
+
 	
 	
 }

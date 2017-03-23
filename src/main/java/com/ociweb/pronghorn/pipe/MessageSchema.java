@@ -20,4 +20,16 @@ public abstract class MessageSchema {
     	return from.getLoc(messageId, fieldId);
     }
     
+    public <T extends MessageSchema> PipeConfig<T> newPipeConfig(int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
+    	return new PipeConfig<T>((T)this, minimumFragmentsOnRing, maximumLenghOfVariableLengthFields);
+    };
+    
+    public <T extends MessageSchema> PipeConfig<T> newPipeConfig(int minimumFragmentsOnRing) {
+    	return new PipeConfig<T>((T)this, minimumFragmentsOnRing, 0);
+    };
+    
+    public <T extends MessageSchema> Pipe<T> newPipe(int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
+    	return new Pipe<T>((PipeConfig<T>) newPipeConfig(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields));
+    };
+    
 }

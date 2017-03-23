@@ -324,7 +324,7 @@ public class StreamingVisitorReader {
         	int len =  Pipe.readRingByteLen(idx, inputRing);
         	assert(len>=0) : "Optional strings are NOT supported for this type";
 
-        	visitor.visitASCII(name, id, Pipe.readASCII(inputRing, visitor.targetASCII(name, id), meta, len));
+        	visitor.visitASCII(name, id, (CharSequence) Pipe.readASCII(inputRing, visitor.targetASCII(name, id), meta, len));
 
     }
 
@@ -334,7 +334,7 @@ public class StreamingVisitorReader {
         	int len =  Pipe.readRingByteLen(idx, inputRing);
 
         	if (len>0) { //a negative length is a null and zero there is no work to do
-        		visitor.visitASCII(name, id, Pipe.readASCII(inputRing, visitor.targetASCII(name, id), meta, len));
+        		visitor.visitASCII(name, id, (CharSequence) Pipe.readASCII(inputRing, visitor.targetASCII(name, id), meta, len));
         	}
 
     }
@@ -345,7 +345,7 @@ public class StreamingVisitorReader {
         	int len =  Pipe.readRingByteLen(idx, inputRing);
 
         	assert(len>=0) : "Optional strings are NOT supported for this type";
-        	visitor.visitUTF8(name, id, Pipe.readUTF8(inputRing, visitor.targetUTF8(name, id), meta, len));
+        	visitor.visitUTF8(name, id, (CharSequence) Pipe.readUTF8(inputRing, visitor.targetUTF8(name, id), meta, len));
 
     }
 
@@ -355,7 +355,7 @@ public class StreamingVisitorReader {
         	int len =  Pipe.readRingByteLen(idx, inputRing);
 
         	if (len>0) { //a negative length is a null and zero there is no work to do
-        		visitor.visitUTF8(name, id, Pipe.readUTF8(inputRing, visitor.targetUTF8(name, id), meta, len));
+        		visitor.visitUTF8(name, id, (CharSequence) Pipe.readUTF8(inputRing, visitor.targetUTF8(name, id), meta, len));
         	}
 
     }

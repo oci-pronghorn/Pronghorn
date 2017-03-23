@@ -104,7 +104,7 @@ public class StreamingReadVisitorDebugDelegate implements StreamingReadVisitor {
 	}
 
 	@Override
-	public void visitUTF8(String name, long id, Appendable value) {
+	public void visitUTF8(String name, long id, CharSequence value) {
 	    log.warn(buildTab()+"visitUTF8 {}",name);
 	    delegate.visitUTF8(name,id,value);
 	}
@@ -137,7 +137,7 @@ public class StreamingReadVisitorDebugDelegate implements StreamingReadVisitor {
 	}
 
 	@Override
-	public void visitASCII(String name, long id, Appendable value) {
+	public void visitASCII(String name, long id, CharSequence value) {
 	    log.warn(buildTab()+"visitASCII {}",name);
 	    delegate.visitASCII(name, id, value);
 	}

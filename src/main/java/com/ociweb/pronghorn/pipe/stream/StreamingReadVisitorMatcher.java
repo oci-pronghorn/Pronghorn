@@ -135,7 +135,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     }
 
     @Override
-    public void visitASCII(String name, long id, Appendable value) {
+    public void visitASCII(String name, long id, CharSequence value) {
         needsClose = true;
         int meta = takeRingByteMetaData(expectedInput);
         int len = takeRingByteLen(expectedInput);
@@ -164,7 +164,7 @@ public class StreamingReadVisitorMatcher extends StreamingReadVisitorAdapter {
     }
 
     @Override
-    public void visitUTF8(String name, long id, Appendable value) {
+    public void visitUTF8(String name, long id, CharSequence value) {
         needsClose = true;
         int meta = takeRingByteMetaData(expectedInput);
         int len = takeRingByteLen(expectedInput);
