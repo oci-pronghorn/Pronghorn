@@ -112,6 +112,17 @@ public enum HTTPContentTypeDefaults implements HTTPContentType {
     
     private HTTPContentTypeDefaults(String contentType, String fileExtension) {
 
+    	int i = contentType.length();
+    	while (--i>=0) {
+    		
+    		if (Character.isUpperCase(contentType.charAt(i))) {
+    			throw new UnsupportedOperationException("all content types must be lower case. Fix: "+contentType);
+    		}
+    		
+    	}
+    	
+    	//System.err.println("loading: "+contentType);
+    	
         this.contentType = contentType;
         this.fileExtension = fileExtension;
         this.isAlias = false;

@@ -7,6 +7,7 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
     UPGRADE("Upgrade: %b"),
     CONNECTION("Connection: %b"),
     USER_AGENT("User-Agent: %b"),
+    //                 transfer-encoding: chunked  NOTE: Equals needs to use the same case filter?? 
     TRANSFER_ENCODING("Transfer-Encoding: chunked"), //Transfer-Encoding: chunked
     CONTENT_LENGTH("Content-Length: %u"), //note this captures an integer not a string
     CONTENT_TYPE("Content-Type: %b"),
@@ -52,29 +53,31 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
     X_TRANSACTION("x-transaction: %b"), //twitter
  //   CONTENT_DISPOSITION("content-disposition:  %b"), //twitter
     X_TSA_REQUEST_BODY_TIME("x-tsa-request-body-time: %b"), //twitter
+    TSA("tsa: %b"), //twitter    
     X_TWITTER_RESPONSE_TAGS("x-twitter-response-tags: %b"), //twitter
     X_UA_COMPATIBLE("x-ua-compatible: %b"), //twitter
     ML("ml: %b"), //twitter
     
-    X_FORWARD_FOR("X-Forwarded-For: %b"),
-    X_FORWARD_HOST("X-Forwarded-Host: %b"),
-    X_ONLINE_HOST("X-Online-Host: %b"),
+    X_FORWARD_FOR("x-Forwarded-For: %b"),
+    X_FORWARD_HOST("x-Forwarded-Host: %b"),
+    X_ONLINE_HOST("x-Online-Host: %b"),
     X_FRONT_END_HTTPS("Front-End-Https: %b"),
-    X_ATT_DEVICEID("X-ATT-DeviceId: %b"),
-    X_WAP_PROFILE("X-Wap-Profile: %b");
+    X_ATT_DEVICEID("x-ATT-DeviceId: %b"),
+    X_WAP_PROFILE("x-Wap-Profile: %b");
             
-    private CharSequence template;
-    private CharSequence root;
+    private CharSequence readingTemplate; //used for reading headers, must be lower case to do all case insinsitve matching
+    private CharSequence writingRoot; //used for writing headers.
     
     
-    private HTTPHeaderKeyDefaults(CharSequence template) {
-        this.template = template;
-        this.root = template;
+    private HTTPHeaderKeyDefaults(String template) {
+        this.readingTemplate = template.toLowerCase();
+        this.writingRoot = template;
         int i = 0;
         int lim = template.length()-1;
         while (i<lim) {
+
         	if (template.charAt(i)==':' && template.charAt(i+1)==' ') {
-        		root = template.subSequence(0, i+2);
+        		writingRoot = template.subSequence(0, i+2);
         		break;
         	}
         	i++;
@@ -82,11 +85,18 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
     }
     
     public CharSequence getKey() {
-        return template;
+        return readingTemplate();
+    }
+    
+    public CharSequence readingTemplate() {
+        return readingTemplate;
     }
     
     public CharSequence getRoot() {
-        return root;
+        return writingRoot();
     }
 
+    public CharSequence writingRoot() {
+        return writingRoot;
+    }
 }

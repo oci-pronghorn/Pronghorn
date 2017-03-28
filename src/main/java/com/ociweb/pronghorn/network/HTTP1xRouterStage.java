@@ -592,7 +592,7 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
     			trieReader.sourcePos = tempPos;
     			
     			StringBuilder builder = new StringBuilder();
-    			TrieParserReader.debugAsUTF8(trieReader, builder, config.revisionMap.longestKnown()*2);
+    			TrieParserReader.debugAsUTF8(trieReader, builder, config.revisionMap.longestKnown()*4);
     			logger.warn("{} looking for HTTP revision but found:\n{}\n\n",channel,builder);
     		    			
     			trieReader.sourceLen = 0;

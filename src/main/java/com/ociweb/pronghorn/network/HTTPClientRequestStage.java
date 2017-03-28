@@ -249,9 +249,8 @@ public class HTTPClientRequestStage extends PronghornStage {
 					
 		        	int postLen = DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 		        		
-		        	String postedText = new String(activeWriter.toByteArray());
 		        	
-		        	System.err.println("POSTED: \n"+postedText+"\n");
+		        	System.err.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
 		        	
 		        	
 		        	Pipe.confirmLowLevelWrite(outputPipe,pSize);
@@ -337,6 +336,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		            					                	
 		            	DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 		
+		            	System.err.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
 		            	
 		            	Pipe.confirmLowLevelWrite(outputPipe,pSize);
 		            	Pipe.publishWrites(outputPipe);
