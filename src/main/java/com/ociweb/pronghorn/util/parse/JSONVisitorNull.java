@@ -1,13 +1,29 @@
-package com.ociweb.pronghorn.util;
+package com.ociweb.pronghorn.util.parse;
+
+import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.ByteConsumer;
 
 public class JSONVisitorNull implements JSONVisitor {
 
-	StringBuilder builder = new StringBuilder();
+	final StringBuilder builder = new StringBuilder();
+	
+	final ByteConsumer con = new ByteConsumer() {
+
+		@Override
+		public void consume(byte[] backing, int pos, int len, int mask) {
+			Appendables.appendUTF8(builder, backing, pos, len, mask);	
+		}
+
+		@Override
+		public void consume(byte value) {
+			builder.append((char)value);
+		}				
+	};
 	
 	@Override
-	public Appendable stringValue() {
+	public ByteConsumer stringValue() {
 		builder.setLength(0);
-		return builder;
+		return con;
 	}
 
 	@Override
@@ -15,9 +31,9 @@ public class JSONVisitorNull implements JSONVisitor {
 	}
 
 	@Override
-	public Appendable stringName(int fieldIndex) {
+	public ByteConsumer stringName(int fieldIndex) {
 		builder.setLength(0);
-		return builder;
+		return con;
 	}
 
 	@Override

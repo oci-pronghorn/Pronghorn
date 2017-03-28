@@ -6,7 +6,9 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
 
-public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream implements DataOutput, Appendable {
+import com.ociweb.pronghorn.util.ByteConsumer;
+
+public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream implements DataOutput, Appendable, ByteConsumer {
 
     private final Pipe<S> p;
     private final byte[] byteBuffer;
@@ -271,6 +273,17 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         }
         activePosition = pos;
     }
+         
+	@Override
+	public void consume(byte[] backing, int pos, int len, int mask) {
+		Pipe.copyBytesFromToRing(backing, pos, Integer.MAX_VALUE, byteBuffer, activePosition, byteMask, len);
+		activePosition += len;
+	}
+
+	@Override
+	public void consume(byte value) {
+		byteBuffer[byteMask & activePosition++] = value;
+	}
     
     public void writeByteArray(byte[] bytes) {
         activePosition = writeByteArray(this, bytes, bytes.length, byteBuffer, byteMask, activePosition);
@@ -588,7 +601,6 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         this.activePosition = Pipe.encodeSingleChar((int)c, this.byteBuffer, this.byteMask, this.activePosition);
         return this;
     }
-
 
     
 }

@@ -1,68 +1,143 @@
-package com.ociweb.pronghorn.util;
+package com.ociweb.pronghorn.util.parse;
 
-public class JSONVisitorCapture implements JSONVisitor {
+import java.io.IOException;
 
-	StringBuilder builder = new StringBuilder();
+import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.ByteConsumer;
+
+public class JSONVisitorCapture<A extends Appendable> implements JSONVisitor {
+
+	final A target;
 	
+	final StringBuilder builder = new StringBuilder();
+	
+	final ByteConsumer con = new ByteConsumer() {
+
+		@Override
+		public void consume(byte[] backing, int pos, int len, int mask) {
+			Appendables.appendUTF8(builder, backing, pos, len, mask);	
+		}
+
+		@Override
+		public void consume(byte value) {
+			builder.append((char)value);
+		}				
+	};
+	
+	public JSONVisitorCapture(A target) {
+		this.target = target;
+	}
+
 	@Override
-	public Appendable stringValue() {
-		return builder;
+	public ByteConsumer stringValue() {
+		builder.setLength(0);
+		return con;
 	}
 
 	@Override
 	public void stringValueComplete() {
-		System.err.println(builder);
+		try {
+			target.append(builder);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
-	public Appendable stringName(int fieldIndex) {
-		return builder;
+	public ByteConsumer stringName(int fieldIndex) {
+		builder.setLength(0);
+		
+		if (fieldIndex>0) {
+			builder.append(',');
+		}
+		
+		return con;
 	}
 
 	@Override
 	public void stringNameComplete() {
-		System.err.println(builder);
+		try {
+			target.append(builder).append(':');
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
 	public void arrayBegin() {
-		System.err.println('[');
+		try {
+			target.append('[');
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
 	public void arrayEnd() {
-		System.err.println(']');
+		try {
+			target.append(']');
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
 	public void arrayIndexBegin(int instance) {
-		System.err.println("idx: "+instance);
+		try {
+			if (instance>0) {
+				target.append(',');
+			}
+			
+			//target.append("idx: ");
+			//Appendables.appendValue(target, instance);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
 	public void numberValue(long m, byte e) {
-		System.err.println("A number");
-		
+		Appendables.appendDecimalValue(target, m, e);
 	}
 
 	@Override
 	public void nullValue() {
-		System.err.println("null");
+		try {
+			target.append("null");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
 	public void booleanValue(boolean b) {
 		System.err.println("boolean "+b);
+		
+		try {
+			target.append("boolean ");
+			target.append(Boolean.toString(b));
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		
 	}
 
 	@Override
 	public void objectEnd() {
-		System.err.println("}");
+		try {
+			target.append('}');
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
 	public void objectBegin() {
-		System.err.println("}");
+		try {
+			target.append('{');
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 }

@@ -631,7 +631,7 @@ public class TrieParser implements Serializable {
                             
                         } else {
                             int pos1 = pos;
-							int jumpMask = computeJumpMask((short) v, data[pos1++]);
+							int jumpMask = computeJumpMask((short) v, data[pos1++]);														
                             pos = 0==jumpMask? 1+pos1 : 1+(jumpMask&((((int)data[pos1++])<<15) | (0x7FFF&data[pos1])))+pos1;   
                         
                         }
@@ -1170,6 +1170,11 @@ public class TrieParser implements Serializable {
                 }
             }          
         }        
+        
+//        if (mask == (1<<5)) { ////////////////////////////only for debug tracking down case issues 
+//        	System.err.println("ERROR HHHHHHHHHHHHHHHH  jump mask "+Integer.toBinaryString(mask)+" "+(char)a+" vs "+(char)b+"   "+a+" vs "+b);
+//        	new Exception().printStackTrace();
+//        }
         return (short)(( 0xFF00&((mask&b)-1) ) | mask); //high byte is on when A matches mask
     }
 

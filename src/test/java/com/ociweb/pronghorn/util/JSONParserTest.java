@@ -10,6 +10,12 @@ import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.util.parse.JSONParser;
+import com.ociweb.pronghorn.util.parse.JSONStreamParser;
+import com.ociweb.pronghorn.util.parse.JSONStreamVisitor;
+import com.ociweb.pronghorn.util.parse.JSONStreamVisitorCapture;
+import com.ociweb.pronghorn.util.parse.JSONVisitor;
+import com.ociweb.pronghorn.util.parse.JSONVisitorCapture;
 
 public class JSONParserTest {
 
@@ -23,7 +29,7 @@ public class JSONParserTest {
 		
 		TrieParserReader reader = JSONParser.newReader();
 		StringBuilder target = new StringBuilder();
-		JSONVisitor<StringBuilder> visitor = visitor(target);
+		JSONVisitor visitor = new JSONVisitorCapture(target);
 		
 		
 		int msgIdx = Pipe.takeMsgIdx(pipe);
@@ -42,8 +48,7 @@ public class JSONParserTest {
 		
 		TrieParserReader reader = JSONParser.newReader();
 		StringBuilder target = new StringBuilder();
-		JSONVisitor<StringBuilder> visitor = visitor(target);
-		
+		JSONVisitor visitor = new JSONVisitorCapture(target);		
 		
 		int msgIdx = Pipe.takeMsgIdx(pipe);
 		JSONParser.parse(pipe, reader, visitor );
@@ -62,8 +67,7 @@ public class JSONParserTest {
 		
 		TrieParserReader reader = JSONParser.newReader();
 		StringBuilder target = new StringBuilder();
-		JSONVisitor<StringBuilder> visitor = visitor(target);
-		
+		JSONVisitor visitor = new JSONVisitorCapture(target);		
 		
 		int msgIdx = Pipe.takeMsgIdx(pipe);
 		JSONParser.parse(pipe, reader, visitor );
@@ -71,116 +75,7 @@ public class JSONParserTest {
 		assertEquals("[{key:value},{key:value}]",target.toString());
 		
 	}
-	
-	
-	private <A extends Appendable> JSONVisitor<A> visitor(final A target) {
-		JSONVisitor<A> visitor = new JSONVisitor<A>() {
-
-			
-			@Override
-			public A stringValue() {
-				return target;
-			}
-
-			@Override
-			public void stringValueComplete() {
-				
-			}
-
-			@Override
-			public A stringName(int fieldIndex) {
-				if (0!=fieldIndex) {
-					try {
-						target.append(",");
-					} catch (Exception ex) {
-						throw new RuntimeException(ex);
-					}
-				}				
-				return target;
-			}
-
-			@Override
-			public void stringNameComplete() {
-				try{
-				target.append(':');
-				} catch (Exception ex) {
-					throw new RuntimeException(ex);
-				}
-			}
-
-			@Override
-			public void arrayBegin() {
-				try{
-				target.append('[');
-				} catch (Exception ex) {
-					throw new RuntimeException(ex);
-				}
-			}
-
-			@Override
-			public void arrayEnd() {
-				try{
-				target.append(']');
-				} catch (Exception ex) {
-					throw new RuntimeException(ex);
-				}
-			}
-
-			@Override
-			public void arrayIndexBegin(int instance) {
-				if (0!=instance) {
-					try {
-						target.append(",");
-					} catch (Exception ex) {
-						throw new RuntimeException(ex);
-					}
-				}
-			}
-
-			@Override
-			public void numberValue(long m, byte e) {
-				Appendables.appendDecimalValue(target, m, e);
-			}
-
-			@Override
-			public void nullValue() {
-				try {
-				target.append("null");
-				} catch (Exception ex) {
-					throw new RuntimeException(ex);
-				}
-			}
-
-			@Override
-			public void booleanValue(boolean b) {
-				try{
-				target.append(Boolean.toString(b));
-				} catch (Exception ex) {
-					throw new RuntimeException(ex);
-				}
-			}
-
-			@Override
-			public void objectEnd() {
-				try{
-				target.append('}');
-				} catch (Exception ex) {
-					throw new RuntimeException(ex);
-				}
-			}
-
-			@Override
-			public void objectBegin() {
-				try{
-				target.append('{');
-				} catch (Exception ex) {
-					throw new RuntimeException(ex);
-				}
-			}
-			
-		};
-		return visitor;
-	}
+		
 
 	private Pipe buildPopulatedPipe(String json) {
 		Pipe pipe = new Pipe(new PipeConfig(RawDataSchema.instance));
@@ -196,7 +91,29 @@ public class JSONParserTest {
 		return pipe;
 	}
 	
-	
+	@Test
+	public void streamingArrayTest() {
+				
+		String json = " [ { \"key\" : \"value\" } , \n { \"key\" : \"value\" }     ] ";
+		
+		Pipe pipe = buildPopulatedPipe(json);
+			
+		
+		TrieParserReader reader = new TrieParserReader(2);
+		
+		int msgIdx = Pipe.takeMsgIdx(pipe);
+		TrieParserReader.parseSetup(reader,pipe); 
+		
+		StringBuilder target = new StringBuilder();
+		
+		JSONStreamVisitor visitor = new JSONStreamVisitorCapture(target);		
+		
+		Pipe.takeMsgIdx(pipe);
+		JSONStreamParser.parse(reader, visitor);
+				
+		assertEquals("[{\"key\":\"value\"},{\"key\":\"value\"}]",target.toString());
+		
+	}
 	
 }
 

@@ -5,10 +5,10 @@ import java.io.PrintStream;
 import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.util.Appendables;
-import com.ociweb.pronghorn.util.JSONParser;
-import com.ociweb.pronghorn.util.JSONVisitor;
-import com.ociweb.pronghorn.util.JSONVisitorNull;
 import com.ociweb.pronghorn.util.TrieParserReader;
+import com.ociweb.pronghorn.util.parse.JSONParser;
+import com.ociweb.pronghorn.util.parse.JSONVisitor;
+import com.ociweb.pronghorn.util.parse.JSONVisitorNull;
 
 public class StreamingReadVisitorToJSON<A extends Appendable> implements StreamingReadVisitor {
 
@@ -237,7 +237,9 @@ public class StreamingReadVisitorToJSON<A extends Appendable> implements Streami
 		}	
         
         if (showBytesAsUTF) {   
-        	Appendables.appendUTF8(out, value.array(), value.position(), value.remaining(), Integer.MAX_VALUE);        	
+        	
+        	Appendables.appendUTF8(out, value.array(), value.position(), value.remaining(), Integer.MAX_VALUE);     
+        	
         } else {
    
 	        while (value.hasRemaining()) {

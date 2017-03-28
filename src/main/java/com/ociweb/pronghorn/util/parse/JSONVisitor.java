@@ -1,12 +1,14 @@
-package com.ociweb.pronghorn.util;
+package com.ociweb.pronghorn.util.parse;
 
-public interface JSONVisitor<A extends Appendable>  {
+import com.ociweb.pronghorn.util.ByteConsumer;
 
-	A stringValue();
+public interface JSONVisitor {
+
+	ByteConsumer stringValue();
 
 	void stringValueComplete();
 
-	A stringName(int fieldIdx);
+	ByteConsumer stringName(int fieldIdx);
 
 	void stringNameComplete();
 

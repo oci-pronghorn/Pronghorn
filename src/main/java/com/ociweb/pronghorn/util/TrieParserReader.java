@@ -225,7 +225,11 @@ public class TrieParserReader {
 
     }
     
-    
+
+	public void moveBack(int i) {
+		sourcePos -= i;
+		sourceLen += i;
+	}
     
     
     public static int debugAsUTF8(TrieParserReader that, Appendable target) {
@@ -925,32 +929,38 @@ public class TrieParserReader {
             }
         }
         
-        //just to keep it from spinning on values that are way out of bounds
-        sourceLength = Math.min(32, sourceLength); //never scan over 32
+
         
         boolean hasNo0xPrefix = ('0'!=source[sourceMask & sourcePos+1]) || ('x'!=source[sourceMask & sourcePos+2]);
-		if (hasNo0xPrefix && 0==(TrieParser.NUMERIC_FLAG_HEX&numType) ) {                            
+		if (hasNo0xPrefix && 0==(TrieParser.NUMERIC_FLAG_HEX&numType) ) {    
+	        //just to keep it from spinning on values that are way out of bounds
+	        sourceLength = Math.min(LONGEST_LONG_DIGITS+1, sourceLength); //never scan over 32
+	        
             base = 10;
             short c = 0;
             do {
-                c = source[sourceMask & sourcePos++];                    
-                if ((c>='0') && (c<='9') && intLength<sourceLength) {
-                    intValue = (intValue * 10)+(c-'0');
-                    intLength++;
-                    continue;
+                c = source[sourceMask & sourcePos++];        
+                
+                if (intLength<sourceLength) {
+	                
+	                if ((c>='0') && (c<='9') ) {
+	                    intValue = (intValue * 10)+(c-'0');
+	                    intLength++;
+	                    continue;
+	                } else {
+	                	break;//next char is not valid.
+	                }
                 } else {
-                	if (intLength>=sourceLength) {
-                		return -1; //we are waiting for more digits in the feed.  //TODO: add unit test to ensure we do not get partial parse on end of string.
-                	}
-                    break;
+                	return -1; //we are waiting for more digits in the feed. 
                 }
+                
             }  while (true);
-            if (intLength>LONGEST_LONG_DIGITS) {
-                //ERROR
-            	return -1;
-            }
+
         } else {
-            base = 16;
+            //just to keep it from spinning on values that are way out of bounds
+            sourceLength = Math.min(LONGEST_LONG_HEX_DIGITS+1, sourceLength); //never scan over 32
+            
+        	base = 16;
             if (!hasNo0xPrefix) {
             	sourcePos+=2;//skipping over the 0x checked above
             }
@@ -958,26 +968,25 @@ public class TrieParserReader {
             do {
                 c = source[sourceMask & sourcePos++];
                 
-                if ((c>='0') && (c<='9') && intLength<sourceLength) {
-                    intValue = (intValue<<4)+(c-'0');
-                    intLength++;
-                    continue;
-                } else  if ((c>='a') && (c<='f') && intLength<sourceLength) {
-                    intValue = (intValue<<4)+(10+(c-'a'));
-                    intLength++;
-                    continue;
-                } else {
-                	if (intLength>=sourceLength) {
-                		return -1; //we are waiting for more digits in the feed.
+                if (intLength<sourceLength) {
+                	
+                	if ((c>='0') && (c<='9') ) {
+                		intValue = (intValue<<4)+(c-'0');
+                		intLength++;
+                		continue;
+                	} else  if ((c>='a') && (c<='f') ) {
+                		intValue = (intValue<<4)+(10+(c-'a'));
+                		intLength++;
+                		continue;
+                	} else {
+                		//this is not a valid char so we reached the end of the number
+                		break;
                 	}
-                    break;
+                } else {
+                	return -1; // intLength>=sourceLength
                 }
+                
             }  while (true);
-            
-            if (intLength>LONGEST_LONG_HEX_DIGITS) {
-                //ERROR
-            	return -1;
-            }
             
         }
 
@@ -1097,20 +1106,7 @@ public class TrieParserReader {
             return -1;
         }
     }
-    
-    public static <A extends Appendable> A capturedFieldBytesAsUTF8(TrieParserReader reader, int idx, A target) {
-        
-        int pos = idx*4;
-        
-        int type = reader.capturedValues[pos++];
-        assert(type==0);
-        int bpos = reader.capturedValues[pos++];
-        int blen = reader.capturedValues[pos++];
-        int bmsk = reader.capturedValues[pos++];
-        
-        return Appendables.appendUTF8(target, reader.capturedBlobArray, bpos, blen, bmsk);
 
-    }
 
     public static int capturedFieldBytes(TrieParserReader reader, int idx, ByteConsumer target) {
         
@@ -1126,9 +1122,14 @@ public class TrieParserReader {
         return blen;
 
     }
+        
+    public static <A extends Appendable> long capturedFieldQuery(TrieParserReader reader, int idx, TrieParser trie) {
+    	  //two is the default for the stop bytes.
+    	  return  capturedFieldQuery(reader,idx,2,trie);
+    }
     
     //parse the capture text as a query against yet another trie
-    public static <A extends Appendable> long capturedFieldQuery(TrieParserReader reader, int idx, TrieParser trie) {
+    public static <A extends Appendable> long capturedFieldQuery(TrieParserReader reader, int idx, int stopBytesCount, TrieParser trie) {
         
         int pos = idx*4;
         
@@ -1138,10 +1139,25 @@ public class TrieParserReader {
         int blen = reader.capturedValues[pos++];
         int bmsk = reader.capturedValues[pos++];
         
-        return query(reader, trie, reader.capturedBlobArray, bpos, blen, bmsk, -1);
+        //we add 2 to the length to pick up the stop chars
+        return query(reader, trie, reader.capturedBlobArray, bpos, blen+stopBytesCount, bmsk, -1);
 
     }
     
+    
+    public static <A extends Appendable> A capturedFieldBytesAsUTF8(TrieParserReader reader, int idx, A target) {
+        
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int bpos = reader.capturedValues[pos++];
+        int blen = reader.capturedValues[pos++];
+        int bmsk = reader.capturedValues[pos++];
+        
+        return Appendables.appendUTF8(target, reader.capturedBlobArray, bpos, blen, bmsk);
+
+    }
     
     public static <A extends Appendable> A capturedFieldBytesAsUTF8Debug(TrieParserReader reader, int idx, A target) {
         
@@ -1406,6 +1422,7 @@ public class TrieParserReader {
         }
         
     }
+
     
     
 

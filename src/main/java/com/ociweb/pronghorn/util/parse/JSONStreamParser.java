@@ -1,9 +1,14 @@
 package com.ociweb.pronghorn.util.parse;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class JSONStreamParser {	
+	
+	private static final Logger logger = LoggerFactory.getLogger(JSONStreamParser.class);
 
 	private static final int WHITE_SPACE = 1;
 	private static final int WHITE_SPACE_4 = WHITE_SPACE | ((int)0x0D)<<8;
@@ -45,8 +50,6 @@ public class JSONStreamParser {
 	private static final byte DEFAULT_STATE = 0;
 	private static final byte TEXT_STATE = 1;
 	
-	
-	private byte state = DEFAULT_STATE;
 	
 	private static final TrieParser defaultParser = defaultParser();
 	private static final TrieParser stringEndParser = stringEndParser();
@@ -122,112 +125,112 @@ public class JSONStreamParser {
 		return new TrieParserReader(2);
 	}
 
-	//must span multiple messages, must be given all 4 as arguments, must work lower and only with 1 var length field.
-	
-	public void setup(TrieParserReader reader, byte[] source, int offset, int length, int mask) {
-		
-		TrieParserReader.parseSetup(reader, source, offset, length, mask);
-		
-	}
-	
-	public void parse(TrieParserReader reader, JSONStreamVisitor visitor) {
-		while (internalParse(reader,visitor)){			
-		};
-	}
-	
 
-	private boolean internalParse(TrieParserReader reader, JSONStreamVisitor visitor) {
+	public static void parse(TrieParserReader reader, JSONStreamVisitor visitor) {
+
 		
-		if (DEFAULT_STATE == state) {
-			
-			int id  = (int)TrieParserReader.parseNext(reader, defaultParser);
-			switch (id) {
-				case STRING_PART_22: //start of string change mode
-					state = TEXT_STATE;
-					visitor.stringBegin();
-					TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());
-					break;
-	            case  CONTINUED_STRING: //continue string change mode
-					//we have no string captured this is just a flag to change modes
-	            	state = TEXT_STATE;	            	
-					break;					
-				case STRING_END_22: //full string
-					visitor.stringBegin();
-					TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());
-					visitor.stringEnd();
-					break;
-				case NAME_SEPARATOR:        // :
-					visitor.nameSeparator();
-					break;
-				case BEGIN_OBJECT:	
-					visitor.beginObject(); // {
-					break;
-				case END_OBJECT:
-					visitor.endObject(); // }
-					break;				
-				case BEGIN_ARRAY:
-					visitor.beginArray(); // [
-					break;					
-				case END_ARRAY:
-					visitor.endArray();  // ]
-					break;					
-				case VALUE_SEPARATOR:    // ,
-					visitor.valueSeparator();
-					break;					
-				case WHITE_SPACE_1:
-				case WHITE_SPACE_2:
-				case WHITE_SPACE_3:
-				case WHITE_SPACE_4:						
-					visitor.whiteSpace((byte)(id>>8));  // white space
-					break;					
-				case NUMBER_ID:
-					long m = TrieParserReader.capturedDecimalMField(reader, 0);
-	        		byte e = TrieParserReader.capturedDecimalEField(reader, 0);
-	        		visitor.numberValue(m,e);
-					break;					
-				case FALSE_ID:
-					visitor.literalFalse();
-					break;					
-				case NULL_ID:
-					visitor.literalNull();
-					break;					
-				case TRUE_ID:
-					visitor.literalTrue();
-					break;
-				case -1:
-					return false;
-			}			
-			
-		} else {
-			//text state;
-			
-			int id = (int)TrieParserReader.parseNext(reader, stringEndParser);
-			
-			if (id!=-1) {
-				int type = 0xFF&id;
-				int value = (id>>8);
+		byte state = DEFAULT_STATE;
+		
+		do {
+			if (DEFAULT_STATE == state) {
 				
-				if (0x75!=value) {
-					visitor.stringAccumulator().consume((byte)value);
-					TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());				
-				} else {				
-					//custom UTF processing.
-					//TODO: not implemented
-					// uXXXX 4HexDig
-					throw new UnsupportedOperationException("not yet implemented custom uXXXX values");				
+				int id  = (int)TrieParserReader.parseNext(reader, defaultParser);
+				
+				//logger.info("log event {} ",id);
+				
+				switch (id) {
+					case STRING_PART_22: //start of string change mode
+						state = TEXT_STATE;
+						visitor.stringBegin();
+						TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());
+						break;
+		            case  CONTINUED_STRING: //continue string change mode
+						//we have no string captured this is just a flag to change modes
+		            	state = TEXT_STATE;	            	
+						break;					
+					case STRING_END_22: //full string
+						visitor.stringBegin();
+						TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());
+						visitor.stringEnd();
+						break;
+					case NAME_SEPARATOR:        // :
+						visitor.nameSeparator();
+						break;
+					case BEGIN_OBJECT:	
+						visitor.beginObject(); // {
+						break;
+					case END_OBJECT:
+						visitor.endObject(); // }
+						break;				
+					case BEGIN_ARRAY:
+						visitor.beginArray(); // [
+						break;					
+					case END_ARRAY:
+						visitor.endArray();  // ]
+						break;					
+					case VALUE_SEPARATOR:    // ,
+						visitor.valueSeparator();
+						break;					
+					case WHITE_SPACE_1:
+					case WHITE_SPACE_2:
+					case WHITE_SPACE_3:
+					case WHITE_SPACE_4:						
+						visitor.whiteSpace((byte)(id>>8));  // white space
+						break;					
+					case NUMBER_ID:
+						long m = TrieParserReader.capturedDecimalMField(reader, 0);
+		        		byte e = TrieParserReader.capturedDecimalEField(reader, 0);
+		        		visitor.numberValue(m,e);
+						break;					
+					case FALSE_ID:
+						visitor.literalFalse();
+						break;					
+					case NULL_ID:
+						visitor.literalNull();
+						break;					
+					case TRUE_ID:
+						visitor.literalTrue();
+						break;
+					case -1:
+						
+						//TrieParserReader.debugAsUTF8(reader, System.err);
+						
+						return;
+				}			
+				
+			} else {
+				//text state;
+				
+				int id = (int)TrieParserReader.parseNext(reader, stringEndParser);
+				
+				//logger.info("log text {} ",id);
+				
+				if (id!=-1) {
+					int type = 0xFF&id;
+					int value = (id>>8);
+					
+					if (0x75!=value) {
+						visitor.stringAccumulator().consume((byte)value);
+						TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());				
+					} else {				
+						//custom UTF processing.
+						//TODO: not implemented
+						// uXXXX 4HexDig
+						throw new UnsupportedOperationException("not yet implemented custom uXXXX values");				
+					}
+					
+					if (STRING_END == type) {
+						state = DEFAULT_STATE;
+						visitor.stringEnd();
+					} 
+				} else {
+					//TrieParserReader.debugAsUTF8(reader, System.err);
+					reader.moveBack(1);//we need the new call to see teh slash
+					return;
 				}
 				
-				if (STRING_END == type) {
-					state = DEFAULT_STATE;
-					visitor.stringEnd();
-				} 
-			} else {
-				reader.moveBack(1);//we need the new call to see teh slash
-				return false;
 			}
-			
-		}
-		return true;
+		} while (true);
 		
 	}
 	
