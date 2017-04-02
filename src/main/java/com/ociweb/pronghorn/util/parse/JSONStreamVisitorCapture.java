@@ -8,7 +8,8 @@ import com.ociweb.pronghorn.util.ByteConsumer;
 public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStreamVisitor {
 
 	final A target;
-	
+	int depth = 0;
+
 	final StringBuilder builder = new StringBuilder();
 	
 	final ByteConsumer con = new ByteConsumer() {
@@ -32,6 +33,7 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 	@Override
 	public void nameSeparator() {
 		try {
+
 			target.append(':');
 		} catch (IOException e) {
 			throw new RuntimeException(e);
@@ -41,7 +43,10 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 	@Override
 	public void endObject() {
 		try {
-			target.append('}');
+			//for(int i = 0;i<depth;i++) {target.append(' ');};
+			
+			depth--;
+			target.append('}').append('\n');
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -50,6 +55,10 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 	@Override
 	public void beginObject() {
 		try {
+			
+			//for(int i = 0;i<depth;i++) {target.append(' ');};
+			
+			depth++;
 			target.append('{');
 		} catch (IOException e) {
 			throw new RuntimeException(e);
@@ -59,6 +68,7 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 	@Override
 	public void beginArray() {
 		try {
+			//for(int i = 0;i<depth;i++) {target.append(' ');};
 			target.append('[');
 		} catch (IOException e) {
 			throw new RuntimeException(e);
@@ -68,7 +78,7 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 	@Override
 	public void endArray() {
 		try {
-			target.append(']');
+			target.append(']').append('\n');
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -77,7 +87,7 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 	@Override
 	public void valueSeparator() {
 		try {
-			target.append(',');
+			target.append(',').append('\n');
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -143,6 +153,12 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+
+	@Override
+	public void customString(int id) {
+		throw new UnsupportedOperationException();
 	}
 
 }

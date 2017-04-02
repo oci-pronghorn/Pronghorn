@@ -571,6 +571,29 @@ public class TrieParser implements Serializable {
         return len;
     }
 
+    public int setUTF8Value(CharSequence prefix, CharSequence cs, CharSequence suffix, int value) {
+        
+        Pipe.addMsgIdx(pipe, 0);
+        
+        int origPos = Pipe.getBlobWorkingHeadPosition(pipe);
+        int len = 0;
+        len += Pipe.copyUTF8ToByte(prefix, 0, prefix.length(), pipe);
+        len += Pipe.copyUTF8ToByte(cs, 0, cs.length(), pipe);        
+        len += Pipe.copyUTF8ToByte(suffix, 0, suffix.length(), pipe);
+                
+        Pipe.addBytePosAndLen(pipe, origPos, len);
+        Pipe.publishWrites(pipe);
+        Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        
+        Pipe.takeMsgIdx(pipe);
+        setValue(pipe, value);   
+        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        
+        //WARNING: this is not thread safe if set is called and we have not yet parsed!!
+        Pipe.releaseReadLock(pipe);
+        return len;
+    }
+    
 
     public void setValue(Pipe p, long value) {
         setValue(p, Pipe.takeRingByteMetaData(p), Pipe.takeRingByteLen(p), value);
@@ -1126,7 +1149,7 @@ public class TrieParser implements Serializable {
             short c = 0;
             do {
                 c = source[sourceMask & sourcePos++];
-            }  while (((c>='0') && (c<='9')) | ((c>='a') && (c<='f'))  );
+            }  while (((c>='0') && (c<='9')) | ((c>='a') && (c<='f'))  | ((c>='A') && (c<='F')));
         }
 
         return sourcePos;

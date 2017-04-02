@@ -2,6 +2,8 @@ package com.ociweb.pronghorn.util;
 
 import java.io.DataOutput;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.sql.Blob;
 import java.util.Arrays;
 
 import org.slf4j.Logger;
@@ -974,16 +976,21 @@ public class TrieParserReader {
                 		intValue = (intValue<<4)+(c-'0');
                 		intLength++;
                 		continue;
-                	} else  if ((c>='a') && (c<='f') ) {
-                		intValue = (intValue<<4)+(10+(c-'a'));
-                		intLength++;
-                		continue;
-                	} else {
-                		//this is not a valid char so we reached the end of the number
-                		break;
+                	} else  {
+		                	c = (short)(c | 0x20);//to lower case
+                		    if ((c>='a') && (c<='f') ) {
+		                		intValue = (intValue<<4)+(10+(c-'a'));
+		                		intLength++;
+		                		continue;
+		                	} else {
+		                		//this is not a valid char so we reached the end of the number
+		                		break;
+		                	}
                 	}
                 } else {
-                	return -1; // intLength>=sourceLength
+                	 // intLength>=sourceLength
+                	intLength=0;
+                	break;
                 }
                 
             }  while (true);
@@ -1109,6 +1116,8 @@ public class TrieParserReader {
 
 
     public static int capturedFieldBytes(TrieParserReader reader, int idx, ByteConsumer target) {
+        assert(null!=reader);
+        assert(null!=target);
         
         int pos = idx*4;
         
@@ -1122,7 +1131,7 @@ public class TrieParserReader {
         return blen;
 
     }
-        
+    
     public static <A extends Appendable> long capturedFieldQuery(TrieParserReader reader, int idx, TrieParser trie) {
     	  //two is the default for the stop bytes.
     	  return  capturedFieldQuery(reader,idx,2,trie);

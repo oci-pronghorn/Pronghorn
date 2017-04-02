@@ -31,6 +31,7 @@ public interface JSONStreamVisitor {
 	ByteConsumer stringAccumulator();
 
 	void stringEnd();
-	
 
+	void customString(int id);
+	
 }

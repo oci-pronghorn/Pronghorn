@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.util.parse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.util.TrieKeyable;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -54,36 +55,62 @@ public class JSONStreamParser {
 	private static final TrieParser defaultParser = defaultParser();
 	private static final TrieParser stringEndParser = stringEndParser();
 	
+	private final ByteConsumerCodePointConverter converter = new ByteConsumerCodePointConverter();
+		
+	
+	public static <T extends Enum<T> & TrieKeyable> TrieParser customParser(Class<T> keys) {
+
+		//2 because we need 2 shorts for the number
+		TrieParser trie = new TrieParser(256,2,false,true);
+
+		
+		for (T key: keys.getEnumConstants()) {			
+			trie.setUTF8Value(key.getKey(), key.ordinal()<<8);
+		}
+				
+		
+		trie.setValue(JSONConstants.string221, STRING_PART);
+		trie.setValue(JSONConstants.string222, STRING_END); //to captures quoted values		
+		addTokens(trie);		
+		return trie;
+	}
+	
+	
 	
 	private static TrieParser defaultParser() {
 			
 	    	TrieParser trie = new TrieParser(256,1,false,true);
 
-			trie.setValue(JSONConstants.string221, STRING_PART_22); //begin string - for this change to stringEndParser
-			trie.setValue(JSONConstants.string222, STRING_END_22); //begin string
+			trie.setValue(JSONConstants.string221, STRING_PART); //begin string - for this change to stringEndParser
+			trie.setValue(JSONConstants.string222, STRING_END); //begin string
 		
-			trie.setValue(JSONConstants.nameSeparator, NAME_SEPARATOR);	
-			
-			trie.setValue(JSONConstants.endObject, END_OBJECT);
-			trie.setValue(JSONConstants.valueSeparator, VALUE_SEPARATOR);
-			trie.setValue(JSONConstants.beginArray, BEGIN_ARRAY);
-			trie.setValue(JSONConstants.beginObject, BEGIN_OBJECT);
-			trie.setValue(JSONConstants.endArray, END_ARRAY);			
-			
-			trie.setValue(JSONConstants.continuedString, CONTINUED_STRING);
-			
-			trie.setValue(JSONConstants.ws1, WHITE_SPACE_1);
-			trie.setValue(JSONConstants.ws2, WHITE_SPACE_2);
-			trie.setValue(JSONConstants.ws3, WHITE_SPACE_3);
-			trie.setValue(JSONConstants.ws4, WHITE_SPACE_4);
-							
-			trie.setValue(JSONConstants.number, NUMBER_ID);
-			trie.setValue(JSONConstants.falseLiteral, FALSE_ID);
-			trie.setValue(JSONConstants.nullLiteral, NULL_ID);
-			trie.setValue(JSONConstants.trueLiteral, TRUE_ID);					
-		
+			addTokens(trie);
 			
 			return trie;
+	}
+
+
+	private static void addTokens(TrieParser trie) {
+		
+		trie.setValue(JSONConstants.nameSeparator, NAME_SEPARATOR);	
+		
+		trie.setValue(JSONConstants.endObject, END_OBJECT);
+		trie.setValue(JSONConstants.valueSeparator, VALUE_SEPARATOR);
+		trie.setValue(JSONConstants.beginArray, BEGIN_ARRAY);
+		trie.setValue(JSONConstants.beginObject, BEGIN_OBJECT);
+		trie.setValue(JSONConstants.endArray, END_ARRAY);			
+		
+		trie.setValue(JSONConstants.continuedString, CONTINUED_STRING);
+		
+		trie.setValue(JSONConstants.ws1, WHITE_SPACE_1);
+		trie.setValue(JSONConstants.ws2, WHITE_SPACE_2);
+		trie.setValue(JSONConstants.ws3, WHITE_SPACE_3);
+		trie.setValue(JSONConstants.ws4, WHITE_SPACE_4);
+						
+		trie.setValue(JSONConstants.number, NUMBER_ID);
+		trie.setValue(JSONConstants.falseLiteral, FALSE_ID);
+		trie.setValue(JSONConstants.nullLiteral, NULL_ID);
+		trie.setValue(JSONConstants.trueLiteral, TRUE_ID);
 	}
 	
     private static TrieParser stringEndParser() {
@@ -126,20 +153,19 @@ public class JSONStreamParser {
 	}
 
 
-	public static void parse(TrieParserReader reader, JSONStreamVisitor visitor) {
-
+	public void parse(TrieParserReader reader, TrieParser customParser, JSONStreamVisitor visitor) {
 		
 		byte state = DEFAULT_STATE;
 		
 		do {
 			if (DEFAULT_STATE == state) {
 				
-				int id  = (int)TrieParserReader.parseNext(reader, defaultParser);
+				int id  = (int)TrieParserReader.parseNext(reader, customParser);
 				
 				//logger.info("log event {} ",id);
 				
 				switch (id) {
-					case STRING_PART_22: //start of string change mode
+					case STRING_PART: //start of string change mode
 						state = TEXT_STATE;
 						visitor.stringBegin();
 						TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());
@@ -148,7 +174,7 @@ public class JSONStreamParser {
 						//we have no string captured this is just a flag to change modes
 		            	state = TEXT_STATE;	            	
 						break;					
-					case STRING_END_22: //full string
+					case STRING_END: //full string
 						visitor.stringBegin();
 						TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());
 						visitor.stringEnd();
@@ -191,11 +217,12 @@ public class JSONStreamParser {
 					case TRUE_ID:
 						visitor.literalTrue();
 						break;
-					case -1:
-						
-						//TrieParserReader.debugAsUTF8(reader, System.err);
-						
+					case -1:						
+						//TrieParserReader.debugAsUTF8(reader, System.err);						
 						return;
+					default:
+						//the only values here are the ones matching the custom strings 	
+						visitor.customString(id>>8);	
 				}			
 				
 			} else {
@@ -213,6 +240,10 @@ public class JSONStreamParser {
 						visitor.stringAccumulator().consume((byte)value);
 						TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());				
 					} else {				
+						
+						
+						
+						
 						//custom UTF processing.
 						//TODO: not implemented
 						// uXXXX 4HexDig
@@ -234,5 +265,113 @@ public class JSONStreamParser {
 		
 	}
 	
+    public void parse(TrieParserReader reader, JSONStreamVisitor visitor) {
+
+		
+		byte state = DEFAULT_STATE;
+		
+		do {
+			if (DEFAULT_STATE == state) {
+				
+				int id  = (int)TrieParserReader.parseNext(reader, defaultParser);
+				
+				//logger.info("log event {} ",id);
+				
+				switch (id) {
+					case STRING_PART: //start of string change mode
+						state = TEXT_STATE;
+						visitor.stringBegin();
+						TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());
+						break;
+		            case  CONTINUED_STRING: //continue string change mode
+						//we have no string captured this is just a flag to change modes
+		            	state = TEXT_STATE;	            	
+						break;					
+					case STRING_END: //full string
+						visitor.stringBegin();
+						TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());
+						visitor.stringEnd();
+						break;
+					case NAME_SEPARATOR:        // :
+						visitor.nameSeparator();
+						break;
+					case BEGIN_OBJECT:	
+						visitor.beginObject(); // {
+						break;
+					case END_OBJECT:
+						visitor.endObject(); // }
+						break;				
+					case BEGIN_ARRAY:
+						visitor.beginArray(); // [
+						break;					
+					case END_ARRAY:
+						visitor.endArray();  // ]
+						break;					
+					case VALUE_SEPARATOR:    // ,
+						visitor.valueSeparator();
+						break;					
+					case WHITE_SPACE_1:
+					case WHITE_SPACE_2:
+					case WHITE_SPACE_3:
+					case WHITE_SPACE_4:						
+						visitor.whiteSpace((byte)(id>>8));  // white space
+						break;					
+					case NUMBER_ID:
+						long m = TrieParserReader.capturedDecimalMField(reader, 0);
+		        		byte e = TrieParserReader.capturedDecimalEField(reader, 0);
+		        		visitor.numberValue(m,e);
+						break;					
+					case FALSE_ID:
+						visitor.literalFalse();
+						break;					
+					case NULL_ID:
+						visitor.literalNull();
+						break;					
+					case TRUE_ID:
+						visitor.literalTrue();
+						break;
+					case -1:						
+						//TrieParserReader.debugAsUTF8(reader, System.err);						
+						return;
+				}			
+				
+			} else {
+				//text state;
+				
+				int id = (int)TrieParserReader.parseNext(reader, stringEndParser);
+				
+				//logger.info("log text {} ",id);
+				
+				if (id!=-1) {
+					int type = 0xFF&id;
+					int value = (id>>8);
+					
+					if (0x75 != value) {
+						
+						visitor.stringAccumulator().consume((byte)value);
+						TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());
+						
+					} else {			
+						
+						// uXXXX 4HexDig conversion
+						converter.setTarget(visitor.stringAccumulator());
+						TrieParserReader.capturedFieldBytes(reader, 0, converter);
+						
+					}
+					
+					if (STRING_END == type) {
+						state = DEFAULT_STATE;
+						visitor.stringEnd();
+					} 
+				} else {
+					//TrieParserReader.debugAsUTF8(reader, System.err);
+					reader.moveBack(1);//we need the new call to see teh slash
+					return;
+				}
+				
+			}
+		} while (true);
+		
+	}
 
 }

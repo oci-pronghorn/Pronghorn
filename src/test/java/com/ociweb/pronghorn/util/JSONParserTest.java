@@ -109,12 +109,13 @@ public class JSONParserTest {
 		JSONStreamVisitor visitor = new JSONStreamVisitorCapture(target);		
 		
 		Pipe.takeMsgIdx(pipe);
-		JSONStreamParser.parse(reader, visitor);
+		JSONStreamParser parser = new JSONStreamParser();
+		parser.parse(reader, visitor);
 				
-		assertEquals("[{\"key\":\"value\"},{\"key\":\"value\"}]",target.toString());
+		assertEquals("[{\"key\":\"value\"}\n,\n{\"key\":\"value\"}\n]\n",target.toString());
 		
 	}
-	
+
 }
 
 

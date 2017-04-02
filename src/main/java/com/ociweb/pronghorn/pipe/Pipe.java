@@ -2342,9 +2342,6 @@ public class Pipe<T extends MessageSchema> {
 	    return pos - targetIdx;
 	}
 
-
-
-
 	public static <S extends MessageSchema> int encodeSingleChar(int c, byte[] buffer,int mask, int pos) {
 
 	    if (c <= 0x007F) { // less than or equal to 7 bits or 127
