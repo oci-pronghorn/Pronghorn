@@ -7,20 +7,45 @@ import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.TrieParser;
+import com.ociweb.pronghorn.util.TrieParserReader;
+import com.ociweb.pronghorn.util.parse.JSONStreamParser;
+import com.ociweb.pronghorn.util.parse.JSONStreamVisitor;
 
-public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
+public class NetResponseJSONStage extends PronghornStage {
 
 	private final Pipe<NetResponseSchema> input;
-	private final A target;
+	private final JSONStreamVisitor visitor;
+	private TrieParserReader reader;
 	
-	public NetResponseDumpStage(GraphManager graphManager, Pipe<NetResponseSchema> input, A target) {
+	private JSONStreamParser parser = new JSONStreamParser();
+	private final TrieParser customParser;
+	
+	public NetResponseJSONStage(GraphManager graphManager, Pipe<NetResponseSchema> input, JSONStreamVisitor visitor) {
 		super(graphManager, input, NONE);
 		this.input = input;
-		this.target = target;
+		this.visitor = visitor;
+		this.customParser = null;
+	}
+	
+	public NetResponseJSONStage(GraphManager graphManager, Pipe<NetResponseSchema> input, JSONStreamVisitor visitor, TrieParser customParser) {
+		super(graphManager, input, NONE);
+		this.input = input;
+		this.visitor = visitor;
+		this.customParser = customParser;
 	}
 
 	@Override
+	public void startup() {
+		
+		reader = JSONStreamParser.newReader();
+		
+	}
+	
+	
+	@Override
 	public void run() {
+
 		
 		while(Pipe.hasContentToRead(input)) {
 			
@@ -28,7 +53,6 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 			switch (id) {
 				case NetResponseSchema.MSG_RESPONSE_101:
 					{
-						System.out.println("XXXXXXXXX response");
 						long connection = Pipe.takeLong(input);
 						
 						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
@@ -52,13 +76,9 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 							
 						}
 						System.out.println("last short:"+headerId);
-						
-						try {
-							DataInputBlobReader.readUTF(stream, stream.available(), target);
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
+												
+						DataInputBlobReader.setupParser(stream, reader);
+	
 						
 						Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, id));
 						Pipe.releaseReadLock(input);
@@ -67,15 +87,21 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 					break;
 				case NetResponseSchema.MSG_CONTINUATION_102:
 					{
-						System.out.println("XXXXXXXXX continuation");
-						
 						long connection = Pipe.takeLong(input);
 						
-						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
-						DataInputBlobReader.openLowLevelAPIField(stream);
+						if (reader.sourceLen==0) {
 						
-						//NOTE: how do we know to remove the headers??
-						stream.readUTF(target);
+							DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
+							DataInputBlobReader.openLowLevelAPIField(stream);
+							DataInputBlobReader.setupParser(stream, reader);
+							
+						} else {
+							
+							Pipe.takeRingByteMetaData(input);
+							int len = Pipe.takeRingByteLen(input);
+							reader.sourceLen += len;
+							
+						}
 						
 						Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, id));
 						Pipe.releaseReadLock(input);
@@ -98,14 +124,19 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 					Pipe.releaseReadLock(input);
 					requestShutdown();
 					return;
-			
-			
+						
 			}
-		
-			
-			
+					
 			
 		}
+		
+		if (null!=customParser) {
+			parser.parse(reader, customParser, visitor);			
+		} else {
+			parser.parse(reader, visitor);
+		}
+		
+		
 		
 		
 	}

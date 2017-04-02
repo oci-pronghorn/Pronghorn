@@ -339,8 +339,13 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
        	
         	assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
         	
-        	TrieParserReader.parseSetup(trieReader, Pipe.blob(selectedInput), inputBlobPos[idx], inputLengths[idx], Pipe.blobMask(selectedInput));	   
-        	assert(validateNextByte(trieReader, idx));
+        	TrieParserReader.parseSetup(trieReader, Pipe.blob(selectedInput), inputBlobPos[idx], inputLengths[idx], Pipe.blobMask(selectedInput));	
+        	
+        	boolean debugdata = false;
+        	if (debugdata) {
+        		assert(validateNextByte(trieReader, idx));
+        	}
+        	
         	do {
         		assert(inputLengths[idx]>0) : "length is "+inputLengths[idx]; 
 	            result = consumeAvail(idx, selectedInput, channel, inputBlobPos[idx], inputLengths[idx]);	           
@@ -391,9 +396,11 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 //	                }
 	                assert(l == trieReader.sourceLen);
 	                inputBlobPos[idx]=p;
-	                assert(trieReader.sourcePos==inputBlobPos[idx]);
-	                assert(validateNextByte(trieReader, idx));
-	                
+	                boolean debug = false;
+	                if (debug) {
+	                	assert(trieReader.sourcePos==inputBlobPos[idx]);
+	                	assert(validateNextByte(trieReader, idx));
+	                }
 	                assert(boundsCheck(idx, l));
 	                
 	                inputLengths[idx]=l;	                
@@ -490,20 +497,24 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
 		return NEED_MORE_DATA;
 	}
 	
-	assert(validateNextByte(trieReader, idx));
+	boolean debugdata = false;
+	if (debugdata) {
+		assert(validateNextByte(trieReader, idx));
+	}
 	
 	final int verbId = (int)TrieParserReader.parseNext(trieReader, config.verbMap);     //  GET /hello/x?x=3 HTTP/1.1     
     if (verbId<0) {
     		if (tempLen < (config.verbMap.longestKnown()+1) || (trieReader.sourceLen<0)) { //added 1 for the space which must appear after
-    //			logger.info("A. waiting on verb for {}",channel);
     			return NEED_MORE_DATA;    			
     		} else {
-    			
+    		
+    			//System.err.println("start at pos "+tempPos+" for "+channel);
+        		
     			//we have bad data we have been sent, there is enough data yet the verb was not found
     			trieReader.sourceLen = tempLen;
     			trieReader.sourcePos = tempPos;
     			
-    			boolean debug = false;
+    			boolean debug = true; 
     			if(debug) {
     				StringBuilder builder = new StringBuilder();    			    			
     				TrieParserReader.debugAsUTF8(trieReader, builder, config.verbMap.longestKnown()*2);    			
@@ -517,7 +528,9 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
     			return SUCCESS;
     			    		    			
     		}
+    		
     }
+   // System.err.println("start at pos "+tempPos+" for "+channel);
     
 	tempLen = trieReader.sourceLen;
 	tempPos = trieReader.sourcePos;
@@ -629,9 +642,6 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
         Pipe.confirmLowLevelWrite(outputPipe, size); 
         sequences[idx]++; //increment the sequence since we have now published the route.
 
-        assert(validateNextByte(trieReader, idx));
-        //logger.info("normal finish");
-        
         
     } else {
  //   	logger.info("No room, waiting for {} {}",channel, outputPipe);
@@ -640,7 +650,7 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
     }
     
    inputCounts[idx]++; 
-   assert(validateNextByte(trieReader, idx));
+ //  assert(validateNextByte(trieReader, idx));
    return SUCCESS;
 }
 
@@ -741,11 +751,11 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
 				
 				//assign
                 inputChannels[idx]  = channel;
-                inputLengths[idx]   = length;
+                inputLengths[idx]  = length;
                 inputBlobPos[idx]   = pos;
-                inputBlobPosLimit[idx]=pos+length;
+                inputBlobPosLimit[idx]  =pos+length;
                 
-                assert('G'== Pipe.blob(selectedInput)[pos&selectedInput.blobMask]) : "expected a GET";
+                //assert('G'== Pipe.blob(selectedInput)[pos&selectedInput.blobMask]) : "expected a GET";
 
                 assert(inputLengths[idx]<selectedInput.sizeOfBlobRing);
                 assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
@@ -870,21 +880,21 @@ private boolean hasNoActiveChannel(int idx) {
         int remainingLen;
         while ((remainingLen=TrieParserReader.parseHasContentLength(trieReader))>0){
         
-        	boolean watch = false;
         	int alen=trieReader.sourceLen;
         	int apos=trieReader.sourcePos;
-        	if (12==trieReader.sourceLen) {
-        		watch = true;        		
-        	}
+
         	int headerId = (int)TrieParserReader.parseNext(trieReader, config.headerMap);
-        	       	
-        	
+        	    
             if (config.END_OF_HEADER_ID == headerId) {
+            	
+            //	System.err.println("end of header with "+iteration+" FOUND DOUBLE RETURNE AT THE POSITION "+trieReader.sourcePos);
+            	
                 if (iteration==0) {
                 	//needs more data 
                 	return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
                 	//      throw new RuntimeException("should not have found end of header");
-                } else {
+                } else {              
+                	
                      assignMissingHeadersNull(staticRequestPipe, headerMask, basePos, offsets);
                 }             
                // logger.info("end of request found");
@@ -917,17 +927,7 @@ private boolean hasNoActiveChannel(int idx) {
             	logger.warn("post or payload not yet implemented, content length detected");
             	
               
-            } else if (headerIdConnection == headerId) {
-            	if (watch) {
-
-            		trieReader.sourceLen = alen;
-            		trieReader.sourcePos = apos;
-            		int temp = (int)TrieParserReader.parseNext(trieReader, config.headerMap);
-               	 
-            		System.err.println("length to parse from "+trieReader.sourceLen+"  "+headerId+"=="+temp);
-            		
-            	}
-            	
+            } else if (headerIdConnection == headerId) {            	
                 requestContext = applyKeepAliveOrCloseToContext(requestContext);                
             }
             

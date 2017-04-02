@@ -8,8 +8,7 @@ public class NetResponseSchema extends MessageSchema {
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
 		    new int[]{0xc0400003,0x90000000,0xb8000000,0xc0200003,0xc0400003,0x90000000,0xb8000000,0xc0200003,0xc0400003,0xa8000001,0x80000000,0xc0200003},
 		    (short)0,
-		    new String[]{"Response","ConnectionId","Payload",null,"Continuation","ConnectionId","Payload",
-		    null,"Closed","Host","Port",null},
+		    new String[]{"Response","ConnectionId","Payload",null,"Continuation","ConnectionId","Payload", null,"Closed","Host","Port",null},
 		    new long[]{101, 1, 3, 0, 102, 1, 3, 0, 10, 4, 5, 0},
 		    new String[]{"global",null,null,null,"global",null,null,null,"global",null,null,null},
 		    "NetResponse.xml",

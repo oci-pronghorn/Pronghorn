@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 
 public class SSLConnection {
 	
-	static final Logger log = LoggerFactory.getLogger(SSLConnection.class);
+	static final Logger logger = LoggerFactory.getLogger(SSLConnection.class);
 
 	protected final SSLEngine engine;
 	protected final SocketChannel socketChannel;
@@ -37,6 +37,7 @@ public class SSLConnection {
 	
     //should only be closed by the socket writer logic or TLS handshake may be disrupted causing client to be untrusted.
 	public boolean close() {
+	
 		if (isValid) {
 			isValid = false;
 			try {
@@ -56,7 +57,7 @@ public class SSLConnection {
 		    boolean debug = false;
 		    if (debug) {
 		    	if (!isShuttingDown) {	//if we are shutting down this is not an error.                    	
-		    		log.trace("This engine was forced to close inbound, without having received the proper SSL/TLS close notification message from the peer, due to end of stream.", e);
+		    		logger.trace("This engine was forced to close inbound, without having received the proper SSL/TLS close notification message from the peer, due to end of stream.", e);
 		    	}
 		    }
 			
@@ -102,7 +103,7 @@ public class SSLConnection {
 
 	public void setSequenceNo(int seq) {
 		if (seq<sequenceNo) {
-			log.info("FORCE EXIT value rolled back {}for chanel{} ",seq,id);
+			logger.info("FORCE EXIT value rolled back {}for chanel{} ",seq,id);
 			System.exit(-1);
 		}
 		//	log.info("setSequenceNo {} for chanel {}",seq,id);

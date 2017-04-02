@@ -34,7 +34,6 @@ public class HeaderUtil {
 		}
 		
 		DataOutputBlobWriter.write(writer, HeaderUtil.LINE_END, 0, HeaderUtil.LINE_END.length);
-		DataOutputBlobWriter.write(writer, HeaderUtil.LINE_END, 0, HeaderUtil.LINE_END.length);
 		
 	}
 

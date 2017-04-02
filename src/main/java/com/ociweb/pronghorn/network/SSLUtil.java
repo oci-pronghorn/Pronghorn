@@ -616,10 +616,7 @@ public class SSLUtil {
 	public static boolean engineWrap(SSLConnectionHolder ccm, Pipe<NetPayloadSchema> source, Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer) {
 		
 		boolean didWork = false;
-	
-		
-		assert(validateStartMsgIdx(source, isServer));
-		
+			
 		while (Pipe.hasRoomForWrite(target) && Pipe.peekMsg(source, NetPayloadSchema.MSG_PLAIN_210) ) {
 			didWork = true;
 			

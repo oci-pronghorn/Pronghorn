@@ -53,6 +53,11 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         UNKNOWN_HEADER_ID = httpSpec.headerCount+1;
 
         this.headerMap = new TrieParser(2048,false);//do not skip deep checks, we do not know which new headers may appear.
+        
+        //TODO: if the client should write extra data after the first GET/PUT this will be assumed as part of the folloing message and cause parse issues.
+        //      when client was adding extra line feed we hacked this to add headerMap.setUTF8Value("\r\n\r\n", END_OF_HEADER_ID); but that was a bad fix for one special case
+        //      we should think of a more general solution 
+
         headerMap.setUTF8Value("\r\n", END_OF_HEADER_ID);
         headerMap.setUTF8Value("\n", END_OF_HEADER_ID);  //\n must be last because we prefer to have it pick \r\n
     

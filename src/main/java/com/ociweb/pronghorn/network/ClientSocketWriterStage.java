@@ -30,8 +30,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	//FOR HEAVY LOAD TESTING THIS FEATURE MUST BE SWITCHED ON.
 	private static final boolean enableWriteBatching = true;
-	
-	
+		
 	
 	//reqired for simulation of "slow" networks  TODO: read this from the client coordinator?
 	private final boolean debugWithSlowWrites = false;
@@ -114,14 +113,13 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 						msgIdx = Pipe.takeMsgIdx(pipe);
 												
-						//System.err.println("data to read "+Pipe.contentRemaining(input[i])+"    "+PipeReader.getMsgIdx(input[i]));
-														
 						if (NetPayloadSchema.MSG_ENCRYPTED_200 == msgIdx) {
 											
 							final long channelId = Pipe.takeLong(pipe);
 							final long arrivalTime = Pipe.takeLong(pipe);
 							int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
-							int len = Pipe.takeRingByteLen(pipe);
+							int len = Pipe.takeRingByteLen(pipe);							
+							
 
 							ClientConnection cc = (ClientConnection)ccm.get(channelId);
 	
@@ -154,7 +152,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 								
 						        while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
 							            Pipe.peekInt(pipe)==msgIdx && 
-							            		buffers[i].remaining()>pipe.maxAvgVarLen && 
+							            		buffers[i].remaining()>pipe.maxVarLen && 
 							            Pipe.peekLong(pipe, 1)==channelId ) {
 							        			        	
 							        	//logger.trace("opportunity found to batch writes going to {} ",channelId);
@@ -200,17 +198,24 @@ public class ClientSocketWriterStage extends PronghornStage {
 							
 							long workingTailPosition = Pipe.takeLong(pipe);
 							
+							//logger.info("SENDING PLAIN DATA");
+							
 							int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 							int len  = Pipe.takeRingByteLen(pipe);
 	
-						    	if (SSLUtil.HANDSHAKE_POS != workingTailPosition) {
-		 							
-									if (null!=cc) {
-
-										totalBytes += len;
-
-										ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);
+							boolean debug = false;
+							if (debug) {
+								int pos = Pipe.bytePosition(meta, pipe, len);	
+								System.out.println("pos "+pos+" has connection "+(cc!=null)+" channelId "+channelId);
+								Appendables.appendUTF8(System.out, Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe));
+							}
 							
+						    	if (SSLUtil.HANDSHAKE_POS != workingTailPosition) {
+		 							//System.out.println("A");
+									if (null!=cc) {
+										//System.out.println("B");
+										totalBytes += len;
+										ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);							
 
 										assert(connections[i]==null);
 										//copy done here to avoid GC and memory allocation done by socketChannel
@@ -235,7 +240,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 //					            		         (Pipe.peekLong(pipe, 1)==channelId) );										
 										 while (enableWriteBatching && Pipe.hasContentToRead(pipe) && 
 										            Pipe.peekInt(pipe)==msgIdx && 
-										            		buffers[i].remaining()>pipe.maxAvgVarLen && 
+										            		buffers[i].remaining()>pipe.maxVarLen && 
 										            Pipe.peekLong(pipe, 1)==channelId ) {
 										        			        	
 										        	//logger.trace("opportunity found to batch writes going to {} ",channelId);
@@ -251,13 +256,17 @@ public class ClientSocketWriterStage extends PronghornStage {
 										        											            
 										            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 										            int len2 = Pipe.takeRingByteLen(pipe);
+										            
+										            if (debug) {
+										            	int pos2 = Pipe.bytePosition(meta2, pipe, len2);							
+														Appendables.appendUTF8(System.out, Pipe.blob(pipe), pos2, len2, Pipe.blobMask(pipe));
+										            }
+										            
 										            ByteBuffer[] writeBuffs2 = Pipe.wrappedReadingBuffers(pipe, meta2, len2);
 										            
 										            buffers[i].put(writeBuffs2[0]);
 										            buffers[i].put(writeBuffs2[1]);
 										        		
-										      //      System.err.println("did it here");
-										            
 											        Pipe.confirmLowLevelRead(pipe, fragSize);
 											        Pipe.releaseReadLock(pipe);
 											        
@@ -270,27 +279,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 							    			temp.flip();
 							    			testValidContent(i, temp);
 										}
-											
-										
-										//System.err.println("write size of "+buffers[i].position());
-										
+									
 										buffers[i].flip();	
-													
-										
-										
 										connections[i] = cc;
-										
-//										try {
-//											cc.socketChannel.socket().setTcpNoDelay(true);
-//											//buffer size:1313280
-//											System.out.println("buffer size:"+cc.socketChannel.socket().getSendBufferSize());
-//											//cc.socketChannel.socket().sendUrgentData(data); ?? any usages?
-//													
-//										} catch (SocketException e) {
-//											// TODO Auto-generated catch block
-//											e.printStackTrace();
-//										}
-										
 										
 										tryWrite(i);
 									} else {
@@ -328,6 +319,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 	}
 
+	//int total = 0;
+	
 	private void tryWrite(int i) {
 		assert(buffers[i].hasRemaining()) : "please, do not call if there is nothing to write.";	
 		int value = -10;
@@ -335,7 +328,10 @@ public class ClientSocketWriterStage extends PronghornStage {
 			
 			if (!debugWithSlowWrites) {
 				assert(buffers[i].isDirect());
+				//System.err.println("write data block of "+buffers[i].remaining());
 				value = connections[i].getSocketChannel().write(buffers[i]);
+				//total+=value;
+				//System.err.println("written "+value+" of total "+total);
 			} else {
 				//write only this many bytes over the network at a time
 				ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);
@@ -367,18 +363,26 @@ public class ClientSocketWriterStage extends PronghornStage {
 			}
 		} catch (IOException e) {
 			
-			logger.info("excption while writing to socket. ",e);
+			// if e.message is  "Broken pipe" then the connection was alread lost.
+			logger.info("Client side connection closing, excption while writing to socket for Id {}.",connections[i].getId() ,e);
+			
 			
 			this.ccm.releaseResponsePipeLineIdx(connections[i].getId());
 			connections[i].close();
-			connections[i]=null;	
+			connections[i]=null;
+			buffers[i].clear();
+			return;
 		}
 		if (!buffers[i].hasRemaining()) {
 			
 			//logger.info("write clear {}",i);
-			
+			buffers[i].clear();
 			connections[i]=null;
-		} 
+		}  else {
+			//not an error.
+			
+			//logger.info("unable to write all of {} ",i);
+		}
 	}
 	
 	

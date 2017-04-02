@@ -200,6 +200,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	public void dispose(ClientConnection connection) {
 		
 		//we MUST open a new connection so we kill the oldest now.
+		//logger.info("CLIENT SIDE BEGIN CONNECTION CLOSE");
 		
 		connection.beginDisconnect();
 		

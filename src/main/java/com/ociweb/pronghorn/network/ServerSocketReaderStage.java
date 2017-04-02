@@ -46,7 +46,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     private int maxWarningCount = 20;
     
-    private int selectorSize = -10;
     private ArrayList<SelectionKey> doneSelectors= new ArrayList<SelectionKey>(100);
     
 //    private long nextTime = 0;
@@ -134,38 +133,31 @@ public class ServerSocketReaderStage extends PronghornStage {
     	    //max cycles before we take a break.
 	    	int maxIterations = 100; //important or this stage will take all the resources.
 	    	
-	    	Set<SelectionKey> selectedKeys=null;
 	        while (--maxIterations>=0 && hasNewDataToRead()) {
 	        	
 	        	//logger.info("found new data to read on "+groupIdx);
 	            
-	           selectedKeys = selector.selectedKeys();
+	           Set<SelectionKey> selectedKeys = selector.selectedKeys();
 	            
-	           selectorSize = selectedKeys.size();
-	           assert(selectorSize>0);
-	           doneSelectors.clear();	            
-	            
-			   selectedKeys.forEach(selectionKeyAction);
+	           assert(selectedKeys.size()>0);	            
+	           assert(pendingSelections == selectedKeys.size());
+	           doneSelectors.clear();
+		
+	           selectedKeys.forEach(selectionKeyAction);
 	            
 //	           for (SelectionKey selection: selectedKeys) {
 //	                processSelection(selection); 
 //	            }	            
-		        
-		        if (null!=selectedKeys) {
-			        if (pendingSelections==0) {
-			        	selectedKeys.clear();
-			        } else {
-			        	
-			        	//sad but this is the best way to remove these without allocating a new iterator
-			        	// the selectedKeys.removeAll(doneSelectors); will produce garbage upon every call
-			        	int c = doneSelectors.size();
-			        	while (--c>=0) {
+
+			   //sad but this is the best way to remove these without allocating a new iterator
+			   	// the selectedKeys.removeAll(doneSelectors); will produce garbage upon every call
+			   	int c = doneSelectors.size();
+			   	while (--c>=0) {
 			        		selectedKeys.remove(doneSelectors.get(c));
-			        	}
-			        	
-			        }
-		        } 
-		        
+			    }
+
+		      	 assert(pendingSelections == selectedKeys.size());
+			        	 
 	        }	        
     	}
     }
@@ -219,13 +211,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 					if (-1 == responsePipeLineIdx) { //handshake is dropped by input buffer at these loads?
 						releasePipesForUse();
 						responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
-						if (responsePipeLineIdx<0) {
-							
-//								itemsWithNoPipeCount++;								
-//		    			if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
-//			    				logger.warn("bump up maxPartialResponsesServer count, performance is slowed due to waiting for available input pipe on client");
-//		    			}
-						}
 					}
 					if (responsePipeLineIdx>=0) {
 						cc.setPoolReservation(responsePipeLineIdx);
@@ -347,12 +332,15 @@ public class ServerSocketReaderStage extends PronghornStage {
     		return true;
     	}
     	
+    	assert (0 == selector.selectedKeys().size());
+    	    	
+    	
         try {        	        	
         	/////////////
         	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called
         	////////////        	
             pendingSelections=selector.selectNow();
-      //      logger.info("pending new selections {} ",pendingSelections);
+        //    logger.info("pending new selections {} ",pendingSelections);
             return pendingSelections>0;
         } catch (IOException e) {
             logger.error("unexpected shutdown, Selector for this group of connections has crashed with ",e);
@@ -404,6 +392,7 @@ public class ServerSocketReaderStage extends PronghornStage {
                 assert(readCount == len) : "server "+readCount+" vs "+len;
                 
                 if (temp<0) {
+                	logger.info("client disconnected, so release");
                 	//client was disconnected so release all our resources to ensure they can be used by new connections.
                 	selection.cancel();                	
                 	coordinator.releaseResponsePipeLineIdx(cc.id);    
@@ -416,7 +405,7 @@ public class ServerSocketReaderStage extends PronghornStage {
             	
             		this.coordinator.releaseResponsePipeLineIdx(channelId);
             	
-                    recordErrorAndClose(sourceChannel, e);
+                    recordErrorAndClose(sourceChannel, channelId, e);
                         
                     return -1;
             }
@@ -447,7 +436,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 				}
 			}				
 			
-	//		logger.info("normal publish for connection {}     {}     {} channelID {} ",  cc.id, targetPipe, messageType, channelId );
+		//	logger.info("normal publish for connection {}     {}     {} channelID {} ",  cc.id, targetPipe, messageType, channelId );
 			assert(cc.id == channelId) : "should match "+cc.id+" vs "+channelId;
 			
 			boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;   
@@ -456,7 +445,9 @@ public class ServerSocketReaderStage extends PronghornStage {
 //			logger.info("wrote {} bytess to pipe {} ", len,targetPipe);
 			return (fullTarget&&isOpen) ? 0 : 1; //only for 1 can we be sure we read all the data
 		} else {
-//			 logger.info("abandon one record, did not publish because length was {}    {}",len,targetPipe);
+			 
+			logger.info("abandon one record, did not publish because length was {}    {}",len,targetPipe);
+
 			 Pipe.unstoreBlobWorkingHeadPosition(targetPipe);//we did not use or need the writing buffers above.
 			 
              if (isOpen && newBeginning) { //Gatling does this a lot, TODO: we should optimize this case.
@@ -470,17 +461,17 @@ public class ServerSocketReaderStage extends PronghornStage {
              if (!isOpen) {
             	 cc.close();
              }
-             
 			 
 			 return 1;//yes we are done
 		}
 	}
 
-    private void recordErrorAndClose(ReadableByteChannel sourceChannel, IOException e) {
+    private void recordErrorAndClose(ReadableByteChannel sourceChannel, long ccId, IOException e) {
        //   logger.error("unable to read",e);
           //may have been closed while reading so stop
           if (null!=sourceChannel) {
-              try {
+              try {            	  
+            	  coordinator.releaseResponsePipeLineIdx(ccId);
                   sourceChannel.close();
                } catch (IOException e1) {
                    logger.warn("unable to close channel",e1);
@@ -510,9 +501,10 @@ public class ServerSocketReaderStage extends PronghornStage {
         }
         
 //ONLY VALID FOR UTF8
-//        boolean showRequests = true;
+//        boolean showRequests = false;
 //        if (showRequests) {
-//        	logger.info("//////////////////Server read for channel {} \n{}\n/////////////////////",channelId, Appendables.appendUTF8(new StringBuilder(), targetPipe.blobRing, originalBlobPosition, (int)len, targetPipe.blobMask));               
+//        	logger.info("//////////////////Server read for channel {} bPos{} len {} \n{}\n/////////////////////",channelId, originalBlobPosition, len, 
+//        			Appendables.appendUTF8(new StringBuilder(), targetPipe.blobRing, originalBlobPosition, (int)len, targetPipe.blobMask));               
 //        }
         
         

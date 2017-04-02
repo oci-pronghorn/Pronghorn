@@ -123,7 +123,7 @@ public class HTTPServerConfig {
 		
 	    releaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance,releaseMsg);
 	    
-	    newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 10);
+	    newConnectionsConfig = new PipeConfig<ServerConnectionSchema>(ServerConnectionSchema.instance, 100);
 		
 		//Why? the router is helped with lots of extra room for write?  - may need to be bigger for posts.
 	    routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, fromRouterMsg, fromRouterBlob);///if payload is smaller than average file size will be slower

@@ -669,8 +669,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								
 								if (lengthRemaining>0 && trieReader.sourceLen>0) {
 				
-									assert(lengthRemaining == TrieParserReader.parseHasContentLength(trieReader));
-
 									//length is not written since this may accumulate and the full field provides the length
 									final int consumed = TrieParserReader.parseCopy(trieReader, lengthRemaining, writer2);
 									lengthRemaining -= consumed;

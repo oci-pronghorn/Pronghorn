@@ -250,7 +250,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		        	int postLen = DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 		        		
 		        	
-		        	System.err.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
+		        	//System.err.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
 		        	
 		        	
 		        	Pipe.confirmLowLevelWrite(outputPipe,pSize);
@@ -336,7 +336,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		            					                	
 		            	DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 		
-		            	System.err.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
+		            	//System.err.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
 		            	
 		            	Pipe.confirmLowLevelWrite(outputPipe,pSize);
 		            	Pipe.publishWrites(outputPipe);
@@ -406,8 +406,9 @@ public class HTTPClientRequestStage extends PronghornStage {
 		
 		HeaderUtil.writeHeaderEnding(activeWriter, true, (long) 0);  
 		
-		DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
+		int msgLen = DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 
+		
 		Pipe.confirmLowLevelWrite(outputPipe,pSize);
 		Pipe.publishWrites(outputPipe);
 		
@@ -440,7 +441,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 	private static void cleanCloseConnection(ClientConnection connectionToKill, Pipe<NetPayloadSchema> pipe) {
 		
-		//logger.info("CLIENT SIDE BEGIN CONNECTION CLOSE");
+		logger.info("CLIENT SIDE BEGIN CONNECTION CLOSE");
 
 		//do not close that will be done by last stage
 		//must be done first before we send the message

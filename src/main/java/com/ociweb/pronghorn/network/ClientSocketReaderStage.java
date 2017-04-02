@@ -160,8 +160,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    			readCount = (int)((SocketChannel)cc.getSocketChannel()).read(wrappedUnstructuredLayoutBufferOpen, 0, wrappedUnstructuredLayoutBufferOpen.length);
 						    			
 						    		} catch (IOException ioex) {
-						    	
-						    			logger.info("unable to read socket, may not be an error. ",ioex);
+						    			readCount = -1;
+						    			//logger.info("unable to read socket, may not be an error. ",ioex);
 						    			//will continue with readCount of -1;
 						    		}
 							    //	boolean fullBuffer = wrappedUnstructuredLayoutBufferOpen[0].remaining()==0 && wrappedUnstructuredLayoutBufferOpen[1].remaining()==0;
