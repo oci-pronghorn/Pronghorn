@@ -77,4 +77,9 @@ public class JSONStreamVisitorNull implements JSONStreamVisitor {
 	public void customString(int id) {	
 	}
 
+	@Override
+	public boolean isReady() {
+		return true;
+	}
+
 }

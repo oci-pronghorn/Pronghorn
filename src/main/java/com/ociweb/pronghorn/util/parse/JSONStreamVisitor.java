@@ -33,5 +33,7 @@ public interface JSONStreamVisitor {
 	void stringEnd();
 
 	void customString(int id);
+
+	boolean isReady();
 	
 }

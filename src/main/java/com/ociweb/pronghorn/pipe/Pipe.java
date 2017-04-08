@@ -3357,9 +3357,14 @@ public class Pipe<T extends MessageSchema> {
     public static <S extends MessageSchema> void setBytesWorkingTail(Pipe<S> pipe, int value) {
         PaddedInt.set(pipe.blobRingTail.byteWorkingTailPos, value);
     }
-
-    public static <S extends MessageSchema> int getBlobWorkingHeadPosition(Pipe<S> pipe) {
+    
+    public static <S extends MessageSchema> int getWorkingBlobHeadPosition(Pipe<S> pipe) {
         return PaddedInt.get(pipe.blobRingHead.byteWorkingHeadPos);
+    }
+
+    @Deprecated
+    public static <S extends MessageSchema> int getBlobWorkingHeadPosition(Pipe<S> pipe) {
+        return getWorkingBlobHeadPosition(pipe);
     }
     
     public static <S extends MessageSchema> int addAndGetBytesWorkingHeadPosition(Pipe<S> pipe, int inc) {

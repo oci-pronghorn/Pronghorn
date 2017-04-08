@@ -890,6 +890,8 @@ public class TrieParserReader {
     
     private static int parseNumeric(TrieParserReader reader, byte[] source, int sourcePos, long sourceLength, int sourceMask, int numType) {
         
+    	int basePos = sourcePos;
+    	
         byte sign = 1;
         long intValue = 0;
         byte intLength = 0;
@@ -996,7 +998,8 @@ public class TrieParserReader {
             }  while (true);
             
         }
-
+		
+	
 		if (intLength==0) {
 			return -1;
 		}
@@ -1334,9 +1337,9 @@ public class TrieParserReader {
     	
            int pos = idx*4;
            
-           int sign = reader.capturedValues[pos++];
+           long sign = reader.capturedValues[pos++];
            assert(sign!=0);      	
-           return (long) ((reader.capturedValues[pos++]<<32) | (0xFFFFFFFF&reader.capturedValues[pos++]))*sign; 
+           return (long) ((((long)reader.capturedValues[pos++])<<32) | (0xFFFFFFFFL&reader.capturedValues[pos++]))*sign; 
     }
    
     public static byte capturedDecimalEField(TrieParserReader reader, int idx) {

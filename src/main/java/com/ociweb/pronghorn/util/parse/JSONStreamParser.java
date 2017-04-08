@@ -62,16 +62,21 @@ public class JSONStreamParser {
 
 		//2 because we need 2 shorts for the number
 		TrieParser trie = new TrieParser(256,2,false,true);
-
 		
 		for (T key: keys.getEnumConstants()) {			
-			trie.setUTF8Value(key.getKey(), key.ordinal()<<8);
+			int value = key.ordinal()<<8;
+			assert(value>=0);
+			
+			trie.setUTF8Value("\"", key.getKey(), "\"", value);
+			
 		}
-				
 		
 		trie.setValue(JSONConstants.string221, STRING_PART);
 		trie.setValue(JSONConstants.string222, STRING_END); //to captures quoted values		
-		addTokens(trie);		
+		addTokens(trie);
+
+		
+		
 		return trie;
 	}
 	
@@ -157,12 +162,18 @@ public class JSONStreamParser {
 		
 		byte state = DEFAULT_STATE;
 		
-		do {
+		while (visitor.isReady()) {
 			if (DEFAULT_STATE == state) {
+				
+				//StringBuilder builder = new StringBuilder();
+				//TrieParserReader.debugAsUTF8(reader, builder, 180);
 				
 				int id  = (int)TrieParserReader.parseNext(reader, customParser);
 				
-				//logger.info("log event {} ",id);
+				//logger.info("log event {}  from {}",id,builder);
+				
+				
+				//customParser.toDOT(System.out);
 				
 				switch (id) {
 					case STRING_PART: //start of string change mode
@@ -204,9 +215,7 @@ public class JSONStreamParser {
 						visitor.whiteSpace((byte)(id>>8));  // white space
 						break;					
 					case NUMBER_ID:
-						long m = TrieParserReader.capturedDecimalMField(reader, 0);
-		        		byte e = TrieParserReader.capturedDecimalEField(reader, 0);
-		        		visitor.numberValue(m,e);
+				   	    visitor.numberValue(TrieParserReader.capturedDecimalMField(reader, 0),TrieParserReader.capturedDecimalEField(reader, 0));
 						break;					
 					case FALSE_ID:
 						visitor.literalFalse();
@@ -221,6 +230,7 @@ public class JSONStreamParser {
 						//TrieParserReader.debugAsUTF8(reader, System.err);						
 						return;
 					default:
+						
 						//the only values here are the ones matching the custom strings 	
 						visitor.customString(id>>8);	
 				}			
@@ -237,17 +247,16 @@ public class JSONStreamParser {
 					int value = (id>>8);
 					
 					if (0x75!=value) {
+					
 						visitor.stringAccumulator().consume((byte)value);
 						TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());				
+					
 					} else {				
-						
-						
-						
-						
-						//custom UTF processing.
-						//TODO: not implemented
-						// uXXXX 4HexDig
-						throw new UnsupportedOperationException("not yet implemented custom uXXXX values");				
+												
+						// uXXXX 4HexDig conversion
+						converter.setTarget(visitor.stringAccumulator());
+						TrieParserReader.capturedFieldBytes(reader, 0, converter);
+									
 					}
 					
 					if (STRING_END == type) {
@@ -261,7 +270,8 @@ public class JSONStreamParser {
 				}
 				
 			}
-		} while (true);
+			
+		};
 		
 	}
 	
@@ -270,7 +280,7 @@ public class JSONStreamParser {
 		
 		byte state = DEFAULT_STATE;
 		
-		do {
+		while (visitor.isReady()) {
 			if (DEFAULT_STATE == state) {
 				
 				int id  = (int)TrieParserReader.parseNext(reader, defaultParser);
@@ -317,9 +327,7 @@ public class JSONStreamParser {
 						visitor.whiteSpace((byte)(id>>8));  // white space
 						break;					
 					case NUMBER_ID:
-						long m = TrieParserReader.capturedDecimalMField(reader, 0);
-		        		byte e = TrieParserReader.capturedDecimalEField(reader, 0);
-		        		visitor.numberValue(m,e);
+					    visitor.numberValue(TrieParserReader.capturedDecimalMField(reader, 0),TrieParserReader.capturedDecimalEField(reader, 0));
 						break;					
 					case FALSE_ID:
 						visitor.literalFalse();
@@ -370,7 +378,7 @@ public class JSONStreamParser {
 				}
 				
 			}
-		} while (true);
+		}
 		
 	}
 

@@ -996,8 +996,6 @@ public class TrieParserTest {
         
         String actual = map.toDOT(new StringBuilder()).toString();
         
-             
-
         String expected = "digraph {\n"+
         		"node0[label=\"BRANCH ON BIT\n"+
         		" bit:00001000\"]\n"+
@@ -1018,7 +1016,7 @@ public class TrieParserTest {
         		"node17->node21\n"+
         		"node17->node27\n"+
         		"node21[label=\"RUN of 2\n"+
-        		"{-128}{-127}\"]\n"+
+        		"{(-128)}{(-127)}\"]\n"+
         		"node21->node25\n"+
         		"node25[label=\"END47[26]\"]\n"+
         		"node27[label=\"RUN of 2\n"+

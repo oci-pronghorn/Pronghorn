@@ -130,5 +130,11 @@ public class JSONStreamVisitorEnumGenerator implements JSONStreamVisitor {
 		}
 		
 	}
+
+
+	@Override
+	public boolean isReady() {
+		return true;
+	}
 	
 }

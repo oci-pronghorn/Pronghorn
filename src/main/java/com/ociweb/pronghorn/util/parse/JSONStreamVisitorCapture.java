@@ -161,4 +161,10 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 		throw new UnsupportedOperationException();
 	}
 
+
+	@Override
+	public boolean isReady() {
+		return true;
+	}
+
 }

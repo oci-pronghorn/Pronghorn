@@ -537,7 +537,7 @@ class StackStateWalker {
             }
         }
     
-    return hasRoom;
+       return hasRoom;
     }
 
     static void blockWriteFragment0(Pipe pipe, int messageTemplateLOC, FieldReferenceOffsetManager from,

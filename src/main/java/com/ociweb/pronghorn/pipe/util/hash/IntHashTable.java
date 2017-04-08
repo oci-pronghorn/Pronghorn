@@ -32,6 +32,11 @@ public class IntHashTable {
 		return ht.mask+1;
 	}
 	
+	public static int count(IntHashTable ht) {
+		return ht.mask - ht.space;
+	}
+	
+	
 	public static boolean isEmpty(IntHashTable ht) {
 		return ht.space == ht.mask;
 	}

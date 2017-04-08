@@ -35,7 +35,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         
         writer.p.openBlobFieldWrite();
         //NOTE: this method works with both high and low APIs.
-        writer.startPosition = writer.activePosition = Pipe.getBlobWorkingHeadPosition(writer.p);
+        writer.startPosition = writer.activePosition = Pipe.getWorkingBlobHeadPosition(writer.p);
     }
     
     public int closeHighLevelField(int targetFieldLoc) {
@@ -276,7 +276,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
          
 	@Override
 	public void consume(byte[] backing, int pos, int len, int mask) {
-		Pipe.copyBytesFromToRing(backing, pos, Integer.MAX_VALUE, byteBuffer, activePosition, byteMask, len);
+		Pipe.copyBytesFromToRing(backing, pos, mask, byteBuffer, activePosition, byteMask, len);
 		activePosition += len;
 	}
 

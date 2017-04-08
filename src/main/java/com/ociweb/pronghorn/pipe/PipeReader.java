@@ -55,31 +55,31 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	public static int readInt(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
 
-        return Pipe.readInt(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
+        return Pipe.readInt(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
     }
 	
 	public static int readIntSecure(Pipe pipe, int loc, int clearValue) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
 
-        return Pipe.readIntSecure(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc),clearValue);
+        return Pipe.readIntSecure(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc),clearValue);
     }
     	
 	public static short readShort(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
-        return (short)Pipe.readInt(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
+        return (short)Pipe.readInt(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
     }
 	
 	public static byte readByte(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
-        return (byte)Pipe.readInt(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
+        return (byte)Pipe.readInt(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)]+(OFF_MASK&loc));
     }
 
 	public static long readLong(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.LongSigned, TypeMask.LongSignedOptional, TypeMask.LongUnsigned, TypeMask.LongUnsignedOptional)): "Value found "+LOCUtil.typeAsString(loc);
 	    
-        return Pipe.readLong(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] +(OFF_MASK&loc));
+        return Pipe.readLong(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] +(OFF_MASK&loc));
     }
 
     public static double readDouble(Pipe pipe, int loc) {
@@ -116,30 +116,30 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 
   
     public static boolean isEqual(Pipe pipe, int loc, CharSequence charSeq) {
-    	int pos = Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];      	
-    	return Pipe.isEqual(pipe, charSeq, pos, PipeReader.readDataLength(pipe, loc));
+    	int pos = Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];      	
+    	return Pipe.isEqual(pipe, charSeq, pos, PipeReader.readBytesLength(pipe,loc));
     }
     
     public static Appendable readASCII(Pipe pipe, int loc, Appendable target) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
         
-        int pos = Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
-        int len = PipeReader.readDataLength(pipe, loc);
+        int pos = Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
+        int len = PipeReader.readBytesLength(pipe,loc);
         return Pipe.readASCII(pipe, target, pos, len);
     }
 
 	public static <A extends Appendable> A readUTF8(Pipe pipe, int loc, A target) {
 		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
-        int pos = Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
-        return (A)Pipe.readUTF8(pipe, target, pos, PipeReader.readDataLength(pipe, loc));
+        int pos = Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
+        return (A)Pipe.readUTF8(pipe, target, pos, PipeReader.readBytesLength(pipe,loc));
     }
 
 	public static int readUTF8(Pipe pipe, int loc, char[] target, int targetOffset) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		
-        int pos = Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
-        int bytesLength = PipeReader.readDataLength(pipe, loc);
+        int pos = Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
+        int bytesLength = PipeReader.readBytesLength(pipe,loc);
         
         
         if (pos < 0) {
@@ -181,8 +181,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 	
         long tmp = pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
-		int pos = Pipe.slab(pipe)[pipe.mask & (int)(tmp)];
-        int len = Pipe.slab(pipe)[pipe.mask & (int)(tmp + 1)];
+		int pos = Pipe.slab(pipe)[pipe.slabMask & (int)(tmp)];
+        int len = Pipe.slab(pipe)[pipe.slabMask & (int)(tmp + 1)];
         
         
         if (pos < 0) {

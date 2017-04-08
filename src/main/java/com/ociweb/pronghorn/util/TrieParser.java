@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.util;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Arrays;
 
@@ -297,57 +298,61 @@ public class TrieParser implements Serializable {
     }
 
     
-    public StringBuilder toDOT(StringBuilder builder) {
+    public <A extends Appendable> A toDOT(A builder) {
     	
-    	builder.append("digraph {\n");    	
-    	
-        int i = 0;
-        while (i<limit) {
-        	
-        	Appendables.appendValue(builder, "node", i, "[label=\"");
-        	//each type will add its label details and close the line
-        	//after closing the line links can also be added to other jump points       	
-        	        	
-            switch (data[i]) {
-                case TYPE_SAFE_END:
-                    i = toDotSafe(builder, i);
-                    break;
-                case TYPE_ALT_BRANCH:
-                    i = toDotAltBranch(builder, i);
-                    break;                    
-                case TYPE_BRANCH_VALUE:
-                    i = toDotBranchValue(builder, i);
-                    break;
-                case TYPE_VALUE_NUMERIC:
-                    i = toDotNumeric(builder, i);
-                    break;
-                case TYPE_VALUE_BYTES:
-                    i = toDotBytes(builder, i);
-                    break;
-                case TYPE_RUN:
-                    i = toDotRun(builder, i);  
-                    break;
-                case TYPE_END:
-                    i = toDotEnd(builder, i);
-                    break;
-                default:
-                    int remaining = limit-i;
-                    builder.append("ERROR Unrecognized value, remaining "+remaining+"\n");
-                    if (remaining<100) {
-                        builder.append("Remaining:"+Arrays.toString(Arrays.copyOfRange(data, i, limit))+"\n" );
-                    }
-                    
-                    return builder;
-            }            
-        }
-        
-        builder.append("}\n");        
+    	try{    	
+
+	    	builder.append("digraph {\n");    	
+	    	
+	        int i = 0;
+	        while (i<limit) {
+	        	
+	        	Appendables.appendValue(builder, "node", i, "[label=\"");
+	        	//each type will add its label details and close the line
+	        	//after closing the line links can also be added to other jump points       	
+			            switch (data[i]) {
+			                case TYPE_SAFE_END:
+			                    i = toDotSafe(builder, i);
+			                    break;
+			                case TYPE_ALT_BRANCH:
+			                    i = toDotAltBranch(builder, i);
+			                    break;                    
+			                case TYPE_BRANCH_VALUE:
+			                    i = toDotBranchValue(builder, i);
+			                    break;
+			                case TYPE_VALUE_NUMERIC:
+			                    i = toDotNumeric(builder, i);
+			                    break;
+			                case TYPE_VALUE_BYTES:
+			                    i = toDotBytes(builder, i);
+			                    break;
+			                case TYPE_RUN:
+			                    i = toDotRun(builder, i);  
+			                    break;
+			                case TYPE_END:
+			                    i = toDotEnd(builder, i);
+			                    break;
+			                default:
+			                    int remaining = limit-i;
+			                    builder.append("ERROR Unrecognized value, remaining "+remaining+"\n");
+			                    if (remaining<100) {
+			                        builder.append("Remaining:"+Arrays.toString(Arrays.copyOfRange(data, i, limit))+"\n" );
+			                    }
+			                    
+			                    return builder;
+			            }       
+	        }
+	        
+	        builder.append("}\n");        
+    	} catch (IOException ioex) {
+    		throw new RuntimeException(ioex);
+    	}
         
         return builder;
     }
     
     
-    private int toDotSafe(StringBuilder builder, int i) {
+    private int toDotSafe(Appendable builder, int i) throws IOException {
         
     	int start = i;
     	
@@ -355,7 +360,10 @@ public class TrieParser implements Serializable {
         i++;//builder.append(data[i]).append("[").append(i++).append("], ");
         int s = SIZE_OF_RESULT;
         while (--s >= 0) {        
-            builder.append(data[i]).append("[").append(i++).append("], ");
+            Appendables.appendValue(builder, data[i]);
+            builder.append("[");
+            Appendables.appendValue(builder,i++);
+            builder.append("], ");
         }
         
         //end of label
@@ -369,14 +377,21 @@ public class TrieParser implements Serializable {
         return i;
     }
 
-    private int toDotNumeric(StringBuilder builder, int i) {
+    private int toDotNumeric(Appendable builder, int i) throws IOException {
         
     	int start = i;
     	
     	builder.append("EXTRACT_NUMBER");
-        builder.append(data[i]).append("[").append(i++).append("], ");
         
-        builder.append(data[i]).append("[").append(i++).append("]");
+    	Appendables.appendValue(builder, data[i]);       
+        builder.append("[");
+        Appendables.appendValue(builder, i++);
+        builder.append("], ");
+        
+        Appendables.appendValue(builder, data[i]);       
+        builder.append("[");
+        Appendables.appendValue(builder, i++);
+        builder.append("]");
                
         
         //end of label
@@ -390,14 +405,16 @@ public class TrieParser implements Serializable {
         
     }
     
-    private int toDotBytes(StringBuilder builder, int i) {
+    private int toDotBytes(Appendable builder, int i) throws IOException {
     	
     	int start = i;
     	
         builder.append("EXTRACT_BYTES");
-        builder.append(data[i]).append("[").append(i++).append("], ");
+        Appendables.appendValue(builder,data[i]).append("[");
+        Appendables.appendValue(builder,i++).append("], ");
         
-        builder.append(data[i]).append("[").append(i++).append("]");
+        Appendables.appendValue(builder,data[i]).append("[");
+        Appendables.appendValue(builder,i++).append("]");
         
         
         //end of label
@@ -411,12 +428,13 @@ public class TrieParser implements Serializable {
     }
     
     
-    private int toDotEnd(StringBuilder builder, int i) {
+    private int toDotEnd(Appendable builder, int i) throws IOException {
         builder.append("END");
         i++;//builder.append(data[i]).append("[").append(i++).append("], ");
         int s = SIZE_OF_RESULT;
         while (--s >= 0) {        
-            builder.append(data[i]).append("[").append(i++).append("]");
+        	Appendables.appendValue(builder,data[i]).append("[");
+        	Appendables.appendValue(builder,i++).append("]");
         }        
         
         //end of label
@@ -426,7 +444,7 @@ public class TrieParser implements Serializable {
     }
 
 
-    private int toDotRun(StringBuilder builder, int i) {
+    private int toDotRun(Appendable builder, int i) throws IOException {
     	
     	int start = i;
     	
@@ -441,7 +459,8 @@ public class TrieParser implements Serializable {
         	if ((data[i]>=32) && (data[i]<=126)) {
                 builder.append((char)data[i]); 
             } else {
-            	builder.append("{").append(data[i]).append("}");
+            	builder.append("{");
+            	Appendables.appendValue(builder,data[i]).append("}");
             }            
             i++;
         }        
@@ -457,16 +476,20 @@ public class TrieParser implements Serializable {
         return i;
     }
 
-    private int toDotAltBranch(StringBuilder builder, int i) {
+    private int toDotAltBranch(Appendable builder, int i) throws IOException {
     	
     	int start = i;
     	
         builder.append("ALT_BRANCH");
-        builder.append(data[i]).append("[").append(i++).append("], "); //TYPE
+        Appendables.appendValue(builder,data[i]);
+        builder.append("[");
+        Appendables.appendValue(builder,i++).append("], "); //TYPE
       
         //assert(data[i]>=0);
-        builder.append(data[i]).append("[").append(i++).append("], ");//JUMP
-        builder.append(data[i]).append("[").append(i++).append("]");  //JUMP
+        Appendables.appendValue(builder,data[i]).append("[");
+        Appendables.appendValue(builder,i++).append("], ");//JUMP
+        Appendables.appendValue(builder,data[i]).append("[");
+        Appendables.appendValue(builder,i++).append("]");  //JUMP
       
         
         //end of label
@@ -488,7 +511,7 @@ public class TrieParser implements Serializable {
         return i;
     }
 
-    private int toDotBranchValue(StringBuilder builder, int i) {
+    private int toDotBranchValue(Appendable builder, int i) throws IOException {
     	
     	int start = i;
     	
@@ -528,7 +551,7 @@ public class TrieParser implements Serializable {
 		return ~(((source & (0xFF & critera))-1)>>>8) ^ critera>>>8;
 	}
 
-    public int setUTF8Value(CharSequence cs, int value) {
+    public int setUTF8Value(CharSequence cs, long value) {
         
       //  pipe.reset();
         Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
