@@ -1,38 +1,46 @@
 package com.ociweb.pronghorn.network;
 
-import java.io.IOException;
-
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.TrieKeyable;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.parse.JSONStreamParser;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitor;
+import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToPipe;
+import com.ociweb.pronghorn.util.parse.MapJSONToPipeBuilder;
 
-public class NetResponseJSONStage extends PronghornStage {
+public class NetResponseJSONStage<M extends MessageSchema, T extends Enum<T>& TrieKeyable> extends PronghornStage {
 
 	private final Pipe<NetResponseSchema> input;
-	private final JSONStreamVisitor visitor;
+	private JSONStreamVisitor visitor;
 	private TrieParserReader reader;
 	
 	private JSONStreamParser parser = new JSONStreamParser();
-	private final TrieParser customParser;
+	private TrieParser customParser;
+	private final Class<T> keys;
+	private final Pipe output;
+	private final MapJSONToPipeBuilder<M,T> mapper;
 	
 	public NetResponseJSONStage(GraphManager graphManager, Pipe<NetResponseSchema> input, JSONStreamVisitor visitor) {
 		super(graphManager, input, NONE);
 		this.input = input;
 		this.visitor = visitor;
-		this.customParser = null;
+		this.keys = null;
+		this.output = null;
+		this.mapper = null;
 	}
 	
-	public NetResponseJSONStage(GraphManager graphManager, Pipe<NetResponseSchema> input, JSONStreamVisitor visitor, TrieParser customParser) {
-		super(graphManager, input, NONE);
+	public NetResponseJSONStage(GraphManager graphManager, Class<T> keys,  Pipe<NetResponseSchema> input, Pipe<M> output, MapJSONToPipeBuilder<M,T> mapper) {
+		super(graphManager, input, output);
 		this.input = input;
-		this.visitor = visitor;
-		this.customParser = customParser;
+		this.keys = keys;	
+		this.output = output;
+		this.mapper = mapper;
 	}
 
 	@Override
@@ -40,6 +48,10 @@ public class NetResponseJSONStage extends PronghornStage {
 		
 		reader = JSONStreamParser.newReader();
 		
+		if (null!=keys) {						
+			this.visitor = new JSONStreamVisitorToPipe(output, keys, mapper);
+			this.customParser = JSONStreamParser.customParser(keys);	
+		}
 	}
 	
 	
@@ -58,24 +70,19 @@ public class NetResponseJSONStage extends PronghornStage {
 						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
 						DataInputBlobReader.openLowLevelAPIField(stream);
 						
-						int status = stream.readShort();
-						System.out.println("status:"+status);
-						
+						int status = stream.readShort();						
 						int headerId = stream.readShort();
 						
 						while (-1 != headerId) { //end of headers will be marked with -1 value
 							//determine the type
 							
 							int headerValue = stream.readShort();
-							//is this what we need?
-							System.out.println(headerId+"  "+headerValue);
-							
+							//TODO: add support for other header data.
 							
 							//read next
 							headerId = stream.readShort();
 							
 						}
-						System.out.println("last short:"+headerId);
 												
 						DataInputBlobReader.setupParser(stream, reader);
 	
@@ -111,10 +118,17 @@ public class NetResponseJSONStage extends PronghornStage {
 					
 				case NetResponseSchema.MSG_CLOSED_10:
 					
-					Pipe.takeRingByteMetaData(input);
-					Pipe.takeRingByteLen(input);
-					Pipe.takeInt(input);
+					int meta = Pipe.takeRingByteMetaData(input); //host
+					int len  = Pipe.takeRingByteLen(input); //host
+					int pos = Pipe.bytePosition(meta, input, len);
+					byte[] backing = Pipe.blob(input);
+					int mask = Pipe.blobMask(input);
+										
 					
+					int port = Pipe.takeInt(input); //port
+					
+					processCloseEvent(backing, pos, len, mask, port);
+										
 					Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, id));
 					Pipe.releaseReadLock(input);
 					
@@ -124,10 +138,7 @@ public class NetResponseJSONStage extends PronghornStage {
 					Pipe.releaseReadLock(input);
 					requestShutdown();
 					return;
-						
 			}
-					
-			
 		}
 		
 		if (null!=customParser) {
@@ -136,9 +147,10 @@ public class NetResponseJSONStage extends PronghornStage {
 			parser.parse(reader, visitor);
 		}
 		
-		
-		
-		
+	}
+
+	protected void processCloseEvent(byte[] hostBacking, int hostPos, int hostLen, int hostMask, int port) {
+		//default behavior does nothing
 	}
 
 }

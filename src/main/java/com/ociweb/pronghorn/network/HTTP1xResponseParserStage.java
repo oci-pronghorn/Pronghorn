@@ -812,7 +812,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 											DataOutputBlobWriter<NetResponseSchema> writer1 = Pipe.outputStream(targetPipe);							
 											DataOutputBlobWriter.openField(writer1);	
 											
-											logger.info("start collecting new continuation");
+											//logger.info("start collecting new continuation");
 											
 											break;
 										}

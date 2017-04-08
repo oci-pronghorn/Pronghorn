@@ -26,7 +26,7 @@ public class BloomFilter implements Serializable {
     private final long bloomMask;
     public final int bloomSize;//in longs
     
-    private final long[] bloom;
+    protected long[] bloom;
     private final int[] bloomSeeds;
     private long memberCount;
     
@@ -77,6 +77,10 @@ public class BloomFilter implements Serializable {
             }
         }
         
+    }
+    
+    public void clear() {
+    	Arrays.fill(bloom, 0);
     }
     
     private BloomFilter(double p, long n, int k, int bits, int[] seeds) {
@@ -153,7 +157,9 @@ public class BloomFilter implements Serializable {
         while (--i>=0) {
             seen = updateBloom(bloom, bloomMask, seen, MurmurHash.hash32(value, bloomSeeds[i]));  
         }
-        memberCount++;
+        
+        memberCount -= (seen-1);
+        
         return seen;
     }
     
@@ -163,11 +169,13 @@ public class BloomFilter implements Serializable {
         while (--i>=0) {
             seen = updateBloom(bloom, bloomMask, seen, MurmurHash.hash32(source, sourcePos, sourceLen, sourceMask, bloomSeeds[i]));  
         }
-        memberCount++;
+        
+        memberCount -= (seen-1);
+        
         return seen;
     }
 
-    private int updateBloom(long[] bloom, long bloomMask, int seen, int hash32) {
+    protected int updateBloom(long[] bloom, long bloomMask, int seen, int hash32) {
         long h = hash32 & bloomMask;
         int idx = 0x7FFF_FFFF & (int)(h>>6);
         int shift = (int)h&0x3F;

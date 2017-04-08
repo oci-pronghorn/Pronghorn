@@ -18,6 +18,7 @@ import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
@@ -45,21 +46,18 @@ public class NetGraphBuilder {
 			IntHashTable listenerPipeLookup, 
 			int responseQueue, int responseSize, Pipe<NetPayloadSchema>[] requests,
 			Pipe<NetResponseSchema>[] responses) {
-		buildHTTPClientGraph(isTLS, gm, maxPartialResponses, ccm, listenerPipeLookup, responseQueue, responseSize, requests, responses, 2, 2, 2);
+		buildHTTPClientGraph(isTLS, gm, maxPartialResponses, ccm, listenerPipeLookup, responseQueue, responseSize, requests, responses, 2, 2, 2, 2048, 64, 1<<19);
 	}
 	
 	public static void buildHTTPClientGraph(boolean isTLS, GraphManager gm, int maxPartialResponses, ClientCoordinator ccm,
 										IntHashTable listenerPipeLookup, 
 										int responseQueue, int responseSize, Pipe<NetPayloadSchema>[] requests,
-										Pipe<NetResponseSchema>[] responses, int responseUnwrapCount, int clientWrapperCount, int clientWriters
+										Pipe<NetResponseSchema>[] responses, int responseUnwrapCount, int clientWrapperCount, int clientWriters, int releaseCount, 
+										int httpResponseCount, int httpResponseBlob
 										) {
-		
-		int httpResponseSize = 64;
-		int httpResponseBlob = 1<<19;
-		
-		int releaseSize = 2048;
-		
-		PipeConfig<ReleaseSchema> parseReleaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance, releaseSize, 0);
+	
+				
+		PipeConfig<ReleaseSchema> parseReleaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance, releaseCount, 0);
 		
 
 		//must be large enough for handshake plus this is the primary pipe after the socket so it must be a little larger.
@@ -67,7 +65,7 @@ public class NetGraphBuilder {
 		
 		
 		//pipe holds data as it is parsed so making it larger is helpfull
-		PipeConfig<NetPayloadSchema> clientHTTPResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, httpResponseSize, httpResponseBlob); 	
+		PipeConfig<NetPayloadSchema> clientHTTPResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, httpResponseCount, httpResponseBlob); 	
 		
 		
 		///////////////////
@@ -498,6 +496,47 @@ public class NetGraphBuilder {
 		buildHTTPServerGraph(isTLS, gm, config, serverCoord, routerCount, serverConfig);
 		
 		return serverCoord;
+	}
+
+	/**
+	 * Build HTTP client subgraph.  This is the easiest method to set up the client callls since many default values are already set.
+	 * 
+	 * @param gm target graph where this will be added
+	 * @param netPipeLookup table to map the listener id with the target response pipes
+	 * @param httpResponsePipe http responses 
+	 * @param httpRequestsPipe http requests
+	 */	
+	public static void buildHTTPClientGraph(GraphManager gm,
+									  IntHashTable netPipeLookup, 
+									  Pipe<NetResponseSchema>[] httpResponsePipe,
+									  Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe) {
+		
+		int maxPartialResponses=IntHashTable.count(netPipeLookup);
+		int responseQueue = 10;
+		int responseSize = 1<<17;
+		int responseUnwrapCount = 1;
+		int clientWrapperCount = 1;
+		int clientWriters = 1;				
+		int connectionsInBits=6;		
+		int clientRequestCount = 4;
+		int clientRequestSize = 1<<15;
+		boolean isTLS = true;
+		
+		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses);
+				
+		
+		PipeConfig<NetPayloadSchema> clientNetRequestConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,clientRequestCount,clientRequestSize); 
+		
+		Pipe<NetPayloadSchema>[] clientRequests = new Pipe[httpRequestsPipe.length];
+		int r = httpRequestsPipe.length;
+		while (--r>=0) {
+			clientRequests[r] = new Pipe<NetPayloadSchema>(clientNetRequestConfig);		
+		}
+		
+		buildHTTPClientGraph(isTLS, gm, maxPartialResponses, ccm, netPipeLookup, responseQueue, 
+				                             responseSize, clientRequests, httpResponsePipe, responseUnwrapCount, clientWrapperCount, clientWriters, 2048, 64, 1<<19);
+		
+		new HTTPClientRequestStage(gm, ccm, httpRequestsPipe, clientRequests);
 	}
 	
 }
