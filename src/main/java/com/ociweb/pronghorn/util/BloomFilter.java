@@ -17,7 +17,7 @@ public class BloomFilter implements Serializable {
 
     private static final long serialVersionUID = -5898034207488511755L;
     
-    private final long n;
+    protected final long n;
     private final int k; 
     private final double p;
     
@@ -26,9 +26,9 @@ public class BloomFilter implements Serializable {
     private final long bloomMask;
     public final int bloomSize;//in longs
     
-    protected long[] bloom;
+    protected final long[] bloom;
     private final int[] bloomSeeds;
-    private long memberCount;
+    protected long memberCount;
     
     //TODO: replace murmur hash with Rabin for deterministic collision rates
     
