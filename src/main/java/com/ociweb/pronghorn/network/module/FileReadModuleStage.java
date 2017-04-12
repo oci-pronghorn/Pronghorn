@@ -733,8 +733,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
      //       assert(totalBytesWritten>=Pipe.getBlobWorkingHeadPosition(output)) : totalBytesWritten+" must be >= "+Pipe.getBlobWorkingHeadPosition(output);
                         
             //This allows any previous saved values to be automatically removed upon lookup when they are out of range.
-            PipeHashTable.setLowerBounds(outputHash, Pipe.getBlobWorkingHeadPosition(output) - output.blobMask );     
-            assert(Pipe.getBlobWorkingHeadPosition(output) == positionOfFileDataBegin(output));
+            PipeHashTable.setLowerBounds(outputHash, Pipe.getWorkingBlobHeadPosition(output) - output.blobMask );     
+            assert(Pipe.getWorkingBlobHeadPosition(output) == positionOfFileDataBegin(output));
                      
             
                    
@@ -779,7 +779,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         logger.error("Unable to complete file transfer to client ",ioex);
                 
         //now implement an unexpected disconnect of the connection since we had an IO failure.
-        int originalBlobPosition = Pipe.getBlobWorkingHeadPosition(output);
+        int originalBlobPosition = Pipe.getWorkingBlobHeadPosition(output);
         Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, 0, output);
         Pipe.addIntValue(ServerCoordinator.CLOSE_CONNECTION_MASK | ServerCoordinator.END_RESPONSE_MASK, output);
         Pipe.confirmLowLevelWrite(output, Pipe.sizeOf(output, ServerResponseSchema.MSG_TOCHANNEL_100));
@@ -857,7 +857,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 					/*Only use if the full file can be found */fileSize<blobMask) { 
             
             	//do not copy more than 1 fragment at this time
-            	int len = Math.min((int)activePayloadSizeRemaining, output.maxAvgVarLen);
+            	int len = Math.min((int)activePayloadSizeRemaining, output.maxVarLen);
             	int prevBlobPos = Pipe.safeBlobPosAdd(oldBlobPosition,localPos);
             	final byte[] blob = Pipe.blob(output);				                
             	
@@ -871,7 +871,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                 
                 if (supportInFlightCopyByRef) {
 	            	
-	            	final int blobWorkingHeadPosition = Pipe.getBlobWorkingHeadPosition(output);
+	            	final int blobWorkingHeadPosition = Pipe.getWorkingBlobHeadPosition(output);
 	            	assert(totalBytesWritten>=blobWorkingHeadPosition) : totalBytesWritten+" must be >= "+blobWorkingHeadPosition;
 					final int maskedBlobWorkingHeadPosition = blobWorkingHeadPosition&Pipe.blobMask(output);;
 	            	
@@ -886,7 +886,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 	            	
 	            	trailingReader = checkPos;
 	                long checkBob = trailingBlobReader;
-	                long limit = checkBob + (2 * output.maxAvgVarLen);
+	                long limit = checkBob + (2 * output.maxVarLen);
                                 
 	               // System.out.println(output.maxAvgVarLen);
 	                
@@ -1104,7 +1104,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 
         
     	final long messageStartPosition = Pipe.workingHeadPosition(output);
-    	final int initBlob = Pipe.getBlobWorkingHeadPosition(output);
+    	final int initBlob = Pipe.getWorkingBlobHeadPosition(output);
     	
         int payloadMsgSize = Pipe.addMsgIdx(output, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
 
@@ -1127,10 +1127,10 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         
         if (supportInFlightCopyByRef) {
 	        //we can hide 8 bytes here between the data files.
-	        write64(Pipe.blob(output),Pipe.blobMask(output), Pipe.getBlobWorkingHeadPosition(output), fcId);
+	        write64(Pipe.blob(output),Pipe.blobMask(output), Pipe.getWorkingBlobHeadPosition(output), fcId);
 	        
 	        totalBytesWritten = totalBytesWritten + Pipe.publishWrites(output,8);
-	        assert(totalBytesWritten>=Pipe.getBlobWorkingHeadPosition(output)) : totalBytesWritten+" must be >= "+Pipe.getBlobWorkingHeadPosition(output);        
+	        assert(totalBytesWritten>=Pipe.getWorkingBlobHeadPosition(output)) : totalBytesWritten+" must be >= "+Pipe.getWorkingBlobHeadPosition(output);        
 	        
 	        assert (equal64(Pipe.blob(output),Pipe.blobMask(output), initBlob+Pipe.slab(output)[Pipe.slabMask(output)&((int)messageStartPosition+payloadMsgSize-1)]-8, fcId));
         } else {

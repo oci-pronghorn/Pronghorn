@@ -148,6 +148,10 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 	@Override
 	public void shutdown() {
 		
+		if (null==rollings) {
+			//never started up so just exit
+			return;
+		}
 		
 		int i = rollings.length;
 		while (--i>=0) {

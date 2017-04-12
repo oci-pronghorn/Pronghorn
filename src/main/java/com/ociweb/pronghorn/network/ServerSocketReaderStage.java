@@ -392,7 +392,7 @@ public class ServerSocketReaderStage extends PronghornStage {
                 assert(readCount == len) : "server "+readCount+" vs "+len;
                 
                 if (temp<0) {
-                	logger.info("client disconnected, so release");
+                	//logger.info("client disconnected, so release");
                 	//client was disconnected so release all our resources to ensure they can be used by new connections.
                 	selection.cancel();                	
                 	coordinator.releaseResponsePipeLineIdx(cc.id);    
@@ -446,7 +446,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			return (fullTarget&&isOpen) ? 0 : 1; //only for 1 can we be sure we read all the data
 		} else {
 			 
-			logger.info("abandon one record, did not publish because length was {}    {}",len,targetPipe);
+			//logger.info("abandon one record, did not publish because length was {}    {}",len,targetPipe);
 
 			 Pipe.unstoreBlobWorkingHeadPosition(targetPipe);//we did not use or need the writing buffers above.
 			 

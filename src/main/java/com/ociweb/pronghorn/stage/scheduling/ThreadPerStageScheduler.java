@@ -71,6 +71,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		try {
 		    allStagesLatch.await();
         } catch (InterruptedException e) {
+        	Thread.currentThread().interrupt();
         } catch (BrokenBarrierException e) {
         }
 		
@@ -182,6 +183,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
                     try {
                         allStagesLatch.await();
                     } catch (InterruptedException e) {
+                    	Thread.currentThread().interrupt();
                     } catch (BrokenBarrierException e) {
                     }
                     
@@ -251,6 +253,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				       try {
 				            allStagesLatch.await();
 				        } catch (InterruptedException e) {
+				        	Thread.currentThread().interrupt();
 				        } catch (BrokenBarrierException e) {
 				        }
 					runLoop(stage);	
@@ -336,6 +339,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					try {
 				            allStagesLatch.await();
 				        } catch (InterruptedException e) {
+				        	Thread.currentThread().interrupt();
 				        } catch (BrokenBarrierException e) {
 				        }
 					
@@ -408,6 +412,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		        try {
 		            Thread.sleep(nsDelay/1_000_000,(int)(nsDelay%1_000_000));		                                    
 		        } catch (InterruptedException e) {
+		        	Thread.currentThread().interrupt();
 		            break;
 		        }
 		    } else if (playNice && 0==(0x3&i++)){

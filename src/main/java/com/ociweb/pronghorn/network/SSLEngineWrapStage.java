@@ -155,7 +155,11 @@ public class SSLEngineWrapStage extends PronghornStage {
     	    	
     	int j = encryptedContent.length;
     	while (--j>=0) {
-    		Pipe.publishEOF(encryptedContent[j]);
+    		try {
+    			Pipe.publishEOF(encryptedContent[j]);
+    		} catch (NullPointerException npe) {
+    			//ignore, we are shutting down and never started up first.
+    		}
     	}    	
     	
     	boolean debug=false;

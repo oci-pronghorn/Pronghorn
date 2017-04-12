@@ -668,9 +668,7 @@ public class SSLUtil {
 					
 					Pipe.confirmLowLevelWrite(target, Pipe.sizeOf(target, NetPayloadSchema.MSG_ENCRYPTED_200));
 					Pipe.publishWrites(target);
-													
-					assert((soruceBuffers[0].remaining()==0) && (soruceBuffers[1].remaining()==0) ) :"the expected data was not consumed";
-													
+			
 				} else if (status == Status.CLOSED) {	
 				} else {					
 					new Exception("XXXXX unexpected status "+status).printStackTrace();;
@@ -747,7 +745,7 @@ public class SSLUtil {
 	
 				if (null==cc || !cc.isValid) {
 					
-					logger.info("sever {} ignored closed connection {} connectionId {}",isServer,cc,connectionId);
+					//logger.info("sever {} ignored closed connection {} connectionId {}",isServer,cc,connectionId);
 					//do not process this message because the connection has dropped
 
 					Pipe.skipNextFragment(source);

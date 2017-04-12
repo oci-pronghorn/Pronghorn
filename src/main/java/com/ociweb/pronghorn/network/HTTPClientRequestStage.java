@@ -70,8 +70,12 @@ public class HTTPClientRequestStage extends PronghornStage {
 		
 		int i = output.length;
 		while (--i>=0) {
-			Pipe.spinBlockForRoom(output[i], Pipe.EOF_SIZE);
-			Pipe.publishEOF(output[i]);
+			try {
+				Pipe.spinBlockForRoom(output[i], Pipe.EOF_SIZE);
+				Pipe.publishEOF(output[i]);
+			} catch (NullPointerException npe) {
+				//ignore we are shutting down and we never started up before doing so..
+			}
 		}
 	}
 	
