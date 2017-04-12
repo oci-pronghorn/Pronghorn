@@ -56,6 +56,7 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
     TSA("tsa: %b"), //twitter    
     X_TWITTER_RESPONSE_TAGS("x-twitter-response-tags: %b"), //twitter
     X_UA_COMPATIBLE("x-ua-compatible: %b"), //twitter
+    WWW_AUTHENTICATE("www-authenticate: %b"), //twitter    
     ML("ml: %b"), //twitter
     
     X_FORWARD_FOR("x-Forwarded-For: %b"),

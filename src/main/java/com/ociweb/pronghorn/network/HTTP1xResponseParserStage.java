@@ -309,7 +309,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						continue;
 					}
 				
-					targetPipe = output[(short)IntHashTable.getItem(listenerPipeLookup, cc.getUserId())];					
+					int userId = cc.getUserId();
+					targetPipe = output[lookupPipe(userId)];					
 	
 					//append the new data
 					int meta = Pipe.takeRingByteMetaData(pipe);
@@ -392,7 +393,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 						//we have data which must be parsed and we know the output pipe, eg the connection was not closed						
 						//convert long id to the pipe index.
-						targetPipe = output[(short)IntHashTable.getItem(listenerPipeLookup, cc.getUserId())]; 		
+						int userId = cc.getUserId();
+						targetPipe = output[lookupPipe(userId)]; 		
 							
 						///////////////////////
 						//the fastest code is the code which is never run
@@ -422,7 +424,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	
 			
 				
-				if (Pipe.hasContentToRead(pipe) || positionMemoData[lenIdx]>pipe.maxAvgVarLen   ) {
+				if (Pipe.hasContentToRead(pipe) || positionMemoData[lenIdx]>pipe.maxVarLen   ) {
 					foundWork++;//do not leave if we are backed up
 				}
 
@@ -882,6 +884,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
 		//TODO: is work on pipes?
 		
+	}
+
+	private short lookupPipe(int userId) {
+		return null==listenerPipeLookup ? (short)userId : (short)IntHashTable.getItem(listenerPipeLookup, userId);
 	}
 	
 	@Override

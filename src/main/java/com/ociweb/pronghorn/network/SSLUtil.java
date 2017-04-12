@@ -908,8 +908,8 @@ public class SSLUtil {
 				logger.info("OVERFLOW, the pipe {} is not configured to be large enough.", target.id);				
 				return 0;
 				
-			} else if (status==Status.CLOSED){
-				logger.info("closed status detected");
+			} else if (status==Status.CLOSED){				
+				logger.info("closed status detected");				
 				try {
 					 cc.getEngine().closeOutbound();
 					 handShakeUnWrapIfNeeded(cc, source, rolling, workspace, handshakePipe, secureBuffer, isServer, arrivalTime);

@@ -499,10 +499,27 @@ public class NetGraphBuilder {
 	}
 
 	/**
-	 * Build HTTP client subgraph.  This is the easiest method to set up the client callls since many default values are already set.
+	 * Build HTTP client subgraph.  This is the easiest method to set up the client calls since many default values are already set.
 	 * 
 	 * @param gm target graph where this will be added
-	 * @param netPipeLookup table to map the listener id with the target response pipes
+	 * @param httpResponsePipe http responses 
+	 * @param httpRequestsPipe http requests
+	 */	
+	public static void buildHTTPClientGraph(GraphManager gm,
+			  int maxPartialResponses,
+			  Pipe<NetResponseSchema>[] httpResponsePipe,
+			  Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe) {		
+		
+		buildHTTPClientGraph(gm, null, httpResponsePipe, httpRequestsPipe, maxPartialResponses);
+		
+		
+	}
+	
+	/**
+	 * Build HTTP client subgraph. 
+	 * 
+	 * @param gm target graph where this will be added
+	 * @param netPipeLookup table to map the listener id with the target response pipes, can be null for 1 to 1 mapping
 	 * @param httpResponsePipe http responses 
 	 * @param httpRequestsPipe http requests
 	 */	
@@ -511,7 +528,15 @@ public class NetGraphBuilder {
 									  Pipe<NetResponseSchema>[] httpResponsePipe,
 									  Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe) {
 		
-		int maxPartialResponses=IntHashTable.count(netPipeLookup);
+		int maxPartialResponses = IntHashTable.count(netPipeLookup);
+		
+		buildHTTPClientGraph(gm, netPipeLookup, httpResponsePipe, httpRequestsPipe, maxPartialResponses);
+	}
+
+	private static void buildHTTPClientGraph(GraphManager gm, IntHashTable netPipeLookup,
+			Pipe<NetResponseSchema>[] httpResponsePipe, Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe,
+			int maxPartialResponses) {
+		
 		int responseQueue = 10;
 		int responseSize = 1<<17;
 		int responseUnwrapCount = 1;

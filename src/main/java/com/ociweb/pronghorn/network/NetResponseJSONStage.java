@@ -35,8 +35,8 @@ public class NetResponseJSONStage<M extends MessageSchema, T extends Enum<T>& Tr
 		this.mapper = null;
 	}
 	
-	public NetResponseJSONStage(GraphManager graphManager, Class<T> keys,  Pipe<NetResponseSchema> input, Pipe<M> output, MapJSONToPipeBuilder<M,T> mapper) {
-		super(graphManager, input, output);
+	public NetResponseJSONStage(GraphManager graphManager, Class<T> keys,  MapJSONToPipeBuilder<M,T> mapper, Pipe<NetResponseSchema> input, Pipe<M> output, Pipe ... otherOutputs) {
+		super(graphManager, input, join(otherOutputs, output));
 		this.input = input;
 		this.keys = keys;	
 		this.output = output;
