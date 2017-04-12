@@ -109,7 +109,9 @@ public class TrieParser implements Serializable {
 	private int maxNumericLenCapturable = 20; //largest numeric.
     
 
-	
+	public TrieParser() {
+		this(256);
+	}
     
     public TrieParser(int size) {
         this(size, 1, true, true);
@@ -975,7 +977,7 @@ public class TrieParser implements Serializable {
 
     }
 
-    private byte buildNumberBits(byte sourceByte) { 
+    static byte buildNumberBits(byte sourceByte) { 
         
         switch(sourceByte) {
             case ESCAPE_CMD_SIGNED_DEC:

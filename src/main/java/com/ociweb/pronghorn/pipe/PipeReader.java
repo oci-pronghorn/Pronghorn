@@ -699,12 +699,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         }
 	}
 	
-	@Deprecated
-	public static void releasePendingReadLock(Pipe pipe) {
-	    Pipe.releasePendingReadLock(pipe);
-	}
-
-    public static int sizeOfFragment(Pipe input) {
+	public static int sizeOfFragment(Pipe input) {
         return Pipe.from(input).fragDataSize[input.ringWalker.cursor];
     }
     

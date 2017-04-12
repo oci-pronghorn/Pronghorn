@@ -114,6 +114,10 @@ public class LongHashTable {
 			   visitor.visit(key,ht.values[j]);
 		   }		   
 	   }	   
-   }	
+   }
+
+public static int computeBits(int count) {
+	return (int)Math.ceil(Math.log(count)/Math.log(2));
+}	
 	
 }

@@ -897,11 +897,22 @@ public class TrieParserTest {
         assertEquals(Arrays.toString(new byte[]{'A','B','C','D'}),Arrays.toString(expected) );
                
         byte[] example1 = "Content-Length: 1234\r\n".getBytes();
-        assertEquals(2, TrieParserReader.query(reader, map, wrapping(example1,bits), 0, example.length, mask));
+        assertEquals(2, TrieParserReader.query(reader, map, wrapping(example1,bits), 0, example1.length, mask));
         
         int[] target = new int[]{0,0,0,0};
         TrieParserReader.capturedFieldInts(reader, 0, target, 0);
         assertEquals(1,target[0]); //positive
+        
+        byte[] example6 = "%b\r\n".getBytes();  // wildcard of wildcard
+        assertEquals(6, TrieParserReader.query(reader, map, wrapping(example6,bits), 0, example6.length, mask));
+  
+        byte[] example3 = "X-ATT-DeviceId:%b\r\n".getBytes(); // wildcard of wildcard
+        assertEquals(3, TrieParserReader.query(reader, map, wrapping(example3,bits), 0, example3.length, mask));
+      
+        byte[] example2 = "Content-Length: %u\r\n".getBytes();// wildcard of wildcard
+        assertEquals(2, TrieParserReader.query(reader, map, wrapping(example2,bits), 0, example2.length, mask));
+            
+        
         
         //////////////////////////////////////TESTING DUMP
         //System.out.println(map);

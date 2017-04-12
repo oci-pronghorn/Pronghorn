@@ -48,7 +48,6 @@ public class TrieParserReader {
 
     private final static int MAX_ALT_DEPTH = 256; //full recursion on alternate paths from a single point.
     private int altStackPos = 0;
-    private int altStackExtractCount = 0;
     private int[] altStackA = new int[MAX_ALT_DEPTH];
     private int[] altStackB = new int[MAX_ALT_DEPTH];
     private int[] altStackC = new int[MAX_ALT_DEPTH];
@@ -744,8 +743,7 @@ public class TrieParserReader {
         reader.localSourcePos =sourcePos;
         reader.result = unfoundResult;
         reader.normalExit = true;
-        reader.altStackPos = 0;
-        reader.altStackExtractCount = 0;  
+        reader.altStackPos = 0; 
         
         assert(trie.getLimit()>0) : "SequentialTrieParser must be setup up with data before use.";
         
@@ -898,10 +896,25 @@ public class TrieParserReader {
         byte base=10;
         int  dot=0;//only set to one for NUMERIC_FLAG_DECIMAL        
         
+        final short c1 = source[sourceMask & sourcePos];
+        
+        if ('%' == c1) {
+        	sourcePos++;
+        	byte numericType = source[sourceMask & sourcePos];
+        	int typeMask = TrieParser.buildNumberBits(numericType);
+        	sourcePos++;
+        	
+        	if ((typeMask&numType)==typeMask) {
+        		return sourcePos;
+        	} else {
+        		return -1;
+        	}
+        }
+        
+
         if (0!= (TrieParser.NUMERIC_FLAG_DECIMAL&numType)) {
         	dot=1;
-            final short c = source[sourceMask & sourcePos];
-            if ('.'!=c) {
+            if ('.'!=c1) {
                 publish(reader, 1, 0, 1, 10, dot);
                 //do not parse numeric
                 return sourcePos;
@@ -910,8 +923,7 @@ public class TrieParserReader {
             }
             
         } else if (0!= (TrieParser.NUMERIC_FLAG_RATIONAL&numType)) {
-            final short c = source[sourceMask & sourcePos];
-            if ('/'!=c) {
+            if ('/'!=c1) {
                 publish(reader, 1, 1, 1, 10, dot);
                 //do not parse numeric
                 return sourcePos;
@@ -923,12 +935,11 @@ public class TrieParserReader {
         
         //NOTE: these Numeric Flags are invariants consuming runtime resources, this tree could be pre-compiled to remove them if neded.
         if (0!=(TrieParser.NUMERIC_FLAG_SIGN&numType)) {
-            final short c = source[sourceMask & sourcePos];
-            if (c=='-') { //NOTE: check ASCII table there may be a fater way to do this.
+            if (c1=='-') { //NOTE: check ASCII table there may be a fater way to do this.
                 sign = -1;
                 sourcePos++;
             }
-            if (c=='+') {
+            if (c1=='+') {
                 sourcePos++;
             }
         }
