@@ -481,7 +481,7 @@ public class TrieParserReader {
 			reader.runLength += run;   
 		} else if (!(trie.skipDeepChecks && !hasSafePoint && 0==reader.altStackPos)) {
 			scanForRun(reader, trie, source, sourceMask, unfoundResult, hasSafePoint, run);
-		} else { 
+		} else {
 		    reader.pos += run;
 		    reader.localSourcePos += run; 
 		    reader.runLength += run;
@@ -763,7 +763,7 @@ public class TrieParserReader {
 	    assert(jump>0) : "Jump must be postitive but found "+jump;
     	
 	    int aLocal = pos+ TrieParser.BRANCH_JUMP_SIZE;
-	    int bJump  = pos+jump+ TrieParser.BRANCH_JUMP_SIZE;
+	    int bJump = pos+jump+ TrieParser.BRANCH_JUMP_SIZE;
 	   
 	    int localType = localData[aLocal];   		    
 	    assert(TrieParser.TYPE_VALUE_BYTES == localType || 
@@ -854,8 +854,8 @@ public class TrieParserReader {
         do {
         } while ( (noStop=(stopValue!=source[sourceMask & x++])) && (--lim > 0));         
 
-        if (noStop) {//not found!
-            return -1;
+        if (noStop && 0!=stopValue) { //a zero stop value is a rule to caputure evertything up to the end of the data.
+            return -1;//not found!
         }
         return parseBytesFound(reader, sourcePos, sourceMask, x);
     }

@@ -555,10 +555,9 @@ public class TrieParser implements Serializable {
 
     public int setUTF8Value(CharSequence cs, long value) {
         
-      //  pipe.reset();
         Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
         
-        int origPos = Pipe.getBlobWorkingHeadPosition(pipe);
+        int origPos = Pipe.getWorkingBlobHeadPosition(pipe);
         int len = Pipe.copyUTF8ToByte(cs, 0, cs.length(), pipe);
         Pipe.addBytePosAndLen(pipe, origPos, len);        
         Pipe.publishWrites(pipe);
@@ -578,7 +577,7 @@ public class TrieParser implements Serializable {
         
         Pipe.addMsgIdx(pipe, 0);
         
-        int origPos = Pipe.getBlobWorkingHeadPosition(pipe);
+        int origPos = Pipe.getWorkingBlobHeadPosition(pipe);
         int len = 0;
         len += Pipe.copyUTF8ToByte(cs, 0, cs.length(), pipe);        
         len += Pipe.copyUTF8ToByte(suffix, 0, suffix.length(), pipe);
@@ -673,7 +672,7 @@ public class TrieParser implements Serializable {
 							final int sourceLength1 = sourceLength-length; 
                             assert(sourceLength1>=1);
 							          
-							writeEnd(writeRuns(insertAltBranch(0, data, pos-1, source, sourcePos1, sourceLength1, sourceMask), source, sourcePos1, sourceLength1, sourceMask), value); 
+							writeEnd(writeRuns(insertAltBranch(0, pos-1, source, sourcePos1, sourceLength1, sourceMask), source, sourcePos1, sourceLength1, sourceMask), value); 
                             maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                             return;
                             
@@ -686,7 +685,7 @@ public class TrieParser implements Serializable {
                         break;
                     case TYPE_ALT_BRANCH:
                  
-                        altBranch(data, pos, sourcePos, (((int)data[pos++])<<15) | (0x7FFF&data[pos++]), data[pos]);
+                        altBranch(pos, sourcePos, (((int)data[pos++])<<15) | (0x7FFF&data[pos++]), data[pos]);
                                              
                         pos       = altStackA[--altStackPos];
                         sourcePos = altStackB[altStackPos];
@@ -711,7 +710,7 @@ public class TrieParser implements Serializable {
                     	}
 					    final int insertLengthNumericCapture = sourceLength-length;
                         assert(insertLengthNumericCapture>=1);
-					    writeEnd(writeRuns(insertAltBranch(0, data, pos-1, source, sourcePos, insertLengthNumericCapture, sourceMask), source, sourcePos, insertLengthNumericCapture, sourceMask), value);
+					    writeEnd(writeRuns(insertAltBranch(0, pos-1, source, sourcePos, insertLengthNumericCapture, sourceMask), source, sourcePos, insertLengthNumericCapture, sourceMask), value);
                         return;
 
                     case TYPE_VALUE_BYTES:
@@ -720,10 +719,11 @@ public class TrieParser implements Serializable {
                         
                     	if ('%'!=source[sourceMask & sourcePos]     ||
                     		'b'!=source[sourceMask & (sourcePos+1)] ||
-                    		data[pos]!=source[sourceMask & (sourcePos+2)] ) {   	
+                    		data[pos]!=source[sourceMask & (sourcePos+2)] ) {   
+                    		
                     		final int insertLengthBytesCapture = sourceLength-length;								
 							assert(insertLengthBytesCapture>=1);					           
-							writeEnd(writeRuns(insertAltBranch(0, data, pos-1, source, sourcePos, insertLengthBytesCapture, sourceMask), source, sourcePos, insertLengthBytesCapture, sourceMask), value);
+							writeEnd(writeRuns(insertAltBranch(0, pos-1, source, sourcePos, insertLengthBytesCapture, sourceMask), source, sourcePos, insertLengthBytesCapture, sourceMask), value);
                     		return;
                     		
                     	} else {
@@ -756,8 +756,8 @@ public class TrieParser implements Serializable {
                                     //confirm second value is not also the escape byte so we do have a command
                                     if (ESCAPE_BYTE != sourceByte) {
                                         fieldExtractionsCount++;
-                                        
-										insertAtBranchValueAlt(pos, data, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun,	sourcePos-2); //TODO: this count can be off by buried extractions.      
+                                                                                
+										insertAtBranchValueAlt(pos, source, sourceLength, sourceMask, value, length, runPos, run, r+afterWhileRun,	sourcePos-2); //TODO: this count can be off by buried extractions.      
 									                                   
                                         maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                                         return;
@@ -776,7 +776,7 @@ public class TrieParser implements Serializable {
                             }
                             length = afterWhileLength;
                             //matched up to this point but this was shorter than the run so insert a safe point
-                            insertNewSafePoint(pos, data, source, sourcePos, afterWhileRun, sourceMask, value, runPos);     
+                            insertNewSafePoint(pos, source, sourcePos, afterWhileRun, sourceMask, value, runPos);     
                             maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                             return;
                         }                        
@@ -791,7 +791,7 @@ public class TrieParser implements Serializable {
                                 if (ESCAPE_BYTE != sourceByte) {
                                     //sourceByte holds the specific command
                                     fieldExtractionsCount++;
-									insertAtBranchValueAlt(pos+1, data, source, sourceLength, sourceMask, value, length, runPos, run, r,	sourcePos-2);
+									insertAtBranchValueAlt(pos+1, source, sourceLength, sourceMask, value, length, runPos, run, r,	sourcePos-2);
 								                                       
                                     maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                                     return;
@@ -815,7 +815,7 @@ public class TrieParser implements Serializable {
                     case TYPE_END:
                         
                         if (sourceLength>length) {
-                            convertEndToNewSafePoint(pos, data, source, sourcePos, sourceLength-length, sourceMask, value);               
+                            convertEndToNewSafePoint(pos, source, sourcePos, sourceLength-length, sourceMask, value);               
                         } else {
                             writeEndValue(pos, value);
                         }
@@ -898,18 +898,18 @@ public class TrieParser implements Serializable {
     	maxNumericLenCapturable = value;
 	}
 
-	void recurseAltBranch(short[] localData, int pos, int offset) {
-        int type = localData[pos];
+	void recurseAltBranch(int pos, int offset) {
+        int type = data[pos];
         if (type == TrieParser.TYPE_ALT_BRANCH) {
             
             pos++;
             if (1 == TrieParser.BRANCH_JUMP_SIZE ) {
-                altBranch(localData, pos, offset, localData[pos++], localData[pos]);                                   
+                altBranch(pos, offset, data[pos++], data[pos]);                                   
             } else {
-                assert(localData[pos]>=0): "bad value "+localData[pos];
-                assert(localData[pos+1]>=0): "bad value "+localData[pos+1];
+                assert(data[pos]>=0): "bad value "+data[pos];
+                assert(data[pos+1]>=0): "bad value "+data[pos+1];
                 
-                altBranch(localData, pos, offset, (((int)localData[pos++])<<15) | (0x7FFF&localData[pos++]), localData[pos]); 
+                altBranch( pos, offset, (((int)data[pos++])<<15) | (0x7FFF&data[pos++]), data[pos]); 
             }
             
         } else {
@@ -919,7 +919,7 @@ public class TrieParser implements Serializable {
                 
                 int j = 0;//TODO: can replace with keeping track of this value instead of scanning for it.
                 while (j< altStackPos ) {
-                    if (localData[altStackA[j]] != TrieParser.TYPE_VALUE_BYTES){
+                    if (data[altStackA[j]] != TrieParser.TYPE_VALUE_BYTES){
                         break;
                     }
                     j++;
@@ -953,20 +953,20 @@ public class TrieParser implements Serializable {
         }
     }
     
-    void altBranch(short[] localData, int pos, int offset, int jump, int peekNextType) {
+    void altBranch(int pos, int offset, int jump, int peekNextType) {
         assert(jump>0) : "Jump must be postitive but found "+jump;
         
         //put extract first so its at the bottom of the stack
         if (TrieParser.TYPE_VALUE_BYTES == peekNextType || TrieParser.TYPE_VALUE_NUMERIC==peekNextType) {
             //Take the Jump value first, the local value has an extraction.
             //push the LocalValue
-            recurseAltBranch(localData, pos+ TrieParser.BRANCH_JUMP_SIZE, offset);
-            recurseAltBranch(localData, pos+jump+ TrieParser.BRANCH_JUMP_SIZE, offset);           
+            recurseAltBranch(pos+ TrieParser.BRANCH_JUMP_SIZE, offset);
+            recurseAltBranch(pos+jump+ TrieParser.BRANCH_JUMP_SIZE, offset);           
         } else {
             //Take the Local value first
             //push the JumpValue
-            recurseAltBranch(localData, pos+jump+ TrieParser.BRANCH_JUMP_SIZE, offset);
-            recurseAltBranch(localData, pos+ TrieParser.BRANCH_JUMP_SIZE, offset);
+            recurseAltBranch(pos+jump+ TrieParser.BRANCH_JUMP_SIZE, offset);
+            recurseAltBranch(pos+ TrieParser.BRANCH_JUMP_SIZE, offset);
         }
     }
     
@@ -998,7 +998,7 @@ public class TrieParser implements Serializable {
     }
 
 
-    private void convertEndToNewSafePoint(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, long value) {
+    private void convertEndToNewSafePoint(int pos, byte[] source, int sourcePos, int sourceLength, int sourceMask, long value) {
         //convert end to safe, pos is now at the location of SIZE_OF_RESULT data
         
         if (data[pos-1] != TYPE_END) {
@@ -1041,9 +1041,10 @@ public class TrieParser implements Serializable {
                 value = source[sourceMask & (sourcePos+i)];
                 if (ESCAPE_BYTE != value) {
                     if (ESCAPE_CMD_BYTES == value) { //%bX
-                        i++;//skip over the X
-                        adjustment--; //bytes is 2 but to request it is 3 so go down by one
-                        
+                    	if (sourceLength>2) {//do not adjust if %b was found at the end.
+                    		i++;
+                    		adjustment--; //bytes is 2 but to request it is 3 so go down by one
+                    	}
                     } else {
                         //no change
                         //all numerics are 2 but to request it is also 2 so no change.
@@ -1072,7 +1073,7 @@ public class TrieParser implements Serializable {
     }
 
 
-    private int insertNewSafePoint(int pos, short[] data, byte[] source, int sourcePos, int sourceLength, int sourceMask, long value, int runLenPos) {
+    private int insertNewSafePoint(int pos, byte[] source, int sourcePos, int sourceLength, int sourceMask, long value, int runLenPos) {
         //convert end to safe
         
         makeRoomForInsert(sourceLength, pos, SIZE_OF_SAFE_END);
@@ -1085,19 +1086,21 @@ public class TrieParser implements Serializable {
         return pos;
     }
 
-	private void insertAtBranchValueAlt(final int pos, short[] data, byte[] source, int sourceLength, int sourceMask,
+	private void insertAtBranchValueAlt(final int pos, byte[] source, int sourceLength, int sourceMask,
 			long value, int length, int runPos, int run, int r1, final int sourceCharPos) {
 		r1++;
 		if (r1 == run) {
+			System.err.println("after run "+run);
 			final int insertLength = sourceLength - length;
 			assert(insertLength>=1);
 		           
-			writeEnd(writeRuns(insertAltBranch(0, data, pos>=3 ? pos-3 : 0, source, sourceCharPos, insertLength, sourceMask), source, sourceCharPos, insertLength, sourceMask), value);
+			writeEnd(writeRuns(insertAltBranch(0, pos>=3 ? pos-3 : 0, source, sourceCharPos, insertLength, sourceMask), source, sourceCharPos, insertLength, sourceMask), value);
 		} else {
+			
 			final int insertLength = sourceLength - (length+(data[runPos] = (short)(run-r1)));
 			assert(insertLength>=1);
-           
-			writeEnd(writeRuns(insertAltBranch(r1, data, pos-1, source, sourceCharPos, insertLength, sourceMask), source, sourceCharPos, insertLength, sourceMask), value);
+			           
+			writeEnd(writeRuns(insertAltBranch(r1, pos, source, sourceCharPos, insertLength, sourceMask), source, sourceCharPos, insertLength, sourceMask), value);
 		}
 	}
 
@@ -1191,10 +1194,11 @@ public class TrieParser implements Serializable {
 		return pos;
 	}
 
-	private int insertAltBranch(int danglingByteCount, short[] data, int pos, byte[] source, final int sourcePos, final int sourceLength, int sourceMask) {
-		
+	private int insertAltBranch(int danglingByteCount, int pos, byte[] source, final int sourcePos, final int sourceLength, int sourceMask) {
+
 		int requiredRoom = SIZE_OF_END_1 + SIZE_OF_ALT_BRANCH + sourceLength + midRunEscapeValuesSizeAdjustment(source, sourcePos, sourceLength, sourceMask);  
-		final int oldValueIdx = makeRoomForInsert(danglingByteCount, pos, requiredRoom);
+
+		makeRoomForInsert(danglingByteCount, pos, requiredRoom);
 
 		requiredRoom -= SIZE_OF_ALT_BRANCH;//subtract the size of the branch operator
 		data[pos++] = TYPE_ALT_BRANCH;         
@@ -1433,7 +1437,7 @@ public class TrieParser implements Serializable {
                           }
                           
                           if (ESCAPE_CMD_BYTES == value) {
-                              byte stop = source[sourceMask & sourcePos++];
+                              byte stop = sourcePos<sourceStop ? source[sourceMask & sourcePos++] : 0; //end of run if this is the end of the template pattern
                               pos = writeBytesExtract(pos, stop);
                               
                               //Recursion used to complete the rest of the run.
