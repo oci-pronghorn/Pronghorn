@@ -2675,12 +2675,12 @@ public class Pipe<T extends MessageSchema> {
 
 
 
-    public static <S extends MessageSchema> byte[] byteBackingArray(int meta, Pipe<S> rbRingBuffer) {
-        return rbRingBuffer.blobRingLookup[meta>>>31];
+    public static <S extends MessageSchema> byte[] byteBackingArray(int meta, Pipe<S> pipe) {
+        return pipe.blobRingLookup[meta>>>31];
     }
 
-	public static <S extends MessageSchema> int readRingByteMetaData(int pos, Pipe<S> rb) {
-		return readValue(pos,rb.slabRing,rb.slabMask,rb.slabRingTail.workingTailPos.value);
+	public static <S extends MessageSchema> int readRingByteMetaData(int pos, Pipe<S> pipe) {
+		return readValue(pos,pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value);
 	}
 
 	//TODO: must always read metadata before length, easy mistake to make, need assert to ensure this is caught if happens.
