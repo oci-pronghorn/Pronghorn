@@ -5,13 +5,13 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.BloomFilter;
+import com.ociweb.pronghorn.util.RollingBloomFilter;
 
 public class BloomFilterStage<T extends MessageSchema> extends PronghornStage {
 
     private final Pipe<T> input;
     private final Pipe<T>[] outputs;
-    private BloomFilter   bloomFilter;
+    private RollingBloomFilter   bloomFilter;
     private final long    maxElementCount;
     private final double  probability;
     private int           msgId = -2;
@@ -29,7 +29,7 @@ public class BloomFilterStage<T extends MessageSchema> extends PronghornStage {
 
     @Override
     public void startup() {
-        bloomFilter = new BloomFilter(maxElementCount, probability);
+        bloomFilter = new RollingBloomFilter(maxElementCount, probability);
     }
     
     
