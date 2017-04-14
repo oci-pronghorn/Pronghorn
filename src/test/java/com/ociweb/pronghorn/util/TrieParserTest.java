@@ -399,6 +399,23 @@ public class TrieParserTest {
 		assertEquals(value3, TrieParserReader.query(reader,map, wrapping(text2,4), 0, text2.length, 15));
 		
     }
+    
+    @Test
+    public void testNumberAtEnd() {
+    	
+    	TrieParserReader reader = new TrieParserReader(3,true);
+        TrieParser map = new TrieParser(16);
+        map.setUTF8Value("unfollow/%u",   value2); 
+        
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
+        
+        byte[] text1 = "unfollow/123".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text1,4), 0, text1.length, 15));
+        
+        byte[] text2 = "unfollow/%u".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text2,4), 0, text2.length, 15));
+		
+    }
 
     @Test
     public void testSimpleURLPaths() {
@@ -411,19 +428,31 @@ public class TrieParserTest {
         assertFalse(map.toString(),map.toString().contains("ERROR"));
               
         byte[] text3 = "No root".getBytes();
-        assertEquals(-1, TrieParserReader.query(reader,map, wrapping(text3,5), 0, text3.length, 15));
+        assertEquals(-1, TrieParserReader.query(reader,map, wrapping(text3,5), 0, text3.length, 31));
         
-        byte[] text1 = "/unfollow?user=1234".getBytes();
-		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text1,5), 0, text1.length, 15));
+        byte[] text1 = "/unfollow?user=1234x".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text1,5), 0, text1.length, 31));
 				        
 		byte[] text2 = "/Hello: 123\r\n".getBytes();
-		assertEquals(value3, TrieParserReader.query(reader,map, wrapping(text2,5), 0, text2.length, 15));
+		assertEquals(value3, TrieParserReader.query(reader,map, wrapping(text2,5), 0, text2.length, 31));
 
-		
     }
 
     
-    
+
+    @Test
+    public void testNumericPatternMatchesPatternDef() {
+    	
+    	TrieParserReader reader = new TrieParserReader(3);
+        TrieParser map = new TrieParser(16,false);
+        map.setUTF8Value("/unfollow?user=%u",   value2);
+        map.setUTF8Value("/%b", value3); 
+        
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
+		
+	    byte[] text0 = "/unfollow?user=%u".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text0,5), 0, text0.length, 31));
+    }
     
     @Test
     public void testOrder1Insert() {

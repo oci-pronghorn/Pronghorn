@@ -33,8 +33,6 @@ public class TrieParserReader {
     private int    capturedPos;
     private byte[] capturedBlobArray;
     
-    private final int maxVarLength;
-    private final int minVarLength;
     
     private long    safeReturnValue = -1;
     private int     safeCapturedPos = -1;
@@ -71,19 +69,23 @@ public class TrieParserReader {
         
     }
     
+    private final boolean alwaysCompletePayloads;
+    
     public TrieParserReader() {
-        this(0,1,65536);
+        this(0, false);
+    }
+    
+    public TrieParserReader(boolean alwaysCompletePayloads) {
+        this(0, alwaysCompletePayloads);
     }
         
     public TrieParserReader(int maxCapturedFields) {
-        this(maxCapturedFields*4,1,65536);
+    	this(maxCapturedFields,false);
     }
 
-    public TrieParserReader(int maxCapturedFields, int minVarLength, int maxVarLength) {
+    public TrieParserReader(int maxCapturedFields, boolean alwaysCompletePayloads) {
         this.capturedValues = new int[maxCapturedFields*4];
-        this.minVarLength = minVarLength;
-        this.maxVarLength = maxVarLength;
-     
+        this.alwaysCompletePayloads = alwaysCompletePayloads;
     }
     
     
@@ -966,7 +968,11 @@ public class TrieParserReader {
 	                	break;//next char is not valid.
 	                }
                 } else {
-                	return -1; //we are waiting for more digits in the feed. 
+                	if (reader.alwaysCompletePayloads) {
+                		break;
+                	} else {
+                		return -1; //we are waiting for more digits in the feed. 
+                	}
                 }
                 
             }  while (true);
@@ -1001,8 +1007,13 @@ public class TrieParserReader {
 		                	}
                 	}
                 } else {
-                	 // intLength>=sourceLength
-                	intLength=0;
+                	if (reader.alwaysCompletePayloads) {
+                		//do not reset the length;
+                	} else {
+                		//we are waiting for more digits in the feed. 
+                		// intLength>=sourceLength
+                		intLength=0;
+                	}
                 	break;
                 }
                 
