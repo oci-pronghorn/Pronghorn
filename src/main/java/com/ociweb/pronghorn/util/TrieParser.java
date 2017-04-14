@@ -60,8 +60,8 @@ public class TrieParser implements Serializable {
     //EXTRACT VALUE
     public static final byte ESCAPE_CMD_SIGNED_DEC    = 'i'; //signedInt (may be hex if starts with 0x)
     public static final byte ESCAPE_CMD_UNSIGNED_DEC  = 'u'; //unsignedInt (may be hex if starts with 0x)
-    public static final byte ESCAPE_CMD_SIGNED_HEX    = 'I'; //signedInt (may skip prefix 0x)
-    public static final byte ESCAPE_CMD_UNSIGNED_HEX  = 'U'; //unsignedInt (may skip prefix 0x) 
+    public static final byte ESCAPE_CMD_SIGNED_HEX    = 'I'; //signedInt (may skip prefix 0x, assumed to be hex)
+    public static final byte ESCAPE_CMD_UNSIGNED_HEX  = 'U'; //unsignedInt (may skip prefix 0x, assumbed to be hex) 
     public static final byte ESCAPE_CMD_DECIMAL       = '.'; //if found capture u and places else captures zero and 1 place
     public static final byte ESCAPE_CMD_RATIONAL      = '/'; //if found capture i else captures 1
     //EXTRACTED BYTES
@@ -103,6 +103,15 @@ public class TrieParser implements Serializable {
     private int[] altStackA = new int[MAX_ALT_DEPTH];
     private int[] altStackB = new int[MAX_ALT_DEPTH];
     
+    int extractionCount;
+    byte[] extractions = new byte[32];//hard coded limit of extraction points, could be larger but why...
+    
+    /**
+     * Provides visibility into which fields will be extracted from the last known pattern
+     */
+    public byte[] lastSetValueExtractonPattern() {
+    	return Arrays.copyOfRange(extractions, 0, extractionCount);
+    }    
 
 	//used for detection of parse errors, eg do we need more data or did something bad happen.
 	private int maxBytesCapturable      = 500; //largest text
@@ -162,10 +171,6 @@ public class TrieParser implements Serializable {
     
     public void setValue(byte[] source, int offset, int length, int mask, long value) {
         setValue(0, source, offset, length, mask, value);        
-    }
-    
-    public int getMaxExtractedFields() {
-        return maxExtractedFields;
     }
     
     public String toString() {
@@ -644,7 +649,7 @@ public class TrieParser implements Serializable {
     private void setValue(int pos, byte[] source, int sourcePos, final int sourceLength, int sourceMask, long value) {
         
     	
-    	
+    	extractionCount = 0;//clear this so it can be requested after set is complete.
     	longestKnown = Math.max(longestKnown, computeMax(source, sourcePos, sourceLength, sourceMask));
     	shortestKnown = Math.min(shortestKnown, sourceLength);
     	
@@ -697,6 +702,7 @@ public class TrieParser implements Serializable {
                         
                         if ('%'==source[sourceMask & sourcePos]) {                        	
                     		byte second = source[sourceMask & (sourcePos+1)];
+                    		extractions[extractionCount++] = second;
                 			if (ESCAPE_CMD_UNSIGNED_DEC==second || ESCAPE_CMD_UNSIGNED_HEX==second ||
                 				ESCAPE_CMD_DECIMAL==second      || ESCAPE_CMD_RATIONAL==second ||
                 				ESCAPE_CMD_SIGNED_DEC==second   || ESCAPE_CMD_SIGNED_HEX==second) {
@@ -716,6 +722,8 @@ public class TrieParser implements Serializable {
                     case TYPE_VALUE_BYTES:
                         fieldExtractionsCount++;       
                         maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
+                        
+                        extractions[extractionCount++] = ESCAPE_CMD_BYTES;
                         
                     	if ('%'!=source[sourceMask & sourcePos]     ||
                     		'b'!=source[sourceMask & (sourcePos+1)] ||
@@ -1395,12 +1403,14 @@ public class TrieParser implements Serializable {
     private int writeBytesExtract(int pos, short stop) {
         data[pos++] = TYPE_VALUE_BYTES;
         data[pos++] = stop;
+        extractions[extractionCount++] = ESCAPE_CMD_BYTES;
         return pos;
     }
     
     private int writeNumericExtract(int pos, int type) {
         data[pos++] = TYPE_VALUE_NUMERIC;
         data[pos++] = buildNumberBits((byte)type);
+        extractions[extractionCount++] = (byte)type;
         return pos;
     }
  

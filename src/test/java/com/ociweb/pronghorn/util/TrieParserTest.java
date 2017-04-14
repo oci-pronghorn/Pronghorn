@@ -403,9 +403,13 @@ public class TrieParserTest {
     @Test
     public void testNumberAtEnd() {
     	
-    	TrieParserReader reader = new TrieParserReader(3,true);
+    	TrieParserReader reader = new TrieParserReader(2,true);
         TrieParser map = new TrieParser(16);
-        map.setUTF8Value("unfollow/%u",   value2); 
+        map.setValue("unfollow/%u".getBytes(),0,"unfollow/%u".length(),Integer.MAX_VALUE, value2);
+        
+        byte[] pat = map.lastSetValueExtractonPattern();
+        assertEquals(1,pat.length);
+        assertEquals(TrieParser.ESCAPE_CMD_UNSIGNED_DEC, pat[0]);
         
         assertFalse(map.toString(),map.toString().contains("ERROR"));
         
