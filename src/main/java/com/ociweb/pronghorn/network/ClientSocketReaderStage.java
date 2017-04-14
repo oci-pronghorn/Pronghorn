@@ -247,10 +247,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 					    }
 					    
 					}	
-//					if (openCount>0) {
-//						didWork = 1; 
-//					}
-				
+
 			} while(didWork>0);
 
 				
