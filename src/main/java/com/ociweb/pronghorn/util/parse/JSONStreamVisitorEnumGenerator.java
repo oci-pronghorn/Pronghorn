@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.util.parse;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
@@ -109,7 +110,7 @@ public class JSONStreamVisitorEnumGenerator implements JSONStreamVisitor {
 		
 		ArrayList<String> list = new ArrayList<String>(keys);
 		
-		list.sort(new Comparator<String>(){
+		Collections.sort(list, new Comparator<String>(){
 
 			@Override
 			public int compare(String o1, String o2) {
