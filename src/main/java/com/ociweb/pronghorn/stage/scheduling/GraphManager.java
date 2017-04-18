@@ -1352,7 +1352,7 @@ public class GraphManager {
 	                	target.append(" CPU N/A%");
 	                	
             			logger.info("B bad % value {} {} {} {}",pct,runNs, m.stageShutdownTimeNs[stage.stageId],  m.stageStartTimeNs[stage.stageId] );
-            					
+            	
             			
 	                }
 	                target.append("\"");
