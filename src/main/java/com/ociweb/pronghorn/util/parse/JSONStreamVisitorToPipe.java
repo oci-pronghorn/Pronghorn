@@ -150,7 +150,11 @@ public class JSONStreamVisitorToPipe<M extends MessageSchema, K extends Enum<K> 
 			if (mapper.isInteger(activeFieldLoc)) {
 				PipeWriter.writeInt(pipe, activeFieldLoc, -1);
 			} else {
-				PipeWriter.writeUTF8(pipe, activeFieldLoc, "null");
+				if (mapper.isLong(activeFieldLoc)) {
+					PipeWriter.writeLong(pipe, activeFieldLoc, -1);
+				} else {
+				    PipeWriter.writeUTF8(pipe, activeFieldLoc, "null");
+				}
 			}
 			activeFieldLoc = 0;
 		}		

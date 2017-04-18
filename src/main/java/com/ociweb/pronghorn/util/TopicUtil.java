@@ -14,8 +14,7 @@ public class TopicUtil {
 		int idx = scanForLevelPosition(topic, levelIndex, 0, limit);
 		
 		while (idx<limit) {
-			char c = topic.charAt(idx);
-			
+			char c = topic.charAt(idx++);			
 			if (c>='0' && c<='9') {							
 				result = ((result*10) + (c-'0'));				
 			} else {

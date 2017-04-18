@@ -594,11 +594,11 @@ public class Appendables {
     	
     	if (shift<0) {//last letter.
     		
-    		shift+=8; // 2 4 (we now have 10)
+    		shift+=8; 
     		accumulator = (accumulator<<8) | (0xFF&0);
     		i++;
     		
-    		while (shift >= 0) {
+    		while (shift > 0) {    			
     			target.append(base64[0x3F&(accumulator>>shift)]);
     			shift -= 6; //took top 6 now shift is at -4,
     			count++;
