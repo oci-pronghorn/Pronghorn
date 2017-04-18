@@ -69,11 +69,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private static final int H_TRANSFER_ENCODING = 4;	
 	private static final int H_CONTENT_LENGTH = 5;
 	private static final int H_CONTENT_TYPE = 6;
-			  
-	private int brokenDetected = 7;
-	private long nextTime = System.currentTimeMillis()+20_000;
-	private int lastValue = -1;
-	
+
 	
 	private int[] lastMessageParseSizes;
 	private int   lastMessageParseSizeCount = 0;
@@ -81,13 +77,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private int lastMessageType=-1;   //does not change
 	private long lastPayloadSize=-1;  //does not change
 	
-
-	//private StringBuilder capturedContent = new StringBuilder();
-			
 	
 	public HTTP1xResponseParserStage(GraphManager graphManager, 
 			                       Pipe<NetPayloadSchema>[] input, 
-			                       Pipe<NetResponseSchema>[] output, Pipe<ReleaseSchema> ackStop, 
+			                       Pipe<NetResponseSchema>[] output, 
+			                       Pipe<ReleaseSchema> ackStop, 
 			                       IntHashTable listenerPipeLookup,
 			                       ClientCoordinator ccm,
 			                       HTTPSpecification<?,?,?,?> httpSpec) {
@@ -881,8 +875,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				 
 			}
 		} while(foundWork>0);//hasDataToParse()); //stay when very busy
-
-		//TODO: is work on pipes?
 		
 	}
 
@@ -892,10 +884,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	
 	@Override
 	public void shutdown() {
-
-//		System.out.println();
-//		System.out.println( capturedContent );
-		
 	}
 
 	private void parseErrorWhileChunking(final int memoIdx, Pipe<NetPayloadSchema> pipe, int readingPos) {
@@ -931,25 +919,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		lastMessageParseSizes[lastMessageParseSizeCount++] = size;		
 	}
 
-	
-
-//	private boolean hasDataToParse() {
-//		int i = input.length;
-//	
-//		while (--i>=0) {
-//		
-//				final int memoIdx = i<<2; //base index is i  * 4;
-//				//final int posIdx   = memoIdx;
-//				final int lenIdx   = memoIdx+1;
-//				//final int stateIdx = memoIdx+2;		
-//				if (positionMemoData[lenIdx]>200_000) {
-//					return true;
-//				}
-//		
-//		}
-//		return false;
-//	}
-
 	private void reportCorruptStream2(ClientConnection cc) {
 		StringBuilder builder = new StringBuilder();
 		TrieParserReader.debugAsUTF8(trieReader, builder, revisionMap.longestKnown()*2);
@@ -968,10 +937,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		writer.writeShort((short)-1); //END OF HEADER FIELDS 		
 		
 		//Now write header message, we know there is room because we checked before starting.
-		//TODO: in the future should use multiple fragments to allow for streaming response, important feature.
-		
-		//logger.info("**************** end of headers length values is {}",payloadLengthData[i]);
-										    
+						    
 		if (payloadLengthData[i] == -1) {
 			positionMemoData[stateIdx]= state= 3;	
 			payloadLengthData[i] = 0;//starting chunk size.			
@@ -1033,14 +999,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			default:
 				if (headerId ==UNSUPPORTED_HEADER_ID) {
 					reportUnsupportedHeader(len);					
-				} else {
-
-					
-//					StringBuilder temp = new StringBuilder();
-//					TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, temp);
-//					logger.info("{} {} B {}   captured length: {}",headerId,trieReader.sourcePos,httpSpec.headers[headerId], temp.length());
-	
-				}
+				} 
 				break;
 		}
 				 
@@ -1108,6 +1067,5 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		return 1;
 
 	}
-	
 
 }
