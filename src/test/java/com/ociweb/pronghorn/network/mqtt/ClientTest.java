@@ -5,9 +5,12 @@ import static org.junit.Assert.*;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.schema.MQTTConnectionInSchema;
 import com.ociweb.pronghorn.network.schema.MQTTConnectionOutSchema;
 import com.ociweb.pronghorn.network.schema.MQTTIdRangeSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
+import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.NonThreadScheduler;
@@ -28,14 +31,17 @@ public class ClientTest {
        MQTTAPIStage api = new MQTTAPIStage(gm, idGenIn, fromBroker, toBroker, ttlSec);
        
        Pipe<MQTTIdRangeSchema> idGenOut= MQTTIdRangeSchema.instance.newPipe(100,0);
-       String rate = "0";
+
        int inFlight =  10;
-       boolean secure = false;
-       int port= 1883;
        
-       new MQTTConnectionStage(gm, toBroker, fromBroker, idGenOut, rate, inFlight, ttlSec, secure, port); 
+       Pipe<ReleaseSchema> netInRelease = null; //TODO: need to tie in?
+       Pipe<NetPayloadSchema> netIn = null; //TODO: need to tie in?
+       Pipe<NetPayloadSchema>[] netOut = null; //TODO: need to tie in?
        
-       new IdGenStage(gm, idGenOut, idGenIn, rate);
+       ClientCoordinator ccm = null;
+       new MQTTConnectionStage(gm, toBroker, fromBroker, idGenOut, ccm, netInRelease, netIn, netOut, inFlight, ttlSec); 
+       
+       new IdGenStage(gm, idGenOut, idGenIn);
        
        NonThreadScheduler scheduler = new NonThreadScheduler(gm);
        

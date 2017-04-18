@@ -37,15 +37,13 @@ public class IdGenStage extends PronghornStage {
 	private final int sizeOfFragment;
 	private static final int theOneMsg = 0;// there is only 1 message supported by this stage
 		
-	public IdGenStage(GraphManager graphManager, Pipe<MQTTIdRangeSchema> input, Pipe<MQTTIdRangeSchema> output, String rate) {
+	public IdGenStage(GraphManager graphManager, Pipe<MQTTIdRangeSchema> input, Pipe<MQTTIdRangeSchema> output) {
 		super(graphManager, input, output);
 		this.inputs = new Pipe[]{input};
 		this.outputs = new Pipe[]{output};
 		assert(Pipe.from(input).equals(Pipe.from(output))) : "Both must have same message types ";	
 		this.sizeOfFragment = Pipe.from(input).fragDataSize[theOneMsg];
-		
-		GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, this);
-		
+				
 		//must be set so this stage will get shut down and ignore the fact that is has un-consumed messages coming in 
         GraphManager.addNota(graphManager,GraphManager.PRODUCER, GraphManager.PRODUCER, this);
 	}

@@ -61,8 +61,6 @@ public class MQTTConnectionStage extends PronghornStage {
 	 private ActivityAfterWrite AFTER_WRITE_CONTINUE_REPLAY;
 	 private ActivityAfterWrite AFTER_WRITE_SET_DUP_BIT;
 	        
-     private int port;         
-
      //TODO: we must finish full publish and subcribe before teh 17th of aug.
 
 	 //TLS     socket 8883
@@ -99,42 +97,43 @@ public class MQTTConnectionStage extends PronghornStage {
 		 assert(INPUT_BUFFER_SIZE>=4) : "Must be >= 4";
 		 assert(0==(INPUT_BUFFER_SIZE&0x3)) : "Must be divisable by 4";
 	 }
+
 	 
-	//startup server
-	//      java -Djavax.net.ssl.keyStore=mySrvKeystore -Djavax.net.ssl.keyStorePassword=123456 ServerApp
-	//      
-			//startup client 
-	//      java -Djavax.net.ssl.trustStore=mySrvKeystore -Djavax.net.ssl.trustStorePassword=123456 ClientApp
-	//      
-			
-	//      //debug
-	//      -Djava.protocol.handler.pkgs=com.sun.net.ssl.internal.www.protocol -Djavax.net.debug=ssl
+	private final ClientCoordinator ccm;
+    private final Pipe<ReleaseSchema> netInRelease;
+    private final Pipe<NetPayloadSchema> netIn;
+    private final Pipe<NetPayloadSchema>[] netOut;
 	 
-	//TCP/IP port 1883 is reserved with IANA for use with MQTT. 
-	//TCP/IP port 8883 is also registered, for using MQTT over SSL.
-	 
-	 // Pipe<NetPayloadSchema>[] output
-	 // Pipe<NetPayloadSchema>[] input, 
-	 //Pipe<ReleaseSchema> ackStop,
-     //IntHashTable listenerPipeLookup,
-     //ClientCoordinator ccm
-	 
-	protected MQTTConnectionStage(GraphManager graphManager, Pipe<MQTTConnectionInSchema> apiIn, 
-			                                             Pipe<MQTTConnectionOutSchema> apiOut, Pipe<MQTTIdRangeSchema> idGenOut, String rate, 
-			                                             int inFlightLimit, int ttlSec, boolean secure, int port) {
+    //IntHashTable listenerPipeLookup,
+    //ClientCoordinator ccm
+	protected MQTTConnectionStage(GraphManager graphManager,
+	                              Pipe<MQTTConnectionInSchema> apiIn, 
+			                      Pipe<MQTTConnectionOutSchema> apiOut, 
+			                      Pipe<MQTTIdRangeSchema> idGenOut, 
+			                      
+			                      ClientCoordinator ccm,
+			                      
+			                      Pipe<ReleaseSchema> netInRelease,
+			                      Pipe<NetPayloadSchema> netIn,
+			                      Pipe<NetPayloadSchema>[] netOut,			                      
+			                      
+			                      int inFlightLimit, int ttlSec) {
 		super(graphManager, 
-				new Pipe[]{apiIn},
-				new Pipe[]{apiOut,idGenOut});
+				new Pipe[]{apiIn,netIn},
+				join(netOut,apiOut,idGenOut,netInRelease));
 
 		this.inFlightLimit = inFlightLimit;
 		this.timeLimitMS = 1000 * ttlSec; //TODO: check spec this should send ping before this limit?
-		
-		this.port = port;
-		
+				
 		this.apiIn = apiIn;
 		this.apiOut = apiOut;
 		this.idGenOut = idGenOut;   //use low level api, only 1 message type
-				
+		
+		this.netInRelease = netInRelease;
+		this.netIn = netIn;
+		this.netOut = netOut;
+		this.ccm = ccm;
+		
 		this.genIdMessageSize = Pipe.from(idGenOut).fragDataSize[getIdMessageIdx];
 		this.maxAckMessageSize = computeMaxAckMessageSize(apiOut);
 		
@@ -142,7 +141,14 @@ public class MQTTConnectionStage extends PronghornStage {
 		Pipe.batchAllReleases(apiIn);
 		Pipe.setPublishBatchSize(apiOut, 0); //Do not store up acks send them immediately
 		
-		GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, this);
+
+		
+   //     activeConnection = ClientCoordinator.openConnection(ccm, hostBack, hostPos, hostLen, hostMask, port, userId, output, connectionId);		
+		
+//        int outIdx = clientConnection.requestPipeLineIdx();        
+//        clientConnection.incRequestsSent();//count of messages can only be done here.
+//        Pipe<NetPayloadSchema> outputPipe = output[outIdx];
+	
 		
 	}
 	
@@ -422,7 +428,7 @@ public class MQTTConnectionStage extends PronghornStage {
         					    
                                 InetSocketAddress tempAddr = null;
                                 try {
-                                    tempAddr = new InetSocketAddressImmutable(host, port);
+                                    tempAddr = new InetSocketAddressImmutable(host, 1883);
                                 } catch (Throwable t) {
                                     log.error("Reconnecting but new new host was unknown.",t);
                                 }
