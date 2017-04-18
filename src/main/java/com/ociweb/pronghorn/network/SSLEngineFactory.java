@@ -1,15 +1,10 @@
 package com.ociweb.pronghorn.network;
 
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.security.KeyStore;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 
-import javax.annotation.Resource;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
-
 import javax.net.ssl.SSLContext;
 
 //import io.netty.handler.ssl.SslContext;
@@ -18,7 +13,6 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

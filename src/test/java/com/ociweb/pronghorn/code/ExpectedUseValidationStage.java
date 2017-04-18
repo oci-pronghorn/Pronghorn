@@ -4,7 +4,6 @@ import org.junit.Assert;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.network.GVSValidator;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class ExpectedUseValidationStage extends PronghornStage{

@@ -4,7 +4,6 @@ import java.util.Random;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.network.GGSGenerator;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class ExpectedUseGeneratorStage extends PronghornStage {

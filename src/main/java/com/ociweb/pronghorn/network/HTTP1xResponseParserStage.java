@@ -87,7 +87,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	
 	public HTTP1xResponseParserStage(GraphManager graphManager, 
 			                       Pipe<NetPayloadSchema>[] input, 
-			                       Pipe<NetResponseSchema>[] output, Pipe<ReleaseSchema> ackStop, 
+			                       Pipe<NetResponseSchema>[] output, 
+			                       Pipe<ReleaseSchema> ackStop, 
 			                       IntHashTable listenerPipeLookup,
 			                       ClientCoordinator ccm,
 			                       HTTPSpecification<?,?,?,?> httpSpec) {
