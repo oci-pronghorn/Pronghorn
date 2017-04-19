@@ -15,8 +15,8 @@ public class MQTTAPIStage extends PronghornStage {
 	private final Pipe<MQTTIdRangeSchema> idGenIn; //used by same external thread
 	private final Pipe<MQTTConnectionInSchema> toBroker;
 	 	
-	private int nextFreePacketId = -1;
-	private int nextFreePacketIdLimit = -1;
+	private IdGenCache genCache = new IdGenCache();
+	
 	private final int ttlSec;
 	
 	public final byte[] clientId = "somename for this client in UTF8".getBytes(); //same for entire run
@@ -28,10 +28,7 @@ public class MQTTAPIStage extends PronghornStage {
   	 * 
   	 */
 	
-	private final int sizeOfPacketIdFragment;
 	private final int sizeOfPubRel;
-	private static final int theOneMsg = 0;// there is only 1 message supported by this stage
-	
 	
 	protected MQTTAPIStage(GraphManager gm, Pipe<MQTTIdRangeSchema> idGenIn, Pipe<MQTTConnectionOutSchema> fromBroker, Pipe<MQTTConnectionInSchema> toBroker, int ttlSec) {
 		super(gm, new Pipe[]{idGenIn,fromBroker}, toBroker);
@@ -42,7 +39,6 @@ public class MQTTAPIStage extends PronghornStage {
 		
 		this.ttlSec = ttlSec;
 			  	
-        this.sizeOfPacketIdFragment = Pipe.from(idGenIn).fragDataSize[theOneMsg];
         this.sizeOfPubRel = Pipe.from(toBroker).fragDataSize[MQTTConnectionInSchema.MSG_PUBREL_9];
         
         //add one more ring buffer so apps can write directly to it since this stage needs to copy from something.
@@ -158,101 +154,37 @@ public class MQTTAPIStage extends PronghornStage {
 	                                  byte[] willMessageBytes, int willMessageBytesIdx, int willMessageBytesLength, int willMessageBytesMask,
 	                                  byte[] username, byte[] passwordBytes) {
 
-		if (PipeWriter.tryWriteFragment(toBroker, MQTTConnectionInSchema.MSG_CONNECT_2)) {
-			
-			PipeWriter.writeASCII(toBroker, MQTTConnectionInSchema.MSG_CONNECT_2_FIELD_URL_400, url);
-						
-			//this is the high level API however we are writing bytes to to the end of the unstructured buffer.
-			final int bytePos = Pipe.getWorkingBlobHeadPosition(toBroker);
-			byte[] byteBuffer = Pipe.blob(toBroker);
-			int byteMask = Pipe.blobMask(toBroker);
-						
-			int len = MQTTEncoder.buildConnectPacket(bytePos, byteBuffer, byteMask, ttlSec, conFlags, 
-					                                 clientId, 0 , clientId.length, 0xFFFF,
-					                                 willTopic, willTopicIdx , willTopicLength, willTopicMask,
-					                                 willMessageBytes, willMessageBytesIdx, willMessageBytesLength, willMessageBytesMask,
-					                                 username, 0, username.length, 0xFFFF, //TODO: add rest of fields
-					                                 passwordBytes, 0, passwordBytes.length, 0xFFFF);//TODO: add rest of fields
-			assert(len>0);
-			PipeWriter.writeSpecialBytesPosAndLen(toBroker, MQTTConnectionInSchema.MSG_CONNECT_2_FIELD_PACKETDATA_300, len, bytePos);
-			
-			PipeWriter.publishWrites(toBroker);
-			return true;
-		} else {
-			return false;
-		}
+		Pipe<MQTTConnectionInSchema> toBroker = this.toBroker;
+		byte[] clientId = this.clientId;
+		int ttlSec = this.ttlSec;
+		
+		return MQTTEncoder.requestConnect(url, conFlags, willTopic, willTopicIdx, willTopicLength, willTopicMask, willMessageBytes,
+				willMessageBytesIdx, willMessageBytesLength, willMessageBytesMask, username, passwordBytes, toBroker,
+				clientId, ttlSec);
 
 	}
+
+
 
 	public boolean requestDisconnect() {
+		Pipe<MQTTConnectionInSchema> toBroker = this.toBroker;
 		
-	//    System.err.println("AAA :"+RingBuffer.bytesWriteBase(toCon));
-	    
-		if (PipeWriter.tryWriteFragment(toBroker, MQTTConnectionInSchema.MSG_DISCONNECT_5)) {
-		//    System.err.println("BBB :"+RingBuffer.bytesWriteBase(toCon));
-			PipeWriter.publishWrites(toBroker);
-	//		 System.err.println("CCCC :"+RingBuffer.bytesWriteBase(toCon));
-			return true;
-		} else {
-			return false;
-		}		
+		return MQTTEncoder.requestDisconnect(toBroker);		
 				
 	}
+
 
 	public int requestPublish(byte[] topic, int topicIdx, int topicLength, int topicMask, 
 			                   int qualityOfService, int retain, 
 			                   byte[] payload, int payloadIdx, int payloadLength, int payloadMask) {
-				
-		if (nextFreePacketId >= nextFreePacketIdLimit) {
-			//get next range
-			if (Pipe.hasContentToRead(idGenIn, sizeOfPacketIdFragment)) {				
-				loadNextPacketIdRange();				
-			} else {
-			    System.err.println("no id");
-				return -1;
-			}	
-		}
-		////
 		
-		if (PipeWriter.tryWriteFragment(toBroker, MQTTConnectionInSchema.MSG_PUBLISH_1)) {
-						
-		    
-			PipeWriter.writeInt(toBroker, MQTTConnectionInSchema.MSG_PUBLISH_1_FIELD_QOS_100, qualityOfService);
-			
-			int localPacketId = (0==qualityOfService) ? -1 : nextFreePacketId++;
-						
-			PipeWriter.writeInt(toBroker, MQTTConnectionInSchema.MSG_PUBLISH_1_FIELD_PACKETID_200, localPacketId);
-						
-			final int bytePos = Pipe.getBlobWorkingHeadPosition(toBroker);
-			byte[] byteBuffer = Pipe.byteBuffer(toBroker);
-			int byteMask = Pipe.blobMask(toBroker);
-			
-			int len = MQTTEncoder.buildPublishPacket(bytePos, byteBuffer, byteMask, qualityOfService, retain, 
-					                topic, topicIdx, topicLength, topicMask, 
-					                payload, payloadIdx, payloadLength, payloadMask, localPacketId);
-			PipeWriter.writeSpecialBytesPosAndLen(toBroker, MQTTConnectionInSchema.MSG_PUBLISH_1_FIELD_PACKETDATA_300, len, bytePos);
-				
-			PipeWriter.publishWrites(toBroker);
-
-			return localPacketId<0 ? 0 : localPacketId;//TODO: we have no id for qos 0 this is dirty.
-		} else {
-		    System.err.println("no room to write");
-			return -1;
-		}
-				
-	}
-
-
-	private void loadNextPacketIdRange() {
-		int msgIdx = Pipe.takeMsgIdx(idGenIn);
-		assert(theOneMsg == msgIdx);
+		Pipe<MQTTConnectionInSchema> toBroker = this.toBroker;
+		IdGenCache genCache = this.genCache;
+		Pipe<MQTTIdRangeSchema> idGenIn = this.idGenIn;
 		
-		int range = Pipe.takeValue(idGenIn);
-		nextFreePacketId = 0xFFFF&range;
-		nextFreePacketIdLimit = 0xFFFF&(range>>16); 
-						
-		Pipe.releaseReads(idGenIn);
-		Pipe.confirmLowLevelRead(idGenIn, sizeOfPacketIdFragment);
+		return MQTTEncoder.requestPublish(topic, topicIdx, topicLength, topicMask, qualityOfService, retain, payload, payloadIdx,
+				payloadLength, payloadMask, toBroker, genCache, idGenIn);
+				
 	}
 	
 }

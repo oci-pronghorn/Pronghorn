@@ -106,6 +106,7 @@ public class MQTTConnectionStage extends PronghornStage {
 	 
     //IntHashTable listenerPipeLookup,
     //ClientCoordinator ccm
+    @Deprecated
 	protected MQTTConnectionStage(GraphManager graphManager,
 	                              Pipe<MQTTConnectionInSchema> apiIn, 
 			                      Pipe<MQTTConnectionOutSchema> apiOut, 
@@ -307,7 +308,7 @@ public class MQTTConnectionStage extends PronghornStage {
     	
     			if (channel.isOpen()) {
     			    if (hasPendingWrites()) {
-    			        if (!nonBlockingByteBufferWrite(now)) {
+    			        if (!nonBlockingByteBufferWrite(now)) { //#################### write out to socket
     			            continueReason = 2;
     			            return;//do not continue because we have pending writes which must be done first.
     			        }			        
@@ -344,7 +345,7 @@ public class MQTTConnectionStage extends PronghornStage {
     			    
     				try {		
     				    boolean hasPreviousData = inputSocketBuffer.position()>0;
-    					while ( channel.read(inputSocketBuffer) > 0 || hasPreviousData) { //TODO: copy to HZ impl
+    					while ( channel.read(inputSocketBuffer) > 0 || hasPreviousData) { //############## read from socket
     					    
   //  					    System.out.println("bytes from socket "+Arrays.toString(Arrays.copyOfRange(inputSocketBuffer.array(), 0, inputSocketBuffer.position())));
     					    
@@ -420,11 +421,11 @@ public class MQTTConnectionStage extends PronghornStage {
         					log.debug("sending a new connect request to server");
     
         					//only create new host iff it does not match the old value
-        					if (null==addr || !PipeReader.isEqual(apiIn, MQTTConnectionInSchema.MSG_CONNECT_2_FIELD_URL_400, addr.getHostString())) {
+        					if (null==addr || !PipeReader.isEqual(apiIn, MQTTConnectionInSchema.MSG_CONNECT_2_FIELD_HOST_401, addr.getHostString())) {
         					    //this is only for a new connection as defined from the api
         					            					
         					    commonBuilder.setLength(0);        					            					    
-        					    String host = PipeReader.readASCII(apiIn, MQTTConnectionInSchema.MSG_CONNECT_2_FIELD_URL_400, commonBuilder).toString();
+        					    String host = PipeReader.readASCII(apiIn, MQTTConnectionInSchema.MSG_CONNECT_2_FIELD_HOST_401, commonBuilder).toString();
         					    
                                 InetSocketAddress tempAddr = null;
                                 try {

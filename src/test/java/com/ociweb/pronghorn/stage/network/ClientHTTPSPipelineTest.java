@@ -8,8 +8,9 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.network.ClientCoordinator;
-import com.ociweb.pronghorn.network.HTTPClientRequestStage;
+import com.ociweb.pronghorn.network.ClientResponseParserFactory;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
+import com.ociweb.pronghorn.network.http.HTTPClientRequestStage;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
@@ -43,7 +44,7 @@ public class ClientHTTPSPipelineTest {
 		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);
 		
 		ClientCoordinator ccm = new ClientCoordinator(base2SimultaniousConnections,inputsCount);
-		IntHashTable listenerPipeLookup = new IntHashTable(base2SimultaniousConnections+2);
+		final IntHashTable listenerPipeLookup = new IntHashTable(base2SimultaniousConnections+2);
 		
 		System.out.println("listeners "+maxListeners);
 		int i = maxListeners;
@@ -64,7 +65,7 @@ public class ClientHTTPSPipelineTest {
 		//holds new requests
 		Pipe<ClientHTTPRequestSchema>[] input = new Pipe[inputsCount];		
 		//responses from the server	
-		Pipe<NetResponseSchema>[] toReactor = new Pipe[maxListeners];	
+		final Pipe<NetResponseSchema>[] toReactor = new Pipe[maxListeners];	
 		
 		
 		int m = maxListeners;
@@ -86,11 +87,23 @@ public class ClientHTTPSPipelineTest {
 		HTTPClientRequestStage requestStage = new HTTPClientRequestStage(gm, ccm, input, clientRequests);
 		
 		
-		NetGraphBuilder.buildHTTPClientGraph(true, gm, 
-				                             maxPartialResponses, ccm, listenerPipeLookup, 
-				                             10,1<<15,
-											 clientRequests, 
-											 toReactor, 2, 2, 2, 2048, 64, 1<<19);
+		ClientResponseParserFactory factory = new ClientResponseParserFactory() {
+
+			@Override
+			public void buildParser(GraphManager gm, ClientCoordinator ccm, 
+								    Pipe<NetPayloadSchema>[] clearResponse,
+								    Pipe<ReleaseSchema> ackReleaseForResponseParser) {
+				
+				NetGraphBuilder.buildHTTP1xResponseParser(gm, ccm, listenerPipeLookup, toReactor, clearResponse, ackReleaseForResponseParser);
+			}
+			
+		};
+		
+		NetGraphBuilder.buildClientGraph(true, gm, 
+				                             ccm, 10,
+				                             1<<15,clientRequests,
+											 2, 
+											 2, 2, 2048, 64, 1<<19, factory);
 		
 		i = toReactor.length;
 		PipeCleanerStage[] cleaners = new PipeCleanerStage[i];

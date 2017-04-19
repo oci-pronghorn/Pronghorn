@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.network;
+package com.ociweb.pronghorn.network.http;
 
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKey;

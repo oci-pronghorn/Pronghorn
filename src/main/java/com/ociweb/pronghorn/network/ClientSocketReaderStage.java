@@ -19,6 +19,7 @@ import com.ociweb.pronghorn.util.Appendables;
 
 public class ClientSocketReaderStage extends PronghornStage {	
 	
+	private static final int SIZE_OF_PLAIN = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
 	private final ClientCoordinator coordinator;
 	private final Pipe<NetPayloadSchema>[] output;
 	private final Pipe<ReleaseSchema>[] releasePipes;
@@ -84,26 +85,28 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 			int didWork = 10;
 			
+			consumeRelease();
+			
 			do {	
 				didWork--;
 		
 					ClientConnection cc;
 					
 					int cpos = maxClients;
-					int openCount = 0;
 					while (--cpos>=0) { 
+						
+						//TODO: this is slow because we are NOT using the e-poll mechanism and we check every connection for data
+						//      this results in many zero reads...
 						cc = coordinator.getClientConnectionByPosition(cpos);
 
-					    if (cc!=null && cc.isValid()) {
-		//			        openCount++;		
-					    	
+					    if (cc!=null /* && cc.isValid()*/) {
+	  	
 					    	//process handshake before reserving one of the pipes
 					    	if (isTLS) {
 					    		
 					    		HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
 					    		//logger.info("has data for {} {} {}",cc,cc.isValid(),handshakeStatus);
-					    		
-					    		
+					  
 					    		 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
 						                Runnable task;//TODO: there is anopporuntity to have this done by a different stage in the future.
 						                while ((task = cc.getEngine().getDelegatedTask()) != null) {
@@ -124,9 +127,10 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 					    	
 					    	//holds the pipe until we gather all the data and got the end of the parse.
-					    	consumeRelease();
+					    //	consumeRelease(); //done once on run only do again if we can no find new input.
 					    	int pipeIdx = coordinator.responsePipeLineIdx(cc.getId());//picks any open pipe to keep the system busy
-					    	if (pipeIdx<0) {				    	
+					    	if (pipeIdx>=0) {					    		
+					    	} else {				    	
 					    		consumeRelease();
 					    		pipeIdx = coordinator.responsePipeLineIdx(cc.getId()); //try again.
 					    		if (pipeIdx<0) {
@@ -149,8 +153,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    		//these buffers are only big enought to accept 1 target.maxAvgVarLen
 						    		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(target);
 						    
-						    		int r1 = wrappedUnstructuredLayoutBufferOpen[0].remaining();
-						    		int r2 = wrappedUnstructuredLayoutBufferOpen[1].remaining();
+//						    		int r1 = wrappedUnstructuredLayoutBufferOpen[0].remaining();
+//						    		int r2 = wrappedUnstructuredLayoutBufferOpen[1].remaining();
 						    		
 						    		
 						    		//TODO: add assert that target bufer is larger than socket buffer.
@@ -164,21 +168,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    			//logger.info("unable to read socket, may not be an error. ",ioex);
 						    			//will continue with readCount of -1;
 						    		}
-							    //	boolean fullBuffer = wrappedUnstructuredLayoutBufferOpen[0].remaining()==0 && wrappedUnstructuredLayoutBufferOpen[1].remaining()==0;
-			
-//						    		
-//						    		if (readCount<0) {
-//						    			
-//						    			logger.info("HIT THE END OF THE STREAM, closed connection must have been requested in header");
-//						    		}
-//						    		
-						 						    				
-							    	
-							    	//logger.trace("client reading {} for id {} fullbuffer {}",readCount,cc.getId(),fullBuffer);
-							    	
+						    //		System.err.println(readCount);
 							    	if (readCount>0) {
-							    		
-							    		openCount++;
 							    		
 							    		totalBytes += readCount;						    		
 							    		//we read some data so send it		
@@ -220,7 +211,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    				validateContent(pipeIdx, target, readCount, originalBlobPosition);
 							    			}		
 							    			
-							    			Pipe.confirmLowLevelWrite(target, Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210));
+							    			Pipe.confirmLowLevelWrite(target, SIZE_OF_PLAIN);
 							    			Pipe.publishWrites(target);
 					    			
 										    			
@@ -230,10 +221,12 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    		//logger.info("zero read detected client side..");
 							    		//nothing to send so let go of byte buffer.
 							    		Pipe.unstoreBlobWorkingHeadPosition(target);
-							    		//return;
 							    	}
 							    	
 						    	} 
+						    	//else {
+						    	//	logger.warn("can not consume no room to write");
+						    	//}
 					    	} else {
 					    		//not an error, just try again later.
 					    		
@@ -332,7 +325,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 		
 		int i = releasePipes.length;
 		while (--i>=0) {			
-			Pipe<ReleaseSchema> ack = releasePipes[i];			
+			Pipe<ReleaseSchema> ack = releasePipes[i];
+			
 			while (Pipe.hasContentToRead(ack)) {
 				int id = Pipe.takeMsgIdx(ack);
 				if (id == ReleaseSchema.MSG_RELEASE_100) {

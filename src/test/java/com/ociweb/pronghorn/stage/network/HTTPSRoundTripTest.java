@@ -13,9 +13,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.network.ClientCoordinator;
-import com.ociweb.pronghorn.network.HTTPClientRequestStage;
-import com.ociweb.pronghorn.network.HTTPServerConfig;
-import com.ociweb.pronghorn.network.ModuleConfig;
+import com.ociweb.pronghorn.network.ClientResponseParserFactory;
 import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.network.SSLConnection;
 import com.ociweb.pronghorn.network.ServerCoordinator;
@@ -24,6 +22,9 @@ import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.http.HTTPClientRequestStage;
+import com.ociweb.pronghorn.network.http.HTTPServerConfig;
+import com.ociweb.pronghorn.network.http.ModuleConfig;
 import com.ociweb.pronghorn.network.module.FileReadModuleStage;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
@@ -195,7 +196,7 @@ public class HTTPSRoundTripTest {
 	//TODO: URGENT must detect when we get the type wrong but with low level API attempt to use values!!
 	
 	@Ignore
-  // @Test
+    //@Test
 	public void roundTripTest2() {
 				
 		{ //Netty bench 14,000 1m  1.5GB  32users
@@ -322,7 +323,7 @@ public class HTTPSRoundTripTest {
 			int netRespQueue = 8;
 			
 			//TODO: to ensure we do not loop back arround (overflow bug to be fixed) this value is set large.
-			int netRespSize = 1<<17;//17;//must be just larger than the socket buffer //TODO: test this when the socket is opened as an assert, must confirm this value is large enought.
+			int netRespSize = 1<<17;//must be just larger than the socket buffer //TODO: test this when the socket is opened as an assert, must confirm this value is large enought.
 			//TODO: even with this there is still corruption in the clientSocketReader...
 			
 			
@@ -594,7 +595,7 @@ public class HTTPSRoundTripTest {
 		//System.err.println("out "+netResponseConfig);	
 		
 		//System.err.println("Bits for pipe lookup "+bitsPlusHashRoom);
-		IntHashTable listenerPipeLookup = new IntHashTable(bitsPlusHashRoom); //bigger for more speed.
+		final IntHashTable listenerPipeLookup = new IntHashTable(bitsPlusHashRoom); //bigger for more speed.
 		
 		
 		int i = input.length;//*usersPerPipe;
@@ -613,7 +614,7 @@ public class HTTPSRoundTripTest {
 		
 		
 		//responses from the server	
-		Pipe<NetResponseSchema>[] toReactor = new Pipe[input.length];	
+		final Pipe<NetResponseSchema>[] toReactor = new Pipe[input.length];	
 				
 		int m = input.length;
 		while (--m>=0) {
@@ -628,13 +629,23 @@ public class HTTPSRoundTripTest {
 			clientRequests[r] = new Pipe<NetPayloadSchema>(httpRequestConfig);		
 		}
 		
+		ClientResponseParserFactory factory = new ClientResponseParserFactory() {
 
-		NetGraphBuilder.buildHTTPClientGraph(isTLS, gm, 
-				                             maxPartialResponses, ccm, listenerPipeLookup,
-				                             netRespQueue,netRespSize,
-											 clientRequests, 
-											 toReactor, 
-											 responseUnwrapUnits, requestWrapUnits, clientWriterStages, 2048, 64, 1<<19);
+			@Override
+			public void buildParser(GraphManager gm, ClientCoordinator ccm, 
+								    Pipe<NetPayloadSchema>[] clearResponse,
+								    Pipe<ReleaseSchema> ackReleaseForResponseParser) {
+				
+				NetGraphBuilder.buildHTTP1xResponseParser(gm, ccm, listenerPipeLookup, toReactor, clearResponse, ackReleaseForResponseParser);
+			}
+			
+		};
+
+		NetGraphBuilder.buildClientGraph(isTLS, gm, 
+				                             ccm, netRespQueue,
+				                             netRespSize,clientRequests,
+											 responseUnwrapUnits, 
+											 requestWrapUnits, clientWriterStages, 2048, 64, 1<<19, factory);
 
 		new HTTPClientRequestStage(gm, ccm, input, clientRequests);
 		

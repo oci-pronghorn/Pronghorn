@@ -15,7 +15,7 @@ public class SSLConnection {
 
 	protected final SSLEngine engine;
 	protected final SocketChannel socketChannel;
-	protected final long id;
+	public final long id;
 	protected boolean isValid = true;
 
 	protected int localRunningBytesProduced;

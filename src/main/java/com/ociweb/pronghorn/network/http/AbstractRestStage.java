@@ -1,8 +1,9 @@
-package com.ociweb.pronghorn.network;
+package com.ociweb.pronghorn.network.http;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
@@ -40,7 +41,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     
     protected static final byte[] ZERO = new byte[] {'0'};
     
-    private static final Logger logger = LoggerFactory.getLogger(AbstractRestStage.class);
+    static final Logger logger = LoggerFactory.getLogger(AbstractRestStage.class);
     
     
     
@@ -132,32 +133,6 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         
         return bytesLength;
     }
-    
-    protected void publishError(int requestContext, int sequence, int status,
-                                Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow, HTTPSpecification<T,R,V, H> httpSpec, 
-                                int revision, int contentType) {
-        
-        int headerSize = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
-
-        Pipe.addIntValue(channelIdHigh, localOutput);
-        Pipe.addIntValue(channelIdLow, localOutput);
-        Pipe.addIntValue(sequence, localOutput);
-        
-        DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.outputStream(localOutput);        
-        writer.openField();
-        writeHeader(httpSpec.revisions[revision].getBytes(), status, requestContext, null, contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), 
-        		    ZERO, 0, 1, 1, false, null, 0,0,0,
-        		    writer, 1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
-        writer.closeLowLevelField();          
-
-        Pipe.addIntValue(requestContext , localOutput); //empty request context, set the full value last.                        
-        
-        Pipe.confirmLowLevelWrite(localOutput, headerSize);
-        Pipe.publishWrites(localOutput);
-        
-        logger.info("published error {} ",status);
-    }
-    
     
     //TODO: build better constants for these values needed.
     public static void writeHeader(byte[] revisionBytes, int status, int requestContext, byte[] etagBytes, byte[] typeBytes, 

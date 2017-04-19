@@ -16,6 +16,12 @@ import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.http.HTTP1xResponseParserStage;
+import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
+import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
+import com.ociweb.pronghorn.network.http.HTTPClientRequestStage;
+import com.ociweb.pronghorn.network.http.HTTPServerConfig;
+import com.ociweb.pronghorn.network.http.ModuleConfig;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
@@ -43,20 +49,36 @@ public class NetGraphBuilder {
 	private static final Logger logger = LoggerFactory.getLogger(NetGraphBuilder.class);	
 	
 	public static void buildHTTPClientGraph(boolean isTLS, GraphManager gm, int maxPartialResponses, ClientCoordinator ccm,
-			IntHashTable listenerPipeLookup, 
-			int responseQueue, int responseSize, Pipe<NetPayloadSchema>[] requests,
-			Pipe<NetResponseSchema>[] responses) {
-		buildHTTPClientGraph(isTLS, gm, maxPartialResponses, ccm, listenerPipeLookup, responseQueue, responseSize, requests, responses, 2, 2, 2, 2048, 64, 1<<19);
+			final IntHashTable listenerPipeLookup, 
+			int responseQueue, int responseSize, 
+			final Pipe<NetPayloadSchema>[] requests,
+			final Pipe<NetResponseSchema>[] responses) {
+		
+		ClientResponseParserFactory factory = new ClientResponseParserFactory() {
+
+			@Override
+			public void buildParser(GraphManager gm, ClientCoordinator ccm, 
+								    Pipe<NetPayloadSchema>[] clearResponse,
+								    Pipe<ReleaseSchema> ackReleaseForResponseParser) {
+				
+				buildHTTP1xResponseParser(gm, ccm, listenerPipeLookup, responses, clearResponse, ackReleaseForResponseParser);
+			}
+			
+		};
+		
+		buildClientGraph(isTLS, gm, ccm, responseQueue, responseSize, requests, 2, 
+				             2, 2, 2048, 64, 1<<19, factory);
 	}
 	
-	public static void buildHTTPClientGraph(boolean isTLS, GraphManager gm, int maxPartialResponses, ClientCoordinator ccm,
-										IntHashTable listenerPipeLookup, 
-										int responseQueue, int responseSize, Pipe<NetPayloadSchema>[] requests,
-										Pipe<NetResponseSchema>[] responses, int responseUnwrapCount, int clientWrapperCount, int clientWriters, int releaseCount, 
-										int httpResponseCount, int httpResponseBlob
+	public static void buildClientGraph(boolean isTLS, GraphManager gm, ClientCoordinator ccm, int responseQueue,
+										int responseSize, Pipe<NetPayloadSchema>[] requests, int responseUnwrapCount,
+										int clientWrapperCount, 
+										int clientWriters, int releaseCount, int netResponseCount, 
+										int netResponseBlob, ClientResponseParserFactory parserFactory
 										) {
 	
-				
+		int maxPartialResponses = ccm.resposePoolSize();
+		
 		PipeConfig<ReleaseSchema> parseReleaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance, releaseCount, 0);
 		
 
@@ -65,7 +87,7 @@ public class NetGraphBuilder {
 		
 		
 		//pipe holds data as it is parsed so making it larger is helpfull
-		PipeConfig<NetPayloadSchema> clientHTTPResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, httpResponseCount, httpResponseBlob); 	
+		PipeConfig<NetPayloadSchema> clientHTTPResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, netResponseCount, netResponseBlob); 	
 		
 		
 		///////////////////
@@ -99,24 +121,34 @@ public class NetGraphBuilder {
 			}
 		}
 			
-		final int responseParsers = 1; //NOTE: can not be changed because only 1 can bs supported
-		
+		final int responseParsers = 1;		
 		int a = responseParsers + (isTLS?responseUnwrapCount:0);
-		Pipe[] acks = new Pipe[a];
+		Pipe<ReleaseSchema>[] acks = new Pipe[a];
 		while (--a>=0) {
 			acks[a] =  new Pipe<ReleaseSchema>(parseReleaseConfig,false);	
 		}
+		Pipe<ReleaseSchema> ackReleaseForResponseParser = acks[acks.length-1];
 		
 		ClientSocketReaderStage socketReaderStage = new ClientSocketReaderStage(gm, ccm, acks, socketResponse, isTLS);
-		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketReader", socketReaderStage);		
+		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketReader", socketReaderStage);	
 		
-		
-		Pipe[] hanshakePipes = null;
+		Pipe<NetPayloadSchema>[] hanshakePipes = buildClientUnwrap(isTLS, gm, ccm, requests, responseUnwrapCount, socketResponse,	clearResponse, acks);	
+
+		buildClientWrapAndWrite(isTLS, gm, ccm, requests, clientWrapperCount, clientWriters, hanshakePipes);	    
+
+		parserFactory.buildParser(gm, ccm, clearResponse, ackReleaseForResponseParser);
+	    
+	}
+
+	private static Pipe<NetPayloadSchema>[] buildClientUnwrap(boolean isTLS, GraphManager gm, ClientCoordinator ccm,
+			Pipe<NetPayloadSchema>[] requests, int responseUnwrapCount, Pipe<NetPayloadSchema>[] socketResponse,
+			Pipe<NetPayloadSchema>[] clearResponse, Pipe<ReleaseSchema>[] acks) {
+		Pipe<NetPayloadSchema>[] hanshakePipes = null;
 		if (isTLS) {
 						
 			int c = responseUnwrapCount;
-			Pipe[][] sr = Pipe.splitPipes(c, socketResponse);
-			Pipe[][] cr = Pipe.splitPipes(c, clearResponse);
+			Pipe<NetPayloadSchema>[][] sr = Pipe.splitPipes(c, socketResponse);
+			Pipe<NetPayloadSchema>[][] cr = Pipe.splitPipes(c, clearResponse);
 			
 			hanshakePipes = new Pipe[c];
 			
@@ -126,13 +158,12 @@ public class NetGraphBuilder {
 				GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "UnWrap", unwrapStage);
 			}
 			
-		}		
-		
-		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, acks[acks.length-1], listenerPipeLookup, ccm, HTTPSpecification.defaultSpec());
-		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
+		}
+		return hanshakePipes;
+	}
 
-		
-		
+	private static void buildClientWrapAndWrite(boolean isTLS, GraphManager gm, ClientCoordinator ccm,
+			Pipe<NetPayloadSchema>[] requests, int clientWrapperCount, int clientWriters, Pipe[] hanshakePipes) {
 		//////////////////////////////
 		//////////////////////////////
 		Pipe<NetPayloadSchema>[] wrappedClientRequests;		
@@ -162,8 +193,6 @@ public class NetGraphBuilder {
 			}
 			wrappedClientRequests = PronghornStage.join(tPipes);
 			////////////////////////////
-				
-			
 			
 		} else {
 			wrappedClientRequests = requests;
@@ -182,9 +211,21 @@ public class NetGraphBuilder {
 	    	GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketWriter", socketWriteStage);
 	    	//GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 100_000_000, socketWriteStage);//slow down writers.
 	    	
-		}	    
-	    
-	    
+		}
+	}
+
+	public static void buildHTTP1xResponseParser(GraphManager gm, ClientCoordinator ccm, IntHashTable listenerPipeLookup,
+			Pipe<NetResponseSchema>[] responses, Pipe<NetPayloadSchema>[] clearResponse,
+			Pipe<ReleaseSchema> ackRelease) {
+		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, ackRelease, listenerPipeLookup, ccm, HTTPSpecification.defaultSpec());
+		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
+	}
+
+	private static void buildParser(GraphManager gm, ClientCoordinator ccm, IntHashTable listenerPipeLookup,
+			Pipe<NetResponseSchema>[] responses, Pipe<NetPayloadSchema>[] clearResponse, Pipe<ReleaseSchema>[] acks) {
+		
+		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, acks[acks.length-1], listenerPipeLookup, ccm, HTTPSpecification.defaultSpec());
+		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
 	}
 
 	
@@ -224,7 +265,10 @@ public class NetGraphBuilder {
         final HTTP1xRouterStageConfig routerConfig = buildModules(graphManager, modules, routerCount, serverConfig.httpSpec, serverConfig.routerToModuleConfig, fromModule, toModules);
 
         
-        buildRouters(graphManager, routerCount, planIncomingGroup, acks, toModules, routerConfig, coordinator);
+        PipeConfig<ServerResponseSchema> config = ServerResponseSchema.instance.newPipeConfig(4, 512);
+        Pipe<ServerResponseSchema>[] errorResponsePipes = buildErrorResponsePipes(routerCount, fromModule, config);        
+        
+        buildRouters(graphManager, routerCount, planIncomingGroup, acks, toModules, errorResponsePipes, routerConfig, coordinator);
      
         
         //////////////////////////
@@ -233,6 +277,17 @@ public class NetGraphBuilder {
         
         return buildRemainderOfServerStages(isTLS, graphManager, coordinator, routerCount, serverConfig, handshakeIncomingGroup, fromModule);
         
+	}
+
+	private static Pipe<ServerResponseSchema>[] buildErrorResponsePipes(final int routerCount,
+			Pipe<ServerResponseSchema>[][] fromModule, PipeConfig<ServerResponseSchema> config) {
+		Pipe<ServerResponseSchema>[] errorResponsePipes = new Pipe[routerCount];
+        int r = routerCount;
+        while (--r>=0) {
+        	errorResponsePipes[r] = new Pipe<ServerResponseSchema>(config);        	
+        	fromModule[r] = PronghornStage.join(fromModule[r],errorResponsePipes[r]);
+        }
+		return errorResponsePipes;
 	}
 
 	public static Pipe[] buildSocketReaderStage(boolean isTLS, GraphManager graphManager, ServerCoordinator coordinator,
@@ -363,6 +418,7 @@ public class NetGraphBuilder {
 	public static void buildRouters(GraphManager graphManager, final int routerCount, Pipe[] planIncomingGroup,
 			Pipe[] acks, 
 			Pipe<HTTPRequestSchema>[][] toModules, 
+			Pipe<ServerResponseSchema>[] errorResponsePipes,
 			final HTTP1xRouterStageConfig routerConfig, ServerCoordinator coordinator) {
 		
 		int a;
@@ -375,7 +431,8 @@ public class NetGraphBuilder {
 		int r = routerCount;
 		while (--r>=0) {
 			
-			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], toModules[r], acks[acksBase-r], routerConfig, coordinator);        
+			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], 
+															toModules[r], errorResponsePipes[r], acks[acksBase-r], routerConfig, coordinator);        
 			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
 			
 		}
@@ -510,9 +567,22 @@ public class NetGraphBuilder {
 			  Pipe<NetResponseSchema>[] httpResponsePipe,
 			  Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe) {		
 		
-		buildHTTPClientGraph(gm, null, httpResponsePipe, httpRequestsPipe, maxPartialResponses);
+		int connectionsInBits = 6;		
+		int clientRequestCount = 4;
+		int clientRequestSize = 1<<15;
+		boolean isTLS = true;
+		
+		buildHTTPClientGraph(gm, maxPartialResponses, httpResponsePipe, httpRequestsPipe, connectionsInBits,
+								clientRequestCount, clientRequestSize, isTLS);
 		
 		
+	}
+
+	public static void buildHTTPClientGraph(GraphManager gm, int maxPartialResponses,
+			Pipe<NetResponseSchema>[] httpResponsePipe, Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe,
+			int connectionsInBits, int clientRequestCount, int clientRequestSize, boolean isTLS) {
+		buildHTTPClientGraph(gm, null, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
+							 clientRequestCount, clientRequestSize, isTLS);
 	}
 	
 	/**
@@ -525,43 +595,59 @@ public class NetGraphBuilder {
 	 */	
 	public static void buildHTTPClientGraph(GraphManager gm,
 									  IntHashTable netPipeLookup, 
-									  Pipe<NetResponseSchema>[] httpResponsePipe,
+									  final Pipe<NetResponseSchema>[] httpResponsePipe,
 									  Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe) {
 		
 		int maxPartialResponses = IntHashTable.count(netPipeLookup);
-		
-		buildHTTPClientGraph(gm, netPipeLookup, httpResponsePipe, httpRequestsPipe, maxPartialResponses);
-	}
-
-	private static void buildHTTPClientGraph(GraphManager gm, IntHashTable netPipeLookup,
-			Pipe<NetResponseSchema>[] httpResponsePipe, Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe,
-			int maxPartialResponses) {
-		
-		int responseQueue = 10;
-		int responseSize = 1<<17;
-		int responseUnwrapCount = 1;
-		int clientWrapperCount = 1;
-		int clientWriters = 1;				
 		int connectionsInBits=6;		
 		int clientRequestCount = 4;
 		int clientRequestSize = 1<<15;
 		boolean isTLS = true;
 		
+		buildHTTPClientGraph(gm, netPipeLookup, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
+							 clientRequestCount, clientRequestSize, isTLS);
+	}
+
+	public static void buildSimpleClientGraph(GraphManager gm, boolean isTLS,
+											  ClientCoordinator ccm, ClientResponseParserFactory factory, 
+											  Pipe<NetPayloadSchema>[] clientRequests) {
+		int clientWriters = 1;				
+		int responseUnwrapCount = 1;
+		int clientWrapperCount = 1;
+		int responseQueue = 10;
+		int responseSize = 1<<17;
+		int releaseCount = 2048;
+		int netResponseCount = 64;
+		int netResponseBlob = 1<<19;
+				
+		buildClientGraph(isTLS, gm, ccm, responseQueue, responseSize, clientRequests, responseUnwrapCount,
+				         clientWrapperCount, clientWriters, releaseCount, netResponseCount, netResponseBlob, factory);
+	}
+	
+	public static void buildHTTPClientGraph(GraphManager gm, final IntHashTable netPipeLookup,
+			final Pipe<NetResponseSchema>[] httpResponsePipe, Pipe<ClientHTTPRequestSchema>[] requestsPipe,
+			int maxPartialResponses, int connectionsInBits, int clientRequestCount, int clientRequestSize,
+			boolean isTLS) {
+		
 		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses);
 				
+		ClientResponseParserFactory factory = new ClientResponseParserFactory() {
+
+			@Override
+			public void buildParser(GraphManager gm, ClientCoordinator ccm, 
+								    Pipe<NetPayloadSchema>[] clearResponse,
+								    Pipe<ReleaseSchema> ackReleaseForResponseParser) {
+				
+				NetGraphBuilder.buildHTTP1xResponseParser(gm, ccm, netPipeLookup, httpResponsePipe, clearResponse, ackReleaseForResponseParser);
+			}			
+		};
+
+		Pipe<NetPayloadSchema>[] clientRequests = Pipe.buildPipes(requestsPipe.length, NetPayloadSchema.instance.<NetPayloadSchema>newPipeConfig(clientRequestCount,clientRequestSize));
+				
+		buildSimpleClientGraph(gm, isTLS, ccm, factory, clientRequests);
 		
-		PipeConfig<NetPayloadSchema> clientNetRequestConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,clientRequestCount,clientRequestSize); 
-		
-		Pipe<NetPayloadSchema>[] clientRequests = new Pipe[httpRequestsPipe.length];
-		int r = httpRequestsPipe.length;
-		while (--r>=0) {
-			clientRequests[r] = new Pipe<NetPayloadSchema>(clientNetRequestConfig);		
-		}
-		
-		buildHTTPClientGraph(isTLS, gm, maxPartialResponses, ccm, netPipeLookup, responseQueue, 
-				                             responseSize, clientRequests, httpResponsePipe, responseUnwrapCount, clientWrapperCount, clientWriters, 2048, 64, 1<<19);
-		
-		new HTTPClientRequestStage(gm, ccm, httpRequestsPipe, clientRequests);
+		new HTTPClientRequestStage(gm, ccm, requestsPipe, clientRequests);
 	}
+
 	
 }

@@ -1,6 +1,9 @@
 package com.ociweb.pronghorn.network.mqtt;
 
+import com.ociweb.pronghorn.network.schema.MQTTConnectionInSchema;
+import com.ociweb.pronghorn.network.schema.MQTTIdRangeSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 
 public class MQTTEncoder {
 
@@ -201,6 +204,97 @@ public class MQTTEncoder {
         appendShort(bytePos, byteMask, byteBuffer, packetId);
         return 4;
     }
+
+
+	public static boolean requestConnect(CharSequence url, int conFlags, byte[] willTopic, int willTopicIdx,
+			int willTopicLength, int willTopicMask, byte[] willMessageBytes, int willMessageBytesIdx,
+			int willMessageBytesLength, int willMessageBytesMask, byte[] username, byte[] passwordBytes,
+			Pipe<MQTTConnectionInSchema> toBroker, byte[] clientId, int ttlSec) {
+		
+		 if (PipeWriter.tryWriteFragment(toBroker, MQTTConnectionInSchema.MSG_CONNECT_2)) {
+			
+			PipeWriter.writeASCII(toBroker, MQTTConnectionInSchema.MSG_CONNECT_2_FIELD_HOST_401, url);
+						
+			//this is the high level API however we are writing bytes to to the end of the unstructured buffer.
+			final int bytePos = Pipe.getWorkingBlobHeadPosition(toBroker);
+			byte[] byteBuffer = Pipe.blob(toBroker);
+			int byteMask = Pipe.blobMask(toBroker);
+						
+			int len = buildConnectPacket(bytePos, byteBuffer, byteMask, ttlSec, conFlags, 
+					                                 clientId, 0 , clientId.length, 0xFFFF,
+					                                 willTopic, willTopicIdx , willTopicLength, willTopicMask,
+					                                 willMessageBytes, willMessageBytesIdx, willMessageBytesLength, willMessageBytesMask,
+					                                 username, 0, username.length, 0xFFFF, //TODO: add rest of fields
+					                                 passwordBytes, 0, passwordBytes.length, 0xFFFF);//TODO: add rest of fields
+			assert(len>0);
+			PipeWriter.writeSpecialBytesPosAndLen(toBroker, MQTTConnectionInSchema.MSG_CONNECT_2_FIELD_PACKETDATA_300, len, bytePos);
+			
+			PipeWriter.publishWrites(toBroker);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+
+	public static boolean requestDisconnect(Pipe<MQTTConnectionInSchema> toBroker) {
+		if (PipeWriter.tryWriteFragment(toBroker, MQTTConnectionInSchema.MSG_DISCONNECT_5)) {
+			PipeWriter.publishWrites(toBroker);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+
+	public static void loadNextPacketIdRange(Pipe<MQTTIdRangeSchema> idGenIn, IdGenCache genCache) {
+		int msgIdx = Pipe.takeMsgIdx(idGenIn);
+		int range = Pipe.takeInt(idGenIn);
+		genCache.nextFreePacketId = 0xFFFF&range;
+		genCache.nextFreePacketIdLimit = 0xFFFF&(range>>16); 
+						
+		Pipe.releaseReadLock(idGenIn);
+		Pipe.confirmLowLevelRead(idGenIn, Pipe.sizeOf(idGenIn, msgIdx));
+	}
+
+
+	public static int requestPublish(byte[] topic, int topicIdx, int topicLength, int topicMask, int qualityOfService,
+			int retain, byte[] payload, int payloadIdx, int payloadLength, int payloadMask,
+			Pipe<MQTTConnectionInSchema> toBroker, IdGenCache genCache, Pipe<MQTTIdRangeSchema> idGenIn) {
+		if (genCache.nextFreePacketId >= genCache.nextFreePacketIdLimit) {
+			//get next range
+			if (Pipe.hasContentToRead(idGenIn)) {				
+				loadNextPacketIdRange(idGenIn, genCache);				
+			} else {
+				return -1;
+			}	
+		}
+		////
+		
+		if (PipeWriter.tryWriteFragment(toBroker, MQTTConnectionInSchema.MSG_PUBLISH_1)) {
+								    
+			PipeWriter.writeInt(toBroker, MQTTConnectionInSchema.MSG_PUBLISH_1_FIELD_QOS_100, qualityOfService);
+			
+			int localPacketId = (0==qualityOfService) ? -1 : genCache.nextFreePacketId++;
+						
+			PipeWriter.writeInt(toBroker, MQTTConnectionInSchema.MSG_PUBLISH_1_FIELD_PACKETID_200, localPacketId);
+						
+			final int bytePos = Pipe.getWorkingBlobHeadPosition(toBroker);
+			byte[] byteBuffer = Pipe.blob(toBroker);
+			int byteMask = Pipe.blobMask(toBroker);
+			
+			int len = buildPublishPacket(bytePos, byteBuffer, byteMask, qualityOfService, retain, 
+					                topic, topicIdx, topicLength, topicMask, 
+					                payload, payloadIdx, payloadLength, payloadMask, localPacketId);
+			PipeWriter.writeSpecialBytesPosAndLen(toBroker, MQTTConnectionInSchema.MSG_PUBLISH_1_FIELD_PACKETDATA_300, len, bytePos);
+				
+			PipeWriter.publishWrites(toBroker);
+	
+			return localPacketId<0 ? 0 : localPacketId;//NOTE: we have no id for qos 0 
+		} else {
+			return -1;
+		}
+	}
 
 
 }

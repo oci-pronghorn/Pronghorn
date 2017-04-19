@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.network;
+package com.ociweb.pronghorn.network.http;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -6,6 +6,8 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.SSLConnection;
+import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
@@ -18,6 +20,7 @@ import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
+import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.Pipe.PaddedLong;
@@ -80,6 +83,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private int idx;
     private final HTTP1xRouterStageConfig<T,R,V,H> config;
     private final ServerCoordinator coordinator;
+    private final Pipe<ServerResponseSchema> errorResponsePipe;
+    
 
     //read all messages and they must have the same channelID
     //total all into one master DataInputReader
@@ -90,10 +95,13 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 					V extends Enum<V> & HTTPVerb,
 					H extends Enum<H> & HTTPHeaderKey> 
     HTTP1xRouterStage<T,R,V,H> newInstance(GraphManager gm, 
-    		                               Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, Pipe<ReleaseSchema> ackStop,
+    		                               Pipe<NetPayloadSchema>[] input, 
+    		                               Pipe<HTTPRequestSchema>[][] outputs, 
+    		                               Pipe<ServerResponseSchema> errorResponsePipe,
+    		                               Pipe<ReleaseSchema> ackStop,
                                            HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator) {
         
-       return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, ackStop, config, coordinator); 
+       return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, errorResponsePipe, ackStop, config, coordinator); 
     }
     
     public static <	T extends Enum<T> & HTTPContentType,
@@ -101,24 +109,29 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	V extends Enum<V> & HTTPVerb,
 	H extends Enum<H> & HTTPHeaderKey> 
 		HTTP1xRouterStage<T,R,V,H> newInstance(GraphManager gm, 
-		                           Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<ReleaseSchema> ackStop,
+		                           Pipe<NetPayloadSchema>[] input, 
+		                           Pipe<HTTPRequestSchema>[] outputs,
+		                           Pipe<ServerResponseSchema> errorResponsePipe, 
+		                           Pipe<ReleaseSchema> ackStop,
 		                           HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator) {
 		
-		return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, ackStop, config, coordinator); 
+		return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, errorResponsePipe, ackStop, config, coordinator); 
 	}
 
 	public HTTP1xRouterStage(GraphManager gm, 
-            Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, Pipe<ReleaseSchema> ackStop,
+            Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, 
+            Pipe<ServerResponseSchema> errorResponsePipe, Pipe<ReleaseSchema> ackStop,
             HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator) {
 		
-		this(gm, input, join(outputs), ackStop, config, coordinator);
+		this(gm, input, join(outputs), errorResponsePipe, ackStop, config, coordinator);
 		
 	}
 	public HTTP1xRouterStage(GraphManager gm, 
-			                 Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs, Pipe<ReleaseSchema> ackStop,
+			                 Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs,
+			                 Pipe<ServerResponseSchema> errorResponsePipe, Pipe<ReleaseSchema> ackStop,
                              HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator) {
 		
-        super(gm,input,join(outputs,ackStop));
+        super(gm,input,join(outputs,ackStop,errorResponsePipe));
         assert (outputs.length == config.routesCount());
         
         this.config = config;
@@ -126,7 +139,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         this.releasePipe = ackStop;        
         this.outputs = outputs;
         this.coordinator = coordinator;
-        
+        this.errorResponsePipe = errorResponsePipe;
         
         this.shutdownCount = inputs.length;
 
@@ -477,7 +490,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 //  1 success
 // <=0 for wating on this output pipe to have room (the pipe idx is negative)
  
-private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, Pipe<NetPayloadSchema> selectedInput) {    
+private int parseHTTP(TrieParserReader trieReader, final long channel, final int idx, Pipe<NetPayloadSchema> selectedInput) {    
     
 //	boolean showHeader = true;
 //    if (showHeader) {
@@ -540,19 +553,37 @@ private int parseHTTP(TrieParserReader trieReader, long channel, final int idx, 
     	if (tempLen < config.urlMap.longestKnown() || trieReader.sourceLen<0) {
 			return NEED_MORE_DATA;    			
 		} else {
-
-			//we have bad data we have been sent, there is enough data yet the verb was not found
-			trieReader.sourceLen = tempLen;
-			trieReader.sourcePos = tempPos;
-
-			StringBuilder builder = new StringBuilder();
-			TrieParserReader.debugAsUTF8(trieReader, builder, MAX_URL_LENGTH);			
-			logger.warn("{} looking for URL to route but found:\n\"{}\"\n\n",channel,builder);
-		    	
-			trieReader.sourceLen = 0;
-			trieReader.sourcePos = 0;
+			//unsupported route path, send 404 error
 			
-			badClientError(channel);
+			if (Pipe.hasRoomForWrite(errorResponsePipe)) {
+				
+				int defaultRev = HTTPRevisionDefaults.HTTP_1_1.ordinal();	//TODO: need a better way to look this up.			
+				int defaultContent = HTTPContentTypeDefaults.UNKNOWN.ordinal(); //TODO: need a better way to look this up.
+								
+				//will close connection as soon as error is returned.
+				HTTPErrorUtil.publishError(sequences[idx], 404, errorResponsePipe, channel, config.httpSpec, defaultRev, defaultContent);
+								
+			} else {
+				trieReader.sourceLen = tempLen;
+				trieReader.sourcePos = tempPos;
+				
+				StringBuilder builder = new StringBuilder();
+				TrieParserReader.debugAsUTF8(trieReader, builder, MAX_URL_LENGTH);			
+				logger.warn("Unable to send 404, too many errors, found unrecognized route:\n\"{}\"\n\n",builder);
+				
+				//close this connection now since we could not respond.
+				//do not cooperate with the client if we have an invalid path.
+				//this must be fixed on the client side.
+				SSLConnection con = coordinator.get(channel);
+				if (null!=con) {
+					con.clearPoolReservation();		
+					con.close();
+				}
+				trieReader.sourceLen = 0;
+				trieReader.sourcePos = 0;
+				
+			}
+	
 			return SUCCESS;
 		}
     }

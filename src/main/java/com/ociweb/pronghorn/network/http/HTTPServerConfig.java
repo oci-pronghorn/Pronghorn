@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.network;
+package com.ociweb.pronghorn.network.http;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

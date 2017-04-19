@@ -2,9 +2,6 @@ package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
 import java.nio.channels.Selector;
-import java.util.Arrays;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.HdrHistogram.Histogram;

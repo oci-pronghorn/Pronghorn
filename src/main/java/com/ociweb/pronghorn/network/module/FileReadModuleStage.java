@@ -15,13 +15,14 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.AbstractRestStage;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
+import com.ociweb.pronghorn.network.http.AbstractRestStage;
+import com.ociweb.pronghorn.network.http.HTTPErrorUtil;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
@@ -760,7 +761,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         //Informational 1XX, Successful 2XX, Redirection 3XX, Client Error 4XX and Server Error 5XX.
         int errorStatus = null==e? 400:500;
         
-        publishError(requestContext, sequence, errorStatus, output, activeChannelHigh, activeChannelLow, httpSpec,
+        HTTPErrorUtil.publishError(requestContext, sequence, errorStatus, output, activeChannelHigh, activeChannelLow, httpSpec,
                 httpRevision, data.getType()[pathId]);
         
         Pipe.confirmLowLevelRead(input, activeReadMessageSize);
@@ -769,7 +770,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 
     private void publishErrorHeader(int httpRevision, int requestContext, int sequence, int code, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) {
         logger.warn("published error "+code);
-        publishError(requestContext, sequence, code, output, activeChannelHigh, activeChannelLow, httpSpec, httpRevision, -1);
+        HTTPErrorUtil.publishError(requestContext, sequence, code, output, activeChannelHigh, activeChannelLow, httpSpec, httpRevision, -1);
         
         Pipe.confirmLowLevelRead(input, activeReadMessageSize);
         Pipe.releaseReadLock(input);

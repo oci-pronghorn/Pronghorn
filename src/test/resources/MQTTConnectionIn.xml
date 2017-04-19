@@ -8,7 +8,8 @@
    </template>
 
    <template name="Connect" id="2">
-     <String name="URL" id="400"/>
+     <String name="Host" id="401"/>
+     <uInt32 name="Port" id="402"/>
      <byteVector name="PacketData" id="300"/>
    </template>
 
