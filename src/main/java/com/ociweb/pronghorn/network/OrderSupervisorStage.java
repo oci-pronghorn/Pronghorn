@@ -546,6 +546,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    
 		    if (HandshakeStatus.NEED_WRAP == hanshakeStatus) {
 		    	if (Pipe.hasRoomForWrite(pipe)) {
+		    		logger.info("OrderSuperviser sent handshake pos");
 		    		int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
 		    		Pipe.addLongValue(con.getId(), pipe);//connection
 		    		Pipe.addLongValue(System.currentTimeMillis(), pipe);

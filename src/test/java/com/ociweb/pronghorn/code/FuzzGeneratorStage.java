@@ -20,8 +20,8 @@ public class FuzzGeneratorStage extends PronghornStage{
         
         this.duration = duration;
         StreamingWriteVisitor visitor = new StreamingWriteVisitorGenerator(Pipe.from(output), random, 
-                                           output.maxAvgVarLen>>3,  //room for UTF8 
-                                           output.maxAvgVarLen>>1); //just use half       
+                                           output.maxVarLen>>3,  //room for UTF8 
+                                           output.maxVarLen>>1); //just use half       
         this.writer = new StreamingVisitorWriter(output, visitor  );
         
     }

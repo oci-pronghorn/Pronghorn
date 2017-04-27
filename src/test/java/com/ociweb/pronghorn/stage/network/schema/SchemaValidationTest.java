@@ -4,11 +4,13 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
-import com.ociweb.pronghorn.network.schema.MQTTConnectionInSchema;
-import com.ociweb.pronghorn.network.schema.MQTTConnectionOutSchema;
+import com.ociweb.pronghorn.network.schema.MQTTClientRequestSchema;
+import com.ociweb.pronghorn.network.schema.MQTTClientResponseSchema;
+import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchema;
 import com.ociweb.pronghorn.network.schema.MQTTIdRangeSchema;
+import com.ociweb.pronghorn.network.schema.MQTTServerToClientSchema;
+import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
@@ -18,44 +20,47 @@ public class SchemaValidationTest {
 	
     @Test
     public void messageClientNetResponseSchemaFROMTest() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/NetPayload.xml", NetPayloadSchema.instance));
-        assertTrue(FROMValidation.testForMatchingLocators(NetPayloadSchema.instance));
+        assertTrue(FROMValidation.checkSchema("/NetPayload.xml", NetPayloadSchema.class));
     }
     
     @Test
     public void messageNetParseAckSchemaFROMTest() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/Release.xml", ReleaseSchema.instance));
-        assertTrue(FROMValidation.testForMatchingLocators(ReleaseSchema.instance));
+        assertTrue(FROMValidation.checkSchema("/Release.xml", ReleaseSchema.class));
     }
 	
     @Test
     public void messageNetResponseSchemaFROMTest() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/NetResponse.xml", NetResponseSchema.instance));
-        assertTrue(FROMValidation.testForMatchingLocators(NetResponseSchema.instance));
+        assertTrue(FROMValidation.checkSchema("/NetResponse.xml", NetResponseSchema.class));
     }
 	    
     @Test
     public void messageNetRequestSchemaFROMTest() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/ClientHTTPRequest.xml", ClientHTTPRequestSchema.instance));
-        assertTrue(FROMValidation.testForMatchingLocators(ClientHTTPRequestSchema.instance));
+        assertTrue(FROMValidation.checkSchema("/ClientHTTPRequest.xml", ClientHTTPRequestSchema.class));
     }
     
     @Test
     public void messageMQTTIdRangeSchemaFROMTest() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/MQTTIdRanges.xml", MQTTIdRangeSchema.instance));
-        assertTrue(FROMValidation.testForMatchingLocators(MQTTIdRangeSchema.instance));
+        assertTrue(FROMValidation.checkSchema("/MQTTIdRanges.xml", MQTTIdRangeSchema.class));
     }
     
     @Test
-    public void messageMQTTConnectionInSchemaFROMTest() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/MQTTConnectionIn.xml", MQTTConnectionInSchema.instance));
-        assertTrue(FROMValidation.testForMatchingLocators(MQTTConnectionInSchema.instance));
+    public void messageMQTTClientToServerTest() {
+        assertTrue(FROMValidation.checkSchema("/MQTTClientToServer.xml", MQTTClientToServerSchema.class));
     }
     
     @Test
-    public void messageMQTTConnectionOutSchemaFROMTest() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/MQTTConnectionOut.xml", MQTTConnectionOutSchema.instance));
-        assertTrue(FROMValidation.testForMatchingLocators(MQTTConnectionOutSchema.instance));
+    public void messageMQTTServerToClientTest() {
+        assertTrue(FROMValidation.checkSchema("/MQTTServerToClient.xml", MQTTServerToClientSchema.class));
+    }
+    
+    @Test
+    public void messageMQTTClientRequestTest() {
+        assertTrue(FROMValidation.checkSchema("/MQTTClientRequest.xml", MQTTClientRequestSchema.class));
+    }
+    
+    @Test
+    public void messageMQTTClientResponseTest() {
+        assertTrue(FROMValidation.checkSchema("/MQTTClientResponse.xml", MQTTClientResponseSchema.class));
     }
     
 }

@@ -99,7 +99,10 @@ public class ClientSocketReaderStage extends PronghornStage {
 						//      this results in many zero reads...
 						cc = coordinator.getClientConnectionByPosition(cpos);
 
+						
 					    if (cc!=null /* && cc.isValid()*/) {
+					    	
+					    	//System.err.println("reading socket connection "+cc.isValid());
 	  	
 					    	//process handshake before reserving one of the pipes
 					    	if (isTLS) {
@@ -168,13 +171,13 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    			//logger.info("unable to read socket, may not be an error. ",ioex);
 						    			//will continue with readCount of -1;
 						    		}
-						    //		System.err.println(readCount);
-							    	if (readCount>0) {
-							    		
+						    
+							    	
+						    		if (readCount>0) {
 							    		totalBytes += readCount;						    		
 							    		//we read some data so send it		
 							    	
-							    		//logger.info("totalbytes consumed by client {} ",totalBytes);
+							    		logger.info("totalbytes consumed by client {} TLS {} ",totalBytes, isTLS);
 							    		
 							    	//	logger.info("client reading {} for id {}",readCount,cc.getId());
 							    		
@@ -201,7 +204,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    			
 							    			int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
 							    			Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)readCount, target);
-				
+				 				 
 //		boolean showResponse = true;
 //		if (showResponse) {
 //			   			Appendables.appendUTF8(System.err, target.blobRing, originalBlobPosition, readCount, target.blobMask);
@@ -213,8 +216,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    			
 							    			Pipe.confirmLowLevelWrite(target, SIZE_OF_PLAIN);
 							    			Pipe.publishWrites(target);
-					    			
-										    			
+					    													    			
 							    		}						    		
 							    		
 							    	} else {

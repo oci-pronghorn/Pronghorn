@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+  
+   <template name="BrokerHost" id="100">
+     <String name="Host" id="26" charset="unicode"/>
+     <uInt32 name="Port" id="27"/>
+   </template>
+  
+   <template name="StopRePublish" id="99">
+      <uInt32 name="PacketId" id="20"/>
+   </template>
+  
+   <template name="Connect" id="1"> <!-- IDs are MQTT Control Packet types -->
+     <uInt64 name="Time" id="37"/>         
+     <uInt32 name="KeepAliveSec" id="28"/>
+     <uInt32 name="Flags" id="29"/>
+     <String name="ClientId" id="30" charset="unicode"/>
+     <String name="WillTopic" id="31" charset="unicode"/>
+     <byteVector name="WillPayload" id="32"/>
+     <String name="User" id="33" charset="unicode"/>
+     <String name="Pass" id="34" charset="unicode"/>
+     
+   </template>
+
+   <template name="Disconnect" id="14"> <!-- IDs are MQTT Control Packet types -->
+     <uInt64 name="Time" id="37"/>
+   </template>
+
+  <!-- for publish only -->   
+   
+   <template name="Publish" id="3"><!-- IDs are MQTT Control Packet types -->
+     <uInt64 name="Time" id="37"/>
+     <uInt32 name="PacketId" id="20"/>
+     <uInt32 name="QOS" id="21"/>
+     <uInt32 name="Retain" id="22"/>
+     <String name="Topic" id="23" charset="unicode"/>
+     <byteVector name="Payload" id="25"/>     
+   </template>
+
+
+   <template name="PubRel" id="6"><!-- IDs are MQTT Control Packet types -->
+     <uInt64 name="Time" id="37"/>
+     <uInt32 name="PacketId" id="20"/>
+   </template> 
+
+
+    <!-- for subscribe only -->   
+   
+   <template name="Subscribe" id="8"><!-- IDs are MQTT Control Packet types -->
+     <uInt64 name="Time" id="37"/>
+     <uInt32 name="PacketId" id="20"/>
+     <uInt32 name="QOS" id="21"/>
+     <String name="Topic" id="23" charset="unicode"/>
+   </template>
+   
+   <template name="UnSubscribe" id="10"><!-- IDs are MQTT Control Packet types -->
+     <uInt64 name="Time" id="37"/>
+     <uInt32 name="PacketId" id="20"/>
+     <String name="Topic" id="23" charset="unicode"/>
+   </template>
+     
+   <template name="PubAck" id="4"><!-- IDs are MQTT Control Packet types -->
+     <uInt64 name="Time" id="37"/>
+     <uInt32 name="PacketId" id="20"/>
+   </template>  
+   
+   <template name="PubRec" id="5"><!-- IDs are MQTT Control Packet types -->
+     <uInt64 name="Time" id="37"/>
+     <uInt32 name="PacketId" id="20"/>
+   </template>  
+  
+   <template name="PubComp" id="7"><!-- IDs are MQTT Control Packet types -->
+     <uInt64 name="Time" id="37"/>
+     <uInt32 name="PacketId" id="20"/>
+   </template> 
+    
+</templates>

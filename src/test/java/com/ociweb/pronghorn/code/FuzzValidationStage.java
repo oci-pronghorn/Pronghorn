@@ -21,13 +21,16 @@ public class FuzzValidationStage extends PronghornStage{
 
 		StreamingReadVisitor visitor = buildVisitor(Pipe.from(input));
 		
-        reader = new StreamingVisitorReader(input, visitor);//, new StreamingReadVisitorDebugDelegate(visitor) );
+        boolean processUTF8 = true;
+		reader = new StreamingVisitorReader(input, visitor,processUTF8);//, new StreamingReadVisitorDebugDelegate(visitor) );
 		
 	}
 
 	private StreamingReadVisitor buildVisitor(FieldReferenceOffsetManager from) {
 		return new StreamingReadVisitor() {
 
+			StringBuilder temp = new StringBuilder();
+			
 			@Override
 			public boolean paused() {
 				return false;
@@ -83,17 +86,19 @@ public class FuzzValidationStage extends PronghornStage{
 
 			@Override
 			public Appendable targetASCII(String name, long id) {
-				return null;
+				temp.setLength(0);;
+				return temp;
 			}
 
 			@Override
 			public Appendable targetUTF8(String name, long id) {
-				return null;
+				temp.setLength(0);
+				return temp;
 			}
 
 			@Override
 			public ByteBuffer targetBytes(String name, long id, int length) {
-				return null;
+				return ByteBuffer.allocate(length);
 			}
 
 			@Override

@@ -49,152 +49,8 @@ import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 public class HTTPSRoundTripTest {
 
 
-    private static final int apps = 1; 
-      
-    
-	
-
-	private void runTestData(String testFile, int testFileSize, final int maxListeners, Pipe<ClientHTTPRequestSchema>[] input,
-			PipeCleanerStage<NetResponseSchema> cleaner, StageScheduler scheduler, long start) {
-		//		try {
-		//		Thread.sleep(1000_000);
-		//	} catch (InterruptedException e1) {
-		//		// TODO Auto-generated catch block
-		//		e1.printStackTrace();
-		//	}
-				
-				//test this on jdk 9
-				//-Djdk.nio.maxCachedBufferSize=262144
-						
-		        
-				final int MSG_SIZE = 6;
-				
-				//TODO: thread scheduler grouping
-				//TODO: muti response pattern for PET integration
-				
-				
-				int testSize = 1000;
-								//250;
-				              // 250_000;//300_000; //TODO: must be small enough to hold in queue.
-				
-				int expectedData = testSize*testFileSize;
-				
-				int requests = testSize;		
-				
-				long timeout = System.currentTimeMillis()+(testSize*20); //reasonable timeout
-			
-				int d = 0;
-				
-				//Histogram hist = new Histogram(2);
-				//long[] startTimes = new long[testSize];
-				
-				//TODO: need stage which does both produce and consume to capture Histogram
-			    
-		
-				while (requests>0 && System.currentTimeMillis()<timeout) {
-								
-					Pipe<ClientHTTPRequestSchema> pipe = input[requests%input.length];
-								
-					if (PipeWriter.tryWriteFragment(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100)) {
-		
-						PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2, "127.0.0.1");
-		
-						int user = requests % maxListeners;
-						PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_LISTENER_10, user);						
-						PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PORT_1, 8443);
-						PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3, "/"+testFile);
-						PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HEADERS_7, "");
-						
-						PipeWriter.publishWrites(pipe);
-						
-						requests--;				
-					//	startTimes[requests] = System.nanoTime();
-						
-						d+=MSG_SIZE;
-						
-					} else {	
-						Thread.yield();
-					}
-				}				
-		
-				//count total messages, we know the parser will only send 1 message for each completed event, it does not yet have streaming.
-		
-				System.out.println("--------------------------    watching for responses");
-		
-				requests = testSize;	
-				
-				
-				
-				int expected = MSG_SIZE*(testSize);
-						
-				int count = 0;
-				int lastCount = 0;
-				long nextNotice = System.currentTimeMillis()+2000;
-				do {
-					try {
-						Thread.sleep(2);
-					} catch (InterruptedException e) {
-						break;
-					}
-					
-					count = (int)cleaner.getTotalSlabCount();
-					
-					long now = System.currentTimeMillis();
-					if (count!=lastCount) {
-						
-		//				int responseCount = (count-lastCount)/MSG_SIZE;
-		//				long now2 = System.nanoTime();
-		//				while (--responseCount>=0) {					
-		//					hist.recordValue(now2-startTimes[--requests]);					
-		//				}
-						
-						lastCount = count;
-						
-						if (now>nextNotice) {				
-							System.err.println("pct "+((100f*lastCount)/(float)expected));
-							nextNotice = now+2000;
-						}
-					} else {
-						if (now>(nextNotice+40_000)) {
-							System.err.println("value is no longer changing, break. msg total: "+(count/MSG_SIZE));
-							break;
-						}
-					}
-		
-				} while (count<expected /*&& System.currentTimeMillis()<timeout*/);
-						
-				
-		//		//do not shut down this way because the handshake will get dropped midstream. The server does not know if or when client will respond.
-		//		int z = input.length;
-		//		while (--z>=0) {
-		//			PipeWriter.publishEOF(input[z]);		
-		//		}
-				
-		
-			//	hist.outputPercentileDistribution(System.out, 0d);
-				
-				
-				System.out.println("total bytes returned:"+cleaner.getTotalBlobCount()+" expected "+expectedData); //434_070  23_930_000
-				
-				long duration = System.currentTimeMillis()-start;
-		
-					
-				
-				System.out.println("duration: "+duration);
-				System.out.println("ms per call: "+(duration/(float)(count/(float)MSG_SIZE)));
-				
-				scheduler.shutdown();
-				scheduler.awaitTermination(60, TimeUnit.SECONDS);
-		
-				assertEquals("Killed by timeout",expected,count);
-				assertEquals(expected, lastCount);
-	}
-
-
 	//TODO: require small memory round trip tests for cloudbees
-	
-	//TODO: URGENT must detect when we get the type wrong but with low level API attempt to use values!!
-	
+
 	@Ignore
     //@Test
 	public void roundTripTest2() {
@@ -253,7 +109,7 @@ public class HTTPSRoundTripTest {
 			//TODO: RERUN THE NETTY AND GL TESTS WITH RESTRICTED MEMORY TO ENSURE NO EXTRA LARGE NUMBERS...
 			
 			
-			boolean isTLS = false;
+			boolean isTLS = true;
 			int port = isTLS?8443:8080;
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";

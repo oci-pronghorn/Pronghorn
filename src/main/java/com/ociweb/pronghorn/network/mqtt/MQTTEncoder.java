@@ -26,7 +26,7 @@ public class MQTTEncoder {
 	public static final int CONNECT_FLAG_USERNAME_7      = 128;
 	
 	
-	static int buildConnectPacket(int bytePos, byte[] byteBuffer, int byteMask, int ttlSec, int conFlags, 
+	  public static int buildConnectPacket(int bytePos, byte[] byteBuffer, int byteMask, int ttlSec, int conFlags, 
 			                      byte[] clientId, int clientIdIdx, int clientIdLength, int clientIdMask,
 			                      byte[] willTopic, int willTopicIdx, int willTopicLength, int willTopicMask,
 			                      byte[] willMessage, int willMessageIdx, int willMessageLength, int willMessageMask,
@@ -39,7 +39,8 @@ public class MQTTEncoder {
 		//Remaining Length.
 		int length = 6+1+1+2;//fixed portion from protoName level flags and keep alive
 		
-		length += (2+clientId.length);//encoded clientId
+		int length2 = clientId.length;
+		length += (2+length2);//encoded clientId
 		
 		
 		
@@ -261,13 +262,11 @@ public class MQTTEncoder {
 	public static int requestPublish(byte[] topic, int topicIdx, int topicLength, int topicMask, int qualityOfService,
 			int retain, byte[] payload, int payloadIdx, int payloadLength, int payloadMask,
 			Pipe<MQTTConnectionInSchema> toBroker, IdGenCache genCache, Pipe<MQTTIdRangeSchema> idGenIn) {
-		if (genCache.nextFreePacketId >= genCache.nextFreePacketIdLimit) {
-			//get next range
-			if (Pipe.hasContentToRead(idGenIn)) {				
-				loadNextPacketIdRange(idGenIn, genCache);				
-			} else {
-				return -1;
-			}	
+		
+		boolean hasId = hasPacketId(genCache, idGenIn);
+		
+		if (!hasId) {
+			return -1;
 		}
 		////
 		
@@ -275,7 +274,7 @@ public class MQTTEncoder {
 								    
 			PipeWriter.writeInt(toBroker, MQTTConnectionInSchema.MSG_PUBLISH_1_FIELD_QOS_100, qualityOfService);
 			
-			int localPacketId = (0==qualityOfService) ? -1 : genCache.nextFreePacketId++;
+			int localPacketId = (0==qualityOfService) ? -1 : IdGenCache.nextPacketId(genCache);
 						
 			PipeWriter.writeInt(toBroker, MQTTConnectionInSchema.MSG_PUBLISH_1_FIELD_PACKETID_200, localPacketId);
 						
@@ -294,6 +293,21 @@ public class MQTTEncoder {
 		} else {
 			return -1;
 		}
+	}
+
+
+	public static boolean hasPacketId(IdGenCache genCache, Pipe<MQTTIdRangeSchema> idGenIn) {
+		boolean hasId = true;
+		
+		if (IdGenCache.isEmpty(genCache)) {
+			//get next range
+			if (Pipe.hasContentToRead(idGenIn)) {				
+				loadNextPacketIdRange(idGenIn, genCache);				
+			} else {
+				hasId = false;
+			}	
+		}
+		return hasId;
 	}
 
 

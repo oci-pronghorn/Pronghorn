@@ -1,9 +1,14 @@
 package com.ociweb.pronghorn.network.schema;
 
+import java.nio.ByteBuffer;
+
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeReader;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 
-public class NetPayloadSchema extends MessageSchema {
+public class NetPayloadSchema extends MessageSchema<NetPayloadSchema> {
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
 		    new int[]{0xc0400004,0x90000000,0x90000001,0xb8000000,0xc0200004,0xc0400005,0x90000000,0x90000001,0x90000002,0xb8000001,0xc0200005,0xc0400002,0x90000000,0xc0200002,0xc0400003,0x90000000,0x80000000,0xc0200003,0xc0400002,0x88000001,0xc0200002},
@@ -18,6 +23,12 @@ public class NetPayloadSchema extends MessageSchema {
 		    new long[]{2, 2, 0},
 		    new int[]{2, 2, 0});
 
+
+    
+    
+    protected NetPayloadSchema() {
+        super(FROM);
+    }
     
     public static final NetPayloadSchema instance = new NetPayloadSchema();
     
@@ -37,10 +48,109 @@ public class NetPayloadSchema extends MessageSchema {
     public static final int MSG_UPGRADE_307_FIELD_NEWROUTE_205 = 0x00000003;
     public static final int MSG_BEGIN_208 = 0x00000012;
     public static final int MSG_BEGIN_208_FIELD_SEQUNCENO_209 = 0x00400001;
-    
-    
-    protected NetPayloadSchema() {
-        super(FROM);
+
+
+    public static void consume(Pipe<NetPayloadSchema> input) {
+        while (PipeReader.tryReadFragment(input)) {
+            int msgIdx = PipeReader.getMsgIdx(input);
+            switch(msgIdx) {
+                case MSG_ENCRYPTED_200:
+                    consumeEncrypted(input);
+                break;
+                case MSG_PLAIN_210:
+                    consumePlain(input);
+                break;
+                case MSG_DISCONNECT_203:
+                    consumeDisconnect(input);
+                break;
+                case MSG_UPGRADE_307:
+                    consumeUpgrade(input);
+                break;
+                case MSG_BEGIN_208:
+                    consumeBegin(input);
+                break;
+                case -1:
+                   //requestShutdown();
+                break;
+            }
+            PipeReader.releaseReadLock(input);
+        }
     }
+
+    public static void consumeEncrypted(Pipe<NetPayloadSchema> input) {
+        long fieldConnectionId = PipeReader.readLong(input,MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201);
+        long fieldArrivalTime = PipeReader.readLong(input,MSG_ENCRYPTED_200_FIELD_ARRIVALTIME_210);
+        ByteBuffer fieldPayload = PipeReader.readBytes(input,MSG_ENCRYPTED_200_FIELD_PAYLOAD_203,ByteBuffer.allocate(PipeReader.readBytesLength(input,MSG_ENCRYPTED_200_FIELD_PAYLOAD_203)));
+    }
+    public static void consumePlain(Pipe<NetPayloadSchema> input) {
+        long fieldConnectionId = PipeReader.readLong(input,MSG_PLAIN_210_FIELD_CONNECTIONID_201);
+        long fieldArrivalTime = PipeReader.readLong(input,MSG_PLAIN_210_FIELD_ARRIVALTIME_210);
+        long fieldPosition = PipeReader.readLong(input,MSG_PLAIN_210_FIELD_POSITION_206);
+        ByteBuffer fieldPayload = PipeReader.readBytes(input,MSG_PLAIN_210_FIELD_PAYLOAD_204,ByteBuffer.allocate(PipeReader.readBytesLength(input,MSG_PLAIN_210_FIELD_PAYLOAD_204)));
+    }
+    public static void consumeDisconnect(Pipe<NetPayloadSchema> input) {
+        long fieldConnectionId = PipeReader.readLong(input,MSG_DISCONNECT_203_FIELD_CONNECTIONID_201);
+    }
+    public static void consumeUpgrade(Pipe<NetPayloadSchema> input) {
+        long fieldConnectionId = PipeReader.readLong(input,MSG_UPGRADE_307_FIELD_CONNECTIONID_201);
+        int fieldNewRoute = PipeReader.readInt(input,MSG_UPGRADE_307_FIELD_NEWROUTE_205);
+    }
+    public static void consumeBegin(Pipe<NetPayloadSchema> input) {
+        int fieldSequnceNo = PipeReader.readInt(input,MSG_BEGIN_208_FIELD_SEQUNCENO_209);
+    }
+
+    public static boolean publishEncrypted(Pipe<NetPayloadSchema> output, long fieldConnectionId, long fieldArrivalTime, byte[] fieldPayloadBacking, int fieldPayloadPosition, int fieldPayloadLength) {
+        boolean result = false;
+        if (PipeWriter.tryWriteFragment(output, MSG_ENCRYPTED_200)) {
+            PipeWriter.writeLong(output,MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201, fieldConnectionId);
+            PipeWriter.writeLong(output,MSG_ENCRYPTED_200_FIELD_ARRIVALTIME_210, fieldArrivalTime);
+            PipeWriter.writeBytes(output,MSG_ENCRYPTED_200_FIELD_PAYLOAD_203, fieldPayloadBacking, fieldPayloadPosition, fieldPayloadLength);
+            PipeWriter.publishWrites(output);
+            result = true;
+        }
+        return result;
+    }
+    public static boolean publishPlain(Pipe<NetPayloadSchema> output, long fieldConnectionId, long fieldArrivalTime, long fieldPosition, byte[] fieldPayloadBacking, int fieldPayloadPosition, int fieldPayloadLength) {
+        boolean result = false;
+        if (PipeWriter.tryWriteFragment(output, MSG_PLAIN_210)) {
+            PipeWriter.writeLong(output,MSG_PLAIN_210_FIELD_CONNECTIONID_201, fieldConnectionId);
+            PipeWriter.writeLong(output,MSG_PLAIN_210_FIELD_ARRIVALTIME_210, fieldArrivalTime);
+            PipeWriter.writeLong(output,MSG_PLAIN_210_FIELD_POSITION_206, fieldPosition);
+            PipeWriter.writeBytes(output,MSG_PLAIN_210_FIELD_PAYLOAD_204, fieldPayloadBacking, fieldPayloadPosition, fieldPayloadLength);
+            PipeWriter.publishWrites(output);
+            result = true;
+        }
+        return result;
+    }
+    public static boolean publishDisconnect(Pipe<NetPayloadSchema> output, long fieldConnectionId) {
+        boolean result = false;
+        if (PipeWriter.tryWriteFragment(output, MSG_DISCONNECT_203)) {
+            PipeWriter.writeLong(output,MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, fieldConnectionId);
+            PipeWriter.publishWrites(output);
+            result = true;
+        }
+        return result;
+    }
+    public static boolean publishUpgrade(Pipe<NetPayloadSchema> output, long fieldConnectionId, int fieldNewRoute) {
+        boolean result = false;
+        if (PipeWriter.tryWriteFragment(output, MSG_UPGRADE_307)) {
+            PipeWriter.writeLong(output,MSG_UPGRADE_307_FIELD_CONNECTIONID_201, fieldConnectionId);
+            PipeWriter.writeInt(output,MSG_UPGRADE_307_FIELD_NEWROUTE_205, fieldNewRoute);
+            PipeWriter.publishWrites(output);
+            result = true;
+        }
+        return result;
+    }
+    public static boolean publishBegin(Pipe<NetPayloadSchema> output, int fieldSequnceNo) {
+        boolean result = false;
+        if (PipeWriter.tryWriteFragment(output, MSG_BEGIN_208)) {
+            PipeWriter.writeInt(output,MSG_BEGIN_208_FIELD_SEQUNCENO_209, fieldSequnceNo);
+            PipeWriter.publishWrites(output);
+            result = true;
+        }
+        return result;
+    }
+
+
         
 }

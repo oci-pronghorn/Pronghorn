@@ -1,8 +1,6 @@
 package com.ociweb.pronghorn.stage.network;
 
-import static com.ociweb.pronghorn.pipe.Pipe.addMsgIdx;
-import static com.ociweb.pronghorn.pipe.Pipe.publishWrites;
-import static com.ociweb.pronghorn.pipe.Pipe.roomToLowLevelWrite;
+import static com.ociweb.pronghorn.pipe.Pipe.*;
 
 import java.util.Random;
 
@@ -19,13 +17,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public class IdGenStageBehavior{
 
 	private static final Logger log = LoggerFactory.getLogger(IdGenStageBehavior.class);
-	
-	private static void debug(String template, int range) {
-		//Method prevents garbage creation when debug mode is not enabled
-		if (log.isDebugEnabled()) {
-			log.debug(template,IdGenStage.rangeToString(range));
-		}
-	}
+
 	
 	public static GGSGenerator generator(final long testDuration) {
 		return new GGSGenerator() {
@@ -72,7 +64,7 @@ public class IdGenStageBehavior{
 				
 				
 				Pipe outputRing = outputs[0];
-				while ( tail<head && roomToLowLevelWrite(outputRing, sizeOfFragment)) {
+				while ( tail<head && hasRoomForWrite( outputRing, sizeOfFragment)) {
 				    
 					addMsgIdx(outputRing, theOneMessage);	
 					
@@ -91,9 +83,11 @@ public class IdGenStageBehavior{
 					//publish tail to t exclusive	
 					int value = values[mask&(int)tail];
 					long run = t-tail;
-					int range = (0xFFFF & value) | ( (0xFFFF & (int)(value+run))<<16);
+					int rangeEnd = value+(int)run;
+					
+					int range = IdGenStage.buildRange(value,rangeEnd);
 			
-					debug("Generator produce range {}",range);
+					log.debug("Generator produce range {}->{}",value,rangeEnd);
 										
 					tail = t;
 					
@@ -112,14 +106,12 @@ public class IdGenStageBehavior{
 						int msgIdx = Pipe.takeMsgIdx(inputRing);
 						assert(theOneMessage == msgIdx);
 						
-						int range = Pipe.takeValue(inputRing);
+						int range = Pipe.takeInt(inputRing);
 						
-						debug("Generator consume range {}",range);
-										
+						int idx = IdGenStage.rangeBegin(range);						
+						int limit = IdGenStage.rangeEnd(range);
 						
-						int idx = range & 0xFFFF;
-						
-						int limit = (range >> 16) & 0xFFFF;
+						log.debug("Generator consume range {}->{}",idx,limit);
 						
 						int count = limit-idx;
 						if (count > IdGenStage.MAX_BLOCK_SIZE) {
@@ -168,7 +160,7 @@ public class IdGenStageBehavior{
 						final byte toggle = (byte) ((expected + 1) & 1);
 						
 						boolean contentToLowLevelRead = Pipe.hasContentToRead(inputs[expected], sizeOfFragment);
-						boolean roomToLowLevelWrite = roomToLowLevelWrite(outputs[toggle], sizeOfFragment);
+						boolean roomToLowLevelWrite = hasRoomForWrite(outputs[toggle], sizeOfFragment);
 											
 						if (contentToLowLevelRead && roomToLowLevelWrite) {
 	
@@ -178,17 +170,11 @@ public class IdGenStageBehavior{
 								return new TestFailureDetails("Corrupt Feed");
 							};
 	
-							final int range = Pipe.takeValue(inputs[expected]);
-	
+							final int range = Pipe.takeInt(inputs[expected]);
+							final int start = IdGenStage.rangeBegin(range);
+							final int limit = IdGenStage.rangeEnd(range);
 							
-							
-							final int start = range & 0xFFFF; // TODO: helper method to get
-												      // the shorts would be nice
-													  // here
-							final int limit = (range >> 16) & 0xFFFF;
-							
-							debug("Validation "+label[expected]+" to "+label[toggle]+" range {} ",range);
-							
+							log.debug("Validation "+label[expected]+" to "+label[toggle]+" range {}->{} ",start,limit);
 							
 							int count = limit-start;
 							if (count<1) {
@@ -224,7 +210,7 @@ public class IdGenStageBehavior{
 							}
 							if (exit) {
 								
-								return new TestFailureDetails("Bad Match on input range "+IdGenStage.rangeToString(range));
+								return new TestFailureDetails("Bad Match on input range "+IdGenStage.rangeBegin(range)+"->"+IdGenStage.rangeEnd(range));
 								
 							}
 							

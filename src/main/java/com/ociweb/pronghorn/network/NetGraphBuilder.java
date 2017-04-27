@@ -86,7 +86,7 @@ public class NetGraphBuilder {
 		PipeConfig<NetPayloadSchema> clientNetResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, responseQueue, responseSize); 	
 		
 		
-		//pipe holds data as it is parsed so making it larger is helpfull
+		//pipe holds data as it is parsed so making it larger is helpful
 		PipeConfig<NetPayloadSchema> clientHTTPResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, netResponseCount, netResponseBlob); 	
 		
 		
@@ -109,7 +109,7 @@ public class NetGraphBuilder {
 			int k = maxPartialResponses;
 			while (--k>=0) {
 				socketResponse[k] = new Pipe<NetPayloadSchema>(clientNetResponseConfig,false);
-				clearResponse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig,false);
+				clearResponse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig); //may be consumed by high level API one does not know.
 			}
 		} else {
 			socketResponse = new Pipe[maxPartialResponses];
@@ -117,7 +117,7 @@ public class NetGraphBuilder {
 			
 			int k = maxPartialResponses;
 			while (--k>=0) {
-				socketResponse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig,false);
+				socketResponse[k] = new Pipe<NetPayloadSchema>(clientHTTPResponseConfig);//may be consumed by high level API one does not know.
 			}
 		}
 			
@@ -125,7 +125,7 @@ public class NetGraphBuilder {
 		int a = responseParsers + (isTLS?responseUnwrapCount:0);
 		Pipe<ReleaseSchema>[] acks = new Pipe[a];
 		while (--a>=0) {
-			acks[a] =  new Pipe<ReleaseSchema>(parseReleaseConfig,false);	
+			acks[a] =  new Pipe<ReleaseSchema>(parseReleaseConfig); //may be consumed by high level API one does not know.	
 		}
 		Pipe<ReleaseSchema> ackReleaseForResponseParser = acks[acks.length-1];
 		

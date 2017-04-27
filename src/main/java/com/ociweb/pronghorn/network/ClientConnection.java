@@ -235,6 +235,7 @@ public class ClientConnection extends SSLConnection {
 		assert(getSocketChannel().finishConnect());
 		
 		if (isTLS) {
+
 			getEngine().beginHandshake();
 			
 			HandshakeStatus handshake = getEngine().getHandshakeStatus();
@@ -256,7 +257,9 @@ public class ClientConnection extends SSLConnection {
 					assert(null!=pipe);
 					
 					if (Pipe.hasRoomForWrite(pipe)) {
-					//	logger.info("request wrap for id {} to pipe {}",getId(), pipe);
+					
+						logger.info("ClientConnection request wrap for id {} to pipe {}",getId(), pipe);
+						
 						int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
 						Pipe.addLongValue(getId(), pipe);
 						Pipe.addLongValue(System.currentTimeMillis(), pipe);

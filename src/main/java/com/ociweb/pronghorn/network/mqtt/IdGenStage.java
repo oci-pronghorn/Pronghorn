@@ -29,6 +29,8 @@ public class IdGenStage extends PronghornStage {
 	private static final int MAX_CONSUMED_BLOCKS_LIMIT = MAX_CONSUMED_BLOCKS-1;
 	private static final int STOP_CODE = 0xFFFFFFFF;
 	
+	public static final int IS_REMOTE_BIT = 1<<17;//needs to be above the low 16
+	
 	private int[] consumedRanges;
 	private int totalRanges = 0;
 	
@@ -48,7 +50,7 @@ public class IdGenStage extends PronghornStage {
         GraphManager.addNota(graphManager,GraphManager.PRODUCER, GraphManager.PRODUCER, this);
 	}
 	
-	public IdGenStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs) {
+	public IdGenStage(GraphManager graphManager, Pipe<MQTTIdRangeSchema>[] inputs, Pipe<MQTTIdRangeSchema>[] outputs) {
 		super(graphManager, inputs, outputs);
 		this.inputs = inputs;
 		this.outputs = outputs;
@@ -76,8 +78,6 @@ public class IdGenStage extends PronghornStage {
 				
 				releaseRange(Pipe.takeInt(inputRing));
 				
-				//TODO: do we send the reset request here or earler or later?
-				
 				Pipe.releaseReadLock(inputRing);
 				Pipe.confirmLowLevelRead(inputRing, sizeOfFragment);
 			}
@@ -102,51 +102,51 @@ public class IdGenStage extends PronghornStage {
 		}
 	
 	}
-	
-	//TODO: this is a problem because it creates garbage when not logging
-	public static String rangeToString(int range) {
-		return Integer.toString(0xFFFF&range)+"->"+Integer.toString(0xFFFF&(range>>16));
+
+	public static int rangeEnd(int range) {
+		return (0xFFFF&(range>>16));
 	}
 	
-	private void debug(String template, int range) {
-		//Method prevents garbage creation when debug mode is not enabled
-		if (log.isDebugEnabled()) {
-			log.debug(template,IdGenStage.rangeToString(range));
-		}
+    public static int rangeBegin(int range) {
+		return (0xFFFF&range);
 	}
-	
+
+	public static int buildRange(final int rangeStart, final int rangeEnd) {
+		return (0xFFFF&rangeStart) | (rangeEnd<<16);
+	}
+
 	public void releaseRange(final int range) {
 		
 		int insertAt = findIndex(consumedRanges, 0, totalRanges, range);		
 				
 		if (range != consumedRanges[insertAt]) {
-			int releaseEnd = 0xFFFF&(range>>16);
-			int releaseBegin = 0xFFFF&range;
+			final int releaseEnd = rangeEnd(range);
+			final int releaseBegin = rangeBegin(range);
 			if (releaseBegin>=releaseEnd) {
 				//this is an invalid message and treated as a no-op
 				//this must always be done to support generative testing
 				//TODO: B, if desired this can be logged
-				log.debug("skipped release for {}",rangeToString(range));
+				log.debug("skipped release for {}->{}",releaseBegin,releaseEnd);
 				return;
 			}
 			
-			debug("IdGen release range {}",range);
+			log.debug("IdGen release range {}->{}",releaseBegin,releaseEnd);
 			
 			// if begin is < last cosumedRange end then its in the middle of that row need special logic
 			if (insertAt>0) {
-				int lastRangeEnd = 0xFFFF&(consumedRanges[insertAt-1]>>16);
+				int lastRangeEnd = rangeEnd(consumedRanges[insertAt-1]);
 				if (releaseBegin <  lastRangeEnd  ) {
 													
 					if (releaseEnd < lastRangeEnd) {
 						
 						//cuts range in two parts, will need to add row to table
-						consumedRanges[insertAt-1] = (0xFFFF&consumedRanges[insertAt-1]) | ((0xFFFF&releaseBegin)<<16);
+						consumedRanges[insertAt-1] = buildRange(consumedRanges[insertAt-1],releaseBegin);//    //(0xFFFF&consumedRanges[insertAt-1]) | ((0xFFFF&releaseBegin)<<16);
 						int toCopy = totalRanges - insertAt;					
 						System.arraycopy(consumedRanges, insertAt, consumedRanges, insertAt+1, toCopy);	
 						//subtract one from release end because that value is exclusive of release
-						consumedRanges[insertAt] = (0xFFFF&(releaseEnd-1)) | (lastRangeEnd<<16);
+						consumedRanges[insertAt] = buildRange(releaseEnd-1,lastRangeEnd);// (0xFFFF&(releaseEnd-1)) | (lastRangeEnd<<16);
 						totalRanges++;
-						assert(validateInternalTable()) : "Added at "+insertAt + " from release "+rangeToString(range);
+						assert(validateInternalTable()) : "Added at "+insertAt + " from release "+releaseBegin+"->"+releaseEnd;
 						return; // do not continue
 
 					} else {
@@ -174,8 +174,7 @@ public class IdGenStage extends PronghornStage {
 			//this last row may be split and needs adjustment			
 			int lastRow = rows+insertAt-1;		
 			if (totalRanges>0) {
-				//assert(releaseEnd>(consumedRanges[lastRow]&0xFFFF)); //TODO: B, do we need this assert?
-				int lastEnd = (0xFFFF&(consumedRanges[lastRow]>>16));
+				int lastEnd = rangeEnd(consumedRanges[lastRow]);//(0xFFFF&(consumedRanges[lastRow]>>16));
 				if (releaseEnd<lastEnd) {
 					//this is a partial row so modify rather than clear
 					consumedRanges[lastRow] = (0xFFFF&releaseEnd) | (lastEnd<<16);
@@ -198,7 +197,7 @@ public class IdGenStage extends PronghornStage {
 
 		} else {
 			
-			debug("IdGen release range exact match {}",range);
+			log.debug("IdGen release range exact match {}->{}",rangeBegin(range),rangeEnd(range));
 			//exact match so just delete this row
 			int toCopy = -1 + totalRanges - insertAt;
 			if (toCopy>0) {
@@ -215,8 +214,8 @@ public class IdGenStage extends PronghornStage {
 		int i = rows;
 		while (--i>=0) {
 			int range = consumedRanges[insertAt+i];
-			int begin = range&0xFFFF;
-			int end = (range>>16)&0xFFFF;
+			int begin = rangeBegin(range);
+			int end =  rangeEnd(range);
 			if (begin<releaseBegin || end<releaseBegin) {
 				return false;
 			}
@@ -289,11 +288,11 @@ public class IdGenStage extends PronghornStage {
 	private void dumpInternalTable() {
 		int j = totalRanges;
 		while (--j>=0) {
-			System.err.println(j+" reserved "+rangeToString(consumedRanges[j]));
+			System.err.println(j+" reserved "+rangeBegin(consumedRanges[j])+"->"+rangeEnd(consumedRanges[j]));
 		}
 	}
 
-	private int reserveRange(int rangeStart, int idx, int rangeCount) {
+	private int reserveRange(final int rangeStart, int idx, final int rangeCount) {
 		assert(idx>0);
 		//appends on to previous internal row
 		
@@ -308,13 +307,16 @@ public class IdGenStage extends PronghornStage {
 		consumedRanges[idx-1]= (consumedRanges[idx-1]&0xFFFF) | (rangeEnd<<16);
 		
 		//send back value that is just the new range
-		int newReservation = rangeStart | ((rangeStart+rangeCount)<<16);
-		debug("IdGen reserve range {}",newReservation);
+		
+		int newReservation = buildRange(rangeStart, rangeStart+rangeCount);
+	
+		log.debug("IdGen reserve range {}->{}",rangeStart,rangeEnd);
 				
 		assert(validateInternalTable());
 		return newReservation;
 		
 	}
+
 
 	private boolean validateInternalTable() {
 		int last = 65536;

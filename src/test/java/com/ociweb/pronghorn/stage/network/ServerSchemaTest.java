@@ -15,34 +15,17 @@ public class ServerSchemaTest {
 
     @Test
     public void testServerResponseSchemaFROMMatchesXML() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/serverResponse.xml", ServerResponseSchema.instance));
-    };
-    
-    @Test
-    public void testServerResponseSchemaConstantFields() {
-        assertTrue(FROMValidation.testForMatchingLocators(ServerResponseSchema.instance));
-    }  
-    
+        assertTrue(FROMValidation.checkSchema("/serverResponse.xml", ServerResponseSchema.class));
+    }
+
     @Test
     public void testServerConnectFROMMatchesXML() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/serverConnect.xml", ServerConnectionSchema.instance));
-    };
-    
-    @Test
-    public void testServerConnectConstantFields() {
-        assertTrue(FROMValidation.testForMatchingLocators(ServerConnectionSchema.instance));
+        assertTrue(FROMValidation.checkSchema("/serverConnect.xml", ServerConnectionSchema.class));
     }
 
     @Test
     public void testHTTPRequestFROMMatchesXML() {
-        assertTrue(FROMValidation.testForMatchingFROMs("/httpRequest.xml", HTTPRequestSchema.instance));
-    };
-    
-    @Test
-    public void testHTTPRequestConstantFields() {
-        assertTrue(FROMValidation.testForMatchingLocators(HTTPRequestSchema.instance));
+        assertTrue(FROMValidation.checkSchema("/httpRequest.xml", HTTPRequestSchema.class));
     }
-    
-    
     
 }

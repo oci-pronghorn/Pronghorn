@@ -23,12 +23,11 @@ public class IdGenStageTest {
     public void testIdGenExpectedUse() {
 	    
 	    long testDuration = 500; //keep short for now to save limited time on build server
+	    int generatorSeed = 42;
 	    
 	    GVSValidator validator = IdGenStageBehavior.validator();
         GGSGenerator generator = IdGenStageBehavior.generator(testDuration);
 
-        //to randomize from seed
-        int generatorSeed = 42;
         Random random = new Random(generatorSeed);
                     
         Class targetStage = IdGenStage.class;
@@ -67,5 +66,15 @@ public class IdGenStageTest {
 	    
 	}
 	
+	
+	
+	@Test
+	public void testIdGenFuzzFuzz() {
+
+        long testDuration = 1000; //keep short for now to save limited time on build server
+        int generatorSeed = 42;
+        TestRunner.runFuzzTest(IdGenStage.class, testDuration, generatorSeed);
+	    
+	}
 	
 }

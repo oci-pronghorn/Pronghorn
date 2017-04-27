@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.network;
 import java.io.IOException;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.channels.UnsupportedAddressTypeException;
 import java.util.Arrays;
 
 import org.slf4j.Logger;
@@ -112,7 +113,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 					if (connections[i]==null && Pipe.hasContentToRead(pipe)) try {			
 	
 						msgIdx = Pipe.takeMsgIdx(pipe);
-												
+					
 						if (NetPayloadSchema.MSG_ENCRYPTED_200 == msgIdx) {
 											
 							final long channelId = Pipe.takeLong(pipe);
@@ -197,9 +198,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 							ClientConnection cc = (ClientConnection)ccm.get(channelId);
 							
 							long workingTailPosition = Pipe.takeLong(pipe);
-							
-							//logger.info("SENDING PLAIN DATA");
-							
+										
 							int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 							int len  = Pipe.takeRingByteLen(pipe);
 	
@@ -211,9 +210,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 							}
 							
 						    	if (SSLUtil.HANDSHAKE_POS != workingTailPosition) {
-		 							//System.out.println("A");
+		 						
 									if (null!=cc) {
-										//System.out.println("B");
+										
 										totalBytes += len;
 										ByteBuffer[] writeHolder = Pipe.wrappedReadingBuffers(pipe, meta, len);							
 
@@ -243,7 +242,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 										            		buffers[i].remaining()>pipe.maxVarLen && 
 										            Pipe.peekLong(pipe, 1)==channelId ) {
 										        			        	
-										        	//logger.trace("opportunity found to batch writes going to {} ",channelId);
+										        	logger.trace("opportunity found to batch writes going to {} ",channelId);
 										        	
 										        	int m = Pipe.takeMsgIdx(pipe);
 										        	assert(m==msgIdx): "internal error";
@@ -292,13 +291,22 @@ public class ClientSocketWriterStage extends PronghornStage {
 									}
 						    	} else {
 						    		logger.error("Hanshake not supported here, this message should not have arrived");
+						    		throw new UnsupportedOperationException("Check configuration, TLS handshake was not expected but requested. Check coordinator.");
 						    	}
+						} else if (NetPayloadSchema.MSG_UPGRADE_307 == msgIdx) {
+							
+							throw new UnsupportedOperationException("Connection upgrade is not yet supported.");
+						
+						} else if (NetPayloadSchema.MSG_BEGIN_208 == msgIdx) {
+							
+							throw new UnsupportedOperationException("Begin connection message was not expected here.");
+							
 						} else {
 							
-							Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
+							assert(-1 == msgIdx) : "Expected end of stream shutdown got "+msgIdx;
+							Pipe.confirmLowLevelRead(pipe, Pipe.EOF_SIZE);
 							Pipe.releaseReadLock(pipe);
 							
-							assert(-1 == msgIdx) : "Expected end of stream shutdown";
 							
 							if (--this.shutCountDown <= 0) {
 								requestShutdown();
@@ -331,7 +339,6 @@ public class ClientSocketWriterStage extends PronghornStage {
 				//System.err.println("write data block of "+buffers[i].remaining());
 				value = connections[i].getSocketChannel().write(buffers[i]);
 				//total+=value;
-				//System.err.println("written "+value+" of total "+total);
 			} else {
 				//write only this many bytes over the network at a time
 				ByteBuffer buf = ByteBuffer.wrap(new byte[debugMaxBlockSize]);

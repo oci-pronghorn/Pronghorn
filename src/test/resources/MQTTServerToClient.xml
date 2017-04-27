@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+  
+   <template name="PubAck" id="4"> <!-- IDs are MQTT Control Packet types -->
+    <uInt64 name="Time" id="37"/>
+    <uInt32 name="PacketId" id="20"/>
+   </template>
+  
+   <template name="PubRec" id="5"> <!-- IDs are MQTT Control Packet types -->
+    <uInt64 name="Time" id="37"/>
+    <uInt32 name="PacketId" id="20"/>
+   </template>
+  
+   <template name="PubRel" id="6">
+    <uInt64 name="Time" id="37"/>
+    <uInt32 name="PacketId" id="20"/>
+   </template>
+   
+   <template name="ConnAck" id="2">
+    <uInt64 name="Time" id="37"/>
+    <uInt32 name="Flag" id="35"/>
+   	<uInt32 name="ReturnCode" id="24"/>
+   </template>
+  
+   <template name="Publish" id="3"><!-- IDs are MQTT Control Packet types -->
+     <uInt64 name="Time" id="37"/>
+     <uInt32 name="PacketId" id="20"/>
+     <uInt32 name="QOS" id="21"/>
+     <uInt32 name="Retain" id="22"/>
+     <uInt32 name="Dup" id="36"/>     
+     <String name="Topic" id="23" charset="unicode"/>
+     <byteVector name="Payload" id="25"/>     
+   </template>
+      
+   <template name="Disconnect" id="14"> <!-- IDs are MQTT Control Packet types -->
+     <uInt64 name="Time" id="37"/>
+   </template>
+         
+   <template name="PubComp" id="7">
+    <uInt64 name="Time" id="37"/>
+    <uInt32 name="PacketId" id="20"/>
+   </template>
+   
+   <template name="SubAck" id="9"> <!-- IDs are MQTT Control Packet types -->
+    <uInt64 name="Time" id="37"/>
+    <uInt32 name="PacketId" id="20"/>
+    <uInt32 name="ReturnCode" id="24"/>
+   </template>
+   
+   <template name="UnsubAck" id="11"> <!-- IDs are MQTT Control Packet types -->
+    <uInt64 name="Time" id="37"/>
+    <uInt32 name="PacketId" id="20"/>
+   </template>
+   
+   <template name="PingResp" id="13"> <!-- IDs are MQTT Control Packet types -->
+    <uInt64 name="Time" id="37"/>
+   </template>
+   
+
+</templates>

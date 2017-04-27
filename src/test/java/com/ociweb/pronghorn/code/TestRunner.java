@@ -2,42 +2,20 @@ package com.ociweb.pronghorn.code;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Parameter;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.network.IdGenStageTest;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
-import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
+import com.ociweb.pronghorn.stage.scheduling.NonThreadScheduler;
 
 public class TestRunner {
-
-    public static Pipe[] joinArrays(Pipe[] a, Pipe[] b) {
-    	int len = a.length+b.length;
-    	Pipe[] result = new Pipe[len];
-    	int i = b.length;
-    	while (--i>=0) {
-    		result[--len] = b[i];
-    	}
-    	i = a.length;
-    	while (--i>=0) {
-    		result[--len] = a[i];
-    	}	
-    	return result;
-    }
-
-    public static Pipe[] buildRings(PipeConfig[] configs) {
-    	int i = configs.length;
-    	Pipe[] result = new Pipe[i];
-    	while (--i>=0) {
-    		result[i] = new Pipe(configs[i]);
-    	}		
-    	return result;
-    }
 
     /**
      * General method for running each "expected use" tests
@@ -55,13 +33,13 @@ public class TestRunner {
     	GraphManager gm = new GraphManager();
     	
     	//NOTE: Uses RingBufferConfig queue size so we only test for the case that is built and deployed.		
-    	Pipe[] testedToValidate = buildRings(outputConfigs);
-    	Pipe[] validateToGenerate = buildRings(outputConfigs);		
-    	Pipe[] validateToTested = buildRings(inputConfigs);			
-    	Pipe[] generateToValidate = buildRings(inputConfigs);
+    	Pipe[] testedToValidate = Pipe.buildPipes(outputConfigs);
+    	Pipe[] validateToGenerate = Pipe.buildPipes(outputConfigs);		
+    	Pipe[] validateToTested = Pipe.buildPipes(inputConfigs);			
+    	Pipe[] generateToValidate = Pipe.buildPipes(inputConfigs);
     	
-    	Pipe[] validationInputs = joinArrays(testedToValidate, generateToValidate);
-    	Pipe[] validationOutputs = joinArrays(validateToTested, validateToGenerate);
+    	Pipe[] validationInputs = PronghornStage.join(testedToValidate,generateToValidate);
+    	Pipe[] validationOutputs = PronghornStage.join(validateToTested,validateToGenerate);
     	
     	Pipe[] generatorInputs = validateToGenerate;
     	Pipe[] generatorOutputs = generateToValidate;
@@ -81,11 +59,18 @@ public class TestRunner {
     	if (IdGenStageTest.log.isDebugEnabled()) {
     		MonitorConsoleStage.attach(gm);
     	}
-    	 
-    	//TODO: create new single threaded deterministic scheduler.
-    	StageScheduler scheduler = new ThreadPerStageScheduler(gm);
+
+    	NonThreadScheduler scheduler = new NonThreadScheduler(gm);
     	
-    	scheduler.startup();		
+    	scheduler.startup();	
+    					
+    	long stopTime = testDuration+System.currentTimeMillis();
+    	do {
+    		scheduler.run();
+    	} while (System.currentTimeMillis() < stopTime);
+    	    	
+    	scheduler.shutdown();
+    	
     	
     	if (!scheduler.awaitTermination(testDuration+IdGenStageTest.SHUTDOWN_WINDOW, TimeUnit.MILLISECONDS) || valdiationStage.foundError()) {
     		for (Pipe ring: testedToValidate) {
@@ -103,45 +88,187 @@ public class TestRunner {
     	}
     }
 
-    public static void runFuzzTest(Class targetStage, PipeConfig[] inputConfigs, PipeConfig[] outputConfigs, long testDuration, Random random) throws NoSuchMethodException, SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-    	IdGenStageTest.log.info("begin 'fuzz' testing {}",targetStage);
+    public static void runFuzzTest(Class targetStage, long testDuration, int generatorSeed)  {
+
+    	final int maxPipeLength = 4;
+    	final int maxPipeVarArg = 128;
+
+        final Random random = new Random(generatorSeed);
+        
     	
-    	GraphManager gm = new GraphManager();
+    	////////////////////////////
+    	//new test code to dynamically generate test configurations for a given stage
+    	///////////////////////////
+    	for(Constructor<?> con:targetStage.getConstructors()) {
+    		
+    		GraphManager localTestGM = new GraphManager();
+    		
+    		Parameter[] params = con.getParameters();
+    		
+    		Class[] constructorParameterTypes = new Class[params.length];
+    		Object[] constructorParameterObjects = new Object[params.length];
+    		int cIdx = 0;
+
+    		for(Parameter p: params) {
+    			
+    			Class<?> clazz = p.getType();
+    			String pipeText = p.getParameterizedType().getTypeName();
+    			
+    			if (clazz.equals(GraphManager.class)) {
+    				
+    				constructorParameterTypes[cIdx] = localTestGM.getClass();
+    				constructorParameterObjects[cIdx++] = localTestGM;
+    				
+    			} else {
+    			    	
+	    			if (clazz.isAssignableFrom(Pipe.class)) {
+		    			String schemaText = pipeText.substring(pipeText.indexOf('<')+1,pipeText.indexOf('>'));
+		    			MessageSchema instance = null;
+		    			try {
+		    				Class<MessageSchema> schemaClass = (Class<MessageSchema>)Class.forName(schemaText);					
+		    				instance = MessageSchema.findInstance(schemaClass);
+		    			} catch (ClassNotFoundException e) {
+		    				throw new RuntimeException(e);
+		    			} 	
+		    			
+						Pipe<?> pipe = instance.newPipe(maxPipeLength, maxPipeVarArg);					
+						constructorParameterTypes[cIdx] = pipe.getClass();
+						constructorParameterObjects[cIdx++] = pipe;					    			   
+	    			
+	    			} else if (clazz.isAssignableFrom(Pipe[].class)) {
+		    			String schemaText = pipeText.substring(pipeText.indexOf('<')+1,pipeText.indexOf('>'));
+		    			MessageSchema instance = null;
+		    			try {
+		    				Class<MessageSchema> schemaClass = (Class<MessageSchema>)Class.forName(schemaText);					
+		    				instance = MessageSchema.findInstance(schemaClass);
+		    			} catch (ClassNotFoundException e) {
+		    				throw new RuntimeException(e);
+		    			} 	
+		    			
+	    				int groupSize = 1;
+	    				Pipe[] pipeGroup = new Pipe[groupSize];    				
+	    				int i = groupSize;
+	    				while (--i>=0) {
+	    					pipeGroup[i] = instance.newPipe(maxPipeLength, maxPipeVarArg);
+	    				}
+	    				
+						constructorParameterTypes[cIdx] = pipeGroup.getClass();
+						constructorParameterObjects[cIdx++] = pipeGroup;
+	    				
+	    			} else {
+	    				
+	    				throw new UnsupportedOperationException("Not yet implemented support for "+p);
+	    				    				
+	    			}    	
+    			}
+    		}
+    		    		 
+    		try {
+	    		PronghornStage stageToTest = (PronghornStage)targetStage.getConstructor(constructorParameterTypes).newInstance(constructorParameterObjects);  
+	    		    		
+	    		fuzzTestStage(testDuration, random, localTestGM, stageToTest);
+    		} catch (Exception ex) {
+    			throw new RuntimeException(ex);
+    		}
+    	}
+
+    }
+
+	private static void fuzzTestStage(long testDuration, Random random, GraphManager gm, PronghornStage stageToTest) {
+		int c = GraphManager.getOutputPipeCount(gm, stageToTest.stageId);
+		Pipe[] outputPipes = new Pipe[c];
+    	for(int i=1; i<=c; i++) {
+    		outputPipes[i-1] = GraphManager.getOutputPipe(gm, stageToTest.stageId, i);
+		}
+    	c = GraphManager.getInputPipeCount(gm, stageToTest.stageId);
+		Pipe[] inputPipes = new Pipe[c];
+    	for(int i=1; i<=c; i++) {
+    		inputPipes[i-1] = GraphManager.getInputPipe(gm, stageToTest.stageId, i);
+		}
     	
-    	Pipe[] inputRings = buildRings(inputConfigs);	
-    	Pipe[] outputRings = buildRings(outputConfigs);	
+
+    	//all target test stages are market as producer for the duration of this test run
+		GraphManager.addNota(gm, GraphManager.PRODUCER, GraphManager.PRODUCER, stageToTest);	
+		
+		
+		int i = inputPipes.length;
+		while (--i>=0) {
+			GraphManager.addNota(gm, GraphManager.PRODUCER, GraphManager.PRODUCER, new FuzzGeneratorStage(gm, random, testDuration, inputPipes[i]));
+		}
+		
+		int j = outputPipes.length;
+		FuzzValidationStage[] valdiators = new FuzzValidationStage[j];
+		while (--j>=0) {
+			valdiators[j] = new FuzzValidationStage(gm, outputPipes[j]);
+		}
+				
+		
+		if (IdGenStageTest.log.isDebugEnabled()) {
+			MonitorConsoleStage.attach(gm);
+		}
+		
+		NonThreadScheduler scheduler = new NonThreadScheduler(gm);
+		
+		scheduler.startup();	
+						
+		long stopTime = testDuration+System.currentTimeMillis();
+		do {
+			scheduler.run();
+		} while (System.currentTimeMillis() < stopTime);
+		    	
+		scheduler.shutdown();
+		
+		boolean cleanTerminate = scheduler.awaitTermination(testDuration+IdGenStageTest.SHUTDOWN_WINDOW, TimeUnit.MILLISECONDS);
+		
+		boolean foundError = false;
+		j = valdiators.length;
+		while (--j>=0) {
+			foundError |= valdiators[j].foundError();
+		}
+		
+		if (!cleanTerminate || foundError) {
+			for (Pipe ring: outputPipes) {
+				IdGenStageTest.log.info("{}->Valdate {}",stageToTest,ring);
+			}
+			for (Pipe ring: inputPipes) {
+				IdGenStageTest.log.info("Generate->{} {}",stageToTest,ring);
+			}			
+		}
+	}
+
+	private static void fuzzStageToTest(long testDuration, Random random, GraphManager gm, Pipe[] inputRings,
+			Pipe[] outputRings, PronghornStage stageToTest) {
+		//all target test stages are market as producer for the duration of this test run
+		GraphManager.addNota(gm, GraphManager.PRODUCER, GraphManager.PRODUCER, stageToTest);	
+    	
     	
     	int i = inputRings.length;
     	while (--i>=0) {
     		GraphManager.addNota(gm, GraphManager.PRODUCER, GraphManager.PRODUCER, new FuzzGeneratorStage(gm, random, testDuration, inputRings[i]));
     	}
-    	
-    	//TODO: test must check for hang, needs special scheduler that tracks time and reports longest active actor
-    	//TODO: test much check for throw, done by scheduler closing early, should still be running when we request shutdown
-    	//TODO: test much check output rings for valid messages if any, done inside FuzzValidationStage
-    	
+
     	int j = outputRings.length;
     	FuzzValidationStage[] valdiators = new FuzzValidationStage[j];
     	while (--j>=0) {
     		valdiators[j] = new FuzzValidationStage(gm, outputRings[j]);
-    		
     	}
-    		
-    	//TODO: once complete determine how we will do this with multiple queues.
-    	Constructor constructor = targetStage.getConstructor(gm.getClass(), inputRings.getClass(), outputRings.getClass());
     			
-    	//all target test stages are market as producer for the duration of this test run
-    	GraphManager.addNota(gm, GraphManager.PRODUCER, GraphManager.PRODUCER, (PronghornStage)constructor.newInstance(gm, inputRings, outputRings));	
     	
     	if (IdGenStageTest.log.isDebugEnabled()) {
     		MonitorConsoleStage.attach(gm);
     	}
     	 
-    	//TODO: create new single threaded deterministic scheduler.
-    	StageScheduler scheduler = new ThreadPerStageScheduler(gm);
+    	NonThreadScheduler scheduler = new NonThreadScheduler(gm);
     	
     	scheduler.startup();	
     					
+    	long stopTime = testDuration+System.currentTimeMillis();
+    	do {
+    		scheduler.run();
+    	} while (System.currentTimeMillis() < stopTime);
+    	    	
+    	scheduler.shutdown();
+    	
     	boolean cleanTerminate = scheduler.awaitTermination(testDuration+IdGenStageTest.SHUTDOWN_WINDOW, TimeUnit.MILLISECONDS);
     	
     	boolean foundError = false;
@@ -152,13 +279,12 @@ public class TestRunner {
     	
     	if (!cleanTerminate || foundError) {
     		for (Pipe ring: outputRings) {
-    			IdGenStageTest.log.info("{}->Valdate {}",targetStage,ring);
+    			IdGenStageTest.log.info("{}->Valdate {}",stageToTest,ring);
     		}
     		for (Pipe ring: inputRings) {
-    			IdGenStageTest.log.info("Generate->{} {}",targetStage,ring);
+    			IdGenStageTest.log.info("Generate->{} {}",stageToTest,ring);
     		}			
     	}
-    	
-    }
+	}
 
 }
