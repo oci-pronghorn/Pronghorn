@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.pipe;
 
+import java.nio.ByteBuffer;
+
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 public class RawDataSchema extends MessageSchema {
@@ -17,19 +19,39 @@ public class RawDataSchema extends MessageSchema {
     public static final RawDataSchema instance = new RawDataSchema();
     
     public static final int MSG_CHUNKEDSTREAM_1 = 0x00000000;
-    public static final int MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2 = 0x01C00001;
-    
-    // ByteArray DataInputBlobReader DataOutputBlobWriter
-    // String    CharSequence        Appendable
-    // int       int                 int
-    
-    public interface RawDataConsumer {
-        void consume(DataInputBlobReader value);    
+    public static final int MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2 = 0x01c00001;
+
+
+    public static void consume(Pipe<RawDataSchema> input) {
+        while (PipeReader.tryReadFragment(input)) {
+            int msgIdx = PipeReader.getMsgIdx(input);
+            switch(msgIdx) {
+                case MSG_CHUNKEDSTREAM_1:
+                    consumeChunkedStream(input);
+                break;
+                case -1:
+                   //requestShutdown();
+                break;
+            }
+            PipeReader.releaseReadLock(input);
+        }
     }
-    
-    public interface RawDataProducer {
-        void produce(DataOutputBlobWriter value);
+
+    public static void consumeChunkedStream(Pipe<RawDataSchema> input) {
+        ByteBuffer fieldByteArray = PipeReader.readBytes(input,MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2,ByteBuffer.allocate(PipeReader.readBytesLength(input,MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2)));
     }
+
+    public static boolean publishChunkedStream(Pipe<RawDataSchema> output, byte[] fieldByteArrayBacking, int fieldByteArrayPosition, int fieldByteArrayLength) {
+        boolean result = false;
+        if (PipeWriter.tryWriteFragment(output, MSG_CHUNKEDSTREAM_1)) {
+            PipeWriter.writeBytes(output,MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2, fieldByteArrayBacking, fieldByteArrayPosition, fieldByteArrayLength);
+            PipeWriter.publishWrites(output);
+            result = true;
+        }
+        return result;
+    }
+
+
     
     protected RawDataSchema(FieldReferenceOffsetManager from) {
         //TODO: confirm that from is a superset of FROM, Names need not match but IDs must.

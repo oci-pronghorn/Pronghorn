@@ -495,9 +495,11 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     	long srcIdx = sourceRing.ringWalker.activeReadFragmentStack[PipeReader.STACK_OFF_MASK&(sourceLOC>>PipeReader.STACK_OFF_SHIFT)] +(PipeReader.OFF_MASK&sourceLOC);   	
 		long targetIdx = (targetRing.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(targetLOC>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&targetLOC));	
 	
-		Pipe.primaryBuffer(targetRing)[targetRing.mask & (int)targetIdx]     = Pipe.primaryBuffer(sourceRing)[sourceRing.mask & (int)srcIdx];
-		Pipe.primaryBuffer(targetRing)[targetRing.mask & (int)targetIdx+1] = Pipe.primaryBuffer(sourceRing)[sourceRing.mask & (int)srcIdx+1];
-		Pipe.primaryBuffer(targetRing)[targetRing.mask & (int)targetIdx+2] = Pipe.primaryBuffer(sourceRing)[sourceRing.mask & (int)srcIdx+2];
+		int[] tSlab = Pipe.slab(targetRing);
+		int[] sSlab = Pipe.slab(sourceRing);
+		tSlab[targetRing.slabMask & (int)targetIdx]   = sSlab[sourceRing.slabMask & (int)srcIdx];
+		tSlab[targetRing.slabMask & (int)targetIdx+1] = sSlab[sourceRing.slabMask & (int)srcIdx+1];
+		tSlab[targetRing.slabMask & (int)targetIdx+2] = sSlab[sourceRing.slabMask & (int)srcIdx+2];
 		
     }
         
@@ -506,14 +508,14 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(targetLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(targetLOC);
 	
 		//High level API example of reading bytes from one ring buffer into another array that wraps with a mask w
-		return copyBytes(targetPipe, targetLOC, readBytes(sourcePipe, sourceLOC, Pipe.blob(targetPipe),  Pipe.getBlobWorkingHeadPosition(targetPipe), targetPipe.byteMask));
+		return copyBytes(targetPipe, targetLOC, readBytes(sourcePipe, sourceLOC, Pipe.blob(targetPipe),  Pipe.getWorkingBlobHeadPosition(targetPipe), targetPipe.blobMask));
 	}
 
 	private static int copyBytes(final Pipe targetPipe, int targetLOC, int length) {
 	    assert(LOCUtil.isLocOfAnyType(targetLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(targetLOC);
 
 
-	    int byteWrkHdPos = Pipe.getBlobWorkingHeadPosition(targetPipe);
+	    int byteWrkHdPos = Pipe.getWorkingBlobHeadPosition(targetPipe);
 	    
 		Pipe.validateVarLength(targetPipe, length);	
 		Pipe.setBytePosAndLen(Pipe.slab(targetPipe), targetPipe.mask, 
@@ -639,6 +641,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	
 	//this impl only works for simple case where every message is one fragment. 
 	public static boolean tryReadFragment(Pipe pipe) {
+		assert(pipe.usingHighLevelAPI);
 		assert(null!=pipe.ringWalker) : "NullPointer, double check that pipe was passed into super constructor of stage.";
 		if (FieldReferenceOffsetManager.isTemplateStart(Pipe.from(pipe), pipe.ringWalker.nextCursor)) {    
 		    assert(StackStateWalker.isSeqStackEmpty(pipe.ringWalker)) : "Error the seqStack should be empty";

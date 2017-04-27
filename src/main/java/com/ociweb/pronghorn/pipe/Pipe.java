@@ -357,7 +357,7 @@ public class Pipe<T extends MessageSchema> {
     public final int maxVarLen;//to be used when copying data in dense chunks.
     private final T schema;
     
-    private final boolean usingHighLevelAPI;
+    final boolean usingHighLevelAPI;
     
 
     //TODO: B, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
@@ -956,6 +956,15 @@ public class Pipe<T extends MessageSchema> {
         StackStateWalker.reset(ringWalker, structuredPos);
     }
 
+	public static Pipe[] buildPipes(PipeConfig[] configs) {
+		int i = configs.length;
+		Pipe[] result = new Pipe[i];
+		while (--i>=0) {
+			result[i] = new Pipe(configs[i]);
+		}		
+		return result;
+	}
+
 	public static <S extends MessageSchema> Pipe<S>[] buildPipes(int count, PipeConfig<S> comonConfig) {		
 		Pipe[] result = new Pipe[count];
 		int i = count;
@@ -1450,36 +1459,36 @@ public class Pipe<T extends MessageSchema> {
 
                             break;
                         case TypeMask.GroupLength:
-                            int len = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input));
+                            int len = readInt(slab(input), input.mask, pos+tailPosition(input));
                             value = Integer.toHexString(len)+"("+len+")";
                             break;
                         case TypeMask.IntegerSigned:
                         case TypeMask.IntegerUnsigned:
                         case TypeMask.IntegerSignedOptional:
                         case TypeMask.IntegerUnsignedOptional:
-                            int readInt = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input));
+                            int readInt = readInt(slab(input), input.mask, pos+tailPosition(input));
                             value = Integer.toHexString(readInt)+"("+readInt+")";
                             break;
                         case TypeMask.LongSigned:
                         case TypeMask.LongUnsigned:
                         case TypeMask.LongSignedOptional:
                         case TypeMask.LongUnsignedOptional:
-                            long readLong = readLong(primaryBuffer(input), input.mask, pos+tailPosition(input));
+                            long readLong = readLong(slab(input), input.slabMask, pos+tailPosition(input));
                             value = Long.toHexString(readLong)+"("+readLong+")";
                             break;
                         case TypeMask.Decimal:
                         case TypeMask.DecimalOptional:
 
-                            int exp = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input));
-                            long mantissa = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input)+1);
+                            int exp = readInt(slab(input), input.slabMask, pos+tailPosition(input));
+                            long mantissa = readLong(slab(input), input.slabMask, pos+tailPosition(input)+1);
                             value = exp+" "+mantissa;
 
                             break;
                         case TypeMask.TextASCII:
                         case TypeMask.TextASCIIOptional:
                             {
-                                int meta = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input));
-                                int length = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input)+1);
+                                int meta = readInt(slab(input), input.slabMask, pos+tailPosition(input));
+                                int length = readInt(slab(input), input.slabMask, pos+tailPosition(input)+1);
                                 readASCII(input, target, meta, length);
                                 value = meta+" len:"+length;
                                 // value = target.toString();
@@ -1489,8 +1498,8 @@ public class Pipe<T extends MessageSchema> {
                         case TypeMask.TextUTF8Optional:
 
                             {
-                                int meta = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input));
-                                int length = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input)+1);
+                                int meta = readInt(slab(input), input.slabMask, pos+tailPosition(input));
+                                int length = readInt(slab(input), input.slabMask, pos+tailPosition(input)+1);
                                 readUTF8(input, target, meta, length);
                                 value = meta+" len:"+length;
                                // value = target.toString();
@@ -1499,8 +1508,8 @@ public class Pipe<T extends MessageSchema> {
                         case TypeMask.ByteVector:
                         case TypeMask.ByteVectorOptional:
                             {
-                                int meta = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input));
-                                int length = readInt(primaryBuffer(input), input.mask, pos+tailPosition(input)+1);
+                                int meta = readInt(slab(input), input.slabMask, pos+tailPosition(input));
+                                int length = readInt(slab(input), input.slabMask, pos+tailPosition(input)+1);
                                 value = meta+" len:"+length;
 
                             }
@@ -3076,9 +3085,13 @@ public class Pipe<T extends MessageSchema> {
 	}
 	
 	public static <S extends MessageSchema> int slabMask(Pipe<S> pipe) {
-	    return pipe.mask;
+	    return pipe.slabMask;
 	}
 
+	public static <S extends MessageSchema> long getSlabHeadPosition(Pipe<S> pipe) {
+		return headPosition(pipe);
+	}
+	
 	public static <S extends MessageSchema> long headPosition(Pipe<S> pipe) {
 		 return pipe.slabRingHead.headPos.get();
 	}
@@ -3146,6 +3159,8 @@ public class Pipe<T extends MessageSchema> {
 	}
 
 	public static <S extends MessageSchema> FieldReferenceOffsetManager from(Pipe<S> pipe) {
+		assert(pipe.schema!=null);
+		assert(pipe.schema.from!=null);		
 		return pipe.schema.from;
 	}
 

@@ -941,5 +941,9 @@ public class FieldReferenceOffsetManager {
     public static String buildMsgConstName(FieldReferenceOffsetManager encodedFrom, int expectedMsgIdx) {
         return "MSG_"+encodedFrom.fieldNameScript[expectedMsgIdx].toUpperCase().replace('/', '_').replace(' ','_')+"_"+encodedFrom.fieldIdScript[expectedMsgIdx];
     }
+    
+    public static String buildName(FieldReferenceOffsetManager encodedFrom, int expectedMsgIdx) {
+        return encodedFrom.fieldNameScript[expectedMsgIdx].replace('/', '_').replace(' ','_');
+    }
      
 }

@@ -132,6 +132,13 @@ public final class TypeMask {
 
     }
     
+    public static boolean isDecimal(int type) {
+        
+        return type==TypeMask.Decimal ||
+               type==TypeMask.DecimalOptional;
+                
+    }
+
     public static boolean isLong(int type) {
         
         return type==TypeMask.LongSigned ||

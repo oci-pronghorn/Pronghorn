@@ -126,7 +126,7 @@ public class PipeWriter {
     }
     
     public static void writeBytes(Pipe pipe, int loc, byte[] source, int offset, int length) {
-        assert(offset+length<source.length) : "out of bounds";
+        assert(offset+length<=source.length) : "out of bounds";
         writeBytes(pipe,loc,source,offset,length,Integer.MAX_VALUE);
     }
     
@@ -277,7 +277,7 @@ public class PipeWriter {
 	  
         assert(Pipe.workingHeadPosition(pipe)!=Pipe.headPosition(pipe)) : "Fragment was already published, check the workflow logic and remove call to publishWrites(pipe)";
         
-	    Pipe.writeTrailingCountOfBytesConsumed(pipe, pipe.ringWalker.nextWorkingHead -1 ); 
+	    int consumed = Pipe.writeTrailingCountOfBytesConsumed(pipe, pipe.ringWalker.nextWorkingHead -1 ); 
 
 		//single length field still needs to move this value up, so this is always done
 	    Pipe.updateBytesWriteLastConsumedPos(pipe);
@@ -292,7 +292,10 @@ public class PipeWriter {
 	}
 
 	private static void publishWrites2(Pipe pipe) {
-		assert(Pipe.workingHeadPosition(pipe)<=pipe.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
+		
+		//TODO: Not sure this assert works when we write high and read low....
+		//assert(Pipe.workingHeadPosition(pipe) <= pipe.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
+		
 		//publish writes			
 		Pipe.setBytesHead(pipe, Pipe.getWorkingBlobHeadPosition(pipe));		
 		Pipe.publishWorkingHeadPosition(pipe, Pipe.workingHeadPosition(pipe));
@@ -312,6 +315,43 @@ public class PipeWriter {
 		StackStateWalker.blockWriteFragment0(pipe, messageTemplateLOC, Pipe.from(pipe), pipe.ringWalker);
 	}
 
+	/**
+	 * Copy message previously send and publish it again.
+	 * 
+	 * @param pipe
+	 * @param historicSlabPosition
+	 * @param historicBlobPosition
+	 */
+	public static boolean tryReplication(Pipe pipe, long historicSlabPosition, int historicBlobPosition) {
+		final int[] slab = pipe.slab(pipe);	
+		
+		int idx = (int)historicSlabPosition & pipe.slabMask;		
+		int msgIdx = slab[idx];
+				
+		if (tryWriteFragment(pipe,msgIdx)) {
+			final byte[] blob = pipe.blob(pipe);
+			
+			//get the sizes of ints and bytes
+			int slabMsgSize = Pipe.sizeOf(pipe,msgIdx);
+			int blobMsgSize = slab[(int)(historicSlabPosition+slabMsgSize-1) & pipe.slabMask];
+			
+			//copy all the bytes
+			int blobPos = Pipe.getWorkingBlobHeadPosition(pipe);
+			Pipe.copyBytesFromToRing(blob, historicBlobPosition, Pipe.blobMask(pipe), blob, blobPos, Pipe.blobMask(pipe), blobMsgSize);			
+			Pipe.addAndGetBytesWorkingHeadPosition(pipe, blobMsgSize);
+			
+			//copy all the ints
+			long slabPos = Pipe.headPosition(pipe)+1;
+			Pipe.copyIntsFromToRing(slab, idx+1, Pipe.slabMask(pipe), slab, (int)slabPos, Pipe.slabMask(pipe), slabMsgSize);	
+
+			publishWrites(pipe);
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	
     /*
 	 * Return true if there is room for the desired fragment in the output buffer.
 	 * Places working head in place for the first field to be written (eg after the template Id, which is written by this method)
@@ -325,6 +365,8 @@ public class PipeWriter {
 
     public static boolean hasRoomForWrite(Pipe pipe) {
     	assert(pipe!=null);
+    	assert(Pipe.isInit(pipe));
+    	assert(pipe.usingHighLevelAPI);
         return StackStateWalker.hasRoomForFragmentOfSizeX(pipe, pipe.ringWalker.nextWorkingHead - (pipe.sizeOfSlabRing - FieldReferenceOffsetManager.maxFragmentSize( Pipe.from(pipe))));
     }
 	

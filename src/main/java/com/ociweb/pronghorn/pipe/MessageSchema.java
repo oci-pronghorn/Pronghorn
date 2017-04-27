@@ -1,6 +1,11 @@
 package com.ociweb.pronghorn.pipe;
 
-public abstract class MessageSchema {
+import java.lang.reflect.Field;
+import java.lang.reflect.Type;
+
+import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
+
+public abstract class MessageSchema<T extends MessageSchema> {
 
     protected final FieldReferenceOffsetManager from;
 
@@ -20,16 +25,41 @@ public abstract class MessageSchema {
     	return from.getLoc(messageId, fieldId);
     }
     
-    public <T extends MessageSchema> PipeConfig<T> newPipeConfig(int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
+    public PipeConfig<T> newPipeConfig(int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
     	return new PipeConfig<T>((T)this, minimumFragmentsOnRing, maximumLenghOfVariableLengthFields);
     };
     
-    public <T extends MessageSchema> PipeConfig<T> newPipeConfig(int minimumFragmentsOnRing) {
+    public PipeConfig<T> newPipeConfig(int minimumFragmentsOnRing) {
     	return new PipeConfig<T>((T)this, minimumFragmentsOnRing, 0);
     };
     
-    public <T extends MessageSchema> Pipe<T> newPipe(int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
+    public Pipe<T> newPipe(int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
     	return new Pipe<T>((PipeConfig<T>) newPipeConfig(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields));
-    };
+    }
+
+	public static <S extends MessageSchema<S>> S findInstance(Class<S> clazz) {
+		S found = null;
+		for(Field f:clazz.getFields()) {    		
+			
+			Type type = f.getGenericType();    	
+			
+			if (type.getTypeName().equals(clazz.getName())) { 
+				    			
+				try {
+					if (null!=found) {
+						FROMValidation.logger.error("found multiple instance members for this schema");
+						return null;
+					}
+					found = (S)f.get(null);
+				} catch (IllegalArgumentException e) {
+					throw new RuntimeException(e);
+				} catch (IllegalAccessException e) {
+					throw new RuntimeException(e);
+				}    			
+			}
+		}
+	
+		return found;
+	};
     
 }

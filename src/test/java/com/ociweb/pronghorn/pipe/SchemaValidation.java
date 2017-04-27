@@ -19,16 +19,7 @@ public class SchemaValidation {
         int computedCountOfChunks = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(RawDataSchema.FROM, testSlabSize);
         int expected = testSlabSize/4; //4 ints for 1 chunk
         assertEquals(expected, computedCountOfChunks);
-      
-        
-        //TODO: new development for building interfaces.
-        try {
-            FieldReferenceOffsetManager.buildFROMInterfaces(System.out, RawDataSchema.class.getSimpleName(), RawDataSchema.FROM);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        
+
     }
     
 }
