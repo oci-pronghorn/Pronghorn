@@ -98,7 +98,8 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 					Pipe.releaseReadLock(input);
 					requestShutdown();
 					return;
-			
+			    default:
+			        throw new UnsupportedOperationException("not yet implemented support for "+id);	 
 			
 			}
 		

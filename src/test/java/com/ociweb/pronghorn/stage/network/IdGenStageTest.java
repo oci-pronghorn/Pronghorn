@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.code.GGSGenerator;
 import com.ociweb.pronghorn.code.GVSValidator;
-import com.ociweb.pronghorn.code.TestRunner;
+import com.ociweb.pronghorn.code.StageTester;
 import com.ociweb.pronghorn.network.mqtt.IdGenStage;
 import com.ociweb.pronghorn.network.schema.MQTTIdRangeSchema;
 import com.ociweb.pronghorn.pipe.PipeConfig;
@@ -34,7 +34,7 @@ public class IdGenStageTest {
         PipeConfig[] inputConfigs = new PipeConfig[]{MQTTIdRangeSchema.instance.newPipeConfig(100)};
         PipeConfig[] outputConfigs = new PipeConfig[]{MQTTIdRangeSchema.instance.newPipeConfig(100)};
         try {
-            TestRunner.runExpectedUseTest(targetStage, inputConfigs, outputConfigs, testDuration, validator, generator, random);   
+            StageTester.runExpectedUseTest(targetStage, inputConfigs, outputConfigs, testDuration, validator, generator, random);   
         } catch (Exception e) {
             throw new RuntimeException(e);
          }
@@ -59,7 +59,7 @@ public class IdGenStageTest {
         PipeConfig[] inputConfigs = new PipeConfig[]{MQTTIdRangeSchema.instance.newPipeConfig(100)};
         PipeConfig[] outputConfigs = new PipeConfig[]{MQTTIdRangeSchema.instance.newPipeConfig(100)};
         try {
-            TestRunner.runExpectedUseTest(targetStage, inputConfigs, outputConfigs, testDuration, validator, generator, random);
+            StageTester.runExpectedUseTest(targetStage, inputConfigs, outputConfigs, testDuration, validator, generator, random);
         } catch (Exception e) {
            throw new RuntimeException(e);
         }
@@ -73,7 +73,7 @@ public class IdGenStageTest {
 
         long testDuration = 1000; //keep short for now to save limited time on build server
         int generatorSeed = 42;
-        TestRunner.runFuzzTest(IdGenStage.class, testDuration, generatorSeed);
+        StageTester.runFuzzTest(IdGenStage.class, testDuration, generatorSeed);
 	    
 	}
 	

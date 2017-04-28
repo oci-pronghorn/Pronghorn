@@ -10,7 +10,7 @@ import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.stage.math.BuildMatrixCompute.MatrixTypes;
 
-public class MatrixSchema extends MessageSchema {
+public class MatrixSchema extends MessageSchema<MatrixSchema> {
 
 	public final int columnId = 0;
 	public final int rowId = 0;
@@ -27,7 +27,7 @@ public class MatrixSchema extends MessageSchema {
 		return "rows:"+rows+" columns:"+columns+" of type "+type;
 	}
 	
-	protected MatrixSchema(int rows, int columns, MatrixTypes type) {
+	public MatrixSchema(int rows, int columns, MatrixTypes type) {
 		this(rows,columns,type,null);//nothing can use this as the proper schema instead matrix is always sent as rows or columns.
 		
 	}

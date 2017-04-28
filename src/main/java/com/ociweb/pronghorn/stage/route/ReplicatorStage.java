@@ -33,6 +33,10 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 		new ReplicatorStage(gm,source,targets);
 	}
 	
+	public ReplicatorStage(GraphManager gm, Pipe<T> source, Pipe<T> a, Pipe<T> b) {
+		this(gm,source,join(a,b));
+	}
+	
 	public ReplicatorStage(GraphManager gm, Pipe<T> source, Pipe<T> ... targets) {
 		super(gm,source,targets);
 		

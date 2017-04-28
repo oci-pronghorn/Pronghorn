@@ -2,10 +2,12 @@ package com.ociweb.pronghorn.code;
 
 import java.nio.ByteBuffer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitor;
-import com.ociweb.pronghorn.pipe.stream.StreamingReadVisitorToJSON;
 import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -14,9 +16,10 @@ public class FuzzValidationStage extends PronghornStage{
 
 	private final StreamingVisitorReader reader;
 	private boolean foundError = false;
+	private static final Logger log = LoggerFactory.getLogger(FuzzValidationStage.class);
 	
 	
-	public FuzzValidationStage(GraphManager graphManager, Pipe input) {
+	public FuzzValidationStage(GraphManager graphManager, Pipe<?> input) {
 		super(graphManager, input, NONE);
 
 		StreamingReadVisitor visitor = buildVisitor(Pipe.from(input));
@@ -98,7 +101,7 @@ public class FuzzValidationStage extends PronghornStage{
 
 			@Override
 			public ByteBuffer targetBytes(String name, long id, int length) {
-				return ByteBuffer.allocate(length);
+				return length<0? null : ByteBuffer.allocate(length);
 			}
 
 			@Override
@@ -121,9 +124,14 @@ public class FuzzValidationStage extends PronghornStage{
 
             @Override
             public void visitUTF8(String name, long id, CharSequence target) {
-                // TODO Auto-generated method stub
-                
+            	
+            	boolean found = StageTester.hasBadChar(target);
+            	
+            	if (found) {
+            		log.info("unconvertable values found in field {} {}",name,id);
+            	}
             }
+            
 			
 		};
 	}

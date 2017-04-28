@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
@@ -68,7 +69,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	public void shutdown() {
 		long duration = System.currentTimeMillis()-start;
 		
-		logger.info("Client Bytes Read: {} kb/sec {} ",totalBytes, (8*totalBytes)/duration);
+		logger.trace("Client Bytes Read: {} kb/sec {} ",totalBytes, (8*totalBytes)/duration);
 		
 	}
 
@@ -332,42 +333,23 @@ public class ClientSocketReaderStage extends PronghornStage {
 			while (Pipe.hasContentToRead(ack)) {
 				int id = Pipe.takeMsgIdx(ack);
 				if (id == ReleaseSchema.MSG_RELEASE_100) {
-					long finishedConnectionId = Pipe.takeLong(ack);
-					long pos = Pipe.takeLong(ack);
+					
+					long fieldConnectionId = Pipe.takeLong(ack);
+					long fieldPosition = Pipe.takeLong(ack);
 
-					///////////////////////////////////////////////////
-	    			//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
-	    			int pipeIdx = coordinator.checkForResponsePipeLineIdx(finishedConnectionId);
-					if (pipeIdx>=0 && Pipe.workingHeadPosition(output[pipeIdx]) == pos) {
-						assert(Pipe.contentRemaining(output[pipeIdx])==0) : "unexpected content on pipe detected";
-						assert(!Pipe.isInBlobFieldWrite(output[pipeIdx])) : "unexpected open blob field write detected";
-						
-	    				coordinator.releaseResponsePipeLineIdx(finishedConnectionId);
-	    				
-	    				//TODO: upon release must prioritize the re-open.
-	    				//logger.info("XXXXXXXXXXXXXXXXXX did release for id {} at pos {} {} ",finishedConnectionId,pos,output[pipeIdx]);
-	    				
-	    			} else {
-	    				if (pipeIdx>=0) {
-	    					if (pos>Pipe.headPosition(output[pipeIdx])) {
-	    						logger.info("out of bounds pos value!!, GGGGGGGGGGGGGGGGGGGGGGGGGGgg unable to release pipe {} pos {} expected {}",pipeIdx,pos,Pipe.headPosition(output[pipeIdx]));
-	    						//	System.exit(-1);
-	    					} else {
-	    						HandshakeStatus handshakeStatus = coordinator.get(finishedConnectionId).engine.getHandshakeStatus();
-					    		if (handshakeStatus!=HandshakeStatus.FINISHED && handshakeStatus!=HandshakeStatus.NOT_HANDSHAKING) {
-					    			//TOOD: this has been triggered
-					    			assert(-1 == coordinator.checkForResponsePipeLineIdx(finishedConnectionId)) : "expected no reserved pipe for "+finishedConnectionId+" with handshake of "+handshakeStatus;
-					    		}
-	    						
-					    		//logger.info("no client side release {} ",releasePipes[i]);
-	    						
-	    						//this is the expected case where we have already put data on this pipe so it can not be released.
-	    					}
-	    				}
-	    			}
+					consumeRelease(fieldConnectionId, fieldPosition);
 	    			
 	    			Pipe.confirmLowLevelRead(ack, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
-				} else {
+				} else if (id == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {
+					
+					long fieldConnectionID = Pipe.takeLong(ack);
+					long fieldPosition = Pipe.takeLong(ack);
+					int fieldSequenceNo = Pipe.takeInt(ack);
+					
+					consumeRelease(fieldConnectionID, fieldPosition);
+					
+					Pipe.confirmLowLevelRead(ack, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASEWITHSEQ_101));
+				}else {
 					assert(-1 == id) : "unexpected id of "+id;
 					Pipe.confirmLowLevelRead(ack, Pipe.EOF_SIZE);
 				}
@@ -376,6 +358,39 @@ public class ClientSocketReaderStage extends PronghornStage {
 			
 		}
 		
+	}
+
+	public void consumeRelease(long fieldConnectionId, long fieldPosition) {
+		///////////////////////////////////////////////////
+		//if sent tail matches the current head then this pipe has nothing in flight and can be re-assigned
+		int pipeIdx = coordinator.checkForResponsePipeLineIdx(fieldConnectionId);
+		if (pipeIdx>=0 && Pipe.workingHeadPosition(output[pipeIdx]) == fieldPosition) {
+			assert(Pipe.contentRemaining(output[pipeIdx])==0) : "unexpected content on pipe detected";
+			assert(!Pipe.isInBlobFieldWrite(output[pipeIdx])) : "unexpected open blob field write detected";
+			
+			coordinator.releaseResponsePipeLineIdx(fieldConnectionId);
+			
+			//TODO: upon release must prioritize the re-open.
+			//logger.info("XXXXXXXXXXXXXXXXXX did release for id {} at pos {} {} ",finishedConnectionId,pos,output[pipeIdx]);
+			
+		} else {
+			if (pipeIdx>=0) {
+				if (fieldPosition>Pipe.headPosition(output[pipeIdx])) {
+					logger.info("out of bounds pos value!!, GGGGGGGGGGGGGGGGGGGGGGGGGGgg unable to release pipe {} pos {} expected {}",pipeIdx,fieldPosition,Pipe.headPosition(output[pipeIdx]));
+					//	System.exit(-1);
+				} else {
+					HandshakeStatus handshakeStatus = coordinator.get(fieldConnectionId).engine.getHandshakeStatus();
+		    		if (handshakeStatus!=HandshakeStatus.FINISHED && handshakeStatus!=HandshakeStatus.NOT_HANDSHAKING) {
+		    			//TOOD: this has been triggered
+		    			assert(-1 == coordinator.checkForResponsePipeLineIdx(fieldConnectionId)) : "expected no reserved pipe for "+fieldConnectionId+" with handshake of "+handshakeStatus;
+		    		}
+					
+		    		//logger.info("no client side release {} ",releasePipes[i]);
+					
+					//this is the expected case where we have already put data on this pipe so it can not be released.
+				}
+			}
+		}
 	}
 
 }

@@ -523,6 +523,9 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
                      GraphManager.setStateToShutdown(graphManager, stage.stageId);  
 				}
 			}
+		} catch (AssertionError ae) {
+			recordTheException(stage, ae, that);
+			System.exit(-1); //hard stop due to assertion failure
 		} catch (Throwable t) {				    
             recordTheException(stage, t, that);
 		} 

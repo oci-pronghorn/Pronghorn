@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.network.mqtt;
+package com.ociweb.pronghorn.stage.network.mqtt;
 
 import static org.junit.Assert.*;
 
@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.ociweb.pronghorn.network.mqtt.MQTTClientGraphBuilder;
 import com.ociweb.pronghorn.network.schema.MQTTClientRequestSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -19,7 +20,7 @@ import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 public class ClientTest {
 
     
-    @Ignore
+    @Test
     public void simpleClientTest() {
         
        GraphManager gm = new GraphManager();
@@ -89,6 +90,8 @@ public class ClientTest {
 
        // watch at prompt mosquitto_sub -t /# -q 1
        
+	    //TODO: check clear flag and what to do
+	    //TODO: check for ack back...
 
 	    int fieldQOS = 1;
        

@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.code;
 
-import org.junit.Assert;
-
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -30,8 +28,8 @@ public class ExpectedUseValidationStage extends PronghornStage{
 			//force hard shut down of stage under test and generator
 			GraphManager.terminateInputStages(graphManager);
 			//force hard shut down of this stage
-			GraphManager.setStateToShutdown(graphManager, stageId);		
-			Assert.fail("Validation Failure: "+failureDetails);
+			GraphManager.setStateToShutdown(graphManager, stageId);	
+			throw new AssertionError("Validation Failure: "+failureDetails);
 		}
 	}
 	
