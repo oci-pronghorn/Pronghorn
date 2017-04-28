@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
-public class RawDataSchema extends MessageSchema {
+public class RawDataSchema extends MessageSchema<RawDataSchema> {
 
     public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
             new int[]{0xc0400002,0xb8000000,0xc0200002},

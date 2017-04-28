@@ -2210,7 +2210,7 @@ public class Pipe<T extends MessageSchema> {
 	        result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
 	    }
 	    if ((source[mask&sourcePos] & 0xC0) != 0x80) {
-	       log.error("Invalid encoding, low byte must have bits of 10xxxxxx but we find {} ",Integer.toBinaryString(source[mask&sourcePos]),new Exception("Check for pipe corruption"));
+	       log.error("Invalid encoding, low byte must have bits of 10xxxxxx but we find {}. conclusion: this data was not UTF8 encoded.",Integer.toBinaryString(source[mask&sourcePos]) );//,new Exception("Check for pipe corruption"));
 	       sourcePos += 1;
 	       return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
 	    }
@@ -2408,9 +2408,13 @@ public class Pipe<T extends MessageSchema> {
 	public static <S extends MessageSchema> void addByteBuffer(ByteBuffer source, Pipe<S> pipe) {
 	    int bytePos = pipe.blobRingHead.byteWorkingHeadPos.value;
 	    int len = -1;
-	    if (null!=source && source.hasRemaining()) {
-	        len = source.remaining();
-	        copyByteBuffer(source,source.remaining(),pipe);
+	    if (null!=source) {
+	    	if (source.hasRemaining()) {
+	    		len = source.remaining();
+	        	copyByteBuffer(source,source.remaining(),pipe);
+	    	} else {
+	    		len = 0;
+	    	}
 	    }
 	    //System.out.println("len to write "+len+" text:"+  readUTF8Ring(pipe, len, new StringBuilder(), bytePos));
 

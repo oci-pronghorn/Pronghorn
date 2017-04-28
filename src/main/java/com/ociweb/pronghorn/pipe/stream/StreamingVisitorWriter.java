@@ -200,10 +200,10 @@ public class StreamingVisitorWriter {
                         processTextUTF8Optional(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 					break;
 				case TypeMask.ByteVector:
-					    processByteArray(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
+					  processByteArray(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 					break;
 				case TypeMask.ByteVectorOptional:
-                    processByteArrayOptional(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
+                       processByteArrayOptional(fieldNameScript[fieldCursor], fieldIdScript[fieldCursor]);
 					break;
 		    	default: System.err.println("unknown "+TokenBuilder.tokenToString(from.tokens[fieldCursor]));
 			}
