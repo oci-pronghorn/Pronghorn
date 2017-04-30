@@ -743,6 +743,14 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
             copyFieldToOutputStream(out, length, readBytesBackingArray(pipe, loc), off, pipe.sizeOfBlobRing-off);
         }
     }
+    
+    public static void readFieldIntoDataOutput(int loc, Pipe pipe, DataOutput out) throws IOException {    
+        int length    = readBytesLength(pipe, loc);
+        if (length>0) {                
+            int off = readBytesPosition(pipe, loc) & Pipe.blobMask(pipe);
+            copyFieldToDataOutput(out, length, readBytesBackingArray(pipe, loc), off, pipe.sizeOfBlobRing-off);
+        }
+    }
 
     private static void copyFieldToOutputStream(OutputStream out, int length, byte[] backing, int off, int len1)
             throws IOException {
@@ -756,5 +764,16 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         }
     }
 
+    private static void copyFieldToDataOutput(DataOutput out, int length, byte[] backing, int off, int len1)
+            throws IOException {
+        if (len1>=length) {
+            //simple add bytes
+            out.write(backing, off, length); 
+        } else {                        
+            //rolled over the end of the buffer
+            out.write(backing, off, len1);
+            out.write(backing, 0, length-len1);
+        }
+    }
 
 }

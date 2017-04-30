@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.pipe;
 
+import java.io.DataInput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -902,7 +903,7 @@ public class Pipe<T extends MessageSchema> {
 
 	public static <S extends MessageSchema> boolean validateVarLength(Pipe<S> pipe, int length) {
 		int newAvg = (length+pipe.varLenMovingAverage)>>1;
-        if (newAvg>pipe.maxAvgVarLen)	{
+        if (newAvg>pipe.maxVarLen)	{
             //compute some helpful information to add to the exception
         	int bytesPerInt = (int)Math.ceil(length*Pipe.from(pipe).maxVarFieldPerUnit);
         	int bitsDif = 32 - Integer.numberOfLeadingZeros(bytesPerInt - 1);
@@ -910,7 +911,7 @@ public class Pipe<T extends MessageSchema> {
         	throw new UnsupportedOperationException("Can not write byte array of length "+length+
         	                                        ". The dif between slab and byte blob should be at least "+bitsDif+
         	                                        ". "+pipe.bitsOfSlabRing+","+pipe.bitsOfBlogRing+
-        	                                        ". The limit is "+pipe.maxAvgVarLen+" for pipe "+pipe);
+        	                                        ". The limit is "+pipe.maxVarLen+" for pipe "+pipe);
         }
         pipe.varLenMovingAverage = newAvg;
         return true;
@@ -1205,6 +1206,12 @@ public class Pipe<T extends MessageSchema> {
     
     static int safeRead(InputStream inputStream, int position, byte[] buffer, int sizeOfBlobRing, int remaining) throws IOException {
         return inputStream.read(buffer, position, safeLength(sizeOfBlobRing, position, remaining)  );
+    }
+    
+    static int safeRead(DataInput dataInput, int position, byte[] buffer, int sizeOfBlobRing, int remaining) throws IOException {
+        int safeLength = safeLength(sizeOfBlobRing, position, remaining);
+		dataInput.readFully(buffer, position, safeLength);
+		return safeLength;
     }
     
     static int safeLength(int sizeOfBlobRing, int position, int remaining) {
@@ -3430,7 +3437,7 @@ public class Pipe<T extends MessageSchema> {
     }
 
     public static <S extends MessageSchema> void updateBytesWriteLastConsumedPos(Pipe<S> pipe) {
-        pipe.blobWriteLastConsumedPos = Pipe.getBlobWorkingHeadPosition(pipe);
+        pipe.blobWriteLastConsumedPos = Pipe.getWorkingBlobHeadPosition(pipe);
     }
 
     public static <S extends MessageSchema> PaddedLong getWorkingTailPositionObject(Pipe<S> pipe) {

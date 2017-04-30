@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.pipe;
 
+import java.io.DataInput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -273,7 +274,7 @@ public class PipeWriter {
 		
 	}
 
-    public static void publishWrites(Pipe pipe) {
+    public static int publishWrites(Pipe pipe) {
 	  
         assert(Pipe.workingHeadPosition(pipe)!=Pipe.headPosition(pipe)) : "Fragment was already published, check the workflow logic and remove call to publishWrites(pipe)";
         
@@ -284,11 +285,11 @@ public class PipeWriter {
 		
 		if ((Pipe.decBatchPublish(pipe)>0)) {		
 			Pipe.storeUnpublishedHead(pipe);
-			return;
+			return consumed;
 		}
 		
 		publishWrites2(pipe);
-		 
+		return consumed; 
 	}
 
 	private static void publishWrites2(Pipe pipe) {
@@ -393,10 +394,27 @@ public class PipeWriter {
                 Thread.yield();
             }
         }
-        
         PipeWriter.writeSpecialBytesPosAndLen(pipe, loc, byteCount, startPosition);
     }
 
+    public static void writeFieldFromDataInput(Pipe pipe, int loc, DataInput dataInput, final int byteCount) throws IOException { 
+    	buildFieldFromDataInput(pipe, loc, dataInput, byteCount, PipeReader.readBytesPosition(pipe, loc), PipeReader.readBytesMask(pipe, loc), PipeReader.readBytesBackingArray(pipe, loc), pipe.sizeOfBlobRing, PipeReader.readBytesPosition(pipe, loc), byteCount, 0);
+    }
+    
+    private static void buildFieldFromDataInput(Pipe pipe, final int loc, DataInput dataInput, final int byteCount,
+            int position, int byteMask, byte[] buffer, int sizeOfBlobRing, final int startPosition, int remaining, int size) throws IOException {
+        
+        while ( (remaining>0) && (size=Pipe.safeRead(dataInput, position&byteMask, buffer, sizeOfBlobRing, remaining))>=0 ) { 
+            if (size>0) {
+                remaining -= size;                    
+                position += size;
+            } else {
+                Thread.yield();
+            }
+        }
+        PipeWriter.writeSpecialBytesPosAndLen(pipe, loc, byteCount, startPosition);
+    }
+    
     @Deprecated
 	public static ByteBuffer wrappedUnstructuredLayoutBufferOpenA(Pipe<?> target, int loc) {
 		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
