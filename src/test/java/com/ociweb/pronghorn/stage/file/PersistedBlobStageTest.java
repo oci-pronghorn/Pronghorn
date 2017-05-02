@@ -20,14 +20,14 @@ import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 
 public class PersistedBlobStageTest {
 
-	@Test
-	public void fuzzTest() {		
-		File rootFolder = tempDirectory();		
-		long testDuration = 300;
-		int generatorSeed = 42;;
-		StageTester.runFuzzTest(PersistedBlobStage.class, testDuration, generatorSeed, 
-				new Object[]{new Byte((byte)2),new Byte((byte)3),rootFolder});		
-	}
+//	@Test
+//	public void fuzzTest() {		
+//		File rootFolder = tempDirectory();		
+//		long testDuration = 300;
+//		int generatorSeed = 42;;
+//		StageTester.runFuzzTest(PersistedBlobStage.class, testDuration, generatorSeed, 
+//				new Object[]{new Byte((byte)2),new Byte((byte)3),rootFolder});		
+//	}
 
 	private File tempDirectory() {
 		File rootFolder = null;
