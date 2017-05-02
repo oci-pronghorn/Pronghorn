@@ -5,6 +5,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.token.LOCUtil;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
@@ -13,6 +16,8 @@ import com.ociweb.pronghorn.pipe.token.TypeMask;
 
 public class PipeWriter {
 
+  private static final Logger logger = LoggerFactory.getLogger(PipeWriter.class);
+  
   public final static int OFF_MASK  =   FieldReferenceOffsetManager.RW_FIELD_OFF_MASK;
   public final static int STACK_OFF_MASK = FieldReferenceOffsetManager.RW_STACK_OFF_MASK;
   public final static int STACK_OFF_SHIFT = FieldReferenceOffsetManager.RW_STACK_OFF_SHIFT;
@@ -352,6 +357,22 @@ public class PipeWriter {
 		}
 	}
 	
+	/*
+	 * We assume that the pipe has room and this was already checked earlier in the code.
+	 * This method will call tryWriteFragment and if is not successful it will.
+	 *  1. log an error so the developer can ensure this pipe is checked before calling this method.
+	 *  2. continues to tryWrite until successful (may not return) this makes is a blocking call.
+	 *  
+	 *  This behaves as a blocking call if there is an error in the code up stream...
+	 */
+	public static void presumeWriteFragment(Pipe pipe, int fragmentId) {
+		if (!tryWriteFragment(pipe,fragmentId)) {
+			logger.error("Expected pipe {} to be empty",pipe, new UnsupportedOperationException("Ensure PipeWriter.hasRoomForWrite(pipe) returns true before calling this presumeWriteFragment method."));
+			while (!tryWriteFragment(pipe,fragmentId)) {
+				Pipe.spinWork(pipe);//safe spin which watches for shutdown or interrupt.
+			}
+		}
+	}
 	
     /*
 	 * Return true if there is room for the desired fragment in the output buffer.

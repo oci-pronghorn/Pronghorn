@@ -60,7 +60,7 @@ public class StreamingReadVisitorToJSON<A extends Appendable> implements Streami
 	public void visitTemplateOpen(String name, long id) {
 		//no tab needed here
 		try {
-			out.append("{\""+name+"\":");
+			out.append("{\"").append(name).append("\":");
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}			
@@ -82,7 +82,7 @@ public class StreamingReadVisitorToJSON<A extends Appendable> implements Streami
 	public void visitFragmentOpen(String name, long id, int cursor) {
 		writeTab();
 		try{
-			out.append("{\""+name+"\":");	
+			out.append("{\"").append(name).append("\":");	
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}		
@@ -126,7 +126,9 @@ public class StreamingReadVisitorToJSON<A extends Appendable> implements Streami
 	public void visitSignedInteger(String name, long id, int value) {
 		writeTab();
 		try {
-			out.append("{\""+name+"\":"+Integer.valueOf(value)+"}");
+			out.append("{\"").append(name).append("\":");
+			Appendables.appendValue(out, value);
+			out.append("}");
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}		
@@ -136,7 +138,9 @@ public class StreamingReadVisitorToJSON<A extends Appendable> implements Streami
 	public void visitUnsignedInteger(String name, long id, long value) {
 		writeTab();
 		try {
-			out.append("{\""+name+"\":"+Long.valueOf(value)+"}");
+			out.append("{\"").append(name).append("\":");
+			Appendables.appendValue(out, value);
+			out.append("}");
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}		
@@ -146,10 +150,9 @@ public class StreamingReadVisitorToJSON<A extends Appendable> implements Streami
 	public void visitSignedLong(String name, long id, long value) {
 		writeTab();
 		try {
-			out.append("{\"");
-			out.append(name);
-			out.append("\":");
-			out.append(Long.valueOf(value)+"}");
+			out.append("{\"").append(name).append("\":");
+			Appendables.appendValue(out, value);
+			out.append("}");
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}		
@@ -159,10 +162,10 @@ public class StreamingReadVisitorToJSON<A extends Appendable> implements Streami
 	public void visitUnsignedLong(String name, long id, long value) {
 		writeTab();
 		try {
-			out.append("{\"");
-			out.append(name);
-			out.append("\":");
-			out.append(Long.valueOf(value)+"}"); //TODO: this is not strictly right and can be negative!!
+			out.append("{\"").append(name).append("\":");
+			//TODO: this is not strictly right and can be negative!!
+			Appendables.appendValue(out, value);
+			out.append("}"); 
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}		

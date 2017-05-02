@@ -5,7 +5,7 @@ import java.lang.reflect.Type;
 
 import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
 
-public abstract class MessageSchema<T extends MessageSchema> {
+public abstract class MessageSchema<T extends MessageSchema<T>> {
 
     protected final FieldReferenceOffsetManager from;
 

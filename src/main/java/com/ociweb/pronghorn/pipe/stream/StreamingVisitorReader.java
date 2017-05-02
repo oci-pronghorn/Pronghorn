@@ -250,7 +250,7 @@ public class StreamingVisitorReader {
     }
 
     private void processMessageClose(final String name, final long id, boolean needsToCloseFragment) {
-        visitor.visitTemplateClose(name,id);
+        visitor.visitTemplateClose(name, id);
         //this close was not a sequence so it must be the end of the message
         if (needsToCloseFragment) {
             LowLevelStateManager.closeFragment(navState);
@@ -258,7 +258,7 @@ public class StreamingVisitorReader {
     }
 
     private void processFragmentOpen(String name, int fieldCursor, long id) {
-        visitor.visitFragmentOpen(name,id, fieldCursor);
+        visitor.visitFragmentOpen(name, id, fieldCursor);
     }
 
     private void processDecimalOptional(String name, int idx, int fieldCursor, long id) {
