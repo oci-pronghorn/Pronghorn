@@ -21,7 +21,8 @@ import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 public class ClientTest {
 
     
-    @Test
+    //@Test
+    @Ignore
     public void simpleClientTest() {
         
         GraphManager gm = new GraphManager();
