@@ -7,6 +7,7 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.http.HTTPErrorUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
@@ -54,12 +55,11 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     public final int plainSize = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
     private int shutdownCount;
 
-    private final boolean isTLS;
 
     private StringBuilder[] accumulators; //for testing only
 
     public static OrderSupervisorStage newInstance(GraphManager graphManager, Pipe<ServerResponseSchema>[] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator, boolean isTLS) {
-    	return new OrderSupervisorStage(graphManager, inputPipes, outgoingPipes, coordinator, isTLS);
+    	return new OrderSupervisorStage(graphManager, inputPipes, outgoingPipes, coordinator);
     }
     
     /**
@@ -73,10 +73,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
      * @param coordinator
      */
     public OrderSupervisorStage(GraphManager graphManager, Pipe<ServerResponseSchema>[][] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator, boolean isTLS) {
-    	this(graphManager,join(inputPipes), outgoingPipes, coordinator, isTLS);
+    	this(graphManager,join(inputPipes), outgoingPipes, coordinator);
     }
     
-    public OrderSupervisorStage(GraphManager graphManager, Pipe<ServerResponseSchema>[] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator, boolean isTLS) {
+    public OrderSupervisorStage(GraphManager graphManager, Pipe<ServerResponseSchema>[] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator) {
         super(graphManager, inputPipes, outgoingPipes);      
         this.dataToSend = inputPipes;
         
@@ -87,7 +87,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         
         this.outgoingPipes = outgoingPipes;
         this.coordinator = coordinator;
-        this.isTLS = isTLS;
+
         this.poolMod = outgoingPipes.length;
         this.shutdownCount = dataToSend.length;
         
@@ -228,14 +228,14 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        } else {
 		        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 		        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		        	logger.info("not ready for sequence number yet, looking for "+expected+" but found "+sequenceNo);
+		        	logger.trace("not ready for sequence number yet, looking for "+expected+" but found "+sequenceNo);
 		        	//for not found 404 we will get these values, TODO: need a better approach 
 		        	expectedSquenceNos[idx] = sequenceNo;
 		        	break;//does not match
 		        }
 		        
 
-		        if (isTLS) {
+		        if (coordinator.isTLS) {
 		            handshakeProcessing(myPipe, channelId);	                    
 		        }
 		         
@@ -481,22 +481,22 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			if (confirmExpectedRequests) {
 				Appendables.appendUTF8(accumulators[idx], pipe.blobRing, pos, len, pipe.blobMask);						    				
 				
-				while (accumulators[idx].length() >= ServerCoordinator.expectedOK.length()) {
+				while (accumulators[idx].length() >= HTTPErrorUtil.expectedOK.length()) {
 					
-				   int c = startsWith(accumulators[idx],ServerCoordinator.expectedOK); 
+				   int c = startsWith(accumulators[idx],HTTPErrorUtil.expectedOK); 
 				   if (c>0) {
 					   
-					   String remaining = accumulators[idx].substring(c*ServerCoordinator.expectedOK.length());
+					   String remaining = accumulators[idx].substring(c*HTTPErrorUtil.expectedOK.length());
 					   accumulators[idx].setLength(0);
 					   accumulators[idx].append(remaining);							    					   
 					   
 					   
 				   } else {
-					   logger.info("A"+Arrays.toString(ServerCoordinator.expectedOK.getBytes()));
-					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, ServerCoordinator.expectedOK.length()).toString().getBytes()   ));
+					   logger.info("A"+Arrays.toString(HTTPErrorUtil.expectedOK.getBytes()));
+					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, HTTPErrorUtil.expectedOK.length()).toString().getBytes()   ));
 					   
-					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos, ServerCoordinator.expectedOK.length());
-					   System.out.println(accumulators[idx].subSequence(0, ServerCoordinator.expectedOK.length()).toString());
+					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos, HTTPErrorUtil.expectedOK.length());
+					   System.out.println(accumulators[idx].subSequence(0, HTTPErrorUtil.expectedOK.length()).toString());
 					   System.exit(-1);
 					   	
 					   

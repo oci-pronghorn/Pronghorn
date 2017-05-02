@@ -24,7 +24,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  * @author Nathan Tippy
  *
  */
-public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
+public class TapeWriteStage<T extends MessageSchema<T>> extends PronghornStage {
 
 	private FileChannel fileChannel;
 
@@ -103,7 +103,7 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
         }
     }
     
-    private static <S extends MessageSchema> void processAvailData(TapeWriteStage<S> ss) {
+    private static <S extends MessageSchema<S>> void processAvailData(TapeWriteStage<S> ss) {
 
         //only zero when we need to find the next block and have finished the previous
         if (0==ss.totalPrimaryCopy) {
@@ -123,7 +123,7 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
         
     }
 
-    private static <S extends MessageSchema> void setupBuffersToWriteFrom(TapeWriteStage<S> ss) {
+    private static <S extends MessageSchema<S>> void setupBuffersToWriteFrom(TapeWriteStage<S> ss) {
         //collect all the constant values needed for doing the copy
         ss.tempByteTail = Pipe.getBlobRingTailPosition(ss.source);
         ss.totalBytesCopy =   ss.byteHeadPos -ss.tempByteTail;
@@ -165,7 +165,7 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
         ss.header.clear();
     }
 
-    private static <S extends MessageSchema> void copyToFile(TapeWriteStage<S> ss) {
+    private static <S extends MessageSchema<S>> void copyToFile(TapeWriteStage<S> ss) {
         try {
             
             if (ss.header.hasRemaining()) {
@@ -211,14 +211,14 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
         
     }
 
-    private static <S extends MessageSchema> void fileChannelWrite(TapeWriteStage<S> ss, IntBuffer slabBuffer)
+    private static <S extends MessageSchema<S>> void fileChannelWrite(TapeWriteStage<S> ss, IntBuffer slabBuffer)
             throws IOException {
         long pos = ss.fileChannel.position();
         pos += ss.fileChannel.transferFrom(ss.IBA.init(slabBuffer), pos, slabBuffer.remaining()<<2);
         ss.fileChannel.position(pos);
     }
 
-    private static <S extends MessageSchema> void recordCopyComplete(TapeWriteStage<S> ss) {
+    private static <S extends MessageSchema<S>> void recordCopyComplete(TapeWriteStage<S> ss) {
         //release tail so data can be written
         
         int tempByteTail = ss.tempByteTail;
@@ -233,7 +233,7 @@ public class TapeWriteStage<T extends MessageSchema> extends PronghornStage {
 
 
 
-    private static <S extends MessageSchema> void findStableCutPoint(TapeWriteStage<S> ss) {
+    private static <S extends MessageSchema<S>> void findStableCutPoint(TapeWriteStage<S> ss) {
         ss.byteHeadPos = Pipe.getBlobRingHeadPosition(ss.source);
         ss.headPos = Pipe.headPosition(ss.source);      
         while(ss.byteHeadPos != Pipe.getBlobRingHeadPosition(ss.source) || ss.headPos != Pipe.headPosition(ss.source) ) {

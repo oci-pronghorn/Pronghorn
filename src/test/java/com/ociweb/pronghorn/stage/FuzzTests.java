@@ -18,7 +18,7 @@ public class FuzzTests {
 	@Test
 	public void fuzzClientSocketReaderStage() {
 		assertTrue(StageTester.runFuzzTest(ClientSocketReaderStage.class, testDuration, generatorSeed++,
-				new Object[]{new ClientCoordinator(3, 10),false}) );
+				new Object[]{new ClientCoordinator(3, 10, true),false}) );
 	}
 
 //	@Test

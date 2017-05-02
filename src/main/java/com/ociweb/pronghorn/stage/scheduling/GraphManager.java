@@ -1351,7 +1351,7 @@ public class GraphManager {
 	                } else {
 	                	target.append(" CPU N/A%");
 	                	
-            			logger.info("B bad % value {} {} {} {}",pct,runNs, m.stageShutdownTimeNs[stage.stageId],  m.stageStartTimeNs[stage.stageId] );
+            			logger.trace("B bad % value {} {} {} {}",pct,runNs, m.stageShutdownTimeNs[stage.stageId],  m.stageStartTimeNs[stage.stageId] );
             	
             			
 	                }

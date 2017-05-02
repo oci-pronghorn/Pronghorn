@@ -21,7 +21,7 @@ public class FuzzTester {
 	public void testMQTTClientToServerEncodeStage() {
 		assertTrue(
 				StageTester.runFuzzTest(MQTTClientToServerEncodeStage.class, testDuration, generatorSeed,
-						new Object[]{new ClientCoordinator(3,3),1,1}
+						new Object[]{new ClientCoordinator(3,3,true),1,1}
 						)
         );
 	}
@@ -30,7 +30,7 @@ public class FuzzTester {
 	public void testMQTTClientResponseStage() {
 		assertTrue(
 				StageTester.runFuzzTest(MQTTClientResponseStage.class, testDuration, generatorSeed,
-						new Object[]{new ClientCoordinator(3,3),1,1}
+						new Object[]{new ClientCoordinator(3,3,true),1,1}
 						)
         );
 	}

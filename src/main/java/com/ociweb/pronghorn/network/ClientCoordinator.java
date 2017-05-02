@@ -101,10 +101,6 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		this.firstStage = startStage;
 	}
 	
-    
-	public ClientCoordinator(int connectionsInBits, int maxPartialResponses) { 
-		this(connectionsInBits,maxPartialResponses,true);
-	}
 	
 	public ClientCoordinator(int connectionsInBits, int maxPartialResponses, boolean isTLS) { 
 		

@@ -38,21 +38,22 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private final int     debugMaxBlockSize = 50; 
 	
 	//NOTE: this is important for high volume testing is must be large enough to push out data at a fast rate.
-	private final int BUF_MULTIPLER = 20; 	//some of these accumulations are small, TODO: apply same fix as we did on the server?
-
+	private final int bufMultiplier;
 
     private StringBuilder[] accumulators;//for testing only
 	
 	
-	public static ClientSocketWriterStage newInstance(GraphManager graphManager, ClientCoordinator ccm, Pipe<NetPayloadSchema>[] input) {
-		return new ClientSocketWriterStage(graphManager, ccm, input);
+	public static ClientSocketWriterStage newInstance(GraphManager graphManager, ClientCoordinator ccm, int bufMultiplier, Pipe<NetPayloadSchema>[] input) {
+		return new ClientSocketWriterStage(graphManager, ccm, bufMultiplier, input);
 	}
 	
-	public ClientSocketWriterStage(GraphManager graphManager, ClientCoordinator ccm, Pipe<NetPayloadSchema>[] input) {
+	public ClientSocketWriterStage(GraphManager graphManager, ClientCoordinator ccm, int bufMultiplier, Pipe<NetPayloadSchema>[] input) {
 		super(graphManager, input, NONE);
 		this.ccm = ccm;
 		this.input = input;
 		this.shutCountDown = input.length;
+		this.bufMultiplier = bufMultiplier;
+		
 	}
 
 	
@@ -72,7 +73,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 		connections = new ClientConnection[i];
 		buffers = new ByteBuffer[i];
 		while (--i>=0) {
-			buffers[i] = ByteBuffer.allocateDirect(input[i].maxVarLen*BUF_MULTIPLER); //TODO: allocate 1 large block then split into buffers?
+			buffers[i] = ByteBuffer.allocateDirect(input[i].maxVarLen*bufMultiplier); //TODO: allocate 1 large block then split into buffers?
 		}
 		start = System.currentTimeMillis();		
 	}

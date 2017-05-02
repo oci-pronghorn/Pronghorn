@@ -693,6 +693,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									Pipe.confirmLowLevelWrite(targetPipe, Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101));
 									Pipe.publishWrites(targetPipe);	
 														
+									//expecting H to be the next valid char 
 									assert(trieReader.sourceLen<=0 || input[i].blobRing[input[i].blobMask&trieReader.sourcePos]=='H') :"bad next value of "+(int)input[i].blobRing[input[i].blobMask&trieReader.sourcePos];
 									
 									foundWork += finishAndRelease(i, stateIdx, pipe, cc, 0); 

@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.stage.file;
+package com.ociweb.pronghorn.stage.file.schema;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;

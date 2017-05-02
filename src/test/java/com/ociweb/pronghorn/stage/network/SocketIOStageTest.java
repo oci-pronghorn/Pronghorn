@@ -62,7 +62,7 @@ public class SocketIOStageTest {
         
         String bindHost = "127.0.0.1";
         int routerCount = 1;
-        ServerCoordinator serverCoordinator = new ServerCoordinator(bindHost, port, maxConnBits, maxtPartials, routerCount);
+        ServerCoordinator serverCoordinator = new ServerCoordinator(encryptedContent, bindHost, port, maxConnBits, maxtPartials, routerCount);
 		ClientCoordinator clientCoordinator = new ClientCoordinator(                    maxConnBits, maxtPartials, false);
 		
 		
@@ -78,7 +78,7 @@ public class SocketIOStageTest {
         ////   
         {
 	        Pipe<NetPayloadSchema>[] input = new Pipe[]{new Pipe<NetPayloadSchema>(payloadPipeConfig)};		
-	        ClientSocketWriterStage.newInstance(gm, clientCoordinator , input);
+	        ClientSocketWriterStage.newInstance(gm, clientCoordinator, 20, input);
 	        new SocketTestGenStage(gm, input, testUsers, testSeeds, testSizes, clientCoordinator, port);
         }
 
@@ -92,9 +92,9 @@ public class SocketIOStageTest {
 		    while (--p>=0) {
 		    	output[p]=new Pipe<NetPayloadSchema>(payloadServerPipeConfig);
 		    }	    
-		    Pipe[] releasePipes = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};        
+		    Pipe<ReleaseSchema>[] releasePipes = new Pipe[]{new Pipe<ReleaseSchema>(releaseConfig )};        
 			ServerSocketReaderStage.newInstance(gm, releasePipes, output, serverCoordinator, encryptedContent);	
-	        new ServerSocketWriterStage(gm, serverCoordinator, output, releasePipes[0]); 
+	        new ServerSocketWriterStage(gm, serverCoordinator, 16, output, releasePipes[0]); 
         }
 		
 
@@ -109,7 +109,7 @@ public class SocketIOStageTest {
 		    while (--z>=0) {
 		    	response[z]=new Pipe<NetPayloadSchema>(payloadPipeConfig);
 		    }
-		    new ClientSocketReaderStage(gm, clientCoordinator, releasePipes, response, encryptedContent);
+		    new ClientSocketReaderStage(gm, clientCoordinator, releasePipes, response);
 			watch = new SocketClientTestDataStage(gm, response, releasePipes[0], encryptedContent, testUsers, testSeeds, testSizes); 
 		}
 		
@@ -121,12 +121,12 @@ public class SocketIOStageTest {
 		run(gm, watch);
 	}
 		
-	@Ignore //broke when we added the arrival time field
+	@Test
 	public void clientToServerSocketATest() {
 		clientToServerSocketTest(true,13081);
 	}
 
-	@Ignore //broke when we added the arrival time field
+	@Test
 	public void clientToServerSocketBTest() {
 		clientToServerSocketTest(false,12082);
 	}
@@ -145,7 +145,7 @@ public class SocketIOStageTest {
         
         String bindHost = "127.0.0.1";
         int routerCount = 1;
-		ServerCoordinator serverCoordinator = new ServerCoordinator(bindHost, port, maxConnBits, maxtPartials, routerCount);
+		ServerCoordinator serverCoordinator = new ServerCoordinator(encryptedContent, bindHost, port, maxConnBits, maxtPartials, routerCount);
 		ClientCoordinator clientCoordinator = new ClientCoordinator(                    maxConnBits, maxtPartials,false);
 					
 		///
@@ -172,7 +172,7 @@ public class SocketIOStageTest {
         ////client to write data to socket
         ////                
         Pipe<NetPayloadSchema>[] input = new Pipe[]{new Pipe<NetPayloadSchema>(payloadPipeConfig)};		
-		ClientSocketWriterStage.newInstance(gm, clientCoordinator , input);
+		ClientSocketWriterStage.newInstance(gm, clientCoordinator, 20, input);
 		new SocketTestGenStage(gm, input, testUsers, testSeeds, testSizes, clientCoordinator, port);
 		
 

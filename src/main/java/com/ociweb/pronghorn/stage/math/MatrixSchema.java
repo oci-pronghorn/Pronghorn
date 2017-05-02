@@ -10,7 +10,7 @@ import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.stage.math.BuildMatrixCompute.MatrixTypes;
 
-public class MatrixSchema extends MessageSchema<MatrixSchema> {
+public class MatrixSchema<T extends MatrixSchema<T>> extends MessageSchema<T> {
 
 	public final int columnId = 0;
 	public final int rowId = 0;

@@ -42,18 +42,16 @@ public class ServerNewConnectionStage extends PronghornStage{
     static final int connectMessageSize = ServerConnectionSchema.FROM.fragScriptSize[ServerConnectionSchema.MSG_SERVERCONNECTION_100];
     private ServerCoordinator coordinator;
     private Pipe<ServerConnectionSchema> newClientConnections;
-    private final boolean isTLS;
 
-	      
 	public static ServerNewConnectionStage newIntance(GraphManager graphManager, ServerCoordinator coordinator, Pipe<ServerConnectionSchema> newClientConnections, boolean isTLS) {
-		return new ServerNewConnectionStage(graphManager,coordinator,newClientConnections,isTLS);
+		return new ServerNewConnectionStage(graphManager,coordinator,newClientConnections);
 	}
 	
-    public ServerNewConnectionStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<ServerConnectionSchema> newClientConnections, boolean isTLS) {
+    public ServerNewConnectionStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<ServerConnectionSchema> newClientConnections) {
         super(graphManager, NONE, newClientConnections);
         this.coordinator = coordinator;
         this.newClientConnections = newClientConnections;
-        this.isTLS = isTLS;
+
     }
     
 
@@ -81,7 +79,7 @@ public class ServerNewConnectionStage extends PronghornStage{
             channel.register(selector, SelectionKey.OP_ACCEPT); 
             
             
-            System.out.println("Server is now ready on  http"+(isTLS?"s":"")+":/"+endPoint+"/");
+            System.out.println("Server is now ready on  http"+(coordinator.isTLS?"s":"")+":/"+endPoint+"/");
         } catch (BindException be) {
             String msg = be.getMessage();
             if (msg.contains("already in use")) {
@@ -92,7 +90,7 @@ public class ServerNewConnectionStage extends PronghornStage{
             throw new RuntimeException(be);
         } catch (IOException e) {
            if (e.getMessage().contains("Unresolved address")) {
-        	   System.out.println("Unresolved host address  http"+(isTLS?"s":""));
+        	   System.out.println("Unresolved host address  http"+(coordinator.isTLS?"s":""));
            }
         	
         	
@@ -159,7 +157,7 @@ public class ServerNewConnectionStage extends PronghornStage{
                           }
 						  
                           SSLEngine sslEngine = null;
-                          if (isTLS) {
+                          if (coordinator.isTLS) {
 							  sslEngine = SSLEngineFactory.createSSLEngine();//// not needed for server? host, port);
 							  sslEngine.setUseClientMode(false); //here just to be complete and clear
 							//  sslEngine.setNeedClientAuth(true); //only if the auth is required to have a connection

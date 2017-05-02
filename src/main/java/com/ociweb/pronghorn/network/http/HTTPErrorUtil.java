@@ -55,4 +55,15 @@ public class HTTPErrorUtil {
 	    logger.info("published error {} ",status);
 	}
 
+	public final static String expectedGet = "GET /groovySum.json HTTP/1.1\r\n"+
+	 "Host: 127.0.0.1\r\n"+
+	 "Connection: keep-alive\r\n"+
+	 "\r\n";
+	public final static String expectedOK = "HTTP/1.1 200 OK\r\n"+
+	"Content-Type: application/json\r\n"+
+	"Content-Length: 30\r\n"+
+	"Connection: open\r\n"+
+	"\r\n"+
+	"{\"x\":9,\"y\":17,\"groovySum\":26}\n";
+
 }

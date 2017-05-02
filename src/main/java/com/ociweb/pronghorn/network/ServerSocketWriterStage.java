@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
+import com.ociweb.pronghorn.network.http.HTTPErrorUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
@@ -55,10 +56,8 @@ public class ServerSocketWriterStage extends PronghornStage {
     private int activeMessageIds[];    
   
     private long totalBytesWritten = 0;
-    
-    //TODO: add param for small to use just 4 ?? //TODO: this must be changed to max latency wait not fixed cycles, important.
-    private int bufferMultiplier = 16;//12; //NOTE: larger buffer allows for faster xmit.
-
+   
+    private final int bufferMultiplier;
 
 	private static final boolean enableWriteBatching = true;  
     
@@ -85,20 +84,22 @@ public class ServerSocketWriterStage extends PronghornStage {
      * @param coordinator
      * @param dataToSend
      */
-    public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<NetPayloadSchema>[] dataToSend) {
+    public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, int bufferMultiplier, Pipe<NetPayloadSchema>[] dataToSend) {
         super(graphManager, dataToSend, NONE);
         this.coordinator = coordinator;
         this.dataToSend = dataToSend;
         this.releasePipe = null;
+        this.bufferMultiplier = bufferMultiplier;
     }
     
     //optional ack mode for testing and other configuraitons..  
     
-    public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<NetPayloadSchema>[] input, Pipe<ReleaseSchema> releasePipe) {
+    public ServerSocketWriterStage(GraphManager graphManager, ServerCoordinator coordinator, int bufferMultiplier, Pipe<NetPayloadSchema>[] input, Pipe<ReleaseSchema> releasePipe) {
         super(graphManager, input, releasePipe);
         this.coordinator = coordinator;
         this.dataToSend = input;
         this.releasePipe = releasePipe;
+        this.bufferMultiplier = bufferMultiplier;
     }
     
     @Override
@@ -441,22 +442,22 @@ public class ServerSocketWriterStage extends PronghornStage {
 				
 			//	Appendables.appendUTF8(accumulators[idx], buf.array(), pos, len, Integer.MAX_VALUE);						    				
 				
-				while (accumulators[idx].length() >= ServerCoordinator.expectedOK.length()) {
+				while (accumulators[idx].length() >= HTTPErrorUtil.expectedOK.length()) {
 					
-				   int c = startsWith(accumulators[idx],ServerCoordinator.expectedOK); 
+				   int c = startsWith(accumulators[idx],HTTPErrorUtil.expectedOK); 
 				   if (c>0) {
 					   
-					   String remaining = accumulators[idx].substring(c*ServerCoordinator.expectedOK.length());
+					   String remaining = accumulators[idx].substring(c*HTTPErrorUtil.expectedOK.length());
 					   accumulators[idx].setLength(0);
 					   accumulators[idx].append(remaining);							    					   
 					   
 					   
 				   } else {
-					   logger.info("A"+Arrays.toString(ServerCoordinator.expectedOK.getBytes()));
-					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, ServerCoordinator.expectedOK.length()).toString().getBytes()   ));
+					   logger.info("A"+Arrays.toString(HTTPErrorUtil.expectedOK.getBytes()));
+					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, HTTPErrorUtil.expectedOK.length()).toString().getBytes()   ));
 					   
-					   logger.info("FORCE EXIT ERROR exlen {} BAD BYTE BUFFER at {}",ServerCoordinator.expectedOK.length(),totalB);
-					   System.out.println(accumulators[idx].subSequence(0, ServerCoordinator.expectedOK.length()).toString());
+					   logger.info("FORCE EXIT ERROR exlen {} BAD BYTE BUFFER at {}",HTTPErrorUtil.expectedOK.length(),totalB);
+					   System.out.println(accumulators[idx].subSequence(0, HTTPErrorUtil.expectedOK.length()).toString());
 					   System.exit(-1);
 					   	
 					   
@@ -485,22 +486,22 @@ public class ServerSocketWriterStage extends PronghornStage {
 			if (confirmExpectedRequests) {
 				Appendables.appendUTF8(accumulators[idx], pipe.blobRing, pos, len, pipe.blobMask);						    				
 				
-				while (accumulators[idx].length() >= ServerCoordinator.expectedOK.length()) {
+				while (accumulators[idx].length() >= HTTPErrorUtil.expectedOK.length()) {
 					
-				   int c = startsWith(accumulators[idx],ServerCoordinator.expectedOK); 
+				   int c = startsWith(accumulators[idx],HTTPErrorUtil.expectedOK); 
 				   if (c>0) {
 					   
-					   String remaining = accumulators[idx].substring(c*ServerCoordinator.expectedOK.length());
+					   String remaining = accumulators[idx].substring(c*HTTPErrorUtil.expectedOK.length());
 					   accumulators[idx].setLength(0);
 					   accumulators[idx].append(remaining);							    					   
 					   
 					   
 				   } else {
-					   logger.info("A"+Arrays.toString(ServerCoordinator.expectedOK.getBytes()));
-					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, ServerCoordinator.expectedOK.length()).toString().getBytes()   ));
+					   logger.info("A"+Arrays.toString(HTTPErrorUtil.expectedOK.getBytes()));
+					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, HTTPErrorUtil.expectedOK.length()).toString().getBytes()   ));
 					   
-					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos,ServerCoordinator.expectedOK.length());
-					   System.out.println(accumulators[idx].subSequence(0, ServerCoordinator.expectedOK.length()).toString());
+					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos,HTTPErrorUtil.expectedOK.length());
+					   System.out.println(accumulators[idx].subSequence(0, HTTPErrorUtil.expectedOK.length()).toString());
 					   System.exit(-1);
 					   	
 					   

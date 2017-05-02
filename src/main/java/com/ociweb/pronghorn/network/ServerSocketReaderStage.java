@@ -16,6 +16,7 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.http.HTTPErrorUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -25,9 +26,7 @@ import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
 
 public class ServerSocketReaderStage extends PronghornStage {
-    
-    private static final int PLAIN_BOUNDARY_KNOWN = -1;
-
+   
 	private final int messageType;
 
 	public static final Logger logger = LoggerFactory.getLogger(ServerSocketReaderStage.class);
@@ -39,32 +38,24 @@ public class ServerSocketReaderStage extends PronghornStage {
     private Selector selector;
 
     private int pendingSelections = 0;
-    private final boolean isTLS;
-
+ 
     private StringBuilder[] accumulators;
-    
+ 
+    private ArrayList<SelectionKey> doneSelectors = new ArrayList<SelectionKey>(100);
 
-    private int maxWarningCount = 20;
-    
-    private ArrayList<SelectionKey> doneSelectors= new ArrayList<SelectionKey>(100);
-    
-//    private long nextTime = 0;
-//    private long bytesConsumed=0;
-
-    private ServiceObjectHolder<ServerConnection> holder;
     
     public static ServerSocketReaderStage newInstance(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, boolean encrypted) {
-        return new ServerSocketReaderStage(graphManager, ack, output, coordinator, encrypted);
+        return new ServerSocketReaderStage(graphManager, ack, output, coordinator);
     }
     
-    public ServerSocketReaderStage(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator, boolean isTLS) {
+    public ServerSocketReaderStage(GraphManager graphManager, Pipe<ReleaseSchema>[] ack, Pipe<NetPayloadSchema>[] output, ServerCoordinator coordinator) {
         super(graphManager, ack, output);
         this.coordinator = coordinator;
 
         this.output = output;
         this.releasePipes = ack;
-        this.isTLS = isTLS;
-        this.messageType = isTLS ? NetPayloadSchema.MSG_ENCRYPTED_200 : NetPayloadSchema.MSG_PLAIN_210;
+
+        this.messageType = coordinator.isTLS ? NetPayloadSchema.MSG_ENCRYPTED_200 : NetPayloadSchema.MSG_PLAIN_210;
         coordinator.setStart(this);
         
         GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
@@ -82,7 +73,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}
     	}
 		
-        holder = ServerCoordinator.newSocketChannelHolder(coordinator);
+        ServerCoordinator.newSocketChannelHolder(coordinator);
                 
         try {
             coordinator.registerSelector(selector = Selector.open());
@@ -176,7 +167,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		
 		SSLConnection cc = coordinator.get(channelId);
 		boolean processWork = true;
-		if (isTLS) {
+		if (coordinator.isTLS) {
 				
 			if (null!=cc && null!=cc.getEngine()) {
 				HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
@@ -532,22 +523,22 @@ public class ServerSocketReaderStage extends PronghornStage {
 			if (confirmExpectedRequests) {
 				Appendables.appendUTF8(accumulators[idx], pipe.blobRing, pos, len, pipe.blobMask);						    				
 				
-				while (accumulators[idx].length() >= ServerCoordinator.expectedGet.length()) {
+				while (accumulators[idx].length() >= HTTPErrorUtil.expectedGet.length()) {
 					
-				   int c = startsWith(accumulators[idx],ServerCoordinator.expectedGet); 
+				   int c = startsWith(accumulators[idx],HTTPErrorUtil.expectedGet); 
 				   if (c>0) {
 					   
-					   String remaining = accumulators[idx].substring(c*ServerCoordinator.expectedGet.length());
+					   String remaining = accumulators[idx].substring(c*HTTPErrorUtil.expectedGet.length());
 					   accumulators[idx].setLength(0);
 					   accumulators[idx].append(remaining);							    					   
 					   
 					   
 				   } else {
-					   logger.info("A"+Arrays.toString(ServerCoordinator.expectedGet.getBytes()));
-					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, ServerCoordinator.expectedGet.length()).toString().getBytes()   ));
+					   logger.info("A"+Arrays.toString(HTTPErrorUtil.expectedGet.getBytes()));
+					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, HTTPErrorUtil.expectedGet.length()).toString().getBytes()   ));
 					   
-					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos,ServerCoordinator.expectedGet.length());
-					   System.out.println(accumulators[idx].subSequence(0, ServerCoordinator.expectedGet.length()).toString());
+					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos,HTTPErrorUtil.expectedGet.length());
+					   System.out.println(accumulators[idx].subSequence(0, HTTPErrorUtil.expectedGet.length()).toString());
 					   System.exit(-1);
 					   	
 					   

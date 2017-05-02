@@ -272,6 +272,8 @@ public class StageTester {
 								constructorParameterTypes[cIdx] = Integer.TYPE;
 							} else if (arg instanceof Long) {//changes to primitive
 								constructorParameterTypes[cIdx] = Long.TYPE;
+							} else if (arg instanceof Byte) {//changes to primitive
+								constructorParameterTypes[cIdx] = Byte.TYPE;
 							} else if (arg instanceof Boolean) {//changes to primitive
 							    constructorParameterTypes[cIdx] = Boolean.TYPE;
 					    	} else {

@@ -45,27 +45,18 @@ public class ServerCoordinator extends SSLConnectionHolder {
 
 	private final PoolIdx responsePipeLinePool;
 	public final int maxPartialResponses;
-	public final int[] routerLookup;
+	private final int[] processorLookup;
+	public final boolean isTLS;
+	private final int processorsCount;
 	
 	public static boolean TEST_RECORDS = false;
 	static {
 		
 	}
 	
-    public final static String expectedGet = "GET /groovySum.json HTTP/1.1\r\n"+
-										 "Host: 127.0.0.1\r\n"+
-										 "Connection: keep-alive\r\n"+
-										 "\r\n";
-	public final static String expectedOK = "HTTP/1.1 200 OK\r\n"+
-											"Content-Type: application/json\r\n"+
-											"Content-Length: 30\r\n"+
-											"Connection: open\r\n"+
-											"\r\n"+
-											"{\"x\":9,\"y\":17,\"groovySum\":26}\n";
-	
-    
-    public ServerCoordinator(String bindHost, int port, int maxConnectionsBits, int maxPartialResponses, int routerCount) {
+    public ServerCoordinator(boolean isTLS, String bindHost, int port, int maxConnectionsBits, int maxPartialResponses, int processorsCount) {
         
+    	this.isTLS 			   = isTLS;
         this.port              = port;
         this.channelBits       = maxConnectionsBits;
         this.channelBitsSize   = 1<<channelBits;
@@ -76,7 +67,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	
     	this.maxPartialResponses = maxPartialResponses;
 
-    	this.routerLookup = Pipe.splitGroups(routerCount, maxPartialResponses);
+    	this.processorsCount = processorsCount;
+    	this.processorLookup = Pipe.splitGroups(processorsCount, maxPartialResponses);
     	
     	
     	SSLEngineFactory.init();
@@ -178,15 +170,20 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		}
 
 		public void setId(long ccId) {
+			assert(maxPartialResponses == processorLookup.length);
 			this.idx = ((int)ccId)%maxPartialResponses;
-			this.validValue = routerLookup[idx];
+			this.validValue = processorLookup[idx];
 		}
 
 		@Override
 		public boolean isOk(final int i) {
-			return validValue == routerLookup[i]; 
+			return validValue == processorLookup[i]; 
 		}
 	}
+    
+    public int processorCount() {
+    	return processorsCount;
+    }
 
 	public static class SocketValidator implements ServiceObjectValidator<ServerConnection> {
 
@@ -210,17 +207,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
     public static int[] getUpgradedPipeLookupArray(ServerCoordinator that) {
         return that.upgradePipeLookup;
     }
-    
-//    @Deprecated//Not needed bad idea
-//    public static void setTargetUpgradePipeIdx(ServerCoordinator coordinator, int groupId, long channelId, int idxValue) {
-//        coordinator.upgradePipeLookup[groupId][(int)(coordinator.channelBitsMask & channelId)] = idxValue;
-//    }
-//    
-//    
-//    @Deprecated
-//    public static int getTargetUpgradePipeIdx(ServerCoordinator coordinator, int groupId, long channelId) {
-//        return coordinator.upgradePipeLookup[groupId][(int)(coordinator.channelBitsMask & channelId)];
-//    }
     
     public static Selector getSelector(ServerCoordinator that) {
         return that.selectors;

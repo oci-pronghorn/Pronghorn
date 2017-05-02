@@ -16,14 +16,14 @@ public class MQTTEncoder {
 	//bit 2 will flag
 	//bit 1 clean session
 	//bit 0 reserved zero
-	public static final int CONNECT_FLAG_RESERVED_0      = 1;
-	public static final int CONNECT_FLAG_CLEAN_SESSION_1 = 2;
-	public static final int CONNECT_FLAG_WILL_FLAG_2     = 4;
-	public static final int CONNECT_FLAG_WILL_QOS_3      = 8;
-	public static final int CONNECT_FLAG_WILL_QOS_4      = 16;
-	public static final int CONNECT_FLAG_WILL_RETAIN_5   = 32;
-	public static final int CONNECT_FLAG_PASSWORD_6      = 64;
-	public static final int CONNECT_FLAG_USERNAME_7      = 128;
+	public static final int CONNECT_FLAG_RESERVED_0      = 1<<0;
+	public static final int CONNECT_FLAG_CLEAN_SESSION_1 = 1<<1;//2;
+	public static final int CONNECT_FLAG_WILL_FLAG_2     = 1<<2;//4;
+	public static final int CONNECT_FLAG_WILL_QOS_3      = 1<<3;//8;
+	public static final int CONNECT_FLAG_WILL_QOS_4      = 1<<4;//16;
+	public static final int CONNECT_FLAG_WILL_RETAIN_5   = 1<<5;//32;
+	public static final int CONNECT_FLAG_PASSWORD_6      = 1<<6;//64;
+	public static final int CONNECT_FLAG_USERNAME_7      = 1<<7;//128;
 	
 	
 	  public static int buildConnectPacket(int bytePos, byte[] byteBuffer, int byteMask, int ttlSec, int conFlags, 

@@ -3,6 +3,8 @@ package com.ociweb.pronghorn.stage.file;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.file.schema.SequentialFileIORequestSchema;
+import com.ociweb.pronghorn.stage.file.schema.SequentialFileIOResponseSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class SequentialFileIOStage<T extends MessageSchema> extends PronghornStage {

@@ -28,7 +28,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 	private long start;
 	private long totalBytes=0;
-	private boolean isTLS;
+
 	private final static int KNOWN_BLOCK_ENDING = -1;
 
 	private final int maxClients;
@@ -39,12 +39,12 @@ public class ClientSocketReaderStage extends PronghornStage {
 	
 	
 	
-	public ClientSocketReaderStage(GraphManager graphManager, ClientCoordinator coordinator, Pipe<ReleaseSchema>[] parseAck, Pipe<NetPayloadSchema>[] output, boolean isTLS) {
+	public ClientSocketReaderStage(GraphManager graphManager, ClientCoordinator coordinator, Pipe<ReleaseSchema>[] parseAck, Pipe<NetPayloadSchema>[] output) {
 		super(graphManager, parseAck, output);
 		this.coordinator = coordinator;
 		this.output = output;
 		this.releasePipes = parseAck;
-		this.isTLS = isTLS;
+
 		this.maxClients = coordinator.maxClientConnections();		
 		
 		coordinator.setStart(this);
@@ -106,7 +106,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 					    	//System.err.println("reading socket connection "+cc.isValid());
 	  	
 					    	//process handshake before reserving one of the pipes
-					    	if (isTLS) {
+					    	if (coordinator.isTLS) {
 					    		
 					    		HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
 					    		//logger.info("has data for {} {} {}",cc,cc.isValid(),handshakeStatus);
@@ -178,11 +178,11 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    		totalBytes += readCount;						    		
 							    		//we read some data so send it		
 							    	
-							    		logger.info("totalbytes consumed by client {} TLS {} ",totalBytes, isTLS);
+							    		logger.trace("totalbytes consumed by client {} TLS {} ",totalBytes, coordinator.isTLS);
 							    		
 							    	//	logger.info("client reading {} for id {}",readCount,cc.getId());
 							    		
-							    		if (isTLS) {
+							    		if (coordinator.isTLS) {
 							    			assert(Pipe.hasRoomForWrite(target)) : "checked earlier should not fail";
 							    			
 							    			int size = Pipe.addMsgIdx(target, NetPayloadSchema.MSG_ENCRYPTED_200);

@@ -14,6 +14,7 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
+@Deprecated
 public class FileWriteStage extends PronghornStage {
 
 	private final Pipe inputRing;

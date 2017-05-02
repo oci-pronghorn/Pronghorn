@@ -258,7 +258,7 @@ public class ClientConnection extends SSLConnection {
 					
 					if (Pipe.hasRoomForWrite(pipe)) {
 					
-						logger.info("ClientConnection request wrap for id {} to pipe {}",getId(), pipe);
+						logger.trace("ClientConnection request wrap for id {} to pipe {}",getId(), pipe);
 						
 						int size = Pipe.addMsgIdx(pipe, NetPayloadSchema.MSG_PLAIN_210);
 						Pipe.addLongValue(getId(), pipe);

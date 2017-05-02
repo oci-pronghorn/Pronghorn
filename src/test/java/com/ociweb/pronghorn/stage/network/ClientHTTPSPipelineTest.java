@@ -43,7 +43,7 @@ public class ClientHTTPSPipelineTest {
 
 		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);
 		
-		ClientCoordinator ccm = new ClientCoordinator(base2SimultaniousConnections,inputsCount);
+		ClientCoordinator ccm = new ClientCoordinator(base2SimultaniousConnections,inputsCount,true);
 		final IntHashTable listenerPipeLookup = new IntHashTable(base2SimultaniousConnections+2);
 		
 		System.out.println("listeners "+maxListeners);
@@ -99,11 +99,11 @@ public class ClientHTTPSPipelineTest {
 			
 		};
 		
-		NetGraphBuilder.buildClientGraph(true, gm, 
-				                             ccm, 10,
-				                             1<<15,clientRequests,
+		NetGraphBuilder.buildClientGraph(gm, ccm, 
+				                             10, 1<<15,
+				                             clientRequests,2,
 											 2, 
-											 2, 2, 2048, 64, 1<<19, factory);
+											 2, 2048, 64, 1<<19, factory, 20);
 		
 		i = toReactor.length;
 		PipeCleanerStage[] cleaners = new PipeCleanerStage[i];

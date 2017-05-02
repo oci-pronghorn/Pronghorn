@@ -59,7 +59,7 @@ public class FileBlobReadStage extends PronghornStage {
             
         while (Pipe.hasRoomForWrite(output)) {
         
-            int originalBlobPosition = Pipe.getBlobWorkingHeadPosition(output);      
+            int originalBlobPosition = Pipe.getWorkingBlobHeadPosition(output);      
             try {            
                 
                 //attempt to read this many bytes but may read less

@@ -45,7 +45,7 @@ public class HTTPRouterStageTest {
     public void rapidValidRequestTest() {
         
     	HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(HTTPSpecification.defaultSpec()); 
-    	ServerCoordinator coordinator = new ServerCoordinator("127.0.0.1", 8080, 5 ,5 ,1);
+    	ServerCoordinator coordinator = new ServerCoordinator(false, "127.0.0.1", 8080, 5 ,5 ,1);
     	
     	for(CharSequence route: paths) {
     		routerConfig.registerRoute(route, 0); //no headers
