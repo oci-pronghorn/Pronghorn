@@ -339,6 +339,19 @@ public class TrieParserReader {
         return len;
     }
     
+    public static int parseSkipOne(TrieParserReader reader) {
+    	
+    	if (reader.sourceLen>=1) {
+    		int result = reader.sourceBacking[reader.sourcePos & reader.sourceMask];
+    		reader.sourcePos++;
+    		reader.sourceLen--;
+    		return 0xFF & result;
+    	} else {
+    		return -1;
+    	}
+    	
+    }
+    
     public static boolean parseSkipUntil(TrieParserReader reader, int target) {    	
     	//skip over everything until we match the target, then we can parse from that point
     	while ((reader.sourceLen > 0) && (reader.sourceBacking[reader.sourcePos & reader.sourceMask] != target )) {
@@ -1173,11 +1186,24 @@ public class TrieParserReader {
         int blen = reader.capturedValues[pos++];
         int bmsk = reader.capturedValues[pos++];
         
-        //we add 2 to the length to pick up the stop chars
+        //we add 2 to the length to pick up the stop chars, this ensure we have enough text to match
         return query(reader, trie, reader.capturedBlobArray, bpos, blen+stopBytesCount, bmsk, -1);
 
     }
     
+    public static void capturedFieldSetValue(TrieParserReader reader, int idx, TrieParser trie, long value) {
+        
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int bpos = reader.capturedValues[pos++];
+        int blen = reader.capturedValues[pos++];
+        int bmsk = reader.capturedValues[pos++];
+        
+        trie.setValue(reader.capturedBlobArray, bpos, blen, bmsk, value);
+ 
+    }
     
     public static <A extends Appendable> A capturedFieldBytesAsUTF8(TrieParserReader reader, int idx, A target) {
         

@@ -409,7 +409,7 @@ public class TrieParserTest {
         
         byte[] pat = map.lastSetValueExtractonPattern();
         assertEquals(1,pat.length);
-        assertEquals(TrieParser.ESCAPE_CMD_UNSIGNED_DEC, pat[0]);
+        assertEquals(TrieParser.ESCAPE_CMD_UNSIGNED_INT, pat[0]);
         
         assertFalse(map.toString(),map.toString().contains("ERROR"));
         

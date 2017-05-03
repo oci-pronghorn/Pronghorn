@@ -38,15 +38,15 @@ public class Decimal {
         	0E-32f,1.0E-33f,1.0E-34f,1.0E-35f,1.0E-36f,1.0E-37f,1.0E-38f,1.0E-39f,1.0E-40f,1.0E-41f,0E-42f,1.0E-43f,1.0E-44f,1.0E-45f,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN
         };
 	
-    public static long asLong(final long m, final int e) {
+    public static long asLong(final long m, final byte e) {
     	return (long)(((double)m)*powdi[64 - e]);
     }
     
-    public static double asDouble(final long m, final int e) {
+    public static double asDouble(final long m, final byte e) {
     	return ((double)m)*powdi[64 - e];
     }
 	
-    public static float asFloat(final long m, final int e) {
+    public static float asFloat(final long m, final byte e) {
     	return ((float)m)*powfi[64 - e];
     }
 	

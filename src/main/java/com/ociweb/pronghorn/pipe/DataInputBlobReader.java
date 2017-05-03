@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.math.Decimal;
 
@@ -17,8 +18,11 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     private final int byteMask;
     
     private int length;
-    private int bytesLimit;
+    private int bytesHighBound;
+    private int bytesLowBound;
     private int position;
+    private TrieParser textToNumberParser;
+    private TrieParserReader reader;
     
     private int EOF_MARKER = -1;
     
@@ -33,13 +37,24 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     
     public void openHighLevelAPIField(int loc) {
         
-        this.length    = PipeReader.readBytesLength(pipe, loc);
-        this.position  = PipeReader.readBytesPosition(pipe, loc);
-        this.backing   = PipeReader.readBytesBackingArray(pipe, loc);        
-        this.bytesLimit = pipe.blobMask & (position + length);
+        this.length         = PipeReader.readBytesLength(pipe, loc);
+        this.position       = PipeReader.readBytesPosition(pipe, loc);
+        this.backing        = PipeReader.readBytesBackingArray(pipe, loc);        
+        this.bytesHighBound = pipe.blobMask & (position + length);
+        this.bytesLowBound  = position;
         
         assert(Pipe.validatePipeBlobHasDataToRead(pipe, position, length));
 
+    }
+    
+    public int readFromEndLastInt(int negativeIntOffset) {
+    	assert(negativeIntOffset>0) : "there is no data found at the end";
+    	
+    	int position = bytesHighBound-(4*negativeIntOffset);
+    	return ( ( (       backing[byteMask & position++]) << 24) |
+		 ( (0xFF & backing[byteMask & position++]) << 16) |
+		 ( (0xFF & backing[byteMask & position++]) << 8) |
+		   (0xFF & backing[byteMask & position++]) );
     }
     
     public int openLowLevelAPIField() {
@@ -52,13 +67,15 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         that.length    = Pipe.takeRingByteLen(that.pipe);
         that.position = Pipe.bytePosition(meta, that.pipe, that.length);
         that.backing   = Pipe.byteBackingArray(meta, that.pipe);               
-        that.bytesLimit = that.pipe.blobMask & (that.position + that.length);
+        that.bytesHighBound = that.pipe.blobMask & (that.position + that.length);
         
         assert(Pipe.validatePipeBlobHasDataToRead(that.pipe, that.position, that.length));
         
         return that.length;
     }
 
+
+    
     public int accumLowLevelAPIField() {
         
         if (0==this.length) {
@@ -69,7 +86,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
             int len = Pipe.takeRingByteLen(pipe);
             
             this.length += len;
-            this.bytesLimit = pipe.byteMask & (bytesLimit + len);
+            this.bytesHighBound = pipe.blobMask & (bytesHighBound + len);
             
             return len;
         }
@@ -78,7 +95,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     
         
     public boolean hasRemainingBytes() {
-        return (byteMask & position) != bytesLimit;
+        return (byteMask & position) != bytesHighBound;
     }
 
     @Override
@@ -88,7 +105,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
 
     public static int bytesRemaining(DataInputBlobReader<?> that) {
                 
-        return  that.bytesLimit >= (that.byteMask & that.position) ? that.bytesLimit- (that.byteMask & that.position) : (that.pipe.sizeOfBlobRing- (that.byteMask & that.position))+that.bytesLimit;
+        return  that.bytesHighBound >= (that.byteMask & that.position) ? that.bytesHighBound- (that.byteMask & that.position) : (that.pipe.sizeOfBlobRing- (that.byteMask & that.position))+that.bytesHighBound;
 
     }
 
@@ -100,9 +117,31 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     	return position;
     }
     
-    @Override
+    public void position(int byteIndexFromStart) {
+    	assert(byteIndexFromStart<length);
+    	position = bytesLowBound+byteIndexFromStart;
+    }
+    
+    
+    
+//    @Override
+//	public synchronized void mark(int readlimit) {
+//		super.mark(readlimit);
+//	}
+//
+//	@Override
+//	public synchronized void reset() throws IOException {
+//		super.reset();
+//	}
+//
+//	@Override
+//	public boolean markSupported() {
+//		return super.markSupported();
+//	}
+
+	@Override
     public int read(byte[] b) {
-        if ((byteMask & position) == bytesLimit) {
+        if ((byteMask & position) == bytesHighBound) {
             return EOF_MARKER;
         }       
         
@@ -115,7 +154,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     
     @Override
     public int read(byte[] b, int off, int len) {
-        if ((byteMask & position) == bytesLimit) {
+        if ((byteMask & position) == bytesHighBound) {
             return EOF_MARKER;
         }
         
@@ -228,17 +267,17 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
 
     @Override
     public int read() {
-        return (byteMask & position) != bytesLimit ? backing[byteMask & position++] : EOF_MARKER;//isOpen?0:-1;
+        return (byteMask & position) != bytesHighBound ? backing[byteMask & position++] : EOF_MARKER;//isOpen?0:-1;
     }
 
     @Override
     public String readLine() {
         
         workspace.setLength(0);        
-        if ((byteMask & position) != bytesLimit) {
+        if ((byteMask & position) != bytesHighBound) {
             char c = (char)read16(backing,byteMask,this);
             while (
-                    ((byteMask & position) != bytesLimit) &&  //hard stop for EOF but this is really end of field.
+                    ((byteMask & position) != bytesHighBound) &&  //hard stop for EOF but this is really end of field.
                     c != '\n'
                   ) {
                 if (c!='\r') {
@@ -312,7 +351,44 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     	position += length;
     	
     }
+    ////////
+    //parsing methods
+    ///////
+    private TrieParser textToNumberParser() {
+    	if (textToNumberParser == null) {
+    		TrieParser p = new TrieParser(32,false);
+    		p.setUTF8Value("%i%.", 1);
+    		reader = new TrieParserReader(true);
+    	}
+    	return textToNumberParser;
+    }
     
+    public static long readUTFAsLong(DataInputBlobReader<?> reader) {
+    	TrieParser parser = reader.textToNumberParser();    	
+    	long token = TrieParserReader.query(reader.reader, parser, reader.backing, reader.position,
+    			               reader.available(), reader.byteMask);
+    	
+    	if (token>=0) {
+    		return TrieParserReader.capturedLongField(reader.reader, 0);
+    	} else {
+    		return -1;//none
+    	}    	
+    }
+    
+    public static double readUTFAsDecimal(DataInputBlobReader<?> reader) {
+    	TrieParser parser = reader.textToNumberParser();    	
+    	long token = TrieParserReader.query(reader.reader, parser, reader.backing, reader.position,
+    			               reader.available(), reader.byteMask);
+    	
+    	if (token>=0) {
+    		long m = TrieParserReader.capturedDecimalMField(reader.reader, 0);
+    		byte e = TrieParserReader.capturedDecimalEField(reader.reader, 0);
+    		return Decimal.asDouble(m, e);
+    		
+    	} else {
+    		return -1;//none
+    	}    	
+    }
     
     ///////
     //Packed Chars
@@ -349,11 +425,11 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     }
     
     public double readDecimalAsDouble() {
-    	return Decimal.asDouble(readPackedLong(), readPackedInt());
+    	return Decimal.asDouble(readPackedLong(), readByte());
     }
     
     public long readDecimalAsLong() {
-    	return Decimal.asLong(readPackedLong(), readPackedInt());
+    	return Decimal.asLong(readPackedLong(), readByte());
     }
     
     public short readPackedShort() {

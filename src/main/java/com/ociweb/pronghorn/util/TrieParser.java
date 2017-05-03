@@ -58,8 +58,8 @@ public class TrieParser implements Serializable {
     
     
     //EXTRACT VALUE
-    public static final byte ESCAPE_CMD_SIGNED_DEC    = 'i'; //signedInt (may be hex if starts with 0x)
-    public static final byte ESCAPE_CMD_UNSIGNED_DEC  = 'u'; //unsignedInt (may be hex if starts with 0x)
+    public static final byte ESCAPE_CMD_SIGNED_INT    = 'i'; //signedInt (may be hex if starts with 0x)
+    public static final byte ESCAPE_CMD_UNSIGNED_INT  = 'u'; //unsignedInt (may be hex if starts with 0x)
     public static final byte ESCAPE_CMD_SIGNED_HEX    = 'I'; //signedInt (may skip prefix 0x, assumed to be hex)
     public static final byte ESCAPE_CMD_UNSIGNED_HEX  = 'U'; //unsignedInt (may skip prefix 0x, assumbed to be hex) 
     public static final byte ESCAPE_CMD_DECIMAL       = '.'; //if found capture u and places else captures zero and 1 place
@@ -93,7 +93,7 @@ public class TrieParser implements Serializable {
     private int limit = 0;
 
     private final int MAX_TEXT_LENGTH = 4096;
-    private transient Pipe<RawDataSchema> pipe = new Pipe<RawDataSchema>(new PipeConfig<RawDataSchema>(RawDataSchema.instance,3,MAX_TEXT_LENGTH));
+    private transient Pipe<RawDataSchema> workingPipe = RawDataSchema.instance.newPipe(3,MAX_TEXT_LENGTH);
     
     private int maxExtractedFields = 0;//out of all the byte patterns known what is the maximum # of extracted fields from any of them.
     
@@ -139,7 +139,7 @@ public class TrieParser implements Serializable {
         this.data = new short[size];
         this.fixedSize = false; //if its not fixed size then the .data array will grow as needed.
         
-        this.pipe.initBuffers();
+        this.workingPipe.initBuffers();
         
         this.SIZE_OF_RESULT               = resultSize;        //custom result size for this instance
         this.SIZE_OF_END_1                = 1+SIZE_OF_RESULT;
@@ -560,66 +560,66 @@ public class TrieParser implements Serializable {
 
     public int setUTF8Value(CharSequence cs, long value) {
         
-        Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+        Pipe.addMsgIdx(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
         
-        int origPos = Pipe.getWorkingBlobHeadPosition(pipe);
-        int len = Pipe.copyUTF8ToByte(cs, 0, cs.length(), pipe);
-        Pipe.addBytePosAndLen(pipe, origPos, len);        
-        Pipe.publishWrites(pipe);
-        Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        int origPos = Pipe.getWorkingBlobHeadPosition(workingPipe);
+        int len = Pipe.copyUTF8ToByte(cs, 0, cs.length(), workingPipe);
+        Pipe.addBytePosAndLen(workingPipe, origPos, len);        
+        Pipe.publishWrites(workingPipe);
+        Pipe.confirmLowLevelWrite(workingPipe, Pipe.sizeOf(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
         
-        Pipe.takeMsgIdx(pipe);
-        setValue(pipe, value);
-        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        Pipe.takeMsgIdx(workingPipe);
+        setValue(workingPipe, value);
+        Pipe.confirmLowLevelRead(workingPipe, Pipe.sizeOf(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
         
         //WARNING: this is not thread safe if set is called and we have not yet parsed!!
-        Pipe.releaseReadLock(pipe);
+        Pipe.releaseReadLock(workingPipe);
         return len;
         
     }
     
     public int setUTF8Value(CharSequence cs, CharSequence suffix, int value) {
         
-        Pipe.addMsgIdx(pipe, 0);
+        Pipe.addMsgIdx(workingPipe, 0);
         
-        int origPos = Pipe.getWorkingBlobHeadPosition(pipe);
+        int origPos = Pipe.getWorkingBlobHeadPosition(workingPipe);
         int len = 0;
-        len += Pipe.copyUTF8ToByte(cs, 0, cs.length(), pipe);        
-        len += Pipe.copyUTF8ToByte(suffix, 0, suffix.length(), pipe);
+        len += Pipe.copyUTF8ToByte(cs, 0, cs.length(), workingPipe);        
+        len += Pipe.copyUTF8ToByte(suffix, 0, suffix.length(), workingPipe);
                 
-        Pipe.addBytePosAndLen(pipe, origPos, len);
-        Pipe.publishWrites(pipe);
-        Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        Pipe.addBytePosAndLen(workingPipe, origPos, len);
+        Pipe.publishWrites(workingPipe);
+        Pipe.confirmLowLevelWrite(workingPipe, Pipe.sizeOf(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
         
-        Pipe.takeMsgIdx(pipe);
-        setValue(pipe, value);   
-        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        Pipe.takeMsgIdx(workingPipe);
+        setValue(workingPipe, value);   
+        Pipe.confirmLowLevelRead(workingPipe, Pipe.sizeOf(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
         
         //WARNING: this is not thread safe if set is called and we have not yet parsed!!
-        Pipe.releaseReadLock(pipe);
+        Pipe.releaseReadLock(workingPipe);
         return len;
     }
 
     public int setUTF8Value(CharSequence prefix, CharSequence cs, CharSequence suffix, int value) {
         
-        Pipe.addMsgIdx(pipe, 0);
+        Pipe.addMsgIdx(workingPipe, 0);
         
-        int origPos = Pipe.getBlobWorkingHeadPosition(pipe);
+        int origPos = Pipe.getWorkingBlobHeadPosition(workingPipe);
         int len = 0;
-        len += Pipe.copyUTF8ToByte(prefix, 0, prefix.length(), pipe);
-        len += Pipe.copyUTF8ToByte(cs, 0, cs.length(), pipe);        
-        len += Pipe.copyUTF8ToByte(suffix, 0, suffix.length(), pipe);
+        len += Pipe.copyUTF8ToByte(prefix, 0, prefix.length(), workingPipe);
+        len += Pipe.copyUTF8ToByte(cs, 0, cs.length(), workingPipe);        
+        len += Pipe.copyUTF8ToByte(suffix, 0, suffix.length(), workingPipe);
                 
-        Pipe.addBytePosAndLen(pipe, origPos, len);
-        Pipe.publishWrites(pipe);
-        Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        Pipe.addBytePosAndLen(workingPipe, origPos, len);
+        Pipe.publishWrites(workingPipe);
+        Pipe.confirmLowLevelWrite(workingPipe, Pipe.sizeOf(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
         
-        Pipe.takeMsgIdx(pipe);
-        setValue(pipe, value);   
-        Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        Pipe.takeMsgIdx(workingPipe);
+        setValue(workingPipe, value);   
+        Pipe.confirmLowLevelRead(workingPipe, Pipe.sizeOf(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
         
         //WARNING: this is not thread safe if set is called and we have not yet parsed!!
-        Pipe.releaseReadLock(pipe);
+        Pipe.releaseReadLock(workingPipe);
         return len;
     }
     
@@ -703,9 +703,9 @@ public class TrieParser implements Serializable {
                         if ('%'==source[sourceMask & sourcePos]) {                        	
                     		byte second = source[sourceMask & (sourcePos+1)];
                     		extractions[extractionCount++] = second;
-                			if (ESCAPE_CMD_UNSIGNED_DEC==second || ESCAPE_CMD_UNSIGNED_HEX==second ||
+                			if (ESCAPE_CMD_UNSIGNED_INT==second || ESCAPE_CMD_UNSIGNED_HEX==second ||
                 				ESCAPE_CMD_DECIMAL==second      || ESCAPE_CMD_RATIONAL==second ||
-                				ESCAPE_CMD_SIGNED_DEC==second   || ESCAPE_CMD_SIGNED_HEX==second) {
+                				ESCAPE_CMD_SIGNED_INT==second   || ESCAPE_CMD_SIGNED_HEX==second) {
                 				
                 				pos++;
                 				length += 2;
@@ -881,9 +881,9 @@ public class TrieParser implements Serializable {
 	    	    		total += maxBytesCapturable;
 	    	    	} else if (ESCAPE_CMD_DECIMAL == value ||
 	    	    			   ESCAPE_CMD_RATIONAL == value ||
-	    	    			   ESCAPE_CMD_SIGNED_DEC == value ||
+	    	    			   ESCAPE_CMD_SIGNED_INT == value ||
 	    	    			   ESCAPE_CMD_SIGNED_HEX == value ||
-	    	    			   ESCAPE_CMD_UNSIGNED_DEC == value ||
+	    	    			   ESCAPE_CMD_UNSIGNED_INT == value ||
 	    	    			   ESCAPE_CMD_UNSIGNED_HEX == value
 	    	    			) {
 	    	    		total += maxNumericLenCapturable;
@@ -988,9 +988,9 @@ public class TrieParser implements Serializable {
     static byte buildNumberBits(byte sourceByte) { 
         
         switch(sourceByte) {
-            case ESCAPE_CMD_SIGNED_DEC:
+            case ESCAPE_CMD_SIGNED_INT:
                 return TrieParser.NUMERIC_FLAG_SIGN;
-            case ESCAPE_CMD_UNSIGNED_DEC:
+            case ESCAPE_CMD_UNSIGNED_INT:
                 return 0;
             case ESCAPE_CMD_SIGNED_HEX:
                 return TrieParser.NUMERIC_FLAG_HEX | TrieParser.NUMERIC_FLAG_SIGN;
