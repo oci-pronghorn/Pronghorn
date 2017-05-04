@@ -8,7 +8,7 @@ import com.ociweb.pronghorn.pipe.stream.StreamingVisitorReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class TestValidator<T extends MessageSchema> extends PronghornStage {
+public class TestValidator<T extends MessageSchema<T>> extends PronghornStage {
     
     private final Pipe<T> expectedInput;
     private final Pipe<T> checkedInput;

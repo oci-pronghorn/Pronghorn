@@ -42,9 +42,11 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 		this.outgoingPipeLines = outgoingPipeLines;
 		this.handshakeRelease = relesePipe;
 		
+		
 		assert(outgoingPipeLines.length>0);
 		assert(encryptedContent.length>0);
 		assert(encryptedContent.length == outgoingPipeLines.length);
+
 		
 		this.handshakePipe = handshakePipe;
 		
@@ -67,7 +69,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 		rollings = new ByteBuffer[c];
 		while (--c>=0) {
 		//	int size = SSLUtil.MAX_ENCRYPTED_PACKET_LENGTH;//
-			int size = encryptedContent[c].maxAvgVarLen*2;
+			int size = encryptedContent[c].maxVarLen*2;
 			
 			rollings[c] = ByteBuffer.allocateDirect(size);
 			
@@ -80,7 +82,7 @@ public class SSLEngineUnWrapStage extends PronghornStage {
 		//we use this workspace to ensure that temp data used by TLS is not exposed to the pipe.
 		this.workspace = new ByteBuffer[]{ByteBuffer.allocateDirect(1<<15),ByteBuffer.allocateDirect(0)};
 		
-		this.secureBuffer = null==handshakePipe? null : ByteBuffer.allocate(outgoingPipeLines[0].maxAvgVarLen*2);
+		this.secureBuffer = null==handshakePipe? null : ByteBuffer.allocate(outgoingPipeLines[0].maxVarLen*2);
 		
 	}
 	

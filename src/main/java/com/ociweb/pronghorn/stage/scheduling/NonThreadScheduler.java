@@ -146,7 +146,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     		int outputCount = GraphManager.getOutputPipeCount(graphManager, stages[indexes[indexesIdx]].stageId);
     		while(outputIdx<=outputCount) {
     		
-    			Pipe<MessageSchema> pipe = GraphManager.getOutputPipe(graphManager, stages[indexes[indexesIdx]], outputIdx);  
+    			Pipe pipe = GraphManager.getOutputPipe(graphManager, stages[indexes[indexesIdx]], outputIdx);  
     			
         		//is the consumer of this pipe inside the graph?
         		int consumerId = GraphManager.getRingConsumerId(graphManager, pipe.id);
@@ -177,7 +177,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     		int inputCount = GraphManager.getInputPipeCount(graphManager, stages[stageIdx]);
     		while(inputIdx<=inputCount) {
     		
-    			Pipe<MessageSchema> pipe = GraphManager.getInputPipe(graphManager, stages[stageIdx], inputIdx);  
+    			Pipe pipe = GraphManager.getInputPipe(graphManager, stages[stageIdx], inputIdx);  
     			
         		int producerId = GraphManager.getRingProducerId(graphManager, pipe.id);
         		
@@ -212,7 +212,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     		int inputCount = GraphManager.getInputPipeCount(graphManager, stages[stageIdx]);
     		while(inputIdx<=inputCount) {
     		
-    			Pipe<MessageSchema> pipe = GraphManager.getInputPipe(graphManager, stages[stageIdx], inputIdx);  
+    			Pipe pipe = GraphManager.getInputPipe(graphManager, stages[stageIdx], inputIdx);  
     			
         		int producerId = GraphManager.getRingProducerId(graphManager, pipe.id);
         		

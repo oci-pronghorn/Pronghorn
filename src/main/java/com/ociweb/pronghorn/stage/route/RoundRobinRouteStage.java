@@ -7,7 +7,7 @@ import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class RoundRobinRouteStage<T extends MessageSchema> extends PronghornStage {
+public class RoundRobinRouteStage<T extends MessageSchema<T>> extends PronghornStage {
 
 	private Pipe<T> inputRing;
 	private Pipe<T>[] outputRings;

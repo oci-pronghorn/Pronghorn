@@ -20,7 +20,10 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public final TrieParser headerMap;
     
     private long[] requestHeaderMask = new long[4];
-    private byte[][] requestExtractions = new byte[4][];
+    
+    private final int defaultLength = 4;
+    private byte[][] requestExtractions = new byte[defaultLength][];
+    private TrieParser[] requestExtractionParsers = new TrieParser[defaultLength];
     
 	private int routesCount = 0;
     
@@ -48,8 +51,6 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         while (--y >= 0) {
             verbMap.setUTF8Value(verbs[y].getKey()," ", verbs[y].ordinal());           
         }
-        
-
                 
         END_OF_HEADER_ID  = httpSpec.headerCount+2;//for the empty header found at the bottom of the header
         UNKNOWN_HEADER_ID = httpSpec.headerCount+1;
@@ -87,22 +88,32 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		System.err.println(actual);
 		
 	}
+	
+	URLTemplateParser templateParser = new URLTemplateParser();
 
 	public int registerRoute(CharSequence route, long headers) {
-		if (' '==route.charAt(route.length()-1)) {
-		    urlMap.setUTF8Value(route, routesCount);
-		} else {
-		    urlMap.setUTF8Value(route, " ",routesCount);
-		}
 		
-		storeRequestedHeaders(headers);
+		boolean trustText = false; 
+		TrieParser routeExtractionParser = templateParser.addRoute(route, routesCount, urlMap, trustText);
+
+		storeRequestExtractionParsers(routeExtractionParser);
 		storeRequestedExtractions(urlMap.lastSetValueExtractonPattern());
-		
+
+		storeRequestedHeaders(headers);
 		int pipeIdx = routesCount;
 		routesCount++;
 		return pipeIdx;
 	}
 
+	private void storeRequestExtractionParsers(TrieParser routeExtractionParser) {
+		if (routesCount>=requestExtractionParsers.length) {
+			int i = requestExtractionParsers.length;
+			TrieParser[] newArray = new TrieParser[i*2]; //only grows on startup as needed
+			System.arraycopy(requestExtractionParsers, 0, newArray, 0, i);
+			requestExtractionParsers = newArray;
+		}
+		requestExtractionParsers[routesCount]=routeExtractionParser;		
+	}
 
 	private void storeRequestedExtractions(byte[] lastSetValueExtractonPattern) {
 		if (routesCount>=requestExtractions.length) {
@@ -121,6 +132,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 			long[] newArray = new long[i*2]; //only grows on startup as needed
 			System.arraycopy(requestHeaderMask, 0, newArray, 0, i);
 			requestHeaderMask = newArray;
+			
+			System.err.println("growed the longs to "+newArray.length);
 		}
 		requestHeaderMask[routesCount]=headers;
 	}
@@ -129,8 +142,9 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return routesCount;
 	}
 	
-	public byte[] extractionPattern(int idx) {
-		return requestExtractions[idx];
+
+	public TrieParser extractionParser(int idx) {
+		return requestExtractionParsers[idx];
 	}
 	
 	public long headerMask(int idx) {

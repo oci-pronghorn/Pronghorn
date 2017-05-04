@@ -7,7 +7,7 @@ import com.ociweb.pronghorn.stage.file.schema.SequentialFileIORequestSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialFileIOResponseSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class SequentialFileIOStage<T extends MessageSchema> extends PronghornStage {
+public class SequentialFileIOStage<T extends MessageSchema<T>> extends PronghornStage {
 
     private Pipe ctrlPipe; // renameFile, readFile
     private Pipe<T> toWritePipe;

@@ -14,7 +14,7 @@ import com.ociweb.pronghorn.util.parse.JSONStreamVisitor;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToPipe;
 import com.ociweb.pronghorn.util.parse.MapJSONToPipeBuilder;
 
-public class NetResponseJSONStage<M extends MessageSchema, T extends Enum<T>& TrieKeyable> extends PronghornStage {
+public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>& TrieKeyable> extends PronghornStage {
 
 	private final Pipe<NetResponseSchema> input;
 	private JSONStreamVisitor visitor;

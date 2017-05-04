@@ -20,7 +20,7 @@ import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 
 public class PersistedBlobStageTest {
 
-//	@Test
+//	@Test not working cloud, not sure why?
 //	public void fuzzTest() {		
 //		File rootFolder = tempDirectory();		
 //		long testDuration = 300;

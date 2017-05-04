@@ -6,7 +6,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 
-public class PipeMonitorSchema extends MessageSchema{
+public class PipeMonitorSchema extends MessageSchema<PipeMonitorSchema>{
 	
     public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
             new int[]{0xc1400006,0x90800000,0x90800001,0x90800002,0x80000000,0x80200001,0xc1200006,0xc1400008,0x90800000,0x90800001,0x90800002,0x80000000,0x80200001,0x80800002,0x80200003,0xc1200008},

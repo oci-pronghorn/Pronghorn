@@ -54,6 +54,11 @@ public class ServiceObjectHolder<T> {
             this.size = 1 << initialBits;
             this.mask = size-1;
             this.serviceObjectKeys = new long[size];
+            
+            if (size > (1<<13)) {
+            	System.err.println(this.getClass().getSimpleName()+" is allocating long arrays of "+size);
+            }
+            
             this.serviceObjectValues = (T[]) Array.newInstance(clazz, size);
             this.serviceObjectLookupCounts = new long[size];
          }

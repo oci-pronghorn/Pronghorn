@@ -1,17 +1,14 @@
 package com.ociweb.pronghorn.stage.math;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.math.BuildMatrixCompute.MatrixTypes;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class ColumnComputeStage<M extends MatrixSchema, C extends MatrixSchema, R extends MatrixSchema > extends PronghornStage {
+public class ColumnComputeStage<M extends MatrixSchema<M>, C extends MatrixSchema<C>, R extends MatrixSchema<R> > extends PronghornStage {
 
 	private Logger logger = LoggerFactory.getLogger(ColumnComputeStage.class);
 	

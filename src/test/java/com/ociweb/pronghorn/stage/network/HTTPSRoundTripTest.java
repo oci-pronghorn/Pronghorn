@@ -49,9 +49,11 @@ import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 public class HTTPSRoundTripTest {
 
 	@Ignore
-    //@Test
+   //@Test
 	public void roundTripTest2() {
 				
+
+	   
 		 //Netty bench 14,000 1m  1.5GB  32users
 		  //	ns per call: 5458.1562
 		//	calls per sec:   183,212.06
@@ -102,11 +104,9 @@ public class HTTPSRoundTripTest {
 //			 74K RPS, 549 MB RAM - RxNetty
 //			117K RPS, 589 MB RAM - Green Lightning (over 50% more RPS)
 
+		
 			
-			//TODO: RERUN THE NETTY AND GL TESTS WITH RESTRICTED MEMORY TO ENSURE NO EXTRA LARGE NUMBERS...
-			
-			
-			boolean isTLS = false;
+			boolean isTLS = true;
 			int port = isTLS?8443:8080;
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";
@@ -117,14 +117,14 @@ public class HTTPSRoundTripTest {
 			boolean useLocalServer = true;//
 
 			final String testFile = "groovySum.json";
-			final int loadMultiplier = isTLS? 300_000 : 30_000_000;
+			final int loadMultiplier = isTLS? 300_000 : 3_000_000;
 			
 			roundTripHTTPTest(isTLS, port, host, isLarge, useLocalServer, testFile, loadMultiplier);
 
 	}
 
-	@Ignore
-    //@Test
+	//@Ignore
+    @Test
 	public void simpleHTTPTest() {
     	boolean isLarge = false;		
     	
@@ -140,8 +140,8 @@ public class HTTPSRoundTripTest {
 
     }
     
-	@Ignore
-    //@Test
+	//@Ignore
+    @Test
 	public void simpleHTTPSTest() {
     	boolean isLarge = false;		
     	
@@ -159,8 +159,7 @@ public class HTTPSRoundTripTest {
     
 	private void roundTripHTTPTest(boolean isTLS, int port, String host, boolean isLarge, boolean useLocalServer,
 			final String testFile, final int loadMultiplier) {
-		//	final String testFile = "groovyadd/2.3/7.52";
-				
+	
 				GraphManager gm = new GraphManager();
 		
 				//TODO: will big sleeps show the backed up pipes more clearly? TODO: must be tuned for pipe lenghths?
@@ -203,9 +202,9 @@ public class HTTPSRoundTripTest {
 				
 				int clientResponseUnwrapUnits = 2;//maxPartialResponsesClient;//To be driven by core count,  this is for consuming get responses
 				int clientRequestWrapUnits = 2;//maxPartialResponsesClient;//isTLS?4:8;//To be driven by core count, this is for production of post requests, more pipes if we have no wrappers?
-				int requestQueue = 256; 
+				int requestQueue = 64; 
 		
-				int responseQueue = 256; //is this used for both socket writer and http builder? seems like this is not even used..
+				int responseQueue = 64; //is this used for both socket writer and http builder? seems like this is not even used..
 				
 				//////////////
 		
@@ -224,14 +223,37 @@ public class HTTPSRoundTripTest {
 				ClientCoordinator[] clientCoords = new ClientCoordinator[clientCount];
 				RegulatedLoadTestStage[] clients = new RegulatedLoadTestStage[clientCount];
 				
-				int writeBufferMultiplier = isLarge ? 20 : 4;
+				int writeBufferMultiplier = isLarge ? 24 : 8;
+
+				int extraHashBits = 1;
+				int requestQueueBytes = 1<<8;
+				int responseQueueBytes = 1<<14;
+				int httpRequestQueueSize = isTLS? 32 : 128; 
+				int httpRequestQueueBytes = isTLS? 1<<15 : 1<<12; //NOTE: Must be 32K for encryption.
+				int releaseCount = 2048;
+				int netResponseCount = 4;
+				int netResponseBlob = 1<<17; //NOTE: must be 128K or larger for decyrption.
 								
 				int cc = clientCount;
 				while (--cc>=0) {	    	
-					singleClientSetup(isTLS, gm, base2SimultaniousConnections, totalUsersCount, loadMultiplier,
-							maxPartialResponsesClient, clientOutputCount, clientWriterStages, testFile, port, host,
-							clientResponseUnwrapUnits, clientRequestWrapUnits, responseQueue, requestQueue, clientCoords,
-							clients, cc, netRespQueue, netRespSize, writeBufferMultiplier);
+					{
+						//holds new requests
+						Pipe<ClientHTTPRequestSchema>[] input = new Pipe[totalUsersCount];
+						
+						int usersBits = 0;//2; //TODO: not working they stomp on same client pipe?
+						int usersPerPipe = 1<<usersBits;  
+						ClientCoordinator clientCoord1 = new ClientCoordinator(base2SimultaniousConnections+usersBits, maxPartialResponsesClient, isTLS);						
+												
+						Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections+usersBits+extraHashBits, clientOutputCount, maxPartialResponsesClient, 
+								                                           input, clientCoord1, clientResponseUnwrapUnits, clientRequestWrapUnits,
+								                                           requestQueue, requestQueueBytes, responseQueue, responseQueueBytes,
+								                                           clientWriterStages, netRespQueue, netRespSize, 
+								                                           httpRequestQueueSize,httpRequestQueueBytes,writeBufferMultiplier, 
+								                                           releaseCount, netResponseCount, netResponseBlob);
+						assert(toReactor.length == input.length);
+						clients[cc] = new RegulatedLoadTestStage(gm, toReactor, input, totalUsersCount*loadMultiplier, "/"+testFile, usersPerPipe, port, host, "reg"+cc,clientCoord1);
+						clientCoords[cc]=clientCoord1;
+					}
 				}
 				
 				//if (base2SimultaniousConnections<=6) {
@@ -299,49 +321,13 @@ public class HTTPSRoundTripTest {
 				System.out.println("calls per sec: "+(1000f/msPerCall)); //task manager its self can slow down results so avoid running it during test.
 	}
 
-	private void singleClientSetup(boolean isTLS, GraphManager gm, int base2SimultaniousConnections,
-			final int totalUsersCount, final int loadMultiplier, int maxPartialResponsesClient,
-			final int clientOutputCount, final int clientWriterStages, final String testFile, int port, String host,
-			int clientResponseUnwrapUnits, int clientRequestWrapUnits, int responseQueue, int requestQueue,
-			ClientCoordinator[] clientCoords, RegulatedLoadTestStage[] clients, int x, int netRespQueue, int netRespSize,
-			int writeBufferMultiplier) {
-		{
-			//holds new requests
-			Pipe<ClientHTTPRequestSchema>[] input = new Pipe[totalUsersCount];
-			
-			int usersBits = 0;//2; //TODO: not working they stomp on same client pipe?
-			int usersPerPipe = 1<<usersBits;  
-			ClientCoordinator clientCoord = new ClientCoordinator(base2SimultaniousConnections+usersBits, maxPartialResponsesClient, isTLS);						
-			
-			int extraHashBits = 1;
-			int requestQueueBytes = 1<<8;
-			int responseQueueBytes = 1<<14;
-			
-			
-			int httpRequestQueueSize = 256;
-			int httpRequestQueueBytes = 1<<15;
-				
-			
-			Pipe<NetResponseSchema>[] toReactor = defineClient(isTLS, gm, base2SimultaniousConnections+usersBits+extraHashBits, clientOutputCount, maxPartialResponsesClient, 
-					                                           input, clientCoord, clientResponseUnwrapUnits, clientRequestWrapUnits,
-					                                           requestQueue, requestQueueBytes, responseQueue, responseQueueBytes,
-					                                           clientWriterStages, netRespQueue, netRespSize, httpRequestQueueSize,httpRequestQueueBytes,writeBufferMultiplier);
-			assert(toReactor.length == input.length);
-			clients[x] = new RegulatedLoadTestStage(gm, toReactor, input, totalUsersCount*loadMultiplier, "/"+testFile, usersPerPipe, port, host, "reg"+x,clientCoord);
-			clientCoords[x]=clientCoord;
-		}
-	}
-
 	private ServerCoordinator exampleServerSetup(boolean isTLS, GraphManager gm, final String testFile, String bindHost, int bindPort, boolean isLarge) {
 		final String pathRoot = buildStaticFileFolderPath(testFile);
-		
-
-		
+				
 		//final int maxPartialResponsesServer     = 32; //input lines to server (should be large)
 		//final int maxConnectionBitsOnServer 	= 12;//8K simulanious connections on server	    	
 		final int messagesToOrderingSuper       = isLarge ? 1<<13 : 1<<8;	    		
 		final int messageSizeToOrderingSuper    = isLarge ? 1<<12 : 1<<9;	    		
-
 		
 
 		//using the basic no-fills API
@@ -469,9 +455,10 @@ public class HTTPSRoundTripTest {
 	private Pipe<NetResponseSchema>[] defineClient(boolean isTLS, GraphManager gm, int bitsPlusHashRoom,
 			int outputsCount, int maxPartialResponses, Pipe<ClientHTTPRequestSchema>[] input, ClientCoordinator ccm, int responseUnwrapUnits, int requestWrapUnits,
 			int requestQueue, int requestQueueBytes, int responseQueue, int responseQueueBytes, int clientWriterStages,
-			int netRespQueue, int netRespSize, int httpRequestQueueSize, int httpRequestQueueBytes, int writeBufferMultiplier) {
+			int netRespQueue, int netRespSize, int httpRequestQueueSize, int httpRequestQueueBytes, 
+			int writeBufferMultiplier, int releaseCount, int netResponseCount, int netResponseBlob) {
 					
-
+		
 		//create more pipes if more wrapers were requested.
 		if (requestWrapUnits>outputsCount) {
 			outputsCount = requestWrapUnits;
@@ -530,11 +517,13 @@ public class HTTPSRoundTripTest {
 			
 		};
 
+
 		NetGraphBuilder.buildClientGraph(gm, ccm, 
 				                             netRespQueue, netRespSize,
 				                             clientRequests,responseUnwrapUnits,
 											 requestWrapUnits, 
-											 clientWriterStages, 2048, 64, 1<<19, factory, writeBufferMultiplier);
+											 clientWriterStages, releaseCount, 
+											 netResponseCount, netResponseBlob, factory, writeBufferMultiplier);
 
 		new HTTPClientRequestStage(gm, ccm, input, clientRequests);
 		

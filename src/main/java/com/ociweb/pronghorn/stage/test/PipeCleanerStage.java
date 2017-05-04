@@ -8,7 +8,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
-public class PipeCleanerStage<T extends MessageSchema> extends PronghornStage {
+public class PipeCleanerStage<T extends MessageSchema<T>> extends PronghornStage {
 
     private long totalSlabCount = 0;
     private long totalBlobCount = 0;

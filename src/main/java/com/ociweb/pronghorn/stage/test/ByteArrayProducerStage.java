@@ -15,17 +15,17 @@ public class ByteArrayProducerStage extends PronghornStage{
     private final int chunkSize;
     private final Pipe<RawDataSchema> output;
     
-    public <T extends RawDataSchema>ByteArrayProducerStage(GraphManager gm, byte[] rawData, Pipe<T> output) {
+    public ByteArrayProducerStage(GraphManager gm, byte[] rawData, Pipe<RawDataSchema> output) {
         this(gm, rawData, null, output);
     }
     
-    public <T extends RawDataSchema>ByteArrayProducerStage(GraphManager gm, byte[] rawData, int[] optionalChunkSizes, Pipe<T> output) {
+    public ByteArrayProducerStage(GraphManager gm, byte[] rawData, int[] optionalChunkSizes, Pipe<RawDataSchema> output) {
         super(gm, NONE, output);
         this.rawData = rawData;
         this.rawDataLength = rawData.length;
         this.optionalChunkSizes = optionalChunkSizes;
         this.pos = 0;
-        this.chunkSize =output.maxAvgVarLen;
+        this.chunkSize =output.maxVarLen;
         this.output = (Pipe<RawDataSchema>)output;
         GraphManager.addNota(gm, GraphManager.PRODUCER, GraphManager.PRODUCER,  this);
     }

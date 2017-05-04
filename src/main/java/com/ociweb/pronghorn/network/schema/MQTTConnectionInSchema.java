@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.network.schema;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 
-public class MQTTConnectionInSchema extends MessageSchema {
+public class MQTTConnectionInSchema extends MessageSchema<MQTTConnectionInSchema> {
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
 		    new int[]{0xc0400004,0x80000000,0x80000001,0xb8000000,0xc0200004,0xc0400004,0xa0000001,0x80000002,0xb8000000,0xc0200004,0xc0400001,0xc0200001,0xc0400003,0x80000001,0xb8000000,0xc0200003,0xc0400002,0xb8000000,0xc0200002,0xc0400002,0xb8000000,0xc0200002,0xc0400003,0x80000001,0xb8000000,0xc0200003,0xc0400003,0x80000001,0xb8000000,0xc0200003,0xc0400003,0x80000001,0xb8000000,0xc0200003},

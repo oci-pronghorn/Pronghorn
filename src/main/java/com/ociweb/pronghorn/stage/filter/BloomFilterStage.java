@@ -7,7 +7,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.RollingBloomFilter;
 
-public class BloomFilterStage<T extends MessageSchema> extends PronghornStage {
+public class BloomFilterStage<T extends MessageSchema<T>> extends PronghornStage {
 
     private final Pipe<T> input;
     private final Pipe<T>[] outputs;

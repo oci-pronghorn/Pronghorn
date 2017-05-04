@@ -45,7 +45,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 				PronghornStage producer = GraphManager.getStage(graphManager, producerId);			
 				int count = GraphManager.getInputPipeCount(graphManager, producer);
 				while (--count>=0) {
-					Pipe<MessageSchema> inputPipe = GraphManager.getInputPipe(graphManager, producer, count);				
+					Pipe inputPipe = GraphManager.getInputPipe(graphManager, producer, count);				
 					result = Math.max(result, inputPipe.config().slabBits());
 				}
 			} else {
@@ -405,7 +405,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 			int c = GraphManager.getOutputPipeCount(graphManager, stageId);
 			for(int i=1; i<=c; i++) {
 				
-				Pipe<MessageSchema> outputPipe = GraphManager.getOutputPipe(graphManager, stage, i);
+				Pipe outputPipe = GraphManager.getOutputPipe(graphManager, stage, i);
 							
 				int consumerId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
 				if (consumerId >= 0) {
@@ -460,7 +460,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 		
 		int outputCount = GraphManager.getOutputPipeCount(graphManager, stage.stageId);
 		for(int r = 1; r<=outputCount; r++) {
-			Pipe<MessageSchema> outputPipe = GraphManager.getOutputPipe(graphManager, stage, r);
+			Pipe outputPipe = GraphManager.getOutputPipe(graphManager, stage, r);
 			
 			int consumerId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
 			//this exists and has the same root so add it

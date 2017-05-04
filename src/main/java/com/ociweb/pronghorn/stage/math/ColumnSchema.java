@@ -1,8 +1,8 @@
 package com.ociweb.pronghorn.stage.math;
 
-public class ColumnSchema<M extends MatrixSchema> extends MatrixSchema {
+public class ColumnSchema<M extends MatrixSchema<M>> extends MatrixSchema<ColumnSchema<M>> {
 
-	protected ColumnSchema(M matrixSchema) {
+	protected ColumnSchema(MatrixSchema<M> matrixSchema) {
 		super(matrixSchema.getRows(), 1, matrixSchema.type, MatrixSchema.singleNumberBlockFrom(matrixSchema.type, matrixSchema.rows));	
 	}
 

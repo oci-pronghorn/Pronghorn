@@ -10,6 +10,7 @@ public class Pool<T>  {
         this.members = members;
         this.keys = new long[members.length];
         this.locked = new byte[members.length];
+        System.err.println("pool alocated memembers long aray of "+keys.length);
     }
     
     public T[] members() {

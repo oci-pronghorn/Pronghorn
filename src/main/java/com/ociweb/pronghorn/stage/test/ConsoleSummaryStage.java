@@ -10,7 +10,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 
-public class ConsoleSummaryStage<T extends MessageSchema> extends PronghornStage {
+public class ConsoleSummaryStage<T extends MessageSchema<T>> extends PronghornStage {
 
 	private final Pipe<T> inputRing;
 	private final StringBuilder console = new StringBuilder(512);

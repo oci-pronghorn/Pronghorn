@@ -116,6 +116,9 @@ public class ServerSocketWriterStage extends PronghornStage {
     	
     	
     	int c = dataToSend.length;
+    	if (c > (1<<12)) {
+    		System.err.println("warning, server socket writer allocated n long arrays of length"+c);
+    	}
     	writeToChannel = new SocketChannel[c];
     	writeToChannelId = new long[c];
     	writeToChannelMsg = new int[c];

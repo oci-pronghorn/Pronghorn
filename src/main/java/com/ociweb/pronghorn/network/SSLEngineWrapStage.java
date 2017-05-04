@@ -26,6 +26,7 @@ public class SSLEngineWrapStage extends PronghornStage {
 	private static final int     SIZE_HANDSHAKE_AND_DISCONNECT = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_DISCONNECT_203)
 														+Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_DISCONNECT_203);
 
+	private final int min = (1<<15)-1;
 	
 	protected SSLEngineWrapStage(GraphManager graphManager, SSLConnectionHolder ccm, boolean isServer,
 			                     Pipe<NetPayloadSchema>[] plainContent, Pipe<NetPayloadSchema>[] encryptedContent) {
@@ -39,6 +40,19 @@ public class SSLEngineWrapStage extends PronghornStage {
 		this.plainContent = plainContent;
 		this.isServer = isServer;
 		assert(encryptedContent.length==plainContent.length);
+		
+		int c = encryptedContent.length;
+		secureBuffers = new ByteBuffer[c];
+		while (--c>=0) {		
+						
+			int encLen = encryptedContent[c].maxVarLen;
+			int plnLen = plainContent[c].maxVarLen;
+			
+			int bufferSize = Math.max(encLen,plnLen);
+			if (bufferSize<min) {
+				throw new UnsupportedOperationException("ERROR: buffer size must be larger than "+min+" but found Enc:"+encLen+" Pln:"+plnLen);
+			}
+		}		
 				
 	}
 
@@ -48,14 +62,8 @@ public class SSLEngineWrapStage extends PronghornStage {
 		//must allocate buffers for the out of order content 
 		int c = encryptedContent.length;
 		secureBuffers = new ByteBuffer[c];
-		while (--c>=0) {
-						
-			int bufferSize = Math.max(encryptedContent[c].maxVarLen,plainContent[c].maxVarLen);
-			int min = (1<<15)-1;
-			if (bufferSize<min) {
-				logger.info("ERROR: buffer size must be larger than {} but found {}",min,bufferSize);
-			}
-						
+		while (--c>=0) {						
+			int bufferSize = Math.max(encryptedContent[c].maxVarLen,plainContent[c].maxVarLen);			
 			secureBuffers[c] = ByteBuffer.allocateDirect(bufferSize);
 		}				
 		

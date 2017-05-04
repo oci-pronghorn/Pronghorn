@@ -29,29 +29,29 @@ public class MatrixComputeTest {
 
 	
 	@Test
-	public void testRowsToColSplit() {
+	public <M extends MatrixSchema<M>> void testRowsToColSplit() {
 		
 		int rows=10;
 		int columns=6;
-		MatrixSchema schema = BuildMatrixCompute.buildSchema(rows, columns, MatrixTypes.Integers);
-		ColumnSchema<MatrixSchema> cs = new ColumnSchema<MatrixSchema>(schema);
-		RowSchema<MatrixSchema> rs = new RowSchema<MatrixSchema>(schema);
+		MatrixSchema<M> schema = BuildMatrixCompute.buildSchema(rows, columns, MatrixTypes.Integers);
+		ColumnSchema<M> cs = new ColumnSchema<M>(schema);
+		RowSchema<M> rs = new RowSchema<M>(schema);
 
 		GraphManager gm = new GraphManager();		
-		PipeConfig<RowSchema<MatrixSchema>> rowConfig = new PipeConfig<RowSchema<MatrixSchema>>(rs, schema.getRows());		
-		PipeConfig<ColumnSchema<MatrixSchema>> columnConfig = new PipeConfig<ColumnSchema<MatrixSchema>>(cs, 2);
+		PipeConfig<RowSchema<M>> rowConfig = new PipeConfig<RowSchema<M>>(rs, schema.getRows());		
+		PipeConfig<ColumnSchema<M>> columnConfig = new PipeConfig<ColumnSchema<M>>(cs, 2);
 		
-		Pipe<ColumnSchema<MatrixSchema>>[] intputAsColumns = new Pipe[schema.getColumns()];
+		Pipe[] intputAsColumns = new Pipe[schema.getColumns()];
 		
-		Pipe<RowSchema<MatrixSchema>> inputRows = new Pipe<RowSchema<MatrixSchema>>(rowConfig); 
+		Pipe<RowSchema<M>> inputRows = new Pipe<RowSchema<M>>(rowConfig); 
 
 		int t = intputAsColumns.length;
 		while (--t>=0) {
-			intputAsColumns[t]=new Pipe<ColumnSchema<MatrixSchema>>(columnConfig);
+			intputAsColumns[t]=new Pipe<ColumnSchema<M>>(columnConfig);
 		}
 		
 		
-		new RowsToColumnRouteStage<>(gm, schema, inputRows, intputAsColumns);
+		new RowsToColumnRouteStage(gm, schema, inputRows, intputAsColumns);
 		int i = schema.getColumns();
 		ByteArrayOutputStream[] targets = new ByteArrayOutputStream[i];
 		PronghornStage[] watch = new PronghornStage[i];
@@ -109,31 +109,31 @@ public class MatrixComputeTest {
 	}
 
 	@Test
-	public void testcolToRowsSplit() {
+	public <M extends MatrixSchema<M>> void testcolToRowsSplit() {
 		
 		int rows=10;
 		int columns=6;
 		MatrixSchema schema = BuildMatrixCompute.buildSchema(rows, columns, MatrixTypes.Integers);
-		ColumnSchema<MatrixSchema> cs = new ColumnSchema<MatrixSchema>(schema);
-		RowSchema<MatrixSchema> rs = new RowSchema<MatrixSchema>(schema);
+		ColumnSchema<M> cs = new ColumnSchema<M>(schema);
+		RowSchema<M> rs = new RowSchema<M>(schema);
 
 		GraphManager gm = new GraphManager();		
-		PipeConfig<RowSchema<MatrixSchema>> rowConfig = new PipeConfig<RowSchema<MatrixSchema>>(rs, schema.getRows());		
-		PipeConfig<ColumnSchema<MatrixSchema>> columnConfig = new PipeConfig<ColumnSchema<MatrixSchema>>(cs, 2);
+		PipeConfig<RowSchema<M>> rowConfig = new PipeConfig<RowSchema<M>>(rs, schema.getRows());		
+		PipeConfig<ColumnSchema<M>> columnConfig = new PipeConfig<ColumnSchema<M>>(cs, 2);
 		
-		Pipe<ColumnSchema<MatrixSchema>>[] columnsPipes = new Pipe[schema.getColumns()];
+		Pipe<ColumnSchema<M>>[] columnsPipes = new Pipe[schema.getColumns()];
 		
 		int i = columnsPipes.length;
 		while (--i>=0) {
-			columnsPipes[i] = new Pipe<ColumnSchema<MatrixSchema>>(columnConfig);
+			columnsPipes[i] = new Pipe<ColumnSchema<M>>(columnConfig);
 		}
 		
-		Pipe<RowSchema<MatrixSchema>> rowsPipe = new Pipe<RowSchema<MatrixSchema>>(rowConfig); 
+		Pipe<RowSchema<M>> rowsPipe = new Pipe<RowSchema<M>>(rowConfig); 
 		
 		
 		new ColumnsToRowsStage(gm, schema, columnsPipes, rowsPipe);
 		ByteArrayOutputStream capture = new ByteArrayOutputStream();
-		ConsoleJSONDumpStage<RowSchema<MatrixSchema>> watch = new ConsoleJSONDumpStage<>(gm, rowsPipe, new PrintStream(capture));
+		ConsoleJSONDumpStage<RowSchema<M>> watch = new ConsoleJSONDumpStage<>(gm, rowsPipe, new PrintStream(capture));
 		
 		
 		StageScheduler scheduler = new ThreadPerStageScheduler(gm);
@@ -168,7 +168,7 @@ public class MatrixComputeTest {
 	
 	
 	@Ignore
-	public void testCompute() {
+	public <M extends MatrixSchema<M>> void testCompute() {
 		//speed
 		//slow     Doubles  Longs    6.15 5.8      7.024  7.18
 		//         Decimals          5.9           9.40 - 13
@@ -195,17 +195,17 @@ public class MatrixComputeTest {
 		//2x3
 		
 		//TODO: these 3 must be removed since they are not "real" schemas but just hold the type and matrix size.
-		MatrixSchema leftSchema = BuildMatrixCompute.buildSchema(leftRows, leftColumns, type);		
-		MatrixSchema rightSchema = BuildMatrixCompute.buildSchema(rightRows, rightColumns, type);
-		MatrixSchema resultSchema = BuildMatrixCompute.buildResultSchema(leftSchema, rightSchema);
+		MatrixSchema<M> leftSchema = BuildMatrixCompute.buildSchema(leftRows, leftColumns, type);		
+		MatrixSchema<M> rightSchema = BuildMatrixCompute.buildSchema(rightRows, rightColumns, type);
+		MatrixSchema<M> resultSchema = BuildMatrixCompute.buildResultSchema(leftSchema, rightSchema);
 		
 		
-		RowSchema<MatrixSchema> leftRowSchema = new RowSchema<MatrixSchema>(leftSchema);
-		RowSchema<MatrixSchema> rightRowSchema = new RowSchema<MatrixSchema>(rightSchema);				
-		RowSchema<MatrixSchema> rowResultSchema = new RowSchema<MatrixSchema>(resultSchema);		
+		RowSchema<M> leftRowSchema = new RowSchema<M>(leftSchema);
+		RowSchema<M> rightRowSchema = new RowSchema<M>(rightSchema);				
+		RowSchema<M> rowResultSchema = new RowSchema<M>(resultSchema);		
 		
 		
-		DecimalSchema result2Schema = new DecimalSchema<MatrixSchema>(resultSchema);
+		DecimalSchema<M> result2Schema = new DecimalSchema<M>(resultSchema);
 
 		assertTrue(resultSchema.getRows()==leftRows);
 		assertTrue(resultSchema.getColumns()==rightColumns);
@@ -221,17 +221,17 @@ public class MatrixComputeTest {
 		
 		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 500);
 		
-		Pipe<RowSchema<MatrixSchema>> left = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(leftRowSchema, leftRows)); 
-		Pipe<RowSchema<MatrixSchema>> right = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(rightRowSchema, rightRows));
+		Pipe<RowSchema<M>> left = new Pipe<RowSchema<M>>(new PipeConfig<RowSchema<M>>(leftRowSchema, leftRows)); 
+		Pipe<RowSchema<M>> right = new Pipe<RowSchema<M>>(new PipeConfig<RowSchema<M>>(rightRowSchema, rightRows));
 		
-		Pipe<RowSchema<MatrixSchema>> result = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(rowResultSchema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
+		Pipe<RowSchema<M>> result = new Pipe<RowSchema<M>>(new PipeConfig<RowSchema<M>>(rowResultSchema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
 	//	Pipe<DecimalSchema<MatrixSchema>> result2 = new Pipe<DecimalSchema<MatrixSchema>>(new PipeConfig<DecimalSchema<MatrixSchema>>(result2Schema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
 		
 		
 		int targetThreadCount = 12;
-		Pipe<ColumnSchema<MatrixSchema>>[] colResults = BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, targetThreadCount-2);
+		Pipe<ColumnSchema<M>>[] colResults = BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, targetThreadCount-2);
 		
-		ColumnsToRowsStage<MatrixSchema> ctr = new ColumnsToRowsStage<MatrixSchema>(gm, resultSchema, colResults, result);
+		ColumnsToRowsStage<M> ctr = new ColumnsToRowsStage(gm, resultSchema, colResults, result);
 		
 		
 		//ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -240,7 +240,7 @@ public class MatrixComputeTest {
 		//ConvertToDecimalStage<MatrixSchema> convert = new ConvertToDecimalStage<MatrixSchema>(gm, resultSchema, result, result2);
 		
 		//ConsoleJSONDumpStage<?> watch = new ConsoleJSONDumpStage<>(gm, result , new PrintStream(baos));
-		ConsoleSummaryStage<RowSchema<MatrixSchema>> watch = new ConsoleSummaryStage<>(gm, result);
+		ConsoleSummaryStage<RowSchema<M>> watch = new ConsoleSummaryStage<>(gm, result);
 		
 		//gm.exportGraphDotFile();
 		
@@ -300,7 +300,7 @@ public class MatrixComputeTest {
 	}
 	
 	@Test
-	public void testComputeExample() {
+	public <M extends MatrixSchema<M>> void testComputeExample() {
 		//speed
 		//slow     Doubles  Longs    6.15 5.8      7.024  7.18
 		//         Decimals          5.9           9.40 - 13
@@ -343,16 +343,16 @@ public class MatrixComputeTest {
 		
 		
 		MatrixSchema leftSchema = BuildMatrixCompute.buildSchema(leftRows, leftColumns, type);		
-		RowSchema<MatrixSchema> leftRowSchema = new RowSchema<MatrixSchema>(leftSchema);
+		RowSchema<M> leftRowSchema = new RowSchema<M>(leftSchema);
 		
 		MatrixSchema rightSchema = BuildMatrixCompute.buildSchema(rightRows, rightColumns, type);
-		RowSchema<MatrixSchema> rightRowSchema = new RowSchema<MatrixSchema>(rightSchema);
+		RowSchema<M> rightRowSchema = new RowSchema<M>(rightSchema);
 				
 		MatrixSchema resultSchema = BuildMatrixCompute.buildResultSchema(leftSchema, rightSchema);
-		RowSchema<MatrixSchema> rowResultSchema = new RowSchema<MatrixSchema>(resultSchema);		
+		RowSchema<M> rowResultSchema = new RowSchema<M>(resultSchema);		
 		
 		
-		DecimalSchema result2Schema = new DecimalSchema<MatrixSchema>(resultSchema);
+		DecimalSchema<M> result2Schema = new DecimalSchema<M>(resultSchema);
 
 		assertTrue(resultSchema.getRows()==leftRows);
 		assertTrue(resultSchema.getColumns()==rightColumns);
@@ -368,20 +368,20 @@ public class MatrixComputeTest {
 		
 		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 500);
 		
-		Pipe<RowSchema<MatrixSchema>> left = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(leftRowSchema, leftRows)); 
-		Pipe<RowSchema<MatrixSchema>> right = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(rightRowSchema, rightRows));
+		Pipe<RowSchema<M>> left = new Pipe<RowSchema<M>>(new PipeConfig<RowSchema<M>>(leftRowSchema, leftRows)); 
+		Pipe<RowSchema<M>> right = new Pipe<RowSchema<M>>(new PipeConfig<RowSchema<M>>(rightRowSchema, rightRows));
 		
-		Pipe<RowSchema<MatrixSchema>> result = new Pipe<RowSchema<MatrixSchema>>(new PipeConfig<RowSchema<MatrixSchema>>(rowResultSchema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
-		Pipe<DecimalSchema<MatrixSchema>> result2 = new Pipe<DecimalSchema<MatrixSchema>>(new PipeConfig<DecimalSchema<MatrixSchema>>(result2Schema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
+		Pipe<RowSchema<M>> result = new Pipe<RowSchema<M>>(new PipeConfig<RowSchema<M>>(rowResultSchema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
+		Pipe<DecimalSchema<M>> result2 = new Pipe<DecimalSchema<M>>(new PipeConfig<DecimalSchema<M>>(result2Schema, resultSchema.getRows())); //NOTE: reqires 2 or JSON will not write out !!
 		
 		
 		int targetThreadCount = 12;
-		Pipe<ColumnSchema<MatrixSchema>>[] colResults = BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, targetThreadCount-2);
+		Pipe<ColumnSchema<M>>[] colResults = BuildMatrixCompute.buildGraph(gm, resultSchema, leftSchema, rightSchema, left, right, targetThreadCount-2);
 		
-		ColumnsToRowsStage<MatrixSchema> ctr = new ColumnsToRowsStage<MatrixSchema>(gm, resultSchema, colResults, result);
+		ColumnsToRowsStage<M> ctr = new ColumnsToRowsStage(gm, resultSchema, colResults, result);
 		
 		
-		ConvertToDecimalStage<MatrixSchema> watch = new ConvertToDecimalStage<MatrixSchema>(gm, rowResultSchema, result, result2);
+		ConvertToDecimalStage<M> watch = new ConvertToDecimalStage(gm, rowResultSchema, result, result2);
 		
 		result2.initBuffers(); //required for us to jump in on this thread and grab the data.
 

@@ -59,7 +59,7 @@ public class ServerPipesConfig {
 			cores = 4;
 		}
 		
-		processorCount = isLarge ? (isTLS?2:16) : 2;
+		processorCount = isLarge ? (isTLS?4:16) : 4;
 		
 		logger.info("cores in use {}", cores);
 		
@@ -94,13 +94,13 @@ public class ServerPipesConfig {
 			serverInputMsg                = isTLS? 8 : 48; 
 			serverInputBlobs              = isTLS? 1<<15 : 1<<8;  
 			
-			serverMsgToEncrypt            = 128;
+			serverMsgToEncrypt            = 8; //may cause backing up and one side processing?
 			serverBlobToEncrypt           = 1<<15; //Must NOT be smaller than the file write output (modules) ??? ONLY WHEN WE ARE USE ING TLS
 			
-			serverOutputMsg               = isTLS?32:128; //important for outgoing data and greatly impacts performance
+			serverOutputMsg               = isTLS?16:32; //important for outgoing data and greatly impacts performance
 			serverBlobToWrite             = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
 			
-			fromProcessorCount 			  = isTLS?256:512; //impacts performance
+			fromProcessorCount 			  = isTLS?64:256; //impacts performance
 			fromProcessorBlob			  = 1<<7;
 			
 			serverSocketWriters           = 1;

@@ -16,7 +16,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.RollingBloomFilter;
 
-public class PassUniquesFilterStage<T extends MessageSchema> extends PronghornStage {
+public class PassUniquesFilterStage<T extends MessageSchema<T>> extends PronghornStage {
 
     //after instances of each id then let them pass
     //saves its own state

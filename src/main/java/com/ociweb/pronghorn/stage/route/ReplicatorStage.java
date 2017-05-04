@@ -13,7 +13,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  * @author Nathan Tippy
  *
  */
-public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
+public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage {
 
 	private Pipe<T> source;
 	private Pipe<T>[] targets;
@@ -29,7 +29,7 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 	int byteTailPos;
 	int totalBytesCopy;
 	
-	public static <T extends MessageSchema> void instance(GraphManager gm, Pipe<T> source, Pipe<T> ... targets) {
+	public static <T extends MessageSchema<T>> void instance(GraphManager gm, Pipe<T> source, Pipe<T> ... targets) {
 		new ReplicatorStage(gm,source,targets);
 	}
 	
@@ -104,7 +104,7 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 		
 	}
 	
-	private static <S extends MessageSchema> void processAvailData(ReplicatorStage<S> ss) {
+	private static <S extends MessageSchema<S>> void processAvailData(ReplicatorStage<S> ss) {
 		
 		if (0==ss.totalPrimaryCopy) {
 
@@ -140,7 +140,7 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 
 	}
 
-	private static <S extends MessageSchema> void recordCopyComplete(ReplicatorStage<S> ss, int tempByteTail, int totalBytesCopy) {
+	private static <S extends MessageSchema<S>> void recordCopyComplete(ReplicatorStage<S> ss, int tempByteTail, int totalBytesCopy) {
 		//release tail so data can be written
 
 		int i = Pipe.BYTES_WRAP_MASK&(tempByteTail + totalBytesCopy);
@@ -158,11 +158,11 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 
 
 
-	private static <S extends MessageSchema> void findStableCutPoint(ReplicatorStage<S> ss) {
-		ss.byteHeadPos = Pipe.getBlobRingHeadPosition(ss.source);
+	private static <S extends MessageSchema<S>> void findStableCutPoint(ReplicatorStage<S> ss) {
+		ss.byteHeadPos = Pipe.getBlobHeadPosition(ss.source);
         ss.headPos = Pipe.headPosition(ss.source);		
-		while(ss.byteHeadPos != Pipe.getBlobRingHeadPosition(ss.source) || ss.headPos != Pipe.headPosition(ss.source) ) {
-			ss.byteHeadPos = Pipe.getBlobRingHeadPosition(ss.source);
+		while(ss.byteHeadPos != Pipe.getBlobHeadPosition(ss.source) || ss.headPos != Pipe.headPosition(ss.source) ) {
+			ss.byteHeadPos = Pipe.getBlobHeadPosition(ss.source);
 			ss.headPos = Pipe.headPosition(ss.source);
 		}
 	}
@@ -170,7 +170,7 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 	
 	//single pass attempt to copy if any can not accept the data then they are skipped
 	//and true will be returned instead of false.
-	private static <S extends MessageSchema> boolean doneCopy(ReplicatorStage<S> ss, 
+	private static <S extends MessageSchema<S>> boolean doneCopy(ReplicatorStage<S> ss, 
 			                   int byteTailPos, int primaryTailPos, 
 			                   int totalPrimaryCopy, 
 			                   int totalBytesCopy) {
@@ -194,7 +194,7 @@ public class ReplicatorStage<T extends MessageSchema> extends PronghornStage {
 
 	}
 
-	private static <S extends MessageSchema> void copyData(ReplicatorStage<S> ss, int byteTailPos,
+	private static <S extends MessageSchema<S>> void copyData(ReplicatorStage<S> ss, int byteTailPos,
 								int totalBytesCopy, int primaryTailPos, int totalPrimaryCopy,
 								Pipe<S> ringBuffer) {
 		

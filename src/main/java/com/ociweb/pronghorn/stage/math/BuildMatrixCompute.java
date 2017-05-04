@@ -358,8 +358,8 @@ public class BuildMatrixCompute {
 	}
 	
 	
-	public static MatrixSchema buildSchema(int rows, int columns, MatrixTypes type) {
-		return new MatrixSchema(rows, columns, type);
+	public static <M extends MatrixSchema<M>> MatrixSchema<M> buildSchema(int rows, int columns, MatrixTypes type) {
+		return new MatrixSchema<M>(rows, columns, type);
 	}
 
 
@@ -369,8 +369,8 @@ public class BuildMatrixCompute {
 	}
 	
 	
-	public static <M extends MatrixSchema, L extends MatrixSchema, R extends MatrixSchema>
-	            Pipe<ColumnSchema<M>>[] buildGraph(GraphManager gm, M resultSchema,  L leftSchema, R rightSchema, Pipe<RowSchema<L>> leftInput, Pipe<RowSchema<R>> rightInput, int parallelism) {
+	public static <M extends MatrixSchema<M>, L extends MatrixSchema<L>, R extends MatrixSchema<R>>
+	            Pipe<ColumnSchema<M>>[] buildGraph(GraphManager gm, MatrixSchema<M> resultSchema,  MatrixSchema<L> leftSchema, MatrixSchema<R> rightSchema, Pipe<RowSchema<L>> leftInput, Pipe<RowSchema<R>> rightInput, int parallelism) {
 		
 		int i = resultSchema.getColumns();
 		Pipe<ColumnSchema<R>>[] intputAsColumns = new Pipe[i];
@@ -422,8 +422,8 @@ public class BuildMatrixCompute {
 	}
 
 
-	private static <L extends MatrixSchema, R extends MatrixSchema, M extends MatrixSchema> int buildComputeStage(
-			GraphManager gm, M resultSchema, L leftSchema, R rightSchema, Pipe<RowSchema<L>> leftInput, int i,
+	private static <L extends MatrixSchema<L>, R extends MatrixSchema<R>, M extends MatrixSchema<M>> int buildComputeStage(
+			GraphManager gm, MatrixSchema<M> resultSchema, MatrixSchema<L> leftSchema, MatrixSchema<R> rightSchema, Pipe<RowSchema<L>> leftInput, int i,
 			Pipe<ColumnSchema<R>>[] intputAsColumns, Pipe<ColumnSchema<M>>[] resultInColumns, int splitterPipesCount,
 			Pipe<RowSchema<L>>[] splitterPipes, int start, int len) {
 		

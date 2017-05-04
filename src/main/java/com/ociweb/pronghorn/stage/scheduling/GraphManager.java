@@ -520,15 +520,15 @@ public class GraphManager {
 	 * @param gm
 	 * @param targetSchema
 	 */
-	public static  <T extends MessageSchema> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema) {
+	public static  <T extends MessageSchema<T>> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema) {
 	    return pipesOfType(0, gm.pipeIdToPipe.length, gm, targetSchema);
 	}
 
-	public static  <T extends MessageSchema> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema, int minimumPipeId) {
+	public static  <T extends MessageSchema<T>> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema, int minimumPipeId) {
 	    return pipesOfType(0, gm.pipeIdToPipe.length, gm, targetSchema, minimumPipeId);
 	}
 	
-	private static <T extends MessageSchema> Pipe<T>[] pipesOfType(int count, int p, GraphManager gm, T targetSchema) {
+	private static <T extends MessageSchema<T>> Pipe<T>[] pipesOfType(int count, int p, GraphManager gm, T targetSchema) {
 		//pass one to count all the instances
         while (--p>=0) {
             Pipe tp = gm.pipeIdToPipe[p];
@@ -549,7 +549,7 @@ public class GraphManager {
 	    
 	}
 	
-	private static <T extends MessageSchema> Pipe<T>[] pipesOfType(int count, int p, GraphManager gm, T targetSchema, int minimumPipeId) {
+	private static <T extends MessageSchema<T>> Pipe<T>[] pipesOfType(int count, int p, GraphManager gm, T targetSchema, int minimumPipeId) {
 		//pass one to count all the instances
         while (--p>=0) {
             Pipe tp = gm.pipeIdToPipe[p];
@@ -570,7 +570,7 @@ public class GraphManager {
 	    
 	}
 	
-	public static  <T extends MessageSchema> Pipe<T>[] allPipes(GraphManager gm) {
+	public static  <T extends MessageSchema<T>> Pipe<T>[] allPipes(GraphManager gm) {
 	    
 	    //pass one to count all the instances
 	    int count = 0;
@@ -1171,21 +1171,21 @@ public class GraphManager {
 	        throw new UnsupportedOperationException("Invalid configuration. Unable to find requested output ordinal "+ordinal);
 	    }
 
-	public static <S extends MessageSchema> Pipe<S> getOutputPipe(GraphManager m, PronghornStage stage) {
+	public static <S extends MessageSchema<S>> Pipe<S> getOutputPipe(GraphManager m, PronghornStage stage) {
 		return getOutputPipe(m, stage, 1);
 	}
 	
-	public static <S extends MessageSchema> Pipe<S> getOutputPipe(GraphManager m, int stageId) {
+	public static <S extends MessageSchema<S>> Pipe<S> getOutputPipe(GraphManager m, int stageId) {
 		return getOutputPipe(m, stageId, 1);
 	}
 	
 	@SuppressWarnings("unchecked")
-    public static <S extends MessageSchema> Pipe<S> getOutputPipe(GraphManager m, PronghornStage stage, int ordinalOutput) {
+    public static <S extends MessageSchema<S>> Pipe<S> getOutputPipe(GraphManager m, PronghornStage stage, int ordinalOutput) {
 		return getOutputPipe(m, stage.stageId, ordinalOutput);
 	}
 	
 	@SuppressWarnings("unchecked")
-    public static <S extends MessageSchema> Pipe<S> getOutputPipe(GraphManager m, int stageId, int ordinalOutput) {
+    public static <S extends MessageSchema<S>> Pipe<S> getOutputPipe(GraphManager m, int stageId, int ordinalOutput) {
 		
 		int ringId;
 		int idx = m.stageIdToOutputsBeginIdx[stageId];
@@ -1208,21 +1208,21 @@ public class GraphManager {
 		return count;
 	}
 
-	public static <S extends MessageSchema> Pipe<S> getInputPipe(GraphManager m, PronghornStage stage) {
+	public static <S extends MessageSchema<S>> Pipe<S> getInputPipe(GraphManager m, PronghornStage stage) {
 		return getInputPipe(m, stage, 1);
 	}
 	
-	public static <S extends MessageSchema> Pipe<S> getInputPipe(GraphManager m, int stageId) {
+	public static <S extends MessageSchema<S>> Pipe<S> getInputPipe(GraphManager m, int stageId) {
 		return getInputPipe(m, stageId, 1);
 	}
 	
 	@SuppressWarnings("unchecked")
-    public static <S extends MessageSchema> Pipe<S> getInputPipe(GraphManager m, PronghornStage stage, int ordinalInput) {
+    public static <S extends MessageSchema<S>> Pipe<S> getInputPipe(GraphManager m, PronghornStage stage, int ordinalInput) {
 		return getInputPipe(m, stage.stageId, ordinalInput);
 	}
 	
 	@SuppressWarnings("unchecked")
-    public static <S extends MessageSchema> Pipe<S> getInputPipe(GraphManager m, int stageId, int ordinalInput) {
+    public static <S extends MessageSchema<S>> Pipe<S> getInputPipe(GraphManager m, int stageId, int ordinalInput) {
 		int ringId;
 		int idx = m.stageIdToInputsBeginIdx[stageId];
 		while (-1 != (ringId=m.multInputIds[idx++])) {	

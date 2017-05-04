@@ -5,7 +5,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.math.BuildMatrixCompute.MatrixTypes;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class ConvertToDecimalStage<M extends MatrixSchema> extends PronghornStage {
+public class ConvertToDecimalStage<M extends MatrixSchema<M>> extends PronghornStage {
 
 	private final Pipe<RowSchema<M>> input;
 	private final Pipe<DecimalSchema<M>> output;
