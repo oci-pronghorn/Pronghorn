@@ -8,7 +8,7 @@ import java.util.Arrays;
 
 import com.ociweb.pronghorn.util.ByteConsumer;
 
-public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream implements DataOutput, Appendable, ByteConsumer {
+public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStream implements DataOutput, Appendable, ByteConsumer {
 
     private final Pipe<S> p;
     private final byte[] byteBuffer;
@@ -31,7 +31,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         
     }
 
-    public static <T extends MessageSchema> void openField(DataOutputBlobWriter<T> writer) {
+    public static <T extends MessageSchema<T>> void openField(DataOutputBlobWriter<T> writer) {
         
         writer.p.openBlobFieldWrite();
         //NOTE: this method works with both high and low APIs.
@@ -42,7 +42,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return closeHighLevelField(this, targetFieldLoc);
     }
 
-    public static <T extends MessageSchema> int closeHighLevelField(DataOutputBlobWriter<T> writer, int targetFieldLoc) {
+    public static <T extends MessageSchema<T>> int closeHighLevelField(DataOutputBlobWriter<T> writer, int targetFieldLoc) {
         //this method will also validate the length was in bound and throw unsupported operation if the pipe was not large enough
         //instead of fail fast as soon as one field goes over we wait to the end and only check once.
         int len = length(writer);
@@ -55,7 +55,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return closeLowLevelField(this);
     }
 
-    public static <T extends MessageSchema> int closeLowLevelField(DataOutputBlobWriter<T> writer) {
+    public static <T extends MessageSchema<T>> int closeLowLevelField(DataOutputBlobWriter<T> writer) {
         int len = length(writer);
         Pipe.addAndGetBytesWorkingHeadPosition(writer.p, len);
         Pipe.addBytePosAndLenSpecial(writer.p,writer.startPosition,len);
@@ -68,7 +68,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return length(this);
     }
 
-    public static <T extends MessageSchema> int length(DataOutputBlobWriter<T> writer) {
+    public static <T extends MessageSchema<T>> int length(DataOutputBlobWriter<T> writer) {
        
         if (writer.activePosition>=writer.startPosition) {
             return writer.activePosition-writer.startPosition;            
@@ -184,7 +184,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     	encodeAsUTF8(this,s);
     }
 
-    private static int writeUTF(DataOutputBlobWriter writer, CharSequence s, int len, int mask, byte[] localBuf, int pos) {
+    private static <T extends MessageSchema<T>> int writeUTF(DataOutputBlobWriter<T> writer, CharSequence s, int len, int mask, byte[] localBuf, int pos) {
         int origPos = pos;
         pos+=2;
 
@@ -194,24 +194,15 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return pos;
     }
     
-    public static void encodeAsUTF8(DataOutputBlobWriter writer, CharSequence s) {
+    public static <T extends MessageSchema<T>> void encodeAsUTF8(DataOutputBlobWriter<T> writer, CharSequence s) {
         writer.activePosition = encodeAsUTF8(writer, s, 0, s.length(), writer.byteMask, writer.byteBuffer, writer.activePosition);
     }
     
-    public static void encodeAsUTF8(DataOutputBlobWriter writer, CharSequence s, int position, int length) {
+    public static <T extends MessageSchema<T>> void encodeAsUTF8(DataOutputBlobWriter<T> writer, CharSequence s, int position, int length) {
         writer.activePosition = encodeAsUTF8(writer, s, position, length, writer.byteMask, writer.byteBuffer, writer.activePosition);
     }
-
-    @Deprecated
-    public static int encodeAsUTF8(DataOutputBlobWriter writer, CharSequence s, int len, int mask, byte[] localBuf, int pos) {
-        int c = 0;
-        while (c < len) {
-            pos = Pipe.encodeSingleChar((int) s.charAt(c++), localBuf, mask, pos);
-        }
-        return pos;
-    }
     
-    public static int encodeAsUTF8(DataOutputBlobWriter writer, CharSequence s, int sPos, int sLen, int mask, byte[] localBuf, int pos) {
+    public static <T extends MessageSchema<T>> int encodeAsUTF8(DataOutputBlobWriter<T> writer, CharSequence s, int sPos, int sLen, int mask, byte[] localBuf, int pos) {
         while (--sLen >= 0) {
             pos = Pipe.encodeSingleChar((int) s.charAt(sPos++), localBuf, mask, pos);
         }
@@ -222,11 +213,11 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     //end of DataOutput methods
     ////////// 
     
-    public void writeStream(DataInputBlobReader input, int length) {
+    public void writeStream(DataInputBlobReader<S> input, int length) {
     	activePosition += DataInputBlobReader.read(input, byteBuffer, activePosition, length, byteMask);
     }
     
-    public static void writeStream(DataOutputBlobWriter that,  DataInputBlobReader input, int length) {
+    public static <T extends MessageSchema<T>, S extends MessageSchema<S>> void writeStream(DataOutputBlobWriter<T> that,  DataInputBlobReader<S> input, int length) {
     	that.activePosition += DataInputBlobReader.read(input, that.byteBuffer, that.activePosition, length, that.byteMask);
     }
         
@@ -289,7 +280,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         activePosition = writeByteArray(this, bytes, bytes.length, byteBuffer, byteMask, activePosition);
     }
     
-    private static int writeByteArray(DataOutputBlobWriter writer, byte[] bytes, int len, byte[] bufLocal, int mask, int pos) {
+    private static <T extends MessageSchema<T>> int writeByteArray(DataOutputBlobWriter<T> writer, byte[] bytes, int len, byte[] bufLocal, int mask, int pos) {
         pos = write32(bufLocal, mask, pos, len);
         Pipe.copyBytesFromToRing(bytes, 0, Integer.MAX_VALUE, writer.byteBuffer, pos, writer.byteMask, len); 
 		return pos+len;
@@ -395,12 +386,12 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     	DataOutputBlobWriter.write(this, source, sourceOff, sourceLen, sourceMask);
     }
     
-    public static void write(DataOutputBlobWriter writer, byte[] source, int sourceOff, int sourceLen, int sourceMask) {
+    public static <T extends MessageSchema<T>> void write(DataOutputBlobWriter<T> writer, byte[] source, int sourceOff, int sourceLen, int sourceMask) {
         Pipe.copyBytesFromToRing(source, sourceOff, sourceMask, writer.byteBuffer, writer.activePosition, writer.byteMask, sourceLen); 
         writer.activePosition+=sourceLen;
     }
 
-    public static void write(DataOutputBlobWriter writer, byte[] source, int sourceOff, int sourceLen) {
+    public static <T extends MessageSchema<T>> void write(DataOutputBlobWriter<T> writer, byte[] source, int sourceOff, int sourceLen) {
         Pipe.copyBytesFromArrayToRing(source, sourceOff, writer.byteBuffer, writer.activePosition, writer.byteMask, sourceLen); 
         writer.activePosition+=sourceLen;
     }
@@ -409,7 +400,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
     //low level copy from reader to writer
     ///////
     
-    public static int writeBytes(DataOutputBlobWriter writer, DataInputBlobReader<RawDataSchema> reader, int length) {
+    public static <T extends MessageSchema<T>> int writeBytes(DataOutputBlobWriter<T> writer, DataInputBlobReader<RawDataSchema> reader, int length) {
 
         int len = DataInputBlobReader.read(reader, writer.byteBuffer, writer.activePosition, length, writer.byteMask);        
         writer.activePosition+=len;
@@ -425,11 +416,11 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         writePackedChars(this,text);
     }
     
-    public static void writePackedChars(DataOutputBlobWriter that, CharSequence s) {
+    public static <T extends MessageSchema<T>> void writePackedChars(DataOutputBlobWriter<T> that, CharSequence s) {
         that.activePosition = writePackedCharsImpl(that, s, s.length(), 0, that.activePosition, that.byteBuffer, that.byteMask);
     }
 
-    private static int writePackedCharsImpl(DataOutputBlobWriter that, CharSequence source, int sourceLength, int sourcePos, int targetPos, byte[] target, int targetMask) {     
+    private static <T extends MessageSchema<T>> int writePackedCharsImpl(DataOutputBlobWriter<T> that, CharSequence source, int sourceLength, int sourcePos, int targetPos, byte[] target, int targetMask) {     
         targetPos = writeIntUnified(sourceLength, sourceLength, target, targetMask, targetPos, (byte)0x7F);   
         while (sourcePos < sourceLength) {// 7, 14, 21
             int value = (int) 0x7FFF & source.charAt(sourcePos++);
@@ -438,11 +429,11 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         return targetPos;
     } 
     
-    public static void writePackedChars(DataOutputBlobWriter that, byte[] source, int sourceMask, int sourceLength, int sourcePos) {
+    public static <T extends MessageSchema<T>> void writePackedChars(DataOutputBlobWriter<T> that, byte[] source, int sourceMask, int sourceLength, int sourcePos) {
         that.activePosition = writePackedCharsImpl(that, source, sourceMask, sourceLength, sourcePos, that.activePosition, that.byteBuffer, that.byteMask);
     }
     
-    private static int writePackedCharsImpl(DataOutputBlobWriter that, byte[] source, int sourceMask, int sourceLength, int sourcePos, int targetPos, byte[] target, int targetMask) {
+    private static <T extends MessageSchema<T>> int writePackedCharsImpl(DataOutputBlobWriter<T> that, byte[] source, int sourceMask, int sourceLength, int sourcePos, int targetPos, byte[] target, int targetMask) {
         targetPos = writeIntUnified(sourceLength, sourceLength, target, targetMask, targetPos, (byte)0x7F);        
         while (sourcePos < sourceLength) {
             int value = (int) source[sourceMask & sourcePos++];
@@ -470,7 +461,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
         writePackedInt(this,value);
     }
     
-    public static final void writePackedLong(DataOutputBlobWriter that, long value) {
+    public static final <T extends MessageSchema<T>> void writePackedLong(DataOutputBlobWriter<T> that, long value) {
 
         long mask = (value>>63);         // FFFFF  or 000000
         long check = (mask^value)-mask;  //absolute value
@@ -483,7 +474,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
 
     }
 
-    public static final void writePackedInt(DataOutputBlobWriter that, int value) {
+    public static final <T extends MessageSchema<T>> void writePackedInt(DataOutputBlobWriter<T> that, int value) {
 
         int mask = (value>>31);         // FFFFF  or 000000
         int check = (mask^value)-mask;  //absolute value
@@ -493,7 +484,7 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
 
     }
     
-    public static final void writePackedShort(DataOutputBlobWriter that, short value) {
+    public static final <T extends MessageSchema<T>> void writePackedShort(DataOutputBlobWriter<T> that, short value) {
         
         int mask = (value>>31);         // FFFFF  or 000000
         int check = (mask^value)-mask;  //absolute value
@@ -503,18 +494,18 @@ public class DataOutputBlobWriter<S extends MessageSchema> extends OutputStream 
 
     }
     
-    public static final void writePackedULong(DataOutputBlobWriter that, long value) {
+    public static final <T extends MessageSchema<T>> void writePackedULong(DataOutputBlobWriter<T> that, long value) {
         assert(value>=0);
         //New branchless implementation we are testing
         that.activePosition = writeLongUnified(value, value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
     }
     
-    public static final void writePackedUInt(DataOutputBlobWriter that, int value) {
+    public static final <T extends MessageSchema<T>> void writePackedUInt(DataOutputBlobWriter<T> that, int value) {
         assert(value>=0);
         that.activePosition = writeIntUnified(value, value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
     }
     
-    public static final void writePackedUShort(DataOutputBlobWriter that, short value) {
+    public static final <T extends MessageSchema<T>> void writePackedUShort(DataOutputBlobWriter<T> that, short value) {
         assert(value>=0);
         that.activePosition = writeIntUnified(value, value, that.byteBuffer, that.byteMask, that.activePosition, (byte)0x7F);
     }

@@ -148,6 +148,9 @@ public class FieldReferenceOffsetManager {
             while (--i>=0) {
             	m = Math.max(m, fragDepth[i]+1); //plus 1 because these are offsets and I want count
             }
+            if (m>3) {
+            	logger.info("warning, pipes are allocating room for a stack depth of "+m);
+            }
             maximumFragmentStackDepth = m;
             
             //when the max depth is only one it is because there are no sub fagments found inside any messages

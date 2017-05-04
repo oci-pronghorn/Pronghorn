@@ -63,7 +63,7 @@ import com.ociweb.pronghorn.util.Appendables;
  * @since 0.1
  *
  */
-public class Pipe<T extends MessageSchema> {
+public class Pipe<T extends MessageSchema<T>> {
 
     private static final AtomicInteger pipeCounter = new AtomicInteger(0);
     
@@ -838,11 +838,12 @@ public class Pipe<T extends MessageSchema> {
         llWrite.llrConfirmedPosition = toPos;
 
         try {
-        this.blobRing = new byte[sizeOfBlobRing];
-        this.slabRing = new int[sizeOfSlabRing];
-        this.blobRingLookup = new byte[][] {blobRing,blobConstBuffer};
+	        this.blobRing = new byte[sizeOfBlobRing];
+	        this.slabRing = new int[sizeOfSlabRing];
+	        this.blobRingLookup = new byte[][] {blobRing,blobConstBuffer};
         } catch (OutOfMemoryError oome) {
-        	log.warn("attempted to allocate Slab:{} Blob:{}", sizeOfSlabRing, sizeOfBlobRing, oome);
+        	
+        	log.warn("attempted to allocate Slab:{} Blob:{} in {}", sizeOfSlabRing, sizeOfBlobRing, this, oome);
         	shutdown(this);
         	System.exit(-1);
         }
@@ -901,7 +902,7 @@ public class Pipe<T extends MessageSchema> {
 		      //blobReader and blobWriter and not checked since they call isInit on construction
 	}
 
-	public static <S extends MessageSchema> boolean validateVarLength(Pipe<S> pipe, int length) {
+	public static <S extends MessageSchema<S>> boolean validateVarLength(Pipe<S> pipe, int length) {
 		int newAvg = (length+pipe.varLenMovingAverage)>>1;
         if (newAvg>pipe.maxVarLen)	{
             //compute some helpful information to add to the exception
@@ -1155,7 +1156,7 @@ public class Pipe<T extends MessageSchema> {
 	}
     
 
-	public static <S extends MessageSchema> void writeFieldToOutputStream(Pipe<S> pipe, OutputStream out) throws IOException {
+	public static <S extends MessageSchema<S>> void writeFieldToOutputStream(Pipe<S> pipe, OutputStream out) throws IOException {
         int meta = Pipe.takeRingByteMetaData(pipe);
         int length    = Pipe.takeRingByteLen(pipe);    
         if (length>0) {                
@@ -2019,7 +2020,7 @@ public class Pipe<T extends MessageSchema> {
 	}
 
 	@Deprecated //use the Appendables methods
-	public static <S extends MessageSchema> int leftConvertIntToASCII(Pipe<S> pipe, int value, int idx) {
+	public static <S extends MessageSchema<S>> int leftConvertIntToASCII(Pipe<S> pipe, int value, int idx) {
 		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
 		//this will leave a gap but that is not a problem.
 		byte[] target = pipe.blobRing;
@@ -2049,7 +2050,7 @@ public class Pipe<T extends MessageSchema> {
 	}
 
 	@Deprecated //use the Appendables methods
-	public static <S extends MessageSchema> int leftConvertLongToASCII(Pipe<S> pipe, long value,	int idx) {
+	public static <S extends MessageSchema<S>> int leftConvertLongToASCII(Pipe<S> pipe, long value,	int idx) {
 		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
 		//this will leave a gap but that is not a problem.
 		byte[] target = pipe.blobRing;
@@ -2078,7 +2079,7 @@ public class Pipe<T extends MessageSchema> {
 		return length;
 	}
 
-   public static <S extends MessageSchema> int leftConvertLongWithLeadingZerosToASCII(Pipe<S> pipe, int chars, long value, int idx) {
+   public static <S extends MessageSchema<S>> int leftConvertLongWithLeadingZerosToASCII(Pipe<S> pipe, int chars, long value, int idx) {
         //max places is value for -2B therefore its 11 places so we start out that far and work backwards.
         //this will leave a gap but that is not a problem.
         byte[] target = pipe.blobRing;
@@ -2834,7 +2835,7 @@ public class Pipe<T extends MessageSchema> {
         return bytesConsumedByFragment;        
     }
     
-    public static <S extends MessageSchema> int readNextWithoutReleasingReadLock(Pipe<S> pipe) {
+    public static <S extends MessageSchema<S>> int readNextWithoutReleasingReadLock(Pipe<S> pipe) {
         int bytesConsumedByFragment = takeInt(pipe); 
         Pipe.markBytesReadBase(pipe, bytesConsumedByFragment); //the base has been moved so we can also use it below.
         assert(Pipe.contentRemaining(pipe)>=0);
@@ -2848,16 +2849,16 @@ public class Pipe<T extends MessageSchema> {
     
 
     @Deprecated //inline and use releaseReadLock(pipe)
-    public static <S extends MessageSchema> int releaseReads(Pipe<S> pipe) {
+    public static <S extends MessageSchema<S>> int releaseReads(Pipe<S> pipe) {
         return releaseReadLock(pipe);     
     }
 
-    public static <S extends MessageSchema> void batchedReleasePublish(Pipe<S> pipe, int blobTail, long slabTail) {
+    public static <S extends MessageSchema<S>> void batchedReleasePublish(Pipe<S> pipe, int blobTail, long slabTail) {
         assert(null==pipe.ringWalker || pipe.ringWalker.cursor<=0 && !PipeReader.isNewMessage(pipe.ringWalker)) : "Unsupported mix of high and low level API.  ";
         releaseBatchedReads(pipe, blobTail, slabTail);
     }
     
-    static <S extends MessageSchema> void releaseBatchedReads(Pipe<S> pipe, int workingBlobRingTailPosition, long nextWorkingTail) {
+    static <S extends MessageSchema<S>> void releaseBatchedReads(Pipe<S> pipe, int workingBlobRingTailPosition, long nextWorkingTail) {
  
         if (decBatchRelease(pipe)<=0) { 
            setBytesTail(pipe, workingBlobRingTailPosition);
@@ -2874,7 +2875,7 @@ public class Pipe<T extends MessageSchema> {
         }
     }
 
-    static <S extends MessageSchema> void storeUnpublishedTail(Pipe<S> pipe, long workingTailPos, int byteWorkingTailPos) {
+    static <S extends MessageSchema<S>> void storeUnpublishedTail(Pipe<S> pipe, long workingTailPos, int byteWorkingTailPos) {
         pipe.lastReleasedBlobTail = byteWorkingTailPos;
         pipe.lastReleasedSlabTail = workingTailPos;
     }
@@ -3063,7 +3064,7 @@ public class Pipe<T extends MessageSchema> {
     }
 
     @Deprecated //use spinBlockForRoom then confirm the write afterwords
-    public static <S extends MessageSchema> long spinBlockOnTail(long lastCheckedValue, long targetValue, Pipe<S> pipe) {
+    public static <S extends MessageSchema<S>> long spinBlockOnTail(long lastCheckedValue, long targetValue, Pipe<S> pipe) {
     	while (null==pipe.slabRing || lastCheckedValue < targetValue) {
     		spinWork(pipe);
 		    lastCheckedValue = pipe.slabRingTail.tailPos.longValue();
@@ -3071,7 +3072,7 @@ public class Pipe<T extends MessageSchema> {
 		return lastCheckedValue;
     }
 
-    public static <S extends MessageSchema> void spinBlockForContent(Pipe<S> pipe) {
+    public static <S extends MessageSchema<S>> void spinBlockForContent(Pipe<S> pipe) {
         while (!hasContentToRead(pipe)) {
             spinWork(pipe);
         }
@@ -3445,7 +3446,7 @@ public class Pipe<T extends MessageSchema> {
         return slab(pipe);
     }
 
-    public static <S extends MessageSchema> void updateBytesWriteLastConsumedPos(Pipe<S> pipe) {
+    public static <S extends MessageSchema<S>> void updateBytesWriteLastConsumedPos(Pipe<S> pipe) {
         pipe.blobWriteLastConsumedPos = Pipe.getWorkingBlobHeadPosition(pipe);
     }
 

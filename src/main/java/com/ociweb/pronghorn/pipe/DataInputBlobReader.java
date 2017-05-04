@@ -5,12 +5,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 
-import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.math.Decimal;
 
-public class DataInputBlobReader<S extends MessageSchema>  extends InputStream implements DataInput {
+public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStream implements DataInput {
 
     private final StringBuilder workspace;
     private final Pipe<S> pipe;
@@ -61,7 +60,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         return openLowLevelAPIField(this);
     }
     
-    public static int openLowLevelAPIField(DataInputBlobReader that) {
+    public static <S extends MessageSchema<S>>int openLowLevelAPIField(DataInputBlobReader<S> that) {
         
         int meta = Pipe.takeRingByteMetaData(that.pipe);
         that.length    = Pipe.takeRingByteLen(that.pipe);
@@ -82,7 +81,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
             return openLowLevelAPIField();
         } else {        
         
-            int meta = Pipe.takeRingByteMetaData(pipe);
+            Pipe.takeRingByteMetaData(pipe);
             int len = Pipe.takeRingByteLen(pipe);
             
             this.length += len;
@@ -207,19 +206,19 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         return 0xFF & backing[byteMask & position++];
     }
     
-    private static <S extends MessageSchema> short read16(byte[] buf, int mask, DataInputBlobReader<S> that) {
+    private static <S extends MessageSchema<S>> short read16(byte[] buf, int mask, DataInputBlobReader<S> that) {
         return (short)((       buf[mask & that.position++] << 8) |
                        (0xFF & buf[mask & that.position++])); 
     }    
     
-    private static <S extends MessageSchema> int read32(byte[] buf, int mask, DataInputBlobReader<S> that) {        
+    private static <S extends MessageSchema<S>> int read32(byte[] buf, int mask, DataInputBlobReader<S> that) {        
         return ( ( (       buf[mask & that.position++]) << 24) |
                  ( (0xFF & buf[mask & that.position++]) << 16) |
                  ( (0xFF & buf[mask & that.position++]) << 8) |
                    (0xFF & buf[mask & that.position++]) ); 
     }
     
-    private static <S extends MessageSchema> long read64(byte[] buf, int mask, DataInputBlobReader<S> that) {        
+    private static <S extends MessageSchema<S>> long read64(byte[] buf, int mask, DataInputBlobReader<S> that) {        
         return ( ( (  (long)buf[mask & that.position++]) << 56) |              
                  ( (0xFFl & buf[mask & that.position++]) << 48) |
                  ( (0xFFl & buf[mask & that.position++]) << 40) |
@@ -310,7 +309,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         }
     }
 
-    public static <A extends Appendable> A readUTF(DataInputBlobReader reader, int length, A target) throws IOException {
+    public static <A extends Appendable, S extends MessageSchema<S>> A readUTF(DataInputBlobReader<S> reader, int length, A target) throws IOException {
         long charAndPos = ((long)reader.position)<<32;
         long limit = ((long)reader.position+length)<<32;
 
@@ -334,7 +333,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
     ////
     //support method for direct copy
     ////
-    public static int read(DataInputBlobReader reader, byte[] b, int off, int len, int mask) {
+    public static <S extends MessageSchema<S>> int read(DataInputBlobReader<S> reader, byte[] b, int off, int len, int mask) {
 
         int max = bytesRemaining(reader);
         if (len > max) {
@@ -345,7 +344,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         return len;
     }
         
-    public void readInto(DataOutputBlobWriter writer, int length) {
+    public <T extends MessageSchema<T>> void readInto(DataOutputBlobWriter<T> writer, int length) {
     	
     	DataOutputBlobWriter.write(writer, backing, position, length, byteMask);
     	position += length;
@@ -399,7 +398,7 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         return target;
     }
     
-    public static <S extends MessageSchema> void readPackedChars(DataInputBlobReader<S> that, Appendable target) throws IOException {
+    public static <S extends MessageSchema<S>> void readPackedChars(DataInputBlobReader<S> that, Appendable target) throws IOException {
         int length = readPackedInt(that);
         int i = length;
         while (--i>=0) {
@@ -436,33 +435,33 @@ public class DataInputBlobReader<S extends MessageSchema>  extends InputStream i
         return (short)readPackedInt(this);
     }
 
-    public static <S extends MessageSchema> long readPackedLong(DataInputBlobReader<S> that) {
+    public static <S extends MessageSchema<S>> long readPackedLong(DataInputBlobReader<S> that) {
         byte v = that.backing[that.byteMask & that.position++];
         long accumulator = (~((long)(((v>>6)&1)-1)))&0xFFFFFFFFFFFFFF80l;
         return (v >= 0) ? readPackedLong((accumulator | v) << 7,that.backing,that.byteMask,that) : (accumulator) |(v & 0x7F);
     }
 
-    public static <S extends MessageSchema> int readPackedInt(DataInputBlobReader<S> that) {
+    public static <S extends MessageSchema<S>> int readPackedInt(DataInputBlobReader<S> that) {
         byte v = that.backing[that.byteMask & that.position++];
         int accumulator = (~((int)(((v>>6)&1)-1)))&0xFFFFFF80; 
         return (v >= 0) ? readPackedInt((accumulator | v) << 7,that.backing,that.byteMask,that) : accumulator |(v & 0x7F);
     }
     
     //recursive use of the stack turns out to be a good way to unroll this loop.
-    private static <S extends MessageSchema> long readPackedLong(long a, byte[] buf, int mask, DataInputBlobReader<S> that) {
+    private static <S extends MessageSchema<S>> long readPackedLong(long a, byte[] buf, int mask, DataInputBlobReader<S> that) {
         return readPackedLongB(a, buf, mask, that, buf[mask & that.position++]);
     }
 
-    private static <S extends MessageSchema> long readPackedLongB(long a, byte[] buf, int mask, DataInputBlobReader<S> that, byte v) {
+    private static <S extends MessageSchema<S>> long readPackedLongB(long a, byte[] buf, int mask, DataInputBlobReader<S> that, byte v) {
         assert(a!=0 || v!=0) : "malformed data";
         return (v >= 0) ? readPackedLong((a | v) << 7, buf, mask, that) : a | (v & 0x7Fl);
     }
        
-    private static <S extends MessageSchema> int readPackedInt(int a, byte[] buf, int mask, DataInputBlobReader<S> that) {
+    private static <S extends MessageSchema<S>> int readPackedInt(int a, byte[] buf, int mask, DataInputBlobReader<S> that) {
         return readPackedIntB(a, buf, mask, that, buf[mask & that.position++]);
     }
 
-    private static <S extends MessageSchema> int readPackedIntB(int a, byte[] buf, int mask, DataInputBlobReader<S> that, byte v) {
+    private static <S extends MessageSchema<S>> int readPackedIntB(int a, byte[] buf, int mask, DataInputBlobReader<S> that, byte v) {
         assert(a!=0 || v!=0) : "malformed data";
         return (v >= 0) ? readPackedInt((a | v) << 7, buf, mask, that) : a | (v & 0x7F);
     }

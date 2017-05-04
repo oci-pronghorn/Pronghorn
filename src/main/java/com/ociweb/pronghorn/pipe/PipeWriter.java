@@ -483,7 +483,7 @@ public class PipeWriter {
 		
 	}
 
-	public static <S extends MessageSchema> DataOutputBlobWriter<S> outputStream(Pipe<S> pipe) {
+	public static <S extends MessageSchema<S>> DataOutputBlobWriter<S> outputStream(Pipe<S> pipe) {
 		return Pipe.outputStream(pipe);
 	}
     

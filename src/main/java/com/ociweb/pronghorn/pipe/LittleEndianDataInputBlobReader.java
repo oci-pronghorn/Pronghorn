@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 
-public class LittleEndianDataInputBlobReader<S extends MessageSchema>  extends InputStream implements DataInput {
+public class LittleEndianDataInputBlobReader<S extends MessageSchema<S>>  extends InputStream implements DataInput {
 
     private final StringBuilder workspace;
     private final Pipe<S> pipe;
@@ -170,14 +170,14 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema>  extends I
         return 0xFF & backing[byteMask & position++];
     }
     
-    private static <S extends MessageSchema> short read16(byte[] buf, int mask, LittleEndianDataInputBlobReader<S> that) {
+    private static <S extends MessageSchema<S>> short read16(byte[] buf, int mask, LittleEndianDataInputBlobReader<S> that) {
         return (short)(
                         (0xFF & buf[mask & that.position++]) |
                         (       buf[mask & that.position++] << 8)
                 ); 
     }    
     
-    private static <S extends MessageSchema> int read32(byte[] buf, int mask, LittleEndianDataInputBlobReader<S> that) {        
+    private static <S extends MessageSchema<S>> int read32(byte[] buf, int mask, LittleEndianDataInputBlobReader<S> that) {        
         return (
                  (0xFF & buf[mask & that.position++]) |
                  ( (0xFF & buf[mask & that.position++]) << 8) |
@@ -186,7 +186,7 @@ public class LittleEndianDataInputBlobReader<S extends MessageSchema>  extends I
                ); 
     }
     
-    private static <S extends MessageSchema> long read64(byte[] buf, int mask, LittleEndianDataInputBlobReader<S> that) {        
+    private static <S extends MessageSchema<S>> long read64(byte[] buf, int mask, LittleEndianDataInputBlobReader<S> that) {        
         return (
                 (0xFFl & buf[mask & that.position++]) |
                 ( (0xFFl & buf[mask & that.position++]) << 8) |

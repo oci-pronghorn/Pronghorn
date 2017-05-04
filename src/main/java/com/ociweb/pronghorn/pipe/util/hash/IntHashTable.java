@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.pipe.util.hash;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Non-Thread safe simple fast hash for int to int mapping.
@@ -14,6 +16,8 @@ package com.ociweb.pronghorn.pipe.util.hash;
  */
 public class IntHashTable {
 
+	private static final Logger logger = LoggerFactory.getLogger(IntHashTable.class);
+	
 	private final int mask;
 	private final long[] data;
 	private int space;
@@ -25,7 +29,7 @@ public class IntHashTable {
 		
 		data = new long[size];
 		int j = size;
-		
+
 	}
 	
 	public static int size(IntHashTable ht) {

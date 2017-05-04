@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.pipe;
 /**
  * @param <T>  
  */
-public class PipeConfig<T extends MessageSchema> {
+public class PipeConfig<T extends MessageSchema<T>> {
 	
 	//try to keep all this under 20MB and 1 RB under 64K if possible under 256K is highly encouraged
 	final byte slabBits;
@@ -40,7 +40,7 @@ public class PipeConfig<T extends MessageSchema> {
     	 return slabBits;
      }
      
-    public static <S extends MessageSchema> Pipe<S> pipe(PipeConfig<S> config) {
+    public static <S extends MessageSchema<S>> Pipe<S> pipe(PipeConfig<S> config) {
         return new Pipe<S>(config);
     }
 	
@@ -68,12 +68,12 @@ public class PipeConfig<T extends MessageSchema> {
         
         int biggestFragment = FieldReferenceOffsetManager.maxFragmentSize(MessageSchema.from(messageSchema));
         int primaryMinSize = minimumFragmentsOnRing*biggestFragment;        
-        this.slabBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1));
-        
+        this.slabBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1));        
         int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<slabBits);
-        int secondaryMinSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
-        this.blobBits = ((0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce))? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(secondaryMinSize - 1));
-                
+        int totalBlobSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
+      
+        this.blobBits = ((0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce))? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(totalBlobSize - 1));
+      
         this.byteConst = null;
         this.schema = messageSchema;
         

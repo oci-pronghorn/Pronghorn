@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 
-public class LittleEndianDataOutputBlobWriter<S extends MessageSchema> extends OutputStream implements DataOutput {
+public class LittleEndianDataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStream implements DataOutput {
 
     private final Pipe<S> p;
     private final byte[] byteBuffer;

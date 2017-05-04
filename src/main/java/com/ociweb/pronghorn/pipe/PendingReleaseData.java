@@ -30,11 +30,11 @@ public class PendingReleaseData {
         assert(that.pendingReleaseCount<=that.pendingLength.length);
     }
     
-    public static <S extends MessageSchema> int pendingReleaseCount(PendingReleaseData that) {
+    public static <S extends MessageSchema<S>> int pendingReleaseCount(PendingReleaseData that) {
     	return that.pendingReleaseCount;
     }
     
-    public static <S extends MessageSchema> int pendingReleaseByteCount(PendingReleaseData that) {
+    public static <S extends MessageSchema<S>> int pendingReleaseByteCount(PendingReleaseData that) {
     	    
     	int total = 0;
     	int t = that.pendingReleaseTail;
@@ -48,7 +48,7 @@ public class PendingReleaseData {
     }
     
     
-    public static <S extends MessageSchema> void releasePendingReadRelease(PendingReleaseData that, Pipe<S> pipe) {
+    public static <S extends MessageSchema<S>> void releasePendingReadRelease(PendingReleaseData that, Pipe<S> pipe) {
         if (that.pendingReleaseCount>0) {
             int idx = that.pendingReleaseMask & that.pendingReleaseTail++;
             Pipe.releaseBatchedReads(pipe, 
@@ -58,7 +58,7 @@ public class PendingReleaseData {
         }
     }
 
-    public static <S extends MessageSchema> void releaseAllPendingReadRelease(PendingReleaseData that, Pipe<S> pipe) {
+    public static <S extends MessageSchema<S>> void releaseAllPendingReadRelease(PendingReleaseData that, Pipe<S> pipe) {
     	
     	if (pipe.batchReleaseCountDownInit<=0) {
     		nonBatchedReleaseAll(that, pipe);
@@ -67,7 +67,7 @@ public class PendingReleaseData {
     	}
     }
 
-	private static <S extends MessageSchema> void batchedReleaseAll(PendingReleaseData that, Pipe<S> pipe) {
+	private static <S extends MessageSchema<S>> void batchedReleaseAll(PendingReleaseData that, Pipe<S> pipe) {
 		while (that.pendingReleaseCount>0) {
 		    int idx = that.pendingReleaseMask & that.pendingReleaseTail++;
 			Pipe.releaseBatchedReads(pipe, 
@@ -78,7 +78,7 @@ public class PendingReleaseData {
 		}
 	}
 
-	private static <S extends MessageSchema> void nonBatchedReleaseAll(PendingReleaseData that, Pipe<S> pipe) {
+	private static <S extends MessageSchema<S>> void nonBatchedReleaseAll(PendingReleaseData that, Pipe<S> pipe) {
 		//simple case when we do not batch.
 		int c = that.pendingReleaseCount;
 		if (c>0) {
@@ -91,7 +91,7 @@ public class PendingReleaseData {
 	}
     
     //releases as the bytes are consumed, this can be called as many times as needed.
-    public static <S extends MessageSchema> void releasePendingAsReadRelease(PendingReleaseData that, Pipe<S> pipe, int consumed) {
+    public static <S extends MessageSchema<S>> void releasePendingAsReadRelease(PendingReleaseData that, Pipe<S> pipe, int consumed) {
 
     	assert(consumed<=Pipe.releasePendingByteCount(pipe)) : "requested more to released than we have pending";
     	

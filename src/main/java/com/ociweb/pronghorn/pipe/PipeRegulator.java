@@ -18,7 +18,7 @@ public class PipeRegulator {
         this.divisorSizeNS = MS_TO_NS*(long)avgMsgSize*(long)maxMsgPerMs;
     }    
     
-    public static <S extends MessageSchema> long computeRateLimitDelay(Pipe<S> pipe, long position, PipeRegulator regulator) {
+    public static <S extends MessageSchema<S>> long computeRateLimitDelay(Pipe<S> pipe, long position, PipeRegulator regulator) {
         long expectedNow = regulator.regulatorTimeBaseNS + ((position-regulator.regulatorPositionBase)/regulator.divisorSizeNS);
         return expectedNow-(System.currentTimeMillis()*MS_TO_NS);
     }

@@ -9,7 +9,7 @@ import com.ociweb.pronghorn.util.ByteConsumer;
 import com.ociweb.pronghorn.util.TrieKeyable;
 import com.ociweb.pronghorn.util.math.Decimal;
 
-public class JSONStreamVisitorToPipe<M extends MessageSchema, K extends Enum<K> & TrieKeyable> implements JSONStreamVisitor {
+public class JSONStreamVisitorToPipe<M extends MessageSchema<M>, K extends Enum<K> & TrieKeyable> implements JSONStreamVisitor {
 
 	//TODO: this would be much fast if it were code generated, but we must ensure the dynamic behavior is right first.
 	
