@@ -51,7 +51,7 @@ public class URLTemplateParser {
 	 */
 	public TrieParser addRoute(CharSequence route, final long routeValue, TrieParser routerMap, boolean trustText) {
 
-		final TrieParser runtimeParser = new TrieParser(64, trustText);
+		final TrieParser runtimeParser = new TrieParser(64, 2, trustText, true);
 		
 		converter.convert(route,  
 				        (reader, stream) -> {convertEncoding(runtimeParser, reader, templateParser, stream);},
@@ -73,14 +73,14 @@ public class URLTemplateParser {
 					outputStream.append("%i%/");					
 				    TrieParserReader.capturedFieldSetValue(templateParserReader, 0, runtimeParser,
 				    		          (token<<16) | (fieldIndex++));//type high 16, and position in low 16
-					
+				    fieldIndex++;//takes up 2 spots so we must add one more
 					break;
 				case TrieParser.ESCAPE_CMD_DECIMAL:
 					
 					outputStream.append("%i%.");					
 				    TrieParserReader.capturedFieldSetValue(templateParserReader, 0, runtimeParser,
 				    		          (token<<16) | (fieldIndex++));//type high 16, and position in low 16
-										
+				    fieldIndex++;//takes up 2 spots so we must add one more					
 					break;
 				case TrieParser.ESCAPE_CMD_SIGNED_INT:
 					

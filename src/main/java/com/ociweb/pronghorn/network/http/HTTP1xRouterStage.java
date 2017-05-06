@@ -207,14 +207,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             blobWriter[w] = new DataOutputBlobWriter<HTTPRequestSchema>(outputs[w]);
         }
         
-        int x; 
-        
         totalShortestRequest = 0;//count bytes for the shortest known request, this opmization helps prevent parse attempts when its clear that there is not enough data.
-        int localShortest;
-        
 
-        
-        
         //a request may have NO header with just the end marker so add one
         totalShortestRequest+=1;
                 
