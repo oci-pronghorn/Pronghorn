@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
@@ -1043,7 +1044,7 @@ public class TrieParserReader {
         return sourcePos-1;
     }
 
-    private static void publish(TrieParserReader reader, int sign, long numericValue, int intLength, int base, int dot) {
+    private static void publish(TrieParserReader reader, int sign, long numericValue, int intLength, int base, int isDot) {
         assert(0!=sign);
         
         reader.capturedValues[reader.capturedPos++] = sign;
@@ -1051,9 +1052,11 @@ public class TrieParserReader {
         reader.capturedValues[reader.capturedPos++] = (int) (0xFFFFFFFF &numericValue);
         
         assert(base<=64 && base>=2);
-        assert(dot==1 || dot==0);
+        assert(isDot==1 || isDot==0);
+        int meta = 0;
+        reader.capturedValues[reader.capturedPos++] = meta = (isDot<<31) | (base<<16) | (0xFFFF & intLength) ; //Base: 10 or 16, IntLength:  
         
-        reader.capturedValues[reader.capturedPos++] = (dot<<31) | (base<<16) | (0xFFFF & intLength) ; //Base: 10 or 16, IntLength:  
+        System.out.println("meta "+meta+" dot "+isDot);
         
     }
     
@@ -1093,8 +1096,6 @@ public class TrieParserReader {
         		               PipeReader.readBytesMask(input, loc));
     }
     
-
-
 
     public static void parseSetup(TrieParserReader trieReader, Pipe<?> input) {
         int meta = Pipe.takeRingByteMetaData(input);
@@ -1281,7 +1282,7 @@ public class TrieParserReader {
     }
     
     
-    public static int writeCapturedValuesToDataOutput(TrieParserReader reader, DataOutputBlobWriter target) throws IOException {
+    public static <S extends MessageSchema<S>> int writeCapturedValuesToDataOutput(TrieParserReader reader, DataOutputBlobWriter<S> target) throws IOException {
     	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //NOTE: this method is used by the HTTP1xRouterStage class to write all the captured fields which is key to GreenLightning
     	//      ensure that any changes here are matched by the methods consuming this DataOutput inside GreenLightnining.
@@ -1298,6 +1299,8 @@ public class TrieParserReader {
             
             int type = localCapturedValues[i++];
             
+            int writePosition = target.position();
+    
             if (isCapturedByteData(type)) {
                 
                 int p = localCapturedValues[i++];
@@ -1313,8 +1316,7 @@ public class TrieParserReader {
                 DataOutputBlobWriter.write(target,reader.capturedBlobArray,p,l,m);
                                 
             } else {
-                
-            	
+                            	
             	int sign = type;
             	long value1 = localCapturedValues[i++];
                 long value2 = localCapturedValues[i++]; 
@@ -1322,62 +1324,77 @@ public class TrieParserReader {
                 int meta = localCapturedValues[i++]; 
                 boolean isDot = (meta<0);//if high bit is on this is a dot value
             	byte base = (byte)((meta>>16)&0xFF);
-                int len  = meta&0xFFFF;
+                //int len  = meta&0xFFFF;
             	
                 long value = sign*((value1<<32)|value2);
-                int  position;                
                 if (isDot) {
                 	if (base!=10) {
                 		throw new UnsupportedOperationException("Does support decimal point values with hex, please use base 10 decimal.");
                 	}
-                	position = -len;                	
-                
-                //how do we sum this with the previous??
-                	
-                
-                
                 } else {
-                	position = 0;
-                }
-                    
-                //Jump ahead to combine the dot part of the number if it is found.
-                if (i+4<=limit //if there is following data
-                	&& (!isCapturedByteData(localCapturedValues[i])) //if next data is some kind of number	
-                	&& (localCapturedValues[i+3]<0)) { //if that next data point is a dot
+                	int position = 0;
                 	
-                	//grab the dot value and roll it in.
-                	int dsign = localCapturedValues[i++];
-                	long dvalue1 = localCapturedValues[i++];
-                    long dvalue2 = localCapturedValues[i++];                    
-                    int dmeta = localCapturedValues[i++];
-                    
-                	byte dbase = (byte)((dmeta>>16)&0xFF);
-                   	if (dbase!=10) {
-                		throw new UnsupportedOperationException("Does support decimal point values with hex, please use base 10 decimal.");
+                	System.out.println("meta "+localCapturedValues[i+3]);
+                	
+                	//Jump ahead to combine the dot part of the number if it is found.
+                	if (i+4<=limit //if there is following data
+                		&& (!isCapturedByteData(localCapturedValues[i])) //if next data is some kind of number	
+                		&& (localCapturedValues[i+3]<0)) { //if that next data point is the second half
+                		
+                		//decimal value                			
+                		//grab the dot value and roll it in.
+                		int dsign = localCapturedValues[i++];
+                		long dvalue1 = localCapturedValues[i++];
+                		long dvalue2 = localCapturedValues[i++];                    
+                		int dmeta = localCapturedValues[i++];
+                		
+                		byte dbase = (byte)((dmeta>>16)&0xFF);
+                		if (dbase!=10) {
+                			throw new UnsupportedOperationException("Does support decimal point values with hex, please use base 10 decimal.");
+                		}
+                		
+                		if (0 != position) {
+                			throw new UnsupportedOperationException("Expected left side of . to be a simple integer.");
+                		}
+                		
+                		int dlen  = dmeta&0xFFFF;
+                		
+                		long dvalue = dsign*((dvalue1<<32)|dvalue2);
+                		
+                		//shift the integer part up and add the decimal part
+                		value = (value*Decimal.longPow[dlen])+dvalue;
+                		
+                		//modify position to have the right number of points
+                		position = -dlen;  
+                	
+                		target.writePackedLong(value);
+                	    if (!DataOutputBlobWriter.tryWriteIntEndData(target, writePosition)) {
+                         	throw new IOException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+target.getPipe());
+                        }                         
+                	    //write second part and it gets its own entry.
+                		writePosition = target.position();                		
+                		target.writeByte(position);
+                		
+                		System.out.println("wrote "+value+" "+position);
+                		
+                	} else {
+                		System.out.println("wrote "+value);
+                		target.writePackedLong(value);
+                		//integers and rational only use normal long values, no position needed.
                 	}
                 	
-                   	if (0 != position) {
-                   		throw new UnsupportedOperationException("Expected left side of . to be a simple integer.");
-                   	}
-                   	
-                    int dlen  = dmeta&0xFFFF;
                 	
-                    long dvalue = dsign*((dvalue1<<32)|dvalue2);
-                    
-                    //shift the integer part up and add the decimal part
-                    value = (value*Decimal.longPow[dlen])+dvalue;
-                                        
-                    //modify positoin to have the right number of points
-                    position = -dlen;  
-                	
-                }              
-                
-                target.writePackedLong(value);
-                target.writeByte(position);
-                
- 
-            }            
-        }
+                }
+            }    
+            
+            if (!DataOutputBlobWriter.tryWriteIntEndData(target, writePosition)) {
+            	throw new IOException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+target.getPipe());
+            }
+            
+            
+        }        
+        DataOutputBlobWriter.writeEndData(target);
+        
         return totalBytes;
     }
 

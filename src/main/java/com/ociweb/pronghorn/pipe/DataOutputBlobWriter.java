@@ -10,20 +10,22 @@ import com.ociweb.pronghorn.util.ByteConsumer;
 
 public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStream implements DataOutput, Appendable, ByteConsumer {
 
-    private final Pipe<S> p;
+    private final Pipe<S> backingPipe;
     private final byte[] byteBuffer;
     private final int byteMask;
     
     private int startPosition;
-    public int activePosition;
+    private int activePosition;
+    private int lastPosition;
+    private int backPosition;
     
     public DataOutputBlobWriter(Pipe<S> p) {
-        this.p = p;
+        this.backingPipe = p;
         assert(null!=p) : "requires non null pipe";
         assert(Pipe.isInit(p)): "The pipe must be init before use.";
         this.byteBuffer = Pipe.blob(p);
         this.byteMask = Pipe.blobMask(p);  
-        assert(this.byteMask!=0): "mask is "+p.byteMask+" size of blob is "+p.sizeOfBlobRing;
+        assert(this.byteMask!=0): "mask is "+p.blobMask+" size of blob is "+p.sizeOfBlobRing;
     }
     
     public void openField() {
@@ -33,9 +35,36 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
 
     public static <T extends MessageSchema<T>> void openField(DataOutputBlobWriter<T> writer) {
         
-        writer.p.openBlobFieldWrite();
+        writer.backingPipe.openBlobFieldWrite();
         //NOTE: this method works with both high and low APIs.
-        writer.startPosition = writer.activePosition = Pipe.getWorkingBlobHeadPosition(writer.p);
+        writer.startPosition = writer.activePosition = Pipe.getWorkingBlobHeadPosition(writer.backingPipe);
+        writer.lastPosition = writer.startPosition+writer.backingPipe.maxVarLen;
+        writer.backPosition = writer.lastPosition;
+    }
+    
+    public int position() {
+    	return activePosition-startPosition;
+    }
+    
+    public static <T extends MessageSchema<T>> boolean tryWriteIntEndData(DataOutputBlobWriter<T> writer, int value) {	
+    	int temp = writer.backPosition-4;
+    	if (temp >= writer.activePosition) {
+    		writer.backPosition = temp;
+    		write32(writer.byteBuffer, writer.byteMask, writer.backPosition, value);       
+    		return true;
+    	} else {
+    		return false;
+    	}
+    }
+    
+    public static <T extends MessageSchema<T>> void writeEndData(DataOutputBlobWriter<T> writer) {
+    	DataOutputBlobWriter.write(writer, 
+    			                   writer.byteBuffer, 
+    			                   writer.backPosition, 
+    			                   writer.lastPosition-writer.backPosition, 
+    			                   writer.byteMask);
+    	//can only be done once then the end is clear again
+    	writer.backPosition = writer.lastPosition;
     }
     
     public int closeHighLevelField(int targetFieldLoc) {
@@ -46,8 +75,8 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         //this method will also validate the length was in bound and throw unsupported operation if the pipe was not large enough
         //instead of fail fast as soon as one field goes over we wait to the end and only check once.
         int len = length(writer);
-        PipeWriter.writeSpecialBytesPosAndLen(writer.p, targetFieldLoc, len, writer.startPosition);
-        writer.p.closeBlobFieldWrite();
+        PipeWriter.writeSpecialBytesPosAndLen(writer.backingPipe, targetFieldLoc, len, writer.startPosition);
+        writer.backingPipe.closeBlobFieldWrite();
         return len;
     }
     
@@ -57,10 +86,10 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
 
     public static <T extends MessageSchema<T>> int closeLowLevelField(DataOutputBlobWriter<T> writer) {
         int len = length(writer);
-        Pipe.addAndGetBytesWorkingHeadPosition(writer.p, len);
-        Pipe.addBytePosAndLenSpecial(writer.p,writer.startPosition,len);
-        Pipe.validateVarLength(writer.p, len);
-        writer.p.closeBlobFieldWrite();
+        Pipe.addAndGetBytesWorkingHeadPosition(writer.backingPipe, len);
+        Pipe.addBytePosAndLenSpecial(writer.backingPipe,writer.startPosition,len);
+        Pipe.validateVarLength(writer.backingPipe, len);
+        writer.backingPipe.closeBlobFieldWrite();
         return len;
     }
  
@@ -73,7 +102,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         if (writer.activePosition>=writer.startPosition) {
             return writer.activePosition-writer.startPosition;            
         } else {       
-        	return (writer.p.sizeOfBlobRing- (writer.byteMask & writer.startPosition))+(writer.activePosition & writer.byteMask);
+        	return (writer.backingPipe.sizeOfBlobRing- (writer.byteMask & writer.startPosition))+(writer.activePosition & writer.byteMask);
         }
     }
     
@@ -90,7 +119,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
             oos.writeObject(object);            
             oos.flush();
             
-            assert(Pipe.validateVarLength(this.p, length(this)));
+            assert(Pipe.validateVarLength(this.backingPipe, length(this)));
             
     }
     
@@ -592,6 +621,10 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         this.activePosition = Pipe.encodeSingleChar((int)c, this.byteBuffer, this.byteMask, this.activePosition);
         return this;
     }
+
+	public Pipe<S> getPipe() {
+		return backingPipe;
+	}
 
     
 }
