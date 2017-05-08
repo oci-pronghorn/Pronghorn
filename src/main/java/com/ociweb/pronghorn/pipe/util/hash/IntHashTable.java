@@ -18,9 +18,15 @@ public class IntHashTable {
 
 	private static final Logger logger = LoggerFactory.getLogger(IntHashTable.class);
 	
+	public static IntHashTable EMPTY = new IntHashTable(0);
+	
 	private final int mask;
 	private final long[] data;
 	private int space;
+	
+	public static IntHashTable newTableExpectingCount(int count) {		
+		return new IntHashTable((int) (1+Math.ceil(Math.log(count)/Math.log(2)) ));
+	}
 	
 	public IntHashTable(int bits) {
 		int size = 1<<bits;
@@ -28,8 +34,6 @@ public class IntHashTable {
 		space = mask; //this is 1 less by design
 		
 		data = new long[size];
-		int j = size;
-
 	}
 	
 	public static int size(IntHashTable ht) {

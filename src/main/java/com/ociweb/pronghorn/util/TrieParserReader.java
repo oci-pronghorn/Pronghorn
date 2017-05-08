@@ -1282,7 +1282,7 @@ public class TrieParserReader {
     }
     
     
-    public static <S extends MessageSchema<S>> int writeCapturedValuesToDataOutput(TrieParserReader reader, DataOutputBlobWriter<S> target) throws IOException {
+    public static <S extends MessageSchema<S>> int writeCapturedValuesToDataOutput(TrieParserReader reader, DataOutputBlobWriter<S> target, boolean writeIndex) throws IOException {
     	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //NOTE: this method is used by the HTTP1xRouterStage class to write all the captured fields which is key to GreenLightning
     	//      ensure that any changes here are matched by the methods consuming this DataOutput inside GreenLightnining.
@@ -1334,7 +1334,7 @@ public class TrieParserReader {
                 } else {
                 	int position = 0;
                 	
-                	System.out.println("meta "+localCapturedValues[i+3]);
+                	//System.out.println("meta "+localCapturedValues[i+3]);
                 	
                 	//Jump ahead to combine the dot part of the number if it is found.
                 	if (i+4<=limit //if there is following data
@@ -1368,17 +1368,17 @@ public class TrieParserReader {
                 		position = -dlen;  
                 	
                 		target.writePackedLong(value);
-                	    if (!DataOutputBlobWriter.tryWriteIntEndData(target, writePosition)) {
+                	    if (writeIndex && !DataOutputBlobWriter.tryWriteIntBackData(target, writePosition)) {
                          	throw new IOException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+target.getPipe());
                         }                         
                 	    //write second part and it gets its own entry.
                 		writePosition = target.position();                		
                 		target.writeByte(position);
                 		
-                		System.out.println("wrote "+value+" "+position);
+                		//System.out.println("wrote "+value+" "+position);
                 		
                 	} else {
-                		System.out.println("wrote "+value);
+                		//System.out.println("wrote "+value);
                 		target.writePackedLong(value);
                 		//integers and rational only use normal long values, no position needed.
                 	}
@@ -1387,14 +1387,13 @@ public class TrieParserReader {
                 }
             }    
             
-            if (!DataOutputBlobWriter.tryWriteIntEndData(target, writePosition)) {
+            if (writeIndex && !DataOutputBlobWriter.tryWriteIntBackData(target, writePosition)) {
             	throw new IOException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+target.getPipe());
             }
             
             
         }        
-        DataOutputBlobWriter.writeEndData(target);
-        
+
         return totalBytes;
     }
 
@@ -1472,33 +1471,34 @@ public class TrieParserReader {
         return totalBytes;
     }
     
-    //this is only for single fields that appear out of order and need to be put back in order.
-    public static void writeCapturedValuesToPipe(TrieParserReader reader, Pipe<?> target, long baseSlabPosition) {
-        int limit = reader.capturedPos;
-        int[] localCapturedValues = reader.capturedValues;
-
-        int i = 0;
-        while (i < limit) {
-            
-            int type = localCapturedValues[i++];
-            
-            if (isCapturedByteData(type)) {
-                
-                int p = localCapturedValues[i++];
-                int l = localCapturedValues[i++];
-                int m = localCapturedValues[i++];   
-                Pipe.setByteArrayWithMask(target, m, l, reader.capturedBlobArray, p, baseSlabPosition);
-                
-            } else {
-                Pipe.setIntValue(type, target, baseSlabPosition++);
-                Pipe.setIntValue(localCapturedValues[i++], target, baseSlabPosition++);
-                Pipe.setIntValue(localCapturedValues[i++], target, baseSlabPosition++);
-                Pipe.setIntValue(localCapturedValues[i++], target, baseSlabPosition++);
-            }
-            
-        }
-        
-    }
+    //This metod cant work because we need a fixed schema on the pipe, TODO: delete this once we know everything works..
+//    //this is only for single fields that appear out of order and need to be put back in order.
+//    public static void writeCapturedValuesToPipe(TrieParserReader reader, Pipe<?> target, long baseSlabPosition) {
+//        int limit = reader.capturedPos;
+//        int[] localCapturedValues = reader.capturedValues;
+//
+//        int i = 0;
+//        while (i < limit) {
+//            
+//            int type = localCapturedValues[i++];
+//            
+//            if (isCapturedByteData(type)) {
+//                
+//                int p = localCapturedValues[i++];
+//                int l = localCapturedValues[i++];
+//                int m = localCapturedValues[i++];   
+//                Pipe.setByteArrayWithMask(target, m, l, reader.capturedBlobArray, p, baseSlabPosition);
+//                
+//            } else {
+//                Pipe.setIntValue(type, target, baseSlabPosition++);
+//                Pipe.setIntValue(localCapturedValues[i++], target, baseSlabPosition++);
+//                Pipe.setIntValue(localCapturedValues[i++], target, baseSlabPosition++);
+//                Pipe.setIntValue(localCapturedValues[i++], target, baseSlabPosition++);
+//            }
+//            
+//        }
+//        
+//    }
 
     
     

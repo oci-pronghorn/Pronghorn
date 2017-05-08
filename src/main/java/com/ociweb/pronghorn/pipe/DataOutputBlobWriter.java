@@ -4,7 +4,6 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.util.Arrays;
 
 import com.ociweb.pronghorn.util.ByteConsumer;
 
@@ -29,6 +28,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     }
     
     public void openField() {
+    	
         openField(this);
         
     }
@@ -46,7 +46,11 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     	return activePosition-startPosition;
     }
     
-    public static <T extends MessageSchema<T>> boolean tryWriteIntEndData(DataOutputBlobWriter<T> writer, int value) {	
+    public int backPosition() {
+    	return backPosition;
+    }
+    
+    public static <T extends MessageSchema<T>> boolean tryWriteIntBackData(DataOutputBlobWriter<T> writer, int value) {	
     	int temp = writer.backPosition-4;
     	if (temp >= writer.activePosition) {
     		writer.backPosition = temp;
@@ -57,7 +61,27 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     	}
     }
     
-    public static <T extends MessageSchema<T>> void writeEndData(DataOutputBlobWriter<T> writer) {
+    public static <T extends MessageSchema<T>> boolean tryClearIntBackData(DataOutputBlobWriter<T> writer, int intCount) {	
+    	int bytes = intCount*4;
+    	int temp = writer.backPosition-bytes;
+    	if (temp >= writer.activePosition) {
+    		int p = writer.activePosition;
+    		while (--p >= temp) {//clear all
+    			writer.byteBuffer[writer.byteMask & p] = 0;
+    		}    		
+    		writer.backPosition = temp;
+    		return true;
+    	} else {
+    		return false;
+    	}    	
+    }
+    
+    public static <T extends MessageSchema<T>> void setIntBackData(DataOutputBlobWriter<T> writer, int value, int pos) {
+    	assert(pos>=0) : "Can not write beyond the end.";
+    	write32(writer.byteBuffer, writer.byteMask, writer.lastPosition-(4*pos), value);       
+    }
+       
+    public static <T extends MessageSchema<T>> void commitBackData(DataOutputBlobWriter<T> writer) {
     	DataOutputBlobWriter.write(writer, 
     			                   writer.byteBuffer, 
     			                   writer.backPosition, 
