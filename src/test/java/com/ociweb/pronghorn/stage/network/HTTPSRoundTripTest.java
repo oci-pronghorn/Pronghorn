@@ -123,8 +123,8 @@ public class HTTPSRoundTripTest {
 
 	}
 
-	//@Ignore
-    @Test
+	@Ignore
+    //@Test
 	public void simpleHTTPTest() {
     	boolean isLarge = false;		
     	
@@ -140,8 +140,8 @@ public class HTTPSRoundTripTest {
 
     }
     
-	//@Ignore
-    @Test
+	@Ignore
+    //@Test
 	public void simpleHTTPSTest() {
     	boolean isLarge = false;		
     	
@@ -341,7 +341,7 @@ public class HTTPSRoundTripTest {
 		    Pipe<ServerResponseSchema>[][] staticFileOutputs;
 		    
 			@Override
-			public long addModule(int a, 
+			public IntHashTable addModule(int a, 
 					GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs,
 					HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> spec) {
 								
@@ -375,7 +375,7 @@ public class HTTPSRoundTripTest {
 				}
 				
 				//return needed headers
-				return 0;
+				return IntHashTable.EMPTY;
 			}
 		
 			@Override

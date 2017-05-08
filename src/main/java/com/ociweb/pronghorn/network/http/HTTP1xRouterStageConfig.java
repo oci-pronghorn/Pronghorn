@@ -5,8 +5,8 @@ import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
+import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.TrieParser;
-import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
                                     R extends Enum<R> & HTTPRevision,
@@ -19,7 +19,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public final TrieParser revisionMap;
     public final TrieParser headerMap;
     
-    private long[] requestHeaderMask = new long[4];
+    private IntHashTable[] requestHeaderMask = new IntHashTable[4];
     
     private final int defaultLength = 4;
     private byte[][] requestExtractions = new byte[defaultLength][];
@@ -30,6 +30,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public final int END_OF_HEADER_ID;
     public final int UNKNOWN_HEADER_ID;
 	
+    private final URLTemplateParser templateParser = new URLTemplateParser();
+
 	public HTTP1xRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec) {
 		this.httpSpec = httpSpec;
 
@@ -88,10 +90,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		System.err.println(actual);
 		
 	}
-	
-	URLTemplateParser templateParser = new URLTemplateParser();
 
-	public int registerRoute(CharSequence route, long headers) {
+   public int registerRoute(CharSequence route, IntHashTable headers) {
 		
 		boolean trustText = false; 
 		TrieParser routeExtractionParser = templateParser.addRoute(route, routesCount, urlMap, trustText);
@@ -126,30 +126,34 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 
 
-	private void storeRequestedHeaders(long headers) {
+	private void storeRequestedHeaders(IntHashTable headers) {
+		
 		if (routesCount>=requestHeaderMask.length) {
 			int i = requestHeaderMask.length;
-			long[] newArray = new long[i*2]; //only grows on startup as needed
+			IntHashTable[] newArray = new IntHashTable[i*2]; //only grows on startup as needed
 			System.arraycopy(requestHeaderMask, 0, newArray, 0, i);
 			requestHeaderMask = newArray;
-			
-			System.err.println("growed the longs to "+newArray.length);
 		}
 		requestHeaderMask[routesCount]=headers;
 	}
 	
 	public int routesCount() {
 		return routesCount;
-	}
-	
+	}	
 
 	public TrieParser extractionParser(int idx) {
 		return requestExtractionParsers[idx];
 	}
-	
-	public long headerMask(int idx) {
-		return requestHeaderMask[idx];
+
+	public int headerCount(int routeId) {
+		return IntHashTable.count(headerToPositionTable(routeId));
 	}
+
+	public IntHashTable headerToPositionTable(int routeId) {
+		return requestHeaderMask[routeId];
+	}
+
+
 	
 	
 	

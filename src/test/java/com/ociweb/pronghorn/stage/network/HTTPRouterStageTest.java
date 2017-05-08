@@ -18,6 +18,7 @@ import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -48,7 +49,7 @@ public class HTTPRouterStageTest {
     	ServerCoordinator coordinator = new ServerCoordinator(false, "127.0.0.1", 8080, 5 ,5 ,1);
     	
     	for(CharSequence route: paths) {
-    		routerConfig.registerRoute(route, 0); //no headers
+    		routerConfig.registerRoute(route, IntHashTable.EMPTY); //no headers
     	}
     	
     	

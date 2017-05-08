@@ -563,9 +563,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                  
         int meta = Pipe.takeRingByteMetaData(input);
         int bytesLength    = Pipe.takeRingByteLen(input);
-        
-        assert(0 != bytesLength) : "path must be longer than 0 length";
-        
+
         byte[] bytesBackingArray = Pipe.byteBackingArray(meta, input);
         int bytesPosition = Pipe.bytePosition(meta, input, bytesLength);
         int bytesMask = Pipe.blobMask(input);

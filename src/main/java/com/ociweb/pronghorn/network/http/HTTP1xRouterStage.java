@@ -14,19 +14,16 @@ import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
-import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
-import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.Pipe.PaddedLong;
+import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
@@ -57,10 +54,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private final Pipe<HTTPRequestSchema>[] outputs;
     private int   waitForOutputOn = -1;
 
-    private DataOutputBlobWriter<HTTPRequestSchema>[] blobWriter;
- 
-    private byte[][] headerOffsets;
-    private int[][] headerBlankBases;
     private long[] inputSlabPos;
     private int[] sequences;
     private int[] sequencesSent;
@@ -173,27 +166,21 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         final int sizeOfVarField = 2;
         
         int h = config.routesCount();
-        headerOffsets = new byte[h][];
-        headerBlankBases = new int[h][];
         
         while (--h>=0) { 
             byte[] offsets = new byte[config.httpSpec.headerCount+1];
             byte runningOffset = 0;
             
-            long mask = config.headerMask(h);
-            int fieldCount = 0;
+            IntHashTable table = config.headerToPositionTable(h);
+            
             for(int ordinalValue = 0; ordinalValue<=config.httpSpec.headerCount; ordinalValue++) {
-                //only set fields for the bits which are on, and do in this order.
-                if (0!=(1&(mask>>ordinalValue))) {
+                //only set fields for those which are on, and do in this order.
+                if (IntHashTable.hasItem(table, ordinalValue)) {
                     offsets[ordinalValue] = runningOffset;
                     runningOffset += sizeOfVarField;
-                    fieldCount++;
                 }
             }
-            
-            headerOffsets[h] = offsets;            
-            headerBlankBases[h] = buildEmptyBlockOfVarDatas(fieldCount);
-            
+               
         }
 
         ///
@@ -202,10 +189,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         trieReader = new TrieParserReader(16);//max fields we support capturing.
         
         int w = outputs.length;
-        blobWriter = new DataOutputBlobWriter[w];
-        while (--w>=0) {
-            blobWriter[w] = new DataOutputBlobWriter<HTTPRequestSchema>(outputs[w]);
-        }
         
         totalShortestRequest = 0;//count bytes for the shortest known request, this opmization helps prevent parse attempts when its clear that there is not enough data.
 
@@ -486,6 +469,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
  
 private int parseHTTP(TrieParserReader trieReader, final long channel, final int idx, Pipe<NetPayloadSchema> selectedInput) {    
     
+	boolean writeIndex = true; //reqired for direct field access, can be skipped for sequential field access.
+	
 //	boolean showHeader = true;
 //    if (showHeader) {
 //    	System.out.println("///////////////// ROUTE HEADER "+channel+"///////////////////");
@@ -599,22 +584,21 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
        // System.out.println("wrote ever increasing squence from router of "+sequenceNo);//TODO: should this be per connection instead!!
         
         Pipe.addIntValue(sequences[idx], outputPipe); //sequence                    // Write 1   4
-        Pipe.addIntValue(verbId, outputPipe);
-		DataOutputBlobWriter<HTTPRequestSchema> writer = blobWriter[routeId];   // Verb                           // Write 1   5
-        
-                                                                                                                 //write 2   7
+        Pipe.addIntValue(verbId, outputPipe);// Verb                           // Write 1   5
+		DataOutputBlobWriter<HTTPRequestSchema> writer = Pipe.outputStream(outputPipe);
+		                                                                                                                          //write 2   7
         DataOutputBlobWriter.openField(writer); //the beginning of the payload always starts with the URL arguments
-		try {
-		    TrieParserReader.writeCapturedValuesToDataOutput(trieReader,writer);
+		
+        try {
+			
+		    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, writeIndex);
+	        
 		} catch (IOException e) {        
 		    //this exception shoud nevery happen, will not throw writing to field not stream
 			throw new RuntimeException(e); 
 		}
 		
-		////////TODO: rethink this as we test with headers...
-		DataOutputBlobWriter.closeLowLevelField(writer); //TODO: this should NOT be closed yet because the requested headers will be added after this point.  
-       
-        
+
     	tempLen = trieReader.sourceLen;
     	tempPos = trieReader.sourcePos;
         int httpRevisionId = (int)TrieParserReader.parseNext(trieReader, config.revisionMap);  //  GET /hello/x?x=3 HTTP/1.1 
@@ -647,7 +631,17 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         ////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////also write the requested headers out to the payload
         /////////////////////////////////////////////////////////////////////////
-        int requestContext = parseHeaderFields(routeId, outputPipe, httpRevisionId, false);  // Write 2   10 //if header is presen
+        int requestContext = parseHeaderFields(routeId, writer, httpRevisionId, false, writeIndex);  // Write 2   10 //if header is presen
+       
+        
+		////////TODO: URGENT: re-think this as we still need to add the post payload??
+        //      TODO: what about needing more data? we must cancel the write somehow?  
+		DataOutputBlobWriter.commitBackData(writer);
+		DataOutputBlobWriter.closeLowLevelField(writer);
+       
+        
+        
+        
         if (ServerCoordinator.INCOMPLETE_RESPONSE_MASK == requestContext) {   
             //try again later, not complete.
             Pipe.resetHead(outputPipe);
@@ -880,18 +874,14 @@ private boolean hasNoActiveChannel(int idx) {
      * 
      */
 
-    private int parseHeaderFields(final int routeId, Pipe<HTTPRequestSchema> staticRequestPipe, int revisionId, boolean debugMode) {
-        long headerMask = config.headerMask(routeId);
+    private int parseHeaderFields(final int routeId, DataOutputBlobWriter<HTTPRequestSchema> writer, int revisionId, boolean debugMode, boolean writeIndex) {
+               
+        final int backBase = writer.backPosition()-1; //subtract 1 so we can use 0 offset.
+        DataOutputBlobWriter.tryClearIntBackData(writer, config.headerCount(routeId));        
+        final IntHashTable headerToPositionTable = config.headerToPositionTable(routeId);
         
         int requestContext = keepAliveOrNotContext(revisionId);
-                      
-        
-        //this call moves the workspace head to after this new block but returns the postion at its front.
-        long basePos = addZeroLengthVarFields(staticRequestPipe, headerBlankBases[routeId]);
-        
-        byte[] offsets = headerOffsets[routeId];
-        
-        
+
         //NOTE:
         //   some commands can redirect, eg upgrade
         //   we are already writing to the output pipe so we can not make a change.
@@ -904,24 +894,15 @@ private boolean hasNoActiveChannel(int idx) {
         int iteration = 0;
         int remainingLen;
         while ((remainingLen=TrieParserReader.parseHasContentLength(trieReader))>0){
-        
-        	int alen=trieReader.sourceLen;
-        	int apos=trieReader.sourcePos;
 
         	int headerId = (int)TrieParserReader.parseNext(trieReader, config.headerMap);
         	    
             if (config.END_OF_HEADER_ID == headerId) {
-            	
-            //	System.err.println("end of header with "+iteration+" FOUND DOUBLE RETURNE AT THE POSITION "+trieReader.sourcePos);
-            	
+   
                 if (iteration==0) {
                 	//needs more data 
-                	return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
-                	//      throw new RuntimeException("should not have found end of header");
-                } else {              
-                	
-                     assignMissingHeadersNull(staticRequestPipe, headerMask, basePos, offsets);
-                }             
+                	return ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+                }   
                // logger.info("end of request found");
                 //THIS IS THE ONLY POINT WHERE WE EXIT THIS MTHOD WITH A COMPLETE PARSE OF THE HEADER, ALL OTHERS MUST RETURN INCOMPLETE
                 return requestContext;                
@@ -955,27 +936,32 @@ private boolean hasNoActiveChannel(int idx) {
             } else if (headerIdConnection == headerId) {            	
                 requestContext = applyKeepAliveOrCloseToContext(requestContext);                
             }
+                        
             
-
-            
-            int maskId = 1<<headerId;
-            
-            if (0 == (maskId&headerMask) ) {
+            if (!IntHashTable.hasItem(headerToPositionTable, headerId) ) {
                 //skip this data since the app module can not make use of it
                 //this is the normal most frequent case                    
             } else {
-            	
-            	if (true) { 
-            		throw new UnsupportedOperationException("only simple rest calls can be made, non should require the header values.");
-            	}
-            	
-                //clear this bit to mark it as seen
-                headerMask = headerMask^maskId;
 
-                //copy the caputred bytes to ...
-                //TODO: must write these into a var length field with leading id for each 
-                TrieParserReader.writeCapturedValuesToPipe(trieReader, staticRequestPipe, basePos+offsets[headerId]);
-           
+            	//this value is specific to this Route and the headers requested.
+            	int headerPos = IntHashTable.getItem(headerToPositionTable, headerId);                                  
+            	
+                try {
+                	
+                	//Id for the header
+                	writer.writeShort(headerId);
+                	//write values and write index to end of block??
+                	int writePosition = writer.position();
+					TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, false);
+					if (writeIndex) {
+						//we did not write above so write here.
+						DataOutputBlobWriter.setIntBackData(writer, writePosition, backBase-headerPos);
+					}
+					
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+
             }      
          
             iteration++;
@@ -1034,38 +1020,7 @@ private boolean hasNoActiveChannel(int idx) {
 	}
 
 
-    private void assignMissingHeadersNull(Pipe<HTTPRequestSchema> staticRequestPipe, long headerMask, long basePos,
-            byte[] offsets) {
-        //write out null length for any missing fields
-         int ord = 0;
-         while (0!=headerMask) {                         
-             if (0!=(1&headerMask)) {
-                 System.err.println("target header missing, now filling with null");
-                Pipe.setBytePosAndLen(Pipe.slab(staticRequestPipe), staticRequestPipe.mask, basePos+offsets[ord], Pipe.getBlobWorkingHeadPosition(staticRequestPipe), -1, Pipe.bytesWriteBase(staticRequestPipe));   
-             }       
-             ord++;        
-         }
-    }
-
-    
-    public static int[] buildEmptyBlockOfVarDatas(int fieldCount) {
-        int[] result = new int[fieldCount*2];
-        int i = fieldCount;
-        int c = 0;
-        while (--i >= 0) {
-            result[c++] = 0;  //position
-            result[c++] = -1; //null value length
-        }       
-        return result;
-    }
-    
-    public static long addZeroLengthVarFields(Pipe targetOutput, int[] source) {
-        PaddedLong workingHeadPos = Pipe.getWorkingHeadPositionObject(targetOutput);     
-        Pipe.copyIntsFromToRing(source, 0, Integer.MAX_VALUE, Pipe.slab(targetOutput), (int)PaddedLong.get(workingHeadPos), Pipe.slabMask(targetOutput), source.length);
-        long base = workingHeadPos.value;
-        PaddedLong.add(workingHeadPos, source.length);
-        return base;
-    }   
+ 
 
     
 }
