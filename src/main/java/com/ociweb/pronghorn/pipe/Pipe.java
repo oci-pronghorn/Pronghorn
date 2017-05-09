@@ -3246,6 +3246,15 @@ public class Pipe<T extends MessageSchema<T>> {
         return roomToLowLevelWrite(pipe, pipe.llRead.llwConfirmedPosition+size);
     }
     
+    public static <S extends MessageSchema<S>> void presumeRoomForWrite(Pipe<S> pipe) {
+    	if (!hasRoomForWrite(pipe)) {
+    		log.warn("Assumed available space but not found, make pipe larger or write less {}",pipe);    		
+    		while (!hasRoomForWrite(pipe)) {
+    			spinWork(pipe);
+    		}
+    	}
+    }
+    
     public static <S extends MessageSchema<S>> boolean hasRoomForWrite(Pipe<S> pipe) {
         assert(null != pipe.slabRing) : "Pipe must be init before use";
         return roomToLowLevelWrite(pipe, pipe.llRead.llwConfirmedPosition+FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe)));

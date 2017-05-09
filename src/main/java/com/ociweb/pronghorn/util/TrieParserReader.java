@@ -1235,38 +1235,38 @@ public class TrieParserReader {
 
     }
     
-    public static int writeCapturedValuesToPipe(TrieParserReader reader, Pipe<?> target) {
-        int limit = reader.capturedPos;
-        int[] localCapturedValues = reader.capturedValues;
-        
-        
-        int totalBytes = 0;
-        int i = 0;
-        while (i < limit) {
-            
-            int type = localCapturedValues[i++];
-            
-            if (isCapturedByteData(type)) {
-                
-                int p = localCapturedValues[i++];
-                int l = localCapturedValues[i++];
-                int m = localCapturedValues[i++];   
-                
-                
-                totalBytes += l;
-                Pipe.addByteArrayWithMask(target, m, l, reader.capturedBlobArray, p);
-                
-            } else {
-                
-                Pipe.addIntValue(type, target);
-                Pipe.addIntValue(localCapturedValues[i++], target);
-                Pipe.addIntValue(localCapturedValues[i++], target);
-                Pipe.addIntValue(localCapturedValues[i++], target);
-                
-            }            
-        }
-        return totalBytes;
-    }
+//    public static int writeCapturedValuesToPipe(TrieParserReader reader, Pipe<?> target) {
+//        int limit = reader.capturedPos;
+//        int[] localCapturedValues = reader.capturedValues;
+//        
+//        
+//        int totalBytes = 0;
+//        int i = 0;
+//        while (i < limit) {
+//            
+//            int type = localCapturedValues[i++];
+//            
+//            if (isCapturedByteData(type)) {
+//                
+//                int p = localCapturedValues[i++];
+//                int l = localCapturedValues[i++];
+//                int m = localCapturedValues[i++];   
+//                
+//                
+//                totalBytes += l;
+//                Pipe.addByteArrayWithMask(target, m, l, reader.capturedBlobArray, p);
+//                
+//            } else {
+//                
+//                Pipe.addIntValue(type, target);
+//                Pipe.addIntValue(localCapturedValues[i++], target);
+//                Pipe.addIntValue(localCapturedValues[i++], target);
+//                Pipe.addIntValue(localCapturedValues[i++], target);
+//                
+//            }            
+//        }
+//        return totalBytes;
+//    }
     
     public static int writeCapturedUTF8ToPipe(TrieParserReader reader, Pipe<?> target, int idx, int loc) {
     	int pos = idx*4;
