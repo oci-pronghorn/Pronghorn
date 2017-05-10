@@ -7,7 +7,7 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.http.HTTPErrorUtil;
+import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
@@ -481,22 +481,22 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			if (confirmExpectedRequests) {
 				Appendables.appendUTF8(accumulators[idx], pipe.blobRing, pos, len, pipe.blobMask);						    				
 				
-				while (accumulators[idx].length() >= HTTPErrorUtil.expectedOK.length()) {
+				while (accumulators[idx].length() >= HTTPUtil.expectedOK.length()) {
 					
-				   int c = startsWith(accumulators[idx],HTTPErrorUtil.expectedOK); 
+				   int c = startsWith(accumulators[idx],HTTPUtil.expectedOK); 
 				   if (c>0) {
 					   
-					   String remaining = accumulators[idx].substring(c*HTTPErrorUtil.expectedOK.length());
+					   String remaining = accumulators[idx].substring(c*HTTPUtil.expectedOK.length());
 					   accumulators[idx].setLength(0);
 					   accumulators[idx].append(remaining);							    					   
 					   
 					   
 				   } else {
-					   logger.info("A"+Arrays.toString(HTTPErrorUtil.expectedOK.getBytes()));
-					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, HTTPErrorUtil.expectedOK.length()).toString().getBytes()   ));
+					   logger.info("A"+Arrays.toString(HTTPUtil.expectedOK.getBytes()));
+					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, HTTPUtil.expectedOK.length()).toString().getBytes()   ));
 					   
-					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos, HTTPErrorUtil.expectedOK.length());
-					   System.out.println(accumulators[idx].subSequence(0, HTTPErrorUtil.expectedOK.length()).toString());
+					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos, HTTPUtil.expectedOK.length());
+					   System.out.println(accumulators[idx].subSequence(0, HTTPUtil.expectedOK.length()).toString());
 					   System.exit(-1);
 					   	
 					   

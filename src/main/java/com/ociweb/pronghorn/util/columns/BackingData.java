@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.columns;
+package com.ociweb.pronghorn.util.columns;
 
 import java.io.DataInput;
 import java.io.DataOutput;

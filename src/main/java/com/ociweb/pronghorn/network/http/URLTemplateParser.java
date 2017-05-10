@@ -49,18 +49,19 @@ public class URLTemplateParser {
 	 * @param route
 	 * @param routerMap
 	 */
-	public TrieParser addRoute(CharSequence route, final long routeValue, TrieParser routerMap, boolean trustText) {
+	public RouteDef addRoute(CharSequence route, final long routeValue, TrieParser routerMap, boolean trustText) {
 
-		final TrieParser runtimeParser = new TrieParser(64, 2, trustText, true);
+		final RouteDef routeDef = new RouteDef(trustText);
 		
 		converter.convert(route,  
-				        (reader, stream) -> {convertEncoding(runtimeParser, reader, templateParser, stream);},
+				        (reader, stream) -> {routeDef.setIndexCount(convertEncoding(routeDef.getRuntimeParser(), reader, templateParser, stream));},
 				        (pipe) -> {routerMap.setValue(pipe,routeValue);} );
 		
-		return runtimeParser;
+		return routeDef;
 	}
 
-	private static void convertEncoding(TrieParser runtimeParser, TrieParserReader templateParserReader, TrieParser templateParser, DataOutputBlobWriter<RawDataSchema> outputStream) {
+	
+	private static int convertEncoding(TrieParser runtimeParser, TrieParserReader templateParserReader, TrieParser templateParser, DataOutputBlobWriter<RawDataSchema> outputStream) {
 		
 		int fieldIndex = 1; //fields must start with 1
 		int lastValue = 0;
@@ -110,7 +111,7 @@ public class URLTemplateParser {
 		if (lastValue!=' ') {
 			outputStream.writeByte(' '); //ensure we always end with ' ' space
 		}
-		
+		return fieldIndex-1;
 	}
 
 

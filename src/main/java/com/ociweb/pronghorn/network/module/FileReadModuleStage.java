@@ -19,10 +19,11 @@ import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
+import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
 import com.ociweb.pronghorn.network.http.AbstractRestStage;
-import com.ociweb.pronghorn.network.http.HTTPErrorUtil;
+import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -177,7 +178,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     private final String folderRootString;
     private final File   folderRootFile;
    
-    private int defaultPathId;
+    private int defaultPathId = -1;
     private String defaultPathFile;
     private byte[] defaultPathBytes;
     
@@ -426,6 +427,9 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                     byte[] asBytes = pathString.getBytes();
                     
                     if (pathString.equals(defaultPathFile)) {
+                
+                        //logger.trace("default path id {}",newPathId);
+                        
                     	defaultPathId = newPathId;
                     	defaultPathBytes = Arrays.copyOfRange(asBytes, rootSize, asBytes.length);
                     }
@@ -544,12 +548,10 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     }
 
     private void beginReadingNextRequest(Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) {
-        //channel
-        //sequence
-        //verb  
-        //payload
-        //revision
-        //context
+//        public static final int MSG_RESTREQUEST_300 = 0x00000000;
+    	
+//        public static final int MSG_RESTREQUEST_300_FIELD_CHANNELID_21 = 0x00800001;
+//        public static final int MSG_RESTREQUEST_300_FIELD_SEQUENCE_26 = 0x00400003;
         
         activeChannelHigh = Pipe.takeInt(input);
         activeChannelLow  = Pipe.takeInt(input); 
@@ -558,9 +560,13 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         
 //        logger.info("file request for channel {} {} seq {} ", activeChannelHigh, activeChannelLow, activeSequenceId);
 
+
+//        public static final int MSG_RESTREQUEST_300_FIELD_VERB_23 = 0x00000004;
         int verb = Pipe.takeInt(input);
         
+        
                  
+//        public static final int MSG_RESTREQUEST_300_FIELD_PARAMS_32 = 0x01c00005;
         int meta = Pipe.takeRingByteMetaData(input);
         int bytesLength    = Pipe.takeRingByteLen(input);
 
@@ -572,18 +578,20 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         //logger.info("file name: {}", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition+2, bytesLength-2, bytesMask));
         
         
+//        public static final int MSG_RESTREQUEST_300_FIELD_REVISION_24 = 0x00000007;
         ///////////
         //NOTE we have added 2 because that is how it is sent from the routing stage! with a leading short for length
         ////////////
         int httpRevision = Pipe.takeInt(input);
         
-        
+        assert(httpRevision <= HTTPRevisionDefaults.values().length) : "revision is too large found "+httpRevision;
         
         int pathId = selectActiveFileChannel(pathCacheReader, data.getPathCache(), bytesLength-2, bytesBackingArray, bytesPosition+2, bytesMask);
                 
         //Appendables.appendUTF8(System.err, bytesBackingArray, bytesPosition+2, bytesLength-2, bytesMask);
         //System.err.println("new path "+pathId);
         
+//        public static final int MSG_RESTREQUEST_300_FIELD_REQUESTCONTEXT_25 = 0x00000008;
         int context = Pipe.takeInt(input);
         
         if (pathId<0) {
@@ -636,10 +644,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                 findAgainFileChannel(pathId);
             }
         } else {  
-        	
-        	
         	        	
-        	
         	logger.info("requested file {} not found", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString());
         }
         return pathId;
@@ -651,7 +656,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         //we lost our file channel and need to request a new one.
         //////////////
         try {
-        	
+        	assert( data.getPaths().length > 0);
         	assert(	data.getPaths()[pathId].toFile().isFile() );
         	assert(	data.getPaths()[pathId].toFile().exists() );
         	        			
@@ -758,7 +763,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         //Informational 1XX, Successful 2XX, Redirection 3XX, Client Error 4XX and Server Error 5XX.
         int errorStatus = null==e? 400:500;
         
-        HTTPErrorUtil.publishError(requestContext, sequence, errorStatus, output, activeChannelHigh, activeChannelLow, httpSpec,
+        HTTPUtil.publishError(requestContext, sequence, errorStatus, output, activeChannelHigh, activeChannelLow, httpSpec,
                 httpRevision, data.getType()[pathId]);
         
         Pipe.confirmLowLevelRead(input, activeReadMessageSize);
@@ -767,7 +772,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 
     private void publishErrorHeader(int httpRevision, int requestContext, int sequence, int code, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) {
         logger.warn("published error "+code);
-        HTTPErrorUtil.publishError(requestContext, sequence, code, output, activeChannelHigh, activeChannelLow, httpSpec, httpRevision, -1);
+        HTTPUtil.publishError(requestContext, sequence, code, output, activeChannelHigh, activeChannelLow, httpSpec,
+        		                httpRevision, -1);
         
         Pipe.confirmLowLevelRead(input, activeReadMessageSize);
         Pipe.releaseReadLock(input);

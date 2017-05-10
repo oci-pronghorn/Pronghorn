@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.columns;
+package com.ociweb.pronghorn.util.columns;
 
 public class TypeDef<
         L extends Enum<L> & FieldsOf64Bits,

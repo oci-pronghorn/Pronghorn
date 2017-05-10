@@ -13,6 +13,12 @@ import java.util.EnumSet;
 
 import org.junit.Test;
 
+import com.ociweb.pronghorn.util.columns.BackingData;
+import com.ociweb.pronghorn.util.columns.FieldsOf16Bits;
+import com.ociweb.pronghorn.util.columns.FieldsOf32Bits;
+import com.ociweb.pronghorn.util.columns.FieldsOf64Bits;
+import com.ociweb.pronghorn.util.columns.FieldsOf8Bits;
+
 public class BackingDataTest {
 
     enum TestByteFields implements FieldsOf8Bits {

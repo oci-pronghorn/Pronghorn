@@ -8,12 +8,20 @@ import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.util.TrieParser;
 
-public class HTTPErrorUtil {
+public class HTTPUtil {
 
-	private static final Logger logger = LoggerFactory.getLogger(HTTPErrorUtil.class);
+	private static final Logger logger = LoggerFactory.getLogger(HTTPUtil.class);
     protected static final byte[] ZERO = new byte[] {'0'};
 	
+    private final static int CHUNK_SIZE = 1;
+    private final static int CHUNK_SIZE_WITH_EXTENSION = 2;
+    
+	static final TrieParser chunkMap = buildChunkMap();
+    
+    
+    
 	public static void publishError(int sequence, int status,
             Pipe<ServerResponseSchema> localOutput, long channelId, 
             HTTPSpecification<?,?,?,?> httpSpec, 
@@ -29,6 +37,13 @@ public class HTTPErrorUtil {
 		
 	}
     
+	private static TrieParser buildChunkMap() {
+		  TrieParser chunkMap = new TrieParser(128,true);
+	      chunkMap.setUTF8Value("%U\r\n", CHUNK_SIZE); //hex parser of U% does not require leading 0x
+	      chunkMap.setUTF8Value("%U;%b\r\n", CHUNK_SIZE_WITH_EXTENSION);
+	      return chunkMap;
+	}
+
 	public static void publishError(int requestContext, int sequence, int status,
 	                            Pipe<ServerResponseSchema> localOutput, int channelIdHigh, 
 	                            int channelIdLow, HTTPSpecification<?,?,?,?> httpSpec, 
@@ -42,7 +57,8 @@ public class HTTPErrorUtil {
 	    
 	    DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.outputStream(localOutput);        
 	    writer.openField();
-	    AbstractRestStage.writeHeader(httpSpec.revisions[revision].getBytes(), status, requestContext, null, contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), 
+	    byte[] revBytes = httpSpec.revisions[revision].getBytes();
+		AbstractRestStage.writeHeader(revBytes, status, requestContext, null, contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), 
 	    		    ZERO, 0, 1, 1, false, null, 0,0,0,
 	    		    writer, 1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
 	    writer.closeLowLevelField();          

@@ -16,7 +16,7 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.http.HTTPErrorUtil;
+import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -523,22 +523,22 @@ public class ServerSocketReaderStage extends PronghornStage {
 			if (confirmExpectedRequests) {
 				Appendables.appendUTF8(accumulators[idx], pipe.blobRing, pos, len, pipe.blobMask);						    				
 				
-				while (accumulators[idx].length() >= HTTPErrorUtil.expectedGet.length()) {
+				while (accumulators[idx].length() >= HTTPUtil.expectedGet.length()) {
 					
-				   int c = startsWith(accumulators[idx],HTTPErrorUtil.expectedGet); 
+				   int c = startsWith(accumulators[idx],HTTPUtil.expectedGet); 
 				   if (c>0) {
 					   
-					   String remaining = accumulators[idx].substring(c*HTTPErrorUtil.expectedGet.length());
+					   String remaining = accumulators[idx].substring(c*HTTPUtil.expectedGet.length());
 					   accumulators[idx].setLength(0);
 					   accumulators[idx].append(remaining);							    					   
 					   
 					   
 				   } else {
-					   logger.info("A"+Arrays.toString(HTTPErrorUtil.expectedGet.getBytes()));
-					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, HTTPErrorUtil.expectedGet.length()).toString().getBytes()   ));
+					   logger.info("A"+Arrays.toString(HTTPUtil.expectedGet.getBytes()));
+					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, HTTPUtil.expectedGet.length()).toString().getBytes()   ));
 					   
-					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos,HTTPErrorUtil.expectedGet.length());
-					   System.out.println(accumulators[idx].subSequence(0, HTTPErrorUtil.expectedGet.length()).toString());
+					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos,HTTPUtil.expectedGet.length());
+					   System.out.println(accumulators[idx].subSequence(0, HTTPUtil.expectedGet.length()).toString());
 					   System.exit(-1);
 					   	
 					   

@@ -84,10 +84,19 @@ public abstract class PronghornStage {
     	int result = 0;
     	int i = pipes.length;
     	while (--i>=0) {
-    		result = Math.max(result, pipes[i].maxAvgVarLen);
+    		result = Math.max(result, pipes[i].maxVarLen);
     	}
 		return result;
 	}
+    
+    protected static int minVarLength(Pipe<?>[][] pipes) {
+    	int result = Integer.MAX_VALUE;
+    	int i = pipes.length;
+    	while (--i>=0) {
+    		result = Math.max(result, minVarLength(pipes[i]));
+    	}
+    	return result;
+    }
 
     /**
      * @return the minimum variable length supported across all the pipes

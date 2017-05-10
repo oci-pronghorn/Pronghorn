@@ -6,8 +6,11 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.network.ServerCoordinator;
+import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
+import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
+import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
@@ -45,11 +48,12 @@ public class HTTPRouterStageTest {
     @Ignore
     public void rapidValidRequestTest() {
         
-    	HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(HTTPSpecification.defaultSpec()); 
+    	HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> defaultSpec = HTTPSpecification.defaultSpec();
+		HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(defaultSpec); 
     	ServerCoordinator coordinator = new ServerCoordinator(false, "127.0.0.1", 8080, 5 ,5 ,1);
     	
     	for(CharSequence route: paths) {
-    		routerConfig.registerRoute(route, IntHashTable.EMPTY); //no headers
+    		routerConfig.registerRoute(route, IntHashTable.EMPTY, defaultSpec.headerParser()); //no headers
     	}
     	
     	

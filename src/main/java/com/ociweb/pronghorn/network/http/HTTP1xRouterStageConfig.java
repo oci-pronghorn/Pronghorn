@@ -20,10 +20,11 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public final TrieParser headerMap;
     
     private IntHashTable[] requestHeaderMask = new IntHashTable[4];
+    private TrieParser[] requestHeaderParser = new TrieParser[4];
     
     private final int defaultLength = 4;
     private byte[][] requestExtractions = new byte[defaultLength][];
-    private TrieParser[] requestExtractionParsers = new TrieParser[defaultLength];
+    private RouteDef[] routeDefinitions = new RouteDef[defaultLength];
     
 	private int routesCount = 0;
     
@@ -91,28 +92,28 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		
 	}
 
-   public int registerRoute(CharSequence route, IntHashTable headers) {
+   public int registerRoute(CharSequence route, IntHashTable headers, TrieParser headerParser) {
 		
 		boolean trustText = false; 
-		TrieParser routeExtractionParser = templateParser.addRoute(route, routesCount, urlMap, trustText);
-
-		storeRequestExtractionParsers(routeExtractionParser);
+		storeRequestExtractionParsers(templateParser.addRoute(route, routesCount, urlMap, trustText));
 		storeRequestedExtractions(urlMap.lastSetValueExtractonPattern());
 
 		storeRequestedHeaders(headers);
+		storeRequestedHeaderParser(headerParser);
+		
 		int pipeIdx = routesCount;
 		routesCount++;
 		return pipeIdx;
 	}
 
-	private void storeRequestExtractionParsers(TrieParser routeExtractionParser) {
-		if (routesCount>=requestExtractionParsers.length) {
-			int i = requestExtractionParsers.length;
-			TrieParser[] newArray = new TrieParser[i*2]; //only grows on startup as needed
-			System.arraycopy(requestExtractionParsers, 0, newArray, 0, i);
-			requestExtractionParsers = newArray;
+	private void storeRequestExtractionParsers(RouteDef route) {
+		if (routesCount>=routeDefinitions.length) {
+			int i = routeDefinitions.length;
+			RouteDef[] newArray = new RouteDef[i*2]; //only grows on startup as needed
+			System.arraycopy(routeDefinitions, 0, newArray, 0, i);
+			routeDefinitions = newArray;
 		}
-		requestExtractionParsers[routesCount]=routeExtractionParser;		
+		routeDefinitions[routesCount]=route;	
 	}
 
 	private void storeRequestedExtractions(byte[] lastSetValueExtractonPattern) {
@@ -137,12 +138,23 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		requestHeaderMask[routesCount]=headers;
 	}
 	
+	private void storeRequestedHeaderParser(TrieParser headers) {
+		
+		if (routesCount>=requestHeaderParser.length) {
+			int i = requestHeaderParser.length;
+			TrieParser[] newArray = new TrieParser[i*2]; //only grows on startup as needed
+			System.arraycopy(requestHeaderMask, 0, newArray, 0, i);
+			requestHeaderParser = newArray;
+		}
+		requestHeaderParser[routesCount]=headers;
+	}
+	
 	public int routesCount() {
 		return routesCount;
 	}	
 
-	public TrieParser extractionParser(int idx) {
-		return requestExtractionParsers[idx];
+	public RouteDef extractionParser(int idx) {
+		return routeDefinitions[idx];
 	}
 
 	public int headerCount(int routeId) {
@@ -153,6 +165,9 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return requestHeaderMask[routeId];
 	}
 
+	public TrieParser headerTrieParser(int routeId) {
+		return requestHeaderParser[routeId];
+	};
 
 	
 	

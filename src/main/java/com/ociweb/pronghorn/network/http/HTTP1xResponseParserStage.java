@@ -51,13 +51,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	
 	private static final int MAX_VALID_STATUS = 2048;
 	private static final int MAX_VALID_HEADER = 32768; //much larger than most servers using 4-8K (pipe blob must be larger than this)
-	
-    private final static int CHUNK_SIZE = 1;
-    private final static int CHUNK_SIZE_WITH_EXTENSION = 2;
+
    	
 	private TrieParser revisionMap;
 	private TrieParser headerMap;
-	private TrieParser chunkMap;
 	private TrieParser typeMap;
 	
 	
@@ -103,9 +100,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			assert(	input[i].sizeOfBlobRing >=  MAX_VALID_HEADER*2 ); //size of blob ring is the largest a header can ever be.			
 		}
 		
-		assert(this.httpSpec.headerMatches(H_TRANSFER_ENCODING, HTTPHeaderKeyDefaults.TRANSFER_ENCODING.getKey()));
-		assert(this.httpSpec.headerMatches(H_CONTENT_LENGTH, HTTPHeaderKeyDefaults.CONTENT_LENGTH.getKey()));		
-		assert(this.httpSpec.headerMatches(H_CONTENT_TYPE, HTTPHeaderKeyDefaults.CONTENT_TYPE.getKey()));
+		assert(this.httpSpec.headerMatches(H_TRANSFER_ENCODING, HTTPHeaderKeyDefaults.TRANSFER_ENCODING.writingRoot()));
+		assert(this.httpSpec.headerMatches(H_CONTENT_LENGTH, HTTPHeaderKeyDefaults.CONTENT_LENGTH.writingRoot()));		
+		assert(this.httpSpec.headerMatches(H_CONTENT_TYPE, HTTPHeaderKeyDefaults.CONTENT_TYPE.writingRoot()));
 		
 		this.UNSUPPORTED_HEADER_ID  = httpSpec.headerCount+2;
 		this.END_OF_HEADER_ID       = httpSpec.headerCount+3;//for the empty header found at the bottom of the header
@@ -195,16 +192,14 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		      
 	     // System.out.println(headerMap.toDOT(new StringBuilder()));
 	      
-	      
-	      chunkMap = new TrieParser(128,true);
-	      chunkMap.setUTF8Value("%U\r\n", CHUNK_SIZE); //hex parser of U% does not require leading 0x
-	      chunkMap.setUTF8Value("%U;%b\r\n", CHUNK_SIZE_WITH_EXTENSION);
+
 	    }
 
 	  
 	int lastUser;
 	int lastState;
 	int lastCount;
+	int responseCount = 0;
 	
 	public void storeState(int state, int user) {
 		if (state==lastState && lastUser == user) {
@@ -215,14 +210,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		lastState = state;
 		lastUser = user;
 	}
-	
-	//TODO: when a connection is cloed here we must ALSO clear the SSL unwrap roller
-	//TODO: must detected overflow and underflow parse conditions here and send error or abandon.
-	
-	
-	int responseCount = 0;
-	
-	
+
+		
 	@Override
 	public void run() {
 		
@@ -706,17 +695,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									}
 									
 									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-									
-									//should only go up?? and start at low position??
-							//	    logger.info("finished read at source position {} state {} instance {} len {} mask {}",trieReader.sourcePos,state,stageId, trieReader.sourceLen, trieReader.sourceMask);
-																			
+																		
 									break;
 								} else {
 									
-		//							logger.info("needs len {}",lengthRemaining);
-									
 									assert(lengthRemaining>0);
-	//								logger.info("break F");
 									break;//we have no data and need more.
 								}
 							}
@@ -726,7 +709,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	
 					case 3: //PAYLOAD READING WITH CHUNKS	
 						
-						long chunkRemaining = payloadLengthData[i];
+					  	long chunkRemaining = payloadLengthData[i];
 
 							DataOutputBlobWriter<NetResponseSchema> writer3 = Pipe.outputStream(targetPipe);
 							do {
@@ -734,7 +717,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									
 									int startingLength3 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	
 								
-									if ((int)TrieParserReader.parseNext(trieReader, chunkMap) < 0) {
+									if ((int)TrieParserReader.parseNext(trieReader, HTTPUtil.chunkMap) < 0) {
 										if (trieReader.sourceLen>16) { //FORMAL ERROR, we can never support a chunk bigger than a 64 bit number which is 16 chars in hex.
 											parseErrorWhileChunking(memoIdx, pipe, trieReader.sourcePos);
 										}
@@ -902,14 +885,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		trieReader.debug(); //failure position is AT the mask??
 		
 		TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-		int chunkId3 = (int)TrieParserReader.parseNext(trieReader, chunkMap);
+		int chunkId3 = (int)TrieParserReader.parseNext(trieReader, HTTPUtil.chunkMap);
 		System.err.println("parsed value was "+chunkId3);
 		
 		requestShutdown();
-	}
-
-	private boolean unableToParseChunk() {
-		return (int)TrieParserReader.parseNext(trieReader, chunkMap) < 0;
 	}
 
 	private void lastMessageParseSize(int size) {

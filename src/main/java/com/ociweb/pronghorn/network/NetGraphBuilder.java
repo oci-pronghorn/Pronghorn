@@ -480,7 +480,9 @@ public class NetGraphBuilder {
 				routesTemp[r] = toModules[r][a] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig,false);				
 			}
 			//each module can unify of split across routers
-			routerConfig.registerRoute(modules.getPathRoute(a), modules.addModule(a, graphManager, routesTemp, httpSpec));
+			routerConfig.registerRoute(modules.getPathRoute(a),
+					                   modules.addModule(a, graphManager, routesTemp, httpSpec),
+					                   httpSpec.headerParser());
 		    
 			//one array per each of the routers.
 		    Pipe<ServerResponseSchema>[][] outputPipes = modules.outputPipes(a);

@@ -123,8 +123,8 @@ public class HTTPSRoundTripTest {
 
 	}
 
-	@Ignore
-    //@Test
+	//@Ignore
+    @Test
 	public void simpleHTTPTest() {
     	boolean isLarge = false;		
     	
@@ -140,8 +140,8 @@ public class HTTPSRoundTripTest {
 
     }
     
-	@Ignore
-    //@Test
+	//@Ignore
+    @Test
 	public void simpleHTTPSTest() {
     	boolean isLarge = false;		
     	
@@ -324,6 +324,8 @@ public class HTTPSRoundTripTest {
 	private ServerCoordinator exampleServerSetup(boolean isTLS, GraphManager gm, final String testFile, String bindHost, int bindPort, boolean isLarge) {
 		final String pathRoot = buildStaticFileFolderPath(testFile);
 				
+		System.out.println("init file path "+pathRoot);
+		
 		//final int maxPartialResponsesServer     = 32; //input lines to server (should be large)
 		//final int maxConnectionBitsOnServer 	= 12;//8K simulanious connections on server	    	
 		final int messagesToOrderingSuper       = isLarge ? 1<<13 : 1<<8;	    		
@@ -409,7 +411,7 @@ public class HTTPSRoundTripTest {
 	private String buildStaticFileFolderPath(String testFile) {
 		URL dir = ClassLoader.getSystemResource(testFile);
 		String root = "";	//file:/home/nate/Pronghorn/target/test-classes/OCILogo.png
-						
+			
 		try {
 		
 			String uri = dir.toURI().toString();			

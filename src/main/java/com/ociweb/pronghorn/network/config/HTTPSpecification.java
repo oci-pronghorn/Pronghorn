@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.network.config;
 
+import com.ociweb.pronghorn.util.TrieParser;
+
 public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
                                     R extends Enum<R> & HTTPRevision,
                                     V extends Enum<V> & HTTPVerb,
@@ -19,6 +21,8 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
     public final V[] verbs;
     public final R[] revisions;
     
+    private boolean trustAccurateStrings = true;
+    private final TrieParser headerParser;
     
     private static HTTPSpecification<HTTPContentTypeDefaults,HTTPRevisionDefaults,HTTPVerbDefaults,HTTPHeaderKeyDefaults> defaultSpec;
     
@@ -47,30 +51,49 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         this.verbs = supportedHTTPVerbs.getEnumConstants();
         assert(null!=verbs);
         int j = verbs.length;
-        int localGet = 0;
-        int localHead = 0;
-        while (--j >= 0) {
-        	
-        	String name = verbs[j].name();
-        	maxVerbLength = Math.max(maxVerbLength, name.length());
-        	
-            if (name.startsWith("GET")) {
-                localGet = verbs[j].ordinal();
-            } else if (name.startsWith("HEAD")) {
-                localHead = verbs[j].ordinal();
-            }            
+
+        while (--j >= 0) {        	
+        	maxVerbLength = Math.max(maxVerbLength, verbs[j].name().length());             
         }
         this.maxVerbLength = maxVerbLength;
+        
+        //build header lookup trie parser
+
+        assert(false == (trustAccurateStrings=false)); //side effect by design, do not modify
+        
+        headerParser = new TrieParser(512, 2, trustAccurateStrings, false, true);        
+        int h = headers.length;
+        while (--h>=0) {	
+        	headerParser.setUTF8Value(headers[h].writingRoot(), headers[h].ordinal());
+        }
 
     }
-
+  
+    public TrieParser headerParser() {
+    	return headerParser;
+    }
+    
 	public boolean headerMatches(int headerId, CharSequence cs) {
-		return headers[headerId].getKey().equals(cs);
+		return match(cs, headers[headerId].writingRoot());
 	}
 
-   public boolean verbMatches(int verbId, CharSequence cs) {
-        return verbs[verbId].getKey().equals(cs);
-    }
+	public boolean verbMatches(int verbId, CharSequence cs) {
+		return match(cs, verbs[verbId].getKey());
+	}
+
+	public boolean match(CharSequence a, CharSequence b) {
+		if(b.length() != a.length()) {
+			return false;
+		}
+		int i = b.length();
+		while (--i>=0) {
+			if (Character.toLowerCase(b.charAt(i))!= Character.toLowerCase(a.charAt(i))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 
     
 }
