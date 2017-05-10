@@ -1169,9 +1169,9 @@ public class TrieParserReader {
 
     }
     
-    public static <A extends Appendable> long capturedFieldQuery(TrieParserReader reader, int idx, TrieParser trie) {
+    public static long capturedFieldQuery(TrieParserReader reader, int idx, TrieParser trie) {
     	  //two is the default for the stop bytes.
-    	  return  capturedFieldQuery(reader,idx,2,trie);
+    	  return capturedFieldQuery(reader,idx,2,trie);
     }
     
     //parse the capture text as a query against yet another trie
@@ -1230,42 +1230,8 @@ public class TrieParserReader {
         
         return Appendables.appendUTF8(target, reader.capturedBlobArray, bpos-10, blen+20, bmsk);
 
-
     }
-    
-//    public static int writeCapturedValuesToPipe(TrieParserReader reader, Pipe<?> target) {
-//        int limit = reader.capturedPos;
-//        int[] localCapturedValues = reader.capturedValues;
-//        
-//        
-//        int totalBytes = 0;
-//        int i = 0;
-//        while (i < limit) {
-//            
-//            int type = localCapturedValues[i++];
-//            
-//            if (isCapturedByteData(type)) {
-//                
-//                int p = localCapturedValues[i++];
-//                int l = localCapturedValues[i++];
-//                int m = localCapturedValues[i++];   
-//                
-//                
-//                totalBytes += l;
-//                Pipe.addByteArrayWithMask(target, m, l, reader.capturedBlobArray, p);
-//                
-//            } else {
-//                
-//                Pipe.addIntValue(type, target);
-//                Pipe.addIntValue(localCapturedValues[i++], target);
-//                Pipe.addIntValue(localCapturedValues[i++], target);
-//                Pipe.addIntValue(localCapturedValues[i++], target);
-//                
-//            }            
-//        }
-//        return totalBytes;
-//    }
-    
+        
     public static int writeCapturedUTF8ToPipe(TrieParserReader reader, Pipe<?> target, int idx, int loc) {
     	int pos = idx*4;
         
@@ -1363,6 +1329,7 @@ public class TrieParserReader {
                 		position = -dlen;  
                 	
                 		target.writePackedLong(value);
+                		//System.err.println("A write packed long "+value);
                 	    if (writeIndex && !DataOutputBlobWriter.tryWriteIntBackData(target, writePosition)) {
                          	throw new IOException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+target.getPipe());
                         }                         
@@ -1375,6 +1342,7 @@ public class TrieParserReader {
                 	} else {
                 		//System.out.println("wrote "+value);
                 		target.writePackedLong(value);
+                		//System.err.println("B write packed long "+value);
                 		//integers and rational only use normal long values, no position needed.
                 	}
                 	
@@ -1465,37 +1433,7 @@ public class TrieParserReader {
         }
         return totalBytes;
     }
-    
-    //This metod cant work because we need a fixed schema on the pipe, TODO: delete this once we know everything works..
-//    //this is only for single fields that appear out of order and need to be put back in order.
-//    public static void writeCapturedValuesToPipe(TrieParserReader reader, Pipe<?> target, long baseSlabPosition) {
-//        int limit = reader.capturedPos;
-//        int[] localCapturedValues = reader.capturedValues;
-//
-//        int i = 0;
-//        while (i < limit) {
-//            
-//            int type = localCapturedValues[i++];
-//            
-//            if (isCapturedByteData(type)) {
-//                
-//                int p = localCapturedValues[i++];
-//                int l = localCapturedValues[i++];
-//                int m = localCapturedValues[i++];   
-//                Pipe.setByteArrayWithMask(target, m, l, reader.capturedBlobArray, p, baseSlabPosition);
-//                
-//            } else {
-//                Pipe.setIntValue(type, target, baseSlabPosition++);
-//                Pipe.setIntValue(localCapturedValues[i++], target, baseSlabPosition++);
-//                Pipe.setIntValue(localCapturedValues[i++], target, baseSlabPosition++);
-//                Pipe.setIntValue(localCapturedValues[i++], target, baseSlabPosition++);
-//            }
-//            
-//        }
-//        
-//    }
-
-    
+        
     
 
 }

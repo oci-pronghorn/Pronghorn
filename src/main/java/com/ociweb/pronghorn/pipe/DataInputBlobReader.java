@@ -5,6 +5,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.math.Decimal;
@@ -15,11 +19,13 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
     private final Pipe<S> pipe;
     private byte[] backing;
     private final int byteMask;
+    private static final Logger logger = LoggerFactory.getLogger(DataInputBlobReader.class);
     
     private int length;
     private int bytesHighBound;
     private int bytesLowBound;
     private int position;
+
     private TrieParser textToNumberParser;
     private TrieParserReader reader;
     
@@ -34,13 +40,18 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         assert(this.backing!=null) : "The pipe must be init before use.";
     }
     
+	public void debug() {
+	    
+    	Appendables.appendArray(Appendables.appendValue(System.out,  "read at ", bytesLowBound), '[', backing, bytesLowBound, byteMask, ']',  length);
+
+	}
+	
     public void openHighLevelAPIField(int loc) {
         
         this.length         = PipeReader.readBytesLength(pipe, loc);
-        this.position       = PipeReader.readBytesPosition(pipe, loc);
+        this.bytesLowBound  = this.position       = PipeReader.readBytesPosition(pipe, loc);
         this.backing        = PipeReader.readBytesBackingArray(pipe, loc);        
         this.bytesHighBound = pipe.blobMask & (position + length);
-        this.bytesLowBound  = position;
         
         assert(Pipe.validatePipeBlobHasDataToRead(pipe, position, length));
 
@@ -50,6 +61,9 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
     	assert(negativeIntOffset>0) : "there is no data found at the end";
     	
     	int position = bytesHighBound-(4*negativeIntOffset);
+    	
+    	logger.trace("reading int from position {}",position);
+    	
     	return ( ( (       backing[byteMask & position++]) << 24) |
 		 ( (0xFF & backing[byteMask & position++]) << 16) |
 		 ( (0xFF & backing[byteMask & position++]) << 8) |
@@ -64,7 +78,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         
         int meta = Pipe.takeRingByteMetaData(that.pipe);
         that.length    = Pipe.takeRingByteLen(that.pipe);
-        that.position = Pipe.bytePosition(meta, that.pipe, that.length);
+        that.bytesLowBound = that.position = Pipe.bytePosition(meta, that.pipe, that.length);
         that.backing   = Pipe.byteBackingArray(meta, that.pipe);               
         that.bytesHighBound = that.pipe.blobMask & (that.position + that.length);
         

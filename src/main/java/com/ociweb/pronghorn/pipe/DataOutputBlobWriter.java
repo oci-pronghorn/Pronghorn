@@ -5,6 +5,10 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ByteConsumer;
 
 public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStream implements DataOutput, Appendable, ByteConsumer {
@@ -12,6 +16,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     private final Pipe<S> backingPipe;
     private final byte[] byteBuffer;
     private final int byteMask;
+    private static final Logger logger = LoggerFactory.getLogger(DataOutputBlobWriter.class);
     
     private int startPosition;
     private int activePosition;
@@ -50,6 +55,10 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     	return backPosition;
     }
     
+    public void debug() {
+        	Appendables.appendArray(System.out, '[', backingPipe.blobRing, startPosition, backingPipe.blobMask, ']',  lastPosition-startPosition);
+    }
+    
     public static <T extends MessageSchema<T>> boolean tryWriteIntBackData(DataOutputBlobWriter<T> writer, int value) {	
     	int temp = writer.backPosition-4;
     	if (temp >= writer.activePosition) {
@@ -78,17 +87,27 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     
     public static <T extends MessageSchema<T>> void setIntBackData(DataOutputBlobWriter<T> writer, int value, int pos) {
     	assert(pos>=0) : "Can not write beyond the end.";
+    	logger.trace("writing int to position {}",(writer.lastPosition-(4*pos)));
     	write32(writer.byteBuffer, writer.byteMask, writer.lastPosition-(4*pos), value);       
     }
        
     public static <T extends MessageSchema<T>> void commitBackData(DataOutputBlobWriter<T> writer) {
-    	DataOutputBlobWriter.write(writer, 
-    			                   writer.byteBuffer, 
-    			                   writer.backPosition, 
-    			                   writer.lastPosition-writer.backPosition, 
-    			                   writer.byteMask);
-    	//can only be done once then the end is clear again
-    	writer.backPosition = writer.lastPosition;
+    	
+    	final boolean leaveIndexInPlace = true;
+    	if (leaveIndexInPlace) {
+    		writer.activePosition = writer.lastPosition;
+    	} else {
+    		///////////////////
+    		//older idea where we moved the index down to make the unused space available
+    		//this space could not be used however since we have allocated n blocks for n var fields
+    		//////////////////
+    		//NOTE: delete this block if this is working as expected with the above logic.
+	    	int sourceLen = writer.lastPosition-writer.backPosition;
+			Pipe.copyBytesFromToRing(writer.byteBuffer, writer.backPosition, writer.byteMask, writer.byteBuffer, writer.activePosition, writer.byteMask, sourceLen); 
+			writer.activePosition+=sourceLen;    	
+	    	//can only be done once then the end is clear again
+	    	writer.backPosition = writer.lastPosition;
+    	}
     }
     
     public int closeHighLevelField(int targetFieldLoc) {
@@ -112,6 +131,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         int len = length(writer);
         Pipe.addAndGetBytesWorkingHeadPosition(writer.backingPipe, len);
         Pipe.addBytePosAndLenSpecial(writer.backingPipe,writer.startPosition,len);
+        
         Pipe.validateVarLength(writer.backingPipe, len);
         writer.backingPipe.closeBlobFieldWrite();
         return len;
