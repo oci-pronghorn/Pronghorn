@@ -1053,11 +1053,9 @@ public class TrieParserReader {
         
         assert(base<=64 && base>=2);
         assert(isDot==1 || isDot==0);
-        int meta = 0;
-        reader.capturedValues[reader.capturedPos++] = meta = (isDot<<31) | (base<<16) | (0xFFFF & intLength) ; //Base: 10 or 16, IntLength:  
         
-        System.out.println("meta "+meta+" dot "+isDot);
-        
+        reader.capturedValues[reader.capturedPos++] = (isDot<<31) | (base<<16) | (0xFFFF & intLength) ; //Base: 10 or 16, IntLength:  
+                
     }
     
     public static void writeCapturedShort(TrieParserReader reader, int idx, DataOutput target) {
@@ -1287,8 +1285,7 @@ public class TrieParserReader {
         //NOTE: this method is used by the HTTP1xRouterStage class to write all the captured fields which is key to GreenLightning
     	//      ensure that any changes here are matched by the methods consuming this DataOutput inside GreenLightnining.
     	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    	
-    	
+    	    	
     	int limit = reader.capturedPos;
         int[] localCapturedValues = reader.capturedValues;
         
@@ -1333,8 +1330,6 @@ public class TrieParserReader {
                 	}
                 } else {
                 	int position = 0;
-                	
-                	//System.out.println("meta "+localCapturedValues[i+3]);
                 	
                 	//Jump ahead to combine the dot part of the number if it is found.
                 	if (i+4<=limit //if there is following data
