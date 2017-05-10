@@ -1,7 +1,7 @@
 package com.ociweb.pronghorn.network.http;
 
 import com.ociweb.pronghorn.network.config.HTTPContentType;
-import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
+import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
@@ -11,7 +11,7 @@ import com.ociweb.pronghorn.util.TrieParser;
 public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
                                     R extends Enum<R> & HTTPRevision,
                                     V extends Enum<V> & HTTPVerb,
-									H extends Enum<H> & HTTPHeaderKey> {
+									H extends Enum<H> & HTTPHeader> {
 	
 	public final HTTPSpecification<T,R,V,H> httpSpec;	
     public final TrieParser urlMap;
@@ -58,11 +58,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         END_OF_HEADER_ID  = httpSpec.headerCount+2;//for the empty header found at the bottom of the header
         UNKNOWN_HEADER_ID = httpSpec.headerCount+1;
 
-        this.headerMap = new TrieParser(2048,false);//do not skip deep checks, we do not know which new headers may appear.
-        
-        //TODO: if the client should write extra data after the first GET/PUT this will be assumed as part of the folloing message and cause parse issues.
-        //      when client was adding extra line feed we hacked this to add headerMap.setUTF8Value("\r\n\r\n", END_OF_HEADER_ID); but that was a bad fix for one special case
-        //      we should think of a more general solution 
+        this.headerMap = new TrieParser(2048,2,false,true,true);//do not skip deep checks, we do not know which new headers may appear.
 
         headerMap.setUTF8Value("\r\n", END_OF_HEADER_ID);
         headerMap.setUTF8Value("\n", END_OF_HEADER_ID);  //\n must be last because we prefer to have it pick \r\n
@@ -72,15 +68,15 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         int w = shr.length;
         while (--w >= 0) {
             //must have tail because the first char of the tail is required for the stop byte
-            headerMap.setUTF8Value(shr[w].getKey(), "\r\n",shr[w].ordinal());
-            headerMap.setUTF8Value(shr[w].getKey(), "\n",shr[w].ordinal()); //\n must be last because we prefer to have it pick \r\n
+            headerMap.setUTF8Value(shr[w].readingTemplate(), "\r\n",shr[w].ordinal());
+            headerMap.setUTF8Value(shr[w].readingTemplate(), "\n",shr[w].ordinal()); //\n must be last because we prefer to have it pick \r\n
         }     
         //unknowns are the least important and must be added last 
-        headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
-        headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be last because we prefer to have it pick \r\n
-                
         this.urlMap = new TrieParser(512,1,true,true,true);       
         
+        headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
+        headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be last because we prefer to have it pick \r\n
+       
 	}
 	
 	

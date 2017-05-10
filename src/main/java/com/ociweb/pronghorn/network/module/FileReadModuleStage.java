@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
-import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
+import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
@@ -42,7 +42,7 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                                         R extends Enum<R> & HTTPRevision,
                                         V extends Enum<V> & HTTPVerb,
-                                        H extends Enum<H> & HTTPHeaderKey> extends AbstractRestStage<T,R,V,H> {
+                                        H extends Enum<H> & HTTPHeader> extends AbstractRestStage<T,R,V,H> {
 
     
     private static final int SIZE_OF_RESTREQUEST = Pipe.sizeOf(HTTPRequestSchema.instance, HTTPRequestSchema.MSG_RESTREQUEST_300);
@@ -1078,7 +1078,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
          if (debug) {
 	         long now = System.currentTimeMillis();
 	         if (now>lastTime) {	        	 
-	        		logger.info("total bytes out {} inFlightRef {} inFlightCopy {} fromDisk {} ",totalBytesWritten, inFlightRef, inFlightCopy, fromDisk);	        	 
+	        		logger.trace("total bytes out {} inFlightRef {} inFlightCopy {} fromDisk {} ",totalBytesWritten, inFlightRef, inFlightCopy, fromDisk);	        	 
 	        	 lastTime = now+2_000;
 	         }
          }
@@ -1175,8 +1175,8 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
     public void shutdown() {
     	assert(reportRecordedStates(getClass().getSimpleName()));
     	if (totalRunCalls!=0) {
-    		logger.info("total calls to run: {} avgFilesPerRun: {}",totalRunCalls,(totalFiles/totalRunCalls));
-    		logger.info("total bytes out {} inFlightRef {} inFlightCopy {} fromDisk {} ",totalBytesWritten, inFlightRef, inFlightCopy, fromDisk);
+    		logger.trace("total calls to run: {} avgFilesPerRun: {}",totalRunCalls,(totalFiles/totalRunCalls));
+    		logger.trace("total bytes out {} inFlightRef {} inFlightCopy {} fromDisk {} ",totalBytesWritten, inFlightRef, inFlightCopy, fromDisk);
     	}
     }
 

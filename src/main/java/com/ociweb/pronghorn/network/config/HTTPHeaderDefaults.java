@@ -1,21 +1,21 @@
 package com.ociweb.pronghorn.network.config;
 
-public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
-   
+public enum HTTPHeaderDefaults implements HTTPHeader {
+    /////// 
     //NOTE: tail of both \r\n and \n are both used when these are pattern matched, do not add tail here
-    HOST("Host: %b"), 
+    ///////
+	HOST("Host: %b"), 
     UPGRADE("Upgrade: %b"),
     CONNECTION("Connection: %b"),
-    USER_AGENT("User-Agent: %b"),
-    //                 transfer-encoding: chunked  NOTE: Equals needs to use the same case filter?? 
+    USER_AGENT("User-Agent: %b"),//chromium
     TRANSFER_ENCODING("Transfer-Encoding: chunked"), //Transfer-Encoding: chunked
     CONTENT_LENGTH("Content-Length: %u"), //note this captures an integer not a string
     CONTENT_TYPE("Content-Type: %b"),
     CONTENT_LOCATION("Content-Location: %b"),
-    ACCEPT("Accept: %b"),
+    ACCEPT("Accept: %b"),//chromium
     ACCEPT_CHARSET("Accept-Charset: %b"),
-    ACCEPT_LANGUAGE("Accept-Language: %b"),
-    ACCEPT_ENCODING("Accept-Encoding: %b"),
+    ACCEPT_LANGUAGE("Accept-Language: %b"),//chromium
+    ACCEPT_ENCODING("Accept-Encoding: %b"),//chromium
     ACCEPT_DATETIME("Accept-Datetime: %b"),
     AUTHORIZATION("Authorization: %b"),
     CACHE_CONTROL("Cache-Control: %b"),
@@ -26,12 +26,13 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
     EXPECT("Expect: %b"),
     FORWARDED("Forwarded: %b"),
     FROM("From: %b"),
-    IF_MODIFIED_SINCE("If-Modified-Since: %b"),
+    IF_NONE_MATCH("If-None-Match: %b"), //chromium
+    IF_MODIFIED_SINCE("If-Modified-Since: %b"),//chromium
     IF_RANGE("If-Range: %b"),
     IF_UNMODIFIED_SINCE("If-Unmodified-Since: %b"),
     VIA("Via: %b"),
     WARNING("Warning: %b"),
-    DNT("DNT: %b"),
+    DNT("DNT: %b"),//chromium
     SEC_WEBSOCKET_KEY("Sec-WebSocket-Key: %b"),
     SEC_WEBSOCKET_PROTOCOL("Sec-WebSocket-Protocol: %b"),
     SEC_WEBSOCKET_VERSION("Sec-WebSocket-Version: %b"),
@@ -44,6 +45,7 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
     
 //    CONTENT_SECURITY_POLICY("content-security-policy: %b"), //twitter
     SET_COOKIE("set-cookie: %b"), //twitter
+    COOKIE("Cookie: %b"), //chromium
     STRICT_TRANSPORT_SECURITY("strict-transport-security: %b"), //twitter
     X_CONNECTION_HASH("x-connection-hash: %b"), //twitter
     X_RESPONSE_TIME("x-response-time: %b"), //twitter
@@ -58,6 +60,7 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
     X_UA_COMPATIBLE("x-ua-compatible: %b"), //twitter
     WWW_AUTHENTICATE("www-authenticate: %b"), //twitter    
     ML("ml: %b"), //twitter
+    UPGRADE_INSECURE_REQUESTS("Upgrade-Insecure-Requests: %u"), //chromium
     
     X_FORWARD_FOR("x-Forwarded-For: %b"),
     X_FORWARD_HOST("x-Forwarded-Host: %b"),
@@ -68,9 +71,9 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
             
     private CharSequence readingTemplate; //used for reading headers, must be lower case to do all case insinsitve matching
     private CharSequence writingRoot; //used for writing headers.
+    private byte[] rootBytes;
     
-    
-    private HTTPHeaderKeyDefaults(String template) {
+    private HTTPHeaderDefaults(String template) {
         this.readingTemplate = template.toLowerCase();
         this.writingRoot = template;
         int i = 0;
@@ -79,25 +82,22 @@ public enum HTTPHeaderKeyDefaults implements HTTPHeaderKey {
 
         	if (template.charAt(i)==':' && template.charAt(i+1)==' ') {
         		writingRoot = template.subSequence(0, i+2);
+        		rootBytes = readingTemplate.subSequence(0, i+2).toString().getBytes();
         		break;
         	}
         	i++;
         }
     }
-    
-    public CharSequence getKey() {
-        return readingTemplate();
-    }
-    
+
     public CharSequence readingTemplate() {
         return readingTemplate;
-    }
-    
-    public CharSequence getRoot() {
-        return writingRoot();
     }
 
     public CharSequence writingRoot() {
         return writingRoot;
+    }
+    
+    public byte[] rootBytes() {
+    	return rootBytes;
     }
 }

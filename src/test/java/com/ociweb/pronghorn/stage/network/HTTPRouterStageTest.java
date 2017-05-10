@@ -7,7 +7,7 @@ import org.junit.Test;
 
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
-import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
@@ -48,7 +48,7 @@ public class HTTPRouterStageTest {
     @Ignore
     public void rapidValidRequestTest() {
         
-    	HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> defaultSpec = HTTPSpecification.defaultSpec();
+    	HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> defaultSpec = HTTPSpecification.defaultSpec();
 		HTTP1xRouterStageConfig routerConfig = new HTTP1xRouterStageConfig(defaultSpec); 
     	ServerCoordinator coordinator = new ServerCoordinator(false, "127.0.0.1", 8080, 5 ,5 ,1);
     	

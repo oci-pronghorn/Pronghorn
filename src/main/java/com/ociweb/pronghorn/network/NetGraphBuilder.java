@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
-import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
@@ -271,7 +271,7 @@ public class NetGraphBuilder {
 			ServerPipesConfig serverConfig, Pipe<ReleaseSchema>[] releaseAfterParse,
 			Pipe<NetPayloadSchema>[] receivedFromNet, Pipe<NetPayloadSchema>[] sendingToNet) {
 
-		HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> httpSpec = HTTPSpecification.defaultSpec();
+		HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> httpSpec = HTTPSpecification.defaultSpec();
 		
 		if (modules.moduleCount()==0) {
 			throw new UnsupportedOperationException("Must be using at least 1 module to startup.");
@@ -461,7 +461,7 @@ public class NetGraphBuilder {
 
 	public static HTTP1xRouterStageConfig buildModules(GraphManager graphManager, ModuleConfig modules,
 			final int routerCount,
-			HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> httpSpec,
+			HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> httpSpec,
 			PipeConfig<HTTPRequestSchema> routerToModuleConfig, Pipe<ServerResponseSchema>[][] fromModule,
 			Pipe<HTTPRequestSchema>[][] toModules) {
 		

@@ -61,7 +61,7 @@ public class ServerPipesConfig {
 		
 		processorCount = isLarge ? (isTLS?4:16) : 4;
 		
-		logger.info("cores in use {}", cores);
+		logger.trace("cores in use {}", cores);
 		
 		if (isLarge) {
 						

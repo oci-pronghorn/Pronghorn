@@ -10,8 +10,8 @@ import com.ociweb.pronghorn.network.SSLConnection;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
-import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
-import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
+import com.ociweb.pronghorn.network.config.HTTPHeader;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
@@ -29,7 +29,7 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 							   R extends Enum<R> & HTTPRevision,
 						       V extends Enum<V> & HTTPVerb,
-                               H extends Enum<H> & HTTPHeaderKey
+                               H extends Enum<H> & HTTPHeader
                              > extends PronghornStage {
 
   //TODO: double check that this all works iwth ipv6.
@@ -37,7 +37,9 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	private static final int MAX_URL_LENGTH = 4096;
     private static Logger logger = LoggerFactory.getLogger(HTTP1xRouterStage.class);
 
-        
+    private final boolean showHeader = false; //set to true for debug to see headers in console.
+    
+    
     private TrieParserReader trieReader;
     
     private final Pipe<NetPayloadSchema>[] inputs;
@@ -63,10 +65,10 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     
 
         
-    private int headerIdUpgrade    = HTTPHeaderKeyDefaults.UPGRADE.ordinal();
-    private int headerIdConnection = HTTPHeaderKeyDefaults.CONNECTION.ordinal();
-    private int headerIdContentLength = HTTPHeaderKeyDefaults.CONTENT_LENGTH.ordinal();
-    private int headerIdContentChunked= HTTPHeaderKeyDefaults.TRANSFER_ENCODING.ordinal();
+    private int headerIdUpgrade    = HTTPHeaderDefaults.UPGRADE.ordinal();
+    private int headerIdConnection = HTTPHeaderDefaults.CONNECTION.ordinal();
+    private int headerIdContentLength = HTTPHeaderDefaults.CONTENT_LENGTH.ordinal();
+    private int headerIdContentChunked= HTTPHeaderDefaults.TRANSFER_ENCODING.ordinal();
   
     private int[] inputCounts;
     
@@ -86,7 +88,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     public static <	T extends Enum<T> & HTTPContentType,
 					R extends Enum<R> & HTTPRevision,
 					V extends Enum<V> & HTTPVerb,
-					H extends Enum<H> & HTTPHeaderKey> 
+					H extends Enum<H> & HTTPHeader> 
+    
     HTTP1xRouterStage<T,R,V,H> newInstance(GraphManager gm, 
     		                               Pipe<NetPayloadSchema>[] input, 
     		                               Pipe<HTTPRequestSchema>[][] outputs, 
@@ -100,7 +103,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     public static <	T extends Enum<T> & HTTPContentType,
 	R extends Enum<R> & HTTPRevision,
 	V extends Enum<V> & HTTPVerb,
-	H extends Enum<H> & HTTPHeaderKey> 
+	H extends Enum<H> & HTTPHeader> 
 		HTTP1xRouterStage<T,R,V,H> newInstance(GraphManager gm, 
 		                           Pipe<NetPayloadSchema>[] input, 
 		                           Pipe<HTTPRequestSchema>[] outputs,
@@ -182,7 +185,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             
             for(int ordinalValue = 0; ordinalValue<=config.httpSpec.headerCount; ordinalValue++) {
                 //only set fields for those which are on, and do in this order.
-                if (IntHashTable.hasItem(table, HTTPHeaderKey.HEADER_BIT | ordinalValue)) {
+                if (IntHashTable.hasItem(table, HTTPHeader.HEADER_BIT | ordinalValue)) {
                     offsets[ordinalValue] = runningOffset;
                     runningOffset += sizeOfVarField;
                 }
@@ -194,8 +197,6 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         
 
         trieReader = new TrieParserReader(16);//max fields we support capturing.
-        
-        int w = outputs.length;
         
         totalShortestRequest = 0;//count bytes for the shortest known request, this opmization helps prevent parse attempts when its clear that there is not enough data.
 
@@ -474,20 +475,16 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 //  1 success
 // <=0 for wating on this output pipe to have room (the pipe idx is negative)
  
+ 
 private int parseHTTP(TrieParserReader trieReader, final long channel, final int idx, Pipe<NetPayloadSchema> selectedInput) {    
     
 	boolean writeIndex = true; //reqired for direct field access, can be skipped for sequential field access.
 	
-//	boolean showHeader = true;
-//    if (showHeader) {
-//    	System.out.println("///////////////// ROUTE HEADER "+channel+"///////////////////");
-//    	TrieParserReader.debugAsUTF8(trieReader, System.out, Math.min(110, trieReader.sourceLen), false); //shows that we did not get all the data
-////    	System.out.println("prev 10 data\n");
-////    	trieReader.sourcePos -= 10;
-////    	TrieParserReader.debugAsUTF8(trieReader, System.out, Math.min(110, trieReader.sourceLen), false);
-////    	trieReader.sourcePos +=10;
-//    	System.out.println("...\n///////////////////////////////////////////");
-//    }
+    if (showHeader) {
+    	System.out.println("///////////////// ROUTE HEADER "+channel+"///////////////////");
+    	TrieParserReader.debugAsUTF8(trieReader, System.out, Math.min(1024, trieReader.sourceLen), false); //shows that we did not get all the data
+    	System.out.println("...\n///////////////////////////////////////////");
+    }
 
 	int tempLen = trieReader.sourceLen;
 	int tempPos = trieReader.sourcePos;
@@ -651,9 +648,8 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
             return NEED_MORE_DATA;
         } 
         
-    // ???   
-        ////////TODO: URGENT: re-think this as we still need to add the post payload??
-        	
+   
+        ////////TODO: URGENT: re-think this as we still need to add the chunked post payload??
         
     	DataOutputBlobWriter.commitBackData(writer);
     	DataOutputBlobWriter.closeLowLevelField(writer);
@@ -902,7 +898,6 @@ private boolean hasNoActiveChannel(int idx) {
 
     private int parseHeaderFields(final int routeId, final long channel, DataOutputBlobWriter<HTTPRequestSchema> writer, int revisionId, boolean debugMode, boolean writeIndex) {
                
-        final int backBase = writer.backPosition()-1; //subtract 1 so we can use 0 offset.
         DataOutputBlobWriter.tryClearIntBackData(writer, config.headerCount(routeId));        
         final IntHashTable headerToPositionTable = config.headerToPositionTable(routeId);
         long postLength = -2;
@@ -923,6 +918,7 @@ private boolean hasNoActiveChannel(int idx) {
 
         	int headerId = (int)TrieParserReader.parseNext(trieReader, config.headerMap);
         	    
+
             if (config.END_OF_HEADER_ID == headerId) {
    
                 if (iteration==0) {
@@ -982,7 +978,7 @@ private boolean hasNoActiveChannel(int idx) {
                 //nothing valid was found so this is incomplete.
                 return ServerCoordinator.INCOMPLETE_RESPONSE_MASK; 
             }
-
+        	
             if (headerIdUpgrade == headerId) {
                 //list of protocols to upgrade to 
                 
@@ -1004,14 +1000,13 @@ private boolean hasNoActiveChannel(int idx) {
             }
                         
             //this value is specific to this Route and the headers requested.
-            int item = IntHashTable.getItem(headerToPositionTable, HTTPHeaderKey.HEADER_BIT | headerId);
-            
-            
+            int item = IntHashTable.getItem(headerToPositionTable, HTTPHeader.HEADER_BIT | headerId);
+        
             if (0 == item) {
                 //skip this data since the app module can not make use of it
                 //this is the normal most frequent case                    
             } else {
-            	int headerPos = 0xFFFF & item;                                  
+            	int headerPos = 1+(0xFFFF & item);                                  
 
                 try {
                 	
@@ -1020,10 +1015,12 @@ private boolean hasNoActiveChannel(int idx) {
                 	//write values and write index to end of block??
                 	int writePosition = writer.position();
                 	
+                	
 					TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, false);
 					if (writeIndex) {
-						//we did not write above so write here.
-						DataOutputBlobWriter.setIntBackData(writer, writePosition, backBase-headerPos);
+						
+						//we did not write index above so write here.
+						DataOutputBlobWriter.setIntBackData(writer, writePosition, headerPos+config.extractionParser(routeId).getIndexCount());
 					}
 					
 				} catch (IOException e) {

@@ -11,8 +11,8 @@ import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
-import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
-import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
+import com.ociweb.pronghorn.network.config.HTTPHeader;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
@@ -100,9 +100,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			assert(	input[i].sizeOfBlobRing >=  MAX_VALID_HEADER*2 ); //size of blob ring is the largest a header can ever be.			
 		}
 		
-		assert(this.httpSpec.headerMatches(H_TRANSFER_ENCODING, HTTPHeaderKeyDefaults.TRANSFER_ENCODING.writingRoot()));
-		assert(this.httpSpec.headerMatches(H_CONTENT_LENGTH, HTTPHeaderKeyDefaults.CONTENT_LENGTH.writingRoot()));		
-		assert(this.httpSpec.headerMatches(H_CONTENT_TYPE, HTTPHeaderKeyDefaults.CONTENT_TYPE.writingRoot()));
+		assert(this.httpSpec.headerMatches(H_TRANSFER_ENCODING, HTTPHeaderDefaults.TRANSFER_ENCODING.writingRoot()));
+		assert(this.httpSpec.headerMatches(H_CONTENT_LENGTH, HTTPHeaderDefaults.CONTENT_LENGTH.writingRoot()));		
+		assert(this.httpSpec.headerMatches(H_CONTENT_TYPE, HTTPHeaderDefaults.CONTENT_TYPE.writingRoot()));
 		
 		this.UNSUPPORTED_HEADER_ID  = httpSpec.headerCount+2;
 		this.END_OF_HEADER_ID       = httpSpec.headerCount+3;//for the empty header found at the bottom of the header
@@ -174,11 +174,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	  	  boolean supportsExtraction = true;
 		  headerMap = new TrieParser(2048,1,false,supportsExtraction,ignoreCase);//deep check on to detect unexpected headers.
 	 
-	      HTTPHeaderKey[] shr =  httpSpec.headers;
+	      HTTPHeader[] shr =  httpSpec.headers;
 	      x = shr.length;
 	      while (--x >= 0) {
 	          //must have tail because the first char of the tail is required for the stop byte
-	          CharSequence key = shr[x].getKey();
+	          CharSequence key = shr[x].readingTemplate();
 
 	          headerMap.setUTF8Value(key, "\r\n",shr[x].ordinal());	          
 	          headerMap.setUTF8Value(key, "\n",shr[x].ordinal());   //\n must be last because we prefer to have it pick \r\n

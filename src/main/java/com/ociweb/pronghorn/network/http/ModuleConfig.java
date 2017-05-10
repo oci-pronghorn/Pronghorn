@@ -1,7 +1,7 @@
 package com.ociweb.pronghorn.network.http;
 
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
-import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
@@ -17,7 +17,7 @@ public interface ModuleConfig {
 	int moduleCount();
 	
 	IntHashTable addModule(int a, GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, 
-				   HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> spec);
+				   HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> spec);
 
 	CharSequence getPathRoute(int a);
 

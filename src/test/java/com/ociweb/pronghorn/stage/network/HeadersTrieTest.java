@@ -5,7 +5,7 @@ import static org.junit.Assert.*;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.util.TrieParser;
 
 public class HeadersTrieTest {
@@ -17,7 +17,7 @@ public class HeadersTrieTest {
 		
 		TrieParser headerMap = new TrieParser(1024,true);
 		
-		HTTPHeaderKeyDefaults[] shr =  HTTPHeaderKeyDefaults.values();
+		HTTPHeaderDefaults[] shr =  HTTPHeaderDefaults.values();
 		int x = shr.length;
 		
 		final int END_OF_HEADER_ID = x+1;
@@ -41,8 +41,8 @@ public class HeadersTrieTest {
 		
         while (--x >= 0) {
             //must have tail because the first char of the tail is required for the stop byte
-            headerMap.setUTF8Value(shr[x].getKey(), "\n",shr[x].ordinal());
-            headerMap.setUTF8Value(shr[x].getKey(), "\r\n",shr[x].ordinal());
+            headerMap.setUTF8Value(shr[x].readingTemplate(), "\n",shr[x].ordinal());
+            headerMap.setUTF8Value(shr[x].readingTemplate(), "\r\n",shr[x].ordinal());
             
             newHeaderMap = headerMap.toString();
             assertTrue("After adding value we expect the map to have changed but was \n"+newHeaderMap,!lastHeaderMap.equals(newHeaderMap));

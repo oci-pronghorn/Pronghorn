@@ -5,7 +5,7 @@ import com.ociweb.pronghorn.util.TrieParser;
 public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
                                     R extends Enum<R> & HTTPRevision,
                                     V extends Enum<V> & HTTPVerb,
-                                    H extends Enum<H> & HTTPHeaderKey
+                                    H extends Enum<H> & HTTPHeader
                                     > {
     
     public final Class<T> supportedHTTPContentTypes;
@@ -24,11 +24,11 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
     private boolean trustAccurateStrings = true;
     private final TrieParser headerParser;
     
-    private static HTTPSpecification<HTTPContentTypeDefaults,HTTPRevisionDefaults,HTTPVerbDefaults,HTTPHeaderKeyDefaults> defaultSpec;
+    private static HTTPSpecification<HTTPContentTypeDefaults,HTTPRevisionDefaults,HTTPVerbDefaults,HTTPHeaderDefaults> defaultSpec;
     
-    public static HTTPSpecification<HTTPContentTypeDefaults,HTTPRevisionDefaults,HTTPVerbDefaults,HTTPHeaderKeyDefaults>  defaultSpec() {
+    public static HTTPSpecification<HTTPContentTypeDefaults,HTTPRevisionDefaults,HTTPVerbDefaults,HTTPHeaderDefaults>  defaultSpec() {
         if (null == defaultSpec) {
-            defaultSpec = new HTTPSpecification(HTTPContentTypeDefaults.class, HTTPRevisionDefaults.class, HTTPVerbDefaults.class,  HTTPHeaderKeyDefaults.class );
+            defaultSpec = new HTTPSpecification(HTTPContentTypeDefaults.class, HTTPRevisionDefaults.class, HTTPVerbDefaults.class,  HTTPHeaderDefaults.class );
         } 
         return defaultSpec;
     }

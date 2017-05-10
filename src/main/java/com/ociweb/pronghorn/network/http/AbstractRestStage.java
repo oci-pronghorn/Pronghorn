@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
-import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
+import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
@@ -18,7 +18,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
                                          R extends Enum<R> & HTTPRevision,
                                          V extends Enum<V> & HTTPVerb,
-                                         H extends Enum<H> & HTTPHeaderKey> extends PronghornStage {
+                                         H extends Enum<H> & HTTPHeader> extends PronghornStage {
    
     private static final byte[] RETURN_NEWLINE = "\r\n".getBytes();
 

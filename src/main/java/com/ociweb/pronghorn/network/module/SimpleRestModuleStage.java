@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.network.module;
 
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
-import com.ociweb.pronghorn.network.config.HTTPHeaderKey;
+import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
@@ -19,7 +19,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public class SimpleRestModuleStage<                 T extends Enum<T> & HTTPContentType,
 													R extends Enum<R> & HTTPRevision,
 													V extends Enum<V> & HTTPVerb,
-													H extends Enum<H> & HTTPHeaderKey> extends AbstractRestStage<T,R,V,H> {
+													H extends Enum<H> & HTTPHeader> extends AbstractRestStage<T,R,V,H> {
 
     
     private final Pipe<HTTPRequestSchema> input;    

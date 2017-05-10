@@ -19,7 +19,7 @@ import com.ociweb.pronghorn.network.SSLConnection;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.ServerPipesConfig;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
-import com.ociweb.pronghorn.network.config.HTTPHeaderKeyDefaults;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
@@ -345,7 +345,7 @@ public class HTTPSRoundTripTest {
 			@Override
 			public IntHashTable addModule(int a, 
 					GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs,
-					HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderKeyDefaults> spec) {
+					HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> spec) {
 								
 				boolean stateless = true;
 				
