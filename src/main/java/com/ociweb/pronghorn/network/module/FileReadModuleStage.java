@@ -54,7 +54,6 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 		private Path[] paths;
 		private long[] fcId;
 		private long[] fileSizes;
-		private byte[][] fileSizeAsBytes;
 		private byte[][] etagBytes;
 		private int[] type;
 		public final FileSystem fileSystem = FileSystems.getDefault();
@@ -71,7 +70,6 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 	        setPaths(new Path[maxFileCount]);
 	        setFcId(new long[maxFileCount]);
 	        setFileSizes(new long[maxFileCount]);
-	        setFileSizeAsBytes(new byte[maxFileCount][]);
 	        setEtagBytes(new byte[maxFileCount][]);
 	        setType(new int[maxFileCount]); 
 			
@@ -119,14 +117,6 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 
 		public void setFileSizes(long[] fileSizes) {
 			this.fileSizes = fileSizes;
-		}
-
-		public byte[][] getFileSizeAsBytes() {
-			return fileSizeAsBytes;
-		}
-
-		public void setFileSizeAsBytes(byte[][] fileSizeAsBytes) {
-			this.fileSizeAsBytes = fileSizeAsBytes;
 		}
 
 		public byte[][] getEtagBytes() {
@@ -690,10 +680,7 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                         
             data.getFileSizes()[pathId] = activeFileChannel.size();   
             builder.setLength(0);
-            
-			data.getFileSizeAsBytes()[pathId] = Appendables.appendValue(builder, data.fileSizes[pathId]).toString().getBytes();  
-            
-            
+          
         } catch (IOException e) {
             logger.error("IO Exception on file {} ",pathString);
             throw new RuntimeException(e);
@@ -724,10 +711,12 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
             byte[] revision = httpSpec.revisions[httpRevision].getBytes();
             byte[] contentType = httpSpec.contentTypes[data.getType()[pathId]].getBytes();
             
+            assert(data.getFileSizes()[pathId]<Integer.MAX_VALUE) : "Can not support files larger than 2G at this time.";
+            
             int bytesConsumed = publishHeaderMessage(requestContext, sequence, VERB_GET==verb ? 0 : requestContext, 
             		                           status, output, activeChannelHigh, activeChannelLow,  
                                                httpSpec, revision, contentType, 
-                                               data.getFileSizeAsBytes()[pathId], 0, data.getFileSizeAsBytes()[pathId].length, Integer.MAX_VALUE, 
+                                               (int)data.getFileSizes()[pathId], 
                                                data.getEtagBytes()[pathId],
                                                reportServer, contLoc, 0,contLocLen,Integer.MAX_VALUE                           
             		); 

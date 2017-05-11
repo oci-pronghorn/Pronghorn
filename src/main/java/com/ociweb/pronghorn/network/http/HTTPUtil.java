@@ -58,9 +58,9 @@ public class HTTPUtil {
 	    DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.outputStream(localOutput);        
 	    writer.openField();
 	    byte[] revBytes = httpSpec.revisions[revision].getBytes();
-		AbstractRestStage.writeHeader(revBytes, status, requestContext, null, contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), 
-	    		    ZERO, 0, 1, 1, false, null, 0,0,0,
-	    		    writer, 1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
+		AbstractRestStage.writeHeader( revBytes, status, requestContext, null, contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), 
+						    		    0, false, null, 0,0,0,
+						    		    writer, 1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
 	    writer.closeLowLevelField();          
 	
 	    Pipe.addIntValue(requestContext , localOutput); //empty request context, set the full value last.                        

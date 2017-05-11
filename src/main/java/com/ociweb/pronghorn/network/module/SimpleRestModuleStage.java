@@ -79,52 +79,14 @@ public class SimpleRestModuleStage<                 T extends Enum<T> & HTTPCont
 						outputStream.openField();
 						
 						byte[] revisionBytes = httpSpec.revisions[revision].getBytes();
-						
-						
+												
 						byte[] etagBytes = null;//TODO: nice feature to add later
-						
-						
-						writeHeaderImpl(outputStream, status, contentType, length, context, revisionBytes, etagBytes);
-						
-						
-						return outputStream;
-					}
-
-					private void writeHeaderImpl(final DataOutputBlobWriter<ServerResponseSchema> outputStream,
-							int status, T contentType, int length, final int context, byte[] revisionBytes,
-							byte[] etagBytes) {
-						
-						byte[] lenAsBytes = null;//TODO: nice feature to add of knowing length up front.
-						int lenAsBytesPos = 0;
-					    int lenAsBytesLen = 0;
-					    int lenAsBytesMask = 0;
-					
-						if (length>=0) {
-											
-							  int addSize = Pipe.addMsgIdx(digitBuffer, RawDataSchema.MSG_CHUNKEDSTREAM_1);
-							  int digitsLen = Pipe.addLongAsUTF8(digitBuffer, length);
-						      Pipe.publishWrites(digitBuffer);
-						      Pipe.confirmLowLevelWrite(digitBuffer, addSize);
-												          
-					          int msgIdx = Pipe.takeMsgIdx(digitBuffer); 
-					          int meta = Pipe.takeRingByteMetaData(digitBuffer);
-					          lenAsBytesLen = Pipe.takeRingByteLen(digitBuffer);
-					          lenAsBytesPos = Pipe.bytePosition(meta, digitBuffer, lenAsBytesLen);
-					          lenAsBytes = Pipe.byteBackingArray(meta, digitBuffer);
-					          lenAsBytesMask = Pipe.blobMask(digitBuffer);
-					          
-					          assert(digitsLen == lenAsBytesLen) : "byte written should be the same as bytes consumed";
-					          
-					          Pipe.confirmLowLevelRead(digitBuffer, Pipe.sizeOf(RawDataSchema.instance,RawDataSchema.MSG_CHUNKEDSTREAM_1));
-					          Pipe.releaseReadLock(digitBuffer);
-														
-						}						
-						
-						
+												
 						writeHeader(revisionBytes, status, context, etagBytes, contentType.getBytes(), 
-								    lenAsBytes, lenAsBytesPos, lenAsBytesLen, lenAsBytesMask, 
-								    false, null, 0,0,0,
-								    outputStream, 1&(context>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
+									length, false, null, 0,0,0,
+						outputStream, 1&(context>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
+												
+						return outputStream;
 					}
 					
 				};

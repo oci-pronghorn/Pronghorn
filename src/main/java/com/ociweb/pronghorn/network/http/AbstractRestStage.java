@@ -14,6 +14,7 @@ import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 
 public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
                                          R extends Enum<R> & HTTPRevision,
@@ -99,7 +100,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     protected int publishHeaderMessage(int originalRequestContext, int sequence, int thisRequestContext, int status,                                     
                                         Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow,
                                         HTTPSpecification<T,R,V,H> httpSpec, byte[] revision, byte[] contentType, 
-                                        byte[] localSizeAsBytes, int localSizeAsBytesPos, int localSizeAsBytesLen, int localSizeAsByteMask, 
+                                        int length, 
                                         byte[] localETagBytes, boolean reportServer,
                                         byte[] contLocBytes, int contLocBytesPos, int contLocBytesLen, int contLocBytesMask
                                             		
@@ -117,9 +118,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         writer.openField();
         writeHeader(revision, 
         		    status, originalRequestContext, localETagBytes,  
-        		    contentType, 
-        		    localSizeAsBytes, localSizeAsBytesPos, localSizeAsBytesLen, localSizeAsByteMask, 
-        		    reportServer,
+        		    contentType, length, reportServer,
         		    contLocBytes, contLocBytesPos, contLocBytesLen,  contLocBytesMask,
         		    writer, 1&(originalRequestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
         int bytesLength = writer.closeLowLevelField();
@@ -136,7 +135,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     
     //TODO: build better constants for these values needed.
     public static void writeHeader(byte[] revisionBytes, int status, int requestContext, byte[] etagBytes, byte[] typeBytes, 
-    		                       byte[] lenAsBytes, int lenAsBytesPos, int lenAsBytesLen, int  lenAsBytesMask, boolean server,
+    		                       int length, boolean server,
     		                       byte[] contLocBytes, int contLocBytesPos, int contLocBytesLen, int contLocBytesMask,
     		                       DataOutputBlobWriter<ServerResponseSchema> writer, int conStateIdx) {
 
@@ -187,9 +186,9 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
             }
             
             //line four
-            if (null!=lenAsBytes) {
+            if (length>=0) {
                 writer.write(CONTENT_LENGTH);
-                DataOutputBlobWriter.write(writer, lenAsBytes, lenAsBytesPos, lenAsBytesLen, lenAsBytesMask);
+                Appendables.appendValue(writer, length);
                 writer.write(RETURN_NEWLINE);
             }
             
