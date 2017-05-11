@@ -23,18 +23,26 @@ public class URLTemplateParser {
 				
 		parser.setUTF8Value("%%{%b}", TrieParser.ESCAPE_CMD_RATIONAL); //%i%/
 		parser.setUTF8Value("%%%b/", TrieParser.ESCAPE_CMD_RATIONAL);  //%i%/
+		parser.setUTF8Value("%%%b?", TrieParser.ESCAPE_CMD_RATIONAL);  //%i%?
+		parser.setUTF8Value("%%%b&", TrieParser.ESCAPE_CMD_RATIONAL);  //%i%&
 		parser.setUTF8Value("%%%b", TrieParser.ESCAPE_CMD_RATIONAL);   //%i%/
 				
 		parser.setUTF8Value("^{%b}", TrieParser.ESCAPE_CMD_DECIMAL);  //%i%.
 		parser.setUTF8Value("^%b/", TrieParser.ESCAPE_CMD_DECIMAL);   //%i%.
+		parser.setUTF8Value("^%b?", TrieParser.ESCAPE_CMD_DECIMAL);   //%i%.
+		parser.setUTF8Value("^%b&", TrieParser.ESCAPE_CMD_DECIMAL);   //%i%.
 		parser.setUTF8Value("^%b", TrieParser.ESCAPE_CMD_DECIMAL);    //%i%.
 				
 		parser.setUTF8Value("#{%b}", TrieParser.ESCAPE_CMD_SIGNED_INT); //%i
 		parser.setUTF8Value("#%b/", TrieParser.ESCAPE_CMD_SIGNED_INT);  //%i
+		parser.setUTF8Value("#%b?", TrieParser.ESCAPE_CMD_SIGNED_INT);  //%i
+		parser.setUTF8Value("#%b&", TrieParser.ESCAPE_CMD_SIGNED_INT);  //%i
 		parser.setUTF8Value("#%b", TrieParser.ESCAPE_CMD_SIGNED_INT);   //%i
 		
 		parser.setUTF8Value("${%b}", TrieParser.ESCAPE_CMD_BYTES);
 		parser.setUTF8Value("$%b/", TrieParser.ESCAPE_CMD_BYTES);
+		parser.setUTF8Value("$%b?", TrieParser.ESCAPE_CMD_BYTES);
+		parser.setUTF8Value("$%b&", TrieParser.ESCAPE_CMD_BYTES);
 		parser.setUTF8Value("$%b", TrieParser.ESCAPE_CMD_BYTES);
 		
 		//for every non match just consume the char and move to the next		
