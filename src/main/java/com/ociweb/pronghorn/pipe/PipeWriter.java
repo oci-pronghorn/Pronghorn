@@ -289,7 +289,7 @@ public class PipeWriter {
 	    Pipe.updateBytesWriteLastConsumedPos(pipe);
 		
 		if ((Pipe.decBatchPublish(pipe)>0)) {		
-			Pipe.storeUnpublishedHead(pipe);
+			Pipe.storeUnpublishedWrites(pipe);
 			return consumed;
 		}
 		

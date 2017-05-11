@@ -2511,7 +2511,7 @@ public class Pipe<T extends MessageSchema<T>> {
     public static <S extends MessageSchema<S>> void addIntValue(int value, Pipe<S> rb) {
          assert(rb.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(rb)+rb.sizeOfSlabRing);
          //TODO: not always working in deep structures, check offsets:  assert(isValidFieldTypePosition(rb, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.Decimal));
-		 setValue(rb.slabRing,rb.mask,rb.slabRingHead.workingHeadPos.value++,value);
+		 setValue(rb.slabRing,rb.slabMask,rb.slabRingHead.workingHeadPos.value++,value);
 	}
 
 	private static <S extends MessageSchema<S>> boolean isValidFieldTypePosition(Pipe<S> rb, int ... expected) {
@@ -2551,7 +2551,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
     public static <S extends MessageSchema<S>> void setIntValue(int value, Pipe<S> pipe, long position) {
         assert(pipe.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(pipe)+pipe.sizeOfSlabRing);
-        setValue(pipe.slabRing,pipe.mask,position,value);
+        setValue(pipe.slabRing,pipe.slabMask,position,value);
    }
 
     //
@@ -2940,11 +2940,15 @@ public class Pipe<T extends MessageSchema<T>> {
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe) {
     
     	//happens at the end of every fragment
-        int consumed = writeTrailingCountOfBytesConsumed(pipe, pipe.slabRingHead.workingHeadPos.value++); //increment because this is the low-level API calling
+        int consumed = writeTrailingCountOfBytesConsumed(pipe); //increment because this is the low-level API calling
 
 		publishWritesBatched(pipe);
 		return consumed;
     }
+
+	public static <S extends MessageSchema<S>> int writeTrailingCountOfBytesConsumed(Pipe<S> pipe) {
+		return writeTrailingCountOfBytesConsumed(pipe, pipe.slabRingHead.workingHeadPos.value++);
+	}
 
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe, int optionalHiddenTrailingBytes) {
         
@@ -2954,7 +2958,7 @@ public class Pipe<T extends MessageSchema<T>> {
     	    	
     	//happens at the end of every fragment
         int consumed = writeTrailingCountOfBytesConsumed(pipe, pipe.slabRingHead.workingHeadPos.value++); //increment because this is the low-level API calling
-        assert(consumed<pipe.maxAvgVarLen) : "When hiding data it must stay below the max var length threshold when added to the rest of the fields.";        
+        assert(consumed<pipe.maxVarLen) : "When hiding data it must stay below the max var length threshold when added to the rest of the fields.";        
         
 		publishWritesBatched(pipe);
 		return consumed;
@@ -2963,14 +2967,8 @@ public class Pipe<T extends MessageSchema<T>> {
     
     public static <S extends MessageSchema<S>> void publishWritesBatched(Pipe<S> pipe) {
         //single length field still needs to move this value up, so this is always done
+    	//in most cases this is redundant
 		pipe.blobWriteLastConsumedPos = pipe.blobRingHead.byteWorkingHeadPos.value;
-
-    	assert(pipe.slabRingHead.workingHeadPos.value >= Pipe.headPosition(pipe));
-    	assert(pipe.llWrite.llrConfirmedPosition<=Pipe.headPosition(pipe) || 
-    		   pipe.slabRingHead.workingHeadPos.value<=pipe.llWrite.llrConfirmedPosition) :
-    			   "Possible unsupported mix of high and low level API. NextHead>head and workingHead>nextHead "+pipe+" nextHead "+pipe.llWrite.llrConfirmedPosition+"\n"+
-    		       "OR the XML field types may not match the accessor methods in use.";
-    	assert(validateFieldCount(pipe)) : "No fragment could be found with this field count, check for missing or extra fields.";
 
     	publishHeadPositions(pipe);
     }
@@ -3018,6 +3016,13 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	public static <S extends MessageSchema<S>> void publishHeadPositions(Pipe<S> pipe) {
 
+		assert(pipe.slabRingHead.workingHeadPos.value >= Pipe.headPosition(pipe));
+    	assert(pipe.llWrite.llrConfirmedPosition<=Pipe.headPosition(pipe) || 
+    		   pipe.slabRingHead.workingHeadPos.value<=pipe.llWrite.llrConfirmedPosition) :
+    			   "Possible unsupported mix of high and low level API. NextHead>head and workingHead>nextHead "+pipe+" nextHead "+pipe.llWrite.llrConfirmedPosition+"\n"+
+    		       "OR the XML field types may not match the accessor methods in use.";
+    	assert(validateFieldCount(pipe)) : "No fragment could be found with this field count, check for missing or extra fields.";
+
 	    //TODO: need way to test if publish was called on an input ? may be much easer to detect missing publish. or extra release.
 	    if ((--pipe.batchPublishCountDown<=0)) {
 	        PaddedInt.set(pipe.blobRingHead.bytesHeadPos,pipe.blobRingHead.byteWorkingHeadPos.value);
@@ -3025,11 +3030,11 @@ public class Pipe<T extends MessageSchema<T>> {
 	        assert(debugHeadAssignment(pipe));
 	        pipe.batchPublishCountDown = pipe.batchPublishCountDownInit;
 	    } else {
-	        storeUnpublishedHead(pipe);
+	        storeUnpublishedWrites(pipe);
 	    }
 	}
 
-	static <S extends MessageSchema<S>> void storeUnpublishedHead(Pipe<S> pipe) {
+	public static <S extends MessageSchema<S>> void storeUnpublishedWrites(Pipe<S> pipe) {
 		pipe.lastPublishedBlobRingHead = pipe.blobRingHead.byteWorkingHeadPos.value;
 		pipe.lastPublishedSlabRingHead = pipe.slabRingHead.workingHeadPos.value;
 	}
@@ -3038,7 +3043,7 @@ public class Pipe<T extends MessageSchema<T>> {
         //ignore the fact that any of this was written to the ring buffer
     	pipe.slabRingHead.workingHeadPos.value = pipe.slabRingHead.headPos.longValue();
     	pipe.blobRingHead.byteWorkingHeadPos.value = PaddedInt.get(pipe.blobRingHead.bytesHeadPos);
-    	storeUnpublishedHead(pipe);
+    	storeUnpublishedWrites(pipe);
     }
 
     /**

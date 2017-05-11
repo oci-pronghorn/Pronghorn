@@ -39,13 +39,17 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     }
 
     public static <T extends MessageSchema<T>> void openField(DataOutputBlobWriter<T> writer) {
-        
-        writer.backingPipe.openBlobFieldWrite();
-        //NOTE: this method works with both high and low APIs.
-        writer.startPosition = writer.activePosition = Pipe.getWorkingBlobHeadPosition(writer.backingPipe);
-        writer.lastPosition = writer.startPosition+writer.backingPipe.maxVarLen;
-        writer.backPosition = writer.lastPosition;
+    	openFieldAtPosition(writer, Pipe.getWorkingBlobHeadPosition(writer.backingPipe));
     }
+
+	public static <T extends MessageSchema<T>> void openFieldAtPosition(DataOutputBlobWriter<T> writer,
+																		int workingBlobHeadPosition) {
+		writer.backingPipe.openBlobFieldWrite();
+        //NOTE: this method works with both high and low APIs.
+		writer.startPosition = writer.activePosition = workingBlobHeadPosition;
+        writer.lastPosition = writer.startPosition + writer.backingPipe.maxVarLen;
+        writer.backPosition = writer.lastPosition;
+	}
     
     public int position() {
     	return activePosition-startPosition;
@@ -126,16 +130,32 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     public int closeLowLevelField() {
         return closeLowLevelField(this);
     }
-
+    
+    /**
+     * Close field and record its length as the number of bytes consumed by the BlobWriter
+     * @param writer
+     */
     public static <T extends MessageSchema<T>> int closeLowLevelField(DataOutputBlobWriter<T> writer) {
-        int len = length(writer);
-        Pipe.addAndGetBytesWorkingHeadPosition(writer.backingPipe, len);
+        return closeLowLeveLField(writer, length(writer));
+    }
+    
+    /**
+     * Ignore the length of this field and close it consuming all the available blob space for this field.
+     * @param writer
+     */
+    public static <T extends MessageSchema<T>> int closeLowLevelMaxVarLenField(DataOutputBlobWriter<T> writer) {
+        return closeLowLeveLField(writer, writer.getPipe().maxVarLen);
+    }
+    
+    
+	private static <T extends MessageSchema<T>> int closeLowLeveLField(DataOutputBlobWriter<T> writer, int len) {
+		Pipe.addAndGetBytesWorkingHeadPosition(writer.backingPipe, len);
         Pipe.addBytePosAndLenSpecial(writer.backingPipe,writer.startPosition,len);
         
         Pipe.validateVarLength(writer.backingPipe, len);
         writer.backingPipe.closeBlobFieldWrite();
         return len;
-    }
+	}
  
     public int length() {
         return length(this);
