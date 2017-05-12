@@ -55,23 +55,27 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     	return activePosition-startPosition;
     }
     
-    public int backPosition() {
-    	return backPosition;
-    }
+//    public int backPosition() {
+//    	return backPosition;
+//    }
     
     public void debug() {
         	Appendables.appendArray(System.out, '[', backingPipe.blobRing, startPosition, backingPipe.blobMask, ']',  lastPosition-startPosition);
     }
     
     public static <T extends MessageSchema<T>> boolean tryWriteIntBackData(DataOutputBlobWriter<T> writer, int value) {	
-    	int temp = writer.backPosition-4;
-    	if (temp >= writer.activePosition) {
-    		writer.backPosition = temp;
+    	    	
+    	int totalBytesWritten = dif(writer, writer.startPosition, writer.activePosition);
+    	int totalBytesIndexed = 4+dif(writer, writer.backPosition, writer.lastPosition);
+    	
+    	if (totalBytesWritten+totalBytesIndexed < writer.getPipe().maxVarLen) {
+     		writer.backPosition-=4;
     		write32(writer.byteBuffer, writer.byteMask, writer.backPosition, value);       
     		return true;
     	} else {
     		return false;
     	}
+
     }
     
     public static <T extends MessageSchema<T>> boolean tryClearIntBackData(DataOutputBlobWriter<T> writer, int intCount) {	
@@ -163,12 +167,13 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
 
     public static <T extends MessageSchema<T>> int length(DataOutputBlobWriter<T> writer) {
        
-        if (writer.activePosition>=writer.startPosition) {
-            return writer.activePosition-writer.startPosition;            
-        } else {       
-        	return (writer.backingPipe.sizeOfBlobRing- (writer.byteMask & writer.startPosition))+(writer.activePosition & writer.byteMask);
-        }
+    	return dif(writer, writer.startPosition, writer.activePosition);
+
     }
+
+	private static <T extends MessageSchema<T>> int dif(DataOutputBlobWriter<T> writer, int pos1, int pos2) {
+		return (pos2>=pos1) ? (pos2-pos1) : (writer.backingPipe.sizeOfBlobRing - (writer.byteMask & pos1))+(pos2 & writer.byteMask);
+	}
     
     public byte[] toByteArray() {
         byte[] result = new byte[length()];        

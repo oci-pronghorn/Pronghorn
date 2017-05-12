@@ -1255,7 +1255,6 @@ public class TrieParserReader {
     	int limit = reader.capturedPos;
         int[] localCapturedValues = reader.capturedValues;
         
-        
         int totalBytes = 0;
         int i = 0;
         while (i < limit) {
@@ -1351,7 +1350,7 @@ public class TrieParserReader {
             }    
             
             if (writeIndex && !DataOutputBlobWriter.tryWriteIntBackData(target, writePosition)) {
-            	throw new IOException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+target.getPipe());
+            	throw new IOException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for pipe varLength is "+target.getPipe().maxVarLen);
             }
             
             
