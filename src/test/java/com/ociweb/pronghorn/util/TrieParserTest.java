@@ -248,30 +248,33 @@ public class TrieParserTest {
     @Test 
     public void testExtractBytesEndAll() {
         TrieParserReader reader = new TrieParserReader(3);
-        TrieParser map = new TrieParser(16);
+        TrieParser map = new TrieParser(16,false);
         
         map.setValue(wrapping(data1,4), 0, 3, 15, value1);                                          //added  101,102,103
         assertFalse(map.toString(),map.toString().contains("ERROR"));
         
-        map.setValue(wrapping(dataBytesExtractEndA,4), 0, dataBytesExtractEndA.length, 15, value5);  
+        map.setValue(wrapping(dataBytesExtractEndA,4), 0, dataBytesExtractEndA.length, 15, value5); //added  100,101,102,'A','b',127 
         
         map.setValue(wrapping(dataBytesExtractEnd,4), 0, dataBytesExtractEnd.length, 15, value2);   //added  100,101,102,'%','b',127
         assertFalse(map.toString(),map.toString().contains("ERROR"));
         
-        map.setValue(wrapping(dataBytesExtractEndB,4), 0, dataBytesExtractEndB.length, 15, value6);  
+        map.setValue(wrapping(dataBytesExtractEndB,4), 0, dataBytesExtractEndB.length, 15, value6); //added  100,101,102,'B','b',127 
         
         map.setValue(wrapping(dataBytesExtractEnd2,4), 0, dataBytesExtractEnd2.length, 15, value4); //added  100,101,102,'%','b',127,102
         assertFalse("\n"+map.toString(),map.toString().contains("ERROR"));
         
-        map.setValue(wrapping(dataBytesExtractEndC,4), 0, dataBytesExtractEndC.length, 15, value7);  
+        map.setValue(wrapping(dataBytesExtractEndC,4), 0, dataBytesExtractEndC.length, 15, value7); //added   100,101,102,'C','b',127 
         
-        map.setValue(data1, 2, 3, 7, value3);
+        map.setValue(data1, 2, 3, 7, value3);  //    101,102,[ 103,104,105, ] 106,107,108
         
         assertEquals(value1, TrieParserReader.query(reader, map, wrapping(data1,4), 0, 3, 15));
         
         assertEquals(value3, TrieParserReader.query(reader, map, wrapping(data1,4), 2, 3, 15));
 
-        assertEquals(value2, TrieParserReader.query(reader, map, wrapping(toParseMiddle,4), 0, toParseMiddle.length, 15));
+                                                                // {100,101,10,11,12,13,127,102};
+        assertEquals(-1, TrieParserReader.query(reader, map, wrapping(toParseMiddle,4), 0, toParseMiddle.length, 15));
+              
+                                                                 // {100,101,102,10,11,12,13,127}
         assertEquals(value2, TrieParserReader.query(reader, map, wrapping(toParseEnd,4), 0, toParseEnd.length, 15));
                 
         assertEquals(1, TrieParserReader.capturedFieldCount(reader));
@@ -290,18 +293,24 @@ public class TrieParserTest {
     @Test 
     public void testExtractBytesEndStart() {
         TrieParserReader reader = new TrieParserReader(3);
-        TrieParser map = new TrieParser(1000);
+        TrieParser map = new TrieParser(1000,false);
         
-        map.setValue(wrapping(data1,4), 0, 3, 15, value1);                                      
+        map.setValue(wrapping(data1,4), 0, 3, 15, value1);                                              //101,102,103 e,f,g                                   
         assertFalse(map.toString(),map.toString().contains("ERROR"));
         
-        map.setValue(wrapping(dataBytesExtractStart,4), 0, dataBytesExtractStart.length, 15, value2);  //{'%','b',127,100,101,102};
-        map.setValue(wrapping(dataBytesExtractStart2,4), 0, dataBytesExtractStart2.length, 15, value4);//{'%','b',127,102,101,102};
+        map.setValue(wrapping(dataBytesExtractStart,4), 0, dataBytesExtractStart.length, 15, value2);  //{'%','b',127,100,101,102}; //def
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
+        
+        //map.toDOT(System.out);
+        
+        map.setValue(wrapping(dataBytesExtractStart2,4), 0, dataBytesExtractStart2.length, 15, value4);//{'%','b',127,102,101,102}; //fef
+        assertFalse(map.toString(),map.toString().contains("ERROR"));
+        //map.toDOT(System.out);
+        
         map.setValue(wrapping(dataBytesExtractStart3,4), 0, dataBytesExtractStart3.length, 15, value1);//{'%','b',125,100,101,102};
         assertFalse(map.toString(),map.toString().contains("ERROR"));
         
-        
-        map.setValue(wrapping(dataBytesExtractStartA,4), 0, dataBytesExtractStartA.length, 15, value5);  
+        map.setValue(wrapping(dataBytesExtractStartA,4), 0, dataBytesExtractStartA.length, 15, value5); //'A','b',127,100,101,102 
         map.setValue(wrapping(dataBytesExtractStartB,4), 0, dataBytesExtractStartB.length, 15, value6);  
                 
         
@@ -309,19 +318,23 @@ public class TrieParserTest {
         
         map.setValue(wrapping(dataBytesExtractStartC,4), 0, dataBytesExtractStartC.length, 15, value7);  
         
-        map.setValue(data1, 2, 3, 7, value3);
+        map.setValue(data1, 2, 3, 7, value3); //103,104,105
         
         assertEquals(value1, TrieParserReader.query(reader, map, wrapping(data1,4), 0, 3, 15));
         
-        assertEquals(value3, TrieParserReader.query(reader, map, wrapping(data1,4), 2, 3, 15));
+        assertEquals(value3, TrieParserReader.query(reader, map, wrapping(data1,4), 2, 3, 15)); // 103,104,105
 
         assertEquals(value5, TrieParserReader.query(reader, map, wrapping(dataBytesExtractStartA,4), 0, dataBytesExtractStartA.length, 15));
         assertEquals(value6, TrieParserReader.query(reader, map, wrapping(dataBytesExtractStartB,4), 0, dataBytesExtractStartB.length, 15));
         assertEquals(value7, TrieParserReader.query(reader, map, wrapping(dataBytesExtractStartC,4), 0, dataBytesExtractStartC.length, 15));
                 
         assertEquals(value2, TrieParserReader.query(reader, map, wrapping(toParseStart,4), 0, toParseStart.length, 15));  //{10,20,30,127,100,101,102,155}; //start
+        
+        
         assertEquals(value1, TrieParserReader.query(reader, map, wrapping(toParseStart3,4), 0, toParseStart3.length, 15));  //{10,20,30,125,100,101,102};     //start3
-        assertEquals(-1, TrieParserReader.query(reader, map, wrapping(toParseStartx,4), 0, toParseStartx.length, 15));  //{10,20,30,125,100,155,155};     //startx
+      
+        //map.toDOT(System.out); //this is a pretty example showing the ALTs on the left and the explicit paths on the right
+        assertEquals(-1, TrieParserReader.query(reader, map, wrapping(toParseStartx,4), 0, toParseStartx.length, 15));      //{10,20,30,125,100,155,155};     //startx
      
         assertEquals(value4, TrieParserReader.query(reader, map, wrapping(toParseStart2,4), 0, toParseStart2.length, 15));  //{10,20,30,127,100,102,101,102}; //start2
       
@@ -331,8 +344,7 @@ public class TrieParserTest {
         
     }
     
-    //TODO: need new tests to cover the case when our capture runs off the end of the data at or before the stop, same for runs.
-    
+   
     
     /**
      * Extract has multiple end points all determined by last stop byte.
@@ -1278,8 +1290,45 @@ public class TrieParserTest {
         
     }
     
+    @Test
+    public void testPatternExtraction() {
+        TrieParser parser = new TrieParser(1000, 1, true, true);  
+        TrieParserReader reader = new TrieParserReader(4, true);
+        
+       
+        parser.setUTF8Value("$%b/", TrieParser.ESCAPE_CMD_BYTES);
+        assertFalse(parser.toString(),parser.toString().contains("ERROR"));
+        
+        parser.setUTF8Value("${%b}", TrieParser.ESCAPE_CMD_BYTES);
+        assertFalse(parser.toString(),parser.toString().contains("ERROR"));
+                
+        parser.setUTF8Value("$%b?", TrieParser.ESCAPE_CMD_BYTES);
+		assertFalse(parser.toString(),parser.toString().contains("ERROR"));
+		  		
+		parser.setUTF8Value("$%b", TrieParser.ESCAPE_CMD_BYTES);
+		assertFalse(parser.toString(),parser.toString().contains("ERROR"));
+		
+	    parser.setUTF8Value("$%b&", TrieParser.ESCAPE_CMD_BYTES);
+	    assertFalse(parser.toString(),parser.toString().contains("ERROR"));
+
+		//for every non match just consume the char and move to the next		
+		
+		findShortText(parser, reader, "$hello?");
+		findShortText(parser, reader, "$hello/");
+		findShortText(parser, reader, "${hello}");
+		findShortText(parser, reader, "$hello&");
+				
+    }
+
+	private void findShortText(TrieParser parser, TrieParserReader reader, String text) {
+		byte[] bytes = wrapping(text.getBytes(),4);
+		assertEquals(TrieParser.ESCAPE_CMD_BYTES, reader.query(reader, parser, bytes, 0, text.length(), 15));
+	}
+    
+    
     //TODO: urgent fix.
     @Ignore
+    //@Test
     public void testEscapedEscape() {
         
         TrieParser map = new TrieParser(1000, 1, true, true);        

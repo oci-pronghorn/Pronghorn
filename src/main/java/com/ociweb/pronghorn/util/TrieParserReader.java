@@ -781,22 +781,37 @@ public class TrieParserReader {
 	    int aLocal = pos+ TrieParser.BRANCH_JUMP_SIZE;
 	    int bJump = pos+jump+ TrieParser.BRANCH_JUMP_SIZE;
 	   
-	    int localType = localData[aLocal];   		    
-	    assert(TrieParser.TYPE_VALUE_BYTES == localType || 
-	    	   TrieParser.TYPE_VALUE_NUMERIC  == localType ||
-	    	   TrieParser.TYPE_BRANCH_VALUE == localType ||
-	    	   TrieParser.TYPE_ALT_BRANCH == localType
-	    	   ) : "unknown value of: "+localType;  // local can only be one of the capture types or a branch leaning to those exclusively.
-  		    
+	    int localType = localData[aLocal];
 	    
-	    //push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
-	    pushAlt(reader, aLocal, offset, runLength);
+	    assert(isAltType(localType) || TrieParser.TYPE_BRANCH_VALUE == localType) : "unknown value of: "+localType;  // local can only be one of the capture types or a branch leaning to those exclusively.
+  	
 	    
-	    //take the jump   		    
-	    reader.pos = bJump;
-   
+		 if (isAltType(localType)) {  
+			 
+			//this is the normal expected case
+		    //push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
+		    pushAlt(reader, aLocal, offset, runLength);
+		    
+		    //take the jump   		    
+		    reader.pos = bJump;
+	
+		 } else {
+		    
+			logger.warn("TrieParserRead has had to process Alt out of order because it was constructed in the wrong order");
+		    //push local on stack so we can try the captures if the literal does not work out. (NOTE: assumes all literals are found as jumps and never local)
+		    pushAlt(reader, bJump, offset, runLength);
+		    
+		    //take the jump   		    
+		    reader.pos = aLocal;
+		 }
          
     }
+
+	private static boolean isAltType(int localType) {
+		return TrieParser.TYPE_VALUE_BYTES == localType || 
+	    	   TrieParser.TYPE_VALUE_NUMERIC  == localType ||
+	    	   TrieParser.TYPE_ALT_BRANCH == localType;
+	}
 
     private static long useSafePointNow(TrieParserReader reader) {
         //hard stop passed in forces us to use the safe point
@@ -895,11 +910,15 @@ public class TrieParserReader {
     }
 
     private static int extractedBytesRange(int[] target, int pos, int sourcePos, int sourceLen, int sourceMask) {
-        target[pos++] = 0;  //this flag tells us that these 4 values are not a Number but instead captured Bytes
-        target[pos++] = sourcePos;
-        target[pos++] = sourceLen;
-        target[pos++] = sourceMask;
-        return pos;
+    	try {
+	        target[pos++] = 0;  //this flag tells us that these 4 values are not a Number but instead captured Bytes
+	        target[pos++] = sourcePos;
+	        target[pos++] = sourceLen;
+	        target[pos++] = sourceMask;
+	        return pos;
+    	} catch (ArrayIndexOutOfBoundsException e) {
+    		throw new UnsupportedOperationException("TrieParserReader attempted to capture too many values. "+(pos/4));
+    	}
     }
     
     private static int parseNumeric(TrieParserReader reader, byte[] source, int sourcePos, long sourceLength, int sourceMask, int numType) {

@@ -55,12 +55,14 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     	return activePosition-startPosition;
     }
     
-//    public int backPosition() {
-//    	return backPosition;
-//    }
     
     public void debug() {
-        	Appendables.appendArray(System.out, '[', backingPipe.blobRing, startPosition, backingPipe.blobMask, ']',  lastPosition-startPosition);
+        Appendables.appendArray(System.out, '[', backingPipe.blobRing, startPosition, backingPipe.blobMask, ']',  activePosition-startPosition);
+    }
+    
+    public void debugAsUTF8() {
+    	Appendables.appendUTF8(System.out, backingPipe.blobRing, startPosition, activePosition-startPosition, backingPipe.blobMask);
+        System.out.println();
     }
     
     public static <T extends MessageSchema<T>> boolean tryWriteIntBackData(DataOutputBlobWriter<T> writer, int value) {	
