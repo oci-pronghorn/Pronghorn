@@ -8,7 +8,9 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class URLTemplateParser {
 
-	private final TrieParser templateParser = buildRouteTemplateParser(new TrieParser(256,false));
+	private final static byte CUSTOM_ESCAPE = (byte)'"'; //the " char is never allowed to appear in a URL so we can use it here.
+	
+	private final TrieParser templateParser = buildRouteTemplateParser(new TrieParser(256,1,false,true,false,CUSTOM_ESCAPE));
 	
     private final EncodingConverter converter;
     
@@ -21,31 +23,33 @@ public class URLTemplateParser {
 	
 	public static TrieParser buildRouteTemplateParser(TrieParser parser) {
 				
-		parser.setUTF8Value("%%{%b}", TrieParser.ESCAPE_CMD_RATIONAL); //%i%/
-		parser.setUTF8Value("%%%b/", TrieParser.ESCAPE_CMD_RATIONAL);  //%i%/
-		parser.setUTF8Value("%%%b?", TrieParser.ESCAPE_CMD_RATIONAL);  //%i%?
-		parser.setUTF8Value("%%%b&", TrieParser.ESCAPE_CMD_RATIONAL);  //%i%&
-		parser.setUTF8Value("%%%b", TrieParser.ESCAPE_CMD_RATIONAL);   //%i%/
-				
-		parser.setUTF8Value("^{%b}", TrieParser.ESCAPE_CMD_DECIMAL);  //%i%.
-		parser.setUTF8Value("^%b/", TrieParser.ESCAPE_CMD_DECIMAL);   //%i%.
-		parser.setUTF8Value("^%b?", TrieParser.ESCAPE_CMD_DECIMAL);   //%i%.
-		parser.setUTF8Value("^%b&", TrieParser.ESCAPE_CMD_DECIMAL);   //%i%.
-		parser.setUTF8Value("^%b", TrieParser.ESCAPE_CMD_DECIMAL);    //%i%.
-				
-		parser.setUTF8Value("#{%b}", TrieParser.ESCAPE_CMD_SIGNED_INT); //%i
-		parser.setUTF8Value("#%b/", TrieParser.ESCAPE_CMD_SIGNED_INT);  //%i
-		parser.setUTF8Value("#%b?", TrieParser.ESCAPE_CMD_SIGNED_INT);  //%i
-		parser.setUTF8Value("#%b&", TrieParser.ESCAPE_CMD_SIGNED_INT);  //%i
-		parser.setUTF8Value("#%b", TrieParser.ESCAPE_CMD_SIGNED_INT);   //%i
+		assert(parser.ESCAPE_BYTE == CUSTOM_ESCAPE);
 		
-		parser.setUTF8Value("${%b}", TrieParser.ESCAPE_CMD_BYTES);
-		parser.setUTF8Value("$%b/", TrieParser.ESCAPE_CMD_BYTES);
-		parser.setUTF8Value("$%b?", TrieParser.ESCAPE_CMD_BYTES);
-		parser.setUTF8Value("$%b&", TrieParser.ESCAPE_CMD_BYTES);
-		parser.setUTF8Value("$%b", TrieParser.ESCAPE_CMD_BYTES);
+		parser.setUTF8Value("#{\"b}", TrieParser.ESCAPE_CMD_SIGNED_INT); //%i
+		parser.setUTF8Value("#\"b/", TrieParser.ESCAPE_CMD_SIGNED_INT);  //%i
+		parser.setUTF8Value("#\"b?", TrieParser.ESCAPE_CMD_SIGNED_INT);  //%i
+		parser.setUTF8Value("#\"b&", TrieParser.ESCAPE_CMD_SIGNED_INT);  //%i
+		parser.setUTF8Value("#\"b", TrieParser.ESCAPE_CMD_SIGNED_INT);   //%i
 		
-		//for every non match just consume the char and move to the next		
+		parser.setUTF8Value("^{\"b}", TrieParser.ESCAPE_CMD_DECIMAL);  //%i%.
+		parser.setUTF8Value("^\"b/", TrieParser.ESCAPE_CMD_DECIMAL);   //%i%.
+		parser.setUTF8Value("^\"b?", TrieParser.ESCAPE_CMD_DECIMAL);   //%i%.
+		parser.setUTF8Value("^\"b&", TrieParser.ESCAPE_CMD_DECIMAL);   //%i%.
+		parser.setUTF8Value("^\"b", TrieParser.ESCAPE_CMD_DECIMAL);    //%i%.
+		
+		parser.setUTF8Value("${\"b}", TrieParser.ESCAPE_CMD_BYTES);
+		parser.setUTF8Value("$\"b?", TrieParser.ESCAPE_CMD_BYTES);
+		parser.setUTF8Value("$\"b", TrieParser.ESCAPE_CMD_BYTES);
+		parser.setUTF8Value("$\"b&", TrieParser.ESCAPE_CMD_BYTES);
+		parser.setUTF8Value("$\"b/", TrieParser.ESCAPE_CMD_BYTES);
+		
+		parser.setUTF8Value("%{\"b}", TrieParser.ESCAPE_CMD_RATIONAL); //%i%/
+		parser.setUTF8Value("%\"b/", TrieParser.ESCAPE_CMD_RATIONAL);  //%i%/
+		parser.setUTF8Value("%\"b?", TrieParser.ESCAPE_CMD_RATIONAL);  //%i%?
+		parser.setUTF8Value("%\"b&", TrieParser.ESCAPE_CMD_RATIONAL);  //%i%&
+		parser.setUTF8Value("%\"b", TrieParser.ESCAPE_CMD_RATIONAL);   //%i%/
+
+		//parser.toDOT(System.out);
 		
 		return parser;
 	}
@@ -119,6 +123,10 @@ public class URLTemplateParser {
 		if (lastValue!=' ') {
 			outputStream.writeByte(' '); //ensure we always end with ' ' space
 		}
+		
+		//inspect the converted value
+		outputStream.debugAsUTF8();
+		
 		return fieldIndex-1;
 	}
 
