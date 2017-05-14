@@ -135,6 +135,9 @@ public class TrieParser implements Serializable {
     }
     
     public TrieParser(int size, int resultSize, boolean skipDeepChecks, boolean supportsExtraction, boolean ignoreCase) {
+    	this(size,resultSize,skipDeepChecks,supportsExtraction,ignoreCase,(byte)'%'); //default escape is set here.
+    }
+    public TrieParser(int size, int resultSize, boolean skipDeepChecks, boolean supportsExtraction, boolean ignoreCase, byte customEscape) {
         this.data = new short[size];
         this.fixedSize = false; //if its not fixed size then the .data array will grow as needed.
         
@@ -147,7 +150,8 @@ public class TrieParser implements Serializable {
         this.skipDeepChecks = skipDeepChecks;
                         
         if (supportsExtraction) {
-            ESCAPE_BYTE = '%';
+        	assert(customEscape!=NO_ESCAPE_SUPPORT);
+            ESCAPE_BYTE = customEscape; //set custom escape char for the case that we need to use %
         } else {
             ESCAPE_BYTE = NO_ESCAPE_SUPPORT;
         }        
@@ -630,14 +634,14 @@ public class TrieParser implements Serializable {
 	//since this is an alt one of the 3 alt values must exist
 	//these are set up so that we prefer the type with the lowest (to the left) index over later ones
 	private static final int[] captureBytesChoices = 
-	      new int[]{TrieParser.TYPE_VALUE_BYTES,TrieParser.TYPE_ALT_BRANCH,TrieParser.TYPE_VALUE_NUMERIC};
+	      new int[]{TrieParser.TYPE_VALUE_BYTES,TrieParser.TYPE_VALUE_NUMERIC,TrieParser.TYPE_ALT_BRANCH};
 	
 	private static final int[] captureNumberChoices = 
-  	      new int[]{TrieParser.TYPE_VALUE_NUMERIC,TrieParser.TYPE_ALT_BRANCH,TrieParser.TYPE_VALUE_BYTES};
+  	      new int[]{TrieParser.TYPE_VALUE_NUMERIC,TrieParser.TYPE_VALUE_BYTES,TrieParser.TYPE_ALT_BRANCH};
   	
 	private static final int[] definedChoices = 
     	      new int[]{TrieParser.TYPE_RUN, TrieParser.TYPE_END, TrieParser.TYPE_SAFE_END, TrieParser.TYPE_BRANCH_VALUE  
-    	    		   ,TrieParser.TYPE_ALT_BRANCH,TrieParser.TYPE_VALUE_BYTES,TrieParser.TYPE_VALUE_NUMERIC};
+    	    		   ,TrieParser.TYPE_VALUE_BYTES,TrieParser.TYPE_VALUE_NUMERIC,TrieParser.TYPE_ALT_BRANCH};
     	
 	
     private int longestKnown = 0;
@@ -689,6 +693,7 @@ public class TrieParser implements Serializable {
                             return;
                             
                         } else {
+                     
                             int pos1 = pos;
 							int jumpMask = computeJumpMask((short) v, data[pos1++]);														
                             pos = 0==jumpMask? 1+pos1 : 1+(jumpMask&((((int)data[pos1++])<<15) | (0x7FFF&data[pos1])))+pos1;   
@@ -789,7 +794,8 @@ public class TrieParser implements Serializable {
                                         maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                                         return;
                                     } else {
-                                       sourcePos--;//found literal
+                                    	
+                                       sourcePos+=1;//found literal
                                     }
                                     //else we have two escapes in a row therefore this is a literal
                                 }                                
@@ -827,8 +833,9 @@ public class TrieParser implements Serializable {
                                     maxExtractedFields = Math.max(maxExtractedFields, fieldExtractionsCount);
                                     return;
                                 } else {
+                                
                                 	//this was %%
-                                    sourcePos--; //found literal
+                                    sourcePos+=1; //found literal
                                 }
                                 //else we have two escapes in a row therefore this is a literal
                             }                          
@@ -894,7 +901,7 @@ public class TrieParser implements Serializable {
 			int c = choices.length;
 			while (--c>=0) {
 				if (type2 == choices[c]) {
-					if (c<selectedRank) {
+					if (c < selectedRank) {
 						selectedRank = c;
 						selectedStackPos = i;
 					}
@@ -1076,7 +1083,7 @@ public class TrieParser implements Serializable {
             byte value = source[sourceMask & (sourcePos+i)];
             
             if (ESCAPE_BYTE == value && NO_ESCAPE_SUPPORT!=ESCAPE_BYTE) {
-                assert(value=='%');
+                
                 i++;
                 value = source[sourceMask & (sourcePos+i)];
                 if (ESCAPE_BYTE != value) {
@@ -1386,7 +1393,6 @@ public class TrieParser implements Serializable {
         data[pos++] = type;
         data[pos++] = criteria;
         
-        assert(2==BRANCH_JUMP_SIZE);
         data[pos++] = (short)(0x7FFF&(requiredRoom>>15));
         data[pos++] = (short)(0x7FFF&requiredRoom);
 
@@ -1455,7 +1461,7 @@ public class TrieParser implements Serializable {
        while (--runLeft >= 0) {
                   byte value = source[sourceMask & sourcePos++];
                   if (ESCAPE_BYTE == value && NO_ESCAPE_SUPPORT!=ESCAPE_BYTE) {
-                      assert(value=='%');
+                     
                       value = source[sourceMask & sourcePos++];
                       if (ESCAPE_BYTE != value) {
                           //new command so we must stop the run at this point

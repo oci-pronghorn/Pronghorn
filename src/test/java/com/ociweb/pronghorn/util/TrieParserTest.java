@@ -1291,6 +1291,66 @@ public class TrieParserTest {
     }
     
     @Test
+    public void testCustomEscapeChar() {
+    	
+    		TrieParser parser = new TrieParser(1000, 1, true, true, false, (byte)'"');  
+    		TrieParserReader reader = new TrieParserReader(4, true);
+    		
+    		parser.setUTF8Value("#{\"b}", TrieParser.ESCAPE_CMD_SIGNED_INT); //%i
+    		parser.setUTF8Value("#\"b/", TrieParser.ESCAPE_CMD_SIGNED_INT);  //%i
+    		parser.setUTF8Value("#\"b?", TrieParser.ESCAPE_CMD_SIGNED_INT);  //%i
+    		parser.setUTF8Value("#\"b&", TrieParser.ESCAPE_CMD_SIGNED_INT);  //%i
+    		parser.setUTF8Value("#\"b", TrieParser.ESCAPE_CMD_SIGNED_INT);   //%i
+    		
+    		parser.setUTF8Value("^{\"b}", TrieParser.ESCAPE_CMD_DECIMAL);  //%i%.
+    		parser.setUTF8Value("^\"b/", TrieParser.ESCAPE_CMD_DECIMAL);   //%i%.
+    		parser.setUTF8Value("^\"b?", TrieParser.ESCAPE_CMD_DECIMAL);   //%i%.
+    		parser.setUTF8Value("^\"b&", TrieParser.ESCAPE_CMD_DECIMAL);   //%i%.
+    		parser.setUTF8Value("^\"b", TrieParser.ESCAPE_CMD_DECIMAL);    //%i%.
+    		
+    		parser.setUTF8Value("${\"b}", TrieParser.ESCAPE_CMD_BYTES);
+    		parser.setUTF8Value("$\"b?", TrieParser.ESCAPE_CMD_BYTES);
+    		parser.setUTF8Value("$\"b", TrieParser.ESCAPE_CMD_BYTES);
+    		parser.setUTF8Value("$\"b&", TrieParser.ESCAPE_CMD_BYTES);
+    		parser.setUTF8Value("$\"b/", TrieParser.ESCAPE_CMD_BYTES);
+    		
+    		parser.setUTF8Value("%{\"b}", TrieParser.ESCAPE_CMD_RATIONAL); //%i%/
+    		parser.setUTF8Value("%\"b/", TrieParser.ESCAPE_CMD_RATIONAL);  //%i%/
+    		parser.setUTF8Value("%\"b?", TrieParser.ESCAPE_CMD_RATIONAL);  //%i%?
+    		parser.setUTF8Value("%\"b&", TrieParser.ESCAPE_CMD_RATIONAL);  //%i%&
+    		parser.setUTF8Value("%\"b", TrieParser.ESCAPE_CMD_RATIONAL);   //%i%/
+			
+		//	parser.toDOT(System.out);
+			
+    		findShortText(parser, reader, "$hello?", TrieParser.ESCAPE_CMD_BYTES);
+    		findShortText(parser, reader, "$hello/", TrieParser.ESCAPE_CMD_BYTES);
+    		findShortText(parser, reader, "${hello}", TrieParser.ESCAPE_CMD_BYTES);
+    		findShortText(parser, reader, "$hello&", TrieParser.ESCAPE_CMD_BYTES);
+    		findShortText(parser, reader, "$hello", TrieParser.ESCAPE_CMD_BYTES);
+    		
+    					
+    		findShortText(parser, reader, "#hello?", TrieParser.ESCAPE_CMD_SIGNED_INT);
+    		findShortText(parser, reader, "#hello/", TrieParser.ESCAPE_CMD_SIGNED_INT);
+    		findShortText(parser, reader, "#{hello}", TrieParser.ESCAPE_CMD_SIGNED_INT);
+    		findShortText(parser, reader, "#hello&", TrieParser.ESCAPE_CMD_SIGNED_INT);
+    		findShortText(parser, reader, "#hello", TrieParser.ESCAPE_CMD_SIGNED_INT);
+    		
+			
+    		findShortText(parser, reader, "^hello?", TrieParser.ESCAPE_CMD_DECIMAL);
+    		findShortText(parser, reader, "^hello/", TrieParser.ESCAPE_CMD_DECIMAL);
+    		findShortText(parser, reader, "^{hello}", TrieParser.ESCAPE_CMD_DECIMAL);
+    		findShortText(parser, reader, "^hello&", TrieParser.ESCAPE_CMD_DECIMAL);
+    		findShortText(parser, reader, "^hello", TrieParser.ESCAPE_CMD_DECIMAL);
+    		
+    		findShortText(parser, reader, "%hello?", TrieParser.ESCAPE_CMD_RATIONAL);
+    		findShortText(parser, reader, "%hello/", TrieParser.ESCAPE_CMD_RATIONAL);
+    		findShortText(parser, reader, "%{hello}", TrieParser.ESCAPE_CMD_RATIONAL);
+    		findShortText(parser, reader, "%hello&", TrieParser.ESCAPE_CMD_RATIONAL);
+    		findShortText(parser, reader, "%hello", TrieParser.ESCAPE_CMD_RATIONAL);
+			
+    }
+    
+    @Test
     public void testPatternExtraction() {
         TrieParser parser = new TrieParser(1000, 1, true, true);  
         TrieParserReader reader = new TrieParserReader(4, true);
@@ -1311,18 +1371,20 @@ public class TrieParserTest {
 	    parser.setUTF8Value("$%b&", TrieParser.ESCAPE_CMD_BYTES);
 	    assertFalse(parser.toString(),parser.toString().contains("ERROR"));
 
+	    parser.toDOT(System.out);
+	    
 		//for every non match just consume the char and move to the next		
 		
-		findShortText(parser, reader, "$hello?");
-		findShortText(parser, reader, "$hello/");
-		findShortText(parser, reader, "${hello}");
-		findShortText(parser, reader, "$hello&");
-				
+		findShortText(parser, reader, "$hello?", TrieParser.ESCAPE_CMD_BYTES);
+		findShortText(parser, reader, "$hello/", TrieParser.ESCAPE_CMD_BYTES);
+		findShortText(parser, reader, "${hello}", TrieParser.ESCAPE_CMD_BYTES);
+		findShortText(parser, reader, "$hello&", TrieParser.ESCAPE_CMD_BYTES);
+		findShortText(parser, reader, "$hello", TrieParser.ESCAPE_CMD_BYTES);	
     }
 
-	private void findShortText(TrieParser parser, TrieParserReader reader, String text) {
+	private void findShortText(TrieParser parser, TrieParserReader reader, String text, int match) {
 		byte[] bytes = wrapping(text.getBytes(),4);
-		assertEquals(TrieParser.ESCAPE_CMD_BYTES, reader.query(reader, parser, bytes, 0, text.length(), 15));
+		assertEquals(match, reader.query(reader, parser, bytes, 0, text.length(), 15));
 	}
     
     

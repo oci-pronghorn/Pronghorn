@@ -509,7 +509,7 @@ public class TrieParserReader {
 			final long unfoundResult, boolean hasSafePoint, final int run) {
 		//scan returns -1 for a perfect match
 		int r = scanForMismatch(reader, source, sourceMask, trie, run);
-		if (r>=0) {
+		if (r >= 0) {
 		    if (!hasSafePoint) {                       	
 		    	if (reader.altStackPos > 0) {                                
 		    		loadupNextChoiceFromStack(reader, trie.data);                           
@@ -583,7 +583,7 @@ public class TrieParserReader {
 			long sourceLength, int sourceMask, final long unfoundResult, boolean hasSafePoint, int t) {
 		if (t == TrieParser.TYPE_VALUE_NUMERIC) {       
 			if (reader.runLength<sourceLength) {
-				if ((reader.localSourcePos = parseNumeric(reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, (int)trie.data[reader.pos++]))<0) {			            	
+				if ((reader.localSourcePos = parseNumeric(trie.ESCAPE_BYTE, reader,source,reader.localSourcePos, sourceLength-reader.runLength, sourceMask, (int)trie.data[reader.pos++]))<0) {			            	
 					reader.normalExit=false;
 					reader.result = unfoundResult;
 		       
@@ -621,7 +621,7 @@ public class TrieParserReader {
     	int localRunLength = reader.runLength;
     	long maxCapture = sourceLength-localRunLength;
     	final int localSourcePos = reader.localSourcePos;
-    	int localCaputuredPos = reader.capturedPos;
+    	//int localCaputuredPos = reader.capturedPos;
     	
     	
     	if (maxCapture>0) {
@@ -697,15 +697,18 @@ public class TrieParserReader {
 						
 						if (value==s2) {
 							reader.pos = reader.workingMultiContinue[1];
+							
 							return assignParseBytesResults(reader, sourceMask, localSourcePos, x);							
 						} else if (value==s1) {
 							reader.pos = reader.workingMultiContinue[0];						
+							
 							return assignParseBytesResults(reader, sourceMask, localSourcePos, x);						
 						}
 						
 					} while (--lim > 0); 
 					
 					reader.localSourcePos =-1;
+		
 					return false;
 	        		
 	        	} else {
@@ -713,7 +716,6 @@ public class TrieParserReader {
 	        		        		
 					do {  
 					} while ( (-1== (stopIdx=indexOfMatchInArray(source[sourceMask & x++], localWorkingMultiStops, stopCount ))) && (--lim > 0));
-				
 					return assignParseBytesResults(reader, sourceMask, localSourcePos, x, stopIdx);
 	        	}
 	        } else {
@@ -736,6 +738,17 @@ public class TrieParserReader {
 	}
 
 	private static boolean assignParseBytesResults(TrieParserReader reader, int sourceMask, final int sourcePos, int x, int stopIdx) {
+			
+		//this is for the case where we match up to the very end of the string		
+		if (reader.alwaysCompletePayloads && -1 == stopIdx) {
+			int j = reader.workingMultiStops.length;
+			while (--j>=0) {
+				if (reader.workingMultiStops[j]==0) {
+					stopIdx = j;
+				}
+			}
+		}
+		
 		if (-1==stopIdx) {//not found!
 			reader.localSourcePos =-1;
 			return false;
@@ -921,7 +934,7 @@ public class TrieParserReader {
     	}
     }
     
-    private static int parseNumeric(TrieParserReader reader, byte[] source, int sourcePos, long sourceLength, int sourceMask, int numType) {
+    private static int parseNumeric(final byte escapeByte, TrieParserReader reader, byte[] source, int sourcePos, long sourceLength, int sourceMask, int numType) {
         
     	int basePos = sourcePos;
     	
@@ -933,7 +946,7 @@ public class TrieParserReader {
         
         final short c1 = source[sourceMask & sourcePos];
         
-        if ('%' == c1) {
+        if (escapeByte == c1) {
         	sourcePos++;
         	byte numericType = source[sourceMask & sourcePos];
         	int typeMask = TrieParser.buildNumberBits(numericType);
