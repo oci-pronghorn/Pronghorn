@@ -106,13 +106,13 @@ public class HTTPSRoundTripTest {
 
 		
 			
-			boolean isTLS = true;
+			boolean isTLS = false;
 			int port = isTLS?8443:8080;
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";
 					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
 			
-			boolean isLarge = false;
+			boolean isLarge = true;
 			
 			boolean useLocalServer = true;//
 
@@ -185,7 +185,7 @@ public class HTTPSRoundTripTest {
 				
 				/////////////////
 				/////////////////
-				int base2SimultaniousConnections = 2;
+				int base2SimultaniousConnections = isLarge ? 3 : 2;
 				int clientCount = isLarge ? 4 : 2;
 					    	
 				//TODO: this number must be the limit of max simuantious handshakes.
@@ -382,7 +382,7 @@ public class HTTPSRoundTripTest {
 		
 			@Override
 			public CharSequence getPathRoute(int a) {
-				return "/%b";
+				return "/${path}";
 			}
 			
 		//TODO: add input pipes to be defined here as well??
