@@ -323,6 +323,33 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         }
     }
 
+	public long parseUTF(TrieParserReader reader, TrieParser trie) {
+		int len = readShort();		
+		
+		long result = reader.query(reader, trie, backing, position, len, byteMask);
+		if (result!=-1) {
+			position+=len;//only move upon succcesful parse.
+		}		
+		return result;
+	}
+    
+	public boolean equalUTF(byte[] equalText) {
+		int len = readShort();
+		if (len!=equalText.length) {
+			return false;
+		}
+		int p = 0;
+		int pp = position;
+		while (--len>=0) {
+			if (equalText[p++]!=backing[byteMask & pp++]) {
+				return false;
+			}
+		}
+		//only moves forward when equal.
+		position = pp;
+		return true;
+	}
+	
     public static <A extends Appendable, S extends MessageSchema<S>> A readUTF(DataInputBlobReader<S> reader, int length, A target) throws IOException {
         long charAndPos = ((long)reader.position)<<32;
         long limit = ((long)reader.position+length)<<32;

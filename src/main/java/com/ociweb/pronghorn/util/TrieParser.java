@@ -21,6 +21,7 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 public class TrieParser implements Serializable {
         
     
+
 	private static final long serialVersionUID = -2877089562575447986L;
 
 	private static final Logger logger = LoggerFactory.getLogger(TrieParser.class);
@@ -665,7 +666,6 @@ public class TrieParser implements Serializable {
     	shortestKnown = Math.min(shortestKnown, sourceLength);
     	
         assert(value >= 0);
-        assert(value <= 0x7FFF_FFFF); 
 
         altStackPos = 0;
         int fieldExtractionsCount = 0;

@@ -621,7 +621,7 @@ public class TrieParserReader {
     	int localRunLength = reader.runLength;
     	long maxCapture = sourceLength-localRunLength;
     	final int localSourcePos = reader.localSourcePos;
-    	//int localCaputuredPos = reader.capturedPos;
+    	int localCaputuredPos = reader.capturedPos;
     	
     	
     	if (maxCapture>0) {
@@ -638,30 +638,25 @@ public class TrieParserReader {
 	            short[] localData = trie.data;
 				
 				int i = reader.altStackPos; 
-				//int[] localAltStackD = reader.altStackD;
+				int[] localAltStackD = reader.altStackD;
 				int[] localAltStackC = reader.altStackC;
-				//int[] localAltStackB = reader.altStackB;
+				int[] localAltStackB = reader.altStackB;
 				int[] localAltStackA = reader.altStackA;
 				
-				
-			//	System.err.println(i);;  3
 				
 				 while (--i>=0) {
 					int cTemp = localAltStackC[i];
 				    if (localData[cTemp] == TrieParser.TYPE_VALUE_BYTES) {
 				        
-//				        if (localCaputuredPos != localAltStackB[i]) {//part of the same path.
-//				            //System.out.println("a");
-//				            break;
-//				        }
-				        if (localSourcePos != localAltStackA[i]) {//part of the same path.
-				           // System.out.println("b");
+				        if (localCaputuredPos != localAltStackB[i]) {//part of the same path.
 				            break;
 				        }
-//				        if (localRunLength != localAltStackD[i]){
-//				           // System.out.println("c");
-//				            break;
-//				        }
+				        if (localSourcePos != localAltStackA[i]) {//part of the same path.
+				            break;
+				        }
+				        if (localRunLength != localAltStackD[i]){
+				            break;
+				        }
 				                        
 				        //ensure newStop is not already in the list of stops.				       
 				        short newStop = localData[cTemp+1];
@@ -732,7 +727,7 @@ public class TrieParserReader {
 		int len = (x-localSourcePos)-1;
 		reader.runLength += (len);
 
-		reader.capturedPos = extractedBytesRange(reader.capturedValues, reader.capturedPos, localSourcePos, len, sourceMask);  
+		reader.capturedPos = extractedBytesRange(reader.capturedBlobArray, reader.capturedValues, reader.capturedPos, localSourcePos, len, sourceMask);  
 		reader.localSourcePos = x;
 		return true;
 	}
@@ -742,6 +737,9 @@ public class TrieParserReader {
 		//this is for the case where we match up to the very end of the string		
 		if (reader.alwaysCompletePayloads && -1 == stopIdx) {
 			int j = reader.workingMultiStops.length;
+			
+			System.out.println("multi stops "+j);
+			
 			while (--j>=0) {
 				if (reader.workingMultiStops[j]==0) {
 					stopIdx = j;
@@ -751,12 +749,15 @@ public class TrieParserReader {
 		
 		if (-1==stopIdx) {//not found!
 			reader.localSourcePos =-1;
+			
+			System.err.println("not found B");
+			
 			return false;
 		} else {
 			int len = (x-sourcePos)-1;
 			reader.runLength += (len);
 
-			reader.capturedPos = extractedBytesRange(reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);  
+			reader.capturedPos = extractedBytesRange(reader.capturedBlobArray ,reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);  
 			reader.localSourcePos = x;
 			reader.pos = reader.workingMultiContinue[stopIdx];
 			return true;
@@ -899,7 +900,7 @@ public class TrieParserReader {
         } while ( (noStop=(stopValue!=source[sourceMask & x++])) && (--lim > 0));         
 
         if (noStop && 0!=stopValue) { //a zero stop value is a rule to caputure evertything up to the end of the data.
-            return -1;//not found!
+           	return -1;//not found!
         }
         return parseBytesFound(reader, sourcePos, sourceMask, x);
     }
@@ -908,7 +909,7 @@ public class TrieParserReader {
 		int len = (x-sourcePos)-1;
 
         reader.runLength += (len);
-        reader.capturedPos = extractedBytesRange(reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);                
+        reader.capturedPos = extractedBytesRange(reader.capturedBlobArray ,reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);                
         return x;
 	}
     
@@ -922,13 +923,18 @@ public class TrieParserReader {
         return -1;
     }
 
-    private static int extractedBytesRange(int[] target, int pos, int sourcePos, int sourceLen, int sourceMask) {
+    private static int extractedBytesRange(byte[] backing, int[] target, int pos, int sourcePos, int sourceLen, int sourceMask) {
     	try {
+        		
+//    		Appendables.appendUTF8(System.out, backing, sourcePos, sourceLen, sourceMask);
+//  		    System.out.println();		
+    		
 	        target[pos++] = 0;  //this flag tells us that these 4 values are not a Number but instead captured Bytes
 	        target[pos++] = sourcePos;
 	        target[pos++] = sourceLen;
 	        target[pos++] = sourceMask;
 	        return pos;
+	        
     	} catch (ArrayIndexOutOfBoundsException e) {
     		throw new UnsupportedOperationException("TrieParserReader attempted to capture too many values. "+(pos/4));
     	}
