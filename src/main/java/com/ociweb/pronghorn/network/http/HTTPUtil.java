@@ -58,7 +58,8 @@ public class HTTPUtil {
 	    DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.outputStream(localOutput);        
 	    writer.openField();
 	    byte[] revBytes = httpSpec.revisions[revision].getBytes();
-		AbstractRestStage.writeHeader( revBytes, status, requestContext, null, contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), 
+		AbstractRestStage.writeHeader( revBytes, status, requestContext, null, 
+				                        contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), 
 						    		    0, false, null, 0,0,0,
 						    		    writer, 1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
 	    writer.closeLowLevelField();          
@@ -68,7 +69,7 @@ public class HTTPUtil {
 	    Pipe.confirmLowLevelWrite(localOutput, headerSize);
 	    Pipe.publishWrites(localOutput);
 	    
-	    logger.info("published error {} ",status);
+	    //logger.info("published error {} ",status);
 	}
 
 	public final static String expectedGet = "GET /groovySum.json HTTP/1.1\r\n"+

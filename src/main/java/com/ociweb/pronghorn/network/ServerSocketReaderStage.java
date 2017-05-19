@@ -38,7 +38,9 @@ public class ServerSocketReaderStage extends PronghornStage {
     private Selector selector;
 
     private int pendingSelections = 0;
- 
+    
+    private final static boolean showRequests = false;
+    
     private StringBuilder[] accumulators;
  
     private ArrayList<SelectionKey> doneSelectors = new ArrayList<SelectionKey>(100);
@@ -105,6 +107,18 @@ public class ServerSocketReaderStage extends PronghornStage {
 			}
     };    
     
+    private long connectionIdToRemove = -1;
+    private final Consumer<SelectionKey> selectionKeyRemoval = new Consumer<SelectionKey>(){
+			@Override
+			public void accept(SelectionKey selection) {
+				
+				if ((connectionIdToRemove == ((ConnectionContext)selection.attachment()).getChannelId())
+					&& (!doneSelectors.contains(selection))) {
+						removeSelection(selection);		
+				}
+			}
+    };  
+    
     @Override
     public void run() {
         
@@ -124,34 +138,34 @@ public class ServerSocketReaderStage extends PronghornStage {
     	    //max cycles before we take a break.
 	    	int maxIterations = 100; //important or this stage will take all the resources.
 	    	
-	        while (--maxIterations>=0 && hasNewDataToRead()) {
+	        while (--maxIterations>=0 & hasNewDataToRead()) { //single & to ensure we check has new data to read.
 	        	
 	        	//logger.info("found new data to read on "+groupIdx);
 	            
 	           Set<SelectionKey> selectedKeys = selector.selectedKeys();
 	            
 	           assert(selectedKeys.size()>0);	            
-	           assert(pendingSelections == selectedKeys.size());
+	//no longer true, remove this assert           assert(pendingSelections == selectedKeys.size());
 	           doneSelectors.clear();
 		
 	           selectedKeys.forEach(selectionKeyAction);
-	            
-//	           for (SelectionKey selection: selectedKeys) {
-//	                processSelection(selection); 
-//	            }	            
-
-			   //sad but this is the best way to remove these without allocating a new iterator
-			   	// the selectedKeys.removeAll(doneSelectors); will produce garbage upon every call
-			   	int c = doneSelectors.size();
-			   	while (--c>=0) {
-			        		selectedKeys.remove(doneSelectors.get(c));
-			    }
-
-		      	 assert(pendingSelections == selectedKeys.size());
+	                 
+			   removeDoneKeys(selectedKeys);
 			        	 
 	        }	        
     	}
     }
+
+	private void removeDoneKeys(Set<SelectionKey> selectedKeys) {
+		//sad but this is the best way to remove these without allocating a new iterator
+		// the selectedKeys.removeAll(doneSelectors); will produce garbage upon every call
+		int c = doneSelectors.size();
+		while (--c>=0) {
+		    		selectedKeys.remove(doneSelectors.get(c));
+		}
+//no valid any longer, now remove??		assert(pendingSelections == selectedKeys.size());
+		
+	}
 
 	private void processSelection(SelectionKey selection) {
 		assert(0 != (SelectionKey.OP_READ & selection.readyOps())) : "only expected read"; 
@@ -164,6 +178,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		ConnectionContext connectionContext = (ConnectionContext)selection.attachment();                
 		final long channelId = connectionContext.getChannelId();
 						
+		//logger.info("new request on connection {} ",channelId);
 		
 		SSLConnection cc = coordinator.get(channelId);
 		boolean processWork = true;
@@ -173,7 +188,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 				HandshakeStatus handshakeStatus = cc.getEngine().getHandshakeStatus();
 
 				 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
-		                Runnable task;//TODO: there is anopporuntity to have this done by a different stage in the future.
+		                Runnable task;//TODO: there is an opportunity to have this done by a different stage in the future.
 		                while ((task = cc.getEngine().getDelegatedTask()) != null) {
 		                	task.run();
 		                }
@@ -188,10 +203,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 			
 		//the normal case is to do this however we do need to skip for TLS wrap
 		if (processWork) {
-				
-				int responsePipeLineIdx = cc.getPoolReservation(); 
-						//coordinator.checkForResponsePipeLineIdx(channelId);	
-				
+			
+				int responsePipeLineIdx = cc.getPoolReservation();
 				
 				final boolean newBeginning = (responsePipeLineIdx<0);
 						
@@ -199,29 +212,55 @@ public class ServerSocketReaderStage extends PronghornStage {
 					//this release is required in case we are swapping pipe lines, we ensure that the latest sequence no is stored.
 					releasePipesForUse();
 					responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
-					if (-1 == responsePipeLineIdx) { //handshake is dropped by input buffer at these loads?
+					
+					if (-1 == responsePipeLineIdx) { 
+						//logger.info("second check for relased pipe");
 						releasePipesForUse();
 						responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
 					}
-					if (responsePipeLineIdx>=0) {
+					if (responsePipeLineIdx >= 0) {
 						cc.setPoolReservation(responsePipeLineIdx);
 					}
+					//logger.info("new beginning {}",responsePipeLineIdx);
+				} else {
+					//logger.info("use existing return with {} is valid {} ",responsePipeLineIdx, cc.isValid);
 				}
 					
-				if (responsePipeLineIdx>=0) {
+				if (responsePipeLineIdx >= 0) {
+					
 					int pumpState = pumpByteChannelIntoPipe(socketChannel, channelId, output[responsePipeLineIdx], newBeginning, cc, selection); 
-		            if (pumpState>0) {
+		            					
+					if (pumpState > 0) { 
+		            	//logger.info("remove this selection");
 		            	assert(1==pumpState) : "Can only remove if all the data is known to be consumed";
-		            	doneSelectors.add(selection);//add to list for removal
-		            	pendingSelections--;
+		            	removeSelection(selection);
+		            } else {		            	
+		            	//logger.info("can not remove this selection for channelId {} pump state {}",channelId,pumpState);
 		            }
-		          
-		            if ((++rMask&0x3F)==0) {
+		            //logger.info("pushed data out");
+		            if ((++rMask&0x3F) == 0) {
 		             releasePipesForUse(); //must run but not on every pass
 		            }
+		           // logger.info("finished pipe release");
 				}
 		        
 		}
+	}
+
+	private void removeSelection(SelectionKey selection) {
+		
+//		System.err.println("removed "+((ConnectionContext)selection.attachment()).getChannelId());
+		
+		doneSelectors.add(selection);//add to list for removal
+		pendingSelections--;
+		
+//		if (pendingSelections==0) {
+////			System.err.println("we now have zero selectors *************");
+////			System.err.println("remove all the stored keys "+doneSelectors.size());
+//			removeDoneKeys(selector.selectedKeys());
+//			doneSelectors.clear();
+//		}
+		
 	}
 
 	private int rMask = 0;
@@ -237,20 +276,33 @@ public class ServerSocketReaderStage extends PronghornStage {
 	    		
 	    		if (msgIdx == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {
 	    			
-	    			long idToClear = Pipe.takeLong(a);
+	    			long connectionId = Pipe.takeLong(a);
+	    			
+	    			//logger.info("release with sequence id {}",connectionId);
+	    				    			
+	    			
 	    			long pos = Pipe.takeLong(a);	    			
 	    			int seq = Pipe.takeInt(a);	    				    			
-	    			releaseIfUnused(msgIdx, idToClear, pos, seq);
+	    			releaseIfUnused(msgIdx, connectionId, pos, seq);
 	    			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASEWITHSEQ_101));
+	    				    			
+	    			//remove any selection keys associated with this connection...	    			
+	    			connectionIdToRemove = connectionId;
+	    			selector.selectedKeys().forEach(selectionKeyRemoval);
+	    			
 	    			
 	    		} else if (msgIdx == ReleaseSchema.MSG_RELEASE_100) {
 	    			
 	    			logger.info("warning, legacy (client side) release use detected in the server.");
 	    			
-	    			long idToClear = Pipe.takeLong(a);
+	    			long connectionId = Pipe.takeLong(a);
+	    			
 	    			long pos = Pipe.takeLong(a);	    					
-	    			releaseIfUnused(msgIdx, idToClear, pos, -1);
+	    			releaseIfUnused(msgIdx, connectionId, pos, -1);
 	    			Pipe.confirmLowLevelRead(a, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
+	    			
+	    			connectionIdToRemove = connectionId;
+	    			selector.selectedKeys().forEach(selectionKeyRemoval);
 	    			
 	    		} else {
 	    			logger.info("unknown or shutdown on release");
@@ -323,16 +375,16 @@ public class ServerSocketReaderStage extends PronghornStage {
     		return true;
     	}
     	
-    	assert (0 == selector.selectedKeys().size());
+  //no longer true remove,,,  	assert (0 == selector.selectedKeys().size());
     	    	
-    	
         try {        	        	
         	/////////////
         	//CAUTION - select now clears pevious count and only returns the additional I/O opeation counts which have become avail since the last time SelectNow was called
         	////////////        	
-            pendingSelections=selector.selectNow();
+            pendingSelections = selector.selectNow();
+
         //    logger.info("pending new selections {} ",pendingSelections);
-            return pendingSelections>0;
+            return pendingSelections > 0;
         } catch (IOException e) {
             logger.error("unexpected shutdown, Selector for this group of connections has crashed with ",e);
             requestShutdown();
@@ -358,6 +410,9 @@ public class ServerSocketReaderStage extends PronghornStage {
                 int r2 = b[1].remaining();
                 
                 final long temp = sourceChannel.read(b);
+                
+               // sourceChannel.rea
+                
                 
 //            	tempBuf.clear();
 //            	final long temp = sourceChannel.read(tempBuf);
@@ -393,7 +448,8 @@ public class ServerSocketReaderStage extends PronghornStage {
                 return publishOrAbandon(channelId, targetPipe, len, b, temp>=0, newBeginning, cc);
 
             } catch (IOException e) {
-            	
+            		logger.info("error must close ",e);
+            		
             		this.coordinator.releaseResponsePipeLineIdx(channelId);
             	
                     recordErrorAndClose(sourceChannel, channelId, e);
@@ -401,43 +457,46 @@ public class ServerSocketReaderStage extends PronghornStage {
                     return -1;
             }
         } else {
-
+        	//logger.info("try again later, unable to launch do to lack of room in {} ",targetPipe);
         	return -1;
         }
     }
 
 	private int publishOrAbandon(long channelId, Pipe<NetPayloadSchema> targetPipe, long len, ByteBuffer[] b, boolean isOpen, boolean newBeginning, SSLConnection cc) {
+		//logger.info("{} publish or abandon",System.currentTimeMillis());
 		if (len>0) {
 			
 			if (newBeginning) {	
-								
-			//	logger.info("NEW ALLOCATION OF PIPE for connection {}     {}",  cc.id, targetPipe );
+					
+				Pipe.presumeRoomForWrite(targetPipe);
 				
-				if (Pipe.hasRoomForWrite(targetPipe)) {//WARNING we have mixed two messages here !!! we wrote the bytes for the next already 
-								
-					int size = Pipe.addMsgIdx(targetPipe, NetPayloadSchema.MSG_BEGIN_208);
-					Pipe.addIntValue(cc.getSequenceNo(), targetPipe);						
-					Pipe.confirmLowLevelWrite(targetPipe, size);
-					Pipe.publishWrites(targetPipe);
-							
-				} else {
-					//TODO: make this an assert....
-					logger.info("internal error, picked up new pipe but it has data {}",targetPipe);
-					throw new UnsupportedOperationException();
-				}
+				int size = Pipe.addMsgIdx(targetPipe, NetPayloadSchema.MSG_BEGIN_208);
+				Pipe.addIntValue(cc.getSequenceNo(), targetPipe);						
+				Pipe.confirmLowLevelWrite(targetPipe, size);
+				Pipe.publishWrites(targetPipe);
+				
 			}				
 			
 		//	logger.info("normal publish for connection {}     {}     {} channelID {} ",  cc.id, targetPipe, messageType, channelId );
 			assert(cc.id == channelId) : "should match "+cc.id+" vs "+channelId;
 			
+	
 			boolean fullTarget = b[0].remaining()==0 && b[1].remaining()==0;   
+	
+			
+			
 //			bytesConsumed+=len;
 			publishData(targetPipe, channelId, len, cc);                  	 
-//			logger.info("wrote {} bytess to pipe {} ", len,targetPipe);
-			return (fullTarget&&isOpen) ? 0 : 1; //only for 1 can we be sure we read all the data
+			//logger.info("{} wrote {} bytess to pipe {} return code: {}", System.currentTimeMillis(), len,targetPipe,((fullTarget&&isOpen) ? 0 : 1));
+			
+			
+			
+			return (fullTarget && isOpen) ? 0 : 1; //only for 1 can we be sure we read all the data
+			
+			
 		} else {
 			 
-			//logger.info("abandon one record, did not publish because length was {}    {}",len,targetPipe);
+			//logger.info("{} abandon one record, did not publish because length was {}    {}",System.currentTimeMillis(), len,targetPipe);
 
 			 Pipe.unstoreBlobWorkingHeadPosition(targetPipe);//we did not use or need the writing buffers above.
 			 
@@ -492,11 +551,11 @@ public class ServerSocketReaderStage extends PronghornStage {
         }
         
 //ONLY VALID FOR UTF8
-//        boolean showRequests = false;
-//        if (showRequests) {
-//        	logger.info("//////////////////Server read for channel {} bPos{} len {} \n{}\n/////////////////////",channelId, originalBlobPosition, len, 
-//        			Appendables.appendUTF8(new StringBuilder(), targetPipe.blobRing, originalBlobPosition, (int)len, targetPipe.blobMask));               
-//        }
+
+        if (showRequests) {
+        	logger.info("//////////////////Server read for channel {} bPos{} len {} \n{}\n/////////////////////",channelId, originalBlobPosition, len, 
+        			Appendables.appendUTF8(new StringBuilder(), targetPipe.blobRing, originalBlobPosition, (int)len, targetPipe.blobMask));               
+        }
         
         
         Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)len, targetPipe);  
@@ -507,7 +566,7 @@ public class ServerSocketReaderStage extends PronghornStage {
    
         Pipe.confirmLowLevelWrite(targetPipe, size);
         Pipe.publishWrites(targetPipe);
-        
+        //logger.info("done with publish pipe is now "+targetPipe);
     }
     
     

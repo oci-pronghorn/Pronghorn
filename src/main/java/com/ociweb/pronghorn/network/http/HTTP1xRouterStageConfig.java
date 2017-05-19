@@ -30,6 +30,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     
     public final int END_OF_HEADER_ID;
     public final int UNKNOWN_HEADER_ID;
+    public final int UNMAPPED_ROUTE;
 	
     private final URLTemplateParser templateParser = new URLTemplateParser();
 
@@ -44,8 +45,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         	revisionMap.setUTF8Value(revs[z].getKey(), "\r\n", revs[z].ordinal());
             revisionMap.setUTF8Value(revs[z].getKey(), "\n", revs[z].ordinal()); //\n must be last because we prefer to have it pick \r\n          
         }
-        
-        
+
         
         this.verbMap = new TrieParser(256,false);//does deep check
         //Load the supported HTTP verbs
@@ -72,7 +72,10 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
             headerMap.setUTF8Value(shr[w].readingTemplate(), "\n",shr[w].ordinal()); //\n must be last because we prefer to have it pick \r\n
         }     
         //unknowns are the least important and must be added last 
-        this.urlMap = new TrieParser(512,1,true,true,true);       
+        this.urlMap = new TrieParser(512,2,false //never skip deep check so we can return 404 for all "unknowns"
+        		                    ,true,true);  
+        UNMAPPED_ROUTE = Integer.MAX_VALUE;// SINCE WE USE 2 FOR ROUTES. we can have 2b routes eg more than 64K
+        this.urlMap.setUTF8Value("%b ", UNMAPPED_ROUTE);
         
         headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
         headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be last because we prefer to have it pick \r\n

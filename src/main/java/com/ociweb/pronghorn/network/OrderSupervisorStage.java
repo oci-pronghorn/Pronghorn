@@ -211,24 +211,27 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				int expected = expectedSquenceNos[idx];     
 		        if (sequenceNo<expected) {
 		        	//drop the data
-		        	//logger.info("skipped older response A");
+		        	logger.trace("skipped older response A");
 		        	Pipe.skipNextFragment(sourcePipe);
 		        	continue;
-		        } else if (expected==sequenceNo) { //TODO: this block is killing off the rest requests, must find out why...
+		        } else if (expected==sequenceNo) {
+		        	logger.trace("found expected sequence {}",sequenceNo);
 		        	if (-1 == expectedSquenceNosPipeIdx[idx]) {
 		        		expectedSquenceNosPipeIdx[idx]=(short)pipeIdx;
 		        	} else {
 		        		if (expectedSquenceNosPipeIdx[idx] !=(short)pipeIdx) {
 		        			//drop the data
-		        			logger.info("skipped older response B Pipe:{} vs Pipe:{} ",expectedSquenceNosPipeIdx[idx],pipeIdx);
+		        			logger.trace("skipped older response B Pipe:{} vs Pipe:{} ",expectedSquenceNosPipeIdx[idx],pipeIdx);
 		        			Pipe.skipNextFragment(sourcePipe);
 				        	continue;
 		        		}
 		        	}
 		        } else {
+		        
 		        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 		        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		        	logger.trace("not ready for sequence number yet, looking for "+expected+" but found "+sequenceNo);
+		        	logger.trace("not ready for sequence number yet, looking for {}  but found {}",expected,sequenceNo);
+		        	
 		        	//for not found 404 we will get these values, TODO: need a better approach 
 		        	expectedSquenceNos[idx] = sequenceNo;
 		        	break;//does not match
@@ -616,8 +619,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 
 		 if (0 != (CLOSE_CONNECTION_MASK & requestContext)) { 
 			 
-			 //logger.info("CLOSE CONNECTION DETECTED IN WRAP SUPER");
-		     
 			 int disSize = Pipe.addMsgIdx(output, NetPayloadSchema.MSG_DISCONNECT_203);
 			 Pipe.addLongValue(channelId, output);
 			 Pipe.confirmLowLevelWrite(output, disSize);

@@ -242,8 +242,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		} else if (NetPayloadSchema.MSG_DISCONNECT_203 == activeMessageId) {
 					
 			final long channelId = Pipe.takeLong(dataToSend[idx]);
-			//logger.info("DISCONNECT MESSAGE FOUND BY SOCKET WRITER {} ",channelId);
-			
+
 		    Pipe.confirmLowLevelRead(dataToSend[idx], Pipe.sizeOf(dataToSend[idx], activeMessageId));
 		    Pipe.releaseReadLock(dataToSend[idx]);
 		    assert(Pipe.contentRemaining(dataToSend[idx])>=0);
@@ -543,7 +542,6 @@ public class ServerSocketWriterStage extends PronghornStage {
     		
     		if (!debugWithSlowWrites) {
 		        try {
-		        	//assert(workingBuffers[idx] instanceof sun.nio.ch.DirectBuffer) : "should be direct??";
 		        	int bytesWritten = writeToChannel[idx].write(workingBuffers[idx]);	  
 		        	
 		        	//short blocks of bytes written may be slowdown!!
