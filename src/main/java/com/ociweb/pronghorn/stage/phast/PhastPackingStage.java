@@ -146,7 +146,7 @@ public class PhastPackingStage extends PronghornStage {
            assert (Pipe.hasContentToRead(localInput2));
            
            int msgIdx2 = Pipe.takeMsgIdx(localInput2);
-           int length = DataInputBlobReader.openLowLevelAPIField(input2Reader);
+           int length = input2Reader.openLowLevelAPIField();
            localSum += (length>>3);
            
            writer.writePackedInt(ESCAPE_VALUE);

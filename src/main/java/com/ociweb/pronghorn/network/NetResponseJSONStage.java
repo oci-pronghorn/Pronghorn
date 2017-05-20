@@ -68,7 +68,7 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 						long connection = Pipe.takeLong(input);
 						
 						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
-						DataInputBlobReader.openLowLevelAPIField(stream);
+						stream.openLowLevelAPIField();
 						
 						int status = stream.readShort();						
 						int headerId = stream.readShort();
@@ -99,7 +99,7 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 						if (reader.sourceLen==0) {
 						
 							DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
-							DataInputBlobReader.openLowLevelAPIField(stream);
+							stream.openLowLevelAPIField();
 							DataInputBlobReader.setupParser(stream, reader);
 							
 						} else {

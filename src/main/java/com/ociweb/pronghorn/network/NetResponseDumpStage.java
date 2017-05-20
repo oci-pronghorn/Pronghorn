@@ -32,7 +32,7 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 						long connection = Pipe.takeLong(input);
 						
 						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
-						DataInputBlobReader.openLowLevelAPIField(stream);
+						stream.openLowLevelAPIField();
 						
 						int status = stream.readShort();
 						System.out.println("status:"+status);
@@ -72,7 +72,7 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 						long connection = Pipe.takeLong(input);
 						
 						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
-						DataInputBlobReader.openLowLevelAPIField(stream);
+						stream.openLowLevelAPIField();
 						
 						//NOTE: how do we know to remove the headers??
 						stream.readUTF(target);
