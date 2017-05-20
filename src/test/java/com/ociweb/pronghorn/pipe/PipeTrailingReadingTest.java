@@ -79,7 +79,7 @@ public class PipeTrailingReadingTest {
             try {                
                 int peekLen = Pipe.peekInt(dataPipe, 1);
                 
-                DataInputBlobReader.openLowLevelAPIField(blobReader);
+                blobReader.openLowLevelAPIField();
                 int avail = blobReader.available();
                 
                 bytesInMessage = blobReader.read(targetData);

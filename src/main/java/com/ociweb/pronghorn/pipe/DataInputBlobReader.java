@@ -24,7 +24,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
     private int length;
     private int bytesHighBound;
     private int bytesLowBound;
-    private int position;
+    protected int position;
 
     private TrieParser textToNumberParser;
     private TrieParserReader reader;
@@ -39,14 +39,14 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         this.workspace = new StringBuilder(64);
         assert(this.backing!=null) : "The pipe must be init before use.";
     }
-    
+        
 	public void debug() {
 	    
     	Appendables.appendArray(Appendables.appendValue(System.out,  "read at ", bytesLowBound), '[', backing, bytesLowBound, byteMask, ']',  length);
 
 	}
 	
-    public void openHighLevelAPIField(int loc) {
+    public int openHighLevelAPIField(int loc) {
         
         this.length         = PipeReader.readBytesLength(pipe, loc);
         this.bytesLowBound  = this.position       = PipeReader.readBytesPosition(pipe, loc);
@@ -54,7 +54,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         this.bytesHighBound = pipe.blobMask & (position + length);
         
         assert(Pipe.validatePipeBlobHasDataToRead(pipe, position, length));
-
+        
+        return this.length;
     }
     
     public int readFromEndLastInt(int negativeIntOffset) {
@@ -71,20 +72,20 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
     }
     
     public int openLowLevelAPIField() {
-        return openLowLevelAPIField(this);
+        int meta = Pipe.takeRingByteMetaData(this.pipe);
+		this.length    = Pipe.takeRingByteLen(this.pipe);
+		this.bytesLowBound = this.position = Pipe.bytePosition(meta, this.pipe, this.length);
+		this.backing   = Pipe.byteBackingArray(meta, this.pipe);               
+		this.bytesHighBound = this.pipe.blobMask & (this.position + this.length);
+		
+		assert(Pipe.validatePipeBlobHasDataToRead(this.pipe, this.position, this.length));
+		
+		return this.length;
     }
     
-    public static <S extends MessageSchema<S>>int openLowLevelAPIField(DataInputBlobReader<S> that) {
-        
-        int meta = Pipe.takeRingByteMetaData(that.pipe);
-        that.length    = Pipe.takeRingByteLen(that.pipe);
-        that.bytesLowBound = that.position = Pipe.bytePosition(meta, that.pipe, that.length);
-        that.backing   = Pipe.byteBackingArray(meta, that.pipe);               
-        that.bytesHighBound = that.pipe.blobMask & (that.position + that.length);
-        
-        assert(Pipe.validatePipeBlobHasDataToRead(that.pipe, that.position, that.length));
-        
-        return that.length;
+    @Deprecated
+    public static <S extends MessageSchema<S>> int openLowLevelAPIField(DataInputBlobReader<S> that) {
+        return that.openLowLevelAPIField();
     }
 
 
