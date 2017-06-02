@@ -496,6 +496,16 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         writer.activePosition+=sourceLen;
     }
     
+    //////////
+    //write run of byte
+    //////////
+    public static <T extends MessageSchema<T>> void writeBytes(DataOutputBlobWriter<T> writer, byte pattern, int runLength) {
+    	int r = runLength;
+    	while (--r>=0) {
+    		writer.byteBuffer[writer.byteMask & writer.activePosition++] = pattern;
+    	}
+    }
+    
     ////////
     //low level copy from reader to writer
     ///////

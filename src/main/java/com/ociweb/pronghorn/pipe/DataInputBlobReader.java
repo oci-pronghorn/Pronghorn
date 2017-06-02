@@ -58,6 +58,17 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         return this.length;
     }
     
+    public static int peekHighLevelAPIField(DataInputBlobReader<?> reader, int loc) {
+        
+    	reader.length         = PipeReader.peekDataLength(reader.pipe, loc);
+    	reader.bytesLowBound  = reader.position = PipeReader.peekDataPosition(reader.pipe, loc);
+    	reader.backing        = PipeReader.peekDataBackingArray(reader.pipe, loc);        
+    	reader.bytesHighBound = reader.pipe.blobMask & (reader.position + reader.length);
+     
+        return reader.length;
+    }
+    
+    
     public int readFromEndLastInt(int negativeIntOffset) {
     	assert(negativeIntOffset>0) : "there is no data found at the end";
     	

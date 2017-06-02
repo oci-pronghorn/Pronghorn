@@ -24,6 +24,8 @@ public class FROMValidation {
 
 	public final static Logger logger = LoggerFactory.getLogger(FROMValidation.class);
 	
+	public static boolean forceCodeGen = false;
+	
     public static <S extends MessageSchema<S>> boolean testForMatchingFROMs(String templateFile, S schema) {
         try {
             FieldReferenceOffsetManager encodedFrom = null;
@@ -70,7 +72,15 @@ public class FROMValidation {
 		return true;
 	}
     
-    
+	public static <S extends MessageSchema<S>> boolean checkSchema(String templateFile, Class<S> clazz, boolean forceCode) {
+		try {
+			FROMValidation.forceCodeGen = forceCode;		
+			return checkSchema(templateFile, clazz);
+		} finally {
+			FROMValidation.forceCodeGen = false;
+		}
+	}
+	
 	public static <S extends MessageSchema<S>> boolean checkSchema(String templateFile, Class<S> clazz) {
 		if (!testForMatchingFROMs(templateFile, clazz)) {
 			return false;
@@ -283,7 +293,7 @@ public class FROMValidation {
     	success = checkForExampleCode(schema, success, "publish"); //must find at least 1 publish method
     	
 	    
-	    if (!success) {
+	    if (!success || forceCodeGen) {
 	    	//to console, do not log.
 	    	System.out.println(generatedConstants);
 	        System.out.println();
@@ -400,20 +410,16 @@ public class FROMValidation {
     		argsTemp.setLength(argsTemp.length()-2);
     	}
 		
-		generatedProducers.append("public static boolean publish").append(methodName).append("(Pipe<").append(schema.getClass().getSimpleName()).append("> output");
+		generatedProducers.append("public static void publish").append(methodName).append("(Pipe<").append(schema.getClass().getSimpleName()).append("> output");
 		if (argsTemp.length()>0) {
 			generatedProducers.append(", ").append(argsTemp);
 		}
 		generatedProducers.append(") {\n");
-		
-		generatedProducers.append("    boolean result = false;\n");   		
-		generatedProducers.append("    if (PipeWriter.tryWriteFragment(output, ").append(messageConst).append(")) {\n");
-    	
+		  		
+		generatedProducers.append("        PipeWriter.presumeWriteFragment(output, ").append(messageConst).append(");\n");
     	generatedProducers.append(bodyTemp);
-    	
     	generatedProducers.append("        PipeWriter.publishWrites(output);\n");
-    	generatedProducers.append("        result = true;\n    }\n");    	
-    	generatedProducers.append("    return result;\n");
+
     	generatedProducers.append("}\n");
     	
 	}
