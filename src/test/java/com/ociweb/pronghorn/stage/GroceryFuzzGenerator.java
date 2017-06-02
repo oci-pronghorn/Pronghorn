@@ -56,7 +56,7 @@ public class GroceryFuzzGenerator extends PronghornStage{
                 Pipe.confirmLowLevelWrite(output, Pipe.sizeOf(output, 0));
                 Pipe.publishWrites(output);
 
-                System.out.println("id : " + storeID + " Date " + date + " Product Name " + productName + " Amounnt " + amount + "Units " + units);
+                //System.out.println("id : " + storeID + " Date " + date + " Product Name " + productName + " Amounnt " + amount + "Units " + units);
             }
             else {
                 Pipe.spinBlockForRoom(output, Pipe.EOF_SIZE);

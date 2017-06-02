@@ -20,6 +20,7 @@ public class SchemaValidationTest {
 	
     @Test
     public void messageClientNetResponseSchemaFROMTest() {
+    	
         assertTrue(FROMValidation.checkSchema("/NetPayload.xml", NetPayloadSchema.class));
     }
     

@@ -49,7 +49,7 @@ import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 public class HTTPSRoundTripTest {
 
 	@Ignore
-   //@Test
+  // @Test
 	public void roundTripTest2() {
 				
 
@@ -106,15 +106,14 @@ public class HTTPSRoundTripTest {
 
 		
 			
-			boolean isTLS = false;
+			boolean isTLS = true;
 			int port = isTLS?8443:8080;
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";
 					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
 			
-			boolean isLarge = true;
-			
-			boolean useLocalServer = true;//
+			boolean isLarge = true;			
+			boolean useLocalServer = true;
 
 			final String testFile = "groovySum.json";
 			final int loadMultiplier = isTLS? 300_000 : 3_000_000;

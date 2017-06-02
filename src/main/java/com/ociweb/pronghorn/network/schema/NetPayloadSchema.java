@@ -99,58 +99,36 @@ public class NetPayloadSchema extends MessageSchema<NetPayloadSchema> {
         int fieldSequnceNo = PipeReader.readInt(input,MSG_BEGIN_208_FIELD_SEQUNCENO_209);
     }
 
-    public static boolean publishEncrypted(Pipe<NetPayloadSchema> output, long fieldConnectionId, long fieldArrivalTime, byte[] fieldPayloadBacking, int fieldPayloadPosition, int fieldPayloadLength) {
-        boolean result = false;
-        if (PipeWriter.tryWriteFragment(output, MSG_ENCRYPTED_200)) {
+    public static void publishEncrypted(Pipe<NetPayloadSchema> output, long fieldConnectionId, long fieldArrivalTime, byte[] fieldPayloadBacking, int fieldPayloadPosition, int fieldPayloadLength) {
+            PipeWriter.presumeWriteFragment(output, MSG_ENCRYPTED_200);
             PipeWriter.writeLong(output,MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201, fieldConnectionId);
             PipeWriter.writeLong(output,MSG_ENCRYPTED_200_FIELD_ARRIVALTIME_210, fieldArrivalTime);
             PipeWriter.writeBytes(output,MSG_ENCRYPTED_200_FIELD_PAYLOAD_203, fieldPayloadBacking, fieldPayloadPosition, fieldPayloadLength);
             PipeWriter.publishWrites(output);
-            result = true;
-        }
-        return result;
     }
-    public static boolean publishPlain(Pipe<NetPayloadSchema> output, long fieldConnectionId, long fieldArrivalTime, long fieldPosition, byte[] fieldPayloadBacking, int fieldPayloadPosition, int fieldPayloadLength) {
-        boolean result = false;
-        if (PipeWriter.tryWriteFragment(output, MSG_PLAIN_210)) {
+    public static void publishPlain(Pipe<NetPayloadSchema> output, long fieldConnectionId, long fieldArrivalTime, long fieldPosition, byte[] fieldPayloadBacking, int fieldPayloadPosition, int fieldPayloadLength) {
+            PipeWriter.presumeWriteFragment(output, MSG_PLAIN_210);
             PipeWriter.writeLong(output,MSG_PLAIN_210_FIELD_CONNECTIONID_201, fieldConnectionId);
             PipeWriter.writeLong(output,MSG_PLAIN_210_FIELD_ARRIVALTIME_210, fieldArrivalTime);
             PipeWriter.writeLong(output,MSG_PLAIN_210_FIELD_POSITION_206, fieldPosition);
             PipeWriter.writeBytes(output,MSG_PLAIN_210_FIELD_PAYLOAD_204, fieldPayloadBacking, fieldPayloadPosition, fieldPayloadLength);
             PipeWriter.publishWrites(output);
-            result = true;
-        }
-        return result;
     }
-    public static boolean publishDisconnect(Pipe<NetPayloadSchema> output, long fieldConnectionId) {
-        boolean result = false;
-        if (PipeWriter.tryWriteFragment(output, MSG_DISCONNECT_203)) {
+    public static void publishDisconnect(Pipe<NetPayloadSchema> output, long fieldConnectionId) {
+            PipeWriter.presumeWriteFragment(output, MSG_DISCONNECT_203);
             PipeWriter.writeLong(output,MSG_DISCONNECT_203_FIELD_CONNECTIONID_201, fieldConnectionId);
             PipeWriter.publishWrites(output);
-            result = true;
-        }
-        return result;
     }
-    public static boolean publishUpgrade(Pipe<NetPayloadSchema> output, long fieldConnectionId, int fieldNewRoute) {
-        boolean result = false;
-        if (PipeWriter.tryWriteFragment(output, MSG_UPGRADE_307)) {
+    public static void publishUpgrade(Pipe<NetPayloadSchema> output, long fieldConnectionId, int fieldNewRoute) {
+            PipeWriter.presumeWriteFragment(output, MSG_UPGRADE_307);
             PipeWriter.writeLong(output,MSG_UPGRADE_307_FIELD_CONNECTIONID_201, fieldConnectionId);
             PipeWriter.writeInt(output,MSG_UPGRADE_307_FIELD_NEWROUTE_205, fieldNewRoute);
             PipeWriter.publishWrites(output);
-            result = true;
-        }
-        return result;
     }
-    public static boolean publishBegin(Pipe<NetPayloadSchema> output, int fieldSequnceNo) {
-        boolean result = false;
-        if (PipeWriter.tryWriteFragment(output, MSG_BEGIN_208)) {
+    public static void publishBegin(Pipe<NetPayloadSchema> output, int fieldSequnceNo) {
+            PipeWriter.presumeWriteFragment(output, MSG_BEGIN_208);
             PipeWriter.writeInt(output,MSG_BEGIN_208_FIELD_SEQUNCENO_209, fieldSequnceNo);
             PipeWriter.publishWrites(output);
-            result = true;
-        }
-        return result;
     }
-
-
         
 }

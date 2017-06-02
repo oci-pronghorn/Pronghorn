@@ -9,6 +9,8 @@ import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
+import com.ociweb.pronghorn.stage.file.schema.BlockManagerRequestSchema;
+import com.ociweb.pronghorn.stage.file.schema.BlockManagerResponseSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialFileIORequestSchema;
@@ -16,6 +18,16 @@ import com.ociweb.pronghorn.stage.file.schema.SequentialFileIOResponseSchema;
 
 public class SchemaTest {
 
+	@Test
+	public void testBlockManagerRequestSchema() {
+		  assertTrue(FROMValidation.checkSchema("/BlockManagerRequest.xml", BlockManagerRequestSchema.class));
+	}
+	
+	@Test
+	public void testBlockManagerResponseSchema() {
+		  assertTrue(FROMValidation.checkSchema("/BlockManagerResponse.xml", BlockManagerResponseSchema.class));
+	}
+	
 	@Test
 	public void testPersistedBlobLoadSchema() {
 		  assertTrue(FROMValidation.checkSchema("/PersistedBlobLoad.xml", PersistedBlobLoadSchema.class));
