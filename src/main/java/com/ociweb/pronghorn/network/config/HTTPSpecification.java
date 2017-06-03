@@ -49,11 +49,11 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         //find ordinal values and max length
         int maxVerbLength = 0;
         this.verbs = supportedHTTPVerbs.getEnumConstants();
-        assert(null!=verbs);
-        int j = verbs.length;
-
-        while (--j >= 0) {        	
-        	maxVerbLength = Math.max(maxVerbLength, verbs[j].name().length());             
+        if (this.verbs != null) {
+	        int j = verbs.length;
+	        while (--j >= 0) {        	
+	        	maxVerbLength = Math.max(maxVerbLength, verbs[j].name().length());             
+	        }
         }
         this.maxVerbLength = maxVerbLength;
         
