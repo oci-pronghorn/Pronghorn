@@ -62,9 +62,11 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         assert(false == (trustAccurateStrings=false)); //side effect by design, do not modify
         
         headerParser = new TrieParser(512, 2, trustAccurateStrings, false, true);        
-        int h = headers.length;
-        while (--h>=0) {	
-        	headerParser.setUTF8Value(headers[h].writingRoot(), headers[h].ordinal());
+        if (headers != null) {
+	        int h = headers.length;
+	        while (--h>=0) {	
+	        	headerParser.setUTF8Value(headers[h].writingRoot(), headers[h].ordinal());
+	        }
         }
 
     }

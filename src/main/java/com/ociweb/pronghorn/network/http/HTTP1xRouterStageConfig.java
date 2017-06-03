@@ -40,21 +40,23 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         this.revisionMap = new TrieParser(256,true); //avoid deep check        
         //Load the supported HTTP revisions
         R[] revs = (R[])httpSpec.supportedHTTPRevisions.getEnumConstants();
-        int z = revs.length;               
-        while (--z >= 0) {
-        	revisionMap.setUTF8Value(revs[z].getKey(), "\r\n", revs[z].ordinal());
-            revisionMap.setUTF8Value(revs[z].getKey(), "\n", revs[z].ordinal()); //\n must be last because we prefer to have it pick \r\n          
+        if (revs != null) {
+	        int z = revs.length;               
+	        while (--z >= 0) {
+	        	revisionMap.setUTF8Value(revs[z].getKey(), "\r\n", revs[z].ordinal());
+	            revisionMap.setUTF8Value(revs[z].getKey(), "\n", revs[z].ordinal()); //\n must be last because we prefer to have it pick \r\n          
+	        }
         }
-
         
         this.verbMap = new TrieParser(256,false);//does deep check
         //Load the supported HTTP verbs
         V[] verbs = (V[])httpSpec.supportedHTTPVerbs.getEnumConstants();
-        int y = verbs.length;
-        while (--y >= 0) {
-            verbMap.setUTF8Value(verbs[y].getKey()," ", verbs[y].ordinal());           
+        if (verbs != null) {
+	        int y = verbs.length;
+	        while (--y >= 0) {
+	            verbMap.setUTF8Value(verbs[y].getKey()," ", verbs[y].ordinal());           
+	        }
         }
-                
         END_OF_HEADER_ID  = httpSpec.headerCount+2;//for the empty header found at the bottom of the header
         UNKNOWN_HEADER_ID = httpSpec.headerCount+1;
 
@@ -65,12 +67,14 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     
         //Load the supported header keys
         H[] shr =  (H[])httpSpec.supportedHTTPHeaders.getEnumConstants();
-        int w = shr.length;
-        while (--w >= 0) {
-            //must have tail because the first char of the tail is required for the stop byte
-            headerMap.setUTF8Value(shr[w].readingTemplate(), "\r\n",shr[w].ordinal());
-            headerMap.setUTF8Value(shr[w].readingTemplate(), "\n",shr[w].ordinal()); //\n must be last because we prefer to have it pick \r\n
-        }     
+        if (shr != null) {
+	        int w = shr.length;
+	        while (--w >= 0) {
+	            //must have tail because the first char of the tail is required for the stop byte
+	            headerMap.setUTF8Value(shr[w].readingTemplate(), "\r\n",shr[w].ordinal());
+	            headerMap.setUTF8Value(shr[w].readingTemplate(), "\n",shr[w].ordinal()); //\n must be last because we prefer to have it pick \r\n
+	        }     
+        }
         //unknowns are the least important and must be added last 
         this.urlMap = new TrieParser(512,2,false //never skip deep check so we can return 404 for all "unknowns"
         		                    ,true,true);  
