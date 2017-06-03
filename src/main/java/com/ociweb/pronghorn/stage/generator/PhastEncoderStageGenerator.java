@@ -1,31 +1,27 @@
 package com.ociweb.pronghorn.stage.generator;
 
-import com.ociweb.pronghorn.pipe.DataInputBlobReader;
+import static com.ociweb.pronghorn.util.Appendables.appendStaticCall;
 
 import java.io.IOException;
-
-import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.phast.PhastEncoder;
-import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
-
-import static com.ociweb.pronghorn.util.Appendables.*;
-
-import com.ociweb.pronghorn.pipe.MessageSchema;
-import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
-import com.ociweb.pronghorn.pipe.token.*;
-import com.ociweb.pronghorn.pipe.util.build.TemplateProcessGeneratorLowLevelReader;
-
-import java.lang.reflect.Type;
 import java.nio.channels.Pipe;
 import java.util.Stack;
 import java.util.logging.Level;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.MessageSchema;
+import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
+import com.ociweb.pronghorn.pipe.token.OperatorMask;
+import com.ociweb.pronghorn.pipe.token.TokenBuilder;
+import com.ociweb.pronghorn.pipe.token.TypeMask;
+import com.ociweb.pronghorn.pipe.util.build.TemplateProcessGeneratorLowLevelReader;
+import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.phast.PhastEncoder;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
-import com.sun.org.apache.xpath.internal.operations.Bool;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 
 public class PhastEncoderStageGenerator extends TemplateProcessGeneratorLowLevelReader {
 

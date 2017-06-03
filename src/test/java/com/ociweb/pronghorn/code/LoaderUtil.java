@@ -146,7 +146,7 @@ public class LoaderUtil {
             }
             
             
-            System.err.println("write source to :"+sourceFile);
+           // System.err.println("write source to :"+sourceFile);
         
         }
     
@@ -155,7 +155,7 @@ public class LoaderUtil {
         if (compiler.getTask(null, null, diagnostics, optionList, null, toCompile).call()) {
                 File classFile = new File(classesFolder, cannonicalName+".class");
 
-                System.err.println("write class to :"+ classFile);
+               // System.err.println("write class to :"+ classFile);
                 
                 String name = packageName+"."+className;
                 byte[] classData = readClassBytes(classFile);

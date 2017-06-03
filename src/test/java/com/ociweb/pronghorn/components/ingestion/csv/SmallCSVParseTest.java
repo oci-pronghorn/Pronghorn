@@ -26,7 +26,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.components.ingestion.metaMessageUtil.MetaMessageDefs;
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;

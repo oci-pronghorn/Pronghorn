@@ -161,6 +161,8 @@ public class HTTPSRoundTripTest {
 	
 				GraphManager gm = new GraphManager();
 		
+
+				boolean printProgress = false;
 				//TODO: will big sleeps show the backed up pipes more clearly? TODO: must be tuned for pipe lenghths?
 				
 				
@@ -233,6 +235,7 @@ public class HTTPSRoundTripTest {
 				int netResponseCount = 4;
 				int netResponseBlob = 1<<17; //NOTE: must be 128K or larger for decyrption.
 								
+				
 				int cc = clientCount;
 				while (--cc>=0) {	    	
 					{
@@ -250,7 +253,7 @@ public class HTTPSRoundTripTest {
 								                                           httpRequestQueueSize,httpRequestQueueBytes,writeBufferMultiplier, 
 								                                           releaseCount, netResponseCount, netResponseBlob);
 						assert(toReactor.length == input.length);
-						clients[cc] = new RegulatedLoadTestStage(gm, toReactor, input, totalUsersCount*loadMultiplier, "/"+testFile, usersPerPipe, port, host, "reg"+cc,clientCoord1);
+						clients[cc] = new RegulatedLoadTestStage(gm, toReactor, input, totalUsersCount*loadMultiplier, "/"+testFile, usersPerPipe, port, host, "reg"+cc,clientCoord1,printProgress);
 						clientCoords[cc]=clientCoord1;
 					}
 				}

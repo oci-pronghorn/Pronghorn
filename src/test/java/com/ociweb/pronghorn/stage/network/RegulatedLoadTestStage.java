@@ -58,11 +58,15 @@ public class RegulatedLoadTestStage extends PronghornStage{
 	private final String label;
 	private final GraphManager graphManager;
 	
+	private final boolean printProgress;
+	
 	
 	protected RegulatedLoadTestStage(GraphManager graphManager, Pipe<NetResponseSchema>[] inputs, Pipe<ClientHTTPRequestSchema>[] outputs, 
-			                          int testSize, String fileRequest, int usersPerPipe, int port, String host, String label, ClientCoordinator clientCoord) {
+			                          int testSize, String fileRequest, int usersPerPipe, int port,
+			                          String host, String label, ClientCoordinator clientCoord, boolean printProgress) {
 		super(graphManager, inputs, outputs);
 		
+		this.printProgress = printProgress;
 		this.clientCoord = clientCoord;
 		this.usersPerPipe = usersPerPipe;
 		this.graphManager = graphManager;
@@ -191,8 +195,8 @@ public class RegulatedLoadTestStage extends PronghornStage{
 
 
 	private void printProgress(long now) {
-		boolean debug = true;
-		if (debug) {
+
+		if (printProgress) {
 							
 			int pct = (int)((100L*totalReceived)/(float)totalExpected);
 			if (lastChecked!=pct) {

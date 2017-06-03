@@ -1,8 +1,5 @@
 package com.ociweb.pronghorn.stage;
 
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,11 +65,11 @@ public abstract class PronghornStage {
 		
 		int totalOut = outgoingNoRoom+outgoingRoom;
 		if (totalOut>0) {
-			logger.info("{} outgoing  NoRoom:{}    Room:{}     Total:{}  Blocked:{}%",label, outgoingNoRoom, outgoingRoom, totalOut, 100f*outgoingNoRoom/(outgoingNoRoom+outgoingRoom));
+			logger.trace("{} outgoing  NoRoom:{}    Room:{}     Total:{}  Blocked:{}%",label, outgoingNoRoom, outgoingRoom, totalOut, 100f*outgoingNoRoom/(outgoingNoRoom+outgoingRoom));
 		}
 		int totalIn = incomingNoContent+incomingContent;
 		if(totalIn>0) {
-			logger.info("{} incoming  NoContent:{} Content:{}  Total:{}  Blocked:{}%",label, incomingNoContent, incomingContent, totalIn, 100f*incomingNoContent/(incomingNoContent+incomingContent));
+			logger.trace("{} incoming  NoContent:{} Content:{}  Total:{}  Blocked:{}%",label, incomingNoContent, incomingContent, totalIn, 100f*incomingNoContent/(incomingNoContent+incomingContent));
 		}
 		return true;
 	}
