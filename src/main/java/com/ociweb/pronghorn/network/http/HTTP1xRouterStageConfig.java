@@ -32,7 +32,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public final int UNKNOWN_HEADER_ID;
     public final int UNMAPPED_ROUTE;
 	
-    private final URLTemplateParser templateParser = new URLTemplateParser();
+    private URLTemplateParser routeParser;
 
 	public HTTP1xRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec) {
 		this.httpSpec = httpSpec;
@@ -98,7 +98,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
    public int registerRoute(CharSequence route, IntHashTable headers, TrieParser headerParser) {
 		
 		boolean trustText = false; 
-		storeRequestExtractionParsers(templateParser.addRoute(route, routesCount, urlMap, trustText));
+		URLTemplateParser parser = routeParser();
+		storeRequestExtractionParsers(parser.addRoute(route, routesCount, urlMap, trustText));
 		storeRequestedExtractions(urlMap.lastSetValueExtractonPattern());
 
 		storeRequestedHeaders(headers);
@@ -107,6 +108,16 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		int pipeIdx = routesCount;
 		routesCount++;
 		return pipeIdx;
+	}
+
+
+	private URLTemplateParser routeParser() {
+		//Many projects do not need this so do not build..
+		if (routeParser==null) {
+			routeParser = new URLTemplateParser();
+		}
+		URLTemplateParser parser = routeParser;
+		return parser;
 	}
 
 	private void storeRequestExtractionParsers(RouteDef route) {
