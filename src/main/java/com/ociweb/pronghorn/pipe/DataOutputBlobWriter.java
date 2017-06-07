@@ -65,6 +65,8 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         System.out.println();
     }
     
+    //used to write indexes to fields in order, requires that the fields are written in order
+    //this also requires that we copy the full max data block but it may have empty space in the middle.
     public static <T extends MessageSchema<T>> boolean tryWriteIntBackData(DataOutputBlobWriter<T> writer, int value) {	
     	    	
     	int totalBytesWritten = dif(writer, writer.startPosition, writer.activePosition);

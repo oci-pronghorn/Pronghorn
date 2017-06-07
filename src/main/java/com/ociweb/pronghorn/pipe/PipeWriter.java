@@ -273,14 +273,18 @@ public class PipeWriter {
         Pipe.addAndGetBytesWorkingHeadPosition(pipe,len);   	
 	}
 
-	public static void publishEOF(Pipe pipe) {		
+	public static void publishEOF(Pipe pipe) {	
+		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
 		StackStateWalker.writeEOF(pipe);		
-		Pipe.publishWorkingHeadPosition(pipe, pipe.ringWalker.nextWorkingHead = pipe.ringWalker.nextWorkingHead + Pipe.EOF_SIZE);	
-		
+		Pipe.publishWorkingHeadPosition(pipe, pipe.ringWalker.nextWorkingHead = pipe.ringWalker.nextWorkingHead + Pipe.EOF_SIZE);		
 	}
 
+	public static void publishEOL(Pipe pipe) {
+		publishEOF(pipe);
+	}
+	
     public static int publishWrites(Pipe pipe) {
-	  
+    	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
         assert(Pipe.workingHeadPosition(pipe)!=Pipe.headPosition(pipe)) : "Fragment was already published, check the workflow logic and remove call to publishWrites(pipe)";
         
 	    int consumed = Pipe.writeTrailingCountOfBytesConsumed(pipe, pipe.ringWalker.nextWorkingHead -1 ); 
@@ -329,6 +333,8 @@ public class PipeWriter {
 	 * @param historicBlobPosition
 	 */
 	public static boolean tryReplication(Pipe pipe, long historicSlabPosition, int historicBlobPosition) {
+		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
+		
 		final int[] slab = pipe.slab(pipe);	
 		
 		int idx = (int)historicSlabPosition & pipe.slabMask;		
@@ -380,12 +386,14 @@ public class PipeWriter {
 	 * 
 	 */
 	public static boolean tryWriteFragment(Pipe pipe, int fragmentId) {
+		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
 	    assert(null!=pipe);
 	    assert(Pipe.isInit(pipe)) : "Pipe must be initialized before use: "+pipe;
 		return StackStateWalker.tryWriteFragment0(pipe, fragmentId, Pipe.from(pipe).fragDataSize[fragmentId], pipe.ringWalker.nextWorkingHead - (pipe.sizeOfSlabRing - Pipe.from(pipe).fragDataSize[fragmentId]));
 	}
 
     public static boolean hasRoomForWrite(Pipe pipe) {
+    	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	assert(pipe!=null);
     	assert(Pipe.isInit(pipe));
     	assert(pipe.usingHighLevelAPI);

@@ -26,7 +26,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
     private int bytesLowBound;
     protected int position;
 
-    private TrieParser textToNumberParser;
+    private static TrieParser textToNumberParser;
     private TrieParserReader reader;
     
     private int EOF_MARKER = -1;
@@ -403,21 +403,32 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
     	position += length;
     	
     }
+    
+    
+    
     ////////
     //parsing methods
     ///////
-    private TrieParser textToNumberParser() {
-    	if (textToNumberParser == null) {
+    public static TrieParser textToNumberTrieParser() {
+    	if (textToNumberParser == null) {    		
     		TrieParser p = new TrieParser(32,false);
     		p.setUTF8Value("%i%.", 1);
-    		reader = new TrieParserReader(true);
+    		textToNumberParser = p;
     	}
     	return textToNumberParser;
     }
     
+    private TrieParserReader parserReader() {
+    	if (null == reader) {
+    		reader = new TrieParserReader(true);
+    	}
+    	return reader;
+    }
+    
     public static long readUTFAsLong(DataInputBlobReader<?> reader) {
-    	TrieParser parser = reader.textToNumberParser();    	
-    	long token = TrieParserReader.query(reader.reader, parser, reader.backing, reader.position,
+    	TrieParserReader parserReader = reader.parserReader();
+    	long token = TrieParserReader.query(parserReader, textToNumberTrieParser(), 
+    			               reader.backing, reader.position,
     			               reader.available(), reader.byteMask);
     	
     	if (token>=0) {
@@ -428,8 +439,9 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
     }
     
     public static double readUTFAsDecimal(DataInputBlobReader<?> reader) {
-    	TrieParser parser = reader.textToNumberParser();    	
-    	long token = TrieParserReader.query(reader.reader, parser, reader.backing, reader.position,
+    	TrieParserReader parserReader = reader.parserReader();
+    	long token = TrieParserReader.query(parserReader, textToNumberTrieParser(), 
+    			               reader.backing, reader.position,
     			               reader.available(), reader.byteMask);
     	
     	if (token>=0) {

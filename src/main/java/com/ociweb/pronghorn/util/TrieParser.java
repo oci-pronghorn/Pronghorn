@@ -548,8 +548,7 @@ public class TrieParser implements Serializable {
                 
         return i;
     }
-   
-    
+       
     
     
     static int computeJumpMask(short source, short critera) {

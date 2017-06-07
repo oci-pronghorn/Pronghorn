@@ -555,18 +555,19 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	 * 
 	 *  NEVER follow this with publish since it has already been done.
 	 * 
-	 * @param inputRing
-	 * @param outputRing
+	 * @param pipeIn
+	 * @param pipeOut
 	 */
-	public static boolean tryMoveSingleMessage(Pipe inputRing, Pipe outputRing) {
-		assert(Pipe.from(inputRing) == Pipe.from(outputRing));
+	public static boolean tryMoveSingleMessage(Pipe pipeIn, Pipe pipeOut) {
+		assert(Pipe.from(pipeIn) == Pipe.from(pipeOut));
+		assert(Pipe.singleThreadPerPipeRead(pipeIn.id));
 		//NOTE: all the reading makes use of the high-level API to manage the fragment state, this call assumes tryRead was called once already.
 			
 		//we may re-enter this function to continue the copy
-		boolean copied = StackStateWalker.copyFragment0(inputRing, outputRing, Pipe.getWorkingTailPosition(inputRing), inputRing.ringWalker.nextWorkingTail);
-		while (copied && !FieldReferenceOffsetManager.isTemplateStart(Pipe.from(inputRing), inputRing.ringWalker.nextCursor)) {			
+		boolean copied = StackStateWalker.copyFragment0(pipeIn, pipeOut, Pipe.getWorkingTailPosition(pipeIn), pipeIn.ringWalker.nextWorkingTail);
+		while (copied && !FieldReferenceOffsetManager.isTemplateStart(Pipe.from(pipeIn), pipeIn.ringWalker.nextCursor)) {			
 			//using short circut logic so copy does not happen unless the prep is successful
-			copied = StackStateWalker.prepReadFragment(inputRing, inputRing.ringWalker) && StackStateWalker.copyFragment0(inputRing, outputRing, Pipe.getWorkingTailPosition(inputRing), inputRing.ringWalker.nextWorkingTail);			
+			copied = StackStateWalker.prepReadFragment(pipeIn, pipeIn.ringWalker) && StackStateWalker.copyFragment0(pipeIn, pipeOut, Pipe.getWorkingTailPosition(pipeIn), pipeIn.ringWalker.nextWorkingTail);			
 		}
 		return copied;
 	}
@@ -607,7 +608,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 		return StackStateWalker.hasContentToRead(pipe) && (expected == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc)));
 	}
 	
-	public static boolean peekMsg(Pipe pipe, int expected) {			
+	public static boolean peekMsg(Pipe pipe, int expected) {
+		assert(Pipe.singleThreadPerPipeRead(pipe.id));
 		return StackStateWalker.hasContentToRead(pipe) && (expected == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail));
 	}
 
@@ -670,6 +672,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	//this impl only works for simple case where every message is one fragment. 
 	public static boolean tryReadFragment(Pipe pipe) {
 		assert(pipe.usingHighLevelAPI);
+		assert(Pipe.singleThreadPerPipeRead(pipe.id));
 		assert(null!=pipe.ringWalker) : "NullPointer, double check that pipe was passed into super constructor of stage.";
 		if (FieldReferenceOffsetManager.isTemplateStart(Pipe.from(pipe), pipe.ringWalker.nextCursor)) {    
 		    assert(StackStateWalker.isSeqStackEmpty(pipe.ringWalker)) : "Error the seqStack should be empty";
@@ -678,6 +681,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 			return StackStateWalker.prepReadFragment(pipe, pipe.ringWalker);
 	    }
 	}
+
+
 
 	private static int collectConsumedCountOfBytes(Pipe pipe) {
 	    if (pipe.ringWalker.nextWorkingTail>0) { //first iteration it will not have a valid position
@@ -695,7 +700,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     }
 
 	public static void releaseReadLock(Pipe pipe) {
-	    
+		assert(Pipe.singleThreadPerPipeRead(pipe.id));
         collectConsumedCountOfBytes(pipe); 
 	    
 	    //ensure we only call for new templates.
@@ -714,7 +719,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	
 	
 	public static boolean readNextWithoutReleasingReadLock(Pipe pipe) {
-	    
+		assert(Pipe.singleThreadPerPipeRead(pipe.id));
         int bytesConsumed = collectConsumedCountOfBytes(pipe); 
         
         if (FieldReferenceOffsetManager.isTemplateStart(Pipe.from(pipe), pipe.ringWalker.nextCursor)) {

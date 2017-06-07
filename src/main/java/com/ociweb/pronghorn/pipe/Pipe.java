@@ -480,7 +480,43 @@ public class Pipe<T extends MessageSchema<T>> {
 
     private int activeBlobHead = -1;
 	
+	//////////////////
+    /////////////////
+	private static ThreadBasedCallerLookup callerLookup;
 	
+	//for debugging
+	public static void setThreadCallerLookup(ThreadBasedCallerLookup callerLookup) {
+		Pipe.callerLookup = callerLookup;
+	}
+	
+	static boolean singleThreadPerPipeWrite(int pipeId) {
+		if (null != callerLookup) {			
+			int callerId = callerLookup.getCallerId();
+			if (callerId>=0) {
+				int expected = callerLookup.getProducerId(pipeId);
+				if (expected>=0) {
+					assert(callerId == expected) : "Check your graph construction and stage constructors.\n Pipe "+pipeId+" must only have 1 stage therefore 1 thread writing to it.";
+				}
+			}
+		}
+		return true;
+	}
+
+	static boolean singleThreadPerPipeRead(int pipeId) {
+		if (null != callerLookup) {			
+			int callerId = callerLookup.getCallerId();
+			if (callerId>=0) {
+				int expected = callerLookup.getConsumerId(pipeId);
+				if (expected>=0) {
+					assert(callerId == expected) : "Check your graph construction and stage constructors.\n Pipe "+pipeId+" must only have 1 stage therefore 1 thread reading from it.";
+				}
+			}
+		}
+		return true;
+	}
+    
+	////////////////////
+	////////////////////
 	public Pipe(PipeConfig<T> config) {
 		this(config,true);
 	}
@@ -2824,6 +2860,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
     public static <S extends MessageSchema<S>> int releaseReadLock(Pipe<S> pipe) {
+    	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         int bytesConsumedByFragment = takeInt(pipe);
         assert(bytesConsumedByFragment>=0) : "Bytes consumed by fragment must never be negative, was fragment written correctly?, is read positioned correctly?";
         Pipe.markBytesReadBase(pipe, bytesConsumedByFragment);  //the base has been moved so we can also use it below.
@@ -2849,7 +2886,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
 
     @Deprecated //inline and use releaseReadLock(pipe)
-    public static <S extends MessageSchema<S>> int releaseReads(Pipe<S> pipe) {
+    public static <S extends MessageSchema<S>> int releaseReads(Pipe<S> pipe) {    	
         return releaseReadLock(pipe);     
     }
 
@@ -2859,7 +2896,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
     
     static <S extends MessageSchema<S>> void releaseBatchedReads(Pipe<S> pipe, int workingBlobRingTailPosition, long nextWorkingTail) {
- 
+    	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         if (decBatchRelease(pipe)<=0) { 
            setBytesTail(pipe, workingBlobRingTailPosition);
            
@@ -2887,7 +2924,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param pipe
      */
     public static <S extends MessageSchema<S>> void releaseAllBatchedReads(Pipe<S> pipe) {
-
+    	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         if (pipe.lastReleasedSlabTail > pipe.slabRingTail.tailPos.get()) {
             PaddedInt.set(pipe.blobRingTail.bytesTailPos,pipe.lastReleasedBlobTail);
             pipe.slabRingTail.tailPos.lazySet(pipe.lastReleasedSlabTail);
@@ -2898,7 +2935,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
     
     public static <S extends MessageSchema<S>> void releaseBatchedReadReleasesUpToThisPosition(Pipe<S> pipe) {
-        
+    	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         long newTailToPublish = Pipe.getWorkingTailPosition(pipe);
         int newTailBytesToPublish = Pipe.getWorkingBlobRingTailPosition(pipe);
         
@@ -2909,7 +2946,8 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
     public static <S extends MessageSchema<S>> void releaseBatchedReadReleasesUpToPosition(Pipe<S> pipe, long newTailToPublish,  int newTailBytesToPublish) {
-        assert(newTailToPublish<=pipe.lastReleasedSlabTail) : "This new value is forward of the next Release call, eg its too large";
+    	assert(Pipe.singleThreadPerPipeRead(pipe.id));
+    	assert(newTailToPublish<=pipe.lastReleasedSlabTail) : "This new value is forward of the next Release call, eg its too large";
         assert(newTailToPublish>=pipe.slabRingTail.tailPos.get()) : "This new value is behind the existing published Tail, eg its too small ";
         
 //        //TODO: These two asserts would be nice to have but the int of bytePos wraps every 2 gig causing false positives, these need more mask logic to be right
@@ -2926,7 +2964,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
     @Deprecated
 	public static <S extends MessageSchema<S>> void releaseAll(Pipe<S> pipe) {
-
+    	    assert(Pipe.singleThreadPerPipeRead(pipe.id));
 			int i = pipe.blobRingTail.byteWorkingTailPos.value= pipe.blobRingHead.byteWorkingHeadPos.value;
             PaddedInt.set(pipe.blobRingTail.bytesTailPos,i);
 			pipe.slabRingTail.tailPos.lazySet(pipe.slabRingTail.workingTailPos.value= pipe.slabRingHead.workingHeadPos.value);
@@ -2938,7 +2976,7 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param pipe
      */
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe) {
-    
+    	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	//happens at the end of every fragment
         int consumed = writeTrailingCountOfBytesConsumed(pipe); //increment because this is the low-level API calling
 
@@ -2951,7 +2989,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	}
 
     public static <S extends MessageSchema<S>> int publishWrites(Pipe<S> pipe, int optionalHiddenTrailingBytes) {
-        
+    	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
     	//add a few extra bytes on the end of the blob so we can "hide" information between fragments.
     	assert(optionalHiddenTrailingBytes>=0) : "only zero or positive values supported";
 		PaddedInt.maskedAdd(pipe.blobRingHead.byteWorkingHeadPos, optionalHiddenTrailingBytes, Pipe.BYTES_WRAP_MASK);
@@ -2966,6 +3004,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
     
     public static <S extends MessageSchema<S>> void publishWritesBatched(Pipe<S> pipe) {
+    	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
         //single length field still needs to move this value up, so this is always done
     	//in most cases this is redundant
 		pipe.blobWriteLastConsumedPos = pipe.blobRingHead.byteWorkingHeadPos.value;
@@ -3248,6 +3287,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	//we do not need to fetch it again and this reduces contention on the CAS with the reader.
 	//This is an important performance feature of the low level API and should not be modified.
     public static <S extends MessageSchema<S>> boolean hasRoomForWrite(Pipe<S> pipe, int size) {
+    	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
         return roomToLowLevelWrite(pipe, pipe.llRead.llwConfirmedPosition+size);
     }
     
@@ -3262,6 +3302,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
     public static <S extends MessageSchema<S>> boolean hasRoomForWrite(Pipe<S> pipe) {
         assert(null != pipe.slabRing) : "Pipe must be init before use";
+        assert(Pipe.singleThreadPerPipeWrite(pipe.id));
         return roomToLowLevelWrite(pipe, pipe.llRead.llwConfirmedPosition+FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe)));
     }    
     
@@ -3276,6 +3317,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	public static <S extends MessageSchema<S>> long confirmLowLevelWrite(Pipe<S> output, int size) { 
 	 
+		assert(Pipe.singleThreadPerPipeWrite(output.id));
 	    assert(size>=0) : "unsupported size "+size;
 	    
 	    assert((output.llRead.llwConfirmedPosition+output.slabMask) <= Pipe.workingHeadPosition(output)) : " confirmed writes must be less than working head position writes:"
@@ -3293,6 +3335,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	 */
 	public static <S extends MessageSchema<S>> long confirmLowLevelWriteUnchecked(Pipe<S> output, int size) { 
 		 
+		assert(Pipe.singleThreadPerPipeWrite(output.id));
 	    assert(size>=0) : "unsupported size "+size;
 	    
 	    assert((output.llRead.llwConfirmedPosition+output.slabMask) <= Pipe.workingHeadPosition(output)) : " confirmed writes must be less than working head position writes:"
@@ -3316,7 +3359,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	//helper method always uses the right size but that value needs to be found so its a bit slower than if you already knew the size and passed it in
 	public static <S extends MessageSchema<S>> long confirmLowLevelWrite(Pipe<S> output) { 
 		 
-	    
+		assert(Pipe.singleThreadPerPipeWrite(output.id));
 	    assert((output.llRead.llwConfirmedPosition+output.slabMask) <= Pipe.workingHeadPosition(output)) : " confirmed writes must be less than working head position writes:"
 	                                                +(output.llRead.llwConfirmedPosition+output.slabMask)+" workingHead:"+Pipe.workingHeadPosition(output)+
 	                                                " \n CHECK that Pipe is written same fields as message defines and skips none!";
@@ -3328,6 +3371,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	
 	//do not use with high level API, is dependent on low level confirm calls.
 	public static <S extends MessageSchema<S>> boolean hasContentToRead(Pipe<S> pipe, int size) {
+		assert(Pipe.singleThreadPerPipeRead(pipe.id));
         //optimized for the other method without size. this is why the -1 is there and we use > for target comparison.
         return contentToLowLevelRead2(pipe, pipe.llWrite.llrConfirmedPosition+size-1, pipe.llWrite); 
     }
@@ -3335,6 +3379,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	//this method can only be used with low level api navigation loop
 	//CAUTION: THIS IS NOT COMPATIBLE WITH PipeReader behavior...
     public static <S extends MessageSchema<S>> boolean hasContentToRead(Pipe<S> pipe) {
+    	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         assert(null != pipe.slabRing) : "Pipe must be init before use";
         final boolean result = contentToLowLevelRead2(pipe, pipe.llWrite.llrConfirmedPosition, pipe.llWrite);
         
@@ -3356,6 +3401,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	public static <S extends MessageSchema<S>> long confirmLowLevelRead(Pipe<S> pipe, long size) {
 	    assert(size>0) : "Must have read something.";
+	    assert(Pipe.singleThreadPerPipeRead(pipe.id));
 	     //not sure if this assert is true in all cases
 	  //  assert(input.llWrite.llwConfirmedWrittenPosition + size <= input.slabRingHead.workingHeadPos.value+Pipe.EOF_SIZE) : "size was far too large, past known data";
 	  //  assert(input.llWrite.llwConfirmedWrittenPosition + size >= input.slabRingTail.tailPos.get()) : "size was too small, under known data";   
@@ -3481,22 +3527,27 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
     public static <S extends MessageSchema<S>> void releasePendingReadLock(Pipe<S> pipe) {
+    	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         PendingReleaseData.releasePendingReadRelease(pipe.pendingReleases, pipe);
     }
     
     public static <S extends MessageSchema<S>> void releasePendingAsReadLock(Pipe<S> pipe, int consumed) {
-        PendingReleaseData.releasePendingAsReadRelease(pipe.pendingReleases, pipe, consumed);
+    	assert(Pipe.singleThreadPerPipeRead(pipe.id));
+    	PendingReleaseData.releasePendingAsReadRelease(pipe.pendingReleases, pipe, consumed);
     }
     
     public static <S extends MessageSchema<S>> int releasePendingCount(Pipe<S> pipe) {
+    	assert(Pipe.singleThreadPerPipeRead(pipe.id));
     	return PendingReleaseData.pendingReleaseCount(pipe.pendingReleases);
     }
     
     public static <S extends MessageSchema<S>> int releasePendingByteCount(Pipe<S> pipe) {
+    	assert(Pipe.singleThreadPerPipeRead(pipe.id));
     	return PendingReleaseData.pendingReleaseByteCount(pipe.pendingReleases);
     }
     
     public static <S extends MessageSchema<S>> void releaseAllPendingReadLock(Pipe<S> pipe) {
+    	assert(Pipe.singleThreadPerPipeRead(pipe.id));
         PendingReleaseData.releaseAllPendingReadRelease(pipe.pendingReleases, pipe);
     }
 
