@@ -3537,13 +3537,11 @@ public class Pipe<T extends MessageSchema<T>> {
     }
     
     public static <S extends MessageSchema<S>> int releasePendingCount(Pipe<S> pipe) {
-    	assert(Pipe.singleThreadPerPipeRead(pipe.id));
     	return PendingReleaseData.pendingReleaseCount(pipe.pendingReleases);
     }
     
     public static <S extends MessageSchema<S>> int releasePendingByteCount(Pipe<S> pipe) {
-    	assert(Pipe.singleThreadPerPipeRead(pipe.id));
-    	return PendingReleaseData.pendingReleaseByteCount(pipe.pendingReleases);
+     	return PendingReleaseData.pendingReleaseByteCount(pipe.pendingReleases);
     }
     
     public static <S extends MessageSchema<S>> void releaseAllPendingReadLock(Pipe<S> pipe) {
