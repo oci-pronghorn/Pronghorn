@@ -16,6 +16,9 @@ public abstract class PronghornStage {
 	//What if we only have 1 because this is the first or last stage?
 
 	public final int stageId; //since these are unique also used for hash
+	public final Integer boxedStageId;
+	
+	
 	private final int hash;
 	
 	private GraphManager graphManager;	
@@ -115,6 +118,7 @@ public abstract class PronghornStage {
 	  //  assert(noContainedNull(outputs)) : "Null disovered in array"; //TODO: put back in and find the bug in IoT project
 		
 	    this.stageId = GraphManager.newStageId(graphManager);
+	    this.boxedStageId = this.stageId;
 	    this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, inputs, outputs);
@@ -128,6 +132,7 @@ public abstract class PronghornStage {
 		assert(input!=null);
 		
 	    this.stageId = GraphManager.newStageId(graphManager);
+	    this.boxedStageId = this.stageId;
 	    this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, input, outputs);
@@ -141,6 +146,7 @@ public abstract class PronghornStage {
 		assert(output!=null);
 	    
 	    this.stageId = GraphManager.newStageId(graphManager);
+	    this.boxedStageId = this.stageId;
 	    this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, inputs, output);
@@ -161,7 +167,8 @@ public abstract class PronghornStage {
 	protected PronghornStage(GraphManager graphManager, Pipe input, Pipe output) {
 		assert(input!=null);
 		assert(output!=null);
-		this.stageId = GraphManager.newStageId(graphManager); 
+		this.stageId = GraphManager.newStageId(graphManager);
+		this.boxedStageId = this.stageId;
 		this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, input, output);
