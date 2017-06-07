@@ -340,7 +340,9 @@ public class ColorMinusScheduler extends StageScheduler {
                             // 
                             // so we run it, then request 
                             // the nextStage().
+                        	setCallerId(stage.boxedStageId);
                             stage.run();
+                            clearCallerId();
                             stage = nextStage(id);
                         }
 

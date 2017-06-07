@@ -177,7 +177,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
                     logger.trace("finished on initRings:"+stage.getClass().getSimpleName());
                     
                     Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);                    
+                    setCallerId(stage.boxedStageId);
                     stage.startup();
+                    clearCallerId();
                     GraphManager.setStateToStarted(graphManager, stage.stageId);
                     
                     try {
@@ -199,7 +201,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
                     try {
                         if (null!=stage) {
                         	//logger.info("called shutdown on stage {} ",stage);
+                        	setCallerId(stage.boxedStageId);
                             stage.shutdown();   
+                            clearCallerId();
                         }
                     } catch(Throwable t) {
                         recordTheException(stage, t);
@@ -247,7 +251,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					logger.trace("finished on initRings:"+stage.getClass().getSimpleName());
 					
 					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);
+					setCallerId(stage.boxedStageId);
 					stage.startup();
+					clearCallerId();
 					GraphManager.setStateToStarted(graphManager, stage.stageId);
 					
 				       try {
@@ -265,7 +271,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					try {
 					    if (null!=stage) {
 					    	//logger.info("called shutdown on stage {} ",stage);
+					    	setCallerId(stage.boxedStageId);
 					        stage.shutdown();	
+					        clearCallerId();
 					    }
 					} catch(Throwable t) {
 						recordTheException(stage, t);
@@ -332,7 +340,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					logger.trace("finished on initRings:{}",stage.getClass().getSimpleName());
 					
 					Thread.currentThread().setName(stage.getClass().getSimpleName()+" id:"+stage.stageId);				
+					setCallerId(stage.boxedStageId);
 					stage.startup();
+					clearCallerId();
 					
 					GraphManager.setStateToStarted(graphManager, stage.stageId);					
 				       
@@ -346,7 +356,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					runPeriodicLoop(nsScheduleRate/1_000_000l, (int)(nsScheduleRate%1_000_000l), stage);
 					
 					//logger.info("called shutdown on stage {} ",stage);
+					setCallerId(stage.boxedStageId);
 					stage.shutdown();
+					clearCallerId();
 					GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
 							
 				} catch (Throwable t) {
@@ -370,9 +382,11 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	private final void runLoopNotNice(final PronghornStage stage) {
 	    assert(!playNice);
 	    assert(!GraphManager.isRateLimited(graphManager,  stage.stageId));
+	    setCallerId(stage.boxedStageId);
         do {
             stage.run();
         } while (continueRunning(this, stage));
+        clearCallerId();
         GraphManager.accumRunTimeAll(graphManager, stage.stageId);
 	}
 	
@@ -382,6 +396,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	    } else {
 	    	if (!GraphManager.isRateLimited(graphManager,  stage.stageId)) {
 	    		int i = 0;
+	    		setCallerId(stage.boxedStageId);
 				do {
 				   if (playNice && 0==(0x3&i++)){
 				            //one out of every 8 passes we will yield to play nice since we may end up with a lot of threads
@@ -396,6 +411,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 						GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration);
 					}
 				} while (continueRunning(this, stage));
+				clearCallerId();
 	    		
 	    	} else {
 	    		runLoopRateLimited(stage);	
@@ -405,6 +421,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 
 	private void runLoopRateLimited(final PronghornStage stage) {
 		int i = 0;
+		setCallerId(stage.boxedStageId);
 		do {
 		    long nsDelay =  GraphManager.delayRequiredNS(graphManager,stage.stageId);
 		   
@@ -429,6 +446,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			} 
 			
 		} while (continueRunning(this, stage));
+		clearCallerId();
 	}
 
 	private static boolean continueRunning(ThreadPerStageScheduler tpss, final PronghornStage stage) {
@@ -443,6 +461,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		GraphManager localGM = graphManager;
 		
 		int iterCount = 0;
+		setCallerId(stage.boxedStageId);
 		do {
 			if (msSleep>0) {
 	      	    try {
@@ -459,6 +478,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				        Thread.sleep(0,nsSleep-300);
 				    } catch (InterruptedException e) {
 					    Thread.currentThread().interrupt();
+					    clearCallerId();
 					    return;
 				    }
 					
@@ -473,6 +493,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				}	
 				if (Thread.interrupted()) {
 					Thread.currentThread().interrupt();
+					clearCallerId();
 					return;
 				}
 			}
@@ -485,6 +506,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			
 			//because continueRunning can be expensive we will only check it once every 4 passes.
 		} while (((++iterCount & 0x3)!=0) || continueRunning(this, stage));
+		clearCallerId();
 		//Still testing removal of this which seemed incorrect,  } while (!isShuttingDown && !GraphManager.isStageShuttingDown(localGM, stageId));		
 	}
 

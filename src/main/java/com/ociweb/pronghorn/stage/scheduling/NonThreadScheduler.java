@@ -269,7 +269,14 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 		        		
 		        		 try {
 		                	 logger.debug("begin startup of    {}",stage);
+		                	 
+		                	 Thread thread = Thread.currentThread();
+		                	 new ThreadLocal<Integer>();
+		                	 
+		                	 setCallerId(stage.boxedStageId);
 		        			 stage.startup();
+		        			 clearCallerId();
+		        			 
 		        			 logger.debug("finished startup of {}",stage);
 		        			 
 		                	 //client work is complete so move stage of stage to started.
@@ -279,7 +286,9 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 		 	                recordTheException(stage, t, this);
 		 	                try {
 		 	                	if (null!=stage) {
-		 	                		stage.shutdown();	
+		 	                		setCallerId(stage.boxedStageId);
+		 	                		stage.shutdown();
+		 	                		clearCallerId();
 		 	                	}
 		 	                } catch(Throwable tx) {
 		 	                	recordTheException(stage, tx, this);
@@ -509,8 +518,9 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 				if (debugNonReturningStages) {
 					logger.info("begin run {}",stage);///for debug of hang
 				}
-				
+				that.setCallerId(stage.boxedStageId);
 				stage.run();
+				that.clearCallerId();
 				
 				if (debugNonReturningStages) {
 					logger.info("end run {}",stage);

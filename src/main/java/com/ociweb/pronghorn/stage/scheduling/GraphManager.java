@@ -911,7 +911,8 @@ public class GraphManager {
 	}
 
     static int getRingProducerId(GraphManager gm, int ringId) {
-        return gm.ringIdToStages[ringId*2];
+        int idx = ringId*2;
+		return idx < gm.ringIdToStages.length ? gm.ringIdToStages[idx] : -1;
     }
 	
    public static int getRingProducerStageId(GraphManager gm, int ringId) {
@@ -927,7 +928,8 @@ public class GraphManager {
 	}
 
     static int getRingConsumerId(GraphManager gm, int ringId) {
-        return gm.ringIdToStages[(ringId*2)+1];
+        int idx = (ringId*2)+1;
+		return idx < gm.ringIdToStages.length ? gm.ringIdToStages[idx] : -1;
     }
 	
 
