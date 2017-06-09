@@ -120,5 +120,5 @@ Looking for the release jar? This project is under active development.
 Please consider getting involved and sponsoring the completion of [Pronghorn](mailto:info@ociweb.com;?subject=Pronghorn%20Sponsor%20Inquiry)
 
 
-Nathan Tippy, Principal Software Engineer [OCI](objectcomputing.com)  
+Nathan Tippy, Principal Software Engineer [OCI](http://objectcomputing.com)  
 Twitter: @NathanTippy
