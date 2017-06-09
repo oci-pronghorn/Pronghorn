@@ -62,20 +62,19 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
 	    private IntHashTable fileExtensionTable;
 	    public static final int extHashShift = 3; //note hash map watches first 13 bits only,  4.3 chars 
 
-		public FileReadModuleStageData(HTTPSpecification httpSpec) {
+		public FileReadModuleStageData(HTTPSpecification httpSpec, int maxFileCount) {
 		  	        
 	        fileExtensionTable = buildFileExtHashTable(httpSpec.supportedHTTPContentTypes);
-	        
-	        int maxFileCount = 128;       
+
 	        setPaths(new Path[maxFileCount]);
 	        setFcId(new long[maxFileCount]);
 	        setFileSizes(new long[maxFileCount]);
 	        setEtagBytes(new byte[maxFileCount][]);
 	        setType(new int[maxFileCount]); 
-			
-	        
+				        
 	        setReadOptions(new HashSet<OpenOption>());
 	        getReadOptions().add(StandardOpenOption.READ);
+	        
 		}
 
 
@@ -346,16 +345,18 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
         this.channelHolder = new ServiceObjectHolder<FileChannel>(OPEN_FILECHANNEL_BITS, FileChannel.class, new FileChannelValidator() , false);
         
         this.digitBuffer.initBuffers();
-        
-        //TODO: this full block needs to be shared.
-        
-        
+
         File[] children = null==folderRootFile ? null : folderRootFile.listFiles();
         
         this.outputHash = new PipeHashTable(17);
-
         
-        this.data = new FileReadModuleStageData(httpSpec);
+        int maxFileCount = 4;
+		if (null!=children && children.length>0) {
+			int counts = countAllKnownFiles(children)+1;//IDs start at 1 so we need extra room
+			maxFileCount = 1<<(int)Math.ceil(Math.log(counts)/Math.log(2));	//convert to next power of 2
+		}
+
+        this.data = new FileReadModuleStageData(httpSpec, maxFileCount);
         
         
         //TODO: pull out as common object for all instances
@@ -402,6 +403,22 @@ public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
                 }       
             }
         }
+	}
+    
+    private int countAllKnownFiles(File[] children) {
+		int total = 0;
+    	int i = children.length;
+        while (--i>=0) {
+            File child = children[i];
+            if ((!child.isHidden()) && child.canRead()) {                
+                if (child.isDirectory()) {
+                	total += (countAllKnownFiles(child.listFiles())+1);
+                } else {
+                    total++;                
+                }       
+            }
+        }
+        return total;
 	}
     
     
