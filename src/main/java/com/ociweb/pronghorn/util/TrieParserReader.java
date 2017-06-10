@@ -1416,7 +1416,7 @@ public class TrieParserReader {
     
     public static long capturedLongField(TrieParserReader reader, int idx) {
     	
-   	 int pos = idx*4;
+   	    int pos = idx*4;
         
         int sign = reader.capturedValues[pos++];
         assert(sign!=0);

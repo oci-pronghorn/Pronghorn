@@ -1111,6 +1111,21 @@ public class Pipe<T extends MessageSchema<T>> {
 		return addLongAsUTF8(output, value);
 	}
 
+	
+    public static <S extends MessageSchema<S>> int addRationalAsASCII(Pipe<S> digitBuffer, long numerator, long denominator) {
+  	      
+    	  validateVarLength(digitBuffer, 21);
+	      DataOutputBlobWriter<S> outputStream = Pipe.outputStream(digitBuffer);
+	      outputStream.openField();
+	      
+	      Appendables.appendValue(outputStream, numerator);
+	      outputStream.writeChar('/');
+	      Appendables.appendValue(outputStream, denominator);
+	      	      
+	      return outputStream.closeLowLevelField();	
+	
+    }
+    
     
 	public static <S extends MessageSchema<S>> int addLongAsASCII(Pipe<S> output, long value) {
 		return addLongAsUTF8(output, value);
@@ -1125,7 +1140,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	}
 
     public static <S extends MessageSchema<S>> int addLongAsUTF8(Pipe<S> digitBuffer, int length) {
-  	  validateVarLength(digitBuffer, 21);
+  	      validateVarLength(digitBuffer, 21);
 	      DataOutputBlobWriter<S> outputStream = Pipe.outputStream(digitBuffer);
 	      outputStream.openField();
 	      Appendables.appendValue(outputStream, length);

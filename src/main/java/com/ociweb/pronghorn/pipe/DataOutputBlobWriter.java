@@ -55,6 +55,9 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     	return activePosition-startPosition;
     }
     
+    public int remaining() {
+    	return lastPosition-activePosition;
+    }
     
     public void debug() {
         Appendables.appendArray(System.out, '[', backingPipe.blobRing, startPosition, backingPipe.blobMask, ']',  activePosition-startPosition);
