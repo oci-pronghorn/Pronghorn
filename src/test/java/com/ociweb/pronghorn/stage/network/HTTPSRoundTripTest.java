@@ -48,6 +48,9 @@ import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
 public class HTTPSRoundTripTest {
 
+
+    static boolean debug = false;
+    
 	@Ignore
     //@Test
 	public void roundTripTest2() {
@@ -156,8 +159,6 @@ public class HTTPSRoundTripTest {
 
     }
     
-    static boolean debug = false;
-    
     
 	private void roundTripHTTPTest(boolean isTLS, int port, String host, 
 			                       boolean isLarge, boolean useLocalServer,
@@ -167,7 +168,7 @@ public class HTTPSRoundTripTest {
 		
 				if (debug) {
 					//monitor..
-					gm.enableTelemetry("127.0.0.1", 8089);
+					gm.enableTelemetry(8089);
 				}
 				
 				boolean printProgress = false;

@@ -1284,7 +1284,7 @@ public class GraphManager {
             }
             
         } catch (Throwable e) {        	
-        	logger.info("No runtime graph produced. ",e);
+        	logger.trace("No runtime graph produced. ",e);
         }
        
         
@@ -1766,6 +1766,11 @@ public class GraphManager {
     
     public void enableTelemetry(String host, int port) {
     	telemetryHost = host;
+    	telemetryPort = port;
+	}
+    
+    public void enableTelemetry(int port) {
+    	telemetryHost = NetGraphBuilder.bindHost();
     	telemetryPort = port;
 	}
 

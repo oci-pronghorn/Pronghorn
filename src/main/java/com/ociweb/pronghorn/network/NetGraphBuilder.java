@@ -553,6 +553,17 @@ public class NetGraphBuilder {
 		return handshakeIncomingGroup;
 	}
 
+	public static String bindHost() {
+		String bindHost;
+		boolean noIPV6 = true;//TODO: we really do need to add ipv6 support.
+		List<InetAddress> addrList = NetGraphBuilder.homeAddresses(noIPV6);
+		if (addrList.isEmpty()) {
+			bindHost = "127.0.0.1";
+		} else {
+			bindHost = addrList.get(0).toString().replace("/", "");
+		}
+		return bindHost;
+	}
 
 	public static List<InetAddress> homeAddresses(boolean noIPV6) {
 		List<InetAddress> addrList = new ArrayList<InetAddress>();

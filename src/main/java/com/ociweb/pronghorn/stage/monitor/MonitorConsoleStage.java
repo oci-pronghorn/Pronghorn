@@ -117,9 +117,11 @@ public class MonitorConsoleStage extends PronghornStage {
 		
 		summarizeRuntime(writeToConsole);
 				
-		//Send in pipe depth data		
-		GraphManager.exportGraphDotFile(graphManager, "MonitorResults", percentileValues, trafficValues);
-		
+		//Send in pipe depth data	
+		boolean writeImage = false;
+		if (writeImage) {
+			GraphManager.exportGraphDotFile(graphManager, "MonitorResults", percentileValues, trafficValues);
+		}
 	}
 
 	protected void summarizeRuntime(boolean writeToConsole) {
