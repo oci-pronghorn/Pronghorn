@@ -373,7 +373,7 @@ public class PipeWriter {
 	 */
 	public static void presumeWriteFragment(Pipe pipe, int fragmentId) {
 		if (!tryWriteFragment(pipe,fragmentId)) {
-			logger.error("Expected pipe {} to be empty",pipe, new UnsupportedOperationException("Ensure PipeWriter.hasRoomForWrite(pipe) returns true before calling this presumeWriteFragment method."));
+			logger.error("Expected pipe {} to have room",pipe, new UnsupportedOperationException("Ensure PipeWriter.hasRoomForWrite(pipe) returns true before calling this presumeWriteFragment method."));
 			while (!tryWriteFragment(pipe,fragmentId)) {
 				Pipe.spinWork(pipe);//safe spin which watches for shutdown or interrupt.
 			}
