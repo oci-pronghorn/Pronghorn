@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+
+  <script src="/viz-lite.js"></script>
+  
+</head>
+
+<body>
+
+<script src="./viz-lite.js"></script>
+    <script>
+    
+    function httpGet(theUrl)
+    {
+      var xmlHttp = null;
+
+      xmlHttp = new XMLHttpRequest();
+      xmlHttp.open( "GET", theUrl, false );
+      xmlHttp.send( null );
+      return xmlHttp.responseText;
+    }
+    
+    function paint()
+    {
+    	var dot = httpGet("graph.dot");	
+    	if (dot) {//contintional keeps graph up in browser after app stops..
+    		document.body.innerHTML = Viz(dot, { format: "svg", engine: "dot" });
+    	}
+    }
+    
+    setInterval(paint,250); //4x per second, render takes significant browser resources
+   
+    
+    </script>
+
+  
+</body>
+</html>

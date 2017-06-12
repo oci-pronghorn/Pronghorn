@@ -14,6 +14,7 @@ import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.NetGraphBuilder;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -390,10 +391,15 @@ public class GraphManager {
 		endStageRegister(clone);
 	}
 
-	
-	//NOTE: may extend this to use regular expressions against keys or values
-	
+    /**
+     * This graph is now complete and we are ready to add monitoring and begin thread scheduling.
+     * @param m
+     */
 	public static void disableMutation(GraphManager m) {
+		if (m.telemetryPort>0) {
+			//NB: this is done very last to ensure all the pipes get monitors added.
+			NetGraphBuilder.telemetryServerSetup(false, m.telemetryHost, m.telemetryPort, m);
+		}
 		m.enableMutation = false;
 	}
 	
@@ -1755,9 +1761,15 @@ public class GraphManager {
         blockUntilStageBeginsShutdown(this,stageToWatch);
     }
 	
+    private String telemetryHost=null;
+    private int    telemetryPort=-1;
+    
+    public void enableTelemetry(String host, int port) {
+    	telemetryHost = host;
+    	telemetryPort = port;
+	}
 
-
-    public static void spinLockUntilStageOfTypeStarted(GraphManager gm, Class<?> stageClass) {
+	public static void spinLockUntilStageOfTypeStarted(GraphManager gm, Class<?> stageClass) {
         boolean isStarted;
         do {
             isStarted = true;

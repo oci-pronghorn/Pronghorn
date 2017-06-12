@@ -51,6 +51,10 @@ public class ServerPipesConfig {
 	public int writeBufferMultiplier;
     
 	public ServerPipesConfig(boolean isLarge, boolean isTLS) {
+		this(isLarge,isTLS,-1);
+	}
+	
+	public ServerPipesConfig(boolean isLarge, boolean isTLS, int processors) {
 		int cores = Runtime.getRuntime().availableProcessors();
 		if (cores>64) {
 			cores = cores >> 2;
@@ -58,8 +62,11 @@ public class ServerPipesConfig {
 		if (cores<4) {
 			cores = 4;
 		}
+		if (1==processors){
+			cores = 1;
+		}
 		
-		processorCount = isLarge ? (isTLS?4:8) : 4;
+		processorCount = processors > 0? processors : (isLarge ? (isTLS?4:8) : 4);
 		
 		logger.trace("cores in use {}", cores);
 		
@@ -88,7 +95,7 @@ public class ServerPipesConfig {
 			serverPipesPerOutputEngine 	  = isTLS?4:8;//multiplier against server wrap units for max simultanus user responses.
 			writeBufferMultiplier         = 16;
 		} else {	//small
-			maxPartialResponsesServer     = 8;    //8 concurrent partial messages 
+			maxPartialResponsesServer     = processors==1 ? 2 : 8;    //8 concurrent partial messages 
 			maxConnectionBitsOnServer     = 12;    //4k  open connections on server	    	
 		
 			serverInputMsg                = isTLS? 8 : 48; 
@@ -107,8 +114,8 @@ public class ServerPipesConfig {
 			releaseMsg                    = 1024;//256;
 						
 			serverRequestUnwrapUnits      = isTLS?2:1;  //server unwrap units - need more for handshaks and more for posts
-			serverResponseWrapUnits 	  = isTLS?8:4;    //server wrap units
-			serverPipesPerOutputEngine 	  = isTLS?2:2;//multiplier against server wrap units for max simultanus user responses.
+			serverResponseWrapUnits 	  = processors==1?1:(isTLS?8:4);    //server wrap units
+			serverPipesPerOutputEngine 	  = processors==1?1:(isTLS?2:2);//multiplier against server wrap units for max simultanus user responses.
 			writeBufferMultiplier         = 4;
 		}
 		

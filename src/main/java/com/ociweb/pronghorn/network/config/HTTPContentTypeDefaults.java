@@ -83,6 +83,7 @@ public enum HTTPContentTypeDefaults implements HTTPContentType {
     RTX("text/richtext","rtx"),
     SGML("text/sgml","sgml"),
     SGM("text/sgml","sgm"),
+    DOT("text/graphviz","dot"),
     SIT("application/x-stuffit","sit"),
     SND("audio/basic","snd"),
     SVG("image/svg+xml","svg"),

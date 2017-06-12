@@ -96,7 +96,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 
    public int registerRoute(CharSequence route, IntHashTable headers, TrieParser headerParser) {
-		
+
 		boolean trustText = false; 
 		URLTemplateParser parser = routeParser();
 		storeRequestExtractionParsers(parser.addRoute(route, routesCount, urlMap, trustText));
@@ -109,7 +109,6 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		routesCount++;
 		return pipeIdx;
 	}
-
 
 	private URLTemplateParser routeParser() {
 		//Many projects do not need this so do not build..
@@ -157,7 +156,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		if (routesCount>=requestHeaderParser.length) {
 			int i = requestHeaderParser.length;
 			TrieParser[] newArray = new TrieParser[i*2]; //only grows on startup as needed
-			System.arraycopy(requestHeaderMask, 0, newArray, 0, i);
+			System.arraycopy(requestHeaderParser, 0, newArray, 0, i);
 			requestHeaderParser = newArray;
 		}
 		requestHeaderParser[routesCount]=headers;

@@ -49,7 +49,7 @@ import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 public class HTTPSRoundTripTest {
 
 	@Ignore
-  // @Test
+    //@Test
 	public void roundTripTest2() {
 				
 
@@ -106,13 +106,13 @@ public class HTTPSRoundTripTest {
 
 		
 			
-			boolean isTLS = true;
+			boolean isTLS = false;
 			int port = isTLS?8443:8080;
 			String host =  //"10.201.200.24";//phi
 					      //"10.10.10.244";
 					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
 			
-			boolean isLarge = true;			
+			boolean isLarge = false;			
 			boolean useLocalServer = true;
 
 			final String testFile = "groovySum.json";
@@ -156,12 +156,20 @@ public class HTTPSRoundTripTest {
 
     }
     
-	private void roundTripHTTPTest(boolean isTLS, int port, String host, boolean isLarge, boolean useLocalServer,
-			final String testFile, final int loadMultiplier) {
+    static boolean debug = false;
+    
+    
+	private void roundTripHTTPTest(boolean isTLS, int port, String host, 
+			                       boolean isLarge, boolean useLocalServer,
+			                       final String testFile, final int loadMultiplier) {
 	
 				GraphManager gm = new GraphManager();
 		
-
+				if (debug) {
+					//monitor..
+					gm.enableTelemetry("127.0.0.1", 8089);
+				}
+				
 				boolean printProgress = false;
 				//TODO: will big sleeps show the backed up pipes more clearly? TODO: must be tuned for pipe lenghths?
 				
@@ -259,9 +267,12 @@ public class HTTPSRoundTripTest {
 				}
 				
 				//if (base2SimultaniousConnections<=6) {
-					//GraphManager.exportGraphDotFile(gm, "HTTPSRoundTripTest");			
-					MonitorConsoleStage.attach(gm); 
-				//}
+					//GraphManager.exportGraphDotFile(gm, "HTTPSRoundTripTest");	
+				
+				//	MonitorConsoleStage.attach(gm); 
+				//	NetGraphBuilder.telemetryServerSetup(false, "127.0.0.1", 8098, gm);
+				
+					//}
 				
 				final ServerCoordinator serverCoord1 = serverCoord;
 				final ClientCoordinator[] clientCoord = clientCoords;

@@ -8,6 +8,8 @@ import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATS
 import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4;
 
 import org.HdrHistogram.Histogram;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -24,6 +26,7 @@ public class MonitorConsoleStage extends PronghornStage {
 	private GraphManager graphManager;
 	private int[] percentileValues; 
 	private int[] trafficValues; 
+	private static final Logger logger = LoggerFactory.getLogger(MonitorConsoleStage.class);
 		
 	private Histogram[] hists; 
 
@@ -57,8 +60,8 @@ public class MonitorConsoleStage extends PronghornStage {
 	@Override
 	public void startup() {
 		super.startup();
-		percentileValues = new int[Pipe.totalRings()+1];
-		trafficValues = new int[Pipe.totalRings()+1];
+		percentileValues = new int[Pipe.totalPipes()+1];
+		trafficValues = new int[Pipe.totalPipes()+1];
 		
 		int p = Thread.currentThread().getPriority();
 		Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
@@ -110,6 +113,16 @@ public class MonitorConsoleStage extends PronghornStage {
 		
 		//new Exception("SHUTDOWN MonitorConsoleStage ").printStackTrace();
 		
+		boolean writeToConsole = true;
+		
+		summarizeRuntime(writeToConsole);
+				
+		//Send in pipe depth data		
+		GraphManager.exportGraphDotFile(graphManager, "MonitorResults", percentileValues, trafficValues);
+		
+	}
+
+	protected void summarizeRuntime(boolean writeToConsole) {
 		int i = hists.length;
 		while (--i>=0) {
 			if (null==hists[i]) {
@@ -118,10 +131,12 @@ public class MonitorConsoleStage extends PronghornStage {
 			long pctile = hists[i].getValueAtPercentile(96); //do not change: this is the 80-20 rule applied twice
 			
 			long avg = -1;
-			try {
-				avg = (long)hists[i].getMean();
-			} catch (Exception e) {
-				e.printStackTrace();
+			if (writeToConsole) {
+				try {
+					avg = (long)hists[i].getMean();
+				} catch (Throwable e) {
+					logger.trace("unable to read mean",e);
+				}
 			}
 			boolean inBounds = true;//value>80 || value < 1;
             long sampleCount = hists[i].getTotalCount();
@@ -142,14 +157,10 @@ public class MonitorConsoleStage extends PronghornStage {
 					
 	            }
             }
-            
-            writeToConsole(i, pctile, avg, sampleCount, ringName, published, allocated);
-            
+            if (writeToConsole) {
+            	writeToConsole(i, pctile, avg, sampleCount, ringName, published, allocated);
+            }
 		}
-				
-		//Send in pipe depth data		
-		GraphManager.exportGraphDotFile(graphManager, "MonitorResults", percentileValues, trafficValues);
-		
 	}
 
 	private void writeToConsole(int i, long pctile, long avg, long sampleCount, String ringName, long published, long allocated) {
@@ -209,6 +220,11 @@ public class MonitorConsoleStage extends PronghornStage {
         GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
 		GraphManager.addNota(gm, GraphManager.MONITOR, "dummy", stage);
 		return stage;
+	}
+
+	public void writeAsDot(GraphManager gm, Appendable payload) {
+		summarizeRuntime(false);
+		GraphManager.writeAsDOT(gm, payload, percentileValues, trafficValues);
 	}
 
 	

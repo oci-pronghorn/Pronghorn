@@ -20,7 +20,12 @@ public class HTTPUtil {
     
 	static final TrieParser chunkMap = buildChunkMap();
     
-    
+	public static void publishError(int sequence, int status,
+	            Pipe<ServerResponseSchema> localOutput, long channelId, 
+	            HTTPSpecification<?,?,?,?> httpSpec, 
+	            int revision) {
+		publishError(sequence,status,localOutput,channelId,httpSpec,revision,-1);
+	}
     
 	public static void publishError(int sequence, int status,
             Pipe<ServerResponseSchema> localOutput, long channelId, 
