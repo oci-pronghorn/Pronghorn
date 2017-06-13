@@ -37,7 +37,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	private static final int MAX_URL_LENGTH = 4096;
     private static Logger logger = LoggerFactory.getLogger(HTTP1xRouterStage.class);
 
-    private final boolean showHeader = false; //set to true for debug to see headers in console.
+    public static boolean showHeader = false; //set to true for debug to see headers in console.
     
     
     private TrieParserReader trieReader;
@@ -515,7 +515,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 	
     if (showHeader) {
     	System.out.println("///////////////// ROUTE HEADER "+channel+"///////////////////");
-    	TrieParserReader.debugAsUTF8(trieReader, System.out, Math.min(2048, trieReader.sourceLen), false); //shows that we did not get all the data
+    	TrieParserReader.debugAsUTF8(trieReader, System.out, Math.min(8192, trieReader.sourceLen), false); //shows that we did not get all the data
     	System.out.println("...\n///////////////////////////////////////////");
     }
 
@@ -545,7 +545,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     			trieReader.sourceLen = tempLen;
     			trieReader.sourcePos = tempPos;
     			
-    			boolean debug = true; 
+    			boolean debug = false; 
     			if(debug) {
     				StringBuilder builder = new StringBuilder();    			    			
     				TrieParserReader.debugAsUTF8(trieReader, builder, config.verbMap.longestKnown()*2);    			
