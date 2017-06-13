@@ -21,7 +21,7 @@ public abstract class StageScheduler {
 		assert(initThreadChecking(graphManager));
 	}
 
-	private boolean initThreadChecking(GraphManager graphManager) {
+	private boolean initThreadChecking(final GraphManager graphManager) {
 		Pipe.setThreadCallerLookup(new ThreadBasedCallerLookup(){
 
 			@Override

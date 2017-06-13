@@ -225,10 +225,19 @@ public class NetGraphBuilder {
 	public static GraphManager buildHTTPServerGraph(final GraphManager graphManager, final ModuleConfig modules, final ServerCoordinator coordinator,
 			                                        final ServerPipesConfig serverConfig) {
 
-        return buildServerGraph(graphManager, coordinator, serverConfig, -1,
-        		(gm,coord,release,from,to) -> {
-        			buildHTTPStages(gm, coord, modules, serverConfig, release, from, to, -1); //-1, do not adjust rate
-        });
+		final ServerFactory factory = new ServerFactory() {
+
+			@Override
+			public void buildServer(GraphManager gm, ServerCoordinator coordinator,
+					Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<NetPayloadSchema>[] receivedFromNet,
+					Pipe<NetPayloadSchema>[] sendingToNet) {
+				
+				buildHTTPStages(gm, coordinator, modules, serverConfig, releaseAfterParse, receivedFromNet, sendingToNet, -1); //-1, do not adjust rate
+			}
+			
+		};
+				
+        return buildServerGraph(graphManager, coordinator, serverConfig, -1, factory);
         
 	}
 
@@ -716,7 +725,7 @@ public class NetGraphBuilder {
 			
 		
 		};
-		ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 1);
+		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 1);
 				 
 		 //This must be large enough for both partials and new handshakes.
 		
@@ -724,10 +733,17 @@ public class NetGraphBuilder {
 		final ModuleConfig modules = config;
 		final ServerCoordinator coordinator = serverCoord;
 		
-		NetGraphBuilder.buildServerGraph(gm, coordinator, serverConfig, rate, 
-				(gm1,coord,release,from,to) -> {
-					NetGraphBuilder.buildHTTPStages(gm1, coord, modules, serverConfig, release, from, to, rate);
-		});
+		final ServerFactory factory = new ServerFactory() {
+
+			@Override
+			public void buildServer(GraphManager gm, ServerCoordinator coordinator,
+					Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<NetPayloadSchema>[] receivedFromNet,
+					Pipe<NetPayloadSchema>[] sendingToNet) {
+				NetGraphBuilder.buildHTTPStages(gm, coordinator, modules, serverConfig, releaseAfterParse, receivedFromNet, sendingToNet, rate);
+			}			
+		};
+		
+		NetGraphBuilder.buildServerGraph(gm, coordinator, serverConfig, rate, factory);
 			 
 	}
 

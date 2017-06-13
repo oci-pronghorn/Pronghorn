@@ -66,7 +66,7 @@ public class MQTTClientGraphBuilder {
 		
 		Pipe<MQTTClientToServerSchema> clientToServer = MQTTClientToServerSchema.instance.newPipe(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields); //from the application 
 		
-		Pipe<MQTTServerToClientSchema> serverToClient = MQTTServerToClientSchema.instance.newPipe(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields); //from the response
+		final Pipe<MQTTServerToClientSchema> serverToClient = MQTTServerToClientSchema.instance.newPipe(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields); //from the response
 		
 		Pipe<MQTTIdRangeSchema> idGenNew = MQTTIdRangeSchema.instance.newPipe(4,0);
 		Pipe<MQTTIdRangeSchema> idGenOld = MQTTIdRangeSchema.instance.newPipe(4,0);

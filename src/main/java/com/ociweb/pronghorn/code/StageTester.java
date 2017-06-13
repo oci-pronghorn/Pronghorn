@@ -118,7 +118,7 @@ public class StageTester {
 
     
     public static <S extends PronghornStage> boolean runFuzzTest(Class<S> targetStage, long testDuration, int generatorSeed, 
-    		          MessageSchema[] undefinedSchemas, Object[] undefinedArgs)  {
+    		          final MessageSchema[] undefinedSchemas, final Object[] undefinedArgs)  {
 
 
         final Random random = new Random(generatorSeed);
@@ -140,8 +140,16 @@ public class StageTester {
 					System.setErr(new PrintStream(errCapture));			
 					
 	    		testOneGraph(targetStage, testDuration, 
-	    				      (idx)->{return undefinedSchemas[idx];}, 
-	    				      (idx)->{return undefinedArgs[idx];}, 
+	    				    new Provider<MessageSchema>() {
+					    			public MessageSchema get(int i) {
+					    				return undefinedSchemas[i];
+					    			}
+					    	},
+	    				    new Provider<Object>() {
+					    		public Object get(int i) {
+				    				return undefinedArgs[i];
+				    			}
+				    	     },
 	    				      maxPipeLength, maxPipeVarArg,
 						      random, con);
 	
@@ -163,7 +171,7 @@ public class StageTester {
     }
 
     public static <S extends PronghornStage> boolean runFuzzTest(Class<S> targetStage, long testDuration, int generatorSeed, 
-	          MessageSchema undefinedSchema, Object ... undefinedArgs)  {
+	          final MessageSchema undefinedSchema, final Object ... undefinedArgs)  {
 
 
 			final Random random = new Random(generatorSeed);
@@ -185,8 +193,18 @@ public class StageTester {
 						System.setErr(new PrintStream(errCapture));			
 
 						testOneGraph(targetStage, testDuration, 
-							      (idx)->{return undefinedSchema;}, 
-							      (idx)->{return undefinedArgs[idx];}, 
+								
+								 new Provider<MessageSchema>() {
+					    			public MessageSchema get(int i) {
+					    				return undefinedSchema;
+					    			}
+							    	},
+								 new Provider<Object>() {
+							    		public Object get(int i) {
+						    				return undefinedArgs[i];
+						    			}
+						    	   },
+								 
 							      maxPipeLength, maxPipeVarArg,
 							      random, con);
 						

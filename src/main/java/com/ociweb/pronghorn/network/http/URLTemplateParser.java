@@ -1,8 +1,11 @@
 package com.ociweb.pronghorn.network.http;
 
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.util.EncodingConverter;
+import com.ociweb.pronghorn.util.EncodingConverter.EncodingStorage;
+import com.ociweb.pronghorn.util.EncodingConverter.EncodingTransform;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -61,13 +64,30 @@ public class URLTemplateParser {
 	 * @param route
 	 * @param routerMap
 	 */
-	public RouteDef addRoute(CharSequence route, final long routeValue, TrieParser routerMap, boolean trustText) {
+	public RouteDef addRoute(CharSequence route, final long routeValue, final TrieParser routerMap, boolean trustText) {
 
 		final RouteDef routeDef = new RouteDef(trustText);
+		//TODO: these are not GC free but must be 7 because Google makes it so.
+		final EncodingTransform et = new EncodingTransform() {
+
+			@Override
+			public void transform(TrieParserReader templateParserReader,
+					DataOutputBlobWriter<RawDataSchema> outputStream) {
+				
+				routeDef.setIndexCount(convertEncoding(routeDef.getRuntimeParser(), templateParserReader, templateParser, outputStream));
+			
+			}			
+		};
+		final EncodingStorage es = new EncodingStorage() {
+
+			@Override
+			public void store(Pipe<RawDataSchema> pipe) {
+				routerMap.setValue(pipe,routeValue);
+			}
+			
+		};
 		
-		converter.convert(route,  
-				        (reader, stream) -> {routeDef.setIndexCount(convertEncoding(routeDef.getRuntimeParser(), reader, templateParser, stream));},
-				        (pipe) -> {routerMap.setValue(pipe,routeValue);} );
+		converter.convert(route,et, es);
 		
 		return routeDef;
 	}

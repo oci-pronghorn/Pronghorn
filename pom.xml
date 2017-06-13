@@ -179,14 +179,23 @@
 	        <artifactId>maven-compiler-plugin</artifactId>
 	        <version>3.0</version>
 	          <configuration>
-				<testCompilerArguments>
-				    <profile>compact3</profile> <!-- class loader and compiler is needed for unit tests-->
+	          
+	          	<fork>true</fork>
+	            <source>1.7</source>
+	            <target>1.7</target>
+	            <testSource>1.8</testSource>
+	            <testTarget>1.8</testTarget>
+	          
+				    <!-- class loader and compiler is needed for unit tests so 3, this must be new builder test...-->
+		<!--  	<testCompilerArguments>
+				    <profile>compact3</profile> 
 				</testCompilerArguments>
 	          	<compilerArguments>
 				    <profile>compact1</profile>
 				</compilerArguments>				
 	            <source>1.8</source>
-	            <target>1.8</target>
+	            <target>1.8</target> -->
+	            
 	          </configuration>
 	   </plugin>
 
