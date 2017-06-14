@@ -33,7 +33,7 @@ public class PhastDecoderStageGeneratorTest {
         try {
             ew.processSchema();
         } catch (IOException e) {
-            System.out.println(target);
+            //System.out.println(target);
             e.printStackTrace();
             fail();
         }
@@ -54,15 +54,15 @@ public class PhastDecoderStageGeneratorTest {
             }
         
         } catch (ClassNotFoundException e) {
-            System.out.println(target);
+            //System.out.println(target);
             e.printStackTrace();
             fail();
         } catch (NoSuchMethodException e) {
-            System.out.println(target);
+            //System.out.println(target);
             e.printStackTrace();
             fail();
         } catch (SecurityException e) {
-            System.out.println(target);
+            //System.out.println(target);
             e.printStackTrace();
             fail();
         }

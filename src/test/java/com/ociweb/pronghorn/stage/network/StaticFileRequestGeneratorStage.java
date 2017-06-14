@@ -89,7 +89,7 @@ public class StaticFileRequestGeneratorStage extends PronghornStage {
                 	
                 	Pipe.publishEOF(output);
                     requestShutdown();
-                    System.out.println("total generated file requets "+requestCounts);
+                    //System.out.println("total generated file requets "+requestCounts);
                     return;
                 } 
                 pathIdx = testDataFiles.testFilePaths.length-1;

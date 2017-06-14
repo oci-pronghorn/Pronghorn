@@ -187,7 +187,7 @@ public class MQTTEncoderTest {
 			i++;
 		}
 		
-		System.out.println("tested up to 0x"+Integer.toHexString(i));
+		//System.out.println("tested up to 0x"+Integer.toHexString(i));
 		
 	}
 

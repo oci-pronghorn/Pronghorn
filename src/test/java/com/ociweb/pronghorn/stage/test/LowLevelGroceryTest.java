@@ -12,7 +12,10 @@ import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 import javax.xml.parsers.ParserConfigurationException;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.TimeUnit;
@@ -67,15 +70,15 @@ public class LowLevelGroceryTest {
             }
 
         } catch (ClassNotFoundException e) {
-            System.out.println(target);
+           // System.out.println(target);
             e.printStackTrace();
             fail();
         } catch (NoSuchMethodException e) {
-            System.out.println(target);
+           // System.out.println(target);
             e.printStackTrace();
             fail();
         } catch (SecurityException e) {
-            System.out.println(target);
+           // System.out.println(target);
             e.printStackTrace();
             fail();
         }
@@ -84,7 +87,9 @@ public class LowLevelGroceryTest {
 
     @Test
     public void runTimeTest() throws IOException, ParserConfigurationException, SAXException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException, InterruptedException {
-        GraphManager gm = new GraphManager();
+           
+    	
+    	GraphManager gm = new GraphManager();
 
         FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/SIUE_GroceryStore/groceryExample.xml");
         MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);
@@ -94,6 +99,7 @@ public class LowLevelGroceryTest {
         sharedPipe.initBuffers();
         Pipe<MessageSchemaDynamic> outPipe = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(messageSchema));
         outPipe.initBuffers();
+        
         //get encoder ready
         StringBuilder eTarget = new StringBuilder();
         PhastEncoderStageGenerator ew = new PhastEncoderStageGenerator(messageSchema, eTarget);
@@ -104,6 +110,8 @@ public class LowLevelGroceryTest {
             fail();
         }
 
+
+        
         Constructor econstructor =  LoaderUtil.generateThreeArgConstructor(ew.getPackageName(), ew.getClassName(), eTarget, PhastEncoderStageGenerator.class);
 
         //get decoder ready
@@ -117,19 +125,23 @@ public class LowLevelGroceryTest {
         }
         Constructor dconstructor =  LoaderUtil.generateThreeArgConstructor(dw.getPackageName(), dw.getClassName(), dTarget, PhastDecoderStageGenerator.class);
 
+        
         GroceryFuzzGenerator random1 = new GroceryFuzzGenerator(gm, inPipe);
         econstructor.newInstance(gm, inPipe, sharedPipe);
         dconstructor.newInstance(gm, sharedPipe, outPipe);
-        ConsoleJSONDumpStage json = new ConsoleJSONDumpStage(gm, outPipe);
+        
+        ByteArrayOutputStream temp = new ByteArrayOutputStream();
+        ConsoleJSONDumpStage json = new ConsoleJSONDumpStage(gm, outPipe, new PrintStream(temp));
+
 
         //encoding data
         ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
         scheduler.startup();
 
-
         GraphManager.blockUntilStageBeginsShutdown(gm,json);
         scheduler.shutdown();
         scheduler.awaitTermination(10, TimeUnit.SECONDS);
 
+        
     }
 }

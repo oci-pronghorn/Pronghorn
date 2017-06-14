@@ -139,8 +139,8 @@ public class HTTPModuleFileReadStageTest {
         
         long duration = System.currentTimeMillis()-start;
         float requestPerMsSecond = totalRequests/(float)duration;
-        System.out.println("totalFileRequests: "+totalRequests+" perMs:"+requestPerMsSecond+" duration:"+duration);
-        System.out.println("data bytes:"+expectedBytes+" plus headers");
+      //  System.out.println("totalFileRequests: "+totalRequests+" perMs:"+requestPerMsSecond+" duration:"+duration);
+      //  System.out.println("data bytes:"+expectedBytes+" plus headers");
         
         
     }
@@ -243,10 +243,9 @@ public class HTTPModuleFileReadStageTest {
         
         long duration = System.currentTimeMillis()-start;
         float requestPerMsSecond = totalRequests/(float)duration;
-        System.out.println("totalFileRequests: "+totalRequests+" perMs:"+requestPerMsSecond+" duration:"+duration);
-        System.out.println("data bytes:"+expectedBytes+" plus headers");
-        
-        
+       // System.out.println("totalFileRequests: "+totalRequests+" perMs:"+requestPerMsSecond+" duration:"+duration);
+       // System.out.println("data bytes:"+expectedBytes+" plus headers");
+              
     }
     
 }

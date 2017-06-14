@@ -63,7 +63,7 @@ public class PhastPackingStage extends PronghornStage {
     public void shutdown() {
         long duration = System.currentTimeMillis() - startup;        
         long mpbs = (8*8*totalLongs)/(duration*1000);        
-        System.out.println("encoder unpacked bytes read:"+(8*totalLongs)+" mbps "+mpbs);
+        //System.out.println("encoder unpacked bytes read:"+(8*totalLongs)+" mbps "+mpbs);
     }
     
     @Override

@@ -115,7 +115,7 @@ public class HTTPSRoundTripTest {
 					      //"10.10.10.244";
 					        "127.0.0.1"; // String host = "10.10.10.134";//" "10.10.10.244";/
 			
-			boolean isLarge = false;			
+			boolean isLarge = true;			
 			boolean useLocalServer = true;
 
 			final String testFile = "groovySum.json";
