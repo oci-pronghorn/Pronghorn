@@ -39,7 +39,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 
     private int pendingSelections = 0;
     
-    private final static boolean showRequests = false;
+    public static boolean showRequests = false;
     
     private StringBuilder[] accumulators;
  
@@ -121,14 +121,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     
     @Override
     public void run() {
-        
-//    	long now = System.currentTimeMillis();
-//    	if (now>nextTime) {    		
-//    		//if one backs up we will never read the others... TOOD: this is very bad... Urgent, bad connection must be killed before stopping others.
-//    		System.err.println("Server Socket read "+bytesConsumed+" selector size "+selectorSize+" pending "+pendingSelections);  //TODO: we stopped reading data so the client stops sending it.  		
-//    		nextTime = now+3_000;
-//    	}
-    	
+
     		{	
     	
 	        ////////////////////////////////////////
@@ -145,7 +138,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 	           Set<SelectionKey> selectedKeys = selector.selectedKeys();
 	            
 	           assert(selectedKeys.size()>0);	            
-	//no longer true, remove this assert           assert(pendingSelections == selectedKeys.size());
+
 	           doneSelectors.clear();
 		
 	           selectedKeys.forEach(selectionKeyAction);
@@ -163,7 +156,6 @@ public class ServerSocketReaderStage extends PronghornStage {
 		while (--c>=0) {
 		    		selectedKeys.remove(doneSelectors.get(c));
 		}
-//no valid any longer, now remove??		assert(pendingSelections == selectedKeys.size());
 		
 	}
 

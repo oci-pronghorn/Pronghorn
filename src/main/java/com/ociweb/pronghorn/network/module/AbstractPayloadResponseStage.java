@@ -4,6 +4,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.network.OrderSupervisorStage;
 import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.config.HTTPContentType;
@@ -33,6 +36,7 @@ public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPC
 	private final GraphManager graphManager;
 	private StringBuilder payloadWorkspace;
 		
+	private static final Logger logger = LoggerFactory.getLogger(AbstractPayloadResponseStage.class);
 	
 	private long activeChannelId = -1;
 	private int activeSequenceNo = -1;
@@ -104,7 +108,7 @@ public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPC
 		
 		while ( PipeWriter.hasRoomForWrite(output) &&
 				PipeReader.tryReadFragment(input)) {
-			
+			//logger.info("has room and has data to write out");
 		    int msgIdx = PipeReader.getMsgIdx(input);
 		    switch(msgIdx) {
 		        case HTTPRequestSchema.MSG_RESTREQUEST_300:
@@ -118,9 +122,10 @@ public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPC
 		        	
 		        	
 		        	if (HTTPVerbDefaults.GET.ordinal() == fieldVerb) {
+		        		//logger.info("we have GET verb, looking up file");
 		        		sendResponse(output, fieldRevision);		        		
 		        	} else {
-		        			
+		        		//logger.info("no GET found");
 		        		//TODO: should add support for head only..
 		        		HTTPUtil.publishError(activeSequenceNo, 404, output, 
 		        			activeChannelId, httpSpec, fieldRevision); 
@@ -166,8 +171,8 @@ public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPC
 		activeOutput = output;
 		
 		
-		long eTag = (((long)eTagRoot)<<32) + ((long)eTagInt);					
-		byte[] etagBytes = Appendables.appendHexDigits(new StringBuilder(), eTag).toString().getBytes(); 
+		///long eTag = (((long)eTagRoot)<<32) + ((long)eTagInt);					
+		byte[] etagBytes = null;//Appendables.appendHexDigits(new StringBuilder(), eTag).toString().getBytes(); 
 
 		
 		writeHeader(revision, 
@@ -176,6 +181,8 @@ public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPC
 		 		    contentType, length, true,
 		 		    null, 0, 0,  0,
 		 		    outputStream, 1&(activeFieldRequestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
+		
+		//logger.info("built header response of length "+length);
 		
 		appendRemainingPayload(output);
 	}
@@ -205,7 +212,12 @@ public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPC
 			activeSequenceNo = -1;
 			workingPosition = 0;
 			activeOutput = null;
-		}
+			
+			//logger.info("Sent full response payload");
+			
+		}// else {
+		//	logger.info("wrote only "+workingPosition+" out of "+payloadWorkspace.length());
+		//}
 		
 		DataOutputBlobWriter.closeHighLevelField(outputStream, ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_PAYLOAD_25);
  

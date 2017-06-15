@@ -396,10 +396,14 @@ public class GraphManager {
      * @param m
      */
 	public static void disableMutation(GraphManager m) {
-		if (m.telemetryPort>0) {
+		//logger.info("disable mutation");
+		if (m.telemetryPort > 0) {
+			//logger.info("enable telemetry");
 			//NB: this is done very last to ensure all the pipes get monitors added.
 			NetGraphBuilder.telemetryServerSetup(false, m.telemetryHost, m.telemetryPort, m);
-		}
+		} //else {
+			//logger.info("normal startup");
+		//}
 		m.enableMutation = false;
 	}
 	

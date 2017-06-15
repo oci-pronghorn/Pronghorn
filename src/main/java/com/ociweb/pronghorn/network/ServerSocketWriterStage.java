@@ -545,7 +545,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        	int bytesWritten = writeToChannel[idx].write(workingBuffers[idx]);	  
 		        	
 		        	//short blocks of bytes written may be slowdown!!
-		        	//System.err.println("wrote bytes:" + bytesWritten);
+		        //	System.err.println("wrote bytes:" + bytesWritten);
 		        	
 		        	//TODO: urgent hold some writes until we have more, but do write immidiate if we have seen a different connection id.
 		        	

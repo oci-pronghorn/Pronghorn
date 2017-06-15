@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.network.http;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
@@ -18,6 +21,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public final TrieParser verbMap;
     public final TrieParser revisionMap;
     public final TrieParser headerMap;
+    
+    public static final Logger logger = LoggerFactory.getLogger(HTTP1xRouterStageConfig.class);
     
     private IntHashTable[] requestHeaderMask = new IntHashTable[4];
     private TrieParser[] requestHeaderParser = new TrieParser[4];
@@ -49,11 +54,14 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         }
         
         this.verbMap = new TrieParser(256,false);//does deep check
+        //logger.info("building verb map");
         //Load the supported HTTP verbs
         V[] verbs = (V[])httpSpec.supportedHTTPVerbs.getEnumConstants();
         if (verbs != null) {
 	        int y = verbs.length;
+	        assert(verbs.length>=1) : "only found "+verbs.length+" defined";
 	        while (--y >= 0) {
+	        	//logger.info("add verb {}",verbs[y].getKey());
 	            verbMap.setUTF8Value(verbs[y].getKey()," ", verbs[y].ordinal());           
 	        }
         }

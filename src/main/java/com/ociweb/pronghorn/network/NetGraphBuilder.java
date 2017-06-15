@@ -286,6 +286,7 @@ public class NetGraphBuilder {
 			ServerPipesConfig serverConfig, Pipe<ReleaseSchema>[] releaseAfterParse,
 			Pipe<NetPayloadSchema>[] receivedFromNet, Pipe<NetPayloadSchema>[] sendingToNet, long rate) {
 
+		//logger.info("build http stages 1");
 		HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> httpSpec = HTTPSpecification.defaultSpec();
 		
 		if (modules.moduleCount()==0) {
@@ -294,21 +295,25 @@ public class NetGraphBuilder {
 		
 		int routerCount = coordinator.processorCount();
 
-		
+		//logger.info("build http stages 2");
         Pipe<ServerResponseSchema>[][] fromModule = new Pipe[routerCount][];         
         Pipe<HTTPRequestSchema>[][] toModules = new Pipe[routerCount][];
         
         PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, serverConfig.fromProcessorCount, serverConfig.fromProcessorBlob);///if payload is smaller than average file size will be slower
         final HTTP1xRouterStageConfig routerConfig = buildModules(graphManager, modules, routerCount, httpSpec, routerToModuleConfig, fromModule, toModules);
         
+        //logger.info("build http stages 3");
         PipeConfig<ServerResponseSchema> config = ServerResponseSchema.instance.newPipeConfig(4, 512);
         Pipe<ServerResponseSchema>[] errorResponsePipes = buildErrorResponsePipes(routerCount, fromModule, config);        
         
         buildRouters(graphManager, routerCount, receivedFromNet, 
         		     releaseAfterParse, toModules, errorResponsePipes, routerConfig, coordinator, rate);
 		        
+        //logger.info("build http stages 4");
         buildOrderingSupers(graphManager, coordinator, routerCount, 
         		            fromModule, sendingToNet, rate);
+        
+        //logger.info("build http stages 5");
 	}
 
 	private static Pipe<ServerResponseSchema>[] buildErrorResponsePipes(final int routerCount,
@@ -633,6 +638,8 @@ public class NetGraphBuilder {
 	
 	public static void telemetryServerSetup(boolean isTLS, String bindHost, int port, GraphManager gm) {
 	
+		//logger.info("begin telemetry setup");
+		
 		final long rate = 20_000_000; //fastest rate in NS
 		
 		boolean isLarge = false;

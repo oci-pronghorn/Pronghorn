@@ -545,7 +545,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     			trieReader.sourceLen = tempLen;
     			trieReader.sourcePos = tempPos;
     			
-    			boolean debug = false; 
+    			boolean debug = true; 
     			if(debug) {
     				StringBuilder builder = new StringBuilder();    			    			
     				TrieParserReader.debugAsUTF8(trieReader, builder, config.verbMap.longestKnown()*2);    			
@@ -586,6 +586,8 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 		}
     }
  
+   // logger.info("send this message to route {}",routeId);
+    
     //if thie above code went past the end OR if there is not enough room for an empty header  line maker then return
     if (trieReader.sourceLen<2) {
     	//logger.info("need more data D");
