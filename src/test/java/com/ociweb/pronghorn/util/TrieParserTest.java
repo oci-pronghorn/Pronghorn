@@ -1545,12 +1545,12 @@ public class TrieParserTest {
 
 	@Test 
 	public void test_visitor() {
-		TrieParserReader reader = new TrieParserReader(3);
-		TrieParser map = new TrieParser(16);
+		TrieParserReader reader = new TrieParserReader(3,true);
+		TrieParser map = new TrieParser(16,false);
 
 		String result = "";
 
-		map.setValue(data1, 0, 3, 7, value2);
+		map.setValue(data1, 0, 3, 7, value2);//101,102,103
 		result = map.toString();
 		//System.out.println(result);
 		assertFalse(result,result.contains("ERROR"));
@@ -1645,7 +1645,7 @@ public class TrieParserTest {
 				result_set.add(l);
 			}};
 
-			reader.visit(map, visitor, data1, 2, 3, 7);
+			reader.visit(map, visitor, data1, 2, 3, 7);//103,104,105
 			System.out.println(visitor.toString());
 
 			//reader.visit(map, visitor, data1, 2, 3, 7);
@@ -1734,16 +1734,15 @@ public class TrieParserTest {
 				result_set.add(l);
 			}};
 
-			reader.visit(map, visitor,data_catalog, 0, data_catalog.length, 7);
+			reader.visit(map, visitor,data_catalyst, 0, -1, 7);
 			System.out.println(visitor.toString());
 	}
-
 
 
 	public static void main(String[] args) {
 		//speedReadTest();
 
-		new TrieParserTest().test_visitor(); 	
+		new TrieParserTest().test_visitor1(); 	
 	}
 
 	
