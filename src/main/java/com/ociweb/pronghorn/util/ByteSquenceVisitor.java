@@ -9,5 +9,7 @@ public interface ByteSquenceVisitor {
     boolean open(short[] data, int idx, int run);
 
     void close(int run);
+    
+    void addToResult(long l);
 
 }
