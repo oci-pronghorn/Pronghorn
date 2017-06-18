@@ -8,7 +8,6 @@ import com.ociweb.pronghorn.network.schema.MQTTClientResponseSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchema;
 import com.ociweb.pronghorn.network.schema.MQTTIdRangeSchema;
 import com.ociweb.pronghorn.network.schema.MQTTServerToClientSchema;
-import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;

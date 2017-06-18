@@ -531,20 +531,20 @@ public class GraphManager {
 	 * @param targetSchema
 	 */
 	public static  <T extends MessageSchema<T>> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema) {
-	    return pipesOfType(0, gm.pipeIdToPipe.length, gm, targetSchema);
+	    return pipesOfType(0, gm.pipeIdToPipe.length, gm, targetSchema.getClass());
 	}
 
 	public static  <T extends MessageSchema<T>> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema, int minimumPipeId) {
 	    return pipesOfType(0, gm.pipeIdToPipe.length, gm, targetSchema, minimumPipeId);
 	}
 	
-	private static <T extends MessageSchema<T>> Pipe<T>[] pipesOfType(int count, int p, GraphManager gm, T targetSchema) {
+	private static <T extends MessageSchema<T>> Pipe<T>[] pipesOfType(int count, int p, GraphManager gm, Class<T> targetSchemaClazz) {
 		//pass one to count all the instances
         while (--p>=0) {
             Pipe tp = gm.pipeIdToPipe[p];
             if (null != tp) {
-                if (Pipe.isForSchema(tp, targetSchema)) {
-                	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchema);
+                if (Pipe.isForSchema(tp, targetSchemaClazz)) {
+                	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchemaClazz);
                 	result[(result.length-1)-count] = tp;
                     return result;
                 }
@@ -565,7 +565,7 @@ public class GraphManager {
             Pipe tp = gm.pipeIdToPipe[p];
             if (null != tp) {
                 if (Pipe.isForSchema(tp, targetSchema) && tp.id>=minimumPipeId) {
-                	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchema);
+                	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchema.getClass());
                 	result[(result.length-1)-count] = tp;
                     return result;
                 }
