@@ -613,8 +613,12 @@ public class Pipe<T extends MessageSchema<T>> {
         return PipeRegulator.computeRateLimitDelay(pipe, Pipe.workingHeadPosition(pipe), pipe.regulatorProducer);
     }
     
-    public static <S extends MessageSchema<S>> boolean isForSchema(Pipe<S> pipe, MessageSchema schema) {
+    public static <S extends MessageSchema<S>> boolean isForSchema(Pipe<S> pipe, S schema) {
         return pipe.schema == schema;
+    }
+    
+    public static <S extends MessageSchema<S>> boolean isForSchema(Pipe<S> pipe, Class<S> schema) {
+        return schema.isInstance(pipe.schema);
     }
     
     public static <S extends MessageSchema<S>> boolean isForSameSchema(Pipe<S> pipeA, Pipe<S> pipeB) {
@@ -1229,7 +1233,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
     
     public static boolean readFieldFromInputStream(Pipe pipe, InputStream inputStream, final int byteCount) throws IOException {
-        return buildFieldFromInputStream(pipe, inputStream, byteCount, Pipe.getBlobWorkingHeadPosition(pipe), Pipe.blobMask(pipe), Pipe.blob(pipe), pipe.sizeOfBlobRing);
+        return buildFieldFromInputStream(pipe, inputStream, byteCount, Pipe.getWorkingBlobHeadPosition(pipe), Pipe.blobMask(pipe), Pipe.blob(pipe), pipe.sizeOfBlobRing);
     }
 
     private static boolean buildFieldFromInputStream(Pipe pipe, InputStream inputStream, final int byteCount, int startPosition, int byteMask, byte[] buffer, int sizeOfBlobRing) throws IOException {

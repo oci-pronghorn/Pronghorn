@@ -52,7 +52,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     }
 
     public static <T extends MessageSchema<T>> void openField(DataOutputBlobWriter<T> writer) {
-    	openFieldAtPosition(writer, Pipe.getWorkingBlobHeadPosition(writer.backingPipe));
+     	openFieldAtPosition(writer, Pipe.getWorkingBlobHeadPosition(writer.backingPipe));
     }
 
 	public static <T extends MessageSchema<T>> void openFieldAtPosition(DataOutputBlobWriter<T> writer,

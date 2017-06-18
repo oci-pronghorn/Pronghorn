@@ -62,7 +62,7 @@ public class TrieParser implements Serializable {
     public static final byte ESCAPE_CMD_SIGNED_INT    = 'i'; //signedInt (may be hex if starts with 0x)
     public static final byte ESCAPE_CMD_UNSIGNED_INT  = 'u'; //unsignedInt (may be hex if starts with 0x)
     public static final byte ESCAPE_CMD_SIGNED_HEX    = 'I'; //signedInt (may skip prefix 0x, assumed to be hex)
-    public static final byte ESCAPE_CMD_UNSIGNED_HEX  = 'U'; //unsignedInt (may skip prefix 0x, assumbed to be hex) 
+    public static final byte ESCAPE_CMD_UNSIGNED_HEX  = 'U'; //unsignedInt (may skip prefix 0x, assumed to be hex) 
     public static final byte ESCAPE_CMD_DECIMAL       = '.'; //if found capture u and places else captures zero and 1 place
     public static final byte ESCAPE_CMD_RATIONAL      = '/'; //if found capture i else captures 1
     //EXTRACTED BYTES
