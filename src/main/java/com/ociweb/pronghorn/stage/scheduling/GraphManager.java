@@ -1312,7 +1312,11 @@ public class GraphManager {
 	            PronghornStage stage = m.stageIdToStage[i];
 	        
 	            
-	            if (null!=stage && !(stage instanceof MonitorConsoleStage) && !(stage instanceof RingBufferMonitorStage)) {       
+	            
+	            if (null!=stage 
+	            		&& !stageForMonitorData(m,stage) 
+	            		&& !(stage instanceof MonitorConsoleStage) 
+	            		&& !(stage instanceof RingBufferMonitorStage)) {       
 
 	            	String stageName = "Stage"+Integer.toString(i);
 	            	
@@ -1401,7 +1405,10 @@ public class GraphManager {
 	                int consumer = getRingConsumerId(m, j);
 	                
 	                //skip all pipes that are gathering monitor data
-	                if (consumer<0  || !(GraphManager.getStage(m, consumer) instanceof MonitorConsoleStage) ) {
+	                if (consumer<0  ||
+	                		((!(GraphManager.getStage(m, consumer) instanceof MonitorConsoleStage))
+	                		&& (!(stageForMonitorData(m,GraphManager.getStage(m, consumer))))) 
+	                		) {
 		                
 		                
 		                if (producer>=0) {
@@ -1571,9 +1578,7 @@ public class GraphManager {
 		            throw new RuntimeException(aiobe);
 		        }
 		    }
-		    
-		    
-		    //STILL UNDER TEST IF THIS IS A GOOD IDEA
+
 		    if (!stageForMonitorData(m, getStage(m, stageId))) {
 			    
 			    //blocking wait on the other stage to init this pipe, required for clean startup only.
@@ -1630,7 +1635,7 @@ public class GraphManager {
 		int j = gm.pipeIdToPipe.length;
 		int count = 0;
 		while (--j>=0) {
-			if (null!=gm.pipeIdToPipe[j]) {
+			if (null!=gm.pipeIdToPipe[j] && !ringHoldsMonitorData(gm, gm.pipeIdToPipe[j])) {
 				count++;
 			}
 		}

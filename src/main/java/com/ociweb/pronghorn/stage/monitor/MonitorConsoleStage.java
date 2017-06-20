@@ -38,6 +38,7 @@ public class MonitorConsoleStage extends PronghornStage {
 		this.graphManager = graphManager;
 		
 		validateSchema(inputs);
+		GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, this);
 	}
 
 	private void validateSchema(Pipe[] inputs) {

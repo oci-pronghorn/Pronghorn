@@ -35,6 +35,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
@@ -341,6 +342,7 @@ public class NetGraphBuilder {
         if (rate>0) {
         	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, readerStage);
         }
+        coordinator.processNota(graphManager, readerStage);
 		return acks;
 	}
 
@@ -366,10 +368,12 @@ public class NetGraphBuilder {
         if (rate>0) {
         	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newConStage);
         }
+        coordinator.processNota(graphManager, newConStage);
         PipeCleanerStage<ServerConnectionSchema> dump = new PipeCleanerStage<>(graphManager, newConnectionsPipe); //IS this important data?
         if (rate>0) {
         	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, dump);
         }
+        coordinator.processNota(graphManager, dump);
 		}
 		return fromOrderedContent;
 	}
@@ -417,6 +421,7 @@ public class NetGraphBuilder {
 		        if (rate>0) {
 		        	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, wrapStage);
 		        }
+		        coordinator.processNota(graphManager, wrapStage);
 		    }
 		    
 		    //finish up any remaining handshakes
@@ -453,6 +458,7 @@ public class NetGraphBuilder {
 			if (rate>0) {
 				GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, wrapSuper);
 			}
+			coordinator.processNota(graphManager, wrapSuper);
 		
 		}
 	}
@@ -474,7 +480,7 @@ public class NetGraphBuilder {
 		    if (rate>0) {
 	        	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, writerStage);
 	        }
-		   	
+		   	coordinator.processNota(graphManager, writerStage);
 		}
 	}
 
@@ -501,7 +507,7 @@ public class NetGraphBuilder {
 			if (rate>0) {
 				GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, router);
 			}
-			
+			coordinator.processNota(graphManager, router);
 		}
 		
 		
@@ -562,6 +568,7 @@ public class NetGraphBuilder {
 			 if (rate>0) {
 		        	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, unwrapStage);
 		     }
+			 coordinator.processNota(graphManager, unwrapStage);
 		}
 		
 		return handshakeIncomingGroup;
@@ -667,30 +674,31 @@ public class NetGraphBuilder {
 						
 						switch (a) {
 							case 0:
-							GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate,
-									ResourceModuleStage.newInstance(graphManager, 
-											inputs[i], 
-											staticFileOutputs[i][0] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
-											spec,
-											"telemetry/index.html", HTTPContentTypeDefaults.HTML)
-									);
+							ResourceModuleStage<?, ?, ?, ?> newInstanceA = ResourceModuleStage.newInstance(graphManager, 
+									inputs[i], 
+									staticFileOutputs[i][0] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
+									spec,
+									"telemetry/index.html", HTTPContentTypeDefaults.HTML);
+							GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceA);
+				   		    GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceA);
+							
 							break;
 							case 1:
-								GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate,
-								ResourceModuleStage.newInstance(graphManager, 
-						                  inputs[i], 
-						                  staticFileOutputs[i][1] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
-						                  spec,
-						                  "telemetry/viz-lite.js", HTTPContentTypeDefaults.JS)
-								);
+							ResourceModuleStage<?, ?, ?, ?> newInstanceB = ResourceModuleStage.newInstance(graphManager, 
+							          inputs[i], 
+							          staticFileOutputs[i][1] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
+							          spec,
+							          "telemetry/viz-lite.js", HTTPContentTypeDefaults.JS);
+							GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceB);
+							GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceB);
 							break;
 							case 2:
-								GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, 
-										DotModuleStage.newInstance(graphManager, 
-												inputs[i], 
-												staticFileOutputs[i][2] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
-												spec)
-										);
+							DotModuleStage<?, ?, ?, ?> newInstanceC = DotModuleStage.newInstance(graphManager, 
+									inputs[i], 
+									staticFileOutputs[i][2] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
+									spec);
+							GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceC);
+							GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceC);
 								break;
 							default:
 								throw new RuntimeException("unknonw idx "+a);
@@ -736,10 +744,19 @@ public class NetGraphBuilder {
 				 
 		 //This must be large enough for both partials and new handshakes.
 		
-		ServerCoordinator serverCoord = new ServerCoordinator(isTLS, bindHost, port, serverConfig.maxConnectionBitsOnServer, serverConfig.maxPartialResponsesServer, serverConfig.processorCount);
-		final ModuleConfig modules = config;
-		final ServerCoordinator coordinator = serverCoord;
+		ServerCoordinator serverCoord = new ServerCoordinator(isTLS, bindHost, port, 
+				                                              serverConfig.maxConnectionBitsOnServer, serverConfig.maxPartialResponsesServer, serverConfig.processorCount);
 		
+		serverCoord.setStageNotaProcessor(new PronghornStageProcessor() {
+			//force all these to be hidden as part of the monitoring system
+			@Override
+			public void process(GraphManager gm, PronghornStage stage) {
+				//TODO: also use this to set the RATE and elminate the extra argument passed down....
+				GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, stage);
+			}
+		});
+				
+		final ModuleConfig modules = config;
 		final ServerFactory factory = new ServerFactory() {
 
 			@Override
@@ -750,7 +767,7 @@ public class NetGraphBuilder {
 			}			
 		};
 		
-		NetGraphBuilder.buildServerGraph(gm, coordinator, serverConfig, rate, factory);
+		NetGraphBuilder.buildServerGraph(gm, serverCoord, serverConfig, rate, factory);
 			 
 	}
 

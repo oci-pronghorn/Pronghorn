@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.PronghornStageProcessor;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.MemberHolder;
 import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.PoolIdxPredicate;
@@ -54,6 +56,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		
 	}
 	
+	//this is only used for building stages and adding notas
+	private PronghornStageProcessor optionalStageProcessor = null;
+	
     public ServerCoordinator(boolean isTLS, String bindHost, int port, int maxConnectionsBits, int maxPartialResponses, int processorsCount) {
         
     	this.isTLS 			   = isTLS;
@@ -76,6 +81,15 @@ public class ServerCoordinator extends SSLConnectionHolder {
         
     }
     
+    public void setStageNotaProcessor(PronghornStageProcessor p) {
+    	optionalStageProcessor = p;
+    }
+    public void processNota(GraphManager gm, PronghornStage stage) {
+    	if (null!=optionalStageProcessor) {
+    		optionalStageProcessor.process(gm, stage);
+    	}
+    }
+            
     private PronghornStage firstStage;
     
     public void shutdown() {
