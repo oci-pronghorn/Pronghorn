@@ -1734,73 +1734,118 @@ public class TrieParserTest {
 				result_set.add(l);
 			}};
 
-			reader.visit(map, visitor,data_catalyst, 0, -1, 7);
+			reader.visit(map, visitor,data_catalyst, 0, 4, 7);
 			System.out.println(visitor.toString());
 	}
 
 
-	public static void main(String[] args) {
-		//speedReadTest();
+	
+	@Test 
+	public void visitor_testExtractMultiBytes() {
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
 
-		new TrieParserTest().test_visitor1(); 	
+
+		map.setValue(toParseEnd, 0, toParseEnd.length, 15, value4);
+		map.setValue(toParseMiddle, 0, toParseMiddle.length, 15, value4);
+		map.setValue(toParseBeginning, 0, toParseBeginning.length, 15, value4);        
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(dataBytesMultiBytes1, 0, 6, 7, value1);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		assertEquals(value1, TrieParserReader.query(reader,map,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15));
+
+		map.setValue(dataBytesMultiBytes2, 0, dataBytesMultiBytes2.length, 15, value2);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		assertEquals(value2, TrieParserReader.query(reader,map,dataBytesMultiBytesValue2, 0, dataBytesMultiBytesValue2.length, 15));
+
+		map.setValue(dataBytesMultiBytes3, 0, 5, 7, value3); //the /n is added last it takes priority and gets selected below.
+		String result = "";
+		result = map.toString();
+		System.out.println(result);
+		assertFalse(result,result.contains("ERROR"));
+		
+		System.out.println(map.toDOT(new StringBuilder()).toString());
+		
+		//assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		//NOTE: that %b\n is shorter and 'simpler; than %b\r\n so the first is chosen and the \r becomes part of the captured data.
+		//assertEquals(value3, TrieParserReader.query(reader,map,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15));
+		//assertEquals(value2, TrieParserReader.query(reader,map,dataBytesMultiBytesValue2, 0, dataBytesMultiBytesValue2.length, 15));
+		//assertEquals(value2, TrieParserReader.query(reader,map,dataBytesMultiBytesValue3, 0, dataBytesMultiBytesValue3.length, 15));
+		
+		
+		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
+			int end_pos=-1;
+			int safe_pos=-1;
+			int run_length=-1;
+			Set<Long> result_set = new HashSet<Long>();
+
+			@Override
+			public void end(int value) {
+				// TODO Auto-generated method stub
+				end_pos = value;
+				System.out.println("End Value of byte array: " + end_pos);
+			}
+
+			@Override
+			public void safePoint(int value) {
+				// TODO Auto-generated method stub
+				safe_pos = value;
+				System.out.println("Safe-End pos: " + safe_pos);
+			}
+
+			@Override
+			public boolean open(short[] data, int idx, int run) {
+				// TODO Auto-generated method stub
+				if(data[idx+run]!=TrieParser.TYPE_END){
+					return true;
+				}
+
+				return false;
+			}     
+
+			@Override
+			public String toString() {
+				// TODO Auto-generated method stub
+				StringBuilder sb = new StringBuilder();
+				sb.append("MatchedPaths\n");
+				int path_val = 0;
+				for(long l: result_set){
+					sb.append("Path-Val-"+ ++path_val + ": " + l + "\n");
+				}
+				//return result_set.toString();
+				return sb.toString();
+			}
+
+			@Override
+			public void close(int run) {
+				// TODO Auto-generated method stub
+				run_length = run;
+				System.out.println("Visit of this branch ended at run_length = " + run_length);
+				System.out.println("End-pos: " + this.end_pos +", Safe-End-pos: "  + this.safe_pos);
+			}
+
+			@Override
+			public void addToResult(long l) {
+				// TODO Auto-generated method stub
+				result_set.add(l);
+			}};
+			
+			//value3, TrieParserReader.query(reader,map,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15
+		reader.visit(map, visitor,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15);
+		System.out.println(visitor.toString());
 	}
 
 	
-	/*String expected = "digraph {\n"+
-	"node0[label=\"BRANCH ON BIT\n"+
-	" bit:00001000\"]\n"+
-	"node0->node4\n"+
-	"node0->node53\n"+
-	"node4[label=\"RUN of 3\n"+
-	"klm\"]\n"+
-	"node4->node9\n"+
-	"node9[label=\"BRANCH ON BIT\n"+
-	" bit:00010000\"]\n"+
-	"node9->node13\n"+
-	"node9->node33\n"+
-	"node13[label=\"RUN of 2\n"+
-	"xy\"]\n"+
-	"node13->node17\n"+
-	"node17[label=\"BRANCH ON BIT\n"+
-	" bit:10000000\"]\n"+
-	"node17->node21\n"+
-	"node17->node27\n"+
-	"node21[label=\"RUN of 2\n"+
-	"{(-128)}{(-127)}\"]\n"+
-	"node21->node25\n"+
-	"node25[label=\"END47[26]\"]\n"+
-	"node27[label=\"RUN of 2\n"+
-	"z{\"]\n"+
-	"node27->node31\n"+
-	"node31[label=\"END23[32]\"]\n"+
-	"node33[label=\"RUN of 2\n"+
-	"no\"]\n"+
-	"node33->node37\n"+
-	"node37[label=\"BRANCH ON BIT\n"+
-	" bit:00000100\"]\n"+
-	"node37->node41\n"+
-	"node37->node47\n"+
-	"node41[label=\"RUN of 2\n"+
-	"vw\"]\n"+
-	"node41->node45\n"+
-	"node45[label=\"END35[46]\"]\n"+
-	"node47[label=\"RUN of 2\n"+
-	"pq\"]\n"+
-	"node47->node51\n"+
-	"node51[label=\"END10[52]\"]\n"+
-	"node53[label=\"RUN of 3\n"+
-	"efg\"]\n"+
-	"node53->node58\n"+
-	"node58[label=\"SAFE23[59], \"]\n"+
-	"node58->node60\n"+
-	"node60[label=\"RUN of 5\n"+
-	"hijkl\"]\n"+
-	"node60->node67\n"+
-	"node67[label=\"END10[68]\"]\n"+
-	"}\n";*/
+	
+	public static void main(String[] args) {
+		//speedReadTest();
 
-	//System.out.println(expected);
-
+		new TrieParserTest().visitor_testExtractMultiBytes(); 	
+	}
 
 	public static void speedReadTest() {
 
@@ -1942,9 +1987,63 @@ public class TrieParserTest {
 		System.out.println("Total bytes of test data "+runningPos);
 		return testData;
 	}
-
-
 }
+
+
+/*String expected = "digraph {\n"+
+"node0[label=\"BRANCH ON BIT\n"+
+" bit:00001000\"]\n"+
+"node0->node4\n"+
+"node0->node53\n"+
+"node4[label=\"RUN of 3\n"+
+"klm\"]\n"+
+"node4->node9\n"+
+"node9[label=\"BRANCH ON BIT\n"+
+" bit:00010000\"]\n"+
+"node9->node13\n"+
+"node9->node33\n"+
+"node13[label=\"RUN of 2\n"+
+"xy\"]\n"+
+"node13->node17\n"+
+"node17[label=\"BRANCH ON BIT\n"+
+" bit:10000000\"]\n"+
+"node17->node21\n"+
+"node17->node27\n"+
+"node21[label=\"RUN of 2\n"+
+"{(-128)}{(-127)}\"]\n"+
+"node21->node25\n"+
+"node25[label=\"END47[26]\"]\n"+
+"node27[label=\"RUN of 2\n"+
+"z{\"]\n"+
+"node27->node31\n"+
+"node31[label=\"END23[32]\"]\n"+
+"node33[label=\"RUN of 2\n"+
+"no\"]\n"+
+"node33->node37\n"+
+"node37[label=\"BRANCH ON BIT\n"+
+" bit:00000100\"]\n"+
+"node37->node41\n"+
+"node37->node47\n"+
+"node41[label=\"RUN of 2\n"+
+"vw\"]\n"+
+"node41->node45\n"+
+"node45[label=\"END35[46]\"]\n"+
+"node47[label=\"RUN of 2\n"+
+"pq\"]\n"+
+"node47->node51\n"+
+"node51[label=\"END10[52]\"]\n"+
+"node53[label=\"RUN of 3\n"+
+"efg\"]\n"+
+"node53->node58\n"+
+"node58[label=\"SAFE23[59], \"]\n"+
+"node58->node60\n"+
+"node60[label=\"RUN of 5\n"+
+"hijkl\"]\n"+
+"node60->node67\n"+
+"node67[label=\"END10[68]\"]\n"+
+"}\n";*/
+
+//System.out.println(expected);
 
 
 
