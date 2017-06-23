@@ -32,7 +32,7 @@ public class MonitorConsoleStage extends PronghornStage {
 
 	private boolean recorderOn=true;
 	
-	public MonitorConsoleStage(GraphManager graphManager, Pipe ... inputs) {
+	private MonitorConsoleStage(GraphManager graphManager, Pipe ... inputs) {
 		super(graphManager, inputs, NONE);
 		this.inputs = inputs;
 		this.graphManager = graphManager;
@@ -79,7 +79,8 @@ public class MonitorConsoleStage extends PronghornStage {
 	
 	@Override
 	public void run() {
-		
+		//System.err.println("begin run "+System.currentTimeMillis()+"  "+System.identityHashCode(this));
+
 		int i = inputs.length;
 		while (--i>=0) {
 			
@@ -222,6 +223,9 @@ public class MonitorConsoleStage extends PronghornStage {
 		MonitorConsoleStage stage = new MonitorConsoleStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig));
         GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
 		GraphManager.addNota(gm, GraphManager.MONITOR, "dummy", stage);
+		
+		Object rate = GraphManager.getNota(gm, stage.stageId, GraphManager.SCHEDULE_RATE, null);
+
 		return stage;
 	}
 

@@ -18,19 +18,21 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 								H extends Enum<H> & HTTPHeader> extends AbstractPayloadResponseStage<T,R,V,H> {
 
     public static DotModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, HTTPSpecification<?, ?, ?, ?> httpSpec) {
-        return new DotModuleStage(graphManager, inputs, outputs, httpSpec);
+    	MonitorConsoleStage monitor = MonitorConsoleStage.attach(graphManager);	
+    	return new DotModuleStage(graphManager, inputs, outputs, httpSpec, monitor);
     }
     
     public static DotModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, HTTPSpecification<?, ?, ?, ?> httpSpec) {
-        return new DotModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec);
+    	MonitorConsoleStage monitor = MonitorConsoleStage.attach(graphManager);		
+        return new DotModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, monitor);
     }
 	
     private final MonitorConsoleStage monitor;
     
-	public DotModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, HTTPSpecification httpSpec) {
+	private DotModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, 
+			Pipe<ServerResponseSchema>[] outputs, HTTPSpecification httpSpec, MonitorConsoleStage monitor) {
 		super(graphManager, inputs, outputs, httpSpec);
-		
-		monitor = MonitorConsoleStage.attach(graphManager);		
+		this.monitor = monitor;
 		
 	}
 	

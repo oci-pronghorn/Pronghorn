@@ -86,8 +86,8 @@ public class GraphManager {
 	private long[] stageShutdownTimeNs = new long[INIT_STAGES];
 	private long[] stageRunNS = new long[INIT_STAGES]; 
 	
-	
-	
+    private String[] stageDOTNames;
+  
 	//This object is shared with all clones
 	private final GraphManagerStageStateData stageStateData;
 	
@@ -405,6 +405,7 @@ public class GraphManager {
 			//logger.info("normal startup");
 		//}
 		m.enableMutation = false;
+		m.stageDOTNames = new String[GraphManager.countStages(m)];
 	}
 	
 	
@@ -1293,7 +1294,7 @@ public class GraphManager {
        
         
     }
-  
+    
     public static void writeAsDOT(GraphManager m, Appendable target) {
     	writeAsDOT(m,target,null,null);
     }
@@ -1318,9 +1319,7 @@ public class GraphManager {
 	            		&& !(stage instanceof MonitorConsoleStage) 
 	            		&& !(stage instanceof RingBufferMonitorStage)) {       
 
-	            	String stageName = "Stage"+Integer.toString(i);
-	            	
-	            	
+	            		            	
 	            	Object rankKey = getNota(m, stage.stageId, GraphManager.DOT_RANK_NAME, null);
 	            	if (rankKey!=null) {
 	            		
@@ -1330,15 +1329,30 @@ public class GraphManager {
 	            			b = new StringBuilder("{ rank=same");
 	            			ranks.put(rankKey, b);
 	            		}
-	            		b.append(" \""+stageName+"\",");
+	            		
+	            		b.append(" \"");
+	            		Appendables.appendValue(b, "Stage", i);
+	            		b.append("\",");
 	            		
 	            	}
 
 	            	Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
+
+	            	////////////////////
+	            	//cache stage names since these are needed frequently
+	            	///////////////////
+	            	String stageDisplayName = m.stageDOTNames[stage.stageId];
+	            	if (null==stageDisplayName) {
+	            		stageDisplayName = stage.toString().replace("Stage","").replace(" ", "\n");
+	            		m.stageDOTNames[stage.stageId] = stageDisplayName;
+	            	}
+	            	//////////////////
 	            	
-	                target.append("\"").append(stageName).append("\"[label=\"").append(stage.toString().replace("Stage","").replace(" ", "\n"));
+	                target.append("\"");
+	                Appendables.appendValue(target, "Stage", i);
+					target.append("\"[label=\"").append(stageDisplayName);
 	                if (null!=group) {
-	                	target.append(" grp:"+group);
+	                	target.append(" grp:").append(group.toString());
 	                }
 	                //if supported give PCT used
 	                long runNs = m.stageRunNS[stage.stageId];

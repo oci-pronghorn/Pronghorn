@@ -17,16 +17,16 @@ public class ConsoleJSONDumpStage<T extends MessageSchema<T>> extends PronghornS
 	private Appendable out = System.out;
 	private boolean showBytesAsUTF;
 
-	public static void newInstance(GraphManager graphManager, Pipe input) {
-		new ConsoleJSONDumpStage(graphManager, input);
+	public static ConsoleJSONDumpStage newInstance(GraphManager graphManager, Pipe input) {
+		return new ConsoleJSONDumpStage(graphManager, input);
 	}
 	
-	public static void newInstance(GraphManager graphManager, Pipe input, Appendable out) {
-		new ConsoleJSONDumpStage(graphManager, input, out);
+	public static ConsoleJSONDumpStage newInstance(GraphManager graphManager, Pipe input, Appendable out) {
+		return new ConsoleJSONDumpStage(graphManager, input, out);
 	}
 	
-	public static void newInstance(GraphManager graphManager, Pipe input, Appendable out, boolean showBytesAsUTF) {
-		new ConsoleJSONDumpStage(graphManager, input, out, showBytesAsUTF);
+	public static ConsoleJSONDumpStage newInstance(GraphManager graphManager, Pipe input, Appendable out, boolean showBytesAsUTF) {
+		return new ConsoleJSONDumpStage(graphManager, input, out, showBytesAsUTF);
 	}
 	
 	public ConsoleJSONDumpStage(GraphManager graphManager, Pipe<T> input) {

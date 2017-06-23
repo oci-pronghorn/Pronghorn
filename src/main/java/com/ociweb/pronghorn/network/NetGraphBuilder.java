@@ -751,6 +751,7 @@ public class NetGraphBuilder {
 			//force all these to be hidden as part of the monitoring system
 			@Override
 			public void process(GraphManager gm, PronghornStage stage) {
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
 				//TODO: also use this to set the RATE and elminate the extra argument passed down....
 				GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, stage);
 			}
