@@ -1399,9 +1399,6 @@ public class TrieParserTest {
 		assertEquals(match, reader.query(reader, parser, bytes, 0, text.length(), 15));
 	}
 
-
-	//TODO: urgent fix.
-	@Ignore
 	//@Test
 	public void testEscapedEscape() {
 
@@ -1435,316 +1432,114 @@ public class TrieParserTest {
 		assertEquals(value3, TrieParserReader.query(reader,map, wrapping(data2b,3), 1, 7, 7));
 		assertEquals(value4, TrieParserReader.query(reader,map, wrapping(data3b,3), 1, 7, 7)); 
 		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(escapedEscape,3), 1, 7, 7));
-
 	}
-
-	//TODO: URGENT, this does not pass. add test for usage of escaped literal char.
-
-	//TODO: add test for escape chars
-	//      add ability to add strings without escape.
-
-	//escapedEscape
-
-
-	//    
-	//    @Test
-	//    public void testVisitor() {
-	//        
-	//        SequentialTrieParser map = new SequentialTrieParser(16);        
-	//        
-	//        map.setValue(data1, 0, 3, 7, value2);
-	//        map.setValue(data1, 0, 8, 7, value1);
-	//        
-	//        map.setValue(data2,  1, 7, 7, value1);
-	//        map.setValue(data3,  1, 7, 7, value2);
-	//        map.setValue(data2b, 1, 7, 7, value3);
-	//        map.setValue(data3b, 1, 7, 7, value4); 
-	//        
-	//        
-	//        SequentialTrieParserReader reader = new SequentialTrieParserReader();
-	//        
-	//        
-	//        ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-	//
-	//            @Override
-	//            public void end(int value) {
-	//                // TODO Auto-generated method stub
-	//                
-	//            }
-	//
-	//            @Override
-	//            public void safePoint(int value) {
-	//                // TODO Auto-generated method stub
-	//                
-	//            }
-	//
-	//            @Override
-	//            public boolean open(short[] data, int idx, int run) {
-	//                // TODO Auto-generated method stub
-	//                return false;
-	//            }
-	//
-	//            @Override
-	//            public void close(int run) {
-	//                // TODO Auto-generated method stub
-	//                
-	//            }};
-	//       
-	//        reader.visit(map, visitor);
-	//        
-	//        
-	//        assertTrue(true);
-	//        
-	//    }
-
 
 	@Test 
 	public void testExtractBytesEnd_temp() {
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16);
 
-
-		String result = "";
-
 		map.setValue(data1, 0, 3, 7, value1); //101,102,103
-		result = map.toString();
-		//System.out.println(result);
-		assertFalse(result,result.contains("ERROR"));
-
-		//Should we have to reset the "map.data" here?????????????
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
 		map.setValue(wrapping(dataBytesExtractEnd,3), 0, dataBytesExtractEnd.length, 7, value2);
-		result = map.toString();
-		//System.out.println(result);
-		assertFalse(result,result.contains("ERROR"));
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
 		map.setValue(data1, 2, 3, 7, value3); //103,104,105
-		result = map.toString();
-		//System.out.println(result);
-		assertFalse(result,result.contains("ERROR"));
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
-		//System.out.println(TrieParserReader.query(reader,map,data1, 0, 3, 7));
 		assertEquals(value1, TrieParserReader.query(reader,map,data1, 0, 3, 7)); // 101,102,103
 
-
-		System.out.println(TrieParserReader.query(reader,map,data1, 2, 3, 7));
 		assertEquals(value3, TrieParserReader.query(reader,map,data1, 2, 3, 7)); // 103,104,105
 
-
-		System.out.println(TrieParserReader.query(reader,map,toParseEnd, 0, toParseEnd.length, 7));
-		assertEquals(value2, TrieParserReader.query(reader,map,toParseEnd, 0, toParseEnd.length, 7));
+		assertEquals(value2, TrieParserReader.query(reader,map,toParseEnd, 0, toParseEnd.length, 7)); //100,101,102,10,11,12,13,127
 
 		assertEquals(1, TrieParserReader.capturedFieldCount(reader));
 
 		byte[] expected = new byte[]{0,0,0,0};        
 		TrieParserReader.capturedFieldBytes(reader, 0, expected, 0, 7);
-		assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(expected) );
-
+		assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(expected));
 	}
 
+	/************
+	 * 
+	 * Test cases for Visitor
+	 * 
+	 * ***************
+	 */
 
 	@Test 
 	public void test_visitor() {
 		TrieParserReader reader = new TrieParserReader(3,true);
 		TrieParser map = new TrieParser(16,false);
 
-		String result = "";
-
 		map.setValue(data1, 0, 3, 7, value2);//101,102,103
-		result = map.toString();
-		//System.out.println(result);
-		assertFalse(result,result.contains("ERROR"));
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
 		map.setValue(data1, 0, 8, 7, value1);
-		result = map.toString();
-		//System.out.println(result);
-		assertFalse(result,result.contains("ERROR"));
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
 		map.setValue(data2,  1, 7, 7, value1);
-		result = map.toString();
-		//System.out.println(result);
-		assertFalse(result,result.contains("ERROR"));
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
 		map.setValue(data3,  1, 7, 7, value2);
-		result = map.toString();
-		//System.out.println(result);
-		assertFalse(result,result.contains("ERROR"));
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
 		map.setValue(data2b, 1, 7, 7, value3);
-		result = map.toString();
-		//System.out.println(result);
-		assertFalse(result,result.contains("ERROR"));
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
 		map.setValue(data3b, 1, 7, 7, value4);
-		result = map.toString();
-		//System.out.println(result);
-		assertFalse(result,result.contains("ERROR"));
-
-		System.out.println(map.toDOT(new StringBuilder()).toString());
-
-		/*
-		 * query a pattern using TrieParsserReader.query method
-		 */
-		//System.out.println(TrieParserReader.query(reader,map,data1, 2, 3, 7)); //103,104,105
-		//assertEquals(value2, TrieParserReader.query(reader,map,toParseEnd, 0, toParseEnd.length, 7));
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
 		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			int end_pos=-1;
-			int safe_pos=-1;
-			int run_length=-1;
 			Set<Long> result_set = new HashSet<Long>();
-
 			@Override
-			public void end(int value) {
-				// TODO Auto-generated method stub
-				end_pos = value;
-				System.out.println("End Value of byte array: " + end_pos);
-			}
-
-			@Override
-			public void safePoint(int value) {
-				// TODO Auto-generated method stub
-				safe_pos = value;
-				System.out.println("Safe-End pos: " + safe_pos);
-			}
-
-			@Override
-			public boolean open(short[] data, int idx, int run) {
-				// TODO Auto-generated method stub
-				if(data[idx+run]!=TrieParser.TYPE_END){
-					return true;
-				}
-
-				return false;
-			}     
-
+			public void addToResult(long l) {result_set.add(l);}
 			@Override
 			public String toString() {
-				// TODO Auto-generated method stub
 				StringBuilder sb = new StringBuilder();
-				sb.append("MatchedPaths\n");
-				int path_val = 0;
-				for(long l: result_set){
-					sb.append("Path-Val-"+ ++path_val + ": " + l + "\n");
-				}
-				//return result_set.toString();
-				return sb.toString();
-			}
-
-			@Override
-			public void close(int run) {
-				// TODO Auto-generated method stub
-				run_length = run;
-				System.out.println("Visit of this branch ended at run_length = " + run_length);
-				System.out.println("End-pos: " + this.end_pos +", Safe-End-pos: "  + this.safe_pos);
-			}
-
-			@Override
-			public void addToResult(long l) {
-				// TODO Auto-generated method stub
-				result_set.add(l);
+				for(long l: result_set){sb.append(l + " ");}
+				return sb.toString().trim();
 			}};
-
 			reader.visit(map, visitor, data1, 2, 3, 7);//103,104,105
-			System.out.println(visitor.toString());
-
-			//reader.visit(map, visitor, data1, 2, 3, 7);
+			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+			assertEquals("10", visitor.toString());
 	}
 
+	/*
+	 * This is the assumed example with map containing "catalog", "cat%b" and search string being "catalog"
+	 */
 	@Test 
-	public void test_visitor1() {
+	public void visitor_catalog_example() {
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16);
 
-		String result = "";
-
 		map.setValue(data_catalog, 0, data_catalog.length, 7, value8);
-		result = map.toString();
-		//System.out.println(result);
-		assertFalse(result,result.contains("ERROR"));
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
 
 		map.setValue(data_cat_p_b, 0, data_cat_p_b.length, 7, value9);
-		result = map.toString();
-		System.out.println(result);
-		assertFalse(result,result.contains("ERROR"));
-
-		System.out.println(map.toDOT(new StringBuilder()).toString());
-
-		/*
-		 * query a pattern using TrieParserReader.query
-		 */
-		//System.out.println(TrieParserReader.query(reader,map,data_catalog, 0, 4, 7)); //'cata' / ExpOutput:91
-		//System.out.println(TrieParserReader.query(reader,map,data_catalyst, 0, data_catalyst.length, 7)); //'catalyst' / ExpOutput:93
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
 		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			int end_pos=-1;
-			int safe_pos=-1;
-			int run_length=-1;
 			Set<Long> result_set = new HashSet<Long>();
-
 			@Override
-			public void end(int value) {
-				// TODO Auto-generated method stub
-				end_pos = value;
-				System.out.println("End Value of byte array: " + end_pos);
-			}
-
-			@Override
-			public void safePoint(int value) {
-				// TODO Auto-generated method stub
-				safe_pos = value;
-				System.out.println("Safe-End pos: " + safe_pos);
-			}
-
-			@Override
-			public boolean open(short[] data, int idx, int run) {
-				// TODO Auto-generated method stub
-				if(data[idx+run]!=TrieParser.TYPE_END){
-					return true;
-				}
-
-				return false;
-			}     
-
+			public void addToResult(long l) {result_set.add(l);}
 			@Override
 			public String toString() {
-				// TODO Auto-generated method stub
 				StringBuilder sb = new StringBuilder();
-				sb.append("MatchedPaths\n");
-				int path_val = 0;
-				for(long l: result_set){
-					sb.append("Path-Val-"+ ++path_val + ": " + l + "\n");
-				}
-				//return result_set.toString();
-				return sb.toString();
-			}
-
-			@Override
-			public void close(int run) {
-				// TODO Auto-generated method stub
-				run_length = run;
-				System.out.println("Visit of this branch ended at run_length = " + run_length);
-				System.out.println("End-pos: " + this.end_pos +", Safe-End-pos: "  + this.safe_pos);
-			}
-
-			@Override
-			public void addToResult(long l) {
-				// TODO Auto-generated method stub
-				result_set.add(l);
+				for(long l: result_set){sb.append(l + " ");}
+				return sb.toString().trim();
 			}};
-
 			reader.visit(map, visitor,data_catalyst, 0, 4, 7);
-			System.out.println(visitor.toString());
+			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+			assertEquals("91 93", visitor.toString());
 	}
 
-
-	
 	@Test 
 	public void visitor_testExtractMultiBytes() {
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16);
-
 
 		map.setValue(toParseEnd, 0, toParseEnd.length, 15, value4);
 		map.setValue(toParseMiddle, 0, toParseMiddle.length, 15, value4);
@@ -1762,89 +1557,40 @@ public class TrieParserTest {
 		assertEquals(value2, TrieParserReader.query(reader,map,dataBytesMultiBytesValue2, 0, dataBytesMultiBytesValue2.length, 15));
 
 		map.setValue(dataBytesMultiBytes3, 0, 5, 7, value3); //the /n is added last it takes priority and gets selected below.
-		String result = "";
-		result = map.toString();
-		System.out.println(result);
-		assertFalse(result,result.contains("ERROR"));
-		
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
 		System.out.println(map.toDOT(new StringBuilder()).toString());
-		
-		//assertFalse(map.toString(),map.toString().contains("ERROR"));
 
 		//NOTE: that %b\n is shorter and 'simpler; than %b\r\n so the first is chosen and the \r becomes part of the captured data.
 		//assertEquals(value3, TrieParserReader.query(reader,map,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15));
 		//assertEquals(value2, TrieParserReader.query(reader,map,dataBytesMultiBytesValue2, 0, dataBytesMultiBytesValue2.length, 15));
 		//assertEquals(value2, TrieParserReader.query(reader,map,dataBytesMultiBytesValue3, 0, dataBytesMultiBytesValue3.length, 15));
-		
+
 		
 		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			int end_pos=-1;
-			int safe_pos=-1;
-			int run_length=-1;
 			Set<Long> result_set = new HashSet<Long>();
-
 			@Override
-			public void end(int value) {
-				// TODO Auto-generated method stub
-				end_pos = value;
-				System.out.println("End Value of byte array: " + end_pos);
-			}
-
-			@Override
-			public void safePoint(int value) {
-				// TODO Auto-generated method stub
-				safe_pos = value;
-				System.out.println("Safe-End pos: " + safe_pos);
-			}
-
-			@Override
-			public boolean open(short[] data, int idx, int run) {
-				// TODO Auto-generated method stub
-				if(data[idx+run]!=TrieParser.TYPE_END){
-					return true;
-				}
-
-				return false;
-			}     
-
+			public void addToResult(long l) {result_set.add(l);}
 			@Override
 			public String toString() {
-				// TODO Auto-generated method stub
 				StringBuilder sb = new StringBuilder();
-				sb.append("MatchedPaths\n");
-				int path_val = 0;
-				for(long l: result_set){
-					sb.append("Path-Val-"+ ++path_val + ": " + l + "\n");
-				}
-				//return result_set.toString();
-				return sb.toString();
-			}
-
-			@Override
-			public void close(int run) {
-				// TODO Auto-generated method stub
-				run_length = run;
-				System.out.println("Visit of this branch ended at run_length = " + run_length);
-				System.out.println("End-pos: " + this.end_pos +", Safe-End-pos: "  + this.safe_pos);
-			}
-
-			@Override
-			public void addToResult(long l) {
-				// TODO Auto-generated method stub
-				result_set.add(l);
+				for(long l: result_set){sb.append(l + " ");}
+				return sb.toString().trim();
 			}};
-			
-			//value3, TrieParserReader.query(reader,map,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15
-		reader.visit(map, visitor,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15);
-		System.out.println(visitor.toString());
+			reader.visit(map, visitor,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15);
+			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+			assertEquals("35 10", visitor.toString());
+
+		//value3, TrieParserReader.query(reader,map,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15
+		//reader.visit(map, visitor,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15);
+		//System.out.println(visitor.toString());
 	}
 
-	
-	
+
+
 	public static void main(String[] args) {
 		//speedReadTest();
-
-		new TrieParserTest().visitor_testExtractMultiBytes(); 	
+		//new TrieParserTest().visitor_testExtractMultiBytes(); 
 	}
 
 	public static void speedReadTest() {

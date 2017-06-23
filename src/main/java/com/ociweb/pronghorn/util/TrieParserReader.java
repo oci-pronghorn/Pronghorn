@@ -99,11 +99,10 @@ public class TrieParserReader {
 
 		//initForQuery(reader, trie, source, sourcePos, unfoundResult);
 		/*
-		 * initializing variables for each visit run type
+		 * initializing variables for each visit run type - working variables
 		 */
 		reader.capturedPos = 0;
 		reader.capturedBlobArray = source;
-		//working vars
 		reader.pos = pos+1;
 		reader.runLength = 0;
 		reader.localSourcePos =sourcePos;
@@ -142,8 +141,6 @@ public class TrieParserReader {
 	 * 
 	 */
 	private void visit(TrieParser that, final int i, ByteSquenceVisitor visitor, byte[] source, int localSourcePos, int sourceLength, int sourceMask, final long unfoundResult) {
-		//final byte stop_byte = 127;
-		//long result_value=-1; 
 		int run = -1;
 		int idx = -1;
 		
@@ -152,54 +149,21 @@ public class TrieParserReader {
 		assert i<that.data.length: "the jumpindex: " + i + " exceeds the data length: "+that.data.length; //NT-assert , pr pu\\u
 
 		int type = that.data[i];
-		System.out.println("type:"+type);
+		//System.out.println("type:"+type);
 		assert (type>-1) && (type<8) : "TYPE is not in range (0-7)"; // assert
 
 		switch (type) {
 		case TrieParser.TYPE_RUN:
-
-			
-
-			//if (visitor.open(that.data, idx, run)) {} //redundant
-			
-			
-
-				/*result_value = query_visitor(this, that, i, source, localSourcePos, sourceLength, sourceMask, unfoundResult, TrieParser.TYPE_RUN); //scan for run
-				System.out.println("result_value:"+result_value);
-				visitor.addToResult(result_value);
-
-				visit(that, idx+run, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);
-				visitor.close(run);*/
-			
-
-				//scan returns -1 for a perfect match
+	
 				int r = scanForMismatch(this, source, sourceMask, that, run);
 				if (r >= 0) {
-					/*if (!hasSafePoint) {                       	
-						if (reader.altStackPos > 0) {                                
-							loadupNextChoiceFromStack(reader, trie.data);                           
-						} else {
-							reader.normalExit=false;
-							reader.result = unfoundResult;                   
-							reader.runLength += run;
-							reader.type = trie.data[reader.pos++];
-						}
-					} else {
-						reader.normalExit=false;
-						reader.result = useSafePoint(reader);                        	
-						reader.runLength += run;
-						reader.type = trie.data[reader.pos++];
-					}*/
 					return;	
 				} else {        
-					//reader.runLength += run;
-					//reader.type = trie.data[reader.pos++];
 					run = that.data[this.pos];
 					idx = this.pos + TrieParser.SIZE_OF_RUN-1;
 					visit(that, idx+run, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);
 				}
-				
-				
+					
 			break;
 
 		case TrieParser.TYPE_BRANCH_VALUE:
@@ -209,7 +173,7 @@ public class TrieParserReader {
 			int p = this.pos;
 
 			int jumpMask = TrieParser.computeJumpMask((short) source[sourceMask & this.localSourcePos], data[p++]);
-			System.out.println("jumpMask:"+jumpMask);
+			//System.out.println("jumpMask:"+jumpMask);
 			this.pos = 0!=jumpMask ? computeJump(data, p, jumpMask) : 1+p;// u will get a specific jump location
 
 			visit(that, this.pos, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);//only that jump
@@ -251,7 +215,6 @@ public class TrieParserReader {
 			idx = i + TrieParser.SIZE_OF_VALUE_BYTES;
 			
 			//if(parseBytes(this, that, source, sourceLength, sourceMask)){return;//?};
-			
 			if(parseBytes(this, source, localSourcePos, run-localSourcePos, sourceMask, stopValue)<0){
 				return;
 			}
@@ -264,16 +227,13 @@ public class TrieParserReader {
 		case TrieParser.TYPE_SAFE_END:
 			
 			//redundant
-			visitor.safePoint(
+			/*visitor.safePoint(
 					(0XFFFF&that.data[i+1])
-					); 
-
+					); */
 			
 			recordSafePointEnd(this, this.localSourcePos, this.pos, that);  
-			//boolean hasSafePoint = true;
 			this.pos += that.SIZE_OF_RESULT;
 			if (sourceLength == this.runLength) {
-				//reader.normalExit=false; //NR
 				this.result = useSafePointNow(this);
 				
 				//add to result set
@@ -285,15 +245,15 @@ public class TrieParserReader {
 			else{
 				//recurse visit
 				visit(that, this.pos, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);
-				
 			}
 			break;
+			
 		case TrieParser.TYPE_END:
 			
 			//redundant
-			visitor.end(
+			/*visitor.end(
 					(0XFFFF&that.data[i+1])
-					); 
+					); */
 			this.result = (0XFFFF&that.data[i+1]);
 			//add to result set
 			visitor.addToResult(this.result);
