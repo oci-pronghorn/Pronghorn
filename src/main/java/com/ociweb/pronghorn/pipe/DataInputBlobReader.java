@@ -128,11 +128,15 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         return bytesRemaining(this);
     }
 
-    public static int bytesRemaining(DataInputBlobReader<?> that) {
-                
-        return  that.bytesHighBound >= (that.byteMask & that.position) ? that.bytesHighBound- (that.byteMask & that.position) : (that.pipe.sizeOfBlobRing- (that.byteMask & that.position))+that.bytesHighBound;
-
+    public static int bytesRemaining(DataInputBlobReader<?> that) {                
+        return bytesRemaining(that, that.byteMask & that.position);
     }
+
+	private static int bytesRemaining(DataInputBlobReader<?> that, int maskPos) {
+		return  that.bytesHighBound >= maskPos ? 
+        		that.bytesHighBound - maskPos : 
+        		(that.pipe.sizeOfBlobRing - maskPos) + that.bytesHighBound;
+	}
 
     public DataInput nullable() {
         return length<0 ? null : this;
@@ -210,19 +214,17 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
 
     @Override
     public long skip(long n) {
-    	long skipCount = Math.min(n, (long)(length-position));
-    	assert(skipCount+position < ((long)Integer.MAX_VALUE));
-        position += skipCount;
-        return skipCount;
+    	long count = Math.min(n, bytesRemaining(this));
+    	assert(count+position < ((long)Integer.MAX_VALUE));
+        position += count; 
+        return count;
     }
     
     @Override
     public int skipBytes(int n) {
-        
-        int skipCount = Math.min(n, length-position);
-        position += skipCount;
-        
-        return skipCount;
+    	int count = Math.min(n, bytesRemaining(this));
+        position += count;
+        return count;
     }
 
     @Override
