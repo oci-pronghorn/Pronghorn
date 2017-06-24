@@ -446,6 +446,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
                     Thread.yield();
              }
              if (!continueRun || shutdownRequested.get()) {
+            	 
             	shutdown();
              }
              nextRun = Long.MAX_VALUE==nearestNextRun ? 0 : nearestNextRun;
@@ -544,20 +545,23 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 
     @Override
     public void shutdown() {
-    	shutdownRequested.set(true);
     	
-	    int s = stages.length;
-        while (--s>=0) {
-        		//ensure every non terminated stage gets shutdown called.
-        		if (null!=stages[s] && !GraphManager.isStageTerminated(graphManager, stages[s].stageId)) {        			
-        			stages[s].shutdown();
-        			GraphManager.setStateToShutdown(graphManager, stages[s].stageId); 
-        		} 
-         }
-              
-        if (null!=lastRunStage) {        	
-        	logger.info("ERROR: this stage was called be never returned {}",lastRunStage.getClass().getSimpleName());        	
-        }       
+    	if (shutdownRequested.compareAndSet(false, true)) {
+	    	
+		    int s = stages.length;
+	        while (--s>=0) {
+	        		//ensure every non terminated stage gets shutdown called.
+	        		if (null!=stages[s] && !GraphManager.isStageTerminated(graphManager, stages[s].stageId)) {        			
+	        			stages[s].shutdown();
+	        			GraphManager.setStateToShutdown(graphManager, stages[s].stageId); 
+	        			//System.err.println("terminated "+stages[s]+"  "+GraphManager.isStageTerminated(graphManager, stages[s].stageId));
+	        		} 
+	         }
+	              
+	        if (null!=lastRunStage) {        	
+	        	logger.info("ERROR: this stage was called but never returned {}",lastRunStage.getClass().getSimpleName());        	
+	        }     
+    	}
     	
     }
 
@@ -565,6 +569,15 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     	return nts.shutdownRequested.get();
     }
     
+	@Override
+	public void awaitTermination(long timeout, TimeUnit unit, Runnable clean, Runnable dirty) {
+		if (awaitTermination(timeout, unit)) {
+			clean.run();
+		} else {
+			dirty.run();
+		}
+	}
+	
     @Override
     public boolean awaitTermination(long timeout, TimeUnit unit) { 
 

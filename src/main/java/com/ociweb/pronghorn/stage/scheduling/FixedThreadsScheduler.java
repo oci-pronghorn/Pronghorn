@@ -434,7 +434,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    while (--k >= 0) {
 	    	if (null!=stageArrays[k]) {
 	    		
-	    		logger.info("{} NonThreadScheduler for {}", ntsIdx, Arrays.toString(stageArrays[k]) );
+	    		logger.info("{} Single thread for group {}", ntsIdx, Arrays.toString(stageArrays[k]) );
 	    		
 	    		PronghornStage pronghornStage = stageArrays[k][stageArrays[k].length-1];
 				String name = pronghornStage.stageId+":"+pronghornStage.getClass().getSimpleName()+"...";
@@ -498,14 +498,14 @@ public class FixedThreadsScheduler extends StageScheduler {
 			executorService.execute(buildRunnable(allStagesLatch,ntsArray[i]));			
 		}		
 		
-		logger.info("waiting for startup");
+		logger.trace("waiting for startup");
 		//force wait for all stages to complete startup before this method returns.
 		try {
 		    allStagesLatch.await();
         } catch (InterruptedException e) {
         } catch (BrokenBarrierException e) {
         }
-		logger.info("all started up");
+		logger.trace("all started up");
 		
 	}
 
@@ -544,12 +544,18 @@ public class FixedThreadsScheduler extends StageScheduler {
 				ntsArray[i].shutdown();	
 			}
 		}	
-	
-		///not sure this is needed
-	//	GraphManager.terminateInputStages(graphManager);
-		 
+ 
 	}
-
+	
+	@Override
+	public void awaitTermination(long timeout, TimeUnit unit, Runnable clean, Runnable dirty) {
+		if (awaitTermination(timeout, unit)) {
+			clean.run();
+		} else {
+			dirty.run();
+		}
+	}
+	
 	@Override
 	public boolean awaitTermination(long timeout, TimeUnit unit) {
 		
@@ -584,6 +590,8 @@ public class FixedThreadsScheduler extends StageScheduler {
 		}		
 		return true;
 	}
+
+
 	
 
 

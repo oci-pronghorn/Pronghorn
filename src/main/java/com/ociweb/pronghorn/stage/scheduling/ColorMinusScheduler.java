@@ -119,6 +119,15 @@ public class ColorMinusScheduler extends StageScheduler {
         }
     }
 
+	@Override
+	public void awaitTermination(long timeout, TimeUnit unit, Runnable clean, Runnable dirty) {
+		if (awaitTermination(timeout, unit)) {
+			clean.run();
+		} else {
+			dirty.run();
+		}
+	}
+	
     /**
      * Normal shutdown request, blocks until all the stages have finished by seeing the poison pill.
      * 

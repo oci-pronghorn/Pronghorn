@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
 import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
@@ -94,14 +95,44 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		if (isShuttingDown) {
 			return;
 		}
-		try {
-		    unscheduledLock.unlock();
-		} catch (Throwable t) {
-		}
+		//This thread stage per schedule must ensure the 
+		//shutdown logic was never called on any of the
+		//active shutdown threads this shutdown is also
+		//async since we are only making requests so adding
+		//a thread does not modify the expected behavior
+		new Thread(new Runnable() {
 
-		GraphManager.terminateInputStages(graphManager);
-		isShuttingDown = true;
+			@Override
+			public void run() {
+				try {
+					unscheduledLock.unlock();
+				} catch (Throwable t) {
+				}
 				
+				GraphManager.terminateInputStages(graphManager);
+				isShuttingDown = true;
+			}
+			
+		}).start();		
+				
+	}
+	
+
+	@Override
+	public void awaitTermination(final long timeout, final TimeUnit unit, final Runnable clean, final Runnable dirty) {
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				if (awaitTermination(timeout, unit)) {
+					clean.run();
+				} else {
+					dirty.run();
+				}
+				
+			}
+			
+		}).start();
 	}
 	
 	/**
@@ -521,5 +552,6 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		clearCallerId();
 		//Still testing removal of this which seemed incorrect,  } while (!isShuttingDown && !GraphManager.isStageShuttingDown(localGM, stageId));		
 	}
+
 
 }
