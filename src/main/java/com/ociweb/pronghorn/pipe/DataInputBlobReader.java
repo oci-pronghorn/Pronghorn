@@ -142,11 +142,16 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         return length<0 ? null : this;
     }
    
-    public int position() {
+    public int absolutePosition() {
     	return position;
     }
     
-    public void position(int byteIndexFromStart) {
+    public void absolutePosition(int position) {
+    	this.position = position;
+    }
+    
+    
+    public void setPositionBytesFromStart(int byteIndexFromStart) {
     	assert(byteIndexFromStart<length);
     	position = bytesLowBound+byteIndexFromStart;
     }
