@@ -594,6 +594,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     	return NEED_MORE_DATA;
     }    	
     
+    //NOTE: many different routeIds may return the same outputPipe, since they all go to the same palace
     Pipe<HTTPRequestSchema> outputPipe = outputs[routeId];
     Pipe.markHead(outputPipe);//holds in case we need to abandon our writes
     

@@ -482,7 +482,22 @@ public class GraphManager {
 			i = 0;
 			limit = outputs.length;
 			while (i<limit) {
-				regOutput(gm, outputs[i++], stageId);
+				Pipe localOutput = outputs[i++];
+				if(null!=localOutput) {
+					//if this same pipe is already in the same output array this may be done for
+					//indexing of data to pipes but we only need to register the usage once
+					int x = i-1;
+					assert(outputs[x].id == localOutput.id);
+					boolean alreadyReg = false;
+					while (--x>=0) {
+						if (outputs[x]!=null) {
+							alreadyReg |= (localOutput.id == outputs[x].id);
+						}
+					}
+					if (!alreadyReg) {
+						regOutput(gm, localOutput, stageId);
+					}
+				}
 			}
 			
 			endStageRegister(gm);
