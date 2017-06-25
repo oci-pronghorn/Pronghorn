@@ -482,22 +482,7 @@ public class GraphManager {
 			i = 0;
 			limit = outputs.length;
 			while (i<limit) {
-				Pipe localOutput = outputs[i++];
-				if(null!=localOutput) {
-					//if this same pipe is already in the same output array this may be done for
-					//indexing of data to pipes but we only need to register the usage once
-					int x = i-1;
-					assert(outputs[x].id == localOutput.id);
-					boolean alreadyReg = false;
-					while (--x>=0) {
-						if (outputs[x]!=null) {
-							alreadyReg |= (localOutput.id == outputs[x].id);
-						}
-					}
-					if (!alreadyReg) {
-						regOutput(gm, localOutput, stageId);
-					}
-				}
+				regOutput(gm, outputs, stageId, i, outputs[i++]);
 			}
 			
 			endStageRegister(gm);
@@ -672,10 +657,28 @@ public class GraphManager {
 			int i = 0;
 			int limit = outputs.length;
 			while (i<limit) {
-				regOutput(gm, outputs[i++], stageId);
+				regOutput(gm, outputs, stageId, i, outputs[i++]);
 			}
 			
 			endStageRegister(gm);
+		}
+	}
+
+	public static void regOutput(GraphManager gm, Pipe[] outputs, int stageId, int x, Pipe localOutput) {
+		if(null!=localOutput) {
+			//if this same pipe is already in the same output array this may be done for
+			//indexing of data to pipes but we only need to register the usage once
+			assert(outputs[x].id == localOutput.id);
+			boolean alreadyReg = false;
+
+			while (--x>=0) {
+				if (outputs[x]!=null) {
+					alreadyReg |= (localOutput.id == outputs[x].id);
+				}
+			}
+			if (!alreadyReg) {
+				regOutput(gm, localOutput, stageId);
+			}
 		}
 	}
 
