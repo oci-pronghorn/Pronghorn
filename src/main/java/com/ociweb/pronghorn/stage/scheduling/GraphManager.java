@@ -475,7 +475,7 @@ public class GraphManager {
 			int i=0;
 			int limit = inputs.length;
 			while (i<limit) {
-				regInput(gm, inputs[i++], stageId);
+				regInput(gm,inputs,stageId,i,inputs[i++]);
 			}
 			
 			//loop over outputs
@@ -681,6 +681,23 @@ public class GraphManager {
 			}
 		}
 	}
+	
+	public static void regInput(GraphManager gm, Pipe[] inputs, int stageId, int x, Pipe localInput) {
+		if(null!=localInput) {
+			//eliminate duplicates
+			assert(inputs[x].id == localInput.id);
+			boolean alreadyReg = false;
+
+			while (--x>=0) {
+				if (inputs[x]!=null) {
+					alreadyReg |= (localInput.id == inputs[x].id);
+				}
+			}
+			if (!alreadyReg) {
+				regInput(gm, localInput, stageId);
+			}
+		}
+	}
 
 
 	public static void register(GraphManager gm, PronghornStage stage, Pipe[] inputs, Pipe output) {
@@ -691,10 +708,10 @@ public class GraphManager {
 			int i = 0;
 			int limit = inputs.length;
 			while (i<limit) {
-				regInput(gm, inputs[i++], stageId);
+				regInput(gm,inputs,stageId,i,inputs[i++]);
 			}
 			
-			//loop over outputs
+			//loop over outputs			
 			regOutput(gm, output, stageId);			
 			
 			endStageRegister(gm);
