@@ -613,15 +613,15 @@ public class Pipe<T extends MessageSchema<T>> {
         return PipeRegulator.computeRateLimitDelay(pipe, Pipe.workingHeadPosition(pipe), pipe.regulatorProducer);
     }
     
-    public static <S extends MessageSchema<S>> boolean isForSchema(Pipe<S> pipe, S schema) {
+    public static <S extends MessageSchema<S>, T extends MessageSchema<T>> boolean isForSchema(Pipe<S> pipe, T schema) {
         return pipe.schema == schema;
     }
     
-    public static <S extends MessageSchema<S>> boolean isForSchema(Pipe<S> pipe, Class<S> schema) {
+    public static <S extends MessageSchema<S>, T extends MessageSchema<T>> boolean isForSchema(Pipe<S> pipe, Class<T> schema) {
         return schema.isInstance(pipe.schema);
     }
     
-    public static <S extends MessageSchema<S>> boolean isForSameSchema(Pipe<S> pipeA, Pipe<S> pipeB) {
+    public static <S extends MessageSchema<S>, T extends MessageSchema<T>> boolean isForSameSchema(Pipe<S> pipeA, Pipe<T> pipeB) {
         return pipeA.schema == pipeB.schema;
     }
     
