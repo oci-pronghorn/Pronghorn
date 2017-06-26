@@ -143,7 +143,7 @@ public class TrieParserReader {
 	private void visit(TrieParser that, final int i, ByteSquenceVisitor visitor, byte[] source, int localSourcePos, int sourceLength, int sourceMask, final long unfoundResult) {
 		int run = -1;
 		int idx = -1;
-		
+
 		initForQuery(this, that, source, localSourcePos, unfoundResult);
 		this.pos = i+1;
 		assert i<that.data.length: "the jumpindex: " + i + " exceeds the data length: "+that.data.length; //NT-assert , pr pu\\u
@@ -152,37 +152,39 @@ public class TrieParserReader {
 		//System.out.println("type:"+type);
 		assert (type>-1) && (type<8) : "TYPE is not in range (0-7)"; // assert
 
+		short stopValue;
 		switch (type) {
 		case TrieParser.TYPE_RUN:
-	
-				int r = scanForMismatch(this, source, sourceMask, that, run);
-				if (r >= 0) {
-					return;	
-				} else {        
-					run = that.data[this.pos];
-					idx = this.pos + TrieParser.SIZE_OF_RUN-1;
-					visit(that, idx+run, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);
-				}
-					
+
+			int r = scanForMismatch(this, source, sourceMask, that, run);
+			if (r >= 0) {
+				return;	
+			} else {        
+				run = that.data[this.pos];
+				idx = this.pos + TrieParser.SIZE_OF_RUN-1;
+				visit(that, idx+run, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);
+			}
+
 			break;
 
 		case TrieParser.TYPE_BRANCH_VALUE:
 		{
 			if (this.runLength<sourceLength) {          
-			short[] data = that.data; //TrieMap data
-			int p = this.pos;
+				short[] data = that.data; //TrieMap data
+				int p = this.pos;
 
-			int jumpMask = TrieParser.computeJumpMask((short) source[sourceMask & this.localSourcePos], data[p++]);
-			//System.out.println("jumpMask:"+jumpMask);
-			this.pos = 0!=jumpMask ? computeJump(data, p, jumpMask) : 1+p;// u will get a specific jump location
+				int jumpMask = TrieParser.computeJumpMask((short) source[sourceMask & this.localSourcePos], data[p++]);
+				//System.out.println("jumpMask:"+jumpMask);
+				this.pos = 0!=jumpMask ? computeJump(data, p, jumpMask) : 1+p;// u will get a specific jump location
 
-			visit(that, this.pos, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);//only that jump
+				visit(that, this.pos, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);//only that jump
 			}
 			else{
 				return;
 			}
 		}
 		break;
+		
 		case TrieParser.TYPE_ALT_BRANCH:
 		{
 			int localJump = i + TrieParser.SIZE_OF_ALT_BRANCH;
@@ -195,50 +197,61 @@ public class TrieParserReader {
 		}   
 		break;
 
-		case TrieParser.TYPE_VALUE_NUMERIC:
+		case TrieParser.TYPE_VALUE_NUMERIC://similar to bytes
 
-			if(parseNumeric(that.ESCAPE_BYTE, this, source, this.localSourcePos, sourceLength-this.runLength, sourceMask, (int)that.data[this.pos++])<0) {			            	
+			run = that.data[i+1];
+			stopValue = that.data[this.pos++];
+			idx = i + TrieParser.SIZE_OF_VALUE_NUMERIC;
+
+			if (this.runLength<sourceLength && parseNumeric(that.ESCAPE_BYTE, this, source, this.localSourcePos, sourceLength-this.runLength, sourceMask, (int)that.data[this.pos++])<0){
+				System.out.println("returned from numeric, without moving further searching");
 				return;
 			}
-			
+
+			if(stopValue==run){
+				run=0;
+			}
+
 			//recurse into visit()
-			run = that.data[i+1];
-			idx = i + TrieParser.SIZE_OF_VALUE_NUMERIC;
 			visit(that, idx+run, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);
 
 			break;
 
-		case TrieParser.TYPE_VALUE_BYTES://similar to numeric
-			
+		case TrieParser.TYPE_VALUE_BYTES:
+
 			run = that.data[i+1];
-			short stopValue = that.data[this.pos++];
+			stopValue = that.data[this.pos++];
 			idx = i + TrieParser.SIZE_OF_VALUE_BYTES;
-			
+
 			//if(parseBytes(this, that, source, sourceLength, sourceMask)){return;//?};
 			if(parseBytes(this, source, localSourcePos, run-localSourcePos, sourceMask, stopValue)<0){
 				return;
 			}
-			
+
+			if(stopValue==run){
+				run = 0;
+			}
+
 			//recurse into visit()
 			visit(that, idx+run, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);
-			
+
 			break;
-			
+
 		case TrieParser.TYPE_SAFE_END:
-			
+
 			//redundant
 			/*visitor.safePoint(
 					(0XFFFF&that.data[i+1])
 					); */
-			
+
 			recordSafePointEnd(this, this.localSourcePos, this.pos, that);  
 			this.pos += that.SIZE_OF_RESULT;
 			if (sourceLength == this.runLength) {
 				this.result = useSafePointNow(this);
-				
+
 				//add to result set
 				visitor.addToResult(this.result);
-				
+
 				return;
 			}   
 
@@ -247,9 +260,9 @@ public class TrieParserReader {
 				visit(that, this.pos, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);
 			}
 			break;
-			
+
 		case TrieParser.TYPE_END:
-			
+
 			//redundant
 			/*visitor.end(
 					(0XFFFF&that.data[i+1])
