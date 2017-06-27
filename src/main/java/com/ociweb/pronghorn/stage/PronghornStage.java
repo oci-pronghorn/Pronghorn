@@ -218,6 +218,9 @@ public abstract class PronghornStage {
     	if (null==additional) {
     		return pipes;
     	}
+    	if (pipes==null) {
+    		return additional;
+    	}
     	
         int totalCount = pipes.length+additional.length;
         
