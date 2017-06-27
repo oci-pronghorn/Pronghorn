@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.ociweb</groupId>
   <artifactId>Pronghorn</artifactId>
-  <version>0.0.14-SNAPSHOT</version>
+  <version>0.0.14</version>
       <!-- Looking for the release jar? This project is under active development.
          Please consider getting involved and sponsoring the completion of Pronghorn.
          mailto:info@ociweb.com;?subject=Pronghorn%20Sponsor%20Inquiry
@@ -70,7 +70,7 @@
     <connection>scm:git:git://github.com/oci-pronghorn/Pronghorn.git</connection>
     <url>https://github.com/oci-pronghorn/Pronghorn</url>
     <developerConnection>scm:git:ssh://git@github.com/oci-pronghorn/Pronghorn.git</developerConnection>
-    <tag>Pronghorn-0.0.10</tag>
+    <tag>Pronghorn-0.0.14</tag>
   </scm>
     
   <distributionManagement>
