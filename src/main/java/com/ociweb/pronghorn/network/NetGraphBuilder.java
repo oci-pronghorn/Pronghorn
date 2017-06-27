@@ -21,7 +21,7 @@ import com.ociweb.pronghorn.network.http.HTTP1xRouterStage;
 import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
 import com.ociweb.pronghorn.network.http.HTTPClientRequestStage;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
-import com.ociweb.pronghorn.network.module.AbstractPayloadResponseStage;
+import com.ociweb.pronghorn.network.http.RouterStageConfig;
 import com.ociweb.pronghorn.network.module.DotModuleStage;
 import com.ociweb.pronghorn.network.module.ResourceModuleStage;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
@@ -512,6 +512,17 @@ public class NetGraphBuilder {
 		
 		
 	}
+	
+//	public final Pipe<HTTPRequestSchema> newHTTPRequestPipe(PipeConfig<HTTPRequestSchema> restPipeConfig) {
+//		Pipe<HTTPRequestSchema> pipe = new Pipe<HTTPRequestSchema>(restPipeConfig) {
+//			@SuppressWarnings("unchecked")
+//			@Override
+//			protected DataInputBlobReader<HTTPRequestSchema> createNewBlobReader() {
+//				return new HTTPRequestReader(this); //TODO: move this class back into pronghorn..
+//			}
+//		};
+//		return pipe;
+//	}
 
 	public static HTTP1xRouterStageConfig buildModules(GraphManager graphManager, ModuleConfig modules,
 			final int routerCount,
@@ -527,23 +538,23 @@ public class NetGraphBuilder {
 		}
 		  
 		//create each module
-		for(int a=0; a<modules.moduleCount(); a++) { 
+		for(int moduleInstance=0; moduleInstance<modules.moduleCount(); moduleInstance++) { 
 			
-			Pipe[] routesTemp = new Pipe[routerCount];
+			Pipe<HTTPRequestSchema>[] routesTemp = new Pipe[routerCount];
 			for(int r=0; r<routerCount; r++) {
+				//TODO: change to use.. newHTTPRequestPipe
 				//TODO: this should be false but the DOT telemetry is still using the high level API...
-				routesTemp[r] = toModules[r][a] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig);//,false);				
+				routesTemp[r] = toModules[r][moduleInstance] =  new Pipe<HTTPRequestSchema>(routerToModuleConfig);//,false);
+				
+				
 			}
 			//each module can unify of split across routers
-			routerConfig.registerRoute(modules.getPathRoute(a),
-					                   modules.addModule(a, graphManager, routesTemp, httpSpec),
-					                   httpSpec.headerParser());
+			Pipe<ServerResponseSchema>[] outputPipes = modules.registerModule(moduleInstance, graphManager, routerConfig, routesTemp);
+			    
 		    
-			//one array per each of the routers.
-		    Pipe<ServerResponseSchema>[][] outputPipes = modules.outputPipes(a);
-		  
 		    for(int r=0; r<routerCount; r++) {
-		    	fromModule[r] = PronghornStage.join(outputPipes[r], fromModule[r]);
+		    	//accumulate all the from pipes for a given router group
+		    	fromModule[r] = PronghornStage.join(fromModule[r], outputPipes[r]);
 		    }
 		    
 		}
@@ -552,6 +563,8 @@ public class NetGraphBuilder {
 		return routerConfig;
 	}
 
+	
+	
 	public static Pipe<NetPayloadSchema>[] populateGraphWithUnWrapStages(GraphManager graphManager, ServerCoordinator coordinator,
 			int requestUnwrapUnits, PipeConfig<NetPayloadSchema> handshakeDataConfig, Pipe[] encryptedIncomingGroup,
 			Pipe[] planIncomingGroup, Pipe[] acks, long rate) {
@@ -630,7 +643,8 @@ public class NetGraphBuilder {
 	}
 	
 
-	public static ServerCoordinator httpServerSetup(boolean isTLS, String bindHost, int port, GraphManager gm, boolean large, ModuleConfig modules) {
+	public static ServerCoordinator httpServerSetup(boolean isTLS, String bindHost, int port, GraphManager gm, 
+			                                        boolean large, ModuleConfig modules) {
 		
 		ServerPipesConfig serverConfig = new ServerPipesConfig(large, isTLS);
 				 
@@ -653,62 +667,7 @@ public class NetGraphBuilder {
 		ModuleConfig config = new ModuleConfig(){
 
 			private final int moduleCount = 3;
-			private Pipe<ServerResponseSchema>[][] staticFileOutputs;
 			
-			
-			@Override
-			public IntHashTable addModule(int a, 
-					GraphManager graphManager, 
-					Pipe<HTTPRequestSchema>[] inputs,
-					HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> spec) {
-		
-					//the file server is stateless therefore we can build 1 instance for every input pipe
-					int instances = inputs.length;
-					
-					if (null == staticFileOutputs) {
-						staticFileOutputs = new Pipe[instances][moduleCount];
-					}
-					
-					int i = instances;
-					while (--i>=0) {
-						
-						switch (a) {
-							case 0:
-							ResourceModuleStage<?, ?, ?, ?> newInstanceA = ResourceModuleStage.newInstance(graphManager, 
-									inputs[i], 
-									staticFileOutputs[i][0] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
-									spec,
-									"telemetry/index.html", HTTPContentTypeDefaults.HTML);
-							GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceA);
-				   		    GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceA);
-							
-							break;
-							case 1:
-							ResourceModuleStage<?, ?, ?, ?> newInstanceB = ResourceModuleStage.newInstance(graphManager, 
-							          inputs[i], 
-							          staticFileOutputs[i][1] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
-							          spec,
-							          "telemetry/viz-lite.js", HTTPContentTypeDefaults.JS);
-							GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceB);
-							GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceB);
-							break;
-							case 2:
-							DotModuleStage<?, ?, ?, ?> newInstanceC = DotModuleStage.newInstance(graphManager, 
-									inputs[i], 
-									staticFileOutputs[i][2] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
-									spec);
-							GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceC);
-							GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceC);
-								break;
-							default:
-								throw new RuntimeException("unknonw idx "+a);
-						}
-						
-					}
-				return IntHashTable.EMPTY;
-			}
-		
-			@Override
 			public CharSequence getPathRoute(int a) {
 				switch(a) {
 					case 0:
@@ -723,19 +682,61 @@ public class NetGraphBuilder {
 			}
 		
 			@Override
-			public Pipe<ServerResponseSchema>[][] outputPipes(int a) {
-				
-				int i = staticFileOutputs.length;
-				Pipe<ServerResponseSchema>[][] temp = new Pipe[i][1];
-				while (--i>=0) {
-					temp[i][0] = staticFileOutputs[i][a];
-				}
-				return temp;
-			}
-		
-			@Override
 			public int moduleCount() {
 				return moduleCount;
+			}
+
+			@Override
+			public Pipe<ServerResponseSchema>[] registerModule(int a,
+					GraphManager graphManager, RouterStageConfig routerConfig, Pipe<HTTPRequestSchema>[] inputPipes) {
+				
+				//the file server is stateless therefore we can build 1 instance for every input pipe
+				int instances = inputPipes.length;
+				
+				Pipe<ServerResponseSchema>[] staticFileOutputs = new Pipe[instances];
+				
+				int i = instances;
+				while (--i>=0) {
+					
+					switch (a) {
+						case 0:
+						ResourceModuleStage<?, ?, ?, ?> newInstanceA = ResourceModuleStage.newInstance(graphManager, 
+								inputPipes[i], 
+								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
+								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
+								"telemetry/index.html", HTTPContentTypeDefaults.HTML);
+						GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceA);
+					    GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceA);
+						
+						break;
+						case 1:
+						ResourceModuleStage<?, ?, ?, ?> newInstanceB = ResourceModuleStage.newInstance(graphManager, 
+						          inputPipes[i], 
+						          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
+						          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
+						          "telemetry/viz-lite.js", HTTPContentTypeDefaults.JS);
+						GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceB);
+						GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceB);
+						break;
+						case 2:
+						DotModuleStage<?, ?, ?, ?> newInstanceC = DotModuleStage.newInstance(graphManager, 
+								inputPipes[i], 
+								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
+								((HTTP1xRouterStageConfig)routerConfig).httpSpec);
+						GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceC);
+						GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceC);
+							break;
+						default:
+							throw new RuntimeException("unknonw idx "+a);
+					}
+					
+				}
+				
+				routerConfig.registerRoute(
+									             getPathRoute(a)
+									             ); //no headers
+
+				return staticFileOutputs;			
 			}  
 			
 		

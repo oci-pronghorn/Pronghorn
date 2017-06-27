@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.network.config;
 
 import com.ociweb.pronghorn.util.TrieParser;
+import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
                                     R extends Enum<R> & HTTPRevision,
@@ -94,6 +95,10 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 			}
 		}
 		return true;
+	}
+
+	public int headerId(byte[] h, TrieParserReader reader) {
+		return (int)reader.query(reader, headerParser(), h, 0, h.length, Integer.MAX_VALUE);
 	}
 
 

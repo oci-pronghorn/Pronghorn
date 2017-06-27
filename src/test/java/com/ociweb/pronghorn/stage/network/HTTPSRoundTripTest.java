@@ -23,8 +23,10 @@ import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
+import com.ociweb.pronghorn.network.http.HTTP1xRouterStageConfig;
 import com.ociweb.pronghorn.network.http.HTTPClientRequestStage;
 import com.ociweb.pronghorn.network.http.ModuleConfig;
+import com.ociweb.pronghorn.network.http.RouterStageConfig;
 import com.ociweb.pronghorn.network.module.FileReadModuleStage;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
@@ -352,66 +354,35 @@ public class HTTPSRoundTripTest {
 		    //this is the cache for the files, so larger is better plus making it longer helps a lot but not sure why.
 		    final PipeConfig<ServerResponseSchema> fileServerOutgoingDataConfig = new PipeConfig<ServerResponseSchema>(ServerResponseSchema.instance, 
 		    		         messagesToOrderingSuper, messageSizeToOrderingSuper);//from module to  supervisor
-		    
-		    //TODO: build array groups and return?
-		    Pipe<ServerResponseSchema>[][] staticFileOutputs;
-		    
-			@Override
-			public IntHashTable addModule(int a, 
-					GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs,
-					HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> spec) {
-								
-				boolean stateless = true;
-				
-				if (stateless) {
-					
-					
-					//the file server is stateless therefore we can build 1 instance for every input pipe
-					int instances = inputs.length;
-					
-					staticFileOutputs = new Pipe[instances][1];
-					
-					int i = instances;
-					while (--i>=0) {
-						staticFileOutputs[i][0] = new Pipe<ServerResponseSchema>(fileServerOutgoingDataConfig);
-						FileReadModuleStage.newInstance(graphManager, inputs[i], staticFileOutputs[i][0], spec, new File(pathRoot));					
-					}
-				
-				} else {
-					
-					//TODO:need to update..
-					
-					//multiples into the file router and out!!!!!
-					
-					//staticFileOutputs = new Pipe[1][]{ new Pipe<ServerResponseSchema>(fileServerOutgoingDataConfig) };					
-					//FileReadModuleStage.newInstance(graphManager, inputs, staticFileOutputs[0], spec, new File(pathRoot));
-					
-					
-					
-				}
-				
-				//return needed headers
-				return IntHashTable.EMPTY;
-			}
-		
-			@Override
-			public CharSequence getPathRoute(int a) {
-				return "/${path}";
-			}
-			
-		//TODO: add input pipes to be defined here as well??
-			
-			@Override
-			public Pipe<ServerResponseSchema>[][] outputPipes(int a) {
-				
-				//
-				
-				return staticFileOutputs;
-			}
-		
+	
 			@Override
 			public int moduleCount() {
 				return 1;
+			}
+
+			@Override
+			public Pipe<ServerResponseSchema>[] registerModule(int a,
+					GraphManager graphManager, RouterStageConfig routerConfig, 
+					Pipe<HTTPRequestSchema>[] inputPipes) {
+				
+
+					//the file server is stateless therefore we can build 1 instance for every input pipe
+					int instances = inputPipes.length;
+					
+					Pipe<ServerResponseSchema>[] staticFileOutputs = new Pipe[instances];
+					
+					int i = instances;
+					while (--i>=0) {
+						staticFileOutputs[i] = new Pipe<ServerResponseSchema>(fileServerOutgoingDataConfig);
+						FileReadModuleStage.newInstance(graphManager, inputPipes[i], staticFileOutputs[i], (HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec, new File(pathRoot));					
+					}
+						
+				
+					routerConfig.registerRoute(
+                        "/${path}"
+						); //no headers requested
+
+				return staticFileOutputs;
 			}        
 		 	
 		 };

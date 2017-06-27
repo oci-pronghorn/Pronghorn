@@ -53,7 +53,7 @@ public class HTTPRouterStageTest {
     	ServerCoordinator coordinator = new ServerCoordinator(false, "127.0.0.1", 8080, 5 ,5 ,1);
     	
     	for(CharSequence route: paths) {
-    		routerConfig.registerRoute(route, IntHashTable.EMPTY, defaultSpec.headerParser()); //no headers
+    		routerConfig.registerRoute(route);//no headers
     	}
     	
     	

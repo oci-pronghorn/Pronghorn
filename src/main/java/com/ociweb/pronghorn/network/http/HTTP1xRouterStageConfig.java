@@ -4,19 +4,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.config.HTTPContentType;
+import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
+import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
+import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.TrieParser;
+import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
                                     R extends Enum<R> & HTTPRevision,
                                     V extends Enum<V> & HTTPVerb,
-									H extends Enum<H> & HTTPHeader> {
+									H extends Enum<H> & HTTPHeader> implements RouterStageConfig {
 	
-	public final HTTPSpecification<T,R,V,H> httpSpec;	
+	public final HTTPSpecification<T,R,V,H> httpSpec;
+	
     public final TrieParser urlMap;
     public final TrieParser verbMap;
     public final TrieParser revisionMap;
@@ -38,6 +44,9 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public final int UNMAPPED_ROUTE;
 	
     private URLTemplateParser routeParser;
+	
+	private final TrieParserReader localReader = new TrieParserReader(0, true);
+	
 
 	public HTTP1xRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec) {
 		this.httpSpec = httpSpec;
@@ -103,20 +112,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		
 	}
 
-   public int registerRoute(CharSequence route, IntHashTable headers, TrieParser headerParser) {
 
-		boolean trustText = false; 
-		URLTemplateParser parser = routeParser();
-		storeRequestExtractionParsers(parser.addRoute(route, routesCount, urlMap, trustText));
-		storeRequestedExtractions(urlMap.lastSetValueExtractonPattern());
-
-		storeRequestedHeaders(headers);
-		storeRequestedHeaderParser(headerParser);
-		
-		int pipeIdx = routesCount;
-		routesCount++;
-		return pipeIdx;
-	}
 
 	private URLTemplateParser routeParser() {
 		//Many projects do not need this so do not build..
@@ -188,7 +184,53 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 
 	public TrieParser headerTrieParser(int routeId) {
 		return requestHeaderParser[routeId];
-	};
+	}
+
+    private int registerRoute(CharSequence route, IntHashTable headers, TrieParser headerParser) {
+
+		boolean trustText = false; 
+		URLTemplateParser parser = routeParser();
+		storeRequestExtractionParsers(parser.addRoute(route, routesCount, urlMap, trustText));
+		storeRequestedExtractions(urlMap.lastSetValueExtractonPattern());
+
+		storeRequestedHeaders(headers);
+		storeRequestedHeaderParser(headerParser);
+		
+		int pipeIdx = routesCount;
+		routesCount++;
+		return pipeIdx;
+	}
+
+    public int headerId(byte[] h) {
+    	return httpSpec.headerId(h, localReader);
+    }
+
+
+	public int registerRoute(CharSequence route, byte[] ... headers) {
+		return registerRoute(route, headerTable(localReader, headers), httpSpec.headerParser());
+	}
+
+	private final IntHashTable headerTable(TrieParserReader localReader, byte[] ... headers) {
+		
+		IntHashTable headerToPosTable = IntHashTable.newTableExpectingCount(headers.length);		
+		int count = 0;
+		int i = headers.length;
+		
+		while (--i>=0) {	
+			
+			byte[] h = headers[i];
+			int ord = httpSpec.headerId(h, localReader);
+			
+			if (ord<0) {
+				throw new UnsupportedOperationException("unsupported header "+new String(h));
+			}
+			
+			boolean ok = IntHashTable.setItem(headerToPosTable, HTTPHeader.HEADER_BIT | ord, HTTPHeader.HEADER_BIT | (count++));
+			assert(ok);
+		}
+		
+		return headerToPosTable;
+	}
 
 	
 	

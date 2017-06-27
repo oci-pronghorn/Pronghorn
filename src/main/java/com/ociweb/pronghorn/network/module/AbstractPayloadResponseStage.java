@@ -19,6 +19,7 @@ import com.ociweb.pronghorn.network.http.AbstractRestStage;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
@@ -119,6 +120,12 @@ public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPC
 		        	activeFieldRequestContext = PipeReader.readInt(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_REQUESTCONTEXT_25);
 		        	
 		        	int fieldRevision = PipeReader.readInt(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_REVISION_24);
+		        	
+		        	
+		        	//TODO: need new object for this....
+		        	DataInputBlobReader<HTTPRequestSchema> paramStream = PipeReader.inputStream(input, HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_PARAMS_32);
+		        	
+		        	
 		        	
 		        	
 		        	if (HTTPVerbDefaults.GET.ordinal() == fieldVerb) {

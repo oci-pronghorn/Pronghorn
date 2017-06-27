@@ -39,7 +39,7 @@ import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
 //Minimal memory usage and leverages SSD.
-public class FileReadModuleStage<   T extends Enum<T> & HTTPContentType,
+public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
                                         R extends Enum<R> & HTTPRevision,
                                         V extends Enum<V> & HTTPVerb,
                                         H extends Enum<H> & HTTPHeader> extends AbstractRestStage<T,R,V,H> {

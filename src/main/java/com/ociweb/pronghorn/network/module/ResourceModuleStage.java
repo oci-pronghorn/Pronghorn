@@ -19,9 +19,9 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
-								R extends Enum<R> & HTTPRevision,
-								V extends Enum<V> & HTTPVerb,
-								H extends Enum<H> & HTTPHeader> extends AbstractPayloadResponseStage<T,R,V,H> {
+									R extends Enum<R> & HTTPRevision,
+									V extends Enum<V> & HTTPVerb,
+									H extends Enum<H> & HTTPHeader> extends AbstractPayloadResponseStage<T,R,V,H> {
 
 	private final String resource;
 	private final byte[] type;
