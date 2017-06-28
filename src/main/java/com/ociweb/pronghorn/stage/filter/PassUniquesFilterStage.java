@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.RandomAccessFile;
 
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -95,9 +96,14 @@ public class PassUniquesFilterStage<T extends MessageSchema<T>> extends Pronghor
             }
             storage.renameTo(backup);
             
+           // RandomAccessFile raf = new RandomAccessFile(storage, "rws");
+            
+          
             FileOutputStream fost = new FileOutputStream(storage);
             ObjectOutputStream oost = new ObjectOutputStream(fost);
+            
             oost.writeObject(filter);
+            
             oost.close();
             
         } catch (Exception e) {

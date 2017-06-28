@@ -64,6 +64,12 @@ public class FixedThreadsScheduler extends StageScheduler {
 	private static final Logger logger = LoggerFactory.getLogger(FixedThreadsScheduler.class);
 	private NonThreadScheduler[] ntsArray;
 	
+	public FixedThreadsScheduler(GraphManager graphManager) {
+		//this is often very optimal since we have enough granularity to swap work but we do not
+		//have so many threads that it overwhelms the operating system context switching
+		this(graphManager, Runtime.getRuntime().availableProcessors()*2);
+	}
+	
 	public FixedThreadsScheduler(GraphManager graphManager, int targetThreadCount) {
 		this(graphManager, targetThreadCount, true);
 	}
@@ -419,8 +425,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 		}
 		return false;
 	}
-	
-	
+		
 
 	private void createSchedulers(GraphManager graphManager, PronghornStage[][] stageArrays) {
 	
@@ -434,13 +439,14 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    while (--k >= 0) {
 	    	if (null!=stageArrays[k]) {
 	    		
-	    		logger.info("{} Single thread for group {}", ntsIdx, Arrays.toString(stageArrays[k]) );
-	    		
+	    		if (logger.isDebugEnabled()) {
+	    			logger.debug("{} Single thread for group {}", ntsIdx, Arrays.toString(stageArrays[k]) );
+	    		}
 	    		PronghornStage pronghornStage = stageArrays[k][stageArrays[k].length-1];
 				String name = pronghornStage.stageId+":"+pronghornStage.getClass().getSimpleName()+"...";
 	    		
 	    		
-	    		ntsArray[ntsIdx++]=new NonThreadScheduler(graphManager, stageArrays[k], name);	    		     
+	    		ntsArray[ntsIdx++]=new NonThreadScheduler(graphManager, stageArrays[k], name, true);	    		     
 	    	}
 	    }
 	}
@@ -527,8 +533,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 			        }
 				
 				while (!NonThreadScheduler.isShutdownRequested(nts)) {
-					
-					nts.run();//nts.run has its own internal sleep, nothing needed here.					
+					nts.run();
 				}
 			}	
 			

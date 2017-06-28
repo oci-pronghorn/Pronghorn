@@ -87,6 +87,7 @@ public class GraphManager {
 	private long[] stageRunNS = new long[INIT_STAGES]; 
 	
     private String[] stageDOTNames;
+    private String[] pipeDOTNames;
   
 	//This object is shared with all clones
 	private final GraphManagerStageStateData stageStateData;
@@ -396,16 +397,19 @@ public class GraphManager {
      * @param m
      */
 	public static void disableMutation(GraphManager m) {
-		//logger.info("disable mutation");
-		if (m.telemetryPort > 0) {
-			//logger.info("enable telemetry");
-			//NB: this is done very last to ensure all the pipes get monitors added.
-			NetGraphBuilder.telemetryServerSetup(false, m.telemetryHost, m.telemetryPort, m);
-		} //else {
-			//logger.info("normal startup");
-		//}
-		m.enableMutation = false;
-		m.stageDOTNames = new String[GraphManager.countStages(m)];
+		if (m.enableMutation) {
+			//logger.info("disable mutation");
+			if (m.telemetryPort > 0) {
+				//logger.info("enable telemetry");
+				//NB: this is done very last to ensure all the pipes get monitors added.
+				NetGraphBuilder.telemetryServerSetup(false, m.telemetryHost, m.telemetryPort, m);
+			} //else {
+				//logger.info("normal startup");
+			//}
+			m.enableMutation = false;
+			m.stageDOTNames = new String[GraphManager.countStages(m)];
+			m.pipeDOTNames = new String[Pipe.totalPipes()];
+		}
 	}
 	
 	
@@ -1481,7 +1485,12 @@ public class GraphManager {
 	                    int minMessagesOnPipe = pipe.sizeOfSlabRing/maxFrag;           
 	                   
 	                    
-		                target.append("\"[label=\"").append(Pipe.schemaName(pipe).replace("Schema", ""));
+	                    String pipeName = m.pipeDOTNames[pipe.id];
+	                    if (null==pipeName) {//keep so this is not built again upon every call
+	                    	pipeName = Pipe.schemaName(pipe).replace("Schema", "");
+	                    	m.pipeDOTNames[pipe.id] = pipeName;
+	                    }
+		                target.append("\"[label=\"").append(pipeName);
 		                
 		                
 		                if (null!=percentileValues) {		                	

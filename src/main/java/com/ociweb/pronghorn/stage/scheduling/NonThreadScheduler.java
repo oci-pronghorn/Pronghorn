@@ -49,7 +49,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     private final GraphManager graphManager;
     private String name = "";
     private PronghornStage lastRunStage = null;
-
+    private final boolean inLargerScheduler;
 	private static final boolean debugNonReturningStages = false;
 	
 
@@ -57,6 +57,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         super(graphManager);        
         this.stages = GraphManager.allStages(graphManager);
         this.graphManager = graphManager;
+        this.inLargerScheduler = false;
     }
     
     public NonThreadScheduler(GraphManager graphManager, PronghornStage[] stages, String name) {
@@ -64,7 +65,16 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         this.stages = stages;       
         this.graphManager = graphManager;
         this.name = name;
+        this.inLargerScheduler = false;
     }    
+    
+    public NonThreadScheduler(GraphManager graphManager, PronghornStage[] stages, String name, boolean isInLargerScheduler) {
+        super(graphManager);
+        this.stages = stages;       
+        this.graphManager = graphManager;
+        this.name = name;
+        this.inLargerScheduler = isInLargerScheduler;
+    }  
     
     public void checkForException() {
     	if (firstException!=null) {
@@ -382,7 +392,8 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 	    		long nanoDelay = nextRun-System.nanoTime();
 	    		if (nanoDelay>0) {
 
-	    			if (nanoDelay > 1_000_000) {
+	    			//if we are in the larger scheduler do sleep now
+	    			if (!inLargerScheduler && nanoDelay > 2_000_000) {
 	    				return;//too long to wait so return
 	    			}
 			    	//System.out.println("delay "+nanoDelay);
@@ -444,13 +455,14 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
                     //if one is not shutting down then keep going
                     continueRun |= !GraphManager.isStageShuttingDown(graphManager, stages[s].stageId);
                     Thread.yield();
+                    
              }
-             if (!continueRun || shutdownRequested.get()) {
-            	 
+             if (!continueRun || shutdownRequested.get()) {            	 
             	shutdown();
              }
              nextRun = Long.MAX_VALUE==nearestNextRun ? 0 : nearestNextRun;
-                
+              
+                    
              if (! isRunning.compareAndSet(1, 0) ) {
              }
     }

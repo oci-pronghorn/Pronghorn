@@ -45,8 +45,7 @@ public class SSLEngineFactory {
 	                                                   service.maxEncryptedContentLength();
 	
 	static {
-		log.warn("max size encrypted block {} ", maxEncryptedContentLength);
-		
+		log.trace("max size encrypted block {} ", maxEncryptedContentLength);
 	}
 	
 	public static void init() {

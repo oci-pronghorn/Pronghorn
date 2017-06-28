@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.network.http;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
@@ -16,7 +19,7 @@ public class URLTemplateParser {
 	private final TrieParser templateParser = buildRouteTemplateParser(new TrieParser(256,1,false,true,false,CUSTOM_ESCAPE));
 	
     private final EncodingConverter converter;
-    
+    private final static Logger logger = LoggerFactory.getLogger(URLTemplateParser.class);
     
     public URLTemplateParser() {
     	
@@ -145,7 +148,9 @@ public class URLTemplateParser {
 		}
 		
 		//inspect the converted value
-		outputStream.debugAsUTF8();
+		if (logger.isDebugEnabled()) {
+			outputStream.debugAsUTF8();
+		}
 		
 		return fieldIndex-1;
 	}
