@@ -569,7 +569,7 @@ public class FieldReferenceOffsetManager {
 	private static int buildFieldLoc(FieldReferenceOffsetManager from,
 			int framentStart, int fieldCursor) {
 		final int stackOff = from.fragDepth[framentStart]<<RW_STACK_OFF_SHIFT;
-		int fieldType = TokenBuilder.extractType(from.tokens[fieldCursor])<<RW_FIELD_OFF_BITS;
+		final int shiftedFieldType = TokenBuilder.extractType(from.tokens[fieldCursor])<<RW_FIELD_OFF_BITS;
 		//type is 5 bits of information
 		
 		//the remaining bits for the offset is 32 -(4+5) or 23 which is 8M for the fixed portion of any fragment
@@ -577,10 +577,12 @@ public class FieldReferenceOffsetManager {
 		int fieldOff =  (0==fieldCursor) ? from.templateOffset+1 : from.fragDataSize[fieldCursor];
 		assert(fieldOff>=0);
 		assert(fieldOff < (1<<RW_FIELD_OFF_BITS)) : "Fixed portion of a fragment can not be larger than "+(1<<RW_FIELD_OFF_BITS)+" bytes";
-		return stackOff | fieldType | fieldOff;
-		//      6bits       5bits       21bit 
+		final int loc = stackOff | shiftedFieldType | fieldOff;
+		//         6bits       5bits       21bit 
 		// high bit is going to be zero for stacks less than 32
 		// low 21 is always going to be a small number offset from front of fragment.
+		assert(FieldReferenceOffsetManager.extractTypeFromLoc(loc) == (shiftedFieldType>>RW_FIELD_OFF_BITS)) : "type encode decode round trip for LOC does not pass";		
+		return loc;
 	}
 
     public static int lookupToken(String target, int framentStart, FieldReferenceOffsetManager from) {
