@@ -297,7 +297,7 @@ public class NetGraphBuilder {
 		int routerCount = coordinator.processorCount();
 
 		//logger.info("build http stages 2");
-        Pipe<ServerResponseSchema>[][] fromModule = new Pipe[routerCount][];         
+        Pipe<ServerResponseSchema>[][] fromModule = new Pipe[routerCount][];       
         Pipe<HTTPRequestSchema>[][] toModules = new Pipe[routerCount][];
         
         PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, serverConfig.fromProcessorCount, serverConfig.fromProcessorBlob);///if payload is smaller than average file size will be slower
@@ -550,7 +550,8 @@ public class NetGraphBuilder {
 			}
 			//each module can unify of split across routers
 			Pipe<ServerResponseSchema>[] outputPipes = modules.registerModule(moduleInstance, graphManager, routerConfig, routesTemp);
-			    
+			
+			assert(validateNoNulls(outputPipes));
 		    
 		    for(int r=0; r<routerCount; r++) {
 		    	//accumulate all the from pipes for a given router group
@@ -561,6 +562,18 @@ public class NetGraphBuilder {
 		
 		
 		return routerConfig;
+	}
+
+	private static boolean validateNoNulls(Pipe<ServerResponseSchema>[] outputPipes) {
+		
+		int i = outputPipes.length;
+		while (--i>=0) {
+			if (outputPipes[i]==null) {
+				throw new NullPointerException("null discovered in output pipe at index "+i);
+			}
+			
+		}
+		return true;
 	}
 
 	

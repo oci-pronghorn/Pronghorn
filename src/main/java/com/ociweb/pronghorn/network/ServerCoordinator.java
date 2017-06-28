@@ -59,6 +59,10 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	//this is only used for building stages and adding notas
 	private PronghornStageProcessor optionalStageProcessor = null;
 	
+	public ServerCoordinator(boolean isTLS, String bindHost, int port, ServerPipesConfig serverConfig) {
+		this(isTLS,bindHost,port, serverConfig.maxConnectionBitsOnServer, serverConfig.maxPartialResponsesServer, serverConfig.processorCount );
+	}
+	
     public ServerCoordinator(boolean isTLS, String bindHost, int port, int maxConnectionsBits, int maxPartialResponses, int processorsCount) {
         
     	this.isTLS 			   = isTLS;

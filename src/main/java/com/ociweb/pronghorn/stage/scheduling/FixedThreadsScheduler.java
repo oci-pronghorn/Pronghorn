@@ -484,7 +484,7 @@ public class FixedThreadsScheduler extends StageScheduler {
         	int count = threadCount;
 			@Override
 			public Thread newThread(Runnable r) {
-				return new Thread(r, ntsArray[--threadCount].name());
+				return new Thread(r, ntsArray[--count].name());
 			}        	
         };
 		this.executorService = Executors.newFixedThreadPool(threadCount, threadFactory);

@@ -25,9 +25,9 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.Appendables;
 
-public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPContentType,
+public abstract class AbstractAppendablePayloadResponseStage <   
+                                T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
 								V extends Enum<V> & HTTPVerb,
 								H extends Enum<H> & HTTPHeader> extends AbstractRestStage<T,R,V,H> {
@@ -37,7 +37,7 @@ public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPC
 	private final GraphManager graphManager;
 	private StringBuilder payloadWorkspace;
 		
-	private static final Logger logger = LoggerFactory.getLogger(AbstractPayloadResponseStage.class);
+	private static final Logger logger = LoggerFactory.getLogger(AbstractAppendablePayloadResponseStage.class);
 	
 	private long activeChannelId = -1;
 	private int activeSequenceNo = -1;
@@ -58,10 +58,23 @@ public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPC
 	private final int eTagInt;
 	private final int eTagRoot = random.nextInt();
 	
-	public AbstractPayloadResponseStage(GraphManager graphManager, 
+	public AbstractAppendablePayloadResponseStage(GraphManager graphManager, 
+            Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
+			 HTTPSpecification<T, R, V, H> httpSpec) {
+			super(graphManager, inputs, outputs, httpSpec);
+			
+			this.inputs = inputs;
+			this.outputs = outputs;		
+			this.graphManager = graphManager;
+			this.eTagInt = eTagCounter.incrementAndGet();
+			
+			assert(inputs.length == inputs.length);
+	}
+	
+	public AbstractAppendablePayloadResponseStage(GraphManager graphManager, 
 			                 Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
-							 HTTPSpecification<T, R, V, H> httpSpec) {
-		super(graphManager, inputs, outputs, httpSpec);
+							 HTTPSpecification<T, R, V, H> httpSpec, Pipe[] otherInputs) {
+		super(graphManager, join(inputs,otherInputs), outputs, httpSpec);
 		
 		this.inputs = inputs;
 		this.outputs = outputs;		
@@ -121,19 +134,10 @@ public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPC
 		        	
 		        	int fieldRevision = PipeReader.readInt(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_REVISION_24);
 		        	
-		        	
-		        	//TODO: need new object for this....
 		        	DataInputBlobReader<HTTPRequestSchema> paramStream = PipeReader.inputStream(input, HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_PARAMS_32);
 		        	
-		        	
-		        	
-		        	
-		        	if (HTTPVerbDefaults.GET.ordinal() == fieldVerb) {
-		        		//logger.info("we have GET verb, looking up file");
-		        		sendResponse(output, fieldRevision);		        		
-		        	} else {
-		        		//logger.info("no GET found");
-		        		//TODO: should add support for head only..
+		        	if (!sendResponse(output, fieldRevision, paramStream, (HTTPVerbDefaults)httpSpec.verbs[fieldVerb])) {
+
 		        		HTTPUtil.publishError(activeSequenceNo, 404, output, 
 		        			activeChannelId, httpSpec, fieldRevision); 
 		        	}
@@ -150,7 +154,18 @@ public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPC
 		
 	}
 
-	protected void sendResponse(Pipe<ServerResponseSchema> output, int fieldRevision) {
+	protected boolean sendResponse(Pipe<ServerResponseSchema> output, int fieldRevision, 
+			                       DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb) {
+		
+		payloadWorkspace.setLength(0);
+		byte[] contentType = buildPayload(payloadWorkspace, graphManager, params, verb); //should return error and take args?
+		if (null==contentType) {
+			return false; //Can not write anything. This is the error case.
+		}
+		
+		int length = payloadWorkspace.length();
+		
+		
 		byte[] revision = httpSpec.revisions[fieldRevision].getBytes();
 		int status=200;
 		 
@@ -170,13 +185,10 @@ public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPC
 		
 		DataOutputBlobWriter.openField(outputStream);
 						    
-		payloadWorkspace.setLength(0);
-		byte[] contentType = buildPayload(payloadWorkspace, graphManager);
-		int length = payloadWorkspace.length();
+
+		activeOutput = output;
 							
 		workingPosition = 0;
-		activeOutput = output;
-		
 		
 		///long eTag = (((long)eTagRoot)<<32) + ((long)eTagInt);					
 		byte[] etagBytes = null;//Appendables.appendHexDigits(new StringBuilder(), eTag).toString().getBytes(); 
@@ -192,9 +204,10 @@ public abstract class AbstractPayloadResponseStage <   T extends Enum<T> & HTTPC
 		//logger.info("built header response of length "+length);
 		
 		appendRemainingPayload(output);
+		return true;
 	}
 	
-	protected abstract byte[] buildPayload(Appendable payload, GraphManager gm);
+	protected abstract byte[] buildPayload(Appendable payload, GraphManager gm, DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb);
 
 
 	private void appendRemainingPayload(Pipe<ServerResponseSchema> output) {

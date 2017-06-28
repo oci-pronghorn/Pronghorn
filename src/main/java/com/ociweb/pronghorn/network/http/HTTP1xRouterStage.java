@@ -511,8 +511,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
  
 private int parseHTTP(TrieParserReader trieReader, final long channel, final int idx, Pipe<NetPayloadSchema> selectedInput) {    
     
-	boolean writeIndex = true;//true; //reqired for direct field access, can be skipped for sequential field access.
-	
+	final boolean writeIndex = true; //could be skipped but there is no great reason not to give this to everyone
+
     if (showHeader) {
     	System.out.println("///////////////// ROUTE HEADER "+channel+"///////////////////");
     	TrieParserReader.debugAsUTF8(trieReader, System.out, Math.min(8192, trieReader.sourceLen), false); //shows that we did not get all the data

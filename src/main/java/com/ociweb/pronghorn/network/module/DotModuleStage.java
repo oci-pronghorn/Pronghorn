@@ -6,8 +6,10 @@ import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.config.HTTPVerb;
+import com.ociweb.pronghorn.network.config.HTTPVerbDefaults;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -15,7 +17,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
 								V extends Enum<V> & HTTPVerb,
-								H extends Enum<H> & HTTPHeader> extends AbstractPayloadResponseStage<T,R,V,H> {
+								H extends Enum<H> & HTTPHeader> extends AbstractAppendablePayloadResponseStage<T,R,V,H> {
 
     public static DotModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, HTTPSpecification<?, ?, ?, ?> httpSpec) {
     	MonitorConsoleStage monitor = MonitorConsoleStage.attach(graphManager);	
@@ -35,14 +37,18 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 		this.monitor = monitor;
 		
 	}
-	
-	protected byte[] buildPayload(Appendable payload, GraphManager gm) {
-		byte[] contentType = HTTPContentTypeDefaults.DOT.getBytes();
+
+	@Override
+	protected byte[] buildPayload(Appendable payload, GraphManager gm, DataInputBlobReader<HTTPRequestSchema> params,
+			HTTPVerbDefaults verb) {
+		
+		if (verb != HTTPVerbDefaults.GET) {
+			return null;
+		}
 		
 		monitor.writeAsDot(gm, payload);
 		
-		
-		return contentType;
+		return HTTPContentTypeDefaults.DOT.getBytes();
 	}
 
 }

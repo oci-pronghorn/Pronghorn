@@ -651,8 +651,9 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
                 findAgainFileChannel(pathId);
             }
         } else {  
-        	        	
-        	logger.info("requested file {} not found", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString());
+        	if (logger.isDebugEnabled()) {        	
+        		logger.debug("requested file {} not found", Appendables.appendUTF8(new StringBuilder(), bytesBackingArray, bytesPosition, bytesLength, bytesMask).toString());
+        	}
         }
         return pathId;
         

@@ -232,6 +232,12 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return headerToPosTable;
 	}
 
+
+	@Override
+	public HTTPSpecification httpSpec() {
+		return httpSpec;
+	}
+
 	
 	
 	

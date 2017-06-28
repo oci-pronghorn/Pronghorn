@@ -84,7 +84,7 @@ public abstract class PronghornStage {
     	int result = 0;
     	int i = pipes.length;
     	while (--i>=0) {
-    		result = Math.max(result, pipes[i].maxVarLen);
+   			result = Math.max(result, pipes[i].maxVarLen);
     	}
 		return result;
 	}
@@ -114,9 +114,7 @@ public abstract class PronghornStage {
 	protected PronghornStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs) {
 	    assert(null!=inputs) : "Use NONE";
 	    assert(null!=outputs) : "Use NONE";
-	    assert(noContainedNull(inputs)) : "Null disovered in array";
-	  //  assert(noContainedNull(outputs)) : "Null disovered in array"; //TODO: put back in and find the bug in IoT project
-		
+
 	    this.stageId = GraphManager.newStageId(graphManager);
 	    this.boxedStageId = this.stageId;
 	    this.hash = PronghornStage.class.hashCode() ^ stageId;
@@ -157,7 +155,7 @@ public abstract class PronghornStage {
 		int i = inputs.length;
 		while (--i>=0) {
 			if (null==inputs[i]) {
-				logger.warn("null found at index {} in array of Pipes",i);
+				logger.warn("null found at index {} in array of Pipes length {}",i,inputs.length);
 				return false;
 			}
 		}
