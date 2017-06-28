@@ -176,7 +176,7 @@ public class SocketIOStageTest {
 		new SocketTestGenStage(gm, input, testUsers, testSeeds, testSizes, clientCoordinator, port);
 		
 
-		GraphManager.exportGraphDotFile(gm, "UnitTest");
+		GraphManager.exportGraphDotFile(gm, "UnitTest", true);
 		MonitorConsoleStage.attach(gm);
 		   
 		/////////////////////////////////

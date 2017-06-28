@@ -1300,14 +1300,14 @@ public class GraphManager {
 	}
 	
 	public void exportGraphDotFile() {
-	    exportGraphDotFile(this, "graph.dot");
+	    exportGraphDotFile(this, "graph.dot", true);
 	}
 	
-	public static void exportGraphDotFile(GraphManager gm, String filename) {
-		exportGraphDotFile(gm,filename,null,null);
+	public static void exportGraphDotFile(GraphManager gm, String filename, boolean isVertical) {
+		exportGraphDotFile(gm,filename,isVertical,null,null);
 	}
 	
-    public static void exportGraphDotFile(GraphManager gm, String filename, int[] percentileValues, int[] traffic) {
+    public static void exportGraphDotFile(GraphManager gm, String filename, boolean isVertical, int[] percentileValues, int[] traffic) {
     	
     //	new Exception("GENERATING NEW DOT FILE "+filename).printStackTrace();
     	
@@ -1315,7 +1315,7 @@ public class GraphManager {
         try {
             fost = new FileOutputStream(filename);
             PrintWriter pw = new PrintWriter(fost);
-            gm.writeAsDOT(gm, pw, percentileValues, traffic);
+            gm.writeAsDOT(gm, pw, isVertical, percentileValues, traffic);
             pw.close();
             
             
@@ -1334,15 +1334,20 @@ public class GraphManager {
         
     }
     
-    public static void writeAsDOT(GraphManager m, Appendable target) {
-    	writeAsDOT(m,target,null,null);
+    public static void writeAsDOT(GraphManager m, Appendable target, boolean isVertical) {
+    	writeAsDOT(m,target,isVertical,null,null);
     }
     
-	public static void writeAsDOT(GraphManager m, Appendable target, int[] percentileValues, int[] traffic) {
+	public static void writeAsDOT(GraphManager m, Appendable target, boolean isVertical, int[] percentileValues, int[] traffic) {
 	    try {
 	    
 	        target.append("digraph {\n");
-	        target.append("rankdir = LR\n");
+	        
+	        if (isVertical) {
+	        	target.append("rankdir = TD\n"); 
+	        } else {
+	        	target.append("rankdir = LR\n"); 
+	        }
 	        
 	        //TODO: redesign to be cleaner without garbage
 	        Map<Object, StringBuilder> ranks = new HashMap<Object, StringBuilder>();

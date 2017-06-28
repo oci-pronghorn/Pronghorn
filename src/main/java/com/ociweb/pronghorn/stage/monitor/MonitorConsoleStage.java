@@ -122,7 +122,7 @@ public class MonitorConsoleStage extends PronghornStage {
 		//Send in pipe depth data	
 		boolean writeImage = false;
 		if (writeImage) {
-			GraphManager.exportGraphDotFile(graphManager, "MonitorResults", percentileValues, trafficValues);
+			GraphManager.exportGraphDotFile(graphManager, "MonitorResults", true, percentileValues, trafficValues);
 		}
 	}
 
@@ -231,7 +231,7 @@ public class MonitorConsoleStage extends PronghornStage {
 
 	public void writeAsDot(GraphManager gm, Appendable payload) {
 		summarizeRuntime(false);
-		GraphManager.writeAsDOT(gm, payload, percentileValues, trafficValues);
+		GraphManager.writeAsDOT(gm, payload, true, percentileValues, trafficValues);
 	}
 
 	
