@@ -163,8 +163,8 @@ public abstract class PronghornStage {
 	}
 
 	protected PronghornStage(GraphManager graphManager, Pipe input, Pipe output) {
-		assert(input!=null);
-		assert(output!=null);
+		assert(input!=null) : "input must not be null";
+		assert(output!=null) : "output must not be null";
 		this.stageId = GraphManager.newStageId(graphManager);
 		this.boxedStageId = this.stageId;
 		this.hash = PronghornStage.class.hashCode() ^ stageId;
