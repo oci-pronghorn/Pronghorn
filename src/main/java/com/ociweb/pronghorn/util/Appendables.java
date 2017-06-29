@@ -418,6 +418,9 @@ public class Appendables {
     }
     
     public static <A extends Appendable> A appendFixedHexDigits(A target, long value, int bits) {
+    	
+    	value = value & ((1L<<bits)-1L);//we want only the lowest bits
+    	
     	try {
 	        //round up to next group of 4
 	        bits = ((bits+3)>>2)<<2;
@@ -494,6 +497,8 @@ public class Appendables {
      */
     public static <A extends Appendable> A appendFixedHexDigits(A target, int value, int bits) {
 
+    	value = value & ((1<<bits)-1);//we want only the lowest bits
+    	
     	try {
 	        //round up to next group of 4
 	        bits = ((bits+3)>>2)<<2;

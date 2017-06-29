@@ -1,15 +1,11 @@
 package com.ociweb.pronghorn.util.parse;
 
-import javax.swing.text.MaskFormatter;
-
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
-import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
-import com.ociweb.pronghorn.pipe.util.hash.LongHashTable;
 import com.ociweb.pronghorn.util.TrieKeyable;
 
-public abstract class MapJSONToPipeBuilder<M extends MessageSchema, K extends Enum<K> & TrieKeyable> {
+public abstract class MapJSONToPipeBuilder<M extends MessageSchema<M>, K extends Enum<K> & TrieKeyable> {
 
 	protected final K[] allEnums;
 	protected final int msgIdx;
