@@ -1355,9 +1355,7 @@ public class GraphManager {
 	        int i = -1;
 	        while (++i<m.stageIdToStage.length) {
 	            PronghornStage stage = m.stageIdToStage[i];
-	        
-	            
-	            
+	        	            
 	            if (null!=stage 
 	            		&& !stageForMonitorData(m,stage) 
 	            		&& !(stage instanceof MonitorConsoleStage) 
@@ -1505,12 +1503,20 @@ public class GraphManager {
 		                		Appendables.appendValue(target,"@", (pctFull*(long)pipe.sizeOfSlabRing/100L)).append(" ");
 		                	}
 		                }
+		                
+		                int lineWidth = 1; //default
+		                
 		                if (null!=traffic) {
 		                	int trafficCount = traffic[pipe.id];
 		                	if (0!=trafficCount) {
 		                		Appendables.appendValue(target.append(" Vol:"), trafficCount).append(" ");	
 		                	}
+		                	//compute the line width.
+		                	int bitsUsed = 32-Integer.numberOfLeadingZeros(trafficCount);		                	
+		                	lineWidth = (0==bitsUsed)? 1 : 2 +(bitsUsed>>3);
+		                			                	
 		                }
+		                
 		                
 		                if (minMessagesOnPipe==maxMessagesOnPipe) {
 		                    Appendables.appendValue(target," [",minMessagesOnPipe,"]");
@@ -1519,11 +1525,7 @@ public class GraphManager {
 		                }
 		                target.append("\"");
 		                
-		                //count bindings
-		                int consumerStage = GraphManager.getRingConsumerId(m, pipe.id);
-		                int producerStage = GraphManager.getRingProducerId(m, pipe.id);
-		                float weight = computeWeightBetweenStages(m, consumerStage, producerStage);	                
-		                target.append(",weight=").append(Float.toString(weight));
+		                Appendables.appendValue(target.append(",penwidth="),lineWidth);
 		                
 		                if (null!=percentileValues) {		                	
 		                	int pctFull = percentileValues[pipe.id];

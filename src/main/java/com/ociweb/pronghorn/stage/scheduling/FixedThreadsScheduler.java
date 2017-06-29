@@ -486,6 +486,12 @@ public class FixedThreadsScheduler extends StageScheduler {
 	@Override
 	public void startup() {
 				
+		int realStageCount = threadCount;
+		if (realStageCount<=0) {
+			System.out.println("Success!, You have a new empty project.");
+			return;
+		}	
+		
         ThreadFactory threadFactory = new ThreadFactory() {
         	int count = threadCount;
 			@Override
@@ -495,7 +501,6 @@ public class FixedThreadsScheduler extends StageScheduler {
         };
 		this.executorService = Executors.newFixedThreadPool(threadCount, threadFactory);
 		
-		int realStageCount = threadCount;
 
 		CyclicBarrier allStagesLatch = new CyclicBarrier(realStageCount+1);
 		
@@ -573,8 +578,11 @@ public class FixedThreadsScheduler extends StageScheduler {
 			validShutdownState();
 			return false;
 		}
-		//each child scheduler has already completed await termination so no need to wait for this 
-		executorService.shutdownNow();
+		//will be null upon empty project, this is ok, just exit.
+		if (null!=executorService) {
+			//each child scheduler has already completed await termination so no need to wait for this 
+			executorService.shutdownNow();
+		}
 	
 		if (null!=firstException) {
 		    throw new RuntimeException(firstException);

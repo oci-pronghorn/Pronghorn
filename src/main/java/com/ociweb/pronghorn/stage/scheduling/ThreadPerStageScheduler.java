@@ -40,6 +40,11 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	    unscheduledLock.lock();//stop any non-runnable stages from running until shutdown is started.
 				
 		int realStageCount = GraphManager.countStages(graphManager);
+		if (realStageCount<=0) {
+			System.out.println("Success!, You have a new empty project.");
+			//do not startup threads since we have nothing to be done
+			return;
+		}		
 		
 		this.executorService = Executors.newFixedThreadPool(realStageCount);
 
@@ -142,8 +147,8 @@ public class ThreadPerStageScheduler extends StageScheduler {
 	 * @param unit
 	 */
 	public boolean awaitTermination(long timeout, TimeUnit unit) {
-		
-		if (executorService.isShutdown()){
+		//returns true if it was never started, eg is null
+		if (null == executorService || executorService.isShutdown()){
 			return true;
 		}
 	    try {
