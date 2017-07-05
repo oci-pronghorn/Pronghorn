@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.network.mqtt;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.network.schema.MQTTConnectionInSchema;
 import com.ociweb.pronghorn.network.schema.MQTTIdRangeSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -7,6 +10,8 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 
 public class MQTTEncoder {
 
+	private static final Logger logger = LoggerFactory.getLogger(MQTTEncoder.class);
+	
 	//connect flags
 	//bit 7 user name
 	//bit 6 pass
@@ -305,6 +310,7 @@ public class MQTTEncoder {
 				loadNextPacketIdRange(idGenIn, genCache);				
 			} else {
 				hasId = false;
+				logger.info("no packed IDs are left for use");
 			}	
 		}
 		return hasId;

@@ -8,6 +8,7 @@ import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientRequestSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientResponseSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchema;
+import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchemaAck;
 import com.ociweb.pronghorn.network.schema.MQTTIdRangeSchema;
 import com.ociweb.pronghorn.network.schema.MQTTServerToClientSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
@@ -47,6 +48,11 @@ public class SchemaValidationTest {
     @Test
     public void messageMQTTClientToServerTest() {
         assertTrue(FROMValidation.checkSchema("/MQTTClientToServer.xml", MQTTClientToServerSchema.class));
+    }
+    
+    @Test
+    public void messageMQTTClientToServerAckTest() {
+        assertTrue(FROMValidation.checkSchema("/MQTTClientToServerAck.xml", MQTTClientToServerSchemaAck.class));
     }
     
     @Test

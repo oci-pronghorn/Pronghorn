@@ -89,7 +89,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	optionalStageProcessor = p;
     }
     public void processNota(GraphManager gm, PronghornStage stage) {
-    	if (null!=optionalStageProcessor) {
+    	if (null != optionalStageProcessor) {
     		optionalStageProcessor.process(gm, stage);
     	}
     }

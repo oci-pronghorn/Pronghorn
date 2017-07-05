@@ -30,7 +30,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private long totalBytes=0;
 	
 	//FOR HEAVY LOAD TESTING THIS FEATURE MUST BE SWITCHED ON.
-	private static final boolean enableWriteBatching = true;
+	private static final boolean enableWriteBatching = false;//true; ///we are testing MQTT. This still fails.
 		
 	
 	//reqired for simulation of "slow" networks  TODO: read this from the client coordinator?
@@ -114,7 +114,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 					if (connections[i]==null && Pipe.hasContentToRead(pipe)) try {			
 	
 						msgIdx = Pipe.takeMsgIdx(pipe);
-					
+						
 						if (NetPayloadSchema.MSG_ENCRYPTED_200 == msgIdx) {
 											
 							final long channelId = Pipe.takeLong(pipe);
@@ -285,6 +285,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 										
 										tryWrite(i);
 									} else {
+									
 										//can not send this connection was lost, consume and drop the data to get it off the pipe
 										Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
 										Pipe.releaseReadLock(pipe);
@@ -303,12 +304,14 @@ public class ClientSocketWriterStage extends PronghornStage {
 							throw new UnsupportedOperationException("Begin connection message was not expected here.");
 							
 						} else {
-							
-							assert(-1 == msgIdx) : "Expected end of stream shutdown got "+msgIdx;
-							Pipe.confirmLowLevelRead(pipe, Pipe.EOF_SIZE);
+							if (msgIdx==-1) {
+								Pipe.confirmLowLevelRead(pipe, Pipe.EOF_SIZE);								
+							} else {
+							    logger.info("unknown message idx received: {}",msgIdx);
+							}
 							Pipe.releaseReadLock(pipe);
-							
-							
+							assert(-1 == msgIdx) : "Expected end of stream shutdown got "+msgIdx;
+														
 							if (--this.shutCountDown <= 0) {
 								requestShutdown();
 								return;
@@ -371,8 +374,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 			}
 		} catch (IOException e) {
 			
-			// if e.message is  "Broken pipe" then the connection was alread lost.
-			logger.info("Client side connection closing, excption while writing to socket for Id {}.",connections[i].getId() ,e);
+			// if e.message is  "Broken pipe" then the connection was already lost, nothing to do here but close.
+			logger.debug("Client side connection closing, excption while writing to socket for Id {}.",connections[i].getId() ,e);
 			
 			
 			this.ccm.releaseResponsePipeLineIdx(connections[i].getId());

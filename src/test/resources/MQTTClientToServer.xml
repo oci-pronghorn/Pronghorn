@@ -6,10 +6,6 @@
      <uInt32 name="Port" id="27"/>
    </template>
   
-   <template name="StopRePublish" id="99">
-      <uInt32 name="PacketId" id="20"/>
-   </template>
-  
    <template name="Connect" id="1"> <!-- IDs are MQTT Control Packet types -->
      <uInt64 name="Time" id="37"/>         
      <uInt32 name="KeepAliveSec" id="28"/>
@@ -37,13 +33,6 @@
      <byteVector name="Payload" id="25"/>     
    </template>
 
-
-   <template name="PubRel" id="6"><!-- IDs are MQTT Control Packet types -->
-     <uInt64 name="Time" id="37"/>
-     <uInt32 name="PacketId" id="20"/>
-   </template> 
-
-
     <!-- for subscribe only -->   
    
    <template name="Subscribe" id="8"><!-- IDs are MQTT Control Packet types -->
@@ -58,20 +47,10 @@
      <uInt32 name="PacketId" id="20"/>
      <String name="Topic" id="23" charset="unicode"/>
    </template>
-     
-   <template name="PubAck" id="4"><!-- IDs are MQTT Control Packet types -->
-     <uInt64 name="Time" id="37"/>
-     <uInt32 name="PacketId" id="20"/>
-   </template>  
-   
+       
    <template name="PubRec" id="5"><!-- IDs are MQTT Control Packet types -->
      <uInt64 name="Time" id="37"/>
      <uInt32 name="PacketId" id="20"/>
-   </template>  
+   </template>
   
-   <template name="PubComp" id="7"><!-- IDs are MQTT Control Packet types -->
-     <uInt64 name="Time" id="37"/>
-     <uInt32 name="PacketId" id="20"/>
-   </template> 
-    
-</templates>
+  </templates>

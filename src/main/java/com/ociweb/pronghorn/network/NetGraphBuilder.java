@@ -126,7 +126,9 @@ public class NetGraphBuilder {
 		Pipe<ReleaseSchema> ackReleaseForResponseParser = acks[acks.length-1];
 		
 		ClientSocketReaderStage socketReaderStage = new ClientSocketReaderStage(gm, ccm, acks, socketResponse);
-		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketReader", socketReaderStage);	
+		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketReader", socketReaderStage);
+		ccm.processNota(gm, socketReaderStage);
+		
 		
 		Pipe<NetPayloadSchema>[] hanshakePipes = buildClientUnwrap(gm, ccm, requests, responseUnwrapCount, socketResponse, clearResponse,	acks);	
 
@@ -203,8 +205,8 @@ public class NetGraphBuilder {
 		while (--i>=0) {		
 			ClientSocketWriterStage socketWriteStage = new ClientSocketWriterStage(gm, ccm, writeBufferMultiplier, clientRequests[i]);
 	    	GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketWriter", socketWriteStage);
-	    	//GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 100_000_000, socketWriteStage);//slow down writers.
-	    	
+	    	ccm.processNota(gm, socketWriteStage);
+	    		    	
 		}
 	}
 
@@ -213,6 +215,7 @@ public class NetGraphBuilder {
 			Pipe<ReleaseSchema> ackRelease) {
 		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, ackRelease, listenerPipeLookup, ccm, HTTPSpecification.defaultSpec());
 		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
+		ccm.processNota(gm, parser);
 	}
 
 	private static void buildParser(GraphManager gm, ClientCoordinator ccm, IntHashTable listenerPipeLookup,
@@ -220,6 +223,7 @@ public class NetGraphBuilder {
 		
 		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, acks[acks.length-1], listenerPipeLookup, ccm, HTTPSpecification.defaultSpec());
 		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
+		ccm.processNota(gm, parser);
 	}
 
 
@@ -830,7 +834,7 @@ public class NetGraphBuilder {
 									  Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe) {
 		
 		int maxPartialResponses = IntHashTable.count(netPipeLookup);
-		int connectionsInBits=6;		
+		int connectionsInBits = 6;		
 		int clientRequestCount = 4;
 		int clientRequestSize = 1<<15;
 		boolean isTLS = true;

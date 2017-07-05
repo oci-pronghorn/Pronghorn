@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.stage.PronghornStageProcessor;
+import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.PoolIdx;
 import com.ociweb.pronghorn.util.ServiceObjectHolder;
@@ -67,6 +69,9 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	
 	public final boolean isTLS;
+
+    private PronghornStageProcessor optionalStageProcessor;
+    
 	//TOOD: may keep internal pipe of "in flight" URLs to be returned with the results...
 	
     public void shutdown() {
@@ -128,6 +133,14 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		return response;
 	}
 	
+    public void setStageNotaProcessor(PronghornStageProcessor p) {
+    	optionalStageProcessor = p;
+    }
+    public void processNota(GraphManager gm, PronghornStage stage) {
+    	if (null != optionalStageProcessor) {
+    		optionalStageProcessor.process(gm, stage);
+    	}
+    }
 	/**
 	 * 
 	 * This method is not thread safe. 

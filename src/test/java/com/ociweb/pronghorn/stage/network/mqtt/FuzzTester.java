@@ -42,11 +42,11 @@ public class FuzzTester {
         );
 	}	
 	
-	@Test
-	public void testMQTTClient() {
-		assertTrue(
-				StageTester.runFuzzTest(MQTTClient.class, testDuration, generatorSeed)
-        );
-	}	
+//	@Test
+//	public void testMQTTClient() {
+//		assertTrue(
+//				StageTester.runFuzzTest(MQTTClient.class, testDuration, generatorSeed)
+//        );
+//	}	
 	
 }

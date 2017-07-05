@@ -1378,6 +1378,8 @@ public class GraphManager {
 	            		
 	            	}
 
+	            	Object rate = getNota(m, stage.stageId, GraphManager.SCHEDULE_RATE,null);
+	            	
 	            	Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
 
 	            	////////////////////
@@ -1424,9 +1426,13 @@ public class GraphManager {
 	                	target.append(" CPU N/A%");
 	                	
             			logger.trace("B bad % value {} {} {} {}",pct,runNs, m.stageShutdownTimeNs[stage.stageId],  m.stageStartTimeNs[stage.stageId] );
-            	
-            			
+            	            			
 	                }
+	                
+	                if (null!=rate) {
+	                	target.append("\n Rate:"+rate);
+	                }
+	                
 	                target.append("\"");
 	                
 	                if (pct>=8000) {

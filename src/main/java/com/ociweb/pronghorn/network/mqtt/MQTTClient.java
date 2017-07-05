@@ -2,10 +2,14 @@ package com.ociweb.pronghorn.network.mqtt;
 
 import java.nio.ByteBuffer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.code.StageTester;
 import com.ociweb.pronghorn.network.schema.MQTTClientRequestSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientResponseSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchema;
+import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchemaAck;
 import com.ociweb.pronghorn.network.schema.MQTTIdRangeSchema;
 import com.ociweb.pronghorn.network.schema.MQTTServerToClientSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -18,15 +22,18 @@ public class MQTTClient extends PronghornStage {
 
 	public static final int CON_ACK_ERR_FLAG = 1<<8;
 	public static final int SUB_ACK_ERR_FLAG = 1<<9;
-	private final Pipe<MQTTClientRequestSchema>  clientRequest;
-	private final Pipe<MQTTIdRangeSchema>        idGenNew;
-	private final Pipe<MQTTServerToClientSchema> serverToClient;     
-	private final Pipe<MQTTClientResponseSchema> clientResponse;
-	private final Pipe<MQTTIdRangeSchema>        idGenOld;
-	private final Pipe<MQTTClientToServerSchema> clientToServer;    
+	private final Pipe<MQTTClientRequestSchema>     clientRequest;
+	private final Pipe<MQTTIdRangeSchema>           idGenNew;
+	private final Pipe<MQTTServerToClientSchema>    serverToClient;     
+	private final Pipe<MQTTClientResponseSchema>    clientResponse;
+	private final Pipe<MQTTIdRangeSchema>           idGenOld;
+	private final Pipe<MQTTClientToServerSchema>    clientToServer; 
+	private final Pipe<MQTTClientToServerSchemaAck> clientToServerAck;
 	
 	private IdGenCache genCache;
 	private long mostRecentTime;
+	
+	private static final Logger logger = LoggerFactory.getLogger(MQTTClient.class);
 	
 	public MQTTClient(GraphManager gm, 
 			          Pipe<MQTTClientRequestSchema> clientRequest,
@@ -35,9 +42,12 @@ public class MQTTClient extends PronghornStage {
 			          
 			          Pipe<MQTTClientResponseSchema> clientResponse,
 			          Pipe<MQTTIdRangeSchema> idGenOld, 
-			          Pipe<MQTTClientToServerSchema> clientToServer) {
+			          Pipe<MQTTClientToServerSchema> clientToServer,
+			          Pipe<MQTTClientToServerSchemaAck> clientToServerAck
+			          
+			) {
 		
-		super(gm, join(clientRequest,idGenNew,serverToClient), join(clientResponse,idGenOld,clientToServer) );
+		super(gm, join(clientRequest,idGenNew,serverToClient), join(clientResponse,idGenOld,clientToServer,clientToServerAck) );
 		
 		this.clientRequest=clientRequest;
 		this.idGenNew=idGenNew;
@@ -45,7 +55,8 @@ public class MQTTClient extends PronghornStage {
 		
 		this.clientResponse=clientResponse;
 		this.idGenOld=idGenOld;
-		this.clientToServer=clientToServer;
+		this.clientToServer = clientToServer;
+		this.clientToServerAck = clientToServerAck;
 				
 		Pipe.setPublishBatchSize(clientToServer, 0);
 		
@@ -73,7 +84,7 @@ public class MQTTClient extends PronghornStage {
 	
 	@Override
 	public void run() {
-		
+
 		////////////////////////
 		//read server responses
 		///////////////////////
@@ -89,7 +100,8 @@ public class MQTTClient extends PronghornStage {
 
 	public void processClientRequests() {
 		while(  
-				MQTTEncoder.hasPacketId(genCache, idGenNew) //only process if we have new PacketIds ready
+				(!PipeReader.hasContentToRead(serverToClient)) //server response is always more important.
+				&&MQTTEncoder.hasPacketId(genCache, idGenNew) //only process if we have new PacketIds ready
 				&& PipeWriter.hasRoomForWrite(clientToServer) //only process if we have room to write
 				&& PipeReader.tryReadFragment(clientRequest)  ) {
 			
@@ -164,9 +176,8 @@ public class MQTTClient extends PronghornStage {
 					break;			
 				case MQTTClientRequestSchema.MSG_PUBLISH_3:
 		
-					boolean ok3 = PipeWriter.tryWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_PUBLISH_3);
-					assert(ok3);				
-					
+					PipeWriter.presumeWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_PUBLISH_3);
+										
 					int valueQoS = PipeReader.readInt(clientRequest, MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_QOS_21);
 					PipeWriter.writeInt(clientToServer, 
 							MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_QOS_21, 
@@ -179,6 +190,10 @@ public class MQTTClient extends PronghornStage {
 					PipeReader.copyBytes(clientRequest, clientToServer, 
 							MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, 
 							MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_TOPIC_23);
+					
+					StringBuilder b = new StringBuilder("MQTTClient out ");
+					System.err.println(PipeReader.readUTF8(clientRequest, MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25 , b));
+					
 					
 					PipeReader.copyBytes(clientRequest, clientToServer, 
 							MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25, 
@@ -244,15 +259,14 @@ public class MQTTClient extends PronghornStage {
 		}
 	}
 
+	
+	
+	
 	public void processServerResponses() {
-		
-//		System.err.println(PipeWriter.hasRoomForWrite(idGenOld) 
-//			  && PipeWriter.hasRoomForWrite(clientToServer)
-//			  && PipeWriter.hasRoomForWrite(clientResponse));
-		
 		
 		while(PipeWriter.hasRoomForWrite(idGenOld) 
 			  && PipeWriter.hasRoomForWrite(clientToServer)
+			  && PipeWriter.hasRoomForWrite(clientToServerAck)
 			  && PipeWriter.hasRoomForWrite(clientResponse)
 			  && PipeReader.tryReadFragment(serverToClient)) {		
 
@@ -311,13 +325,14 @@ public class MQTTClient extends PronghornStage {
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_TIME_37);
 					int packetId4 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_PACKETID_20);
 					
+					logger.info("QOS1 stop for packet {}",packetId4);
 				    stopReSendingMessage(clientToServer, packetId4);					
 					
 					////////////////////
 					//now release the packet Id
 					////////////////////
-					boolean ok = PipeWriter.tryWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);	
-					assert(ok);
+					PipeWriter.presumeWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);	
+					
 					PipeWriter.writeInt(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1_FIELD_RANGE_100, IdGenStage.buildRange(packetId4, packetId4+1));
 					PipeWriter.publishWrites(idGenOld);
 					
@@ -327,13 +342,14 @@ public class MQTTClient extends PronghornStage {
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_PUBCOMP_7_FIELD_TIME_37);
 					int packetId7 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBCOMP_7_FIELD_PACKETID_20);
 							
-				    stopReSendingMessage(clientToServer, packetId7);
+					logger.info("QOS2 stop for packet {}",packetId7);
+				    stopReSendingMessage(clientToServer, packetId7); 
 					
 					////////////////////
 					//now release the packet Id
 					////////////////////
-					boolean ok5 = PipeWriter.tryWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);	
-					assert(ok5);
+					PipeWriter.presumeWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);	
+					
 					PipeWriter.writeInt(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1_FIELD_RANGE_100, IdGenStage.buildRange(packetId7, packetId7+1));
 					PipeWriter.publishWrites(idGenOld);					
 					
@@ -358,30 +374,36 @@ public class MQTTClient extends PronghornStage {
 					PipeWriter.writeInt(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_DUP_36, dup3);
 					PipeWriter.writeInt(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_RETAIN_22, retain3);
 					
-					PipeReader.copyBytes(serverToClient, clientResponse,
+					int lenTopic = PipeReader.copyBytes(serverToClient, clientResponse,
 							MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, 
 							MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_TOPIC_23);
 					
-					PipeReader.copyBytes(serverToClient, clientResponse,
+					int lenPayload = PipeReader.copyBytes(serverToClient, clientResponse,
 							MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25, 
 							MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_PAYLOAD_25);
+					
+//				//// debug	
+//				StringBuilder b = new StringBuilder("MQTTClient:");				
+//			    PipeReader.readUTF8(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, b).append(" ");
+//  		    PipeReader.readUTF8(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25, b);
+//				System.err.println(b);					
 					
 					PipeWriter.publishWrites(clientResponse);
 					
 					if (0!=qos3) {
 						
 						if (1==qos3) {		//send pubAck for 1
-							boolean ok1 = PipeWriter.tryWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_PUBACK_4);
-							assert(ok1);
-							PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_PUBACK_4_FIELD_PACKETID_20, serverSidePacketId);
-							PipeWriter.writeLong(clientToServer, MQTTClientToServerSchema.MSG_PUBACK_4_FIELD_TIME_37, mostRecentTime);
-							PipeWriter.publishWrites(clientToServer);						
+							PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBACK_4);
+							
+							PipeWriter.writeInt(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBACK_4_FIELD_PACKETID_20, serverSidePacketId);
+							PipeWriter.writeLong(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBACK_4_FIELD_TIME_37, mostRecentTime);
+							PipeWriter.publishWrites(clientToServerAck);						
 						} else if (2==qos3) {
-							boolean ok2 =PipeWriter.tryWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_PUBREC_5);
-							assert(ok2);
-							PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_PUBREC_5_FIELD_PACKETID_20, serverSidePacketId);
-							PipeWriter.writeLong(clientToServer, MQTTClientToServerSchema.MSG_PUBREC_5_FIELD_TIME_37, mostRecentTime);
-							PipeWriter.publishWrites(clientToServer);							
+							PipeWriter.presumeWriteFragment(serverToClient, MQTTClientToServerSchema.MSG_PUBREC_5);
+							
+							PipeWriter.writeInt(serverToClient, MQTTClientToServerSchema.MSG_PUBREC_5_FIELD_PACKETID_20, serverSidePacketId);
+							PipeWriter.writeLong(serverToClient, MQTTClientToServerSchema.MSG_PUBREC_5_FIELD_TIME_37, mostRecentTime);
+							PipeWriter.publishWrites(serverToClient);							
 						}
 					}
 					break;
@@ -394,11 +416,11 @@ public class MQTTClient extends PronghornStage {
 					//////////////////////
 					//send pubrel and stop re-sending the message
 					//////////////////////
-					boolean ok6 = PipeWriter.tryWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_PUBREL_6);
-					assert(ok6);
-					PipeWriter.writeLong(clientToServer, MQTTClientToServerSchema.MSG_PUBREL_6_FIELD_TIME_37, mostRecentTime);
-					PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_PUBREL_6_FIELD_PACKETID_20, packetId5);
-					PipeWriter.publishWrites(clientToServer);
+					PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBREL_6);
+					
+					PipeWriter.writeLong(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBREL_6_FIELD_TIME_37, mostRecentTime);
+					PipeWriter.writeInt(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBREL_6_FIELD_PACKETID_20, packetId5);
+					PipeWriter.publishWrites(clientToServerAck);
 					
 					break;
 				case MQTTServerToClientSchema.MSG_PUBREL_6:
@@ -407,11 +429,11 @@ public class MQTTClient extends PronghornStage {
 					int serverSidePacketId6 = IdGenStage.IS_REMOTE_BIT 
 											  | PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBREL_6_FIELD_PACKETID_20);
 										
-					boolean okZ = PipeWriter.tryWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_PUBCOMP_7);
-					assert(okZ);
-					PipeWriter.writeLong(clientToServer, MQTTClientToServerSchema.MSG_PUBCOMP_7_FIELD_TIME_37, mostRecentTime);
-					PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_PUBCOMP_7_FIELD_PACKETID_20, serverSidePacketId6);
-					PipeWriter.publishWrites(clientToServer);
+					PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBCOMP_7);
+					
+					PipeWriter.writeLong(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBCOMP_7_FIELD_TIME_37, mostRecentTime);
+					PipeWriter.writeInt(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBCOMP_7_FIELD_PACKETID_20, serverSidePacketId6);
+					PipeWriter.publishWrites(clientToServerAck);
 					
 					break;
 				case MQTTServerToClientSchema.MSG_SUBACK_9:
@@ -424,13 +446,14 @@ public class MQTTClient extends PronghornStage {
 						int fieldErrorCode = SUB_ACK_ERR_FLAG | 0x80;
 						CharSequence fieldErrorText = "Unable to subscribe";
 						
-					    PipeWriter.tryWriteFragment(clientResponse, MQTTClientResponseSchema.MSG_ERROR_4);
+					    PipeWriter.presumeWriteFragment(clientResponse, MQTTClientResponseSchema.MSG_ERROR_4);
 					    PipeWriter.writeInt(clientResponse,MQTTClientResponseSchema.MSG_ERROR_4_FIELD_ERRORCODE_41, fieldErrorCode);
 					    PipeWriter.writeUTF8(clientResponse,MQTTClientResponseSchema.MSG_ERROR_4_FIELD_ERRORTEXT_42, fieldErrorText);
 					    PipeWriter.publishWrites(clientResponse);
 					} else {
 						
-						//TODO: what do with return code??
+						
+						//TODO: what do with return code?? 
 //					Allowed return codes:
 						
 //						0x00 - Success - Maximum QoS 0 
@@ -439,15 +462,15 @@ public class MQTTClient extends PronghornStage {
 //						0x80 - Failure 
 						
 					}
-					
-					
+					logger.info("sub stop for packet {}",packetId9);
+					//do we need to send the return code here?
 			    	stopReSendingMessage(clientToServer, packetId9);					
 					
 					////////////////////
 					//now release the packet Id
 					////////////////////
-					boolean ok9 = PipeWriter.tryWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);	
-					assert(ok9);
+					PipeWriter.presumeWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);	
+					
 					PipeWriter.writeInt(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1_FIELD_RANGE_100, IdGenStage.buildRange(packetId9, packetId9+1));
 					PipeWriter.publishWrites(idGenOld);	
 					
@@ -457,13 +480,13 @@ public class MQTTClient extends PronghornStage {
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_UNSUBACK_11_FIELD_TIME_37);
 					int packetId11 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_UNSUBACK_11_FIELD_PACKETID_20);
 					
+					logger.info("unsub stop for packet {}",packetId11);
 				    stopReSendingMessage(clientToServer, packetId11);					
 					
 					////////////////////
 					//now release the packet Id
 					////////////////////
-					boolean ok11 = PipeWriter.tryWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);	
-					assert(ok11);
+					PipeWriter.presumeWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);
 					PipeWriter.writeInt(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1_FIELD_RANGE_100, IdGenStage.buildRange(packetId11, packetId11+1));
 					PipeWriter.publishWrites(idGenOld);				    
 					
@@ -476,15 +499,16 @@ public class MQTTClient extends PronghornStage {
 		}
 	}
 
+	
+
 
 	private void stopReSendingMessage(Pipe<MQTTClientToServerSchema> clientToSerer, int packetId) {
 		////////////////////////
 		///stop re-sending the message
 		///////////////////////
-		boolean ok = PipeWriter.tryWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_STOPREPUBLISH_99);
-		assert(ok);
-		PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_STOPREPUBLISH_99_FIELD_PACKETID_20, packetId);
-		PipeWriter.publishWrites(clientToServer);
+		PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99);
+		PipeWriter.writeInt(clientToServerAck, MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99_FIELD_PACKETID_20, packetId);
+		PipeWriter.publishWrites(clientToServerAck);
 	}
 
 }
