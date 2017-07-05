@@ -21,7 +21,9 @@ public class PipeWriterTest {
 		
 		//now replicate that message again
 		assertTrue(PipeWriter.tryReplication(testPipe, slabPos, blobPos));
+		PipeWriter.publishWrites(testPipe);
 		assertTrue(PipeWriter.tryReplication(testPipe, slabPos, blobPos));
+		PipeWriter.publishWrites(testPipe);
 		
 		long slabPos2 = Pipe.getSlabHeadPosition(testPipe);
 		int  blobPos2 = Pipe.getBlobHeadPosition(testPipe);
@@ -31,8 +33,9 @@ public class PipeWriterTest {
 		PipeWriter.publishWrites(testPipe);
 		
 		assertTrue(PipeWriter.tryReplication(testPipe, slabPos, blobPos)); //write old one
+		PipeWriter.publishWrites(testPipe);
 		assertTrue(PipeWriter.tryReplication(testPipe, slabPos2, blobPos2)); //write new one
-		
+		PipeWriter.publishWrites(testPipe);
 		
 		//now read back all
 		

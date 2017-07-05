@@ -332,13 +332,16 @@ public class PipeWriter {
 	 * @param historicSlabPosition
 	 * @param historicBlobPosition
 	 */
-	public static boolean tryReplication(Pipe pipe, long historicSlabPosition, int historicBlobPosition) {
-		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
+	public static boolean tryReplication(Pipe pipe, 
+			                             final long historicSlabPosition, 
+			                             final int historicBlobPosition) {
 		
+		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
+	
 		final int[] slab = pipe.slab(pipe);	
 		
 		int idx = (int)historicSlabPosition & pipe.slabMask;		
-		int msgIdx = slab[idx];
+		int msgIdx = slab[idx]; 
 				
 		if (tryWriteFragment(pipe,msgIdx)) {
 			final byte[] blob = pipe.blob(pipe);
@@ -352,11 +355,26 @@ public class PipeWriter {
 			Pipe.copyBytesFromToRing(blob, historicBlobPosition, Pipe.blobMask(pipe), blob, blobPos, Pipe.blobMask(pipe), blobMsgSize);			
 			Pipe.addAndGetBytesWorkingHeadPosition(pipe, blobMsgSize);
 			
+//			StringBuilder b = new StringBuilder();
+//			Appendables.appendUTF8(b, blob, historicBlobPosition, blobMsgSize, Pipe.blobMask(pipe));
+//			System.err.println("tryReplication: "+b);
+			
+			//Appendables.appendHexArray(System.out.append("replicate blob: "), '[', blob, historicBlobPosition, Pipe.blobMask(pipe), ']', blobMsgSize).append('\n');
+			
+			
 			//copy all the ints
-			long slabPos = Pipe.headPosition(pipe)+1;
-			Pipe.copyIntsFromToRing(slab, idx+1, Pipe.slabMask(pipe), slab, (int)slabPos, Pipe.slabMask(pipe), slabMsgSize);	
+			long slabPos = Pipe.headPosition(pipe);
+			//the header is already written by tryWriteFragment so pos is up by one and lenght is short by one
+			Pipe.copyIntsFromToRing(slab, idx+1, Pipe.slabMask(pipe), slab, (int)slabPos+1, Pipe.slabMask(pipe), slabMsgSize-1);	
 
-			publishWrites(pipe);
+			//Appendables.appendHexArray(System.out.append("replicate slab: "), '[', slab, historicSlabPosition, pipe.slabMask, ']', slabMsgSize).append('\n');
+			
+			
+//			logger.info("replicate data from old:{} {} new:{} {} ",
+//					     historicBlobPosition, historicSlabPosition,
+//					     (blobPos&Pipe.blobMask(pipe)), (slabPos&Pipe.slabMask(pipe)));
+			
+			
 			return true;
 		} else {
 			return false;

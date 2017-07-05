@@ -610,9 +610,29 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	
 	public static boolean peekMsg(Pipe pipe, int expected) {
 		assert(Pipe.singleThreadPerPipeRead(pipe.id));
-		return StackStateWalker.hasContentToRead(pipe) && (expected == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail));
+		return StackStateWalker.hasContentToRead(pipe) 
+				&& (expected == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail));
 	}
-
+	
+	public static boolean peekMsg(Pipe pipe, int expected1, int expected2) {
+		assert(Pipe.singleThreadPerPipeRead(pipe.id));
+		return StackStateWalker.hasContentToRead(pipe) 
+				&& ( 
+						   (expected1 == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail))
+						|| (expected2 == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail)) 
+					);
+	}
+	
+	public static boolean peekMsg(Pipe pipe, int expected1, int expected2, int expected3) {
+		assert(Pipe.singleThreadPerPipeRead(pipe.id));
+		return StackStateWalker.hasContentToRead(pipe) 
+				&& ( 
+						   (expected1 == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail))
+						|| (expected2 == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail))
+						|| (expected3 == Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail))
+					);
+	}
+	
 	public static boolean peekNotMsg(Pipe pipe, int expected) {			
 		return StackStateWalker.hasContentToRead(pipe) && (expected != Pipe.readValue(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.nextWorkingTail));
 	}

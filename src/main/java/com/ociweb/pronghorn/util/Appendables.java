@@ -101,6 +101,86 @@ public class Appendables {
 		}
     }
     
+    public static <A extends Appendable> A appendHexArray(A target, char left, byte[] b, int offset, int mask, char right, int bLength) {
+	      try {
+	    	if (b != null) {        
+	            int iMax = bLength - 1;
+	            if (iMax == -1) {
+	                target.append(left).append(right);
+	                return target;
+	            }
+	            target.append(left);
+	            for (int i = 0; ; i++) {
+	            	
+	            	appendFixedHexDigits(target, 0xFF&b[mask & (i+offset) ], 8);
+	                //appendValue(target,b[mask & (i+offset) ]);
+	                //target.append(Integer.toString(a[i]));
+	                if (i == iMax)
+	                    return (A) target.append(right);
+	                target.append(", ");
+	            } 
+	        } else {
+	            target.append("null");
+	        
+	        }
+	        return target;
+	    } catch (IOException ex) {
+			throw new RuntimeException(ex); 
+		}
+    }
+    
+    public static <A extends Appendable> A appendArray(A target, char left, int[] b, long offset, int mask, char right, int bLength) {
+	      try {
+	    	if (b != null) {        
+	            int iMax = bLength - 1;
+	            if (iMax == -1) {
+	                target.append(left).append(right);
+	                return target;
+	            }
+	            target.append(left);
+	            for (int i = 0; ; i++) {
+	                appendValue(target,b[mask & (int)(i+offset) ]);
+	                //target.append(Integer.toString(a[i]));
+	                if (i == iMax)
+	                    return (A) target.append(right);
+	                target.append(", ");
+	            } 
+	        } else {
+	            target.append("null");
+	        
+	        }
+	        return target;
+	    } catch (IOException ex) {
+			throw new RuntimeException(ex); 
+		}
+   }
+    
+    public static <A extends Appendable> A appendHexArray(A target, char left, int[] b, long offset, int mask, char right, int bLength) {
+	      try {
+	    	if (b != null) {        
+	            int iMax = bLength - 1;
+	            if (iMax == -1) {
+	                target.append(left).append(right);
+	                return target;
+	            }
+	            target.append(left);
+	            for (int i = 0; ; i++) {
+	            	appendFixedHexDigits(target, 0xFFFFFFFF&b[mask & (int)(i+offset) ], 32);
+
+	                if (i == iMax)
+	                    return (A) target.append(right);
+	                target.append(", ");
+	            } 
+	        } else {
+	            target.append("null");
+	        
+	        }
+	        return target;
+	    } catch (IOException ex) {
+			throw new RuntimeException(ex); 
+		}
+ }
+    
     public static <A extends Appendable> A appendArray(A target, char left, int[] a, char right) {
 	     try {
 	    	if (a != null) {        
@@ -497,7 +577,7 @@ public class Appendables {
      */
     public static <A extends Appendable> A appendFixedHexDigits(A target, int value, int bits) {
 
-    	value = value & ((1<<bits)-1);//we want only the lowest bits
+    	//value = value & ((1<<bits)-1);//we want only the lowest bits
     	
     	try {
 	        //round up to next group of 4

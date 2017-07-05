@@ -329,10 +329,22 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         return new String(workspace);
     }
 
+    
+    
     @Override
-    public String readUTF() {
+    @Deprecated
+    public String readUTF() { //use this two line implementation
         int length = readShort(); //read first 2 byte for length in bytes to convert.
-        
+        return readUTFOfLength(length);
+    }
+    
+    @Deprecated
+    public <A extends Appendable> A readUTF(A target) {
+        int length = readShort(); //read first 2 byte for length in bytes to convert.    
+        return readUTFOfLength(length, target);
+    }
+    
+    public String readUTFOfLength(int length) {
         workspace.setLength(0);
         try {
         	return readUTF(this, length, workspace).toString();
@@ -341,14 +353,14 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         }
     }
     
-    public <A extends Appendable> A readUTF(A target) {
-        int length = readShort(); //read first 2 byte for length in bytes to convert.        
+    public <A extends Appendable> A readUTFOfLength(int length, A target) {      
         try {
         	return readUTF(this, length, target);
         } catch (Exception e) {
         	throw new RuntimeException(e);
         }
     }
+    
 
 	public long parseUTF(TrieParserReader reader, TrieParser trie) {
 		int len = readShort();		
@@ -380,6 +392,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
     public static <A extends Appendable, S extends MessageSchema<S>> A readUTF(DataInputBlobReader<S> reader, int length, A target) throws IOException {
         long charAndPos = ((long)reader.position)<<32;
         long limit = ((long)reader.position+length)<<32;
+        assert(length <= reader.available()) : "malformed data";
 
         while (charAndPos<limit) {
             charAndPos = Pipe.decodeUTF8Fast(reader.backing, charAndPos, reader.byteMask);
