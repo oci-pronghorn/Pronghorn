@@ -47,8 +47,8 @@ public final class TypeMask {
     public final static int Dictionary = 0x18;             // 11000
     
     
-    public final static int Rational = 0x20;               // 11010
-    public final static int RationalOptional = 0x21;       // 11011 
+    public final static int Rational = 0x1A;               // 11010
+    public final static int RationalOptional = 0x1B;       // 11011 
 
     //                                                        11110 //TODO: reserved for 128 ints?
     //                                                        11111 //TODO: reserved for 128 ints?
@@ -86,12 +86,13 @@ public final class TypeMask {
 
     // for code generation need to know the substring of the method related to
     // this type.
-    public final static String[] methodTypeName = new String[] { "IntegerUnsigned", "IntegerUnsigned", "IntegerSigned",
-            "IntegerSigned", "LongUnsigned", "LongUnsigned", "LongSigned", "LongSigned", "ASCII", "ASCII", "UTF8",
-            "UTF8",
-            "Decimal", // need exponent and mantissa strings.
-            "Decimal", "Bytes", "Bytes", "Group", "Reserved1", "Reserved2", "Reserved3", "Length", "Reserved5",
-            "Reserved6", "Reserved7", "Dictionary", "Reserved8", "Rational", "Rational" };
+    public final static String[] methodTypeName = new String[] { "IntegerUnsigned", "IntegerUnsigned", "IntegerSigned", "IntegerSigned", 
+    		                                                     "LongUnsigned", "LongUnsigned", "LongSigned", "LongSigned",
+    		                                                     "ASCII", "ASCII", "UTF8", "UTF8",
+                                                                 "Decimal", "Decimal", "Bytes", "Bytes", 
+                                                                 "Group", "Reserved1", "Reserved2", "Reserved3", 
+                                                                 "Length", "Reserved5", "Reserved6", "Reserved7", 
+                                                                 "Dictionary", "Reserved8", "Rational", "Rational" };
 
     public final static String[] methodTypeInstanceName = new String[] { "Integer", "Integer", "Integer", "Integer",
                                                                          "Long", "Long", "Long", "Long", 
