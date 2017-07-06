@@ -36,39 +36,38 @@ public final class TypeMask {
     
     public final static int Group = 0x10;                  // 10000 
  // public final static int OptionalGroup = 0x11;          // 10001 //not yet supported 
+
     
-    public final static int GoSub = 0x12;                  // 10010 for implementing unions and other complex structures
-    
-    
-    // 1
     //for sequence this is an uint32
     public final static int GroupLength = 0x14;            // 10100   10?00
-
-    //                                                              //bitset ? can be byte array or can be int or long?  Should be on the primary ring as fixed steps!!
     
+    													   // 10110 //Add new data type here
+                                                           // 10111 //Add new data type here
     
-    //                                                        11010 
-    //                                                        11011 
-    //                                                        11110 
-    //                                                        11111 
-    
-
     public final static int Dictionary = 0x18;             // 11000
-    public final static int SpacerGap = 0x1C;              // 11100  //TODO: C, add call to this and gen method.  must add new SpacerGap  into the script as needed, set in the ClientConfig to inject to the template.
+    
+    
+    public final static int Rational = 0x20;               // 11010
+    public final static int RationalOptional = 0x21;       // 11011 
+
+    //                                                        11110 //TODO: reserved for 128 ints?
+    //                                                        11111 //TODO: reserved for 128 ints?
         
-    public final static int[] ringBufferFieldSize = new int[] {   1, 1, 1, 1, 
-                                                                  2, 2, 2, 2, 
-                                                                  2, 2, 2, 2, 
+    public final static int[] ringBufferFieldSize = new int[] {   1, 1, 1, 1, //integers
+                                                                  2, 2, 2, 2, //longs 
+                                                                  2, 2, 2, 2, //text
                                                                   1, 1, 2, 2, //Decimals are represented as 2 tokens in the script this size only need show the first  
                                                                   0, 0, 0, 0,
-                                                                  1, 0, 0, 0, 0};
+                                                                  1, 0, 0, 0, //lenght
+                                                                  0, 0, 4, 4};//dictionary X Rationals
 
     public final static int[] ringBufferFieldVarLen = new int[] {   0, 0, 0, 0, 
 															        0, 0, 0, 0, 
 															        1, 1, 1, 1, 
 															        0, 0, 1, 1,  
 															        0, 0, 0, 0,
-															        0, 0, 0, 0, 0};
+															        0, 0, 0, 0,
+															        0, 0, 0, 0};
 
     //NOTE: if type is Decimal, jump by 2
     public final static int[] scriptTokenSize = new int[] {   1, 1, 1, 1, 
@@ -76,12 +75,13 @@ public final class TypeMask {
                                                               1, 1, 1, 1, 
                                                               2, 2, 1, 1,  
                                                               1, 1, 1, 1,
-                                                              1, 1, 1, 1, 1};
+                                                              1, 1, 1, 1,
+                                                              1, 1, 1, 1};
     
     public final static String[] xmlTypeName = new String[] { "uInt32", "uInt32", "int32", "int32", "uInt64", "uInt64", "int64", "int64",
         "string", "string", "string", "string", "decimal", "decimal", "byteVector", "byteVector",
         "group", "Reserved1", "Reserved2", "Reserved3", "length", "Reserved5",
-        "Reserved6", "Reserved7", "Dictionary" };
+        "Reserved6", "Reserved7", "Dictionary", "Reserved8", "rational", "rational" };
 
 
     // for code generation need to know the substring of the method related to
@@ -91,30 +91,33 @@ public final class TypeMask {
             "UTF8",
             "Decimal", // need exponent and mantissa strings.
             "Decimal", "Bytes", "Bytes", "Group", "Reserved1", "Reserved2", "Reserved3", "Length", "Reserved5",
-            "Reserved6", "Reserved7", "Dictionary" };
+            "Reserved6", "Reserved7", "Dictionary", "Reserved8", "Rational", "Rational" };
 
     public final static String[] methodTypeInstanceName = new String[] { "Integer", "Integer", "Integer", "Integer",
                                                                          "Long", "Long", "Long", "Long", 
                                                                          "Text", "Text", "Text", "Text",
-            "Decimal", // need exponent and mantissa strings.
-            "Decimal", "Bytes", "Bytes", "", "Reserved1", "Reserved2", "Reserved3", "", "Reserved5", "Reserved6",
-            "Reserved7", "this" };
+															            "Decimal", "Decimal", "Bytes", "Bytes",            
+															            "", "Reserved1", "Reserved2", "Reserved3", 
+															            "Integer", "Reserved5", "Reserved6", "Reserved7",
+															            "this","","Rational","Rational"};
+    
 
-    public final static String[] methodTypeSuffix = new String[] { "", "Optional", "", "Optional", "", "Optional", "",
-            "Optional", "", "Optional", "", "Optional", "", "Optional", "", "Optional", "", "", "", "", "", "", "", "",
-            "" };
+    public final static String[] methodTypeSuffix = new String[] { "", "Optional", "", "Optional",
+    		                                                       "", "Optional", "", "Optional", 
+    		                                                       "", "Optional", "", "Optional", 
+    		                                                       "", "Optional", "", "Optional", 
+    		                                                       "", "", "", "", 
+    		                                                       "", "", "", "",
+    		                                                       "", "", "", "Optional"};
     
     
-    public final static String[] primitiveTypes = new String[] { "int", "int", "int", "int", "long", "long", "long", "long", "CharSequence", "CharSequence", "CharSequence",
-            "CharSequence", "Decimal", // need exponent and mantissa strings.
-            "Decimal", "DataInputBlobReader", "DataInputBlobReader", "Group", "Reserved1", "Reserved2", "Reserved3", "Length", "Reserved5",
-            "Reserved6", "Reserved7", "Dictionary" };
-
-    // lots of room for the next revision, eg booleans and enums
-
-    // special flag used internally by FASTDynamic* to know when to return
-    // control back to the caller.
-    // public final static int Stop = 0x1F;//11111
+    public final static String[] primitiveTypes = new String[] { "int", "int", "int", "int",
+    		                                                     "long", "long", "long", "long", 
+    		                                                     "CharSequence", "CharSequence", "CharSequence", "CharSequence",
+    		                                                     "Decimal", "Decimal", "DataInputBlobReader", "DataInputBlobReader",
+    		                                                     "Group", "Reserved1", "Reserved2", "Reserved3", 
+    		                                                     "Length", "Reserved5", "Reserved6", "Reserved7", 
+    		                                                     "Dictionary", "", "Rational", "Rational"};
 
     private static String prefix(int len, char c, String value) {
         StringBuilder builder = new StringBuilder();
@@ -140,6 +143,13 @@ public final class TypeMask {
                type==TypeMask.LongSignedOptional ||
                type==TypeMask.LongUnsigned ||
                type==TypeMask.LongUnsignedOptional;
+                
+    }
+    
+    public static boolean isRational(int type) {
+        
+        return type==TypeMask.Rational ||
+               type==TypeMask.RationalOptional;
                 
     }
     
