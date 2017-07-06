@@ -354,6 +354,9 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     @Override
     public void run() {   
     	
+    	if (null == shutdownRequested) {
+    		throw new UnsupportedOperationException("startup() must be called before run.");
+    	}
     	//TODO: we want to monitor pipe content and flip execution order if they are full.
     	
     	

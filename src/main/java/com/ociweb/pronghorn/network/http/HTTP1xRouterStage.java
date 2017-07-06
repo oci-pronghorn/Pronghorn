@@ -304,7 +304,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         	int start = inputLengths[idx];
             int messageIdx = accumulateRunningBytes(idx, selectedInput);
             if (messageIdx < 0) {
-            	logger.info("detected EOF for {}",idx);
+            	//logger.trace("detected EOF for {}",idx);
             	//accumulate these before shutdown?? also wait for all data to be consuemd.
                 isOpen[idx] = false;
                 if (inputLengths[idx]<=0) {
