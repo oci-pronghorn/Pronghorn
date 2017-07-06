@@ -454,7 +454,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
             	
                     nearestNextRun = runStage(graphManager, someAreRateLimited, nearestNextRun, s, rates[s], lastRunStage = stages[s], this); 
                     lastRunStage = null;
-                    
+  
                     //if one is not shutting down then keep going
                     continueRun |= !GraphManager.isStageShuttingDown(graphManager, stages[s].stageId);
                     Thread.yield();
@@ -464,10 +464,10 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
             	shutdown();
              }
              nextRun = Long.MAX_VALUE==nearestNextRun ? 0 : nearestNextRun;
-              
-                    
              if (! isRunning.compareAndSet(1, 0) ) {
              }
+              
+                    
     }
 
 	private static long runStage(GraphManager graphManager, boolean someAreRateLimited, long nearestNextRun, int s, long rate, PronghornStage stage, NonThreadScheduler that) {
@@ -596,16 +596,21 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
     @Override
     public boolean awaitTermination(long timeout, TimeUnit unit) { 
 
+    		if (!shutdownRequested.get()) {
+    			throw new UnsupportedOperationException("call shutdown before awaitTerminination");
+    		}
         	long limit = System.nanoTime()+unit.toNanos(timeout);
-        	
-        	while (!isRunning.compareAndSet(0, 2)) {
-        		
-        		Thread.yield();
-        		if (System.nanoTime()>limit) {
-        			return false;
-        		}
-        	}
 
+        	if (isRunning.get()!=2) {
+        		//wait until we get shutdown or timeout.
+	        	while (!isRunning.compareAndSet(0, 2)) {	        		
+	        		Thread.yield();
+	        		if (System.nanoTime()>limit) {
+	        			return false;
+	        		}
+	        	}
+        	}
+    
             int s = stages.length;
             while (--s>=0) {
                 PronghornStage stage = stages[s];
