@@ -96,6 +96,7 @@ public class TrieParserTest {
 	byte[] data_cat_p_b = new byte[]{99,97,116,'%','b'};
 	byte[] data_catalyst = new byte[]{99,97,116,97,108,121,115,116};
 
+
 	@Test 
 	public void testExtractMultiBytes() {
 		TrieParserReader reader = new TrieParserReader(3);
@@ -1461,12 +1462,33 @@ public class TrieParserTest {
 		assertEquals(Arrays.toString(new byte[]{10,11,12,13}),Arrays.toString(expected));
 	}
 
-	/************
+	/*****************************
 	 * 
 	 * Test cases for Visitor
 	 * 
-	 * ***************
+	 * ***************************
 	 */
+
+	//Visitor for recording the results of each visit test case
+	ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
+		Set<Long> result_set = new HashSet<Long>();
+		@Override
+		public void addToResult(long l) {
+			result_set.add(l);
+		}
+		@Override
+		public void clearResult(){
+			result_set.clear();
+		}
+		@Override
+		public String toString() {
+			StringBuilder sb = new StringBuilder();
+			for(long l: result_set){
+				sb.append(l).append(" ");
+			}
+			return sb.toString().trim();
+		}
+	};
 
 	@Test 
 	public void visitor_test() {
@@ -1491,21 +1513,10 @@ public class TrieParserTest {
 		map.setValue(data3b, 1, 7, 7, value4);
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor, data1, 2, 3, 7);//103,104,105
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());
+
+		reader.visit(map, visitor, data1, 2, 3, 7);//103,104,105
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
 	}
 
 	/*
@@ -1526,21 +1537,10 @@ public class TrieParserTest {
 		//System.out.println(map.toString());
 		//System.out.println(map.toDOT(new StringBuilder()).toString());
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data_catalog, 0, data_catalog.length, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("91 93", visitor.toString());
+
+		reader.visit(map, visitor,data_catalog, 0, data_catalog.length, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("91 93", visitor.toString());
 	}
 
 	@Test 
@@ -1566,32 +1566,21 @@ public class TrieParserTest {
 		map.setValue(dataBytesMultiBytes3, 0, 5, 7, value3); //the /n is added last it takes priority and gets selected below.
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35 10", visitor.toString());
-			visitor.clearResult();
 
-			reader.visit(map, visitor,dataBytesMultiBytesValue2, 0, dataBytesMultiBytesValue2.length, 15);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35 10", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,dataBytesMultiBytesValue3, 0, dataBytesMultiBytesValue3.length, 15);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,dataBytesMultiBytesValue2, 0, dataBytesMultiBytesValue2.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,dataBytesMultiBytesValue3, 0, dataBytesMultiBytesValue3.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
 	}
 
 	@Test 
@@ -1608,33 +1597,22 @@ public class TrieParserTest {
 		map.setValue(data1, 2, 3, 7, value3); //103,104,105
 		assertFalse(map.toString(),map.toString().contains("ERROR")); 
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data1, 0, 3, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());
-			visitor.clearResult();
 
-			reader.visit(map, visitor,data1, 2, 3, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data1, 0, 3, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
 
-			//error: Jump index exceeded  //Fixed 
-			reader.visit(map, visitor,toParseEnd, 0, toParseEnd.length, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data1, 2, 3, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
+
+		//error: Jump index exceeded  //Fixed 
+		reader.visit(map, visitor,toParseEnd, 0, toParseEnd.length, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
 	}
 
 	@Test 
@@ -1653,38 +1631,27 @@ public class TrieParserTest {
 
 		map.setValue(data1, 2, 3, 7, value3);                                                       //3  added  103,104,105
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,wrapping(data1,4), 0, 3, 15);//101,102,103
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());
-			visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(data1,4), 2, 3, 15);//103,104,105
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(data1,4), 0, 3, 15);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
 
-			//error: Jump index exceeded //Fixed
-			reader.visit(map, visitor,wrapping(toParseMiddle,4), 2, toParseMiddle.length, 15);//10,11,12,13,127,102
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("47", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(data1,4), 2, 3, 15);//103,104,105
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(toParseEnd,4), 2, toParseEnd.length, 15);//102,10,11,12,13,127
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("47", visitor.toString());
-			visitor.clearResult();
+		//error: Jump index exceeded //Fixed
+		reader.visit(map, visitor,wrapping(toParseMiddle,4), 2, toParseMiddle.length, 15);//10,11,12,13,127,102
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("47", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(toParseEnd,4), 2, toParseEnd.length, 15);//102,10,11,12,13,127
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("47", visitor.toString());
+		visitor.clearResult();
 	}
 
 	@Test 
@@ -1714,53 +1681,41 @@ public class TrieParserTest {
 		assertFalse("\n"+map.toString(),map.toString().contains("ERROR"));
 
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,wrapping(data1,4), 0, 3, 15);//101,102,103
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(data1,4), 0, 3, 15);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(data1,4), 2, 3, 15);//103,104,105
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(data1,4), 2, 3, 15);//103,104,105
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
 
-			//error: jump index exceeded //Fixed
-			reader.visit(map, visitor,wrapping(toParseMiddle,4), 0, toParseMiddle.length, 15);// {100,101,10,11,12,13,127,102};
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("72 47", visitor.toString()); //-1 for sequential case & yielding "72 47" for visitor
-			visitor.clearResult();
+		//error: jump index exceeded //Fixed
+		reader.visit(map, visitor,wrapping(toParseMiddle,4), 0, toParseMiddle.length, 15);// {100,101,10,11,12,13,127,102};
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("72 47", visitor.toString()); //-1 for sequential case & yielding "72 47" for visitor
+		visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(toParseEnd,4), 2, toParseEnd.length, 15);// {100,101,102,10,11,12,13,127}
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("51 47", visitor.toString()); //23 for sequential case
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(toParseEnd,4), 2, toParseEnd.length, 15);// {100,101,102,10,11,12,13,127}
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("51 47", visitor.toString()); //23 for sequential case
+		visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(dataBytesExtractEndA,4), 0, dataBytesExtractEndA.length, 15);//100,101,102,'A','b',127
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("51 47", visitor.toString()); //51
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(dataBytesExtractEndA,4), 0, dataBytesExtractEndA.length, 15);//100,101,102,'A','b',127
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("51 47", visitor.toString()); //51
+		visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(dataBytesExtractEndB,4), 0, dataBytesExtractEndB.length, 15);//100,101,102,'B','b',127
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("69 47", visitor.toString()); //69
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(dataBytesExtractEndB,4), 0, dataBytesExtractEndB.length, 15);//100,101,102,'B','b',127
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("69 47", visitor.toString()); //69
+		visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(dataBytesExtractEndC,4), 0, dataBytesExtractEndC.length, 15);//100,101,102,'C','b',127
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("72 47", visitor.toString()); //72
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(dataBytesExtractEndC,4), 0, dataBytesExtractEndC.length, 15);//100,101,102,'C','b',127
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("72 47", visitor.toString()); //72
+		visitor.clearResult();
 	}
 
 	@Test 
@@ -1790,52 +1745,41 @@ public class TrieParserTest {
 
 		map.setValue(data1, 2, 3, 7, value3); //103,104,105
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,wrapping(data1,4), 0, 3, 15);//101,102,103
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());
-			visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(data1,4), 2, 3, 15);//103,104,105
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(data1,4), 0, 3, 15);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(dataBytesExtractStartA,4), 0, dataBytesExtractStartA.length, 15);//'A','b',127,100,101,102
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("51 23", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(data1,4), 2, 3, 15);//103,104,105
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(dataBytesExtractStartB,4), 0, dataBytesExtractStartB.length, 15);//'B','b',127,100,101,102
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("69 23", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(dataBytesExtractStartA,4), 0, dataBytesExtractStartA.length, 15);//'A','b',127,100,101,102
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("51 23", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(dataBytesExtractStartC,4), 0, dataBytesExtractStartC.length, 15);//'C','b',127,100,101,102
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23 72", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(dataBytesExtractStartB,4), 0, dataBytesExtractStartB.length, 15);//'B','b',127,100,101,102
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("69 23", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(toParseStart,4), 0, toParseStart.length, 15);//10,20,30,127,100,101,102,111
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("69 23", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(dataBytesExtractStartC,4), 0, dataBytesExtractStartC.length, 15);//'C','b',127,100,101,102
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23 72", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(toParseStartx,4), 0, toParseStartx.length, 15);//10,20,30,125,100,111,111
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("69 10", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(toParseStart,4), 0, toParseStart.length, 15);//10,20,30,127,100,101,102,111
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("69 23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(toParseStartx,4), 0, toParseStartx.length, 15);//10,20,30,125,100,111,111
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("69 10", visitor.toString());
+		visitor.clearResult();
 	}
 
 
@@ -1856,32 +1800,21 @@ public class TrieParserTest {
 		map.setValue(data1, 2, 3, 7, value3); //103,104,105
 		assertFalse(map.toString(),map.toString().contains("ERROR")); 
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data1, 0, 3, 7);//101,102,103
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());
-			visitor.clearResult();
 
-			reader.visit(map, visitor,data1, 2, 3, 7);//103,104,105
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data1, 0, 3, 7);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,toParseEnd, 0, toParseEnd.length, 7);//100,101,102,10,11,12,13,127
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data1, 2, 3, 7);//103,104,105
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,toParseEnd, 0, toParseEnd.length, 7);//100,101,102,10,11,12,13,127
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
 	}
 
 	@Test
@@ -1894,30 +1827,18 @@ public class TrieParserTest {
 
 		assertFalse(map.toString().contains("BRANCH_VALUE1"));
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			byte[] text1 = "Hello: 123\r".getBytes();
-			reader.visit(map, visitor,wrapping(text1,4), 0, text1.length, 15);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString());//23 for sequential case
-			visitor.clearResult();
 
-			byte[] text2 = "Hello: 123\r\n".getBytes();
+		byte[] text1 = "Hello: 123\r".getBytes();
+		reader.visit(map, visitor,wrapping(text1,4), 0, text1.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());//23 for sequential case
+		visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(text2,4), 0, text2.length, 15);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString());
-			visitor.clearResult();
+		byte[] text2 = "Hello: 123\r\n".getBytes();
+		reader.visit(map, visitor,wrapping(text2,4), 0, text2.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
 	}
 
 	@Test
@@ -1933,29 +1854,18 @@ public class TrieParserTest {
 
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			byte[] text1 = "unfollow/123".getBytes();
-			reader.visit(map, visitor,wrapping(text1,4), 0, text1.length, 15);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());
-			visitor.clearResult();
 
-			byte[] text2 = "unfollow/%u".getBytes();
-			reader.visit(map, visitor,wrapping(text2,4), 0, text2.length, 15);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());
-			visitor.clearResult();
+		byte[] text1 = "unfollow/123".getBytes();
+		reader.visit(map, visitor,wrapping(text1,4), 0, text1.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+
+		byte[] text2 = "unfollow/%u".getBytes();
+		reader.visit(map, visitor,wrapping(text2,4), 0, text2.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
 	}
 
 	@Test
@@ -1968,35 +1878,24 @@ public class TrieParserTest {
 
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			byte[] text1 = "/unfollow?user=1234x".getBytes();
-			reader.visit(map, visitor,wrapping(text1,5), 0, text1.length, 31);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35 23", visitor.toString()); //23
-			visitor.clearResult();
 
-			byte[] text2 = "/Hello: 123\r\n".getBytes();
-			reader.visit(map, visitor,wrapping(text2,5), 0, text2.length, 31);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString()); //35
-			visitor.clearResult();
+		byte[] text1 = "/unfollow?user=1234x".getBytes();
+		reader.visit(map, visitor,wrapping(text1,5), 0, text1.length, 31);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35 23", visitor.toString()); //23
+		visitor.clearResult();
 
-			byte[] text3 = "No root".getBytes();
-			reader.visit(map, visitor,wrapping(text3,5), 0, text3.length, 31);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString()); //-1
-			visitor.clearResult();
+		byte[] text2 = "/Hello: 123\r\n".getBytes();
+		reader.visit(map, visitor,wrapping(text2,5), 0, text2.length, 31);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString()); //35
+		visitor.clearResult();
+
+		byte[] text3 = "No root".getBytes();
+		reader.visit(map, visitor,wrapping(text3,5), 0, text3.length, 31);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString()); //-1
+		visitor.clearResult();
 	}
 
 
@@ -2010,23 +1909,12 @@ public class TrieParserTest {
 
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			byte[] text0 = "/unfollow?user=%u".getBytes();
-			reader.visit(map, visitor,wrapping(text0,5), 0, text0.length, 31);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35 23", visitor.toString()); //23
-			visitor.clearResult();
+
+		byte[] text0 = "/unfollow?user=%u".getBytes();
+		reader.visit(map, visitor,wrapping(text0,5), 0, text0.length, 31);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35 23", visitor.toString()); //23
+		visitor.clearResult();
 	}
 
 	@Test
@@ -2071,32 +1959,21 @@ public class TrieParserTest {
 		map.setValue(data1, 2, 3, Integer.MAX_VALUE, value3);
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data1, 0, 3, Integer.MAX_VALUE);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString()); //10
-			visitor.clearResult();
 
-			reader.visit(map, visitor,data1, 2, 3, Integer.MAX_VALUE);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString()); //35
-			visitor.clearResult();
+		reader.visit(map, visitor,data1, 0, 3, Integer.MAX_VALUE);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); //10
+		visitor.clearResult();
 
-			reader.visit(map, visitor,toParseMiddle, 0, toParseMiddle.length, Integer.MAX_VALUE);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString()); //23
-			visitor.clearResult();
+		reader.visit(map, visitor,data1, 2, 3, Integer.MAX_VALUE);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString()); //35
+		visitor.clearResult();
+
+		reader.visit(map, visitor,toParseMiddle, 0, toParseMiddle.length, Integer.MAX_VALUE);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); //23
+		visitor.clearResult();
 	}
 
 	@Test 
@@ -2116,32 +1993,21 @@ public class TrieParserTest {
 
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,wrapping(data1,3), 0, 3, 7);//101,102,103
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString()); //10
-			visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(data1,3), 2, 3, 7);//103,104,105
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString()); //35
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(data1,3), 0, 3, 7);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); //10
+		visitor.clearResult();
 
-			reader.visit(map, visitor,wrapping(toParseBeginning,3), 0, toParseBeginning.length, 7);//10,11,12,13,127,100,101,102
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35 23", visitor.toString()); //23 for sequential /  WHY 35???
-			visitor.clearResult();
+		reader.visit(map, visitor,wrapping(data1,3), 2, 3, 7);//103,104,105
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString()); //35
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(toParseBeginning,3), 0, toParseBeginning.length, 7);//10,11,12,13,127,100,101,102
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35 23", visitor.toString()); //23 for sequential /  WHY 35???
+		visitor.clearResult();
 	}
 
 	@Test
@@ -2152,29 +2018,18 @@ public class TrieParserTest {
 
 		map.setValue(data1, 0, 3, 7, value1); 
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data1, 0, 3, 7);//101,102,103
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString()); //10
-			visitor.clearResult();
 
-			map.setValue(data1, 0, 3, 7, value2);
+		reader.visit(map, visitor,data1, 0, 3, 7);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); //10
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data1, 0, 3, 7);//101,102,103
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString()); //10
-			visitor.clearResult();
+		map.setValue(data1, 0, 3, 7, value2);
+
+		reader.visit(map, visitor,data1, 0, 3, 7);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); //10
+		visitor.clearResult();
 	}
 
 	@Test
@@ -2186,29 +2041,18 @@ public class TrieParserTest {
 
 		map.setValue(data1, 5, 5, 7, value1);
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data1, 5, 5, 7);//106,107,108,....
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString()); //10
-			visitor.clearResult();
 
-			map.setValue(data1, 5, 5, 7, value2);
+		reader.visit(map, visitor,data1, 5, 5, 7);//106,107,108,....
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); //10
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data1, 5, 5, 7);//106,107,108,....
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString()); //10
-			visitor.clearResult();
+		map.setValue(data1, 5, 5, 7, value2);
+
+		reader.visit(map, visitor,data1, 5, 5, 7);//106,107,108,....
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); //10
+		visitor.clearResult();
 	}
 
 	@Test
@@ -2220,41 +2064,30 @@ public class TrieParserTest {
 		map.setValue(data1, 1, 3, 7, value1);
 		map.setValue(data2, 1, 3, 7, value2);
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data1, 1, 3, 7);//102,103,104
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString()); //10
-			visitor.clearResult();
 
-			reader.visit(map, visitor,data2, 1, 3, 7);//107,108,109
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString()); //23
-			visitor.clearResult();
+		reader.visit(map, visitor,data1, 1, 3, 7);//102,103,104
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); //10
+		visitor.clearResult();
 
-			//swap values
-			map.setValue(data1, 1, 3, 7, value2);
-			map.setValue(data2, 1, 3, 7, value1);
+		reader.visit(map, visitor,data2, 1, 3, 7);//107,108,109
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); //23
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data1, 1, 3, 7);//102,103,104
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString()); //23
-			visitor.clearResult();
+		//swap values
+		map.setValue(data1, 1, 3, 7, value2);
+		map.setValue(data2, 1, 3, 7, value1);
 
-			reader.visit(map, visitor,data2, 1, 3, 7);//107,108,109
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString()); //10
-			visitor.clearResult(); 
+		reader.visit(map, visitor,data1, 1, 3, 7);//102,103,104
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); //23
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data2, 1, 3, 7);//107,108,109
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); //10
+		visitor.clearResult(); 
 	}
 
 	@Test
@@ -2266,42 +2099,31 @@ public class TrieParserTest {
 		map.setValue(data1, 5, 5, 7, value1);
 		map.setValue(data2, 5, 5, 7, value2);
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data1, 5, 5, 7);//106,107,108,....
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString()); 
-			visitor.clearResult();
 
-			reader.visit(map, visitor,data2, 5, 5, 7);//111,112,113,....
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString()); 
-			visitor.clearResult();
+		reader.visit(map, visitor,data1, 5, 5, 7);//106,107,108,....
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); 
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data2, 5, 5, 7);//111,112,113,....
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); 
+		visitor.clearResult();
 
 
-			//swap values
-			map.setValue(data1, 5, 5, 7, value2);
-			map.setValue(data2, 5, 5, 7, value1);
+		//swap values
+		map.setValue(data1, 5, 5, 7, value2);
+		map.setValue(data2, 5, 5, 7, value1);
 
-			reader.visit(map, visitor,data1, 5, 5, 7);//106,107,108,....
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString()); 
-			visitor.clearResult();
+		reader.visit(map, visitor,data1, 5, 5, 7);//106,107,108,....
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); 
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data2, 5, 5, 7);//111,112,113,....
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString()); 
-			visitor.clearResult();
+		reader.visit(map, visitor,data2, 5, 5, 7);//111,112,113,....
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); 
+		visitor.clearResult();
 
 	}
 
@@ -2314,41 +2136,30 @@ public class TrieParserTest {
 		map.setValue(data2, 2, 5, 7, value1);
 		map.setValue(data3, 2, 5, 7, value2);
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data2, 2, 5, 7);//108,109,110,111,112
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString()); 
-			visitor.clearResult();
 
-			reader.visit(map, visitor,data3, 2, 5, 7);//108,109,120,121,122
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString()); 
-			visitor.clearResult();
+		reader.visit(map, visitor,data2, 2, 5, 7);//108,109,110,111,112
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); 
+		visitor.clearResult();
 
-			//swap values
-			map.setValue(data2, 2, 5, 7, value2);
-			map.setValue(data3, 2, 5, 7, value1);
+		reader.visit(map, visitor,data3, 2, 5, 7);//108,109,120,121,122
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); 
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data2, 2, 5, 7);//108,109,110,111,112
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString()); 
-			visitor.clearResult();
+		//swap values
+		map.setValue(data2, 2, 5, 7, value2);
+		map.setValue(data3, 2, 5, 7, value1);
 
-			reader.visit(map, visitor,data3, 2, 5, 7);//108,109,120,121,122
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString()); 
-			visitor.clearResult();       
+		reader.visit(map, visitor,data2, 2, 5, 7);//108,109,110,111,112
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); 
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data3, 2, 5, 7);//108,109,120,121,122
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); 
+		visitor.clearResult();       
 
 	}
 
@@ -2363,52 +2174,41 @@ public class TrieParserTest {
 		map.setValue(data4, 2, 5, 7, value3);
 		map.setValue(data2, 2, 5, 7, value1);
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data2, 2, 5, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString()); 
-			visitor.clearResult();
 
-			reader.visit(map, visitor,data3, 2, 5, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString()); 
-			visitor.clearResult();
+		reader.visit(map, visitor,data2, 2, 5, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); 
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data4, 2, 5, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString()); 
-			visitor.clearResult();
+		reader.visit(map, visitor,data3, 2, 5, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); 
+		visitor.clearResult();
 
-			//swap values
-			map.setValue(data2, 2, 5, 7, value3);
-			map.setValue(data3, 2, 5, 7, value2);
-			map.setValue(data4, 2, 5, 7, value1);
+		reader.visit(map, visitor,data4, 2, 5, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString()); 
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data4, 2, 5, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString()); 
-			visitor.clearResult();
+		//swap values
+		map.setValue(data2, 2, 5, 7, value3);
+		map.setValue(data3, 2, 5, 7, value2);
+		map.setValue(data4, 2, 5, 7, value1);
 
-			reader.visit(map, visitor,data3, 2, 5, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data4, 2, 5, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); 
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data2, 2, 5, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data3, 2, 5, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data2, 2, 5, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
 	}
 
 	@Test
@@ -2421,52 +2221,41 @@ public class TrieParserTest {
 		map.setValue(data4, 0, 6, 7, value2);
 		map.setValue(data5, 0, 6, 7, value3);
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data3, 0, 6, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());
-			visitor.clearResult();
 
-			reader.visit(map, visitor,data4, 0, 6, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data3, 0, 6, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data5, 0, 6, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data4, 0, 6, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
 
-			//swap values
-			map.setValue(data3, 0, 6, 7, value3);
-			map.setValue(data4, 0, 6, 7, value2);
-			map.setValue(data5, 0, 6, 7, value1);
+		reader.visit(map, visitor,data5, 0, 6, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data5, 0, 6, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());
-			visitor.clearResult();
+		//swap values
+		map.setValue(data3, 0, 6, 7, value3);
+		map.setValue(data4, 0, 6, 7, value2);
+		map.setValue(data5, 0, 6, 7, value1);
 
-			reader.visit(map, visitor,data4, 0, 6, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString()); 
-			visitor.clearResult();
+		reader.visit(map, visitor,data5, 0, 6, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data3, 0, 6, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString()); 
-			visitor.clearResult();
+		reader.visit(map, visitor,data4, 0, 6, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); 
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data3, 0, 6, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString()); 
+		visitor.clearResult();
 	}
 
 	@Test
@@ -2480,63 +2269,52 @@ public class TrieParserTest {
 		map.setValue(data2b, 1, 7, 7, value3);
 		map.setValue(data3b, 1, 7, 7, value4);
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data2, 1, 7, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());
-			visitor.clearResult();
 
-			reader.visit(map, visitor,data3, 1, 7, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data2, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data2b, 1, 7, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data3, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data3b, 1, 7, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("47", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data2b, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
 
-			//swap values
-			map.setValue(data3b, 1, 7, 7, value1);
-			map.setValue(data2b, 1, 7, 7, value2);
-			map.setValue(data3,  1, 7, 7, value3);
-			map.setValue(data2,  1, 7, 7, value4);
+		reader.visit(map, visitor,data3b, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("47", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data2, 1, 7, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("47", visitor.toString());
-			visitor.clearResult();
+		//swap values
+		map.setValue(data3b, 1, 7, 7, value1);
+		map.setValue(data2b, 1, 7, 7, value2);
+		map.setValue(data3,  1, 7, 7, value3);
+		map.setValue(data2,  1, 7, 7, value4);
 
-			reader.visit(map, visitor,data3, 1, 7, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("35", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data2, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("47", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data2b, 1, 7, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data3, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data3b, 1, 7, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());
-			visitor.clearResult();      
+		reader.visit(map, visitor,data2b, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data3b, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();      
 	}
 
 
@@ -2554,41 +2332,30 @@ public class TrieParserTest {
 
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data1, 0, 8, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());
-			visitor.clearResult();
 
-			reader.visit(map, visitor,data1, 0, 3, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());//23 for sequential case
-			visitor.clearResult();
+		reader.visit(map, visitor,data1, 0, 8, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
 
-			//swap values
-			map.setValue(data1, 0, 8, 7, value2);
-			map.setValue(data1, 0, 3, 7, value1);
+		reader.visit(map, visitor,data1, 0, 3, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());//23 for sequential case
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data1, 0, 8, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());
-			visitor.clearResult();
+		//swap values
+		map.setValue(data1, 0, 8, 7, value2);
+		map.setValue(data1, 0, 3, 7, value1);
 
-			reader.visit(map, visitor,data1, 0, 3, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());//10 for sequential case
-			visitor.clearResult();
+		reader.visit(map, visitor,data1, 0, 8, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data1, 0, 3, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());//10 for sequential case
+		visitor.clearResult();
 	}
 
 	@Test
@@ -2605,42 +2372,31 @@ public class TrieParserTest {
 
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
-			reader.visit(map, visitor,data1, 0, 8, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());
-			visitor.clearResult();
 
-			reader.visit(map, visitor,data1, 0, 3, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("10", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data1, 0, 8, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data1, 0, 3, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
 
 
-			//swap values
-			map.setValue(data1, 0, 3, 7, value1);
-			map.setValue(data1, 0, 8, 7, value2);
+		//swap values
+		map.setValue(data1, 0, 3, 7, value1);
+		map.setValue(data1, 0, 8, 7, value2);
 
-			reader.visit(map, visitor,data1, 0, 8, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());
-			visitor.clearResult();
+		reader.visit(map, visitor,data1, 0, 8, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
 
-			reader.visit(map, visitor,data1, 0, 3, 7);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("23", visitor.toString());
-			visitor.clearResult();        
+		reader.visit(map, visitor,data1, 0, 3, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();        
 	}
 
 	@Test
@@ -2681,54 +2437,42 @@ public class TrieParserTest {
 		map.setValue(wrapping(b6,bits), 0, b6.length, mask, 6);
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
-		ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-			Set<Long> result_set = new HashSet<Long>();
-			@Override
-			public void addToResult(long l) {result_set.add(l);}
-			@Override
-			public void clearResult(){result_set.clear();}
-			@Override
-			public String toString() {
-				StringBuilder sb = new StringBuilder();
-				for(long l: result_set){sb.append(l + " ");}
-				return sb.toString().trim();
-			}};
 
-			byte[] example = "X-Wap-Profile:ABCD\r\nHello".getBytes();
-			reader.visit(map, visitor,wrapping(example,bits), 0, example.length, mask);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("", visitor.toString());//1
-			visitor.clearResult();
+		byte[] example = "X-Wap-Profile:ABCD\r\nHello".getBytes();
+		reader.visit(map, visitor,wrapping(example,bits), 0, example.length, mask);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("", visitor.toString());//1
+		visitor.clearResult();
 
 
-			byte[] example1 = "Content-Length: 1234\r\n".getBytes();
-			reader.visit(map, visitor,wrapping(example1,bits), 0, example1.length, mask);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("2", visitor.toString());//2 **Numeric issue
-			visitor.clearResult();
+		byte[] example1 = "Content-Length: 1234\r\n".getBytes();
+		reader.visit(map, visitor,wrapping(example1,bits), 0, example1.length, mask);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("2", visitor.toString());//2 **Numeric issue
+		visitor.clearResult();
 
-			byte[] example6 = "%b\r\n".getBytes();  // wildcard of wildcard
-			reader.visit(map, visitor,wrapping(example6,bits), 0, example6.length, mask);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("5 6", visitor.toString());//6
-			visitor.clearResult();
+		byte[] example6 = "%b\r\n".getBytes();  // wildcard of wildcard
+		reader.visit(map, visitor,wrapping(example6,bits), 0, example6.length, mask);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("5 6", visitor.toString());//6
+		visitor.clearResult();
 
-			byte[] example3 = "X-ATT-DeviceId:%b\r\n".getBytes(); // wildcard of wildcard
-			reader.visit(map, visitor,wrapping(example3,bits), 0, example3.length, mask);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("", visitor.toString());//3
-			visitor.clearResult();
+		byte[] example3 = "X-ATT-DeviceId:%b\r\n".getBytes(); // wildcard of wildcard
+		reader.visit(map, visitor,wrapping(example3,bits), 0, example3.length, mask);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("", visitor.toString());//3
+		visitor.clearResult();
 
-			byte[] example2 = "Content-Length: %u\r\n".getBytes();// wildcard of wildcard
-			reader.visit(map, visitor,wrapping(example2,bits), 0, example2.length, mask);
-			assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
-			assertEquals("2", visitor.toString());//2 **NUmeric issue again
-			visitor.clearResult();
+		byte[] example2 = "Content-Length: %u\r\n".getBytes();// wildcard of wildcard
+		reader.visit(map, visitor,wrapping(example2,bits), 0, example2.length, mask);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("2", visitor.toString());//2 **NUmeric issue again
+		visitor.clearResult();
 	}
 
 	public static void main(String[] args) {
 		//speedReadTest();
-		new TrieParserTest().visitor_testExtractBytesEndStart(); 
+		//new TrieParserTest().visitor_testExtractBytesEndStart(); 
 	}
 
 	public static void speedReadTest() {
