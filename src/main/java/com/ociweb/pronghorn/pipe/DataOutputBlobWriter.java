@@ -1,17 +1,14 @@
 package com.ociweb.pronghorn.pipe;
 
-import java.io.DataOutput;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.util.Appendables;
-import com.ociweb.pronghorn.util.ByteConsumer;
 
-public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStream implements DataOutput, Appendable, ByteConsumer {
+public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter {
 
     protected final Pipe<S> backingPipe;
     private final byte[] byteBuffer;
@@ -69,6 +66,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     	return activePosition - startPosition;
     }
     
+    @Override
     public int remaining() {
     	int result = (lastPosition - activePosition);
     	//int consumed = activePosition - startPosition;
@@ -187,6 +185,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         return len;
 	}
  
+	@Override
     public int length() {
         return length(this);
     }
@@ -200,20 +199,23 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
 	private static <T extends MessageSchema<T>> int dif(DataOutputBlobWriter<T> writer, int pos1, int pos2) {
 		return (pos2>=pos1) ? (pos2-pos1) : (writer.backingPipe.sizeOfBlobRing - (writer.byteMask & pos1))+(pos2 & writer.byteMask);
 	}
-    
+	
+	@Override
     public byte[] toByteArray() {
         byte[] result = new byte[length()];        
         Pipe.copyBytesFromToRing(byteBuffer, startPosition, byteMask, result, 0, Integer.MAX_VALUE, result.length);
         return result;
     }
  
-    
-    public void writeObject(Object object) throws IOException {
-
-           	ObjectOutputStream oos = new ObjectOutputStream(this); //writes stream header
-            oos.writeObject(object);            
-            oos.flush();
-            
+	@Override
+    public void writeObject(Object object) {
+		    try {
+	           	ObjectOutputStream oos = new ObjectOutputStream(this); //writes stream header
+	            oos.writeObject(object);            
+	            oos.flush();
+		    } catch (IOException e) {
+		    	throw new RuntimeException(e);
+		    }
             assert(Pipe.validateVarLength(this.backingPipe, length(this)));
             
     }
@@ -304,6 +306,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         activePosition = writeUTF(this, s, s.length(), byteMask, byteBuffer, activePosition);
     }
     
+	@Override
     public void writeUTF8Text(CharSequence s) {
     	encodeAsUTF8(this,s);
     }
@@ -374,10 +377,12 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         return pos;
     }
     
+	@Override
     public void writeUTF(CharSequence s) {
         activePosition = writeUTF(this, s, s.length(), byteMask, byteBuffer, activePosition);
     }    
     
+	@Override
     public void writeASCII(CharSequence s) {
         byte[] localBuf = byteBuffer;
         int mask = byteMask;
@@ -400,6 +405,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
 		byteBuffer[byteMask & activePosition++] = value;
 	}
     
+	@Override
     public void writeByteArray(byte[] bytes) {
         activePosition = writeByteArray(this, bytes, bytes.length, byteBuffer, byteMask, activePosition);
     }
@@ -410,6 +416,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
 		return pos+len;
     }
 
+	@Override
     public void writeCharArray(char[] chars) {
         activePosition = writeCharArray(chars, chars.length, byteBuffer, byteMask, activePosition);
     }
@@ -422,6 +429,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         return pos;
     }
 
+	@Override
     public void writeIntArray(int[] ints) {
         activePosition = writeIntArray(ints, ints.length, byteBuffer, byteMask, activePosition);
     }
@@ -434,6 +442,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         return pos;
     }
 
+	@Override
     public void writeLongArray(long[] longs) {
         activePosition = writeLongArray(longs, longs.length, byteBuffer, byteMask, activePosition);
     }
@@ -446,6 +455,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         return pos;
     }
 
+	@Override
     public void writeDoubleArray(double[] doubles) {
         activePosition = writeDoubleArray(doubles, doubles.length, byteBuffer, byteMask, activePosition);
     }
@@ -458,6 +468,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         return pos;
     }
 
+	@Override
     public void writeFloatArray(float[] floats) {
         activePosition = writeFloatArray(floats, floats.length, byteBuffer, byteMask, activePosition);
     }
@@ -470,6 +481,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         return pos;
     }
 
+	@Override
     public void writeShortArray(short[] shorts) {
         activePosition = writeShortArray(shorts, shorts.length, byteBuffer, byteMask, activePosition);
     }
@@ -482,6 +494,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         return pos;
     }
 
+	@Override
     public void writeBooleanArray(boolean[] booleans) {
         activePosition = writeBooleanArray(booleans, booleans.length, byteBuffer, byteMask, activePosition);
     }
@@ -494,6 +507,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         return pos;
     }
 
+	@Override
     public void writeUTFArray(String[] utfs) {
         activePosition = writeUTFArray(utfs, utfs.length, byteBuffer, byteMask, activePosition);
     }
@@ -506,6 +520,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         return pos;
     }    
     
+	@Override
     public void write(byte[] source, int sourceOff, int sourceLen, int sourceMask) {
     	DataOutputBlobWriter.write(this, source, sourceOff, sourceLen, sourceMask);
     }
@@ -545,7 +560,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     ///////////////////////////////////////////////
     ///New idea: Packed char sequences
     ///////////////////////////////////////////////
-    
+	@Override
     public final void writePackedString(CharSequence text) {
         writePackedChars(this,text);
     }
@@ -582,15 +597,17 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     //////////////////////////////////////////////////////////////////////////////////
     //Write signed using variable length encoding as defined in FAST 1.1 specification
     //////////////////////////////////////////////////////////////////////////////////
-    
+	@Override
     public final void writePackedLong(long value) {
         writePackedLong(this,value);
     }
     
+	@Override
     public final void writePackedInt(int value) {
         writePackedInt(this,value);
     }
     
+	@Override
     public final void writePackedShort(short value) {
         writePackedInt(this,value);
     }

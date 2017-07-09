@@ -237,12 +237,7 @@ public class DataInputOutputTest {
         for(int i = 0; i<testSize; i++) {
             String expected = Integer.toHexString(testIntValueGenerator(r,i));
             String actual = null;
-            try {
-                actual = in.readPackedChars(new StringBuilder()).toString();
-            } catch (IOException e) {
-                e.printStackTrace();
-                fail();
-            }
+            actual = in.readPackedChars(new StringBuilder()).toString();
             
             if (!expected.equals(actual)) {
                 String expBinaryString = expected;

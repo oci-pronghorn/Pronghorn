@@ -2,7 +2,6 @@ package com.ociweb.pronghorn.pipe;
 
 import java.io.DataInput;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.ObjectInputStream;
 
 import org.slf4j.Logger;
@@ -13,7 +12,7 @@ import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.math.Decimal;
 
-public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStream implements DataInput {
+public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader {
 
     private final StringBuilder workspace;
     private final Pipe<S> pipe;
@@ -131,7 +130,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         }        
     }
     
-        
+    @Override    
     public boolean hasRemainingBytes() {
         return (byteMask & position) != bytesHighBound;
     }
@@ -346,18 +345,18 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
     
     
     @Override
-    @Deprecated
     public String readUTF() { //use this two line implementation
         int length = readShort(); //read first 2 byte for length in bytes to convert.
         return readUTFOfLength(length);
     }
     
-    @Deprecated
+    @Override
     public <A extends Appendable> A readUTF(A target) {
         int length = readShort(); //read first 2 byte for length in bytes to convert.    
         return readUTFOfLength(length, target);
     }
     
+    @Override
     public String readUTFOfLength(int length) {
         workspace.setLength(0);
         try {
@@ -367,6 +366,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         }
     }
     
+    @Override
     public <A extends Appendable> A readUTFOfLength(int length, A target) {      
         try {
         	return readUTF(this, length, target);
@@ -375,17 +375,18 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         }
     }
     
-
+    @Override
 	public long parseUTF(TrieParserReader reader, TrieParser trie) {
 		int len = readShort();		
 		
 		long result = reader.query(reader, trie, backing, position, len, byteMask);
 		if (result!=-1) {
-			position+=len;//only move upon succcesful parse.
+			position+=len;//only move upon successful parse.
 		}		
 		return result;
 	}
     
+    @Override
 	public boolean equalUTF(byte[] equalText) {
 		int len = readShort();
 		if (len!=equalText.length) {
@@ -403,10 +404,12 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
 		return true;
 	}
 	
+    @Override
 	public boolean equalBytes(byte[] bytes) {
 		return equalBytes(bytes, 0, bytes.length);
 	}
 	
+    @Override
 	public boolean equalBytes(byte[] bytes, int bytesPos, int bytesLen) {
 		int len = available();
 		if (len!=bytesLen) {
@@ -437,6 +440,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         return target;
     }
         
+    @Override
     public Object readObject()  {
         
         try {
@@ -460,6 +464,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         return len;
     }
         
+    
     public <T extends MessageSchema<T>> void readInto(DataOutputBlobWriter<T> writer, int length) {
     	
     	DataOutputBlobWriter.write(writer, backing, position, length, byteMask);
@@ -520,17 +525,21 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
     ///////
     //Packed Chars
     //////
-    
-    public <A extends Appendable> A readPackedChars(A target) throws IOException {
+    @Override
+    public <A extends Appendable> A readPackedChars(A target) {
         readPackedChars(this,target);
         return target;
     }
     
-    public static <S extends MessageSchema<S>> void readPackedChars(DataInputBlobReader<S> that, Appendable target) throws IOException {
+    public static <S extends MessageSchema<S>> void readPackedChars(DataInputBlobReader<S> that, Appendable target) {
         int length = readPackedInt(that);
         int i = length;
-        while (--i>=0) {
-            target.append((char) readPackedInt(that));
+        try {
+	        while (--i>=0) {
+	            target.append((char) readPackedInt(that));
+	        }
+        } catch (IOException e) {
+        	throw new RuntimeException(e);
         }
     }
     
@@ -543,22 +552,27 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
     /**
      * Parse a 64 bit signed value 
      */
+    @Override
     public long readPackedLong() {   
             return readPackedLong(this);
     }
 
+    @Override
     public int readPackedInt() {   
         return readPackedInt(this);
     }
     
+    @Override
     public double readDecimalAsDouble() {
     	return Decimal.asDouble(readPackedLong(), readByte());
     }
     
+    @Override
     public long readDecimalAsLong() {
     	return Decimal.asLong(readPackedLong(), readByte());
     }
     
+    @Override
     public short readPackedShort() {
         return (short)readPackedInt(this);
     }
