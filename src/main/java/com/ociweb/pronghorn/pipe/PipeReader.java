@@ -736,7 +736,13 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	    Pipe.setWorkingTailPosition(pipe, Pipe.tailPosition(pipe));
 	}
 
+	public static void releaseAllPendingReadLock(Pipe pipe) {
+		Pipe.releaseAllPendingReadLock(pipe);
+	}
 	
+	public static void releaseAllPendingReadLock(Pipe pipe, int consumed) {
+		Pipe.releasePendingAsReadLock(pipe, consumed);
+	}
 	
 	public static boolean readNextWithoutReleasingReadLock(Pipe pipe) {
 		assert(Pipe.singleThreadPerPipeRead(pipe.id));
@@ -744,11 +750,13 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         
         if (FieldReferenceOffsetManager.isTemplateStart(Pipe.from(pipe), pipe.ringWalker.nextCursor)) {
             assert(Pipe.isReplaying(pipe) || pipe.ringWalker.nextWorkingTail!=Pipe.getWorkingTailPosition(pipe)) : "Only call release once per message";
-            Pipe.markBytesReadBase(pipe); //moves us forward so we can read the next fragment/message
-            long slabTail = pipe.ringWalker.nextWorkingTail;
-            int blobTail = Pipe.getWorkingBlobRingTailPosition(pipe);
+            //moves us forward so we can read the next fragment/message
+            Pipe.markBytesReadBase(pipe); 
+            PendingReleaseData.appendPendingReadRelease(pipe.pendingReleases, 
+            		                                    pipe.ringWalker.nextWorkingTail, 
+            		                                    Pipe.getWorkingBlobRingTailPosition(pipe), 
+            		                                    bytesConsumed);
             
-            PendingReleaseData.appendPendingReadRelease(pipe.pendingReleases, slabTail, blobTail, bytesConsumed);
             return true;
         } else {
             return false;

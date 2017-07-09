@@ -406,7 +406,7 @@ public class PipeWriter {
 	public static boolean tryWriteFragment(Pipe pipe, int fragmentId) {
 		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
 	    assert(null!=pipe);
-	    assert(Pipe.isInit(pipe)) : "Pipe must be initialized before use: "+pipe;
+	    assert(Pipe.isInit(pipe)) : "Pipe must be initialized before use: "+pipe+" call the method initBuffers";
 		return StackStateWalker.tryWriteFragment0(pipe, fragmentId, Pipe.from(pipe).fragDataSize[fragmentId], pipe.ringWalker.nextWorkingHead - (pipe.sizeOfSlabRing - Pipe.from(pipe).fragDataSize[fragmentId]));
 	}
 

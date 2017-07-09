@@ -89,7 +89,7 @@ public final class TypeMask {
     public final static String[] methodTypeName = new String[] { "IntegerUnsigned", "IntegerUnsigned", "IntegerSigned", "IntegerSigned", 
     		                                                     "LongUnsigned", "LongUnsigned", "LongSigned", "LongSigned",
     		                                                     "ASCII", "ASCII", "UTF8", "UTF8",
-                                                                 "Decimal", "Decimal", "Bytes", "Bytes", 
+                                                                 "Decimal", "Decimal", "ByteVector", "ByteVector", 
                                                                  "Group", "Reserved1", "Reserved2", "Reserved3", 
                                                                  "Length", "Reserved5", "Reserved6", "Reserved7", 
                                                                  "Dictionary", "Reserved8", "Rational", "Rational" };

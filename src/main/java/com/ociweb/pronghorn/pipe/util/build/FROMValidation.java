@@ -11,8 +11,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
+import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
@@ -179,7 +181,10 @@ public class FROMValidation {
 	            
     	        String messageConstantName = FieldReferenceOffsetManager.buildMsgConstName(encodedFrom, expectedMsgIdx);
     	        
-    	        appendAssignmentCode(generatedConstants, messageConstantName, expectedMsgIdx);
+    	        
+    	        		
+    	        
+    	        appendAssignmentCode(generatedConstants, messageConstantName, expectedMsgIdx, TokenBuilder.tokenToString(encodedFrom.tokens[expectedMsgIdx]));
     	        if (generateExampleMethods) {
     	        	methodName = FieldReferenceOffsetManager.buildName(encodedFrom, expectedMsgIdx);
     	        	appendSwitchCase(generatedSwitch, messageConstantName, methodName);
@@ -236,12 +241,12 @@ public class FROMValidation {
                         //       
     	                    	                
     	                String messageFieldConstantName = messageConstantName+"_FIELD_"+msgFieldName.toUpperCase().replace(' ','_')+"_"+imsgFieldId;    	                
-    	                appendAssignmentCode(generatedConstants, messageFieldConstantName, fieldLOC);
+    	                appendAssignmentCode(generatedConstants, messageFieldConstantName, fieldLOC, TokenBuilder.tokenToString(encodedFrom.tokens[fieldIdx]));
     	        
     	    	        if (generateExampleMethods) {
     	    	        	String varName = "field"+(msgFieldName.replace(' ','_'));    	    	        	
     	    	        	int token = encodedFrom.tokens[fieldIdx];
-    	    	        	appendConsumeMethodField(generatedConsumers, varName, messageFieldConstantName, token);
+    	    	        	appendConsumeMethodField(generatedConsumers, varName, messageFieldConstantName, token, schema);
     	    	        	appendProduceMethodField(generatedProducersTemp1, generatedProducersTemp2, varName, messageFieldConstantName, token);
     	    	        }
     	                
@@ -307,7 +312,7 @@ public class FROMValidation {
 
 
 
-	private static <S extends MessageSchema> boolean checkForExampleCode(S schema, boolean success, String startsWith) {
+	private static <S extends MessageSchema<S>> boolean checkForExampleCode(S schema, boolean success, String startsWith) {
 		boolean found = false;
     	for(Method m :schema.getClass().getMethods()) {
     		if (m.getName().startsWith(startsWith)) {
@@ -320,7 +325,7 @@ public class FROMValidation {
 		return success;
 	}
 
-	private static void appendConsumeMethodField(StringBuilder generatedConsumers, String varName, String constName, int token) {
+	private static <S extends MessageSchema<S>> void appendConsumeMethodField(StringBuilder generatedConsumers, String varName, String constName, int token, S schema) {
 		
 		int type = TokenBuilder.extractType(token);
 		
@@ -344,11 +349,13 @@ public class FROMValidation {
 													   .append(constName).append(")));\n");
 						
 		} else if (TypeMask.isByteVector(type)) {
-			    
-			generatedConsumers.append("    ByteBuffer ").append(varName).append(" = PipeReader.readBytes(input,").append(constName)
-													   .append(",ByteBuffer.allocate(PipeReader.readBytesLength(input,")
-													   .append(constName).append(")));\n");
-																     		
+			generatedConsumers
+								.append("    DataInputBlobReader<").append(schema.getClass().getSimpleName()).append("> ")
+								.append(varName)
+								.append(" = PipeReader.inputStream(input, ")
+								.append(constName)
+								.append(");\n");
+																	     		
 		} else {
 			throw new UnsupportedOperationException("unknown value "+type);
 		}
@@ -430,10 +437,10 @@ public class FROMValidation {
 		result.append("            break;\n");
 	}
 
-	private static void appendAssignmentCode(StringBuilder result, String constantName, int value) {
+	private static void appendAssignmentCode(StringBuilder result, String constantName, int value, String comment) {
        
         result.append("public static final int ").append(constantName).append(" = ");
-        Appendables.appendFixedHexDigits(result, value, 32).append(";\n");
+        Appendables.appendFixedHexDigits(result, value, 32).append("; //").append(comment).append("\n");
         
     }
 

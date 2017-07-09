@@ -3,13 +3,14 @@ package com.ociweb.pronghorn.pipe;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
+import java.util.Random;
 
 import org.junit.Test;
 
 public class PipeTrailingReadingTest {
 
     @Test
-    public void testRun() {
+    public void testRunLowLevel() {
      
         final int TOTAL_TEST_SIZE = 100000;
         
@@ -119,7 +120,7 @@ public class PipeTrailingReadingTest {
     }
     
     @Test
-    public void testMultiMessageConsume() {
+    public void testMultiMessageConsumeLowLevel() {
     	
     	
         final int MSG_IN_FLIGHT = 1000;
@@ -153,7 +154,7 @@ public class PipeTrailingReadingTest {
 	    		Pipe.confirmLowLevelWrite(dataPipe, Pipe.sizeOf(RawDataSchema.instance, RawDataSchema.MSG_CHUNKEDSTREAM_1));
 	    		Pipe.publishWrites(dataPipe);
 	    	}
-	        assertEquals(baseHeadPos, Pipe.getBlobWorkingHeadPosition(dataPipe));
+	        assertEquals(baseHeadPos, Pipe.getWorkingBlobHeadPosition(dataPipe));
 	        assertEquals(baseHeadPos, Pipe.getBlobHeadPosition(dataPipe)); //can only read up to this point
 	        
 	        
@@ -208,5 +209,254 @@ public class PipeTrailingReadingTest {
         return baseTailPos+expectedTailMovement;
 	}
     
+	
+		
+	@Test
+	public void testByteSpanConsumeHighLevel() {
+		
+		int testCases = 2;
+		while (--testCases >= 0) {
+		
+			Pipe<RawDataSchema> pipe = RawDataSchema.instance.newPipe(100, 40);
+			pipe.initBuffers();
+			
+			int testSize = 400;
+			byte[] testData = new byte[testSize];
+			/////
+			//build up our test data
+			/////
+			new Random().nextBytes(testData);
+			
+			//new clean empty pipe
+			assertTrue(pipe.toString(),pipe.toString().contains(" 0/512"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabTailPos 0"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabHeadPos 0"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobTailPos 0"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobHeadPos 0"));
+			
+			/////
+			//write the data to the pipe as a series of chunks.
+			/////
+			int u = 10;
+			int step = testSize/u;
+			int pos = 0;
+			while (--u>=0) {
+				RawDataSchema.publishChunkedStream(pipe, 
+						                           testData, pos, 
+												   step);
+				pos+=step;
+			}
+			
+			//filled pipe with 10 items each taking 4 positions in the slab
+			assertTrue(pipe.toString(),pipe.toString().contains(" 40/512"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabTailPos 0"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabHeadPos 40"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobTailPos 0"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobHeadPos 400"));
+			
+			
+			//////
+			//read the data back and span the chunks
+			//////
+			DataInputBlobReader<RawDataSchema> fieldByteArray = null;
+			while (PipeReader.tryReadFragment(pipe)) {
+			    int msgIdx = PipeReader.getMsgIdx(pipe);
+			    switch(msgIdx) {
+			        case RawDataSchema.MSG_CHUNKEDSTREAM_1:
+			        	if (null==fieldByteArray) {
+			        		//first call get stream
+			        		fieldByteArray = PipeReader.inputStream(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+			        	} else {		        	
+			        		//follow on calls grow the stream
+			        		fieldByteArray.accumHighLevelAPIField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+			        	}
+			        	
+			        break;
+			        case -1:
+			            fail();
+			        break;
+			    }
+			    PipeReader.readNextWithoutReleasingReadLock(pipe);
+			}
+			
+			//pipe has no more data to read however the consumer is holding the tail position back
+			assertTrue(pipe.toString(),pipe.toString().contains(" 40/512"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabTailPos 0"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabHeadPos 40"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobTailPos 0"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobHeadPos 400"));
+			
+			int dataAvail = fieldByteArray.available();
+			assertEquals(400, dataAvail);
+			
+			assertTrue(fieldByteArray.equalBytes(testData));		
+			
+			
+			boolean testWithAll = testCases==0;		
+			if (testWithAll) {
+				PipeReader.releaseAllPendingReadLock(pipe);
+			} else {	
+				PipeReader.releaseAllPendingReadLock(pipe, dataAvail);			
+			}
+						
+			//pipe is fully empty and all the positions are moved forward
+			assertTrue(pipe.toString(),pipe.toString().contains(" 0/512"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabTailPos 40"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabHeadPos 40"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobTailPos 400"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobHeadPos 400"));
+			
+						
+			RawDataSchema.publishChunkedStream(pipe, testData, 0, step);
+			
+			//write one more item to the pipe
+			assertTrue(pipe.toString(),pipe.toString().contains(" 4/512"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabTailPos 40"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabHeadPos 44"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobTailPos 400"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobHeadPos 440"));
+			
+			boolean ok = PipeReader.tryReadFragment(pipe);
+			assertTrue(ok);
+			
+			DataInputBlobReader<RawDataSchema> fieldByteArray1 = PipeReader.inputStream(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+			
+			PipeReader.releaseReadLock(pipe);
+			
+			//consumed all the data the pipe is now empty
+			assertTrue(pipe.toString(),pipe.toString().contains(" 0/512"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabTailPos 44"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabHeadPos 44"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobTailPos 440"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobHeadPos 440"));
+			
+		}		
+	}
+	
+	
+	@Test
+	public void testByteSpanConsumeHighLevelInterleaveReadWrite() {
+		
+		int testCases = 2;
+		while (--testCases >= 0) {
+		
+			Pipe<RawDataSchema> pipe = RawDataSchema.instance.newPipe(100, 40);
+			pipe.initBuffers();
+			
+			int testSize = 400;
+			byte[] testData = new byte[testSize];
+			/////
+			//build up our test data
+			/////
+			new Random().nextBytes(testData);
+			
+			//new clean empty pipe
+			assertTrue(pipe.toString(),pipe.toString().contains(" 0/512"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabTailPos 0"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabHeadPos 0"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobTailPos 0"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobHeadPos 0"));
+			
+			/////
+			//write the data to the pipe as a series of chunks.
+			/////
+			int u = 10;
+			final int step = testSize/u;
+			int pos = 0;
+			while (--u>=0) {
+				RawDataSchema.publishChunkedStream(pipe, 
+						                           testData, pos, 
+												   step);
+				pos+=step;
+			}
+			
+			//filled pipe with 10 items each taking 4 positions in the slab
+			assertTrue(pipe.toString(),pipe.toString().contains(" 40/512"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabTailPos 0"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabHeadPos 40"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobTailPos 0"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobHeadPos 400"));
+			
+			
+			//////
+			//read the data back and span the chunks
+			//////
+			DataInputBlobReader<RawDataSchema> fieldByteArray = null;
+			int iteration = 0;
+			int testPosition = 0;
+			final int readLen = step*2;
+			while (PipeReader.tryReadFragment(pipe)) {
+			    int msgIdx = PipeReader.getMsgIdx(pipe);
+			    int consumed = 0;
+			    switch(msgIdx) {
+			        case RawDataSchema.MSG_CHUNKEDSTREAM_1:
+			        	if (null==fieldByteArray) {
+			        		//first call get stream
+			        		fieldByteArray = PipeReader.inputStream(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+			        	} else {		        	
+			        		//follow on calls grow the stream
+			        		fieldByteArray.accumHighLevelAPIField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+			        	}
+			        	
+			        	//every other message we read two together
+			        	if (1==(1&iteration++)) {
+			        		
+			        		//consume 2 messages at a time
+			        		fieldByteArray.equalBytes(testData, testPosition, readLen);
+			        		testPosition += readLen;
+			        	    consumed = readLen;
+			        	    
+			        	    assertEquals(0, fieldByteArray.available());
+			        	    
+			        	    
+			        	} else {
+			        		consumed = 0;
+			        	}
+			        break;
+			        case -1:
+			            fail();
+			        break;
+			    }
+			    //if the steam still has bytes do not release this for write over otherwise do release
+			    PipeReader.readNextWithoutReleasingReadLock(pipe);
+			    PipeReader.releaseAllPendingReadLock(pipe, consumed);
+
+			}
+			
+			//pipe has no more data to read however the consumer is holding the tail position back
+			assertTrue(pipe.toString(),pipe.toString().contains(" 0/512"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabTailPos 40"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabHeadPos 40"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobTailPos 40"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobHeadPos 400"));
+			
+			assertEquals(0, fieldByteArray.available());
+						
+			RawDataSchema.publishChunkedStream(pipe, testData, 0, step);
+			
+			//write one more item to the pipe
+			assertTrue(pipe.toString(),pipe.toString().contains(" 4/512"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabTailPos 40"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabHeadPos 44"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobTailPos 400"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobHeadPos 440"));
+			
+			boolean ok = PipeReader.tryReadFragment(pipe);
+			assertTrue(ok);
+			
+			DataInputBlobReader<RawDataSchema> fieldByteArray1 = PipeReader.inputStream(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+			
+			PipeReader.releaseReadLock(pipe);
+			
+			//consumed all the data the pipe is now empty
+			assertTrue(pipe.toString(),pipe.toString().contains(" 0/512"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabTailPos 44"));
+			assertTrue(pipe.toString(),pipe.toString().contains("slabHeadPos 44"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobTailPos 440"));
+			assertTrue(pipe.toString(),pipe.toString().contains("blobHeadPos 440"));
+			
+		}		
+	}
+	
     
 }

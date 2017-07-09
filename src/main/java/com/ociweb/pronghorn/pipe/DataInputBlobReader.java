@@ -102,7 +102,6 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
 
     
     public int accumLowLevelAPIField() {
-        
         if (0==this.length) {
             return openLowLevelAPIField();
         } else {        
@@ -115,7 +114,21 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
             
             return len;
         }
+    }
+    
+    
+    public int accumHighLevelAPIField(int loc) {
+        if (0==this.length) {
+            return openHighLevelAPIField(loc);
+        } else {        
         
+        	int len = PipeReader.readBytesLength(pipe, loc);
+        	            
+            this.length += len;
+            this.bytesHighBound = pipe.blobMask & (bytesHighBound + len);
+            
+            return len;
+        }        
     }
     
         
@@ -178,11 +191,12 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         if ((byteMask & position) == bytesHighBound) {
             return EOF_MARKER;
         }       
-        
+                
         int max = bytesRemaining(this);
         int len = b.length > max? max : b.length;      
+
         Pipe.copyBytesFromToRing(backing, position, byteMask, b, 0, Integer.MAX_VALUE, len);
-        position += b.length;
+        position += len;
         return len;
     }
     
@@ -388,6 +402,27 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
 		position = pp;
 		return true;
 	}
+	
+	public boolean equalBytes(byte[] bytes) {
+		return equalBytes(bytes, 0, bytes.length);
+	}
+	
+	public boolean equalBytes(byte[] bytes, int bytesPos, int bytesLen) {
+		int len = available();
+		if (len!=bytesLen) {
+			return false;
+		}
+		int pp = position;
+		while (--len>=0) {
+			if (bytes[bytesPos++]!=backing[byteMask & pp++]) {
+				return false;
+			}
+		}
+		//only moves forward when equal.
+		position = pp;
+		return true;
+	}
+	
 	
     public static <A extends Appendable, S extends MessageSchema<S>> A readUTF(DataInputBlobReader<S> reader, int length, A target) throws IOException {
         long charAndPos = ((long)reader.position)<<32;

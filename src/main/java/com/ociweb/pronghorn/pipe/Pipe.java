@@ -2922,6 +2922,7 @@ public class Pipe<T extends MessageSchema<T>> {
            //NOTE: the working tail is in use as part of the read and should not be modified
            //      this method only modifies the externally visible tail to let writers see it.
            pipe.slabRingTail.tailPos.lazySet(nextWorkingTail);
+           
            beginNewReleaseBatch(pipe); 
            
            assert(validateInsideData(pipe, pipe.blobReadBase));
