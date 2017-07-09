@@ -571,9 +571,11 @@ public class FixedThreadsScheduler extends StageScheduler {
 		
 		int i = threadCount;
 		boolean cleanExit = true;
+
 		while (--i>=0) {			
 			cleanExit &= ntsArray[i].awaitTermination(timeout, unit);			
 		}	
+
 		if (!cleanExit) {
 			validShutdownState();
 			return false;
