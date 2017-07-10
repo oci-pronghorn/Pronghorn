@@ -40,4 +40,11 @@ public abstract class BlobReader extends InputStream implements DataInput {
 	
 	public abstract short readPackedShort();
 	
+	public abstract byte readByte();
+	
+	public abstract short readShort();
+	
+	public abstract int skipBytes(int n);
+	
+	
 }

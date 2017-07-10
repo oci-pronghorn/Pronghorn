@@ -155,13 +155,20 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     }
    
     public int absolutePosition() {
-    	return position;
+    	return absolutePosition(this);
     }
     
     public void absolutePosition(int position) {
-    	this.position = position;
+    	absolutePosition(this, position);
     }
     
+    public static int absolutePosition(DataInputBlobReader<?> reader) {
+    	return reader.position;
+    }
+    
+    public static void absolutePosition(DataInputBlobReader<?> reader, int position) {
+    	reader.position = position;
+    }
     
     public void setPositionBytesFromStart(int byteIndexFromStart) {
     	assert(byteIndexFromStart<length);

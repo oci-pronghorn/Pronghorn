@@ -311,6 +311,11 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
     	encodeAsUTF8(this,s);
     }
 
+	@Override
+    public void writeUTF8Text(CharSequence s, int pos, int len) {
+    	encodeAsUTF8(this,s,pos,len);
+    }
+	
     private static <T extends MessageSchema<T>> int writeUTF(DataOutputBlobWriter<T> writer, CharSequence s, int len, int mask, byte[] localBuf, int pos) {
         int origPos = pos;
         pos+=2;
