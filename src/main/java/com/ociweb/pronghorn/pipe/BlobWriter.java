@@ -55,6 +55,10 @@ public abstract class BlobWriter extends OutputStream implements DataOutput, App
 	 
 	 abstract public void writePackedShort(short value);
 	 
+	 abstract public void writeLong(int v);
+	 
+	 abstract public void writeInt(int v);
+	 
 	 abstract public void writeShort(int v);
 
 	 abstract public void writeByte(int v);
