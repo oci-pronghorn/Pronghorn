@@ -209,6 +209,14 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
     }
 
     @Override
+    public long skip(long n) {
+    	long skipCount = Math.min(n, (long)(length-position));
+    	assert(skipCount+position < ((long)Integer.MAX_VALUE));
+        position += skipCount;
+        return skipCount;
+    }
+    
+    @Override
     public int skipBytes(int n) {
         
         int skipCount = Math.min(n, length-position);
@@ -500,6 +508,10 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
         return (short)readPackedInt(this);
     }
 
+    public static <S extends MessageSchema<S>> Pipe<S> getBackingPipe(DataInputBlobReader<S> that) {
+    	return that.pipe;
+    }
+    
     public static <S extends MessageSchema<S>> long readPackedLong(DataInputBlobReader<S> that) {
         byte v = that.backing[that.byteMask & that.position++];
         long accumulator = (~((long)(((v>>6)&1)-1)))&0xFFFFFFFFFFFFFF80l;
@@ -534,6 +546,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>>  extends InputStrea
 	public static void setupParser(DataInputBlobReader<?> input, TrieParserReader reader) {
 		TrieParserReader.parseSetup(reader, input.backing, input.position, bytesRemaining(input), input.byteMask); 
 	}
+
     
     
     

@@ -34,11 +34,6 @@ public final class TypeMask {
     public final static int ByteVector = 0x0E;             // 01110    (position and length) each in 32 bit int, high bits of position hold const and runtime rune/bcd encoding).
     public final static int ByteVectorOptional = 0x0F;     // 01111
     
-    @Deprecated
-    public final static int ByteArray = ByteVector;// 0x0E;              // 01110    (position and length) each in 32 bit int, high bits of position hold const and runtime rune/bcd encoding).
-    @Deprecated
-    public final static int ByteArrayOptional = ByteVectorOptional;// 0x0F;      // 01111
-
     public final static int Group = 0x10;                  // 10000 
  // public final static int OptionalGroup = 0x11;          // 10001 //not yet supported 
     

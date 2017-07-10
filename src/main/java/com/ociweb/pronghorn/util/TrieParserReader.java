@@ -1221,6 +1221,7 @@ public class TrieParserReader {
 			target.writeShort((short)reader.capturedValues[pos++]);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
+<<<<<<< HEAD
 		}        
 	}
 
@@ -1541,6 +1542,328 @@ public class TrieParserReader {
 
 		int meta = reader.capturedValues[pos];
 		///  byte dbase = (byte)((meta>>16)&0xFF);
+=======
+		 }        
+    }
+    
+    public static void writeCapturedUTF8(TrieParserReader reader, int idx, DataOutputBlobWriter<?> target) {
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int p = reader.capturedValues[pos++];
+        int l = reader.capturedValues[pos++];
+        int m = reader.capturedValues[pos++];
+        
+        //this data is already encoded as UTF8 so we do a direct copy
+        target.writeShort(l);
+        DataOutputBlobWriter.write(target, reader.capturedBlobArray, p, l, m);
+    
+   }
+    
+    public static void parseSetup(TrieParserReader trieReader, int loc, Pipe<?> input) {
+    	
+        parseSetup(trieReader, PipeReader.readBytesBackingArray(input, loc), 
+        		               PipeReader.readBytesPosition(input, loc), 
+        		               PipeReader.readBytesLength(input, loc), 
+        		               PipeReader.readBytesMask(input, loc));
+    }
+    
+
+    public static void parseSetup(TrieParserReader trieReader, Pipe<?> input) {
+        int meta = Pipe.takeRingByteMetaData(input);
+        int length    = Pipe.takeRingByteLen(input);
+        parseSetup(trieReader, Pipe.byteBackingArray(meta, input), Pipe.bytePosition(meta, input, length), length, Pipe.blobMask(input));
+    }
+    
+    
+    public static int capturedFieldCount(TrieParserReader reader) {
+        return reader.capturedPos>>2;
+    }
+    
+    public static void capturedFieldInts(TrieParserReader reader, int idx, int[] targetArray, int targetPos) {
+        
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type!=0);
+        targetArray[targetPos++] = type;
+        targetArray[targetPos++] = reader.capturedValues[pos++];
+        targetArray[targetPos++] = reader.capturedValues[pos++];
+        targetArray[targetPos++] = reader.capturedValues[pos++];
+        
+    }
+    
+    public static int capturedFieldBytes(TrieParserReader reader, int idx, byte[] target, int targetPos, int targetMask) {
+        
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int p = reader.capturedValues[pos++];
+        int l = reader.capturedValues[pos++];
+        int m = reader.capturedValues[pos++];
+
+        Pipe.copyBytesFromToRing(reader.capturedBlobArray, p, m, target, targetPos, targetMask, l);
+        
+        return l;
+    }
+    
+    public static int capturedFieldByte(TrieParserReader reader, int idx, int offset) {
+        
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int p = reader.capturedValues[pos++];
+        int l = reader.capturedValues[pos++];
+        int m = reader.capturedValues[pos++];
+
+        if (offset<l) {
+            return 0xFF & reader.capturedBlobArray[m & (p+offset)];            
+        } else {
+            return -1;
+        }
+    }
+
+
+    public static int capturedFieldBytes(TrieParserReader reader, int idx, ByteConsumer target) {
+        assert(null!=reader);
+        assert(null!=target);
+        
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int bpos = reader.capturedValues[pos++];
+        int blen = reader.capturedValues[pos++];
+        int bmsk = reader.capturedValues[pos++];
+        
+        target.consume(reader.capturedBlobArray, bpos, blen, bmsk);
+        return blen;
+
+    }
+    
+    public static long capturedFieldQuery(TrieParserReader reader, int idx, TrieParser trie) {
+    	  //two is the default for the stop bytes.
+    	  return capturedFieldQuery(reader,idx,2,trie);
+    }
+    
+    //parse the capture text as a query against yet another trie
+    public static <A extends Appendable> long capturedFieldQuery(TrieParserReader reader, int idx, int stopBytesCount, TrieParser trie) {
+        
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int bpos = reader.capturedValues[pos++];
+        int blen = reader.capturedValues[pos++];
+        int bmsk = reader.capturedValues[pos++];
+        
+        //we add 2 to the length to pick up the stop chars, this ensure we have enough text to match
+        return query(reader, trie, reader.capturedBlobArray, bpos, blen+stopBytesCount, bmsk, -1);
+
+    }
+    
+    public static void capturedFieldSetValue(TrieParserReader reader, int idx, TrieParser trie, long value) {
+        
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int bpos = reader.capturedValues[pos++];
+        int blen = reader.capturedValues[pos++];
+        int bmsk = reader.capturedValues[pos++];
+        
+        trie.setValue(reader.capturedBlobArray, bpos, blen, bmsk, value);
+ 
+    }
+    
+    public static <A extends Appendable> A capturedFieldBytesAsUTF8(TrieParserReader reader, int idx, A target) {
+        
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int bpos = reader.capturedValues[pos++];
+        int blen = reader.capturedValues[pos++];
+        int bmsk = reader.capturedValues[pos++];
+        
+        return Appendables.appendUTF8(target, reader.capturedBlobArray, bpos, blen, bmsk);
+
+    }
+    
+    public static <A extends Appendable> A capturedFieldBytesAsUTF8Debug(TrieParserReader reader, int idx, A target) {
+        
+        int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int bpos = reader.capturedValues[pos++];
+        int blen = reader.capturedValues[pos++];
+        int bmsk = reader.capturedValues[pos++];
+        
+        return Appendables.appendUTF8(target, reader.capturedBlobArray, bpos-10, blen+20, bmsk);
+
+    }
+        
+    public static int writeCapturedUTF8ToPipe(TrieParserReader reader, Pipe<?> target, int idx, int loc) {
+    	int pos = idx*4;
+        
+        int type = reader.capturedValues[pos++];
+        assert(type==0);
+        int bpos = reader.capturedValues[pos++];
+        int blen = reader.capturedValues[pos++];
+        PipeWriter.writeBytes(target, loc, reader.capturedBlobArray, bpos, blen, reader.capturedValues[pos++]);
+        
+        return blen;
+
+    }
+    
+    
+    public static <S extends MessageSchema<S>> int writeCapturedValuesToDataOutput(TrieParserReader reader, DataOutputBlobWriter<S> target, boolean writeIndex) throws IOException {
+    	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //NOTE: this method is used by the HTTP1xRouterStage class to write all the captured fields which is key to GreenLightning
+    	//      ensure that any changes here are matched by the methods consuming this DataOutput inside GreenLightnining.
+    	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    	    	
+    	int limit = reader.capturedPos;
+        int[] localCapturedValues = reader.capturedValues;
+        
+        int totalBytes = 0;
+        int i = 0;
+        while (i < limit) {
+            
+            int type = localCapturedValues[i++];
+            
+            int writePosition = target.position();
+    
+            if (isCapturedByteData(type)) {
+                
+                int p = localCapturedValues[i++];
+                int l = localCapturedValues[i++];
+                int m = localCapturedValues[i++];   
+                                
+                totalBytes += l;
+                
+                //       logger.info("captured text: {}", Appendables.appendUTF8(new StringBuilder(), reader.capturedBlobArray, p, l, m));
+                
+                //if those bytes were utf8 encoded then this matches the same as writeUTF8 without decode/encode                
+                target.writeShort(l); //write the bytes count as a short first, then the UTF-8 encoded string
+                DataOutputBlobWriter.write(target,reader.capturedBlobArray,p,l,m);
+                                
+            } else {
+                            	
+            	int sign = type;
+            	long value1 = localCapturedValues[i++];
+                long value2 = localCapturedValues[i++]; 
+                
+                int meta = localCapturedValues[i++]; 
+                boolean isDot = (meta<0);//if high bit is on this is a dot value
+            	byte base = (byte)((meta>>16)&0xFF);
+                //int len  = meta&0xFFFF;
+            	
+                long value = sign*((value1<<32)|value2);
+                if (isDot) {
+                	if (base!=10) {
+                		throw new UnsupportedOperationException("Does support decimal point values with hex, please use base 10 decimal.");
+                	}
+                } else {
+                	int position = 0;
+                	
+                	//Jump ahead to combine the dot part of the number if it is found.
+                	if (i+4<=limit //if there is following data
+                		&& (!isCapturedByteData(localCapturedValues[i])) //if next data is some kind of number	
+                		&& (localCapturedValues[i+3]<0)) { //if that next data point is the second half
+                		
+                		//decimal value                			
+                		//grab the dot value and roll it in.
+                		int dsign = localCapturedValues[i++];
+                		long dvalue1 = localCapturedValues[i++];
+                		long dvalue2 = localCapturedValues[i++];                    
+                		int dmeta = localCapturedValues[i++];
+                		
+                		byte dbase = (byte)((dmeta>>16)&0xFF);
+                		if (dbase!=10) {
+                			throw new UnsupportedOperationException("Does support decimal point values with hex, please use base 10 decimal.");
+                		}
+                		
+                		if (0 != position) {
+                			throw new UnsupportedOperationException("Expected left side of . to be a simple integer.");
+                		}
+                		
+                		int dlen  = dmeta&0xFFFF;
+                		
+                		long dvalue = dsign*((dvalue1<<32)|dvalue2);
+                		
+                		//shift the integer part up and add the decimal part
+                		value = (value*Decimal.longPow[dlen])+dvalue;
+                		
+                		//modify position to have the right number of points
+                		position = -dlen;  
+                	
+                		target.writePackedLong(value);
+                		//System.err.println("A write packed long "+value);
+                	    if (writeIndex && !DataOutputBlobWriter.tryWriteIntBackData(target, writePosition)) {
+                         	throw new IOException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+target.getPipe());
+                        }                         
+                	    //write second part and it gets its own entry.
+                		writePosition = target.position();                		
+                		target.writeByte(position);
+                		
+                		//System.out.println("wrote "+value+" "+position);
+                		
+                	} else {
+                		//System.out.println("wrote "+value);
+                		target.writePackedLong(value);
+                		//System.err.println("B write packed long "+value);
+                		//integers and rational only use normal long values, no position needed.
+                	}
+                	
+                	
+                }
+            }    
+            
+            if (writeIndex && !DataOutputBlobWriter.tryWriteIntBackData(target, writePosition)) {
+            	throw new IOException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for pipe varLength is "+target.getPipe().maxVarLen);
+            }
+            
+            
+        }        
+
+        return totalBytes;
+    }
+
+    public static long capturedDecimalMField(TrieParserReader reader, int idx) {
+    	
+           int pos = idx*4;
+           
+           long sign = reader.capturedValues[pos++];
+           assert(sign!=0);      	
+           return (long) ((((long)reader.capturedValues[pos++])<<32) | (0xFFFFFFFFL&reader.capturedValues[pos++]))*sign; 
+    }
+   
+    public static byte capturedDecimalEField(TrieParserReader reader, int idx) {
+    	
+      	  int meta = reader.capturedValues[(idx*4)+3];
+          return (meta<0) ? (byte) -(meta & 0xFFFF) : (byte)0;
+   }
+   
+    
+    
+    public static long capturedLongField(TrieParserReader reader, int idx) {
+    	
+   	    int pos = idx*4;
+        
+        int sign = reader.capturedValues[pos++];
+        assert(sign!=0);
+   	
+        long value = reader.capturedValues[pos++];
+        value = (value<<32) | (0xFFFFFFFF&reader.capturedValues[pos++]);
+
+        int meta = reader.capturedValues[pos];
+      ///  byte dbase = (byte)((meta>>16)&0xFF);
+>>>>>>> heads/oci-pronghorn/master
 		assert((meta&0xFFFF) != 0) : "No number was found, no digits were parsed.";
 
 		return value*sign; //TODO: needs unit test to cover positive and negative numbers.

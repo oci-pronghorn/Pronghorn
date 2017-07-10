@@ -13,7 +13,7 @@ import com.ociweb.pronghorn.util.ByteConsumer;
 
 public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStream implements DataOutput, Appendable, ByteConsumer {
 
-    private final Pipe<S> backingPipe;
+    protected final Pipe<S> backingPipe;
     private final byte[] byteBuffer;
     private final int byteMask;
     private static final Logger logger = LoggerFactory.getLogger(DataOutputBlobWriter.class);
@@ -22,7 +22,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
     private int activePosition;
     private int lastPosition;
     private int backPosition;
-    
+        
     public DataOutputBlobWriter(Pipe<S> p) {
         this.backingPipe = p;
         assert(null!=p) : "requires non null pipe";
@@ -38,8 +38,21 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
         
     }
 
+    /**
+     * Internal function only used when dependent clases want to add bounds check per method call.
+     * @param that
+     * @param x
+     */
+    protected static <T extends MessageSchema<T>> void checkLimit(DataOutputBlobWriter<T> that, int x) {
+    	if ( (that.activePosition+x) > that.lastPosition ) {
+    		throw new RuntimeException("This field is limited to a maximum length of "+that.backingPipe.maxVarLen
+    				                  +". Write less data or declare a larger max payload size. Already wrote "
+    				                  +(that.activePosition-that.startPosition)+" attempting to add "+x);
+    	}
+    }
+
     public static <T extends MessageSchema<T>> void openField(DataOutputBlobWriter<T> writer) {
-    	openFieldAtPosition(writer, Pipe.getWorkingBlobHeadPosition(writer.backingPipe));
+     	openFieldAtPosition(writer, Pipe.getWorkingBlobHeadPosition(writer.backingPipe));
     }
 
 	public static <T extends MessageSchema<T>> void openFieldAtPosition(DataOutputBlobWriter<T> writer,
@@ -49,12 +62,21 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends OutputStre
 		writer.startPosition = writer.activePosition = workingBlobHeadPosition;
         writer.lastPosition = writer.startPosition + writer.backingPipe.maxVarLen;
         writer.backPosition = writer.lastPosition;
+        
 	}
     
     public int position() {
-    	return activePosition-startPosition;
+    	return activePosition - startPosition;
     }
     
+    public int remaining() {
+    	int result = (lastPosition - activePosition);
+    	//int consumed = activePosition - startPosition;
+    	//System.err.println(result+" + "+consumed+" = "+(result+consumed)+" should be "+this.getPipe().maxVarLen);
+    			
+    	assert(result <= this.getPipe().maxVarLen);
+    	return result;
+    }
     
     public void debug() {
         Appendables.appendArray(System.out, '[', backingPipe.blobRing, startPosition, backingPipe.blobMask, ']',  activePosition-startPosition);
