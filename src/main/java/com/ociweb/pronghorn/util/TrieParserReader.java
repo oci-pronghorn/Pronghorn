@@ -1202,6 +1202,7 @@ public class TrieParserReader {
     public static void capturedFieldInts(TrieParserReader reader, int idx, int[] targetArray, int targetPos) {
         
         int pos = idx*4;
+        assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
         
         int type = reader.capturedValues[pos++];
         assert(type!=0);
@@ -1215,6 +1216,7 @@ public class TrieParserReader {
     public static int capturedFieldBytes(TrieParserReader reader, int idx, byte[] target, int targetPos, int targetMask) {
         
         int pos = idx*4;
+        assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
         
         int type = reader.capturedValues[pos++];
         assert(type==0);
@@ -1230,6 +1232,7 @@ public class TrieParserReader {
     public static int capturedFieldByte(TrieParserReader reader, int idx, int offset) {
         
         int pos = idx*4;
+        assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
         
         int type = reader.capturedValues[pos++];
         assert(type==0);
@@ -1250,6 +1253,7 @@ public class TrieParserReader {
         assert(null!=target);
         
         int pos = idx*4;
+        assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
         
         int type = reader.capturedValues[pos++];
         assert(type==0);
@@ -1271,6 +1275,7 @@ public class TrieParserReader {
     public static <A extends Appendable> long capturedFieldQuery(TrieParserReader reader, int idx, int stopBytesCount, TrieParser trie) {
         
         int pos = idx*4;
+        assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
         
         int type = reader.capturedValues[pos++];
         assert(type==0);
@@ -1286,6 +1291,7 @@ public class TrieParserReader {
     public static void capturedFieldSetValue(TrieParserReader reader, int idx, TrieParser trie, long value) {
         
         int pos = idx*4;
+        assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
         
         int type = reader.capturedValues[pos++];
         assert(type==0);
@@ -1300,6 +1306,7 @@ public class TrieParserReader {
     public static <A extends Appendable> A capturedFieldBytesAsUTF8(TrieParserReader reader, int idx, A target) {
         
         int pos = idx*4;
+        assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
         
         int type = reader.capturedValues[pos++];
         assert(type==0);
@@ -1314,6 +1321,7 @@ public class TrieParserReader {
     public static <A extends Appendable> A capturedFieldBytesAsUTF8Debug(TrieParserReader reader, int idx, A target) {
         
         int pos = idx*4;
+        assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
         
         int type = reader.capturedValues[pos++];
         assert(type==0);
@@ -1455,6 +1463,7 @@ public class TrieParserReader {
     public static long capturedDecimalMField(TrieParserReader reader, int idx) {
     	
            int pos = idx*4;
+           assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
            
            long sign = reader.capturedValues[pos++];
            assert(sign!=0);      	
@@ -1462,16 +1471,18 @@ public class TrieParserReader {
     }
    
     public static byte capturedDecimalEField(TrieParserReader reader, int idx) {
-    	
-      	  int meta = reader.capturedValues[(idx*4)+3];
+    	  int pos = (idx*4)+3;
+    	  assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
+        
+      	  int meta = reader.capturedValues[pos];
           return (meta<0) ? (byte) -(meta & 0xFFFF) : (byte)0;
    }
-   
-    
+       
     
     public static long capturedLongField(TrieParserReader reader, int idx) {
     	
    	    int pos = idx*4;
+        assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
         
         int sign = reader.capturedValues[pos++];
         assert(sign!=0);
