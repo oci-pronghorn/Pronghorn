@@ -218,7 +218,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     public void shutdown() {
         
     	if (shutdownCount>0) {
-    		logger.info("error, forced shutdown of router while its still waiting for {}", shutdownCount);
+    		logger.trace("warning, forced shutdown of "+getClass().getSimpleName()+" while its still waiting for {}", shutdownCount);
     	}
     	
     }

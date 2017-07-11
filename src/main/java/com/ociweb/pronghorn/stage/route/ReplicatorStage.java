@@ -45,6 +45,10 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 	public ReplicatorStage(GraphManager gm, Pipe<T> source, Pipe<T> ... targets) {
 		super(gm,source,targets);
 		
+		if (targets.length == 1) {
+			new Exception("You may want to consider removing this stage. It only replicates to 1 destination.");
+		}
+		
 		this.source = source;
 		this.targets = targets;
 		

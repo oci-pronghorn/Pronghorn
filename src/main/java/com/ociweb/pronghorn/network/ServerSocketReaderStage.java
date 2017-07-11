@@ -96,7 +96,7 @@ public class ServerSocketReaderStage extends PronghornStage {
             	Pipe.publishEOF(output[i]);  
         	}
         }
-        logger.warn("server reader has shut down");
+        logger.trace("server reader has shut down");
     }
 
     

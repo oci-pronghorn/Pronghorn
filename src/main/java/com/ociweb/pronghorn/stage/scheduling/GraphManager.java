@@ -1687,7 +1687,8 @@ public class GraphManager {
                   int inputCount = GraphManager.getInputPipeCount(graphManager, stage);
                   int outputCount = GraphManager.getOutputPipeCount(graphManager,stage.stageId);
                   
-                  logger.error("Unexpected error in "+stage+" which has "+inputCount+" inputs and "+outputCount+" outputs", t);
+                  logger.error("Unexpected error in "+stage+" which has "+
+                               inputCount+" inputs and "+outputCount+" outputs", t);
                   
 //                  int i = inputCount;
 //                  while (--i>=0) {

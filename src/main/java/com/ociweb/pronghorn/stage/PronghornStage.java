@@ -210,7 +210,15 @@ public abstract class PronghornStage {
         return join(p);
     }
     
-    
+    public static boolean noNulls(Pipe[] pipes) {
+    	int i = pipes.length;
+    	while (--i>=0) {
+    		if (null==pipes[i])  {
+    			return false;
+    		}
+    	}
+    	return true;
+    }
      public static Pipe[] join(Pipe[] pipes, Pipe ... additional) {
         
     	if (null==additional) {
