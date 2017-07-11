@@ -9,6 +9,7 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -1156,7 +1157,25 @@ public class TrieParserReader {
         		               PipeReader.readBytesLength(input, loc), 
         		               PipeReader.readBytesMask(input, loc));
     }
+
+    public <T extends DataInputBlobReader<S>, S extends MessageSchema<S>> void parseSetup(T reader) {
+    	parseSetup(this, reader);
+    }
     
+    public <T extends DataInputBlobReader<S>, S extends MessageSchema<S>> void parseSetup(T reader, int length) {
+    	parseSetup(this, reader, length);
+    }
+    
+    public static <S extends MessageSchema<S>> void parseSetup(TrieParserReader trieReader, 
+            												   DataInputBlobReader<S> reader) {
+    	DataInputBlobReader.setupParser(reader, trieReader);
+    }
+    
+    public static <S extends MessageSchema<S>> void parseSetup(TrieParserReader trieReader, 
+    		                                                   DataInputBlobReader<S> reader, 
+    		                                                   int length) {   	    	
+    	DataInputBlobReader.setupParser(reader, trieReader, length);
+    }
 
     public static void parseSetup(TrieParserReader trieReader, Pipe<?> input) {
         int meta = Pipe.takeRingByteMetaData(input);

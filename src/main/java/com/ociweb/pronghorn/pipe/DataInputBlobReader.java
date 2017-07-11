@@ -623,6 +623,9 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
 		TrieParserReader.parseSetup(reader, input.backing, input.position, bytesRemaining(input), input.byteMask); 
 	}
 
+	public static void setupParser(DataInputBlobReader<?> input, TrieParserReader reader, int length) {
+		TrieParserReader.parseSetup(reader, input.backing, input.position, Math.min(bytesRemaining(input), length), input.byteMask); 
+	}
     
     
     
