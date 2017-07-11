@@ -14,6 +14,7 @@ import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.util.math.Decimal;
 
 public class TrieParserReader {
@@ -43,8 +44,9 @@ public class TrieParserReader {
     private long result;
     private boolean normalExit;
     
+    private final int MAX_TEXT_LENGTH = 1024;
+    private transient Pipe<RawDataSchema> workingPipe = RawDataSchema.instance.newPipe(2,MAX_TEXT_LENGTH);
     
-
     private final static int MAX_ALT_DEPTH = 256; //full recursion on alternate paths from a single point.
     private int altStackPos = 0;
     private int[] altStackA = new int[MAX_ALT_DEPTH];
@@ -54,6 +56,12 @@ public class TrieParserReader {
     
     private short[] workingMultiStops = new short[MAX_ALT_DEPTH];
     private int[]   workingMultiContinue = new int[MAX_ALT_DEPTH];
+       
+    private int pos;
+    private int runLength;
+    private int type;
+    private int localSourcePos;
+    
     
     public String toString() {
     	return "Pos:"+sourcePos+" Len:"+sourceLen;
@@ -423,12 +431,7 @@ public class TrieParserReader {
                             byte[] source, int localSourcePos, int sourceLength, int sourceMask) {
         return query(reader,trie,source,localSourcePos, sourceLength, sourceMask, -1);
     }
-    
-    
-    private int pos;
-    private int runLength;
-    private int type;
-    private int localSourcePos;
+
     
     public static long query(TrieParserReader reader, TrieParser trie, 
                             byte[] source, int sourcePos, long sourceLength, int sourceMask, final long unfoundResult) {
@@ -449,6 +452,27 @@ public class TrieParserReader {
         
     }
 
+//    public int setUTF8Value(CharSequence cs, long value) {
+//        
+//        Pipe.addMsgIdx(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+//        
+//        int origPos = Pipe.getWorkingBlobHeadPosition(workingPipe);
+//        int len = Pipe.copyUTF8ToByte(cs, 0, cs.length(), workingPipe);
+//        Pipe.addBytePosAndLen(workingPipe, origPos, len);        
+//        Pipe.publishWrites(workingPipe);
+//        Pipe.confirmLowLevelWrite(workingPipe, Pipe.sizeOf(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+//        
+//        Pipe.takeMsgIdx(workingPipe);
+//        setValue(workingPipe, value);
+//        Pipe.confirmLowLevelRead(workingPipe, Pipe.sizeOf(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+//        
+//        //WARNING: this is not thread safe if set is called and we have not yet parsed!!
+//        Pipe.releaseReadLock(workingPipe);
+//        return len;
+//        
+//    }
+    
+    
 	private static long exitUponParse(TrieParserReader reader, TrieParser trie) {
 		reader.sourceLen -= (reader.localSourcePos-reader.sourcePos);
 		reader.sourcePos = reader.localSourcePos;        	        	

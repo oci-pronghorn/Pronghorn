@@ -93,8 +93,8 @@ public class TrieParser implements Serializable {
     short[] data; 
     private int limit = 0;
 
-    private final int MAX_TEXT_LENGTH = 4096;
-    private transient Pipe<RawDataSchema> workingPipe = RawDataSchema.instance.newPipe(3,MAX_TEXT_LENGTH);
+    private final int MAX_TEXT_LENGTH = 1024;
+    private transient Pipe<RawDataSchema> workingPipe = RawDataSchema.instance.newPipe(2,MAX_TEXT_LENGTH);
     
     private int maxExtractedFields = 0;//out of all the byte patterns known what is the maximum # of extracted fields from any of them.
     
