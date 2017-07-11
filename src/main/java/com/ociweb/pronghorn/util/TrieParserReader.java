@@ -344,6 +344,10 @@ public class TrieParserReader {
         logger.warn("to parse next:\n{}",toParse);
     }
     
+    public int parseSkip(int count) {
+    	return parseSkip(this, count);
+    }
+    
     public static int parseSkip(TrieParserReader reader, int count) {
     	
     	int len = Math.min(count, reader.sourceLen);
@@ -351,6 +355,10 @@ public class TrieParserReader {
         reader.sourceLen -= len;
 
         return len;
+    }
+    
+    public int parseSkipOne() {
+    	return parseSkipOne(this);
     }
     
     public static int parseSkipOne(TrieParserReader reader) {
