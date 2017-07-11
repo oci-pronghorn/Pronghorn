@@ -444,6 +444,10 @@ public class TrieParserTest {
 		byte[] text2 = "unfollow/%u".getBytes();
 		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text2,4), 0, text2.length, 15));
 
+		byte[] text3 = "unfollow/123]".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text3,4), 0, text3.length-1, 15));
+
+		
 	}
 
 	@Test
