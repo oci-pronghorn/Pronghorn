@@ -383,13 +383,13 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     }
     
     @Override
-	public long parseUTF(TrieParserReader reader, TrieParser trie) {
-		int len = readShort();		
+    public long parse(TrieParserReader reader, TrieParser trie, int length) {
+		long result = reader.query(reader, trie, backing, position, length, byteMask);
 		
-		long result = reader.query(reader, trie, backing, position, len, byteMask);
-		if (result!=-1) {
-			position+=len;//only move upon successful parse.
-		}		
+		if (result!=-1) {			
+			position = reader.sourcePos;
+		}
+		
 		return result;
 	}
     

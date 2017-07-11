@@ -16,7 +16,7 @@ public abstract class BlobReader extends InputStream implements DataInput {
 	
 	public abstract <A extends Appendable> A readUTFOfLength(int length, A target);
 	
-	public abstract long parseUTF(TrieParserReader reader, TrieParser trie);
+	public abstract long parse(TrieParserReader reader, TrieParser trie, int length);
 	
 	public abstract boolean equalUTF(byte[] equalText);
 	
