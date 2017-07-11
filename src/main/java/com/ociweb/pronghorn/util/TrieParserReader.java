@@ -284,6 +284,9 @@ public class TrieParserReader {
         return reader.sourceLen;
     }
     
+    public long parseNext(TrieParser trie) {
+    	return parseNext(this,trie);
+    }
     
     public static long parseNext(TrieParserReader reader, TrieParser trie) {
    
