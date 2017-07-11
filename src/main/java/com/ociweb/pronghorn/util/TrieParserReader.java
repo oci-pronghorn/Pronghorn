@@ -1221,11 +1221,11 @@ public class TrieParserReader {
 			target.writeShort((short)reader.capturedValues[pos++]);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
-<<<<<<< HEAD
+//<<<<<<< HEAD
 		}        
 	}
 
-	public static void writeCapturedUTF8(TrieParserReader reader, int idx, DataOutputBlobWriter<?> target) {
+	/*public static void writeCapturedUTF8(TrieParserReader reader, int idx, DataOutputBlobWriter<?> target) {
 		int pos = idx*4;
 
 		int type = reader.capturedValues[pos++];
@@ -1545,7 +1545,7 @@ public class TrieParserReader {
 =======
 		 }        
     }
-    
+*/    
     public static void writeCapturedUTF8(TrieParserReader reader, int idx, DataOutputBlobWriter<?> target) {
         int pos = idx*4;
         
@@ -1863,7 +1863,7 @@ public class TrieParserReader {
 
         int meta = reader.capturedValues[pos];
       ///  byte dbase = (byte)((meta>>16)&0xFF);
->>>>>>> heads/oci-pronghorn/master
+//>>>>>>> heads/oci-pronghorn/master
 		assert((meta&0xFFFF) != 0) : "No number was found, no digits were parsed.";
 
 		return value*sign; //TODO: needs unit test to cover positive and negative numbers.
