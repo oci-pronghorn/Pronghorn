@@ -9,6 +9,7 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.pipe.BlobWriter;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.MessageSchema;
@@ -1264,7 +1265,7 @@ public class TrieParserReader {
 		}        
 	}
 
-	public static void writeCapturedUTF8(TrieParserReader reader, int idx, DataOutputBlobWriter<?> target) {
+	public static void writeCapturedUTF8(TrieParserReader reader, int idx, BlobWriter target) {
 		int pos = idx*4;
 
 		int type = reader.capturedValues[pos++];
@@ -1275,7 +1276,7 @@ public class TrieParserReader {
 
 		//this data is already encoded as UTF8 so we do a direct copy
 		target.writeShort(l);
-		DataOutputBlobWriter.write(target, reader.capturedBlobArray, p, l, m);
+		DataOutputBlobWriter.write((DataOutputBlobWriter<?>) target, reader.capturedBlobArray, p, l, m);
 
 	}
 
