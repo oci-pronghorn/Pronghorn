@@ -228,7 +228,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    ///////////////////////////
 
 	    threadCount = totalThreads;
-	    //logger.debug("Threads Requested: {} Threads Used: {}",targetThreadCount,threadCount);
+	    //logger.info("Threads Requested: {} Threads Used: {}",targetThreadCount,threadCount);
 		return rootCounter;
 	}
 
@@ -366,8 +366,9 @@ public class FixedThreadsScheduler extends StageScheduler {
 				//find all the entry points where the inputs to this stage are NOT this same root
 				for(int j=1; j<=inputCount; j++) {	    			
 					int ringProducerStageId = GraphManager.getRingProducerStageId(graphManager, GraphManager.getInputPipe(graphManager, stage, j).id);
-					if (rootId(ringProducerStageId, rootsTable) != root || 
-					    isInLoop(stage.stageId, graphManager)) {
+					if (rootId(ringProducerStageId, rootsTable) != root 
+							|| GraphManager.isStageInLoop(graphManager, stage.stageId)
+					    ) {
 						isTop = true;
 					}
 				}
@@ -398,35 +399,8 @@ public class FixedThreadsScheduler extends StageScheduler {
 		}
 	}
 
+	//Is this stage in a loop where the pipes pass back to its self.
 	
-	private static boolean isInLoop(int stageId, GraphManager graphManager) {		
-		return isInPath(stageId, stageId, graphManager, GraphManager.countStages(graphManager));
-	}
-
-	private static boolean isInPath(int stageId, final int targetId, GraphManager graphManager, int maxRecursionDepth) {
-		//search all nodes until the end is reached or we see the duplicate
-		if (maxRecursionDepth>0) {
-			PronghornStage stage = GraphManager.getStage(graphManager, stageId);
-			
-			int c = GraphManager.getOutputPipeCount(graphManager, stageId);
-			for(int i=1; i<=c; i++) {
-				
-				Pipe outputPipe = GraphManager.getOutputPipe(graphManager, stage, i);
-							
-				int consumerId = GraphManager.getRingConsumerId(graphManager, outputPipe.id);
-				if (consumerId >= 0) {
-					//if stageId is not found then it is not in a loop but the consumer Id could be in a loop unrelated to the StageID, 
-					//to defend against this we have a maximum depth based on the stage count in the graphManager					
-				    if ((consumerId == targetId) || (isInPath(consumerId, targetId, graphManager, --maxRecursionDepth))) {
-				    	return true;
-				    }
-				}			
-			}
-		}
-		return false;
-	}
-		
-
 	private void createSchedulers(GraphManager graphManager, PronghornStage[][] stageArrays) {
 	
 		/////////////
@@ -439,9 +413,9 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    while (--k >= 0) {
 	    	if (null!=stageArrays[k]) {
 	    		
-	    		if (logger.isDebugEnabled()) {
-	    			logger.debug("{} Single thread for group {}", ntsIdx, Arrays.toString(stageArrays[k]) );
-	    		}
+	    		//if (logger.isDebugEnabled()) {
+	    		//	logger.info("{} Single thread for group {}", ntsIdx, Arrays.toString(stageArrays[k]) );
+	    		//}
 	    		PronghornStage pronghornStage = stageArrays[k][stageArrays[k].length-1];
 				String name = pronghornStage.stageId+":"+pronghornStage.getClass().getSimpleName()+"...";
 	    		

@@ -1251,12 +1251,13 @@ public class GraphManager {
 	
 	public static int getOutputPipeCount(GraphManager m, int stageId) {
 		
-		int ringId;
 		int idx = m.stageIdToOutputsBeginIdx[stageId];
 		int count = 0;
-		while (-1 != (ringId=m.multOutputIds[idx++])) {		
-			count++;
-		}	
+		if (idx>=0) {
+			while (-1 != (m.multOutputIds[idx++])) {		
+				count++;
+			}	
+		}
 		return count;
 	}
 
@@ -1290,12 +1291,14 @@ public class GraphManager {
 	}
 	
 	public static int getInputPipeCount(GraphManager m, int stageId) {
-		int ringId;
+		
 		int idx = m.stageIdToInputsBeginIdx[stageId];
 		int count = 0;
-		while (-1 != (ringId=m.multInputIds[idx++])) {	
-			count++;	
-		}				
+		if (idx>=0) {
+			while (-1 != (m.multInputIds[idx++])) {	
+				count++;	
+			}	
+		}
 		return count;
 	}
 	
@@ -1651,11 +1654,17 @@ public class GraphManager {
 		    }
 
 		    if (!stageForMonitorData(m, getStage(m, stageId))) {
-			    
+		    	int monitorStartupTimeout = 60_000; //1 min timeout for startup
+		    	Thread.yield();//let the Pipe get initialized if possible.		    	
 			    //blocking wait on the other stage to init this pipe, required for clean startup only.
-			    long timeout = System.currentTimeMillis()+20_000;
+			    long timeout = System.currentTimeMillis()+monitorStartupTimeout;
 				while (!Pipe.isInit(m.pipeIdToPipe[pipeId])) {
-					Thread.yield();
+					try {
+						Thread.sleep(2);//extra sleep for startup of monitoring.
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						break;
+					}
 					if (System.currentTimeMillis()>timeout) {
 						throw new RuntimeException("Check Graph, unable to startup "+GraphManager.getStage(m, stageId)+" due to output "+m.pipeIdToPipe[pipeId]+" consumed by "+getRingConsumer(m,m.pipeIdToPipe[pipeId].id));
 					}
@@ -1937,6 +1946,71 @@ public class GraphManager {
 
 	public static void accumRunTimeAll(GraphManager graphManager, int stageId) {		
 		graphManager.stageRunNS[stageId] = -1; //flag for 100%
+	}
+
+	private long[] stageBitMap;
+	private StageDetector loopDetector;
+	
+	
+	public static synchronized boolean isStageInLoop(GraphManager graphManager, final int stageId) {
+			
+		if (null == graphManager.loopDetector) {
+			graphManager.loopDetector = new StageDetector();
+		}
+		graphManager.loopDetector.setTarget(stageId);
+		
+		int c =	GraphManager.getOutputPipeCount(graphManager, stageId);
+		while (--c>=0) {				
+			int outPipeId = GraphManager.getOutputPipe(graphManager, stageId, c).id;
+			visitDownstream(GraphManager.getRingConsumerId(graphManager, outPipeId), 
+							graphManager, 
+							cleanStageBitMap(graphManager), 
+							0, 
+							graphManager.loopDetector);
+			if ( graphManager.loopDetector.wasDetected()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static long[] cleanStageBitMap(GraphManager graphManager) {
+		if (null==graphManager.stageBitMap) {
+			int maxStages = graphManager.stageCounter.get();
+			int bits = (int)Math.ceil(Math.log(maxStages)/Math.log(2));
+	    	int pow2Stages = 1<<bits;
+	    	int longStages = pow2Stages>>6;// divide by 64
+	    	graphManager.stageBitMap = new long[longStages];
+		}
+		
+		Arrays.fill(graphManager.stageBitMap, 0);
+		
+		long[] map = graphManager.stageBitMap;
+		return map;
+	}
+
+	private static void visitDownstream(int stageId, GraphManager graphManager, long[] bitMap, int depth, GraphVisitor visitor) {
+		assert(stageId<=graphManager.stageCounter.get()) : "This stage id is out of range";
+		
+		int mapIndex = stageId>>6;//divide by 64
+		int mapBit   = 1<<(stageId&0x3F);
+	    if ((bitMap[mapIndex]&mapBit)!=0) {
+			return;//we have encountered some place we have already been.
+		} else {
+			//mark this as a new place we have been
+			bitMap[mapIndex] |= mapBit;
+			//now call everyone downstream
+			
+			//visit children only if visitor returns true
+			if (visitor.visit(graphManager, stageId, depth)) {
+				int c =	GraphManager.getOutputPipeCount(graphManager, stageId);
+				while (--c>=0) {				
+					int outPipeId = GraphManager.getOutputPipe(graphManager, stageId, c).id;
+					visitDownstream(GraphManager.getRingConsumerId(graphManager, outPipeId), graphManager, bitMap, depth+1, visitor);
+				}
+			}
+		}
+		
 	}
 
 
