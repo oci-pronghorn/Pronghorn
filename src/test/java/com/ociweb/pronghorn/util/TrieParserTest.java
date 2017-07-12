@@ -1494,7 +1494,986 @@ public class TrieParserTest {
 		}
 	};
 
-	
+	@Test 
+	public void visitor_test() {
+		TrieParserReader reader = new TrieParserReader(3,true);
+		TrieParser map = new TrieParser(16,false);
+
+		map.setValue(data1, 0, 3, 7, value2);//101,102,103
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(data1, 0, 8, 7, value1);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(data2,  1, 7, 7, value1);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(data3,  1, 7, 7, value2);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(data2b, 1, 7, 7, value3);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(data3b, 1, 7, 7, value4);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+
+		reader.visit(map, visitor, data1, 2, 3, 7);//103,104,105
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+	}
+
+	/*
+	 * This is the assumed example with map containing "catalog", "cat%b" and search string being "catalog"
+	 */
+	@Test 
+	public void visitor_catalog_example() {
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+
+		map.setValue(data_catalog, 0, data_catalog.length, 7, value8);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+
+		map.setValue(data_cat_p_b, 0, data_cat_p_b.length, 7, value9);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		//System.out.println(map.toString());
+		//System.out.println(map.toDOT(new StringBuilder()).toString());
+
+
+		reader.visit(map, visitor,data_catalog, 0, data_catalog.length, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("91 93", visitor.toString());
+	}
+
+	@Test 
+	public void visitor_testExtractMultiBytes() {
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+
+		map.setValue(toParseEnd, 0, toParseEnd.length, 15, value4);
+		map.setValue(toParseMiddle, 0, toParseMiddle.length, 15, value4);
+		map.setValue(toParseBeginning, 0, toParseBeginning.length, 15, value4);        
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(dataBytesMultiBytes1, 0, 6, 7, value1);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		assertEquals(value1, TrieParserReader.query(reader,map,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15));
+
+		map.setValue(dataBytesMultiBytes2, 0, dataBytesMultiBytes2.length, 15, value2);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		assertEquals(value2, TrieParserReader.query(reader,map,dataBytesMultiBytesValue2, 0, dataBytesMultiBytesValue2.length, 15));
+
+		map.setValue(dataBytesMultiBytes3, 0, 5, 7, value3); //the /n is added last it takes priority and gets selected below.
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+
+		reader.visit(map, visitor,dataBytesMultiBytesValue1, 0, dataBytesMultiBytesValue1.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35 10", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,dataBytesMultiBytesValue2, 0, dataBytesMultiBytesValue2.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,dataBytesMultiBytesValue3, 0, dataBytesMultiBytesValue3.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+	}
+
+	@Test 
+	public void visitor_testExtractBytesEnd() {
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+
+		map.setValue(data1, 0, 3, 7, value1); //101,102,103
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractEnd,3), 0, dataBytesExtractEnd.length, 7, value2);
+		assertFalse(map.toString(),map.toString().contains("ERROR")); 
+
+		map.setValue(data1, 2, 3, 7, value3); //103,104,105
+		assertFalse(map.toString(),map.toString().contains("ERROR")); 
+
+
+		reader.visit(map, visitor,data1, 0, 3, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data1, 2, 3, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
+
+		//error: Jump index exceeded  //Fixed 
+		reader.visit(map, visitor,toParseEnd, 0, toParseEnd.length, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+	}
+
+	@Test 
+	public void visitor_testExtractBytesEnd2b() {
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+
+		map.setValue(wrapping(data1,4), 0, 3, 15, value1);                                          //1  added  101,102,103
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractEnd,4), 0, dataBytesExtractEnd.length, 15, value2);   //2  added  100,101,102,'%','b',127
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractEnd2,4), 0, dataBytesExtractEnd2.length, 15, value4); //4  added  100,101,102,'%','b',127,102
+		assertFalse("\n"+map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(data1, 2, 3, 7, value3);                                                       //3  added  103,104,105
+
+
+		reader.visit(map, visitor,wrapping(data1,4), 0, 3, 15);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(data1,4), 2, 3, 15);//103,104,105
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
+
+		//error: Jump index exceeded //Fixed
+		reader.visit(map, visitor,wrapping(toParseMiddle,4), 2, toParseMiddle.length, 15);//10,11,12,13,127,102
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("47", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(toParseEnd,4), 2, toParseEnd.length, 15);//102,10,11,12,13,127
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("47", visitor.toString());
+		visitor.clearResult();
+	}
+
+	@Test 
+	public void visitor_testExtractBytesEndAll() {
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16,false);
+
+		map.setValue(wrapping(data1,4), 0, 3, 15, value1);                                          //added  101,102,103
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractEndA,4), 0, dataBytesExtractEndA.length, 15, value5); //added  100,101,102,'A','b',127 
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractEnd,4), 0, dataBytesExtractEnd.length, 15, value2);   //added  100,101,102,'%','b',127
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractEndB,4), 0, dataBytesExtractEndB.length, 15, value6); //added  100,101,102,'B','b',127 
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractEnd2,4), 0, dataBytesExtractEnd2.length, 15, value4); //added  100,101,102,'%','b',127,102
+		assertFalse("\n"+map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractEndC,4), 0, dataBytesExtractEndC.length, 15, value7); //added   100,101,102,'C','b',127 
+		assertFalse("\n"+map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(data1, 2, 3, 7, value3);  //    101,102,[ 103,104,105, ] 106,107,108
+		assertFalse("\n"+map.toString(),map.toString().contains("ERROR"));
+
+
+		reader.visit(map, visitor,wrapping(data1,4), 0, 3, 15);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(data1,4), 2, 3, 15);//103,104,105
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
+
+		//error: jump index exceeded //Fixed
+		reader.visit(map, visitor,wrapping(toParseMiddle,4), 0, toParseMiddle.length, 15);// {100,101,10,11,12,13,127,102};
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("72 47", visitor.toString()); //-1 for sequential case & yielding "72 47" for visitor
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(toParseEnd,4), 2, toParseEnd.length, 15);// {100,101,102,10,11,12,13,127}
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("51 47", visitor.toString()); //23 for sequential case
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(dataBytesExtractEndA,4), 0, dataBytesExtractEndA.length, 15);//100,101,102,'A','b',127
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("51 47", visitor.toString()); //51
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(dataBytesExtractEndB,4), 0, dataBytesExtractEndB.length, 15);//100,101,102,'B','b',127
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("69 47", visitor.toString()); //69
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(dataBytesExtractEndC,4), 0, dataBytesExtractEndC.length, 15);//100,101,102,'C','b',127
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("72 47", visitor.toString()); //72
+		visitor.clearResult();
+	}
+
+	@Test 
+	public void visitor_testExtractBytesEndStart() {
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(1000,false);
+
+		map.setValue(wrapping(data1,4), 0, 3, 15, value1);                                              //101,102,103 e,f,g                                   
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractStart,4), 0, dataBytesExtractStart.length, 15, value2);  //{'%','b',127,100,101,102}; //def
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractStart2,4), 0, dataBytesExtractStart2.length, 15, value4);//{'%','b',127,102,101,102}; //fef
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractStart3,4), 0, dataBytesExtractStart3.length, 15, value1);//{'%','b',125,100,101,102};
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractStartA,4), 0, dataBytesExtractStartA.length, 15, value5); //'A','b',127,100,101,102 
+		map.setValue(wrapping(dataBytesExtractStartB,4), 0, dataBytesExtractStartB.length, 15, value6);  
+
+
+		assertFalse("\n"+map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractStartC,4), 0, dataBytesExtractStartC.length, 15, value7);  
+
+		map.setValue(data1, 2, 3, 7, value3); //103,104,105
+
+
+		reader.visit(map, visitor,wrapping(data1,4), 0, 3, 15);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(data1,4), 2, 3, 15);//103,104,105
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(dataBytesExtractStartA,4), 0, dataBytesExtractStartA.length, 15);//'A','b',127,100,101,102
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("51 23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(dataBytesExtractStartB,4), 0, dataBytesExtractStartB.length, 15);//'B','b',127,100,101,102
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("69 23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(dataBytesExtractStartC,4), 0, dataBytesExtractStartC.length, 15);//'C','b',127,100,101,102
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23 72", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(toParseStart,4), 0, toParseStart.length, 15);//10,20,30,127,100,101,102,111
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("69 23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(toParseStartx,4), 0, toParseStartx.length, 15);//10,20,30,125,100,111,111
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("69 10", visitor.toString());
+		visitor.clearResult();
+	}
+
+
+	@Test 
+	public void visitor_testExtractBytesEndMulti() {
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(1000);
+
+		map.setValue(data1, 0, 3, 7, value1); //101,102,103
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractEnd,3), 0, dataBytesExtractEnd.length, 7, value2);
+		map.setValue(wrapping(dataBytesExtractEnd3,3), 0, dataBytesExtractEnd3.length, 7, value3);
+		map.setValue(wrapping(dataBytesExtractEnd4,3), 0, dataBytesExtractEnd4.length, 7, value4);
+
+		assertFalse(map.toString(),map.toString().contains("ERROR")); 
+
+		map.setValue(data1, 2, 3, 7, value3); //103,104,105
+		assertFalse(map.toString(),map.toString().contains("ERROR")); 
+
+
+		reader.visit(map, visitor,data1, 0, 3, 7);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data1, 2, 3, 7);//103,104,105
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,toParseEnd, 0, toParseEnd.length, 7);//100,101,102,10,11,12,13,127
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+	}
+
+	@Test
+	public void visitor_testNonBranchInsert() {
+
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+		map.setUTF8Value("Hello: %u\r",   value2); //FYI, one should not see one of these in the wild often.
+		map.setUTF8Value("Hello: %u\r\n", value3); //This just ends later so there is no branch 
+
+		assertFalse(map.toString().contains("BRANCH_VALUE1"));
+
+
+		byte[] text1 = "Hello: 123\r".getBytes();
+		reader.visit(map, visitor,wrapping(text1,4), 0, text1.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());//23 for sequential case
+		visitor.clearResult();
+
+		byte[] text2 = "Hello: 123\r\n".getBytes();
+		reader.visit(map, visitor,wrapping(text2,4), 0, text2.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
+	}
+
+	@Test
+	public void visitor_testNumberAtEnd() {
+
+		TrieParserReader reader = new TrieParserReader(2,true);
+		TrieParser map = new TrieParser(16);
+		map.setValue("unfollow/%u".getBytes(),0,"unfollow/%u".length(),Integer.MAX_VALUE, value2);
+
+		byte[] pat = map.lastSetValueExtractonPattern();
+		assertEquals(1,pat.length);
+		assertEquals(TrieParser.ESCAPE_CMD_UNSIGNED_INT, pat[0]);
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+
+		byte[] text1 = "unfollow/123".getBytes();
+		reader.visit(map, visitor,wrapping(text1,4), 0, text1.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+
+		byte[] text2 = "unfollow/%u".getBytes();
+		reader.visit(map, visitor,wrapping(text2,4), 0, text2.length, 15);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+	}
+
+	@Test
+	public void visitor_testSimpleURLPaths() {
+
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16,false);
+		map.setUTF8Value("/unfollow?user=%u",   value2);
+		map.setUTF8Value("/%b", value3); 
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+
+		byte[] text1 = "/unfollow?user=1234x".getBytes();
+		reader.visit(map, visitor,wrapping(text1,5), 0, text1.length, 31);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35 23", visitor.toString()); //23
+		visitor.clearResult();
+
+		byte[] text2 = "/Hello: 123\r\n".getBytes();
+		reader.visit(map, visitor,wrapping(text2,5), 0, text2.length, 31);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString()); //35
+		visitor.clearResult();
+
+		byte[] text3 = "No root".getBytes();
+		reader.visit(map, visitor,wrapping(text3,5), 0, text3.length, 31);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString()); //-1
+		visitor.clearResult();
+	}
+
+
+	@Test
+	public void visitor_testNumericPatternMatchesPatternDef() {
+
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16,false);
+		map.setUTF8Value("/unfollow?user=%u",   value2);
+		map.setUTF8Value("/%b", value3); 
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+
+		byte[] text0 = "/unfollow?user=%u".getBytes();
+		reader.visit(map, visitor,wrapping(text0,5), 0, text0.length, 31);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35 23", visitor.toString()); //23
+		visitor.clearResult();
+	}
+
+	@Test
+	public void visitor_testOrder1Insert() {
+
+		//TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16, false);
+		map.setUTF8Value("%bb\n",   value2); 
+		String a = map.toString();
+
+		map.setUTF8Value("ab\n",    value3);  
+		String b = map.toString();
+		assertFalse(a.equals(b));
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+	}
+
+	@Test
+	public void visitor_testOrder2Insert() {
+
+		//TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+		map.setUTF8Value("ab\n",    value3);  
+		map.setUTF8Value("%bb\n",   value2); 
+		map.setUTF8Value("bb\n",    value3);     
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+	}
+
+	@Test 
+	public void visitor_testExtractBytesMiddle() {
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+
+		map.setValue(data1, 0, 3, Integer.MAX_VALUE, value1);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(dataBytesExtractMiddle, 0, dataBytesExtractMiddle.length, Integer.MAX_VALUE, value2);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(data1, 2, 3, Integer.MAX_VALUE, value3);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+
+		reader.visit(map, visitor,data1, 0, 3, Integer.MAX_VALUE);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); //10
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data1, 2, 3, Integer.MAX_VALUE);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString()); //35
+		visitor.clearResult();
+
+		reader.visit(map, visitor,toParseMiddle, 0, toParseMiddle.length, Integer.MAX_VALUE);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); //23
+		visitor.clearResult();
+	}
+
+	@Test 
+	public void visitor_testExtractBytesBeginning() {
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+
+		map.setValue(wrapping(data1,3), 0, 3, 7, value1);
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(dataBytesExtractBeginning,3), 0, dataBytesExtractBeginning.length, 7, value2);
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(data1,3), 2, 3, 7, value3);
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+
+		reader.visit(map, visitor,wrapping(data1,3), 0, 3, 7);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); //10
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(data1,3), 2, 3, 7);//103,104,105
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString()); //35
+		visitor.clearResult();
+
+		reader.visit(map, visitor,wrapping(toParseBeginning,3), 0, toParseBeginning.length, 7);//10,11,12,13,127,100,101,102
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35 23", visitor.toString()); //23 for sequential /  WHY 35???
+		visitor.clearResult();
+	}
+
+	@Test
+	public void visitor_testSimpleValueReplace() {
+
+		TrieParserReader reader = new TrieParserReader();
+		TrieParser map = new TrieParser(16);
+
+		map.setValue(data1, 0, 3, 7, value1); 
+
+
+		reader.visit(map, visitor,data1, 0, 3, 7);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); //10
+		visitor.clearResult();
+
+		map.setValue(data1, 0, 3, 7, value2);
+
+		reader.visit(map, visitor,data1, 0, 3, 7);//101,102,103
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); //10
+		visitor.clearResult();
+	}
+
+	@Test
+	public void visitor_testSimpleValueReplaceWrapping() {
+
+		TrieParserReader reader = new TrieParserReader();
+		TrieParser map = new TrieParser(16);
+
+
+		map.setValue(data1, 5, 5, 7, value1);
+
+
+		reader.visit(map, visitor,data1, 5, 5, 7);//106,107,108,....
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); //10
+		visitor.clearResult();
+
+		map.setValue(data1, 5, 5, 7, value2);
+
+		reader.visit(map, visitor,data1, 5, 5, 7);//106,107,108,....
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); //10
+		visitor.clearResult();
+	}
+
+	@Test
+	public void visitor_testTwoNonOverlapValuesWithReplace() {
+
+		TrieParserReader reader = new TrieParserReader();
+		TrieParser map = new TrieParser(16);        
+
+		map.setValue(data1, 1, 3, 7, value1);
+		map.setValue(data2, 1, 3, 7, value2);
+
+
+		reader.visit(map, visitor,data1, 1, 3, 7);//102,103,104
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); //10
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data2, 1, 3, 7);//107,108,109
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); //23
+		visitor.clearResult();
+
+		//swap values
+		map.setValue(data1, 1, 3, 7, value2);
+		map.setValue(data2, 1, 3, 7, value1);
+
+		reader.visit(map, visitor,data1, 1, 3, 7);//102,103,104
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); //23
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data2, 1, 3, 7);//107,108,109
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); //10
+		visitor.clearResult(); 
+	}
+
+	@Test
+	public void visitor_testTwoNonOverlapValuesWrappingWithReplace() {
+
+		TrieParserReader reader = new TrieParserReader();
+		TrieParser map = new TrieParser(16);        
+
+		map.setValue(data1, 5, 5, 7, value1);
+		map.setValue(data2, 5, 5, 7, value2);
+
+
+		reader.visit(map, visitor,data1, 5, 5, 7);//106,107,108,....
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); 
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data2, 5, 5, 7);//111,112,113,....
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); 
+		visitor.clearResult();
+
+
+		//swap values
+		map.setValue(data1, 5, 5, 7, value2);
+		map.setValue(data2, 5, 5, 7, value1);
+
+		reader.visit(map, visitor,data1, 5, 5, 7);//106,107,108,....
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); 
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data2, 5, 5, 7);//111,112,113,....
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); 
+		visitor.clearResult();
+
+	}
+
+	@Test
+	public void visitor_testTwoOverlapValues() {
+
+		TrieParserReader reader = new TrieParserReader();
+		TrieParser map = new TrieParser(16);        
+
+		map.setValue(data2, 2, 5, 7, value1);
+		map.setValue(data3, 2, 5, 7, value2);
+
+
+		reader.visit(map, visitor,data2, 2, 5, 7);//108,109,110,111,112
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); 
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data3, 2, 5, 7);//108,109,120,121,122
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); 
+		visitor.clearResult();
+
+		//swap values
+		map.setValue(data2, 2, 5, 7, value2);
+		map.setValue(data3, 2, 5, 7, value1);
+
+		reader.visit(map, visitor,data2, 2, 5, 7);//108,109,110,111,112
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); 
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data3, 2, 5, 7);//108,109,120,121,122
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); 
+		visitor.clearResult();       
+
+	}
+
+
+	@Test
+	public void visitor_testThreeOverlapValues() {
+
+		TrieParserReader reader = new TrieParserReader();
+		TrieParser map = new TrieParser(16);        
+
+		map.setValue(data3, 2, 5, 7, value2);
+		map.setValue(data4, 2, 5, 7, value3);
+		map.setValue(data2, 2, 5, 7, value1);
+
+
+		reader.visit(map, visitor,data2, 2, 5, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); 
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data3, 2, 5, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); 
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data4, 2, 5, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString()); 
+		visitor.clearResult();
+
+		//swap values
+		map.setValue(data2, 2, 5, 7, value3);
+		map.setValue(data3, 2, 5, 7, value2);
+		map.setValue(data4, 2, 5, 7, value1);
+
+		reader.visit(map, visitor,data4, 2, 5, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString()); 
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data3, 2, 5, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data2, 2, 5, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
+	}
+
+	@Test
+	public void visitor_testInsertBeforeBranch() {
+
+		TrieParserReader reader = new TrieParserReader();
+		TrieParser map = new TrieParser(16);        
+
+		map.setValue(data3, 0, 6, 7, value1);
+		map.setValue(data4, 0, 6, 7, value2);
+		map.setValue(data5, 0, 6, 7, value3);
+
+
+		reader.visit(map, visitor,data3, 0, 6, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data4, 0, 6, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data5, 0, 6, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
+
+		//swap values
+		map.setValue(data3, 0, 6, 7, value3);
+		map.setValue(data4, 0, 6, 7, value2);
+		map.setValue(data5, 0, 6, 7, value1);
+
+		reader.visit(map, visitor,data5, 0, 6, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data4, 0, 6, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString()); 
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data3, 0, 6, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString()); 
+		visitor.clearResult();
+	}
+
+	@Test
+	public void visitor_testInsertAfterBothBranchs() {
+
+		TrieParserReader reader = new TrieParserReader();
+		TrieParser map = new TrieParser(16);        
+
+		map.setValue(data2,  1, 7, 7, value1);
+		map.setValue(data3,  1, 7, 7, value2);
+		map.setValue(data2b, 1, 7, 7, value3);
+		map.setValue(data3b, 1, 7, 7, value4);
+
+
+		reader.visit(map, visitor,data2, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data3, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data2b, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data3b, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("47", visitor.toString());
+		visitor.clearResult();
+
+		//swap values
+		map.setValue(data3b, 1, 7, 7, value1);
+		map.setValue(data2b, 1, 7, 7, value2);
+		map.setValue(data3,  1, 7, 7, value3);
+		map.setValue(data2,  1, 7, 7, value4);
+
+		reader.visit(map, visitor,data2, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("47", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data3, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("35", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data2b, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data3b, 1, 7, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();      
+	}
+
+
+	@Test
+	public void visitor_testLongInsertThenShortRootInsert() {
+
+		TrieParserReader reader = new TrieParserReader();
+		TrieParser map = new TrieParser(1000);        
+
+		map.setValue(data1, 0, 8, 7, value1);
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(data1, 0, 3, 7, value2);
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+
+		reader.visit(map, visitor,data1, 0, 8, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data1, 0, 3, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());//23 for sequential case
+		visitor.clearResult();
+
+		//swap values
+		map.setValue(data1, 0, 8, 7, value2);
+		map.setValue(data1, 0, 3, 7, value1);
+
+		reader.visit(map, visitor,data1, 0, 8, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data1, 0, 3, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());//10 for sequential case
+		visitor.clearResult();
+	}
+
+	@Test
+	public void visitor_testShortRootInsertThenLongInsert() {
+
+		TrieParserReader reader = new TrieParserReader();
+		TrieParser map = new TrieParser(16);        
+
+		map.setValue(data1, 0, 3, 7, value2);
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(data1, 0, 8, 7, value1);
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+
+		reader.visit(map, visitor,data1, 0, 8, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data1, 0, 3, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("10", visitor.toString());
+		visitor.clearResult();
+
+
+		//swap values
+		map.setValue(data1, 0, 3, 7, value1);
+		map.setValue(data1, 0, 8, 7, value2);
+
+		reader.visit(map, visitor,data1, 0, 8, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();
+
+		reader.visit(map, visitor,data1, 0, 3, 7);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("23", visitor.toString());
+		visitor.clearResult();        
+	}
+
+	@Test
+	public void visitor_testByteExtractExample() {
+
+		TrieParserReader reader = new TrieParserReader(10);
+		TrieParser map = new TrieParser(16);  
+
+		byte[] b1 = "X-Wap-Profile:%b\r\n".getBytes();
+
+		//  byte[] b2= "X-Online-Host:%b\r\n".getBytes();
+		byte[] b2 = "Content-Length: %u\r\n".getBytes();
+
+		byte[] b3 = "X-ATT-DeviceId:%b\r\n".getBytes();
+		byte[] b4 = "X-ATT-DeviceId:%b\n".getBytes(); //testing same text with different ending
+
+		byte[] b5 = "\r\n".getBytes(); //testing detection of empty line without capture.
+		byte[] b6 = "%b\r\n".getBytes(); //testing capture of unknown pattern from the beginning
+
+		int bits = 7;
+		int mask = (1<<bits)-1;
+
+		map.setValue(wrapping(b1,bits), 0, b1.length, mask, 1);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(b2,bits), 0, b2.length, mask, 2);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(b3,bits), 0, b3.length, mask, 3);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(b4,bits), 0, b4.length, mask, 4); 
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(b5,bits), 0, b5.length, mask, 5);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		map.setValue(wrapping(b6,bits), 0, b6.length, mask, 6);
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+
+		byte[] example = "X-Wap-Profile:ABCD\r\nHello".getBytes();
+		reader.visit(map, visitor,wrapping(example,bits), 0, example.length, mask);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("", visitor.toString());//1
+		visitor.clearResult();
+
+
+		byte[] example1 = "Content-Length: 1234\r\n".getBytes();
+		reader.visit(map, visitor,wrapping(example1,bits), 0, example1.length, mask);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("2", visitor.toString());//2 **Numeric issue
+		visitor.clearResult();
+
+		byte[] example6 = "%b\r\n".getBytes();  // wildcard of wildcard
+		reader.visit(map, visitor,wrapping(example6,bits), 0, example6.length, mask);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("5 6", visitor.toString());//6
+		visitor.clearResult();
+
+		byte[] example3 = "X-ATT-DeviceId:%b\r\n".getBytes(); // wildcard of wildcard
+		reader.visit(map, visitor,wrapping(example3,bits), 0, example3.length, mask);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("", visitor.toString());//3
+		visitor.clearResult();
+
+		byte[] example2 = "Content-Length: %u\r\n".getBytes();// wildcard of wildcard
+		reader.visit(map, visitor,wrapping(example2,bits), 0, example2.length, mask);
+		assertFalse(visitor.toString(),visitor.toString().contains("ERROR"));
+		assertEquals("2", visitor.toString());//2 **NUmeric issue again
+		visitor.clearResult();
+	}
+
 
 	public static void main(String[] args) {
 		//speedReadTest();
