@@ -12,6 +12,7 @@ import com.ociweb.pronghorn.network.module.FileReadModuleStage;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
+import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
 public class NonThreadScheduler extends StageScheduler implements Runnable {
 
@@ -75,6 +76,21 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         this.name = name;
         this.inLargerScheduler = isInLargerScheduler;
     }  
+    
+    RunningStdDev stdDevRate = null;
+    
+    public RunningStdDev stdDevRate() {
+    	if (null==stdDevRate) {
+    		stdDevRate = new RunningStdDev();
+    		int i = stages.length;
+	    	while (--i>=0) {	    		
+	    		Number n = (Number)GraphManager.getNota(graphManager, stages[i].stageId, GraphManager.SCHEDULE_RATE, 1_200);
+	    		RunningStdDev.sample(stdDevRate, n.doubleValue());	    		
+	    	}
+	    	
+    	}
+    	return stdDevRate;
+    }
     
     public void checkForException() {
     	if (firstException!=null) {

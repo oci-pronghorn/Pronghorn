@@ -18,14 +18,18 @@ import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
 import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
+import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
 public class FixedThreadsScheduler extends StageScheduler {
 
 	public class JoinFirstComparator implements Comparator<Pipe> {
 
 		private final GraphManager graphManager;
+		private final int[] weights;
+		
 		public JoinFirstComparator(GraphManager graphManager) {
 			this.graphManager = graphManager;
+			this.weights = new int[Pipe.totalPipes()];
 		}
 
 		@Override
@@ -35,23 +39,27 @@ public class FixedThreadsScheduler extends StageScheduler {
 		
 		public int weight(Pipe p) {
 			
-			int result = (int)p.config().slabBits();
+			if (weights[p.id]==0) {
 			
-			//returns the max pipe length from this pipe or any of the pipes that feed its producer.
-			//if this value turns out to be large then we should probably not join these two stages.
-			
-			int producerId = GraphManager.getRingProducerId(graphManager, p.id);		
-			if (producerId>=0) {
-				PronghornStage producer = GraphManager.getStage(graphManager, producerId);			
-				int count = GraphManager.getInputPipeCount(graphManager, producer);
-				while (--count>=0) {
-					Pipe inputPipe = GraphManager.getInputPipe(graphManager, producer, count);				
-					result = Math.max(result, inputPipe.config().slabBits());
+				int result = (int)p.config().slabBits();
+				
+				//returns the max pipe length from this pipe or any of the pipes that feed its producer.
+				//if this value turns out to be large then we should probably not join these two stages.
+				
+				int producerId = GraphManager.getRingProducerId(graphManager, p.id);		
+				if (producerId>=0) {
+					PronghornStage producer = GraphManager.getStage(graphManager, producerId);			
+					int count = GraphManager.getInputPipeCount(graphManager, producer);
+					while (--count>=0) {
+						Pipe inputPipe = GraphManager.getInputPipe(graphManager, producer, count);				
+						result = Math.max(result, inputPipe.config().slabBits());
+					}
+				} else {
+					//no producer found, an external thread must be pushing data into this, there is nothing to combine it with				
 				}
-			} else {
-				//no producer found, an external thread must be pushing data into this, there is nothing to combine it with				
-			}
-			return result;
+				weights[p.id] = result;
+			} 
+			return weights[p.id];
 			
 		}
 		
@@ -76,26 +84,38 @@ public class FixedThreadsScheduler extends StageScheduler {
 	
 	public FixedThreadsScheduler(GraphManager graphManager, int targetThreadCount, boolean enforceLimit) {
 		super(graphManager);
-				
+
+		int logLimit=4000;//how many stages that we we can schedule without significant delay.
+		
+		int countStages = GraphManager.countStages(graphManager);
+		if (countStages>logLimit) {
+			logger.info("beginning to schedule work if {} stages into thread count of {}, this may take some time.",
+					countStages,
+					targetThreadCount);
+		}
 	    final Comparator<? super Pipe> joinFirstComparator = new JoinFirstComparator(graphManager);
 	    //created sorted list of pipes by those that should have there stages combined first.
 	    Pipe[] pipes = GraphManager.allPipes(graphManager);	  
 	    Arrays.sort(pipes, joinFirstComparator);
-
-	    
+        if (countStages>logLimit) {
+        	logger.info("finished inital sorting");
+        }
 	    int totalThreads = GraphManager.countStages(graphManager);  
 	  
 	    //must add 1 for the tree of roots also adding 1 more to make hash more efficient.
-	    int bits = 2 + (int)Math.ceil(Math.log(totalThreads)/Math.log(2));
+	    int bits = 1 + (int)Math.ceil(Math.log(totalThreads)/Math.log(2));
+	   
 		rootsTable = new IntHashTable(bits);
 	    
 	    //counter for root ids, must not collide with stageIds so we start above that point.	
 	    //this is where we decide which stages will be in which thread groups.
 	    final int rootCounter = hierarchicalClassifier(graphManager, targetThreadCount, pipes, totalThreads, enforceLimit);    
-
-	    
+	    if (countStages>logLimit) {
+	        	logger.info("finished hierarchical classifications");
+	    }
 	    PronghornStage[][] stageArrays = buildOrderedArraysOfStages(graphManager, rootCounter);
-	    
+	  
+
 	    int total = 0;
 	    int i = stageArrays.length;
 	    while (--i>=0) {
@@ -105,7 +125,9 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    	}
 	    	
 	    }
-
+	    if (countStages>logLimit) {
+	    	logger.info("finished scheduling");
+	    }
 		///////////////////    
 		//  test code for a single thread	
 		//	threadCount = 1;
@@ -186,7 +208,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 	   
 		    while (totalThreads>targetThreadCount) {
 	
-		    	int[] rootMemberCounter = new int[rootCounter+1]; 
+		    	 int[] rootMemberCounter = new int[rootCounter+1]; 
 		    	 buildCountOfStagesForEachThread(graphManager, rootCounter, rootMemberCounter);
 		    	 
 		    	 int smallest1count = Integer.MAX_VALUE;
@@ -223,7 +245,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 		    }
 	    }
 	    
-	    
+		
 	    
 	    ///////////////////////////
 
@@ -234,8 +256,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 
 	//rules because some stages should not be combined
 	private boolean isValidToCombine(int ringId, int consumerId, int producerId, GraphManager graphManager) {
-		
-		
+				
 		Pipe p = GraphManager.getRing(graphManager, ringId);
 		
 		if (Pipe.isForSchema(p, PipeMonitorSchema.instance)) {
@@ -251,6 +272,18 @@ public class FixedThreadsScheduler extends StageScheduler {
         if (countParallelProducers(consumerId, producerId, graphManager, p)) {
         	return false;
         }
+        
+		//do not combine with stages which are 2 standard deviations above the mean input/output count
+	    RunningStdDev pipesPerStage = GraphManager.stdDevPipesPerStage(graphManager);
+	    int thresholdToNeverCombine = (int) (RunningStdDev.mean(pipesPerStage)+ (2*RunningStdDev.stdDeviation(pipesPerStage)));
+	    if ((GraphManager.getInputPipeCount(graphManager,consumerId)
+	         +GraphManager.getOutputPipeCount(graphManager, consumerId)) > thresholdToNeverCombine) {
+	    	return false;
+	    }
+	    if ((GraphManager.getInputPipeCount(graphManager,producerId)
+		    +GraphManager.getOutputPipeCount(graphManager, producerId)) > thresholdToNeverCombine) {
+		    return false;
+        }    
 		
 		return true;
 	}
@@ -413,9 +446,9 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    while (--k >= 0) {
 	    	if (null!=stageArrays[k]) {
 	    		
-	    		//if (logger.isDebugEnabled()) {
-	    		//	logger.info("{} Single thread for group {}", ntsIdx, Arrays.toString(stageArrays[k]) );
-	    		//}
+	    		if (logger.isDebugEnabled()) {
+	    			logger.debug("{} Single thread for group {}", ntsIdx, Arrays.toString(stageArrays[k]) );
+	    		}
 	    		PronghornStage pronghornStage = stageArrays[k][stageArrays[k].length-1];
 				String name = pronghornStage.stageId+":"+pronghornStage.getClass().getSimpleName()+"...";
 	    		
@@ -425,7 +458,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 	    }
 	}
 
-	private static void add(PronghornStage[] pronghornStages, PronghornStage stage, final int root, final GraphManager graphManager, final IntHashTable rootsTable) {
+	private void add(PronghornStage[] pronghornStages, PronghornStage stage, final int root, final GraphManager graphManager, final IntHashTable rootsTable) {
 		int i = 0;
 		while (i<pronghornStages.length && pronghornStages[i]!=null) {
 			if (pronghornStages[i]==stage) {
@@ -450,11 +483,38 @@ public class FixedThreadsScheduler extends StageScheduler {
 		}
 	}
 
-	private static int rootId(int id, IntHashTable hashTable) {		
-		if (!IntHashTable.hasItem(hashTable, id)) {
-			return id;//not found so the id is the root
+    private int[] lastKnownRoot = new int[128];
+	
+	private int rootId(int id, IntHashTable hashTable) {
+		
+		int item = 0;
+		int orig = id;
+		do {
+			if (id<lastKnownRoot.length && lastKnownRoot[id]!=0) {
+				id = lastKnownRoot[id];
+			}
+			item = IntHashTable.getItem(hashTable, id);
+			if (item!=0) {
+				cacheLastKnown(orig, item);
+				id = item;
+			}
+			
+		} while (item!=0);
+		
+		return id;
+	}
+
+	private void cacheLastKnown(int item, int result) {
+		int i = lastKnownRoot.length;
+		if (item>=i) {
+			
+			int[] newLast = new int[item*2];
+			System.arraycopy(lastKnownRoot, 0, newLast, 0, i);
+			lastKnownRoot = newLast;
+			
 		}
-		return rootId(IntHashTable.getItem(hashTable, id), hashTable);
+		lastKnownRoot[item]=result;
+		
 	}
 
 	@Override
@@ -497,7 +557,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 	private Runnable buildRunnable(final CyclicBarrier allStagesLatch, final NonThreadScheduler nts) {
 		assert(null!=allStagesLatch);
 		assert(null!=nts);
-		
+	
 		return new Runnable() {
 
 			@Override
@@ -513,6 +573,15 @@ public class FixedThreadsScheduler extends StageScheduler {
 				
 				while (!NonThreadScheduler.isShutdownRequested(nts)) {
 					nts.run();
+					long sleep = (long)RunningStdDev.mean(nts.stdDevRate());
+					
+					try {
+						Thread.sleep(sleep/1_000_000, ((int)sleep)%1_000_000);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						break;
+					}
+					
 				}
 			}	
 			

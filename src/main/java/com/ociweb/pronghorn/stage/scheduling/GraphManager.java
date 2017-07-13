@@ -23,6 +23,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
 public class GraphManager {
 	
@@ -403,6 +404,7 @@ public class GraphManager {
 				//logger.info("enable telemetry");
 				//NB: this is done very last to ensure all the pipes get monitors added.
 				NetGraphBuilder.telemetryServerSetup(false, m.telemetryHost, m.telemetryPort, m);
+				logger.info("total count of stages {} ",m.stageCounter.get());
 			} //else {
 				//logger.info("normal startup");
 			//}
@@ -2011,6 +2013,30 @@ public class GraphManager {
 			}
 		}
 		
+	}
+
+	RunningStdDev stdDevPipes = null;
+	
+	public static RunningStdDev stdDevPipesPerStage(GraphManager m) {
+		   
+		   if (null == m.stdDevPipes) {
+			 
+			   m.stdDevPipes = new RunningStdDev();
+			   int i = m.stageIdToStage.length;
+		       while (--i>=0) {
+		           PronghornStage stage = m.stageIdToStage[i];
+		           if (null!=stage) {
+		        	  
+		        	  int sample =  
+		        	  getInputPipeCount(m, stage.stageId)+
+		        	  getOutputPipeCount(m, stage.stageId);
+		        	  
+		        	  RunningStdDev.sample(m.stdDevPipes, sample);
+		        	  
+		           }
+		       }		       
+		   }
+	      return m.stdDevPipes;
 	}
 
 

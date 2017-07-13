@@ -92,7 +92,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 	@Override
 	public void run() {
 		
-		while ((activeChannelId != -1) && PipeWriter.hasRoomForWrite(activeOutput)   ) {
+		while ((activeChannelId != -1) && (null!=activeOutput) && PipeWriter.hasRoomForWrite(activeOutput)   ) {
 			
 			//System.err.println(Pipe.hasRoomForWrite(activeOutput)+" "+activeOutput);
 			
