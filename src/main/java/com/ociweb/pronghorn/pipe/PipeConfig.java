@@ -11,7 +11,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
 	final byte[] byteConst;
 	final T schema; 
 	int debugFlags = 0;
-	
+		
    /**
      * This is NOT the constructor you are looking for.
      */
@@ -39,6 +39,11 @@ public class PipeConfig<T extends MessageSchema<T>> {
      public byte slabBits() {
     	 return slabBits;
      }
+     
+     public int minimumFragmentsOnPipe() {
+    	 return (1<<slabBits)/FieldReferenceOffsetManager.maxFragmentSize(schema.from);
+     }
+     
      
     public static <S extends MessageSchema<S>> Pipe<S> pipe(PipeConfig<S> config) {
         return new Pipe<S>(config);
