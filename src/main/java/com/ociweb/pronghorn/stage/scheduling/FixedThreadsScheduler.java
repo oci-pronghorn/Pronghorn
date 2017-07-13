@@ -493,14 +493,14 @@ public class FixedThreadsScheduler extends StageScheduler {
 			if (id<lastKnownRoot.length && lastKnownRoot[id]!=0) {
 				id = lastKnownRoot[id];
 			}
+			//this code must only read the hash table
 			item = IntHashTable.getItem(hashTable, id);
 			if (item!=0) {
-				cacheLastKnown(orig, item);
+				cacheLastKnown(orig, item);			
 				id = item;
 			}
 			
 		} while (item!=0);
-		
 		return id;
 	}
 
