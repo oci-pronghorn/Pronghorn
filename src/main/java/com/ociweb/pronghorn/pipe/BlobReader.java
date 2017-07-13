@@ -36,6 +36,8 @@ public abstract class BlobReader extends InputStream implements DataInput {
 	
 	public abstract double readDecimalAsDouble();
 	
+	public abstract double readRationalAsDouble();	
+	
 	public abstract long readDecimalAsLong();
 	
 	public abstract short readPackedShort();

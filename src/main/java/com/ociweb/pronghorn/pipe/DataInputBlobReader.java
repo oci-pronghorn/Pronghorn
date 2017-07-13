@@ -575,6 +575,11 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     }
     
     @Override
+    public double readRationalAsDouble() {
+    	return (double)readPackedLong()/(double)readPackedLong();
+    }
+    
+    @Override
     public long readDecimalAsLong() {
     	return Decimal.asLong(readPackedLong(), readByte());
     }
