@@ -580,30 +580,56 @@ public class TrieParserReader {
 			return exitUponParse(reader, trie);        	       	 
 		} else {
 			return exitWithNoParse(reader, trie);
-		}        
-
+		}
 	}
 
-	//    public int setUTF8Value(CharSequence cs, long value) {
-	//        
-	//        Pipe.addMsgIdx(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
-	//        
-	//        int origPos = Pipe.getWorkingBlobHeadPosition(workingPipe);
-	//        int len = Pipe.copyUTF8ToByte(cs, 0, cs.length(), workingPipe);
-	//        Pipe.addBytePosAndLen(workingPipe, origPos, len);        
-	//        Pipe.publishWrites(workingPipe);
-	//        Pipe.confirmLowLevelWrite(workingPipe, Pipe.sizeOf(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
-	//        
-	//        Pipe.takeMsgIdx(workingPipe);
-	//        setValue(workingPipe, value);
-	//        Pipe.confirmLowLevelRead(workingPipe, Pipe.sizeOf(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
-	//        
-	//        //WARNING: this is not thread safe if set is called and we have not yet parsed!!
-	//        Pipe.releaseReadLock(workingPipe);
-	//        return len;
-	//        
-	//    }
+	public long query(TrieParser trie, CharSequence cs) {
+		return query(this, trie, cs);
+	}
+	
+    public static long query(TrieParserReader reader, TrieParser trie, CharSequence cs) {
+        
+        Pipe.addMsgIdx(reader.workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+        
+        int origPos = Pipe.getWorkingBlobHeadPosition(reader.workingPipe);
+        int len = Pipe.copyUTF8ToByte(cs, 0, cs.length(), reader.workingPipe);
+        Pipe.addBytePosAndLen(reader.workingPipe, origPos, len);        
+        Pipe.publishWrites(reader.workingPipe);
+        Pipe.confirmLowLevelWrite(reader.workingPipe, Pipe.sizeOf(reader.workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        
+        ///
+        
+        Pipe.takeMsgIdx(reader.workingPipe);
+        long result = TrieParserReader.query(reader,trie,reader.workingPipe,-1); 
+        Pipe.confirmLowLevelRead(reader.workingPipe, Pipe.sizeOf(reader.workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        Pipe.releaseReadLock(reader.workingPipe);
+        
+        return result;
+    }
 
+    public static BlobWriter blobQueryPrep(TrieParserReader reader) {
+     	 Pipe.addMsgIdx(reader.workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+    	 DataOutputBlobWriter<RawDataSchema> writer = Pipe.outputStream(reader.workingPipe);
+    	 DataOutputBlobWriter.openField(writer);
+    	 return writer;
+    }
+    
+    public static long blobQuery(TrieParserReader reader, TrieParser trie, CharSequence cs) {
+    	
+        Pipe.outputStream(reader.workingPipe).closeLowLevelField();
+    	Pipe.publishWrites(reader.workingPipe);
+        Pipe.confirmLowLevelWrite(reader.workingPipe, Pipe.sizeOf(reader.workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+         
+    	///
+        
+        Pipe.takeMsgIdx(reader.workingPipe);
+        long result = TrieParserReader.query(reader,trie,reader.workingPipe,-1); 
+        Pipe.confirmLowLevelRead(reader.workingPipe, Pipe.sizeOf(reader.workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+        Pipe.releaseReadLock(reader.workingPipe);
+        
+        return result;
+    }
+    
 
 	private static long exitUponParse(TrieParserReader reader, TrieParser trie) {
 		reader.sourceLen -= (reader.localSourcePos-reader.sourcePos);
