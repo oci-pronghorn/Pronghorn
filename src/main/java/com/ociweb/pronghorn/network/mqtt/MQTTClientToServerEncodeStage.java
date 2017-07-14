@@ -118,7 +118,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 
 	private void storePublishedPosLocal(long slabPosition, int blobPosition, final int packetId) {
-		logger.info("??????????? need ack for {} ",packetId);
+		logger.trace("need ack for {} ",packetId);
 
 		packetIdRing[ringMask & ringHead] = packetId;
 		slabPositionsRing[ringMask & ringHead] = slabPosition;
@@ -127,7 +127,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 	
 	public void ackPublishedPos(int packetId) {	
-		logger.info("top level ack {} ",packetId);
+		//logger.trace("top level ack {} ",packetId);
 		if (isPersistantSession) {
 		
 			PipeWriter.presumeWriteFragment(persistBlobStore, PersistedBlobStoreSchema.MSG_RELEASE_7);		
@@ -142,7 +142,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 
 	private void ackPublishedPosLocal(int packetId) {
-		logger.info("low level ack {} ",packetId);
+		//logger.trace("low level ack {} ",packetId);
 		if ((packetIdRing[ringMask & ringTail] == packetId) && hasUnackPublished() ) {
 			//this is the normal case since if everyone behaves these values will arrive in order
 			ringTail++;			
@@ -150,7 +150,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				ringTail++; //skip over any values that showed up early.
 			}
 		} else {
-			logger.info("warning these acks are out of order or not needed");
+			//TODO: may neeed to debug this case more. It may not be an error at all.
+			//logger.info("warning these acks are out of order or not needed");
 			//this is the odd case
 			int i = ringTail;
 			int stop = ringMask&ringHead;
@@ -436,7 +437,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			if (MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99 == msgIdx){
 				
 				int packetId = PipeReader.readInt(inputAck, MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99_FIELD_PACKETID_20);
-				logger.info("XXXXXXXXXXXXXXXXXXXXXXXXXXx  got ack for {} ",packetId);
+				//logger.trace("got ack for {} ",packetId);
 				//This is the ACK for Sub, UnSub and other messages
 				ackPublishedPos(packetId);//remaining flight up can only be changed later
 				PipeReader.releaseReadLock(inputAck);
@@ -605,7 +606,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 
 		long arrivalTime = 0;
 		
-		logger.info("write to broker after reading positions");
+		//logger.trace("write to broker after reading positions");
 		//must capture these values now in case we are doing a publish of QOS 1 or 2
 		final long slabPos = Pipe.getSlabHeadPosition(server);
 		final int blobPos = Pipe.getBlobHeadPosition(server);

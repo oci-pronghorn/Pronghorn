@@ -191,10 +191,6 @@ public class MQTTClient extends PronghornStage {
 							MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, 
 							MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_TOPIC_23);
 					
-					StringBuilder b = new StringBuilder("MQTTClient out ");
-					System.err.println(PipeReader.readUTF8(clientRequest, MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25 , b));
-					
-					
 					PipeReader.copyBytes(clientRequest, clientToServer, 
 							MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25, 
 							MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25);
@@ -325,7 +321,7 @@ public class MQTTClient extends PronghornStage {
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_TIME_37);
 					int packetId4 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_PACKETID_20);
 					
-					logger.info("QOS1 stop for packet {}",packetId4);
+					//logger.trace("QOS1 stop for packet {}",packetId4);
 				    stopReSendingMessage(clientToServer, packetId4);					
 					
 					////////////////////
@@ -342,7 +338,7 @@ public class MQTTClient extends PronghornStage {
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_PUBCOMP_7_FIELD_TIME_37);
 					int packetId7 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBCOMP_7_FIELD_PACKETID_20);
 							
-					logger.info("QOS2 stop for packet {}",packetId7);
+					//logger.trace("QOS2 stop for packet {}",packetId7);
 				    stopReSendingMessage(clientToServer, packetId7); 
 					
 					////////////////////
@@ -462,7 +458,7 @@ public class MQTTClient extends PronghornStage {
 //						0x80 - Failure 
 						
 					}
-					logger.info("sub stop for packet {}",packetId9);
+					//logger.trace("sub stop for packet {}",packetId9);
 					//do we need to send the return code here?
 			    	stopReSendingMessage(clientToServer, packetId9);					
 					
@@ -480,7 +476,7 @@ public class MQTTClient extends PronghornStage {
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_UNSUBACK_11_FIELD_TIME_37);
 					int packetId11 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_UNSUBACK_11_FIELD_PACKETID_20);
 					
-					logger.info("unsub stop for packet {}",packetId11);
+					//logger.trace("unsub stop for packet {}",packetId11);
 				    stopReSendingMessage(clientToServer, packetId11);					
 					
 					////////////////////
