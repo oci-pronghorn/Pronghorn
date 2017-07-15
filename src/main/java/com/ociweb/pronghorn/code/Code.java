@@ -89,10 +89,10 @@ public abstract class Code {
     }
     
     private void appendResultVar(Appendable target, int value) throws IOException {
-        Appendables.appendHexDigits("r", target, value); 
+        Appendables.appendHexDigits(target.append("r"), value); 
     }
     protected static Appendable appendMemberVar(Appendable target, int value) throws IOException {
-        return Appendables.appendHexDigits("m", target, value); 
+        return Appendables.appendHexDigits(target.append("m"), value); 
     }
     
     //must be called before calling any result
