@@ -20,6 +20,8 @@ public abstract class BlobReader extends InputStream implements DataInput {
 	
 	public abstract boolean equalUTF(byte[] equalText);
 	
+	public abstract String readUTF();
+	
 	public abstract boolean hasRemainingBytes();
 	
 	public abstract boolean equalBytes(byte[] bytes);
