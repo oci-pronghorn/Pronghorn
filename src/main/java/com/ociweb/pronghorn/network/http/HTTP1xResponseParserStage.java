@@ -996,7 +996,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 1, headerValue); //in TRIE if we have any exact matches that run short must no pick anything.
 							
 		logger.info("WARNING unsupported header found: {}: {}",headerName, headerValue);
-		logger.info("length avail when parsed {}",len);
+		///logger.trace("length avail when parsed {}",len);
 	}
 
 	private int finishAndRelease(int i, final int stateIdx, Pipe<NetPayloadSchema> pipe, ClientConnection cc, int nextState) {

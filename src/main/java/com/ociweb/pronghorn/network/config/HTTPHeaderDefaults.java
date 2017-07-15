@@ -14,6 +14,7 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     CONTENT_LOCATION("Content-Location: %b"),
     ACCEPT("Accept: %b"),//chromium
     ACCEPT_CHARSET("Accept-Charset: %b"),
+    //CHARSET(" charset=UTF-8: %b"),//google.com    
     ACCEPT_LANGUAGE("Accept-Language: %b"),//chromium
     ACCEPT_ENCODING("Accept-Encoding: %b"),//chromium
     ACCEPT_DATETIME("Accept-Datetime: %b"),
