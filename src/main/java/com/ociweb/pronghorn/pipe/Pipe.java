@@ -3001,6 +3001,7 @@ public class Pipe<T extends MessageSchema<T>> {
         int consumed = writeTrailingCountOfBytesConsumed(pipe); //increment because this is the low-level API calling
 
 		publishWritesBatched(pipe);
+
 		return consumed;
     }
 
@@ -3209,7 +3210,6 @@ public class Pipe<T extends MessageSchema<T>> {
 	 */
 	public static <S extends MessageSchema<S>> void publishWorkingHeadPosition(Pipe<S> pipe, long workingHeadPos) {
 		pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value = workingHeadPos);
-				
 	}
 
 	public static <S extends MessageSchema<S>> long tailPosition(Pipe<S> pipe) {

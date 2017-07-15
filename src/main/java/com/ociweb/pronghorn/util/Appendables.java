@@ -386,17 +386,20 @@ public class Appendables {
     }
     
     public static <A extends Appendable> A appendHexDigits(A target, int value) {
-        return appendHexDigits("0x",target,value);
+     try{
+    	return (A) appendHexDigitsRaw(target.append("0x"), value);
+     } catch (IOException ex) {
+		throw new RuntimeException(ex); 
+     }
     }
     
-    public static <A extends Appendable> A appendHexDigits(CharSequence prefix, A target, int value) {
+    public static <A extends Appendable> A appendHexDigitsRaw(A target, int value) {
 		try {
 		        int bits = 32 - Integer.numberOfLeadingZeros(value);
 		        
 		        //round up to next group of 4
 		        bits = ((bits+3)>>2)<<2;
 		        
-		        target.append(prefix);
 		        int nextValue = value;
 		        int orAll = 0; //this is to remove the leading zeros
 		        while (bits>4) {
@@ -470,13 +473,20 @@ public class Appendables {
     }
     
     public static <A extends Appendable> A appendHexDigits(A target, long value) {
+        try{
+        	return (A) appendHexDigitsRaw(target.append("0x"), value);
+        } catch (IOException ex) {
+        	throw new RuntimeException(ex); 
+        }
+     }
+    
+    public static <A extends Appendable> A appendHexDigitsRaw(A target, long value) {
         try {
 	        int bits = 64-Long.numberOfLeadingZeros(value);
 	        
 	        //round up to next group of 4
 	        bits = ((bits+3)>>2)<<2;
 	
-	        target.append("0x");
 	        long nextValue = value;
 	        int orAll = 0; //this is to remove the leading zeros
 	        while (bits>4) {
