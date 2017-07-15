@@ -21,7 +21,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
                                          V extends Enum<V> & HTTPVerb,
                                          H extends Enum<H> & HTTPHeader> extends PronghornStage {
    
-    private static final byte[] RETURN_NEWLINE = "\r\n".getBytes();
+    public static final byte[] RETURN_NEWLINE = "\r\n".getBytes();
 
 	private static final byte[] EXPIRES_ZERO = "Expires: 0\r\n".getBytes();
 
@@ -70,6 +70,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     protected static final byte[] CONTENT_TYPE = "Content-Type: ".getBytes();
     protected static final byte[] CONTENT_LENGTH = "Content-Length: ".getBytes();
     protected static final byte[] CONTENT_LOCATION = "Content-Location: ".getBytes();
+	protected static final byte[] CONTENT_CHUNKED = "Transfer-Encoding: chunked".getBytes();
         
     
     protected AbstractRestStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs, HTTPSpecification<T,R,V,H> httpSpec) {
@@ -100,7 +101,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     protected int publishHeaderMessage(int originalRequestContext, int sequence, int thisRequestContext, int status,                                     
                                         Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow,
                                         HTTPSpecification<T,R,V,H> httpSpec, byte[] revision, byte[] contentType, 
-                                        int length, 
+                                        int length, boolean chunked, 
                                         byte[] localETagBytes, boolean reportServer,
                                         byte[] contLocBytes, int contLocBytesPos, int contLocBytesLen, int contLocBytesMask
                                             		
@@ -118,7 +119,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
         writer.openField();
         writeHeader(revision, 
         		    status, originalRequestContext, localETagBytes,  
-        		    contentType, length, reportServer,
+        		    contentType, length, chunked, reportServer,
         		    contLocBytes, contLocBytesPos, contLocBytesLen,  contLocBytesMask,
         		    writer, 1&(originalRequestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
         int bytesLength = writer.closeLowLevelField();
@@ -135,10 +136,13 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     
     //TODO: build better constants for these values needed.
     public static void writeHeader(byte[] revisionBytes, int status, int requestContext, byte[] etagBytes, byte[] typeBytes, 
-    		                       int length, boolean server,
+    		                       int length, boolean chunked, boolean server,
     		                       byte[] contLocBytes, int contLocBytesPos, int contLocBytesLen, int contLocBytesMask,
     		                       DataOutputBlobWriter<ServerResponseSchema> writer, int conStateIdx) {
 
+    	//TODO: expose this for web developers...
+        boolean developerMode = false;
+    	
             //line one
             writer.write(revisionBytes);
             if (200==status) {
@@ -173,10 +177,12 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
                 writer.write(RETURN_NEWLINE);
             }
             
-            //turns off all client caching
-//            writer.write(CACHE_CONTROL_NO_CACHE);
-//            writer.write(PRAGMA_NO_CACHE);
-//            writer.write(EXPIRES_ZERO);
+            //turns off all client caching, enable for development mode
+            if (developerMode) {
+            	writer.write(CACHE_CONTROL_NO_CACHE);
+            	writer.write(PRAGMA_NO_CACHE);
+            	writer.write(EXPIRES_ZERO);
+            }
             
             //line three
             if (null!=typeBytes) {
@@ -184,12 +190,15 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
                 writer.write(typeBytes);
                 writer.write(RETURN_NEWLINE);
             }
-            
+
             //line four
-            if (length>=0) {
+            if (!chunked) {
                 writer.write(CONTENT_LENGTH);
                 Appendables.appendValue(writer, length);
                 writer.write(RETURN_NEWLINE);
+            } else {
+            	writer.write(CONTENT_CHUNKED); 
+            	writer.write(RETURN_NEWLINE);
             }
             
             //line five            
@@ -197,7 +206,17 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
             writer.write(EXTRA_STUFF);
             writer.write(RETURN_NEWLINE);
             //now ready for content
-    
+            
+            if (chunked) {
+            	//must write the chunk size for the first chunk
+            	//we subtract 2 because the previous chunk is sending RETURN_NEWLINE at its end
+            	final int chunkSize = length-2;
+            			
+            	Appendables.appendHexDigitsRaw(writer, chunkSize);
+            	writer.write(RETURN_NEWLINE);
+                     	
+            }   
+   
     }
     
 

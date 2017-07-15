@@ -122,8 +122,10 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		
 		while ( PipeWriter.hasRoomForWrite(output) &&
 				PipeReader.tryReadFragment(input)) {
-			//logger.info("has room and has data to write out");
-		    int msgIdx = PipeReader.getMsgIdx(input);
+			
+			logger.info("has room and has data to write out from "+input);
+		    
+			int msgIdx = PipeReader.getMsgIdx(input);
 		    switch(msgIdx) {
 		        case HTTPRequestSchema.MSG_RESTREQUEST_300:
 
@@ -192,16 +194,16 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		
 		///long eTag = (((long)eTagRoot)<<32) + ((long)eTagInt);					
 		byte[] etagBytes = null;//Appendables.appendHexDigits(new StringBuilder(), eTag).toString().getBytes(); 
-
+        boolean isChunked = false;
 		
 		writeHeader(revision, 
 		 		    status, activeFieldRequestContext, 
 		 		    etagBytes,  
-		 		    contentType, length, true,
+		 		    contentType, length, isChunked, true,
 		 		    null, 0, 0,  0,
 		 		    outputStream, 1&(activeFieldRequestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
 		
-		//logger.info("built header response of length "+length);
+		logger.info("built new header response of length "+length);
 		
 		appendRemainingPayload(output);
 		return true;
@@ -235,9 +237,9 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			
 			//logger.info("Sent full response payload");
 			
-		}// else {
-		//	logger.info("wrote only "+workingPosition+" out of "+payloadWorkspace.length());
-		//}
+		} //else {
+//			logger.info("wrote only "+workingPosition+" out of "+payloadWorkspace.length());
+//		}
 		
 		DataOutputBlobWriter.closeHighLevelField(outputStream, ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_PAYLOAD_25);
  
@@ -246,6 +248,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 							activeFieldRequestContext);
 				
 		PipeWriter.publishWrites(output);
+	
 	}
 
 }

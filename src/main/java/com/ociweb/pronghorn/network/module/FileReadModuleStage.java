@@ -730,11 +730,11 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
             byte[] contentType = httpSpec.contentTypes[data.getType()[pathId]].getBytes();
             
             assert(data.getFileSizes()[pathId]<Integer.MAX_VALUE) : "Can not support files larger than 2G at this time.";
-            
+            boolean chunked = false;
             int bytesConsumed = publishHeaderMessage(requestContext, sequence, VERB_GET==verb ? 0 : requestContext, 
             		                           status, output, activeChannelHigh, activeChannelLow,  
                                                httpSpec, revision, contentType, 
-                                               (int)data.getFileSizes()[pathId], 
+                                               (int)data.getFileSizes()[pathId], chunked, 
                                                data.getEtagBytes()[pathId],
                                                reportServer, contLoc, 0,contLocLen,Integer.MAX_VALUE                           
             		); 

@@ -65,7 +65,7 @@ public class HTTPUtil {
 	    byte[] revBytes = httpSpec.revisions[revision].getBytes();
 		AbstractRestStage.writeHeader( revBytes, status, requestContext, null, 
 				                        contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), 
-						    		    0, false, null, 0,0,0,
+						    		    0, false, false, null, 0,0,0,
 						    		    writer, 1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
 	    writer.closeLowLevelField();          
 	

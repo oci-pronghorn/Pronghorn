@@ -175,6 +175,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		
 		boolean didWork = false;
 		while (Pipe.hasContentToRead(sourcePipe)) {
+	
 			assert(Pipe.bytesReadBase(sourcePipe)>=0);
 						
 			didWork = true;
@@ -186,17 +187,20 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    int sequenceNo = 0;
 		    long channelId = -2;
 		    if (peekMsgId>=0 && ServerResponseSchema.MSG_SKIP_300!=peekMsgId) {
+		    			    	
 		    	
 		        channelId = Pipe.peekLong(sourcePipe, 1);		        
 		        myPipeIdx = (int)(channelId % poolMod);
 		        myPipe = outgoingPipes[myPipeIdx];
+		        
+		        //logger.trace("sending new content out for channelId {} ", channelId);
 		        
 		        ///////////////////////////////
 		        //quit early if the pipe is full, NOTE: the order super REQ long output pipes
 		        ///////////////////////////////
 		    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {	
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		    		//logger.info("no room to write out");
+		    		//logger.trace("no room to write out");
 		    		break;
 		    	}		    	
 		    	
@@ -204,9 +208,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    
 		        //read the next non-blocked pipe, sequenceNo is never reset to zero
 		        //every number is used even if there is an exception upon write.
-		        
-		     //   System.err.println("channel ID mask "+Integer.toHexString(coordinator.channelBitsMask));
-		        
+		      
 		        int idx = (int)(channelId & coordinator.channelBitsMask);
 				int expected = expectedSquenceNos[idx];     
 		        if (sequenceNo<expected) {
@@ -273,10 +275,13 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    	}
 		    }
 		    assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		    		    
+			
 		    copyDataBlock(sourcePipe, peekMsgId, myPipe, myPipeIdx, sequenceNo, channelId);
+			
+			
 		    assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		}
+
 		return didWork;
 	}
 
@@ -325,9 +330,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 	private void skipDataBlock(final Pipe<ServerResponseSchema> sourcePipe, int idx) {
 		//logger.info("processing skip");
-		//logger.info("debug: tail "+mTail+" head  "+mHead+" readBase "+readBase);
-		
-		
+
 		int meta = Pipe.takeRingByteMetaData(sourcePipe);
 		int len = Pipe.takeRingByteLen(sourcePipe);
 		Pipe.addAndGetBytesWorkingTailPosition(sourcePipe, len);//this does the skipping
@@ -371,18 +374,16 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 //System.out.println("id "+myPipeIdx);
 		 //Appendables.appendUTF8(System.out, blob, bytePosition, len, blobMask);
 		 
-		 if (ServerCoordinator.TEST_RECORDS) {
-			 //check 
-			 testValidContent(myPipeIdx, input, meta, len);
-			 
-			 //testValidContentQuick(sourcePipe, meta, len);
-		 }
+//		 if (ServerCoordinator.TEST_RECORDS) {
+//			 //check 
+//			 testValidContent(myPipeIdx, input, meta, len);
+//			 
+//			 //testValidContentQuick(sourcePipe, meta, len);
+//		 }
 		 
 		 int temp = Pipe.bytesReadBase(input);
-		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	   
-		 
+		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	 
 		 Pipe.releaseReadLock(input);
-		 //Pipe.readNextWithoutReleasingReadLock(input);//we will look ahead to see what we can combine into a single read
 		 
 		 assert(Pipe.bytesReadBase(input)!=temp) : "old base "+temp+" new base "+Pipe.bytesReadBase(input);
 		 
@@ -395,7 +396,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			     && ((len+Pipe.peekInt(input, 5))<output.maxVarLen)  ) {
 					 //this is still part of the current response so combine them together
 					
-			 y++;
+			 		y++;
 			 
 					 int msgId = Pipe.takeMsgIdx(input); //msgIdx
 					 long conId = Pipe.takeLong(input); //connectionId;
@@ -410,6 +411,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 					 int len2 = Pipe.takeRingByteLen(input);
 					 len+=len2;//keep running count so we can sure not to overflow the output
 
+					 //logger.trace("added more length of {} ",len2);
 					 
 					 int bytePosition2 = Pipe.bytePosition(meta2, input, len2); //move the byte pointer forward
 					 
@@ -431,107 +433,107 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 //TODO: we should also look at the module definition logic so we can have mutiple OrderSuper instances (this is the first solution).
-//		 Pipe.releaseAllPendingReadLock(input); //now done consuming the bytes so release the pending read lock release.
+		 //Pipe.releaseAllPendingReadLock(input); //now done consuming the bytes so release the pending read lock release.
 		 assert(0==Pipe.releasePendingByteCount(input));
 		 assert(Pipe.bytesReadBase(input)>=0);
 
 	}
 
 
-	private void testValidContentQuick(final Pipe<ServerResponseSchema> sourcePipe, int meta, int len) {
-		int pos = Pipe.convertToPosition(meta, sourcePipe);
-		 
-		 char ch = (char)sourcePipe.blobRing[sourcePipe.blobMask&pos];
-		 if (ch=='H') {
-			 if (89!=len) {
-				 logger.info("ERROR FORCE EXIT B {}",len);
-				 System.exit(-1);
-			 }
-			// System.err.println("h "+len);
-			 
-		 } else if (ch=='{') {			 
-			 if (30!=len) {
-				 logger.info("ERROR FORCE EXIT A {}",len);
-				 System.exit(-1);
-			 }
- 			// System.err.println("{ "+len);
-			 
-		 } else  {
-			 System.err.println(ch);
-			 logger.info("ERROR FORCE EXIT odd unexpected char in incomming pipe");
-			 System.exit(-1);
-		 }
-		
-		 char ch2 = (char)sourcePipe.blobRing[sourcePipe.blobMask&(pos+len-1)];
-		 if (ch2!=10) {
-			 System.err.println(ch2);
-			 logger.info("ERROR FORCE EXIT2");
-			 System.exit(-1);
-		 }
-	}
+//	private void testValidContentQuick(final Pipe<ServerResponseSchema> sourcePipe, int meta, int len) {
+//		int pos = Pipe.convertToPosition(meta, sourcePipe);
+//		 
+//		 char ch = (char)sourcePipe.blobRing[sourcePipe.blobMask&pos];
+//		 if (ch=='H') {
+//			 if (89!=len) {
+//				 logger.info("ERROR FORCE EXIT B {}",len);
+//				 System.exit(-1);
+//			 }
+//			// System.err.println("h "+len);
+//			 
+//		 } else if (ch=='{') {			 
+//			 if (30!=len) {
+//				 logger.info("ERROR FORCE EXIT A {}",len);
+//				 System.exit(-1);
+//			 }
+// 			// System.err.println("{ "+len);
+//			 
+//		 } else  {
+//			 System.err.println(ch);
+//			 logger.info("ERROR FORCE EXIT odd unexpected char in incomming pipe");
+//			 System.exit(-1);
+//		 }
+//		
+//		 char ch2 = (char)sourcePipe.blobRing[sourcePipe.blobMask&(pos+len-1)];
+//		 if (ch2!=10) {
+//			 System.err.println(ch2);
+//			 logger.info("ERROR FORCE EXIT2");
+//			 System.exit(-1);
+//		 }
+//	}
 	
-	private void testValidContent(final int idx, Pipe<?> pipe, int meta, int len) {
-		
-		if (ServerCoordinator.TEST_RECORDS) {
-			
-			//write pipeIdx identifier.
-			//Appendables.appendUTF8(System.out, target.blobRing, originalBlobPosition, readCount, target.blobMask);
-			
-			int pos = Pipe.convertToPosition(meta, pipe);
-			    				
-			
-			boolean confirmExpectedRequests = true;
-			if (confirmExpectedRequests) {
-				Appendables.appendUTF8(accumulators[idx], pipe.blobRing, pos, len, pipe.blobMask);						    				
-				
-				while (accumulators[idx].length() >= HTTPUtil.expectedOK.length()) {
-					
-				   int c = startsWith(accumulators[idx],HTTPUtil.expectedOK); 
-				   if (c>0) {
-					   
-					   String remaining = accumulators[idx].substring(c*HTTPUtil.expectedOK.length());
-					   accumulators[idx].setLength(0);
-					   accumulators[idx].append(remaining);							    					   
-					   
-					   
-				   } else {
-					   logger.info("A"+Arrays.toString(HTTPUtil.expectedOK.getBytes()));
-					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, HTTPUtil.expectedOK.length()).toString().getBytes()   ));
-					   
-					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos, HTTPUtil.expectedOK.length());
-					   System.out.println(accumulators[idx].subSequence(0, HTTPUtil.expectedOK.length()).toString());
-					   System.exit(-1);
-					   	
-					   
-					   
-				   }
-				
-					
-				}
-			}
-			
-			
-		}
-	}
+//	private void testValidContent(final int idx, Pipe<?> pipe, int meta, int len) {
+//		
+//		if (ServerCoordinator.TEST_RECORDS) {
+//			
+//			//write pipeIdx identifier.
+//			//Appendables.appendUTF8(System.out, target.blobRing, originalBlobPosition, readCount, target.blobMask);
+//			
+//			int pos = Pipe.convertToPosition(meta, pipe);
+//			    				
+//			
+//			boolean confirmExpectedRequests = true;
+//			if (confirmExpectedRequests) {
+//				Appendables.appendUTF8(accumulators[idx], pipe.blobRing, pos, len, pipe.blobMask);						    				
+//				
+//				while (accumulators[idx].length() >= HTTPUtil.expectedOK.length()) {
+//					
+//				   int c = startsWith(accumulators[idx],HTTPUtil.expectedOK); 
+//				   if (c>0) {
+//					   
+//					   String remaining = accumulators[idx].substring(c*HTTPUtil.expectedOK.length());
+//					   accumulators[idx].setLength(0);
+//					   accumulators[idx].append(remaining);							    					   
+//					   
+//					   
+//				   } else {
+//					   logger.info("A"+Arrays.toString(HTTPUtil.expectedOK.getBytes()));
+//					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, HTTPUtil.expectedOK.length()).toString().getBytes()   ));
+//					   
+//					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos, HTTPUtil.expectedOK.length());
+//					   System.out.println(accumulators[idx].subSequence(0, HTTPUtil.expectedOK.length()).toString());
+//					   System.exit(-1);
+//					   	
+//					   
+//					   
+//				   }
+//				
+//					
+//				}
+//			}
+//			
+//			
+//		}
+//	}
     
-	private int startsWith(StringBuilder stringBuilder, String expected2) {
-		
-		int count = 0;
-		int rem = stringBuilder.length();
-		int base = 0;
-		while(rem>=expected2.length()) {
-			int i = expected2.length();
-			while (--i>=0) {
-				if (stringBuilder.charAt(base+i)!=expected2.charAt(i)) {
-					return count;
-				}
-			}
-			base+=expected2.length();
-			rem-=expected2.length();
-			count++;
-		}
-		return count;
-	}
+//	private int startsWith(StringBuilder stringBuilder, String expected2) {
+//		
+//		int count = 0;
+//		int rem = stringBuilder.length();
+//		int base = 0;
+//		while(rem>=expected2.length()) {
+//			int i = expected2.length();
+//			while (--i>=0) {
+//				if (stringBuilder.charAt(base+i)!=expected2.charAt(i)) {
+//					return count;
+//				}
+//			}
+//			base+=expected2.length();
+//			rem-=expected2.length();
+//			count++;
+//		}
+//		return count;
+//	}
 
 
 	private void handshakeProcessing(Pipe<NetPayloadSchema> pipe, long channelId) {
@@ -590,20 +592,22 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 /////////////
 		 
 		 
-		 //logger.info("write content from super to wrapper sizse {} for {}",len,channelId);
+		 //logger.trace("write content from super to wrapper size {} for {}",len,channelId);
 		 
 		 int plainSize = Pipe.addMsgIdx(output, NetPayloadSchema.MSG_PLAIN_210);
 		 Pipe.addLongValue(channelId, output);
 		 Pipe.addLongValue(time, output);
 		 Pipe.addLongValue(Pipe.getWorkingTailPosition(output), output);
 
-		 DataOutputBlobWriter<NetPayloadSchema> outputStream = Pipe.outputStream(output);
-		 DataOutputBlobWriter.closeLowLevelField(outputStream);
+		 int lenWritten = DataOutputBlobWriter.closeLowLevelField(Pipe.outputStream(output));
+		 
+		 //logger.trace("real len written {} ",lenWritten);
 		 
 		 Pipe.confirmLowLevelWrite(output, plainSize);
 		 Pipe.publishWrites(output);
 		 
 		 if (0 != (END_RESPONSE_MASK & requestContext)) {
+			//logger.trace("detected end and incremented sequence number");
 		    //we have finished all the chunks for this request so the sequence number will now go up by one	
 		 	int idx = (int)(channelId & coordinator.channelBitsMask);
 			expectedSquenceNos[idx]++;

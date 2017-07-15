@@ -17,7 +17,7 @@ public class HeaderUtil {
 	}
 
 	public static void writeHeaderEnding(DataOutputBlobWriter<NetPayloadSchema> writer, boolean keepOpen, long length) {
-		
+
 		if (keepOpen) {
 			DataOutputBlobWriter.write(writer, HeaderUtil.CONNECTION_KEEP_ALIVE, 0, HeaderUtil.CONNECTION_KEEP_ALIVE.length);
 			//DataOutputBlobWriter.encodeAsUTF8(writer,"\r\nConnection: keep-alive\r\n\r\n"); //double \r\b marks the end of the header

@@ -22,7 +22,8 @@ import com.ociweb.pronghorn.util.ServiceObjectHolder;
 public class ServerSocketWriterStage extends PronghornStage {
     
     private static Logger logger = LoggerFactory.getLogger(ServerSocketWriterStage.class);
-   
+    private final static boolean showAllContentSent = false;
+    
     private final Pipe<NetPayloadSchema>[] dataToSend;
     private final Pipe<ReleaseSchema> releasePipe;
     
@@ -305,6 +306,11 @@ public class ServerSocketWriterStage extends PronghornStage {
         int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
         int len = Pipe.takeRingByteLen(pipe);
         
+        if (showAllContentSent) {
+        	int pos = Pipe.convertToPosition(meta, pipe);
+        	Appendables.appendUTF8(System.out, Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe));
+        }
+        
         
         //System.err.println(this.stageId+"writer Ch:"+channelId+" len:"+len+" from pipe "+idx);
                 
@@ -324,6 +330,8 @@ public class ServerSocketWriterStage extends PronghornStage {
 	        	
 		        //logger.debug("write {} to socket for id {}",len,channelId);
 		        
+	        	
+	        	
 		        ByteBuffer[] writeBuffs = Pipe.wrappedReadingBuffers(pipe, meta, len);
 		        
 		        workingBuffers[idx].clear();
