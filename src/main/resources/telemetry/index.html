@@ -24,14 +24,23 @@
     }
     
     function paint() {
+    	var date1 = new Date();
     	var dot = httpGet("graph.dot");	
     	if (dot) {//contintional keeps graph up in browser after app stops..
     		document.body.innerHTML = Viz(dot, { format: "svg", engine: "dot"});
+    	    var date2 = new Date();
+    	    return date2 - date1;
     	}
+    	return 0;
     }
     
+    //run once to get the duration
+    var duration = paint();
+    if (0 == duration) {
+    	duration = 10000;//every 10 seconds since first fall failed.
+    }
 
-    setInterval(paint,10000); //once every 10 seonds 
+    setInterval(paint,duration+40); //40 is the absolute fastest the server supports 
     //80 gives 12.5x per second, render render may take significant browser resources
    
     

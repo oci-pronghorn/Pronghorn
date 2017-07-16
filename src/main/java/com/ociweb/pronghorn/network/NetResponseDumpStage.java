@@ -28,7 +28,6 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 			switch (id) {
 				case NetResponseSchema.MSG_RESPONSE_101:
 					{
-						System.out.println("XXXXXXXXX response");
 						long connection = Pipe.takeLong(input);
 						
 						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);

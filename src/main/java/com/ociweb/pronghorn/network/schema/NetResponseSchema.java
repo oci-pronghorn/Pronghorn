@@ -30,9 +30,11 @@ public class NetResponseSchema extends MessageSchema<NetResponseSchema> {
     public static final int MSG_RESPONSE_101 = 0x00000000;
     public static final int MSG_RESPONSE_101_FIELD_CONNECTIONID_1 = 0x00800001;
     public static final int MSG_RESPONSE_101_FIELD_PAYLOAD_3 = 0x01c00003;
+    
     public static final int MSG_CONTINUATION_102 = 0x00000004;
     public static final int MSG_CONTINUATION_102_FIELD_CONNECTIONID_1 = 0x00800001;
     public static final int MSG_CONTINUATION_102_FIELD_PAYLOAD_3 = 0x01c00003;
+    
     public static final int MSG_CLOSED_10 = 0x00000008;
     public static final int MSG_CLOSED_10_FIELD_HOST_4 = 0x01400001;
     public static final int MSG_CLOSED_10_FIELD_PORT_5 = 0x00000003;

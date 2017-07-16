@@ -265,10 +265,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			
 					ccId = Pipe.takeLong(pipe);
 					
-					long arrivalTemp = Pipe.takeLong(pipe);
+					long arrivalTime = Pipe.takeLong(pipe);
 					//if already set do not set again, we want the leading edge of the data arrival.
 					if (arrivalTimeAtPosition[i]<=0) {
-						arrivalTimeAtPosition[i] = arrivalTemp;
+						arrivalTimeAtPosition[i] = arrivalTime;
 					}
 					
 					inputPosition[i] = Pipe.takeLong(pipe);
@@ -286,7 +286,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						positionMemoData[memoIdx+1] = 0;//wipe out existing data
 						
 						//drain all the data on this pipe
-						Pipe.publishBlobWorkingTailPosition(pipe, Pipe.getBlobWorkingHeadPosition(pipe));
+						Pipe.publishBlobWorkingTailPosition(pipe, Pipe.getWorkingBlobHeadPosition(pipe));
 						Pipe.publishWorkingTailPosition(pipe, Pipe.workingHeadPosition(pipe));
 						
 						//let go of pipe
@@ -533,20 +533,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						if (revisionId>=0) {
 							
 							payloadLengthData[i] = 0;//clear payload length rules, to be populated by headers
-							
-							
-							//because we have started writign the response we MUST do extra cleanup later.
+														
+							//because we have started written the response we MUST do extra cleanup later.
 							Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
 							Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
-							
-							//TODO: this is a serious client parse problem, we CAN NOT pick up new connection ID until this one is finished!!!
-							//      breaks on multi user since we hold this open...  TODO: must be fixed by reservation and the ClientSocketReader.....
-							
-							DataOutputBlobWriter<NetResponseSchema> writer1 = Pipe.outputStream(targetPipe);							
-							DataOutputBlobWriter.openField(writer1);							
-							TrieParserReader.writeCapturedShort(trieReader, 0, writer1); //status code	
-							
-							
+											
+							TrieParserReader.writeCapturedShort(trieReader, 0, DataOutputBlobWriter.openField(Pipe.outputStream(targetPipe))); //status code	
+														
 							positionMemoData[stateIdx]= ++state;
 							
 							int consumed = startingLength1 - trieReader.sourceLen;						
@@ -579,10 +572,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								
 								TrieParserReader.parseSkip(trieReader, trieReader.sourceLen);
 								TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
-								
-								
+																
 							}
-			//				logger.info("break D");
+		
 							break;
 						}
 						
@@ -629,8 +621,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						if (headerId<0) {
 							TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 							
-							if (trieReader.sourceLen<MAX_VALID_HEADER) {
-		//						logger.info("break E");
+							if (trieReader.sourceLen<MAX_VALID_HEADER) {		
 								break;//not an error just needs more data.
 							} else {
 								reportCorruptStream2(cc);
@@ -731,7 +722,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									
 									
 									if (chunkRemaining >= targetPipe.maxVarLen) {
-										//TODO: REMOVE THIS CONDITIONAL AND INSTEAD ALLOW 1 CHUNK TO SPAN MULTIPLE PIPE MESSAGE FRAGMENTS, RQUIRED FOR LARGE CHUNKS!!!!!
+										
+										//TODO: REMOVE THIS CONDITIONAL AND INSTEAD ALLOW 1 CHUNK 
+										//      TO SPAN MULTIPLE PIPE MESSAGE FRAGMENTS, 
+										//      RQUIRED FOR LARGE CHUNKS!!!!!
+										
 										requestShutdown();
 										throw new UnsupportedOperationException("chunk "+chunkRemaining+" is larger than pipe "+targetPipe.maxVarLen);
 									}	
@@ -739,9 +734,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//logger.info("*** parsing new HTTP payload of size {}",chunkRemaining);
 									
 									if (0==chunkRemaining) {
-										
-										//logger.info("NO CHUNK SIZE FOUND MMMMMMMMMMMMMMMMMMMMMMM  detected and closed end of chunked message"); //never happens...
-										
+
 										//TODO: Must add parse support for trailing headers!, this is a hack for now.
 										headerId = (int)TrieParserReader.parseNext(trieReader, headerMap);
 										TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
