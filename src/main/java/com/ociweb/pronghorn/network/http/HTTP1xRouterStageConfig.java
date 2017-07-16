@@ -35,7 +35,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     
     private final int defaultLength = 4;
     private byte[][] requestExtractions = new byte[defaultLength][];
-    private RouteDef[] routeDefinitions = new RouteDef[defaultLength];
+    private FieldExtractionDefinitions[] routeDefinitions = new FieldExtractionDefinitions[defaultLength];
     
 	private int routesCount = 0;
     
@@ -123,10 +123,10 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return parser;
 	}
 
-	private void storeRequestExtractionParsers(RouteDef route) {
+	private void storeRequestExtractionParsers(FieldExtractionDefinitions route) {
 		if (routesCount>=routeDefinitions.length) {
 			int i = routeDefinitions.length;
-			RouteDef[] newArray = new RouteDef[i*2]; //only grows on startup as needed
+			FieldExtractionDefinitions[] newArray = new FieldExtractionDefinitions[i*2]; //only grows on startup as needed
 			System.arraycopy(routeDefinitions, 0, newArray, 0, i);
 			routeDefinitions = newArray;
 		}
@@ -170,8 +170,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 		return routesCount;
 	}	
 
-	public RouteDef extractionParser(int idx) {
-		return routeDefinitions[idx];
+	public FieldExtractionDefinitions extractionParser(int routeId) {
+		return routeDefinitions[routeId];
 	}
 
 	public int headerCount(int routeId) {
@@ -207,31 +207,8 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 
 
 	public int registerRoute(CharSequence route, byte[] ... headers) {
-		return registerRoute(route, headerTable(localReader, headers), httpSpec.headerParser());
+		return registerRoute(route, HeaderUtil.headerTable(localReader, httpSpec, headers), httpSpec.headerParser());
 	}
-
-	private final IntHashTable headerTable(TrieParserReader localReader, byte[] ... headers) {
-		
-		IntHashTable headerToPosTable = IntHashTable.newTableExpectingCount(headers.length);		
-		int count = 0;
-		int i = headers.length;
-		
-		while (--i>=0) {	
-			
-			byte[] h = headers[i];
-			int ord = httpSpec.headerId(h, localReader);
-			
-			if (ord<0) {
-				throw new UnsupportedOperationException("unsupported header "+new String(h));
-			}
-			
-			boolean ok = IntHashTable.setItem(headerToPosTable, HTTPHeader.HEADER_BIT | ord, HTTPHeader.HEADER_BIT | (count++));
-			assert(ok);
-		}
-		
-		return headerToPosTable;
-	}
-
 
 	@Override
 	public HTTPSpecification httpSpec() {

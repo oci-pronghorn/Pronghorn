@@ -1,8 +1,15 @@
 package com.ociweb.pronghorn.network.http;
 
+import java.io.IOException;
+
+import com.ociweb.pronghorn.network.config.HTTPHeader;
+import com.ociweb.pronghorn.network.config.HTTPSpecification;
+import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HeaderUtil {
 
@@ -50,5 +57,60 @@ public class HeaderUtil {
 	final static byte[] CONNECTION_KEEP_ALIVE = "Connection: keep-alive\r\n".getBytes();
 	final static byte[] LINE_AND_USER_AGENT = "\r\nUser-Agent: Pronghorn/".getBytes();
 	final static byte[] REV11_AND_HOST = " HTTP/1.1\r\nHost: ".getBytes();
+	
+	
+	public static final IntHashTable headerTable(TrieParserReader localReader, HTTPSpecification<?,?,?,?> httpSpec, byte[] ... headers) {
+		
+		IntHashTable headerToPosTable = IntHashTable.newTableExpectingCount(headers.length);		
+		int count = 0;
+		int i = headers.length;
+		
+		while (--i>=0) {	
+			
+			byte[] h = headers[i];
+			int ord = httpSpec.headerId(h, localReader);
+			
+			if (ord<0) {
+				throw new UnsupportedOperationException("unsupported header "+new String(h));
+			}
+			
+			boolean ok = IntHashTable.setItem(headerToPosTable, HTTPHeader.HEADER_BIT | ord, HTTPHeader.HEADER_BIT | (count++));
+			assert(ok);
+		}
+		
+		return headerToPosTable;
+	}
+
+	public static void captureRequestedHeader(DataOutputBlobWriter<?> writer,
+			final int indexOffsetCount, 
+			final IntHashTable headerToPositionTable, 
+			final boolean writeIndex,
+			final TrieParserReader trieReader, 
+			final int headerId) {
+		//this value is specific to this Route and the headers requested.
+		int item = IntHashTable.getItem(headerToPositionTable, HTTPHeader.HEADER_BIT | headerId);
+	
+		if (0 == item) {
+		    //skip this data since the app module can not make use of it
+		    //this is the normal most frequent case                    
+		} else {
+			int headerPos = 1+(0xFFFF & item);                                  
+	
+		    try {
+		    	//Id for the header
+		    	writer.writeShort(headerId);
+		    	//write values and write index to end of block??
+		    	int writePosition = writer.position();
+		    	                	
+				TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, false);
+				if (writeIndex) {
+					//we did not write index above so write here.
+					DataOutputBlobWriter.setIntBackData(writer, writePosition, headerPos + indexOffsetCount);
+				}					
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	}
 
 }

@@ -67,9 +67,9 @@ public class URLTemplateParser {
 	 * @param route
 	 * @param routerMap
 	 */
-	public RouteDef addRoute(CharSequence route, final long routeValue, final TrieParser routerMap, boolean trustText) {
+	public FieldExtractionDefinitions addRoute(CharSequence route, final long routeValue, final TrieParser routerMap, boolean trustText) {
 
-		final RouteDef routeDef = new RouteDef(trustText);
+		final FieldExtractionDefinitions routeDef = new FieldExtractionDefinitions(trustText);
 		//TODO: these are not GC free but must be 7 because Google makes it so.
 		final EncodingTransform et = new EncodingTransform() {
 

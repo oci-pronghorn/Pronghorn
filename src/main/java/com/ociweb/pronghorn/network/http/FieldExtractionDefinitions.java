@@ -2,12 +2,12 @@ package com.ociweb.pronghorn.network.http;
 
 import com.ociweb.pronghorn.util.TrieParser;
 
-public class RouteDef {
+public class FieldExtractionDefinitions {
 
 	private final TrieParser runtimeParser;
 	private int indexCount;
 	
-	public RouteDef(boolean trustText) {
+	public FieldExtractionDefinitions(boolean trustText) {
 		runtimeParser = new TrieParser(64, 2, trustText, true);
 	}
 	

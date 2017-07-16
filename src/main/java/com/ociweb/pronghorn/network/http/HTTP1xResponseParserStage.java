@@ -38,6 +38,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private int[]  blockedOpenCount;
 	private int[]  blockedLen;
 	private int[]  blockedState;
+	private IntHashTable[] headersSupported;
 	
 	private final Pipe<ReleaseSchema> releasePipe;
 	private final HTTPSpecification<?,?,?,?> httpSpec;
@@ -126,6 +127,14 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		  
 		  runningHeaderBytes = new int[input.length];
 		  
+		  headersSupported = new IntHashTable[input.length];
+		  
+//what if we add all known headers??		  
+//		  int j = headersSupported.length;
+//		  while (--j>=0) {
+//			  headersSupported[j] = HeaderUtil.headerTable(trieReader, httpSpec, "".getBytes());
+//		  }
+		  
 		  
 		  trieReader = new TrieParserReader(4);//max fields we support capturing.
 		  int x;
@@ -201,7 +210,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	int lastCount;
 	int responseCount = 0;
 	
-	public void storeState(int state, int user) {
+	void storeState(int state, int user) {
 		if (state==lastState && lastUser == user) {
 			lastCount++;
 		} else {
@@ -233,7 +242,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				
 				Pipe<NetPayloadSchema> pipe = input[i];
 		
-								
+				
 				/////////////////////////////////////////////////////////////
 				//ensure we have the right backing array, and mask (no position change)
 				/////////////////////////////////////////////////////////////
@@ -587,17 +596,17 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//stay here and read all the headers if possible
 						do {
 							int startingLength = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	 //TODO = save position is wrong if we continue???
-												
-														
+																								
 							int len = trieReader.sourceLen;
 							headerId = (int)TrieParserReader.parseNext(trieReader, headerMap);	
 						
 									
-							if (headerId>=0) {					
+							if (headerId>=0) {											
 								
-								if (END_OF_HEADER_ID != headerId) {
-									//only some headers are supported the rest are ignored									
-									specialHeaderProcessing(i, writer, headerId, len);									
+								if (END_OF_HEADER_ID != headerId) {								
+									
+									headerProcessing(i, writer, headerId, len, headersSupported[i]);
+									
 									//do not change state we want to come back here.									
 								} else {
 									state = endOfHeaderProcessing(i, stateIdx, writer);		
@@ -700,7 +709,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	
 					case 3: //PAYLOAD READING WITH CHUNKS	
 						
-					  	long chunkRemaining = payloadLengthData[i];
+					  	    long chunkRemaining = payloadLengthData[i];
 
 							DataOutputBlobWriter<NetResponseSchema> writer3 = Pipe.outputStream(targetPipe);
 							do {
@@ -716,22 +725,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									}
 								
 									chunkRemaining = TrieParserReader.capturedLongField(trieReader,0);
-									
-								//	System.err.println("after capture position is "+trieReader.sourcePos);
-								//	TrieParserReader.debugAsUTF8(trieReader, System.err, 10, false);
-									
-									
-									if (chunkRemaining >= targetPipe.maxVarLen) {
-										
-										//TODO: REMOVE THIS CONDITIONAL AND INSTEAD ALLOW 1 CHUNK 
-										//      TO SPAN MULTIPLE PIPE MESSAGE FRAGMENTS, 
-										//      RQUIRED FOR LARGE CHUNKS!!!!!
-										
-										requestShutdown();
-										throw new UnsupportedOperationException("chunk "+chunkRemaining+" is larger than pipe "+targetPipe.maxVarLen);
-									}	
-										
-									//logger.info("*** parsing new HTTP payload of size {}",chunkRemaining);
 									
 									if (0==chunkRemaining) {
 
@@ -761,14 +754,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										
 										break;
 									} else {
-										
-										payloadLengthData[i] = chunkRemaining;
-										
+											
+										payloadLengthData[i] = chunkRemaining;										
 										int consumed = startingLength3 - trieReader.sourceLen;
-								
 										Pipe.releasePendingAsReadLock(pipe, consumed);
-										
-//										assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
 										TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 										
 										if (writer3.length() + chunkRemaining >= targetPipe.maxVarLen) {
@@ -925,10 +914,22 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		return state;
 	}
 
-	private void specialHeaderProcessing(int i, DataOutputBlobWriter<NetResponseSchema> writer, int headerId, int len) {
+	private void headerProcessing(int i, 
+			                     DataOutputBlobWriter<NetResponseSchema> writer, 
+			                     int headerId, int len, IntHashTable headerToPositionTable) {
+
+		//general processing
+		if (null!=headerToPositionTable) {
+			boolean writeIndex = true;
+			int indexOffsetCount = 0;//We have no fields indexed before these headers
+			HeaderUtil.captureRequestedHeader(writer, 
+											indexOffsetCount, 
+											headerToPositionTable, 
+											writeIndex, 
+											trieReader, headerId);
+		}
 		
-		
-		
+		//special processing
 		switch (headerId) {
 			case H_TRANSFER_ENCODING:
 			
@@ -946,8 +947,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				break;
 				
 			//other values to write to stream?	
-			case H_CONTENT_TYPE:										
-				writer.writeShort((short)H_CONTENT_TYPE);
+			case H_CONTENT_TYPE:	
+				
+				if (headerToPositionTable==null) { //old code to be deleted once we switch over
+				//TODO: remove this short write logic..
+				    writer.writeShort((short)H_CONTENT_TYPE);
 		
 					//TODO: another way to do this is to merge the typeMap into the header map on constuction, this should improve performance by doing single pass.
 					//int oldPos = trieReader.sourcePos;
@@ -970,7 +974,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	
 					//trieReader.sourceLen = oldLen;
 					//trieReader.sourcePos = oldPos; //NOTE: should we have to put this back??
-			
+				}
 				break;
 			default:
 				if (headerId ==UNSUPPORTED_HEADER_ID) {
