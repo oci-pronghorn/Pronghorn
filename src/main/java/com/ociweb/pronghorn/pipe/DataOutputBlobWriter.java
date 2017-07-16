@@ -48,18 +48,18 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
     	}
     }
 
-    public static <T extends MessageSchema<T>> void openField(DataOutputBlobWriter<T> writer) {
-     	openFieldAtPosition(writer, Pipe.getWorkingBlobHeadPosition(writer.backingPipe));
+    public static <T extends MessageSchema<T>> DataOutputBlobWriter<T> openField(final DataOutputBlobWriter<T> writer) {
+     	return openFieldAtPosition(writer, Pipe.getWorkingBlobHeadPosition(writer.backingPipe));
     }
 
-	public static <T extends MessageSchema<T>> void openFieldAtPosition(DataOutputBlobWriter<T> writer,
+	public static <T extends MessageSchema<T>> DataOutputBlobWriter<T> openFieldAtPosition(final DataOutputBlobWriter<T> writer,
 																		int workingBlobHeadPosition) {
 		writer.backingPipe.openBlobFieldWrite();
         //NOTE: this method works with both high and low APIs.
 		writer.startPosition = writer.activePosition = workingBlobHeadPosition;
         writer.lastPosition = writer.startPosition + writer.backingPipe.maxVarLen;
         writer.backPosition = writer.lastPosition;
-        
+        return writer;
 	}
     
     public int position() {
