@@ -129,11 +129,12 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 	private TrieParser contentTypeTrieBuilder(HTTPContentType[] types) {
 		  int x;
 		  TrieParser typeMap = new TrieParser(4096,1,true,false,true);	//TODO: set switch to turn on off the deep check skip     TODO: must be shared across all instances?? 
-	      
-	      x = types.length;
-	      while (--x >= 0) {
-	    	  typeMap.setUTF8Value(types[x].contentType(),"\r\n", types[x].ordinal());	 
-	    	  typeMap.setUTF8Value(types[x].contentType(),"\n", types[x].ordinal());  //\n must be last because we prefer to have it pick \r\n
+	      if (null!=types) {
+		      x = types.length;
+		      while (--x >= 0) {
+		    	  typeMap.setUTF8Value(types[x].contentType(),"\r\n", types[x].ordinal());	 
+		    	  typeMap.setUTF8Value(types[x].contentType(),"\n", types[x].ordinal());  //\n must be last because we prefer to have it pick \r\n
+		      }
 	      }
 		return typeMap;
 	}
