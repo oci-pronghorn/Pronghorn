@@ -268,7 +268,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		        		break;
 		        	} else {
-		        		logger.info("dec shutdown count");
+		        		//logger.trace("dec shutdown count");
 		        		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		        		continue;
 		        	}
