@@ -24,6 +24,8 @@ public abstract class BlobReader extends InputStream implements DataInput {
 	
 	public abstract boolean hasRemainingBytes();
 	
+	public abstract int read(byte b[]);
+	
 	public abstract boolean equalBytes(byte[] bytes);
 	
 	public abstract boolean equalBytes(byte[] bytes, int bytesPos, int bytesLen);
