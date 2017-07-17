@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.network.config;
 
+import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -24,6 +25,7 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
     
     private boolean trustAccurateStrings = true;
     private final TrieParser headerParser;
+	private TrieParser contentTypeTrie;
     
     private static HTTPSpecification<HTTPContentTypeDefaults,HTTPRevisionDefaults,HTTPVerbDefaults,HTTPHeaderDefaults> defaultSpec;
     
@@ -33,6 +35,23 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         } 
         return defaultSpec;
     }
+    
+    
+	public final IntHashTable headerTable(TrieParserReader localReader) {
+		
+		IntHashTable headerToPosTable = IntHashTable.newTableExpectingCount(headers.length);		
+		int h = headers.length;
+		int count = 0;
+		while (--h>=0) {
+			int ord = headers[h].ordinal();
+			boolean ok = IntHashTable.setItem(headerToPosTable, 
+					                          HTTPHeader.HEADER_BIT | ord, HTTPHeader.HEADER_BIT | (count++));
+			assert(ok);
+		}
+		return headerToPosTable;
+	}
+    
+    
     
     private HTTPSpecification(Class<T> supportedHTTPContentTypes, Class<R> supportedHTTPRevisions, Class<V> supportedHTTPVerbs, Class<H> supportedHTTPHeaders) {
 
@@ -46,6 +65,8 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         
         this.revisions = supportedHTTPRevisions.getEnumConstants();
         this.contentTypes = supportedHTTPContentTypes.getEnumConstants();
+        
+        this.contentTypeTrie = contentTypeTrieBuilder(contentTypes);
         
         //find ordinal values and max length
         int maxVerbLength = 0;
@@ -99,6 +120,22 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 
 	public int headerId(byte[] h, TrieParserReader reader) {
 		return (int)reader.query(reader, headerParser(), h, 0, h.length, Integer.MAX_VALUE);
+	}
+
+	public TrieParser contentTypeTrieBuilder() {
+		return contentTypeTrie;
+	}
+
+	private TrieParser contentTypeTrieBuilder(HTTPContentType[] types) {
+		  int x;
+		  TrieParser typeMap = new TrieParser(4096,1,true,false,true);	//TODO: set switch to turn on off the deep check skip     TODO: must be shared across all instances?? 
+	      
+	      x = types.length;
+	      while (--x >= 0) {
+	    	  typeMap.setUTF8Value(types[x].contentType(),"\r\n", types[x].ordinal());	 
+	    	  typeMap.setUTF8Value(types[x].contentType(),"\n", types[x].ordinal());  //\n must be last because we prefer to have it pick \r\n
+	      }
+		return typeMap;
 	}
 
 

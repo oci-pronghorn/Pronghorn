@@ -9,8 +9,6 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.ServerCoordinator;
-import com.ociweb.pronghorn.network.config.HTTPContentType;
-import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
@@ -20,11 +18,9 @@ import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -38,7 +34,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private int[]  blockedOpenCount;
 	private int[]  blockedLen;
 	private int[]  blockedState;
-	private IntHashTable[] headersSupported;
+	private IntHashTable headersSupported;
 	
 	private final Pipe<ReleaseSchema> releasePipe;
 	private final HTTPSpecification<?,?,?,?> httpSpec;
@@ -55,9 +51,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
    	
 	private TrieParser revisionMap;
-	private TrieParser headerMap;
-	private TrieParser typeMap;
-	
+	private TrieParser headerMap;	
 	
 	private TrieParserReader trieReader;
 	private int[] positionMemoData;
@@ -127,16 +121,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		  
 		  runningHeaderBytes = new int[input.length];
 		  
-		  headersSupported = new IntHashTable[input.length];
-		  
-//what if we add all known headers??		  
-//		  int j = headersSupported.length;
-//		  while (--j>=0) {
-//			  headersSupported[j] = HeaderUtil.headerTable(trieReader, httpSpec, "".getBytes());
-//		  }
-		  
-		  
+			  
 		  trieReader = new TrieParserReader(4);//max fields we support capturing.
+
+		  headersSupported = httpSpec.headerTable(trieReader); 
+		  
 		  int x;
 		  
 		  //HTTP/1.1 200 OK
@@ -154,28 +143,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	            revisionMap.setUTF8Value(revs[x].getKey(), " %u %b\r\n", revs[x].ordinal());
 	            revisionMap.setUTF8Value(revs[x].getKey(), " %u %b\n", revs[x].ordinal());    //\n must be last because we prefer to have it pick \r\n
 	      }
-	    //  System.out.println(revisionMap.toDOT(new StringBuilder()));
-	      
-	      ////////////////////////
-	      //Load the supported content types
-	      ////////////////////////
-	      
-	      typeMap = new TrieParser(4096,1,true,false,true);	//TODO: set switch to turn on off the deep check skip     TODO: must be shared across all instances?? 
-	      
-	      HTTPContentType[] types = httpSpec.contentTypes;
-	      x = types.length;
-	      while (--x >= 0) {		
-	    	  //System.err.println(types[x].contentType());
-	    	
-	    	  typeMap.setUTF8Value(types[x].contentType(),"\r\n", types[x].ordinal());	 
-	    	  typeMap.setUTF8Value(types[x].contentType(),"\n", types[x].ordinal());  //\n must be last because we prefer to have it pick \r\n
-	      }
-	      //do not add extrations or byte capture they will invalidate the usage of deep check skip.
-	      
-	     // System.err.println("type map:"+typeMap);
-	    //  System.out.println(typeMap.toDOT(new StringBuilder()));
-	      
-	      
+
 	      ///////////////////////////
 	      //Load the supported header keys
 	      ///////////////////////////
@@ -204,7 +172,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
 	    }
 
-	  
 	int lastUser;
 	int lastState;
 	int lastCount;
@@ -605,7 +572,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								
 								if (END_OF_HEADER_ID != headerId) {								
 									
-									headerProcessing(i, writer, headerId, len, headersSupported[i]);
+									headerProcessing(i, writer, headerId, len, headersSupported);
 									
 									//do not change state we want to come back here.									
 								} else {
@@ -918,68 +885,49 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			                     DataOutputBlobWriter<NetResponseSchema> writer, 
 			                     int headerId, int len, IntHashTable headerToPositionTable) {
 
-		//general processing
-		if (null!=headerToPositionTable) {
-			boolean writeIndex = true;
-			int indexOffsetCount = 0;//We have no fields indexed before these headers
-			HeaderUtil.captureRequestedHeader(writer, 
-											indexOffsetCount, 
-											headerToPositionTable, 
-											writeIndex, 
-											trieReader, headerId);
-		}
-		
-		//special processing
+		//NB: any specific case will capture this header and prevent the application layer from getting it
+		//    they must add data as needed to make these seen or not because the app layer should not see them.
 		switch (headerId) {
 			case H_TRANSFER_ENCODING:
-			
+				writer.writeShort((short)H_TRANSFER_ENCODING);
+				writer.writeBoolean(true); //true for chunked
 				payloadLengthData[i] = -1; //marked as chunking										
 				break;
-			case H_CONTENT_LENGTH:										
+			case H_CONTENT_LENGTH:
+				//app should not be given length since they already have it parsed.
 				long length = TrieParserReader.capturedLongField(trieReader, 0);
 				if (-1 != payloadLengthData[i]) {
 					payloadLengthData[i] = length;
 					lastPayloadSize = length;
-					
-	//				logger.info("at position {}, we found the length {}  ", trieReader.sourcePos, length);
-											
+						
 				}
 				break;
 				
 			//other values to write to stream?	
-			case H_CONTENT_TYPE:	
-				
-				if (headerToPositionTable==null) { //old code to be deleted once we switch over
-				//TODO: remove this short write logic..
-				    writer.writeShort((short)H_CONTENT_TYPE);
-		
-					//TODO: another way to do this is to merge the typeMap into the header map on constuction, this should improve performance by doing single pass.
-					//int oldPos = trieReader.sourcePos;
-					//int oldLen = trieReader.sourceLen;
-					int type = (int)TrieParserReader.capturedFieldQuery(trieReader, 0, typeMap);
-					lastMessageType = type;
-					if (type<0) {
-						
-						StringBuilder captured = new StringBuilder();
-						TrieParserReader.capturedFieldBytesAsUTF8(trieReader, 0, captured);
-						logger.info("Unable to recognize content type '{}'",captured); //TODO: this is still broken why??
-						
-						logger.info("double check map, second run value {}",TrieParserReader.capturedFieldQuery(trieReader, 0, typeMap));					
-						
-						
-						System.exit(-1);
-						
-					}				
+			case H_CONTENT_TYPE:
+					writer.writeShort((short)H_CONTENT_TYPE);
+					int type = (int)TrieParserReader.capturedFieldQuery(trieReader, 0, httpSpec.contentTypeTrieBuilder());
+					lastMessageType = type;			
 					writer.writeShort((short)type);
-	
-					//trieReader.sourceLen = oldLen;
-					//trieReader.sourcePos = oldPos; //NOTE: should we have to put this back??
-				}
+			
 				break;
 			default:
 				if (headerId ==UNSUPPORTED_HEADER_ID) {
 					reportUnsupportedHeader(len);					
-				} 
+				} else {
+					//anything not already captured goes here
+					if (null!=headerToPositionTable) {
+						///capture all the requested header bodies.
+						boolean writeIndex = true;
+						int indexOffsetCount = 0;//We have no fields indexed before these headers
+						HeaderUtil.captureRequestedHeader(writer, 
+														 indexOffsetCount, 
+													 	 headerToPositionTable, 
+														 writeIndex, 
+														 trieReader, headerId);
+					}
+					
+				}
 				break;
 		}
 				 

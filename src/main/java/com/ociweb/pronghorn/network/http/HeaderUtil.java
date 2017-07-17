@@ -80,6 +80,8 @@ public class HeaderUtil {
 		
 		return headerToPosTable;
 	}
+	
+
 
 	public static void captureRequestedHeader(DataOutputBlobWriter<?> writer,
 			final int indexOffsetCount, 
