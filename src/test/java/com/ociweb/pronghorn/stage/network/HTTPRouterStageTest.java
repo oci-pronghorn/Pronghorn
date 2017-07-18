@@ -143,7 +143,7 @@ public class HTTPRouterStageTest {
         ConsoleJSONDumpStage dump = new ConsoleJSONDumpStage(gm,errorPipe);
         
         
-		HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, new Pipe[][]{routedAppPipes}, errorResponsePipe, ack, routerConfig, coordinator);
+		HTTP1xRouterStage stage = HTTP1xRouterStage.newInstance(gm, pipes, new Pipe[][]{routedAppPipes}, errorResponsePipe, ack, routerConfig, coordinator,false);
         return stage;
     }
  

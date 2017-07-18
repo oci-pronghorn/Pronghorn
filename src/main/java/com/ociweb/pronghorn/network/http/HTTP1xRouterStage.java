@@ -66,13 +66,14 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private final Pipe<ReleaseSchema> releasePipe;
     
     private final Pipe<HTTPRequestSchema>[] outputs;
+    
     private int   waitForOutputOn = -1;
 
     private long[] inputSlabPos;
     private int[] sequences;
     private int[] sequencesSent;
         
-    private static int MAX_HEADER = 1<<15;
+    public static int MAX_HEADER = 1<<16; //universal maximum header size.
     
     private int[] inputCounts;
     
@@ -83,6 +84,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private final HTTP1xRouterStageConfig<T,R,V,H> config;
     private final ServerCoordinator coordinator;
     private final Pipe<ServerResponseSchema> errorResponsePipe;
+	private boolean catchAll;
     
 
     //read all messages and they must have the same channelID
@@ -100,31 +102,33 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     		                               Pipe<ServerResponseSchema> errorResponsePipe,
     		                               Pipe<ReleaseSchema> ackStop,
                                            HTTP1xRouterStageConfig<T,R,V,H> config, 
-                                           ServerCoordinator coordinator) {
+                                           ServerCoordinator coordinator, boolean catchAll) {
         
-       return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, errorResponsePipe, ackStop, config, coordinator); 
+       return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, errorResponsePipe, ackStop, config, coordinator, catchAll); 
     }
+  
     
     public static <	T extends Enum<T> & HTTPContentType,
-	R extends Enum<R> & HTTPRevision,
-	V extends Enum<V> & HTTPVerb,
-	H extends Enum<H> & HTTPHeader> 
+								R extends Enum<R> & HTTPRevision,
+								V extends Enum<V> & HTTPVerb,
+								H extends Enum<H> & HTTPHeader>
+    
 		HTTP1xRouterStage<T,R,V,H> newInstance(GraphManager gm, 
 		                           Pipe<NetPayloadSchema>[] input, 
 		                           Pipe<HTTPRequestSchema>[] outputs,
 		                           Pipe<ServerResponseSchema> errorResponsePipe, 
 		                           Pipe<ReleaseSchema> ackStop,
-		                           HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator) {
+		                           HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator, boolean catchAll) {
 		
-		return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, errorResponsePipe, ackStop, config, coordinator); 
+		return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, errorResponsePipe, ackStop, config, coordinator, catchAll); 
 	}
 
 	public HTTP1xRouterStage(GraphManager gm, 
             Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, 
             Pipe<ServerResponseSchema> errorResponsePipe, Pipe<ReleaseSchema> ackStop,
-            HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator) {
+            HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator, boolean catchAll) {
 		
-		this(gm, input, join(outputs), errorResponsePipe, ackStop, config, coordinator);
+		this(gm, input, join(outputs), errorResponsePipe, ackStop, config, coordinator, catchAll);
 		
 		int inMaxVar = PronghornStage.maxVarLength(input);		
 		int outMaxVar =  PronghornStage.minVarLength(outputs);
@@ -135,25 +139,30 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		
 	}
 	public HTTP1xRouterStage(GraphManager gm, 
-			                 Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[] outputs,
+			                 Pipe<NetPayloadSchema>[] input, 
+			                 Pipe<HTTPRequestSchema>[] outputs,
 			                 Pipe<ServerResponseSchema> errorResponsePipe, Pipe<ReleaseSchema> ackStop,
-                             HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator) {
+                             HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator, boolean catchAll) {
 		
         super(gm,input,join(outputs,ackStop,errorResponsePipe));
-
+        
+        assert(outputs!=null);
+        assert(outputs.length>0);
+        
         this.config = config;
         this.inputs = input;
         this.releasePipe = ackStop;        
         this.outputs = outputs;
         this.coordinator = coordinator;
         this.errorResponsePipe = errorResponsePipe;
+        this.catchAll = catchAll;
+        assert(outputs.length>=0) : "must have some target for the routed REST calls";
         
         this.shutdownCount = inputs.length;
-
-        		
         this.supportsBatchedPublish = false;
         this.supportsBatchedRelease = false;
     }    
+	
     
     @Override
     public void startup() {
@@ -485,7 +494,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
  
 private int parseHTTP(TrieParserReader trieReader, final long channel, final int idx, Pipe<NetPayloadSchema> selectedInput) {    
     
-	final boolean writeIndex = true; //could be skipped but there is no great reason not to give this to everyone
+	boolean writeIndex = true; //must be on to ensure we can index to the header locations.
 
     if (showHeader) {
     	System.out.println("///////////////// ROUTE HEADER "+channel+"///////////////////");
@@ -543,7 +552,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 	final int routeId;
     routeId = (int)TrieParserReader.parseNext(trieReader, config.urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
 
-    if (config.UNMAPPED_ROUTE == routeId) {
+    if (!catchAll && config.UNMAPPED_ROUTE == routeId) {
     	
 		//unsupported route path, send 404 error
 		sendError(trieReader, channel, idx, tempLen, tempPos, 404);	
@@ -571,7 +580,8 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     }    	
     
     //NOTE: many different routeIds may return the same outputPipe, since they all go to the same palace
-    Pipe<HTTPRequestSchema> outputPipe = outputs[routeId];
+    //      if catch all is enabled use it because all outputs will be null in that mode
+    Pipe<HTTPRequestSchema> outputPipe = routeId<outputs.length ? outputs[routeId] : outputs[0];
     Pipe.markHead(outputPipe);//holds in case we need to abandon our writes
     
     if (Pipe.hasRoomForWrite(outputPipe) ) {
@@ -587,9 +597,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         DataOutputBlobWriter.openField(writer); //the beginning of the payload always starts with the URL arguments
 		
         try {
-			
 		    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, writeIndex);
-
 		} catch (IOException e) {        
 		    //this exception should never happen, will not throw writing to field not stream
 			throw new RuntimeException(e); 
@@ -604,7 +612,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         	DataOutputBlobWriter.closeLowLevelField(writer);
         	Pipe.resetHead(outputPipe);
         	if (tempLen < (config.revisionMap.longestKnown()+1) || (trieReader.sourceLen<0) ) { //added 1 for the space which must appear after
-        		//logger.info("need more data E");        		
+        		//logger.info("need more data D");        		
         		return NEED_MORE_DATA;    			
     		} else {
 
@@ -614,19 +622,17 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     			
     			StringBuilder builder = new StringBuilder();
     			TrieParserReader.debugAsUTF8(trieReader, builder, config.revisionMap.longestKnown()*4);
-    			logger.warn("{} looking for HTTP revision but found:\n{}\n\n",channel,builder);
+    			//logger.warn("{} looking for HTTP revision but found:\n{}\n\n",channel,builder);
     		    			
     			trieReader.sourceLen = 0;
     			trieReader.sourcePos = 0;
     			
     			badClientError(channel);
-    			logger.info("success");
+    			//logger.info("success");
     			return SUCCESS;
     		}
         }
-
- 
-        
+    
         
 		////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////also write the requested headers out to the payload
@@ -638,7 +644,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         	DataOutputBlobWriter.closeLowLevelField(writer);
             //try again later, not complete.
             Pipe.resetHead(outputPipe);
-           // logger.info("need more data E");
+            //logger.info("need more data E");
             
            // config.debugURLMap();
             
@@ -670,7 +676,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 
         
     } else {
- //   	logger.info("No room, waiting for {} {}",channel, outputPipe);
+    	//logger.info("No room, waiting for {} {}",channel, outputPipe);
         //no room try again later
         return -routeId;
     }
@@ -960,7 +966,8 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
 									final TrieParser trieParser,
 									final int endId) {       //context is returned with extra bits as needed
 				
-		DataOutputBlobWriter.tryClearIntBackData(writer, headerCount);        
+		DataOutputBlobWriter.tryClearIntBackData(writer, headerCount); 
+		
         long postLength = -2;
 
         int iteration = 0;
@@ -1014,18 +1021,21 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
 		if (iteration==0) {
 			//needs more data 
 			requestContext = ServerCoordinator.INCOMPLETE_RESPONSE_MASK;                	
-		} else {	                
-		    //logger.trace("end of request found");
-		    //THIS IS THE ONLY POINT WHERE WE EXIT THIS MTHOD WITH A COMPLETE PARSE OF THE HEADER, 
-		    //ALL OTHERS MUST RETURN INCOMPLETE
-		    
-		   	if (postLength>0) {
+		} else {	          
+			//logger.trace("end of request found");
+			//THIS IS THE ONLY POINT WHERE WE EXIT THIS MTHOD WITH A COMPLETE PARSE OF THE HEADER, 
+			//ALL OTHERS MUST RETURN INCOMPLETE
+			
+			if (writer.position()+DataOutputBlobWriter.countOfBytesUsedByIndex(writer) > writer.getPipe().maxVarLen) {
+				logger.warn("pipes are too small for this many headers, max total header size is "+writer.getPipe().maxVarLen);	
+				requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
+			} else if (postLength>0) {
 		   		//full length is done here as a single call, the pipe must be large enough to hold the entire payload
 		   		
 		   		assert(postLength<Integer.MAX_VALUE);
 		   		//read data directly
 				int writePosition = writer.position();    
-				if (writePosition+postLength>writer.getPipe().maxVarLen) {
+				if (writePosition+postLength+DataOutputBlobWriter.countOfBytesUsedByIndex(writer) >writer.getPipe().maxVarLen) {
 					logger.warn("unable to take large post at this time");	
 					requestContext = errorReporter.sendError(503) ? (requestContext | ServerCoordinator.CLOSE_CONNECTION_MASK) : ServerCoordinator.INCOMPLETE_RESPONSE_MASK;
 				}

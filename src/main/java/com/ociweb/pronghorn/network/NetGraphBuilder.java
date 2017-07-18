@@ -310,9 +310,9 @@ public class NetGraphBuilder {
         //logger.info("build http stages 3");
         PipeConfig<ServerResponseSchema> config = ServerResponseSchema.instance.newPipeConfig(4, 512);
         Pipe<ServerResponseSchema>[] errorResponsePipes = buildErrorResponsePipes(routerCount, fromModule, config);        
-        
+        boolean captureAll = false;
         buildRouters(graphManager, routerCount, receivedFromNet, 
-        		     releaseAfterParse, toModules, errorResponsePipes, routerConfig, coordinator, rate);
+        		     releaseAfterParse, toModules, errorResponsePipes, routerConfig, coordinator, rate, captureAll);
 		        
         //logger.info("build http stages 4");
         buildOrderingSupers(graphManager, coordinator, routerCount, 
@@ -354,8 +354,9 @@ public class NetGraphBuilder {
 			ServerCoordinator coordinator,
 			ServerPipesConfig serverConfig, 
 			Pipe<NetPayloadSchema>[] handshakeIncomingGroup, long rate) {
+		
 		Pipe<NetPayloadSchema>[] fromOrderedContent;
-		{
+		
 		fromOrderedContent = new Pipe[serverConfig.serverResponseWrapUnits * serverConfig.serverPipesPerOutputEngine];
         
         Pipe<NetPayloadSchema>[] toWiterPipes = buildSSLWrapersAsNeeded(graphManager, coordinator, serverConfig.serverRequestUnwrapUnits, serverConfig.toWraperConfig,
@@ -378,7 +379,7 @@ public class NetGraphBuilder {
         	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, dump);
         }
         coordinator.processNota(graphManager, dump);
-		}
+		
 		return fromOrderedContent;
 	}
 
@@ -493,7 +494,9 @@ public class NetGraphBuilder {
 									Pipe<HTTPRequestSchema>[][] toModules, 
 									Pipe<ServerResponseSchema>[] errorResponsePipes,
 									final HTTP1xRouterStageConfig routerConfig, 
-									ServerCoordinator coordinator, long rate) {
+									ServerCoordinator coordinator, long rate, 
+									boolean catchAll) {
+
 		
 		int a;
 		/////////////////////
@@ -506,7 +509,12 @@ public class NetGraphBuilder {
 		while (--r>=0) {
 			
 			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], 
-															toModules[r], errorResponsePipes[r], acks[acksBase-r], routerConfig, coordinator);        
+					toModules[r], 
+					errorResponsePipes[r], 
+					acks[acksBase-r], routerConfig,
+					coordinator,catchAll);        
+
+			
 			GraphManager.addNota(graphManager, GraphManager.DOT_RANK_NAME, "HTTPParser", router);
 			if (rate>0) {
 				GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, router);
@@ -516,17 +524,6 @@ public class NetGraphBuilder {
 		
 		
 	}
-	
-//	public final Pipe<HTTPRequestSchema> newHTTPRequestPipe(PipeConfig<HTTPRequestSchema> restPipeConfig) {
-//		Pipe<HTTPRequestSchema> pipe = new Pipe<HTTPRequestSchema>(restPipeConfig) {
-//			@SuppressWarnings("unchecked")
-//			@Override
-//			protected DataInputBlobReader<HTTPRequestSchema> createNewBlobReader() {
-//				return new HTTPRequestReader(this); //TODO: move this class back into pronghorn..
-//			}
-//		};
-//		return pipe;
-//	}
 
 	public static HTTP1xRouterStageConfig buildModules(GraphManager graphManager, ModuleConfig modules,
 			final int routerCount,

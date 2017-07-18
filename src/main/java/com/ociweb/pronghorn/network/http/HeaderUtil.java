@@ -105,7 +105,7 @@ public class HeaderUtil {
 		    	int writePosition = writer.position();
 		    	                	
 				TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, false);
-				if (writeIndex) {
+				if (writeIndex) {					
 					//we did not write index above so write here.
 					DataOutputBlobWriter.setIntBackData(writer, writePosition, headerPos + indexOffsetCount);
 				}					

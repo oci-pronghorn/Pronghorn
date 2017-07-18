@@ -122,7 +122,6 @@ public class SSLEngineWrapStage extends PronghornStage {
 					
 					SSLConnection connection = ccm.get(connectionId);
 					if (null!=connection) {
-						assert(connection.isDisconnecting()) : "should only receive disconnect messages on connections which are disconnecting.";
 						SSLUtil.handShakeWrapIfNeeded(connection, targetPipe, secureBuffers[i], isServer, time);					
 					}				
 					

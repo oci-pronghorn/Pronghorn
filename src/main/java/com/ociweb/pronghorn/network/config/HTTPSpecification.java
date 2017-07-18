@@ -38,7 +38,7 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
     
     
 	public final IntHashTable headerTable(TrieParserReader localReader) {
-		
+		assert(headers!=null) : "check ProGuard it may be removing enums in the build process.";
 		IntHashTable headerToPosTable = IntHashTable.newTableExpectingCount(headers.length);		
 		int h = headers.length;
 		int count = 0;

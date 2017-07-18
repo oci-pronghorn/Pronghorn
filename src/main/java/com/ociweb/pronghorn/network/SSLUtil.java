@@ -84,7 +84,7 @@ public class SSLUtil {
 			do {
 				
 				//TODO: very odd hack here. for handshake, needs to be redesigned to drop this loop.
-				int x=1_000;
+				int x=10_000;
 				while (!Pipe.hasRoomForWrite(target)) {
 					Thread.yield();
 					if (--x<=0) {
