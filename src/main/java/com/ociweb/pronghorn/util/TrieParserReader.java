@@ -1577,7 +1577,7 @@ public class TrieParserReader {
 						//System.err.println("A write packed long "+value);
 						if (writeIndex && !DataOutputBlobWriter.tryWriteIntBackData(target, writePosition)) {
 							throw new IOException("Pipe var field length is too short for "+DataOutputBlobWriter.class.getSimpleName()+" change config for "+target.getPipe());
-						}                         
+						} 						
 						//write second part and it gets its own entry.
 						writePosition = target.position();                		
 						target.writeByte(position);

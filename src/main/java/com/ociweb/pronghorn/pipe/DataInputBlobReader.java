@@ -73,7 +73,14 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     	
     	int position = bytesHighBound-(4*negativeIntOffset);
     	
-    	logger.trace("reading int from position {}",position);
+//    	logger.info("reading int from position {} from {} {} {} {} pipe {}",position,
+//    			backing[byteMask & position],
+//    			backing[byteMask & (position+1)],
+//    			backing[byteMask & (position+2)],
+//    			backing[byteMask & (position+3)],
+//    			getBackingPipe(this).id
+//    			);
+    	   	
     	
     	return ( ( (       backing[byteMask & position++]) << 24) |
 		 ( (0xFF & backing[byteMask & position++]) << 16) |
@@ -171,7 +178,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     }
     
     public void setPositionBytesFromStart(int byteIndexFromStart) {
-    	assert(byteIndexFromStart<length);
+    	assert(byteIndexFromStart<length) : "index of "+byteIndexFromStart+" is out of limit "+length;
     	position = bytesLowBound+byteIndexFromStart;
     }
     

@@ -99,11 +99,13 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
     	} else {
     		return false;
     	}
-
     }
     
     public static <T extends MessageSchema<T>> boolean tryClearIntBackData(DataOutputBlobWriter<T> writer, int intCount) {	
     	int bytes = intCount*4;
+    	
+    	Pipe.validateVarLength(writer.getPipe(), bytes);
+    	
     	int temp = writer.backPosition-bytes;
     	if (temp >= writer.activePosition) {
     		int p = writer.activePosition;
@@ -119,7 +121,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
     
     public static <T extends MessageSchema<T>> void setIntBackData(DataOutputBlobWriter<T> writer, int value, int pos) {
     	assert(pos>=0) : "Can not write beyond the end.";
-    	logger.trace("writing int to position {}",(writer.lastPosition-(4*pos)));
+    	//logger.trace("writing int to position {}",(writer.lastPosition-(4*pos)));
     	write32(writer.byteBuffer, writer.byteMask, writer.lastPosition-(4*pos), value);       
     }
        
@@ -134,13 +136,17 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
     		//this space could not be used however since we have allocated n blocks for n var fields
     		//////////////////
     		//NOTE: delete this block if this is working as expected with the above logic.
-	    	int sourceLen = writer.lastPosition-writer.backPosition;
+	    	int sourceLen = countOfBytesUsedByIndex(writer);
 			Pipe.copyBytesFromToRing(writer.byteBuffer, writer.backPosition, writer.byteMask, writer.byteBuffer, writer.activePosition, writer.byteMask, sourceLen); 
 			writer.activePosition+=sourceLen;    	
 	    	//can only be done once then the end is clear again
 	    	writer.backPosition = writer.lastPosition;
     	}
     }
+
+	public static <T extends MessageSchema<T>> int countOfBytesUsedByIndex(DataOutputBlobWriter<T> writer) {
+		return writer.lastPosition-writer.backPosition;
+	}
     
     public int closeHighLevelField(int targetFieldLoc) {
         return closeHighLevelField(this, targetFieldLoc);
