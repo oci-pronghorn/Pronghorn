@@ -33,7 +33,9 @@ import com.ociweb.pronghorn.util.ServiceObjectHolder;
  */
 public class ServerNewConnectionStage extends PronghornStage{
         
-    private static Logger logger = LoggerFactory.getLogger(ServerNewConnectionStage.class);
+    private static final int CONNECTION_TIMEOUT = 20_000;
+
+	private static Logger logger = LoggerFactory.getLogger(ServerNewConnectionStage.class);
     
     private Selector selector;
     private int selectionKeysAllowedToWait = 0;//NOTE: should test what happens when we make this bigger.
@@ -51,7 +53,6 @@ public class ServerNewConnectionStage extends PronghornStage{
         super(graphManager, NONE, newClientConnections);
         this.coordinator = coordinator;
         this.newClientConnections = newClientConnections;
-
     }
     
 
@@ -61,15 +62,14 @@ public class ServerNewConnectionStage extends PronghornStage{
     public void startup() {
 
         try {
-            SocketAddress endPoint = coordinator.getAddress();
-                              
-            
             //channel is not used until connected
             //once channel is closed it can not be opened and a new one must be created.
             server = ServerSocketChannel.open();
             
-           // server.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);            
-            server.socket().bind(endPoint);
+            //to ensure that this port can be re-used quickly for testing and other reasons
+            server.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);
+            SocketAddress endPoint = coordinator.getAddress();
+            bindAddressPort(endPoint);
             
             ServerSocketChannel channel = (ServerSocketChannel)server.configureBlocking(false);
 
@@ -85,7 +85,8 @@ public class ServerNewConnectionStage extends PronghornStage{
             if (msg.contains("already in use")) {
                 System.out.println(msg);
                 System.out.println("shutting down");
-                System.exit(0);
+                coordinator.shutdown();
+                return;
             }
             throw new RuntimeException(be);
         } catch (IOException e) {
@@ -93,18 +94,40 @@ public class ServerNewConnectionStage extends PronghornStage{
         	   System.out.println("Unresolved host address  http"+(coordinator.isTLS?"s":""));
            }
         	
-        	
            throw new RuntimeException(e);
            
         }
         
     }
 
+	private void bindAddressPort(SocketAddress endPoint) throws IOException, BindException {
+		long timeout = System.currentTimeMillis()+CONNECTION_TIMEOUT;
+		boolean notConnected = true;
+		do {
+		    try{
+		    	server.socket().bind(endPoint);
+		    	notConnected = false;
+		    } catch (BindException be) {
+		    	if (System.currentTimeMillis()>timeout) {
+		    		throw be;
+		    	} else {
+		    		//small pause before retry
+		    		try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						break;
+					}
+		    	}
+		    }
+		} while (notConnected);
+	}
+
     @Override
     public void run() {
   
-        try {
-           if (selector.selectNow() > selectionKeysAllowedToWait) {
+        try {//selector may be null if shutdown was called on startup.
+           if (null!=selector && selector.selectNow() > selectionKeysAllowedToWait) {
                 //we know that there is an interesting (non zero positive) number of keys waiting.
                                 
                 Iterator<SelectionKey> keyIterator = selector.selectedKeys().iterator();
@@ -134,22 +157,13 @@ public class ServerNewConnectionStage extends PronghornStage{
                           //channel.setOption(StandardSocketOptions.SO_RCVBUF, 1<<19);
                           //channel.setOption(StandardSocketOptions.SO_SNDBUF, 1<<19); //for heavy testing we avoid overloading client by making this smaller.
                           
-                  	//	logger.info("server recv buffer size {} ",  channel.getOption(StandardSocketOptions.SO_RCVBUF)); //default  531000
-                	//	logger.info("server send buffer size {} ",  channel.getOption(StandardSocketOptions.SO_SNDBUF)); //default 1313280
-                		
-                		
-                      //    channel.socket().setTcpNoDelay(true);
-                          
-                         // logger.info("send buffer size {} ",  channel.getOption(StandardSocketOptions.SO_SNDBUF));
+                          //	logger.info("server recv buffer size {} ",  channel.getOption(StandardSocketOptions.SO_RCVBUF)); //default  531000
+                          //	logger.info("server send buffer size {} ",  channel.getOption(StandardSocketOptions.SO_SNDBUF)); //default 1313280
+                          //    logger.info("send buffer size {} ",  channel.getOption(StandardSocketOptions.SO_SNDBUF));
                           
                           ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
                           
-                          final long channelId = holder.lookupInsertPosition();                          
-                          
-                          //System.err.println("lookup insert channel position:" +channelId+" out of "+holder.size());
-                          
-                          
-                          //long channelId = ServerCoordinator.getSocketChannelHolder(coordinator, targetPipeIdx).add(channel); //TODO: confirm this returns -1 if nothing is found.
+                          final long channelId = holder.lookupInsertPosition();
                           if (channelId<0) {
                               //error this should have been detected in the scanForOptimalPipe method
                         	  logger.info("no channel, dropping data");

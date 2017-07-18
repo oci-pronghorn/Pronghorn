@@ -42,10 +42,12 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     public final int END_OF_HEADER_ID;
     public final int UNKNOWN_HEADER_ID;
     public final int UNMAPPED_ROUTE;
-	
+   
     private URLTemplateParser routeParser;
 	
-	private final TrieParserReader localReader = new TrieParserReader(0, true);
+	private final TrieParserReader localReader = new TrieParserReader(2, true);
+
+	private IntHashTable allHeadersTable;
 	
 
 	public HTTP1xRouterStageConfig(HTTPSpecification<T,R,V,H> httpSpec) {
@@ -94,16 +96,20 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         }
         //unknowns are the least important and must be added last 
         this.urlMap = new TrieParser(512,2,false //never skip deep check so we can return 404 for all "unknowns"
-        		                    ,true,true);  
-        UNMAPPED_ROUTE = Integer.MAX_VALUE;// SINCE WE USE 2 FOR ROUTES. we can have 2b routes eg more than 64K
-        this.urlMap.setUTF8Value("%b ", UNMAPPED_ROUTE);
+        	 	                   ,true,true);  
+        this.UNMAPPED_ROUTE = Integer.MAX_VALUE; 
+        this.allHeadersTable = httpSpec.headerTable(localReader);        
+        boolean trustText = false; 
+		String constantUnknownRoute = "${path}";//do not modify
+		storeRequestExtractionParsers(routeParser().addRoute(constantUnknownRoute, UNMAPPED_ROUTE, urlMap, trustText));
+		storeRequestedExtractions(urlMap.lastSetValueExtractonPattern());
         
         headerMap.setUTF8Value("%b: %b\r\n", UNKNOWN_HEADER_ID);        
         headerMap.setUTF8Value("%b: %b\n", UNKNOWN_HEADER_ID); //\n must be last because we prefer to have it pick \r\n
        
 	}
-	
-	
+
+		
 	public void debugURLMap() {
 		
 		String actual = urlMap.toDOT(new StringBuilder()).toString();
@@ -179,11 +185,11 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 
 	public IntHashTable headerToPositionTable(int routeId) {
-		return requestHeaderMask[routeId];
+		return routeId<requestHeaderMask.length ? requestHeaderMask[routeId] : allHeadersTable;
 	}
 
 	public TrieParser headerTrieParser(int routeId) {
-		return requestHeaderParser[routeId];
+		return routeId<requestHeaderParser.length ? requestHeaderParser[routeId] : httpSpec.headerParser();
 	}
 
     private int registerRoute(CharSequence route, IntHashTable headers, TrieParser headerParser) {

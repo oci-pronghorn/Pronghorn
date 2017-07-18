@@ -85,7 +85,7 @@ public class URLTemplateParser {
 
 			@Override
 			public void store(Pipe<RawDataSchema> pipe) {
-				routerMap.setValue(pipe,routeValue);
+				routerMap.setValue(pipe, routeValue);
 			}
 			
 		};

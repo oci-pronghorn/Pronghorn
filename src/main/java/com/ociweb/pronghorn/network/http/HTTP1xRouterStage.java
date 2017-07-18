@@ -33,7 +33,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
                                H extends Enum<H> & HTTPHeader
                              > extends PronghornStage {
 
-  //TODO: double check that this all works iwth ipv6.
+    //TODO: double check that this all works iwth ipv6.
     
 	private static final int MAX_URL_LENGTH = 4096;
     private static Logger logger = LoggerFactory.getLogger(HTTP1xRouterStage.class);
@@ -140,8 +140,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
                              HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator) {
 		
         super(gm,input,join(outputs,ackStop,errorResponsePipe));
-        assert (outputs.length == config.routesCount());
-        
+
         this.config = config;
         this.inputs = input;
         this.releasePipe = ackStop;        
@@ -152,8 +151,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         this.shutdownCount = inputs.length;
 
         		
-        supportsBatchedPublish = false;
-        supportsBatchedRelease = false;
+        this.supportsBatchedPublish = false;
+        this.supportsBatchedRelease = false;
     }    
     
     @Override
@@ -179,7 +178,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         sequencesSent = new int[inputs.length];
         
         final int sizeOfVarField = 2;
-        
+ 
         int h = config.routesCount();
         
         while (--h>=0) { 
@@ -321,48 +320,17 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
             if (needsData[idx]) {
 	            if (inputLengths[idx]==start) {
 	            	//we got no data so move on to the next
-//	            	
-//	                if (Pipe.hasContentToRead(selectedInput)) {
-//	                	logger.info("AAAA"+idx+"  "+selectedInput+"  "+isOpen[idx]+"  "+inputChannels[idx]+
-//	                			"  blobPs "+inputBlobPos[idx]+" end "+inputBlobPosLimit[idx]+" input lens "+inputLengths[idx]);
-//	                	//31  RingId<NetPayloadSchema>:11 slabTailPos 13 slabWrkTailPos 26 slabHeadPos 39 slabWrkHeadPos 39  26/1024  blobTailPos 544 blobWrkTailPos 976 blobHeadPos 1447 blobWrkHeadPos 1447  true  2  blobPs 544 end 976
-//	                	needsData[idx]=false; //keep trying to parse this???
-//	                }
-//	                
 	            	return 0;
 	            } else {
 	            	//logger.info("BBBB "+inputChannels[idx]);
 	            	needsData[idx]=false;
 	            }
-            }
-            
-        } else {
-        	
-        	//if (Pipe.hasContentToRead(selectedInput)) {
-        	//	System.err.println("not open but has content to read???");
-        	//}
-        	
+            }            
         }
 
-        
-
-        
-        //confirm that we see al the data which is on the pipe....
-        //logger.info("pipe {} {} {}",selectedInput, inputBlobPos[idx], inputBlobPosLimit[idx]);
-        
-        
-        //TODO: if we did not accumulate anything and the parser has done what it can then we should NOT attempt parse again for this IDX
-        //   if we blocked on output do it again? check for blocked output earlier to avoid query parse?
-        
-        
         long channel   = inputChannels[idx];
         activeChannel = channel;
-        
-//        if (nextTime<System.currentTimeMillis()) {
-//        	logger.info("setup parse for channel {} {} {} ",channel, isOpen[idx], selectedInput);
-//        	nextTime = System.currentTimeMillis()+1_000;
-//        }
-        
+
         if (channel >= 0) {
         	int result = 0;
 
@@ -572,7 +540,9 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     
 	tempLen = trieReader.sourceLen;
 	tempPos = trieReader.sourcePos;
-    final int routeId = (int)TrieParserReader.parseNext(trieReader, config.urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
+	final int routeId;
+    routeId = (int)TrieParserReader.parseNext(trieReader, config.urlMap);     //  GET /hello/x?x=3 HTTP/1.1 
+
     if (config.UNMAPPED_ROUTE == routeId) {
     	
 		//unsupported route path, send 404 error

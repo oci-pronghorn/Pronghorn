@@ -9,7 +9,6 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.UnresolvedAddressException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
