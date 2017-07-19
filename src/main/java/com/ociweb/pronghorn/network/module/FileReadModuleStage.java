@@ -589,8 +589,10 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
         ///////////
         //NOTE we have added 2 because that is how it is sent from the routing stage! with a leading short for length
         ////////////
-        int httpRevision = Pipe.takeInt(input);
-        
+        int parallelRevision = Pipe.takeInt(input);
+        int parallelId = parallelRevision >>> HTTPRevision.BITS;
+        int httpRevision = parallelRevision & HTTPRevision.MASK;
+                
         assert(httpRevision <= HTTPRevisionDefaults.values().length) : "revision is too large found "+httpRevision;
         
         int pathId = selectActiveFileChannel(pathCacheReader, data.getPathCache(), bytesLength-2, bytesBackingArray, bytesPosition+2, bytesMask);

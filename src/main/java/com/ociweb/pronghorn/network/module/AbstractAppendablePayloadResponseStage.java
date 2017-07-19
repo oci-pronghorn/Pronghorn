@@ -131,11 +131,16 @@ public abstract class AbstractAppendablePayloadResponseStage <
 
 		        	activeChannelId = PipeReader.readLong(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_CHANNELID_21);
 		        	activeSequenceNo = PipeReader.readInt(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_SEQUENCE_26);   			        	
-		        	int fieldVerb = PipeReader.readInt(input, HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_VERB_23);
+		        	int temp = PipeReader.readInt(input, HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_VERB_23);
+    	    	    int routeId = temp>>>HTTPVerb.BITS;
+	    	        int fieldVerb = HTTPVerb.MASK & temp;
+		        	
 		        	activeFieldRequestContext = PipeReader.readInt(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_REQUESTCONTEXT_25);
 		        	
-		        	int fieldRevision = PipeReader.readInt(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_REVISION_24);
-		        	
+		        	int parallelRevision = PipeReader.readInt(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_REVISION_24);
+		        	int parallelId = parallelRevision >>> HTTPRevision.BITS;
+		        	int fieldRevision = parallelRevision & HTTPRevision.MASK;
+		        			        	
 		        	DataInputBlobReader<HTTPRequestSchema> paramStream = PipeReader.inputStream(input, HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_PARAMS_32);
 		        	
 		        	if (!sendResponse(output, fieldRevision, paramStream, (HTTPVerbDefaults)httpSpec.verbs[fieldVerb])) {

@@ -71,26 +71,27 @@ public class SSLUtil {
 		
 		//  logger.info("server {} wrap status is now {} for id {} ",isServer,handshakeStatus, cc.getId());
 		 
-		 return didShake;//false
+		 return didShake;
 	  // }
 	}
 	
 	public static void handshakeWrapLogic(SSLConnection cc, Pipe<NetPayloadSchema> target, ByteBuffer buffer, boolean isServer, long arrivalTime) {
 	    
 		try {
-			
-			//TODO: must guarantee room to complete before we start.
-			
+
 			do {
-				
-				//TODO: very odd hack here. for handshake, needs to be redesigned to drop this loop.
-				int x=10_000;
-				while (!Pipe.hasRoomForWrite(target)) {
-					Thread.yield();
-					if (--x<=0) {
-						throw new UnsupportedOperationException("TOO LONG SPINNING");
-					}
+				if (!Pipe.hasRoomForWrite(target)) {
+					logger.info("this code has now been tested, delete the old comment");
+					return; //unable to complete, WE are testing this new behavior instead of spinlock
 				}
+//				//TODO: delete this if the new above return works out fine
+//				int x=10_000;
+//				while (!Pipe.hasRoomForWrite(target)) {
+//					Thread.yield();
+//					if (--x<=0) {
+//						throw new UnsupportedOperationException("TOO LONG SPINNING");
+//					}
+//				}
 				
 				final ByteBuffer[] targetBuffers = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target);
 				final Status status = SSLUtil.wrapResultStatusState(target, buffer, cc, noDatas, targetBuffers, isServer, arrivalTime);
@@ -105,7 +106,6 @@ public class SSLUtil {
 				    if (Status.CLOSED == status) {
 				    	cc.close();
 				    	//already closed, NOTE we should release this from reserved pipe pools
-				    //	logger.warn("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX unable to write due to coosed status, DO NOT EXPECT RESPOSNE.");
 				    	//no need to cancel wrapped buffer it was already done by wrapResultStatusState
 				    	return;
 				    } else {
@@ -113,15 +113,11 @@ public class SSLUtil {
 						throw new RuntimeException();		
 				    }
 				}
-			
-				//TODO: can the wraps be one message on outgoign pipe??? yes as long as we have wrap requesets in a row, close on first non wrap request. faster as well.
-				
-				
 			} while(cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_WRAP); //what about TODO: outgoing pipe will fill up?
 			
 					
 		} catch (SSLException e) {
-			logger.error("unable to wrap ", e);
+			//logger.error("unable to wrap ", e);
 			
 			Pipe.unstoreBlobWorkingHeadPosition(target);
 		}	
@@ -482,7 +478,7 @@ public class SSLUtil {
 							if (null==result || Status.CLOSED == result.getStatus()) {
 								 if (cc.getEngine().isOutboundDone()) {
 									 	cc.close();
-									 	logger.info("xxxxxxx was closed");
+									 	//logger.info("xxxxxxx was closed");
 									 	return -1;
 				                    } else {
 				                        cc.getEngine().closeOutbound();

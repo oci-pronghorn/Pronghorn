@@ -73,7 +73,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private int[] sequences;
     private int[] sequencesSent;
         
-    public static int MAX_HEADER = 1<<16; //universal maximum header size.
+    public static int MAX_HEADER = 1<<15; //universal maximum header size.
     
     private int[] inputCounts;
     
@@ -85,7 +85,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
     private final ServerCoordinator coordinator;
     private final Pipe<ServerResponseSchema> errorResponsePipe;
 	private boolean catchAll;
-    
+    private final int parallelId;
 
     //read all messages and they must have the same channelID
     //total all into one master DataInputReader
@@ -97,6 +97,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 					H extends Enum<H> & HTTPHeader> 
     
     HTTP1xRouterStage<T,R,V,H> newInstance(GraphManager gm, 
+    									   int parallelId,
     		                               Pipe<NetPayloadSchema>[] input, 
     		                               Pipe<HTTPRequestSchema>[][] outputs, 
     		                               Pipe<ServerResponseSchema> errorResponsePipe,
@@ -104,7 +105,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
                                            HTTP1xRouterStageConfig<T,R,V,H> config, 
                                            ServerCoordinator coordinator, boolean catchAll) {
         
-       return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, errorResponsePipe, ackStop, config, coordinator, catchAll); 
+       return new HTTP1xRouterStage<T,R,V,H>(gm,parallelId,input,outputs, errorResponsePipe, ackStop, config, coordinator, catchAll); 
     }
   
     
@@ -114,21 +115,24 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 								H extends Enum<H> & HTTPHeader>
     
 		HTTP1xRouterStage<T,R,V,H> newInstance(GraphManager gm, 
+								   int parallelId,
 		                           Pipe<NetPayloadSchema>[] input, 
 		                           Pipe<HTTPRequestSchema>[] outputs,
 		                           Pipe<ServerResponseSchema> errorResponsePipe, 
 		                           Pipe<ReleaseSchema> ackStop,
-		                           HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator, boolean catchAll) {
+		                           HTTP1xRouterStageConfig<T,R,V,H> config, 
+		                           ServerCoordinator coordinator, boolean catchAll) {
 		
-		return new HTTP1xRouterStage<T,R,V,H>(gm,input,outputs, errorResponsePipe, ackStop, config, coordinator, catchAll); 
+		return new HTTP1xRouterStage<T,R,V,H>(gm,parallelId,input,outputs, errorResponsePipe, ackStop, config, coordinator, catchAll); 
 	}
 
 	public HTTP1xRouterStage(GraphManager gm, 
+			int parallelId,
             Pipe<NetPayloadSchema>[] input, Pipe<HTTPRequestSchema>[][] outputs, 
             Pipe<ServerResponseSchema> errorResponsePipe, Pipe<ReleaseSchema> ackStop,
             HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator, boolean catchAll) {
 		
-		this(gm, input, join(outputs), errorResponsePipe, ackStop, config, coordinator, catchAll);
+		this(gm, parallelId, input, join(outputs), errorResponsePipe, ackStop, config, coordinator, catchAll);
 		
 		int inMaxVar = PronghornStage.maxVarLength(input);		
 		int outMaxVar =  PronghornStage.minVarLength(outputs);
@@ -139,12 +143,15 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 		
 	}
 	public HTTP1xRouterStage(GraphManager gm, 
+			                 int parallelId,
 			                 Pipe<NetPayloadSchema>[] input, 
 			                 Pipe<HTTPRequestSchema>[] outputs,
 			                 Pipe<ServerResponseSchema> errorResponsePipe, Pipe<ReleaseSchema> ackStop,
                              HTTP1xRouterStageConfig<T,R,V,H> config, ServerCoordinator coordinator, boolean catchAll) {
 		
         super(gm,input,join(outputs,ackStop,errorResponsePipe));
+        
+        this.parallelId = parallelId;
         
         assert(outputs!=null);
         assert(outputs.length>0);
@@ -590,12 +597,14 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
         Pipe.addLongValue(channel, outputPipe); // Channel                        // Write 2   3        
  
         Pipe.addIntValue(sequences[idx], outputPipe); //sequence                    // Write 1   4
-        Pipe.addIntValue(verbId, outputPipe);// Verb                           // Write 1   5
+        
+        //route and verb
+        Pipe.addIntValue((routeId << HTTPVerb.BITS) | (verbId & HTTPVerb.MASK), outputPipe);// Verb                           // Write 1   5
         
 		DataOutputBlobWriter<HTTPRequestSchema> writer = Pipe.outputStream(outputPipe);
 		                                                                                                                          //write 2   7
         DataOutputBlobWriter.openField(writer); //the beginning of the payload always starts with the URL arguments
-		
+
         try {
 		    TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, writeIndex);
 		} catch (IOException e) {        
@@ -632,7 +641,6 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     			return SUCCESS;
     		}
         }
-    
         
 		////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////also write the requested headers out to the payload
@@ -665,8 +673,8 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 		    return NEED_MORE_DATA;
 		} 
 
-        //NOTE: we must close the writer for the params field before we write the revision
-        Pipe.addIntValue(httpRevisionId, outputPipe); // Revision Id          // Write 1 
+        //NOTE: we must close the writer for the params field before we write the parallelId and  revision 
+	    Pipe.addIntValue((parallelId << HTTPRevision.BITS) | (httpRevisionId & HTTPRevision.MASK), outputPipe);// Revision Id          // Write 1 
         Pipe.addIntValue(requestContext, outputPipe); // request context      // Write 1 
         
         int consumed = Pipe.publishWrites(outputPipe);                        // Write 1 

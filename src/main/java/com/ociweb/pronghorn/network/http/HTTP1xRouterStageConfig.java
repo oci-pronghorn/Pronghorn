@@ -41,7 +41,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
     
     public final int END_OF_HEADER_ID;
     public final int UNKNOWN_HEADER_ID;
-    public final int UNMAPPED_ROUTE;
+    public static final int UNMAPPED_ROUTE =   (1<<((32-2)-HTTPVerb.BITS))-1;//a large constant which fits in the verb field
    
     private URLTemplateParser routeParser;
 	
@@ -98,7 +98,7 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
         //unknowns are the least important and must be added last 
         this.urlMap = new TrieParser(512,2,false //never skip deep check so we can return 404 for all "unknowns"
         	 	                   ,true,true);  
-        this.UNMAPPED_ROUTE = (Integer.MAX_VALUE - 1); //one less so we can also store it as a negative value 
+   
         this.allHeadersTable = httpSpec.headerTable(localReader);        
         boolean trustText = false; 
 		String constantUnknownRoute = "${path}";//do not modify

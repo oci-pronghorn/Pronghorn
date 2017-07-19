@@ -489,7 +489,7 @@ public class NetGraphBuilder {
 		}
 	}
 
-	public static void buildRouters(GraphManager graphManager, final int routerCount, Pipe[] planIncomingGroup,
+	public static void buildRouters(GraphManager graphManager, final int parallelRoutersCount, Pipe[] planIncomingGroup,
 									Pipe[] acks, 
 									Pipe<HTTPRequestSchema>[][] toModules, 
 									Pipe<ServerResponseSchema>[] errorResponsePipes,
@@ -503,12 +503,12 @@ public class NetGraphBuilder {
 		//create the routers
 		/////////////////////
 		//split up the unencrypted pipes across all the routers
-		Pipe[][] plainSplit = Pipe.splitPipes(routerCount, planIncomingGroup);
+		Pipe[][] plainSplit = Pipe.splitPipes(parallelRoutersCount, planIncomingGroup);
 		int acksBase = acks.length-1;
-		int r = routerCount;
+		int r = parallelRoutersCount;
 		while (--r>=0) {
 			
-			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, plainSplit[r], 
+			HTTP1xRouterStage router = HTTP1xRouterStage.newInstance(graphManager, r, plainSplit[r], 
 					toModules[r], 
 					errorResponsePipes[r], 
 					acks[acksBase-r], routerConfig,
