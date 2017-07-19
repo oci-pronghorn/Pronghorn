@@ -81,17 +81,8 @@ public class SSLUtil {
 
 			do {
 				if (!Pipe.hasRoomForWrite(target)) {
-					logger.info("this code has now been tested, delete the old comment");
-					return; //unable to complete, WE are testing this new behavior instead of spinlock
+					return; //unable to complete, try again later
 				}
-//				//TODO: delete this if the new above return works out fine
-//				int x=10_000;
-//				while (!Pipe.hasRoomForWrite(target)) {
-//					Thread.yield();
-//					if (--x<=0) {
-//						throw new UnsupportedOperationException("TOO LONG SPINNING");
-//					}
-//				}
 				
 				final ByteBuffer[] targetBuffers = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target);
 				final Status status = SSLUtil.wrapResultStatusState(target, buffer, cc, noDatas, targetBuffers, isServer, arrivalTime);
@@ -103,15 +94,14 @@ public class SSLUtil {
 					
 				} else {
 					//connection was closed before handshake completed 
-				    if (Status.CLOSED == status) {
-				    	cc.close();
-				    	//already closed, NOTE we should release this from reserved pipe pools
-				    	//no need to cancel wrapped buffer it was already done by wrapResultStatusState
-				    	return;
-				    } else {
-				    	logger.info("HANDSHAKE unable to wrap {} {} {} ",status, cc.getClass().getSimpleName(), cc.engine, new Exception());
-						throw new RuntimeException();		
+					//already closed, NOTE we should release this from reserved pipe pools
+					//no need to cancel wrapped buffer it was already done by wrapResultStatusState
+					cc.close();
+				    if (Status.CLOSED != status) {
+				    	//not expected case so log this
+				    	logger.warn("HANDSHAKE unable to wrap {} {} {} ",status, cc.getClass().getSimpleName(), cc.engine, new Exception());	
 				    }
+				    return;
 				}
 			} while(cc.getEngine().getHandshakeStatus() == HandshakeStatus.NEED_WRAP); //what about TODO: outgoing pipe will fill up?
 			
