@@ -9,6 +9,7 @@ import java.util.Arrays;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.pipe.BlobReader;
 import com.ociweb.pronghorn.pipe.BlobWriter;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
@@ -1314,12 +1315,12 @@ public class TrieParserReader {
 				PipeReader.readBytesMask(input, loc));
 	}
 
-	public <T extends DataInputBlobReader<S>, S extends MessageSchema<S>> void parseSetup(T reader) {
-		parseSetup(this, reader);
+	public <T extends BlobReader> void parseSetup(T reader) {
+		parseSetup(this, (DataInputBlobReader<?>)reader);
 	}
 
-	public <T extends DataInputBlobReader<S>, S extends MessageSchema<S>> void parseSetup(T reader, int length) {
-		parseSetup(this, reader, length);
+	public <T extends BlobReader> void parseSetup(T reader, int length) {
+		parseSetup(this, (DataInputBlobReader<?>)reader, length);
 	}
 
 	public static <S extends MessageSchema<S>> void parseSetup(TrieParserReader trieReader, 
