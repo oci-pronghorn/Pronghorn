@@ -17,7 +17,6 @@ import java.util.Arrays;
  * Sample usage:
  * 
  *        ServiceObjectValidator<Channel> validator = new ServiceObjectValidator<Channel>() {
- *               @Override
  *              public Channel isValid(Channel serviceObject) {
  *                   return serviceObject.isOpen() ? serviceObject : null;
  *               }
