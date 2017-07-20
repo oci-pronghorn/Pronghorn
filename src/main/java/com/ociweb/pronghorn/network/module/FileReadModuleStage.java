@@ -569,8 +569,9 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 
 
 //        public static final int MSG_RESTREQUEST_300_FIELD_VERB_23 = 0x00000004;
-        int verb = Pipe.takeInt(input);
-        
+        int routeVerb = Pipe.takeInt(input);
+        int routeId = routeVerb >> HTTPVerb.BITS;
+        int verb = routeVerb & HTTPVerb.MASK;
         
                  
 //        public static final int MSG_RESTREQUEST_300_FIELD_PARAMS_32 = 0x01c00005;
@@ -780,7 +781,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
     }
 
     private void publishErrorHeader(int httpRevision, int requestContext, int sequence, int code, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) {
-        logger.warn("published error "+code);
+        //logger.trace("published error {}",code);
         HTTPUtil.publishError(requestContext, sequence, code, output, activeChannelHigh, activeChannelLow, httpSpec,
         		                httpRevision, -1);
         
