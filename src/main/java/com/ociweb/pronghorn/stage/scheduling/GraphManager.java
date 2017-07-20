@@ -390,7 +390,7 @@ public class GraphManager {
 			regOutput(clone, m.pipeIdToPipe[ringId], stageId);					
 		}		
 		
-		endStageRegister(clone);
+		endStageRegister(clone, stage);
 	}
 
     /**
@@ -416,14 +416,14 @@ public class GraphManager {
 	
 	
 	//Should only be called by methods that are protected by the lock
-	private static int[] setValue(int[] target, int idx, int value) {		
+	private static int[] setValue(int[] target, int idx, int value, Object obj) {		
 		int[] result = target;
 		if (idx>=target.length) {
 			int limit = (1+idx)*2;
 			result = Arrays.copyOf(target, limit); //double the array
 			Arrays.fill(result, target.length, limit, -1);
 		}
-		assert(-1==result[idx]) : "duplicate assignment detected, see stack and double check all the stages added to the graph.";
+		assert(-1==result[idx]) : "duplicate assignment detected, see stack and double check all the stages added to the graph. check:"+obj;
 		
 		result[idx] = value;
 		return result;
@@ -491,7 +491,7 @@ public class GraphManager {
 				regOutput(gm, outputs, stageId, i, outputs[i++]);
 			}
 			
-			endStageRegister(gm);
+			endStageRegister(gm, stage);
 									
 		}
 		
@@ -528,7 +528,7 @@ public class GraphManager {
                     }
                 }
 	            
-	            endStageRegister(gm);
+	            endStageRegister(gm, stage);
 	        }
 	}
 	
@@ -617,10 +617,10 @@ public class GraphManager {
 	}
 	   
 
-	private static void endStageRegister(GraphManager gm) {
-		gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, -1);
-		gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, -1);
-		gm.multNotaIds = setValue(gm.multNotaIds, gm.topNota++, -1);
+	private static void endStageRegister(GraphManager gm, Object obj) {
+		gm.multInputIds = setValue(gm.multInputIds, gm.topInput++, -1, obj);
+		gm.multOutputIds = setValue(gm.multOutputIds, gm.topOutput++, -1, obj);
+		gm.multNotaIds = setValue(gm.multNotaIds, gm.topNota++, -1, obj);
 	}
 
 	private static int beginStageRegister(GraphManager gm, PronghornStage stage) {
@@ -633,9 +633,9 @@ public class GraphManager {
 				
 		//now store the stage
 		gm.stageIdToStage = setValue(gm.stageIdToStage, stageId, stage);		
-		gm.stageIdToInputsBeginIdx = setValue(gm.stageIdToInputsBeginIdx, stageId, gm.topInput);
-		gm.stageIdToOutputsBeginIdx = setValue(gm.stageIdToOutputsBeginIdx, stageId, gm.topOutput);			
-		gm.stageIdToNotasBeginIdx = setValue(gm.stageIdToNotasBeginIdx, stageId, gm.topNota);		
+		gm.stageIdToInputsBeginIdx = setValue(gm.stageIdToInputsBeginIdx, stageId, gm.topInput, stage);
+		gm.stageIdToOutputsBeginIdx = setValue(gm.stageIdToOutputsBeginIdx, stageId, gm.topOutput, stage);			
+		gm.stageIdToNotasBeginIdx = setValue(gm.stageIdToNotasBeginIdx, stageId, gm.topNota, stage);		
 		gm.stageRunNS = setValue(gm.stageRunNS, stageId, 0);
 		gm.stageShutdownTimeNs = setValue(gm.stageShutdownTimeNs, stageId, 0);
 		gm.stageStartTimeNs = setValue(gm.stageStartTimeNs, stageId, 0);
@@ -666,7 +666,7 @@ public class GraphManager {
 				regOutput(gm, outputs, stageId, i, outputs[i++]);
 			}
 			
-			endStageRegister(gm);
+			endStageRegister(gm, stage);
 		}
 	}
 
@@ -720,7 +720,7 @@ public class GraphManager {
 			//loop over outputs			
 			regOutput(gm, output, stageId);			
 			
-			endStageRegister(gm);
+			endStageRegister(gm, stage);
 		}
 	}
 
@@ -736,7 +736,7 @@ public class GraphManager {
 			//loop over outputs
 			regOutput(gm, output, stageId);			
 			
-			endStageRegister(gm);
+			endStageRegister(gm, stage);
 		}
 	}
 	
@@ -799,19 +799,19 @@ public class GraphManager {
 	private static void regOutput(GraphManager pm, Pipe output, int stageId) {
 		if (null!=output) {
 			int outputId = output.id;
-			pm.ringIdToStages = setValue(pm.ringIdToStages, (outputId*2) , stageId); //source +0 then target +1
+			pm.ringIdToStages = setValue(pm.ringIdToStages, (outputId*2) , stageId, pm.stageIdToStage[stageId]); //source +0 then target +1
 			pm.pipeIdToPipe = setValue(pm.pipeIdToPipe, outputId, output);				
-			pm.multOutputIds = setValue(pm.multOutputIds, pm.topOutput++, outputId);
+			pm.multOutputIds = setValue(pm.multOutputIds, pm.topOutput++, outputId, output);
 		}
 	}
 	
 
-	private static void regInput(GraphManager pm, Pipe input,	int stageId) {
+	private static void regInput(GraphManager pm, Pipe input, int stageId) {
 		if (null!=input) {
 			int inputId = input.id;
-			pm.ringIdToStages = setValue(pm.ringIdToStages, (inputId*2)+1, stageId); //source +0 then target +1
+			pm.ringIdToStages = setValue(pm.ringIdToStages, (inputId*2)+1, stageId, pm.stageIdToStage[stageId]); //source +0 then target +1
 			pm.pipeIdToPipe = setValue(pm.pipeIdToPipe, inputId, input);
-			pm.multInputIds = setValue(pm.multInputIds, pm.topInput++, inputId);
+			pm.multInputIds = setValue(pm.multInputIds, pm.topInput++, inputId, input);
 		}
 	}
 	
@@ -856,7 +856,7 @@ public class GraphManager {
 				//this allows for direct lookup later for every instance found
 				m.notaIdToKey = setValue(m.notaIdToKey, m.totalNotaCount, key);
 				m.notaIdToValue = setValue(m.notaIdToValue, m.totalNotaCount, value);
-				m.notaIdToStageId = setValue(m.notaIdToStageId, m.totalNotaCount, stage.stageId);
+				m.notaIdToStageId = setValue(m.notaIdToStageId, m.totalNotaCount, stage.stageId, stage);
 				
 				int beginIdx = m.stageIdToNotasBeginIdx[stage.stageId];
 			    if (m.topNota == m.multNotaIds.length) {
