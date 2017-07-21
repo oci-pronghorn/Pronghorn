@@ -42,7 +42,7 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     PRAGMA("Pragma: %b"), //Not matching?
     SERVER("Server: %b"), //Not matching?
     STATUS("Status: %i %b"), //Not matching?
-    
+    KEEP_ALIVE("Keep-Alive: %b"),
     EXPIRES("Expires: %b"),
     
 //    CONTENT_SECURITY_POLICY("content-security-policy: %b"), //twitter

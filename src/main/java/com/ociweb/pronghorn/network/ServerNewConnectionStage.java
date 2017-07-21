@@ -78,8 +78,16 @@ public class ServerNewConnectionStage extends PronghornStage{
             
             channel.register(selector, SelectionKey.OP_ACCEPT); 
             
+            //trim of local domain name when present.
+            String host = endPoint.toString();
+            int hidx = host.indexOf('/');
+            if (hidx>=0) {
+            	host = host.substring(hidx+1, host.length());
+            }
             
-            System.out.println("Server is now ready on  http"+(coordinator.isTLS?"s":"")+":/"+endPoint+"/");
+            System.out.println("Server is now ready on  http"+(coordinator.isTLS?"s":"")+":/"+host+"/");
+            
+            
         } catch (BindException be) {
             String msg = be.getMessage();
             if (msg.contains("already in use")) {

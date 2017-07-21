@@ -95,7 +95,7 @@ public class ServerPipesConfig {
 			serverPipesPerOutputEngine 	  = isTLS?4:8;//multiplier against server wrap units for max simultanus user responses.
 			writeBufferMultiplier         = 16;
 		} else {	//small
-			maxPartialResponsesServer     = processors==1 ? 2 : 8;    //8 concurrent partial messages 
+			maxPartialResponsesServer     = processors==1 ? 2 : 4;    //4 concurrent partial messages 
 			maxConnectionBitsOnServer     = 12;    //4k  open connections on server	    	
 		
 			serverInputMsg                = isTLS? 8 : 48; 
@@ -114,8 +114,8 @@ public class ServerPipesConfig {
 			releaseMsg                    = 1024;//256;
 						
 			serverRequestUnwrapUnits      = isTLS?2:1;  //server unwrap units - need more for handshaks and more for posts
-			serverResponseWrapUnits 	  = processors==1?1:(isTLS?8:4);    //server wrap units
-			serverPipesPerOutputEngine 	  = processors==1?1:(isTLS?2:2);//multiplier against server wrap units for max simultanus user responses.
+			serverResponseWrapUnits 	  = processors==1?1:(isTLS?4:2);    //server wrap units
+			serverPipesPerOutputEngine 	  = processors==1?1:(isTLS?2:1);//multiplier against server wrap units for max simultanus user responses.
 			writeBufferMultiplier         = 4;
 		}
 		
