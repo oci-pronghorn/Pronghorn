@@ -79,6 +79,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     public OrderSupervisorStage(GraphManager graphManager, Pipe<ServerResponseSchema>[] inputPipes, Pipe<NetPayloadSchema>[] outgoingPipes, ServerCoordinator coordinator) {
         super(graphManager, inputPipes, outgoingPipes);      
         this.dataToSend = inputPipes;
+        assert(outgoingPipes.length>0);
         
         assert(dataToSend.length<=Short.MAX_VALUE) : "can not support more pipes at this time. This code will need to be modified";
         if (dataToSend.length>Short.MAX_VALUE) {
@@ -95,7 +96,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         this.supportsBatchedRelease = false;
         
         if (minVarLength(outgoingPipes) < maxVarLength(this.dataToSend)) {
-        	throw new UnsupportedOperationException("All output pipes must support variable length fields equal to or larger than all input pipes");
+          	throw new UnsupportedOperationException(
+        			"All output pipes must support variable length fields equal to or larger than all input pipes");
         }
         
         this.maxOuputSize = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210) +

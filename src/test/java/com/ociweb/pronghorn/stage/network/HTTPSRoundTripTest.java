@@ -197,7 +197,7 @@ public class HTTPSRoundTripTest {
 				
 				/////////////////
 				/////////////////
-				int base2SimultaniousConnections = isLarge ? 3 : 2;
+				int base2SimultaniousConnections = isLarge ? 3 : 1;
 				int clientCount = isLarge ? 4 : 2;
 					    	
 				//TODO: this number must be the limit of max simuantious handshakes.

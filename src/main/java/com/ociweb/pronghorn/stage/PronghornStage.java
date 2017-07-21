@@ -105,7 +105,7 @@ public abstract class PronghornStage {
 		int result = Integer.MAX_VALUE;
     	int i = pipes.length;
     	while (--i>=0) {
-    		result = Math.min(result, pipes[i].maxAvgVarLen);
+    		result = Math.min(result, pipes[i].maxVarLen);
     	}
 		return Integer.MAX_VALUE==result ? 0 : result;
 	}

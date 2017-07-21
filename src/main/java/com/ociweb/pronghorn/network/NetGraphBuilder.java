@@ -456,6 +456,9 @@ public class NetGraphBuilder {
 		//a single supervisor will group all the modules responses together.
 		///////////////////
 
+		assert(fromSupers.length >= routerCount) : "reduce router count since we only have "+fromSupers.length+" pipes";
+		assert(routerCount>0);
+		
 		Pipe<NetPayloadSchema>[][] orderedOutput = Pipe.splitPipes(routerCount, fromSupers);
 		int k = routerCount;
 		while (--k>=0) {
