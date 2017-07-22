@@ -1497,7 +1497,8 @@ public class GraphManager {
 	                    int maxFrag = FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe));                    
 	                    int maxMessagesOnPipe = pipe.sizeOfSlabRing/minFrag;
 	                    int minMessagesOnPipe = pipe.sizeOfSlabRing/maxFrag;           
-	                   
+	                    long bytesAllocated = Pipe.estBytesAllocated(pipe);
+	                    
 	                    
 	                    String pipeName = m.pipeDOTNames[pipe.id];
 	                    if (null==pipeName) {//keep so this is not built again upon every call
@@ -1530,10 +1531,23 @@ public class GraphManager {
 		                
 		                
 		                if (minMessagesOnPipe==maxMessagesOnPipe) {
-		                    Appendables.appendValue(target," [",minMessagesOnPipe,"]");
+		                    Appendables.appendValue(target," [",minMessagesOnPipe,"msg]");
 		                } else {
-		                    Appendables.appendValue( Appendables.appendValue(target," [",minMessagesOnPipe) ,"-",maxMessagesOnPipe,"]");
+		                    Appendables.appendValue( Appendables.appendValue(target," [",minMessagesOnPipe) ,"-",maxMessagesOnPipe,"msgs]");
 		                }
+		                
+		                //System.err.println("bytes allocated "+bytesAllocated);
+		                if (bytesAllocated > (1L<<31)) {
+		                	Appendables.appendValue(target, bytesAllocated>>>30).append('g');
+		                } else if (bytesAllocated > (1L<<21)) {
+		                	Appendables.appendValue(target, bytesAllocated>>>20).append('m');
+		                } else if (bytesAllocated > (1L<<11)) {
+		                	Appendables.appendValue(target, bytesAllocated>>>10).append('k');
+		                } else {
+		                	Appendables.appendValue(target, bytesAllocated).append('b');
+		                }
+		                
+		                
 		                target.append("\"");
 		                
 		                Appendables.appendValue(target.append(",penwidth="),lineWidth);
