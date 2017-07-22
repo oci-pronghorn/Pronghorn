@@ -192,7 +192,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	public void run() {
 		
 		int foundWork; //keep going until we make a pass and there is no work.
-	
+		
+		final boolean writeIndex = true;//NOTE: must be on for random access to headers.		
+		final int indexOffsetCount = 0;//We have no fields indexed before these headers
+		
+		
 		do {		
 			foundWork = 0;
 			
@@ -445,27 +449,30 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 						
 						DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);
-						try {
 						DataOutputBlobWriter.openField(writer);
-						} catch (Exception e) {
-							System.err.println("open write for "+cc.id+" and user "+cc.getUserId());
 							
-							throw e;
-						}
-			
 						//NOTE: this is fine because its only used when in testing mode.  TODO: more work needs to be done here, predefine the calls.
 						writer.writeShort(200);//OK
 						
-						
+		
 						//NOTE: we will need to support addtional header types in the future.
+						int item = IntHashTable.getItem(headersSupported, HTTPHeader.HEADER_BIT | H_CONTENT_TYPE);
+						assert(0!=item) : "for this cache to work Content Type must be a supported header";
 						writer.writeShort((short)H_CONTENT_TYPE);
+						int writePosition = writer.position();
 						writer.writeShort((short)lastMessageType); //JSONType
-
+						if (writeIndex && 0!=item) {
+							//we did not write index above so write here.
+							DataOutputBlobWriter.setIntBackData(writer, writePosition, 1+(0xFFFF & item) + indexOffsetCount);
+						} 
 						writer.writeShort((short)-1); //END OF HEADER FIELDS
+						
 
 					    TrieParserReader.parseCopy(trieReader, lastPayloadSize, writer);
 				
-						
+						if (writeIndex) {
+							DataOutputBlobWriter.commitBackData(writer);
+						}
 						writer.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
 						Pipe.confirmLowLevelWrite(targetPipe, Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101));
 						Pipe.publishWrites(targetPipe);	
@@ -558,7 +565,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					case 1: ///////// HEADERS
 						//this writer was opened when we parsed the first line, now we are appending to it.
 						DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);
-						
+	
 						int headerId=0;
 						//stay here and read all the headers if possible
 						do {
@@ -572,7 +579,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								
 								if (END_OF_HEADER_ID != headerId) {								
 									
-									headerProcessing(i, writer, headerId, len, headersSupported);
+									headerProcessing(i, writer, headerId, len, headersSupported, true, indexOffsetCount);
 									
 									//do not change state we want to come back here.									
 								} else {
@@ -643,7 +650,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									Pipe.releasePendingAsReadLock(pipe, runningHeaderBytes[i]); 
 									
 									//NOTE: input is low level, TireParser is using low level take
-									//      writer output is high level;									
+									//      writer output is high level;
+									if (writeIndex) {
+										DataOutputBlobWriter.commitBackData(writer2);
+									}
 									writer2.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
 									positionMemoData[stateIdx] = state = 5;
 									Pipe.confirmLowLevelWrite(targetPipe, Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101));
@@ -705,7 +715,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										assert(END_OF_HEADER_ID==headerId);
 							///////			
 										//NOTE: input is low level, TireParser is using low level take
-										//      writer output is high level;									
+										//      writer output is high level;
+										if (writeIndex) {
+											DataOutputBlobWriter.commitBackData(writer3);
+										}
 										int len = writer3.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
 										positionMemoData[stateIdx] = state = 5;
 										
@@ -728,6 +741,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 										
 										if (writer3.length() + chunkRemaining >= targetPipe.maxVarLen) {
+											if (writeIndex) {
+												DataOutputBlobWriter.commitBackData(writer3);
+											}
 											int len = writer3.closeLowLevelField();
 											Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
 											Pipe.publishWrites(targetPipe);	
@@ -883,15 +899,26 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
 	private void headerProcessing(int i, 
 			                     DataOutputBlobWriter<NetResponseSchema> writer, 
-			                     int headerId, int len, IntHashTable headerToPositionTable) {
+			                     int headerId, int len, IntHashTable headerToPositionTable, 
+			                     boolean writeIndex, int indexOffsetCount) {
 
 		//NB: any specific case will capture this header and prevent the application layer from getting it
 		//    they must add data as needed to make these seen or not because the app layer should not see them.
 		switch (headerId) {
 			case H_TRANSFER_ENCODING:
-				writer.writeShort((short)H_TRANSFER_ENCODING);
-				writer.writeBoolean(true); //true for chunked
-				payloadLengthData[i] = -1; //marked as chunking										
+				{
+					int item = IntHashTable.getItem(headerToPositionTable, HTTPHeader.HEADER_BIT | headerId);
+				    
+					writer.writeShort((short)H_TRANSFER_ENCODING);
+					int writePosition = writer.position();
+					
+					writer.writeBoolean(true); //true for chunked
+					payloadLengthData[i] = -1; //marked as chunking	
+					
+					if (writeIndex && 0!=item) {
+						DataOutputBlobWriter.setIntBackData(writer, writePosition, 1+(0xFFFF & item) + indexOffsetCount);
+					}	
+				}	
 				break;
 			case H_CONTENT_LENGTH:
 				//app should not be given length since they already have it parsed.
@@ -905,11 +932,20 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				
 			//other values to write to stream?	
 			case H_CONTENT_TYPE:
+				{
+					int item = IntHashTable.getItem(headerToPositionTable, HTTPHeader.HEADER_BIT | headerId);
+					  
 					writer.writeShort((short)H_CONTENT_TYPE);
+					int writePosition = writer.position();
+					
 					int type = (int)TrieParserReader.capturedFieldQuery(trieReader, 0, httpSpec.contentTypeTrieBuilder());
 					lastMessageType = type;			
 					writer.writeShort((short)type);
-			
+					if (writeIndex && 0!=item) {
+						//we did not write index above so write here.
+						DataOutputBlobWriter.setIntBackData(writer, writePosition, 1+(0xFFFF & item) + indexOffsetCount);
+					} 
+				}
 				break;
 			default:
 				if (headerId ==UNSUPPORTED_HEADER_ID) {
@@ -918,8 +954,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					//anything not already captured goes here
 					if (null!=headerToPositionTable) {
 						///capture all the requested header bodies.
-						boolean writeIndex = true;
-						int indexOffsetCount = 0;//We have no fields indexed before these headers
 						HeaderUtil.captureRequestedHeader(writer, 
 														 indexOffsetCount, 
 													 	 headerToPositionTable, 

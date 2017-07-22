@@ -39,7 +39,8 @@ public class MQTTClientGraphBuilder {
 				
         //we are not defining he other side of the request and response....
 		
-		buildMQTTClientGraph(gm, isTLS, maxInFlight, maximumLenghOfVariableLengthFields, clientRequest, clientResponse, rate);
+		buildMQTTClientGraph(gm, isTLS, maxInFlight, maximumLenghOfVariableLengthFields, 
+							clientRequest, clientResponse, rate, (byte)2, (short)4);
 				
 		return clientResponse;
 	}
@@ -58,19 +59,16 @@ public class MQTTClientGraphBuilder {
 												int maximumLenghOfVariableLengthFields, 
 												Pipe<MQTTClientRequestSchema> clientRequest,
 												Pipe<MQTTClientResponseSchema> clientResponse, 
-												final long rate) {
+												final long rate, byte connectionsInBits, 
+												short maxPartialResponses) {
 		
-		int minimumFragmentsOnRing = (maxInFlight*2)+10;
-		final int connectionsInBits = 2;
-		final int maxPartialResponses = 4;
+
 		
-		//TODO: the ack responses are hidden behind new requests and must take priority.
-		//      one fix is to make this smaller??
-		Pipe<MQTTClientToServerSchema> clientToServer = MQTTClientToServerSchema.instance.newPipe(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields); //from the application 
-		Pipe<MQTTClientToServerSchemaAck> clientToServerAck = MQTTClientToServerSchemaAck.instance.newPipe(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields); //from the application 
-		
-		
-		final Pipe<MQTTServerToClientSchema> serverToClient = MQTTServerToClientSchema.instance.newPipe(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields); //from the response
+		byte maxValueBits = (byte)Math.ceil(Math.log(maximumLenghOfVariableLengthFields)/Math.log(2));
+
+		final Pipe<MQTTClientToServerSchema> clientToServer = MQTTClientToServerSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields); //from the application 
+		final Pipe<MQTTClientToServerSchemaAck> clientToServerAck = MQTTClientToServerSchemaAck.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields); //from the application 
+		final Pipe<MQTTServerToClientSchema> serverToClient = MQTTServerToClientSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields); //from the response
 		
 		Pipe<MQTTIdRangeSchema> idGenNew = MQTTIdRangeSchema.instance.newPipe(4,0);
 		Pipe<MQTTIdRangeSchema> idGenOld = MQTTIdRangeSchema.instance.newPipe(4,0);
@@ -102,20 +100,20 @@ public class MQTTClientGraphBuilder {
 				
 		Pipe<PersistedBlobStoreSchema> persistancePipe = PersistedBlobStoreSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
 		Pipe<PersistedBlobLoadSchema> persistanceLoadPipe = PersistedBlobLoadSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
-		byte multi = 4;//x time the pipe size
-		byte maxValueBits = 20;
+
 		File rootFolder = null;
 		try {
 			rootFolder = new File(Files.createTempDirectory("mqttClientData").toString());
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+		byte multi = 4;//x time the pipe size
 		PersistedBlobStage persistedStage = new PersistedBlobStage(gm, persistancePipe, persistanceLoadPipe, multi, maxValueBits, rootFolder );
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, persistedStage);
 		
 		int independentClients = 1; 
 		
-		Pipe<NetPayloadSchema>[] toBroker = Pipe.buildPipes(independentClients, NetPayloadSchema.instance.newPipeConfig(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields));
+		Pipe<NetPayloadSchema>[] toBroker = Pipe.buildPipes(independentClients, NetPayloadSchema.instance.newPipeConfig(maxInFlight, maximumLenghOfVariableLengthFields));
 		
 		//take input request and write the bytes to the broker socket
 		int uniqueId = 1; //Different for each client instance. so ccm and toBroker can be shared across all clients.
@@ -130,7 +128,20 @@ public class MQTTClientGraphBuilder {
 		MQTTClient mqttClient = new MQTTClient(gm, clientRequest, idGenNew, serverToClient2, clientResponse, idGenOld, clientToServer, clientToServerAck);
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, mqttClient);
 		
-		NetGraphBuilder.buildSimpleClientGraph(gm, ccm, factory, toBroker);
+		int clientWriters = 1;				
+		int responseUnwrapCount = 1;
+		int clientWrapperCount = 1;
+		int responseQueue = maxInFlight;
+		int responseSize = maximumLenghOfVariableLengthFields;
+		int releaseCount = maxInFlight;
+		int netResponseCount = maxInFlight;
+		int netResponseBlob = maximumLenghOfVariableLengthFields;
+		int writeBufferMultiplier = 8;
+				
+		NetGraphBuilder.buildClientGraph(gm, ccm, responseQueue, responseSize, toBroker,
+				         responseUnwrapCount, clientWrapperCount,
+				         clientWriters, releaseCount, netResponseCount,
+				         netResponseBlob, factory, writeBufferMultiplier);
 	}
 	
 	

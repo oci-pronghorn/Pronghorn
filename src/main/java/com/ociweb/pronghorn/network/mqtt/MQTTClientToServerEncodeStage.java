@@ -343,7 +343,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			final long now = System.currentTimeMillis();
 			final long quiet = now-lastActvityTime;
 			if (quiet > (keepAliveMS>>1)) {
-				logger.info("note quiet {} trigger {} ",quiet, keepAliveMS);
+				//logger.trace("note quiet {} trigger {} ",quiet, keepAliveMS);
 				
 				if (hasUnackPublished()) {
 					rePublish(toBroker[activeConnection.requestPipeLineIdx()]);					

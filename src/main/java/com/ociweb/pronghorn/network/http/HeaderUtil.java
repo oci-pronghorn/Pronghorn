@@ -96,9 +96,7 @@ public class HeaderUtil {
 		    //skip this data since the app module can not make use of it
 		    //this is the normal most frequent case                    
 		} else {
-			int headerPos = 1+(0xFFFF & item);                                  
-	
-		    try {
+			try {
 		    	//Id for the header
 		    	writer.writeShort(headerId);
 		    	//write values and write index to end of block??
@@ -107,7 +105,7 @@ public class HeaderUtil {
 				TrieParserReader.writeCapturedValuesToDataOutput(trieReader, writer, false);
 				if (writeIndex) {					
 					//we did not write index above so write here.
-					DataOutputBlobWriter.setIntBackData(writer, writePosition, headerPos + indexOffsetCount);
+					DataOutputBlobWriter.setIntBackData(writer, writePosition, 1+(0xFFFF & item) + indexOffsetCount);
 				}					
 			} catch (IOException e) {
 				throw new RuntimeException(e);

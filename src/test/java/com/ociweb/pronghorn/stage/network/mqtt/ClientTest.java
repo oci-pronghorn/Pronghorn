@@ -38,7 +38,8 @@ public class ClientTest {
 		Pipe<MQTTClientResponseSchema> clientResponse = MQTTClientResponseSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
 		
 		long rate = 1_200;
-		MQTTClientGraphBuilder.buildMQTTClientGraph(gm, isTLS, maxInFlight, maximumLenghOfVariableLengthFields, clientRequest, clientResponse, rate);       
+		MQTTClientGraphBuilder.buildMQTTClientGraph(gm, isTLS, maxInFlight, maximumLenghOfVariableLengthFields, clientRequest, clientResponse, rate,
+													(byte)2, (short)4);       
        
         ConsoleJSONDumpStage.newInstance(gm, clientResponse);
        

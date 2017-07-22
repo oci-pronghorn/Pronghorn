@@ -63,7 +63,7 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     WWW_AUTHENTICATE("www-authenticate: %b"), //twitter    
     ML("ml: %b"), //twitter
     UPGRADE_INSECURE_REQUESTS("Upgrade-Insecure-Requests: %u"), //chromium
-    
+    P3P("P3P: %b"),
     X_FORWARD_FOR("x-Forwarded-For: %b"),
     X_FORWARD_HOST("x-Forwarded-Host: %b"),
     X_ONLINE_HOST("x-Online-Host: %b"),

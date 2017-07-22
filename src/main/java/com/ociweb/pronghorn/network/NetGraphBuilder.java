@@ -77,13 +77,14 @@ public class NetGraphBuilder {
 		
 		PipeConfig<ReleaseSchema> parseReleaseConfig = new PipeConfig<ReleaseSchema>(ReleaseSchema.instance, releaseCount, 0);
 		
-
 		//must be large enough for handshake plus this is the primary pipe after the socket so it must be a little larger.
-		PipeConfig<NetPayloadSchema> clientNetResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, responseQueue, responseSize); 	
+		PipeConfig<NetPayloadSchema> clientNetResponseConfig = new PipeConfig<NetPayloadSchema>(
+				NetPayloadSchema.instance, responseQueue, responseSize); 	
 		
 		
 		//pipe holds data as it is parsed so making it larger is helpful
-		PipeConfig<NetPayloadSchema> clientHTTPResponseConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance, netResponseCount, netResponseBlob); 	
+		PipeConfig<NetPayloadSchema> clientHTTPResponseConfig = new PipeConfig<NetPayloadSchema>(
+				NetPayloadSchema.instance, netResponseCount, netResponseBlob); 	
 		
 		
 		///////////////////
