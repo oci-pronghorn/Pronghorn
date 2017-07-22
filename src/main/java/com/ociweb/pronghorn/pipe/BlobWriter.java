@@ -43,6 +43,8 @@ public abstract class BlobWriter extends OutputStream implements DataOutput, App
 	 
 	 abstract public void writeBooleanArray(boolean[] booleans);
 	 
+	 abstract public void writeRational(long numerator, long denominator);
+	 
 	 abstract public void writeUTFArray(String[] utfs);
 	 
 	 abstract public void write(byte[] source, int sourceOff, int sourceLen, int sourceMask);

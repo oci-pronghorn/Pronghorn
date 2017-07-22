@@ -73,11 +73,11 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     	
     	int position = bytesHighBound-(4*negativeIntOffset);
     	
-//    	logger.info("reading int from position {} from {} {} {} {} pipe {}",position,
-//    			backing[byteMask & position],
-//    			backing[byteMask & (position+1)],
-//    			backing[byteMask & (position+2)],
-//    			backing[byteMask & (position+3)],
+//    	logger.info("reading int from position {} value {} from pipe {}",position,
+//    			(backing[byteMask & position]<<24) |
+//    			(backing[byteMask & (position+1)]<<16) |
+//    			(backing[byteMask & (position+2)]<<8) |
+//    			(backing[byteMask & (position+3)]),
 //    			getBackingPipe(this).id
 //    			);
     	   	
