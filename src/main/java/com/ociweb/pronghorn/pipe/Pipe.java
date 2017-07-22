@@ -629,8 +629,8 @@ public class Pipe<T extends MessageSchema<T>> {
         return pipe.schema instanceof MessageSchemaDynamic;
     }
     
-    public static <S extends MessageSchema<S>> int estBytesAllocated(Pipe<S> pipe) {
-    	return pipe.blobRing.length + (pipe.slabRing.length*4) + 1024;//1K for overhead
+    public static <S extends MessageSchema<S>> long estBytesAllocated(Pipe<S> pipe) {
+    	return ((long)pipe.blobRing.length) + (pipe.slabRing.length*4L) + 1024L;//1K for overhead
     }
     
     public static <S extends MessageSchema<S>> String schemaName(Pipe<S> pipe) {
