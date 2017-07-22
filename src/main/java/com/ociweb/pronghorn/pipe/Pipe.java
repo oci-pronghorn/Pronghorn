@@ -629,6 +629,10 @@ public class Pipe<T extends MessageSchema<T>> {
         return pipe.schema instanceof MessageSchemaDynamic;
     }
     
+    public static <S extends MessageSchema<S>> int estBytesAllocated(Pipe<S> pipe) {
+    	return pipe.blobRing.length + (pipe.slabRing.length*4) + 1024;//1K for overhead
+    }
+    
     public static <S extends MessageSchema<S>> String schemaName(Pipe<S> pipe) {
         return null==pipe.schema? "NoSchemaFor "+Pipe.from(pipe).name  :pipe.schema.getClass().getSimpleName();
     }
