@@ -132,8 +132,13 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 	      if (null!=types) {
 		      x = types.length;
 		      while (--x >= 0) {
-		    	  typeMap.setUTF8Value(types[x].contentType(),"\r\n", types[x].ordinal());	 
+		    	  //with or without the  charset part on the end
+		    	  //Content-Type: text/html; charset=ISO-8859-1
+		    	  typeMap.setUTF8Value(types[x].contentType(),"\r\n", types[x].ordinal());	
+		    	  typeMap.setUTF8Value(types[x].contentType(),"; charset=ISO-8859-1\r\n", types[x].ordinal());	
+		    	  
 		    	  typeMap.setUTF8Value(types[x].contentType(),"\n", types[x].ordinal());  //\n must be last because we prefer to have it pick \r\n
+		    	  typeMap.setUTF8Value(types[x].contentType(),"; charset=ISO-8859-1\n", types[x].ordinal());
 		      }
 	      }
 		return typeMap;

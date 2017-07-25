@@ -80,9 +80,17 @@ public class ServerNewConnectionStage extends PronghornStage{
             
             //trim of local domain name when present.
             String host = endPoint.toString();
+
             int hidx = host.indexOf('/');
-            if (hidx>=0) {
-            	host = host.substring(hidx+1, host.length());
+            if (hidx==0) {
+            	host = host.substring(hidx+1,host.length());
+            } else if (hidx>0) {
+            	int colidx = host.indexOf(':');
+            	if (colidx<0) {
+            		host = host.substring(0,hidx);
+            	} else {
+            		host = host.substring(0,hidx)+host.substring(colidx,host.length());
+            	}
             }
             
             System.out.println("Server is now ready on  http"+(coordinator.isTLS?"s":"")+":/"+host+"/");
