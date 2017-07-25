@@ -1388,6 +1388,11 @@ public class TrieParser implements Serializable {
 
     private int writeBranch(byte type, int pos, int requiredRoom, short criteria) {
                 
+        int neededLen = pos+4;
+        if (neededLen>data.length) {
+     	   growDataLen(neededLen); 
+        }
+    	
         requiredRoom -= SIZE_OF_BRANCH;//subtract the size of the branch operator
         data[pos++] = type;
         data[pos++] = criteria;
@@ -1400,6 +1405,11 @@ public class TrieParser implements Serializable {
 
 
     private int writeEnd(int pos, long value) {
+        int neededLen = pos+1+SIZE_OF_RESULT;
+        if (neededLen>data.length) {
+     	   growDataLen(neededLen); 
+        }
+        
         data[pos++] = TYPE_END;
         return writeEndValue(pos, value);
     }
@@ -1426,6 +1436,12 @@ public class TrieParser implements Serializable {
     }
  
     private int writeBytesExtract(int pos, short stop) {
+    	        
+		int neededLen = pos+2;
+		if (neededLen>data.length) {
+			   growDataLen(neededLen); 
+		}
+
         data[pos++] = TYPE_VALUE_BYTES;
         data[pos++] = stop;
         extractions[extractionCount++] = ESCAPE_CMD_BYTES;
@@ -1433,6 +1449,12 @@ public class TrieParser implements Serializable {
     }
     
     private int writeNumericExtract(int pos, int type) {
+    	
+		int neededLen = pos+2;
+		if (neededLen>data.length) {
+			   growDataLen(neededLen); 
+		}
+		
         data[pos++] = TYPE_VALUE_NUMERIC;
         data[pos++] = buildNumberBits((byte)type);
         extractions[extractionCount++] = (byte)type;
@@ -1506,6 +1528,11 @@ public class TrieParser implements Serializable {
 
     private int writeRunHeader(int pos, int sourceLength) {
         
+		int neededLen = pos+2;
+		if (neededLen>data.length) {
+			   growDataLen(neededLen); 
+		}
+    	
         if (sourceLength > 0x7FFF || sourceLength < 1) {
             throw new UnsupportedOperationException("does not support strings beyond this length "+0x7FFF+" value was "+sourceLength);
         }
