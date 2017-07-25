@@ -45,7 +45,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
      }
      
      public int maxVarLenSize() {
-    	 return FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(schema.from, 1<<slabBits);
+    	 return (1<<blobBits)/FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(schema.from, 1<<slabBits);
      }
      
      
