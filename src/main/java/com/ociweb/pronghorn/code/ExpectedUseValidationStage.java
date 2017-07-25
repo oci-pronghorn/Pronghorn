@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.code;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -11,6 +14,7 @@ public class ExpectedUseValidationStage extends PronghornStage{
 	private final GraphManager graphManager;
 	private final GVSValidator validator;
 	private boolean foundError = false;
+	private final Logger logger = LoggerFactory.getLogger(ExpectedUseValidationStage.class);
 	
 	public ExpectedUseValidationStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs, GVSValidator validator) {
 		super(graphManager, inputs, outputs);
@@ -35,7 +39,7 @@ public class ExpectedUseValidationStage extends PronghornStage{
 	
 	@Override
 	public void shutdown() {
-		System.out.println("shutdown validator :"+validator.status());
+		logger.info("shutdown validator :{}",validator.status());
 	}
 
 	public boolean foundError() {
