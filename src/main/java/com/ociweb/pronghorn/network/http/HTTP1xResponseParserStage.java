@@ -463,11 +463,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						writer.writeShort((short)lastMessageType); //JSONType
 						if (writeIndex && 0!=item) {
 							//we did not write index above so write here.
-							DataOutputBlobWriter.setIntBackData(writer, writePosition, 1+(0xFFFF & item) + indexOffsetCount);
+							DataOutputBlobWriter.setIntBackData(writer, writePosition, 1 + (0xFFFF & item) + indexOffsetCount);
 						} 
 						writer.writeShort((short)-1); //END OF HEADER FIELDS
 						
-
+						//write index to where the body starts.
+						DataOutputBlobWriter.setIntBackData(writer, writer.position(), 1 + IntHashTable.count(headersSupported) + indexOffsetCount);
+						
 					    TrieParserReader.parseCopy(trieReader, lastPayloadSize, writer);
 				
 						if (writeIndex) {
@@ -528,7 +530,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							int consumed = startingLength1 - trieReader.sourceLen;						
 							
 							runningHeaderBytes[i] = consumed;
-			
+							
+							if (writeIndex) {
+								//clear header indexes
+								DataOutputBlobWriter.tryClearIntBackData(Pipe.outputStream(targetPipe), IntHashTable.count(headersSupported)); 
+							}
+							
 						} else {
 							
 							TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
@@ -579,12 +586,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								
 								if (END_OF_HEADER_ID != headerId) {								
 									
-									headerProcessing(i, writer, headerId, len, headersSupported, true, indexOffsetCount);
+									headerProcessing(i, writer, headerId, len, headersSupported, writeIndex, indexOffsetCount);
 									
 									//do not change state we want to come back here.									
 								} else {
 									state = endOfHeaderProcessing(i, stateIdx, writer);		
-
 									if (3==state) {
 										//release all header bytes, we will do each chunk on its own.
 										assert(runningHeaderBytes[i]>0);								
@@ -593,6 +599,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									}
 									//only case where state is not 1 so we must call save all others will call when while loops back to top.
 									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx); 
+									if (writeIndex) {
+										logger.info("body length to write {}",payloadLengthData[i]);
+										//write index to where the body starts.
+										logger.info("{} wrote the index of the body {} to position {} ",state, writer.position(), IntHashTable.count(headersSupported) + indexOffsetCount);
+										DataOutputBlobWriter.setIntBackData(writer, writer.position(), IntHashTable.count(headersSupported) + indexOffsetCount);
+									}
 								}								
 								
 								int consumed = startingLength - trieReader.sourceLen;							
@@ -630,9 +642,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								final DataOutputBlobWriter<NetResponseSchema> writer2 = Pipe.outputStream(targetPipe);
 								
 								if (lengthRemaining>0 && trieReader.sourceLen>0) {
-				
+													
+									int usedByIndex = DataOutputBlobWriter.countOfBytesUsedByIndex(writer2);
 									//length is not written since this may accumulate and the full field provides the length
-									final int consumed = TrieParserReader.parseCopy(trieReader, lengthRemaining, writer2);
+									final int consumed = TrieParserReader.parseCopy(trieReader,
+											                          Math.min(lengthRemaining,targetPipe.maxVarLen-usedByIndex),
+											                          writer2);
 									lengthRemaining -= consumed;
 							
 		//							logger.info("consumed {} source position {} state {} ",consumed, trieReader.sourcePos,state);
@@ -654,7 +669,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									if (writeIndex) {
 										DataOutputBlobWriter.commitBackData(writer2);
 									}
-									writer2.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
+									int length = writer2.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
+									logger.info("length of full message written {} ",length);
+									
 									positionMemoData[stateIdx] = state = 5;
 									Pipe.confirmLowLevelWrite(targetPipe, Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101));
 									Pipe.publishWrites(targetPipe);	
@@ -740,7 +757,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										Pipe.releasePendingAsReadLock(pipe, consumed);
 										TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 										
-										if (writer3.length() + chunkRemaining >= targetPipe.maxVarLen) {
+										//ensure we do not override the indexes
+										if ((writer3.length() + chunkRemaining + DataOutputBlobWriter.countOfBytesUsedByIndex(writer3)) >= targetPipe.maxVarLen) {
 											if (writeIndex) {
 												DataOutputBlobWriter.commitBackData(writer3);
 											}
