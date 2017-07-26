@@ -540,6 +540,14 @@ public class GraphManager {
 	public static  <T extends MessageSchema<T>> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema) {
 	    return pipesOfType(0, gm.pipeIdToPipe.length, gm, targetSchema.getClass());
 	}
+	
+	public static  <T extends MessageSchema<T>> Pipe<T>[] allPipesOfTypeWithNoConsumer(GraphManager gm, T targetSchema) {
+	    return pipesOfTypeWithNoConsumer(0, gm.pipeIdToPipe.length, gm, targetSchema.getClass());
+	}
+	
+	public static  <T extends MessageSchema<T>> Pipe<T>[] allPipesOfTypeWithNoProducer(GraphManager gm, T targetSchema) {
+	    return pipesOfTypeWithNoProducer(0, gm.pipeIdToPipe.length, gm, targetSchema.getClass());
+	}
 
 	public static  <T extends MessageSchema<T>> Pipe<T>[] allPipesOfType(GraphManager gm, T targetSchema, int minimumPipeId) {
 	    return pipesOfType(0, gm.pipeIdToPipe.length, gm, targetSchema, minimumPipeId);
@@ -549,22 +557,43 @@ public class GraphManager {
 		//pass one to count all the instances
         while (--p>=0) {
             Pipe tp = gm.pipeIdToPipe[p];
-            if (null != tp) {
-                if (Pipe.isForSchema(tp, targetSchemaClazz)) {
+            if ((null != tp) && Pipe.isForSchema(tp, targetSchemaClazz)) {
                 	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchemaClazz);
                 	result[(result.length-1)-count] = tp;
                     return result;
-                }
             }
         }
-        
-        if (0==count) {
-        	return EMPTY_PIPE_ARRAY;
-        } else {
-        	return new Pipe[count];
-        }
-	    
+        return (0==count) ? EMPTY_PIPE_ARRAY : new Pipe[count];
 	}
+	
+	private static <T extends MessageSchema<T>> Pipe<T>[] pipesOfTypeWithNoConsumer(int count, int p, GraphManager gm, Class<T> targetSchemaClazz) {
+		//pass one to count all the instances
+        while (--p>=0) {
+            Pipe tp = gm.pipeIdToPipe[p];
+                        
+            if ((null != tp) && Pipe.isForSchema(tp, targetSchemaClazz) && (getRingConsumerId(gm, tp.id)==-1)) {
+                	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchemaClazz);
+                	result[(result.length-1)-count] = tp;
+                    return result;
+            }
+        }
+        return (0==count) ? EMPTY_PIPE_ARRAY : new Pipe[count];
+	}
+	
+	private static <T extends MessageSchema<T>> Pipe<T>[] pipesOfTypeWithNoProducer(int count, int p, GraphManager gm, Class<T> targetSchemaClazz) {
+		//pass one to count all the instances
+        while (--p>=0) {
+            Pipe tp = gm.pipeIdToPipe[p];
+                        
+            if ((null != tp) && Pipe.isForSchema(tp, targetSchemaClazz) && (getRingProducerId(gm, tp.id)==-1)) {
+                	Pipe<T>[] result = pipesOfType(count+1,p,gm,targetSchemaClazz);
+                	result[(result.length-1)-count] = tp;
+                    return result;
+            }
+        }
+        return (0==count) ? EMPTY_PIPE_ARRAY : new Pipe[count];
+	}
+	
 	
 	private static <T extends MessageSchema<T>> Pipe<T>[] pipesOfType(int count, int p, GraphManager gm, T targetSchema, int minimumPipeId) {
 		//pass one to count all the instances
