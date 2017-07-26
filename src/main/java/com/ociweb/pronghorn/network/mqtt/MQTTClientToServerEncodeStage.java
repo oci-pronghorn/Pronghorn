@@ -173,7 +173,9 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 
 			//skip bad value already acknowledged
 			if (packetIdRing[ringMask & i] != Integer.MAX_VALUE) {	
-				logger.info("republish to broker");
+				
+				//TODO: need to look into this.
+				logger.trace("republish to broker");
 				
 	    		final long slabPos = Pipe.getSlabHeadPosition(pipe); 
 	    		final int blobPos = Pipe.getBlobHeadPosition(pipe);
@@ -185,7 +187,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 						if (Thread.interrupted() || Pipe.isShutdown(pipe)) {
 							Thread.currentThread().interrupt();
 							activeConnection = null;
-							logger.info("returned");
+							logger.trace("returned");
 							return;
 						}
 					}
