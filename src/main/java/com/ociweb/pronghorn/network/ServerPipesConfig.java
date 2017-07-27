@@ -104,7 +104,7 @@ public class ServerPipesConfig {
 			serverMsgToEncrypt            = 8; //may cause backing up and one side processing?
 			serverBlobToEncrypt           = 1<<15; //Must NOT be smaller than the file write output (modules) ??? ONLY WHEN WE ARE USE ING TLS
 			
-			serverOutputMsg               = isTLS?16:32; //important for outgoing data and greatly impacts performance
+			serverOutputMsg               = isTLS?8:16; //important for outgoing data and greatly impacts performance
 			serverBlobToWrite             = 1<<15; //Must NOT be smaller than the file write output (modules), bigger values support combined writes when tls is off
 			
 			fromProcessorCount 			  = isTLS?64:256; //impacts performance
