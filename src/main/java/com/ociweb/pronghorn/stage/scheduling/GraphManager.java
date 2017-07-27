@@ -2025,7 +2025,7 @@ public class GraphManager {
 			int bits = (int)Math.ceil(Math.log(maxStages)/Math.log(2));
 	    	int pow2Stages = 1<<bits;
 	    	int longStages = pow2Stages>>6;// divide by 64
-	    	graphManager.stageBitMap = new long[longStages];
+	    	graphManager.stageBitMap = new long[longStages+1];//one extra for last long of values
 		}
 		
 		Arrays.fill(graphManager.stageBitMap, 0);
