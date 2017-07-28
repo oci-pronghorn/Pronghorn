@@ -20,9 +20,9 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     private final int byteMask;
     private static final Logger logger = LoggerFactory.getLogger(DataInputBlobReader.class);
     
-    private int length;
+    protected int length;
     private int bytesHighBound;
-    private int bytesLowBound;
+    protected int bytesLowBound;
     protected int position;
 
     private static TrieParser textToNumberParser;
