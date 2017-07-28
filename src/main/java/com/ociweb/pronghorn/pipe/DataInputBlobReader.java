@@ -71,7 +71,9 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     public int readFromEndLastInt(int negativeIntOffset) {
     	assert(negativeIntOffset>0) : "there is no data found at the end";
     	
-    	int position = bytesHighBound-(4*negativeIntOffset);
+    	//NOTE: we ignore length of the data and always read from maxVarLen 
+    	
+    	int position = (bytesLowBound + pipe.maxVarLen)-(4*negativeIntOffset);
     	
 //    	logger.info("reading int from position {} value {} from pipe {}",position,
 //    			(backing[byteMask & position]<<24) |

@@ -20,6 +20,8 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
     private int lastPosition;
     private int backPosition;
         
+    private boolean keepIndexRoom = false;
+    
     public DataOutputBlobWriter(Pipe<S> p) {
         this.backingPipe = p;
         assert(null!=p) : "requires non null pipe";
@@ -59,6 +61,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
 		writer.startPosition = writer.activePosition = workingBlobHeadPosition;
         writer.lastPosition = writer.startPosition + writer.backingPipe.maxVarLen;
         writer.backPosition = writer.lastPosition;
+        writer.keepIndexRoom = false;
         return writer;
 	}
     
@@ -125,23 +128,8 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
     	write32(writer.byteBuffer, writer.byteMask, writer.lastPosition-(4*pos), value);       
     }
        
-    public static <T extends MessageSchema<T>> void commitBackData(DataOutputBlobWriter<T> writer) {
-    	
-    	final boolean leaveIndexInPlace = true;
-    	if (leaveIndexInPlace) {
-    		writer.activePosition = writer.lastPosition;
-    	} else {
-    		///////////////////
-    		//older idea where we moved the index down to make the unused space available
-    		//this space could not be used however since we have allocated n blocks for n var fields
-    		//////////////////
-    		//NOTE: delete this block if this is working as expected with the above logic.
-	    	int sourceLen = countOfBytesUsedByIndex(writer);
-			Pipe.copyBytesFromToRing(writer.byteBuffer, writer.backPosition, writer.byteMask, writer.byteBuffer, writer.activePosition, writer.byteMask, sourceLen); 
-			writer.activePosition+=sourceLen;    	
-	    	//can only be done once then the end is clear again
-	    	writer.backPosition = writer.lastPosition;
-    	}
+    public static <T extends MessageSchema<T>> void commitBackData(DataOutputBlobWriter<T> writer) {  	
+    	writer.keepIndexRoom = true;
     }
 
 	public static <T extends MessageSchema<T>> int countOfBytesUsedByIndex(DataOutputBlobWriter<T> writer) {
@@ -157,6 +145,10 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
         //instead of fail fast as soon as one field goes over we wait to the end and only check once.
         int len = length(writer);
         PipeWriter.writeSpecialBytesPosAndLen(writer.backingPipe, targetFieldLoc, len, writer.startPosition);
+//		if (writer.keepIndexRoom) {
+//			writer.activePosition = writer.lastPosition;
+//		}  
+//		new Exception("close values").printStackTrace();
         writer.backingPipe.closeBlobFieldWrite();
         return len;
     }
@@ -180,12 +172,16 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
     public static <T extends MessageSchema<T>> int closeLowLevelMaxVarLenField(DataOutputBlobWriter<T> writer) {
         return closeLowLeveLField(writer, writer.getPipe().maxVarLen);
     }
-    
+
     
 	private static <T extends MessageSchema<T>> int closeLowLeveLField(DataOutputBlobWriter<T> writer, int len) {
+      
+		if (writer.keepIndexRoom) {
+			writer.activePosition = writer.lastPosition;
+		}  
+
 		Pipe.addAndGetBytesWorkingHeadPosition(writer.backingPipe, len);
-        Pipe.addBytePosAndLenSpecial(writer.backingPipe,writer.startPosition,len);
-        
+        Pipe.addBytePosAndLenSpecial(writer.backingPipe, writer.startPosition, len);
         Pipe.validateVarLength(writer.backingPipe, len);
         writer.backingPipe.closeBlobFieldWrite();
         return len;
