@@ -181,6 +181,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     
     public void setPositionBytesFromStart(int byteIndexFromStart) {
     	assert(byteIndexFromStart<length) : "index of "+byteIndexFromStart+" is out of limit "+length;
+    	//logger.trace("set to position from start "+byteIndexFromStart);
     	position = bytesLowBound+byteIndexFromStart;
     }
     
