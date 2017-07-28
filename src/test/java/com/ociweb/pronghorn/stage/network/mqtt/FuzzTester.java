@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.stage.network.mqtt;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -8,7 +8,6 @@ import org.junit.Test;
 import com.ociweb.pronghorn.code.StageTester;
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.mqtt.IdGenStage;
-import com.ociweb.pronghorn.network.mqtt.MQTTClient;
 import com.ociweb.pronghorn.network.mqtt.MQTTClientResponseStage;
 import com.ociweb.pronghorn.network.mqtt.MQTTClientToServerEncodeStage;
 

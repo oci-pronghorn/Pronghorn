@@ -288,6 +288,7 @@ public class ClientConnection extends SSLConnection {
 						
 		}
 		isValid = true;
+		//logger.info("is now valid");
 		this.key = getSocketChannel().register(selector, SelectionKey.OP_READ, this); 
 
 	}

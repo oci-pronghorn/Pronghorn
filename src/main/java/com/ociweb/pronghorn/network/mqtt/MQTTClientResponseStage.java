@@ -17,7 +17,7 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class MQTTClientResponseStage extends PronghornStage {
 
-	private static final Logger log = LoggerFactory.getLogger(MQTTClientResponseStage.class);
+	private static final Logger logger = LoggerFactory.getLogger(MQTTClientResponseStage.class);
 	
 	final Pipe<NetPayloadSchema>[] fromBroker;
 	final Pipe<ReleaseSchema> ackReleaseForResponseParser;
@@ -60,7 +60,7 @@ public class MQTTClientResponseStage extends PronghornStage {
 				DataInputBlobReader<NetPayloadSchema> inputStream = PipeReader.inputStream(server, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 				
 				byte commandByte = inputStream.readByte();
-			
+	
 				switch (commandByte) {
 					case (byte)0xD0: //PingResp
 						
@@ -86,6 +86,7 @@ public class MQTTClientResponseStage extends PronghornStage {
 											
 						break;
 					case (byte)0x90: //SubAck
+					
 						PipeWriter.tryWriteFragment(out, MQTTServerToClientSchema.MSG_SUBACK_9);
 					
 				        PipeWriter.writeLong(out, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_TIME_37, arrivalTime);
@@ -231,7 +232,7 @@ public class MQTTClientResponseStage extends PronghornStage {
 							PipeWriter.publishWrites(out);
 							
 						} else {							
-							log.trace("ignored unrecognized command of {} ",cmd);
+							logger.trace("ignored unrecognized command of {} ",cmd);
 						}
 				}
 				
@@ -258,7 +259,7 @@ public class MQTTClientResponseStage extends PronghornStage {
 						
 					} else {
 						
-						log.trace("support yet for NetPayloadSchema msg "+idx);
+						logger.trace("support yet for NetPayloadSchema msg "+idx);
 					}
 				}
 				

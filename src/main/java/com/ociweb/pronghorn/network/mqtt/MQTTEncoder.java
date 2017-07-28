@@ -256,8 +256,8 @@ public class MQTTEncoder {
 	public static void loadNextPacketIdRange(Pipe<MQTTIdRangeSchema> idGenIn, IdGenCache genCache) {
 		int msgIdx = Pipe.takeMsgIdx(idGenIn);
 		int range = Pipe.takeInt(idGenIn);
-		genCache.nextFreePacketId = 0xFFFF&range;
-		genCache.nextFreePacketIdLimit = 0xFFFF&(range>>16); 
+		genCache.nextFreeRange(range);
+
 						
 		Pipe.releaseReadLock(idGenIn);
 		Pipe.confirmLowLevelRead(idGenIn, Pipe.sizeOf(idGenIn, msgIdx));

@@ -262,11 +262,12 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	public static ClientConnection openConnection(ClientCoordinator ccm, byte[] hostBack, int hostPos, int hostLen,
 			int hostMask, int port, int userId, Pipe<NetPayloadSchema>[] outputs,
 			long connectionId) {
-		
+				
 				
 		        ClientConnection cc = null;
 
-				if (-1 == connectionId || null == (cc = (ClientConnection) ccm.connections.get(connectionId))) { //NOTE: using straight get since un finished connections may not be valid.
+				if (-1 == connectionId || 
+					null == (cc = (ClientConnection) ccm.connections.get(connectionId))) { //NOTE: using direct lookup get since un finished connections may not be valid.
 					//	logger.warn("Unable to lookup connection");					
 					connectionId = ccm.lookupInsertPosition();
 					
@@ -302,6 +303,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				}
 			
 				if (cc.isRegistered()) {
+					//logger.info("is registered {}",cc);
 					return cc;
 				}
 				//not registered
@@ -315,7 +317,9 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			                                   ClientConnection cc) {
 		try {
 			if (!cc.isFinishConnect()) {
-				//logger.trace("unable to finish connect, must try again later");
+				
+				logger.trace("unable to finish connect, must try again later {}",cc);
+				
 				cc = null; //try again later
 			} else {
 				cc.registerForUse(ccm.selector(), handshakeBegin, ccm.isTLS);

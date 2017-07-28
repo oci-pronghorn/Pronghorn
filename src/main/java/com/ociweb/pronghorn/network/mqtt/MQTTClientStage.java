@@ -18,7 +18,7 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class MQTTClient extends PronghornStage {
+public class MQTTClientStage extends PronghornStage {
 
 	public static final int CON_ACK_ERR_FLAG = 1<<8;
 	public static final int SUB_ACK_ERR_FLAG = 1<<9;
@@ -33,9 +33,9 @@ public class MQTTClient extends PronghornStage {
 	private IdGenCache genCache;
 	private long mostRecentTime;
 	
-	private static final Logger logger = LoggerFactory.getLogger(MQTTClient.class);
+	private static final Logger logger = LoggerFactory.getLogger(MQTTClientStage.class);
 	
-	public MQTTClient(GraphManager gm, 
+	public MQTTClientStage(GraphManager gm, 
 			          Pipe<MQTTClientRequestSchema> clientRequest,
 			          Pipe<MQTTIdRangeSchema> idGenNew,
 			          Pipe<MQTTServerToClientSchema> serverToClient, 
@@ -101,7 +101,7 @@ public class MQTTClient extends PronghornStage {
 	public void processClientRequests() {
 		while(  
 				(!PipeReader.hasContentToRead(serverToClient)) //server response is always more important.
-				&&MQTTEncoder.hasPacketId(genCache, idGenNew) //only process if we have new PacketIds ready
+				&& MQTTEncoder.hasPacketId(genCache, idGenNew) //only process if we have new PacketIds ready
 				&& PipeWriter.hasRoomForWrite(clientToServer) //only process if we have room to write
 				&& PipeReader.tryReadFragment(clientRequest)  ) {
 			
@@ -202,7 +202,7 @@ public class MQTTClient extends PronghornStage {
 					int packetId = -1;
 					if (valueQoS != 0) {						
 						//only consume a packetId for QoS 1 or 2.
-						packetId = IdGenCache.nextPacketId(genCache);					
+						packetId = IdGenCache.nextPacketId(genCache);						
 					}
 					PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_PACKETID_20, packetId);
 					
@@ -218,15 +218,28 @@ public class MQTTClient extends PronghornStage {
 							  MQTTClientToServerSchema.MSG_SUBSCRIBE_8_FIELD_TIME_37, 
 							  System.currentTimeMillis());
 					
-					int subQoS = PipeReader.readInt(clientRequest, MQTTClientRequestSchema.MSG_SUBSCRIBE_8_FIELD_QOS_21);					
-									
-					PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_SUBSCRIBE_8_FIELD_PACKETID_20, IdGenCache.nextPacketId(genCache));	
-						
-					PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_SUBSCRIBE_8_FIELD_QOS_21, subQoS);
+				    int nextPacketId = IdGenCache.nextPacketId(genCache);
+				    PipeWriter.writeInt(clientToServer, 
+							MQTTClientToServerSchema.MSG_SUBSCRIBE_8_FIELD_PACKETID_20, 
+							nextPacketId);	
+											
+				    PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_SUBSCRIBE_8_FIELD_QOS_21, PipeReader.readInt(clientRequest, MQTTClientRequestSchema.MSG_SUBSCRIBE_8_FIELD_QOS_21));
 										
+////////////
+//WARNING: if the server does not give us an ack back then we have lost one of the ID values 
+//         mosquitto is not returning the ack after subscription
+////////////
+//				    StringBuilder target = new StringBuilder();
+//				    Appendables.appendValue(target, nextPacketId).append(":");		
+//				    PipeReader.readUTF8(clientRequest, MQTTClientRequestSchema.MSG_SUBSCRIBE_8_FIELD_TOPIC_23, target);
+//				    target.append("\n");
+//				    System.err.println("subscription request sent with packet "+target);
+				    
+				    
 					PipeReader.copyBytes(clientRequest, clientToServer, 
-				             MQTTClientRequestSchema.MSG_SUBSCRIBE_8_FIELD_TOPIC_23, 
-				             MQTTClientToServerSchema.MSG_SUBSCRIBE_8_FIELD_TOPIC_23);
+				             				MQTTClientRequestSchema.MSG_SUBSCRIBE_8_FIELD_TOPIC_23, 
+				             				MQTTClientToServerSchema.MSG_SUBSCRIBE_8_FIELD_TOPIC_23);
+					
 					PipeWriter.publishWrites(clientToServer);
 					
 					break;				
@@ -434,9 +447,12 @@ public class MQTTClient extends PronghornStage {
 					break;
 				case MQTTServerToClientSchema.MSG_SUBACK_9:
 					
+					
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_TIME_37);
 					int packetId9 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_PACKETID_20);
 					int returnCode = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_RETURNCODE_24);
+
+					System.err.println("xxxxxxxxxxxxxxxxxxxx we have the sub ack "+packetId9);
 					
 					if (0x80 == returnCode) {
 						int fieldErrorCode = SUB_ACK_ERR_FLAG | 0x80;

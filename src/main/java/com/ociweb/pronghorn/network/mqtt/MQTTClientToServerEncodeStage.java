@@ -221,7 +221,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			return -1;
 		}
 		
-		if (null==activeConnection || !activeConnection.isValid() ) {
+		if (null==activeConnection || (activeConnection.isFinishConnect() && !activeConnection.isValid()) ) {
+			//only do reOpen if the previous one is finished connecting and its now invalid.
 			reOpenConnection();
 		}
 		
@@ -235,15 +236,19 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		activeConnection = ClientCoordinator.openConnection(ccm, 
 				                         hostBack, hostPos, hostLen, hostMask, hostPort, 
 				                         uniqueConnectionId, 
-				                         toBroker, 
+				                         toBroker,
 				                         ccm.lookup(hostBack,hostPos,hostLen,hostMask, hostPort, uniqueConnectionId)); 
 
 		if (null!=activeConnection) {
-						
+			
+			logger.info("new connection established to broker {}:{}",Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask), hostPort);
+			
 			//When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any 
 			//unacknowledged PUBLISH Packets (where QoS > 0) and PUBREL Packets using their original Packet Identifiers [MQTT-4.4.0-1].
 			//This is the only circumstance where a Client or Server is REQUIRED to re-deliver messages.
 			rePublish(toBroker[activeConnection.requestPipeLineIdx()]);								
+		} else {
+			//logger.info("waiting on connection");
 		}
 	}
 	
@@ -351,7 +356,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			final long now = System.currentTimeMillis();
 			final long quiet = now-lastActvityTime;
 			if (quiet > (keepAliveMS>>1)) {
-				//logger.trace("note quiet {} trigger {} ",quiet, keepAliveMS);
+				logger.trace("note quiet {} trigger {} ",quiet, keepAliveMS);
 				
 				if (hasUnackPublished()) {
 					rePublish(toBroker[activeConnection.requestPipeLineIdx()]);					
@@ -769,7 +774,11 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					encodeVarLength(output, 2 + topicIdLen + 2 + 1); //const and remaining length, 2  bytes
 									
 					int packetId8 = PipeReader.readInt(input, MQTTClientToServerSchema. MSG_SUBSCRIBE_8_FIELD_PACKETID_20);
-					output.writeShort(packetId8);						
+					output.writeShort(packetId8);
+					
+					logger.info("requesting new subscription using id :{}",packetId8);
+				
+					
 					//variable header
 					output.writeShort(topicIdLen);
 					

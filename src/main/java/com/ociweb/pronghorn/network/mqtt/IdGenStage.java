@@ -81,6 +81,7 @@ public class IdGenStage extends PronghornStage {
 				Pipe.releaseReadLock(inputRing);
 				Pipe.confirmLowLevelRead(inputRing, sizeOfFragment);
 			}
+			assert(totalRanges<MAX_CONSUMED_BLOCKS_LIMIT) : "Warning Id value usage is too granular and can not be tracked";
 		}
 		
 		//push out all the new ranges for use as long as we have values and the queues have room
@@ -93,6 +94,11 @@ public class IdGenStage extends PronghornStage {
 				if (STOP_CODE == range || 0==range) {
 					return;//no more values to give out
 				} 
+				
+				boolean showNewBlocks = false;
+				if (showNewBlocks) {
+					log.info("IdGen new range reserved {}->{} for {}",rangeBegin(range),rangeEnd(range),Integer.toHexString(range));
+				}
 				
 				addMsgIdx(outputRing, theOneMsg);	
 				Pipe.addIntValue(range, outputRing);
@@ -130,7 +136,11 @@ public class IdGenStage extends PronghornStage {
 				return;
 			}
 			
-			log.debug("IdGen release range {}->{}",releaseBegin,releaseEnd);
+			boolean showOutstandingRanges = false;
+			if (showOutstandingRanges) {
+				log.info("IdGen release range {}->{}  ranges {} ",releaseBegin,releaseEnd, totalRanges);
+				showRanges();
+			}
 			
 			// if begin is < last cosumedRange end then its in the middle of that row need special logic
 			if (insertAt>0) {
@@ -143,8 +153,7 @@ public class IdGenStage extends PronghornStage {
 						consumedRanges[insertAt-1] = buildRange(consumedRanges[insertAt-1],releaseBegin);//    //(0xFFFF&consumedRanges[insertAt-1]) | ((0xFFFF&releaseBegin)<<16);
 						int toCopy = totalRanges - insertAt;					
 						System.arraycopy(consumedRanges, insertAt, consumedRanges, insertAt+1, toCopy);	
-						//subtract one from release end because that value is exclusive of release
-						consumedRanges[insertAt] = buildRange(releaseEnd-1,lastRangeEnd);// (0xFFFF&(releaseEnd-1)) | (lastRangeEnd<<16);
+						consumedRanges[insertAt] = buildRange(releaseEnd,lastRangeEnd);// (0xFFFF&(releaseEnd)) | (lastRangeEnd<<16);
 						totalRanges++;
 						assert(validateInternalTable()) : "Added at "+insertAt + " from release "+releaseBegin+"->"+releaseEnd;
 						return; // do not continue
@@ -236,6 +245,18 @@ public class IdGenStage extends PronghornStage {
 		return i;
 	}
 
+	private void showRanges() {
+		int i = 0;
+		//while target start is before each range start keep walking
+		while (i<totalRanges) {
+			
+			int range = consumedRanges[i];			
+			log.info("consumed range: {}->{}",rangeBegin(range),rangeEnd(range));
+									
+			i++;
+		}
+	}
+	
 	/**
 	 * Find the biggest range then reserves and returns a block no bigger than MAX_BLOCK_SIZE
 	 * 
