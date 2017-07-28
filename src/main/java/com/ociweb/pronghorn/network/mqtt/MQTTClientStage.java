@@ -452,8 +452,6 @@ public class MQTTClientStage extends PronghornStage {
 					int packetId9 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_PACKETID_20);
 					int returnCode = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_RETURNCODE_24);
 
-					System.err.println("xxxxxxxxxxxxxxxxxxxx we have the sub ack "+packetId9);
-					
 					if (0x80 == returnCode) {
 						int fieldErrorCode = SUB_ACK_ERR_FLAG | 0x80;
 						CharSequence fieldErrorText = "Unable to subscribe";

@@ -29,7 +29,8 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 				case NetResponseSchema.MSG_RESPONSE_101:
 					{
 						long connection = Pipe.takeLong(input);
-						
+						int flags = Pipe.takeInt(input);
+						 
 						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
 						stream.openLowLevelAPIField();
 						
@@ -66,10 +67,9 @@ public class NetResponseDumpStage<A extends Appendable> extends PronghornStage {
 					break;
 				case NetResponseSchema.MSG_CONTINUATION_102:
 					{
-						System.out.println("XXXXXXXXX continuation");
-						
 						long connection = Pipe.takeLong(input);
-						
+						int flags2 = Pipe.takeInt(input);
+		            	 
 						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
 						stream.openLowLevelAPIField();
 						

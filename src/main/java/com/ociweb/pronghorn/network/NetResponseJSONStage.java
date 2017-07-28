@@ -66,7 +66,8 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 				case NetResponseSchema.MSG_RESPONSE_101:
 					{
 						long connection = Pipe.takeLong(input);
-						
+						int flags = Pipe.takeInt(input);
+						 
 						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
 						stream.openLowLevelAPIField();
 						
@@ -95,7 +96,8 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 				case NetResponseSchema.MSG_CONTINUATION_102:
 					{
 						long connection = Pipe.takeLong(input);
-						
+						int flags2 = Pipe.takeInt(input);
+		            	 
 						if (reader.sourceLen==0) {
 						
 							DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);

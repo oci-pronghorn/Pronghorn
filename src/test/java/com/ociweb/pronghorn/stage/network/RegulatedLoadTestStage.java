@@ -324,7 +324,8 @@ public class RegulatedLoadTestStage extends PronghornStage{
 					switch (msg) {
 						case NetResponseSchema.MSG_RESPONSE_101:
 							long conId = Pipe.takeLong(pipe);
-			
+							int flags = Pipe.takeInt(pipe);
+							
 							//TODO: this is a serious issue we request on 1 pipe but they come back on another....
 							int userIdx = userIdFromConnectionId[(int)conId];
 							

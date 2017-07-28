@@ -26,6 +26,7 @@ import com.ociweb.pronghorn.util.TrieParserReader;
 
 public class HTTP1xResponseParserStage extends PronghornStage {
 
+	private static final int SIZE_OF_MSG_RESPONSE = Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101);
 	private final Pipe<NetPayloadSchema>[] input; 
 	private final Pipe<NetResponseSchema>[] output;
 	private long[] inputPosition;
@@ -443,10 +444,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						Pipe.releasePendingAsReadLock(pipe, lastMessageParseSize);
 						
 						
-						//because we have started writign the response we MUST do extra cleanup later.
+						//because we have started writing the response we MUST do extra cleanup later.
 						Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
 						Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
-						
+						Pipe.addIntValue(0, targetPipe);//flags;
 						
 						DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);
 						DataOutputBlobWriter.openField(writer);
@@ -476,7 +477,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							DataOutputBlobWriter.commitBackData(writer);
 						}
 						writer.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
-						Pipe.confirmLowLevelWrite(targetPipe, Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101));
+						Pipe.confirmLowLevelWrite(targetPipe, SIZE_OF_MSG_RESPONSE);
 						Pipe.publishWrites(targetPipe);	
 									
 	
@@ -522,7 +523,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							//because we have started written the response we MUST do extra cleanup later.
 							Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
 							Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
-											
+							Pipe.addIntValue(0, targetPipe);//flags;
+							
 							TrieParserReader.writeCapturedShort(trieReader, 0, DataOutputBlobWriter.openField(Pipe.outputStream(targetPipe))); //status code	
 														
 							positionMemoData[stateIdx]= ++state;
@@ -633,8 +635,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				
 					case 2: //PAYLOAD READING WITH LENGTH
 							if (2==state) {
-								
-								
+																
 								long lengthRemaining = payloadLengthData[i];
 																	
 		//						logger.info("source position {} state {} length remaining to copy {} source len ",trieReader.sourcePos,state,lengthRemaining,trieReader.sourceLen);
@@ -649,6 +650,11 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 											                          Math.min(lengthRemaining,targetPipe.maxVarLen-usedByIndex),
 											                          writer2);
 									lengthRemaining -= consumed;
+									
+									//TODO: if the target field is full then we must close this one and open a new
+									//      continuation.
+									
+									
 							
 		//							logger.info("consumed {} source position {} state {} ",consumed, trieReader.sourcePos,state);
 									
@@ -673,7 +679,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									logger.info("length of full message written {} ",length);
 									
 									positionMemoData[stateIdx] = state = 5;
-									Pipe.confirmLowLevelWrite(targetPipe, Pipe.sizeOf(NetResponseSchema.instance, NetResponseSchema.MSG_RESPONSE_101));
+									Pipe.confirmLowLevelWrite(targetPipe, SIZE_OF_MSG_RESPONSE);
 									Pipe.publishWrites(targetPipe);	
 														
 									//expecting H to be the next valid char 
@@ -767,14 +773,22 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 											Pipe.publishWrites(targetPipe);	
 											//state is already 3 so leave it there
 
+											
+											
 											if (!Pipe.hasRoomForWrite(targetPipe)) { //TODO: fix this case
 												logger.info("ERROR MUST TRY LATER AFTER CONSUME???");
 												
+												//TODO: need to jump to new state adding the continuation message
+												//      then we can ext and return at this point.
+												
 											}
+											
+											Pipe.presumeRoomForWrite(targetPipe);
 											
 											//prep new message for next time.
 											Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CONTINUATION_102);
 											Pipe.addLongValue(ccId, targetPipe); //same ccId as before
+											Pipe.addIntValue(0, targetPipe); //flags
 											DataOutputBlobWriter<NetResponseSchema> writer1 = Pipe.outputStream(targetPipe);							
 											DataOutputBlobWriter.openField(writer1);	
 											
