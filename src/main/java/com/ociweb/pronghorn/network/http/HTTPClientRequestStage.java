@@ -524,10 +524,13 @@ public class HTTPClientRequestStage extends PronghornStage {
  			}
  			
  			
- 			activeConnection = ClientCoordinator.openConnection(ccm, hostBack, hostPos, hostLen, hostMask, port, userId, output, connectionId);
+ 			activeConnection = ClientCoordinator.openConnection(
+ 					 ccm, hostBack, hostPos, hostLen, hostMask, port, userId, output, connectionId);
  		}
 		
 		if (null != activeConnection) {
+			
+			assert(activeConnection.isFinishConnect());
 			
 			if (isTLS) {				
 				//If this connection needs to complete a hanshake first then do that and do not send the request content yet.

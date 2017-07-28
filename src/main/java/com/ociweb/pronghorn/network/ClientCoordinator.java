@@ -152,22 +152,12 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 	
 	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int userId, byte[] workspace, TrieParserReader reader) {	
-		//TODO: lookup by userID then by port then by host??? may be a better approach instead of guid 
+		//TODO: lookup by userID then by port then by host, may be a better approach instead of guid 
 		int len = ClientConnection.buildGUID(workspace, hostBack, hostPos, hostLen, hostMask, port, userId);	
 		
 		hostTrieLock.readLock().lock();
 		try {
 			long result = TrieParserReader.query(reader, hostTrie, workspace, 0, len, Integer.MAX_VALUE);
-			
-	//		if (result<0) {
-	//			String host = Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask).toString();
-	//			System.err.println("lookup "+host+":"+port+"   user "+userId);
-	//		
-	//			System.err.println("GUID: "+Arrays.toString(Arrays.copyOfRange(guidWorkspace,0,len)));
-	//			System.err.println(hostTrie);
-	//			
-	//		}
-			
 			assert(0!=result) : "connection ids must be postive or negative if not found";
 			return result;
 		} finally {
@@ -250,15 +240,6 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		return selector;
 	}
 
-	public static ClientConnection openConnection(ClientCoordinator ccm, byte[] hostBack, int hostPos, int hostLen, int hostMask,
-			                                      int port, int userId, Pipe<NetPayloadSchema>[] handshakeBegin) {				
-		
-		long connectionId = ccm.lookup(hostBack,hostPos,hostLen,hostMask, port, userId);
-						
-		return openConnection(ccm, hostBack, hostPos, hostLen, hostMask, port, userId, handshakeBegin,	connectionId);
-	}
-
-
 	private static int findAPipeWithRoom(Pipe<NetPayloadSchema>[] output, int activeOutIdx) {
 		int result = -1;
 		//if we go around once and find nothing then stop looking
@@ -286,15 +267,13 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		        ClientConnection cc = null;
 
 				if (-1 == connectionId || null == (cc = (ClientConnection) ccm.connections.get(connectionId))) { //NOTE: using straight get since un finished connections may not be valid.
-								
-					//logger.warn("Unable to lookup connection");
-					
+					//	logger.warn("Unable to lookup connection");					
 					connectionId = ccm.lookupInsertPosition();
 					
 					int pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length));
 					if (connectionId<0 || pipeIdx<0) {
 						
-						//logger.warn("too many open connection, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
+						logger.warn("too many open connection, consider opening fewer for raising the limit of open connections above {}",ccm.connections.size());
 						//do not open instead we should attempt to close this one to provide room.
 						return null;
 					}
@@ -305,15 +284,10 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 						
 				    	//create new connection because one was not found or the old one was closed
 						cc = new ClientConnection(host, hostBack, hostPos, hostLen, hostMask, port, userId, pipeIdx, connectionId);
-						
-						//logger.debug("saving new client connectino for "+connectionId);
-						
-						ccm.connections.setValue(connectionId, cc);	
-						
+						ccm.connections.setValue(connectionId, cc);						
 						ccm.hostTrieLock.writeLock().lock();
+						
 						try {
-						//	System.err.println(System.identityHashCode(ccm)+" users can not share connection IDs, set user "+userId+" to connection "+connectionId);
-							
 							ccm.hostTrie.setValue(cc.GUID(), 0, cc.GUIDLength(), Integer.MAX_VALUE, connectionId);
 						} finally {
 							ccm.hostTrieLock.writeLock().unlock();
@@ -336,11 +310,13 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 
 
-	private static ClientConnection doRegister(ClientCoordinator ccm, Pipe<NetPayloadSchema>[] handshakeBegin,
-			ClientConnection cc) {
+	private static ClientConnection doRegister(ClientCoordinator ccm, 
+			                                   Pipe<NetPayloadSchema>[] handshakeBegin,
+			                                   ClientConnection cc) {
 		try {
 			if (!cc.isFinishConnect()) {
-				cc = null;//try again later
+				logger.info("unable to finish connect, must try again later");
+				cc = null; //try again later
 			} else {
 				cc.registerForUse(ccm.selector(), handshakeBegin, ccm.isTLS);
 			}

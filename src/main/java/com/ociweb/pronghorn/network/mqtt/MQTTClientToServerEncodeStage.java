@@ -16,6 +16,7 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class MQTTClientToServerEncodeStage extends PronghornStage {
 
@@ -215,29 +216,34 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 	
 	public long connectionId() {
+		
 		if (hostLen==0) {
 			return -1;
 		}
+		
 		if (null==activeConnection || !activeConnection.isValid() ) {
-			
-			logger.info("open connection to broker");
-			activeConnection = ClientCoordinator.openConnection(ccm, 
-					                         hostBack, hostPos, hostLen, hostMask, hostPort, 
-					                         uniqueConnectionId, 
-					                         toBroker, -1);
-			
-			if (null!=activeConnection) {				
-				//When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any 
-				//unacknowledged PUBLISH Packets (where QoS > 0) and PUBREL Packets using their original Packet Identifiers [MQTT-4.4.0-1].
-				//This is the only circumstance where a Client or Server is REQUIRED to re-deliver messages.
-				rePublish(toBroker[activeConnection.requestPipeLineIdx()]);								
-			}
+			reOpenConnection();
 		}
+		
+		return (null!=activeConnection) ? activeConnection.id : -1;
+	}
+
+	private void reOpenConnection() {
+		//logger.info("opening connection to broker {}:{} ",
+		//		     Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask), hostPort);
+
+		activeConnection = ClientCoordinator.openConnection(ccm, 
+				                         hostBack, hostPos, hostLen, hostMask, hostPort, 
+				                         uniqueConnectionId, 
+				                         toBroker, 
+				                         ccm.lookup(hostBack,hostPos,hostLen,hostMask, hostPort, uniqueConnectionId)); 
+
 		if (null!=activeConnection) {
-			return activeConnection.id;
-		} else {
-			logger.info("unable to open connection");
-			return -1;
+						
+			//When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any 
+			//unacknowledged PUBLISH Packets (where QoS > 0) and PUBREL Packets using their original Packet Identifiers [MQTT-4.4.0-1].
+			//This is the only circumstance where a Client or Server is REQUIRED to re-deliver messages.
+			rePublish(toBroker[activeConnection.requestPipeLineIdx()]);								
 		}
 	}
 	
@@ -364,7 +370,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 
 		
 		while ( (PipeReader.peekMsg(input, MQTTClientToServerSchema.MSG_BROKERHOST_100)  				
-				|| (((connectionId = connectionId())>=0)
+				|| (
+				    ((connectionId = connectionId())>=0)
 				   && hasInFlightCapacity()
 				   && hasRoomToPersist()
 				   && hasRoomToSocketWrite() 	)

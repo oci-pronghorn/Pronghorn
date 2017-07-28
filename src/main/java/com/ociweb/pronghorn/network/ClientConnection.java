@@ -215,9 +215,8 @@ public class ClientConnection extends SSLConnection {
 	
 	/**
 	 * After construction this must be called until it returns true before using this connection. 
-	 * @throws IOException
 	 */
-	public boolean isFinishConnect() throws IOException {
+	public boolean isFinishConnect() {
 		try {
 			return getSocketChannel().finishConnect();
 		} catch (IOException io) {

@@ -600,9 +600,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//only case where state is not 1 so we must call save all others will call when while loops back to top.
 									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx); 
 									if (writeIndex) {
-										logger.info("body length to write {}",payloadLengthData[i]);
+										//logger.info("body length to write {}",payloadLengthData[i]);
 										//write index to where the body starts.
-										logger.info("{} wrote the index of the body {} to position {} ",state, writer.position(), IntHashTable.count(headersSupported) + indexOffsetCount);
+										//logger.info("{} wrote the index of the body {} to position {} ",state, writer.position(), IntHashTable.count(headersSupported) + indexOffsetCount);
 										DataOutputBlobWriter.setIntBackData(writer, writer.position(), IntHashTable.count(headersSupported) + indexOffsetCount);
 									}
 								}								
