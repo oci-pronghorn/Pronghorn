@@ -315,7 +315,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			                                   ClientConnection cc) {
 		try {
 			if (!cc.isFinishConnect()) {
-				logger.info("unable to finish connect, must try again later");
+				//logger.trace("unable to finish connect, must try again later");
 				cc = null; //try again later
 			} else {
 				cc.registerForUse(ccm.selector(), handshakeBegin, ccm.isTLS);
