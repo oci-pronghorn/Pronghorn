@@ -3388,8 +3388,12 @@ public class Pipe<T extends MessageSchema<T>> {
 	                                                +(output.llRead.llwConfirmedPosition+output.slabMask)+" workingHead:"+Pipe.workingHeadPosition(output)+
 	                                                " \n CHECK that Pipe is written same fields as message defines and skips none!";
 	   
-	    return  output.llRead.llwConfirmedPosition += Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition]);
+	    return  output.llRead.llwConfirmedPosition += Pipe.sizeOf(output, output.slabRing[lastConfirmedWritePosition(output)]);
 
+	}
+
+	public static <S extends MessageSchema<S>> int lastConfirmedWritePosition(Pipe<S> output) {
+		return output.slabMask&(int)output.llRead.llwConfirmedPosition;
 	}
 	
 	
