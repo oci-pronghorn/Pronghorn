@@ -193,7 +193,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		remainingInFlight++;
 	}
 	
-	public void rePublish(Pipe<NetPayloadSchema> pipe) {
+	private final boolean rePublish(Pipe<NetPayloadSchema> pipe) {
 
 		int stop = ringMask&ringHead;
 		for(int i = ringTail; (i&ringMask)!=stop; i++ ) {
@@ -207,16 +207,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	    		final int blobPos = Pipe.getBlobHeadPosition(pipe);
 				
 				if (!PipeWriter.tryReplication(pipe, slabPositionsRing[ringMask & i], blobPositionsRing[ringMask & i])) {
-					logger.warn("output pipe must be large enough for all in-flight publishes");					
-					while (!PipeWriter.tryReplication(pipe, slabPositionsRing[ringMask & i], blobPositionsRing[ringMask & i])) {
-						Thread.yield();
-						if (Thread.interrupted() || Pipe.isShutdown(pipe)) {
-							Thread.currentThread().interrupt();
-							activeConnection = null;
-							//logger.trace("returned");
-							return;
-						}
-					}
+					return false;
 				}
 				
 				lastActvityTime = System.currentTimeMillis(); //no need to ping if we keep reSending these.	
@@ -228,7 +219,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				
 			}
 
-		}		
+		}	
+		return true;
 	}
 	
 	
@@ -278,7 +270,9 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			//When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any 
 			//unacknowledged PUBLISH Packets (where QoS > 0) and PUBREL Packets using their original Packet Identifiers [MQTT-4.4.0-1].
 			//This is the only circumstance where a Client or Server is REQUIRED to re-deliver messages.
-			rePublish(toBroker[activeConnection.requestPipeLineIdx()]);								
+			while (!rePublish(toBroker[activeConnection.requestPipeLineIdx()])) {
+				Thread.yield();//have no choice in this corner case.
+			}
 		} else {
 			//logger.info("waiting on connection");
 		}

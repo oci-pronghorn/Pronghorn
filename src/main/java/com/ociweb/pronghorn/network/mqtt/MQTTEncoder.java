@@ -310,7 +310,7 @@ public class MQTTEncoder {
 				loadNextPacketIdRange(idGenIn, genCache);				
 			} else {
 				hasId = false;
-				logger.info("no packed IDs are left for use");
+				//logger.trace("no packed IDs are left for use");
 			}	
 		}
 		return hasId;

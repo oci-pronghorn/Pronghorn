@@ -22,10 +22,12 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
  */
 public class IdGenStage extends PronghornStage {
 
-	private static final Logger log = LoggerFactory.getLogger(IdGenStage.class);
+	private static final int MAX_VALUES = 1<<15;// should be this 65536 but there is a (short) somewhere !!
+
+	private static final Logger logger = LoggerFactory.getLogger(IdGenStage.class);
 	
-	public static final int MAX_BLOCK_SIZE = 4096;
-	private static final int MAX_CONSUMED_BLOCKS = 128;//128*4 == 512 bytes where 8k could do map, must be <= 1024
+	public static final int MAX_BLOCK_SIZE = 1<<13; //8K
+	private static final int MAX_CONSUMED_BLOCKS = 1<<10; //1K
 	private static final int MAX_CONSUMED_BLOCKS_LIMIT = MAX_CONSUMED_BLOCKS-1;
 	private static final int STOP_CODE = 0xFFFFFFFF;
 	
@@ -48,6 +50,10 @@ public class IdGenStage extends PronghornStage {
 				
 		//must be set so this stage will get shut down and ignore the fact that is has un-consumed messages coming in 
         GraphManager.addNota(graphManager,GraphManager.PRODUCER, GraphManager.PRODUCER, this);
+        //slow rate since it does big batches
+        GraphManager.addNota(graphManager,GraphManager.SCHEDULE_RATE, 100_000, this);
+  
+        
 	}
 	
 	public IdGenStage(GraphManager graphManager, Pipe<MQTTIdRangeSchema>[] inputs, Pipe<MQTTIdRangeSchema>[] outputs) {
@@ -81,7 +87,10 @@ public class IdGenStage extends PronghornStage {
 				Pipe.releaseReadLock(inputRing);
 				Pipe.confirmLowLevelRead(inputRing, sizeOfFragment);
 			}
-			assert(totalRanges<MAX_CONSUMED_BLOCKS_LIMIT) : "Warning Id value usage is too granular and can not be tracked";
+			
+			if (totalRanges == MAX_CONSUMED_BLOCKS_LIMIT) {
+				logger.warn("A large number {} of PacketIds have not been returned. Must wait for return values.", totalRanges);
+			}
 		}
 		
 		//push out all the new ranges for use as long as we have values and the queues have room
@@ -97,7 +106,7 @@ public class IdGenStage extends PronghornStage {
 				
 				boolean showNewBlocks = false;
 				if (showNewBlocks) {
-					log.info("IdGen new range reserved {}->{} for {}",rangeBegin(range),rangeEnd(range),Integer.toHexString(range));
+					logger.info("IdGen new range reserved {}->{} for {}",rangeBegin(range),rangeEnd(range),Integer.toHexString(range));
 				}
 				
 				addMsgIdx(outputRing, theOneMsg);	
@@ -132,16 +141,16 @@ public class IdGenStage extends PronghornStage {
 				//this is an invalid message and treated as a no-op
 				//this must always be done to support generative testing
 				//TODO: B, if desired this can be logged
-				log.debug("skipped release for {}->{}",releaseBegin,releaseEnd);
+				logger.debug("skipped release for {}->{}",releaseBegin,releaseEnd);
 				return;
 			}
 			
-//			boolean showOutstandingRanges = true;
-//			if (showOutstandingRanges) {
-//				System.err.println();
+			//boolean showOutstandingRanges = true;
+//			if (totalRanges>8) {
+//				logger.warn("many issued packet Ids remain not returned");
 //				showRanges();
 //				//Note the requested range may already be partially released, caution
-//				log.info("now release range {}->{}  ranges {} ",releaseBegin,releaseEnd, totalRanges);
+//				logger.info("now release range {}->{}  ranges {} ",releaseBegin,releaseEnd, totalRanges);
 //			}
 			
 		//	try {
@@ -149,6 +158,8 @@ public class IdGenStage extends PronghornStage {
 			// if begin is < last cosumedRange end then its in the middle of that row need special logic
 			if (insertAt>0) {
 				int lastRangeEnd = rangeEnd(consumedRanges[insertAt-1]);
+				int lastRangeBegin = rangeBegin(consumedRanges[insertAt-1]);
+				
 				if (releaseBegin <  lastRangeEnd  ) {
 													
 					if (releaseEnd < lastRangeEnd) {
@@ -156,7 +167,7 @@ public class IdGenStage extends PronghornStage {
 						//if (showOutstandingRanges) { System.err.println("a");};
 						
 						//cuts range in two parts, will need to add row to table
-						consumedRanges[insertAt-1] = buildRange(consumedRanges[insertAt-1],releaseBegin);//    //(0xFFFF&consumedRanges[insertAt-1]) | ((0xFFFF&releaseBegin)<<16);
+						consumedRanges[insertAt-1] = buildRange(lastRangeBegin,releaseBegin);//    //(0xFFFF&consumedRanges[insertAt-1]) | ((0xFFFF&releaseBegin)<<16);
 						int toCopy = totalRanges - insertAt;					
 						System.arraycopy(consumedRanges, insertAt, consumedRanges, insertAt+1, toCopy);	
 						consumedRanges[insertAt] = buildRange(releaseEnd,lastRangeEnd);// (0xFFFF&(releaseEnd)) | (lastRangeEnd<<16);
@@ -167,7 +178,7 @@ public class IdGenStage extends PronghornStage {
 					} else {
 						//if (showOutstandingRanges) { System.err.println("b");};
 						
-						consumedRanges[insertAt-1] = (0xFFFF&consumedRanges[insertAt-1]) | ((0xFFFF&releaseBegin)<<16);
+						consumedRanges[insertAt-1] = buildRange(lastRangeBegin, releaseBegin);
 						//end is >= to last end so this is a tail trim to the existing row							
 						if (releaseEnd == lastRangeEnd) {
 							assert(validateInternalTable());
@@ -230,7 +241,7 @@ public class IdGenStage extends PronghornStage {
 			
 		} else {
 			
-			log.debug("IdGen release range exact match {}->{}",rangeBegin(range),rangeEnd(range));
+			logger.debug("IdGen release range exact match {}->{}",rangeBegin(range),rangeEnd(range));
 			//exact match so just delete this row
 			int toCopy = -1 + totalRanges - insertAt;
 			if (toCopy>0) {
@@ -275,7 +286,7 @@ public class IdGenStage extends PronghornStage {
 		while (i<totalRanges) {
 			
 			int range = consumedRanges[i];			
-			log.info("consumed range: {}->{}",rangeBegin(range),rangeEnd(range));
+			logger.info("consumed range: {}->{}",rangeBegin(range),rangeEnd(range));
 									
 			i++;
 		}
@@ -301,7 +312,7 @@ public class IdGenStage extends PronghornStage {
 		int idx = 0;
 		
 		//walk list of all reserved ranges and find the biggest found after each
-		int lastBegin = 65534; //need room to use 65535 as the exclude end
+		int lastBegin = MAX_VALUES-2; //need room to use FULL MASK as the exclude end
 		int i = totalRanges;
 		while (--i>=0) {
 			int j = consumedRanges[i];
@@ -355,7 +366,7 @@ public class IdGenStage extends PronghornStage {
 		
 		int newReservation = buildRange(rangeStart, rangeStart+rangeCount);
 	
-		log.debug("IdGen reserve range {}->{}",rangeStart,rangeEnd);
+		logger.debug("IdGen reserve range {}->{}",rangeStart,rangeEnd);
 				
 		assert(validateInternalTable());
 		return newReservation;
@@ -364,7 +375,7 @@ public class IdGenStage extends PronghornStage {
 
 
 	private boolean validateInternalTable() {
-		int last = 65536;
+		int last = MAX_VALUES;
 		int j = totalRanges;
 		while (--j>=0) {
 			int start = 0xFFFF&consumedRanges[j];

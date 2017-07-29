@@ -71,7 +71,7 @@ public class MQTTClientGraphBuilder {
 		final Pipe<MQTTServerToClientSchema> serverToClient = MQTTServerToClientSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields); //from the response
 		
 		Pipe<MQTTIdRangeSchema> idGenNew = MQTTIdRangeSchema.instance.newPipe(4,0);
-		Pipe<MQTTIdRangeSchema> idGenOld = MQTTIdRangeSchema.instance.newPipe(4,0);
+		Pipe<MQTTIdRangeSchema> idGenOld = MQTTIdRangeSchema.instance.newPipe(16,0); //bigger because we need to unify fragments
 		
 		IdGenStage idGenStage = new IdGenStage(gm, idGenOld, idGenNew);		
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, idGenStage);
