@@ -338,12 +338,16 @@ public class PipeWriter {
 		
 		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
 	
+		//NOTE: this is a very bad idea, this thread is not the reader yet we need that info??
+
 		final int[] slab = pipe.slab(pipe);	
 		
-		int idx = (int)historicSlabPosition & pipe.slabMask;		
-		int msgIdx = slab[idx]; 
-				
-		if (tryWriteFragment(pipe,msgIdx)) {
+		final int idx = (int)historicSlabPosition & pipe.slabMask;		
+		final int msgIdx = slab[idx]; //false share as this is a dirty read
+		
+		
+		//first part is to proctect against dirty reading		
+		if ((msgIdx<Pipe.from(pipe).fragDataSize.length) && tryWriteFragment(pipe,msgIdx)) {
 			final byte[] blob = pipe.blob(pipe);
 			
 			//get the sizes of ints and bytes
@@ -354,17 +358,10 @@ public class PipeWriter {
 			int blobPos = Pipe.getWorkingBlobHeadPosition(pipe);
 			Pipe.copyBytesFromToRing(blob, historicBlobPosition, Pipe.blobMask(pipe), blob, blobPos, Pipe.blobMask(pipe), blobMsgSize);			
 			Pipe.addAndGetBytesWorkingHeadPosition(pipe, blobMsgSize);
-			
-//			StringBuilder b = new StringBuilder();
-//			Appendables.appendUTF8(b, blob, historicBlobPosition, blobMsgSize, Pipe.blobMask(pipe));
-//			System.err.println("tryReplication: "+b);
-			
-			//Appendables.appendHexArray(System.out.append("replicate blob: "), '[', blob, historicBlobPosition, Pipe.blobMask(pipe), ']', blobMsgSize).append('\n');
-			
-			
+
 			//copy all the ints
 			long slabPos = Pipe.headPosition(pipe);
-			//the header is already written by tryWriteFragment so pos is up by one and lenght is short by one
+			//the header is already written by tryWriteFragment so pos is up by one and length is short by one
 			Pipe.copyIntsFromToRing(slab, idx+1, Pipe.slabMask(pipe), slab, (int)slabPos+1, Pipe.slabMask(pipe), slabMsgSize-1);	
 
 			//Appendables.appendHexArray(System.out.append("replicate slab: "), '[', slab, historicSlabPosition, pipe.slabMask, ']', slabMsgSize).append('\n');
@@ -404,6 +401,7 @@ public class PipeWriter {
 	 * 
 	 */
 	public static boolean tryWriteFragment(Pipe pipe, int fragmentId) {
+		assert(fragmentId<Pipe.from(pipe).fragDataSize.length);
 		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
 	    assert(null!=pipe);
 	    assert(Pipe.isInit(pipe)) : "Pipe must be initialized before use: "+pipe+" call the method initBuffers";
