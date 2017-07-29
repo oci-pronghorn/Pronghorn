@@ -447,7 +447,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//because we have started writing the response we MUST do extra cleanup later.
 						Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
 						Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
-						Pipe.addIntValue(0, targetPipe);//flags;
+						
+						Pipe.addIntValue(0, targetPipe);//flags, init to zero, will set later if required
 						
 						DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);
 						DataOutputBlobWriter.openField(writer);
@@ -523,7 +524,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							//because we have started written the response we MUST do extra cleanup later.
 							Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
 							Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
-							Pipe.addIntValue(0, targetPipe);//flags;
+							Pipe.addIntValue(0, targetPipe);//flags, init to zero, will set later if required
 							
 							TrieParserReader.writeCapturedShort(trieReader, 0, DataOutputBlobWriter.openField(Pipe.outputStream(targetPipe))); //status code	
 														
@@ -676,9 +677,15 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										DataOutputBlobWriter.commitBackData(writer2);
 									}
 									int length = writer2.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
-									logger.info("length of full message written {} ",length);
+									//logger.info("length of full message written {} ",length);
 									
 									positionMemoData[stateIdx] = state = 5;
+									
+									
+									int doneFlag = 0;
+									//NOTE: roll back and set the bit for end of data, 1 for msgId, 2 for connection Id									
+									Pipe.setIntValue(doneFlag, pipe, Pipe.lastConfirmedWritePosition(targetPipe)+1+2);
+									
 									Pipe.confirmLowLevelWrite(targetPipe, SIZE_OF_MSG_RESPONSE);
 									Pipe.publishWrites(targetPipe);	
 														

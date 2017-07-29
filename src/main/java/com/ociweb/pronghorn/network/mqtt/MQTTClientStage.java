@@ -204,8 +204,9 @@ public class MQTTClientStage extends PronghornStage {
 						//only consume a packetId for QoS 1 or 2.
 						packetId = IdGenCache.nextPacketId(genCache);						
 					}
+
 					PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_PACKETID_20, packetId);
-					
+			
 					
 					PipeWriter.publishWrites(clientToServer);					
 		
@@ -334,17 +335,10 @@ public class MQTTClientStage extends PronghornStage {
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_TIME_37);
 					int packetId4 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_PACKETID_20);
 					
-					//logger.trace("QOS1 stop for packet {}",packetId4);
-				    stopReSendingMessage(clientToServer, packetId4);					
+					//System.err.println("                     QOS1 stop for packet "+packetId4);
 					
-					////////////////////
-					//now release the packet Id
-					////////////////////
-					PipeWriter.presumeWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);	
-					
-					PipeWriter.writeInt(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1_FIELD_RANGE_100, IdGenStage.buildRange(packetId4, packetId4+1));
-					PipeWriter.publishWrites(idGenOld);
-					
+					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId4));					
+								    
 					break;
 				case MQTTServerToClientSchema.MSG_PUBCOMP_7:
 					//last stop of QoS 2
@@ -352,16 +346,9 @@ public class MQTTClientStage extends PronghornStage {
 					int packetId7 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBCOMP_7_FIELD_PACKETID_20);
 							
 					//logger.trace("QOS2 stop for packet {}",packetId7);
-				    stopReSendingMessage(clientToServer, packetId7); 
-					
-					////////////////////
-					//now release the packet Id
-					////////////////////
-					PipeWriter.presumeWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);	
-					
-					PipeWriter.writeInt(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1_FIELD_RANGE_100, IdGenStage.buildRange(packetId7, packetId7+1));
-					PipeWriter.publishWrites(idGenOld);					
-					
+					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId7)); 
+						
+				    
 					break;
 				case MQTTServerToClientSchema.MSG_PUBLISH_3:
 					//data from our subscriptions.
@@ -474,32 +461,18 @@ public class MQTTClientStage extends PronghornStage {
 					}
 					//logger.trace("sub stop for packet {}",packetId9);
 					//do we need to send the return code here?
-			    	stopReSendingMessage(clientToServer, packetId9);					
-					
-					////////////////////
-					//now release the packet Id
-					////////////////////
-					PipeWriter.presumeWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);	
-					
-					PipeWriter.writeInt(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1_FIELD_RANGE_100, IdGenStage.buildRange(packetId9, packetId9+1));
-					PipeWriter.publishWrites(idGenOld);	
-					
+					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId9));					
+		
+			    	
 					break;
 				case MQTTServerToClientSchema.MSG_UNSUBACK_11:
 					
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_UNSUBACK_11_FIELD_TIME_37);
 					int packetId11 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_UNSUBACK_11_FIELD_PACKETID_20);
 					
-					//logger.trace("unsub stop for packet {}",packetId11);
-				    stopReSendingMessage(clientToServer, packetId11);					
-					
-					////////////////////
-					//now release the packet Id
-					////////////////////
-					PipeWriter.presumeWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);
-					PipeWriter.writeInt(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1_FIELD_RANGE_100, IdGenStage.buildRange(packetId11, packetId11+1));
-					PipeWriter.publishWrites(idGenOld);				    
-					
+					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId11));					
+				    
+				    
 					break;				
 					
 			}
@@ -509,16 +482,57 @@ public class MQTTClientStage extends PronghornStage {
 		}
 	}
 
+
+	private int relVal = 0;
+	private int relLim = 0;
+	
+	private void releaseIdForReuse(int id) {
+		
+		if (relVal == relLim) {
+			relVal = id;
+			relLim = id+1;
+		} else {
+			if (id == relVal-1) {
+				relVal = id;
+			} else if (id == relLim) {
+				relLim = id+1;
+			} else {
+				//must flush what we have				
+				PipeWriter.presumeWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);
+				PipeWriter.writeInt(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1_FIELD_RANGE_100, IdGenStage.buildRange(relVal, relLim));
+				PipeWriter.publishWrites(idGenOld);
+	
+				relVal = id;
+				relLim = id+1;
+				
+				return;
+			}
+		}
+
+		//after holding a lot of ids force a release of them all
+		//this batching reduces the load on the IdGenStage
+		if (relLim-relVal > 10_000) {
+			PipeWriter.presumeWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);
+			PipeWriter.writeInt(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1_FIELD_RANGE_100, IdGenStage.buildRange(relVal, relLim));
+			PipeWriter.publishWrites(idGenOld);
+
+			relVal = 0;
+			relLim = 0;
+		}
+		
+	}
+
 	
 
 
-	private void stopReSendingMessage(Pipe<MQTTClientToServerSchema> clientToSerer, int packetId) {
+	private int stopReSendingMessage(Pipe<MQTTClientToServerSchema> clientToSerer, int packetId) {
 		////////////////////////
 		///stop re-sending the message
 		///////////////////////
 		PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99);
 		PipeWriter.writeInt(clientToServerAck, MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99_FIELD_PACKETID_20, packetId);
 		PipeWriter.publishWrites(clientToServerAck);
+		return packetId;
 	}
 
 }

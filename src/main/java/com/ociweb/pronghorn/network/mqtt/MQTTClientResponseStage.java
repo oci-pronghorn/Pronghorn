@@ -123,7 +123,8 @@ public class MQTTClientResponseStage extends PronghornStage {
 					    int len4 = inputStream.readByte();
 					    assert(2==len4);					    
 					    
-					    PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_PACKETID_20, inputStream.readShort());
+					    short packetId40 = inputStream.readShort();
+					    PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_PACKETID_20, packetId40);
 							    					    
 					    PipeWriter.publishWrites(out);
 				    

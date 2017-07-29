@@ -99,6 +99,23 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		this.uniqueConnectionId = uniqueId;
 	}
 
+	
+	@Override
+	public void run() {		
+		if (!processPersistLoad()) {
+			long connectionId = processPingAndReplay();
+			
+			processInputAcks(connectionId);
+			
+			processInput(connectionId);
+			
+			//before we leave check for un-ack items
+			if (hasUnackPublished()) {
+				rePublish(toBroker[activeConnection.requestPipeLineIdx()]);					
+			}
+		}
+	}
+	
 	//////////////////	////////
 	//////////////////////////
 	
@@ -111,6 +128,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 	
 	private void storePublishedPosPersisted(int blobPosition, int blobConsumed, byte[] blob, final int packetId) {
+		//logger.trace("AAAA  store disk need ack for {} ",packetId);
 		
 		PipeWriter.presumeWriteFragment(persistBlobStore, PersistedBlobStoreSchema.MSG_BLOCK_1);
 		PipeWriter.writeLong(persistBlobStore,PersistedBlobStoreSchema.MSG_BLOCK_1_FIELD_BLOCKID_3, (long) packetId);
@@ -119,7 +137,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 
 	private void storePublishedPosLocal(long slabPosition, int blobPosition, final int packetId) {
-		logger.trace("need ack for {} ",packetId);
+		//logger.trace("AAAA  store local need ack for {} ",packetId);
 
 		packetIdRing[ringMask & ringHead] = packetId;
 		slabPositionsRing[ringMask & ringHead] = slabPosition;
@@ -128,9 +146,11 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 	
 	public void ackPublishedPos(int packetId) {	
-		//logger.trace("top level ack {} ",packetId);
-		if (isPersistantSession) {
 		
+		
+		if (isPersistantSession) {
+			//logger.trace("BBB must clear top level ack from drive {} ",packetId);
+			
 			PipeWriter.presumeWriteFragment(persistBlobStore, PersistedBlobStoreSchema.MSG_RELEASE_7);		
 			PipeWriter.writeLong(persistBlobStore,PersistedBlobStoreSchema.MSG_RELEASE_7_FIELD_BLOCKID_3, (long) packetId);
 		    PipeWriter.publishWrites(persistBlobStore);
@@ -138,12 +158,14 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		    //will clear locally upon ack
 
 		} else {
+			
+			//logger.trace("BBB must clear top level ack form memory {} ",packetId);
+			
 			ackPublishedPosLocal(packetId);
 		}
 	}
 
 	private void ackPublishedPosLocal(int packetId) {
-		//logger.trace("low level ack {} ",packetId);
 		if ((packetIdRing[ringMask & ringTail] == packetId) && hasUnackPublished() ) {
 			//this is the normal case since if everyone behaves these values will arrive in order
 			ringTail++;			
@@ -151,19 +173,23 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				ringTail++; //skip over any values that showed up early.
 			}
 		} else {
-			//TODO: may neeed to debug this case more. It may not be an error at all.
-			//logger.info("warning these acks are out of order or not needed");
-			//this is the odd case
+			//Normal case if there is a poor network and packets get dropped.
 			int i = ringTail;
 			int stop = ringMask&ringHead;
 			while ((i&ringMask) != stop) {
-				if (packetIdRing[ringMask & ringHead] == packetId) {			
-					packetIdRing[ringMask & ringHead] = Integer.MAX_VALUE;//set as bad value to skip
+				if (packetIdRing[ringMask & i] == packetId) {			
+					packetIdRing[ringMask & i] = Integer.MAX_VALUE;//set as bad value to skip
+					//logger.trace("found an cleared old packetId {}",packetId);
 					break;
 				}
 				i++;
 			}
+			//move tail up as needed
+			while (hasUnackPublished() && packetIdRing[ringMask & ringTail] == Integer.MAX_VALUE) {
+				ringTail++; //skip over any values that showed up early.
+			}
 		}
+		//System.err.println("restore one");
 		remainingInFlight++;
 	}
 	
@@ -175,8 +201,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			//skip bad value already acknowledged
 			if (packetIdRing[ringMask & i] != Integer.MAX_VALUE) {	
 				
-				//TODO: need to look into this.
-				logger.trace("republish to broker");
+				//logger.info("republish to broker packet {} ",packetIdRing[ringMask & i]);
 				
 	    		final long slabPos = Pipe.getSlabHeadPosition(pipe); 
 	    		final int blobPos = Pipe.getBlobHeadPosition(pipe);
@@ -188,7 +213,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 						if (Thread.interrupted() || Pipe.isShutdown(pipe)) {
 							Thread.currentThread().interrupt();
 							activeConnection = null;
-							logger.trace("returned");
+							//logger.trace("returned");
 							return;
 						}
 					}
@@ -226,7 +251,14 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			reOpenConnection();
 		}
 		
-		return (null!=activeConnection) ? activeConnection.id : -1;
+		long result = (null!=activeConnection) ? activeConnection.id : -1;
+		
+		if (result == -1) {
+			logger.info("no connection available");
+		}
+		
+		return result;
+		
 	}
 
 	private void reOpenConnection() {
@@ -276,15 +308,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		output.writeByte('T');
 		output.writeByte('T');		
 	}
-	
-	@Override
-	public void run() {		
-		if (!processPersistLoad()) {
-			long connectionId = processPingAndReplay();
-			processInputAcks(connectionId);
-			processInput(connectionId);
-		}
-	}
+
 
 	private boolean processPersistLoad() {
 		long connectionId = -1;
@@ -299,6 +323,11 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		    	break;
 		        case PersistedBlobLoadSchema.MSG_BLOCK_1:
 		        {
+		        	//TODO: make sure on cold start that these values are loaded and sent to idGenStage!!!
+		    		
+		    		//TODO: NOTE: Urgent when we continue from persisted in flight message must not use those IDS IdGenStage
+		    		
+		        	
 		        	int fieldBlockId = (int)PipeReader.readLong(persistBlobLoad,PersistedBlobLoadSchema.MSG_BLOCK_1_FIELD_BLOCKID_3);
 		            
 		        	Pipe<NetPayloadSchema> server = toBroker[activeConnection.requestPipeLineIdx()];
@@ -327,16 +356,17 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				
 		        case PersistedBlobLoadSchema.MSG_ACKRELEASE_10:
 		        	int fieldBlockId1 = (int)PipeReader.readLong(persistBlobLoad,PersistedBlobLoadSchema.MSG_ACKRELEASE_10_FIELD_BLOCKID_3);
+		        	logger.trace("BBB back from disk removal ack {} ",fieldBlockId1);
 		        	ackPublishedPosLocal(fieldBlockId1);
 		        break;
 		        
 		        case PersistedBlobLoadSchema.MSG_ACKWRITE_11:
-		        	logger.info("publish ack write");
 		        	PipeWriter.publishWrites(toBroker[activeConnection.requestPipeLineIdx()]);
 		        	PipeReader.releaseReadLock(input);
 		        	isInPersistWrite = false;//can now continue with next write
 		        			        	
-		        	//long comittedBlockId = PipeReader.readLong(persistBlobLoad,PersistedBlobLoadSchema.MSG_ACKWRITE_11_FIELD_BLOCKID_3);	        	
+		        	long comittedBlockId = PipeReader.readLong(persistBlobLoad,PersistedBlobLoadSchema.MSG_ACKWRITE_11_FIELD_BLOCKID_3);	        	
+		        	logger.info("publish ack write is now on disk for id {} ",comittedBlockId);
 		        	//NOTE: if desired we could send this id back to MQTTClient, but I see no need at this time.
 		        			        	
 		        break;
@@ -360,7 +390,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				
 				if (hasUnackPublished()) {
 					rePublish(toBroker[activeConnection.requestPipeLineIdx()]);					
-					lastActvityTime = now;
+					//if rePublish does something then lastActivityTime will have been set
 				} else {
 					requestPing(now, connectionId, toBroker[activeConnection.requestPipeLineIdx()]);					
 					lastActvityTime = now;
@@ -383,8 +413,6 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				)
 				&& PipeReader.tryReadFragment(input)) {
 
-			//NOTE: warning, if this gets disconnected it may pick a new pipe and the old data may be abandoned?
-			
 			int msgIdx = PipeReader.getMsgIdx(input);
 
 			if (MQTTClientToServerSchema.MSG_BROKERHOST_100 == msgIdx) {
@@ -421,16 +449,29 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		//MQTTClientToServerSchema.MSG_PUBLISH_3    int qos      = PipeReader.readInt(input, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_QOS_21);
 		//MQTTClientToServerSchema.MSG_SUBSCRIBE_8  1
 		//MQTTClientToServerSchema.MSG_UNSUBSCRIBE_10  1
-				
+			
+		boolean result;
 		if (PipeReader.peekMsg(input, MQTTClientToServerSchema.MSG_PUBLISH_3)) {
-			return (PipeReader.peekInt(input, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_QOS_21)<=remainingInFlight);			
+			result = (PipeReader.peekInt(input, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_QOS_21)<=remainingInFlight);
+			
+			if (!result) {
+				logger.info("does not have in flight capacity, B remaining limit {} ",remainingInFlight);
+			}
+			
 		} else if (PipeReader.peekMsg(input, MQTTClientToServerSchema.MSG_SUBSCRIBE_8, 
 				                             MQTTClientToServerSchema.MSG_UNSUBSCRIBE_10,
 				                             MQTTClientToServerSchema.MSG_PUBREC_5 )) {
-			return 1<=remainingInFlight;
+			result = 1<=remainingInFlight;
+			
+			if (!result) {
+				logger.info("does not have in flight capacity, A remaining limit {} ",remainingInFlight);
+			}
+			
 		} else {
-			return true;
+			result = true;
 		}
+		
+		return result;
 		
 	}
 
@@ -448,12 +489,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			
 			int msgIdx = PipeReader.getMsgIdx(inputAck);
 
-			if (MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99 == msgIdx){
-				
-				int packetId = PipeReader.readInt(inputAck, MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99_FIELD_PACKETID_20);
-				//logger.trace("got ack for {} ",packetId);
-				//This is the ACK for Sub, UnSub and other messages
-				ackPublishedPos(packetId);//remaining flight up can only be changed later
+			if (MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99 == msgIdx){				
+				ackPublishedPos(PipeReader.readInt(inputAck, MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99_FIELD_PACKETID_20));//remaining flight up can only be changed later
 				PipeReader.releaseReadLock(inputAck);
 				continue;
 			}			
@@ -710,7 +747,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					int qos      = PipeReader.readInt(input, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_QOS_21);
 					int packetId = PipeReader.readInt(input, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_PACKETID_20);
 					remainingInFlight -= qos;
-			
+								
 					buildPublishMessage(output, qos, packetId);
 					finishEndOfBrokerMessage(connectionId, server, arrivalTime, output);
 
@@ -727,6 +764,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				break;
 				case MQTTClientToServerSchema.MSG_PUBREC_5: //requires ack room
 					remainingInFlight -= 1; 
+					//System.err.println("consume 1");
 					//  From broker to client (Qos2) Needs 1
 					//  broker will keep sending publish until we send pub rec
 					//
@@ -753,7 +791,6 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					
 					finishEndOfBrokerMessage(connectionId, server, arrivalTime, output);
 					
-					//TODO: this is a big problem how do we know there is room for this??
 					storePublishedPosLocal(slabPos, blobPos, packetId5); //warning this packetId came from the server..
 					if (isPersistantSession) {	
 						int consumedBytes5 = Pipe.computeCountOfBytesConsumed(server);
@@ -766,7 +803,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				break;
 				case MQTTClientToServerSchema.MSG_SUBSCRIBE_8:
 					remainingInFlight -= 1;
-					
+
 					arrivalTime = PipeReader.readLong(input, MQTTClientToServerSchema.MSG_SUBSCRIBE_8_FIELD_TIME_37);
 					
 			        int topicIdLen = PipeReader.readBytesLength(input, MQTTClientToServerSchema.MSG_SUBSCRIBE_8_FIELD_TOPIC_23);			
@@ -776,9 +813,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					int packetId8 = PipeReader.readInt(input, MQTTClientToServerSchema. MSG_SUBSCRIBE_8_FIELD_PACKETID_20);
 					output.writeShort(packetId8);
 					
-					logger.info("requesting new subscription using id :{}",packetId8);
-				
-					
+					//logger.trace("requesting new subscription using id :{}",packetId8);
+									
 					//variable header
 					output.writeShort(topicIdLen);
 					
@@ -789,21 +825,23 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					output.writeByte(subscriptionQoS);
 					finishEndOfBrokerMessage(connectionId, server, arrivalTime, output);
 	
-					//if (0!=subscriptionQoS) {
-						storePublishedPosLocal(slabPos, blobPos, packetId8);
-						//hold this until we have our subscription ack
-						if (isPersistantSession) {	
-							int consumedBytes8 = Pipe.computeCountOfBytesConsumed(server);
-							storePublishedPosPersisted(blobPos, consumedBytes8, Pipe.blob(server), packetId8);	
-							return false;
-						} 
-					//}
+					storePublishedPosLocal(slabPos, blobPos, packetId8);
+					//hold this until we have our subscription ack
+					if (isPersistantSession) {	
+						
+						logger.info("store to disk the packet for subscription {} ",packetId8);
+						
+						int consumedBytes8 = Pipe.computeCountOfBytesConsumed(server);
+						storePublishedPosPersisted(blobPos, consumedBytes8, Pipe.blob(server), packetId8);	
+						return false;
+					}				
 					
 					PipeWriter.publishWrites(server);
 					
 				break;
 				case MQTTClientToServerSchema.MSG_UNSUBSCRIBE_10:
 					remainingInFlight -= 1;
+					//System.err.println("consume 1");
 					
 					arrivalTime = PipeReader.readLong(input, MQTTClientToServerSchema.MSG_UNSUBSCRIBE_10_FIELD_TIME_37);
 					

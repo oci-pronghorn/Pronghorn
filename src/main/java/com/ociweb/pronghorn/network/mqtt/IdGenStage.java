@@ -136,18 +136,24 @@ public class IdGenStage extends PronghornStage {
 				return;
 			}
 			
-			boolean showOutstandingRanges = false;
-			if (showOutstandingRanges) {
-				log.info("IdGen release range {}->{}  ranges {} ",releaseBegin,releaseEnd, totalRanges);
-				showRanges();
-			}
+//			boolean showOutstandingRanges = true;
+//			if (showOutstandingRanges) {
+//				System.err.println();
+//				showRanges();
+//				//Note the requested range may already be partially released, caution
+//				log.info("now release range {}->{}  ranges {} ",releaseBegin,releaseEnd, totalRanges);
+//			}
 			
+		//	try {
+				
 			// if begin is < last cosumedRange end then its in the middle of that row need special logic
 			if (insertAt>0) {
 				int lastRangeEnd = rangeEnd(consumedRanges[insertAt-1]);
 				if (releaseBegin <  lastRangeEnd  ) {
 													
 					if (releaseEnd < lastRangeEnd) {
+						
+						//if (showOutstandingRanges) { System.err.println("a");};
 						
 						//cuts range in two parts, will need to add row to table
 						consumedRanges[insertAt-1] = buildRange(consumedRanges[insertAt-1],releaseBegin);//    //(0xFFFF&consumedRanges[insertAt-1]) | ((0xFFFF&releaseBegin)<<16);
@@ -159,6 +165,8 @@ public class IdGenStage extends PronghornStage {
 						return; // do not continue
 
 					} else {
+						//if (showOutstandingRanges) { System.err.println("b");};
+						
 						consumedRanges[insertAt-1] = (0xFFFF&consumedRanges[insertAt-1]) | ((0xFFFF&releaseBegin)<<16);
 						//end is >= to last end so this is a tail trim to the existing row							
 						if (releaseEnd == lastRangeEnd) {
@@ -174,6 +182,8 @@ public class IdGenStage extends PronghornStage {
 			//count up how many full rows must be cleared, result is in rows
 			int rows = 0;
 			if (insertAt<totalRanges) {
+				//if (showOutstandingRanges) { System.err.println("c");};
+				
 				int rowBegin =0;
 				do {
 					rowBegin = 0xFFFF&consumedRanges[++rows+insertAt];				
@@ -185,10 +195,15 @@ public class IdGenStage extends PronghornStage {
 			if (totalRanges>0) {
 				int lastEnd = rangeEnd(consumedRanges[lastRow]);//(0xFFFF&(consumedRanges[lastRow]>>16));
 				if (releaseEnd<lastEnd) {
-					//this is a partial row so modify rather than clear
-					consumedRanges[lastRow] = (0xFFFF&releaseEnd) | (lastEnd<<16);
+					//if (showOutstandingRanges) { System.err.println("d");};
+					if (releaseEnd>rangeBegin(consumedRanges[lastRow])) {
+						//this is a partial row so modify rather than clear
+						consumedRanges[lastRow] = (0xFFFF&releaseEnd) | (lastEnd<<16);						
+					}
 					rows--;//this row is done
 				} else {
+					//if (showOutstandingRanges) { System.err.println("e");};
+					
 					//releaseEnd is > this row end
 					//confirm its < next row begin
 					assert(lastRow+1>=totalRanges || releaseEnd<=(consumedRanges[lastRow+1]&0xFFFF));
@@ -198,12 +213,21 @@ public class IdGenStage extends PronghornStage {
 			
 			//all full rows are deleted
 			if (rows>0) {
+				//if (showOutstandingRanges) { System.err.println("f");};
+				
 				assert(isInRange(insertAt, rows, releaseBegin, releaseEnd));
 				int toCopy = -rows + totalRanges - insertAt;					
 				System.arraycopy(consumedRanges, insertAt+rows, consumedRanges, insertAt, toCopy);			
 				totalRanges-=rows;
 			}
 
+//			} finally {
+//				if (showOutstandingRanges) {
+//					showRanges();
+//				}
+//			}
+			
+			
 		} else {
 			
 			log.debug("IdGen release range exact match {}->{}",rangeBegin(range),rangeEnd(range));
