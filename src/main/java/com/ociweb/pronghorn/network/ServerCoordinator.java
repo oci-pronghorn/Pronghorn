@@ -80,9 +80,9 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	this.processorsCount = processorsCount;
     	this.processorLookup = Pipe.splitGroups(processorsCount, maxPartialResponses);
     	
-    	
-    	SSLEngineFactory.init();
-    	
+    	if (isTLS) {
+    		SSLEngineFactory.init();
+    	}
         
     }
     

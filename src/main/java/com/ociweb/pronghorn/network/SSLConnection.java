@@ -13,7 +13,7 @@ public class SSLConnection {
 	
 	static final Logger logger = LoggerFactory.getLogger(SSLConnection.class);
 
-	protected final SSLEngine engine;
+	private SSLEngine engine;
 	protected final SocketChannel socketChannel;
 	public final long id;
 	protected boolean isValid = true;
@@ -25,14 +25,35 @@ public class SSLConnection {
 	protected boolean isDisconnecting = false;
 	protected static boolean isShuttingDown =  false;
 	
+	private final String host;
+	private final int port;
+	
+	protected SSLConnection(String host, int port, SocketChannel socketChannel, long id ) {
+		this.host = host;
+		this.port = port;
+		this.socketChannel = socketChannel;
+		this.id = id;
+	}
+		
 	protected SSLConnection(SSLEngine engine, SocketChannel socketChannel, long id ) {
 		this.engine = engine;
+		this.host = null;
+		this.port = -1;
 		this.socketChannel = socketChannel;
 		this.id = id;
 	}
 	
+	public SSLEngine getEngine() {
+		if (null == engine) {
+			//clients construct this way lazy
+			engine = SSLEngineFactory.createSSLEngine(host, port);
+			engine.setUseClientMode(true);
+		}
+		return engine;		
+	}
+	
 	public String toString() {
-		return engine.getSession().toString()+" id:"+id;
+		return getEngine().getSession().toString()+" id:"+id;
 	}
 	
     //should only be closed by the socket writer logic or TLS handshake may be disrupted causing client to be untrusted.
@@ -77,9 +98,7 @@ public class SSLConnection {
 		return this.id;
 	}
 	
-	public SSLEngine getEngine() {
-		return engine;
-	}
+
 
 	public SocketChannel getSocketChannel() {
 		return socketChannel;

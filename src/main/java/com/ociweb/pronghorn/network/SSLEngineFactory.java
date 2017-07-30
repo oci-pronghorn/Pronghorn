@@ -39,19 +39,19 @@ public class SSLEngineFactory {
 		
 	}
 
-	private static final TLSService service = new TLSService(keyManagerFactory, trustManagerFactory);
-	public static final int maxEncryptedContentLength = //18713;
-			                                            //1<<14;//
-	                                                   service.maxEncryptedContentLength();
+	private static TLSService privateService;
 	
-	static {
-		log.trace("max size encrypted block {} ", maxEncryptedContentLength);
+	public static final TLSService getService() {
+		if (privateService==null) {
+			privateService = new TLSService(keyManagerFactory, trustManagerFactory);
+		}
+		return privateService;
 	}
+
 	
 	public static void init() {
 		//NOTE: does not appear to do anything but this call ensure that the static values are all setup by the time this is called.
-		assert(null!=service);
-		assert(maxEncryptedContentLength>0);
+		assert(null!=getService());
 		assert(null!=keyManagerFactory);
 		assert(null!=trustManagerFactory);		
 	}
@@ -103,11 +103,11 @@ public class SSLEngineFactory {
     }	
 
     public static SSLEngine createSSLEngine(String host, int port) {
-    	return service.createSSLEngineClient(host, port);
+    	return getService().createSSLEngineClient(host, port);
     }
 
     public static SSLEngine createSSLEngine() {
-    	return service.createSSLEngineServer();
+    	return getService().createSSLEngineServer();
     }
 
 

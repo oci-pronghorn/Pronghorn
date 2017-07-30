@@ -97,7 +97,7 @@ public class ClientConnection extends SSLConnection {
 	
 	public ClientConnection(String host, byte[] hostBacking, int hostPos, int hostLen, int hostMask, 
 			                 int port, int userId, int pipeIdx, long conId) throws IOException {
-		super(SSLEngineFactory.createSSLEngine(host, port), SocketChannel.open(), conId);
+		super(host, port, SocketChannel.open(), conId);
 		
 		assert(port<=65535);		
 		
@@ -109,7 +109,7 @@ public class ClientConnection extends SSLConnection {
 		this.host = host;
 		this.port = port;
 		
-		this.getEngine().setUseClientMode(true);
+		
 				
 		this.getSocketChannel().configureBlocking(false);  
 		this.getSocketChannel().setOption(StandardSocketOptions.SO_KEEPALIVE, true);

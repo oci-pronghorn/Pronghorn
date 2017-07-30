@@ -369,27 +369,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 			assert(!Pipe.isInBlobFieldWrite(output[pipeIdx])) : "unexpected open blob field write detected";
 			
 			coordinator.releaseResponsePipeLineIdx(fieldConnectionId);
-			
-			//TODO: upon release must prioritize the re-open.
-			//logger.info("XXXXXXXXXXXXXXXXXX did release for id {} at pos {} {} ",finishedConnectionId,pos,output[pipeIdx]);
-			
-		} else {
-			if (pipeIdx>=0) {
-				if (fieldPosition>Pipe.headPosition(output[pipeIdx])) {
-					logger.info("out of bounds pos value!!, GGGGGGGGGGGGGGGGGGGGGGGGGGgg unable to release pipe {} pos {} expected {}",pipeIdx,fieldPosition,Pipe.headPosition(output[pipeIdx]));
-					//	System.exit(-1);
-				} else {
-					HandshakeStatus handshakeStatus = coordinator.get(fieldConnectionId).engine.getHandshakeStatus();
-		    		if (handshakeStatus!=HandshakeStatus.FINISHED && handshakeStatus!=HandshakeStatus.NOT_HANDSHAKING) {
-		    			//TOOD: this has been triggered
-		    			assert(-1 == coordinator.checkForResponsePipeLineIdx(fieldConnectionId)) : "expected no reserved pipe for "+fieldConnectionId+" with handshake of "+handshakeStatus;
-		    		}
-					
-		    		//logger.info("no client side release {} ",releasePipes[i]);
-					
-					//this is the expected case where we have already put data on this pipe so it can not be released.
-				}
-			}
+
 		}
 	}
 

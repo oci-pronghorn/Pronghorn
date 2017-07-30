@@ -99,7 +99,7 @@ public class SSLUtil {
 					cc.close();
 				    if (Status.CLOSED != status) {
 				    	//not expected case so log this
-				    	logger.warn("HANDSHAKE unable to wrap {} {} {} ",status, cc.getClass().getSimpleName(), cc.engine, new Exception());	
+				    	logger.warn("HANDSHAKE unable to wrap {} {} {} ",status, cc.getClass().getSimpleName(), cc.getEngine(), new Exception());	
 				    }
 				    return;
 				}
@@ -290,12 +290,12 @@ public class SSLUtil {
 			///////////////
 			origLimit = sourceBuffer.limit();
 			int pos = sourceBuffer.position();
-			if (origLimit-pos>SSLEngineFactory.maxEncryptedContentLength) {
-				sourceBuffer.limit(pos+SSLEngineFactory.maxEncryptedContentLength);
+			if (origLimit-pos>SSLEngineFactory.getService().maxEncryptedContentLength()) {
+				sourceBuffer.limit(pos+SSLEngineFactory.getService().maxEncryptedContentLength());
 			}
 			/////////////
 			
-			assert(sourceBuffer.remaining()<=SSLEngineFactory.maxEncryptedContentLength);
+			assert(sourceBuffer.remaining()<=SSLEngineFactory.getService().maxEncryptedContentLength());
 						
 			
 			result = cc.getEngine().unwrap(sourceBuffer, targetBuffer);//common case where we can unwrap directly from the pipe.
@@ -333,8 +333,8 @@ public class SSLUtil {
 					    ///////////////////////
 					    int origLimit = rolling.limit();
 					    int pos = rolling.position();
-					    if (origLimit-pos>SSLEngineFactory.maxEncryptedContentLength) {
-					    	rolling.limit(pos+SSLEngineFactory.maxEncryptedContentLength);
+					    if (origLimit-pos>SSLEngineFactory.getService().maxEncryptedContentLength()) {
+					    	rolling.limit(pos+SSLEngineFactory.getService().maxEncryptedContentLength());
 					    }
 					    /////////////////////////
 				
@@ -381,8 +381,8 @@ public class SSLUtil {
 			    ///////////////////////
 			    int origLimit = rolling.limit();
 			    int pos = rolling.position();
-			    if (origLimit-pos>SSLEngineFactory.maxEncryptedContentLength) {
-			    	rolling.limit(pos+SSLEngineFactory.maxEncryptedContentLength);
+			    if (origLimit-pos>SSLEngineFactory.getService().maxEncryptedContentLength()) {
+			    	rolling.limit(pos+SSLEngineFactory.getService().maxEncryptedContentLength());
 			    }
 			    /////////////////////////
   
