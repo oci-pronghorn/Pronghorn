@@ -654,8 +654,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									
 									//TODO: if the target field is full then we must close this one and open a new
 									//      continuation.
-									
-									
+																		
 							
 		//							logger.info("consumed {} source position {} state {} ",consumed, trieReader.sourcePos,state);
 									
@@ -681,10 +680,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									
 									positionMemoData[stateIdx] = state = 5;
 									
-									
-									int doneFlag = 0;
-									//NOTE: roll back and set the bit for end of data, 1 for msgId, 2 for connection Id									
-									Pipe.setIntValue(doneFlag, pipe, Pipe.lastConfirmedWritePosition(targetPipe)+1+2);
+									//NOTE: go back and set the bit for end of data, 1 for msgId, 2 for connection Id									
+									Pipe.setIntValue(ServerCoordinator.END_RESPONSE_MASK, 
+											         pipe, 
+											         Pipe.lastConfirmedWritePosition(targetPipe)+1+2);
 									
 									Pipe.confirmLowLevelWrite(targetPipe, SIZE_OF_MSG_RESPONSE);
 									Pipe.publishWrites(targetPipe);	
@@ -752,6 +751,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										int len = writer3.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
 										positionMemoData[stateIdx] = state = 5;
 										
+										Pipe.setIntValue(ServerCoordinator.END_RESPONSE_MASK, 
+													     pipe, 
+													     Pipe.lastConfirmedWritePosition(targetPipe)+1+2);
 										
 										Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
 										Pipe.publishWrites(targetPipe);	
