@@ -1377,14 +1377,19 @@ public class GraphManager {
 	    
 	        target.append("digraph {\n");
 	        
-	        if (isVertical) {
-	        	target.append("rankdir = TD\n"); 
-	        } else {
-	        	target.append("rankdir = LR\n"); 
-	        }
 	        
-	        //TODO: redesign to be cleaner without garbage
-	        Map<Object, StringBuilder> ranks = new HashMap<Object, StringBuilder>();
+	        int stages = GraphManager.countStages(m);
+	        
+	        Map<Object, StringBuilder> ranks = null; //TODO: not GC free
+	        if (stages<500) {
+	            //no need if the picture is very large
+		        if (isVertical) {
+		        	target.append("rankdir = TD\n"); 
+		        } else {
+		        	target.append("rankdir = LR\n"); 
+		        }
+		        ranks = new HashMap<Object, StringBuilder>();
+	        }
 	        
 	        int i = -1;
 	        while (++i<m.stageIdToStage.length) {
@@ -1395,21 +1400,23 @@ public class GraphManager {
 	            		&& !(stage instanceof MonitorConsoleStage) 
 	            		&& !(stage instanceof RingBufferMonitorStage)) {       
 
-	            		            	
-	            	Object rankKey = getNota(m, stage.stageId, GraphManager.DOT_RANK_NAME, null);
-	            	if (rankKey!=null) {
 	            		
-	            		//{ rank=same, b, c, d }
-	            		StringBuilder b = ranks.get(rankKey);
-	            		if (null==b) {
-	            			b = new StringBuilder("{ rank=same");
-	            			ranks.put(rankKey, b);
-	            		}
-	            		
-	            		b.append(" \"");
-	            		Appendables.appendValue(b, "Stage", i);
-	            		b.append("\",");
-	            		
+	            	if (ranks!=null) {
+		            	Object rankKey = getNota(m, stage.stageId, GraphManager.DOT_RANK_NAME, null);
+		            	if (rankKey!=null) {
+		            		
+		            		//{ rank=same, b, c, d }
+		            		StringBuilder b = ranks.get(rankKey);
+		            		if (null==b) {
+		            			b = new StringBuilder("{ rank=same");
+		            			ranks.put(rankKey, b);
+		            		}
+		            		
+		            		b.append(" \"");
+		            		Appendables.appendValue(b, "Stage", i);
+		            		b.append("\",");
+		            		
+		            	}
 	            	}
 
 	            	Object rate = getNota(m, stage.stageId, GraphManager.SCHEDULE_RATE,null);
@@ -1483,8 +1490,10 @@ public class GraphManager {
 	        /////
 	        //DOT_RANK_NAME
 	        /////
-	        for (StringBuilder value: ranks.values()) {
-	        	target.append(value.subSequence(0, value.length()-1)).append(" }\n");	        	
+	        if (null!=ranks) {
+		        for (StringBuilder value: ranks.values()) {
+		        	target.append(value.subSequence(0, value.length()-1)).append(" }\n");	        	
+		        }
 	        }
 	        
 	        /////
@@ -1549,9 +1558,8 @@ public class GraphManager {
 		                
 		                if (null!=traffic) {
 		                	int trafficCount = traffic[pipe.id];
-		                	if (0!=trafficCount) {
-		                		Appendables.appendValue(target.append(" Vol:"), trafficCount).append(" ");	
-		                	}
+		                	Appendables.appendValue(target.append(" Vol:"), trafficCount).append(" ");	
+		                	
 		                	//compute the line width.
 		                	int bitsUsed = 32-Integer.numberOfLeadingZeros(trafficCount);		                	
 		                	lineWidth = (0==bitsUsed)? 1 : 2 +(bitsUsed>>3);
