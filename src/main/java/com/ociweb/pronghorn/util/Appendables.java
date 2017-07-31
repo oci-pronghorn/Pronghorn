@@ -668,45 +668,49 @@ public class Appendables {
     		                                        'w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/'};
     
     //TODO: add unit tests for each of the cases listed here https://en.wikipedia.org/wiki/Base64
-    public static <A extends Appendable> A appendBase64(A target, byte[] backing, int pos, int len, int msk) throws IOException {
+    public static <A extends Appendable> A appendBase64(A target, byte[] backing, int pos, int len, int mask) {
         //  https://en.wikipedia.org/wiki/Base64
-    	int accumulator = 0;
-    	int i = 0;
-    	int shift = -6;
-    	int count = 0;
-    	while (i < len) {
-    		
-    		shift+=8; // 2 4 (we now have 10)
-    		accumulator = (accumulator<<8) | (0xFF&backing[msk & pos++]);
-    		i++;
-    
-			while (shift >= 0) {
-				target.append(base64[0x3F&(accumulator>>shift)]);
-				shift -= 6; //took top 6 now shift is at -4, 
-				count++;
-			}   		
+    	try {
+	    	int accumulator = 0;
+	    	int i = 0;
+	    	int shift = -6;
+	    	int count = 0;
+	    	while (i < len) {
+	    		
+	    		shift+=8; // 2 4 (we now have 10)
+	    		accumulator = (accumulator<<8) | (0xFF&backing[mask & pos++]);
+	    		i++;
+	    
+				while (shift >= 0) {
+					target.append(base64[0x3F&(accumulator>>shift)]);
+					shift -= 6; //took top 6 now shift is at -4, 
+					count++;
+				}   		
+	    	}
+	    	
+	    	if (shift<0) {//last letter.
+	    		
+	    		shift+=8; 
+	    		accumulator = (accumulator<<8) | (0xFF&0);
+	    		i++;
+	    		
+	    		while (shift > 0) {    			
+	    			target.append(base64[0x3F&(accumulator>>shift)]);
+	    			shift -= 6; //took top 6 now shift is at -4,
+	    			count++;
+	    		} 
+	    		
+	    	}
+	    	//NOTE: could and should be optimized.
+	        while ((count & 0x03) != 0) {
+	        	target.append('=');
+	        	count++;
+	        }
+	    
+	    	return target;
+    	} catch (IOException ioex) {
+    		throw new RuntimeException(ioex);
     	}
-    	
-    	if (shift<0) {//last letter.
-    		
-    		shift+=8; 
-    		accumulator = (accumulator<<8) | (0xFF&0);
-    		i++;
-    		
-    		while (shift > 0) {    			
-    			target.append(base64[0x3F&(accumulator>>shift)]);
-    			shift -= 6; //took top 6 now shift is at -4,
-    			count++;
-    		} 
-    		
-    	}
-    	//NOTE: could and should be optimized.
-        while ((count & 0x03) != 0) {
-        	target.append('=');
-        	count++;
-        }
-    
-    	return target;
     }
     
     public static <A extends Appendable> A appendUTF8(A target, byte[] backing, int pos, int len, int msk) {
