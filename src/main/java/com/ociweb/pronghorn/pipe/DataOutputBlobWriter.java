@@ -44,8 +44,8 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
      */
     protected static <T extends MessageSchema<T>> void checkLimit(DataOutputBlobWriter<T> that, int x) {
     	if ( (that.activePosition+x) > that.lastPosition ) {
-    		throw new RuntimeException("This field is limited to a maximum length of "+that.backingPipe.maxVarLen
-    				                  +". Write less data or declare a larger max payload size. Already wrote "
+    		throw new RuntimeException("The writer is limited to a maximum length of "+that.backingPipe.maxVarLen
+    				                  +". Write less data or declare a larger field. Already wrote "
     				                  +(that.activePosition-that.startPosition)+" attempting to add "+x);
     	}
     }

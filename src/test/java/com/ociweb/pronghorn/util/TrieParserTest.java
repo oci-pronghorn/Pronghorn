@@ -2570,8 +2570,8 @@ public class TrieParserTest {
 
 		// System.out.println(testData);
 
-		System.out.println("sum:"+sumTotalTrie);
-		System.out.println("sum:"+sumTotalMap);
+		//System.out.println("sum:"+sumTotalTrie);
+		//System.out.println("sum:"+sumTotalMap);
 
 	}
 
