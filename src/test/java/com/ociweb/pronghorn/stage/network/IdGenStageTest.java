@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.stage.network;
 
 import java.util.Random;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,7 +70,8 @@ public class IdGenStageTest {
 	
 	
 	
-	@Test
+	//@Test
+	@Ignore
 	public void testIdGenFuzzFuzz() {
 
         long testDuration = 1000; //keep short for now to save limited time on build server
