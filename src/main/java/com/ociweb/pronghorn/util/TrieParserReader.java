@@ -238,8 +238,8 @@ public class TrieParserReader {
 		idx = i + TrieParser.SIZE_OF_VALUE_NUMERIC;
 
 		if (this.runLength<sourceLength && 
-				(temp_pos = parseNumeric(that.ESCAPE_BYTE, this, source, localSourcePos, sourceLength, sourceMask, (int)that.data[pos++]))<0){
-			System.out.println("returned from numeric, without moving further searching");
+			(temp_pos = parseNumeric(that.ESCAPE_BYTE, this, source, localSourcePos, sourceLength, sourceMask, (int)that.data[pos++]))<0){
+
 			return;
 		}
 		localSourcePos = temp_pos;
@@ -920,9 +920,6 @@ public class TrieParserReader {
 		//this is for the case where we match up to the very end of the string		
 		if (reader.alwaysCompletePayloads && -1 == stopIdx) {
 			int j = reader.workingMultiStops.length;
-
-			System.out.println("multi stops "+j);
-
 			while (--j>=0) {
 				if (reader.workingMultiStops[j]==0) {
 					stopIdx = j;
@@ -1082,10 +1079,11 @@ public class TrieParserReader {
 		do {
 		} while ( (noStop=(stopValue!=source[sourceMask & x++])) && (--lim > 0));         
 
-		if (noStop && 0!=stopValue) { //a zero stop value is a rule to caputure evertything up to the end of the data.
+		boolean hasStopValue = 0!=stopValue;
+		if (noStop && hasStopValue) { //a zero stop value is a rule to caputure evertything up to the end of the data.
 			return -1;//not found!
 		}
-		return parseBytesFound(reader, sourcePos, sourceMask, x);
+		return parseBytesFound(reader, sourcePos, sourceMask, hasStopValue ? x : x+1);//if no stop value add 1 more since stop is subtracted
 	}
 
 	private static int parseBytesFound(TrieParserReader reader, final int sourcePos, final int sourceMask, int x) {

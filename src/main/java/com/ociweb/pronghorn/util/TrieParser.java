@@ -658,8 +658,7 @@ public class TrieParser implements Serializable {
     }
     
     private void setValue(int pos, byte[] source, int sourcePos, final int sourceLength, int sourceMask, long value) {
-        
-    	
+
     	extractionCount = 0;//clear this so it can be requested after set is complete.
     	longestKnown = Math.max(longestKnown, computeMax(source, sourcePos, sourceLength, sourceMask));
     	shortestKnown = Math.min(shortestKnown, sourceLength);
@@ -1072,29 +1071,25 @@ public class TrieParser implements Serializable {
             return 0;
         }
         
+       // new Exception(Appendables.appendUTF8(new StringBuilder("hello "), source, sourcePos, sourceLength, sourceMask).toString()).printStackTrace();
+        
         int adjustment = 0;
         boolean needsRunStart = true;
-        
-        //int limit = sourceLength-sourcePos; //ERROR: 
-        
+
         for(int i=0;i<sourceLength;i++) {
-            
             byte value = source[sourceMask & (sourcePos+i)];
+       
+           // System.err.println(i+" "+((char)value));
             
             if (ESCAPE_BYTE == value && NO_ESCAPE_SUPPORT!=ESCAPE_BYTE) {
-                
                 i++;
                 value = source[sourceMask & (sourcePos+i)];
                 if (ESCAPE_BYTE != value) {
                     if (ESCAPE_CMD_BYTES == value) { //%bX
-                    	if (sourceLength>2) {//do not adjust if %b was found at the end.
+                    	if ((sourceLength>2) && (i<sourceLength-1)) {//do not adjust if %b was found at the end.
                     		i++;
                     		adjustment--; //bytes is 2 but to request it is 3 so go down by one
                     	}
-                    } else {
-                        //no change
-                        //all numerics are 2 but to request it is also 2 so no change.
-                        
                     }
                     
                     needsRunStart = true;
@@ -1103,6 +1098,8 @@ public class TrieParser implements Serializable {
                     //NOTE: in many cases this ends up creating 1 extra!!!!
                     
                 } else {
+                	System.err.println("hello");
+                	
                     //TODO: do store double escape?
                    //adjustment--; // we do not store double escape in the trie data
                 }

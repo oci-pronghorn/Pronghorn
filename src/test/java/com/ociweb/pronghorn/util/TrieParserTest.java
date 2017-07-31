@@ -588,9 +588,28 @@ public class TrieParserTest {
 		String actual = TrieParserReader.capturedFieldBytesAsUTF8(reader,0, new StringBuilder()).toString();
 		assertEquals("the",actual);
 
-
 	}
+	
+	@Test
+	public void testUTF8Set2() {
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(1000, false);
+		map.setUTF8Value("topic19",         value1);
+		map.setUTF8Value("/testTopic/%b",   value2);
 
+		String message = "\n"+map.toString();
+		assertFalse(message,map.toString().contains("ERROR"));
+		
+		assertEquals(value1, TrieParserReader.query(reader,map, "topic19".getBytes(),         0, 7, 15));
+		assertEquals(value2, TrieParserReader.query(reader,map, "/testTopic/%b".getBytes(),   0,  13, 15));
+		assertEquals(value2, TrieParserReader.query(reader,map, "/testTopic/goob".getBytes(), 0,  15, 15));
+
+		String actual = TrieParserReader.capturedFieldBytesAsUTF8(reader,0, new StringBuilder()).toString();
+		assertEquals("goob",actual);
+		
+	}
+	
+	
 	@Test 
 	public void testExtractBytesMiddle() {
 		TrieParserReader reader = new TrieParserReader(3);
@@ -1495,7 +1514,7 @@ public class TrieParserTest {
 	};
 
 	@Test 
-	public void visitor_test() {
+	public void testVisitor() {
 		TrieParserReader reader = new TrieParserReader(3,true);
 		TrieParser map = new TrieParser(16,false);
 
@@ -1548,7 +1567,7 @@ public class TrieParserTest {
 	}
 
 	@Test 
-	public void visitor_testExtractMultiBytes() {
+	public void testVisitorExtractMultiBytes() {
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16);
 
@@ -1588,7 +1607,7 @@ public class TrieParserTest {
 	}
 
 	@Test 
-	public void visitor_testExtractBytesEnd() {
+	public void testVisitorExtractBytesEnd() {
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16);
 
@@ -1620,7 +1639,7 @@ public class TrieParserTest {
 	}
 
 	@Test 
-	public void visitor_testExtractBytesEnd2b() {
+	public void testVisitorExtractBytesEnd2b() {
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16);
 
@@ -1659,7 +1678,7 @@ public class TrieParserTest {
 	}
 
 	@Test 
-	public void visitor_testExtractBytesEndAll() {
+	public void testVisitorExtractBytesEndAll() {
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16,false);
 
@@ -1723,7 +1742,7 @@ public class TrieParserTest {
 	}
 
 	@Test 
-	public void visitor_testExtractBytesEndStart() {
+	public void testVisitorExtractBytesEndStart() {
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(1000,false);
 
@@ -1788,7 +1807,7 @@ public class TrieParserTest {
 
 
 	@Test 
-	public void visitor_testExtractBytesEndMulti() {
+	public void testVisitorExtractBytesEndMulti() {
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(1000);
 
@@ -1822,7 +1841,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testNonBranchInsert() {
+	public void testVisitorNonBranchInsert() {
 
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16);
@@ -1846,7 +1865,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testNumberAtEnd() {
+	public void testVisitorNumberAtEnd() {
 
 		TrieParserReader reader = new TrieParserReader(2,true);
 		TrieParser map = new TrieParser(16);
@@ -1873,7 +1892,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testSimpleURLPaths() {
+	public void testVisitorSimpleURLPaths() {
 
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16,false);
@@ -1904,7 +1923,7 @@ public class TrieParserTest {
 
 
 	@Test
-	public void visitor_testNumericPatternMatchesPatternDef() {
+	public void testVisitorNumericPatternMatchesPatternDef() {
 
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16,false);
@@ -1922,7 +1941,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testOrder1Insert() {
+	public void testVisitorOrder1Insert() {
 
 		//TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16, false);
@@ -1938,7 +1957,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testOrder2Insert() {
+	public void testVisitorOrder2Insert() {
 
 		//TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16);
@@ -1950,7 +1969,7 @@ public class TrieParserTest {
 	}
 
 	@Test 
-	public void visitor_testExtractBytesMiddle() {
+	public void testVisitorExtractBytesMiddle() {
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16);
 
@@ -1981,7 +2000,7 @@ public class TrieParserTest {
 	}
 
 	@Test 
-	public void visitor_testExtractBytesBeginning() {
+	public void testVisitorExtractBytesBeginning() {
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16);
 
@@ -2015,7 +2034,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testSimpleValueReplace() {
+	public void testVisitorSimpleValueReplace() {
 
 		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
@@ -2037,7 +2056,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testSimpleValueReplaceWrapping() {
+	public void testVisitorSimpleValueReplaceWrapping() {
 
 		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);
@@ -2060,7 +2079,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testTwoNonOverlapValuesWithReplace() {
+	public void testVisitorTwoNonOverlapValuesWithReplace() {
 
 		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);        
@@ -2095,7 +2114,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testTwoNonOverlapValuesWrappingWithReplace() {
+	public void testVisitorTwoNonOverlapValuesWrappingWithReplace() {
 
 		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);        
@@ -2132,7 +2151,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testTwoOverlapValues() {
+	public void testVisitorTwoOverlapValues() {
 
 		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);        
@@ -2169,7 +2188,7 @@ public class TrieParserTest {
 
 
 	@Test
-	public void visitor_testThreeOverlapValues() {
+	public void testVisitorThreeOverlapValues() {
 
 		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);        
@@ -2216,7 +2235,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testInsertBeforeBranch() {
+	public void testVisitorInsertBeforeBranch() {
 
 		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);        
@@ -2263,7 +2282,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testInsertAfterBothBranchs() {
+	public void testVisitorInsertAfterBothBranchs() {
 
 		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);        
@@ -2323,7 +2342,7 @@ public class TrieParserTest {
 
 
 	@Test
-	public void visitor_testLongInsertThenShortRootInsert() {
+	public void testVisitorLongInsertThenShortRootInsert() {
 
 		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(1000);        
@@ -2363,7 +2382,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testShortRootInsertThenLongInsert() {
+	public void testVisitorShortRootInsertThenLongInsert() {
 
 		TrieParserReader reader = new TrieParserReader();
 		TrieParser map = new TrieParser(16);        
@@ -2404,7 +2423,7 @@ public class TrieParserTest {
 	}
 
 	@Test
-	public void visitor_testByteExtractExample() {
+	public void testVisitorByteExtractExample() {
 
 		TrieParserReader reader = new TrieParserReader(10);
 		TrieParser map = new TrieParser(16);  
@@ -2477,7 +2496,7 @@ public class TrieParserTest {
 
 	public static void main(String[] args) {
 		//speedReadTest();
-		//new TrieParserTest().visitor_testExtractBytesEndStart(); 
+		//new TrieParserTest().testVisitorExtractBytesEndStart(); 
 	}
 
 	public static void speedReadTest() {
