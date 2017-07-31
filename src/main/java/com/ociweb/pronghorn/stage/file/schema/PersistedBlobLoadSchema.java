@@ -34,10 +34,14 @@ public class PersistedBlobLoadSchema extends MessageSchema<PersistedBlobLoadSche
 	public static final int MSG_BLOCK_1 = 0x00000000;
 	public static final int MSG_BLOCK_1_FIELD_BLOCKID_3 = 0x00800001;
 	public static final int MSG_BLOCK_1_FIELD_BYTEARRAY_2 = 0x01c00003;
+	
 	public static final int MSG_BEGINREPLAY_8 = 0x00000004;
+	
 	public static final int MSG_FINISHREPLAY_9 = 0x00000006;
+	
 	public static final int MSG_ACKRELEASE_10 = 0x00000008;
 	public static final int MSG_ACKRELEASE_10_FIELD_BLOCKID_3 = 0x00800001;
+	
 	public static final int MSG_ACKWRITE_11 = 0x0000000b;
 	public static final int MSG_ACKWRITE_11_FIELD_BLOCKID_3 = 0x00800001;
 

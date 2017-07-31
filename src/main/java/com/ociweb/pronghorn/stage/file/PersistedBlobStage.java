@@ -38,8 +38,8 @@ public class PersistedBlobStage extends PronghornStage {
 	public static PersistedBlobStage newInstance(GraphManager graphManager, 
             Pipe<PersistedBlobStoreSchema> storeRequests,  //load request
             Pipe<PersistedBlobLoadSchema> loadResponses,  //Write ack, load done?
-            byte fileSizeMultiplier, 
-            byte maxIdValueBits,
+            byte fileSizeMultiplier, //cycle data after file is this * storeRequests size
+            byte maxIdValueBits, //ID values for each block 
             File rootFolder) {
 		return new PersistedBlobStage(graphManager,storeRequests,loadResponses,fileSizeMultiplier,maxIdValueBits,rootFolder);
 	}
@@ -140,7 +140,7 @@ public class PersistedBlobStage extends PronghornStage {
 		        	replay(blobDataFile[activeFile], output);
 		        break;
 		        case PersistedBlobStoreSchema.MSG_CLEAR_12:
-		        	clear(releasedFile, blobDataFile[activeFile]);
+		        	clear(releasedFile, blobDataFile);
 		        break;
 		        case -1:
 		           requestShutdown();
@@ -253,14 +253,23 @@ public class PersistedBlobStage extends PronghornStage {
 		 
 	}
 
-	private void clear(RandomAccessFile releaseFile, RandomAccessFile blobDataFile) {
+	private void clear(RandomAccessFile releaseFile, RandomAccessFile[] blobDataFile) {
 		try {
 			releaseFile.setLength(0);
-			blobDataFile.setLength(0);
-			
 		} catch (IOException e) {
-			logger.info("unable to clear stored data",e);
+			logger.warn("unable to fully clear stored data",e);
 		}
+		try {	
+			blobDataFile[0].setLength(0);
+		} catch (IOException e) {
+			logger.warn("unable to fully clear stored data",e);
+		}
+		try {
+			blobDataFile[1].setLength(0);
+		} catch (IOException e) {
+			logger.warn("unable to fully clear stored data",e);
+		}
+			
 	}
 
 	//warning this call will block until complete

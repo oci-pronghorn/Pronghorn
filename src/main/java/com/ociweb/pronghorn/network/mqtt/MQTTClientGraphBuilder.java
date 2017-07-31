@@ -11,6 +11,7 @@ import com.ociweb.pronghorn.network.schema.MQTTClientRequestSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientResponseSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchemaAck;
+import com.ociweb.pronghorn.network.schema.MQTTIdRangeControllerSchema;
 import com.ociweb.pronghorn.network.schema.MQTTIdRangeSchema;
 import com.ociweb.pronghorn.network.schema.MQTTServerToClientSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
@@ -72,8 +73,9 @@ public class MQTTClientGraphBuilder {
 		
 		Pipe<MQTTIdRangeSchema> idGenNew = MQTTIdRangeSchema.instance.newPipe(4,0);
 		Pipe<MQTTIdRangeSchema> idGenOld = MQTTIdRangeSchema.instance.newPipe(16,0); //bigger because we need to unify fragments
+		Pipe<MQTTIdRangeControllerSchema> idRangeControl = MQTTIdRangeControllerSchema.instance.newPipe(maxInFlight+2, 0);
 		
-		IdGenStage idGenStage = new IdGenStage(gm, idGenOld, idGenNew);		
+		IdGenStage idGenStage = new IdGenStage(gm, idGenOld, idRangeControl, idGenNew);		
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, idGenStage);
 		
 		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses, isTLS);
@@ -113,11 +115,18 @@ public class MQTTClientGraphBuilder {
 		
 		int independentClients = 1; 
 		
-		Pipe<NetPayloadSchema>[] toBroker = Pipe.buildPipes(independentClients, NetPayloadSchema.instance.newPipeConfig(maxInFlight, maximumLenghOfVariableLengthFields));
+		Pipe<NetPayloadSchema>[] toBroker = Pipe.buildPipes(independentClients, 
+				                        NetPayloadSchema.instance.newPipeConfig(
+				                        		maxInFlight+8,//extra space 
+				                        		maximumLenghOfVariableLengthFields));
 		
 		//take input request and write the bytes to the broker socket
 		int uniqueId = 1; //Different for each client instance. so ccm and toBroker can be shared across all clients.
-		MQTTClientToServerEncodeStage encodeStage = new MQTTClientToServerEncodeStage(gm, ccm, maxInFlight, uniqueId, clientToServer, clientToServerAck, persistancePipe, persistanceLoadPipe, toBroker);
+		MQTTClientToServerEncodeStage encodeStage = new MQTTClientToServerEncodeStage(gm, 
+				                                        ccm, maxInFlight, uniqueId, clientToServer, 
+				                                        clientToServerAck, persistancePipe, persistanceLoadPipe, 
+				                                        idRangeControl, toBroker);
+		
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, encodeStage);
 		
 		
@@ -136,7 +145,7 @@ public class MQTTClientGraphBuilder {
 		int releaseCount = maxInFlight;
 		int netResponseCount = maxInFlight;
 		int netResponseBlob = maximumLenghOfVariableLengthFields;
-		int writeBufferMultiplier = 8;
+		int writeBufferMultiplier = 24;//bumped up to speed client writing
 				
 		NetGraphBuilder.buildClientGraph(gm, ccm, responseQueue, responseSize, toBroker,
 				         responseUnwrapCount, clientWrapperCount,

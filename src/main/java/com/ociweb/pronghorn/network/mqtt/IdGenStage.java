@@ -5,8 +5,10 @@ import static com.ociweb.pronghorn.pipe.Pipe.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.network.schema.MQTTIdRangeControllerSchema;
 import com.ociweb.pronghorn.network.schema.MQTTIdRangeSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -35,31 +37,32 @@ public class IdGenStage extends PronghornStage {
 	
 	private int[] consumedRanges;
 	private int totalRanges = 0;
+	private boolean isActive = false;//do not begin until we get the signal
 	
+	private final Pipe<MQTTIdRangeControllerSchema> control;
 	private final Pipe<MQTTIdRangeSchema>[] inputs;
 	private final Pipe<MQTTIdRangeSchema>[] outputs;	
 	private final int sizeOfFragment;
 	private static final int theOneMsg = 0;// there is only 1 message supported by this stage
 		
-	public IdGenStage(GraphManager graphManager, Pipe<MQTTIdRangeSchema> input, Pipe<MQTTIdRangeSchema> output) {
-		super(graphManager, input, output);
+	public IdGenStage(GraphManager graphManager, Pipe<MQTTIdRangeSchema> input, Pipe<MQTTIdRangeControllerSchema> control, Pipe<MQTTIdRangeSchema> output) {
+		super(graphManager, join(input, control), output);
 		this.inputs = new Pipe[]{input};
 		this.outputs = new Pipe[]{output};
+		this.control = control;
 		assert(Pipe.from(input).equals(Pipe.from(output))) : "Both must have same message types ";	
 		this.sizeOfFragment = Pipe.from(input).fragDataSize[theOneMsg];
 				
 		//must be set so this stage will get shut down and ignore the fact that is has un-consumed messages coming in 
         GraphManager.addNota(graphManager,GraphManager.PRODUCER, GraphManager.PRODUCER, this);
-        //slow rate since it does big batches
-        GraphManager.addNota(graphManager,GraphManager.SCHEDULE_RATE, 100_000, this);
-  
-        
+                
 	}
 	
-	public IdGenStage(GraphManager graphManager, Pipe<MQTTIdRangeSchema>[] inputs, Pipe<MQTTIdRangeSchema>[] outputs) {
-		super(graphManager, inputs, outputs);
+	public IdGenStage(GraphManager graphManager, Pipe<MQTTIdRangeSchema>[] inputs, Pipe<MQTTIdRangeControllerSchema> control, Pipe<MQTTIdRangeSchema>[] outputs) {
+		super(graphManager, join(inputs,control), outputs);
 		this.inputs = inputs;
 		this.outputs = outputs;
+		this.control = control;
 		//TODO: add assert to confirm that all the inputs and outputs have the same eq from.
 		this.sizeOfFragment = Pipe.from(inputs[0]).fragDataSize[theOneMsg];
 	}
@@ -67,11 +70,73 @@ public class IdGenStage extends PronghornStage {
 	@Override
 	public void startup() {
 		consumedRanges = new int[MAX_CONSUMED_BLOCKS];
+		totalRanges = 0;
+		isActive = false;
 	}
 
 	@Override
 	public void run() {
 		
+		while (PipeReader.tryReadFragment(control)) {
+		    int msgIdx = PipeReader.getMsgIdx(control);
+		    switch(msgIdx) {
+		        case MQTTIdRangeControllerSchema.MSG_CLEARALL_2:
+		        	isActive = false;
+		        	totalRanges = 0; //wipe out the consumed ranges.
+				break;
+		        case MQTTIdRangeControllerSchema.MSG_IDRANGE_1:
+		        	int fieldRange = PipeReader.readInt(control,MQTTIdRangeControllerSchema.MSG_IDRANGE_1_FIELD_RANGE_100);
+		        	
+		        	if (totalRanges==0) {
+		        		//simple case
+		        		consumedRanges[0] = fieldRange;
+		        		totalRanges++;		        		
+		        	} else {
+		        		
+		        		int idx = findIndex(consumedRanges, 0, totalRanges, fieldRange);
+		        		//this row is >= the beginning of the target.
+		        		
+		        		int rangeEnd = rangeEnd(fieldRange);
+		        		
+		        		if (rangeEnd == rangeBegin(consumedRanges[idx])) {
+		        			//grow the front case
+		        			consumedRanges[idx] = buildRange(rangeBegin(fieldRange), rangeEnd(consumedRanges[idx]));
+		        		} else {
+		        			if (idx>0 && rangeEnd(consumedRanges[idx-1])==rangeBegin(fieldRange) ) {
+		        				//grow the last end case
+		        				consumedRanges[idx-1] = buildRange(rangeBegin(consumedRanges[idx]),rangeEnd);		        				
+		        			} else {
+		        				//insert between case
+		        				if (totalRanges+1>MAX_CONSUMED_BLOCKS) {
+		        					throw new RuntimeException("saved consumed ranges are more numerious than the previous limit? Was the code changed while data was saved to disk?");	  					
+		        				}
+		        				
+		        				int insertAt = idx;
+		        				System.arraycopy(consumedRanges, insertAt, consumedRanges, insertAt+1, totalRanges - insertAt);
+		        				consumedRanges[idx] = fieldRange;
+		        			}
+		        		}
+		        	}
+		    
+		        break;
+		        case MQTTIdRangeControllerSchema.MSG_READY_3:
+		        	isActive = true;
+				break;
+		        case -1:
+		           requestShutdown();
+		        break;
+		    }
+		    PipeReader.releaseReadLock(control);
+		}
+		
+		
+		if (isActive) {
+			generateIds();
+		}
+	
+	}
+
+	private void generateIds() {
 		//pull in all the released ranges first so we have them to give back out again.
 		int i = inputs.length;
 		while (--i>=0) {
@@ -115,7 +180,6 @@ public class IdGenStage extends PronghornStage {
 				Pipe.confirmLowLevelWrite(outputRing, sizeOfFragment);
 			}
 		}
-	
 	}
 
 	public static int rangeEnd(int range) {
@@ -168,8 +232,7 @@ public class IdGenStage extends PronghornStage {
 						
 						//cuts range in two parts, will need to add row to table
 						consumedRanges[insertAt-1] = buildRange(lastRangeBegin,releaseBegin);//    //(0xFFFF&consumedRanges[insertAt-1]) | ((0xFFFF&releaseBegin)<<16);
-						int toCopy = totalRanges - insertAt;					
-						System.arraycopy(consumedRanges, insertAt, consumedRanges, insertAt+1, toCopy);	
+						System.arraycopy(consumedRanges, insertAt, consumedRanges, insertAt+1, totalRanges - insertAt);	
 						consumedRanges[insertAt] = buildRange(releaseEnd,lastRangeEnd);// (0xFFFF&(releaseEnd)) | (lastRangeEnd<<16);
 						totalRanges++;
 						assert(validateInternalTable()) : "Added at "+insertAt + " from release "+releaseBegin+"->"+releaseEnd;
@@ -270,11 +333,11 @@ public class IdGenStage extends PronghornStage {
 		return true;
 	}
 
-	private int findIndex(int[] consumedRanges, int from, int to, int target) {
+	private static int findIndex(int[] consumedRanges, int from, int to, int target) {
 		int i = from;
-		int targetStart = 0xFFFF&target;
+		int targetStart = rangeBegin(target);
 		//while target start is before each range start keep walking
-		while (i<to &&  (0xFFFF&consumedRanges[i])<targetStart) {
+		while (i<to &&  rangeBegin(consumedRanges[i]) < targetStart) {
 			i++;
 		}
 		return i;
@@ -316,7 +379,7 @@ public class IdGenStage extends PronghornStage {
 		int i = totalRanges;
 		while (--i>=0) {
 			int j = consumedRanges[i];
-			int begin = j&0xFFFF;
+			int begin = rangeBegin(j);
 			int end   = (j>>16)&0xFFFF;
 			
 			int len = lastBegin-end;
@@ -353,14 +416,14 @@ public class IdGenStage extends PronghornStage {
 		//appends on to previous internal row
 		
 		int rangeEnd = rangeStart+rangeCount;
-	    if (idx<totalRanges && (consumedRanges[idx]&0xFFFF)==rangeEnd) {
+	    if (idx<totalRanges && rangeBegin(consumedRanges[idx])==rangeEnd) {
 	    	//combine these two because reservation connects them together	    	
 	    	rangeEnd = (consumedRanges[idx]>>16)&0xFFFF;
 	    	System.arraycopy(consumedRanges, idx+1, consumedRanges, idx, totalRanges-idx);
 	    	totalRanges--;
 	    }
 		
-		consumedRanges[idx-1]= (consumedRanges[idx-1]&0xFFFF) | (rangeEnd<<16);
+		consumedRanges[idx-1]= buildRange(consumedRanges[idx-1],rangeEnd);
 		
 		//send back value that is just the new range
 		
@@ -378,7 +441,7 @@ public class IdGenStage extends PronghornStage {
 		int last = MAX_VALUES;
 		int j = totalRanges;
 		while (--j>=0) {
-			int start = 0xFFFF&consumedRanges[j];
+			int start = rangeBegin(consumedRanges[j]);
 			if (start>last) {
 				dumpInternalTable();				
 				return false;

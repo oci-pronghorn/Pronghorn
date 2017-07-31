@@ -101,7 +101,11 @@ public class MQTTClientStage extends PronghornStage {
 	public void processClientRequests() {
 		while(  
 				(!PipeReader.hasContentToRead(serverToClient)) //server response is always more important.
-				&& MQTTEncoder.hasPacketId(genCache, idGenNew) //only process if we have new PacketIds ready
+				
+				&& (
+						PipeReader.peekMsg(clientRequest, MQTTClientRequestSchema.MSG_BROKERCONFIG_100, MQTTClientRequestSchema.MSG_CONNECT_1)
+						|| MQTTEncoder.hasPacketId(genCache, idGenNew) //all other messsages require a packetId ready for use
+	            )
 				&& PipeWriter.hasRoomForWrite(clientToServer) //only process if we have room to write
 				&& PipeReader.tryReadFragment(clientRequest)  ) {
 			
@@ -138,22 +142,11 @@ public class MQTTClientStage extends PronghornStage {
 					PipeWriter.writeLong(clientToServer, 
 							  MQTTClientToServerSchema.MSG_CONNECT_1_FIELD_TIME_37, 
 							  System.currentTimeMillis());
-//										
-//					MQTTClientToServerSchema.publishConnect(clientToServer, 1, 1, 1, "fieldClientId", "fieldWillTopic", 
-//							                                     "fieldWillPayloadBacking".getBytes(), 0, 0, "fieldUser", "fieldPass");
-					
-					
-					String s = PipeReader.readUTF8(clientRequest, MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_CLIENTID_30, new StringBuilder()).toString();
-					
-					if (StageTester.hasBadChar(s)) {
-						System.err.println("BAD CHAR: "+StageTester.hasBadChar(s));
-						System.exit(-1);
-					}
+
 					PipeReader.copyBytes(clientRequest, clientToServer, 
 				             MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_CLIENTID_30, 
 				             MQTTClientToServerSchema.MSG_CONNECT_1_FIELD_CLIENTID_30);
-					
-					
+									
 										
 					PipeReader.copyBytes(clientRequest, clientToServer, 
 				             MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_WILLTOPIC_31, 
@@ -252,7 +245,8 @@ public class MQTTClientStage extends PronghornStage {
 							  MQTTClientToServerSchema.MSG_UNSUBSCRIBE_10_FIELD_TIME_37, 
 							  System.currentTimeMillis());
 					
-					PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_UNSUBSCRIBE_10_FIELD_PACKETID_20, IdGenCache.nextPacketId(genCache));
+					PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_UNSUBSCRIBE_10_FIELD_PACKETID_20, 
+							IdGenCache.nextPacketId(genCache));
 										
 					PipeReader.copyBytes(clientRequest, clientToServer, 
 				             MQTTClientRequestSchema.MSG_UNSUBSCRIBE_10_FIELD_TOPIC_23, 

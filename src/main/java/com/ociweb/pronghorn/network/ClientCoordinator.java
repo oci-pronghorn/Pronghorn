@@ -284,7 +284,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					try {
 						
 				    	//create new connection because one was not found or the old one was closed
-						cc = new ClientConnection(host, hostBack, hostPos, hostLen, hostMask, port, userId, pipeIdx, connectionId);
+						cc = new ClientConnection(host, hostBack, hostPos, hostLen, hostMask, port, userId, pipeIdx, connectionId, ccm.isTLS);
 						ccm.connections.setValue(connectionId, cc);						
 						ccm.hostTrieLock.writeLock().lock();
 						

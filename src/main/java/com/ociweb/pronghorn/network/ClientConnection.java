@@ -96,8 +96,12 @@ public class ClientConnection extends SSLConnection {
 	}
 	
 	public ClientConnection(String host, byte[] hostBacking, int hostPos, int hostLen, int hostMask, 
-			                 int port, int userId, int pipeIdx, long conId) throws IOException {
-		super(host, port, SocketChannel.open(), conId);
+			                 int port, int userId, int pipeIdx, long conId, boolean isTLS) throws IOException {
+		super(isTLS?SSLEngineFactory.createSSLEngine(host, port):null, SocketChannel.open(), conId);
+		
+		if (isTLS) {
+			getEngine().setUseClientMode(true);
+		}
 		
 		assert(port<=65535);		
 		

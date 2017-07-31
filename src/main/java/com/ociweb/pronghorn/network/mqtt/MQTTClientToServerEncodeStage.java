@@ -7,6 +7,7 @@ import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchemaAck;
+import com.ociweb.pronghorn.network.schema.MQTTIdRangeControllerSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -30,6 +31,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	
 	private final Pipe<NetPayloadSchema>[] toBroker; //array is the size of supported "in-flight" messages.
 			
+	private final Pipe<MQTTIdRangeControllerSchema> idRangeControl;
+	
 	
 	private final int uniqueConnectionId;
 	private final ClientCoordinator ccm;
@@ -72,11 +75,12 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			                             Pipe<MQTTClientToServerSchemaAck> inputAck,
 			                             Pipe<PersistedBlobStoreSchema> persistBlobStore,
 			                             Pipe<PersistedBlobLoadSchema> persistBlobLoad,
+			                             Pipe<MQTTIdRangeControllerSchema> idRangeControl,
 			                             Pipe<NetPayloadSchema>[] toBroker) {
-		super(gm, join(input,inputAck,persistBlobLoad), join(toBroker,persistBlobStore));
+		super(gm, join(input,inputAck,persistBlobLoad), join(toBroker,persistBlobStore,idRangeControl));
 		this.input = input;
 		this.inputAck = inputAck;
-		
+		this.idRangeControl = idRangeControl;
 		this.persistBlobStore = persistBlobStore;
 		this.persistBlobLoad = persistBlobLoad;
 		
@@ -313,17 +317,16 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		    switch(msgIdx) {
 		    	case PersistedBlobLoadSchema.MSG_BEGINREPLAY_8:
 		    		clearAckPublishedCollection();
+		    		MQTTIdRangeControllerSchema.publishClearAll(idRangeControl);
 		    		isInReloadPersisted = true;
 		    	break;
 		        case PersistedBlobLoadSchema.MSG_BLOCK_1:
-		        {
-		        	//TODO: make sure on cold start that these values are loaded and sent to idGenStage!!!
-		    		
-		    		//TODO: NOTE: Urgent when we continue from persisted in flight message must not use those IDS IdGenStage
-		    		
-		        	
+		        {		        	
 		        	int fieldBlockId = (int)PipeReader.readLong(persistBlobLoad,PersistedBlobLoadSchema.MSG_BLOCK_1_FIELD_BLOCKID_3);
-		            
+
+		        	//Tell the IdGen that this value is already consumed
+		        	MQTTIdRangeControllerSchema.publishIdRange(idRangeControl, IdGenStage.buildRange(fieldBlockId, fieldBlockId+1));
+		        			        	
 		        	Pipe<NetPayloadSchema> server = toBroker[activeConnection.requestPipeLineIdx()];
 		        	
 		        	logger.info("read positions and publish block");
@@ -345,6 +348,9 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		        }
 		        break;
 		        case PersistedBlobLoadSchema.MSG_FINISHREPLAY_9:
+		        	
+				MQTTIdRangeControllerSchema.publishReady(idRangeControl);
+		        	
 		        	isInReloadPersisted = false;
 				break;
 				
@@ -500,9 +506,10 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 	
 	private boolean hasRoomToSocketWrite() {
-		boolean result = PipeWriter.hasRoomForWrite(toBroker[activeConnection.requestPipeLineIdx()]);
+		Pipe<NetPayloadSchema> pipe = toBroker[activeConnection.requestPipeLineIdx()];
+		boolean result = PipeWriter.hasRoomForWrite(pipe);
 		if (!result) {
-			logger.info("no room to write socket");
+			logger.info("no room to write socket "+pipe);
 		}
 		return result;
 	}
@@ -687,7 +694,11 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 						//if this is a new clean session then we must clear out our repeats
 						clearAckPublishedCollection();
 						clearPersistedCollection();
-					} else {						
+						
+						MQTTIdRangeControllerSchema.publishReady(idRangeControl);
+						
+					} else {		
+						//open new connect we must first reload the old persisted messages.
 						requestReplayOfPersistedCollection();
 					}
 					

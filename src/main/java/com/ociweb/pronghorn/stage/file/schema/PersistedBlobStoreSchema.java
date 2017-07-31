@@ -31,9 +31,12 @@ public class PersistedBlobStoreSchema extends MessageSchema<PersistedBlobStoreSc
 		public static final int MSG_BLOCK_1 = 0x00000000;
 		public static final int MSG_BLOCK_1_FIELD_BLOCKID_3 = 0x00800001;
 		public static final int MSG_BLOCK_1_FIELD_BYTEARRAY_2 = 0x01c00003;
+		
 		public static final int MSG_RELEASE_7 = 0x00000004;
 		public static final int MSG_RELEASE_7_FIELD_BLOCKID_3 = 0x00800001;
+		
 		public static final int MSG_REQUESTREPLAY_6 = 0x00000007;
+		
 		public static final int MSG_CLEAR_12 = 0x00000009;
 
 

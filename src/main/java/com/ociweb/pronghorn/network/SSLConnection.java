@@ -24,31 +24,15 @@ public class SSLConnection {
 
 	protected boolean isDisconnecting = false;
 	protected static boolean isShuttingDown =  false;
-	
-	private final String host;
-	private final int port;
-	
-	protected SSLConnection(String host, int port, SocketChannel socketChannel, long id ) {
-		this.host = host;
-		this.port = port;
-		this.socketChannel = socketChannel;
-		this.id = id;
-	}
+
 		
 	protected SSLConnection(SSLEngine engine, SocketChannel socketChannel, long id ) {
 		this.engine = engine;
-		this.host = null;
-		this.port = -1;
 		this.socketChannel = socketChannel;
 		this.id = id;
 	}
 	
 	public SSLEngine getEngine() {
-		if (null == engine) {
-			//clients construct this way lazy
-			engine = SSLEngineFactory.createSSLEngine(host, port);
-			engine.setUseClientMode(true);
-		}
 		return engine;		
 	}
 	

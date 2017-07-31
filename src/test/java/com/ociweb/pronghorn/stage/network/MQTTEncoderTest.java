@@ -106,7 +106,7 @@ public class MQTTEncoderTest {
 			}
 			
 		}
-		System.out.println("sum:"+sum);
+		//System.out.println("sum:"+sum);
 	}
 	
 	@Test
@@ -148,7 +148,7 @@ public class MQTTEncoderTest {
 				fail(e.getMessage());
 			}
 		}
-		System.out.println("sum:"+sum);
+		//System.out.println("sum:"+sum);
 	}
 	
 

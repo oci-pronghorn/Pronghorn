@@ -78,7 +78,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 		this.inputs = inputs;
 		this.outputs = outputs;
 		this.count = testSize/inputs.length;
-		logger.info("Each pipe will be given a total of {} requests.",count);
+		//logger.trace("Each pipe will be given a total of {} requests.",count);
 		
 		this.label = label;
 		this.port = port;
