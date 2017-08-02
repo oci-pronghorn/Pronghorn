@@ -875,11 +875,9 @@ public class TrieParserReader {
 
 						if (value==s2) {
 							reader.pos = reader.workingMultiContinue[1];
-
 							return assignParseBytesResults(reader, sourceMask, localSourcePos, x);							
 						} else if (value==s1) {
-							reader.pos = reader.workingMultiContinue[0];						
-
+							reader.pos = reader.workingMultiContinue[0];
 							return assignParseBytesResults(reader, sourceMask, localSourcePos, x);						
 						}
 
@@ -1083,15 +1081,15 @@ public class TrieParserReader {
 		if (noStop && hasStopValue) { //a zero stop value is a rule to caputure evertything up to the end of the data.
 			return -1;//not found!
 		}
-		return parseBytesFound(reader, sourcePos, sourceMask, hasStopValue ? x : x+1);//if no stop value add 1 more since stop is subtracted
-	}
-
-	private static int parseBytesFound(TrieParserReader reader, final int sourcePos, final int sourceMask, int x) {
-		int len = (x-sourcePos)-1;
-
+		int x1 = hasStopValue ? x : x+1;
+		int len = (x1-sourcePos)-1;
+		
 		reader.runLength += (len);
-		reader.capturedPos = extractedBytesRange(reader.capturedBlobArray ,reader.capturedValues, reader.capturedPos, sourcePos, len, sourceMask);                
-		return x;
+		reader.capturedPos = extractedBytesRange(reader.capturedBlobArray, 
+				                                 reader.capturedValues, 
+				                                 reader.capturedPos, 
+				                                 sourcePos, len, sourceMask);                
+		return x1;//if no stop value add 1 more since stop is subtracted
 	}
 
 	private static int indexOfMatchInArray(short value, short[] data, int i) {
