@@ -2,11 +2,12 @@ package com.ociweb.pronghorn.pipe;
 
 import java.io.DataInput;
 import java.io.InputStream;
+import java.io.ObjectInput;
 
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
-public abstract class BlobReader extends InputStream implements DataInput {
+public abstract class BlobReader extends InputStream implements ObjectInput {
 
 	public abstract int available();
 	

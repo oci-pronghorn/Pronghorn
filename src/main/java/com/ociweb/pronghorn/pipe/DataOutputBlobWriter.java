@@ -212,9 +212,13 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
 	@Override
     public void writeObject(Object object) {
 		    try {
+		    	//logger.info("creating new output stream");
 	           	ObjectOutputStream oos = new ObjectOutputStream(this); //writes stream header
-	            oos.writeObject(object);            
+	           	//logger.info("write the object");
+	           	oos.writeObject(object);            
+	           	//logger.info("flush");
 	            oos.flush();
+	            //logger.info("done");
 		    } catch (IOException e) {
 		    	throw new RuntimeException(e);
 		    }
