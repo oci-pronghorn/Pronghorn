@@ -900,7 +900,6 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 
 	private void requestPing(long now, long connectionId, Pipe<NetPayloadSchema> server) {
-		logger.info("request ping");
 		PipeWriter.presumeWriteFragment(server, NetPayloadSchema.MSG_PLAIN_210);
 		DataOutputBlobWriter<NetPayloadSchema> output = PipeWriter.outputStream(server);
 		DataOutputBlobWriter.openField(output);
