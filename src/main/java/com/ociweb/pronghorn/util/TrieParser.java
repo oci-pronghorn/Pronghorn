@@ -113,6 +113,10 @@ public class TrieParser implements Serializable {
     public byte[] lastSetValueExtractonPattern() {
     	return Arrays.copyOfRange(extractions, 0, extractionCount);
     }    
+    
+    public int lastSetValueExtractionCount() {
+    	return extractionCount;
+    }
 
 	//used for detection of parse errors, eg do we need more data or did something bad happen.
 	private int maxBytesCapturable      = 500; //largest text
@@ -557,6 +561,11 @@ public class TrieParser implements Serializable {
 
     public int setUTF8Value(CharSequence cs, long value) {
         
+    	if (cs.length()<<3 > workingPipe.maxVarLen) {
+    		workingPipe = RawDataSchema.instance.newPipe(2,cs.length());
+    		workingPipe.initBuffers();
+    	}  
+    	
         Pipe.addMsgIdx(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
         
         int origPos = Pipe.getWorkingBlobHeadPosition(workingPipe);
@@ -575,8 +584,13 @@ public class TrieParser implements Serializable {
         
     }
     
-    public int setUTF8Value(CharSequence cs, CharSequence suffix, int value) {
+    public int setUTF8Value(CharSequence cs, CharSequence suffix, long value) {
         
+    	if ((cs.length()+suffix.length())<<3 > workingPipe.maxVarLen) {
+    		workingPipe = RawDataSchema.instance.newPipe(2,suffix.length());
+    		workingPipe.initBuffers();
+    	}     	
+    	
         Pipe.addMsgIdx(workingPipe, 0);
         
         int origPos = Pipe.getWorkingBlobHeadPosition(workingPipe);
@@ -597,8 +611,13 @@ public class TrieParser implements Serializable {
         return len;
     }
 
-    public int setUTF8Value(CharSequence prefix, CharSequence cs, CharSequence suffix, int value) {
+    public int setUTF8Value(CharSequence prefix, CharSequence cs, CharSequence suffix, long value) {
         
+    	if (((prefix.length() + cs.length() + suffix.length()) << 3) > workingPipe.maxVarLen) {
+    		workingPipe = RawDataSchema.instance.newPipe(2,suffix.length());
+    		workingPipe.initBuffers();
+    	}   
+    	
         Pipe.addMsgIdx(workingPipe, 0);
         
         int origPos = Pipe.getWorkingBlobHeadPosition(workingPipe);

@@ -99,6 +99,8 @@ public class TrieParserReader {
 	public TrieParserReader(int maxCapturedFields, boolean alwaysCompletePayloads) {
 		this.capturedValues = new int[maxCapturedFields*4];
 		this.alwaysCompletePayloads = alwaysCompletePayloads;
+		
+		workingPipe.initBuffers();
 	}
 
 
@@ -594,6 +596,11 @@ public class TrieParserReader {
 	
     public static long query(TrieParserReader reader, TrieParser trie, CharSequence cs) {
         
+    	if (cs.length()> reader.workingPipe.maxVarLen) {
+    		reader.workingPipe = RawDataSchema.instance.newPipe(2,cs.length());
+    		reader.workingPipe.initBuffers();
+    	}
+    	
         Pipe.addMsgIdx(reader.workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
         
         int origPos = Pipe.getWorkingBlobHeadPosition(reader.workingPipe);
@@ -1292,7 +1299,7 @@ public class TrieParserReader {
 		}        
 	}
 
-	public static void writeCapturedUTF8(TrieParserReader reader, int idx, BlobWriter target) {
+	public static int writeCapturedUTF8(TrieParserReader reader, int idx, BlobWriter target) {
 		int pos = idx*4;
 
 		int type = reader.capturedValues[pos++];
@@ -1304,7 +1311,7 @@ public class TrieParserReader {
 		//this data is already encoded as UTF8 so we do a direct copy
 		target.writeShort(l);
 		DataOutputBlobWriter.write((DataOutputBlobWriter<?>) target, reader.capturedBlobArray, p, l, m);
-
+		return l;
 	}
 
 	public static void parseSetup(TrieParserReader trieReader, int loc, Pipe<?> input) {
@@ -1409,6 +1416,15 @@ public class TrieParserReader {
 
 		target.consume(reader.capturedBlobArray, bpos, blen, bmsk);
 		return blen;
+
+	}
+
+	public static int capturedFieldBytesLength(TrieParserReader reader, int idx) {
+		assert(null!=reader);
+
+		int pos = idx*4;
+		assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
+		return reader.capturedValues[2+pos];
 
 	}
 
