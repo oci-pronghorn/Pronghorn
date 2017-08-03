@@ -123,6 +123,10 @@ public class TrieParserReader {
 	}
 
 	private void visit(TrieParser that, final int i, ByteSquenceVisitor visitor, byte[] source, int localSourcePos, int sourceLength, int sourceMask, final long unfoundResult) {
+		if (that.getLimit()==0) {
+			return;//nothing to do, we have no patterns
+		}
+		
 		int run = 0;
 		short[] data = that.data;
 

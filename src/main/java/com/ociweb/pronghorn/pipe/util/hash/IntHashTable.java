@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.pipe.util.hash;
 
+import java.util.Arrays;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,9 +33,18 @@ public class IntHashTable {
 	public IntHashTable(int bits) {
 		int size = 1<<bits;
 		mask = size-1;
-		space = mask; //this is 1 less by design
 		
+		space = mask; //this is 1 less by design		
 		data = new long[size];
+	}
+	
+	public static int computeBits(int count) {
+		return (int)Math.ceil(Math.log(count)/Math.log(2));
+	}	
+	
+	public static void clear(IntHashTable ht) {
+		ht.space = ht.mask;
+		Arrays.fill(ht.data, 0);
 	}
 	
 	public static int size(IntHashTable ht) {

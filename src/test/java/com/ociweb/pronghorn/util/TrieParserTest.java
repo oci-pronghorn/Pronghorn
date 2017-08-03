@@ -1493,25 +1493,7 @@ public class TrieParserTest {
 	 */
 
 	//Visitor for recording the results of each visit test case
-	ByteSquenceVisitor visitor = new ByteSquenceVisitor(){
-		Set<Long> result_set = new HashSet<Long>();
-		@Override
-		public void addToResult(long l) {
-			result_set.add(l);
-		}
-		@Override
-		public void clearResult(){
-			result_set.clear();
-		}
-		@Override
-		public String toString() {
-			StringBuilder sb = new StringBuilder();
-			for(long l: result_set){
-				sb.append(l).append(" ");
-			}
-			return sb.toString().trim();
-		}
-	};
+	private final ByteTestSequenceVisitor visitor = new ByteTestSequenceVisitor();
 
 	@Test 
 	public void testVisitor() {
