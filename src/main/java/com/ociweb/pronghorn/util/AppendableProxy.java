@@ -11,27 +11,30 @@ public class AppendableProxy implements Appendable {
 	}
 	
 	@Override
-	public Appendable append(CharSequence csq) {
+	public AppendableProxy append(CharSequence csq) {
 		try {
-			return a.append(csq);
+			a.append(csq);
+			return this;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
 	}
 
 	@Override
-	public Appendable append(CharSequence csq, int start, int end) {
+	public AppendableProxy append(CharSequence csq, int start, int end) {
 		try {
-			return a.append(csq, start, end);
+			a.append(csq, start, end);
+			return this;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
 	}
 
 	@Override
-	public Appendable append(char c) {
+	public AppendableProxy append(char c) {
 		try {
-			return a.append(c);
+			a.append(c);
+			return this;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
