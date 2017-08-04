@@ -128,7 +128,7 @@ public class TrieParser implements Serializable {
 	}
     
     public TrieParser(int size) {
-        this(size, 1, true, true);
+        this(size, 1, false, true);
     }
     
     public TrieParser(int size, boolean skipDeepChecks) {

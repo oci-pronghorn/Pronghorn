@@ -199,12 +199,12 @@ public class TrieParserTest {
 
 	@Test 
 	public void testExtractBytesEnd2a() {
-		TrieParserReader reader = new TrieParserReader(3);
+		TrieParserReader reader = new TrieParserReader(3,true);
 		TrieParser map = new TrieParser(16);
 
 		map.setValue(data1, 0, 3, 7, value1);
 
-		map.setValue(wrapping(dataBytesExtractEnd2,3), 0, dataBytesExtractEnd2.length, 7, value4);
+		map.setValue(wrapping(dataBytesExtractEnd2,3), 0, dataBytesExtractEnd2.length, 7, value4); //100,101,102,'%','b',127,102
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
 		map.setValue(wrapping(dataBytesExtractEnd,3), 0, dataBytesExtractEnd.length, 7, value2);
@@ -216,7 +216,9 @@ public class TrieParserTest {
 		assertEquals(value1, TrieParserReader.query(reader,map,data1, 0, 3, 7));
 		assertEquals(value3, TrieParserReader.query(reader,map,data1, 2, 3, 7));
 
-		assertEquals(value4, TrieParserReader.query(reader,map, wrapping(toParseMiddle,4), 0, toParseMiddle.length, 15));
+		//100,101,10,11,12,13,127,102
+		assertEquals(-1, TrieParserReader.query(reader,map, wrapping(toParseMiddle,4), 0, toParseMiddle.length, 15));
+		
 		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(toParseEnd,4), 0, toParseEnd.length, 15));
 
 		assertEquals(1, TrieParserReader.capturedFieldCount(reader));
@@ -247,7 +249,8 @@ public class TrieParserTest {
 
 		assertEquals(value3, TrieParserReader.query(reader, map, wrapping(data1,4), 2, 3, 15));
 
-		assertEquals(value4, TrieParserReader.query(reader, map, wrapping(toParseMiddle,4), 0, toParseMiddle.length, 15));
+		//100,101,10,11,12,13,127,102
+		assertEquals(-1, TrieParserReader.query(reader, map, wrapping(toParseMiddle,4), 0, toParseMiddle.length, 15));
 		assertEquals(value2, TrieParserReader.query(reader, map, wrapping(toParseEnd,4), 0, toParseEnd.length, 15));
 
 		assertEquals(1, TrieParserReader.capturedFieldCount(reader));
@@ -1949,6 +1952,34 @@ public class TrieParserTest {
 
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 	}
+	
+//	@Test
+//	public void testVisitorNestedPath() {
+//
+//		//TrieParserReader reader = new TrieParserReader(3);
+//		TrieParser map = new TrieParser(16);  
+//		//map.setUTF8Value("root/green/%b",    value3);     
+//		//map.setUTF8Value("root/%b",         value2); 
+//		
+//		map.setUTF8Value("root/green/frequency",    value3);     
+//		map.setUTF8Value("root/blue",         value2);
+//
+//		assertFalse(map.toString(),map.toString().contains("ERROR"));
+//		
+//		TrieParserReader reader = new TrieParserReader(3, true);
+//		
+//		String path = "root/red/frequency";
+//		byte[] data = this.wrapping(path.getBytes(), 5);
+//		
+//		visitor.clearResult();
+//		reader.visit(map, 
+//				     visitor, 
+//				     data, 0, path.length(), 31);
+//		
+//		System.out.println(visitor.toString());
+//		
+//	}
+	
 
 	@Test 
 	public void testVisitorExtractBytesMiddle() {
