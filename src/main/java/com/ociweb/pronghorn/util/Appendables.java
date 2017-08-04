@@ -749,6 +749,8 @@ public class Appendables {
 		return result;
 	}
 	
-	
+	public static AppendableProxy proxy(Appendable a) {
+		return new AppendableProxy(a);
+	}
     
 }
