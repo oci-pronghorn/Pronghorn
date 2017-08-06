@@ -75,6 +75,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     	
     	int position = (bytesLowBound + pipe.maxVarLen)-(4*negativeIntOffset);
     	
+    	//logger.trace("read from last {}  {}  {}",bytesLowBound,pipe.maxVarLen,negativeIntOffset);
+    	
 //    	logger.info("reading int from position {} value {} from pipe {}",position,
 //    			(backing[byteMask & position]<<24) |
 //    			(backing[byteMask & (position+1)]<<16) |

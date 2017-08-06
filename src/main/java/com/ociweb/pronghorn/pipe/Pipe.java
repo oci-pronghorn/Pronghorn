@@ -2545,7 +2545,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
     public static <S extends MessageSchema<S>> void shutdown(Pipe<S> pipe) {
     	if (!pipe.imperativeShutDown.getAndSet(true)) {
-    		pipe.firstShutdownCaller = new PipeException("Shutdown called");
+    		pipe.firstShutdownCaller = new PipeException("Shutdown called from this stacktrace");
     	}
 
     }
@@ -2611,7 +2611,12 @@ public class Pipe<T extends MessageSchema<T>> {
     public static <S extends MessageSchema<S>> void setIntValue(int value, Pipe<S> pipe, long position) {
         assert(pipe.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(pipe)+pipe.sizeOfSlabRing);
         setValue(pipe.slabRing,pipe.slabMask,position,value);
-   }
+    }
+    
+    public static <S extends MessageSchema<S>> void orIntValue(int value, Pipe<S> pipe, long position) {
+        assert(pipe.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(pipe)+pipe.sizeOfSlabRing);
+        orValue(pipe.slabRing,pipe.slabMask,position,value);
+    }
 
     //
     //TODO: URGENT, A, It may be much nicer to add a method called 'beginMessage' which does only the base work and then moves the cursor forward one.
@@ -2647,6 +2652,9 @@ public class Pipe<T extends MessageSchema<T>> {
         buffer[rbMask & (int)offset] = value;
     }
 
+	public static <S extends MessageSchema<S>> void orValue(int[] buffer, int rbMask, long offset, int value) {
+        buffer[rbMask & (int)offset] |= value;
+    }
 
 	
     public static <S extends MessageSchema<S>> void addBytePosAndLen(Pipe<S> pipe, int position, int length) {

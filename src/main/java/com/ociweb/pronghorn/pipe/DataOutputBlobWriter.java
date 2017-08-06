@@ -177,13 +177,18 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
 	private static <T extends MessageSchema<T>> int closeLowLeveLField(DataOutputBlobWriter<T> writer, int len) {
       
 		if (writer.keepIndexRoom) {
+			//write this field as length len but move head to the end of maxvarlen
 			writer.activePosition = writer.lastPosition;
-		}  
-
-		Pipe.addAndGetBytesWorkingHeadPosition(writer.backingPipe, len);
+			Pipe.setBytesWorkingHead(writer.backingPipe, writer.activePosition);			
+		} else { 
+			//do not keep index just move forward by length size
+			Pipe.addAndGetBytesWorkingHeadPosition(writer.backingPipe, len);
+		}
+		
         Pipe.addBytePosAndLenSpecial(writer.backingPipe, writer.startPosition, len);
         Pipe.validateVarLength(writer.backingPipe, len);
         writer.backingPipe.closeBlobFieldWrite();
+ 
         return len;
 	}
  

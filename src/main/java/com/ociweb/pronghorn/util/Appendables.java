@@ -752,5 +752,22 @@ public class Appendables {
 	public static AppendableProxy proxy(Appendable a) {
 		return new AppendableProxy(a);
 	}
+
+	public static <A extends Appendable> A  appendEpochTime(A target, long msTime) {
+		 try {
+			 appendFixedDecimalDigits(
+			 appendFixedDecimalDigits(
+			 appendFixedDecimalDigits(
+					 appendValue(target, (msTime/(60L*60_000L))).append('.')
+					  ,(msTime/60_000L)%60L,10).append('.')
+			          ,(msTime/1000L)%60L,10).append('.')
+			          ,msTime%1000L,100);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		 
+		 
+		 return target;
+	}
     
 }
