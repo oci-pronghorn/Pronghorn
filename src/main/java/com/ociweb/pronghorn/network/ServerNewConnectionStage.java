@@ -119,6 +119,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 	private void bindAddressPort(SocketAddress endPoint) throws IOException, BindException {
 		long timeout = System.currentTimeMillis()+CONNECTION_TIMEOUT;
 		boolean notConnected = true;
+		int printWarningCountdown = 20;
 		do {
 		    try{
 		    	server.socket().bind(endPoint);
@@ -129,7 +130,10 @@ public class ServerNewConnectionStage extends PronghornStage{
 		    	} else {
 		    		//small pause before retry
 		    		try {
-						Thread.sleep(10);
+		    			if (0 == printWarningCountdown--) {
+		    				logger.warn("Unable to open {} this port appears to already be in use.",endPoint);
+		    			}
+						Thread.sleep( printWarningCountdown>=0 ? 5 : 20);
 					} catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
 						break;

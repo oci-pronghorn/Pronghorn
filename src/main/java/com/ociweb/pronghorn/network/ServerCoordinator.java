@@ -34,6 +34,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     private final int                                  port;
     private final InetSocketAddress                    address;
 
+    public final static int BEGIN_RESPONSE_SHIFT         = 27;
     public final static int INCOMPLETE_RESPONSE_SHIFT    = 28;
     public final static int END_RESPONSE_SHIFT           = 29;//for multi message send this high bit marks the end
     public final static int CLOSE_CONNECTION_SHIFT       = 30;
@@ -41,6 +42,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     
     public final static int UPGRADE_TARGET_PIPE_MASK     = (1<<21)-1; 
 
+    public final static int BEGIN_RESPONSE_MASK          = 1<<BEGIN_RESPONSE_SHIFT;	
     public final static int INCOMPLETE_RESPONSE_MASK     = 1<<INCOMPLETE_RESPONSE_SHIFT;
 	public final static int END_RESPONSE_MASK            = 1<<END_RESPONSE_SHIFT;
 	public final static int CLOSE_CONNECTION_MASK        = 1<<CLOSE_CONNECTION_SHIFT;

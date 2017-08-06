@@ -27,6 +27,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	private final ReentrantReadWriteLock hostTrieLock = new ReentrantReadWriteLock();
 	private final TrieParser hostTrie;
 	
+	public static boolean showHistogramResults = false;
 	
 	private final TrieParserReader hostTrieReader;
 	private final byte[] guidWorkspace = new byte[6+512];
@@ -82,7 +83,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
     	}
    // 	logger.info("Client pipe pool:\n {}",responsePipeLinePool);
     	    	
-    	logger.info("Begin hisogram build");
+    	//logger.trace("Begin hisogram build");
     	
     	Histogram histRoundTrip = new Histogram(40_000_000_000L,0);
     	
@@ -95,9 +96,11 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
     			
     	} while (--c>=0 && null!=(cc = connections.next()));
     	
-    	//
-    	histRoundTrip.outputPercentileDistribution(System.out, 1.0); 
-    	
+    	    	
+    	if (showHistogramResults) {
+    		//
+    		histRoundTrip.outputPercentileDistribution(System.out, 1.0); 
+    	}
     	
     }
     

@@ -86,7 +86,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 
 	@Override
 	public void startup() {
-		payloadWorkspace = new StringBuilder();
+		payloadWorkspace = new StringBuilder(2048);
 	}
 	
 	@Override

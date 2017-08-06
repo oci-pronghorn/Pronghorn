@@ -616,9 +616,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 	        activePathId = pathId;
 	        //This value is ONLY sent on the last message that makes up this response, all others get a zero.
 	        activeRequestContext = context | ServerCoordinator.END_RESPONSE_MASK; 
-	
-	        assert(Pipe.peekInt(input) == bytesLength) : "bytes consumed "+Pipe.peekInt(input)+" must match file path length "+bytesLength+" peek at idx; "+ Pipe.getWorkingTailPosition(input);
-	        
+  
 	        //////////////////////////
 	        //ready to read the file from fileChannel and use type in type[pathId]
 	        //////////////////////////

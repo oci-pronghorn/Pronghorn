@@ -138,7 +138,7 @@ public class HTTPSRoundTripTest {
 		boolean useLocalServer = true;
 
 		final String testFile = "groovySum.json";
-		final int loadMultiplier = 10_000;
+		final int loadMultiplier = 2_000;
 		
 		roundTripHTTPTest(isTLS, port, host, isLarge, useLocalServer, testFile, loadMultiplier);
 
@@ -155,7 +155,7 @@ public class HTTPSRoundTripTest {
 		boolean useLocalServer = true;
 
 		final String testFile = "groovySum.json";
-		final int loadMultiplier = 10_000;
+		final int loadMultiplier = 1_000;
 		
 		roundTripHTTPTest(isTLS, port, host, isLarge, useLocalServer, testFile, loadMultiplier);
 

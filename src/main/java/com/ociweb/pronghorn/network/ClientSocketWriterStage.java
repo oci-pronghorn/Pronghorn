@@ -30,8 +30,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	private long totalBytes=0;
 	
 	//FOR HEAVY LOAD TESTING THIS FEATURE MUST BE SWITCHED ON.
-	private static final boolean enableWriteBatching = false;//true; ///we are testing MQTT. This still fails.
-		
+	private static final boolean enableWriteBatching = true;		
 	
 	//reqired for simulation of "slow" networks  TODO: read this from the client coordinator?
 	private final boolean debugWithSlowWrites = false;
@@ -302,6 +301,17 @@ public class ClientSocketWriterStage extends PronghornStage {
 						} else if (NetPayloadSchema.MSG_BEGIN_208 == msgIdx) {
 							
 							throw new UnsupportedOperationException("Begin connection message was not expected here.");
+							
+						} else if (NetPayloadSchema.MSG_DISCONNECT_203 == msgIdx) {
+							
+							long channelId = Pipe.takeLong(pipe);
+							ClientConnection cc = (ClientConnection)ccm.get(channelId);
+							if (null!=cc) {
+								cc.close();
+							}
+							
+							Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));
+							Pipe.releaseReadLock(pipe);
 							
 						} else {
 							if (msgIdx==-1) {

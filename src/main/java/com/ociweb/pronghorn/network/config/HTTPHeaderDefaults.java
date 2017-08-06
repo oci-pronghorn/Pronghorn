@@ -12,6 +12,7 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     CONTENT_LENGTH("Content-Length: %u"), //note this captures an integer not a string
     CONTENT_TYPE("Content-Type: %b"),
     CONTENT_LOCATION("Content-Location: %b"),
+    LOCATION("Location: %b"),
     ACCEPT("Accept: %b"),//chromium
     ACCEPT_CHARSET("Accept-Charset: %b"),
     ALT_SVC("Alt-Svc: %b"),//google.com
@@ -44,6 +45,10 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     STATUS("Status: %i %b"), //Not matching?
     KEEP_ALIVE("Keep-Alive: %b"),
     EXPIRES("Expires: %b"),
+    RETRY_AFTER("Retry-After: %b"), //CNN
+    X_SERVED_BY("X-Served-By: %b"), //CNN
+    X_CACHE("X-Cache: %b"), //CNN
+    X_CACHE_HITS("X-Cache-Hits: %b"), //CNN
     
 //    CONTENT_SECURITY_POLICY("content-security-policy: %b"), //twitter
     SET_COOKIE("set-cookie: %b"), //twitter

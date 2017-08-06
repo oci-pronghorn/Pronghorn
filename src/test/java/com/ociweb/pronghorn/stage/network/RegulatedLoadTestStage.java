@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.ClientConnection;
 import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.SSLConnection;
+import com.ociweb.pronghorn.network.ServerCoordinator;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -323,6 +324,8 @@ public class RegulatedLoadTestStage extends PronghornStage{
 					
 					switch (msg) {
 						case NetResponseSchema.MSG_RESPONSE_101:
+						case NetResponseSchema.MSG_CONTINUATION_102:
+								
 							long conId = Pipe.takeLong(pipe);
 							int flags = Pipe.takeInt(pipe);
 							
@@ -333,17 +336,20 @@ public class RegulatedLoadTestStage extends PronghornStage{
 							int len = Pipe.takeRingByteLen(pipe);
 							int pos = Pipe.bytePosition(meta, pipe, len);
 							
-							totalReceived++;
-							if (--toRecieve[userIdx]==0) {
-								if (--shutdownCount == 0) {
-									//logger.info("XXXXXXX full shutdown now "+shutdownCount);
-									requestShutdown();
-									break;
-								}
-								
-								//System.out.println("shutodown remaning "+shutdownCount+" for user "+userId);
-							}
+							//TODO: test data is missing these values, must set...
+							//if (0 != (ServerCoordinator.END_RESPONSE_MASK&flags)) {
 							
+								totalReceived++;
+								if (--toRecieve[userIdx]==0) {
+									if (--shutdownCount == 0) {
+										//logger.trace("full shutdown now {}",shutdownCount);
+										requestShutdown();
+										break;
+									}
+									
+									//logger.trace("shutdown remaining {} for user {}",shutdownCount,userId);
+								}
+							//}
 							
 							if (false) {									
 								testExpectedValues(i, len, pos);

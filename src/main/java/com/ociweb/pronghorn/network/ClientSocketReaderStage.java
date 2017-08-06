@@ -77,20 +77,18 @@ public class ClientSocketReaderStage extends PronghornStage {
 	
 	@Override
 	public void requestShutdown() {
-		logger.info("requesting shutdown");
+		//logger.trace("requesting shutdown");
 		super.requestShutdown();
 	}
 	
 	@Override
 	public void run() {
 
-			int didWork = 10;
-			
-			consumeRelease();
+		    consumeRelease();
+			boolean didWork;
 			
 			do {	
-				didWork--;
-		
+				 didWork = false;
 					ClientConnection cc;
 					
 					int cpos = maxClients;
@@ -112,12 +110,14 @@ public class ClientSocketReaderStage extends PronghornStage {
 					    		//logger.info("has data for {} {} {}",cc,cc.isValid(),handshakeStatus);
 					  
 					    		 if (HandshakeStatus.NEED_TASK == handshakeStatus) {
+					    		
 						                Runnable task;//TODO: there is anopporuntity to have this done by a different stage in the future.
 						                while ((task = cc.getEngine().getDelegatedTask()) != null) {
 						                	task.run();
 						                }
 						                handshakeStatus = cc.getEngine().getHandshakeStatus();
 								 } else if (HandshakeStatus.NEED_WRAP == handshakeStatus) {
+							
 									 consumeRelease();
 									 
 								//	 if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
@@ -131,7 +131,6 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 					    	
 					    	//holds the pipe until we gather all the data and got the end of the parse.
-					    //	consumeRelease(); //done once on run only do again if we can no find new input.
 					    	int pipeIdx = coordinator.responsePipeLineIdx(cc.getId());//picks any open pipe to keep the system busy
 					    	if (pipeIdx>=0) {					    		
 					    	} else {				    	
@@ -141,6 +140,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 //					    			if (--maxWarningCount>0) {//this should not be a common error but needs to be here to promote good configurations
 //					    				logger.warn("bump up maxPartialResponsesClient count, performance is slowed due to waiting for available input pipe on client");
 //					    			}
+					  
 					    			continue;//we can not allocate a new pipe but on of the other previously assigned pipes may be empty so continue here.
 					    		}				    		
 					    	}
@@ -152,7 +152,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    	Pipe<NetPayloadSchema> target = output[pipeIdx];
 	
 						    	if (Pipe.hasRoomForWrite(target)) {
-						    					    		
+						        		
 						    								    		
 						    		//these buffers are only big enought to accept 1 target.maxAvgVarLen
 						    		ByteBuffer[] wrappedUnstructuredLayoutBufferOpen = Pipe.wrappedWritingBuffers(target);
@@ -175,6 +175,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 						    
 							    	
 						    		if (readCount>0) {
+						    			didWork = true;
 							    		totalBytes += readCount;						    		
 							    		//we read some data so send it		
 							    	
@@ -206,10 +207,10 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    			int originalBlobPosition =  Pipe.unstoreBlobWorkingHeadPosition(target);
 							    			Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)readCount, target);
 				 				 
-//		boolean showResponse = true;
-//		if (showResponse) {
-//			   			Appendables.appendUTF8(System.err, target.blobRing, originalBlobPosition, readCount, target.blobMask);
-//		}
+									//		boolean showResponse = true;
+									//		if (showResponse) {
+									//			   			Appendables.appendUTF8(System.err, target.blobRing, originalBlobPosition, readCount, target.blobMask);
+									//		}
 		
 							    			if (ClientCoordinator.TEST_RECORDS) {
 							    				validateContent(pipeIdx, target, readCount, originalBlobPosition);
@@ -244,16 +245,16 @@ public class ClientSocketReaderStage extends PronghornStage {
 					    
 					}	
 
-			} while(didWork>0);
+			} while(didWork);
 
 				
-		boolean debug = false;
-		if (debug) {
-			if (lastTotalBytes!=totalBytes) {
-				System.err.println("Client reader total bytes :"+totalBytes);
-				lastTotalBytes =totalBytes;
-			}
-		}
+//		boolean debug = false;
+//		if (debug) {
+//			if (lastTotalBytes!=totalBytes) {
+//				System.err.println("Client reader total bytes :"+totalBytes);
+//				lastTotalBytes =totalBytes;
+//			}
+//		}
 	}
 
 	private void validateContent(int pipeIdx, Pipe<NetPayloadSchema> target, int readCount, int originalBlobPosition) {
@@ -324,13 +325,17 @@ public class ClientSocketReaderStage extends PronghornStage {
 
 	
    //must be called often to keep empty.
-	private void consumeRelease() {
+	private boolean consumeRelease() {
 		
+		boolean didWork = false;
 		int i = releasePipes.length;
 		while (--i>=0) {			
 			Pipe<ReleaseSchema> ack = releasePipes[i];
 			
 			while (Pipe.hasContentToRead(ack)) {
+				
+				didWork = true;
+				
 				int id = Pipe.takeMsgIdx(ack);
 				if (id == ReleaseSchema.MSG_RELEASE_100) {
 					
@@ -357,7 +362,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 			}
 			
 		}
-		
+		return didWork;
 	}
 
 	public void consumeRelease(long fieldConnectionId, long fieldPosition) {

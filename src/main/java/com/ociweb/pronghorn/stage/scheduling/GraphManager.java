@@ -1471,7 +1471,7 @@ public class GraphManager {
 	                }
 	                
 	                if (null!=rate) {
-	                	target.append("\n Rate:"+rate);
+	                	Appendables.appendValue(target, "\n Rate:", ((Number)rate).longValue());
 	                }
 	                
 	                target.append("\"");
@@ -1517,17 +1517,17 @@ public class GraphManager {
 		                
 		                
 		                if (producer>=0) {
-		                    target.append("\"Stage").append(Integer.toString(producer));
+		                	Appendables.appendValue(target, "\"Stage", producer);
 		                } else {
-		                    target.append("\"Undefined").append(Integer.toString(undefIdx++));	                    
+		                	Appendables.appendValue(target, "\"Undefined", undefIdx++);                    
 		                }
 		                
 		                target.append("\" -> ");
 		                
 		                if (consumer>=0) {
-		                    target.append("\"Stage").append(Integer.toString(consumer));
+		                	Appendables.appendValue(target, "\"Stage", consumer);
 		                } else {
-		                    target.append("\"Undefined").append(Integer.toString(undefIdx++));
+		                	Appendables.appendValue(target, "\"Undefined", undefIdx++);
 		                }
 		               
 		                //compute the min and max count of messages that can be on this pipe at any time
@@ -1744,21 +1744,8 @@ public class GraphManager {
           } else {                
               if (null==stage) {
                   logger.error("Stage was never initialized");
-              } else {
-              
-                  int inputCount = GraphManager.getInputPipeCount(graphManager, stage);
-                  int outputCount = GraphManager.getOutputPipeCount(graphManager,stage.stageId);
-                  
-                  logger.error("Unexpected error in "+stage+" which has "+
-                               inputCount+" inputs and "+outputCount+" outputs", t);
-                  
-//                  int i = inputCount;
-//                  while (--i>=0) {
-//                      
-//                      logger.error(stage+"  input pipe in state:"+ GraphManager.getInputPipe(graphManager, stage, i+1));
-//                      
-//                  }
-                  
+              } else {              
+                  logger.error("Unexpected error in {} ", stage, t);       
                   GraphManager.shutdownNeighborRings(graphManager, stage);
               }
           }
@@ -1850,8 +1837,11 @@ public class GraphManager {
                 producerName = getNota(gm, producer, STAGE_NAME, producer.getClass().getSimpleName()).toString()+"#"+stageId;  
             }
 	    }
-	    
-		return producerName + "-"+Integer.toString(ringBuffer.id)+"-" + consumerName;
+	    StringBuilder builder = new StringBuilder();
+	    builder.append(producerName).append('-');
+	    Appendables.appendValue(builder, ringBuffer.id);
+	    builder.append('-').append(consumerName);
+	    return builder.toString();
 	}
 
 	/**
@@ -1907,14 +1897,16 @@ public class GraphManager {
     private String telemetryHost=null;
     private int    telemetryPort=-1;
     
-    public void enableTelemetry(String host, int port) {
+    public String enableTelemetry(String host, int port) {
     	telemetryHost = host;
     	telemetryPort = port;
+    	return host;
 	}
     
-    public void enableTelemetry(int port) {
+    public String enableTelemetry(int port) {
     	telemetryHost = NetGraphBuilder.bindHost();
     	telemetryPort = port;
+    	return telemetryHost;
 	}
 
 	public static void spinLockUntilStageOfTypeStarted(GraphManager gm, Class<?> stageClass) {

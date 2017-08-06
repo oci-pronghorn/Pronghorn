@@ -10,6 +10,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.UnresolvedAddressException;
 
+import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
 import org.HdrHistogram.Histogram;
@@ -55,7 +56,7 @@ public class ClientConnection extends SSLConnection {
 	private int inFlightSentPos;
 	private int inFlightRespPos;
 	private long[] inFlightTimes = new long[maxInFlight];
-	
+	private boolean isTLS;
 	
 	//TODO: too much time is lost in thread context switching as we scale up.  only 50% of machines is used
 	//      we must merge threads to elminiate this problem and recapture the lost performance.
@@ -98,13 +99,13 @@ public class ClientConnection extends SSLConnection {
 	public ClientConnection(String host, byte[] hostBacking, int hostPos, int hostLen, int hostMask, 
 			                 int port, int userId, int pipeIdx, long conId, boolean isTLS) throws IOException {
 		super(isTLS?SSLEngineFactory.createSSLEngine(host, port):null, SocketChannel.open(), conId);
+		this.isTLS = isTLS;
 		
 		if (isTLS) {
 			getEngine().setUseClientMode(true);
 		}
 		
 		assert(port<=65535);		
-		
 		// RFC 1035 the length of a FQDN is limited to 255 characters
 		this.connectionGUID = new byte[(2*host.length())+6];
 		this.connectionGUIDLength = buildGUID(connectionGUID, hostBacking, hostPos, hostLen, hostMask, port, userId);
@@ -327,7 +328,12 @@ public class ClientConnection extends SSLConnection {
 
 		try {
 			 isDisconnecting = true;
-			 getEngine().closeOutbound();
+			 if (isTLS) {
+				 SSLEngine eng = getEngine();
+				 if (null!=eng) {
+					 eng.closeOutbound();
+				 }
+			 }
 		} catch (Throwable e) {
 			logger.warn("Error closing connection ",e);
 			close();

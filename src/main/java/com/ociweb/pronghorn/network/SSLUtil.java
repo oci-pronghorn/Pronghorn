@@ -894,7 +894,7 @@ public class SSLUtil {
 				return 0;
 				
 			} else if (status==Status.CLOSED){				
-				logger.info("closed status detected");				
+				//logger.trace("closed status detected");				
 				try {
 					 cc.getEngine().closeOutbound();
 					 handShakeUnWrapIfNeeded(cc, source, rolling, workspace, handshakePipe, secureBuffer, isServer, arrivalTime);

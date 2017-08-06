@@ -13,7 +13,7 @@ public class RingBufferMonitorStage extends PronghornStage {
 	private final Pipe observedPipe;
 	private final Pipe notifyRingBuffer;
 	private final GraphManager gm;
-		
+	private final String pipeName;
 	/**
 	 * This class should be used with the ScheduledThreadPoolExecutor for 
 	 * controlling the rate of samples
@@ -27,12 +27,12 @@ public class RingBufferMonitorStage extends PronghornStage {
 		this.observedPipe = observedRingBuffer;
 		this.notifyRingBuffer = notifyRingBuffer;
 		this.gm = gm;
-		
 		FieldReferenceOffsetManager from = Pipe.from(notifyRingBuffer); 
 		if (!from.fieldNameScript[0].equals("RingStatSample")) {
 			throw new UnsupportedOperationException("Can only write to ring buffer that is expecting montior records.");
 		}
 		GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, this);
+		this.pipeName = GraphManager.getRingName(gm, observedPipe).intern();
 	}
 	
 	@Override
@@ -61,7 +61,7 @@ public class RingBufferMonitorStage extends PronghornStage {
 
 	public String getObservedPipeName() {
 		//NOTE: is this really the right graph, may need to get the graph from the producer or consumer of the observedRingBuffer!!
-		return GraphManager.getRingName(gm, observedPipe);
+		return pipeName;
 	}
 	
 	public long getObservedPipePublishedCount() {

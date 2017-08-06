@@ -45,6 +45,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private IntHashTable listenerPipeLookup;
 	private ClientCoordinator ccm;
 	
+	
+	
+	//this will cache the same request for faster checking.
+	//KEEP TURNED OFF unless you are doing high volume testing.
+	private static final boolean testingMode = false; 
+	
+	
 	private static final Logger logger = LoggerFactory.getLogger(HTTP1xResponseParserStage.class);
 	
 	private static final int MAX_VALID_STATUS = 2048;
@@ -107,8 +114,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	  @Override
 	    public void startup() {
 		  
-		  lastMessageParseSizes = new int[10];
-		  
+		  if (testingMode) {
+			  lastMessageParseSizes = new int[10];
+		  }
 	        		  
 		  positionMemoData = new int[input.length<<2];
 		  payloadLengthData = new long[input.length];
@@ -196,8 +204,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		
 		final boolean writeIndex = true;//NOTE: must be on for random access to headers.		
 		final int indexOffsetCount = 0;//We have no fields indexed before these headers
-		
-		
+
 		do {		
 			foundWork = 0;
 			
@@ -401,13 +408,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				if (state==0) { //TODO: are two sharing the same pipe?
 					assert (!Pipe.isInBlobFieldWrite(targetPipe)) : "for starting state expected pipe to NOT be in blob write";
 				}
-				
-				
 
-			//	logger.info("before test position {} state {} ",trieReader.sourcePos,state);
-				
-				//because the messages come in different sized headers this can not be used to test the NETTY.
-				boolean testingMode = true; //not working with chunked trailing byte
 				
 				//TODO: must support multiple file requests, responses are in order? so we can provide this with a script fileA, fileB fileC then repeat.
 				//      periodic confirm file and each file has seen header lengths to check.
@@ -447,8 +448,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//because we have started writing the response we MUST do extra cleanup later.
 						Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
 						Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
-						
-						Pipe.addIntValue(0, targetPipe);//flags, init to zero, will set later if required
+
+						Pipe.addIntValue(ServerCoordinator.BEGIN_RESPONSE_MASK, targetPipe);//flags, init to zero, will set later if required
 						
 						DataOutputBlobWriter<NetResponseSchema> writer = Pipe.outputStream(targetPipe);
 						DataOutputBlobWriter.openField(writer);
@@ -462,6 +463,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						assert(0!=item) : "for this cache to work Content Type must be a supported header";
 						writer.writeShort((short)H_CONTENT_TYPE);
 						int writePosition = writer.position();
+						
+						//logger.trace("assumed content type and set value to {} ",lastMessageType);
+						
 						writer.writeShort((short)lastMessageType); //JSONType
 						if (writeIndex && 0!=item) {
 							//we did not write index above so write here.
@@ -497,12 +501,9 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				
 				
 				int initial = -1;
-				
-				
-				//TOOD: may be faster with if rather than switch.
-				
-	//			logger.info("ZZ source position {} state {} len {} ",trieReader.sourcePos,state, trieReader.sourceLen);
-				
+								
+				//TODO: may be faster with if rather than switch.
+
 				 switch (state) {
 					case 0:////HTTP/1.1 200 OK              FIRST LINE REVISION AND STATUS NUMBER
 						initial = trieReader.sourcePos;
@@ -524,7 +525,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							//because we have started written the response we MUST do extra cleanup later.
 							Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_RESPONSE_101);
 							Pipe.addLongValue(ccId, targetPipe); // NetResponseSchema.MSG_RESPONSE_101_FIELD_CONNECTIONID_1, ccId);
-							Pipe.addIntValue(0, targetPipe);//flags, init to zero, will set later if required
+						
+							Pipe.addIntValue(ServerCoordinator.BEGIN_RESPONSE_MASK, targetPipe);//flags, init to zero, will set later if required
 							
 							TrieParserReader.writeCapturedShort(trieReader, 0, DataOutputBlobWriter.openField(Pipe.outputStream(targetPipe))); //status code	
 														
@@ -588,12 +590,15 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							if (headerId>=0) {											
 								
 								if (END_OF_HEADER_ID != headerId) {								
-									
 									headerProcessing(i, writer, headerId, len, headersSupported, writeIndex, indexOffsetCount);
 									
 									//do not change state we want to come back here.									
 								} else {
-									state = endOfHeaderProcessing(i, stateIdx, writer);		
+									//logger.trace("end of headers");
+									state = endOfHeaderProcessing(i, stateIdx, writer);
+									
+									//logger.trace("finished reading header now going to state {}",state);
+								
 									if (3==state) {
 										//release all header bytes, we will do each chunk on its own.
 										assert(runningHeaderBytes[i]>0);								
@@ -652,10 +657,40 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 											                          writer2);
 									lengthRemaining -= consumed;
 									
-									//TODO: if the target field is full then we must close this one and open a new
+									//NOTE: if the target field is full then we must close this one and open a new
 									//      continuation.
-																		
-							
+										
+									if (false && lengthRemaining>0) {
+										if (writeIndex) {
+											logger.info("commit the back data indexes");
+											DataOutputBlobWriter.commitBackData(writer2);
+										}
+										
+										int len = writer2.closeLowLevelField();
+										//logger.trace("conform low level write of len {} ",len);
+										Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
+										Pipe.publishWrites(targetPipe);
+										
+										
+										if (!Pipe.hasRoomForWrite(targetPipe)) { //TODO: fix this case
+											logger.info("ERROR MUST TRY LATER AFTER CONSUME???");
+											
+											//TODO: need to jump to new state adding the continuation message
+											//      then we can ext and return at this point.
+											
+										}
+										
+										Pipe.presumeRoomForWrite(targetPipe);
+										
+										//logger.trace("begin new continuation");
+										
+										//prep new message for next time.
+										Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CONTINUATION_102);
+										Pipe.addLongValue(ccId, targetPipe); //same ccId as before
+										Pipe.addIntValue(0, targetPipe); //flags							
+										DataOutputBlobWriter.openField(writer2);
+									}								
+									
 		//							logger.info("consumed {} source position {} state {} ",consumed, trieReader.sourcePos,state);
 									
 									assert(runningHeaderBytes[i]>0);
@@ -670,24 +705,28 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									
 									Pipe.releasePendingAsReadLock(pipe, runningHeaderBytes[i]); 
 									
+
 									//NOTE: input is low level, TireParser is using low level take
 									//      writer output is high level;
 									if (writeIndex) {
+										//logger.trace("commit the back data indexes AAA");
 										DataOutputBlobWriter.commitBackData(writer2);
 									}
+									
 									int length = writer2.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
 									//logger.info("length of full message written {} ",length);
 									
 									positionMemoData[stateIdx] = state = 5;
 									
-									//NOTE: go back and set the bit for end of data, 1 for msgId, 2 for connection Id									
-									Pipe.setIntValue(ServerCoordinator.END_RESPONSE_MASK, 
-											         pipe, 
-											         Pipe.lastConfirmedWritePosition(targetPipe)+1+2);
+									//NOTE: go back and set the bit for end of data, 1 for msgId, 2 for connection Id	
+									Pipe.orIntValue(ServerCoordinator.END_RESPONSE_MASK, 
+											         targetPipe, 
+											         Pipe.lastConfirmedWritePosition(targetPipe)+(0xFF&NetResponseSchema.MSG_RESPONSE_101_FIELD_CONTEXTFLAGS_5));
 									
 									Pipe.confirmLowLevelWrite(targetPipe, SIZE_OF_MSG_RESPONSE);
-									Pipe.publishWrites(targetPipe);	
-														
+									int totalConsumed = Pipe.publishWrites(targetPipe);	
+									//logger.trace("total consumed msg response write {} internal field {} varlen {} ",totalConsumed, length, targetPipe.maxVarLen);					
+									
 									//expecting H to be the next valid char 
 									assert(trieReader.sourceLen<=0 || input[i].blobRing[input[i].blobMask&trieReader.sourcePos]=='H') :"bad next value of "+(int)input[i].blobRing[input[i].blobMask&trieReader.sourcePos];
 									
@@ -724,7 +763,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									int startingLength3 = TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);	
 								
 									if ((int)TrieParserReader.parseNext(trieReader, HTTPUtil.chunkMap) < 0) {
-										if (trieReader.sourceLen>16) { //FORMAL ERROR, we can never support a chunk bigger than a 64 bit number which is 16 chars in hex.
+										//FORMAL ERROR, we can never support a chunk bigger than a 64 bit number which is 16 chars in hex.
+										if (trieReader.sourceLen>16) {
 											parseErrorWhileChunking(memoIdx, pipe, trieReader.sourcePos);
 										}
 										return;	//not enough data yet to parse try again later
@@ -750,10 +790,12 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										}
 										int len = writer3.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
 										positionMemoData[stateIdx] = state = 5;
-										
-										Pipe.setIntValue(ServerCoordinator.END_RESPONSE_MASK, 
-													     pipe, 
-													     Pipe.lastConfirmedWritePosition(targetPipe)+1+2);
+																				
+										//logger.trace("Detected last chunk so send the flag showing we are done\n length {}",len);
+																				
+										Pipe.orIntValue(ServerCoordinator.END_RESPONSE_MASK, 
+												        targetPipe, 
+													    Pipe.lastConfirmedWritePosition(targetPipe)+(0xFF&NetResponseSchema.MSG_RESPONSE_101_FIELD_CONTEXTFLAGS_5));
 										
 										Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
 										Pipe.publishWrites(targetPipe);	
@@ -778,10 +820,10 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 												DataOutputBlobWriter.commitBackData(writer3);
 											}
 											int len = writer3.closeLowLevelField();
+											//logger.trace("conform low level write of len {} ",len);
 											Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
 											Pipe.publishWrites(targetPipe);	
 											//state is already 3 so leave it there
-
 											
 											
 											if (!Pipe.hasRoomForWrite(targetPipe)) { //TODO: fix this case
@@ -793,6 +835,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 											}
 											
 											Pipe.presumeRoomForWrite(targetPipe);
+											
+											//logger.trace("begin new continuation");
 											
 											//prep new message for next time.
 											Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CONTINUATION_102);
@@ -898,14 +942,15 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	}
 
 	private void lastMessageParseSize(int size) {
-		
-		int i = lastMessageParseSizeCount;
-		while (--i>=0) {
-			if (size == lastMessageParseSizes[i]) {
-				return; //nothing to do
-			}
-		}		
-		lastMessageParseSizes[lastMessageParseSizeCount++] = size;		
+		if (testingMode) {
+			int i = lastMessageParseSizeCount;
+			while (--i>=0) {
+				if (size == lastMessageParseSizes[i]) {
+					return; //nothing to do
+				}
+			}		
+			lastMessageParseSizes[lastMessageParseSizeCount++] = size;	
+		}
 	}
 
 	private void reportCorruptStream2(ClientConnection cc) {
@@ -975,11 +1020,15 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			case H_CONTENT_TYPE:
 				{
 					int item = IntHashTable.getItem(headerToPositionTable, HTTPHeader.HEADER_BIT | headerId);
-					  
+					
+					
 					writer.writeShort((short)H_CONTENT_TYPE);
 					int writePosition = writer.position();
 					
 					int type = (int)TrieParserReader.capturedFieldQuery(trieReader, 0, httpSpec.contentTypeTrieBuilder());
+
+					//logger.trace("detected content type and set value to {} ",type);
+					
 					lastMessageType = type;			
 					writer.writeShort((short)type);
 					if (writeIndex && 0!=item) {
