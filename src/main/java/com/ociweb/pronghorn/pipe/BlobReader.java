@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.pipe;
 
 import java.io.DataInput;
+import java.io.Externalizable;
 import java.io.InputStream;
 import java.io.ObjectInput;
 
@@ -30,6 +31,8 @@ public abstract class BlobReader extends InputStream implements ObjectInput {
 	public abstract boolean equalBytes(byte[] bytes);
 	
 	public abstract boolean equalBytes(byte[] bytes, int bytesPos, int bytesLen);
+	
+	public abstract void readInto(Externalizable target);
 	
 	public abstract Object readObject();
 	

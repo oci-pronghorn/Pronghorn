@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.pipe;
 
-import java.io.DataOutput;
+import java.io.Externalizable;
 import java.io.ObjectOutput;
 import java.io.OutputStream;
 
@@ -19,6 +19,10 @@ public abstract class BlobWriter extends OutputStream implements ObjectOutput, A
 	 abstract public int length();
 	 
 	 abstract public byte[] toByteArray();
+	 
+	 abstract public boolean reportObjectSizes(Appendable target);
+	 
+	 abstract public void write(Externalizable object);
 	 
 	 abstract public void writeObject(Object object);
 	 

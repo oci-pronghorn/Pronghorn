@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.pipe;
 
 import java.io.DataInput;
+import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 
@@ -459,6 +460,20 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
         return target;
     }
         
+    @Override
+    public void readInto(Externalizable target) {
+    	
+    	try {
+			target.readExternal(this);
+		} catch (ClassNotFoundException e) {
+			throw new RuntimeException(e);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+    	
+    }
+    
+    
     @Override
     public Object readObject()  {
         

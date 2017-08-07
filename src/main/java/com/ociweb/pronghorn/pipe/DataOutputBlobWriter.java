@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.pipe;
 
+import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 
@@ -7,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.util.Appendables;
+import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
 public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter {
 
@@ -19,7 +21,9 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
     private int activePosition;
     private int lastPosition;
     private int backPosition;
-        
+   	
+	private final RunningStdDev objectSizeData = new RunningStdDev();
+
     private boolean keepIndexRoom = false;
     
     public DataOutputBlobWriter(Pipe<S> p) {
@@ -36,7 +40,24 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
         openField(this);
         
     }
-
+	
+    @Override
+	public boolean reportObjectSizes(Appendable target) {
+    	if (RunningStdDev.sampleCount(objectSizeData)>=2) {
+			try {		
+				target.append("Pipe object writing size data for ")
+				      .append(backingPipe.toString())
+				      .append("\n");
+				RunningStdDev.appendTo(objectSizeData, target);
+				target.append("\n");
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+    	}
+		return true;
+	}
+	
+	
     /**
      * Internal function only used when dependent clases want to add bounds check per method call.
      * @param that
@@ -215,7 +236,26 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
     }
  
 	@Override
+	public void write(Externalizable object) {		
+		int pos = activePosition;
+		try {
+			object.writeExternal(this);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		assert(Pipe.validateVarLength(this.backingPipe, length(this)));
+		assert(collectObjectSizeData(activePosition-pos));		
+	}	
+
+	private boolean collectObjectSizeData(int size) {
+		//collect all these data points to make a better decision about this pipe length.	
+		RunningStdDev.sample(objectSizeData, size);	
+		return true;
+	}
+	
+	@Override
     public void writeObject(Object object) {
+		    int pos = activePosition;
 		    try {
 		    	//logger.info("creating new output stream");
 	           	ObjectOutputStream oos = new ObjectOutputStream(this); //writes stream header
@@ -228,6 +268,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
 		    	throw new RuntimeException(e);
 		    }
             assert(Pipe.validateVarLength(this.backingPipe, length(this)));
+            assert(collectObjectSizeData(activePosition-pos));	
             
     }
     
