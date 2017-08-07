@@ -54,6 +54,10 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public final boolean isTLS;
 	private final int processorsCount;
 	
+    private final String serviceName;
+    private final String defaultPath;
+    
+    
 	public static boolean TEST_RECORDS = false;
 	static {
 		
@@ -63,18 +67,29 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	private PronghornStageProcessor optionalStageProcessor = null;
 	
 	public ServerCoordinator(boolean isTLS, String bindHost, int port, ServerPipesConfig serverConfig) {
-		this(isTLS,bindHost,port, serverConfig.maxConnectionBitsOnServer, serverConfig.maxPartialResponsesServer, serverConfig.processorCount );
+		this(isTLS,bindHost,port, serverConfig.maxConnectionBitsOnServer, 
+		   serverConfig.maxPartialResponsesServer, serverConfig.processorCount,"Server", "");
 	}
 	
-    public ServerCoordinator(boolean isTLS, String bindHost, int port, int maxConnectionsBits, int maxPartialResponses, int processorsCount) {
-        
+	public ServerCoordinator(boolean isTLS, String bindHost, int port, 
+            int maxConnectionsBits, int maxPartialResponses,
+            int processorsCount) {
+		this(isTLS,bindHost,port,maxConnectionsBits, maxPartialResponses, processorsCount,"Server", "");
+	}
+	
+    public ServerCoordinator(boolean isTLS, String bindHost, int port, 
+    		                 int maxConnectionsBits, int maxPartialResponses,
+    		                 int processorsCount, 
+    		                 String serviceName, String defaultPath) {
+
     	this.isTLS 			   = isTLS;
         this.port              = port;
         this.channelBits       = maxConnectionsBits;
         this.channelBitsSize   = 1<<channelBits;
         this.channelBitsMask   = channelBitsSize-1;
         this.address           = new InetSocketAddress(bindHost,port);
-        
+        this.serviceName       = serviceName;
+        this.defaultPath       = defaultPath.startsWith("/") ? defaultPath.substring(1) : defaultPath;
     	this.responsePipeLinePool = new PoolIdx(maxPartialResponses); 
     	
     	this.maxPartialResponses = maxPartialResponses;
@@ -253,6 +268,14 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	assert(null==selectors) : "Should not already have a value";
         selectors = selector;
     }
+
+	public String serviceName() {
+		return serviceName;
+	}
+	
+	public String defaultPath() {
+		return defaultPath;
+	}
 
 
 }

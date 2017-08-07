@@ -764,7 +764,10 @@ public class NetGraphBuilder {
 		 //This must be large enough for both partials and new handshakes.
 		
 		ServerCoordinator serverCoord = new ServerCoordinator(isTLS, bindHost, port, 
-				                                              serverConfig.maxConnectionBitsOnServer, serverConfig.maxPartialResponsesServer, serverConfig.processorCount);
+				                                              serverConfig.maxConnectionBitsOnServer, 
+				                                              serverConfig.maxPartialResponsesServer, 
+				                                              serverConfig.processorCount,
+				                                              "Telemetry Server","");
 		
 		serverCoord.setStageNotaProcessor(new PronghornStageProcessor() {
 			//force all these to be hidden as part of the monitoring system

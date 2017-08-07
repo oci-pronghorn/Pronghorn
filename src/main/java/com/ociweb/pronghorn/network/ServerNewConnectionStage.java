@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.network;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.net.StandardSocketOptions;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -11,7 +12,6 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 
 import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,14 +61,18 @@ public class ServerNewConnectionStage extends PronghornStage{
     @Override
     public void startup() {
 
-        try {
-            //channel is not used until connected
-            //once channel is closed it can not be opened and a new one must be created.
-            server = ServerSocketChannel.open();
+    	SocketAddress endPoint = null;
+
+    	try {
             
-            //to ensure that this port can be re-used quickly for testing and other reasons
-            server.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);
-            SocketAddress endPoint = coordinator.getAddress();
+    		//channel is not used until connected
+    		//once channel is closed it can not be opened and a new one must be created.
+    		server = ServerSocketChannel.open();
+    		
+    		//to ensure that this port can be re-used quickly for testing and other reasons
+    		server.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);
+    		endPoint = coordinator.getAddress();
+            
             bindAddressPort(endPoint);
             
             ServerSocketChannel channel = (ServerSocketChannel)server.configureBlocking(false);
@@ -93,21 +97,28 @@ public class ServerNewConnectionStage extends PronghornStage{
             	}
             }
             
-            System.out.println("Server is now ready on  http"+(coordinator.isTLS?"s":"")+":/"+host+"/");
+            System.out.println(coordinator.serviceName()+" is now ready on  http"+(coordinator.isTLS?"s":"")+":/"+host+"/"+coordinator.defaultPath());
             
             
-        } catch (BindException be) {
-            String msg = be.getMessage();
-            if (msg.contains("already in use")) {
-                System.out.println(msg);
-                System.out.println("shutting down");
-                coordinator.shutdown();
-                return;
-            }
-            throw new RuntimeException(be);
+        } catch (SocketException se) {
+         
+	    	if (se.getMessage().contains("Permission denied")) {
+	    		logger.warn("\nUnable to open {} due to {}",endPoint,se.getMessage());
+	    		coordinator.shutdown();
+	    		return;
+	    	} else {
+	        	if (se.getMessage().contains("already in use")) {
+	                logger.warn("{}",endPoint,se.getMessage());
+	                coordinator.shutdown();
+	                return;
+	            }
+	    	}
+            throw new RuntimeException(se);
         } catch (IOException e) {
            if (e.getMessage().contains("Unresolved address")) {
-        	   System.out.println("Unresolved host address  http"+(coordinator.isTLS?"s":""));
+        	   logger.warn("\nUnresolved host address  http"+(coordinator.isTLS?"s":""));
+        	   coordinator.shutdown();
+               return;
            }
         	
            throw new RuntimeException(e);
@@ -124,9 +135,11 @@ public class ServerNewConnectionStage extends PronghornStage{
 		    try{
 		    	server.socket().bind(endPoint);
 		    	notConnected = false;
-		    } catch (BindException be) {
+		    } catch (BindException se) {
 		    	if (System.currentTimeMillis()>timeout) {
-		    		throw be;
+		    		logger.warn("Timeout attempting to open open {}",endPoint,se.getMessage());
+		    		coordinator.shutdown();
+		    		throw se;
 		    	} else {
 		    		//small pause before retry
 		    		try {
