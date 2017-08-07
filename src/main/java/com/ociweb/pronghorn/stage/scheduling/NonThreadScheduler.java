@@ -313,7 +313,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 		 	                try {
 		 	                	if (null!=stage) {
 		 	                		setCallerId(stage.boxedStageId);
-		 	                		stage.shutdown();
+		 	                		GraphManager.shutdownStage(graphManager, stage);
 		 	                		clearCallerId();
 		 	                	}
 		 	                } catch(Throwable tx) {
@@ -561,7 +561,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 				
 			} else {
 				if (!GraphManager.isStageTerminated(graphManager, stage.stageId)) {
-					 stage.shutdown();
+					GraphManager.shutdownStage(graphManager, stage);
                      GraphManager.setStateToShutdown(graphManager, stage.stageId);  
 				}
 			}
@@ -583,7 +583,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 	        while (--s>=0) {
 	        		//ensure every non terminated stage gets shutdown called.
 	        		if (null!=stages[s] && !GraphManager.isStageTerminated(graphManager, stages[s].stageId)) {        			
-	        			stages[s].shutdown();
+	        			GraphManager.shutdownStage(graphManager, stages[s]);
 	        			GraphManager.setStateToShutdown(graphManager, stages[s].stageId); 
 	        			//System.err.println("terminated "+stages[s]+"  "+GraphManager.isStageTerminated(graphManager, stages[s].stageId));
 	        		} 
@@ -632,7 +632,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
                 PronghornStage stage = stages[s];
                 
                 if (null != stage && !GraphManager.isStageTerminated(graphManager, stage.stageId)) {
-                    stage.shutdown();
+                	GraphManager.shutdownStage(graphManager, stage);
                     GraphManager.setStateToShutdown(graphManager, stage.stageId);                        
                 }
             }

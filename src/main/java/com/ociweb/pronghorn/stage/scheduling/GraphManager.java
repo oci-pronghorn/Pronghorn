@@ -7,10 +7,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2082,7 +2080,15 @@ public class GraphManager {
 	      return m.stdDevPipes;
 	}
 
-
+    public static void shutdownStage(GraphManager gm, PronghornStage stage) {
+    	stage.shutdown();
+    	
+    	int c = GraphManager.getOutputPipeCount(gm, stage.stageId);
+    	while (--c>=0) {
+    		Pipe<?> out = GraphManager.getOutputPipe(gm, stage.stageId, c);    		
+    		assert(Pipe.outputStream(out).reportObjectSizes(System.out));
+    	}
+    }
 	
 
 }

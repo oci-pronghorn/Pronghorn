@@ -250,7 +250,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
                         if (null!=stage) {
                         	//logger.info("called shutdown on stage {} ",stage);
                         	setCallerId(stage.boxedStageId);
-                            stage.shutdown();   
+                        	GraphManager.shutdownStage(graphManager, stage);   
                             clearCallerId();
                         }
                     } catch(Throwable t) {
@@ -320,7 +320,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					    if (null!=stage) {
 					    	//logger.info("called shutdown on stage {} ",stage);
 					    	setCallerId(stage.boxedStageId);
-					        stage.shutdown();	
+					    	GraphManager.shutdownStage(graphManager, stage);	
 					        clearCallerId();
 					    }
 					} catch(Throwable t) {
@@ -405,7 +405,7 @@ public class ThreadPerStageScheduler extends StageScheduler {
 					
 					//logger.info("called shutdown on stage {} ",stage);
 					setCallerId(stage.boxedStageId);
-					stage.shutdown();
+					GraphManager.shutdownStage(graphManager, stage);
 					clearCallerId();
 					GraphManager.setStateToShutdown(graphManager, stage.stageId); //Must ensure marked as terminated
 							
