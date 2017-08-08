@@ -30,7 +30,7 @@ public class TrieParserReader {
 
 	private byte[] sourceBacking;
 	public int    sourcePos;
-	public  int   sourceLen;
+	public int    sourceLen;
 	public int    sourceMask;
 
 
@@ -324,24 +324,26 @@ public class TrieParserReader {
 
 	public static void parseSetup(TrieParserReader that, byte[] source, int offset, int length, int mask) {
 		assert(length<=source.length) : "length is "+length+" but the array is only "+source.length;
-		that.sourceBacking = source;
-		//        if (offset<that.sourcePos) {
-		//        	new Exception("warning moved backwards").printStackTrace();;
-		//        }
+		that.sourceBacking = source;	
 		that.sourcePos     = offset;
 		that.sourceLen     = length;
-		that.sourceMask    = mask;        
+		that.sourceMask    = mask;   
+		assert(that.sourceLen <= that.sourceMask) : "ERROR the source length is larger than the backing array";
+
 	}
 
 	public static void parseSetup(TrieParserReader that, byte[] source, int mask) {
 		that.sourceBacking = source;
-		that.sourceMask    = mask;        
+		that.sourceMask    = mask;   
+		
+		assert(that.sourceLen <= that.sourceMask) : "ERROR the source length is larger than the backing array";
+
 	}
 
 
 	public static void parseSetupGrow(TrieParserReader that, int additionalLength) {
 		that.sourceLen += additionalLength;
-		assert(that.sourceLen<=that.sourceMask) : "length is out of bounds";
+		assert(that.sourceLen <= that.sourceMask) : "length is out of bounds";
 	}
 
 	/**

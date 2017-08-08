@@ -333,7 +333,7 @@ public class Pipe<T extends MessageSchema<T>> {
     //This mask is here to support the fact that variable-length fields will run out of space because the head/tail are 32 bit ints instead of
     //longs that are used for the structured layout data.  This mask enables the int to wrap back down to zero instead of going negative.
     //this will only happen once for every 2GB written.
-    public static final int BYTES_WRAP_MASK = 0x7FFFFFFF;//NOTE: this trick only works because its 1 bit less than the roll-over sign bit
+    public static final int BYTES_WRAP_MASK   = 0x7FFFFFFF;//NOTE: this trick only works because its 1 bit less than the roll-over sign bit
 
     //A few corner use cases require a poison pill EOF message to be sent down the pipes to ensure each consumer knows when to shut down.
     //This is here for compatibility with legacy APIs,  This constant is the size of the EOF message.
@@ -794,19 +794,20 @@ public class Pipe<T extends MessageSchema<T>> {
         
     	StringBuilder result = new StringBuilder();
     	result.append("RingId<").append(schemaName(this));
-    	result.append(">:").append(id);
-    	result.append(" slabTailPos ").append(slabRingTail.tailPos.get());
-    	result.append(" slabWrkTailPos ").append(slabRingTail.workingTailPos.value);
-    	result.append(" slabHeadPos ").append(slabRingHead.headPos.get());
-    	result.append(" slabWrkHeadPos ").append(slabRingHead.workingHeadPos.value);
-    	result.append("  ").append(contentRem).append("/").append(sizeOfSlabRing);
-    	result.append("  blobTailPos ").append(PaddedInt.get(blobRingTail.bytesTailPos));
-    	result.append(" blobWrkTailPos ").append(blobRingTail.byteWorkingTailPos.value);
-    	result.append(" blobHeadPos ").append(PaddedInt.get(blobRingHead.bytesHeadPos));
-    	result.append(" blobWrkHeadPos ").append(blobRingHead.byteWorkingHeadPos.value);
+    	Appendables.appendValue(result.append(">:"), id);
+    	
+    	Appendables.appendValue(result.append(" slabTailPos "),slabRingTail.tailPos.get());
+    	Appendables.appendValue(result.append(" slabWrkTailPos "),slabRingTail.workingTailPos.value);
+    	Appendables.appendValue(result.append(" slabHeadPos "),slabRingHead.headPos.get());
+    	Appendables.appendValue(result.append(" slabWrkHeadPos "),slabRingHead.workingHeadPos.value);
+    	Appendables.appendValue(result.append("  ").append(contentRem).append("/"),sizeOfSlabRing);
+    	Appendables.appendValue(result.append("  blobTailPos "),PaddedInt.get(blobRingTail.bytesTailPos));
+    	Appendables.appendValue(result.append(" blobWrkTailPos "),blobRingTail.byteWorkingTailPos.value);
+    	Appendables.appendValue(result.append(" blobHeadPos "),PaddedInt.get(blobRingHead.bytesHeadPos));
+    	Appendables.appendValue(result.append(" blobWrkHeadPos "),blobRingHead.byteWorkingHeadPos.value);
     	
     	if (isEndOfPipe(this, slabRingTail.tailPos.get())) {
-    		result.append(" Ended at "+this.knownPositionOfEOF);
+    		Appendables.appendValue(result.append(" Ended at "),this.knownPositionOfEOF);
     	}
 
     	return result.toString();
@@ -947,6 +948,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	}
 
 	public static <S extends MessageSchema<S>> boolean validateVarLength(Pipe<S> pipe, int length) {
+		assert(length>=-1) : "invalid length value "+length;
 		int newAvg = (length+pipe.varLenMovingAverage)>>1;
         if (newAvg>pipe.maxVarLen)	{
             //compute some helpful information to add to the exception
@@ -2663,11 +2665,13 @@ public class Pipe<T extends MessageSchema<T>> {
 
     public static <S extends MessageSchema<S>> void addBytePosAndLenSpecial(Pipe<S> targetOutput, final int startBytePos, int bytesLength) {
         PaddedLong workingHeadPos = getWorkingHeadPositionObject(targetOutput);
-        setBytePosAndLen(slab(targetOutput), targetOutput.slabMask, workingHeadPos.value, startBytePos, bytesLength, bytesWriteBase(targetOutput));
+        setBytePosAndLen(slab(targetOutput), targetOutput.slabMask, workingHeadPos.value, 
+        		         startBytePos, bytesLength, 
+        		         bytesWriteBase(targetOutput));
         PaddedLong.add(workingHeadPos, 2);
     }
 
-	public static <S extends MessageSchema<S>> void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat, int baseBytePos) {
+	public static <S extends MessageSchema<S>> void setBytePosAndLen(int[] buffer, int rbMask, long ringPos, int positionDat, int lengthDat, int baseBytePos) {
 	   	//negative position is written as is because the internal array does not have any offset (but it could some day)
     	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
     	if (positionDat>=0) {
@@ -2775,7 +2779,6 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	//TODO: must always read metadata before length, easy mistake to make, need assert to ensure this is caught if happens.
 	public static <S extends MessageSchema<S>> int takeRingByteMetaData(Pipe<S> pipe) {
-	//    assert(ring.structuredLayoutRingTail.workingTailPos.value<RingBuffer.workingHeadPosition(ring));
 		return readValue(0,pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value++);
 	}
 
@@ -3505,6 +3508,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
     public static <S extends MessageSchema<S>> void setBytesWorkingHead(Pipe<S> pipe, int value) {
+    	assert(value>=0) : "working head must be positive";
         PaddedInt.set(pipe.blobRingHead.byteWorkingHeadPos, value);
     }
 

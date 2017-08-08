@@ -50,7 +50,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
         
         this.length         = PipeReader.readBytesLength(pipe, loc);
         this.bytesLowBound  = this.position       = PipeReader.readBytesPosition(pipe, loc);
-        this.backing        = PipeReader.readBytesBackingArray(pipe, loc);        
+        this.backing        = PipeReader.readBytesBackingArray(pipe, loc); 
+        assert(this.backing!=null) : "The pipe must be init before use.";
         this.bytesHighBound = pipe.blobMask & (position + length);
         
         assert(Pipe.validatePipeBlobHasDataToRead(pipe, position, length));
@@ -62,7 +63,8 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
         
     	reader.length         = PipeReader.peekDataLength(reader.pipe, loc);
     	reader.bytesLowBound  = reader.position = PipeReader.peekDataPosition(reader.pipe, loc);
-    	reader.backing        = PipeReader.peekDataBackingArray(reader.pipe, loc);        
+    	reader.backing        = PipeReader.peekDataBackingArray(reader.pipe, loc); 
+    	assert(reader.backing!=null) : "The pipe must be init before use.";
     	reader.bytesHighBound = reader.pipe.blobMask & (reader.position + reader.length);
      
         return reader.length;
@@ -97,7 +99,10 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
         int meta = Pipe.takeRingByteMetaData(this.pipe);
 		this.length    = Pipe.takeRingByteLen(this.pipe);
 		this.bytesLowBound = this.position = Pipe.bytePosition(meta, this.pipe, this.length);
-		this.backing   = Pipe.byteBackingArray(meta, this.pipe);               
+		this.backing   = Pipe.byteBackingArray(meta, this.pipe); 
+		assert(this.backing!=null) : 
+			"The pipe "+(1==(meta>>31)?" constant array ": " blob ")+"must be defined before use.\n "+this.pipe;
+			
 		this.bytesHighBound = this.pipe.blobMask & (this.position + this.length);
 		
 		assert(Pipe.validatePipeBlobHasDataToRead(this.pipe, this.position, this.length));
