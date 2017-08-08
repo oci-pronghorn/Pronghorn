@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.stage.phast;
 
-import java.io.IOException;
-
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 
 public class PhastDecoder {

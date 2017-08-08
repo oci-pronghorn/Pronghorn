@@ -542,7 +542,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							}
 							
 						} else {
-							
+							assert(trieReader.sourceLen <= trieReader.sourceMask) : "ERROR the source length is larger than the backing array";
 							TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 							
 							if (trieReader.sourceLen < (revisionMap.longestKnown()+1)) {
@@ -660,6 +660,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//NOTE: if the target field is full then we must close this one and open a new
 									//      continuation.
 										
+									//TODO: add and fix this feature...
 									if (false && lengthRemaining>0) {
 										if (writeIndex) {
 											logger.info("commit the back data indexes");
