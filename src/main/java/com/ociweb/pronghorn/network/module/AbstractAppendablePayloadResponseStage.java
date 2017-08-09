@@ -225,8 +225,14 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		int sendLength;
 
 		// div by 6 to ensure bytes room. //NOTE: could be faster if needed in the future.
-		while ((sendLength = Math.min((payloadWorkspace.length()-workingPosition), (outputStream.remaining()/6) )) >= 1) { 
-			outputStream.append(payloadWorkspace, workingPosition, workingPosition+sendLength);			    
+		while ((sendLength = Math.min((payloadWorkspace.length()-workingPosition),
+				                       (outputStream.remaining()/6) )) >= 1) {
+
+			//TODO: if we can get to the raw bytes we can skip the encoding...
+			outputStream.append(payloadWorkspace, 
+					            workingPosition, 
+					            workingPosition+sendLength);			    
+			
 			workingPosition+=sendLength;
 		}
 		

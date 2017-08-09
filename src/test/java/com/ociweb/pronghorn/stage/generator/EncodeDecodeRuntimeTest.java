@@ -1,34 +1,35 @@
 package com.ociweb.pronghorn.stage.generator;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.util.concurrent.TimeUnit;
+
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+
 import com.ociweb.pronghorn.code.LoaderUtil;
-import com.ociweb.pronghorn.pipe.*;
+import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.pipe.MessageSchemaDynamic;
+import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.stage.IntegrityFuzzGenerator;
 import com.ociweb.pronghorn.stage.IntegrityTestFuzzConsumer;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
-import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.xml.sax.SAXException;
-
-import javax.xml.parsers.ParserConfigurationException;
-import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.concurrent.TimeUnit;
-
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
 
 /**
  * Created by jake on 10/29/16.
  */
 public class EncodeDecodeRuntimeTest {
     @Test
-    public void compileTest() throws IOException, SAXException, ParserConfigurationException {
+    public void compileTest() throws Exception {
         FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/template/integrityTest.xml");
         MessageSchemaDynamic messageSchema = new MessageSchemaDynamic(from);
 
@@ -63,7 +64,7 @@ public class EncodeDecodeRuntimeTest {
     }
 
     @Ignore
-    public void runTimeTest() throws IOException, SAXException, ParserConfigurationException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    public void runTimeTest() throws Exception {
         GraphManager gm = new GraphManager();
 
         FieldReferenceOffsetManager from = TemplateHandler.loadFrom("src/test/resources/template/integrityTest.xml");
