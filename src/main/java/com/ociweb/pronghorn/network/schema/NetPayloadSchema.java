@@ -1,7 +1,6 @@
 package com.ociweb.pronghorn.network.schema;
 
-import java.nio.ByteBuffer;
-
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -32,22 +31,22 @@ public class NetPayloadSchema extends MessageSchema<NetPayloadSchema> {
     
     public static final NetPayloadSchema instance = new NetPayloadSchema();
     
-    public static final int MSG_ENCRYPTED_200 = 0x00000000;
-    public static final int MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201 = 0x00800001;
-    public static final int MSG_ENCRYPTED_200_FIELD_ARRIVALTIME_210 = 0x00800003;
-    public static final int MSG_ENCRYPTED_200_FIELD_PAYLOAD_203 = 0x01c00005;
-    public static final int MSG_PLAIN_210 = 0x00000005;
-    public static final int MSG_PLAIN_210_FIELD_CONNECTIONID_201 = 0x00800001;
-    public static final int MSG_PLAIN_210_FIELD_ARRIVALTIME_210 = 0x00800003;
-    public static final int MSG_PLAIN_210_FIELD_POSITION_206 = 0x00800005;
-    public static final int MSG_PLAIN_210_FIELD_PAYLOAD_204 = 0x01c00007;
-    public static final int MSG_DISCONNECT_203 = 0x0000000b;
-    public static final int MSG_DISCONNECT_203_FIELD_CONNECTIONID_201 = 0x00800001;
-    public static final int MSG_UPGRADE_307 = 0x0000000e;
-    public static final int MSG_UPGRADE_307_FIELD_CONNECTIONID_201 = 0x00800001;
-    public static final int MSG_UPGRADE_307_FIELD_NEWROUTE_205 = 0x00000003;
-    public static final int MSG_BEGIN_208 = 0x00000012;
-    public static final int MSG_BEGIN_208_FIELD_SEQUNCENO_209 = 0x00400001;
+    public static final int MSG_ENCRYPTED_200 = 0x00000000; //Group/OpenTempl/4
+    public static final int MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201 = 0x00800001; //LongUnsigned/None/0
+    public static final int MSG_ENCRYPTED_200_FIELD_ARRIVALTIME_210 = 0x00800003; //LongUnsigned/None/1
+    public static final int MSG_ENCRYPTED_200_FIELD_PAYLOAD_203 = 0x01c00005; //ByteVector/None/0
+    public static final int MSG_PLAIN_210 = 0x00000005; //Group/OpenTempl/5
+    public static final int MSG_PLAIN_210_FIELD_CONNECTIONID_201 = 0x00800001; //LongUnsigned/None/0
+    public static final int MSG_PLAIN_210_FIELD_ARRIVALTIME_210 = 0x00800003; //LongUnsigned/None/1
+    public static final int MSG_PLAIN_210_FIELD_POSITION_206 = 0x00800005; //LongUnsigned/None/2
+    public static final int MSG_PLAIN_210_FIELD_PAYLOAD_204 = 0x01c00007; //ByteVector/None/1
+    public static final int MSG_DISCONNECT_203 = 0x0000000b; //Group/OpenTempl/2
+    public static final int MSG_DISCONNECT_203_FIELD_CONNECTIONID_201 = 0x00800001; //LongUnsigned/None/0
+    public static final int MSG_UPGRADE_307 = 0x0000000e; //Group/OpenTempl/3
+    public static final int MSG_UPGRADE_307_FIELD_CONNECTIONID_201 = 0x00800001; //LongUnsigned/None/0
+    public static final int MSG_UPGRADE_307_FIELD_NEWROUTE_205 = 0x00000003; //IntegerUnsigned/None/0
+    public static final int MSG_BEGIN_208 = 0x00000012; //Group/OpenTempl/2
+    public static final int MSG_BEGIN_208_FIELD_SEQUNCENO_209 = 0x00400001; //IntegerSigned/None/1
 
 
     public static void consume(Pipe<NetPayloadSchema> input) {
@@ -80,13 +79,13 @@ public class NetPayloadSchema extends MessageSchema<NetPayloadSchema> {
     public static void consumeEncrypted(Pipe<NetPayloadSchema> input) {
         long fieldConnectionId = PipeReader.readLong(input,MSG_ENCRYPTED_200_FIELD_CONNECTIONID_201);
         long fieldArrivalTime = PipeReader.readLong(input,MSG_ENCRYPTED_200_FIELD_ARRIVALTIME_210);
-        ByteBuffer fieldPayload = PipeReader.readBytes(input,MSG_ENCRYPTED_200_FIELD_PAYLOAD_203,ByteBuffer.allocate(PipeReader.readBytesLength(input,MSG_ENCRYPTED_200_FIELD_PAYLOAD_203)));
+        DataInputBlobReader<NetPayloadSchema> fieldPayload = PipeReader.inputStream(input, MSG_ENCRYPTED_200_FIELD_PAYLOAD_203);
     }
     public static void consumePlain(Pipe<NetPayloadSchema> input) {
         long fieldConnectionId = PipeReader.readLong(input,MSG_PLAIN_210_FIELD_CONNECTIONID_201);
         long fieldArrivalTime = PipeReader.readLong(input,MSG_PLAIN_210_FIELD_ARRIVALTIME_210);
         long fieldPosition = PipeReader.readLong(input,MSG_PLAIN_210_FIELD_POSITION_206);
-        ByteBuffer fieldPayload = PipeReader.readBytes(input,MSG_PLAIN_210_FIELD_PAYLOAD_204,ByteBuffer.allocate(PipeReader.readBytesLength(input,MSG_PLAIN_210_FIELD_PAYLOAD_204)));
+        DataInputBlobReader<NetPayloadSchema> fieldPayload = PipeReader.inputStream(input, MSG_PLAIN_210_FIELD_PAYLOAD_204);
     }
     public static void consumeDisconnect(Pipe<NetPayloadSchema> input) {
         long fieldConnectionId = PipeReader.readLong(input,MSG_DISCONNECT_203_FIELD_CONNECTIONID_201);
@@ -130,5 +129,4 @@ public class NetPayloadSchema extends MessageSchema<NetPayloadSchema> {
             PipeWriter.writeInt(output,MSG_BEGIN_208_FIELD_SEQUNCENO_209, fieldSequnceNo);
             PipeWriter.publishWrites(output);
     }
-        
 }
