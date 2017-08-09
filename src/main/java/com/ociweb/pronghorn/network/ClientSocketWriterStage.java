@@ -79,8 +79,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	@Override
 	public void shutdown() {
-		long duration = System.currentTimeMillis()-start;
-		
+		//long duration = System.currentTimeMillis()-start;
 		//logger.trace("Client Bytes Written: {} kb/sec {} ",totalBytes, (8*totalBytes)/duration);
 		
 	}

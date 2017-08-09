@@ -44,24 +44,23 @@ public class ClientConnection extends SSLConnection {
 	private final int port;
 	private long lastUsedTime;
 	
-	private static InetAddress testAddr;
+	private static InetAddress testAddr; //must be here to enure JIT does not delete the code
 	
 	private long closeTimeLimit = Long.MAX_VALUE;
 	private long TIME_TILL_CLOSE = 10_000;
 
-	private final int maxInFlightBits = 14;//12;//TODO: must bump up to get 1M 10;	//only allow x messages in flight at a time.
+	private final int maxInFlightBits = 15;//TODO: must bump up to get 1M 10;	//only allow x messages in flight at a time.
 	public final int maxInFlight = 1<<maxInFlightBits;
 	private final int maxInFlightMask = maxInFlight-1;
+		
+	private Histogram histRoundTrip = new Histogram(MAX_HIST_VALUE,0);
 	
 	private int inFlightSentPos;
 	private int inFlightRespPos;
 	private long[] inFlightTimes = new long[maxInFlight];
+
 	private boolean isTLS;
-	
-	//TODO: too much time is lost in thread context switching as we scale up.  only 50% of machines is used
-	//      we must merge threads to elminiate this problem and recapture the lost performance.
-	
-	
+
 	
 	static {
 		
@@ -340,11 +339,7 @@ public class ClientConnection extends SSLConnection {
 		}
 	}
 
-	
-	
-	
-	private Histogram histRoundTrip = new Histogram(MAX_HIST_VALUE,0);
-	
+
 	
 	public Histogram histogram() {
 		return histRoundTrip;

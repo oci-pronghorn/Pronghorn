@@ -423,7 +423,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	                }
 	                assert(boundsCheck(idx, l));
 	                
-	                inputLengths[idx]=l;	                
+	                inputLengths[idx] = l;	                
 	         	                
 	                //the release pending above should keep them in algnment and the ounstanding should match
 	                assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));

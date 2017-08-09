@@ -34,7 +34,7 @@ public class FuzzTester {
         );
 	}
 	
-	@Test
+	@Ignore
 	public void testIdGenStage() {
 		assertTrue(
 				StageTester.runFuzzTest(IdGenStage.class, testDuration, generatorSeed)
