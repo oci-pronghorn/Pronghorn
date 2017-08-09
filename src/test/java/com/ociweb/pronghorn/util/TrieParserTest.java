@@ -475,6 +475,38 @@ public class TrieParserTest {
 	}
 
 
+	@Test
+	public void testSimpleURLPathsOnRollover() {
+
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16,false);
+		map.setUTF8Value("/unfollow?user=%u",   value2);
+		map.setUTF8Value("/%b", value3); 
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		byte[] text3 = "No root".getBytes();
+		assertEquals(-1, TrieParserReader.query(reader,map, wrappingRolledOver(text3,5,30), 30, text3.length, 31));
+
+		byte[] text1 = "/unfollow?user=1234x".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrappingRolledOver(text1,5,30), 30, text1.length, 31));
+		assertEquals(value2, TrieParserReader.query(reader,map, wrappingRolledOver(text1,5,30), 30+32, text1.length, 31));
+		assertEquals(value2, TrieParserReader.query(reader,map, wrappingRolledOver(text1,5,30), 30+1+Integer.MAX_VALUE, text1.length, 31));
+		
+//		[HTTP1xResponseParserStage id:21] INFO com.ociweb.pronghorn.network.http.HTTP1xResponseParserStage - error trieReader pos -2147480662 len 90255 
+//		[HTTP1xResponseParserStage id:21] WARN com.ociweb.pronghorn.network.http.HTTP1xResponseParserStage - 1 looking for HTTP revision but found:
+//		HTTP/1.1 200 OK
+//		Server: GreenLightning
+//		Content-Type: text/graphviz...
+		
+		byte[] text2 = "/Hello: 123\r\n".getBytes();
+		
+		int bits = 30;
+		int mask = (1<<bits)-1;
+		int pos = mask-1;
+		assertEquals(value3, TrieParserReader.query(reader,map, wrappingRolledOver(text2,bits,pos), pos, text2.length, mask));
+
+	}
 
 	@Test
 	public void testNumericPatternMatchesPatternDef() {
@@ -1051,6 +1083,19 @@ public class TrieParserTest {
 		return result;
 	}
 
+	private byte[] wrappingRolledOver(byte[] data, int bits, int start) {
+		int len = 1<<bits;
+		int msk = len-1;
+		byte[] result = new byte[len];
+		
+		int i = data.length;
+		while (--i>=0) {
+			result[(start+i) & msk] = data[i];
+		}
+		
+		return result;
+	}
+	
 
 	@Test
 	public void testToString() {

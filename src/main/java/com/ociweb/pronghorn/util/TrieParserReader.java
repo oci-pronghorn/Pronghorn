@@ -310,7 +310,7 @@ public class TrieParserReader {
 		//working vars
 		reader.pos = 0;
 		reader.runLength = 0;
-		reader.localSourcePos =sourcePos;
+		reader.localSourcePos = sourcePos;
 		reader.result = unfoundResult;
 		reader.normalExit = true;
 		reader.altStackPos = 0; 
@@ -582,7 +582,7 @@ public class TrieParserReader {
 			return unfoundResult;
 		}
 
-		initForQuery(reader, trie, source, sourcePos, unfoundResult);        
+		initForQuery(reader, trie, source, sourcePos & Pipe.BYTES_WRAP_MASK, unfoundResult);        
 		processEachType(reader, trie, source, sourceLength, sourceMask, unfoundResult);
 
 		if (reader.normalExit) {
@@ -961,7 +961,7 @@ public class TrieParserReader {
 		//working vars
 		reader.pos = 0;
 		reader.runLength = 0;
-		reader.localSourcePos =sourcePos;
+		reader.localSourcePos = sourcePos;
 		reader.result = unfoundResult;
 		reader.normalExit = true;
 		reader.altStackPos = 0; 
@@ -1020,7 +1020,7 @@ public class TrieParserReader {
 
 	private static long useSafePointNow(TrieParserReader reader) {
 		//hard stop passed in forces us to use the safe point
-		reader.sourceLen -= (reader.localSourcePos-reader.sourcePos);
+		reader.sourceLen -= (reader.localSourcePos -reader.sourcePos);
 		reader.sourcePos = reader.localSourcePos;
 		return reader.safeReturnValue;
 	}
@@ -1030,9 +1030,9 @@ public class TrieParserReader {
 		//reset all the values to the other path and continue from the top
 
 		reader.localSourcePos     = reader.altStackA[--reader.altStackPos];
-		reader.capturedPos = reader.altStackB[reader.altStackPos];
-		reader.pos         = reader.altStackC[reader.altStackPos];
-		reader.runLength = reader.altStackD[reader.altStackPos];                                
+		reader.capturedPos        = reader.altStackB[reader.altStackPos];
+		reader.pos         		  = reader.altStackC[reader.altStackPos];
+		reader.runLength 		  = reader.altStackD[reader.altStackPos];                                
 
 		reader.type = localData[reader.pos++];
 	}
@@ -1053,7 +1053,7 @@ public class TrieParserReader {
 	}
 
 	private static long useSafePoint(TrieParserReader reader) {
-		reader.localSourcePos  = reader.safeSourcePos;
+		reader.localSourcePos = reader.safeSourcePos;
 		reader.capturedPos = reader.safeCapturedPos;
 		reader.sourceLen = reader.saveCapturedLen;
 		reader.sourcePos =reader.localSourcePos;

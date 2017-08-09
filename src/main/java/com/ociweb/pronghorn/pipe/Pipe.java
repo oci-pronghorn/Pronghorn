@@ -1029,6 +1029,8 @@ public class Pipe<T extends MessageSchema<T>> {
 			return true;//nothing to check in this case.
 		}
 		
+		assert(length<=pipe.sizeOfBlobRing) : "length is larger than backing array "+length+" vs "+pipe.sizeOfBlobRing;
+	
 		//we know that we are looking for a non zero length
 		assert(Pipe.getBlobHeadPosition(pipe)!=Pipe.getBlobTailPosition(pipe)) : "Needs "+length+" but pipe is empty and can not have any data: "+pipe;
 		
@@ -1049,7 +1051,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	    //Tail - where data is consumed (can only consume up to head)
 	    
 	    
-	    if (stop >= pipe.sizeOfBlobRing) {
+	    if ((mStop<mStart) && (stop >= pipe.sizeOfBlobRing)) {
 					////////////////////////////////////////////////////////////
 					//pppppppppppp      H                      T     ppppppppp//
 					////////////////////////////////////////////////////////////
@@ -1074,13 +1076,13 @@ public class Pipe<T extends MessageSchema<T>> {
 	    	 assert(mTail<=mStart): "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;
 	    	 assert(mTail<=mStop) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;
 	    	 assert(mStop<=mHead) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;
-	    	 assert(stop<=pipe.sizeOfBlobRing) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;
+	    	 assert(stop<=(pipe.sizeOfBlobRing*2L)) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;
 	    	  
 	    	 return (mTail<mHead)
 	    			 &&(mTail<=mStart)
 	    			 &&(mTail<=mStop)
 	    			 &&(mStop<=mHead)
-	    			 &&(stop<=pipe.sizeOfBlobRing);
+	    			 &&(stop<=(pipe.sizeOfBlobRing*2L));
 	    	 
 	      } else {
 				if (mStart>=mTail) {
@@ -1090,11 +1092,11 @@ public class Pipe<T extends MessageSchema<T>> {
 					////////////////////////////////////////////////////////////
 				    assert(mHead<mTail) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;
 				    assert(mTail<=mStart): "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;			
-					assert(stop<=pipe.sizeOfBlobRing) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;
+					assert(stop<=(pipe.sizeOfBlobRing*2L)) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;
 					
 					return (mHead<mTail)
 							&&(mTail<=mStart)
-							&&(stop<=pipe.sizeOfBlobRing);
+							&&(stop<=(pipe.sizeOfBlobRing*2L));
 					
 				} else {
 				    	  
@@ -1104,12 +1106,12 @@ public class Pipe<T extends MessageSchema<T>> {
 				    assert(mStart<mHead) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;
 				    assert(mStop<=mHead) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;
 				    assert(mHead<mTail)  : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;
-					assert(stop<=pipe.sizeOfBlobRing) : "tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;
+		   			assert(stop<=(pipe.sizeOfBlobRing*2L)) : "absStop "+stop+" tail "+mTail+" start "+mStart+" stop "+mStop+" head "+mHead+" mask "+pipe.blobMask+" pipe "+pipe;
 	
 					return (mStart<mHead)
 							&&(mStop<=mHead)
 							&&(mHead<mTail)
-							&&(stop<=pipe.sizeOfBlobRing);
+							&&(stop<=(pipe.sizeOfBlobRing*2L));
 					
 				}
 	      }
