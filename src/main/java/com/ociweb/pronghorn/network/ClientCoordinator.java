@@ -265,8 +265,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	public static ClientConnection openConnection(ClientCoordinator ccm, byte[] hostBack, int hostPos, int hostLen,
 			int hostMask, int port, int userId, Pipe<NetPayloadSchema>[] outputs,
 			long connectionId) {
-				
-				
+								
 		        ClientConnection cc = null;
 
 				if (-1 == connectionId || 
@@ -309,6 +308,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					//logger.info("is registered {}",cc);
 					return cc;
 				}
+				//not yet done so ensure it is marked.
+				cc.isFinishedConnection = false;
 				//not registered
 				return doRegister(ccm, outputs, cc);
 
@@ -321,11 +322,16 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		try {
 			if (!cc.isFinishConnect()) {
 				
-				logger.trace("unable to finish connect, must try again later {}",cc);
+				//TODO: if this time is too long we should report a failure?
+				
+				//TODO: once we know the IP we must cache it and avoid rapid lookups!!!!
+				
+				logger.info("unable to finish connect, must try again later {}",cc);
 				
 				cc = null; //try again later
 			} else {
 				cc.registerForUse(ccm.selector(), handshakeBegin, ccm.isTLS);
+				logger.info("new connection established to {}",cc);
 			}
 		} catch (IOException e) {
 			throw new RuntimeException(e);

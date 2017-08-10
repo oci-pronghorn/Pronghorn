@@ -267,18 +267,13 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				                         toBroker,
 				                         ccm.lookup(hostBack,hostPos,hostLen,hostMask, hostPort, uniqueConnectionId)); 
 
-		if (null!=activeConnection) {
-			
-			logger.info("new connection established to broker {}:{}",Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask), hostPort);
-			
+		if (null!=activeConnection) {		
 			//When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any 
 			//unacknowledged PUBLISH Packets (where QoS > 0) and PUBREL Packets using their original Packet Identifiers [MQTT-4.4.0-1].
 			//This is the only circumstance where a Client or Server is REQUIRED to re-deliver messages.
 			while (!rePublish(toBroker[activeConnection.requestPipeLineIdx()])) {
 				Thread.yield();//have no choice in this corner case.
 			}
-		} else {
-			//logger.info("waiting on connection");
 		}
 	}
 	

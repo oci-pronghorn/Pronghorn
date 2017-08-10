@@ -37,7 +37,11 @@ public class SSLConnection {
 	}
 	
 	public String toString() {
-		return getEngine().getSession().toString()+" id:"+id;
+		if (null==getEngine()) {
+			return socketChannel.toString()+" id:"+id;
+		} else {		
+			return getEngine().getSession().toString()+" "+socketChannel.toString()+" id:"+id;
+		}
 	}
 	
     //should only be closed by the socket writer logic or TLS handshake may be disrupted causing client to be untrusted.
