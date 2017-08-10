@@ -523,6 +523,36 @@ public class TrieParserTest {
 	}
 
 	@Test
+	public void testNumericPatternMatchesAtEnd() {
+
+		TrieParserReader reader = new TrieParserReader(3, true);
+		TrieParser map = new TrieParser(16,false);
+		map.setUTF8Value("/unfollow?user=%u",   value2);
+		map.setUTF8Value("/%b", value3); 
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		byte[] text0 = "/unfollow?user=12345".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text0,6), 0, text0.length, 63));
+	
+	}
+	
+	@Test
+	public void testNumericPatternMatchesAtEndNot() {
+
+		TrieParserReader reader = new TrieParserReader(3, false);
+		TrieParser map = new TrieParser(16,false);
+		map.setUTF8Value("/unfollow?user=%u",   value2);
+		map.setUTF8Value("/%b", value3); 
+
+		assertFalse(map.toString(),map.toString().contains("ERROR"));
+
+		byte[] text0 = "/unfollow?user=12345".getBytes();
+		assertEquals(-1, TrieParserReader.query(reader,map, wrapping(text0,6), 0, text0.length, 63));
+	
+	}
+	
+	@Test
 	public void testOrder1Insert() {
 
 		TrieParserReader reader = new TrieParserReader(3);
