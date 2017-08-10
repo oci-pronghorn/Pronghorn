@@ -20,6 +20,12 @@ public abstract class BlobWriter extends OutputStream implements ObjectOutput, A
 	 
 	 abstract public byte[] toByteArray();
 	 
+	 abstract public Appendable append(CharSequence csq);
+	 
+	 abstract public Appendable append(CharSequence csq, int start, int end);
+	 
+	 abstract public Appendable append(char c);	 
+	 
 	 abstract public boolean reportObjectSizes(Appendable target);
 	 
 	 abstract public void write(Externalizable object);
