@@ -48,6 +48,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	public ClientSocketWriterStage(GraphManager graphManager, ClientCoordinator ccm, int bufMultiplier, Pipe<NetPayloadSchema>[] input) {
 		super(graphManager, input, NONE);
+		if (input.length==0) {
+			throw new UnsupportedOperationException("Unsupported configuration, stage must have at least 1 input.");
+		}
 		this.ccm = ccm;
 		this.input = input;
 		this.shutCountDown = input.length;

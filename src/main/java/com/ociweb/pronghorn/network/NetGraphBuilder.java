@@ -203,20 +203,23 @@ public class NetGraphBuilder {
 		
 		int i = clientWriters;
 		
-		while (--i>=0) {		
-			ClientSocketWriterStage socketWriteStage = new ClientSocketWriterStage(gm, ccm, writeBufferMultiplier, clientRequests[i]);
-	    	GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketWriter", socketWriteStage);
-	    	ccm.processNota(gm, socketWriteStage);
-	    		    	
+		while (--i>=0) {
+			if (clientRequests[i].length>0) {
+				ClientSocketWriterStage socketWriteStage = new ClientSocketWriterStage(gm, ccm, writeBufferMultiplier, clientRequests[i]);
+		    	GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "SocketWriter", socketWriteStage);
+		    	ccm.processNota(gm, socketWriteStage);
+			}
 		}
 	}
 
 	public static void buildHTTP1xResponseParser(GraphManager gm, ClientCoordinator ccm, IntHashTable listenerPipeLookup,
 			Pipe<NetResponseSchema>[] responses, Pipe<NetPayloadSchema>[] clearResponse,
 			Pipe<ReleaseSchema> ackRelease) {
+		
 		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, ackRelease, listenerPipeLookup, ccm, HTTPSpecification.defaultSpec());
 		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
 		ccm.processNota(gm, parser);
+		
 	}
 
 	private static void buildParser(GraphManager gm, ClientCoordinator ccm, IntHashTable listenerPipeLookup,

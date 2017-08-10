@@ -242,7 +242,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			return -1;
 		}
 		
-		if (null==activeConnection || (activeConnection.isFinishConnect() && !activeConnection.isValid()) ) {
+		if (null==activeConnection || ((!activeConnection.isValid()) && activeConnection.isFinishConnect() ) ) {
 			//only do reOpen if the previous one is finished connecting and its now invalid.
 			reOpenConnection();
 		}
