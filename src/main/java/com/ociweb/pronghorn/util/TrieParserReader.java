@@ -326,6 +326,7 @@ public class TrieParserReader {
 		assert(length<=source.length) : "length is "+length+" but the array is only "+source.length;
 		that.sourceBacking = source;	
 		that.sourcePos     = offset;
+		assert(that.sourcePos>=0) : "Negative source position offsets are not supported.";
 		that.sourceLen     = length;
 		that.sourceMask    = mask;   
 		assert(that.sourceLen <= that.sourceMask) : "ERROR the source length is larger than the backing array";
@@ -355,7 +356,7 @@ public class TrieParserReader {
 	 */
 	public static int savePositionMemo(TrieParserReader that, int[] target, int offset) {
 
-		target[offset] = that.sourcePos;
+		target[offset] = that.sourcePos & that.sourceMask;
 		return target[offset+1] = that.sourceLen;
 	}
 
