@@ -309,7 +309,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					return cc;
 				}
 				//not yet done so ensure it is marked.
-				cc.isFinishedConnection = false;
+				//cc.isFinishedConnection = false;
 				//not registered
 				return doRegister(ccm, outputs, cc);
 

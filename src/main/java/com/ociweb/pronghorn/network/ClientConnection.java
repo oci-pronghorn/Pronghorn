@@ -60,7 +60,7 @@ public class ClientConnection extends SSLConnection {
 	private long[] inFlightTimes = new long[maxInFlight];
 
 	private boolean isTLS;
-	boolean isFinishedConnection = false;
+//	boolean isFinishedConnection = false;
 	
 	static {
 		
@@ -221,19 +221,19 @@ public class ClientConnection extends SSLConnection {
 	 * After construction this must be called until it returns true before using this connection. 
 	 */
 	public boolean isFinishConnect() {
-		if (isFinishedConnection) {
-			return true;
-		} else {
+//		if (isFinishedConnection) {
+//			return true;
+//		} else {
 			try {
 				
 				boolean finishConnect = getSocketChannel().finishConnect();
-			    isFinishedConnection |= finishConnect;
+	//		    isFinishedConnection |= finishConnect;
 				return finishConnect;
 				
 			} catch (IOException io) {
 				return false;
 			}
-		}
+	//	}
 	}
 
 	public boolean isRegistered() {

@@ -17,7 +17,6 @@ import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.Appendables;
 
 public class MQTTClientToServerEncodeStage extends PronghornStage {
 
@@ -97,26 +96,30 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		this.packetIdRing = new int[ringSize];
 		this.slabPositionsRing = new long[ringSize];
 		this.blobPositionsRing = new int[ringSize];
-		
+	
 		this.ccm = ccm;
-		
+				
 		this.uniqueConnectionId = uniqueId;
 	}
 
+	long nextRepub;
 	
 	@Override
 	public void run() {		
 		if (!processPersistLoad()) {
+			
+			long now;
+			if (hasUnackPublished() && ((now = System.currentTimeMillis())>nextRepub) ) {
+				rePublish(toBroker[activeConnection.requestPipeLineIdx()]);		
+				nextRepub = now+20;//max retry rate is every x ms
+			}				
+
 			long connectionId = processPingAndReplay();
 			
 			processInputAcks(connectionId);
-			
+						
 			processInput(connectionId);
 			
-			//before we leave check for un-ack items
-			if (hasUnackPublished()) {
-				rePublish(toBroker[activeConnection.requestPipeLineIdx()]);					
-			}
 		}
 	}
 	
@@ -171,12 +174,14 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 
 	private void ackPublishedPosLocal(int packetId) {
 		if ((packetIdRing[ringMask & ringTail] == packetId) && hasUnackPublished() ) {
+			//logger.info("got the expected next packetId {} ",packetId);
 			//this is the normal case since if everyone behaves these values will arrive in order
 			ringTail++;			
 			while (hasUnackPublished() && packetIdRing[ringMask & ringTail] == Integer.MAX_VALUE) {
 				ringTail++; //skip over any values that showed up early.
 			}
 		} else {
+			//logger.info("got out of ourder tail id of  {} ",packetId);
 			//Normal case if there is a poor network and packets get dropped.
 			int i = ringTail;
 			int stop = ringMask&ringHead;
@@ -200,7 +205,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	private final boolean rePublish(Pipe<NetPayloadSchema> pipe) {
 
 		int stop = ringMask&ringHead;
-		for(int i = ringTail; (i&ringMask)!=stop; i++ ) {
+		for(int i = (ringTail&ringMask); (i&ringMask)!=stop; i++ ) {
 
 			//skip bad value already acknowledged
 			if (packetIdRing[ringMask & i] != Integer.MAX_VALUE) {	
@@ -209,20 +214,27 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				
 	    		final long slabPos = Pipe.getSlabHeadPosition(pipe); 
 	    		final int blobPos = Pipe.getBlobHeadPosition(pipe);
-				
+					    			    	
+	    		
+	    		//Set the DUP flag which is the 3rd bit now that we are sending this again.
+	    		Pipe.blob(pipe)[pipe.blobMask & blobPositionsRing[ringMask & i]] |= 8; //
+   		
+	    		
 				if (!PipeWriter.tryReplication(pipe, slabPositionsRing[ringMask & i], blobPositionsRing[ringMask & i])) {
 					return false;
 				}
-				
 				lastActvityTime = System.currentTimeMillis(); //no need to ping if we keep reSending these.	
+				
+				logger.info("re-sent message with id {}  {}",packetIdRing[ringMask & i],System.currentTimeMillis());
 				
 				storePublishedPosLocal(slabPos, blobPos, packetIdRing[ringMask & i]);
 				packetIdRing[ringMask & i] = Integer.MAX_VALUE;//clear this one since we have added a new one.
+
+				ringTail = i+1;//move up ring tail since everything up till here is done
 				
 				PipeWriter.publishWrites(pipe);
-				
+							
 			}
-
 		}	
 		return true;
 	}
@@ -914,7 +926,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		int topicLength = PipeReader.readBytesLength(input, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_TOPIC_23);
 		int payloadLength = PipeReader.readBytesLength(input, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25);
 					
-		final int pubHead = 0x30 | (0x6&(qos<<1)) | 1&retain; //bit 3 dup is zero which is modified later
+		final int pubHead = 0x30 | (0x06&(qos<<1)) | 1&retain; //bit 3 dup is zero which is modified later
 		output.writeByte((0xFF&pubHead));
 		encodeVarLength(output, topicLength + 2 + payloadLength + (packetId>=0 ? 2 : 0)); //const and remaining length, 2  bytes
 
