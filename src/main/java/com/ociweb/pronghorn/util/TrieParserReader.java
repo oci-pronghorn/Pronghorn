@@ -1135,13 +1135,11 @@ public class TrieParserReader {
 
 	private static int parseNumeric(final byte escapeByte, TrieParserReader reader, byte[] source, int sourcePos, long sourceLength, int sourceMask, int numType) {
 
-		int basePos = sourcePos;
-
 		byte sign = 1;
 		long intValue = 0;
 		byte intLength = 0;
-		byte base=10;
-		int  dot=0;//only set to one for NUMERIC_FLAG_DECIMAL        
+		byte base = 10;
+		int  dot = 0;//only set to one for NUMERIC_FLAG_DECIMAL        
 
 		final short c1 = source[sourceMask & sourcePos];
 
@@ -1278,9 +1276,10 @@ public class TrieParserReader {
 	private static void publish(TrieParserReader reader, int sign, long numericValue, int intLength, int base, int isDot) {
 		assert(0!=sign);
 
+		System.err.println("publish int value "+numericValue);
 		reader.capturedValues[reader.capturedPos++] = sign;
 		reader.capturedValues[reader.capturedPos++] = (int) (numericValue >> 32);
-		reader.capturedValues[reader.capturedPos++] = (int) (0xFFFFFFFF &numericValue);
+		reader.capturedValues[reader.capturedPos++] = (int) (0xFFFFFFFF & numericValue);
 
 		assert(base<=64 && base>=2);
 		assert(isDot==1 || isDot==0);
@@ -1628,7 +1627,8 @@ public class TrieParserReader {
 	public static long capturedDecimalMField(TrieParserReader reader, int idx) {
 
 		int pos = idx*4;
-		assert(pos < reader.capturedValues.length) : "Either the idx argument is too large or TrieParseReader was not constructed to hold this many fields";
+		assert(pos < reader.capturedValues.length) : 
+			 "Either the idx argument ("+idx+") is too large or TrieParseReader was constructed ("+(reader.capturedValues.length/4)+") to hold too fiew fields";
 
 		long sign = reader.capturedValues[pos++];
 		assert(sign!=0);      	
@@ -1652,8 +1652,8 @@ public class TrieParserReader {
 		int sign = reader.capturedValues[pos++];
 		assert(sign!=0);
 
-		long value = reader.capturedValues[pos++];
-		value = (value<<32) | (0xFFFFFFFF&reader.capturedValues[pos++]);
+		long value = (long) ((((long)reader.capturedValues[pos++])<<32) |
+				             (0xFFFFFFFFL&reader.capturedValues[pos++]));
 
 		int meta = reader.capturedValues[pos];
 		///  byte dbase = (byte)((meta>>16)&0xFF);
