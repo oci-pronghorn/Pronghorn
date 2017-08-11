@@ -441,9 +441,12 @@ public class TrieParserTest {
 
 		assertFalse(map.toString(),map.toString().contains("ERROR"));
 
-		byte[] text1 = "unfollow/123".getBytes();
-		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text1,4), 0, text1.length, 15));
-
+		byte[] text1 = "unfollow/61426357200000".getBytes();
+		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text1,6), 0, text1.length, 63));
+        long value = TrieParserReader.capturedLongField(reader, 0);
+        assertEquals(61426357200000L,value);
+		
+		
 		byte[] text2 = "unfollow/%u".getBytes();
 		assertEquals(value2, TrieParserReader.query(reader,map, wrapping(text2,4), 0, text2.length, 15));
 

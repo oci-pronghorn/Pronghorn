@@ -1276,7 +1276,6 @@ public class TrieParserReader {
 	private static void publish(TrieParserReader reader, int sign, long numericValue, int intLength, int base, int isDot) {
 		assert(0!=sign);
 
-		System.err.println("publish int value "+numericValue);
 		reader.capturedValues[reader.capturedPos++] = sign;
 		reader.capturedValues[reader.capturedPos++] = (int) (numericValue >> 32);
 		reader.capturedValues[reader.capturedPos++] = (int) (0xFFFFFFFF & numericValue);
