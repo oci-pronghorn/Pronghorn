@@ -108,11 +108,11 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	public void run() {		
 		if (!processPersistLoad()) {
 			
-			long now;
-			if (hasUnackPublished() && ((now = System.currentTimeMillis())>nextRepub) ) {
-				rePublish(toBroker[activeConnection.requestPipeLineIdx()]);		
-				nextRepub = now+20;//max retry rate is every x ms
-			}				
+//			long now;
+//			if (hasUnackPublished() && ((now = System.currentTimeMillis())>nextRepub) ) {
+//				rePublish(toBroker[activeConnection.requestPipeLineIdx()]);		
+//				nextRepub = now+20;//max retry rate is every x ms
+//			}				
 
 			long connectionId = processPingAndReplay();
 			
@@ -373,7 +373,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		        	isInPersistWrite = false;//can now continue with next write
 		        			        	
 		        	long comittedBlockId = PipeReader.readLong(persistBlobLoad,PersistedBlobLoadSchema.MSG_ACKWRITE_11_FIELD_BLOCKID_3);	        	
-		        	logger.info("publish ack write is now on disk for id {} ",comittedBlockId);
+		        	//logger.trace("publish ack write is now on disk for id {} ",comittedBlockId);
 		        	//NOTE: if desired we could send this id back to MQTTClient, but I see no need at this time.
 		        			        	
 		        break;
