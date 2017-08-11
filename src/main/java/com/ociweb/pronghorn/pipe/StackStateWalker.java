@@ -525,7 +525,8 @@ class StackStateWalker {
     
     static boolean tryWriteFragment1(Pipe pipe, int cursorPosition, FieldReferenceOffsetManager from, int fragSize, long target, boolean hasRoom) {
                 
-        assert(Pipe.getPublishBatchSize(pipe)>0 || Pipe.headPosition(pipe)==Pipe.workingHeadPosition(pipe)) : "Confirm that tryWrite is only called once per fragment written. OR setBatch publish to zero in startup.";
+        assert(Pipe.getPublishBatchSize(pipe)>0 || Pipe.headPosition(pipe)==Pipe.workingHeadPosition(pipe)) : 
+        	        "Confirm that tryWrite is only called once per fragment written. OR setBatch publish to zero in startup.  head "+Pipe.headPosition(pipe)+" vs working head "+Pipe.workingHeadPosition(pipe);
         //try again and update the cache with the newest value
         if (hasRoom) {
             prepWriteFragment(pipe, cursorPosition, from, fragSize);

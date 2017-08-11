@@ -346,8 +346,10 @@ public class PipeWriter {
 		final int msgIdx = slab[idx]; //false share as this is a dirty read
 		
 		
-		//first part is to proctect against dirty reading		
-		if ((msgIdx<Pipe.from(pipe).fragDataSize.length) && tryWriteFragment(pipe,msgIdx)) {
+		//first part is to protect against dirty reading		
+		if ((msgIdx<Pipe.from(pipe).fragDataSize.length) 
+			 && Pipe.headPosition(pipe) == pipe.workingHeadPosition(pipe)	
+			 && tryWriteFragment(pipe, msgIdx)) {
 			final byte[] blob = pipe.blob(pipe);
 			
 			//get the sizes of ints and bytes
