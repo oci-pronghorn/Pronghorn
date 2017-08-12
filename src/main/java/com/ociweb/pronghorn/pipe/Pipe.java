@@ -2554,15 +2554,18 @@ public class Pipe<T extends MessageSchema<T>> {
 
     }
 
-    public static <S extends MessageSchema<S>> void addByteArray(byte[] source, int sourceIdx, int sourceLen, Pipe<S> rbRingBuffer) {
+    public static <S extends MessageSchema<S>> void addByteArray(byte[] source, Pipe<S> pipe) {
+    	addByteArray(source,0,source.length,pipe);
+    }
+    public static <S extends MessageSchema<S>> void addByteArray(byte[] source, int sourceIdx, int sourceLen, Pipe<S> pipe) {
 
     	assert(sourceLen>=0);
-    	validateVarLength(rbRingBuffer, sourceLen);
+    	validateVarLength(pipe, sourceLen);
 
-    	copyBytesFromToRing(source, sourceIdx, Integer.MAX_VALUE, rbRingBuffer.blobRing, rbRingBuffer.blobRingHead.byteWorkingHeadPos.value, rbRingBuffer.blobMask, sourceLen);
+    	copyBytesFromToRing(source, sourceIdx, Integer.MAX_VALUE, pipe.blobRing, pipe.blobRingHead.byteWorkingHeadPos.value, pipe.blobMask, sourceLen);
 
-    	addBytePosAndLen(rbRingBuffer, rbRingBuffer.blobRingHead.byteWorkingHeadPos.value, sourceLen);
-        rbRingBuffer.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(rbRingBuffer.blobRingHead.byteWorkingHeadPos.value + sourceLen);
+    	addBytePosAndLen(pipe, pipe.blobRingHead.byteWorkingHeadPos.value, sourceLen);
+        pipe.blobRingHead.byteWorkingHeadPos.value = BYTES_WRAP_MASK&(pipe.blobRingHead.byteWorkingHeadPos.value + sourceLen);
 
     }
 
@@ -2673,16 +2676,16 @@ public class Pipe<T extends MessageSchema<T>> {
         PaddedLong.add(workingHeadPos, 2);
     }
 
-	public static <S extends MessageSchema<S>> void setBytePosAndLen(int[] buffer, int rbMask, long ringPos, int positionDat, int lengthDat, int baseBytePos) {
+	public static <S extends MessageSchema<S>> void setBytePosAndLen(int[] buffer, int bufferMask, long bufferPos, int dataBlobPos, int dataBlobLen, int baseBytePos) {
 	   	//negative position is written as is because the internal array does not have any offset (but it could some day)
     	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
-    	if (positionDat>=0) {
-    		assert((positionDat-baseBytePos)>=0);
-    		buffer[rbMask & (int)ringPos] = (int)(positionDat-baseBytePos) & Pipe.BYTES_WRAP_MASK; //mask is needed for the negative case, does no harm in positive case
+    	if (dataBlobPos>=0) {
+    		assert((dataBlobPos-baseBytePos)>=0);
+    		buffer[bufferMask & (int)bufferPos] = (int)(dataBlobPos-baseBytePos) & Pipe.BYTES_WRAP_MASK; //mask is needed for the negative case, does no harm in positive case
     	} else {
-    		buffer[rbMask & (int)ringPos] = positionDat;
+    		buffer[bufferMask & (int)bufferPos] = dataBlobPos;
     	}
-        buffer[rbMask & (int)(ringPos+1)] = lengthDat;
+        buffer[bufferMask & (int)(bufferPos+1)] = dataBlobLen;
 	}
 	
 
