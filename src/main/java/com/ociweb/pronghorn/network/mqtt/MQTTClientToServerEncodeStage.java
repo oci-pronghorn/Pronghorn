@@ -35,6 +35,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	
 	private final int uniqueConnectionId;
 	private final ClientCoordinator ccm;
+	private boolean brokerAcknowledgedConnection;
 	
 	private ClientConnection activeConnection;
 	private byte[] hostBack;
@@ -102,22 +103,14 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		this.uniqueConnectionId = uniqueId;
 	}
 
-	long nextRepub;
-	
 	@Override
 	public void run() {		
 		if (!processPersistLoad()) {
-			
-//			long now;
-//			if (hasUnackPublished() && ((now = System.currentTimeMillis())>nextRepub) ) {
-//				rePublish(toBroker[activeConnection.requestPipeLineIdx()]);		
-//				nextRepub = now+20;//max retry rate is every x ms
-//			}				
 
 			long connectionId = processPingAndReplay();
 			
 			processInputAcks(connectionId);
-						
+									
 			processInput(connectionId);
 			
 		}
@@ -225,7 +218,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				}
 				lastActvityTime = System.currentTimeMillis(); //no need to ping if we keep reSending these.	
 				
-				logger.info("re-sent message with id {}  {}",packetIdRing[ringMask & i],System.currentTimeMillis());
+				//logger.info("re-sent message with id {}  {}",packetIdRing[ringMask & i],System.currentTimeMillis());
 				
 				storePublishedPosLocal(slabPos, blobPos, packetIdRing[ringMask & i]);
 				packetIdRing[ringMask & i] = Integer.MAX_VALUE;//clear this one since we have added a new one.
@@ -260,11 +253,6 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		}
 		
 		long result = (null!=activeConnection) ? activeConnection.id : -1;
-		
-		if (result == -1) {
-			logger.info("no connection available");
-		}
-		
 		return result;
 		
 	}
@@ -336,7 +324,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		        			        	
 		        	Pipe<NetPayloadSchema> server = toBroker[activeConnection.requestPipeLineIdx()];
 		        	
-		        	logger.info("read positions and publish block");
+		        	//logger.info("read positions and publish block");
 		    		final long slabPos = Pipe.getSlabHeadPosition(server);
 		    		final int blobPos = Pipe.getBlobHeadPosition(server);
 		        	
@@ -363,7 +351,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				
 		        case PersistedBlobLoadSchema.MSG_ACKRELEASE_10:
 		        	int fieldBlockId1 = (int)PipeReader.readLong(persistBlobLoad,PersistedBlobLoadSchema.MSG_ACKRELEASE_10_FIELD_BLOCKID_3);
-		        	logger.trace("BBB back from disk removal ack {} ",fieldBlockId1);
+		        	//logger.trace("BBB back from disk removal ack {} ",fieldBlockId1);
 		        	ackPublishedPosLocal(fieldBlockId1);
 		        break;
 		        
@@ -388,19 +376,24 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	}
 
 	private long processPingAndReplay() {
-		long connectionId = 0;
-		if ((connectionId = connectionId())>=0 ) {
+		long connectionId = -1;
+		if ((connectionId = connectionId())>=0 && brokerAcknowledgedConnection ) {
 			final long now = System.currentTimeMillis();
 			final long quiet = now-lastActvityTime;
-			if (quiet > (keepAliveMS>>1)) {
-				logger.trace("note quiet {} trigger {} ",quiet, keepAliveMS);
+			if (quiet > (keepAliveMS>>3)) { //every 1/8 of the keep alive re-publish if needed.
 				
 				if (hasUnackPublished()) {
 					rePublish(toBroker[activeConnection.requestPipeLineIdx()]);					
 					//if rePublish does something then lastActivityTime will have been set
 				} else {
-					requestPing(now, connectionId, toBroker[activeConnection.requestPipeLineIdx()]);					
-					lastActvityTime = now;
+					//we have nothing to re-publish and half the keep alive has gone by so ping to be safe.
+					if (quiet > (keepAliveMS>>1)) {
+						//logger.trace("note quiet {} trigger {} ",quiet, keepAliveMS);
+						//logger.info("request ping, must ensure open first??, if not close?");
+						
+						requestPing(now, connectionId, toBroker[activeConnection.requestPipeLineIdx()]);					
+						lastActvityTime = now;
+					}
 				}				
 			}
 		}
@@ -424,6 +417,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 
 			if (MQTTClientToServerSchema.MSG_BROKERHOST_100 == msgIdx) {
 				
+				//logger.info("open new broker socket connection");
+				
 				this.hostLen = PipeReader.readBytesLength(input, MQTTClientToServerSchema.MSG_BROKERHOST_100_FIELD_HOST_26);
 				this.hostPos = 0;
 				this.hostMask = Integer.MAX_VALUE;
@@ -436,10 +431,16 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					activeConnection.close();
 				}
 				PipeReader.releaseReadLock(input);
-				
-				continue;
+				break;
 			}		
 						
+			ClientConnection clientConnection = (ClientConnection) ccm.get(connectionId);
+			if (null==clientConnection || (! clientConnection.isFinishConnect())) {
+			//TODO: may need to optimize later.
+		    //TODO: also - inflight should be smaller and the  re-send should happen a few times?
+				break;
+			}
+			
 			if (writeToBroker(connectionId, toBroker[activeConnection.requestPipeLineIdx()], msgIdx)) {
 				PipeReader.releaseReadLock(input);
 			} else {
@@ -501,6 +502,13 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				PipeReader.releaseReadLock(inputAck);
 				continue;
 			}			
+			
+			if (MQTTClientToServerSchemaAck.MSG_BROKERACKNOWLEDGEDCONNECTION_98 == msgIdx) {
+				brokerAcknowledgedConnection = true;
+				PipeReader.releaseReadLock(inputAck);
+				continue;
+			}
+			
 						
 			if (writeAcksToBroker(connectionId, toBroker[activeConnection.requestPipeLineIdx()], msgIdx)) {
 				PipeReader.releaseReadLock(inputAck);
@@ -679,10 +687,13 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		DataOutputBlobWriter.openField(output);
 
 		lastActvityTime = System.currentTimeMillis();
-				
+
 		switch (msgIdx) {
 				case MQTTClientToServerSchema.MSG_CONNECT_1:
 					
+					//block ping until this is complete.
+					brokerAcknowledgedConnection = false;
+
 					arrivalTime = PipeReader.readLong(input, MQTTClientToServerSchema.MSG_CONNECT_1_FIELD_TIME_37);											
 					int conFlags = PipeReader.readInt(input, MQTTClientToServerSchema.MSG_CONNECT_1_FIELD_FLAGS_29);					
 					int clientIdLen = PipeReader.readBytesLength(input, MQTTClientToServerSchema.MSG_CONNECT_1_FIELD_CLIENTID_30);

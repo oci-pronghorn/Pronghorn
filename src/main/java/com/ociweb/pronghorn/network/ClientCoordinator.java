@@ -320,18 +320,12 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 			                                   Pipe<NetPayloadSchema>[] handshakeBegin,
 			                                   ClientConnection cc) {
 		try {
-			if (!cc.isFinishConnect()) {
-				
-				//TODO: if this time is too long we should report a failure?
-				
-				//TODO: once we know the IP we must cache it and avoid rapid lookups!!!!
-				
-				logger.info("unable to finish connect, must try again later {}",cc);
-				
+			if (!cc.isFinishConnect()) {				
+				//logger.info("unable to finish connect, must try again later {}",cc);				
 				cc = null; //try again later
 			} else {
 				cc.registerForUse(ccm.selector(), handshakeBegin, ccm.isTLS);
-				logger.info("new connection established to {}",cc);
+				//logger.info("new connection established to {}",cc);
 			}
 		} catch (IOException e) {
 			throw new RuntimeException(e);

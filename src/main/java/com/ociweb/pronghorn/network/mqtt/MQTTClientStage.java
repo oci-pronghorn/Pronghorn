@@ -32,6 +32,7 @@ public class MQTTClientStage extends PronghornStage {
 	
 	private IdGenCache genCache;
 	private long mostRecentTime;
+	private boolean brokerAcknowledgedConnection = false;
 	
 	private static final Logger logger = LoggerFactory.getLogger(MQTTClientStage.class);
 	
@@ -103,16 +104,26 @@ public class MQTTClientStage extends PronghornStage {
 				(!PipeReader.hasContentToRead(serverToClient)) //server response is always more important.
 				
 				&& (
-						PipeReader.peekMsg(clientRequest, MQTTClientRequestSchema.MSG_BROKERCONFIG_100, MQTTClientRequestSchema.MSG_CONNECT_1)
-						|| MQTTEncoder.hasPacketId(genCache, idGenNew) //all other messsages require a packetId ready for use
+						PipeReader.peekMsg(clientRequest, 
+								           MQTTClientRequestSchema.MSG_BROKERCONFIG_100, 
+								           MQTTClientRequestSchema.MSG_CONNECT_1)
+						|| 						
+						(brokerAcknowledgedConnection && //for these messages the connection must already be established.
+						 MQTTEncoder.hasPacketId(genCache, idGenNew)) //all other messsages require a packetId ready for use
 	            )
 				&& PipeWriter.hasRoomForWrite(clientToServer) //only process if we have room to write
 				&& PipeReader.tryReadFragment(clientRequest)  ) {
 			
+			
+			
 			int msgIdx = PipeReader.getMsgIdx(clientRequest);
+
 			switch(msgIdx) {
 						
 				case MQTTClientRequestSchema.MSG_BROKERCONFIG_100:			
+					
+					brokerAcknowledgedConnection = false;
+					
 					boolean ok = PipeWriter.tryWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_BROKERHOST_100);
 					assert(ok);
 					
@@ -128,6 +139,8 @@ public class MQTTClientStage extends PronghornStage {
 					break;
 				case MQTTClientRequestSchema.MSG_CONNECT_1:
 							
+					brokerAcknowledgedConnection = false;
+					
 					boolean ok1 = PipeWriter.tryWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_CONNECT_1);
 					assert(ok1);
 										
@@ -195,7 +208,8 @@ public class MQTTClientStage extends PronghornStage {
 					int packetId = -1;
 					if (valueQoS != 0) {						
 						//only consume a packetId for QoS 1 or 2.
-						packetId = IdGenCache.nextPacketId(genCache);						
+						packetId = IdGenCache.nextPacketId(genCache);
+
 					}
 
 					PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_PACKETID_20, packetId);
@@ -267,8 +281,17 @@ public class MQTTClientStage extends PronghornStage {
 	
 	
 	public void processServerResponses() {
-		
-		while(PipeWriter.hasRoomForWrite(idGenOld) 
+	
+//		System.err.println("server response "+
+//		     PipeWriter.hasRoomForWrite(idGenOld) + " " + 
+//		     PipeWriter.hasRoomForWrite(clientToServer) + " " +
+//		     PipeWriter.hasRoomForWrite(clientToServerAck) + " " +
+//		     PipeWriter.hasRoomForWrite(clientResponse) + " "+
+//		     PipeReader.hasContentToRead(serverToClient)
+//				);
+//		
+	
+		while(   PipeWriter.hasRoomForWrite(idGenOld) 
 			  && PipeWriter.hasRoomForWrite(clientToServer)
 			  && PipeWriter.hasRoomForWrite(clientToServerAck)
 			  && PipeWriter.hasRoomForWrite(clientResponse)
@@ -276,14 +299,18 @@ public class MQTTClientStage extends PronghornStage {
 
 			int msgIdx = PipeReader.getMsgIdx(serverToClient);
 
+
 			switch(msgIdx) {
 				case MQTTServerToClientSchema.MSG_DISCONNECT_14:
+					brokerAcknowledgedConnection = false;	
+		
 					//NOTE: do not need do anything now, the connection will be re-attached.
 				break;
 				case MQTTServerToClientSchema.MSG_CONNACK_2:
 				
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_TIME_37);
 					int sessionPresentFlag = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_FLAG_35);
+					
 					//TODO: what to do with session bit??
 					
 					int conAckReturnCode = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_RETURNCODE_24);
@@ -316,6 +343,16 @@ public class MQTTClientStage extends PronghornStage {
 						PipeWriter.writeInt(clientResponse,MQTTClientResponseSchema.MSG_ERROR_4_FIELD_ERRORCODE_41, fieldErrorCode);
 						PipeWriter.writeUTF8(clientResponse,MQTTClientResponseSchema.MSG_ERROR_4_FIELD_ERRORTEXT_42, fieldErrorText);
 						PipeWriter.publishWrites(clientResponse);
+					} else {
+					
+						
+						
+						//We are now connected.
+						brokerAcknowledgedConnection = true;
+						
+						PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_BROKERACKNOWLEDGEDCONNECTION_98);
+						PipeWriter.publishWrites(clientToServerAck);	
+												
 					}
 
 					break;
@@ -325,12 +362,11 @@ public class MQTTClientStage extends PronghornStage {
 															
 					break;
 				case MQTTServerToClientSchema.MSG_PUBACK_4:
+					
 					//clear the QoS 1 publishes so we stop re-sending these messages
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_TIME_37);
 					int packetId4 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_PACKETID_20);
-					
-					//System.err.println("                     QOS1 stop for packet "+packetId4);
-					
+
 					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId4));					
 								    
 					break;
