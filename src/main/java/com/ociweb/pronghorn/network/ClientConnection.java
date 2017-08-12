@@ -8,7 +8,6 @@ import java.net.UnknownHostException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.nio.channels.UnresolvedAddressException;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -22,6 +21,8 @@ import com.ociweb.pronghorn.pipe.Pipe;
 
 
 public class ClientConnection extends SSLConnection {
+
+	public static int resolveWithDNSTimeoutMS = 10_000; //  §6.1.3.3 of RFC 1123 suggests a value not less than 5 seconds.
 
 	private static final long MAX_HIST_VALUE = 40_000_000_000L;
 
@@ -121,27 +122,46 @@ public class ClientConnection extends SSLConnection {
 	//	this.getSocketChannel().setOption(StandardSocketOptions.TCP_NODELAY, true);
 		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<18); 
 		this.getSocketChannel().setOption(StandardSocketOptions.SO_SNDBUF, 1<<17); 
-		
-				
+						
 		//logger.info("client recv buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF)); //default 43690
 		//logger.info("client send buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_SNDBUF)); //default  8192
 		
-						
-		try {
-			InetSocketAddress remote = new InetSocketAddress(host, port);
-			this.getSocketChannel().connect(remote);
-		} catch (UnresolvedAddressException uae) {
-			
-			if (hasNetworkConnectivity()) {
-				logger.error("unable to find {}:{}",host,port);
-				throw uae;
-			} else {
-				logger.error("No network connection.");
-				System.exit(-1);						
-			}
-		}
-		this.getSocketChannel().finishConnect(); //call again later to confirm its done.	
+		resolveAddressAndConnect(host, port);
+	}
 
+	public void resolveAddressAndConnect(String host, int port) throws IOException {
+		InetAddress[] ipAddresses = null;
+		boolean failureDetected = false;
+		long resolveTimeout = System.currentTimeMillis()+resolveWithDNSTimeoutMS;
+		long msSleep = 1;
+		do { //NOTE: warning this a blocking loop looking up DNS, should replace with non blocking... See Netty
+			try {
+				if (failureDetected) {
+					//we have done this before so slow down a little
+					try {
+						Thread.sleep(msSleep); //for each attempt double ms waiting for next call
+						msSleep <<= 1;
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						return;
+					} //2 ms					
+				}
+				
+				ipAddresses = InetAddress.getAllByName(host);
+			
+			} catch (UnknownHostException unknwnHostEx) {
+				failureDetected = true;
+			}
+		} while (null == ipAddresses && System.currentTimeMillis()<resolveTimeout);
+		
+		if (null==ipAddresses || ipAddresses.length==0) {
+			//unresolved
+			logger.error("unable to resolve address for {}:{}",host,port);
+			return;
+		} else {
+			this.getSocketChannel().connect(new InetSocketAddress(ipAddresses[0], port));
+		}
+		this.getSocketChannel().finishConnect(); //call again later to confirm its done.
 	}
 
 	public String getHost() {
