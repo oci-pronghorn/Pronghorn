@@ -48,6 +48,9 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	public ClientSocketWriterStage(GraphManager graphManager, ClientCoordinator ccm, int bufMultiplier, Pipe<NetPayloadSchema>[] input) {
 		super(graphManager, input, NONE);
+		if (input.length==0) {
+			throw new UnsupportedOperationException("Unsupported configuration, stage must have at least 1 input.");
+		}
 		this.ccm = ccm;
 		this.input = input;
 		this.shutCountDown = input.length;
@@ -79,8 +82,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 	
 	@Override
 	public void shutdown() {
-		long duration = System.currentTimeMillis()-start;
-		
+		//long duration = System.currentTimeMillis()-start;
 		//logger.trace("Client Bytes Written: {} kb/sec {} ",totalBytes, (8*totalBytes)/duration);
 		
 	}

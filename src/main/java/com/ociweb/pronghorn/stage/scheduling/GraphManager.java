@@ -1394,9 +1394,10 @@ public class GraphManager {
 	            PronghornStage stage = m.stageIdToStage[i];
 	        	            
 	            if (null!=stage 
-	            		&& !stageForMonitorData(m,stage) 
 	            		&& !(stage instanceof MonitorConsoleStage) 
-	            		&& !(stage instanceof RingBufferMonitorStage)) {       
+	            		&& !(stage instanceof RingBufferMonitorStage)
+	            		&& !stageForMonitorData(m,stage) 
+	            		) {       
 
 	            		
 	            	if (ranks!=null) {

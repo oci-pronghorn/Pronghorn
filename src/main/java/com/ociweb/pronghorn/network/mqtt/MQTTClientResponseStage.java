@@ -45,11 +45,16 @@ public class MQTTClientResponseStage extends PronghornStage {
 	}
 
 	private void parseDataFromBroker(Pipe<NetPayloadSchema> server) {
+		
+//		System.err.println("ZZZZZZ  "+PipeWriter.hasRoomForWrite(ackReleaseForResponseParser)+
+//				           "  "+PipeWriter.hasRoomForWrite(out)+
+//				           "  "+PipeReader.hasContentToRead(server));
+		
 		while (PipeWriter.hasRoomForWrite(ackReleaseForResponseParser) && 
 			   PipeWriter.hasRoomForWrite(out) && 
 			   PipeReader.tryReadFragment(server)) {
 			
-			int idx = PipeReader.getMsgIdx(server);
+			final int idx = PipeReader.getMsgIdx(server);
 
 			if (NetPayloadSchema.MSG_PLAIN_210 == idx) {
 				
@@ -253,7 +258,7 @@ public class MQTTClientResponseStage extends PronghornStage {
 				} else {
 								
 					if (idx==NetPayloadSchema.MSG_DISCONNECT_203) {
-					
+						
 						PipeWriter.tryWriteFragment(out, MQTTServerToClientSchema.MSG_DISCONNECT_14);
 						PipeWriter.writeLong(out, MQTTServerToClientSchema.MSG_DISCONNECT_14_FIELD_TIME_37, System.currentTimeMillis());
 						PipeWriter.publishWrites(out);						

@@ -8,7 +8,6 @@ import java.net.UnknownHostException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.nio.channels.UnresolvedAddressException;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult.HandshakeStatus;
@@ -22,6 +21,8 @@ import com.ociweb.pronghorn.pipe.Pipe;
 
 
 public class ClientConnection extends SSLConnection {
+
+	public static int resolveWithDNSTimeoutMS = 10_000; //  §6.1.3.3 of RFC 1123 suggests a value not less than 5 seconds.
 
 	private static final long MAX_HIST_VALUE = 40_000_000_000L;
 
@@ -44,24 +45,23 @@ public class ClientConnection extends SSLConnection {
 	private final int port;
 	private long lastUsedTime;
 	
-	private static InetAddress testAddr;
+	private static InetAddress testAddr; //must be here to enure JIT does not delete the code
 	
 	private long closeTimeLimit = Long.MAX_VALUE;
 	private long TIME_TILL_CLOSE = 10_000;
 
-	private final int maxInFlightBits = 14;//12;//TODO: must bump up to get 1M 10;	//only allow x messages in flight at a time.
+	private final int maxInFlightBits = 15;//TODO: must bump up to get 1M 10;	//only allow x messages in flight at a time.
 	public final int maxInFlight = 1<<maxInFlightBits;
 	private final int maxInFlightMask = maxInFlight-1;
+		
+	private Histogram histRoundTrip = new Histogram(MAX_HIST_VALUE,0);
 	
 	private int inFlightSentPos;
 	private int inFlightRespPos;
 	private long[] inFlightTimes = new long[maxInFlight];
+
 	private boolean isTLS;
-	
-	//TODO: too much time is lost in thread context switching as we scale up.  only 50% of machines is used
-	//      we must merge threads to elminiate this problem and recapture the lost performance.
-	
-	
+//	boolean isFinishedConnection = false;
 	
 	static {
 		
@@ -122,27 +122,46 @@ public class ClientConnection extends SSLConnection {
 	//	this.getSocketChannel().setOption(StandardSocketOptions.TCP_NODELAY, true);
 		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<18); 
 		this.getSocketChannel().setOption(StandardSocketOptions.SO_SNDBUF, 1<<17); 
-		
-				
+						
 		//logger.info("client recv buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF)); //default 43690
 		//logger.info("client send buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_SNDBUF)); //default  8192
 		
-						
-		try {
-			InetSocketAddress remote = new InetSocketAddress(host, port);
-			this.getSocketChannel().connect(remote);
-		} catch (UnresolvedAddressException uae) {
-			
-			if (hasNetworkConnectivity()) {
-				logger.error("unable to find {}:{}",host,port);
-				throw uae;
-			} else {
-				logger.error("No network connection.");
-				System.exit(-1);						
-			}
-		}
-		this.getSocketChannel().finishConnect(); //call again later to confirm its done.	
+		resolveAddressAndConnect(host, port);
+	}
 
+	public void resolveAddressAndConnect(String host, int port) throws IOException {
+		InetAddress[] ipAddresses = null;
+		boolean failureDetected = false;
+		long resolveTimeout = System.currentTimeMillis()+resolveWithDNSTimeoutMS;
+		long msSleep = 1;
+		do { //NOTE: warning this a blocking loop looking up DNS, should replace with non blocking... See Netty
+			try {
+				if (failureDetected) {
+					//we have done this before so slow down a little
+					try {
+						Thread.sleep(msSleep); //for each attempt double ms waiting for next call
+						msSleep <<= 1;
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						return;
+					} //2 ms					
+				}
+				
+				ipAddresses = InetAddress.getAllByName(host);
+			
+			} catch (UnknownHostException unknwnHostEx) {
+				failureDetected = true;
+			}
+		} while (null == ipAddresses && System.currentTimeMillis()<resolveTimeout);
+		
+		if (null==ipAddresses || ipAddresses.length==0) {
+			//unresolved
+			logger.error("unable to resolve address for {}:{}",host,port);
+			return;
+		} else {
+			this.getSocketChannel().connect(new InetSocketAddress(ipAddresses[0], port));
+		}
+		this.getSocketChannel().finishConnect(); //call again later to confirm its done.
 	}
 
 	public String getHost() {
@@ -222,11 +241,19 @@ public class ClientConnection extends SSLConnection {
 	 * After construction this must be called until it returns true before using this connection. 
 	 */
 	public boolean isFinishConnect() {
-		try {
-			return getSocketChannel().finishConnect();
-		} catch (IOException io) {
-			return false;
-		}
+//		if (isFinishedConnection) {
+//			return true;
+//		} else {
+			try {
+				
+				boolean finishConnect = getSocketChannel().finishConnect();
+	//		    isFinishedConnection |= finishConnect;
+				return finishConnect;
+				
+			} catch (IOException io) {
+				return false;
+			}
+	//	}
 	}
 
 	public boolean isRegistered() {
@@ -236,6 +263,9 @@ public class ClientConnection extends SSLConnection {
 	public void registerForUse(Selector selector, Pipe<NetPayloadSchema>[] handshakeBegin, boolean isTLS) throws IOException {
 
 		assert(getSocketChannel().finishConnect());
+		
+		//TODO: should cache this IP...
+		logger.info("now finished connection to : {} ",getSocketChannel().getRemoteAddress().toString());
 		
 		if (isTLS) {
 
@@ -340,11 +370,7 @@ public class ClientConnection extends SSLConnection {
 		}
 	}
 
-	
-	
-	
-	private Histogram histRoundTrip = new Histogram(MAX_HIST_VALUE,0);
-	
+
 	
 	public Histogram histogram() {
 		return histRoundTrip;

@@ -423,12 +423,8 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
 	                }
 	                assert(boundsCheck(idx, l));
 	                
-	                inputLengths[idx]=l;	                
-	                
-	                //TODO: add checks to ensure that the tail and head only move foreward.
-	                
-	                assert(trieReader.sourceLen == Pipe.releasePendingByteCount(selectedInput));
-	                
+	                inputLengths[idx] = l;	                
+	         	                
 	                //the release pending above should keep them in algnment and the ounstanding should match
 	                assert(Pipe.validatePipeBlobHasDataToRead(selectedInput, inputBlobPos[idx], inputLengths[idx]));
 	                

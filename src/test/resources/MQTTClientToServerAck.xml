@@ -21,5 +21,8 @@
      <uInt64 name="Time" id="37"/>
      <uInt32 name="PacketId" id="20"/>
    </template> 
+   
+   <template name="BrokerAcknowledgedConnection" id="98">
+   </template>
     
 </templates>

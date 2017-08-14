@@ -550,6 +550,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							} else {
 								//TODO: rollback the previous message write since it can not be compeleted? or just trucate it?? TODO: urgent error support
 								
+								//logger.info("error trieReader pos {} len {} ", trieReader.sourcePos,trieReader.sourceLen);
+								
 								reportCorruptStream("HTTP revision",cc);
 								
 //								trieReader.sourcePos-=100;
