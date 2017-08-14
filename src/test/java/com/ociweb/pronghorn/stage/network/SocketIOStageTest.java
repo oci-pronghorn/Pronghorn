@@ -121,12 +121,12 @@ public class SocketIOStageTest {
 		run(gm, watch);
 	}
 		
-	@Test
+	@Test @Ignore
 	public void clientToServerSocketATest() {
 		clientToServerSocketTest(true,13081);
 	}
 
-	@Test
+	@Test @Ignore
 	public void clientToServerSocketBTest() {
 		clientToServerSocketTest(false,12082);
 	}

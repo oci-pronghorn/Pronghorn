@@ -17,7 +17,7 @@ public class TestDataFiles {
     public TestDataFiles(File tempDirectory, int fileCount, int fileSize) {
         this.tempDirectory = tempDirectory;
         buildTestFiles(fileCount, fileSize);
-        rootLen = tempDirectory.toString().endsWith("/")|tempDirectory.toString().endsWith("\\") ? tempDirectory.toString().length()+1 : tempDirectory.toString().length();
+        rootLen = tempDirectory.toString().endsWith(File.separator) ? tempDirectory.toString().length()+1 : tempDirectory.toString().length();
     }
     
     private void buildTestFiles(int fileCount, int fileSize) {

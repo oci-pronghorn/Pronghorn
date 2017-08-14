@@ -400,7 +400,7 @@ public class HTTPSRoundTripTest {
 		try {
 		
 			String uri = dir.toURI().toString();			
-			root = uri.substring("file:".length(), uri.lastIndexOf('/'));
+			root = uri.substring("file:".length(), uri.lastIndexOf('/')).replace("%20", " ").replace("/", File.separator).replace("\\", File.separator);
 			
 		} catch (URISyntaxException e) {						
 			e.printStackTrace();

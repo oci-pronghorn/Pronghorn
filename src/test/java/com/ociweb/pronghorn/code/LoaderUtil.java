@@ -56,9 +56,9 @@ public class LoaderUtil {
             
             if (location.startsWith(prefix) & idx>0) {
                 String root = location.substring(prefix.length(), idx);
-                String sourceRoot = root+"/target/generated-sources/"+rootName+"/";
+                String sourceRoot = root + File.separator + "target" + File.separator + "generated-sources" + File.separator + rootName + File.separator;
                 
-                File f = new File(sourceRoot);
+                File f = new File(sourceRoot.replace("%20", " ").replace("/", File.separator).replace("\\", File.separator));
                 f.mkdirs();
                 
                 return f;
@@ -78,9 +78,9 @@ public class LoaderUtil {
             
             if (location.startsWith(prefix) & idx>0) {
                 String root = location.substring(prefix.length(), idx);
-                String classesRoot = root+"/target/classes/";
+                String classesRoot = root + File.separator + "target" + File.separator + "classes" + File.separator;
                 
-                File f = new File(classesRoot);
+                File f = new File(classesRoot.replace("%20", " ").replace("/", File.separator).replace("\\", File.separator));
                 f.mkdirs();
                 
                 return f;
@@ -125,8 +125,8 @@ public class LoaderUtil {
         SimpleSourceFileObject source = new SimpleSourceFileObject(className, target);
         toCompile.add(source);
         
-        String packagePath = packageName.replace('.', '/');
-        String cannonicalName = packagePath+"/"+className;
+        String packagePath = packageName.replace('.', File.separatorChar);
+        String cannonicalName = packagePath + File.separator + className;
         
         
         if (null!=baseFolder) {

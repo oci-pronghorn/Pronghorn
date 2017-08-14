@@ -367,7 +367,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 		
 		this.data.setPathCache(pc);
 		
-		int rootSize = folderRootString.endsWith("/") || folderRootString.endsWith("\\") ? folderRootString.length() : folderRootString.length()+1;
+		int rootSize = folderRootString.endsWith(File.separator) ? folderRootString.length() : folderRootString.length()+1;
 			
 		//when reading resources from inside a jar this will be null so we msut load them on the fly, eg when they are asked for.
 		if (null!=children) {
@@ -631,7 +631,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
     private int selectActiveFileChannel(TrieParserReader trieReader, TrieParser trie,
             int bytesLength, final byte[] bytesBackingArray,  int bytesPosition, final int bytesMask) {
 
-        if ('/'==bytesBackingArray[bytesMask&bytesPosition]) {//Always do this?? not sure yet.
+        if (File.separatorChar == bytesBackingArray[bytesMask&bytesPosition]) {//Always do this?? not sure yet.
             bytesPosition++;
             bytesLength--;
         }     
