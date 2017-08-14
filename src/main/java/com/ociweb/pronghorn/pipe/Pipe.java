@@ -1337,7 +1337,9 @@ public class Pipe<T extends MessageSchema<T>> {
     	assert(verifyHasRoomForWrite(len, output));    	
     	
     	//blob head position is moved forward
-        Pipe.addAndGetBytesWorkingHeadPosition(output, len);
+    	if (len>0) { //len can be 0 so do nothing, len can be -1 for eof also nothing to move forward
+    		Pipe.addAndGetBytesWorkingHeadPosition(output, len);
+    	}
         //record the new start and length to the slab for this blob
         Pipe.addBytePosAndLen(output, originalBlobPosition, len);
     }
@@ -3508,7 +3510,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
     
     public static <S extends MessageSchema<S>> int addAndGetBytesWorkingHeadPosition(Pipe<S> pipe, int inc) {
-    	assert(inc>=0) : "only zero or positive values supported";
+    	assert(inc>=0) : "only zero or positive values supported found "+inc;
         return PaddedInt.maskedAdd(pipe.blobRingHead.byteWorkingHeadPos, inc, Pipe.BYTES_WRAP_MASK);
     }
 

@@ -365,8 +365,13 @@ public class StreamingVisitorReader {
         	int meta = Pipe.readRingByteMetaData(idx, inputRing);
         	int len =  Pipe.readRingByteLen(idx, inputRing);
 
-        	assert(len>=0) : "Optional strings are NOT supported for this type";
-        	visitor.visitBytes(name, id, Pipe.readBytes(inputRing, visitor.targetBytes(name, id, len), meta, len));
+        	if (len>=0) {
+        		visitor.visitBytes(name, id, Pipe.readBytes(inputRing, visitor.targetBytes(name, id, len), meta, len));
+        	} else {
+        		//len of -1 is a null not a zero length vector, 
+        		//NOTE: visitor does not yet support null;
+        	}
+        	
 
     }
 
