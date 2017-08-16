@@ -33,6 +33,7 @@ import com.ociweb.pronghorn.stage.generator.FuzzDataStageGenerator;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.stage.scheduling.NonThreadScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
 
 public class FuzzGeneratorGeneratorTest {
@@ -191,32 +192,22 @@ public class FuzzGeneratorGeneratorTest {
             ConsoleSummaryStage dump = new ConsoleSummaryStage(gm, pipe, out );
             
             GraphManager.enableBatching(gm);
-       //     MonitorConsoleStage.attach(gm);
-            
-            ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
-            scheduler.playNice=false;
+
+            NonThreadScheduler scheduler = new NonThreadScheduler(gm);
             scheduler.startup();
             
-            Thread.sleep(durationMS);
-            
+            long limit = System.currentTimeMillis()+durationMS;
+            while (System.currentTimeMillis()<limit) {
+            	scheduler.run();
+            }
             scheduler.shutdown();
-            scheduler.awaitTermination(10, TimeUnit.SECONDS);
             
-        } catch (ClassNotFoundException e) {
+            
+            
+            
+        } catch (Exception e) {
             e.printStackTrace();
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        } 
     }
      
     

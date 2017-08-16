@@ -42,6 +42,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     public static boolean showRequests = false;
     
     private StringBuilder[] accumulators;
+    private boolean shutdownInProgress;
  
     private ArrayList<SelectionKey> doneSelectors = new ArrayList<SelectionKey>(100);
 
@@ -89,13 +90,8 @@ public class ServerSocketReaderStage extends PronghornStage {
     
     @Override
     public void shutdown() {
-        int i = output.length;
-        while (--i >= 0) {
-        	if (Pipe.isInit(output[i])) {
-        		Pipe.spinBlockForRoom(output[i], Pipe.EOF_SIZE);
-            	Pipe.publishEOF(output[i]);  
-        	}
-        }
+    	Pipe.publishEOF(output);  
+       
         logger.trace("server reader has shut down");
     }
 
@@ -122,6 +118,19 @@ public class ServerSocketReaderStage extends PronghornStage {
     @Override
     public void run() {
 
+    	 if(shutdownInProgress) {
+	    	 int i = output.length;
+	         while (--i >= 0) {
+	         	if (null!=output[i] && Pipe.isInit(output[i])) {
+	         		if (!Pipe.hasRoomForWrite(output[i], Pipe.EOF_SIZE)){ 
+	         			return;
+	         		}  
+	         	}
+	         }
+	         requestShutdown();
+	         return;
+    	 }
+    	
     		{	
     	
 	        ////////////////////////////////////////
@@ -299,9 +308,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 	    		} else {
 	    			logger.info("unknown or shutdown on release");
 	    			assert(-1==msgIdx);
-	    			//requestShutdown(); //TODO: we should not shutdown if release is the end?
+	    			shutdownInProgress = true;
 	    			Pipe.confirmLowLevelRead(a, Pipe.EOF_SIZE);
-	    			
 	    		}
 	    		Pipe.releaseReadLock(a);	    		
 	    	}
@@ -326,8 +334,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			coordinator.releaseResponsePipeLineIdx(idToClear);
 			
 			assert( 0 == Pipe.releasePendingByteCount(output[pipeIdx]));
-			
-			
+						
 			if (id == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {				
 				SSLConnection conn = coordinator.get(idToClear);
 				if (null!=conn) {					
@@ -335,29 +342,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 				}
 				conn.clearPoolReservation();
 				
-			} else {
-				logger.info("legacy release detected, error...");
-			}
-			
-		} else {
-			//logger.info("SKIP RELEASE for pipe {} connection {}",pipeIdx, idToClear);
-			
-			if (pipeIdx>=0) {
-				
-			//	logger.info(pipeIdx+"  no release for pipe {} release head position {}",output[pipeIdx],pos); //what about EOF is that blocking the relase.
-
-				if (pos>Pipe.headPosition(output[pipeIdx])) {
-					System.err.println("EEEEEEEEEEEEEEEEEEEEEEEEe  got ack but did not release on server. pipe "+pipeIdx+" pos "+pos+" expected "+Pipe.headPosition(output[pipeIdx]) );
-					//System.exit(-1);
-				} else {
-					//this is the expected case where more data came in for this pipe
-				}
-			//	throw new UnsupportedOperationException("not released pos did not match "+ pos+" in "+output[pipeIdx]);
-				
-			} else {
-				//probably already cleared and closed
-				logger.trace("WARNING: not released, could not find "+idToClear);
-			}
+			} 
 		}
 	}
 
@@ -379,7 +364,7 @@ public class ServerSocketReaderStage extends PronghornStage {
             return pendingSelections > 0;
         } catch (IOException e) {
             logger.error("unexpected shutdown, Selector for this group of connections has crashed with ",e);
-            requestShutdown();
+            shutdownInProgress = true;
             return false;
         }
     }
@@ -577,30 +562,13 @@ public class ServerSocketReaderStage extends PronghornStage {
 				while (accumulators[idx].length() >= HTTPUtil.expectedGet.length()) {
 					
 				   int c = startsWith(accumulators[idx],HTTPUtil.expectedGet); 
-				   if (c>0) {
-					   
+				   if (c>0) {					   
 					   String remaining = accumulators[idx].substring(c*HTTPUtil.expectedGet.length());
 					   accumulators[idx].setLength(0);
-					   accumulators[idx].append(remaining);							    					   
-					   
-					   
-				   } else {
-					   logger.info("A"+Arrays.toString(HTTPUtil.expectedGet.getBytes()));
-					   logger.info("B"+Arrays.toString(accumulators[idx].subSequence(0, HTTPUtil.expectedGet.length()).toString().getBytes()   ));
-					   
-					   logger.info("FORCE EXIT ERROR at {} exlen {}",pos,HTTPUtil.expectedGet.length());
-					   System.out.println(accumulators[idx].subSequence(0, HTTPUtil.expectedGet.length()).toString());
-					   System.exit(-1);
-					   	
-					   
-					   
+					   accumulators[idx].append(remaining);
 				   }
-				
-					
 				}
 			}
-			
-			
 		}
 	}
     

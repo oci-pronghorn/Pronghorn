@@ -635,21 +635,13 @@ public class ServerSocketWriterStage extends PronghornStage {
     	writeToChannel[idx]=null;
         int sequenceNo = 0;//not available here
         if (null!=releasePipe) {
-        	if (!Pipe.hasRoomForWrite(releasePipe)) {
-        		logger.info("warning must block until pipe is free or we may create a hang condition.");
-        		Pipe.spinBlockForRoom(releasePipe, Pipe.sizeOf(releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101));
-        	}        	
-        	if (Pipe.hasRoomForWrite(releasePipe)) {
-        		publishRelease(releasePipe, activeIds[idx],
-        				        activeTails[idx]!=-1?activeTails[idx]: Pipe.tailPosition(dataToSend[idx]),
-        				        sequenceNo);
-        	} else {
-        		logger.info("potential hang from failure to release pipe");
-        	}
+        	Pipe.presumeRoomForWrite(releasePipe);
+        	publishRelease(releasePipe, activeIds[idx],
+        			       activeTails[idx]!=-1?activeTails[idx]: Pipe.tailPosition(dataToSend[idx]),
+        					sequenceNo);
         }
     }
-
-    
+   
 
 	private static void publishRelease(Pipe<ReleaseSchema> pipe, long conId, long position, int sequenceNo) {
 		assert(position!=-1);

@@ -14,6 +14,7 @@ public class ByteArrayProducerStage extends PronghornStage{
     private int pos;
     private final int chunkSize;
     private final Pipe<RawDataSchema> output;
+    private boolean shutdownInProgress;
     
     public ByteArrayProducerStage(GraphManager gm, byte[] rawData, Pipe<RawDataSchema> output) {
         this(gm, rawData, null, output);
@@ -33,6 +34,14 @@ public class ByteArrayProducerStage extends PronghornStage{
     @Override
     public void run() {        
         
+    	if (shutdownInProgress) {
+    		if (!Pipe.hasRoomForWrite(output, Pipe.EOF_SIZE)) {
+    			return;
+    		} 
+    		requestShutdown();
+    		return;
+    	}
+    	
         while (pos<rawDataLength && Pipe.hasRoomForWrite(output)) {
                         
             int length = computeLength();
@@ -50,7 +59,7 @@ public class ByteArrayProducerStage extends PronghornStage{
         
         if (pos==rawData.length) {
             Pipe.publishAllBatchedWrites(output);
-            requestShutdown();
+            shutdownInProgress = true;            
         }
     }
 
@@ -70,8 +79,9 @@ public class ByteArrayProducerStage extends PronghornStage{
    
     @Override
     public void shutdown() {
-        Pipe.spinBlockForRoom(output, Pipe.EOF_SIZE);
+    
         Pipe.publishEOF(output);
+        
         
     }
     

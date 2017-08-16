@@ -21,6 +21,7 @@ public class ColumnComputeStage<M extends MatrixSchema<M>, C extends MatrixSchem
 	private final int colInMsgSize;
 	private final int colOutMsgSize;
 	
+	private boolean shutdownInProgress;
 	
 	private final int rowLimit;
 	private int remainingRows;
@@ -91,13 +92,7 @@ public class ColumnComputeStage<M extends MatrixSchema<M>, C extends MatrixSchem
 	@Override
 	public void shutdown() {
 		
-
-		int c= colOutput.length;
-		while (--c>=0) {
-			
-			Pipe.spinBlockForRoom(colOutput[c], Pipe.EOF_SIZE);
-			Pipe.publishEOF(colOutput[c]);
-		}
+		Pipe.publishEOF(colOutput);
 		
 	}
 	
@@ -105,6 +100,18 @@ public class ColumnComputeStage<M extends MatrixSchema<M>, C extends MatrixSchem
 	@Override
 	public void run() {
 			
+   	 if(shutdownInProgress) {
+    	 int i = colOutput.length;
+         while (--i >= 0) {
+         	if (null!=colOutput[i] && Pipe.isInit(colOutput[i])) {
+         		if (!Pipe.hasRoomForWrite(colOutput[i], Pipe.EOF_SIZE)){ 
+         			return;
+         		}  
+         	}
+         }
+         requestShutdown();
+         return;
+	 }
 
 	//	System.err.println("____________ ENTER "+remainingRows+"  "+rowLimit+"  "+rowInput+" has content "+Pipe.hasContentToRead(rowInput,Pipe.EOF_SIZE)+" peek "+Pipe.peekInt(rowInput));
 			
@@ -129,8 +136,8 @@ public class ColumnComputeStage<M extends MatrixSchema<M>, C extends MatrixSchem
 			
 			if (Pipe.takeMsgIdx(rowInput) < 0) {				
 				Pipe.confirmLowLevelRead(rowInput, Pipe.EOF_SIZE);
-				Pipe.releaseReadLock(rowInput);				
-			    requestShutdown();
+				Pipe.releaseReadLock(rowInput);	
+				shutdownInProgress = true;
 				return;
 
 			}		
@@ -143,7 +150,7 @@ public class ColumnComputeStage<M extends MatrixSchema<M>, C extends MatrixSchem
 					if (Pipe.takeMsgIdx(colInput[c])<0) {						
 						Pipe.confirmLowLevelRead(colInput[c], Pipe.EOF_SIZE);
 						Pipe.releaseReadLock(colInput[c]);							
-						requestShutdown();
+						shutdownInProgress = true;
 						return;		
 					} else {
 						//only begin the new output column if we did NOT receive the shutdown message.

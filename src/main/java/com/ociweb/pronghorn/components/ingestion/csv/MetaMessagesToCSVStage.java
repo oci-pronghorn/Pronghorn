@@ -218,14 +218,26 @@ public class MetaMessagesToCSVStage extends PronghornStage {
 	        	        break;     	       
 	        	        	        	       
 	        	        
-	        		case 16: //beginMessage 
+	        		case 16:
+					Pipe pipe = stage.outputRing;
+					int msgIdx = RawDataSchema.MSG_CHUNKEDSTREAM_1; //beginMessage 
 	        			
-	        			Pipe.blockWriteMessage(stage.outputRing, RawDataSchema.MSG_CHUNKEDSTREAM_1);        			
+	        			//before write make sure the tail is moved ahead so we have room to write
+					while (!Pipe.hasRoomForWrite(pipe, Pipe.from(pipe).fragDataSize[msgIdx])) {
+					    Pipe.spinWork(pipe);
+					}
+					Pipe.addMsgIdx(pipe, msgIdx);        			
 	        			stage.activeFieldIdx = 0;
 	        			stage.activeByteBase = Pipe.getBlobWorkingHeadPosition(stage.outputRing);
 	        			break;
-	        		case 80: //beginMessage Named
-	        			Pipe.blockWriteMessage(stage.outputRing, RawDataSchema.MSG_CHUNKEDSTREAM_1);	  //?? begin message named?
+	        		case 80:
+					Pipe pipe1 = stage.outputRing;
+					int msgIdx1 = RawDataSchema.MSG_CHUNKEDSTREAM_1; //beginMessage Named
+	        			//before write make sure the tail is moved ahead so we have room to write
+					while (!Pipe.hasRoomForWrite(pipe1, Pipe.from(pipe1).fragDataSize[msgIdx1])) {
+					    Pipe.spinWork(pipe1);
+					}
+					Pipe.addMsgIdx(pipe1, msgIdx1);	  //?? begin message named?
 	        			stage.activeFieldIdx = 0;
 	        			stage.activeByteBase = Pipe.getBlobWorkingHeadPosition(stage.outputRing);
 	        			break;

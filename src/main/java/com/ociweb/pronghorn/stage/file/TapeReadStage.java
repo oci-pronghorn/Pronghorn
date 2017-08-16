@@ -32,6 +32,7 @@ public class TapeReadStage extends PronghornStage {
     private ByteBuffer header;
     private  IntBuffer intHeader;
     private int slabInProgress = -1;
+    private boolean shutdownInProgress;
     
     //TODO: add command pipe for reading from multiple channels
     //TODO: Unrelated: build stage with executor service as arg for map reduce using new random access to pipe
@@ -59,6 +60,14 @@ public class TapeReadStage extends PronghornStage {
     
     @Override
     public void run() {
+    	if (shutdownInProgress) {
+    		if (!Pipe.hasRoomForWrite(target, Pipe.EOF_SIZE)) {
+    			return;
+    		}
+    		requestShutdown();
+    		return;    		
+    	}
+    	
         while (processAvailData(this)) {
             //keeps going while there is data to read and room to write it.
         }
@@ -67,13 +76,15 @@ public class TapeReadStage extends PronghornStage {
     @Override
     public void shutdown() {
         //if file contains eof it is never sent to pipe so we end with this one.
-        Pipe.spinBlockForRoom(target, Pipe.EOF_SIZE);
         Pipe.publishEOF(target);
     }
-    
- 
     private boolean processAvailData(TapeReadStage tapeReadStage) {
+
+    	
+    	
+    	
         try {
+        	
                         
             //read blob count int  (in bytes)
             //read slab count int  (in bytes)
@@ -87,7 +98,7 @@ public class TapeReadStage extends PronghornStage {
                 if (len<0) {
                     fileChannel.close();
                     Pipe.publishAllBatchedWrites(target);
-                    requestShutdown(); //must return after calling request shutdown, need to find a good way to catch this and prevent this code mistake.
+                    shutdownInProgress = true;
                     return false;
                 }                
                 if (header.hasRemaining()) {

@@ -750,13 +750,6 @@ private void sendRelease(long channel, final int idx) {
 		throw new UnsupportedOperationException("channel must exist");
 	}
 	assert(inputSlabPos[idx]>=0);
-	//logger.info("send ack for {}",channel);
-	if (!Pipe.hasRoomForWrite(releasePipe)) {
-		logger.info("warning, to prevent hang we must write this message, write fewer or make pipe longer.");
-		//NOTE must spin lock for room, must write or this system may hang.
-		Pipe.spinBlockForRoom(releasePipe, Pipe.sizeOf(releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101));	    		
-	}
-
 	Pipe.presumeRoomForWrite(releasePipe);
 	
 	int s = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101);

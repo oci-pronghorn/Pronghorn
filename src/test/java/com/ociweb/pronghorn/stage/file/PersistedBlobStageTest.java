@@ -52,7 +52,7 @@ public class PersistedBlobStageTest {
 		Pipe<PersistedBlobStoreSchema> storeRequests = PersistedBlobStoreSchema.instance.newPipe(10, 128);
 		Pipe<PersistedBlobLoadSchema> loadResponses = PersistedBlobLoadSchema.instance.newPipe(10, 128);
 
-		PersistedBlobStage.newInstance(gm, storeRequests, loadResponses, fileSizeMultiplier, maxIdValueBits, rootFolder);
+		PersistedUnsafeBlobStage.newInstance(gm, storeRequests, loadResponses, fileSizeMultiplier, maxIdValueBits, rootFolder);
 		
 		StringBuilder out = new StringBuilder();
 		ConsoleJSONDumpStage.newInstance(gm, loadResponses, out);

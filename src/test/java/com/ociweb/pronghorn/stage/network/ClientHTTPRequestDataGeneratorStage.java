@@ -20,6 +20,7 @@ public class ClientHTTPRequestDataGeneratorStage extends PronghornStage {
     private final int iterations;
     private int count;    
     private final CharSequence[] paths;
+    private boolean shutdownInProgress;
     
     private final String verb;
     
@@ -123,6 +124,15 @@ public class ClientHTTPRequestDataGeneratorStage extends PronghornStage {
     @Override
     public void run() {        
         
+    	if (shutdownInProgress) {
+    		if (!Pipe.hasRoomForWrite(output, Pipe.EOF_SIZE)) {
+    			return;
+    		}
+    		requestShutdown();
+    		return;
+    	}
+    	
+    	
         while (pos < rawDataLength && Pipe.hasRoomForWrite(output)) {
                         
             int length = rawDataSizes[chunkCount++];
@@ -140,8 +150,7 @@ public class ClientHTTPRequestDataGeneratorStage extends PronghornStage {
                     chunkCount = 0;
                 } else {
                     Pipe.publishAllBatchedWrites(output);
-                    requestShutdown();
-                    System.out.println("Done sending data.");
+                    shutdownInProgress = true;
                 }
             }
         }
@@ -161,10 +170,8 @@ public class ClientHTTPRequestDataGeneratorStage extends PronghornStage {
    
     @Override
     public void shutdown() {
-        
-        System.out.println("**** ClientHTTPRequest DataGenerator finished sending  expectedCount:"+(iterations*(long)rawDataSizes.length)+" actualCount:"+realCount);
-        Pipe.spinBlockForRoom(output, Pipe.EOF_SIZE);
-        Pipe.publishEOF(output);
+   
+    	Pipe.publishEOF(output);
         
     }
 

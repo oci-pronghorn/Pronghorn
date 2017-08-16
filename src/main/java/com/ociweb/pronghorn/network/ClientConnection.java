@@ -264,8 +264,7 @@ public class ClientConnection extends SSLConnection {
 
 		assert(getSocketChannel().finishConnect());
 		
-		//TODO: should cache this IP...
-		logger.info("now finished connection to : {} ",getSocketChannel().getRemoteAddress().toString());
+		//logger.trace("now finished connection to : {} ",getSocketChannel().getRemoteAddress().toString());
 		
 		if (isTLS) {
 

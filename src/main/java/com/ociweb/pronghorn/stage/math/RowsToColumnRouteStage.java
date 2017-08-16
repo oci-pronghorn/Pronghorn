@@ -12,6 +12,7 @@ public class RowsToColumnRouteStage<M extends MatrixSchema<M>> extends Pronghorn
 	private final int rowLimit;
 	private final int sizeOf;
 	private int remainingRows;
+	private boolean shutdownInProgress;
 	
 	protected RowsToColumnRouteStage(GraphManager graphManager, M matrixSchema, Pipe<RowSchema<M>> rowPipeInput, Pipe<ColumnSchema<M>>[] columnPipeOutput) {
 		super(graphManager, rowPipeInput, columnPipeOutput);
@@ -29,15 +30,25 @@ public class RowsToColumnRouteStage<M extends MatrixSchema<M>> extends Pronghorn
 	
 	@Override
 	public void shutdown() {
-		int c = columnPipeOutput.length;
-		while (--c>=0) {
-			Pipe.spinBlockForRoom(columnPipeOutput[c], Pipe.EOF_SIZE);
-			Pipe.publishEOF(columnPipeOutput[c]);
-		}
+		Pipe.publishEOF(columnPipeOutput);
 	}
 	
 	@Override
 	public void run() {
+		
+		 if(shutdownInProgress) {
+	    	 int i = columnPipeOutput.length;
+	         while (--i >= 0) {
+	         	if (null!=columnPipeOutput[i] && Pipe.isInit(columnPipeOutput[i])) {
+	         		if (!Pipe.hasRoomForWrite(columnPipeOutput[i], Pipe.EOF_SIZE)){ 
+	         			return;
+	         		}  
+	         	}
+	         }
+	         requestShutdown();
+	         return;
+    	 }
+		
 		
 		int columnIdx = 0;
 		final int columnLimit = columnPipeOutput.length;
@@ -58,7 +69,7 @@ public class RowsToColumnRouteStage<M extends MatrixSchema<M>> extends Pronghorn
 					assert(remainingRows==rowLimit);
 					Pipe.confirmLowLevelRead(rowPipeInput, Pipe.EOF_SIZE);
 					Pipe.releaseReadLock(rowPipeInput);
-					requestShutdown();
+					shutdownInProgress = true;
 					return;
 				}
 				

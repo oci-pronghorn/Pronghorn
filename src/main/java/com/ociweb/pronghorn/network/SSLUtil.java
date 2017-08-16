@@ -984,17 +984,9 @@ public class SSLUtil {
 	}
 
 	private static void sendRelease(Pipe<NetPayloadSchema> source, Pipe<ReleaseSchema> release, SSLConnection cc, boolean isServer) {
-		if (Pipe.hasRoomForWrite(release, SIZE_OF_RELEASE_MSG)) {
-			sendReleaseRec(source, release, cc, cc.getSequenceNo(), isServer);
-		} else {
-			logger.error("Warning release pipes are too short for volume, if messsage is not added the system may hang {} {}",cc.id,release);
-			//spin lock is required here to ensure this message is not lost, only happens in this case where the sytem is not configured for the right volume
-			Pipe.spinBlockForRoom(release, SIZE_OF_RELEASE_MSG);
-			//the above spin may stop early if the system is in the progress of shutting down
-			if (Pipe.hasRoomForWrite(release, SIZE_OF_RELEASE_MSG)) {
-				sendReleaseRec(source, release, cc, cc.getSequenceNo(), isServer);
-			}
-		}
+		Pipe.presumeRoomForWrite(release);
+		sendReleaseRec(source, release, cc, cc.getSequenceNo(), isServer);
+		
 	}
 
 	private static void sendReleaseRec(Pipe<NetPayloadSchema> source, Pipe<ReleaseSchema> release, SSLConnection cc, int sequence, boolean isServer) {

@@ -284,8 +284,12 @@ public class MatrixComputeTest {
 		
 		
 		if (k<0) {
-			Pipe.spinBlockForRoom(left, Pipe.EOF_SIZE);
-			Pipe.spinBlockForRoom(right, Pipe.EOF_SIZE);
+			while (!Pipe.hasRoomForWrite(left, Pipe.EOF_SIZE)) {
+			    Pipe.spinWork(left);
+			}
+			while (!Pipe.hasRoomForWrite(right, Pipe.EOF_SIZE)) {
+			    Pipe.spinWork(right);
+			}
 			Pipe.publishEOF(left);
 			Pipe.publishEOF(right);
 		}
@@ -415,8 +419,12 @@ public class MatrixComputeTest {
 		}
 
 		
-		Pipe.spinBlockForRoom(left, Pipe.EOF_SIZE);
-		Pipe.spinBlockForRoom(right, Pipe.EOF_SIZE);
+		while (!Pipe.hasRoomForWrite(left, Pipe.EOF_SIZE)) {
+		    Pipe.spinWork(left);
+		}
+		while (!Pipe.hasRoomForWrite(right, Pipe.EOF_SIZE)) {
+		    Pipe.spinWork(right);
+		}
 		Pipe.publishEOF(left);
 		Pipe.publishEOF(right);
 				

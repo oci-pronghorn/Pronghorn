@@ -54,7 +54,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
     public final int maxOuputSize;
     public final int plainSize = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210);
     private int shutdownCount;
-
+    private boolean shutdownInProgress;
 
     private StringBuilder[] accumulators; //for testing only
 
@@ -129,7 +129,6 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		int i = outgoingPipes.length;
 		while (--i>=0) {
 			if (null!=outgoingPipes[i] && Pipe.isInit(outgoingPipes[i])) {
-				Pipe.spinBlockForRoom(outgoingPipes[i], Pipe.EOF_SIZE);  //TODO: this is a re-occuring pattern perhaps this belongs in the base class since every actor does it.
 				Pipe.publishEOF(outgoingPipes[i]);
 			}
 		}
@@ -139,6 +138,19 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	@Override
     public void run() {
 
+		if (shutdownInProgress) {
+			int i = outgoingPipes.length;
+			while (--i>=0) {
+				if (null!=outgoingPipes[i] && Pipe.isInit(outgoingPipes[i])) {
+					if (!Pipe.hasRoomForWrite(outgoingPipes[i], Pipe.EOF_SIZE)) {
+						return;
+					}
+				}
+			}
+			requestShutdown();
+			return;
+		}
+		
     	boolean haveWork;
     	int maxIterations = 100;
     	do {
@@ -266,7 +278,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	Pipe.releaseReadLock(sourcePipe);
 		        	
 		        	if (--shutdownCount<=0) {
-		        		requestShutdown();
+		        		shutdownInProgress = true;
 		        		assert(Pipe.bytesReadBase(sourcePipe)>=0);
 		        		break;
 		        	} else {

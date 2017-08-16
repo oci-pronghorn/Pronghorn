@@ -1,9 +1,8 @@
 package com.ociweb.pronghorn.components.ingestion.csv;
 
-import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
 import static com.ociweb.pronghorn.pipe.Pipe.blobMask;
+import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
 import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
-import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnTail;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
 
@@ -330,8 +329,11 @@ public class FieldSplitterStage extends PronghornStage {
 	public static void writeBytesSplit(byte[] data, int offset1, int length1,
 			int offset2, int length2, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_BYTEARRAY_LOC]), output);
-		
+		long lastCheckedValue = Pipe.tailPosition(output);
+				while (null==Pipe.slab(output) || lastCheckedValue < Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_BYTEARRAY_LOC])) {
+					Pipe.spinWork(output);
+				    lastCheckedValue = Pipe.tailPosition(output);
+				}
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_BYTEARRAY_LOC);
 			
 		int	bytePosition = Pipe.getBlobWorkingHeadPosition(output);		    	
@@ -347,8 +349,11 @@ public class FieldSplitterStage extends PronghornStage {
 	public static void writeASCIISplit(byte[] data, int offset1, int length1,
 			int offset2, int length2, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_ASCII_LOC]), output);
-		
+		long lastCheckedValue = Pipe.tailPosition(output);
+				while (null==Pipe.slab(output) || lastCheckedValue < Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_ASCII_LOC])) {
+					Pipe.spinWork(output);
+				    lastCheckedValue = Pipe.tailPosition(output);
+				}
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_ASCII_LOC);
 			
 		int bytePosition = Pipe.getBlobWorkingHeadPosition(output);
@@ -363,16 +368,22 @@ public class FieldSplitterStage extends PronghornStage {
 
 	public static void writeNull(Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_NULL_LOC]), output);
-		
+		long lastCheckedValue = Pipe.tailPosition(output);
+		while (null==Pipe.slab(output) || lastCheckedValue < Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_NULL_LOC])) {
+			Pipe.spinWork(output);
+		    lastCheckedValue = Pipe.tailPosition(output);
+		}
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_NULL_LOC);
 	}
 
 	public static void writeDecimal(TypeExtractor typeExtractor,
 			Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_DECIMAL_LOC]), output);
-		
+		long lastCheckedValue = Pipe.tailPosition(output);
+				while (null==Pipe.slab(output) || lastCheckedValue < Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_DECIMAL_LOC])) {
+					Pipe.spinWork(output);
+				    lastCheckedValue = Pipe.tailPosition(output);
+				}
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_DECIMAL_LOC);	
 		Pipe.addDecimal(TypeExtractor.decimalPlaces(typeExtractor), typeExtractor.activeFieldLong*TypeExtractor.signMult(typeExtractor), output);
 	}
@@ -380,8 +391,11 @@ public class FieldSplitterStage extends PronghornStage {
 	public static void writeBytes(byte[] data, int offset, int length,
 			Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_BYTEARRAY_LOC]), output);
-		
+		long lastCheckedValue = Pipe.tailPosition(output);
+				while (null==Pipe.slab(output) || lastCheckedValue < Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_BYTEARRAY_LOC])) {
+					Pipe.spinWork(output);
+				    lastCheckedValue = Pipe.tailPosition(output);
+				}
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_BYTEARRAY_LOC);
 		Pipe.addByteArray(data, offset, length, output);
 	}
@@ -389,8 +403,11 @@ public class FieldSplitterStage extends PronghornStage {
 	public static void writeASCII(byte[] data, int offset, int length, Pipe output) {
 
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_ASCII_LOC]), output);
-		
+		long lastCheckedValue = Pipe.tailPosition(output);
+		while (null==Pipe.slab(output) || lastCheckedValue < Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_ASCII_LOC])) {
+			Pipe.spinWork(output);
+		    lastCheckedValue = Pipe.tailPosition(output);
+		}
 		Pipe.addMsgIdx(output,MetaMessageDefs.MSG_ASCII_LOC);
 		
 		
@@ -399,24 +416,33 @@ public class FieldSplitterStage extends PronghornStage {
 
 	public static void writeLong(TypeExtractor typeExtractor, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_INT64_LOC]), output);
-		
+		long lastCheckedValue = Pipe.tailPosition(output);
+		while (null==Pipe.slab(output) || lastCheckedValue < Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_INT64_LOC])) {
+			Pipe.spinWork(output);
+		    lastCheckedValue = Pipe.tailPosition(output);
+		}
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_INT64_LOC);
 		Pipe.addLongValue(typeExtractor.activeFieldLong*(long)TypeExtractor.signMult(typeExtractor), output);
 	}
 
 	public static void writeULong(TypeExtractor typeExtractor, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_UINT64_LOC]), output);
-		
+		long lastCheckedValue = Pipe.tailPosition(output);
+		while (null==Pipe.slab(output) || lastCheckedValue < Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_UINT64_LOC])) {
+			Pipe.spinWork(output);
+		    lastCheckedValue = Pipe.tailPosition(output);
+		}
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_UINT64_LOC);
 		Pipe.addLongValue(typeExtractor.activeFieldLong, output);
 	}
 
 	public static void writeInt(TypeExtractor typeExtractor, Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_INT32_LOC]), output);
-		
+		long lastCheckedValue = Pipe.tailPosition(output);
+		while (null==Pipe.slab(output) || lastCheckedValue < Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_INT32_LOC])) {
+			Pipe.spinWork(output);
+		    lastCheckedValue = Pipe.tailPosition(output);
+		}
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_INT32_LOC);
 		Pipe.addIntValue((int)typeExtractor.activeFieldLong*TypeExtractor.signMult(typeExtractor), output);	
 		TypeExtractor.signMult(typeExtractor);
@@ -425,8 +451,11 @@ public class FieldSplitterStage extends PronghornStage {
 	public static void writeUInt(TypeExtractor typeExtractor,
 			Pipe output) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(output), Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_UINT32_LOC]), output);
-		
+		long lastCheckedValue = Pipe.tailPosition(output);
+				while (null==Pipe.slab(output) || lastCheckedValue < Pipe.workingHeadPosition(output)-(output.sizeOfSlabRing-Pipe.from(output).fragDataSize[MetaMessageDefs.MSG_UINT32_LOC])) {
+					Pipe.spinWork(output);
+				    lastCheckedValue = Pipe.tailPosition(output);
+				}
 		Pipe.addMsgIdx(output, MetaMessageDefs.MSG_UINT32_LOC);
 		Pipe.addIntValue((int)typeExtractor.activeFieldLong, output);
 	}
@@ -435,8 +464,11 @@ public class FieldSplitterStage extends PronghornStage {
 	private static void endOfData(Pipe ring) {
 		
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(ring), Pipe.workingHeadPosition(ring)-(ring.sizeOfSlabRing-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_FLUSH]), ring);
-		
+		long lastCheckedValue = Pipe.tailPosition(ring);
+		while (null==Pipe.slab(ring) || lastCheckedValue < Pipe.workingHeadPosition(ring)-(ring.sizeOfSlabRing-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_FLUSH])) {
+			Pipe.spinWork(ring);
+		    lastCheckedValue = Pipe.tailPosition(ring);
+		}
 		Pipe.addMsgIdx(ring, MetaMessageDefs.MSG_FLUSH);
 		Pipe.publishWrites(ring);
 		Pipe.publishAllBatchedWrites(ring);
@@ -444,16 +476,22 @@ public class FieldSplitterStage extends PronghornStage {
 
 	private static void beginningOfLine(Pipe ring) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(ring), Pipe.workingHeadPosition(ring)-(ring.sizeOfSlabRing-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_MESSAGE_BEGIN_LOC]), ring);
-		
+		long lastCheckedValue = Pipe.tailPosition(ring);
+		while (null==Pipe.slab(ring) || lastCheckedValue < Pipe.workingHeadPosition(ring)-(ring.sizeOfSlabRing-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_MESSAGE_BEGIN_LOC])) {
+			Pipe.spinWork(ring);
+		    lastCheckedValue = Pipe.tailPosition(ring);
+		}
 		Pipe.addMsgIdx(ring, MetaMessageDefs.MSG_MESSAGE_BEGIN_LOC);
 		Pipe.publishWrites(ring);
 	}
 	
 	private static void endOfLine(Pipe ring) {
 		//before write make sure the tail is moved ahead so we have room to write
-		spinBlockOnTail(Pipe.tailPosition(ring), Pipe.workingHeadPosition(ring)-(ring.sizeOfSlabRing-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_MESSAGE_END_LOC]), ring);
-		
+		long lastCheckedValue = Pipe.tailPosition(ring);
+		while (null==Pipe.slab(ring) || lastCheckedValue < Pipe.workingHeadPosition(ring)-(ring.sizeOfSlabRing-Pipe.from(ring).fragDataSize[MetaMessageDefs.MSG_MESSAGE_END_LOC])) {
+			Pipe.spinWork(ring);
+		    lastCheckedValue = Pipe.tailPosition(ring);
+		}
 		Pipe.addMsgIdx(ring, MetaMessageDefs.MSG_MESSAGE_END_LOC);
 		Pipe.publishWrites(ring);
 	}

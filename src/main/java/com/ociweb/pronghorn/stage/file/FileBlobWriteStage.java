@@ -25,9 +25,9 @@ import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 public class FileBlobWriteStage extends PronghornStage{
 
     private static final int SIZE = RawDataSchema.FROM.fragDataSize[0];
-    private final RandomAccessFile outputFile;
+
     private final Pipe<RawDataSchema> input;
-    private ByteChannel openChannel;
+    private FileChannel[] fileChannel;
     
     private ByteBuffer buffA;
     private ByteBuffer buffB;
@@ -36,55 +36,90 @@ public class FileBlobWriteStage extends PronghornStage{
     private FileSystemProvider provider;
     private FileSystem fileSystem;
     private Set<OpenOption> writeOptions;
-    private String outputPathString;
+    private String[] outputPathString;
+
+    private int selectedFile = 0;
     
-    public FileBlobWriteStage(GraphManager graphManager, Pipe<RawDataSchema> input, RandomAccessFile outputFile, String outputPathString) {
+    private final boolean append;
+    
+    public FileBlobWriteStage(GraphManager graphManager,
+    		                  Pipe<RawDataSchema> input,
+    		                  //add pipe to select file.
+    		                  boolean append, 
+    		                  String ... outputPathString) {
+    	
         super(graphManager, input, NONE);
-        this.outputFile = outputFile;
+
+        this.append = append;
         this.outputPathString = outputPathString;
+        
         this.input = input;
         
-        //can not batch up releases of consumed blocks.  (TODO: Not sure why this is true)
-        this.supportsBatchedRelease = false;
+        //TODO: Needs to rotate to the next file upon reaching a specific size.
+        //   upon switch we need to notify someone??
+        
+        
+        
     }
-    
-    //TODO: add second constructor and logic to enable toggle of write between two files
 
     @Override
     public void startup() {
-        openChannel = outputFile.getChannel();
 
-//        //TODO: investigate why the above getChannel() is so much faster than the below .
-//        
-//        this.fileSystem = FileSystems.getDefault();
-//        this.provider = fileSystem.provider();
-//        this.writeOptions = new HashSet<OpenOption>();
-//
-//        this.writeOptions.add(StandardOpenOption.CREATE);
-//        this.writeOptions.add(StandardOpenOption.TRUNCATE_EXISTING);
-//        this.writeOptions.add(StandardOpenOption.WRITE);
-//        
-//        Path path = fileSystem.getPath(outputPathString);
-//       
-//        try {
-//            //openChannel = provider.newByteChannel(path, writeOptions);
-//          //  ExecutorService executor = Executors.newFixedThreadPool(2);
-//            //openChannel = provider.newAsynchronousFileChannel(path, writeOptions, executor);
-//            openChannel = provider.newFileChannel(path, writeOptions);
-////            openChannel.position(0);
-////            openChannel.force(false);
-//            
-//        } catch (IOException e) {
-//           throw new RuntimeException(e);
-//        } 
-//        
+        this.fileSystem = FileSystems.getDefault();
+        this.provider = fileSystem.provider();
+        this.writeOptions = new HashSet<OpenOption>();
+
+        this.writeOptions.add(StandardOpenOption.SYNC);
+        this.writeOptions.add(StandardOpenOption.CREATE);
+
+        if (append) {
+        	this.writeOptions.add(StandardOpenOption.APPEND);        	
+        } else {
+        	this.writeOptions.add(StandardOpenOption.TRUNCATE_EXISTING);
+        }
+        
+        this.writeOptions.add(StandardOpenOption.WRITE);
+        
+
+        try {
+        	int i = outputPathString.length;
+        	fileChannel = new FileChannel[i];
+        	while (--i>=0) {
+        		fileChannel[i] = provider.newFileChannel(fileSystem.getPath(outputPathString[i]), writeOptions);     		
+     
+        	}
+        	
+        } catch (IOException e) {
+           throw new RuntimeException(e);
+        }
         
     }
+
+    //This will probably never work since it requires strict state control
+    private void selectFile(int idx) {
+    	selectedFile = idx;
+    }
         
+    private void clearFile() {
+    	
+    	try {
+			fileChannel[selectedFile].position(0);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+    	
+    }
+    
+    
     @Override
     public void run() {
              
-        do {
+        writeProcessing();
+        
+    }
+
+	private void writeProcessing() {
+		do {
         
         if (null==buffA && 
             null==buffB) {
@@ -136,7 +171,7 @@ public class FileBlobWriteStage extends PronghornStage{
         if (null!=buffA) {
             try {
                 
-                 openChannel.write(buffA);
+                 fileChannel[selectedFile].write(buffA);
                 if (0==buffA.remaining()) {
                     buffA = null;
                 } else {
@@ -150,7 +185,7 @@ public class FileBlobWriteStage extends PronghornStage{
         
         if (null!=buffB) {
             try {                
-                openChannel.write(buffB);
+                fileChannel[selectedFile].write(buffB);
                 if (0==buffB.remaining()) {
                     buffB = null;
                 }
@@ -161,8 +196,7 @@ public class FileBlobWriteStage extends PronghornStage{
         }
         
         } while (null == buffA && null == buffB);
-        
-    }
+	}
 
     @Override
     public void shutdown() {
@@ -171,11 +205,14 @@ public class FileBlobWriteStage extends PronghornStage{
             Pipe.releaseReadLock(input);
         }
         
-        try {
-            openChannel.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    	int i = fileChannel.length;
+    	while (--i>=0) {
+    		try {
+    			fileChannel[i].close();
+    		} catch (IOException e) {
+    			throw new RuntimeException(e);
+    		}
+    	}
                 
     }
     

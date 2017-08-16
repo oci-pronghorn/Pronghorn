@@ -77,9 +77,7 @@ public class IntegrityFuzzGenerator extends PronghornStage{
                 Pipe.confirmLowLevelWrite(output, 18);
                 Pipe.publishWrites(output);
 
-            }
-            else {
-                Pipe.spinBlockForRoom(output, Pipe.EOF_SIZE);
+            } else {
                 Pipe.publishEOF(output);
                 requestShutdown();
                 return;

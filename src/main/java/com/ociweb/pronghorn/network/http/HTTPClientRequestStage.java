@@ -33,8 +33,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 	static final byte[] GET_BYTES_SPACE = "GET ".getBytes();
 	static final byte[] GET_BYTES_SPACE_SLASH = "GET /".getBytes();
 	
-		
-    private final boolean isTLS;
+    private boolean shutdownInProgress;	
 	
     public static HTTPClientRequestStage newInstance(GraphManager graphManager, 	
 													ClientCoordinator ccm,
@@ -52,7 +51,6 @@ public class HTTPClientRequestStage extends PronghornStage {
 		this.input = input;
 		this.output = output;
 		this.ccm = ccm;
-		this.isTLS = ccm.isTLS;
 		
 		//TODO: we have a bug here detecting EOF so this allows us to shutdown until its found.
 		GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
@@ -71,17 +69,30 @@ public class HTTPClientRequestStage extends PronghornStage {
 		
 		int i = output.length;
 		while (--i>=0) {
-			try {
-				Pipe.spinBlockForRoom(output[i], Pipe.EOF_SIZE);
-				Pipe.publishEOF(output[i]);
-			} catch (NullPointerException npe) {
-				//ignore we are shutting down and we never started up before doing so..
-			}
+				if (null!=output[i] && Pipe.isInit(output[i])) {
+					Pipe.publishEOF(output[i]);
+				}
+
 		}
 	}
 	
 	@Override
 	public void run() {
+		
+		
+	   	 if(shutdownInProgress) {
+	    	 int i = output.length;
+	         while (--i >= 0) {
+	         	if (null!=output[i] && Pipe.isInit(output[i])) {
+	         		if (!Pipe.hasRoomForWrite(output[i], Pipe.EOF_SIZE)){ 
+	         			return;
+	         		}  
+	         	}
+	         }
+	         requestShutdown();
+	         return;
+		 }
+		
 		boolean hasWork;
 		
 				
@@ -161,7 +172,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		            } else  if (ClientHTTPRequestSchema.MSG_CLOSE_104 == msgIdx) {
 		            	HTTPClientUtil.cleanCloseConnection(activeConnection, output[activeConnection.requestPipeLineIdx()]);
 		            } else  if (-1 == msgIdx) {
-		            	logger.info("Received shutdown message");								
+		            	//logger.info("Received shutdown message");								
 						processShutdownLogic(requestPipe);
 						return false;
 		            } else {
@@ -194,7 +205,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 			}
 		}
 		
-		requestShutdown();
+		shutdownInProgress = true;
 		Pipe.confirmLowLevelRead(requestPipe, Pipe.EOF_SIZE);
 		Pipe.releaseReadLock(requestPipe);
 	}
@@ -266,7 +277,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 			
 			assert(activeConnection.isFinishConnect());
 			
-			if (isTLS) {				
+			if (ccm.isTLS) {				
 				//If this connection needs to complete a hanshake first then do that and do not send the request content yet.
 				HandshakeStatus handshakeStatus = activeConnection.getEngine().getHandshakeStatus();
 				if (HandshakeStatus.FINISHED!=handshakeStatus && HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus /* && HandshakeStatus.NEED_WRAP!=handshakeStatus*/) {

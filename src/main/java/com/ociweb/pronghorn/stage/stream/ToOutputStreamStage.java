@@ -40,9 +40,6 @@ public class ToOutputStreamStage extends PronghornStage {
 				//NOTE: This can be made faster by looping and summing all the lengths to do one single copy to the output stream
 				//      That change may however increase latency.
 				
-				int byteMask = inputRing.byteMask;
-				int byteSize = byteMask+1;								
-				
 				while (Pipe.hasContentToRead(inputRing)) {
 						
 					int msgId = Pipe.takeMsgIdx(inputRing);
@@ -57,12 +54,12 @@ public class ToOutputStreamStage extends PronghornStage {
 			    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
 	    					    			
 			    	int len = takeRingByteLen(inputRing);
-			    	int off = bytePosition(meta,inputRing,len)&byteMask; 			
+			    	int off = bytePosition(meta,inputRing,len)&inputRing.blobMask; 			
 			    	
 			    	if (len>=0) { 
 			    	    
 						byte[] data = byteBackingArray(meta, inputRing);
-						int len1 = byteSize - off;
+						int len1 = inputRing.sizeOfBlobRing - off;
 						if (len1 >= len) {
 							//simple add bytes
 							outputStream.write(data, off, len); 

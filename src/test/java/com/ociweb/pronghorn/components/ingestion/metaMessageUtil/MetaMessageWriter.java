@@ -14,7 +14,11 @@ public class MetaMessageWriter  {
 
     private static void writeNullableMessage(Pipe ring, int msg, boolean isNullable, String columnName, Object value) {
         if (isNullable) {
-            Pipe.blockWriteMessage(ring, msg);
+            //before write make sure the tail is moved ahead so we have room to write
+			while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msg])) {
+			    Pipe.spinWork(ring);
+			}
+			Pipe.addMsgIdx(ring, msg);
             if (columnName != null) {
                 Pipe.validateVarLength(ring, columnName.length());
 				int sourceLen = columnName.length();
@@ -36,7 +40,11 @@ public class MetaMessageWriter  {
         int msg = (!isSigned && (columnName == null)) ? MetaMessageDefs.MSG_UINT32_LOC : (isSigned && (columnName == null)) ? MetaMessageDefs.MSG_INT32_LOC : (!isSigned && (columnName != null)) ? MetaMessageDefs.MSG_NAMEDUINT32_LOC
                 : MetaMessageDefs.MSG_NAMEDINT32_LOC;
 
-        Pipe.blockWriteMessage(ring, msg);
+        //before write make sure the tail is moved ahead so we have room to write
+		while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msg])) {
+		    Pipe.spinWork(ring);
+		}
+		Pipe.addMsgIdx(ring, msg);
         if (columnName != null) {
             Pipe.validateVarLength(ring, columnName.length());
 			int sourceLen = columnName.length();
@@ -71,7 +79,12 @@ public class MetaMessageWriter  {
     public static void writeBooleanMessage(Pipe ring, boolean isNullable, String columnName, Object value) {
         writeNullableMessage(ring, (columnName == null) ? MetaMessageDefs.MSG_NULLABLEBOOLEAN_LOC : MetaMessageDefs.MSG_NAMEDNULLABLEBOOLEAN_LOC, isNullable, columnName, value);
         if (value != null) {
-        	Pipe.blockWriteMessage(ring, (columnName == null) ? MetaMessageDefs.MSG_BOOLEAN_LOC : MetaMessageDefs.MSG_NAMEDBOOLEAN_LOC);
+        	int msgIdx = (columnName == null) ? MetaMessageDefs.MSG_BOOLEAN_LOC : MetaMessageDefs.MSG_NAMEDBOOLEAN_LOC;
+			//before write make sure the tail is moved ahead so we have room to write
+			while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msgIdx])) {
+			    Pipe.spinWork(ring);
+			}
+			Pipe.addMsgIdx(ring, msgIdx);
             if (columnName != null) {
                 Pipe.validateVarLength(ring, columnName.length());
 				int sourceLen = columnName.length();
@@ -91,7 +104,11 @@ public class MetaMessageWriter  {
         if (value != null) {
             int msg = (!isSigned && (columnName == null)) ? MetaMessageDefs.MSG_UINT64_LOC : (isSigned && (columnName == null)) ? MetaMessageDefs.MSG_INT64_LOC : (!isSigned && (columnName != null)) ? MetaMessageDefs.MSG_NAMEDUINT64_LOC
                     : MetaMessageDefs.MSG_NAMEDINT64_LOC;
-            Pipe.blockWriteMessage(ring, msg);
+            //before write make sure the tail is moved ahead so we have room to write
+			while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msg])) {
+			    Pipe.spinWork(ring);
+			}
+			Pipe.addMsgIdx(ring, msg);
             if (columnName != null) {
                 Pipe.validateVarLength(ring, columnName.length());
 				int sourceLen = columnName.length();
@@ -109,7 +126,11 @@ public class MetaMessageWriter  {
 
         if (value != null) {
             int msg = (columnName == null) ? MetaMessageDefs.MSG_DECIMAL_LOC : MetaMessageDefs.MSG_NAMEDDECIMAL_LOC;
-            Pipe.blockWriteMessage(ring, msg);
+            //before write make sure the tail is moved ahead so we have room to write
+			while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msg])) {
+			    Pipe.spinWork(ring);
+			}
+			Pipe.addMsgIdx(ring, msg);
             if (columnName != null) {
                 Pipe.validateVarLength(ring, columnName.length());
 				int sourceLen = columnName.length();
@@ -129,7 +150,11 @@ public class MetaMessageWriter  {
         writeNullableMessage(ring, (columnName == null) ? MetaMessageDefs.MSG_NULLABLEDOUBLE_LOC : MetaMessageDefs.MSG_NAMEDNULLABLEDOUBLE_LOC, isNullable, columnName, value);
         if (value != null) {
             int msg = (columnName == null) ? MetaMessageDefs.MSG_DOUBLE_LOC : MetaMessageDefs.MSG_NAMEDDOUBLE_LOC;
-            Pipe.blockWriteMessage(ring, msg);
+            //before write make sure the tail is moved ahead so we have room to write
+			while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msg])) {
+			    Pipe.spinWork(ring);
+			}
+			Pipe.addMsgIdx(ring, msg);
             if (columnName != null) {
                 Pipe.validateVarLength(ring, columnName.length());
 				int sourceLen = columnName.length();
@@ -148,7 +173,11 @@ public class MetaMessageWriter  {
         writeNullableMessage(ring, (columnName == null) ? MetaMessageDefs.MSG_NULLABLEFLOAT_LOC : MetaMessageDefs.MSG_NAMEDNULLABLEFLOAT_LOC, isNullable, columnName, value);    
         if (value != null) {
             int msg = (columnName == null) ? MetaMessageDefs.MSG_FLOAT_LOC : MetaMessageDefs.MSG_NAMEDFLOAT_LOC;
-            Pipe.blockWriteMessage(ring, msg);
+            //before write make sure the tail is moved ahead so we have room to write
+			while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msg])) {
+			    Pipe.spinWork(ring);
+			}
+			Pipe.addMsgIdx(ring, msg);
             if (columnName != null) {
                 Pipe.validateVarLength(ring, columnName.length());
 				int sourceLen = columnName.length();
@@ -168,7 +197,11 @@ public class MetaMessageWriter  {
         writeNullableMessage(ring, (columnName == null) ? MetaMessageDefs.MSG_NULLABLEDATETIME_LOC : MetaMessageDefs.MSG_NAMEDNULLABLEDATETIME_LOC, isNullable, columnName, value);
         if (value != null) {
             int msg = (columnName == null) ? MetaMessageDefs.MSG_DATETIME_LOC : MetaMessageDefs.MSG_NAMEDDATETIME_LOC;
-            Pipe.blockWriteMessage(ring, msg);
+            //before write make sure the tail is moved ahead so we have room to write
+			while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msg])) {
+			    Pipe.spinWork(ring);
+			}
+			Pipe.addMsgIdx(ring, msg);
             if (columnName != null) {
                 Pipe.validateVarLength(ring, columnName.length());
 				int sourceLen = columnName.length();
@@ -186,7 +219,11 @@ public class MetaMessageWriter  {
         writeNullableMessage(ring, (columnName == null) ? MetaMessageDefs.MSG_NULLABLETIMESTAMP_LOC : MetaMessageDefs.MSG_NAMEDNULLABLETIMESTAMP_LOC, isNullable, columnName, timestamp);
         if (timestamp != null) {
             int msg = (columnName == null) ? MetaMessageDefs.MSG_TIMESTAMP_LOC : MetaMessageDefs.MSG_NAMEDTIMESTAMP_LOC;
-            Pipe.blockWriteMessage(ring, msg);
+            //before write make sure the tail is moved ahead so we have room to write
+			while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msg])) {
+			    Pipe.spinWork(ring);
+			}
+			Pipe.addMsgIdx(ring, msg);
             if (columnName != null) {
                 Pipe.validateVarLength(ring, columnName.length());
 				int sourceLen = columnName.length();
@@ -205,7 +242,11 @@ public class MetaMessageWriter  {
         writeNullableMessage(ring, (columnName == null) ? MetaMessageDefs.MSG_NULLABLEBYTEARRAY_LOC : MetaMessageDefs.MSG_NAMEDNULLABLEBYTEARRAY_LOC, isNullable, columnName, value);
         if (value != null) {
             int msg = (columnName == null) ? MetaMessageDefs.MSG_BYTEARRAY_LOC : MetaMessageDefs.MSG_NAMEDBYTEARRAY_LOC;
-            Pipe.blockWriteMessage(ring, msg);
+            //before write make sure the tail is moved ahead so we have room to write
+			while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msg])) {
+			    Pipe.spinWork(ring);
+			}
+			Pipe.addMsgIdx(ring, msg);
             if (columnName != null) {
                 Pipe.validateVarLength(ring, columnName.length());
 				int sourceLen = columnName.length();
@@ -222,7 +263,11 @@ public class MetaMessageWriter  {
         writeNullableMessage(ring, (columnName == null) ? MetaMessageDefs.MSG_NULLABLESERIALIZEDJAVAOBJECT_LOC : MetaMessageDefs.MSG_NAMEDNULLABLESERIALIZEDJAVAOBJECT_LOC, isNullable, columnName, value);
         if (value != null) {
             int msg = (columnName == null) ? MetaMessageDefs.MSG_SERIALIZEDJAVAOBJECT_LOC : MetaMessageDefs.MSG_NAMEDSERIALIZEDJAVAOBJECT_LOC;
-            Pipe.blockWriteMessage(ring, msg);
+            //before write make sure the tail is moved ahead so we have room to write
+			while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msg])) {
+			    Pipe.spinWork(ring);
+			}
+			Pipe.addMsgIdx(ring, msg);
             if (columnName != null) {
                 Pipe.validateVarLength(ring, columnName.length());
 				int sourceLen = columnName.length();
@@ -261,7 +306,11 @@ public class MetaMessageWriter  {
 
     public static void writeBeginGroupMessage(Pipe ring, String name) {
         int msg = (name == null) ? MetaMessageDefs.MSG_BEGINGROUP_LOC : MetaMessageDefs.MSG_NAMEDBEGINGROUP_LOC;
-        Pipe.blockWriteMessage(ring, msg);
+        //before write make sure the tail is moved ahead so we have room to write
+		while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msg])) {
+		    Pipe.spinWork(ring);
+		}
+		Pipe.addMsgIdx(ring, msg);
         if (name != null) {
             Pipe.validateVarLength(ring, name.length());
 			int sourceLen = name.length();
@@ -272,7 +321,12 @@ public class MetaMessageWriter  {
     }
 
     public static void writeEndGroupMessage(Pipe ring) {
-    	Pipe.blockWriteMessage(ring, MetaMessageDefs.MSG_ENDGROUP_LOC);
+    	int msgIdx = MetaMessageDefs.MSG_ENDGROUP_LOC;
+		//before write make sure the tail is moved ahead so we have room to write
+		while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msgIdx])) {
+		    Pipe.spinWork(ring);
+		}
+		Pipe.addMsgIdx(ring, msgIdx);
         Pipe.publishWrites(ring);
     }
 
@@ -280,7 +334,11 @@ public class MetaMessageWriter  {
         writeNullableMessage(ring, (columnName == null) ? MetaMessageDefs.MSG_NULLABLEASCII_LOC : MetaMessageDefs.MSG_NAMEDNULLABLEASCII_LOC, isNullable, columnName, value);
         if (value != null) {
             int msg = (columnName == null) ? MetaMessageDefs.MSG_ASCII_LOC : MetaMessageDefs.MSG_NAMEDASCII_LOC;
-            Pipe.blockWriteMessage(ring, msg);
+            //before write make sure the tail is moved ahead so we have room to write
+			while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msg])) {
+			    Pipe.spinWork(ring);
+			}
+			Pipe.addMsgIdx(ring, msg);
             if (columnName != null) {
                 Pipe.validateVarLength(ring, columnName.length());
 				int sourceLen = columnName.length();
@@ -300,7 +358,11 @@ public class MetaMessageWriter  {
         writeNullableMessage(ring, (columnName == null) ? MetaMessageDefs.MSG_NULLABLEUTF8_LOC : MetaMessageDefs.MSG_NAMEDNULLABLEUTF8_LOC, isNullable, columnName, value);
         if (value != null) {
             int msg = (columnName == null) ? MetaMessageDefs.MSG_UTF8_LOC : MetaMessageDefs.MSG_NAMEDUTF8_LOC;
-            Pipe.blockWriteMessage(ring, msg);
+            //before write make sure the tail is moved ahead so we have room to write
+			while (!Pipe.hasRoomForWrite(ring, Pipe.from(ring).fragDataSize[msg])) {
+			    Pipe.spinWork(ring);
+			}
+			Pipe.addMsgIdx(ring, msg);
             if (columnName != null) {
                 Pipe.validateVarLength(ring, columnName.length());
 				int sourceLen = columnName.length();

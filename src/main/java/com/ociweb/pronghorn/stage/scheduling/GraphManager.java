@@ -1434,7 +1434,8 @@ public class GraphManager {
 	            	
 	                target.append("\"");
 	                Appendables.appendValue(target, "Stage", i);
-					target.append("\"[label=\"").append(stageDisplayName);
+					target.append("\"[");
+					target.append("label=\"").append(stageDisplayName);
 	                if (null!=group) {
 	                	target.append(" grp:").append(group.toString());
 	                }
@@ -1443,6 +1444,7 @@ public class GraphManager {
 	                int pct = 0;
 	                if (runNs!=0){
 	                	if (runNs<0) {
+	                		
 	                		target.append(" CPU 100%");
 	                	} else {
 	                		long shutdownTime = m.stageShutdownTimeNs[stage.stageId];

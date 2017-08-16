@@ -131,7 +131,7 @@ public class SpeedTest {
             Pipe<RawDataSchema> loadedDataPipe = new Pipe<RawDataSchema>(config);
                                     
             
-            new FileBlobReadStage(gm, tempFile.getAbsolutePath(),loadedDataPipe);            
+            new FileBlobReadStage(gm, loadedDataPipe,tempFile.getAbsolutePath());            
             outputStream.reset();
             new ToOutputStreamStage(gm, loadedDataPipe, outputStream, false);
             
@@ -304,8 +304,10 @@ public class SpeedTest {
             File tempFile = File.createTempFile("blobWrite", "speedTest");        
             tempFile.deleteOnExit();
             
+            boolean append = false;
+            
             PronghornStage s1 = new ByteArrayProducerStage(gm, rawData, loadedDataPipe);        
-            PronghornStage s2 = new FileBlobWriteStage(gm, loadedDataPipe, new RandomAccessFile(tempFile,"rw"), tempFile.getAbsolutePath());  //NOTE: use rwd/rws to sync flush with every write (much slower)
+            PronghornStage s2 = new FileBlobWriteStage(gm, loadedDataPipe, append, tempFile.getAbsolutePath());  //NOTE: use rwd/rws to sync flush with every write (much slower)
             
             GraphManager.enableBatching(gm);//lower contention over head and tail
          //   MonitorConsoleStage.attach(gm);

@@ -1105,10 +1105,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 
 	private int sendRelease(final int stateIdx, long ccId, long[] position, int i) {
 
-		if (!Pipe.hasRoomForWrite(releasePipe)) {
-			logger.info("warning, must send release or client may hang, pipe was backed up so we must wait");
-			Pipe.spinBlockForRoom(releasePipe, Pipe.sizeOf(ReleaseSchema.instance, ReleaseSchema.MSG_RELEASE_100));
-		}
+		Pipe.presumeRoomForWrite(releasePipe);
 		
 		int size = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASE_100);
 		Pipe.addLongValue(ccId, releasePipe);

@@ -570,7 +570,8 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 			System.exit(-1); //hard stop due to assertion failure
 		} catch (Throwable t) {				    
             recordTheException(stage, t, that);
-		} 
+            System.exit(-1); //hard stop due to suprise
+        } 
 		
 	}
 
