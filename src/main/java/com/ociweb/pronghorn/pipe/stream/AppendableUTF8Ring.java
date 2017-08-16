@@ -1,6 +1,5 @@
 package com.ociweb.pronghorn.pipe.stream;
 
-import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnTail;
 import static com.ociweb.pronghorn.pipe.Pipe.tailPosition;
 
 import java.io.IOException;
@@ -31,7 +30,12 @@ public class AppendableUTF8Ring implements Appendable {
 	
 	@Override
 	public Appendable append(CharSequence csq) throws IOException {
-		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
+		long lastCheckedValue = tailPosCache;
+		while (null==Pipe.slab(ringBuffer) || lastCheckedValue < outputTarget) {
+			Pipe.spinWork(ringBuffer);
+		    lastCheckedValue = Pipe.tailPosition(ringBuffer);
+		}
+		tailPosCache = lastCheckedValue;
         outputTarget+=step;
         Pipe.addMsgIdx(ringBuffer, 0);
 		Pipe.validateVarLength(ringBuffer, csq.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
@@ -45,7 +49,12 @@ public class AppendableUTF8Ring implements Appendable {
 	@Override
 	public Appendable append(CharSequence csq, int start, int end)
 			throws IOException {
-		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
+		long lastCheckedValue = tailPosCache;
+		while (null==Pipe.slab(ringBuffer) || lastCheckedValue < outputTarget) {
+			Pipe.spinWork(ringBuffer);
+		    lastCheckedValue = Pipe.tailPosition(ringBuffer);
+		}
+		tailPosCache = lastCheckedValue;
         outputTarget+=step;
         Pipe.addMsgIdx(ringBuffer, 0);
 		Pipe.validateVarLength(ringBuffer, csq.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
@@ -58,7 +67,12 @@ public class AppendableUTF8Ring implements Appendable {
 
 	@Override
 	public Appendable append(char c) throws IOException {
-		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
+		long lastCheckedValue = tailPosCache;
+		while (null==Pipe.slab(ringBuffer) || lastCheckedValue < outputTarget) {
+			Pipe.spinWork(ringBuffer);
+		    lastCheckedValue = Pipe.tailPosition(ringBuffer);
+		}
+		tailPosCache = lastCheckedValue;
         outputTarget+=step;
 		temp[0]=c; //TODO: C, This should be optimized however callers should prefer to use the other two methods.
 	    Pipe.addMsgIdx(ringBuffer, 0);
@@ -72,7 +86,12 @@ public class AppendableUTF8Ring implements Appendable {
 	}
 	
 	public void flush() {
-		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
+		long lastCheckedValue = tailPosCache;
+		while (null==Pipe.slab(ringBuffer) || lastCheckedValue < outputTarget) {
+			Pipe.spinWork(ringBuffer);
+		    lastCheckedValue = Pipe.tailPosition(ringBuffer);
+		}
+		tailPosCache = lastCheckedValue;
         outputTarget+=2;
 		RingStreams.writeEOF(ringBuffer);
 	}

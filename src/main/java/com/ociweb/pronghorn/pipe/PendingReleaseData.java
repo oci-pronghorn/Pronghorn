@@ -95,7 +95,7 @@ public class PendingReleaseData {
     //releases as the bytes are consumed, this can be called as many times as needed.
     public static <S extends MessageSchema<S>> void releasePendingAsReadRelease(PendingReleaseData that, Pipe<S> pipe, int consumed) {
 
-    	assert(consumed<=Pipe.releasePendingByteCount(pipe)) : "requested more to released than we have pending";
+    	assert(consumed<=Pipe.releasePendingByteCount(pipe)) : "requested more to released than we have pending releasing "+consumed+" but found "+Pipe.releasePendingByteCount(pipe);
     	
         int idx=0;
         final int mask = that.pendingReleaseMask;

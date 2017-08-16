@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.pipe;
 
-import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnTail;
-
 import java.util.Arrays;
 
 import org.slf4j.Logger;
@@ -544,14 +542,24 @@ class StackStateWalker {
     static void blockWriteFragment0(Pipe pipe, int messageTemplateLOC, FieldReferenceOffsetManager from,
             StackStateWalker consumerData) {
         int fragSize = from.fragDataSize[messageTemplateLOC];
-    	pipe.llRead.llrTailPosCache = spinBlockOnTail(pipe.llRead.llrTailPosCache, consumerData.nextWorkingHead - (pipe.sizeOfSlabRing - fragSize), pipe);
+		long lastCheckedValue = pipe.llRead.llrTailPosCache;
+		while (null==Pipe.slab(pipe) || lastCheckedValue < consumerData.nextWorkingHead - (pipe.sizeOfSlabRing - fragSize)) {
+			Pipe.spinWork(pipe);
+		    lastCheckedValue = Pipe.tailPosition(pipe);
+		}
+    	pipe.llRead.llrTailPosCache = lastCheckedValue;
     
     	prepWriteFragment(pipe, messageTemplateLOC, from, fragSize);
     }
 
     static void writeEOF(Pipe ring) {
         assert(Pipe.workingHeadPosition(ring)<=ring.ringWalker.nextWorkingHead) : "Unsupported use of high level API with low level methods.";
-    	ring.llRead.llrTailPosCache = spinBlockOnTail(ring.llRead.llrTailPosCache, Pipe.workingHeadPosition(ring) - (ring.sizeOfSlabRing - Pipe.EOF_SIZE), ring);
+		long lastCheckedValue = ring.llRead.llrTailPosCache;
+		while (null==Pipe.slab(ring) || lastCheckedValue < Pipe.workingHeadPosition(ring) - (ring.sizeOfSlabRing - Pipe.EOF_SIZE)) {
+			Pipe.spinWork(ring);
+		    lastCheckedValue = Pipe.tailPosition(ring);
+		}
+    	ring.llRead.llrTailPosCache = lastCheckedValue;
     	
     	assert(Pipe.tailPosition(ring)+ring.sizeOfSlabRing>=Pipe.headPosition(ring)+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
     	Pipe.setBytesHead(ring, Pipe.getBlobWorkingHeadPosition(ring));

@@ -3,8 +3,6 @@ package com.ociweb.pronghorn.pipe.stream;
 import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
 import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
 import static com.ociweb.pronghorn.pipe.Pipe.headPosition;
-import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnHead;
-import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnTail;
 import static com.ociweb.pronghorn.pipe.Pipe.tailPosition;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
@@ -58,7 +56,12 @@ public class RingStreams {
         	        	
         	//block until one more byteVector is ready.
         	
-        	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		           
+        	long lastCheckedValue = headPosCache;
+			while ( lastCheckedValue < target) {
+				Pipe.spinWork(inputRing);//TODO: WARNING this may hang when using a single thread scheduler
+			    lastCheckedValue = Pipe.headPosition(inputRing);
+			}
+			headPosCache = lastCheckedValue;	                        	    	                        		           
         	
         	int msgId = Pipe.takeMsgIdx(inputRing);
 
@@ -127,7 +130,12 @@ public class RingStreams {
         	        	
         	//block until one more byteVector is ready.
         	
-        	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);
+        	long lastCheckedValue = headPosCache;
+			while ( lastCheckedValue < target) {
+				Pipe.spinWork(inputRing);//TODO: WARNING this may hang when using a single thread scheduler
+			    lastCheckedValue = Pipe.headPosition(inputRing);
+			}
+			headPosCache = lastCheckedValue;
         	int msgId = Pipe.takeMsgIdx(inputRing);
         				
         	if (msgId<0) { //exit logic
@@ -201,7 +209,12 @@ public class RingStreams {
 			while ( (size=inputStream.read(buffer,position&byteMask,((position&byteMask) > ((position+maxBlockSize-1) & byteMask)) ? 1+byteMask-(position&byteMask) : maxBlockSize))>=0 ) {	
 				if (size>0) {
 					//block until there is a slot to write into
-					tailPosCache = spinBlockOnTail(tailPosCache, targetTailValue, outputRing);///TODO:M Rewrite using RingBuffer.roomToLowLevelWrite(output, size)
+					long lastCheckedValue = tailPosCache;
+					while (null==Pipe.slab(outputRing) || lastCheckedValue < targetTailValue) {
+						Pipe.spinWork(outputRing);
+					    lastCheckedValue = Pipe.tailPosition(outputRing);
+					}
+					tailPosCache = lastCheckedValue;///TODO:M Rewrite using RingBuffer.roomToLowLevelWrite(output, size)
 					targetTailValue += step;
 					
 					Pipe.addMsgIdx(outputRing, 0);
@@ -242,7 +255,12 @@ public class RingStreams {
 		int stop = dataOffset+dataLength;
 		while (position<stop) {
 			 
-			    tailPosCache = spinBlockOnTail(tailPosCache, headPosition(output)-fill, output); ///TODO:M Rewrite using RingBuffer.roomToLowLevelWrite(output, size)
+			    long lastCheckedValue = tailPosCache;
+				while (null==Pipe.slab(output) || lastCheckedValue < headPosition(output)-fill) {
+					Pipe.spinWork(output);
+				    lastCheckedValue = Pipe.tailPosition(output);
+				}
+				tailPosCache = lastCheckedValue; ///TODO:M Rewrite using RingBuffer.roomToLowLevelWrite(output, size)
 
 			    int fragmentLength = (int)Math.min(blockSize, stop-position);
 		 
@@ -259,7 +277,11 @@ public class RingStreams {
 
 	@Deprecated
 	public static void writeEOF(Pipe ring) {//TODO:M propose a way to remove the need for this poison pill and the blocking use of this call on close()
-		spinBlockOnTail(tailPosition(ring), headPosition(ring)-(1 + ring.mask - Pipe.EOF_SIZE), ring);
+		long lastCheckedValue = tailPosition(ring);
+		while (null==Pipe.slab(ring) || lastCheckedValue < headPosition(ring)-(1 + ring.mask - Pipe.EOF_SIZE)) {
+			Pipe.spinWork(ring);
+		    lastCheckedValue = Pipe.tailPosition(ring);
+		}
 		Pipe.publishEOF(ring);	
 	}
 
@@ -285,7 +307,12 @@ public class RingStreams {
 	    	        	
 	    	//block until one more byteVector is ready.
 	    	
-	    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing); //TODO:M,  make this non blocking- will require method signature change.	                        	    	                        		           
+	    	long lastCheckedValue = headPosCache;
+			while ( lastCheckedValue < target) {
+				Pipe.spinWork(inputRing);//TODO: WARNING this may hang when using a single thread scheduler
+			    lastCheckedValue = Pipe.headPosition(inputRing);
+			}
+			headPosCache = lastCheckedValue; //TODO:M,  make this non blocking- will require method signature change.	                        	    	                        		           
 	    	
 	    	int msg = Pipe.takeMsgIdx(inputRing);
 

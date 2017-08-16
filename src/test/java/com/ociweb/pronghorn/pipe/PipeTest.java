@@ -6,8 +6,6 @@ import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
 import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
 import static com.ociweb.pronghorn.pipe.Pipe.headPosition;
 import static com.ociweb.pronghorn.pipe.Pipe.publishWrites;
-import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnHead;
-import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnTail;
 import static com.ociweb.pronghorn.pipe.Pipe.tailPosition;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
@@ -152,8 +150,13 @@ public class PipeTest {
                 public void run() {
 
                         int messageCount = totalMesssages;
+						long lastCheckedValue = headPosition(ring);
+						while ( lastCheckedValue < tailPosition(ring)+granularity) {
+							Pipe.spinWork(ring);//TODO: WARNING this may hang when using a single thread scheduler
+						    lastCheckedValue = Pipe.headPosition(ring);
+						}
                         
-                        long headPosCache = spinBlockOnHead(headPosition(ring), tailPosition(ring)+granularity, ring);
+                        long headPosCache = lastCheckedValue;
                         
                         while (--messageCount>=0) {
                             int messageFieldCount = totalMessageFields;
@@ -171,7 +174,12 @@ public class PipeTest {
                             if (0==(messageCount&chunkMask) ) {
                             	Pipe.releaseReadLock(ring);
                             	if (messageCount>0) {
-                            		headPosCache = spinBlockOnHead(headPosCache, tailPosition(ring)+granularity, ring);
+                            		long lastCheckedValue1 = headPosCache;
+									while ( lastCheckedValue1 < tailPosition(ring)+granularity) {
+										Pipe.spinWork(ring);//TODO: WARNING this may hang when using a single thread scheduler
+									    lastCheckedValue1 = Pipe.headPosition(ring);
+									}
+									headPosCache = lastCheckedValue1;
                             		
                             	}
                             }                        
@@ -185,9 +193,14 @@ public class PipeTest {
             
             
             int messageCount = totalMesssages;
+			long lastCheckedValue = tailPosition(ring);
+			while (null==Pipe.slab(ring) || lastCheckedValue < headPosition(ring)-fill) {
+				Pipe.spinWork(ring);
+			    lastCheckedValue = Pipe.tailPosition(ring);
+			}
             
             //keep local copy of the last time the tail was checked to avoid contention.
-            long tailPosCache = spinBlockOnTail(tailPosition(ring), headPosition(ring)-fill, ring);
+            long tailPosCache = lastCheckedValue;
                         
             while (--messageCount>=0) {
                 
@@ -199,10 +212,15 @@ public class PipeTest {
                 
                 if (0==(messageCount&chunkMask) ) {
                     publishWrites(ring);
+					long lastCheckedValue1 = tailPosCache;
+					while (null==Pipe.slab(ring) || lastCheckedValue1 < headPosition(ring)-fill) {
+						Pipe.spinWork(ring);
+					    lastCheckedValue1 = Pipe.tailPosition(ring);
+					}
                     //wait for room to fit one message
                     //waiting on the tailPosition to move the others are constant for this scope.
                     //workingHeadPositoin is same or greater than headPosition
-                    tailPosCache = spinBlockOnTail(tailPosCache, headPosition(ring)-fill, ring);
+                    tailPosCache = lastCheckedValue1;
                 }
             }
             //wait until the other thread is finished reading
@@ -289,9 +307,14 @@ public class PipeTest {
                 public void run() {           	
         	
     	                    int messageCount = totalMesssages;
+							long lastCheckedValue1 = headPosition(pipe);
+							while ( lastCheckedValue1 < tailPosition(pipe)+granularity) {
+								Pipe.spinWork(pipe);//TODO: WARNING this may hang when using a single thread scheduler
+							    lastCheckedValue1 = Pipe.headPosition(pipe);
+							}
     	                    
     	                    //only enter this block when we know there are records to read
-    	                    long headPosCache = spinBlockOnHead(headPosition(pipe), tailPosition(pipe)+granularity, pipe);	                    
+    	                    long headPosCache = lastCheckedValue1;	                    
     	                    while (--messageCount>=0) {
     	                        //read the message
     	                    	int messageFieldCount = totalMessageFields;
@@ -308,7 +331,12 @@ public class PipeTest {
     	                        if (0==(messageCount&chunkMask) ) {
     	                        	Pipe.releaseReadLock(pipe);
     	                        	if (messageCount>0) {
-    	                        		headPosCache = spinBlockOnHead(headPosCache, tailPosition(pipe)+granularity, pipe);	                        	    	                        		
+    	                        		long lastCheckedValue = headPosCache;
+										while ( lastCheckedValue < tailPosition(pipe)+granularity) {
+											Pipe.spinWork(pipe);//TODO: WARNING this may hang when using a single thread scheduler
+										    lastCheckedValue = Pipe.headPosition(pipe);
+										}
+										headPosCache = lastCheckedValue;	                        	    	                        		
     	                        	}
     	                        }	                        
     	                    }                    
@@ -319,9 +347,14 @@ public class PipeTest {
             exService.submit(reader);//this reader starts running immediately
                        
             
-            int messageCount = totalMesssages;            
+            int messageCount = totalMesssages;
+			long lastCheckedValue = tailPosition(pipe);
+			while (null==Pipe.slab(pipe) || lastCheckedValue < headPosition(pipe)-fill) {
+				Pipe.spinWork(pipe);
+			    lastCheckedValue = Pipe.tailPosition(pipe);
+			}            
             //keep local copy of the last time the tail was checked to avoid contention.
-            long tailPosCache = spinBlockOnTail(tailPosition(pipe), headPosition(pipe)-fill, pipe);                        
+            long tailPosCache = lastCheckedValue;                        
             while (--messageCount>=0) {
                 //write the record
                 int messageFieldCount = totalMessageFields;
@@ -330,10 +363,15 @@ public class PipeTest {
                 }
                 if (0==(messageCount&chunkMask) ) {
                     publishWrites(pipe);
+					long lastCheckedValue1 = tailPosCache;
+					while (null==Pipe.slab(pipe) || lastCheckedValue1 < headPosition(pipe)-fill) {
+						Pipe.spinWork(pipe);
+					    lastCheckedValue1 = Pipe.tailPosition(pipe);
+					}
                     //wait for room to fit one message
                     //waiting on the tailPosition to move the others are constant for this scope.
                     //workingHeadPositoin is same or greater than headPosition
-                    tailPosCache = spinBlockOnTail(tailPosCache, headPosition(pipe)-fill, pipe);
+                    tailPosCache = lastCheckedValue1;
                 }
                                 
             }

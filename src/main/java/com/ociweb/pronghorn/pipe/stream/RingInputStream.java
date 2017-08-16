@@ -3,7 +3,6 @@ package com.ociweb.pronghorn.pipe.stream;
 import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
 import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
 import static com.ociweb.pronghorn.pipe.Pipe.headPosition;
-import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnHead;
 import static com.ociweb.pronghorn.pipe.Pipe.tailPosition;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteLen;
 import static com.ociweb.pronghorn.pipe.Pipe.takeRingByteMetaData;
@@ -101,7 +100,12 @@ public class RingInputStream extends InputStream implements AutoCloseable {
 				
 		do {
 			//block until we have something to read
-		    headPosCache = spinBlockOnHead(headPosCache, target, pipe);
+		    long lastCheckedValue = headPosCache;
+			while ( lastCheckedValue < target) {
+				Pipe.spinWork(pipe);//TODO: WARNING this may hang when using a single thread scheduler
+			    lastCheckedValue = Pipe.headPosition(pipe);
+			}
+			headPosCache = lastCheckedValue;
 		    target+=recordSize;		    
 		    returnLength = sendNewContent(targetData, targetOffset, targetLength);		    
 		    

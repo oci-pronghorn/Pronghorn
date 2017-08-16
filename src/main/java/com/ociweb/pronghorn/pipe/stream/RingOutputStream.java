@@ -1,7 +1,6 @@
 package com.ociweb.pronghorn.pipe.stream;
 
 import static com.ociweb.pronghorn.pipe.Pipe.headPosition;
-import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnTail;
 import static com.ociweb.pronghorn.pipe.Pipe.tailPosition;
 
 import java.io.OutputStream;
@@ -42,7 +41,11 @@ public class RingOutputStream extends OutputStream implements AutoCloseable {
 	
 	@Override
 	public void close() {
-		spinBlockOnTail(tailPosition(pipe), headPosition(pipe)-(1 + pipe.mask - Pipe.EOF_SIZE), pipe);
-        Pipe.publishEOF(pipe);
+		long lastCheckedValue = tailPosition(pipe);
+		while (null==Pipe.slab(pipe) || lastCheckedValue < headPosition(pipe)-(1 + pipe.mask - Pipe.EOF_SIZE)) {
+			Pipe.spinWork(pipe);
+		    lastCheckedValue = Pipe.tailPosition(pipe);
+		}
+		Pipe.publishEOF(pipe);
 	}
 }

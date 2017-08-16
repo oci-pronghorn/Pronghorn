@@ -3,8 +3,10 @@ package com.ociweb.pronghorn.pipe;
 import static com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager.lookupFieldLocator;
 import static com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager.lookupFragmentLocator;
 import static com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager.lookupTemplateLocator;
-import static com.ociweb.pronghorn.pipe.Pipe.spinBlockOnTail;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.Random;
@@ -14,11 +16,6 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeConfig;
-import com.ociweb.pronghorn.pipe.PipeReader;
-import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
 import com.ociweb.pronghorn.pipe.stream.StreamingVisitorWriter;
 import com.ociweb.pronghorn.pipe.stream.StreamingWriteVisitorGenerator;
@@ -383,7 +380,12 @@ public class PipeMultiTemplateTest {
         while (true) {
         	
         	if (j == 0) {
-        		pipe.llRead.llrTailPosCache = spinBlockOnTail(pipe.llRead.llrTailPosCache, Pipe.workingHeadPosition(pipe) - (pipe.sizeOfSlabRing - 1), pipe);
+        		long lastCheckedValue1 = pipe.llRead.llrTailPosCache;
+				while (null==Pipe.slab(pipe) || lastCheckedValue1 < Pipe.workingHeadPosition(pipe) - (pipe.sizeOfSlabRing - 1)) {
+					Pipe.spinWork(pipe);
+				    lastCheckedValue1 = Pipe.tailPosition(pipe);
+				}
+				pipe.llRead.llrTailPosCache = lastCheckedValue1;
         		Pipe.publishEOF(pipe);
         		return;//done
         	}
@@ -394,8 +396,13 @@ public class PipeMultiTemplateTest {
         	//System.err.println("write template:"+selectedTemplateId);
         	
         	switch(selectedTemplateId) {
-	        	case 2: //boxes
-	        		pipe.llRead.llrTailPosCache = spinBlockOnTail(pipe.llRead.llrTailPosCache, Pipe.workingHeadPosition(pipe) - (pipe.sizeOfSlabRing - 4), pipe);
+	        	case 2:
+				long lastCheckedValue = pipe.llRead.llrTailPosCache;
+				while (null==Pipe.slab(pipe) || lastCheckedValue < Pipe.workingHeadPosition(pipe) - (pipe.sizeOfSlabRing - 4)) {
+					Pipe.spinWork(pipe);
+				    lastCheckedValue = Pipe.tailPosition(pipe);
+				} //boxes
+	        		pipe.llRead.llrTailPosCache = lastCheckedValue;
 	        		
 	        		j--;
 	        		Pipe.addMsgIdx(pipe, MSG_BOXES_LOC);
@@ -404,8 +411,13 @@ public class PipeMultiTemplateTest {
 	        		Pipe.addByteArray(source, 0, source.length, pipe);
 	        		Pipe.publishWrites(pipe);
 	        		break;
-	        	case 1: //samples
-	        		pipe.llRead.llrTailPosCache = spinBlockOnTail(pipe.llRead.llrTailPosCache, Pipe.workingHeadPosition(pipe) - (pipe.sizeOfSlabRing - 8), pipe);
+	        	case 1:
+				long lastCheckedValue2 = pipe.llRead.llrTailPosCache;
+				while (null==Pipe.slab(pipe) || lastCheckedValue2 < Pipe.workingHeadPosition(pipe) - (pipe.sizeOfSlabRing - 8)) {
+					Pipe.spinWork(pipe);
+				    lastCheckedValue2 = Pipe.tailPosition(pipe);
+				} //samples
+	        		pipe.llRead.llrTailPosCache = lastCheckedValue2;
 	        		
 	        		j--;
 	        		Pipe.addMsgIdx(pipe, MSG_SAMPLE_LOC);
@@ -418,8 +430,13 @@ public class PipeMultiTemplateTest {
 
 	        		Pipe.publishWrites(pipe);
 	        		break;
-	        	case 4: //reset
-	        		pipe.llRead.llrTailPosCache = spinBlockOnTail(pipe.llRead.llrTailPosCache, Pipe.workingHeadPosition(pipe) - (pipe.sizeOfSlabRing - 3), pipe);
+	        	case 4:
+				long lastCheckedValue1 = pipe.llRead.llrTailPosCache;
+				while (null==Pipe.slab(pipe) || lastCheckedValue1 < Pipe.workingHeadPosition(pipe) - (pipe.sizeOfSlabRing - 3)) {
+					Pipe.spinWork(pipe);
+				    lastCheckedValue1 = Pipe.tailPosition(pipe);
+				} //reset
+	        		pipe.llRead.llrTailPosCache = lastCheckedValue1;
 	        		
 	        		j--;
 	        		Pipe.addMsgIdx(pipe, MSG_RESET_LOC);

@@ -1946,17 +1946,30 @@ public class Pipe<T extends MessageSchema<T>> {
 		return tailPosition>=pipe.knownPositionOfEOF;
 	}
 	
+	public static void publishEOF(Pipe<?>[] pipe) {
+		int i = pipe.length;
+		while (--i>=0) {
+			if (null != pipe[i] && Pipe.isInit(pipe[i])) {
+				publishEOF(pipe[i]);
+			}
+		}
+	}
+	
 	public static <S extends MessageSchema<S>> void publishEOF(Pipe<S> pipe) {
 
-		assert(pipe.slabRingTail.tailPos.get()+pipe.sizeOfSlabRing>=pipe.slabRingHead.headPos.get()+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
-
-		PaddedInt.set(pipe.blobRingHead.bytesHeadPos,pipe.blobRingHead.byteWorkingHeadPos.value);
-		pipe.knownPositionOfEOF = (int)pipe.slabRingHead.workingHeadPos.value +  from(pipe).templateOffset;
-		pipe.slabRing[pipe.slabMask & (int)pipe.knownPositionOfEOF]    = -1;
-		pipe.slabRing[pipe.slabMask & ((int)pipe.knownPositionOfEOF+1)] = 0;
-
-		pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value = pipe.slabRingHead.workingHeadPos.value + Pipe.EOF_SIZE);
-
+		if (pipe.slabRingTail.tailPos.get()+pipe.sizeOfSlabRing>=pipe.slabRingHead.headPos.get()+Pipe.EOF_SIZE) {
+	
+			PaddedInt.set(pipe.blobRingHead.bytesHeadPos,pipe.blobRingHead.byteWorkingHeadPos.value);
+			pipe.knownPositionOfEOF = (int)pipe.slabRingHead.workingHeadPos.value +  from(pipe).templateOffset;
+			pipe.slabRing[pipe.slabMask & (int)pipe.knownPositionOfEOF]    = -1;
+			pipe.slabRing[pipe.slabMask & ((int)pipe.knownPositionOfEOF+1)] = 0;
+	
+			pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value = pipe.slabRingHead.workingHeadPos.value + Pipe.EOF_SIZE);
+		} else {
+			log.error("Unable to send EOF, the outgoing pipe is 100% full, downstream stages may not get closed.\n"
+					+ "To resolve this issue ensure the outgoing pipe has room for write before calling this.");
+			
+		}
 	}
 
 	public static void copyBytesFromToRing(byte[] source, int sourceloc, int sourceMask, byte[] target, int targetloc, int targetMask, int length) {
@@ -3129,52 +3142,12 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
     /**
-     * Blocks until there is enough room for this first fragment of the message and records the messageId.
+     * Only use this if you know what you are doing, eg we have enough threads.
+     * This method is required because a normal spin lock is not aware of the shutdown
+     * of a pipe and this condition must cause an interrupt while spinning.
      * @param pipe
-     * @param msgIdx
      */
-	public static <S extends MessageSchema<S>> void blockWriteMessage(Pipe<S> pipe, int msgIdx) {
-		//before write make sure the tail is moved ahead so we have room to write
-	    spinBlockForRoom(pipe, Pipe.from(pipe).fragDataSize[msgIdx]);
-		Pipe.addMsgIdx(pipe, msgIdx);
-	}
-
-
-    //All the spin lock methods share the same implementation. Unfortunately these can not call
-    //a common implementation because the extra method jump degrades the performance in tight loops
-    //where these spin locks are commonly used.
-
-    public static <S extends MessageSchema<S>> void spinBlockForRoom(Pipe<S> pipe, int size) {
-        while (!hasRoomForWrite(pipe, size)) {
-            spinWork(pipe);
-        }
-    }
-
-    @Deprecated //use spinBlockForRoom then confirm the write afterwords
-    public static <S extends MessageSchema<S>> long spinBlockOnTail(long lastCheckedValue, long targetValue, Pipe<S> pipe) {
-    	while (null==pipe.slabRing || lastCheckedValue < targetValue) {
-    		spinWork(pipe);
-		    lastCheckedValue = pipe.slabRingTail.tailPos.longValue();
-		}
-		return lastCheckedValue;
-    }
-
-    public static <S extends MessageSchema<S>> void spinBlockForContent(Pipe<S> pipe) {
-        while (!hasContentToRead(pipe)) {
-            spinWork(pipe);
-        }
-    }
-
-    //Used by RingInputStream to duplicate contract behavior,  TODO: AA rename to waitForAvailableContent or blockUntilContentReady?
-    public static <S extends MessageSchema<S>> long spinBlockOnHead(long lastCheckedValue, long targetValue, Pipe<S> pipe) {
-    	while ( lastCheckedValue < targetValue) {
-    		spinWork(pipe);
-		    lastCheckedValue = pipe.slabRingHead.headPos.get();
-		}
-		return lastCheckedValue;
-    }
-
-	static <S extends MessageSchema<S>> void spinWork(Pipe<S> pipe) {
+	public static <S extends MessageSchema<S>> void spinWork(Pipe<S> pipe) {
 		Thread.yield();//needed for now but re-evaluate performance impact
 		if (isShutdown(pipe) || Thread.currentThread().isInterrupted()) {
 			Thread.currentThread().interrupt();

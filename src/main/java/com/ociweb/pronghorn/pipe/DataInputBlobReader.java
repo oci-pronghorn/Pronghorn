@@ -124,10 +124,10 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
         
             Pipe.takeRingByteMetaData(pipe);
             int len = Pipe.takeRingByteLen(pipe);
-            
-            this.length += len;
-            this.bytesHighBound = pipe.blobMask & (bytesHighBound + len);
-            
+            if (len>0) {//may be -1 for null values
+            	this.length += len;
+            	this.bytesHighBound = pipe.blobMask & (bytesHighBound + len);
+            }
             return len;
         }
     }
@@ -139,10 +139,10 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
         } else {        
         
         	int len = PipeReader.readBytesLength(pipe, loc);
-        	            
-            this.length += len;
-            this.bytesHighBound = pipe.blobMask & (bytesHighBound + len);
-            
+        	if (len>0) {            
+        		this.length += len;
+            	this.bytesHighBound = pipe.blobMask & (bytesHighBound + len);
+        	}
             return len;
         }        
     }
