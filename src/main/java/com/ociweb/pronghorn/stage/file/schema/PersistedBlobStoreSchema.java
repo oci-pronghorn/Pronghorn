@@ -1,7 +1,6 @@
 package com.ociweb.pronghorn.stage.file.schema;
 
-import java.nio.ByteBuffer;
-
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -28,16 +27,13 @@ public class PersistedBlobStoreSchema extends MessageSchema<PersistedBlobStoreSc
 
 		public static final PersistedBlobStoreSchema instance = new PersistedBlobStoreSchema();
 		
-		public static final int MSG_BLOCK_1 = 0x00000000;
-		public static final int MSG_BLOCK_1_FIELD_BLOCKID_3 = 0x00800001;
-		public static final int MSG_BLOCK_1_FIELD_BYTEARRAY_2 = 0x01c00003;
-		
-		public static final int MSG_RELEASE_7 = 0x00000004;
-		public static final int MSG_RELEASE_7_FIELD_BLOCKID_3 = 0x00800001;
-		
-		public static final int MSG_REQUESTREPLAY_6 = 0x00000007;
-		
-		public static final int MSG_CLEAR_12 = 0x00000009;
+		public static final int MSG_BLOCK_1 = 0x00000000; //Group/OpenTempl/3
+		public static final int MSG_BLOCK_1_FIELD_BLOCKID_3 = 0x00800001; //LongUnsigned/None/0
+		public static final int MSG_BLOCK_1_FIELD_BYTEARRAY_2 = 0x01c00003; //ByteVector/None/0
+		public static final int MSG_RELEASE_7 = 0x00000004; //Group/OpenTempl/2
+		public static final int MSG_RELEASE_7_FIELD_BLOCKID_3 = 0x00800001; //LongUnsigned/None/0
+		public static final int MSG_REQUESTREPLAY_6 = 0x00000007; //Group/OpenTempl/1
+		public static final int MSG_CLEAR_12 = 0x00000009; //Group/OpenTempl/1
 
 
 		public static void consume(Pipe<PersistedBlobStoreSchema> input) {
@@ -66,7 +62,7 @@ public class PersistedBlobStoreSchema extends MessageSchema<PersistedBlobStoreSc
 
 		public static void consumeBlock(Pipe<PersistedBlobStoreSchema> input) {
 		    long fieldBlockId = PipeReader.readLong(input,MSG_BLOCK_1_FIELD_BLOCKID_3);
-		    ByteBuffer fieldByteArray = PipeReader.readBytes(input,MSG_BLOCK_1_FIELD_BYTEARRAY_2,ByteBuffer.allocate(PipeReader.readBytesLength(input,MSG_BLOCK_1_FIELD_BYTEARRAY_2)));
+		    DataInputBlobReader<PersistedBlobStoreSchema> fieldByteArray = PipeReader.inputStream(input, MSG_BLOCK_1_FIELD_BYTEARRAY_2);
 		}
 		public static void consumeRelease(Pipe<PersistedBlobStoreSchema> input) {
 		    long fieldBlockId = PipeReader.readLong(input,MSG_RELEASE_7_FIELD_BLOCKID_3);
@@ -76,42 +72,24 @@ public class PersistedBlobStoreSchema extends MessageSchema<PersistedBlobStoreSc
 		public static void consumeClear(Pipe<PersistedBlobStoreSchema> input) {
 		}
 
-		public static boolean publishBlock(Pipe<PersistedBlobStoreSchema> output, long fieldBlockId, byte[] fieldByteArrayBacking, int fieldByteArrayPosition, int fieldByteArrayLength) {
-		    boolean result = false;
-		    if (PipeWriter.tryWriteFragment(output, MSG_BLOCK_1)) {
+		public static void publishBlock(Pipe<PersistedBlobStoreSchema> output, long fieldBlockId, byte[] fieldByteArrayBacking, int fieldByteArrayPosition, int fieldByteArrayLength) {
+		        PipeWriter.presumeWriteFragment(output, MSG_BLOCK_1);
 		        PipeWriter.writeLong(output,MSG_BLOCK_1_FIELD_BLOCKID_3, fieldBlockId);
 		        PipeWriter.writeBytes(output,MSG_BLOCK_1_FIELD_BYTEARRAY_2, fieldByteArrayBacking, fieldByteArrayPosition, fieldByteArrayLength);
 		        PipeWriter.publishWrites(output);
-		        result = true;
-		    }
-		    return result;
 		}
-		public static boolean publishRelease(Pipe<PersistedBlobStoreSchema> output, long fieldBlockId) {
-		    boolean result = false;
-		    if (PipeWriter.tryWriteFragment(output, MSG_RELEASE_7)) {
+		public static void publishRelease(Pipe<PersistedBlobStoreSchema> output, long fieldBlockId) {
+		        PipeWriter.presumeWriteFragment(output, MSG_RELEASE_7);
 		        PipeWriter.writeLong(output,MSG_RELEASE_7_FIELD_BLOCKID_3, fieldBlockId);
 		        PipeWriter.publishWrites(output);
-		        result = true;
-		    }
-		    return result;
 		}
-		public static boolean publishRequestReplay(Pipe<PersistedBlobStoreSchema> output) {
-		    boolean result = false;
-		    if (PipeWriter.tryWriteFragment(output, MSG_REQUESTREPLAY_6)) {
+		public static void publishRequestReplay(Pipe<PersistedBlobStoreSchema> output) {
+		        PipeWriter.presumeWriteFragment(output, MSG_REQUESTREPLAY_6);
 		        PipeWriter.publishWrites(output);
-		        result = true;
-		    }
-		    return result;
 		}
-		public static boolean publishClear(Pipe<PersistedBlobStoreSchema> output) {
-		    boolean result = false;
-		    if (PipeWriter.tryWriteFragment(output, MSG_CLEAR_12)) {
+		public static void publishClear(Pipe<PersistedBlobStoreSchema> output) {
+		        PipeWriter.presumeWriteFragment(output, MSG_CLEAR_12);
 		        PipeWriter.publishWrites(output);
-		        result = true;
-		    }
-		    return result;
 		}
-
-
 		
 }

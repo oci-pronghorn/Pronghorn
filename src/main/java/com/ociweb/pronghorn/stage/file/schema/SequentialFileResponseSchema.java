@@ -9,10 +9,10 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 public class SequentialFileResponseSchema extends MessageSchema<SequentialFileResponseSchema> {
 
 	public final static FieldReferenceOffsetManager FROM = new FieldReferenceOffsetManager(
-		    new int[]{0xc0400001,0xc0200001,0xc0400003,0x90000000,0x90000000,0xc0200003,0xc0400002,0x80000000,0xc0200002},
+		    new int[]{0xc0400001,0xc0200001,0xc0400003,0x90000000,0x90000000,0xc0200003,0xc0400002,0x90000001,0xc0200002},
 		    (short)0,
-		    new String[]{"ClearAck",null,"MetaResponse","Size","Date",null,"WriteAck","FragmentCount",null},
-		    new long[]{1, 0, 2, 11, 11, 0, 3, 10, 0},
+		    new String[]{"ClearAck",null,"MetaResponse","Size","Date",null,"WriteAck","Id",null},
+		    new long[]{1, 0, 2, 11, 11, 0, 3, 12, 0},
 		    new String[]{"global",null,"global",null,null,null,"global",null,null},
 		    "SequentialFileResponse.xml",
 		    new long[]{2, 2, 0},
@@ -30,7 +30,7 @@ public class SequentialFileResponseSchema extends MessageSchema<SequentialFileRe
 		public static final int MSG_METARESPONSE_2_FIELD_SIZE_11 = 0x00800001; //LongUnsigned/None/0
 		public static final int MSG_METARESPONSE_2_FIELD_DATE_11 = 0x00800003; //LongUnsigned/None/0
 		public static final int MSG_WRITEACK_3 = 0x00000006; //Group/OpenTempl/2
-		public static final int MSG_WRITEACK_3_FIELD_FRAGMENTCOUNT_10 = 0x00000001; //IntegerUnsigned/None/0
+		public static final int MSG_WRITEACK_3_FIELD_ID_12 = 0x00800001; //LongUnsigned/None/1
 
 
 		public static void consume(Pipe<SequentialFileResponseSchema> input) {
@@ -61,7 +61,7 @@ public class SequentialFileResponseSchema extends MessageSchema<SequentialFileRe
 		    long fieldDate = PipeReader.readLong(input,MSG_METARESPONSE_2_FIELD_DATE_11);
 		}
 		public static void consumeWriteAck(Pipe<SequentialFileResponseSchema> input) {
-		    int fieldFragmentCount = PipeReader.readInt(input,MSG_WRITEACK_3_FIELD_FRAGMENTCOUNT_10);
+		    long fieldId = PipeReader.readLong(input,MSG_WRITEACK_3_FIELD_ID_12);
 		}
 
 		public static void publishClearAck(Pipe<SequentialFileResponseSchema> output) {
@@ -74,11 +74,10 @@ public class SequentialFileResponseSchema extends MessageSchema<SequentialFileRe
 		        PipeWriter.writeLong(output,MSG_METARESPONSE_2_FIELD_DATE_11, fieldDate);
 		        PipeWriter.publishWrites(output);
 		}
-		public static void publishWriteAck(Pipe<SequentialFileResponseSchema> output, int fieldFragmentCount) {
+		public static void publishWriteAck(Pipe<SequentialFileResponseSchema> output, long fieldId) {
 		        PipeWriter.presumeWriteFragment(output, MSG_WRITEACK_3);
-		        PipeWriter.writeInt(output,MSG_WRITEACK_3_FIELD_FRAGMENTCOUNT_10, fieldFragmentCount);
+		        PipeWriter.writeLong(output,MSG_WRITEACK_3_FIELD_ID_12, fieldId);
 		        PipeWriter.publishWrites(output);
 		}
 
-		
 }

@@ -2,6 +2,8 @@ package com.ociweb.pronghorn.stage.file;
 
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
+
 import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
@@ -9,44 +11,47 @@ import com.ociweb.pronghorn.stage.file.schema.BlockManagerRequestSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockManagerResponseSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
-import com.ociweb.pronghorn.stage.file.schema.SequentialFileIORequestSchema;
-import com.ociweb.pronghorn.stage.file.schema.SequentialFileIOResponseSchema;
-
-import java.io.File;
+import com.ociweb.pronghorn.stage.file.schema.SequentialFileControlSchema;
+import com.ociweb.pronghorn.stage.file.schema.SequentialFileResponseSchema;
 
 public class SchemaTest {
 
+	private static final String ROOT = "src" + File.separator + "test" + File.separator + "resources" + File.separator;
+
 	@Test
 	public void testBlockManagerRequestSchema() {
-		assertTrue(FROMValidation.checkSchema("src" + File.separator + "test" + File.separator + "resources" + File.separator + "BlockManagerRequest.xml", BlockManagerRequestSchema.class));
+		assertTrue(FROMValidation.checkSchema(ROOT + "BlockManagerRequest.xml", BlockManagerRequestSchema.class));
 	}
 
 	@Test
 	public void testBlockManagerResponseSchema() {
-		assertTrue(FROMValidation.checkSchema("src" + File.separator + "test" + File.separator + "resources" + File.separator + "BlockManagerResponse.xml", BlockManagerResponseSchema.class));
+		assertTrue(FROMValidation.checkSchema(ROOT + "BlockManagerResponse.xml", BlockManagerResponseSchema.class));
 	}
 
 	@Test
 	public void testPersistedBlobLoadSchema() {
-		assertTrue(FROMValidation.checkSchema("src" + File.separator + "test" + File.separator + "resources" + File.separator + "PersistedBlobLoad.xml", PersistedBlobLoadSchema.class));
+		assertTrue(FROMValidation.checkSchema(ROOT + "PersistedBlobLoad.xml", PersistedBlobLoadSchema.class));
 	}
 
 	@Test
 	public void testPersistedBlobSaveSchema() {
-		assertTrue(FROMValidation.checkSchema("src" + File.separator + "test" + File.separator + "resources" + File.separator + "PersistedBlobStore.xml", PersistedBlobStoreSchema.class));
+		assertTrue(FROMValidation.checkSchema(ROOT + "PersistedBlobStore.xml", PersistedBlobStoreSchema.class));
 
 	}
-
-
+	
 	@Test
-	public void testSequentialFileIORequestSchema() {//under development
-		assertTrue(FROMValidation.checkSchema("src" + File.separator + "test" + File.separator + "resources" + File.separator + "fileIORequest.xml", SequentialFileIORequestSchema.class));
-	}
+	public void testSequentialFileControlSchema() {
+		assertTrue(FROMValidation.checkSchema(ROOT + "SequentialFileControl.xml", SequentialFileControlSchema.class));
 
+	}
+	
 	@Test
-	public void testSequentialFileIOResponseSchema() {//under development
-		assertTrue(FROMValidation.checkSchema( "src" + File.separator + "test" + File.separator + "resources" + File.separator + "fileIOResponse.xml", SequentialFileIOResponseSchema.class));
+	public void testSequentialFileResponseSchema() {
+		assertTrue(FROMValidation.checkSchema(ROOT + "SequentialFileResponse.xml", SequentialFileResponseSchema.class));
+
 	}
 
+//
+//	
 
 }

@@ -181,10 +181,11 @@ public class MQTTClientStage extends PronghornStage {
 				
 					break;			
 				case MQTTClientRequestSchema.MSG_PUBLISH_3:
-		
+					
 					PipeWriter.presumeWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_PUBLISH_3);
-										
 					int valueQoS = PipeReader.readInt(clientRequest, MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_QOS_21);
+								
+					
 					PipeWriter.writeInt(clientToServer, 
 							MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_QOS_21, 
 							valueQoS);
@@ -388,45 +389,38 @@ public class MQTTClientStage extends PronghornStage {
 					int serverSidePacketId = IdGenStage.IS_REMOTE_BIT 
 							                 | PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_PACKETID_20);
 					
-					int retain3 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_RETAIN_22);
-					
+					int retain3 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_RETAIN_22);					
 					int dup3 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_DUP_36);
 					int qos3 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_QOS_21);
 				
+					if(2==qos3) {
+						//TODO: finish implementation of exactly once
+						
+						//if serverSidePacketId is not found then 
+						//store serverSidePacketId
+						//must save to disk in case of restart and xmits.
+						
+						//keep local bit map
+						//clear bit map value upon rel...
+						
+						//only send if not already sent...
+						
+					}
 					
-					PipeWriter.tryWriteFragment(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3);
-					
-					PipeWriter.writeInt(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_QOS_21, qos3);
-					PipeWriter.writeInt(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_DUP_36, dup3);
-					PipeWriter.writeInt(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_RETAIN_22, retain3);
-					
-					int lenTopic = PipeReader.copyBytes(serverToClient, clientResponse,
-							MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, 
-							MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_TOPIC_23);
-					
-					int lenPayload = PipeReader.copyBytes(serverToClient, clientResponse,
-							MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25, 
-							MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_PAYLOAD_25);
-					
-//				//// debug	
-//				StringBuilder b = new StringBuilder("MQTTClient:");				
-//			    PipeReader.readUTF8(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, b).append(" ");
-//  		    PipeReader.readUTF8(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25, b);
-//				System.err.println(b);					
-					
-					PipeWriter.publishWrites(clientResponse);
-					
+				    sendMessageToApplication(retain3, dup3, qos3);
+										
 					if (0!=qos3) {
 						
 						if (1==qos3) {		//send pubAck for 1
-							PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBACK_4);
 							
+							PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBACK_4);
 							PipeWriter.writeInt(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBACK_4_FIELD_PACKETID_20, serverSidePacketId);
 							PipeWriter.writeLong(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBACK_4_FIELD_TIME_37, mostRecentTime);
-							PipeWriter.publishWrites(clientToServerAck);						
-						} else if (2==qos3) {
-							PipeWriter.presumeWriteFragment(serverToClient, MQTTClientToServerSchema.MSG_PUBREC_5);
+							PipeWriter.publishWrites(clientToServerAck);
 							
+						} else if (2==qos3) {
+							
+							PipeWriter.presumeWriteFragment(serverToClient, MQTTClientToServerSchema.MSG_PUBREC_5);
 							PipeWriter.writeInt(serverToClient, MQTTClientToServerSchema.MSG_PUBREC_5_FIELD_PACKETID_20, serverSidePacketId);
 							PipeWriter.writeLong(serverToClient, MQTTClientToServerSchema.MSG_PUBREC_5_FIELD_TIME_37, mostRecentTime);
 							PipeWriter.publishWrites(serverToClient);							
@@ -510,6 +504,33 @@ public class MQTTClientStage extends PronghornStage {
 			PipeReader.releaseReadLock(serverToClient);
 			
 		}
+	}
+
+
+	private void sendMessageToApplication(int retain3, int dup3, int qos3) {
+	
+		PipeWriter.presumeWriteFragment(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3);
+		
+		PipeWriter.writeInt(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_QOS_21, qos3);
+		PipeWriter.writeInt(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_DUP_36, dup3);
+		PipeWriter.writeInt(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_RETAIN_22, retain3);
+		
+		int lenTopic = PipeReader.copyBytes(serverToClient, clientResponse,
+				MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, 
+				MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_TOPIC_23);
+		
+		int lenPayload = PipeReader.copyBytes(serverToClient, clientResponse,
+				MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25, 
+				MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_PAYLOAD_25);
+		
+//				//// debug	
+//				StringBuilder b = new StringBuilder("MQTTClient:");				
+//			    PipeReader.readUTF8(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, b).append(" ");
+//  		    PipeReader.readUTF8(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25, b);
+//				System.err.println(b);					
+		
+		PipeWriter.publishWrites(clientResponse);
+
 	}
 
 

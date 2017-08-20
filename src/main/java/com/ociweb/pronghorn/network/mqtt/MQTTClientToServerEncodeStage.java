@@ -208,10 +208,15 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	    		final long slabPos = Pipe.getSlabHeadPosition(pipe); 
 	    		final int blobPos = Pipe.getBlobHeadPosition(pipe);
 					    			    	
-	    		
-	    		//Set the DUP flag which is the 3rd bit now that we are sending this again.
-	    		Pipe.blob(pipe)[pipe.blobMask & blobPositionsRing[ringMask & i]] |= 8; //
-   		
+	    		//////////////////////////////////////////////////////////////////
+	    		int firstPos = pipe.blobMask & blobPositionsRing[ringMask & i];
+				byte[] blob = Pipe.blob(pipe);
+				int firstByte = blob[firstPos];
+	    		if ((0x30&firstByte)==0x30) {//publish flag	    				
+	    			//Set the DUP flag which is the 3rd bit now that we are sending this again.
+	    			blob[firstPos] = (byte)(firstByte | 8); //
+	    		}
+	    		/////////////////////////////////////////////////////////////////
 	    		
 				if (!PipeWriter.tryReplication(pipe, slabPositionsRing[ringMask & i], blobPositionsRing[ringMask & i])) {
 					return false;
@@ -308,6 +313,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		
 		while ( (connectionId = connectionId())>=0
 				&& PipeReader.tryReadFragment(persistBlobLoad)) {
+			
 		    int msgIdx = PipeReader.getMsgIdx(persistBlobLoad);
 		    switch(msgIdx) {
 		    	case PersistedBlobLoadSchema.MSG_BEGINREPLAY_8:
@@ -343,16 +349,12 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		        }
 		        break;
 		        case PersistedBlobLoadSchema.MSG_FINISHREPLAY_9:
-		        	
-				MQTTIdRangeControllerSchema.publishReady(idRangeControl);
-		        	
+		        	MQTTIdRangeControllerSchema.publishReady(idRangeControl);		        	
 		        	isInReloadPersisted = false;
 				break;
 				
 		        case PersistedBlobLoadSchema.MSG_ACKRELEASE_10:
-		        	int fieldBlockId1 = (int)PipeReader.readLong(persistBlobLoad,PersistedBlobLoadSchema.MSG_ACKRELEASE_10_FIELD_BLOCKID_3);
-		        	//logger.trace("BBB back from disk removal ack {} ",fieldBlockId1);
-		        	ackPublishedPosLocal(fieldBlockId1);
+		        	ackPublishedPosLocal((int)PipeReader.readLong(persistBlobLoad,PersistedBlobLoadSchema.MSG_ACKRELEASE_10_FIELD_BLOCKID_3));
 		        break;
 		        
 		        case PersistedBlobLoadSchema.MSG_ACKWRITE_11:

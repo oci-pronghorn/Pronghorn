@@ -17,12 +17,9 @@ import com.ociweb.pronghorn.network.schema.MQTTServerToClientSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
-import com.ociweb.pronghorn.stage.file.SequentialFileReadWriteStage;
-import com.ociweb.pronghorn.stage.file.PersistedUnsafeBlobStage;
-import com.ociweb.pronghorn.stage.file.schema.SequentialFileControlSchema;
+import com.ociweb.pronghorn.stage.file.FileGraphBuilder;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -104,7 +101,6 @@ public class MQTTClientGraphBuilder {
 		};
 				
 		Pipe<PersistedBlobStoreSchema> persistancePipe = PersistedBlobStoreSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
-		Pipe<PersistedBlobLoadSchema> persistanceLoadPipe = PersistedBlobLoadSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
 
 		File rootFolder = null;
 		try {
@@ -120,13 +116,22 @@ public class MQTTClientGraphBuilder {
 //		Pipe<RawDataSchema> outPipe = RawDataSchema.instance.newPipe(10, 1000);		
 //		FileBlobReadWriteStage fileReadWrite = new FileBlobReadWriteStage(gm, control, inPipe, outPipe, "filename");
 		
-		
-		
 		byte multi = 4;//x time the pipe size
-		PersistedUnsafeBlobStage persistedStage = new PersistedUnsafeBlobStage(gm, 
-				                     persistancePipe, persistanceLoadPipe, 
-				                     multi, maxValueBits, rootFolder );
-		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, persistedStage);
+		
+
+		
+//		Pipe<PersistedBlobLoadSchema> persistanceLoadPipe = PersistedBlobLoadSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
+//		PersistedUnsafeBlobStage persistedStage = new PersistedUnsafeBlobStage(gm, 
+//				                     persistancePipe, persistanceLoadPipe, 
+//				                     multi, maxValueBits, rootFolder );
+//		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, persistedStage);
+		
+		
+		short inFlightCount = (short)maxInFlight;
+		Pipe<PersistedBlobLoadSchema> persistanceLoadPipe = FileGraphBuilder.buildSequentialReplayer(
+				gm, persistancePipe, multi, maxValueBits, inFlightCount,
+				maximumLenghOfVariableLengthFields, rootFolder, null);
+		
 		
 		int independentClients = 1; 
 		

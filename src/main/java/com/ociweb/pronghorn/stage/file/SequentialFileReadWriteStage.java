@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -34,16 +35,17 @@ public class SequentialFileReadWriteStage extends PronghornStage {
     private static final byte MODE_WRITE = 0;
     private static final byte MODE_READ  = 1;
         
-    
+    private final int READ_CTL_REQUIRED_SIZE = Pipe.sizeOf(RawDataSchema.instance, 2*RawDataSchema.MSG_CHUNKEDSTREAM_1);
     private final Pipe<RawDataSchema>[] output;
     private final Pipe<RawDataSchema>[] input;
     private final Pipe<SequentialFileControlSchema>[] control;
     private final Pipe<SequentialFileResponseSchema>[] response;
     private final String[] paths;
     private Path[] path;
+    private long[] idToWriteToFile;
     
     private FileChannel[] fileChannel;
-    private int[] shutdownInProgress; // 0 not, 1 going, 2 sent
+    private int[] shutdownInProgress; // 0 not, 1 going, 3 sent
     private int shutdownCount;
     
     private boolean[] releaseRead; //all false for initial state
@@ -80,6 +82,9 @@ public class SequentialFileReadWriteStage extends PronghornStage {
     @Override
     public void startup() {
 
+    	this.idToWriteToFile = new long[output.length];//store ID to be written and then acked
+    	Arrays.fill(this.idToWriteToFile, -1);
+    	
         this.releaseRead = new boolean[output.length]; //all false for initial state
         this.buffA = new ByteBuffer[output.length];
         this.buffB = new ByteBuffer[output.length];
@@ -113,6 +118,10 @@ public class SequentialFileReadWriteStage extends PronghornStage {
         //fileSystem.getPath("")
     }
 
+    @Override
+    public void shutdown() {
+    	//logger.info("shutdown");
+    }
 
     
     @Override
@@ -127,16 +136,17 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 	    	while(--i>=0) {
 	    		
 	    		if (shutdownInProgress[i]>0) {
-	    				    			
+	    				    		
 	    			if (shutdownInProgress[i] == 1 &&
 	    			    Pipe.hasRoomForWrite(output[i], Pipe.EOF_SIZE) && 
 	    			    Pipe.hasRoomForWrite(response[i], Pipe.EOF_SIZE)) {
 	    				
-	    				PipeWriter.publishEOF(response[i]); //TODO: convert to all low level ....		        	
+	    				PipeWriter.publishEOF(response[i]); //TODO: convert to all low level ....	
+
 	    				Pipe.publishEOF(output[i]);
 	    				
 	    				try {
-	            			if (null!=fileChannel[i]) {
+	            			if (null != fileChannel[i]) {
 	            				fileChannel[i].close();
 	            			}        			
 	            		} catch (IOException e) {
@@ -148,22 +158,15 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 	    					//all files are done so shutdown
 	    					requestShutdown();
 	    				}
-	    				shutdownInProgress[i] = 2;//only send EOF once
+	    				shutdownInProgress[i] = 3;//only send EOF once
 	    			}
 	    		} else {
-	    		    		
 	    		
 		    		//each of the possible activities will only require one response
 		    		if (PipeWriter.hasRoomForWrite(response[i])) {
-		    			
-		    			if (
-		   					//do not pick up new controls until the writes are complete
-		    				(MODE_WRITE == mode[i]) && (hasDataToWrite(i) || Pipe.hasContentToRead(input[i]))
-		    				) {
-		    				didWork |= writeProcessing(i); //may write to response upon ack of each block single msg with block counts
-		    			
-		    			} else if (readControl(i)) { //readControl may write to response for meta single msg
-			    	        //only continue now if we did not consume the known available space on response
+		    			if (readControl(i)) { //readControl may write to response for meta single msg
+			    	   
+		    				//only continue now if we did not consume the known available space on response
 				    		if (MODE_WRITE == mode[i]) {
 				    			didWork |= writeProcessing(i); //may write to response upon ack of each block single msg with block counts	    			
 				    		} else {
@@ -171,8 +174,7 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 				    		}
 			    		} else {
 			    			didWork = true;
-			    		}
-			    		
+			    		}			    		
 		    		}
 	    		}
 	    	}
@@ -186,9 +188,16 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 		/////////
 		//do not use while, commands are rare and we should only do 1
 		//////////
-		if (PipeReader.tryReadFragment(localControl)) {
+		
+
+		if ((-1==idToWriteToFile[idx]) 
+				&& PipeReader.tryReadFragment(localControl)
+				&& Pipe.hasRoomForWrite(output[idx], READ_CTL_REQUIRED_SIZE)
+				) {
 		    int msgIdx = PipeReader.getMsgIdx(localControl);
+		    
 		    switch(msgIdx) {
+		    
 		        case SequentialFileControlSchema.MSG_REPLAY_1:
 		        	//switch to read mode if not already in read mode
 		        	//set position to beginning for reading
@@ -215,6 +224,7 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 		        	
 				break;
 		        case SequentialFileControlSchema.MSG_METAREQUEST_3:
+
 					try {
 						BasicFileAttributes readAttributes = this.provider.readAttributes(path[idx], BasicFileAttributes.class);
 						
@@ -229,10 +239,14 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 		        	
 					//send mete data but also break out of above since we took the message
 		        	continueWithIdx = false;
-		        	
 				break;
+		        case SequentialFileControlSchema.MSG_IDTOSAVE_4:
+		        	idToWriteToFile[idx] = PipeReader.readLong(localControl,SequentialFileControlSchema.MSG_IDTOSAVE_4_FIELD_ID_10);
+		        	//logger.info("new block to be saved {} ", idToWriteToFile[idx]);
+		        break;
 		        case -1:
-		        	shutdownInProgress[idx] = 1;
+		        	logger.trace("control request for shutting down file {} ",idx);
+		        	shutdownInProgress[idx] |= 1;
 		        break;
 		    }
 		    PipeReader.releaseReadLock(localControl);
@@ -246,6 +260,16 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+		
+		////////////////
+		//not needed becaause decrypt starts at the beginning
+		////////////////
+//		//must send single to reset any decryption		
+//		int size = Pipe.addMsgIdx(output[idx], RawDataSchema.MSG_CHUNKEDSTREAM_1);
+//		Pipe.addNullByteArray(output[idx]);
+//		Pipe.confirmLowLevelWrite(output[idx],size);
+//		Pipe.publishWrites(output[idx]);
+		
 	}
 
 	private boolean readProcessing(int idx) {
@@ -264,13 +288,19 @@ public class SequentialFileReadWriteStage extends PronghornStage {
                 //attempt to read this many bytes but may read less
                 long len = localFileChannel.read(Pipe.wrappedWritingBuffers(originalBlobPosition, localOutput));
                 
+                //A when we go into replay mode we send a -1 to trigger decrypt to cleanup
+                //B we then send the data
+                //C finally we send another -1 
+                
                 //We write the -1 len as a marker to those down stream that the end has been reached.
                 Pipe.addMsgIdx(localOutput, 0);
                 Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)len, localOutput);  
                 Pipe.confirmLowLevelWrite(localOutput, SIZE);
                 Pipe.publishWrites(localOutput);    
 
-                if (len<0) {                	
+               // logger.info("reading {} bytes from file {} into pipe {}",len,idx,localOutput);
+                
+                if (len<0) { 
                 	//end of file reached so change to write                	
                 	mode[idx] = MODE_WRITE;
                     return true;
@@ -290,97 +320,110 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 		Pipe<RawDataSchema> localInput = input[idx];
 		FileChannel localFileChannel = fileChannel[idx];
 	
-		int fieldFragmentCount = 0;
 		do {
-        
-        if (null==buffA[idx] && 
-            null==buffB[idx]) {
-            //read the next block
-            
-            if (releaseRead[idx]) {
-                //only done after we have consumed the bytes
-                Pipe.confirmLowLevelRead(localInput, SIZE);
-                Pipe.releaseReadLock(localInput);
-                releaseRead[idx] = false;
-                fieldFragmentCount++;
-            }
-
-            if (Pipe.hasContentToRead(localInput)) {
-                int msgId      = Pipe.takeMsgIdx(localInput);   
-                if (msgId < 0) {
-                	ackFinishedWrites(idx, fieldFragmentCount);
-                    Pipe.confirmLowLevelRead(localInput, Pipe.EOF_SIZE);
-                    Pipe.releaseReadLock(localInput);
-                    requestShutdown();
-                    return fieldFragmentCount>0;
-                }
-                assert(0==msgId);
-                int meta = Pipe.takeRingByteMetaData(localInput); //for string and byte array
-                int len = Pipe.takeRingByteLen(localInput);
-
-                if (len < 0) {
-                	ackFinishedWrites(idx, fieldFragmentCount);
-                    Pipe.confirmLowLevelRead(localInput, SIZE);
-                    Pipe.releaseReadLock(localInput);
-                    requestShutdown();
-                    return fieldFragmentCount>0;
-                }
-                
-                                                
-                releaseRead[idx] = true;
-                buffA[idx] = Pipe.wrappedBlobReadingRingA(localInput, meta, len);
-                buffB[idx] = Pipe.wrappedBlobReadingRingB(localInput, meta, len);
-                if (!buffB[idx].hasRemaining()) {
-                    buffB[idx] = null;
-                }
-                
-                
-            } else {
-            	ackFinishedWrites(idx, fieldFragmentCount);
-                return fieldFragmentCount>0;
-            }
-            
-        }
-
-        
-        //we have existing data to be written
-        if (hasDataToWrite(idx)) {
-            try {
-                
-            	localFileChannel.write(buffA[idx]);
-                if (0==buffA[idx].remaining()) {
-                    buffA[idx] = null;
-                } else {
-                	ackFinishedWrites(idx, fieldFragmentCount);
-                    return fieldFragmentCount>0;//do not write B because we did not finish A
-                }
-                
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        
-        if (null!=buffB[idx]) {
-            try {                
-            	localFileChannel.write(buffB[idx]);
-                if (0==buffB[idx].remaining()) {
-                    buffB[idx] = null;
-                }
-                
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
+	        
+	        if (null==buffA[idx] && 
+	            null==buffB[idx]) {
+	            //read the next block
+	            
+	            if (releaseRead[idx]) {
+	                //only done after we have consumed the bytes
+	                Pipe.confirmLowLevelRead(localInput, SIZE);
+	                Pipe.releaseReadLock(localInput);
+	                releaseRead[idx] = false;
+	                
+	                //was released so now send ack.
+	                return ackFinishedWrite(idx);
+	            }
+	          //  logger.info("write processing for block id {} and file {} has content {} "
+	          //  		,idToWriteToFile[idx],idx,Pipe.hasContentToRead(localInput));
+	            
+	            //TODO: accumulate multiple writes and do as 1 block, then be sure to return all the Acks
+	            //      as we read them of the incomming pipe.
+	            	
+	            if ((-1!=idToWriteToFile[idx] && Pipe.hasContentToRead(localInput)) 
+	            		|| Pipe.peekMsg(localInput, -1) ) {
+	            	
+	                int msgId      = Pipe.takeMsgIdx(localInput);   
+	                if (msgId < 0) {
+	                    Pipe.confirmLowLevelRead(localInput, Pipe.EOF_SIZE);
+	                    Pipe.releaseReadLock(localInput);
+	                    logger.trace("data driven shutting down of file {} ",idx);
+	                    shutdownInProgress[idx] |= 1;
+	                    return ackFinishedWrite(idx);
+	                }
+	                assert(0==msgId);
+	                int meta = Pipe.takeRingByteMetaData(localInput); //for string and byte array
+	                int len = Pipe.takeRingByteLen(localInput);
+	
+	                if (0==len) {
+	                	logger.info("WARNING, file write of 0 bytes for the file {} has been done.",idx);
+	                }
+	 
+	                if (len < 0) {
+	                    Pipe.confirmLowLevelRead(localInput, SIZE);
+	                    Pipe.releaseReadLock(localInput);
+	                    //zero content to append (null) do not shut down
+	                    return ackFinishedWrite(idx);
+	                }	                
+	                                                
+	                releaseRead[idx] = true;
+	                buffA[idx] = Pipe.wrappedBlobReadingRingA(localInput, meta, len);
+	                buffB[idx] = Pipe.wrappedBlobReadingRingB(localInput, meta, len);
+	                if (!buffB[idx].hasRemaining()) {
+	                    buffB[idx] = null;
+	                }
+	                
+	                
+	            } else {
+	            	return false;
+	            }
+	            
+	        }
+	        
+	        
+	        //we have existing data to be written
+	        if (hasDataToWrite(idx)) {
+	            try {
+	                
+	            	localFileChannel.write(buffA[idx]);
+	                if (0==buffA[idx].remaining()) {
+	                    buffA[idx] = null;
+	                } else {   	//do not write B because we did not finish A
+	                	return true;
+	                }
+	                
+	            } catch (IOException e) {
+	                throw new RuntimeException(e);
+	            }
+	        }
+	        
+	        if (null!=buffB[idx]) {
+	            try {                
+	            	localFileChannel.write(buffB[idx]);
+	                if (0==buffB[idx].remaining()) {
+	                    buffB[idx] = null;
+	                }
+	                
+	            } catch (IOException e) {
+	                throw new RuntimeException(e);
+	            }
+	        }
         
         } while (null == buffA[idx] && null == buffB[idx]);
-		return fieldFragmentCount>0;
+		return false;
 	}
 
-	private void ackFinishedWrites(int idx, int fieldFragmentCount) {
-		if (fieldFragmentCount>0) {
-        	SequentialFileResponseSchema.publishWriteAck(response[idx], fieldFragmentCount);
-        }
+	private boolean ackFinishedWrite(int idx) {
+		if (-1 != idToWriteToFile[idx]) {
+			//logger.info("finished write of block {} ", idToWriteToFile[idx]);
+			SequentialFileResponseSchema.publishWriteAck(response[idx], idToWriteToFile[idx]);
+			idToWriteToFile[idx] = -1;
+			return true;
+		}
+		return false;
 	}
+
 
 	private boolean hasDataToWrite(int idx) {
 		return null!=buffA[idx];

@@ -10,5 +10,9 @@
 
    <template name="MetaRequest" id="3">
    </template>
+   
+   <template name="IdToSave" id="4">
+    	<uInt64 name="Id" id="10"/>
+   </template>
 
 </templates>

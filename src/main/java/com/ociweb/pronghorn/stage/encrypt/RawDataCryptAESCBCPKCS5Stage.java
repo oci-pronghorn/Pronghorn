@@ -1,20 +1,16 @@
 package com.ociweb.pronghorn.stage.encrypt;
 
-import static com.ociweb.pronghorn.pipe.Pipe.blobMask;
-import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
-import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
-
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 
-import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.crypto.ShortBufferException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -23,10 +19,13 @@ import com.ociweb.pronghorn.pipe.token.LOCUtil;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.Appendables;
 
 public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 
+	public static final Logger logger = LoggerFactory.getLogger(RawDataCryptAESCBCPKCS5Stage.class);
+	
+	private static final int REQ_OUT_SIZE = 2*Pipe.sizeOf(RawDataSchema.instance, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+	private static final int SIZE_OF_CHUNKED = Pipe.sizeOf(RawDataSchema.instance, RawDataSchema.MSG_CHUNKEDSTREAM_1);
 	private byte[] iv;
 	private Cipher c;
 	
@@ -47,6 +46,8 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 	private final int passSizeMask = passSize-1;
 	
 	private DataInputBlobReader<RawDataSchema> inputStream;
+	
+	private boolean pendingShutdown = false;
 	
 	private byte[] targetBuffer;
 	
@@ -72,6 +73,9 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 		this.pass = pass;
 		this.input = input;
 		this.output = output;
+		
+		//logger.info("encrypt {} for input pipe {} ",encrypt, input.id);
+		
 		
 	}
 
@@ -99,8 +103,6 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 			assert(0 == (input.sizeOfBlobRing%blockSize)) : "block size must fit into blob evently";
 			
 			
-			
-			
 			//only need this block if we want to read iv
 			//AlgorithmParameters params = c.getParameters();
 			//params.getParameterSpec(paramSpec)
@@ -116,12 +118,16 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 		
 	}
 
-	private boolean pendingShutdown = false;
+	@Override
+	public void shutdown() {
+		//logger.info("shutdown");
+	}
 	
 	@Override
 	public void run() {
 		
 		if (pendingShutdown) {
+			assert(!Pipe.hasContentToRead(input)) : "Should not have more data after shutdown request";
 			//this pattern eliminates need for spin-lock which can cause unit test to hang.
 			if (Pipe.hasRoomForWrite(output)) {
 				 Pipe.publishEOF(output);
@@ -132,19 +138,58 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 
 		while (processAvail()) {}
 		
-		while (Pipe.hasContentToRead(input)) {
-
-		    int msgIdx = Pipe.takeMsgIdx(input);
+		//logger.info("encrypt {} has content {}",encrypt, Pipe.hasContentToRead(input));
+		
+		while (Pipe.hasContentToRead(input) 
+		   	   && Pipe.hasRoomForWrite(output, REQ_OUT_SIZE)) {
+	    
+			int msgIdx = Pipe.takeMsgIdx(input);
 		    switch(msgIdx) {
 		        case RawDataSchema.MSG_CHUNKEDSTREAM_1:
-		        	
-		           int len = inputStream.accumLowLevelAPIField();
-		           Pipe.confirmLowLevelRead(input, Pipe.sizeOf(RawDataSchema.instance, RawDataSchema.MSG_CHUNKEDSTREAM_1));
-		           Pipe.readNextWithoutReleasingReadLock(input);
-				              	           
-		           while (processAvail()){}
-		           		           
+		           int nxtLen = Pipe.peekInt(input, 1);
 		           
+		           //logger.info("crypt data reading {} encrypt {} from pipe {}",nxtLen, encrypt, input.id);
+		           //when decrypting we need to accum work togetehr as needed
+		           //but when encrypting we will consume all the data of each block
+		           
+		           inputStream.accumLowLevelAPIField();
+		           
+		           
+		           if (nxtLen<0) {
+		        	    
+		        	    //clean up before we move on
+		        	    while (processAvail()){}
+		        	   		        	   
+						try {
+						//	logger.info("reset for new read from pipe {}", input.id);
+							
+							iv = new byte[passSize];
+							c.init(encrypt ? Cipher.ENCRYPT_MODE : Cipher.DECRYPT_MODE, 
+									   new SecretKeySpec(pass, "AES"),
+									   new IvParameterSpec(iv));
+							
+							//byte[] lastBlock = c.doFinal();							
+							//System.err.println("hello "+lastBlock.length);
+						} catch (Exception e) {
+							throw new RuntimeException(e);
+						} 
+						
+						int s = Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+						Pipe.addNullByteArray(output);
+						Pipe.confirmLowLevelWrite(output, s);
+						Pipe.publishWrites(output);
+						
+						Pipe.confirmLowLevelRead(input, SIZE_OF_CHUNKED);
+				        Pipe.releaseReadLock(input);	
+		        	   
+		           } else {
+		           
+			           Pipe.confirmLowLevelRead(input, SIZE_OF_CHUNKED);
+			           Pipe.readNextWithoutReleasingReadLock(input);
+					       
+			           while (processAvail()){}
+			           		           
+		           }
 		        break;
 		        case -1:
 		           pendingShutdown = true;
@@ -159,18 +204,15 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 	
 	private boolean processAvail() {
 		int len = inputStream.available();
-		if (!encrypt) {
-			if (len<blockSize) {
-				return false;//need data to decrypt
-			}
-		} else {
-			if (len<=0) {
-				return false;//need data to encrypt
-			}
-		}
-
 		int availSourceLen = Math.min(len, sourceMask-(inputStream.absolutePosition() & sourceMask));
 
+		if (availSourceLen <= 0) {
+			return false;//need data to encrypt
+		}
+
+		/////////////////
+		//is this needed?
+		/////////////////
 		//compute target size, round up to next passSize (block size)
 		int targetSize = ((availSourceLen+passSizeMask)>>passSizeBits)<<passSizeBits;
 		
@@ -182,10 +224,11 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 			//must lower source since the target got limited.
 			availSourceLen = availTargetSize-passSize;
 		}
+		//////////
+		//////////
 
 		//For most common case this conditional will be true
 		if (Pipe.hasRoomForWrite(output) ) {		
-			int size= Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
 			
 			try {
 				//data must be in block size units 
@@ -198,22 +241,36 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 										  availSourceLen, 
 										  targetBuffer, 
 										  Pipe.getWorkingBlobHeadPosition(output));
-					
-				assert(LOCUtil.isLocOfAnyType(fieldLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(fieldLOC);
-
-				Pipe.addBytePosAndLen(output, Pipe.getWorkingBlobHeadPosition(output), encSize);
-				Pipe.addAndGetBytesWorkingHeadPosition(output, encSize);
-												
-				inputStream.skip(availSourceLen);
-
-				Pipe.releasePendingAsReadLock(input, availSourceLen);
 				
+				//only write out a block when we have data 
+				
+				if (encSize>0) {
+					
+					int size= Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+					
+//					logger.info("pipe {} encryp {} output size {} orig source size {} ",
+//							DataInputBlobReader.getBackingPipe(inputStream).id, 
+//							encrypt,
+//							encSize,
+//							availSourceLen);
+					
+					assert(LOCUtil.isLocOfAnyType(fieldLOC, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(fieldLOC);
+	
+					Pipe.addBytePosAndLen(output, Pipe.getWorkingBlobHeadPosition(output), encSize);
+					Pipe.addAndGetBytesWorkingHeadPosition(output, encSize);
+					Pipe.confirmLowLevelWrite(output, size);
+					Pipe.publishWrites(output);
+													
+					inputStream.skip(availSourceLen);
+	
+					Pipe.releasePendingAsReadLock(input, availSourceLen);
+				} else {
+					//logger.info("{} not writing enc {} due to no data {}",stageId, encrypt, availSourceLen);
+				}
 			} catch (Exception e) {
 				throw new RuntimeException(encrypt?"failure while encrypting":"failure while decrypting",e);
 			} 
 						
-			Pipe.confirmLowLevelWrite(output, size);
-			Pipe.publishWrites(output);
 						
 			return true;
 		} else {

@@ -111,6 +111,8 @@ public class FileBlobRoundTripTest {
 		 Pipe.confirmLowLevelWrite(input[0]);
 		 Pipe.publishWrites(input[0]);
 		 
+		 SequentialFileControlSchema.publishIdToSave(control[0], 123);
+		 
 		 //this replay command is expected to only happen after the data is written since pipe has data.
 		 SequentialFileControlSchema.publishReplay(control[0]);
 		 SequentialFileControlSchema.publishMetaRequest(control[0]);

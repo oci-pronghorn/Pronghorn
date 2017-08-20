@@ -83,7 +83,7 @@ public class PersistedBlobStageTest {
 		publishBlock(storeRequests, (long) 33, "world");
 		scheduler.run();  //new block is consumed.
 		
-		assertTrue(PersistedBlobStoreSchema.publishRelease(storeRequests, 31));
+		PersistedBlobStoreSchema.publishRelease(storeRequests, 31);
 		scheduler.run();
 		scheduler.run();
 		results = out.toString();
@@ -108,9 +108,9 @@ public class PersistedBlobStageTest {
 		int fieldByteArrayPosition = 0;
 		int fieldByteArrayLength = fieldByteArrayBacking.length;
 		
-		assertTrue(PersistedBlobStoreSchema.publishBlock(storeRequests, 
+		PersistedBlobStoreSchema.publishBlock(storeRequests, 
 				fieldBlockId, 
-				fieldByteArrayBacking, fieldByteArrayPosition, fieldByteArrayLength));
+				fieldByteArrayBacking, fieldByteArrayPosition, fieldByteArrayLength);
 	}
 	
 }
