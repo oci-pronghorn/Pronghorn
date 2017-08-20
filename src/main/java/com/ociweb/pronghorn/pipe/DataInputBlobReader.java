@@ -48,7 +48,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
 	
     public int openHighLevelAPIField(int loc) {
         
-        this.length         = PipeReader.readBytesLength(pipe, loc);
+        this.length         = Math.max(0, PipeReader.readBytesLength(pipe, loc));
         this.bytesLowBound  = this.position       = PipeReader.readBytesPosition(pipe, loc);
         this.backing        = PipeReader.readBytesBackingArray(pipe, loc); 
         assert(this.backing!=null) : "The pipe must be init before use.";
@@ -97,7 +97,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     
     public int openLowLevelAPIField() {
         int meta = Pipe.takeRingByteMetaData(this.pipe);
-		this.length    = Pipe.takeRingByteLen(this.pipe);
+		this.length    = Math.max(0, Pipe.takeRingByteLen(this.pipe));
 		this.bytesLowBound = this.position = Pipe.bytePosition(meta, this.pipe, this.length);
 		this.backing   = Pipe.byteBackingArray(meta, this.pipe); 
 		assert(this.backing!=null) : 
@@ -134,7 +134,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     
     
     public int accumHighLevelAPIField(int loc) {
-        if (0==this.length) {
+        if (0>=this.length) {
             return openHighLevelAPIField(loc);
         } else {        
         

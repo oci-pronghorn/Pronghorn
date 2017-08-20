@@ -1024,7 +1024,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	public static <S extends MessageSchema<S>> boolean validatePipeBlobHasDataToRead(Pipe<S> pipe, int blobPos, int length) {
 
-		assert(length>=0) : "bad lenght:"+length;
+		assert(length>=0) : "bad length:"+length;
 		if (length==0) {			
 			return true;//nothing to check in this case.
 		}
@@ -3118,9 +3118,11 @@ public class Pipe<T extends MessageSchema<T>> {
     		       "OR the XML field types may not match the accessor methods in use.";
     	assert(validateFieldCount(pipe)) : "No fragment could be found with this field count, check for missing or extra fields.";
 
-	    //TODO: need way to test if publish was called on an input ? may be much easer to detect missing publish. or extra release.
+	    //TODO: need way to test if publish was called on an input ? 
+    	//      may be much easer to detect missing publish. or extra release.
+    	
 	    if ((--pipe.batchPublishCountDown<=0)) {
-	        PaddedInt.set(pipe.blobRingHead.bytesHeadPos,pipe.blobRingHead.byteWorkingHeadPos.value);
+	        PaddedInt.set(pipe.blobRingHead.bytesHeadPos, pipe.blobRingHead.byteWorkingHeadPos.value);
 	        pipe.slabRingHead.headPos.lazySet(pipe.slabRingHead.workingHeadPos.value);
 	        assert(debugHeadAssignment(pipe));
 	        pipe.batchPublishCountDown = pipe.batchPublishCountDownInit;
