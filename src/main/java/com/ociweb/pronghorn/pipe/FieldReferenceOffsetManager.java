@@ -194,13 +194,12 @@ public class FieldReferenceOffsetManager {
 			return name;
 		}
 	}
-		
-	///TOOD: A, investigate why scriptTokens array can be so much larger than the data it contains.
+	
+    private final boolean debug = false;       
 	
     private float buildFragScript(int[] scriptTokens, short preableBytes) {
     	int spaceForTemplateId = 1;
 		int scriptLength = scriptTokens.length;        
-        boolean debug = false;       
         int i = 0;      
         int fragmentStartIdx=0;
         int depth = 0; //used for base jub location when using high level API.
@@ -248,7 +247,7 @@ public class FieldReferenceOffsetManager {
                 	fragDataSize[fragmentStartIdx]++;//Add one for trailing byte count on end of every fragment
 
                 	lastFragTotalSize = fragDataSize[fragmentStartIdx];
-                	assert(lastFragTotalSize<65536) : "Fragments larger than this are possible but unlikely, You do not want to do this";
+                	assert(lastFragTotalSize<(1<<20)) : "Fragments must be smaller than 1MB";
                 	assert(lastFragTotalSize>0) : "All fragments must be 1 or larger";
                 	
                 	maxFragmentDataSize = Math.max(maxFragmentDataSize, lastFragTotalSize);
@@ -355,8 +354,8 @@ public class FieldReferenceOffsetManager {
         
                 
         if (debug) {
-            System.err.println(Arrays.toString(fragDataSize));
-            System.err.println(Arrays.toString(fragScriptSize));
+            System.err.println("DataSize:"+Arrays.toString(fragDataSize));
+            System.err.println("SrptSize:"+Arrays.toString(fragScriptSize));
             
         }
         return varLenMaxDensity;

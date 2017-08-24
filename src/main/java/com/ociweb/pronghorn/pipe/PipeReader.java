@@ -381,8 +381,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
         long tmp = pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
-		int pos = Pipe.slab(pipe)[pipe.mask & (int)(tmp)];
-        int len = Pipe.slab(pipe)[pipe.mask & (int)(tmp + 1)];
+		int pos = Pipe.slab(pipe)[pipe.slabMask & (int)(tmp)];
+        int len = Pipe.slab(pipe)[pipe.slabMask & (int)(tmp + 1)];
         return Pipe.readBytes(pipe, target, pos, len);
     }
 
@@ -390,9 +390,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
         long tmp = pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
-		int pos = Pipe.slab(pipe)[pipe.mask & (int)(tmp)];
-        int len = Pipe.slab(pipe)[pipe.mask & (int)(tmp + 1)];
-        return Pipe.readBytes(pipe, target, pos, len);
+		return Pipe.readBytes(pipe, target, Pipe.slab(pipe)[pipe.slabMask & (int)(tmp)], Pipe.slab(pipe)[pipe.slabMask & (int)(tmp + 1)]);
     }
 
     

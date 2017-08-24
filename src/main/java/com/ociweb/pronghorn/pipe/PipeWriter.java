@@ -46,7 +46,12 @@ public class PipeWriter {
     	//allow for all types of int and for length
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.GroupLength)): "Value found "+LOCUtil.typeAsString(loc);
 
-		Pipe.slab(pipe)[pipe.slabMask &((int)pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))] = value;         
+		long p = structuredPositionForLOC(pipe, loc);	
+		
+		assert(p < pipe.ringWalker.nextWorkingHead-1L) : "Is this field applicable for the this pipes schema? "+pipe.schemaName(pipe);
+		
+		Pipe.slab(pipe)[pipe.slabMask & (int)p] = value;  
+		
     }
     
     /**
@@ -82,6 +87,8 @@ public class PipeWriter {
 		
 		long p = structuredPositionForLOC(pipe, loc);	
 		
+		assert(p+1L < pipe.ringWalker.nextWorkingHead-1L) : "Is this field applicable for the this pipes schema? "+pipe.schemaName(pipe);
+				
 		buffer[rbMask & (int)p] = (int)(value >>> 32);
 		buffer[rbMask & (int)(p+1)] = (int)(value & 0xFFFFFFFF);		
     }
@@ -92,6 +99,8 @@ public class PipeWriter {
 		int rbMask = pipe.slabMask;
 
 		long p = structuredPositionForLOC(pipe, loc);
+		assert(p+2L < pipe.ringWalker.nextWorkingHead-1L) : "Is this field applicable for the this pipes schema? "+pipe.schemaName(pipe);
+		
 		
 		buffer[rbMask & (int)p++] = exponent;
 		buffer[rbMask & (int)p++] = (int) (mantissa >>> 32);
@@ -273,6 +282,15 @@ public class PipeWriter {
         Pipe.addAndGetBytesWorkingHeadPosition(pipe,len);   	
 	}
 
+    public static void publishEOF(Pipe[] pipe) {
+    	int i = pipe.length;
+    	while (--i>=0) {
+    		if (null!=pipe[i] && Pipe.isInit(pipe[i])) {
+    			publishEOF(pipe[i]);
+    		}
+    	}
+    }
+    
 	public static void publishEOF(Pipe pipe) {	
 		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
 		StackStateWalker.writeEOF(pipe);		
@@ -286,8 +304,8 @@ public class PipeWriter {
     public static int publishWrites(Pipe pipe) {
     	assert(Pipe.singleThreadPerPipeWrite(pipe.id));
         assert(Pipe.workingHeadPosition(pipe)!=Pipe.headPosition(pipe)) : "Fragment was already published, check the workflow logic and remove call to publishWrites(pipe)";
-        
-	    int consumed = Pipe.writeTrailingCountOfBytesConsumed(pipe, pipe.ringWalker.nextWorkingHead -1 ); 
+
+		int consumed = Pipe.writeTrailingCountOfBytesConsumed(pipe, pipe.ringWalker.nextWorkingHead-1 ); 
 
 		//single length field still needs to move this value up, so this is always done
 	    Pipe.updateBytesWriteLastConsumedPos(pipe);
@@ -389,6 +407,7 @@ public class PipeWriter {
 	 *  This behaves as a blocking call if there is an error in the code up stream...
 	 */
 	public static void presumeWriteFragment(Pipe pipe, int fragmentId) {
+		
 		if (!tryWriteFragment(pipe,fragmentId)) {
 			logger.error("Expected pipe {} to have room",pipe, new UnsupportedOperationException("Ensure PipeWriter.hasRoomForWrite(pipe) returns true before calling this presumeWriteFragment method."));
 			while (!tryWriteFragment(pipe,fragmentId)) {
@@ -403,10 +422,12 @@ public class PipeWriter {
 	 * 
 	 */
 	public static boolean tryWriteFragment(Pipe pipe, int fragmentId) {
-		assert(fragmentId<Pipe.from(pipe).fragDataSize.length);
+		assert(fragmentId<Pipe.from(pipe).fragDataSize.length) : "Is this pipe for the schema holding this message?";
+		assert(Pipe.from(pipe).fragScriptSize[fragmentId]>0) : "Is this pipe for the schema holding this message?";
 		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
 	    assert(null!=pipe);
 	    assert(Pipe.isInit(pipe)) : "Pipe must be initialized before use: "+pipe+" call the method initBuffers";
+	
 		return StackStateWalker.tryWriteFragment0(pipe, fragmentId, Pipe.from(pipe).fragDataSize[fragmentId], pipe.ringWalker.nextWorkingHead - (pipe.sizeOfSlabRing - Pipe.from(pipe).fragDataSize[fragmentId]));
 	}
 
@@ -487,10 +508,18 @@ public class PipeWriter {
 	public static ByteBuffer[] wrappedUnstructuredLayoutBufferOpen(Pipe<?> target, int loc) {
 		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 		assert(PipeWriter.hasRoomForWrite(target)) : "must protect by ensuring we have room first";
-		return Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target);
-		
-		
+		return Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target, target.maxVarLen);
+
 	}
+	
+	public static ByteBuffer[] wrappedUnstructuredLayoutBufferOpen(Pipe<?> target, int maxLength, int loc) {
+		assert(maxLength>=0) : "bad length of "+maxLength;
+		assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
+		assert(PipeWriter.hasRoomForWrite(target)) : "must protect by ensuring we have room first";
+		return Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(target), target, maxLength);
+
+	}
+	
 	
 	
 	public static void wrappedUnstructuredLayoutBufferCancel(Pipe<?> target) {

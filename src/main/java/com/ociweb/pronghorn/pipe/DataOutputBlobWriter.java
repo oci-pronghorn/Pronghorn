@@ -408,13 +408,13 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
     /////////////////////
     /////////////////////
 
-    private static int write16(byte[] buf, int mask, int pos, int v) {
+    public static int write16(byte[] buf, int mask, int pos, int v) {
         buf[mask & pos++] = (byte)(v >>> 8);
         buf[mask & pos++] = (byte) v;
         return pos;
     }    
     
-    private static int write32(byte[] buf, int mask, int pos, int v) {
+    public static int write32(byte[] buf, int mask, int pos, int v) {
         buf[mask & pos++] = (byte)(v >>> 24);
         buf[mask & pos++] = (byte)(v >>> 16);
         buf[mask & pos++] = (byte)(v >>> 8);
@@ -422,7 +422,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
         return pos;
     }
     
-    private static int write64(byte[] buf, int mask, int pos, long v) {
+    public static int write64(byte[] buf, int mask, int pos, long v) {
         buf[mask & pos++] = (byte)(v >>> 56);
         buf[mask & pos++] = (byte)(v >>> 48);
         buf[mask & pos++] = (byte)(v >>> 40);

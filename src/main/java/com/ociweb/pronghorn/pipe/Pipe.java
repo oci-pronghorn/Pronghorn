@@ -778,7 +778,6 @@ public class Pipe<T extends MessageSchema<T>> {
     public static <S extends MessageSchema<S>> void markBytesReadBase(Pipe<S> pipe) {
         //base has future pos added to it so this value must be masked and kept as small as possible
         pipe.blobReadBase = pipe.blobMask & PaddedInt.get(pipe.blobRingTail.byteWorkingTailPos);
-        assert(validateInsideData(pipe, pipe.blobReadBase));
     }
     
     //;
@@ -1309,9 +1308,16 @@ public class Pipe<T extends MessageSchema<T>> {
     }
     
     public static <S extends MessageSchema<S>> ByteBuffer[] wrappedWritingBuffers(int originalBlobPosition, Pipe<S> output) {
-    	int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
+    	return wrappedWritingBuffers(originalBlobPosition, output, output.maxVarLen);
+    }
+
+	public static <S extends MessageSchema<S>> ByteBuffer[] wrappedWritingBuffers(int originalBlobPosition,
+			Pipe<S> output, int maxLen) {
+		assert(maxLen>=0);
+		
+		int writeToPos = originalBlobPosition & Pipe.blobMask(output); //Get the offset in the blob where we should write
     	
-    	int endPos = writeToPos+output.maxVarLen;
+		int endPos = writeToPos+Math.min(maxLen, output.maxVarLen);
     	    	
     	assert(verifyHasRoomForWrite(output.maxVarLen, output));
     	    	
@@ -1326,7 +1332,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		bBuf.limit(endPos>output.sizeOfBlobRing ? output.blobMask & endPos: 0);
 		
 		return output.wrappedWritingBuffers;
-    }
+	}
  
     public static <S extends MessageSchema<S>> void moveBlobPointerAndRecordPosAndLength(int len, Pipe<S> output) {
     	moveBlobPointerAndRecordPosAndLength(Pipe.unstoreBlobWorkingHeadPosition(output), len, output);
@@ -1423,9 +1429,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		
 		final int position = pipe.blobMask&bytePosition(meta,pipe,len);//MUST call this one which creates side effect of assuming this data is consumed
 		final int endPos = position+len;
-		
-	    assert(Pipe.validatePipeBlobHasDataToRead(pipe, position, len));
-		
+
 		ByteBuffer aBuf = wrappedBlobRingA(pipe);
 		aBuf.clear();
 		aBuf.position(position);
@@ -2008,6 +2012,7 @@ public class Pipe<T extends MessageSchema<T>> {
 
 	private static void doubleMaskTargetDoesNotWrap(byte[] source,
 			final int srcStart, final int srcStop, byte[] target, final int trgStart,	int length) {
+		
 		if (srcStop >= srcStart) {
 			//the source and target do not wrap
 			System.arraycopy(source, srcStart, target, trgStart, length);
@@ -2016,6 +2021,7 @@ public class Pipe<T extends MessageSchema<T>> {
 			System.arraycopy(source, srcStart, target, trgStart, length-srcStop);
 			System.arraycopy(source, 0, target, trgStart + length - srcStop, srcStop);
 		}
+		
 	}
 
 	private static void doubleMaskTargetDoesNotWrap(int[] source,
@@ -3247,7 +3253,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	public static <S extends MessageSchema<S>> int writeTrailingCountOfBytesConsumed(Pipe<S> pipe, final long pos) {
 
 		final int consumed = computeCountOfBytesConsumed(pipe);
-		
+
 		pipe.slabRing[pipe.slabMask & (int)pos] = consumed;
 		pipe.blobWriteLastConsumedPos = pipe.blobRingHead.byteWorkingHeadPos.value;
 		return consumed;
