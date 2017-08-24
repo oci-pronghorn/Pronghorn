@@ -1,18 +1,16 @@
 package com.ociweb.pronghorn.stage.encrypt;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Random;
 
 import org.junit.Ignore;
-import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.file.BlockStorageStage;
-import com.ociweb.pronghorn.stage.file.BlockStorageStageTest;
 import com.ociweb.pronghorn.stage.file.FileBlobReadStage;
 import com.ociweb.pronghorn.stage.file.FileBlobWriteStage;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageReceiveSchema;
