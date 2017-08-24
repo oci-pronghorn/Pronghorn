@@ -9,6 +9,8 @@ import org.junit.Test;
 import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
 import com.ociweb.pronghorn.stage.file.schema.BlockManagerRequestSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockManagerResponseSchema;
+import com.ociweb.pronghorn.stage.file.schema.BlockStorageReceiveSchema;
+import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialFileControlSchema;
@@ -42,15 +44,25 @@ public class SchemaTest {
 	@Test
 	public void testSequentialFileControlSchema() {
 		assertTrue(FROMValidation.checkSchema(ROOT + "SequentialFileControl.xml", SequentialFileControlSchema.class));
-
 	}
 	
 	@Test
 	public void testSequentialFileResponseSchema() {
 		assertTrue(FROMValidation.checkSchema(ROOT + "SequentialFileResponse.xml", SequentialFileResponseSchema.class));
-
 	}
-
+	
+	@Test
+	public void testBlockStorageXmitSchema() {
+		assertTrue(FROMValidation.checkSchema(ROOT + "BlockStorageXmit.xml", BlockStorageXmitSchema.class));
+	}
+	
+	@Test
+	public void testBlockStorageReceiveSchema() {
+		assertTrue(FROMValidation.checkSchema(ROOT + "BlockStorageReceive.xml", BlockStorageReceiveSchema.class));
+	}
+	
+	
+	
 //
 //	
 

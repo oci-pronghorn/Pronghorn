@@ -41,7 +41,7 @@ public class SequentialReplayerStageTest {
 	}
 	
 	
-	@Test
+	@Ignore
 	public void encryptedWriteWithAckTest() {
 		writeWithAckImpl(true);
 	}
@@ -189,8 +189,9 @@ public class SequentialReplayerStageTest {
 			new Random(123).nextBytes(cypher);
 		}
 		
+		long rate = 2400;
 		Pipe<PersistedBlobLoadSchema> perLoad = FileGraphBuilder.buildSequentialReplayer(gm, perStore, multi, bits, inFlightCount,
-				largestBlock, dir, cypher);
+				largestBlock, dir, cypher,rate);
 		
 		StringBuilder result = new StringBuilder();
 		ConsoleJSONDumpStage watch = ConsoleJSONDumpStage.newInstance(gm, perLoad, result);
