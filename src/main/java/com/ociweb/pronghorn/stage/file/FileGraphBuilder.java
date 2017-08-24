@@ -7,6 +7,8 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.encrypt.RawDataCryptAESCBCPKCS5Stage;
+import com.ociweb.pronghorn.stage.file.schema.BlockStorageReceiveSchema;
+import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialFileControlSchema;
@@ -20,7 +22,7 @@ public class FileGraphBuilder {
 			Pipe<PersistedBlobStoreSchema> toStore, 
 			byte multi, byte bits, short inFlightCount, int largestBlock,
 			File targetDirectory, 
-			byte[] cypherBlock) {
+			byte[] cypherBlock, long rate) {
 		
 		if (cypherBlock != null) {
 			if (cypherBlock.length!=16) {
@@ -64,7 +66,7 @@ public class FileGraphBuilder {
 			e.printStackTrace();
 		}
 		
-		new  SequentialFileReadWriteStage(gm, control, response, fileDataToSave, fileDataToLoad, paths); 
+		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, new SequentialFileReadWriteStage(gm, control, response, fileDataToSave, fileDataToLoad, paths));
 		
 		if (null != cypherBlock) {
 			
@@ -80,15 +82,28 @@ public class FileGraphBuilder {
 			
 			int i = 3;
 			while (--i>=0) {
+				String filePath = "";
 				
-				new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, true, cypherDataToSave[i], fileDataToSave[i]);
+				Pipe<BlockStorageReceiveSchema> doFinalReceive1 = BlockStorageReceiveSchema.instance.newPipe(10, 1000);
+				Pipe<BlockStorageXmitSchema> doFinalXmit1 = BlockStorageXmitSchema.instance.newPipe(10, 1000);
+					
+				Pipe<BlockStorageReceiveSchema> doFinalReceive2 = BlockStorageReceiveSchema.instance.newPipe(10, 1000);
+				Pipe<BlockStorageXmitSchema> doFinalXmit2 = BlockStorageXmitSchema.instance.newPipe(10, 1000);
 				
-				new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, false, fileDataToLoad[i], cypherDataToLoad[i]);
+				BlockStorageStage.newInstance(gm, filePath, 
+						              new Pipe[] {doFinalXmit1, doFinalXmit2},
+						              new Pipe[] {doFinalReceive1, doFinalXmit2});
+				
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, true, cypherDataToSave[i], fileDataToSave[i],
+						                         doFinalReceive1, doFinalXmit1));
+				
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, false, fileDataToLoad[i], cypherDataToLoad[i],
+						                         doFinalReceive2, doFinalXmit2));
 			}			
 			
-			new SequentialReplayerStage(gm, toStore, perLoad, control, response, cypherDataToSave, cypherDataToLoad, multi, bits);
+			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, new SequentialReplayerStage(gm, toStore, perLoad, control, response, cypherDataToSave, cypherDataToLoad, multi, bits));
 		} else {
-			new SequentialReplayerStage(gm, toStore, perLoad, control, response, fileDataToSave, fileDataToLoad, multi, bits);
+			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, new SequentialReplayerStage(gm, toStore, perLoad, control, response, fileDataToSave, fileDataToLoad, multi, bits));
 		}
 		return perLoad;
 	}

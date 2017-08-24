@@ -94,11 +94,17 @@ public class FileBlobReadStage extends PronghornStage {
                 //attempt to read this many bytes but may read less
                 long len = fileChannel[activeChannel].read(Pipe.wrappedWritingBuffers(originalBlobPosition, output));
                 if (len>0) {
-                    Pipe.addMsgIdx(output, 0);
+                    Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
                     Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)len, output);  
                     Pipe.confirmLowLevelWrite(output, SIZE);
                     Pipe.publishWrites(output);    
                 } else if (len<0) {
+                	//signal to upstream stages that we are done with the data
+                	Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+                	Pipe.addNullByteArray(output);
+                	Pipe.confirmLowLevelWrite(output, SIZE);
+                    Pipe.publishWrites(output);
+                	                    
                     Pipe.publishAllBatchedWrites(output);
                     shutdownInProgress = true;
                     return;

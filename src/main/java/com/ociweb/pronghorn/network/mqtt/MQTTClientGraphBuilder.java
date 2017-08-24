@@ -132,7 +132,7 @@ public class MQTTClientGraphBuilder {
 		short inFlightCount = (short)maxInFlight;
 		Pipe<PersistedBlobLoadSchema> persistanceLoadPipe = FileGraphBuilder.buildSequentialReplayer(
 				gm, persistancePipe, multi, maxValueBits, inFlightCount,
-				maximumLenghOfVariableLengthFields, rootFolder, null);
+				maximumLenghOfVariableLengthFields, rootFolder, null, rate);
 		
 		
 		int independentClients = 1; 
@@ -156,7 +156,8 @@ public class MQTTClientGraphBuilder {
 		Pipe<MQTTServerToClientSchema> serverToClient2 = JSONTap.attach(false, gm, serverToClient, System.out);
 		
 		
-		MQTTClientStage mqttClient = new MQTTClientStage(gm, clientRequest, idGenNew, serverToClient2, clientResponse, idGenOld, clientToServer, clientToServerAck);
+		MQTTClientStage mqttClient = new MQTTClientStage(gm,
+				clientRequest, idGenNew, serverToClient2, clientResponse, idGenOld, clientToServer, clientToServerAck);
 		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, mqttClient);
 		
 		int clientWriters = 1;				
