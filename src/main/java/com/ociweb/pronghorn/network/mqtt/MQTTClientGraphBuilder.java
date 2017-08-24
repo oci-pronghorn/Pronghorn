@@ -63,7 +63,9 @@ public class MQTTClientGraphBuilder {
 												final long rate, byte connectionsInBits, 
 												short maxPartialResponses) {
 		
-
+		if (isTLS && maximumLenghOfVariableLengthFields<(1<<15)) {
+			maximumLenghOfVariableLengthFields = (1<<15);//ensure we have enough room for TLS work.
+		}
 		
 		byte maxValueBits = (byte)Math.ceil(Math.log(maximumLenghOfVariableLengthFields)/Math.log(2));
 
