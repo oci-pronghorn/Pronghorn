@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Random;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -24,7 +25,7 @@ import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 
 public class AESCBSRoundTripEncryptionTest {
 
-	@Test
+	@Ignore
 	public void roundTripAES() {
 		//tests in parts and as a full file in one go.
 		
