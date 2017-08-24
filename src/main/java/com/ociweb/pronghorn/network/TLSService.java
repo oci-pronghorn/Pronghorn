@@ -28,6 +28,7 @@ public class TLSService {
 	private static final String PROTOCOL1_3 = "TLSv1.3"; //check Java version and move up to this ASAP.
 	
 	private static final boolean TRUST_ALL = true;
+	public static final boolean LOG_CYPHERS = true;
 	
 	private String[] cipherSuits;
 	private String[] protocols = new String[]{PROTOCOL}; //[SSLv2Hello, TLSv1, TLSv1.1, TLSv1.2]
@@ -98,6 +99,7 @@ public class TLSService {
 	private String[] filterCipherSuits(SSLEngine result) {
 		if (null==cipherSuits) {
     		
+			//TODO: rewrite with recursive count...
 	    	String[] enabledCipherSuites = result.getSupportedCipherSuites();
 	    	int count = 0;
 	    	int i = enabledCipherSuites.length;
@@ -105,7 +107,6 @@ public class TLSService {
 	    		if (containsPerfectForward(enabledCipherSuites, i)) {
 	    			if (doesNotContainWeakCipher(enabledCipherSuites, i)) {
 	    				count++;
-	    				//System.out.println(enabledCipherSuites[i]);
 	    			}
 	    		}
 	    	}
@@ -115,9 +116,9 @@ public class TLSService {
 	    	while (--i>=0) {
 	    		if (containsPerfectForward(enabledCipherSuites, i)) {
 	    			if (doesNotContainWeakCipher(enabledCipherSuites, i)) {
-	    				
-	    			//	System.out.println("Cipher: "+enabledCipherSuites[i]);
-	    				
+	    				if (LOG_CYPHERS) {
+	    					log.info("enable cipher suite: {}",enabledCipherSuites[i]);
+	    				}
 	    				temp[j++]=enabledCipherSuites[i];
 	    			}
 	    		}
@@ -131,8 +132,6 @@ public class TLSService {
 		return !enabledCipherSuites[i].contains("DES_") &&
 			   !enabledCipherSuites[i].contains("EXPORT") && 
 			   !enabledCipherSuites[i].contains("AES128") && 
-			  // !enabledCipherSuites[i].contains("_DHE_") && //hack which should not remain. //TODO: we need to sort to put ECC first.
-			 //  !enabledCipherSuites[i].contains("_RSA_") && //testing  ECDSA, requires  ECDSA certificate first!!
 			   !enabledCipherSuites[i].contains("NULL");
 		
 	}
