@@ -398,8 +398,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	public static ByteBuffer wrappedUnstructuredLayoutBufferA(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
     	long pos = pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
-        int meta = Pipe.slab(pipe)[pipe.mask & (int)(pos)];
-        int len = Pipe.slab(pipe)[pipe.mask & (int)(pos + 1)];
+        int meta = Pipe.slab(pipe)[pipe.slabMask & (int)(pos)];
+        int len = Pipe.slab(pipe)[pipe.slabMask & (int)(pos + 1)];
         return Pipe.wrappedBlobReadingRingA(pipe, meta, len);
 	}
 
@@ -408,18 +408,29 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
     	long pos = pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
-        int meta = Pipe.slab(pipe)[pipe.mask & (int)(pos)];
-        int len = Pipe.slab(pipe)[pipe.mask & (int)(pos + 1)];
+        int meta = Pipe.slab(pipe)[pipe.slabMask & (int)(pos)];
+        int len = Pipe.slab(pipe)[pipe.slabMask & (int)(pos + 1)];
         return Pipe.wrappedBlobReadingRingB(pipe,meta,len);
 	}
     
     public static ByteBuffer[] wrappedUnstructuredLayoutBuffer(Pipe pipe, int loc) {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
-    	long pos = pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
-        int meta = Pipe.slab(pipe)[pipe.mask & (int)(pos)];
-        int len = Pipe.slab(pipe)[pipe.mask & (int)(pos + 1)];
-        return Pipe.wrappedReadingBuffers(pipe, meta, len);
+    	return wrappedUnstructuredLayoutBufferImpl(pipe, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK & (loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc));
     }
+
+	private static ByteBuffer[] wrappedUnstructuredLayoutBufferImpl(Pipe pipe, long pos) {
+		return wrappedUnstructuredLayoutBufferImpl(pipe, 
+        		          Pipe.slab(pipe)[pipe.slabMask & (int)(pos)], 
+        		          Pipe.slab(pipe)[pipe.slabMask & (int)(pos + 1)]);
+	}
+
+	private static ByteBuffer[] wrappedUnstructuredLayoutBufferImpl(Pipe pipe, int meta, int len) {
+		if (meta >= 0) {
+			return Pipe.wrappedReadingBuffersRing(pipe, len, (pipe).blobMask & Pipe.convertToPosition(meta,pipe));
+		} else {
+			return Pipe.wrappedReadingBufffersConst(pipe, meta, len);
+		}
+	}
     
 
     public static int readBytes(Pipe pipe, int loc, byte[] target, int targetOffset) {
@@ -427,8 +438,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 
     	long tmp = pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
 
-        int pos = Pipe.slab(pipe)[pipe.mask & (int)(tmp)];
-        int len = Pipe.slab(pipe)[pipe.mask & (int)(tmp + 1)];
+        int pos = Pipe.slab(pipe)[pipe.slabMask & (int)(tmp)];
+        int len = Pipe.slab(pipe)[pipe.slabMask & (int)(tmp + 1)];
                 
         if (pos < 0) {
             readBytesConst(pipe,len,target,targetOffset,POS_CONST_MASK & pos);
@@ -457,8 +468,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
         long tmp = pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
-		int pos = Pipe.primaryBuffer(pipe)[pipe.mask & (int)(tmp)];
-        int len = Pipe.primaryBuffer(pipe)[pipe.mask & (int)(tmp + 1)];
+		int pos = Pipe.primaryBuffer(pipe)[pipe.slabMask & (int)(tmp)];
+        int len = Pipe.primaryBuffer(pipe)[pipe.slabMask & (int)(tmp + 1)];
                 
         if (pos < 0) {
             readBytesConst(pipe,len,target, targetOffset,targetMask, POS_CONST_MASK & pos);

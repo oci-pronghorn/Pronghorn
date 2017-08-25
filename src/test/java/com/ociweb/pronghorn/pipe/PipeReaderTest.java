@@ -1,12 +1,12 @@
 package com.ociweb.pronghorn.pipe;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.junit.Test;
 
-import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.util.Appendables;
 
 public class PipeReaderTest {
@@ -64,7 +64,7 @@ public class PipeReaderTest {
             int expectedBlobPos = -1;
             for(int count=0;count<batchSize;count++) {
                 //grab teh target position before it gets moved, this is where we will validate the copied data.
-                int bBlobPos = Pipe.getBlobWorkingHeadPosition(pipeB);
+                int bBlobPos = Pipe.getWorkingBlobHeadPosition(pipeB);
                 
                 if (expectedBlobPos>0) {//we keep a running total of where we think this values should be based on all the strings
                     assertEquals(expectedBlobPos, bBlobPos);
@@ -125,6 +125,57 @@ public class PipeReaderTest {
         }
         
     }
+    
+    @Test
+    public void byteBufferTest() {
+    	
+    	StringBuilder builder = new StringBuilder();
+    	Pipe<RawDataSchema> pipe = RawDataSchema.instance.newPipe(10, 1000);
+    	pipe.initBuffers();
+    	
+    	RawDataSchema.publishChunkedStream(pipe, "Hello".getBytes(), 0, 5);    	
+    	RawDataSchema.publishChunkedStream(pipe, "World".getBytes(), 0, 5);
+    	
+    	extractOneString(builder, pipe);    	
+    	extractOneString(builder, pipe);
+    	
+    	String actual = builder.toString();
+    	assertEquals(actual, "HelloWorld", actual);
+    	
+    }
+    
+
+    
+
+
+//	private void lowLevelRead(StringBuilder builder, Pipe<RawDataSchema> pipe) {
+//		int idx = Pipe.takeMsgIdx(pipe);
+//    	assert(RawDataSchema.MSG_CHUNKEDSTREAM_1 == idx);
+//    	DataInputBlobReader fieldStream = Pipe.inputStream(pipe);
+//    	fieldStream.openLowLevelAPIField();    	
+//    	builder.append( fieldStream.readUTFOfLength(fieldStream.available()) );
+//    	Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, idx));
+//    	Pipe.releaseReadLock(pipe);
+//	}
+
+
+    
+	private void extractOneString(StringBuilder builder, Pipe<RawDataSchema> pipe) {
+		
+		boolean x = PipeReader.tryReadFragment(pipe);
+    	assertTrue(x);
+    	ByteBuffer[] buffer = PipeReader.wrappedUnstructuredLayoutBuffer(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+    	
+    	for(int i = 0; i<buffer.length; i++) {
+    		while (buffer[i].hasRemaining()) {
+    			builder.append((char)buffer[i].get());
+    		}		
+    	}
+    	PipeReader.releaseReadLock(pipe);
+    	
+	}
+    
+    
     
     
 }

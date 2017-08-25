@@ -1418,18 +1418,17 @@ public class Pipe<T extends MessageSchema<T>> {
 
     public static <S extends MessageSchema<S>> ByteBuffer[] wrappedReadingBuffers(Pipe<S> pipe, int meta, int len) {
     	if (meta >= 0) {
-    		wrappedReadingBuffersRing(pipe, meta, len);
+    		//MUST call this one which creates side effect of assuming this data is consumed
+			wrappedReadingBuffersRing(pipe, len, pipe.blobMask & bytePosition(meta,pipe,len));
 		} else {
 			wrappedReadingBufffersConst(pipe, meta, len);
 		}
 		return pipe.wrappedReadingBuffers;
     }
 
-	private static <S extends MessageSchema<S>> void wrappedReadingBuffersRing(Pipe<S> pipe, int meta, int len) {
-		
-		final int position = pipe.blobMask&bytePosition(meta,pipe,len);//MUST call this one which creates side effect of assuming this data is consumed
+	static <S extends MessageSchema<S>> ByteBuffer[] wrappedReadingBuffersRing(Pipe<S> pipe, int len, final int position) {
 		final int endPos = position+len;
-
+		
 		ByteBuffer aBuf = wrappedBlobRingA(pipe);
 		aBuf.clear();
 		aBuf.position(position);
@@ -1440,9 +1439,10 @@ public class Pipe<T extends MessageSchema<T>> {
 		bBuf.clear();
 		bBuf.limit(endPos > pipe.sizeOfBlobRing ? pipe.blobMask & endPos : 0 ); 
 				
+		return pipe.wrappedReadingBuffers;
 	}
 
-	private static <S extends MessageSchema<S>> void wrappedReadingBufffersConst(Pipe<S> pipe, int meta, int len) {
+	static <S extends MessageSchema<S>> ByteBuffer[] wrappedReadingBufffersConst(Pipe<S> pipe, int meta, int len) {
 		
 		ByteBuffer aBuf = wrappedBlobConstBuffer(pipe);
 		int position = PipeReader.POS_CONST_MASK & meta;    
@@ -1453,6 +1453,8 @@ public class Pipe<T extends MessageSchema<T>> {
 		ByteBuffer bBuf = wrappedBlobConstBuffer(pipe);
 		bBuf.position(0);
 		bBuf.limit(0);
+		
+		return pipe.wrappedReadingBuffers;
 	}
     
 
