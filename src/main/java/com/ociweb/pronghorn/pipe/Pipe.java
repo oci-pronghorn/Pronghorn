@@ -7,6 +7,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.Arrays;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -2422,6 +2423,21 @@ public class Pipe<T extends MessageSchema<T>> {
 	    return pos - targetIdx;
 	}
 
+	public static void xorRandomToBytes(Random r, byte[] target, int targetIdx, int count, int targetMask) {
+		while (--count>=0) {
+			target[targetMask& (targetIdx+count)] ^= r.nextInt(256);
+		}
+	}
+	
+	public static void xorBytesToBytes(byte[] source, int sourceIdx, int sourceMask,
+			                            byte[] target, int targetIdx, int targetMask, 
+			                            int count) {
+		while (--count>=0) {
+			target[targetMask & (targetIdx+count)] ^= source[sourceMask & (sourceIdx+count)];
+		}
+	}	
+	
+	
 	/**
 	 * WARNING: unlike the ASCII version this method returns bytes written and not the position
 	 */
