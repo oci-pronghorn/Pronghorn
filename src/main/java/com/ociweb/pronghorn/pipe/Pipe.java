@@ -2432,7 +2432,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	public static void xorBytesToBytes(byte[] source, int sourceIdx, int sourceMask,
 			                            byte[] target, int targetIdx, int targetMask, 
 			                            int count) {
-		while (--count>=0) {
+		for(int i=0; i<count; i++) {
 			target[targetMask & (targetIdx+count)] ^= source[sourceMask & (sourceIdx+count)];
 		}
 	}	

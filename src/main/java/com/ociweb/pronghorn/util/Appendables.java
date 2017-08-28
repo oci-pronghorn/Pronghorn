@@ -45,11 +45,15 @@ public class Appendables {
 		}
     }
 
+    
+    public static <A extends Appendable> A appendArray(A target, byte[] b) {
+   		return appendArray(target, '[', b, ']', b.length);
+    }
+    
     public static <A extends Appendable> A appendArray(A target, char left, byte[] b, char right) {
    		return appendArray(target, left, b, right, b.length);
     }
-    
-    
+        
     public static <A extends Appendable> A appendArray(A target, char left, byte[] b, char right, int bLength) {
 		try {
 		    	if (b != null) {        
@@ -73,6 +77,10 @@ public class Appendables {
 		} catch (IOException ex) {
 			throw new RuntimeException(ex); 
 		}
+    }
+    
+    public static <A extends Appendable> A appendArray(A target, byte[] b, int offset, int mask, int bLength) {
+    	return appendArray(target,'[',b,offset,mask,']',bLength);
     }
     
     public static <A extends Appendable> A appendArray(A target, char left, byte[] b, int offset, int mask, char right, int bLength) {

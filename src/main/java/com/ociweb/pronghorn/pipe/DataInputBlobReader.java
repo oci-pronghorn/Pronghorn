@@ -502,7 +502,15 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
         reader.position += len;
         return len;
     }
-        
+       
+    @Override
+    public void readInto(BlobWriter writer, int length) {
+    	
+    	DataOutputBlobWriter.write((DataOutputBlobWriter)writer, backing, position, length, byteMask);
+    	position += length;
+    	
+    }
+    
     
     public <T extends MessageSchema<T>> void readInto(DataOutputBlobWriter<T> writer, int length) {
     	
