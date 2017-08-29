@@ -1,5 +1,10 @@
 package com.ociweb.pronghorn.network.config;
 
+import java.io.IOException;
+
+import com.ociweb.pronghorn.pipe.BlobReader;
+import com.ociweb.pronghorn.util.Appendables;
+
 public enum HTTPHeaderDefaults implements HTTPHeader {
     /////// 
     //NOTE: tail of both \r\n and \n are both used when these are pattern matched, do not add tail here
@@ -8,8 +13,17 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     UPGRADE("Upgrade: %b"),
     CONNECTION("Connection: %b"),
     USER_AGENT("User-Agent: %b"),//chromium
-    TRANSFER_ENCODING("Transfer-Encoding: chunked"), //Transfer-Encoding: chunked
-    CONTENT_LENGTH("Content-Length: %u"), //note this captures an integer not a string
+    TRANSFER_ENCODING("Transfer-Encoding: chunked") {    
+	    public <A extends Appendable> A writeValue(A target, BlobReader reader) {
+	    	return target;
+	    }
+	}, //Transfer-Encoding: chunked
+    CONTENT_LENGTH("Content-Length: %u") {    
+	    public <A extends Appendable> A writeValue(A target, BlobReader reader) {
+	    	Appendables.appendValue(target, reader.readPackedLong());
+	    	return target;
+	    }
+	}, //note this captures an integer not a string
     CONTENT_TYPE("Content-Type: %b"),
     CONTENT_LOCATION("Content-Location: %b"),
     LOCATION("Location: %b"),
@@ -42,7 +56,18 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     ORIGIN("Origin: %b"),
     PRAGMA("Pragma: %b"), //Not matching?
     SERVER("Server: %b"), //Not matching?
-    STATUS("Status: %i %b"), //Not matching?
+    STATUS("Status: %i %b"){    
+	    public <A extends Appendable> A writeValue(A target, BlobReader reader) {
+	    	try {
+	    		Appendables.appendValue(target, reader.readPackedLong());				
+	    		target.append(' ');
+	    		reader.readUTF(target);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+	    	return target;
+	    }
+	}, //Not matching?
     KEEP_ALIVE("Keep-Alive: %b"),
     EXPIRES("Expires: %b"),
     RETRY_AFTER("Retry-After: %b"), //CNN
@@ -104,7 +129,14 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
         return writingRoot;
     }
     
+    public <A extends Appendable> A writeValue(A target, BlobReader reader) {
+    	reader.readUTF(target);
+    	return target;
+    }
+    
+    
     public byte[] rootBytes() {
     	return rootBytes;
     }
+    
 }

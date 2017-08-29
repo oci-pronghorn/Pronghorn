@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.network.config;
 
+import com.ociweb.pronghorn.pipe.BlobReader;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
@@ -34,6 +35,17 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
             defaultSpec = new HTTPSpecification(HTTPContentTypeDefaults.class, HTTPRevisionDefaults.class, HTTPVerbDefaults.class,  HTTPHeaderDefaults.class );
         } 
         return defaultSpec;
+    }
+
+    public <A extends Appendable> A writeHeader(A target, int ordinal, BlobReader data) {
+    	try {
+	    	H header = headers[ordinal];
+			target.append(header.writingRoot());
+	    	header.writeValue(target, data);
+    	} catch (Exception e) {
+    		throw new RuntimeException(e);
+    	}
+    	return target;
     }
     
     
