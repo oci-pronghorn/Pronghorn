@@ -59,15 +59,23 @@ public class BlockStorageStageTest {
 		
 		long fieldPosition = 0;
 		byte[] fieldPayloadBacking = "hello world".getBytes();
-		int fieldPayloadPosition = 0;
-		int fieldPayloadLength = fieldPayloadBacking.length;
 		BlockStorageXmitSchema.publishWrite(input[pipeIdx], 
 				fieldPosition, 
 				fieldPayloadBacking, 
-				fieldPayloadPosition, 
-				fieldPayloadLength);
+				0, 
+				fieldPayloadBacking.length);
 		
-		BlockStorageXmitSchema.publishRead(input[pipeIdx], 0, fieldPayloadLength);
+		
+		long fieldPosition2 = fieldPayloadBacking.length;
+		byte[] fieldPayloadBacking2 = "   the end".getBytes();
+		BlockStorageXmitSchema.publishWrite(input[pipeIdx], 
+				fieldPosition2, 
+				fieldPayloadBacking2, 
+				0, 
+				fieldPayloadBacking2.length);
+				
+		
+		BlockStorageXmitSchema.publishRead(input[pipeIdx], 0, fieldPayloadBacking.length + fieldPayloadBacking2.length);
 		
 		PipeWriter.publishEOF(input[0]);
 		PipeWriter.publishEOF(input[1]);		
@@ -87,9 +95,12 @@ public class BlockStorageStageTest {
 		scheduler.shutdown();
 		
 		String value = results.toString();
+		
+		System.out.println(value);
+		
 		assertTrue(value, value.indexOf("WriteAck")>=0);
 		assertTrue(value, value.indexOf("hello world")>=0);
-
+		assertTrue(value, value.indexOf("the end")>=0);
 		
 	}
 	

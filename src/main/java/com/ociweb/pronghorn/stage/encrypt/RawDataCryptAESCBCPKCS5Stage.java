@@ -1,11 +1,11 @@
 package com.ociweb.pronghorn.stage.encrypt;
 
-import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.Random;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -24,6 +24,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
+import com.ociweb.pronghorn.pipe.util.hash.MurmurHash;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageReceiveSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
@@ -56,6 +57,7 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 	
 	private final int passSizeBits = 4;
 	private final int passSize = 1<<passSizeBits;
+	private final int passMask = passSize-1;
 	
 	private DataInputBlobReader<RawDataSchema> inputStream;
 	
@@ -65,40 +67,48 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 	private SecretKeySpec sks;
 	private IvParameterSpec ips;
 	
-	private byte[] targetBuffer;	
-
-	private long filePosition;
+	private byte[] targetBuffer;
+	private long fileOutputPosition;
 	
 	private boolean finalAckPending = false;
-
 	private byte[] tempWrapSpace = new byte[2*passSize];
 	
-	private long finalPosA;
-	private int finalLenA;
-	private byte[] finalDataA;
-	private long finalPosB;
-	private int finalLenB;
-	private byte[] finalDataB;
+	private long finalPos;
+	private int finalLen;
+	private byte[] finalData;
 		
-	//required at the start of each file to ensure the same data is never used to begin files
-	private final int firstBlockBytes = passSize*2; //two blocks is more than sufficient
-	private final byte[] firsBlockBytesBacking = new byte[firstBlockBytes];
 	
 	//only used for double buffering of final value when we wrap off the end of the ring.
-	private final int finalBlockSize = 8+4+(passSize*2);//file position + size + 2 blocks 
+	private final int finalBlockSize = 4*passSize;//bumped up to power of 2 8+4+(passSize*2);//file position + size + 2 blocks 
 	//NOTE: in the future we want to expand the block size and add CRC check values to confirm data was not replaced.
+	private final int guidBlockSize = finalBlockSize*2;
+
+	private final int safeOffset = finalBlockSize;
+
+	//required at the start of each file to ensure the same data is never used to begin files
+	private final byte[] firstBlockBytesBacking = new byte[guidBlockSize];
+
+	boolean isFinalRequested; //blocks EOF from getting read until after we consume the tail data
 	
-	private final byte[] finalWrapBuffer = new byte[2 * finalBlockSize];
 	
-	private static SecureRandom random;
+	//two blocks of rolling hash which is why we also have 2 blocks of random data at the start
+	private final byte[] rollingHash = new byte[guidBlockSize];
+	private final int    rollingHashMask = guidBlockSize-1;
+	private int    rollingHashInputPos = 0;
+	
+	
+	
+	private final byte[] finalWrapBuffer = new byte[guidBlockSize];
+
+	private static Random fileHeaderGenerator;
 	static {
-		try {
-			random = SecureRandom.getInstanceStrong();			
-		} catch (NoSuchAlgorithmException e) {
-			throw new RuntimeException(e);
-		}
+		//for testing this can be used...
+		//fileHeaderGenerator = new Random(123); 
+		
+		//use this block for production
+		fileHeaderGenerator = new SecureRandom();
+
 	}
-	
 	
 	/////////////////////////////////////////////////////////////
 	//Please read these for a better understanding of AES-CBC
@@ -127,11 +137,16 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 		this.output = output;
 		this.finalInput = finalInput;
 		this.finalOutput = finalOutput;
-		
-		//logger.info("encrypt {} for input pipe {} ",encrypt, input.id);
-		
+
 	}
 
+	//TODO: needs test to confirm that zero lenght block writes continues to work
+	
+	//TODO: needs to add recovery mode for loading corrupt files
+	//      on recover we must read the final blocks first then read every byte from
+	//      the beginning, at each value we must check if one final matches
+	//      upon finding the matching final then trim the remaining of the file.
+	
 	
 	@Override
 	public void startup() {
@@ -142,21 +157,18 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 		this.sourceMask = Pipe.blobMask(input);
 		this.inputStream = Pipe.inputStream(input);
 
-		this.finalPosA = -1;
-		this.finalDataA = new byte [2*passSize];
-		this.finalPosB = -1;
-		this.finalDataB = new byte [2*passSize];
-				
+		this.finalPos = -1;
+		this.finalData = new byte [finalBlockSize];
 		
 		try {
 			
 			c = Cipher.getInstance("AES/CBC/PKCS5Padding");
-			iv = new byte[passSize];
-			
+						
+			iv = new byte[passSize];			
 			System.arraycopy(pass, 0, iv, 0, 16);
-			
-			
+						
 			sks = new SecretKeySpec(pass, "AES");
+			
 			ips = new IvParameterSpec(iv);
 			c.init(encrypt ? Cipher.ENCRYPT_MODE : Cipher.DECRYPT_MODE, sks, ips);
 
@@ -214,6 +226,7 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 		//logger.info("encrypt {} has content {}",encrypt, Pipe.hasContentToRead(input));
 		
 	    while ((!finalAckPending)//do not pick up new data if we are waiting for previous write.
+	    	 && (!isFinalRequested) 
 	    	 && Pipe.hasContentToRead(input) 
 		     && Pipe.hasRoomForWrite(output, REQ_OUT_SIZE)) {
 	    	
@@ -225,68 +238,29 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 			           inputStream.accumLowLevelAPIField();
 			           			           
 			           if (nxtLen<0) {
-			        	   logger.info("processing end of data stream for encrypt:{}",encrypt);
-			        	   if (!encrypt) {
-			        		   try {
-								Thread.sleep(2000);
-							} catch (InterruptedException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
-			        	   }
-			        	   //TODO: the A and B values are missing!!!!
+			        	   //logger.trace("processing end of data stream for encrypt:{}",encrypt);
 			        	   
 			        	   //clean up before we move on
 			        	   while (processAvail()){}
 			        	   
 			        	    if (!encrypt) {
-			        	    	logger.info("decrypt found end of data with posA "+finalPosA+" and posB "+finalPosB+" current pos "+filePosition);
-			        	    	int len = 0;
-			        	    	int targetPos = Pipe.getWorkingBlobHeadPosition(output);
-			        	    	if (filePosition == finalPosA) {
-			        	    		len = processBlock(finalLenA, 0, finalDataA, //TODO: this constant comes from where?
-							                    targetPos, targetBuffer, targetMask);
-
-			        	    		logger.info("found match at postion A final length added "+len+" from "+finalDataA.length);
-			        	    		
-			        	    		Appendables.appendUTF8(System.out, targetBuffer, Pipe.getWorkingBlobHeadPosition(output), len, targetMask);
-			        	    		
-			        	    		publishBockOut(targetPos, len);
-			        	    		
-			        	    		
-			        	    	} else if (filePosition == finalPosB) {
-			        	    		logger.info("found match at postion B");
-			        	    		len = processBlock(finalLenB, 0, finalDataB,
-			        	    				    targetPos, targetBuffer, targetMask);
-			        	    	} else {			        	    		
-			        	    		logger.info("!!!! Warning, unable to read tail, no positions matched {} "+filePosition);
-			        	    	}
 			        	    	
-			        	    //	len += doFinalIntoRing(targetBuffer, targetPos+len, targetMask);
-			        	    	publishBockOut(targetPos, len);
-			        	    	
-			        	    } 
-			        	    
-			        	    try {
-								//NOTE: this must be called upon the detection of -1
-								Arrays.fill(iv, (byte)0);
-								c.init(encrypt ? Cipher.ENCRYPT_MODE : Cipher.DECRYPT_MODE, sks, ips);
-							} catch (Exception e) {
-								throw new RuntimeException(e);
-							} 
-							
-			        	    //////////////////
-			        	    //send end of data marker downstream
-			        	    //////////////////
-							int s = Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
-							Pipe.addNullByteArray(output);
-							Pipe.confirmLowLevelWrite(output, s);
-							Pipe.publishWrites(output);
+			        	    	assert(!inputStream.hasRemainingBytes()) : "all bytes must be consumed before doing final.";
+			        			//do not process any more input until this decrypt has its final block
+			        	    	isFinalRequested = true;
+								//reqeust the stored final blocks so we can find which is needed.
+							    BlockStorageXmitSchema.publishRead(finalOutput, 0, guidBlockSize);			        	    	
+		        	    		//file position for decrypt is cleared after we get the final blocks
+							    
+							    							    
+			        	    } else { 
+			        	    	//for encrypt we can reset the counters here 
+			        	    	resetToBeginning();
+			        	    }
 							
 							Pipe.confirmLowLevelRead(input, SIZE_OF_CHUNKED);
 					        Pipe.releaseReadLock(input);
 					        
-					        filePosition = 0;
 			           } else {
 			           
 				           Pipe.confirmLowLevelRead(input, SIZE_OF_CHUNKED);
@@ -309,8 +283,28 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 	}
 
 
+	private void resetToBeginning() {
+		fileOutputPosition = 0;
+		try {
+			//NOTE: this must be called upon the detection of -1
+			Arrays.fill(iv, (byte)0);
+			c.init(encrypt ? Cipher.ENCRYPT_MODE : Cipher.DECRYPT_MODE, sks, ips);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		} 
+		
+		//////////////////
+		//send end of data marker downstream
+		//////////////////
+		int s = Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+		Pipe.addNullByteArray(output);
+		Pipe.confirmLowLevelWrite(output, s);
+		Pipe.publishWrites(output);
+	}
+
+
 	private void processFinalInputResponse() {
-		while (PipeReader.tryReadFragment(finalInput)) {
+		while (PipeReader.tryReadFragment(finalInput) && PipeWriter.hasRoomForWrite(output)) {
 		    int msgIdx1 = PipeReader.getMsgIdx(finalInput);
 		    switch(msgIdx1) {
 		        case BlockStorageReceiveSchema.MSG_ERROR_3:
@@ -321,34 +315,107 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 		        case BlockStorageReceiveSchema.MSG_WRITEACK_2:
 		        	final long fieldPosition = PipeReader.readLong(finalInput,BlockStorageReceiveSchema.MSG_WRITEACK_2_FIELD_POSITION_12);
 		        	
-		        	logger.info("XXXXXX ack for write encyprt: {}  position: {} ",encrypt, fieldPosition);
+		        	//logger.info("ack for write encyprt: {}  position: {} ",encrypt, fieldPosition);
 		        	
 		        	finalAckPending = false;
 		        break;
 		        case BlockStorageReceiveSchema.MSG_DATARESPONSE_1:
 		        	assert(!encrypt) : "did not expect this message, should only be when decrypting";
+		        	
 		        	//this is the replay for the decryptor
 		        	long fieldPosition1 = PipeReader.readLong(finalInput,BlockStorageReceiveSchema.MSG_DATARESPONSE_1_FIELD_POSITION_12);
 		        	
-		        	//TODO: in place, apply xor to pull back in our tail data
+		        	DataInputBlobReader<BlockStorageReceiveSchema> fieldPayload = PipeReader.inputStream(
+		        			            finalInput, BlockStorageReceiveSchema.MSG_DATARESPONSE_1_FIELD_PAYLOAD_11);
+
 		        	
-		        	DataInputBlobReader<BlockStorageReceiveSchema> fieldPayload = PipeReader.inputStream(finalInput, BlockStorageReceiveSchema.MSG_DATARESPONSE_1_FIELD_PAYLOAD_11);
-		        	assert(0 == fieldPosition1);
-		        	assert((2*finalBlockSize)  == fieldPayload.available());
-		        	
-		        	//this data is needed for decrypt when we reach the end
-		        	finalPosA = fieldPayload.readLong();
-		        	
-		        	logger.info("XXXXXX result for read encyprt: {}  position: {} from file loc:{}",encrypt, finalPosA, fieldPosition1);
-		        	
-		        	
-		        	finalLenA = fieldPayload.readInt();
-		        	fieldPayload.read(finalDataA);
-		        	
-		        	finalPosB = fieldPayload.readLong();
-		        	finalLenB = fieldPayload.readInt();
-		        	fieldPayload.read(finalDataB);
+		        	int blockPos = fieldPayload.absolutePosition();
+		           	byte[] blockBack = finalInput.blobRing;
+		        	int blockMask = finalInput.blobMask;
 		        			        	
+		        	assert(0 == fieldPosition1);
+		        	assert(guidBlockSize  == fieldPayload.available());
+
+		        	int offset = (int)((fileOutputPosition-safeOffset) & rollingHashMask);		        	
+			        Pipe.xorBytesToBytes(rollingHash, offset, rollingHashMask, blockBack, blockPos, blockMask, finalBlockSize);
+		
+					//Appendables.appendArray(Appendables.appendValue(System.out, offset), 
+					//		rollingHash, offset, rollingHashMask, 64 ).append(" decrypt\n ");
+
+		        	//this data is needed for decrypt when we reach the end
+		        	finalPos = fieldPayload.readLong();
+		        	finalLen = fieldPayload.readInt();
+		        	
+		        	if (fileOutputPosition == finalPos 
+		        		&& finalLen>=0
+		        		&& finalLen<=finalData.length
+		        		&& (0==(passMask&finalLen))  ) {
+		        	
+		        		fieldPayload.read(finalData, 0, finalLen);
+		        		
+		        		activeShuntPosition = 1; //replace the second slot first since we use first
+		        	
+		        	} else {
+	
+		        		offset = (int)((fileOutputPosition-safeOffset) & rollingHashMask);
+		        		Pipe.xorBytesToBytes(rollingHash, offset, rollingHashMask, blockBack, blockPos+finalBlockSize, blockMask, finalBlockSize);
+		        
+		        		//Appendables.appendArray(Appendables.appendValue(System.out, offset), 
+		        		//		rollingHash, offset, rollingHashMask, 64 ).append(" decrypt\n ");
+		        		
+		        		fieldPayload.skipBytes(finalBlockSize-(8+4));//align to the next needed block.
+		        		
+		        		finalPos = fieldPayload.readLong();
+		        		finalLen = fieldPayload.readInt();
+		        			        				        	
+			        	//only take this value if it matches the expectation
+			        	if (fileOutputPosition == finalPos
+			        			&& finalLen>=0
+				        		&& finalLen<=finalData.length
+				        		&& (0==(passMask&finalLen))  	) {
+			        		
+			        		fieldPayload.read(finalData, 0, finalLen);
+			        		
+			        		activeShuntPosition = 0; //replace the first slot first since we use second
+			        		
+			        	} else {
+			        		//neither position matched, we may not be that far into the data yet
+			        		
+			        		//TODO: corrupt data discovered, should return -2 length
+			        		
+			        		logger.info("Warning: looking for data at position {} found no match in {} length {} ", fileOutputPosition, finalPos, finalLen);
+			        		
+			        		finalPos = -1;
+			        		
+			        	}
+		        	}    	    	
+        	    	
+        	    	assert(finalPos!=-1) : "must have matching position by this point in time";
+    	    		final int targetPos = Pipe.getWorkingBlobHeadPosition(output);
+    	    		    	    
+    	    		int headerBytesToIgnore = (int)(guidBlockSize-fileOutputPosition);
+    	    		
+    	    		int blockLen = processBlock(finalLen, 0, finalData, targetPos, targetBuffer, targetMask);
+    	    	    	    		
+    	    		int finalLen2 = doFinalIntoRing(targetBuffer, targetPos+blockLen, targetMask);
+    	    		//must add the hash for final??
+    	    		hashInputData(targetBuffer, targetPos+blockLen, targetMask, finalLen2);
+    	       		int targetLen = blockLen + finalLen2;
+    	       		//////////
+    	       		//must remove the header if we read part of it since it is not part of our data
+    	    	    if (headerBytesToIgnore>0) {
+    	    	    	targetLen -= headerBytesToIgnore;
+    	    	    	Pipe.copyBytesFromToRing(targetBuffer, targetPos+headerBytesToIgnore, targetMask, 
+    	    	    							 targetBuffer, targetPos, targetMask, 
+    	    	    							 targetLen);
+
+    	    	    }
+    	    		
+    	    		
+    	    		publishBockOut(targetPos, targetLen);
+    	    		isFinalRequested = false;
+		        	resetToBeginning();
+		        	
 		        break;
 		        case -1:
 		        	//TODO: should only do if we sent it first to finalOutput
@@ -362,53 +429,57 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 	
 	private boolean processAvail() {
 		
-		if (0 == filePosition) {
-			if (!encrypt) {
-				
+		//THIS BLOCK IS FOR DECRYPT ONLY.
+		if ((fileOutputPosition<=0) && (!encrypt)) {
+			
 				//consume header block since it was just random data to protect the file
+			    int avail = 0;
 				if (Pipe.hasRoomForWrite(finalOutput)&&
 					inputStream.hasRemainingBytes() &&
-					inputStream.available() > firstBlockBytes &&
+					(avail = inputStream.available()) >= guidBlockSize &&
 					Pipe.hasRoomForWrite(output)) {
-		
 					
-					logger.info("XXXXXX requested read encyprt: {}  position: 0 size: {} ",encrypt, 2*finalBlockSize);
-
-					BlockStorageXmitSchema.publishRead(finalOutput, 0, 2*finalBlockSize);
-									
+					fileOutputPosition = 0;
+					
+					Arrays.fill(rollingHash, (byte)0); //will be populated upon decrypt
+					
+					//////////////////////////////////////////////////
+					//this call will grow filePosition and decrypt the first block
 					final int targetPos = Pipe.getWorkingBlobHeadPosition(output);
+					int len = processBlock(avail, 
+							     		   inputStream.absolutePosition() & sourceMask,
+							     		   sourceBuffer,
+							     		   targetPos, targetBuffer, targetMask);
+		
+					//////////////////////////////////////
+					//copy needed data from target into firstBlockBytesBacking array
+					System.arraycopy(targetBuffer, targetPos, firstBlockBytesBacking, 0, guidBlockSize);
+					inputStream.skip(avail);
+					//////////////////////////////////////
 					
-					//this call will grow fielPosition
-					int len = processBlock(inputStream.available(), 
-							     inputStream.absolutePosition() & sourceMask, sourceBuffer,
-							     targetPos, targetBuffer, targetMask);
+					/////////////////////////////////////////////////
+					rollingHashInputPos = guidBlockSize;
+					/////////////////////////////////////////////////
+								
 					
-					//copy needed data
-					System.arraycopy(targetBuffer, targetPos, firsBlockBytesBacking, 0, firstBlockBytes);
-					inputStream.skip(inputStream.available());
-					
-					int rem = len-firstBlockBytes;
+					int rem = len-guidBlockSize;
 					if (rem>0) {
 						//must write this out
-						System.arraycopy(targetBuffer, targetPos+firstBlockBytes, 
+						System.arraycopy(targetBuffer, targetPos+guidBlockSize, 
 										 targetBuffer, targetPos, 
 								         rem);
 						
+						
 						publishBockOut(targetPos, rem);
-						
-						if (!encrypt) {
-							Appendables.appendUTF8(System.out, targetBuffer, targetPos, rem, targetMask);	
-							System.out.println();
-						}
-						
-						
-						return true;
+		
 					}
 					
+					return true;
 				} else {
 					return false;
 				}
-			}
+				
+			
 		}
 		
 		if (Pipe.hasRoomForWrite(output) &&
@@ -418,21 +489,37 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 			assert(rollLimit>0);
 			int avail = inputStream.available();
 			
+			if (avail<=0) {
+				return false;//nothing to be done
+			}
 			
 			if (avail <= rollLimit) {						
 				
 				int targetPos = Pipe.getWorkingBlobHeadPosition(output);
 				
 				int encSize = 0;
-				if (encrypt && 0==filePosition) {
+		
+				if (encrypt && 0==fileOutputPosition) {
+								
+					//new random block
+					long now = System.nanoTime();
 					
-					if (avail <= passSize) { //TODO: this must work with 1 byte of data...
-						//one case where we need to read more for encrypt...
-						return false;
+					fileHeaderGenerator.setSeed(now);
+					fileHeaderGenerator.nextBytes(firstBlockBytesBacking);
+
+					long duration = System.nanoTime()-now;
+					if (duration>1_000_000) {
+						logger.info("warning: generating new random value took {} ns ",duration);
 					}
 					
+					
+					Arrays.fill(rollingHash, (byte)0); //will be populated upon encrypt
+					rollingHashInputPos = guidBlockSize;
+					
+					
 					//this is added here so it is part of the same write block
- 					int len = processBlock(firstBlockBytes, 0, firsBlockBytesBacking, 
+					//this call will NOT end up creating a final block due to it being first.
+ 					int len = processBlock(guidBlockSize, 0, firstBlockBytesBacking, 
  											targetPos, targetBuffer, targetMask);
  					
  					encSize += len;
@@ -440,29 +527,31 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 				}				
 				
 				//debug what was encrypted
-				if (encrypt) {
-					StringBuilder text = new StringBuilder("Encrypt: ");
-					Appendables.appendUTF8(text, sourceBuffer, inputStream.absolutePosition(), avail, sourceMask);
-					System.out.println(text.toString());
-				}
+				//if (encrypt) {
+				//	StringBuilder text = new StringBuilder("Encrypt: ");
+				//	Appendables.appendUTF8(text, sourceBuffer, inputStream.absolutePosition(), avail, sourceMask);
+				//	System.out.println(text.toString());
+				//}
 								
+				//this call will create a final block since the GUID has already been added
 				final int tSize = processBlock(avail, inputStream.absolutePosition() & sourceMask, sourceBuffer,
 						                       targetPos, targetBuffer, targetMask); 
 				encSize += tSize;
 				
 				//debug what was decrypted
-				if (!encrypt) {
-					Appendables.appendUTF8(System.out, targetBuffer, targetPos, tSize, targetMask);	
-					System.out.println();
-				}
-								
-				if (encSize>0) {
-					assert(tSize!=0) : "Must send block of real data with headers "+encSize;
-					int origTargetPos = Pipe.getWorkingBlobHeadPosition(output);
-					publishBockOut(origTargetPos,encSize);					
-				} else {
-					logger.info("ERROR ENC SIZE IS ZERO................");
-				}
+				//if (!encrypt) {
+				//	Appendables.appendUTF8(System.out, targetBuffer, targetPos, tSize, targetMask);	
+				//	System.out.println();
+				//}
+	
+				
+				///////////////////////////////////////////////////
+				//must publish regardless of size because we must maintain a 1 for 1 mapping of incoming
+				//blocks to outgoing blocks, this actual data may go out with the next block but that is not
+				//important because it will be saved as part of the stored final block
+				///////////////////////////////////////////////////
+				publishBockOut(Pipe.getWorkingBlobHeadPosition(output),encSize);					
+			
 				
 				inputStream.skip(avail);
 			} else {
@@ -499,7 +588,6 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 		}
 	}
 
-
 	private void publishBockOut(final int targetPos, int length) {
 		int size= Pipe.addMsgIdx(output, RawDataSchema.MSG_CHUNKEDSTREAM_1);
 		Pipe.addBytePosAndLen(output, targetPos, length);
@@ -508,65 +596,75 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 		Pipe.publishWrites(output);
 	}
 	
-	int ttt = 0;
+	private int blockModCount = 0;
 
 	private int processBlock(int avail, int availPos, byte[] availBacking, 
 			                 int targetPos, byte[] targetBacking, int targetMask) {
 		assert(targetBacking.length>32);
-		try {
+		
+		if (avail>0){
 			
-			    int requiredOutputRoom = c.getOutputSize(avail);
-			    
-			    int roomBeforeWrap = targetBacking.length-targetPos;
-			    
-			    int result;
-			    if (requiredOutputRoom <= roomBeforeWrap) {
-					result = c.update(
-											availBacking, 
-											availPos, 
-											avail, 
-											targetBacking, 
-											targetPos);
-					
-					if (!encrypt) {
-						System.err.println("reading result "+result+
-								           " for target "+targetBacking.length+
-								           " avail "+avail);
-					}
-					
-			    } else {
-			    	System.out.println("tested when no room");
-			    	////////////////////////////////////////
-			    	//this conditional is only needed because we may not have all the room
-			    	//before the wrap and because c.update does not have the right signature to suppor this.
-			    	/////////////////////////////////////
-			    	if (requiredOutputRoom > tempWrapSpace.length) {
-			    		tempWrapSpace = new byte[requiredOutputRoom*2];
-			    	}
-					result = c.update(
-											availBacking, 
-											availPos, 
-											avail, 
-											tempWrapSpace, 
-											0);
-															
-					Pipe.copyBytesFromToRing(tempWrapSpace, 0, Integer.MAX_VALUE, 
-							targetBacking, targetPos, targetMask,
-							result);
-			    	
-			    }
+			assert(avail<=availBacking.length);
+			if (encrypt) {
+								
+				hashInputData(availBacking, availPos, Integer.MAX_VALUE, avail);
 				
-			    final long startPos = filePosition;
-			    
-			    filePosition += result;
-			    
-				if (targetPos+result-16 > 0) {
-										
-					//for encrypt we want to do final but only after we have written the first block bytes
-					if (encrypt && (startPos >= firstBlockBytes) ) {
+			}
+			
+			try {
+				
+				    int requiredOutputRoom = c.getOutputSize(avail);
+				    
+				    int roomBeforeWrap = targetBacking.length-targetPos;
+				    
+				    int result;
+				    if (requiredOutputRoom <= roomBeforeWrap) {
+						result = c.update(
+												availBacking, 
+												availPos, 
+												avail, 
+												targetBacking, 
+												targetPos);
 						
-						//These bytes were sent to final so we must keep them for the next block
-						int extraBytesToReAdd = (ttt+avail)%passSize;
+				    } else {
+				    	System.out.println("tested when no room, if this worked remove this comment.");
+				    	////////////////////////////////////////
+				    	//this conditional is only needed because we may not have all the room
+				    	//before the wrap and because c.update does not have the right signature to suppor this.
+				    	/////////////////////////////////////
+				    	if (requiredOutputRoom > tempWrapSpace.length) {
+				    		tempWrapSpace = new byte[requiredOutputRoom*2];
+				    	}
+						result = c.update(
+												availBacking, 
+												availPos, 
+												avail, 
+												tempWrapSpace, 
+												0);
+																
+						Pipe.copyBytesFromToRing(tempWrapSpace, 0, Integer.MAX_VALUE, 
+								targetBacking, targetPos, targetMask,
+								result);
+				    	
+				    }
+					
+				    final long startPos = fileOutputPosition;				    
+				    fileOutputPosition += result; //total count of all bytes processed
+				    
+					if (!encrypt) {
+						hashInputData(targetBacking, targetPos, targetMask, result);	
+					}				    
+				    
+				    //These bytes were sent to final so we must keep them for the next block
+				    int extraBytesToReAdd = (blockModCount+avail)%passSize;
+								
+			        ////////////////////////////////////////////////
+					//for encrypt we want to do final but only after we have written the first block bytes
+			        //the guid must be esablished first or we will leak information about the tail
+					if (encrypt && startPos >= guidBlockSize ) {
+						
+
+						blockModCount += extraBytesToReAdd;
 						
 						//NOTE: this final may be written before or after end of body.
 						//      if after body will just use old end
@@ -575,18 +673,24 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 						//      so if we have an outstanding ack no new work should be taken.
 						publishDoFinal();
 								
-
-						//take last 16 and keep it for the new vi
-						System.arraycopy(targetBuffer, targetPos+result-16, iv, 0, 16);
+						int srcPos = targetPos+result-passSize;
+						if (srcPos<=0) {
+							//use initial password if we are at the beginning of the file
+							System.arraycopy(pass, 0, iv, 0, passSize);
+						} else {
+							//take last 16 and keep it for the new vi
+							System.arraycopy(targetBuffer, srcPos, iv, 0, passSize);
+						}
+						
 						ips = new IvParameterSpec(iv);						
 						c.init(encrypt ? Cipher.ENCRYPT_MODE : Cipher.DECRYPT_MODE, sks, ips);
 						
 						
-						StringBuilder temp = new StringBuilder("** Missing bytes added: ");
-						Appendables.appendUTF8(temp, availBacking, 
-												(availPos+avail)-extraBytesToReAdd, 
-												extraBytesToReAdd, Integer.MAX_VALUE);
-						System.out.println(temp);
+//							StringBuilder temp = new StringBuilder("** Missing bytes added: ");
+//							Appendables.appendUTF8(temp, availBacking, 
+//													(availPos+avail)-extraBytesToReAdd, 
+//													extraBytesToReAdd, Integer.MAX_VALUE);
+//							System.out.println(temp);
 						
 						
 						int shouldBeZero = c.update(
@@ -597,55 +701,91 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 													0);
 						assert(0 == shouldBeZero);
 						
-						ttt += extraBytesToReAdd;
-						
-					
-					}
-				}
-				return result;
-		} catch (Exception e) {
-			throw new RuntimeException(e);
+					} 			
+					return result;
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		} else {
+			return 0;
 		}
 	}
 
-	//TODO: confirm that we write a zero lengh block when data does not flush 16... it is in the final.
+	private void hashInputData(byte[] availBacking, int availPos, int availMask, int avail) {
+		for(int i = 0; i<avail; i++) {
+			rollingHash[rollingHashMask & rollingHashInputPos++] ^= availBacking[availMask & (availPos+i)];
+		}
+	}
 
 	private void publishDoFinal() throws IllegalBlockSizeException, ShortBufferException, BadPaddingException {
 
 		assert(encrypt) : "never call for decrypt";
-		
-		//TODO: must add xor of this to ensure not repeated key usage is let out.
-		
-		
+
 		PipeWriter.presumeWriteFragment(finalOutput, BlockStorageXmitSchema.MSG_WRITE_1);
 		PipeWriter.writeLong(finalOutput,
-							BlockStorageXmitSchema.MSG_WRITE_1_FIELD_POSITION_12, 
-							(activeShuntPosition*finalBlockSize));
+							 BlockStorageXmitSchema.MSG_WRITE_1_FIELD_POSITION_12, 
+							 (activeShuntPosition*(long)finalBlockSize));
 		
 		activeShuntPosition = 1&(activeShuntPosition+1);//toggle
 		
 		byte[] blob = Pipe.blob(finalOutput);						
 		final int origPos = Pipe.getWorkingBlobHeadPosition(finalOutput);
 	
-		DataOutputBlobWriter.write64(blob, finalOutput.blobMask, origPos, filePosition);
-		final int lenPos = origPos+8;					
+		long lookupPosition = fileOutputPosition - passSize;
+			
+		DataOutputBlobWriter.write64(blob, finalOutput.blobMask, origPos, lookupPosition);//everything encoded so far.
+		int lenPos = origPos+8;					
 		
 		int finalOffset = finalOutput.blobMask & (lenPos+4);
 		int finalMask = finalOutput.blobMask;
 		
-		int finalLength = doFinalIntoRing(blob, finalOffset, finalMask);			
-		
+		int finalLength = doFinalIntoRing(blob, finalOffset, finalMask);
+		hashInputData(targetBuffer, finalOffset, targetMask, finalLength);
 		DataOutputBlobWriter.write32(blob, finalOutput.blobMask, lenPos, finalLength);
-		
+				
 		//we write full block to ensure file is filled up to that size.
 		PipeWriter.writeSpecialBytesPosAndLen(finalOutput, 
 				BlockStorageXmitSchema.MSG_WRITE_1_FIELD_PAYLOAD_11,
 				finalBlockSize, origPos);
-								
-		PipeWriter.publishWrites(finalOutput);
 		
+		
+		lenPos += finalBlockSize;
+		
+		///////////////
+		//added hash data to ensure we have no blank data
+		//TODO: this can be used to ensure data is unmodified...
+		//////////////
+		
+		int c = 5;
+		long temp = lookupPosition - (safeOffset + (c*4)); //4 bytes per int
+		while (--c>=0) {
+			int hash = MurmurHash.hash32(rollingHash, (int)(temp & rollingHashMask), 4, 1337+c);
+			DataOutputBlobWriter.write32(blob, finalOutput.blobMask, lenPos, hash);
+			temp += 4;			
+			lenPos += 4;
+		}
+		
+	
+    	int blockPos = origPos;
+    	byte[] blockBack = finalOutput.blobRing;
+    	int blockMask = finalOutput.blobMask;
+    	    	
+    	//////////////////////////////////////////////
+    	//The filePosition is the last round number of bytes encrypted.
+    	//In order to hash cleanly we must end at this point, eg use the previous data blocks
+    	//to do this we will subtract the finalBlockSize from filePosition
+    	//////////////////////////////////////////////    	
+    	int rollingHashOffset = (int)((lookupPosition-safeOffset) & rollingHashMask);
+ 	    Pipe.xorBytesToBytes(rollingHash, rollingHashOffset, rollingHashMask, blockBack, blockPos, blockMask, finalBlockSize);
 
-    	logger.info("XXXXXX final write encyprt: {}  position: {} ",encrypt, filePosition);
+	    //Appendables.appendArray(Appendables.appendValue(System.out, offset), 
+	    //		 				 rollingHash, offset, rollingHashMask, 64 ).append(" encrypt\n ");
+
+		int consumed = PipeWriter.publishWrites(finalOutput);
+		
+		assert(consumed == finalBlockSize);
+
+    	//logger.trace("final write encyprt: {}  position: {} ",encrypt, filePosition);
     	
 		
 		assert(!finalAckPending) : "internal logic error";
