@@ -570,13 +570,14 @@ public class TrieParserReader {
 
 
 	public static long query(TrieParserReader reader, TrieParser trie, 
-			byte[] source, int localSourcePos, int sourceLength, int sourceMask) {
+			                 byte[] source, int localSourcePos, int sourceLength, int sourceMask) {
 		return query(reader,trie,source,localSourcePos, sourceLength, sourceMask, -1);
 	}
 
 
 	public static long query(TrieParserReader reader, TrieParser trie, 
-			byte[] source, int sourcePos, long sourceLength, int sourceMask, final long unfoundResult) {
+			                 byte[] source, int sourcePos, long sourceLength, int sourceMask, 
+			                 final long unfoundResult) {
 
 		if (trie.getLimit()>0) {
 		} else {

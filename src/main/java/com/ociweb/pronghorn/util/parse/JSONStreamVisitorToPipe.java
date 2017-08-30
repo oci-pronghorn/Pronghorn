@@ -54,7 +54,7 @@ public class JSONStreamVisitorToPipe<M extends MessageSchema<M>, K extends Enum<
 		this.pipe = pipe;		
 		this.keys = keys.getEnumConstants();
 		
-		final int maxStack = 12;//9;  //TOOD: use long of keys.length to compute this value.
+		final int maxStack = 32;//9;  //TOOD: use long of keys.length to compute this value.
 		
 		this.enumStack = (K[]) new Enum[maxStack];
 		this.uStack = new long[maxStack];
@@ -243,7 +243,10 @@ public class JSONStreamVisitorToPipe<M extends MessageSchema<M>, K extends Enum<
 
 	@Override
 	public void customString(int id) {
-		enumStack[stackPosition-1] = keys[id]; 
+		assert(id>=0);
+		assert(stackPosition>=1) : "logic error reading value beyond stack depth.";
+		
+		enumStack[stackPosition-1] = keys[id];
 		
 		long value;
 		if (stackPosition>1) {
