@@ -71,6 +71,11 @@ public class ServerCoordinator extends SSLConnectionHolder {
 		   serverConfig.maxPartialResponsesServer, serverConfig.processorCount,"Server", "");
 	}
 	
+	public ServerCoordinator(boolean isTLS, String bindHost, int port, ServerPipesConfig serverConfig, String defaultPath) {
+		this(isTLS,bindHost,port, serverConfig.maxConnectionBitsOnServer, 
+		   serverConfig.maxPartialResponsesServer, serverConfig.processorCount,"Server", defaultPath);
+	}
+	
 	public ServerCoordinator(boolean isTLS, String bindHost, int port, 
             int maxConnectionsBits, int maxPartialResponses,
             int processorsCount) {
