@@ -42,6 +42,7 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     ACCEPT_RANGES("Accept-Ranges: %b"),//nginx
     EXPECT("Expect: %b"),
     FORWARDED("Forwarded: %b"),
+    CONTENT_DISPOSITION("Content-Disposition: %b"), //Twitter, OAuth 2 bearer response
     FROM("From: %b"),
     IF_NONE_MATCH("If-None-Match: %b"), //chromium
     IF_MODIFIED_SINCE("If-Modified-Since: %b"),//chromium
@@ -94,6 +95,11 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     ML("ml: %b"), //twitter
     UPGRADE_INSECURE_REQUESTS("Upgrade-Insecure-Requests: %u"), //chromium
     P3P("P3P: %b"),
+    X_ACCESS_LEVEL("x-access-level: %b"), //twitter  read
+    X_RATE_LIMIT_LIMIT("x-rate-limit-limit: %u"), //twitter
+    X_RATE_LIMIT_REMAINING("x-rate-limit-remaining: %u"), //twitter
+    X_RATE_LIMIT_RESET("x-rate-limit-reset: %u"),  //twitter 
+    
     X_FORWARD_FOR("x-Forwarded-For: %b"),
     X_FORWARD_HOST("x-Forwarded-Host: %b"),
     X_ONLINE_HOST("x-Online-Host: %b"),
