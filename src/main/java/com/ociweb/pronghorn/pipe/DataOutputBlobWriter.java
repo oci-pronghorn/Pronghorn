@@ -168,6 +168,10 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
         int len = length(writer);
         PipeWriter.writeSpecialBytesPosAndLen(writer.backingPipe, targetFieldLoc, len, writer.startPosition);
         writer.backingPipe.closeBlobFieldWrite();
+        
+        //System.out.println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXxxx");
+        //Appendables.appendUTF8(System.out, writer.getPipe().blobRing, writer.startPosition, len, writer.getPipe().blobMask);
+        
         return len;
     }
     

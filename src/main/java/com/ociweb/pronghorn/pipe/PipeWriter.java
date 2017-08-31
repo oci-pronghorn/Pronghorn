@@ -87,7 +87,7 @@ public class PipeWriter {
 		
 		long p = structuredPositionForLOC(pipe, loc);	
 		
-		assert(p+1L < pipe.ringWalker.nextWorkingHead-1L) : "Is this field applicable for the this pipes schema? "+pipe.schemaName(pipe);
+		assert(p+1L <= pipe.ringWalker.nextWorkingHead-1L) : "Is this field applicable for the this pipes schema? "+pipe.schemaName(pipe)+" Or message?";
 				
 		buffer[rbMask & (int)p] = (int)(value >>> 32);
 		buffer[rbMask & (int)(p+1)] = (int)(value & 0xFFFFFFFF);		
@@ -99,7 +99,7 @@ public class PipeWriter {
 		int rbMask = pipe.slabMask;
 
 		long p = structuredPositionForLOC(pipe, loc);
-		assert(p+2L < pipe.ringWalker.nextWorkingHead-1L) : "Is this field applicable for the this pipes schema? "+pipe.schemaName(pipe);
+		assert(p+2L <= pipe.ringWalker.nextWorkingHead-1L) : "Is this field applicable for the this pipes schema? "+pipe.schemaName(pipe);
 		
 		
 		buffer[rbMask & (int)p++] = exponent;

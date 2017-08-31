@@ -46,6 +46,11 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
 
 	}
 	
+	public void debugUTF8() {
+	    Appendables.appendUTF8(System.out, backing, bytesLowBound, length, byteMask);
+		
+	}
+	
     public int openHighLevelAPIField(int loc) {
         
         this.length         = Math.max(0, PipeReader.readBytesLength(pipe, loc));
@@ -665,6 +670,10 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     }
 
 	public static void setupParser(DataInputBlobReader<?> input, TrieParserReader reader) {
+		
+		//System.out.println("input data to be parsed: ");
+		//Appendables.appendUTF8(System.out, input.backing, input.position, bytesRemaining(input), input.byteMask);
+		
 		TrieParserReader.parseSetup(reader, input.backing, input.position, bytesRemaining(input), input.byteMask); 
 	}
 

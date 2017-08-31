@@ -244,7 +244,11 @@ public class JSONStreamVisitorToPipe<M extends MessageSchema<M>, K extends Enum<
 	@Override
 	public void customString(int id) {
 		assert(id>=0);
-		assert(stackPosition>=1) : "logic error reading value beyond stack depth.";
+		
+		//no support at this time for values found at the root
+		if (stackPosition<=0) {
+			return;
+		}
 		
 		enumStack[stackPosition-1] = keys[id];
 		
