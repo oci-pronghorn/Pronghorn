@@ -457,17 +457,6 @@ public class HTTPSRoundTripTest {
 		PipeConfig<NetResponseSchema> netResponseConfig = new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, responseQueue, responseQueueBytes);
 		//System.err.println("out "+netResponseConfig);	
 		
-		//System.err.println("Bits for pipe lookup "+bitsPlusHashRoom);
-		final IntHashTable listenerPipeLookup = new IntHashTable(bitsPlusHashRoom); //bigger for more speed.
-		
-		
-		int i = input.length;//*usersPerPipe;
-		while (--i>=0) {
-			IntHashTable.setItem(listenerPipeLookup, i, i/*%input.length*/);//put this key on that pipe		
-
-			
-		}				
-		
 		//second pipe which also impacts latency		
 		PipeConfig<NetPayloadSchema> httpRequestConfig = new PipeConfig<NetPayloadSchema>(NetPayloadSchema.instance,httpRequestQueueSize,httpRequestQueueBytes); 
 		
@@ -499,7 +488,7 @@ public class HTTPSRoundTripTest {
 								    Pipe<NetPayloadSchema>[] clearResponse,
 								    Pipe<ReleaseSchema> ackReleaseForResponseParser) {
 				
-				NetGraphBuilder.buildHTTP1xResponseParser(gm, ccm, listenerPipeLookup, toReactor, clearResponse, ackReleaseForResponseParser);
+				NetGraphBuilder.buildHTTP1xResponseParser(gm, ccm, toReactor, clearResponse, ackReleaseForResponseParser);
 			}
 			
 		};

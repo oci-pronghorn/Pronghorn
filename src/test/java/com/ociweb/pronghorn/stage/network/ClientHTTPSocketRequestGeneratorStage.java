@@ -98,8 +98,14 @@ public class ClientHTTPSocketRequestGeneratorStage extends PronghornStage {
                 socket = new Socket(targetAddr, portNumber);
                 socketChannel = SocketChannel.open(socket.getRemoteSocketAddress());
                 
-                socketChannel.setOption(StandardSocketOptions.TCP_NODELAY, true);
-       //         socketChannel.setOption(StandardSocketOptions.SO_LINGER, 3);
+                //   NOTE: when doing http/2 
+                //   Must be sent from client to turn off pushing from the http/2 server
+                //   SETTINGS_ENABLE_PUSH=0
+                
+                //TCP_NODELAY is requried for HTTP/2 get used to to being on.
+                //socketChannel.setOption(StandardSocketOptions.TCP_NODELAY, true);
+                
+                //socketChannel.setOption(StandardSocketOptions.SO_LINGER, 3);
                 socketChannel.setOption(StandardSocketOptions.SO_SNDBUF, 65536);
                                
                 logger.trace("opened socket to {}",socket.getLocalAddress());

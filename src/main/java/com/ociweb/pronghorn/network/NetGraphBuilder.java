@@ -44,7 +44,7 @@ public class NetGraphBuilder {
 	private static final Logger logger = LoggerFactory.getLogger(NetGraphBuilder.class);	
 	
 	public static void buildHTTPClientGraph(GraphManager gm, int maxPartialResponses,
-			ClientCoordinator ccm, final IntHashTable listenerPipeLookup,
+			ClientCoordinator ccm, 
 			int responseQueue, 
 			int responseSize, final Pipe<NetPayloadSchema>[] requests, 
 			final Pipe<NetResponseSchema>[] responses) {
@@ -56,7 +56,7 @@ public class NetGraphBuilder {
 								    Pipe<NetPayloadSchema>[] clearResponse,
 								    Pipe<ReleaseSchema> ackReleaseForResponseParser) {
 				
-				buildHTTP1xResponseParser(gm, ccm, listenerPipeLookup, responses, clearResponse, ackReleaseForResponseParser);
+				buildHTTP1xResponseParser(gm, ccm, responses, clearResponse, ackReleaseForResponseParser);
 			}
 			
 		};
@@ -212,20 +212,20 @@ public class NetGraphBuilder {
 		}
 	}
 
-	public static void buildHTTP1xResponseParser(GraphManager gm, ClientCoordinator ccm, IntHashTable listenerPipeLookup,
+	public static void buildHTTP1xResponseParser(GraphManager gm, ClientCoordinator ccm, 
 			Pipe<NetResponseSchema>[] responses, Pipe<NetPayloadSchema>[] clearResponse,
 			Pipe<ReleaseSchema> ackRelease) {
 		
-		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, ackRelease, listenerPipeLookup, ccm, HTTPSpecification.defaultSpec());
+		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, ackRelease, ccm, HTTPSpecification.defaultSpec());
 		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
 		ccm.processNota(gm, parser);
 		
 	}
 
-	private static void buildParser(GraphManager gm, ClientCoordinator ccm, IntHashTable listenerPipeLookup,
+	private static void buildParser(GraphManager gm, ClientCoordinator ccm, 
 			Pipe<NetResponseSchema>[] responses, Pipe<NetPayloadSchema>[] clearResponse, Pipe<ReleaseSchema>[] acks) {
 		
-		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, acks[acks.length-1], listenerPipeLookup, ccm, HTTPSpecification.defaultSpec());
+		HTTP1xResponseParserStage parser = new HTTP1xResponseParserStage(gm, clearResponse, responses, acks[acks.length-1], ccm, HTTPSpecification.defaultSpec());
 		GraphManager.addNota(gm, GraphManager.DOT_RANK_NAME, "HTTPParser", parser);
 		ccm.processNota(gm, parser);
 	}
@@ -816,39 +816,16 @@ public class NetGraphBuilder {
 		
 		buildHTTPClientGraph(gm, maxPartialResponses, httpResponsePipe, httpRequestsPipe, connectionsInBits,
 								clientRequestCount, clientRequestSize, isTLS);
-		
-		
+				
 	}
 
 	public static void buildHTTPClientGraph(GraphManager gm, int maxPartialResponses,
 			Pipe<NetResponseSchema>[] httpResponsePipe, Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe,
 			int connectionsInBits, int clientRequestCount, int clientRequestSize, boolean isTLS) {
-		buildHTTPClientGraph(gm, null, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
+		buildHTTPClientGraph(gm, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
 							 clientRequestCount, clientRequestSize, isTLS);
 	}
 	
-	/**
-	 * Build HTTP client subgraph. 
-	 * 
-	 * @param gm target graph where this will be added
-	 * @param netPipeLookup table to map the listener id with the target response pipes, can be null for 1 to 1 mapping
-	 * @param httpResponsePipe http responses 
-	 * @param httpRequestsPipe http requests
-	 */	
-	public static void buildHTTPClientGraph(GraphManager gm,
-									  IntHashTable netPipeLookup, 
-									  final Pipe<NetResponseSchema>[] httpResponsePipe,
-									  Pipe<ClientHTTPRequestSchema>[] httpRequestsPipe) {
-		
-		int maxPartialResponses = IntHashTable.count(netPipeLookup);
-		int connectionsInBits = 6;		
-		int clientRequestCount = 4;
-		int clientRequestSize = 1<<15;
-		boolean isTLS = true;
-		
-		buildHTTPClientGraph(gm, netPipeLookup, httpResponsePipe, httpRequestsPipe, maxPartialResponses, connectionsInBits,
-							 clientRequestCount, clientRequestSize, isTLS);
-	}
 
 	public static void buildSimpleClientGraph(GraphManager gm, ClientCoordinator ccm,
 											  ClientResponseParserFactory factory, 
@@ -867,7 +844,7 @@ public class NetGraphBuilder {
 				         clientWriters, releaseCount, netResponseCount, netResponseBlob, factory, writeBufferMultiplier);
 	}
 	
-	public static void buildHTTPClientGraph(GraphManager gm, final IntHashTable netPipeLookup,
+	public static void buildHTTPClientGraph(GraphManager gm, 
 			final Pipe<NetResponseSchema>[] httpResponsePipe, Pipe<ClientHTTPRequestSchema>[] requestsPipe,
 			int maxPartialResponses, int connectionsInBits, int clientRequestCount, int clientRequestSize,
 			boolean isTLS) {
@@ -881,7 +858,7 @@ public class NetGraphBuilder {
 								    Pipe<NetPayloadSchema>[] clearResponse,
 								    Pipe<ReleaseSchema> ackReleaseForResponseParser) {
 				
-				NetGraphBuilder.buildHTTP1xResponseParser(gm, ccm, netPipeLookup, httpResponsePipe, clearResponse, ackReleaseForResponseParser);
+				NetGraphBuilder.buildHTTP1xResponseParser(gm, ccm, httpResponsePipe, clearResponse, ackReleaseForResponseParser);
 			}			
 		};
 

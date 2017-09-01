@@ -36,12 +36,12 @@ public class HeaderUtil {
 		if (length>0) {
 			DataOutputBlobWriter.write(writer, HeaderUtil.CONTENT_LENGTH, 0, HeaderUtil.CONTENT_LENGTH.length);
 			Appendables.appendValue(writer, length);
+			DataOutputBlobWriter.write(writer, HeaderUtil.LINE_END, 0, HeaderUtil.LINE_END.length);
 		} else if (length<0) {
 			DataOutputBlobWriter.write(writer, HeaderUtil.CONTENT_CHUNKED, 0, HeaderUtil.CONTENT_CHUNKED.length);
 		}
 		
 		DataOutputBlobWriter.write(writer, HeaderUtil.LINE_END, 0, HeaderUtil.LINE_END.length);
-		
 	}
 
 	public static void writeHeaderBeginning(byte[] hostBack, int hostPos, int hostLen, int hostMask,

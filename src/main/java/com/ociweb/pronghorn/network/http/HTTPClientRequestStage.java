@@ -23,13 +23,9 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 	private final long disconnectTimeoutMS = 10_000;  //TODO: set with param
 	private long nextUnusedCheck = 0;
-	
-
-			
+				
 	static final String implementationVersion = PronghornStage.class.getPackage().getImplementationVersion()==null?"unknown":PronghornStage.class.getPackage().getImplementationVersion();
-		
-	private static final byte[] EMPTY = new byte[0];
-
+	
 	static final byte[] GET_BYTES_SPACE = "GET ".getBytes();
 	static final byte[] GET_BYTES_SPACE_SLASH = "GET /".getBytes();
 	
@@ -153,9 +149,10 @@ public class HTTPClientRequestStage extends PronghornStage {
 	///	    logger.info("send for active pipe {} has content to read {} ",activePipe,Pipe.hasContentToRead(requestPipe));
 		    
 	        if (Pipe.hasContentToRead(requestPipe)) {
-		        	if (hasOpenConnection(requestPipe) ){
+
+	        	    if (isConnectionReadyForUse(requestPipe) ){
 		        		didWork = true;	        
-		  	    	        	
+		        			  	    	        	
 		        	// logger.info("send for active pipe {}",activePipe);
 		        	
 		        	//Need peek to know if this will block.
@@ -164,11 +161,11 @@ public class HTTPClientRequestStage extends PronghornStage {
 		            
 		            if (ClientHTTPRequestSchema.MSG_FASTHTTPGET_200 == msgIdx) {
 		            	activeConnection.setLastUsedTime(now);
-						HTTPClientUtil.publishGet(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now);
+						HTTPClientUtil.publishGet(requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], now, stageId);
 		            } else  if (ClientHTTPRequestSchema.MSG_HTTPGET_100 == msgIdx) {
-		            	HTTPClientUtil.processGetLogic(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()]);
+		            	HTTPClientUtil.processGetLogic(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);
 		            } else  if (ClientHTTPRequestSchema.MSG_HTTPPOST_101 == msgIdx) {
-		            	HTTPClientUtil.processPostLogic(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()]);	            	
+		            	HTTPClientUtil.processPostLogic(now, requestPipe, activeConnection, output[activeConnection.requestPipeLineIdx()], stageId);	            	
 		            } else  if (ClientHTTPRequestSchema.MSG_CLOSE_104 == msgIdx) {
 		            	HTTPClientUtil.cleanCloseConnection(activeConnection, output[activeConnection.requestPipeLineIdx()]);
 		            } else  if (-1 == msgIdx) {
@@ -211,21 +208,16 @@ public class HTTPClientRequestStage extends PronghornStage {
 	}
 
 
-	ClientConnection activeConnection =  null;
+	private ClientConnection activeConnection =  null;
 	
-	//has side effect fo storing the active connectino as a member so it neeed not be looked up again later.
-	private boolean hasOpenConnection(Pipe<ClientHTTPRequestSchema> requestPipe) {
+	//has side effect of storing the active connection as a member so it need not be looked up again later.
+	private boolean isConnectionReadyForUse(Pipe<ClientHTTPRequestSchema> requestPipe) {
 
 		int msgIdx = Pipe.peekInt(requestPipe);
 		
 		if (Pipe.peekMsg(requestPipe, -1)) {
 			return hasRoomForEOF(output);
 		}
-
-		//logger.info("out idx {} requestPipe {} ",outIdx, requestPipe);
-		
-		
-		assert (msgIdx==ClientHTTPRequestSchema.MSG_FASTHTTPGET_200 || msgIdx==ClientHTTPRequestSchema.MSG_HTTPGET_100 ) : "bad msgIdx of "+msgIdx+" at "+Pipe.getWorkingTailPosition(requestPipe)+"  "+requestPipe;
 		
 		int userId=0;
 		int port=0;			
@@ -238,15 +230,17 @@ public class HTTPClientRequestStage extends PronghornStage {
  		long connectionId;
 
  		if (Pipe.peekMsg(requestPipe, ClientHTTPRequestSchema.MSG_FASTHTTPGET_200)) {
- 			connectionId = Pipe.peekLong(requestPipe, 5);//do not do lookup if it was already provided.
+ 			connectionId = Pipe.peekLong(requestPipe, 6);//do not do lookup if it was already provided.
  			assert(-1 != connectionId);
  		//	System.err.println("loaded connection "+connectionId);
  		} else {
  			
- 			userId = Pipe.peekInt(requestPipe,   1); //user id always after the msg idx
- 			port = Pipe.peekInt(requestPipe,     2); //port is always after the userId; 
- 			hostMeta = Pipe.peekInt(requestPipe, 3); //host is always after port
- 	 		hostLen  = Pipe.peekInt(requestPipe, 4); //host is always after port
+ 			int routeId = Pipe.peekInt(requestPipe, 1);
+ 			userId = Pipe.peekInt(requestPipe,      2); //user id always after the msg idx
+ 			port = Pipe.peekInt(requestPipe,        3); //port is always after the userId; 
+ 			hostMeta = Pipe.peekInt(requestPipe,    4); //host is always after port
+ 	 		hostLen  = Pipe.peekInt(requestPipe,    5); //host is always after port
+ 	 		
  	 		hostPos  = Pipe.convertToPosition(hostMeta, requestPipe);		
  	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
  	 		hostMask = Pipe.blobMask(requestPipe);
@@ -259,40 +253,38 @@ public class HTTPClientRequestStage extends PronghornStage {
  			//logger.info("this is the same connection we just used so no need to look it up");
  		} else {
  			if (0==port) {
- 	 			userId = Pipe.peekInt(requestPipe,   1); //user id always after the msg idx
- 	 			port = Pipe.peekInt(requestPipe,     2); //port is always after the userId; 
- 	 			hostMeta = Pipe.peekInt(requestPipe, 3); //host is always after port
- 	 	 		hostLen  = Pipe.peekInt(requestPipe, 4); //host is always after port
+ 				int routeId = Pipe.peekInt(requestPipe, 1);
+ 	 			userId   = Pipe.peekInt(requestPipe,    2); //user id always after the msg idx
+ 	 			port     = Pipe.peekInt(requestPipe,    3); //port is always after the userId; 
+ 	 			hostMeta = Pipe.peekInt(requestPipe,    4); //host is always after port
+ 	 	 		hostLen  = Pipe.peekInt(requestPipe,    5); //host is always after port
  	 	 		hostPos  = Pipe.convertToPosition(hostMeta, requestPipe);		
  	 	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
  	 	 		hostMask = Pipe.blobMask(requestPipe);
  			}
- 			
- 			
+ 			 			
  			activeConnection = ClientCoordinator.openConnection(
  					 ccm, hostBack, hostPos, hostLen, hostMask, port, userId, output, connectionId);
  		}
-		
+ 		
 		if (null != activeConnection) {
+			
+			if (activeConnection.isBusy()) {
+				return false;//must try again later when the server has responded.
+			}
+			
 			
 			assert(activeConnection.isFinishConnect());
 			
 			if (ccm.isTLS) {				
 				//If this connection needs to complete a hanshake first then do that and do not send the request content yet.
 				HandshakeStatus handshakeStatus = activeConnection.getEngine().getHandshakeStatus();
-				if (HandshakeStatus.FINISHED!=handshakeStatus && HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus /* && HandshakeStatus.NEED_WRAP!=handshakeStatus*/) {
-										
-				//	System.err.println("no hanshake "+activeConnection.id+" status "+handshakeStatus);
-										
-					activeConnection = null;					
+				if (HandshakeStatus.FINISHED!=handshakeStatus && HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus 
+						/* && HandshakeStatus.NEED_WRAP!=handshakeStatus*/) {
+					System.err.println("doing the shake, status is "+handshakeStatus+" "+connectionId+"  "+activeConnection.id);
+					activeConnection = null;	
 					return false;
 				}
-				if ( HandshakeStatus.NEED_WRAP==handshakeStatus) {
-					
-					//TODO: send wrap request???
-					
-				}
-				
 			}
 			return Pipe.hasRoomForWrite(output[activeConnection.requestPipeLineIdx()]);
 			
@@ -311,7 +303,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 //				}
 //			}
 		
-			//System.err.println("no connection");
+			System.err.println("no connection");
 			return false;
 		}
 		

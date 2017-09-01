@@ -23,12 +23,10 @@ import com.ociweb.pronghorn.pipe.Pipe;
 public class ClientConnection extends SSLConnection {
 
 	public static int resolveWithDNSTimeoutMS = 10_000; //  §6.1.3.3 of RFC 1123 suggests a value not less than 5 seconds.
-
 	private static final long MAX_HIST_VALUE = 40_000_000_000L;
-
-	static final Logger logger = LoggerFactory.getLogger(ClientConnection.class);
-
+	private static final Logger logger = LoggerFactory.getLogger(ClientConnection.class);
 	private static final byte[] EMPTY = new byte[0];
+	private static InetAddress testAddr; //must be here to enure JIT does not delete the code
 		
 	private SelectionKey key; //only registered after handshake is complete.
 
@@ -40,28 +38,31 @@ public class ClientConnection extends SSLConnection {
 	private long requestsSent;
 	private long responsesReceived;
 	
-	private final int userId;
+	private final int sessionId;
 	private final String host;
 	private final int port;
-	private long lastUsedTime;
 	
-	private static InetAddress testAddr; //must be here to enure JIT does not delete the code
+	private long lastUsedTime;
 	
 	private long closeTimeLimit = Long.MAX_VALUE;
 	private long TIME_TILL_CLOSE = 10_000;
-
-	private final int maxInFlightBits = 15;//TODO: must bump up to get 1M 10;	//only allow x messages in flight at a time.
-	public final int maxInFlight = 1<<maxInFlightBits;
-	private final int maxInFlightMask = maxInFlight-1;
-		
 	private Histogram histRoundTrip = new Histogram(MAX_HIST_VALUE,0);
-	
-	private int inFlightSentPos;
-	private int inFlightRespPos;
-	private long[] inFlightTimes = new long[maxInFlight];
 
+	private final int maxInFlightBits;
+	public  final int maxInFlight;
+	private final int maxInFlightMask;
+
+	private int inFlightTimeSentPos;
+	private int inFlightTimeRespPos;	
+	private long[] inFlightTimes;
+	
+	private int inFlightRoutesSentPos;
+	private int inFlightRoutesRespPos;
+	private long[] inFlightRoutes;
+
+	
 	private boolean isTLS;
-//	boolean isFinishedConnection = false;
+	boolean isFinishedConnection = false;
 	
 	static {
 		
@@ -97,8 +98,19 @@ public class ClientConnection extends SSLConnection {
 	}
 	
 	public ClientConnection(String host, byte[] hostBacking, int hostPos, int hostLen, int hostMask, 
-			                 int port, int userId, int pipeIdx, long conId, boolean isTLS) throws IOException {
-		super(isTLS?SSLEngineFactory.createSSLEngine(host, port):null, SocketChannel.open(), conId);
+			                 int port, int sessionId, int pipeIdx,
+			                 long conId, boolean isTLS, int inFlightBits) throws IOException {
+		
+		super(isTLS?SSLEngineFactory.createSSLEngine(host, port):null,
+			  SocketChannel.open(), 
+			  conId);
+		
+		this.maxInFlightBits = inFlightBits;
+		this.maxInFlight = 1<<maxInFlightBits;
+		this.maxInFlightMask = maxInFlight-1;
+		this.inFlightTimes = new long[maxInFlight];
+		this.inFlightRoutes = new long[maxInFlight];
+		
 		this.isTLS = isTLS;
 		
 		if (isTLS) {
@@ -108,18 +120,18 @@ public class ClientConnection extends SSLConnection {
 		assert(port<=65535);		
 		// RFC 1035 the length of a FQDN is limited to 255 characters
 		this.connectionGUID = new byte[(2*host.length())+6];
-		this.connectionGUIDLength = buildGUID(connectionGUID, hostBacking, hostPos, hostLen, hostMask, port, userId);
+		this.connectionGUIDLength = buildGUID(connectionGUID, hostBacking, hostPos, hostLen, hostMask, port, sessionId);
 		this.pipeIdx = pipeIdx;
-		this.userId = userId;
+		this.sessionId = sessionId;
 		this.host = host;
 		this.port = port;
-		
-		
-				
+					
 		this.getSocketChannel().configureBlocking(false);  
 		this.getSocketChannel().setOption(StandardSocketOptions.SO_KEEPALIVE, true);
 	
-	//	this.getSocketChannel().setOption(StandardSocketOptions.TCP_NODELAY, true);
+		//TCP_NODELAY is requried for HTTP/2 get used to to being on.
+		//this.getSocketChannel().setOption(StandardSocketOptions.TCP_NODELAY, true);
+	
 		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<18); 
 		this.getSocketChannel().setOption(StandardSocketOptions.SO_SNDBUF, 1<<17); 
 						
@@ -128,6 +140,7 @@ public class ClientConnection extends SSLConnection {
 		
 		resolveAddressAndConnect(host, port);
 	}
+
 
 	public void resolveAddressAndConnect(String host, int port) throws IOException {
 		InetAddress[] ipAddresses = null;
@@ -171,8 +184,13 @@ public class ClientConnection extends SSLConnection {
 		return port;
 	}
 	
+	@Deprecated
 	public int getUserId() {
-		return userId;
+		return getSessionId();
+	}
+	
+	public int getSessionId() {
+		return sessionId;
 	}
 	
 	public void incRequestsSent() {
@@ -212,8 +230,8 @@ public class ClientConnection extends SSLConnection {
 
 	public static int buildGUID(byte[] target, byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int userId) {
 		//TODO: if we find a better hash for host port user we can avoid this trie lookup. TODO: performance improvement.
-		//new Exception("build guid").printStackTrace();
-
+        //      RABIN hash may be just the right thing.
+		
 		int pos = 0;
 			
 		Pipe.copyBytesFromToRing(hostBack, hostPos, hostMask, target, pos, Integer.MAX_VALUE, hostLen);
@@ -241,19 +259,19 @@ public class ClientConnection extends SSLConnection {
 	 * After construction this must be called until it returns true before using this connection. 
 	 */
 	public boolean isFinishConnect() {
-//		if (isFinishedConnection) {
-//			return true;
-//		} else {
+		if (isFinishedConnection) {
+			return true;
+		} else {
 			try {
 				
 				boolean finishConnect = getSocketChannel().finishConnect();
-	//		    isFinishedConnection |= finishConnect;
+			    isFinishedConnection |= finishConnect;
 				return finishConnect;
 				
 			} catch (IOException io) {
 				return false;
 			}
-	//	}
+		}
 	}
 
 	public boolean isRegistered() {
@@ -374,43 +392,50 @@ public class ClientConnection extends SSLConnection {
 	public Histogram histogram() {
 		return histRoundTrip;
 	}
-	
-	
-	volatile int sentCount = 0;
-	volatile int recCount = 0;
-	
-	public int inFlightCount() {
-		return (int)(sentCount-recCount);
-	}
-	
-	public int respCount() {
-		return recCount;
-	}
-	
-	public int reqCount() {
-		return sentCount;
-	}
-	
+
 	public void recordSentTime(long time) {
-		sentCount++;		
-		inFlightTimes[++inFlightSentPos & maxInFlightMask] = time;		
+		inFlightTimes[++inFlightTimeSentPos & maxInFlightMask] = time;		
 	}
 
 	public void recordArrivalTime(long time) {
-		recCount++;
-		long value = time-inFlightTimes[++inFlightRespPos & maxInFlightMask];
+		long value = time-inFlightTimes[++inFlightTimeRespPos & maxInFlightMask];
 		if (value>=0 && value<MAX_HIST_VALUE) {
 			histRoundTrip.recordValue(value);
 		}
 	}
 		
+	public boolean isBusy() {
+		//turn back on after this is everywhere.
+		return  ((maxInFlightMask&inFlightRoutesSentPos) != (maxInFlightMask&inFlightRoutesRespPos)) &&
+				((maxInFlightMask&inFlightRoutesSentPos) == (maxInFlightMask&(maxInFlight+inFlightRoutesRespPos)));
+	}
+		
+	public void recordDestinationRouteId(long id) {
+		inFlightRoutes[++inFlightRoutesSentPos & maxInFlightMask] = id;
+	}
 	
-
+	public long consumeDestinationRouteId() {
+		return inFlightRoutes[++inFlightRoutesRespPos & maxInFlightMask];
+	}
+	
+	public long readDestinationRouteId() {
+		return inFlightRoutes[(1+inFlightRoutesRespPos) & maxInFlightMask];
+	}
 
 	
-
-
-
-
+	/////////////////////////
+	//This is for asserting of thread safety
+	/////////////////////////
+	
+	private int usingStage = -1;
+	
+	public boolean singleUsage(int stageId) {
+		if (-1 == usingStage) {
+			usingStage = stageId;
+			return true;
+		} else {
+			return usingStage == stageId;
+		}
+	}
 	
 }

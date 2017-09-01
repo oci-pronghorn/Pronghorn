@@ -186,7 +186,11 @@ public class ServerNewConnectionStage extends PronghornStage{
                       
                       try {                          
                           channel.configureBlocking(false);
+                          
+                          //TCP_NODELAY is requried for HTTP/2 get used to to being on.
                           //channel.setOption(StandardSocketOptions.TCP_NODELAY, true);  
+                          
+                          
                           //channel.setOption(StandardSocketOptions.SO_RCVBUF, 1<<19);
                           //channel.setOption(StandardSocketOptions.SO_SNDBUF, 1<<19); //for heavy testing we avoid overloading client by making this smaller.
                           

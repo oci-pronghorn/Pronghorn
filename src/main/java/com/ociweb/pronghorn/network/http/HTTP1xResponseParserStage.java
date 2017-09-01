@@ -1,5 +1,9 @@
 package com.ociweb.pronghorn.network.http;
 
+import static com.ociweb.pronghorn.pipe.Pipe.blobMask;
+import static com.ociweb.pronghorn.pipe.Pipe.byteBackingArray;
+import static com.ociweb.pronghorn.pipe.Pipe.bytePosition;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
@@ -21,6 +25,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -42,7 +47,6 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private final int END_OF_HEADER_ID;
 	private final int UNSUPPORTED_HEADER_ID;
 	
-	private IntHashTable listenerPipeLookup;
 	private ClientCoordinator ccm;
 	
 	
@@ -84,8 +88,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	public HTTP1xResponseParserStage(GraphManager graphManager, 
 			                       Pipe<NetPayloadSchema>[] input, 
 			                       Pipe<NetResponseSchema>[] output, 
-			                       Pipe<ReleaseSchema> ackStop, 
-			                       IntHashTable listenerPipeLookup,
+			                       Pipe<ReleaseSchema> ackStop,
 			                       ClientCoordinator ccm,
 			                       HTTPSpecification<?,?,?,?> httpSpec) {
 		
@@ -94,9 +97,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		this.output = output;//must be 1 for each listener
 		this.ccm = ccm;
 		this.releasePipe = ackStop;
-		this.httpSpec = httpSpec;
-		this.listenerPipeLookup = listenerPipeLookup;
-		
+		this.httpSpec = httpSpec;		
 		
 		int i = input.length;
 		while (--i>=0) {
@@ -267,8 +268,21 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					if (null==cc) {		
 						logger.warn("closed connection detected");
 						//abandon this record and continue
-						Pipe.takeRingByteMetaData(pipe);
-						Pipe.takeRingByteLen(pipe);
+						int meta = Pipe.takeRingByteMetaData(pipe);
+						int len  = Pipe.takeRingByteLen(pipe);
+						
+						boolean showTossedData = true;
+						if (showTossedData) {
+							int mask = blobMask(pipe);	
+							int pos = bytePosition(meta, pipe, len)&mask;     		
+							byte[] backing = byteBackingArray(meta, pipe);
+							
+							StringBuilder builder = new StringBuilder();
+							Appendables.appendUTF8(builder, backing, pos, len, mask);
+							
+							logger.warn("server closed connection and returned\n{}",builder);
+							
+						}
 						Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx)); 		
 						Pipe.releaseReadLock(pipe);
 						positionMemoData[memoIdx+1] = 0;//wipe out existing data
@@ -283,8 +297,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						continue;
 					}
 				
-					int userId = cc.getUserId();
-					targetPipe = output[lookupPipe(userId)];					
+					targetPipe = targetPipe(cc);					
 	
 					//append the new data
 					int meta = Pipe.takeRingByteMetaData(pipe);
@@ -367,8 +380,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						
 						//we have data which must be parsed and we know the output pipe, eg the connection was not closed						
 						//convert long id to the pipe index.
-						int userId = cc.getUserId();
-						targetPipe = output[lookupPipe(userId)]; 		
+						
+						targetPipe = targetPipe(cc); 		
 							
 						///////////////////////
 						//the fastest code is the code which is never run
@@ -484,7 +497,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						writer.closeLowLevelField(); //NetResponseSchema.MSG_RESPONSE_101_FIELD_PAYLOAD_3
 						Pipe.confirmLowLevelWrite(targetPipe, SIZE_OF_MSG_RESPONSE);
 						Pipe.publishWrites(targetPipe);	
-									
+						//DO NOT consume the target since we still need it.			
 	
 						positionMemoData[stateIdx] = state = 5;
 						foundWork += finishAndRelease(i, stateIdx, pipe, cc, 0); 
@@ -673,7 +686,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										//logger.trace("conform low level write of len {} ",len);
 										Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
 										Pipe.publishWrites(targetPipe);
-										
+										//DO NOT consume since we still need it
 										
 										if (!Pipe.hasRoomForWrite(targetPipe)) { //TODO: fix this case
 											logger.info("ERROR MUST TRY LATER AFTER CONSUME???");
@@ -729,7 +742,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									Pipe.confirmLowLevelWrite(targetPipe, SIZE_OF_MSG_RESPONSE);
 									int totalConsumed = Pipe.publishWrites(targetPipe);	
 									//logger.trace("total consumed msg response write {} internal field {} varlen {} ",totalConsumed, length, targetPipe.maxVarLen);					
-									
+									long routeId = cc.consumeDestinationRouteId();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
+
 									//expecting H to be the next valid char 
 									assert(trieReader.sourceLen<=0 || input[i].blobRing[input[i].blobMask&trieReader.sourcePos]=='H') :"bad next value of "+(int)input[i].blobRing[input[i].blobMask&trieReader.sourcePos];
 									
@@ -802,7 +816,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										
 										Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
 										Pipe.publishWrites(targetPipe);	
-							
+										long routeId = cc.consumeDestinationRouteId();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
+
 										foundWork += finishAndRelease(i, stateIdx, pipe, cc, 0); 
 										
 										if (initial>=0) {
@@ -825,7 +840,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 											int len = writer3.closeLowLevelField();
 											//logger.trace("conform low level write of len {} ",len);
 											Pipe.confirmLowLevelWrite(targetPipe); //uses auto size since we do not know type here
-											Pipe.publishWrites(targetPipe);	
+											Pipe.publishWrites(targetPipe);
+											//DO NOT consume route id we will still need it.
 											//state is already 3 so leave it there
 											
 											
@@ -918,10 +934,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		
 	}
 
-	private short lookupPipe(int userId) {
-		return null==listenerPipeLookup ? (short)userId : (short)IntHashTable.getItem(listenerPipeLookup, userId);
+	private Pipe<NetResponseSchema> targetPipe(ClientConnection cc) {
+		//we want to lookup without consume since this is called multiple times
+		
+		long routeId = cc.readDestinationRouteId();
+		return output[(int)routeId];
 	}
-	
+
 	@Override
 	public void shutdown() {
 	}

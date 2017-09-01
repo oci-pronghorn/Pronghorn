@@ -26,7 +26,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	private final ReentrantReadWriteLock hostTrieLock = new ReentrantReadWriteLock();
 	private final TrieParser hostTrie;
-	
+	private static final int inFlightBits = 10;//TODO: make configurable, 1024 is the limit for calls in flight.
 	public static boolean showHistogramResults = false;
 	
 	private final TrieParserReader hostTrieReader;
@@ -38,9 +38,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	public static boolean TEST_RECORDS = false;
 	
-	static {
-		
-	}
+	
 
 	
     public final static String expectedGet = "GET /groovySum.json HTTP/1.1\r\n"+
@@ -118,7 +116,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 				
 		
 		connections = new ServiceObjectHolder<ClientConnection>(connectionsInBits, ClientConnection.class, this, false);
-		hostTrie = new TrieParser(trieSize, 4, false, false); //TODO: ugent,  first boolean should be true but only false works,  this is a problem because it must be very large for large number of connecions !!!
+		hostTrie = new TrieParser(trieSize, 4, false, false);
 		hostTrieReader = new TrieParserReader();
 		responsePipeLinePool = new PoolIdx(maxPartialResponses); //NOTE: maxPartialResponses should never be greater than response listener count		
 	}
@@ -150,13 +148,14 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	 * 
 	 * @return -1 if the host port and userId are not found
 	 */
-	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int userId) {	
-		return lookup(hostBack,hostPos,hostLen,hostMask,port, userId, guidWorkspace, hostTrieReader);
+	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int sessionId) {	
+		return lookup(hostBack,hostPos,hostLen,hostMask,port, sessionId, guidWorkspace, hostTrieReader);
 	}
 	
-	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int userId, byte[] workspace, TrieParserReader reader) {	
+	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int sessionId, byte[] workspace, TrieParserReader reader) {
+		
 		//TODO: lookup by userID then by port then by host, may be a better approach instead of guid 
-		int len = ClientConnection.buildGUID(workspace, hostBack, hostPos, hostLen, hostMask, port, userId);	
+		int len = ClientConnection.buildGUID(workspace, hostBack, hostPos, hostLen, hostMask, port, sessionId);	
 		
 		hostTrieLock.readLock().lock();
 		try {
@@ -263,7 +262,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	
 	
 	public static ClientConnection openConnection(ClientCoordinator ccm, byte[] hostBack, int hostPos, int hostLen,
-			int hostMask, int port, int userId, Pipe<NetPayloadSchema>[] outputs,
+			int hostMask, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs,
 			long connectionId) {
 								
 		        ClientConnection cc = null;
@@ -286,7 +285,8 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 					try {
 						
 				    	//create new connection because one was not found or the old one was closed
-						cc = new ClientConnection(host, hostBack, hostPos, hostLen, hostMask, port, userId, pipeIdx, connectionId, ccm.isTLS);
+						cc = new ClientConnection(host, hostBack, hostPos, hostLen, hostMask, 
+								                  port, sessionId, pipeIdx, connectionId, ccm.isTLS, inFlightBits);
 						ccm.connections.setValue(connectionId, cc);						
 						ccm.hostTrieLock.writeLock().lock();
 						

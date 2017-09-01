@@ -278,6 +278,7 @@ public class RegulatedLoadTestStage extends PronghornStage{
 	
 									lastTime = now;
 			
+									Pipe.addIntValue(userId, outputs[outputIdx]); //ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11
 									Pipe.addIntValue(userId, outputs[outputIdx]);  
 									Pipe.addIntValue(port, outputs[outputIdx]);
 									Pipe.addByteArray(hostBytes, 0, hostBytes.length, outputs[outputIdx]); // old	Pipe.addUTF8(host, outputs[i]);

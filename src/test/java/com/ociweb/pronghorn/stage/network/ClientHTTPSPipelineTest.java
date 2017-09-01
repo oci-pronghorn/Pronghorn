@@ -44,14 +44,7 @@ public class ClientHTTPSPipelineTest {
 		GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 20_000);
 		
 		ClientCoordinator ccm = new ClientCoordinator(base2SimultaniousConnections,inputsCount,true);
-		final IntHashTable listenerPipeLookup = new IntHashTable(base2SimultaniousConnections+2);
-		
-		System.out.println("listeners "+maxListeners);
-		int i = maxListeners;
-		while (--i>=0) {
-			IntHashTable.setItem(listenerPipeLookup, i, i);//put this key on that pipe
-			
-		}
+
 		
 		//IntHashTable.setItem(listenerPipeLookup, 42, 0);//put on pipe 0
 		
@@ -94,7 +87,7 @@ public class ClientHTTPSPipelineTest {
 								    Pipe<NetPayloadSchema>[] clearResponse,
 								    Pipe<ReleaseSchema> ackReleaseForResponseParser) {
 				
-				NetGraphBuilder.buildHTTP1xResponseParser(gm, ccm, listenerPipeLookup, toReactor, clearResponse, ackReleaseForResponseParser);
+				NetGraphBuilder.buildHTTP1xResponseParser(gm, ccm, toReactor, clearResponse, ackReleaseForResponseParser);
 			}
 			
 		};
@@ -105,7 +98,7 @@ public class ClientHTTPSPipelineTest {
 											 2, 
 											 2, 2048, 64, 1<<19, factory, 20);
 		
-		i = toReactor.length;
+		int i = toReactor.length;
 		PipeCleanerStage[] cleaners = new PipeCleanerStage[i];
 		while (--i>=0) {
 			cleaners[i] = new PipeCleanerStage<>(gm, toReactor[i]); 
@@ -145,9 +138,11 @@ public class ClientHTTPSPipelineTest {
 						
 			Pipe<ClientHTTPRequestSchema> pipe = input[0];
 			if (PipeWriter.tryWriteFragment(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100)) {
-				PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2, "encrypted.google.com");
-				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_LISTENER_10,  requests%maxListeners);
+
+				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11, requests%maxListeners);
 				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PORT_1, 443);
+				PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2, "encrypted.google.com");
+				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_SESSION_10,  requests%maxListeners);
 				PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PATH_3, "/");
 				PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HEADERS_7, "");
 				PipeWriter.publishWrites(pipe);

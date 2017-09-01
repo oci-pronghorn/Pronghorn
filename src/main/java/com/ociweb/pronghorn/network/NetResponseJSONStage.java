@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.network;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.MessageSchema;
@@ -25,6 +28,8 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 	private final Class<T> keys;
 	private final Pipe output;
 	private final MapJSONToPipeBuilder<M,T> mapper;
+	
+	private static final Logger logger = LoggerFactory.getLogger(NetResponseJSONStage.class);
 	
 	public NetResponseJSONStage(GraphManager graphManager, Pipe<NetResponseSchema> input, JSONStreamVisitor visitor) {
 		super(graphManager, input, NONE);
@@ -65,6 +70,8 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 			switch (id) {
 				case NetResponseSchema.MSG_RESPONSE_101:
 					{
+						logger.info("reading response");
+						
 						long connection = Pipe.takeLong(input);
 						int flags = Pipe.takeInt(input);
 						 
@@ -95,6 +102,9 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 					break;
 				case NetResponseSchema.MSG_CONTINUATION_102:
 					{
+						
+						logger.info("reading continuation");
+						
 						long connection = Pipe.takeLong(input);
 						int flags2 = Pipe.takeInt(input);
 		            	 
@@ -119,6 +129,8 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 					break;
 					
 				case NetResponseSchema.MSG_CLOSED_10:
+					
+					logger.info("reading closed");
 					
 					int meta = Pipe.takeRingByteMetaData(input); //host
 					int len  = Pipe.takeRingByteLen(input); //host

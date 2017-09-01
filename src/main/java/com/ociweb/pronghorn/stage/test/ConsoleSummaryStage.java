@@ -12,34 +12,39 @@ import com.ociweb.pronghorn.util.Appendables;
 
 public class ConsoleSummaryStage<T extends MessageSchema<T>> extends PronghornStage {
 
-	private final Pipe<T> inputRing;
+	private final Pipe<T> input;
 	private final StringBuilder console = new StringBuilder(512);
 	
 	private final long[] totalCounts;
 	private final long[] counts;
 	private long totalBytes;
 	
-	private long stepTime = 2000;//2 sec
+	private final long stepTime = 2000;//2 sec
 	private long nextOutTime = System.currentTimeMillis()+stepTime;
 	private long startTime;
 	private Appendable target;
 	
 	//TODO: AA, need validation stage to confirm values are in range and text is not too long
 
-	public ConsoleSummaryStage(GraphManager gm, Pipe<T> inputRing) {
-	    this(gm, inputRing, System.out);
+	public ConsoleSummaryStage(GraphManager gm, Pipe<T> input) {
+	    this(gm, input, System.out);
 	}
 	
-	public ConsoleSummaryStage(GraphManager gm, Pipe<T> inputRing, Appendable target) {
-		super(gm, inputRing, NONE);
-		this.inputRing = inputRing;
+	public ConsoleSummaryStage(GraphManager gm, Pipe<T> input, Appendable target) {
+		super(gm, input, NONE);
+		this.input = input;
 
-		FieldReferenceOffsetManager from = Pipe.from(inputRing);		
+		FieldReferenceOffsetManager from = Pipe.from(input);		
 		this.totalCounts = new long[from.tokensLen];
 		this.counts = new long[from.tokensLen];
 		this.target = target;
 	}
 
+
+	public static <T extends MessageSchema<T>> ConsoleSummaryStage<T> newInstance(GraphManager gm, Pipe<T> input) {
+		return new ConsoleSummaryStage(gm, input);		
+	}
+	
 	@Override
 	public void startup() {
 	    startTime = System.currentTimeMillis();
@@ -53,7 +58,7 @@ public class ConsoleSummaryStage<T extends MessageSchema<T>> extends PronghornSt
           throw new RuntimeException(e);
         }
 		long duration = System.currentTimeMillis()-startTime;
-		processTotal("Totals:", totalCounts, Pipe.from(inputRing), duration);
+		processTotal("Totals:", totalCounts, Pipe.from(input), duration);
 	}
 
 	@Override
@@ -94,7 +99,9 @@ public class ConsoleSummaryStage<T extends MessageSchema<T>> extends PronghornSt
 	}
 
     private boolean processCountsLoop(String label, long[] counts, long[] totalCounts, int i, long newMessages, long totalMessages, int limit) throws IOException {
-        while (i<limit) {
+        assert(limit>=1) : "If we are here there should be some counts to report.";
+    	
+    	while (i<limit) {
 			newMessages += counts[i];
 			writeToConsole(counts, totalCounts, i);
 			totalMessages += totalCounts[i];
@@ -171,11 +178,11 @@ public class ConsoleSummaryStage<T extends MessageSchema<T>> extends PronghornSt
 		int msgIdx = 0;
 		boolean data = false;
 		
-		while (PipeReader.tryReadFragment(inputRing)) {
-			if (PipeReader.isNewMessage(inputRing)) {
-				msgIdx = PipeReader.getMsgIdx(inputRing);
+		while (PipeReader.tryReadFragment(input)) {
+			if (PipeReader.isNewMessage(input)) {
+				msgIdx = PipeReader.getMsgIdx(input);
 				if (msgIdx<0) {
-				    PipeReader.releaseReadLock(inputRing);
+				    PipeReader.releaseReadLock(input);
 				    requestShutdown();
 					break;
 				} else {
@@ -183,12 +190,15 @@ public class ConsoleSummaryStage<T extends MessageSchema<T>> extends PronghornSt
 					data = true;
 				}
 			}
-			totalBytes += (PipeReader.sizeOfFragment(inputRing)*4) + PipeReader.bytesConsumedByFragment(inputRing);
+			totalBytes += (PipeReader.sizeOfFragment(input)*4) + PipeReader.bytesConsumedByFragment(input);
 		
-			PipeReader.releaseReadLock(inputRing);
+			System.out.println("reading new input total bytes :"+totalBytes);
+			
+			PipeReader.releaseReadLock(input);
 			
 
 		}	
 		return data;
 	}
+
 }

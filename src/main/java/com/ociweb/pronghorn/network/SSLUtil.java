@@ -157,7 +157,7 @@ public class SSLUtil {
 				 cc.close();
 			} catch (IOException e) {
 				cc.close();
-				ClientConnection.logger.warn("Error closing connection ",e);
+				logger.warn("Error closing connection ",e);
 			}				
 			
 		} else if (status==Status.BUFFER_OVERFLOW) {
@@ -707,9 +707,9 @@ public class SSLUtil {
 			                        ByteBuffer secureBuffer, int groupId, boolean isServer) {
 		
 		///TODO: URGENT REWIRTE TO LOW LEVEL API SINCE LARGE SERVER CALLS VERY OFTEN.
-		
+
 		int didWork = 0;
-		
+
 		while (Pipe.hasContentToRead(source) ) {
 			
 			if (!Pipe.hasRoomForWrite(target)) {
@@ -901,7 +901,7 @@ public class SSLUtil {
 				     cc.getSocketChannel().close();
 				} catch (IOException e) {
 					cc.isValid = false;
-					ClientConnection.logger.warn("Error closing connection ",e);
+					logger.warn("Error closing connection ",e);
 				}				
 				//clear the rolling for the next user/call since this one is closed
 				rolling.clear();

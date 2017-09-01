@@ -23,7 +23,7 @@ public class HTTPClientUtil {
 	}
 
 	public static void processGetLogic(long now, Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection clientConnection,
-			Pipe<NetPayloadSchema> outputPipe) {
+			Pipe<NetPayloadSchema> outputPipe, int stageId) {
 		
 		clientConnection.setLastUsedTime(now);		        	
 		//logger.info("sent get request down pipe {} ",outIdx);
@@ -44,8 +44,17 @@ public class HTTPClientUtil {
 			
 			DataOutputBlobWriter.encodeAsUTF8(activeWriter,"GET");
 			
-			int userId = Pipe.takeInt(requestPipe);
+			int routeId = Pipe.takeInt(requestPipe); //	ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11
+			
+			int userId = Pipe.takeInt(requestPipe);			
+			assert(clientConnection.getSessionId() == userId);
+			
+        	assert(clientConnection.singleUsage(stageId)) : "Only a single Stage may update the clientConnection.";
+        	clientConnection.recordDestinationRouteId(routeId);
+			
 			int port   = Pipe.takeInt(requestPipe);
+			assert(clientConnection.getPort() == port);
+			
 			int hostMeta = Pipe.takeRingByteMetaData(requestPipe);
 			int hostLen  = Pipe.takeRingByteLen(requestPipe);
 			int hostPos = Pipe.bytePosition(hostMeta, requestPipe, hostLen);
@@ -83,14 +92,17 @@ public class HTTPClientUtil {
 							                	
 			DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 	
-			//System.err.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
+			boolean showRequest = false;
+			if (showRequest) {			
+				System.err.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
+			}
 			
 			Pipe.confirmLowLevelWrite(outputPipe,pSize);
 			Pipe.publishWrites(outputPipe);
 	}
 
 	public static void processPostLogic(long now, Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection clientConnection,
-			Pipe<NetPayloadSchema> outputPipe) {
+			Pipe<NetPayloadSchema> outputPipe, int stageId) {
 		clientConnection.setLastUsedTime(now);
 		clientConnection.incRequestsSent();//count of messages can only be done here.
 	
@@ -107,8 +119,16 @@ public class HTTPClientUtil {
 					                
 			DataOutputBlobWriter.encodeAsUTF8(activeWriter,"POST");
 			
+			int routeId = Pipe.takeInt(requestPipe);
 			int userId = Pipe.takeInt(requestPipe);
+			assert(clientConnection.getSessionId() == userId);
+			
+        	assert(clientConnection.singleUsage(stageId)) : "Only a single Stage may update the clientConnection.";
+        	clientConnection.recordDestinationRouteId(routeId);
+			
 			int port   = Pipe.takeInt(requestPipe);
+			assert(clientConnection.getPort() == port);
+			
 			int hostMeta = Pipe.takeRingByteMetaData(requestPipe);
 			int hostLen  = Pipe.takeRingByteLen(requestPipe);
 			int hostPos = Pipe.bytePosition(hostMeta, requestPipe, hostLen);
@@ -152,15 +172,17 @@ public class HTTPClientUtil {
 			//callers custom headers are written where.
 			activeWriter.write(Pipe.byteBackingArray(headersMeta, requestPipe), headersPos, headersLen, backingMask);	
 			boolean keepOpen = true;
+			
 			HeaderUtil.writeHeaderEnding(activeWriter, keepOpen, (long) payloadLen);
 			
 			Pipe.readBytes(requestPipe, activeWriter, payloadMeta, payloadLen); //MSG_HTTPPOST_101_FIELD_PAYLOAD_5
 			
 			int postLen = DataOutputBlobWriter.closeLowLevelField(activeWriter);//, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
 				
-			
-			//System.err.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
-			
+			boolean showSentPayload = false;
+			if (showSentPayload) {
+				System.out.println("SENT: \n"+new String(activeWriter.toByteArray())+"\n");
+			}
 			
 			Pipe.confirmLowLevelWrite(outputPipe,pSize);
 			Pipe.publishWrites(outputPipe);
@@ -168,7 +190,7 @@ public class HTTPClientUtil {
 	}
 
 	public static void publishGet(Pipe<ClientHTTPRequestSchema> requestPipe, ClientConnection clientConnection,
-			Pipe<NetPayloadSchema> outputPipe, long now) {
+			Pipe<NetPayloadSchema> outputPipe, long now, int stageId) {
 		
 		clientConnection.incRequestsSent();//count of messages can only be done here, AFTER requestPipeLineIdx
 		
@@ -180,12 +202,16 @@ public class HTTPClientUtil {
 		Pipe.addLongValue(now, outputPipe);
 		Pipe.addLongValue(0, outputPipe); // NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206, 0);
 		
+		int routeId = Pipe.takeInt(requestPipe);
 		int userId = Pipe.takeInt(requestPipe);
 		int port   = Pipe.takeInt(requestPipe);
 		int hostMeta = Pipe.takeRingByteMetaData(requestPipe);
 		int hostLen  = Pipe.takeRingByteLen(requestPipe);
 		int hostPos = Pipe.bytePosition(hostMeta, requestPipe, hostLen);
 		long connId = Pipe.takeLong(requestPipe);
+		
+    	assert(clientConnection.singleUsage(stageId)) : "Only a single Stage may update the clientConnection.";
+    	clientConnection.recordDestinationRouteId(routeId);
 		
 		int meta = Pipe.takeRingByteMetaData(requestPipe); //ClientHTTPRequestSchema.MSG_FASTHTTPGET_200_FIELD_PATH_3
 		int len  = Pipe.takeRingByteLen(requestPipe);

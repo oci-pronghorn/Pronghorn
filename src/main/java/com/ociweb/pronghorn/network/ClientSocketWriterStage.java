@@ -204,8 +204,8 @@ public class ClientSocketWriterStage extends PronghornStage {
 							int meta = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 							int len  = Pipe.takeRingByteLen(pipe);
 	
-							boolean debug = false;
-							if (debug) {
+							boolean showWrittenData = false;
+							if (showWrittenData) {
 								int pos = Pipe.bytePosition(meta, pipe, len);	
 								System.out.println("pos "+pos+" has connection "+(cc!=null)+" channelId "+channelId);
 								Appendables.appendUTF8(System.out, Pipe.blob(pipe), pos, len, Pipe.blobMask(pipe));
@@ -258,7 +258,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 										            int meta2 = Pipe.takeRingByteMetaData(pipe); //for string and byte array
 										            int len2 = Pipe.takeRingByteLen(pipe);
 										            
-										            if (debug) {
+										            if (showWrittenData) {
 										            	int pos2 = Pipe.bytePosition(meta2, pipe, len2);							
 														Appendables.appendUTF8(System.out, Pipe.blob(pipe), pos2, len2, Pipe.blobMask(pipe));
 										            }
