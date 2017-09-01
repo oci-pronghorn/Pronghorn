@@ -423,7 +423,6 @@ public class PipeWriter {
 	 */
 	public static boolean tryWriteFragment(Pipe pipe, int fragmentId) {
 		assert(fragmentId<Pipe.from(pipe).fragDataSize.length) : "Is this pipe for the schema holding this message?";
-		assert(Pipe.from(pipe).fragScriptSize[fragmentId]>0) : "Is this pipe for the schema holding this message?";
 		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
 	    assert(null!=pipe);
 	    assert(Pipe.isInit(pipe)) : "Pipe must be initialized before use: "+pipe+" call the method initBuffers";
