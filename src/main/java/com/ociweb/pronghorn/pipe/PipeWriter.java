@@ -356,10 +356,8 @@ public class PipeWriter {
 		
 		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
 	
-		//NOTE: this is a very bad idea, this thread is not the reader yet we need that info??
 
-		final int[] slab = pipe.slab(pipe);	
-		
+		final int[] slab = pipe.slab(pipe);
 		final int idx = (int)historicSlabPosition & pipe.slabMask;		
 		final int msgIdx = slab[idx]; //false share as this is a dirty read
 		
@@ -421,7 +419,7 @@ public class PipeWriter {
 	 * Places working head in place for the first field to be written (eg after the template Id, which is written by this method)
 	 * 
 	 */
-	public static boolean tryWriteFragment(Pipe pipe, int fragmentId) {
+	public static boolean tryWriteFragment(Pipe pipe, final int fragmentId) {
 		assert(fragmentId<Pipe.from(pipe).fragDataSize.length) : "Is this pipe for the schema holding this message?";
 		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
 	    assert(null!=pipe);

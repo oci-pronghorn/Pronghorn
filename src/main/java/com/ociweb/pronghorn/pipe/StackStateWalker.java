@@ -425,7 +425,7 @@ class StackStateWalker {
 	
 
 	
-	static void prepWriteFragment(Pipe pipe, int cursorPosition,	FieldReferenceOffsetManager from, int fragSize) {
+	static void prepWriteFragment(Pipe pipe, final int cursorPosition, FieldReferenceOffsetManager from, int fragSize) {
 		//NOTE: this is called by both blockWrite and tryWrite.  It must not call publish because we need to support
 		//      nested long sequences where we don't know the length until after they are all written.
 		
@@ -440,7 +440,7 @@ class StackStateWalker {
 	}
 
 
-	private static void prepWriteFragmentSpecificProcessing(Pipe pipe, int cursorPosition, FieldReferenceOffsetManager from) {
+	private static void prepWriteFragmentSpecificProcessing(Pipe pipe, final int cursorPosition, FieldReferenceOffsetManager from) {
 		
 		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {
 			prepWriteMessageStart(pipe, cursorPosition, from);
@@ -451,20 +451,28 @@ class StackStateWalker {
 	}
 
 
-	private static void prepWriteMessageStart(Pipe pipe,
-			int cursorPosition, FieldReferenceOffsetManager from) {
+	private static void prepWriteMessageStart(Pipe pipe, final int cursorPosition, FieldReferenceOffsetManager from) {
+		assert(isValidStart(from,cursorPosition)) : "cursorPosition must be a valid message start but it is not. Value is "+cursorPosition;
 		//each time some bytes were written in the previous fragment this value was incremented.		
 		//now it becomes the base value for all byte writes
 		Pipe.markBytesWriteBase(pipe);
 		
 		//Start new stack of fragments because this is a new message
 		pipe.ringWalker.activeWriteFragmentStack[0] = Pipe.workingHeadPosition(pipe);
-		Pipe.slab(pipe)[pipe.mask &(int)(Pipe.workingHeadPosition(pipe) + from.templateOffset)] = cursorPosition;
+		
+		Pipe.slab(pipe)[pipe.slabMask &(int)(Pipe.workingHeadPosition(pipe) + from.templateOffset)] = cursorPosition;
 	}
 
-	
-	
-	
+	private static boolean isValidStart(FieldReferenceOffsetManager from, int cursorPosition) {
+		int i = from.messageStarts.length;
+		while(--i>=0) {
+			if (from.messageStarts[i]==cursorPosition) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	static boolean copyFragment0(Pipe inputRing, Pipe outputRing, long start, long end) {
 		return copyFragment1(inputRing, outputRing, start, (int)(end-start), Pipe.slab(inputRing)[inputRing.mask&(((int)end)-1)]);
 	}
@@ -516,12 +524,12 @@ class StackStateWalker {
 		return (pipe.llRead.llrTailPosCache =  Pipe.tailPosition(pipe)) >= limit;
 	}
 
-    static boolean tryWriteFragment0(Pipe pipe, int cursorPosition, int fragSize, long target) {
+    static boolean tryWriteFragment0(Pipe pipe, final int cursorPosition, int fragSize, long target) {
         assert(pipe.llRead.llrTailPosCache <= Pipe.tailPosition(pipe)) : "Tail cache corruption";
         return tryWriteFragment1(pipe, cursorPosition, Pipe.from(pipe), fragSize, target, pipe.llRead.llrTailPosCache >=  target);
     }
     
-    static boolean tryWriteFragment1(Pipe pipe, int cursorPosition, FieldReferenceOffsetManager from, int fragSize, long target, boolean hasRoom) {
+    static boolean tryWriteFragment1(Pipe pipe, final int cursorPosition, FieldReferenceOffsetManager from, int fragSize, long target, boolean hasRoom) {
                 
         assert(Pipe.getPublishBatchSize(pipe)>0 || Pipe.headPosition(pipe)==Pipe.workingHeadPosition(pipe)) : 
         	        "Confirm that tryWrite is only called once per fragment written. OR setBatch publish to zero in startup.  head "+Pipe.headPosition(pipe)+" vs working head "+Pipe.workingHeadPosition(pipe);
