@@ -445,7 +445,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				    ((connectionId = connectionId())>=0)
 				   && hasInFlightCapacity()
 				   && hasRoomToPersist()
-				   && hasRoomToSocketWrite()
+				   && hasRoomToSocketWriteOrDropQoSZeros()
 				   && hasRoomForNewMessagePlusReplay()
 						)
 				)
@@ -542,7 +542,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				|| (
 				   ((connectionId = connectionId())>=0)
 				   && hasRoomToPersist()
-				   && hasRoomToSocketWrite() 	)
+				   && hasRoomToSocketWriteOrDropQoSZeros() 	)
 				)
 				&& PipeReader.tryReadFragment(inputAck)) {
 
@@ -573,9 +573,42 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		}
 	}
 	
-	private boolean hasRoomToSocketWrite() {
-		Pipe<NetPayloadSchema> pipe = toBroker[activeConnection.requestPipeLineIdx()];
-		return PipeWriter.hasRoomForWrite(pipe);
+	public boolean reportDroppedMessages = true;
+	public long totalDroppedMessages = 0;
+	public StringBuilder topicDropped = new StringBuilder(); 
+	
+	private boolean hasRoomToSocketWriteOrDropQoSZeros() {
+		boolean hasRoom = PipeWriter.hasRoomForWrite(toBroker[activeConnection.requestPipeLineIdx()]);
+		if (!hasRoom && PipeReader.peekMsg(input, MQTTClientToServerSchema.MSG_PUBLISH_3)) {
+			//if there is no room and the next item is a QoS 0 drop it.
+			int qos = PipeReader.peekInt(input, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_QOS_21);
+			if (qos==0) {
+				if (reportDroppedMessages) {
+					int leadingA = Long.numberOfLeadingZeros(totalDroppedMessages);					
+					totalDroppedMessages++;
+					int leadingB = Long.numberOfLeadingZeros(totalDroppedMessages);
+					if (leadingA != leadingB) {
+						
+						topicDropped.setLength(0);;
+						topicDropped.append("Most recently dropped topic: ");
+						PipeReader.peekUTF8(input, 
+								            MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, topicDropped);
+						
+						logger.info("Network is not consuming message fast enough. {} accumulative QoS 0 messages have now been dropped."
+								+ "\nYou may want to check your network or lower the rate of messages sent. \n{}"
+								,totalDroppedMessages, topicDropped);
+						
+					}
+				}
+				
+				//toss this QoS 0 message the pipes are backed up.
+				boolean ok = PipeReader.tryReadFragment(input);
+				assert(ok);
+				assert(MQTTClientToServerSchema.MSG_PUBLISH_3 == PipeReader.getMsgIdx(input));
+				PipeReader.releaseReadLock(input);
+			}
+		}
+		return hasRoom;
 	}
 
 	private boolean hasRoomToPersist() {

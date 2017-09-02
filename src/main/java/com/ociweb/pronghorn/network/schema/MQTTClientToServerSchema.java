@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.network.schema;
 
 import java.nio.ByteBuffer;
 
+import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -33,39 +34,39 @@ public class MQTTClientToServerSchema extends MessageSchema<MQTTClientToServerSc
     
     public static final MQTTClientToServerSchema instance = new MQTTClientToServerSchema();
     
-    public static final int MSG_BROKERHOST_100 = 0x00000000;
-    public static final int MSG_BROKERHOST_100_FIELD_HOST_26 = 0x01400001;
-    public static final int MSG_BROKERHOST_100_FIELD_PORT_27 = 0x00000003;
-    public static final int MSG_CONNECT_1 = 0x00000004;
-    public static final int MSG_CONNECT_1_FIELD_TIME_37 = 0x00800001;
-    public static final int MSG_CONNECT_1_FIELD_KEEPALIVESEC_28 = 0x00000003;
-    public static final int MSG_CONNECT_1_FIELD_FLAGS_29 = 0x00000004;
-    public static final int MSG_CONNECT_1_FIELD_CLIENTID_30 = 0x01400005;
-    public static final int MSG_CONNECT_1_FIELD_WILLTOPIC_31 = 0x01400007;
-    public static final int MSG_CONNECT_1_FIELD_WILLPAYLOAD_32 = 0x01c00009;
-    public static final int MSG_CONNECT_1_FIELD_USER_33 = 0x0140000b;
-    public static final int MSG_CONNECT_1_FIELD_PASS_34 = 0x0140000d;
-    public static final int MSG_DISCONNECT_14 = 0x0000000e;
-    public static final int MSG_DISCONNECT_14_FIELD_TIME_37 = 0x00800001;
-    public static final int MSG_PUBLISH_3 = 0x00000011;
-    public static final int MSG_PUBLISH_3_FIELD_TIME_37 = 0x00800001;
-    public static final int MSG_PUBLISH_3_FIELD_PACKETID_20 = 0x00000003;
-    public static final int MSG_PUBLISH_3_FIELD_QOS_21 = 0x00000004;
-    public static final int MSG_PUBLISH_3_FIELD_RETAIN_22 = 0x00000005;
-    public static final int MSG_PUBLISH_3_FIELD_TOPIC_23 = 0x01400006;
-    public static final int MSG_PUBLISH_3_FIELD_PAYLOAD_25 = 0x01c00008;
-    public static final int MSG_SUBSCRIBE_8 = 0x00000019;
-    public static final int MSG_SUBSCRIBE_8_FIELD_TIME_37 = 0x00800001;
-    public static final int MSG_SUBSCRIBE_8_FIELD_PACKETID_20 = 0x00000003;
-    public static final int MSG_SUBSCRIBE_8_FIELD_QOS_21 = 0x00000004;
-    public static final int MSG_SUBSCRIBE_8_FIELD_TOPIC_23 = 0x01400005;
-    public static final int MSG_UNSUBSCRIBE_10 = 0x0000001f;
-    public static final int MSG_UNSUBSCRIBE_10_FIELD_TIME_37 = 0x00800001;
-    public static final int MSG_UNSUBSCRIBE_10_FIELD_PACKETID_20 = 0x00000003;
-    public static final int MSG_UNSUBSCRIBE_10_FIELD_TOPIC_23 = 0x01400004;
-    public static final int MSG_PUBREC_5 = 0x00000024;
-    public static final int MSG_PUBREC_5_FIELD_TIME_37 = 0x00800001;
-    public static final int MSG_PUBREC_5_FIELD_PACKETID_20 = 0x00000003;
+    public static final int MSG_BROKERHOST_100 = 0x00000000; //Group/OpenTempl/3
+    public static final int MSG_BROKERHOST_100_FIELD_HOST_26 = 0x01400001; //UTF8/None/0
+    public static final int MSG_BROKERHOST_100_FIELD_PORT_27 = 0x00000003; //IntegerUnsigned/None/0
+    public static final int MSG_CONNECT_1 = 0x00000004; //Group/OpenTempl/9
+    public static final int MSG_CONNECT_1_FIELD_TIME_37 = 0x00800001; //LongUnsigned/None/0
+    public static final int MSG_CONNECT_1_FIELD_KEEPALIVESEC_28 = 0x00000003; //IntegerUnsigned/None/1
+    public static final int MSG_CONNECT_1_FIELD_FLAGS_29 = 0x00000004; //IntegerUnsigned/None/2
+    public static final int MSG_CONNECT_1_FIELD_CLIENTID_30 = 0x01400005; //UTF8/None/1
+    public static final int MSG_CONNECT_1_FIELD_WILLTOPIC_31 = 0x01400007; //UTF8/None/2
+    public static final int MSG_CONNECT_1_FIELD_WILLPAYLOAD_32 = 0x01c00009; //ByteVector/None/3
+    public static final int MSG_CONNECT_1_FIELD_USER_33 = 0x0140000b; //UTF8/None/4
+    public static final int MSG_CONNECT_1_FIELD_PASS_34 = 0x0140000d; //UTF8/None/5
+    public static final int MSG_DISCONNECT_14 = 0x0000000e; //Group/OpenTempl/2
+    public static final int MSG_DISCONNECT_14_FIELD_TIME_37 = 0x00800001; //LongUnsigned/None/0
+    public static final int MSG_PUBLISH_3 = 0x00000011; //Group/OpenTempl/7
+    public static final int MSG_PUBLISH_3_FIELD_TIME_37 = 0x00800001; //LongUnsigned/None/0
+    public static final int MSG_PUBLISH_3_FIELD_PACKETID_20 = 0x00000003; //IntegerUnsigned/None/3
+    public static final int MSG_PUBLISH_3_FIELD_QOS_21 = 0x00000004; //IntegerUnsigned/None/4
+    public static final int MSG_PUBLISH_3_FIELD_RETAIN_22 = 0x00000005; //IntegerUnsigned/None/5
+    public static final int MSG_PUBLISH_3_FIELD_TOPIC_23 = 0x01400006; //UTF8/None/6
+    public static final int MSG_PUBLISH_3_FIELD_PAYLOAD_25 = 0x01c00008; //ByteVector/None/7
+    public static final int MSG_SUBSCRIBE_8 = 0x00000019; //Group/OpenTempl/5
+    public static final int MSG_SUBSCRIBE_8_FIELD_TIME_37 = 0x00800001; //LongUnsigned/None/0
+    public static final int MSG_SUBSCRIBE_8_FIELD_PACKETID_20 = 0x00000003; //IntegerUnsigned/None/3
+    public static final int MSG_SUBSCRIBE_8_FIELD_QOS_21 = 0x00000004; //IntegerUnsigned/None/4
+    public static final int MSG_SUBSCRIBE_8_FIELD_TOPIC_23 = 0x01400005; //UTF8/None/6
+    public static final int MSG_UNSUBSCRIBE_10 = 0x0000001f; //Group/OpenTempl/4
+    public static final int MSG_UNSUBSCRIBE_10_FIELD_TIME_37 = 0x00800001; //LongUnsigned/None/0
+    public static final int MSG_UNSUBSCRIBE_10_FIELD_PACKETID_20 = 0x00000003; //IntegerUnsigned/None/3
+    public static final int MSG_UNSUBSCRIBE_10_FIELD_TOPIC_23 = 0x01400004; //UTF8/None/6
+    public static final int MSG_PUBREC_5 = 0x00000024; //Group/OpenTempl/3
+    public static final int MSG_PUBREC_5_FIELD_TIME_37 = 0x00800001; //LongUnsigned/None/0
+    public static final int MSG_PUBREC_5_FIELD_PACKETID_20 = 0x00000003; //IntegerUnsigned/None/3
 
 
     public static void consume(Pipe<MQTTClientToServerSchema> input) {
@@ -111,7 +112,7 @@ public class MQTTClientToServerSchema extends MessageSchema<MQTTClientToServerSc
         int fieldFlags = PipeReader.readInt(input,MSG_CONNECT_1_FIELD_FLAGS_29);
         StringBuilder fieldClientId = PipeReader.readUTF8(input,MSG_CONNECT_1_FIELD_CLIENTID_30,new StringBuilder(PipeReader.readBytesLength(input,MSG_CONNECT_1_FIELD_CLIENTID_30)));
         StringBuilder fieldWillTopic = PipeReader.readUTF8(input,MSG_CONNECT_1_FIELD_WILLTOPIC_31,new StringBuilder(PipeReader.readBytesLength(input,MSG_CONNECT_1_FIELD_WILLTOPIC_31)));
-        ByteBuffer fieldWillPayload = PipeReader.readBytes(input,MSG_CONNECT_1_FIELD_WILLPAYLOAD_32,ByteBuffer.allocate(PipeReader.readBytesLength(input,MSG_CONNECT_1_FIELD_WILLPAYLOAD_32)));
+        DataInputBlobReader<MQTTClientToServerSchema> fieldWillPayload = PipeReader.inputStream(input, MSG_CONNECT_1_FIELD_WILLPAYLOAD_32);
         StringBuilder fieldUser = PipeReader.readUTF8(input,MSG_CONNECT_1_FIELD_USER_33,new StringBuilder(PipeReader.readBytesLength(input,MSG_CONNECT_1_FIELD_USER_33)));
         StringBuilder fieldPass = PipeReader.readUTF8(input,MSG_CONNECT_1_FIELD_PASS_34,new StringBuilder(PipeReader.readBytesLength(input,MSG_CONNECT_1_FIELD_PASS_34)));
     }
@@ -124,7 +125,7 @@ public class MQTTClientToServerSchema extends MessageSchema<MQTTClientToServerSc
         int fieldQOS = PipeReader.readInt(input,MSG_PUBLISH_3_FIELD_QOS_21);
         int fieldRetain = PipeReader.readInt(input,MSG_PUBLISH_3_FIELD_RETAIN_22);
         StringBuilder fieldTopic = PipeReader.readUTF8(input,MSG_PUBLISH_3_FIELD_TOPIC_23,new StringBuilder(PipeReader.readBytesLength(input,MSG_PUBLISH_3_FIELD_TOPIC_23)));
-        ByteBuffer fieldPayload = PipeReader.readBytes(input,MSG_PUBLISH_3_FIELD_PAYLOAD_25,ByteBuffer.allocate(PipeReader.readBytesLength(input,MSG_PUBLISH_3_FIELD_PAYLOAD_25)));
+        DataInputBlobReader<MQTTClientToServerSchema> fieldPayload = PipeReader.inputStream(input, MSG_PUBLISH_3_FIELD_PAYLOAD_25);
     }
     public static void consumeSubscribe(Pipe<MQTTClientToServerSchema> input) {
         long fieldTime = PipeReader.readLong(input,MSG_SUBSCRIBE_8_FIELD_TIME_37);
