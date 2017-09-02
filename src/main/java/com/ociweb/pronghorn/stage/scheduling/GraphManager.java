@@ -1549,10 +1549,12 @@ public class GraphManager {
 		                
 		                if (null!=percentileValues) {		                	
 		                	int pctFull = percentileValues[pipe.id];
-		                	Appendables.appendValue(target.append(" Full:"), pctFull).append("% ");
+		                	Appendables.appendValue(target.append(" \nFull:"), pctFull).append("% ");
 		                	if (pctFull!=0) {
 		                		Appendables.appendValue(target,"@", (pctFull*(long)pipe.sizeOfSlabRing/100L)).append(" ");
 		                	}
+		                } else {
+		                	target.append(" \n");		                	
 		                }
 		                
 		                int lineWidth = 1; //default
@@ -1564,8 +1566,8 @@ public class GraphManager {
 		                	//compute the line width.
 		                	int bitsUsed = 32-Integer.numberOfLeadingZeros(trafficCount);		                	
 		                	lineWidth = (0==bitsUsed)? 1 : 2 +(bitsUsed>>3);
-		                			                	
-		                }
+		                	target.append(" \n");			                	
+		                } 
 		                
 		                
 		                if (minMessagesOnPipe==maxMessagesOnPipe) {
