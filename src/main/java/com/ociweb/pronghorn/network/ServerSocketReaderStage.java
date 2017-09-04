@@ -181,7 +181,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 						
 		//logger.info("new request on connection {} ",channelId);
 		
-		SSLConnection cc = coordinator.get(channelId);
+		SSLConnection cc = coordinator.connectionForSessionId(channelId);
 		boolean processWork = true;
 		if (coordinator.isTLS) {
 				
@@ -336,7 +336,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 			assert( 0 == Pipe.releasePendingByteCount(output[pipeIdx]));
 						
 			if (id == ReleaseSchema.MSG_RELEASEWITHSEQ_101) {				
-				SSLConnection conn = coordinator.get(idToClear);
+				SSLConnection conn = coordinator.connectionForSessionId(idToClear);
 				if (null!=conn) {					
 					conn.setSequenceNo(seq);//only set when we release a pipe
 				}
@@ -480,7 +480,7 @@ public class ServerSocketReaderStage extends PronghornStage {
              if (isOpen && newBeginning) { //Gatling does this a lot, TODO: we should optimize this case.
              	//we will abandon but we also must release the reservation because it was never used
              	coordinator.releaseResponsePipeLineIdx(channelId);
-             	SSLConnection conn = coordinator.get(channelId);
+             	SSLConnection conn = coordinator.connectionForSessionId(channelId);
              	conn.clearPoolReservation();
              //	logger.info("client is sending zero bytes, ZERO LENGTH RELESE OF UNUSED PIPE  FOR {}", channelId);
              }

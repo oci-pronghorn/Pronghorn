@@ -60,8 +60,8 @@ public class ClientHTTPRequestDataGeneratorStage extends PronghornStage {
 
             int length = builder.length()-startPos;
             //System.out.println("len "+length);
-            if (length > output.maxAvgVarLen) {
-                throw new UnsupportedOperationException("expand output blob length it must be larger than "+length+" the value was "+output.maxAvgVarLen);
+            if (length > output.maxVarLen) {
+                throw new UnsupportedOperationException("expand output blob length it must be larger than "+length+" the value was "+output.maxVarLen);
             }
             rawDataSizes[i]=length;
         }

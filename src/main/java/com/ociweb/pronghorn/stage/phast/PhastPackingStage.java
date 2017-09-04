@@ -85,18 +85,18 @@ public class PhastPackingStage extends PronghornStage {
             //continue writing these bytes because we did not have enough room in the last chunk.
             if (input2Reader.hasRemainingBytes()) {
                int rem =  DataInputBlobReader.bytesRemaining(input2Reader);
-               if (rem<=localOutput.maxAvgVarLen) {
+               if (rem<=localOutput.maxVarLen) {
                    DataOutputBlobWriter.writeBytes(localWriter,input2Reader,rem);
                    Pipe.releaseReadLock(localInput2);                   
                } else {
-                   DataOutputBlobWriter.writeBytes(localWriter,input2Reader,localOutput.maxAvgVarLen);
+                   DataOutputBlobWriter.writeBytes(localWriter,input2Reader,localOutput.maxVarLen);
                }
             }            
             
             //if there is room left in this open outgoing message and if there is new content to add keep going            
             combineContentForSingleMessage( localInput1, localInput2, localOutput, 
                                                       lookup, localWriter, size, 
-                                                      maxBytesPerMessage, localOutput.maxAvgVarLen, 
+                                                      maxBytesPerMessage, localOutput.maxVarLen, 
                                                       false, localWriter);
             
             localWriter.closeLowLevelField();

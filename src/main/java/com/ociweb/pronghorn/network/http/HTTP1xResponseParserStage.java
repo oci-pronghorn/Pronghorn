@@ -22,6 +22,7 @@ import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -46,6 +47,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	private final HTTPSpecification<?,?,?,?> httpSpec;
 	private final int END_OF_HEADER_ID;
 	private final int UNSUPPORTED_HEADER_ID;
+	
+	private static final boolean showTossedData = false;
 	
 	private ClientCoordinator ccm;
 	
@@ -197,14 +200,16 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		lastUser = user;
 	}
 
+	private static final boolean writeIndex = true;//NOTE: must be on for random access to headers.		
+	//we keep 1 index at the beginning to the position of the payload start can be stored
+	private static final int indexOffsetCount = 1;
 		
 	@Override
 	public void run() {
 		
 		int foundWork; //keep going until we make a pass and there is no work.
 		
-		final boolean writeIndex = true;//NOTE: must be on for random access to headers.		
-		final int indexOffsetCount = 0;//We have no fields indexed before these headers
+		
 
 		do {		
 			foundWork = 0;
@@ -220,7 +225,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				Pipe<NetResponseSchema> targetPipe = null;
 				long ccId = 0;
 				
-				Pipe<NetPayloadSchema> pipe = input[i];
+				Pipe<NetPayloadSchema> localInputPipe = input[i];
 		
 				
 				/////////////////////////////////////////////////////////////
@@ -228,16 +233,17 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				/////////////////////////////////////////////////////////////
 				TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 				
-				TrieParserReader.parseSetup(trieReader,Pipe.blob(pipe),Pipe.blobMask(pipe));							
+				TrieParserReader.parseSetup(trieReader,Pipe.blob(localInputPipe),Pipe.blobMask(localInputPipe));							
 				
 				ClientConnection cc = null;
 					
 				int len1 = positionMemoData[lenIdx];
-				int len2 = pipe.maxVarLen;
-				int len3 = Pipe.blobMask(pipe);
+				int len2 = localInputPipe.maxVarLen;
+				int len3 = Pipe.blobMask(localInputPipe);
 				
-				if (Pipe.hasContentToRead(pipe) 
-						&& 	((positionMemoData[lenIdx]+pipe.maxVarLen+Pipe.releasePendingByteCount(pipe)) < (Pipe.blobMask(pipe) ) )  //TOOD: this second condition above should NOT be required but under heavy load this spins and never comes back..
+				if (Pipe.hasContentToRead(localInputPipe) 
+						&& outputsHaveRoom(output) //need to ensure room for close messsage
+						&& 	((positionMemoData[lenIdx]+localInputPipe.maxVarLen+Pipe.releasePendingByteCount(localInputPipe)) < (Pipe.blobMask(localInputPipe) ) )  //TOOD: this second condition above should NOT be required but under heavy load this spins and never comes back..
 						) {
 					
 					     
@@ -245,37 +251,51 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					//we have new data
 					//////////////////////////////
 			
-					int msgIdx = Pipe.takeMsgIdx(pipe);
+					int msgIdx = Pipe.takeMsgIdx(localInputPipe);
 					if (msgIdx<0) {
 						throw new UnsupportedOperationException("no support for shutdown");
 					}
 					
 					//assert(NetPayloadSchema.MSG_PLAIN_210==msgIdx): "msgIdx "+msgIdx+"  "+pipe;
 			
-					ccId = Pipe.takeLong(pipe);
+					ccId = Pipe.takeLong(localInputPipe);
 					
-					long arrivalTime = Pipe.takeLong(pipe);
+					long arrivalTime = Pipe.takeLong(localInputPipe);
 					//if already set do not set again, we want the leading edge of the data arrival.
 					if (arrivalTimeAtPosition[i]<=0) {
 						arrivalTimeAtPosition[i] = arrivalTime;
 					}
 					
-					inputPosition[i] = Pipe.takeLong(pipe);
+					inputPosition[i] = Pipe.takeLong(localInputPipe);
 										
 					ccIdData[i] = ccId;
-					cc = (ClientConnection)ccm.get(ccId);
+					cc = (ClientConnection)ccm.connectionForSessionId(ccId, true);
 								
-					if (null==cc) {		
-						logger.warn("closed connection detected");
-						//abandon this record and continue
-						int meta = Pipe.takeRingByteMetaData(pipe);
-						int len  = Pipe.takeRingByteLen(pipe);
+					if (null==cc || (!cc.isValid())) {
 						
-						boolean showTossedData = true;
+						logger.warn("closed connection detected");
+						if (null != cc) {
+							//publish closed to notify those down stream
+							targetPipe = output[(int)cc.readDestinationRouteId()];
+							
+							Pipe.presumeRoomForWrite(targetPipe);
+							int size = Pipe.addMsgIdx(targetPipe, NetResponseSchema.MSG_CLOSED_10);
+							Pipe.addUTF8(cc.getHost(), targetPipe);
+							Pipe.addIntValue(cc.getPort(), targetPipe);
+							Pipe.confirmLowLevelWrite(targetPipe, size);
+							Pipe.publishWrites(targetPipe);
+							
+						}
+												
+						//abandon this record and continue
+						int meta = Pipe.takeRingByteMetaData(localInputPipe);
+						int len  = Pipe.takeRingByteLen(localInputPipe);
+						
+
 						if (showTossedData) {
-							int mask = blobMask(pipe);	
-							int pos = bytePosition(meta, pipe, len)&mask;     		
-							byte[] backing = byteBackingArray(meta, pipe);
+							int mask = blobMask(localInputPipe);	
+							int pos = bytePosition(meta, localInputPipe, len)&mask;     		
+							byte[] backing = byteBackingArray(meta, localInputPipe);
 							
 							StringBuilder builder = new StringBuilder();
 							Appendables.appendUTF8(builder, backing, pos, len, mask);
@@ -283,27 +303,24 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							logger.warn("server closed connection and returned\n{}",builder);
 							
 						}
-						Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx)); 		
-						Pipe.releaseReadLock(pipe);
+						Pipe.confirmLowLevelRead(localInputPipe, Pipe.sizeOf(localInputPipe, msgIdx)); 		
+						Pipe.releaseReadLock(localInputPipe);
 						positionMemoData[memoIdx+1] = 0;//wipe out existing data
 						
-						//drain all the data on this pipe
-						Pipe.publishBlobWorkingTailPosition(pipe, Pipe.getWorkingBlobHeadPosition(pipe));
-						Pipe.publishWorkingTailPosition(pipe, Pipe.workingHeadPosition(pipe));
-						
-						//let go of pipe
-						ccm.releaseResponsePipeLineIdx(ccId);
-												
+						//drain all the data on this input pipe
+						Pipe.publishBlobWorkingTailPosition(localInputPipe, Pipe.getWorkingBlobHeadPosition(localInputPipe));
+						Pipe.publishWorkingTailPosition(localInputPipe, Pipe.workingHeadPosition(localInputPipe));
+								
 						continue;
 					}
 				
-					targetPipe = targetPipe(cc);					
+					targetPipe = output[(int)cc.readDestinationRouteId()];					
 	
 					//append the new data
-					int meta = Pipe.takeRingByteMetaData(pipe);
-					int len = Pipe.takeRingByteLen(pipe);
-					int pos = Pipe.bytePosition(meta, pipe, len);
-					int mask = Pipe.blobMask(pipe);
+					int meta = Pipe.takeRingByteMetaData(localInputPipe);
+					int len = Pipe.takeRingByteLen(localInputPipe);
+					int pos = Pipe.bytePosition(meta, localInputPipe, len);
+					int mask = Pipe.blobMask(localInputPipe);
 					
 					///////////////////////////////////
 					//logger.info("parse new data of {} for connection {}",len,cc.getId());
@@ -323,7 +340,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						positionMemoData[lenIdx] += len;
 					}
 					
-					assert(positionMemoData[lenIdx]<Pipe.blobMask(pipe)) : "error adding "+len+" total was "+positionMemoData[lenIdx]+" and should be < "+pipe.blobMask(pipe);
+					assert(positionMemoData[lenIdx]<Pipe.blobMask(localInputPipe)) : "error adding "+len+" total was "+positionMemoData[lenIdx]+" and should be < "+localInputPipe.blobMask(localInputPipe);
 					
 
 					TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
@@ -332,20 +349,20 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					
 				//	logger.info("reading in new data up to "+Pipe.getWorkingTailPosition(pipe)+" has "+positionMemoData[lenIdx]+" mask "+Pipe.blobMask(pipe));
 					
-					Pipe.confirmLowLevelRead(pipe, Pipe.sizeOf(pipe, msgIdx));   //release of read does not happen until the bytes are consumed...
+					Pipe.confirmLowLevelRead(localInputPipe, Pipe.sizeOf(localInputPipe, msgIdx));   //release of read does not happen until the bytes are consumed...
 					
 					//WARNING: moving next without releasing lock prevents new data from arriving until after we have consumed everything.
 					//  
-					Pipe.readNextWithoutReleasingReadLock(pipe);	
+					Pipe.readNextWithoutReleasingReadLock(localInputPipe);	
 							
 					if (-1==inputPosition[i]) {
 						//this may or may not be the end of a complete message, must hold it just in case it is.
-						inputPosition[i] = Pipe.getWorkingTailPosition(pipe);//working tail is the right tested value
+						inputPosition[i] = Pipe.getWorkingTailPosition(localInputPipe);//working tail is the right tested value
 					}
 					assert(inputPosition[i]!=-1);
 					
-					if 	(positionMemoData[lenIdx] >= Pipe.blobMask(pipe) ) {
-						logger.info("NEW CORRUPT DATA ERROR, response is not keeping up with the data "+positionMemoData[lenIdx]+" added "+len+" which should be < "+pipe.maxAvgVarLen);
+					if 	(positionMemoData[lenIdx] >= Pipe.blobMask(localInputPipe) ) {
+						logger.info("NEW CORRUPT DATA ERROR, response is not keeping up with the data "+positionMemoData[lenIdx]+" added "+len+" which should be < "+localInputPipe.maxVarLen);
 						logger.info("{}  {}  {}",len1,len2,len3);
 						logger.info("FORCE EXIT");
 						System.exit(-1);
@@ -368,7 +385,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//else use the data we have since no new data came in.
 						
 						ccId = ccIdData[i];
-						cc = (ClientConnection)ccm.get(ccId);					
+						cc = (ClientConnection)ccm.connectionForSessionId(ccId);					
 						if (null==cc) {	//skip data the connection was closed	
 							ccm.releaseResponsePipeLineIdx(ccId);
 							
@@ -381,13 +398,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//we have data which must be parsed and we know the output pipe, eg the connection was not closed						
 						//convert long id to the pipe index.
 						
-						targetPipe = targetPipe(cc); 		
+						targetPipe = output[(int)cc.readDestinationRouteId()]; 		
 							
 						///////////////////////
 						//the fastest code is the code which is never run
 						//do not parse again if nothing has changed
 						////////////////////////
-						final long headPos = Pipe.headPosition(pipe);
+						final long headPos = Pipe.headPosition(localInputPipe);
 						
 						//TODO: this same approach should be used in server
 						if (blockedPosition[i] == headPos && blockedLen[i] == trieReader.sourceLen) {
@@ -411,7 +428,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 	
 			
 				
-				if (Pipe.hasContentToRead(pipe) || positionMemoData[lenIdx]>pipe.maxVarLen   ) {
+				if (Pipe.hasContentToRead(localInputPipe) || positionMemoData[lenIdx]>localInputPipe.maxVarLen   ) {
 					foundWork++;//do not leave if we are backed up
 				}
 
@@ -435,7 +452,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					int p = lastMessageParseSizeCount;
 					while (--p>=0) {
 						int size = lastMessageParseSizes[p];
-						byte b= pipe.blobRing[trieReader.sourceMask&(trieReader.sourcePos+size-1)];
+						byte b= localInputPipe.blobRing[trieReader.sourceMask&(trieReader.sourcePos+size-1)];
 					
 						if (b==10) {
 							lastMessageParseSize = size;
@@ -455,7 +472,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							throw new UnsupportedOperationException("Need to skip some bytes but they have not arrived yet, TODO: implement this for load testing...");
 							
 						}
-						Pipe.releasePendingAsReadLock(pipe, lastMessageParseSize);
+						Pipe.releasePendingAsReadLock(localInputPipe, lastMessageParseSize);
 						
 						
 						//because we have started writing the response we MUST do extra cleanup later.
@@ -500,7 +517,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 						//DO NOT consume the target since we still need it.			
 	
 						positionMemoData[stateIdx] = state = 5;
-						foundWork += finishAndRelease(i, stateIdx, pipe, cc, 0); 
+						foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0); 
 						
 						TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 						
@@ -617,7 +634,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									if (3==state) {
 										//release all header bytes, we will do each chunk on its own.
 										assert(runningHeaderBytes[i]>0);								
-										Pipe.releasePendingAsReadLock(pipe, runningHeaderBytes[i]); 
+										Pipe.releasePendingAsReadLock(localInputPipe, runningHeaderBytes[i]); 
 										runningHeaderBytes[i] = 0; 
 									}
 									//only case where state is not 1 so we must call save all others will call when while loops back to top.
@@ -626,7 +643,8 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										//logger.info("body length to write {}",payloadLengthData[i]);
 										//write index to where the body starts.
 										//logger.info("{} wrote the index of the body {} to position {} ",state, writer.position(), IntHashTable.count(headersSupported) + indexOffsetCount);
-										DataOutputBlobWriter.setIntBackData(writer, writer.position(), IntHashTable.count(headersSupported) + indexOffsetCount);
+										DataOutputBlobWriter.setIntBackData(writer, writer.position(),1);
+										
 									}
 								}								
 								
@@ -648,7 +666,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								
 							}
 							
-							assert(trieReader.sourceLen == Pipe.releasePendingByteCount(pipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(pipe);
+							assert(trieReader.sourceLen == Pipe.releasePendingByteCount(localInputPipe)) : trieReader.sourceLen+" != "+Pipe.releasePendingByteCount(localInputPipe);
 							assert(positionMemoData[i<<2] == Pipe.releasePendingByteCount(input[i])) : positionMemoData[i<<2]+" != "+Pipe.releasePendingByteCount(input[i]);
 				    		break;
 						}
@@ -719,7 +737,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								if (0 == lengthRemaining) {
 		//							logger.info("lenRem 0 source position {} state {} ",trieReader.sourcePos,state);
 									
-									Pipe.releasePendingAsReadLock(pipe, runningHeaderBytes[i]); 
+									Pipe.releasePendingAsReadLock(localInputPipe, runningHeaderBytes[i]); 
 									
 
 									//NOTE: input is low level, TireParser is using low level take
@@ -747,7 +765,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									//expecting H to be the next valid char 
 									assert(trieReader.sourceLen<=0 || input[i].blobRing[input[i].blobMask&trieReader.sourcePos]=='H') :"bad next value of "+(int)input[i].blobRing[input[i].blobMask&trieReader.sourcePos];
 									
-									foundWork += finishAndRelease(i, stateIdx, pipe, cc, 0); 
+									foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0); 
 									state = positionMemoData[stateIdx];
 									
 									if (initial>=0) {
@@ -782,7 +800,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									if ((int)TrieParserReader.parseNext(trieReader, HTTPUtil.chunkMap) < 0) {
 										//FORMAL ERROR, we can never support a chunk bigger than a 64 bit number which is 16 chars in hex.
 										if (trieReader.sourceLen>16) {
-											parseErrorWhileChunking(memoIdx, pipe, trieReader.sourcePos);
+											parseErrorWhileChunking(memoIdx, localInputPipe, trieReader.sourcePos);
 										}
 										return;	//not enough data yet to parse try again later
 									}
@@ -797,7 +815,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 											
 										int consumed = startingLength3 - trieReader.sourceLen;
 					
-										Pipe.releasePendingAsReadLock(pipe, consumed);
+										Pipe.releasePendingAsReadLock(localInputPipe, consumed);
 										assert(END_OF_HEADER_ID==headerId);
 							///////			
 										//NOTE: input is low level, TireParser is using low level take
@@ -818,7 +836,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 										Pipe.publishWrites(targetPipe);	
 										long routeId = cc.consumeDestinationRouteId();////////WE ARE ALL DONE WITH THIS RESPONSE////////////
 
-										foundWork += finishAndRelease(i, stateIdx, pipe, cc, 0); 
+										foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0); 
 										
 										if (initial>=0) {
 											lastMessageParseSize(trieReader.sourcePos-initial);
@@ -829,7 +847,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 											
 										payloadLengthData[i] = chunkRemaining;										
 										int consumed = startingLength3 - trieReader.sourceLen;
-										Pipe.releasePendingAsReadLock(pipe, consumed);
+										Pipe.releasePendingAsReadLock(localInputPipe, consumed);
 										TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 										
 										//ensure we do not override the indexes
@@ -907,7 +925,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 									}
 									TrieParserReader.savePositionMemo(trieReader, positionMemoData, memoIdx);
 				
-									Pipe.releasePendingAsReadLock(pipe, temp3);
+									Pipe.releasePendingAsReadLock(localInputPipe, temp3);
 								}
 								
 													
@@ -918,7 +936,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					case 5: //END SEND ACK
 						logger.info("source position {} state {} ",trieReader.sourcePos,state);
 						
-					    foundWork += finishAndRelease(i, stateIdx, pipe, cc, 0);
+					    foundWork += finishAndRelease(i, stateIdx, localInputPipe, cc, 0);
 						if (initial>=0) {
 						    lastMessageParseSize(trieReader.sourcePos-initial);
 						}
@@ -934,11 +952,16 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 		
 	}
 
-	private Pipe<NetResponseSchema> targetPipe(ClientConnection cc) {
-		//we want to lookup without consume since this is called multiple times
+	private boolean outputsHaveRoom(Pipe<NetResponseSchema>[] output) {
 		
-		long routeId = cc.readDestinationRouteId();
-		return output[(int)routeId];
+		int i = output.length;
+		while (--i>=0) {
+			if (!Pipe.hasRoomForWrite(output[i])) {
+				return false;
+			}
+		}
+		
+		return true;
 	}
 
 	@Override

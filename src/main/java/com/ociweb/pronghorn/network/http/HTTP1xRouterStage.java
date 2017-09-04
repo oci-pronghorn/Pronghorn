@@ -707,7 +707,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 		////////////////
 		//this block is already done because sendError will close upon xmit
 		//it is doen here because the sendError failed
-		SSLConnection con = coordinator.get(channel);
+		SSLConnection con = coordinator.connectionForSessionId(channel);
 		if (null!=con) {
 			con.clearPoolReservation();		
 			con.close();
@@ -766,7 +766,7 @@ private void sendRelease(long channel, final int idx) {
 }
 
 private void badClientError(long channel) {
-	SSLConnection con = coordinator.get(channel);
+	SSLConnection con = coordinator.connectionForSessionId(channel);
 	if (null!=con) {
 		con.clearPoolReservation();		
 		con.close();

@@ -145,12 +145,12 @@ public class TapeWriteStage<T extends MessageSchema<T>> extends PronghornStage {
         
         
         int slabLimitA = ss.source.sizeOfSlabRing;
-        int slabPosition = ss.source.mask & (int)ss.cachedTail;
+        int slabPosition = ss.source.slabMask & (int)ss.cachedTail;
         int slabLimitB =  (int)(slabPosition+ss.totalPrimaryCopy); 
         
         if (slabLimitB>slabLimitA) {
             ss.slabBuffer1.limit(slabLimitA);
-            ss.slabBuffer2.limit(ss.source.mask & slabLimitB);
+            ss.slabBuffer2.limit(ss.source.slabMask & slabLimitB);
         } else {         
             ss.slabBuffer1.limit(slabLimitB);
             ss.slabBuffer2.limit(       0  );                

@@ -171,7 +171,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	    		} else {
 	    			//logger.info("write the channel");
 	    			    			
-	    			boolean hasRoomToWrite = workingBuffers[x].capacity()-workingBuffers[x].limit() > dataToSend[x].maxAvgVarLen;
+	    			boolean hasRoomToWrite = workingBuffers[x].capacity()-workingBuffers[x].limit() > dataToSend[x].maxVarLen;
 	    				        			
 	    			
 	    			if (--writeToChannelTTL[x]<=0 || !hasRoomToWrite) {
@@ -420,14 +420,14 @@ public class ServerSocketWriterStage extends PronghornStage {
 		    logger.info("Data {} {} {} {} ",
 		    		    Pipe.hasContentToRead(pipe),
 		    		    Pipe.peekInt(pipe)==msgIdx,
-		    		    workingBuffers[idx].remaining()>pipe.maxAvgVarLen,
+		    		    workingBuffers[idx].remaining()>pipe.maxVarLen,
 		    		    Pipe.peekLong(pipe, 1)==channelId	    		
 		    		);
 		}
 		
 		return  Pipe.hasContentToRead(pipe) && 
 				Pipe.peekInt(pipe)==msgIdx && 
-				workingBuffers[idx].remaining()>pipe.maxAvgVarLen && 
+				workingBuffers[idx].remaining()>pipe.maxVarLen && 
 				Pipe.peekLong(pipe, 1)==channelId;
 	}
 

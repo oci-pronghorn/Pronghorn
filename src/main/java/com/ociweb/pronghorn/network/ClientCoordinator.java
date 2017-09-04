@@ -121,16 +121,43 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		responsePipeLinePool = new PoolIdx(maxPartialResponses); //NOTE: maxPartialResponses should never be greater than response listener count		
 	}
 		
-	public SSLConnection get(long hostId) {
-		ClientConnection response = connections.getValid(hostId);
-		if (null == response) {			
-			//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);
-			
-			releaseResponsePipeLineIdx(hostId);
-			connections.resetUsageCount(hostId);
-		} else {
-			connections.incUsageCount(hostId);
+	public SSLConnection connectionForSessionId(long hostId) {
+		ClientConnection response = connections.get(hostId);
+		
+		if (null != response) {			
+			if (response.isValid()) {
+				connections.incUsageCount(hostId);
+				return response;
+			} else {
+				//the connection has been disconnected
+				response = null;
+			}
 		}
+		//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);
+		releaseResponsePipeLineIdx(hostId);
+		connections.resetUsageCount(hostId);
+		
+		return response;
+	}
+	
+	public SSLConnection connectionForSessionId(long hostId, boolean alsoReturnDisconnected) {
+		ClientConnection response = connections.get(hostId);
+		
+		if (null != response) {			
+			if (response.isValid()) {
+				connections.incUsageCount(hostId);
+				return response;
+			} else {
+				//the connection has been disconnected
+				if (!alsoReturnDisconnected) {
+					response = null;
+				}
+			}
+		}
+		//logger.info("Release the pipe because the connection was discovered closed/missing. no valid connection found for "+hostId);
+		releaseResponsePipeLineIdx(hostId);
+		connections.resetUsageCount(hostId);
+		
 		return response;
 	}
 	

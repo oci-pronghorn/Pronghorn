@@ -171,7 +171,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	}
 
 	@Override
-	public SSLConnection get(long id) {
+	public SSLConnection connectionForSessionId(long id) {
 		return socketHolder.get(id);		
 	}
     

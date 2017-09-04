@@ -606,7 +606,7 @@ public class SSLUtil {
 		while (Pipe.hasRoomForWrite(target) && Pipe.peekMsg(source, NetPayloadSchema.MSG_PLAIN_210) ) {
 			didWork = true;
 			
-			final SSLConnection cc = ccm.get(Pipe.peekLong(source, 1));
+			final SSLConnection cc = ccm.connectionForSessionId(Pipe.peekLong(source, 1));
 						
 			if (null==cc || !cc.isValid) {
 				buffer.clear();
@@ -726,7 +726,7 @@ public class SSLUtil {
 				assert(connectionId>0) : "invalid connectionId read "+connectionId+" msgid "+Pipe.peekInt(source);
 				
 				
-				cc = ccm.get(connectionId); //connection id	
+				cc = ccm.connectionForSessionId(connectionId); //connection id	
 				assert(cc.id==connectionId) : "returned wrong object";
 	
 				if (null==cc || !cc.isValid) {

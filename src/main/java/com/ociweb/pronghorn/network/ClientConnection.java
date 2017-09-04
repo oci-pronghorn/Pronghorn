@@ -351,22 +351,6 @@ public class ClientConnection extends SSLConnection {
 		if (!getSocketChannel().isConnected()) {
 			return false;
 		}
-		
-		//TODO: new auto shutdown logic for old unused connections, Still under development,closes connections too soon
-//		if (responsesReceived==requestsSent && System.currentTimeMillis() > closeTimeLimit) {
-//			log.info("stale connection closed after non use {}",this);
-//			
-//			//TODO: this work can not be done here and needs to be owned by the pipe. HTTPClientReqeust is the ideal place.
-//			
-//			beginDisconnect(); 
-//			
-//			if (true) {
-//				throw new UnsupportedOperationException("Can not close old connection without finishing handshake.");
-//			}
-//			
-//			close();
-//			return false;
-//		}
 		return isValid;
 	}
 

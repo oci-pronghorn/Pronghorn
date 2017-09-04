@@ -124,7 +124,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 							int len = Pipe.takeRingByteLen(pipe);							
 							
 
-							ClientConnection cc = (ClientConnection)ccm.get(channelId);
+							ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(channelId);
 	
 							if (null!=cc) {
 						        
@@ -197,7 +197,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 							
 							long channelId = Pipe.takeLong(pipe);
 							long arrivalTime = Pipe.takeLong(pipe);
-							ClientConnection cc = (ClientConnection)ccm.get(channelId);
+							ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(channelId);
 							
 							long workingTailPosition = Pipe.takeLong(pipe);
 										
@@ -307,7 +307,7 @@ public class ClientSocketWriterStage extends PronghornStage {
 						} else if (NetPayloadSchema.MSG_DISCONNECT_203 == msgIdx) {
 							
 							long channelId = Pipe.takeLong(pipe);
-							ClientConnection cc = (ClientConnection)ccm.get(channelId);
+							ClientConnection cc = (ClientConnection)ccm.connectionForSessionId(channelId);
 							if (null!=cc) {
 								cc.close();
 							}

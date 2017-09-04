@@ -280,7 +280,8 @@ public class ServiceObjectHolder<T> {
         ServiceObjectData<T> localData = data;
         
         int modIdx = localData.mask & (int)index;
-        if (index == localData.serviceObjectKeys[modIdx] && validator.isValid(localData.serviceObjectValues[modIdx])) {          
+        if (index == localData.serviceObjectKeys[modIdx] && 
+        	validator.isValid(localData.serviceObjectValues[modIdx])) {          
             return localData.serviceObjectValues[modIdx];
         }
         return null;        

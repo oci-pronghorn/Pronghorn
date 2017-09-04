@@ -106,7 +106,7 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 		//if we are in the middle of a partial copy push the data out, this is blocking
 		while (0!=totalPrimaryCopy) {
 			//if all the copies are done then record it as complete, does as much work as possible each time its called.
-			if (doneCopy(this, byteTailPos, source.mask & (int)cachedTail, (int)totalPrimaryCopy, totalBytesCopy)) {
+			if (doneCopy(this, byteTailPos, source.slabMask & (int)cachedTail, (int)totalPrimaryCopy, totalBytesCopy)) {
 				recordCopyComplete(this, tempByteTail, totalBytesCopy);			
 			}	
 		}
@@ -142,7 +142,7 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 		}
 
 		//if all the copies are done then record it as complete, does as much work as possible each time its called.
-		if (doneCopy(ss, ss.byteTailPos, ss.source.mask & (int)ss.cachedTail, (int)ss.totalPrimaryCopy, ss.totalBytesCopy)) {
+		if (doneCopy(ss, ss.byteTailPos, ss.source.slabMask & (int)ss.cachedTail, (int)ss.totalPrimaryCopy, ss.totalBytesCopy)) {
 			recordCopyComplete(ss, ss.tempByteTail, ss.totalBytesCopy);			
 		}					
 		
@@ -216,8 +216,8 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 								
 		//copy the primary data
 		int headPosition = (int)Pipe.headPosition(ringBuffer);
-		Pipe.copyIntsFromToRing(Pipe.slab(ss.source), primaryTailPos, ss.source.mask, 
-		        Pipe.slab(ringBuffer), headPosition, ringBuffer.mask, 
+		Pipe.copyIntsFromToRing(Pipe.slab(ss.source), primaryTailPos, ss.source.slabMask, 
+		        Pipe.slab(ringBuffer), headPosition, ringBuffer.slabMask, 
 									 totalPrimaryCopy);
 		
 		Pipe.publishWorkingHeadPosition(ringBuffer, headPosition + totalPrimaryCopy);

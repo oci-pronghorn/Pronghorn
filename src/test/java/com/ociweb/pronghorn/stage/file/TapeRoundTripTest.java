@@ -51,7 +51,7 @@ public class TapeRoundTripTest {
                 
                 int sizeOfBlobRing = inputPipe.sizeOfBlobRing;
                 int sizeOfSlabRing = inputPipe.sizeOfSlabRing;
-                int maxAvgVarLen = inputPipe.maxAvgVarLen;
+                int maxAvgVarLen = inputPipe.maxVarLen;
                             
                 deepValidationOfTapeFile(tapeFile, sizeOfBlobRing, sizeOfSlabRing, maxAvgVarLen);
                 

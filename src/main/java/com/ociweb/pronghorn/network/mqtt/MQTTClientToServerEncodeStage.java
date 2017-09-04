@@ -472,7 +472,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				break;
 			}		
 						
-			ClientConnection clientConnection = (ClientConnection) ccm.get(connectionId);
+			ClientConnection clientConnection = (ClientConnection) ccm.connectionForSessionId(connectionId);
 			if (null==clientConnection || (! clientConnection.isFinishConnect())) {
 				break;
 			}

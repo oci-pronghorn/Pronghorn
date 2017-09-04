@@ -43,7 +43,7 @@ public class LineSplitterByteBufferStage extends PronghornStage {
 	    quoter = new byte[256]; //these are all zeros
 	    quoter['"'] = 1; //except for the value of quote.						
 
-		if (outputRing.maxAvgVarLen<1) {
+		if (outputRing.maxVarLen<1) {
 			throw new UnsupportedOperationException();
 		}
 		resetForNextByteBuffer(this);

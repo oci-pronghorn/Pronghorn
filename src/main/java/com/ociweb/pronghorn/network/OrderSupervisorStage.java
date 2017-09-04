@@ -551,7 +551,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 
 	private void handshakeProcessing(Pipe<NetPayloadSchema> pipe, long channelId) {
-		SSLConnection con = coordinator.get(channelId);
+		SSLConnection con = coordinator.connectionForSessionId(channelId);
 		
 		HandshakeStatus hanshakeStatus = con.getEngine().getHandshakeStatus();
 		do {

@@ -150,6 +150,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 		    
 	        if (Pipe.hasContentToRead(requestPipe)) {
 
+	        	    //This check is required when TLS is in use.
 	        	    if (isConnectionReadyForUse(requestPipe) ){
 		        		didWork = true;	        
 		        			  	    	        	
@@ -281,7 +282,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 				HandshakeStatus handshakeStatus = activeConnection.getEngine().getHandshakeStatus();
 				if (HandshakeStatus.FINISHED!=handshakeStatus && HandshakeStatus.NOT_HANDSHAKING!=handshakeStatus 
 						/* && HandshakeStatus.NEED_WRAP!=handshakeStatus*/) {
-					System.err.println("doing the shake, status is "+handshakeStatus+" "+connectionId+"  "+activeConnection.id);
+					//logger.info("doing the shake, status is "+handshakeStatus+" "+connectionId+"  "+activeConnection.id);
 					activeConnection = null;	
 					return false;
 				}
@@ -303,7 +304,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 //				}
 //			}
 		
-			System.err.println("no connection");
+			//logger.info("no connection");
 			return false;
 		}
 		

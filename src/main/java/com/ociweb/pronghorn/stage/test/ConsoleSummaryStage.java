@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.stage.test;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
@@ -70,7 +71,13 @@ public class ConsoleSummaryStage<T extends MessageSchema<T>> extends PronghornSt
     			nextOutTime = now+stepTime;			
                     if (!processCounts("Running:",counts,totalCounts)) {
                     	return;
+                    } else {
+                    	//System.out.println("should have data but process counts reports none");
                     }
+    		} else {
+    			if (!foundData) {
+    			//	System.out.println("no data to report found, counts length "+counts.length+"  "+Arrays.toString(counts));
+    			}
     		}
 
 	    } catch (IOException e) {
@@ -192,7 +199,7 @@ public class ConsoleSummaryStage<T extends MessageSchema<T>> extends PronghornSt
 			}
 			totalBytes += (PipeReader.sizeOfFragment(input)*4) + PipeReader.bytesConsumedByFragment(input);
 		
-			System.out.println("reading new input total bytes :"+totalBytes);
+			//logger.info("reading new input total bytes :"+totalBytes);
 			
 			PipeReader.releaseReadLock(input);
 			

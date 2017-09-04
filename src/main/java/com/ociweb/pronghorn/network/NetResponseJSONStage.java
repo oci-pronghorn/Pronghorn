@@ -14,6 +14,7 @@ import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.parse.JSONStreamParser;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitor;
+import com.ociweb.pronghorn.util.parse.JSONStreamVisitorCapture;
 import com.ociweb.pronghorn.util.parse.JSONStreamVisitorToPipe;
 import com.ociweb.pronghorn.util.parse.MapJSONToPipeBuilder;
 
@@ -23,29 +24,41 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 	private JSONStreamVisitor visitor;
 	private TrieParserReader reader;
 	
-	private JSONStreamParser parser = new JSONStreamParser();
+	private JSONStreamParser parserJSON = new JSONStreamParser();
 	private TrieParser customParser;
-	private final Class<T> keys;
-	private final Pipe output;
-	private final MapJSONToPipeBuilder<M,T> mapper;
+	protected final Class<T> keys;
+	protected final Pipe<M> output;
+	protected final MapJSONToPipeBuilder<M,T> mapper;
 	
 	private static final Logger logger = LoggerFactory.getLogger(NetResponseJSONStage.class);
+	private static final int PAYLOAD_INDEX_OFFSET = 1;
+	protected final int bottomOfJSON;
 	
-	public NetResponseJSONStage(GraphManager graphManager, Pipe<NetResponseSchema> input, JSONStreamVisitor visitor) {
+	public NetResponseJSONStage(GraphManager graphManager, Pipe<NetResponseSchema> input, int bottom, JSONStreamVisitor visitor) {
 		super(graphManager, input, NONE);
 		this.input = input;
 		this.visitor = visitor;
-		this.keys = null;
 		this.output = null;
+		this.keys = null;
 		this.mapper = null;
+		this.bottomOfJSON = bottom;
 	}
 	
-	public NetResponseJSONStage(GraphManager graphManager, Class<T> keys,  MapJSONToPipeBuilder<M,T> mapper, Pipe<NetResponseSchema> input, Pipe<M> output, Pipe ... otherOutputs) {
+	public NetResponseJSONStage(GraphManager graphManager, Class<T> keys,  MapJSONToPipeBuilder<M,T> mapper, Pipe<NetResponseSchema> input, int bottom, Pipe<M> output, Pipe ... otherOutputs) {
 		super(graphManager, input, join(otherOutputs, output));
 		this.input = input;
-		this.keys = keys;	
 		this.output = output;
-		this.mapper = mapper;
+		this.bottomOfJSON = bottom;
+		
+		boolean debug = false;
+		
+		this.keys = debug ? null : keys;	
+		this.mapper = debug ? null : mapper;
+		
+		if (debug) {
+			this.visitor = new JSONStreamVisitorCapture(System.out);
+		}
+		
 	}
 
 	@Override
@@ -54,23 +67,27 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 		reader = JSONStreamParser.newReader();
 		
 		if (null!=keys) {						
-			this.visitor = new JSONStreamVisitorToPipe(output, keys, mapper);
+			this.visitor = buildVisitor();
+
 			this.customParser = JSONStreamParser.customParser(keys);	
 		}
 	}
-	
+
+	protected JSONStreamVisitorToPipe buildVisitor() {
+		return new JSONStreamVisitorToPipe(output, keys, bottomOfJSON, mapper);
+	}
 	
 	@Override
 	public void run() {
 
-		
+		boolean gotResponse = false;
 		while(Pipe.hasContentToRead(input)) {
-			
-			int id = Pipe.takeMsgIdx(input);
+			gotResponse = true;
+			final int id = Pipe.takeMsgIdx(input);
 			switch (id) {
 				case NetResponseSchema.MSG_RESPONSE_101:
 					{
-						logger.info("reading response");
+						//logger.info("reading response");
 						
 						long connection = Pipe.takeLong(input);
 						int flags = Pipe.takeInt(input);
@@ -78,32 +95,24 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 						DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
 						stream.openLowLevelAPIField();
 						
-						int status = stream.readShort();						
-						int headerId = stream.readShort();
+						//System.out.println("length  is "+stream.available()+" vs max of "+input.maxVarLen);
 						
-						while (-1 != headerId) { //end of headers will be marked with -1 value
-							//determine the type
-							
-							int headerValue = stream.readShort();
-							//TODO: add support for other header data.
-							
-							//read next
-							headerId = stream.readShort();
-							
-						}
-												
-						DataInputBlobReader.setupParser(stream, reader);
+						int status = stream.readShort();
+						//System.err.println("got response with status "+status);
+						
+						//skip over all the headers, no need to read them at this time
+						stream.setPositionBytesFromStart(stream.readFromEndLastInt(PAYLOAD_INDEX_OFFSET));
+					
+						DataInputBlobReader.setupParser(stream, reader);	
+						
 	
-						
-						Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, id));
-						Pipe.releaseReadLock(input);
 					}	
 					
 					break;
 				case NetResponseSchema.MSG_CONTINUATION_102:
 					{
 						
-						logger.info("reading continuation");
+						//logger.info("reading continuation");
 						
 						long connection = Pipe.takeLong(input);
 						int flags2 = Pipe.takeInt(input);
@@ -122,8 +131,6 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 							
 						}
 						
-						Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, id));
-						Pipe.releaseReadLock(input);
 					}
 					
 					break;
@@ -142,27 +149,41 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 					int port = Pipe.takeInt(input); //port
 					
 					processCloseEvent(backing, pos, len, mask, port);
-										
-					Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, id));
-					Pipe.releaseReadLock(input);
 					
 					break;
 				case -1:
+					logger.info("shutdown detected ");
 					Pipe.confirmLowLevelRead(input, Pipe.EOF_SIZE);
 					Pipe.releaseReadLock(input);
 					requestShutdown();
 					return;
 			}
+			
+			Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, id));
+			Pipe.releaseReadLock(input);
 		}
 		
-		if (null!=customParser) {
-			parser.parse(reader, customParser, visitor);			
-		} else {
-			parser.parse(reader, visitor);
+		//only call when we got a response to send down stream (response can be empty)
+		if (gotResponse) {
+			if (TrieParserReader.parseHasContent(reader)) {
+				if (null!=customParser) {
+					parserJSON.parse(reader, customParser, visitor);			
+				} else {
+					parserJSON.parse(reader, visitor);
+				}
+			}
+		
+			//logger.info("finished block");
+			//must call with postId to outer class but how to capture??
+			finishedBlock();
 		}
 		
 	}
 
+	protected void finishedBlock() {
+		//default behavior does nothing
+	}
+	
 	protected void processCloseEvent(byte[] hostBacking, int hostPos, int hostLen, int hostMask, int port) {
 		//default behavior does nothing
 	}

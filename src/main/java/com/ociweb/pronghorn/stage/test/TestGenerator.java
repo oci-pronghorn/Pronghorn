@@ -58,8 +58,8 @@ public class TestGenerator extends PronghornStage {
         
         this.iterations = iterations;
         StreamingWriteVisitor visitor = new StreamingWriteVisitorGenerator(Pipe.from(output), new Random(seed), 
-                                           output.maxAvgVarLen>>3,  //room for UTF8 
-                                           output.maxAvgVarLen>>1); //just use half       
+                                           output.maxVarLen>>3,  //room for UTF8 
+                                           output.maxVarLen>>1); //just use half       
         this.writer = new StreamingVisitorWriter(output, visitor  );
         
     }

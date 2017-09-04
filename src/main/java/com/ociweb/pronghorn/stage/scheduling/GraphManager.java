@@ -1477,11 +1477,12 @@ public class GraphManager {
 	                
 	                target.append("\"");
 	                
-	                if (pct>=8000) {
+	                if (pct>=6000) {
                 		target.append(",color=red");	    
-                	} else if (pct>=6000) {
+                	} else if (pct>=4000) {
                 		target.append(",color=orange");	    
-                	} else {
+                	} else if (pct>=2000) {
+                		target.append(",color=blue");
                 	}
 	                
 	                target.append("]\n");
