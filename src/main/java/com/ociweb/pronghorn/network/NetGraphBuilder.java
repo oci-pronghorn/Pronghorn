@@ -31,6 +31,11 @@ import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.network.schema.ServerConnectionSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
+import com.ociweb.pronghorn.network.schema.TwitterEventSchema;
+import com.ociweb.pronghorn.network.schema.TwitterStreamControlSchema;
+import com.ociweb.pronghorn.network.twitter.RequestTwitterQueryStreamStage;
+import com.ociweb.pronghorn.network.twitter.RequestTwitterUserStreamStage;
+import com.ociweb.pronghorn.network.twitter.TwitterJSONToTwitterEventsStage;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
@@ -869,5 +874,121 @@ public class NetGraphBuilder {
 		new HTTPClientRequestStage(gm, ccm, requestsPipe, clientRequests);
 	}
 
+	public static Pipe<TwitterEventSchema> buildTwitterUserStream(GraphManager gm, String consumerKey, String consumerSecret, String token, String secret) {
+		
+		////////////////////////////
+		//pipes for holding all HTTPs client requests
+		///////////////////////////*            
+		int maxRequesters = 1;
+		int clientRequestsCount = 8;
+		int clientRequestSize = 1<<12;		
+		Pipe<ClientHTTPRequestSchema>[] clientRequestsPipes = Pipe.buildPipes(maxRequesters, new PipeConfig<ClientHTTPRequestSchema>(ClientHTTPRequestSchema.instance, clientRequestsCount, clientRequestSize));
+		
+		////////////////////////////
+		//pipes for holding all HTTPs responses from server
+		///////////////////////////      
+		int maxListeners =  1;
+		int clientResponseCount = 32;
+		int clientResponseSize = 1<<17;
+		Pipe<NetResponseSchema>[] clientResponsesPipes = Pipe.buildPipes(maxListeners, new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, clientResponseCount, clientResponseSize));
+		
+		////////////////////////////
+		//standard HTTPs client subgraph building with TLS handshake logic
+		///////////////////////////   
+		int maxPartialResponses = 1;
+		NetGraphBuilder.buildHTTPClientGraph(gm, maxPartialResponses, clientResponsesPipes, clientRequestsPipes); 
+		
+		////////////////////////
+		//twitter specific logic
+		////////////////////////
+		int tweetsCount = 32;
+		
+		Pipe<TwitterStreamControlSchema> streamControlPipe = TwitterStreamControlSchema.instance.newPipe(4, 0);
+		final int HTTP_REQUEST_RESPONSE_USER_ID = 0;
+		
+		////////////////////
+		//Stage will open the Twitter stream and reconnect it upon request
+		////////////////////		
+		new RequestTwitterUserStreamStage(gm, consumerKey, consumerSecret, token, secret, HTTP_REQUEST_RESPONSE_USER_ID, streamControlPipe, clientRequestsPipes[0]);
+					
+		/////////////////////
+		//Stage will parse JSON streaming from Twitter servers and convert it to a pipe containing twitter events
+		/////////////////////
+		int bottom = 0;//bottom is 0 because response keeps all results at the root
+		return TwitterJSONToTwitterEventsStage.buildStage(gm, false, bottom, clientResponsesPipes[HTTP_REQUEST_RESPONSE_USER_ID], streamControlPipe, tweetsCount);
+	
+	}
+	
+	public static Pipe<TwitterEventSchema>[] buildTwitterQueryStream(GraphManager gm, 
+																    String[] queryText, int[] queryRoutes,
+			                                                        String consumerKey, String consumerSecret) {
+
+
+		int maxQRoute = 0;
+		int j = queryRoutes.length;
+		while (--j>=0) {
+			maxQRoute = Math.max(maxQRoute, queryRoutes[j]);
+		}
+				
+		final int bearerPipeIdx = maxQRoute+1;
+		int maxListeners =  bearerPipeIdx+1;
+			
+		
+		////////////////////////////
+		//pipes for holding all HTTPs client requests
+		///////////////////////////*            
+		int maxRequesters = 1;
+		int requesterIdx = 0;
+		int clientRequestsCount = 8;
+		int clientRequestSize = 1<<12;		
+		Pipe<ClientHTTPRequestSchema>[] clientRequestsPipes = Pipe.buildPipes(maxRequesters, new PipeConfig<ClientHTTPRequestSchema>(ClientHTTPRequestSchema.instance, clientRequestsCount, clientRequestSize));
+		
+		////////////////////////////
+		//pipes for holding all HTTPs responses from server
+		///////////////////////////      
+
+		int clientResponseCount = 32;
+		int clientResponseSize = 1<<17;
+		Pipe<NetResponseSchema>[] clientResponsesPipes = Pipe.buildPipes(maxListeners, new PipeConfig<NetResponseSchema>(NetResponseSchema.instance, clientResponseCount, clientResponseSize));
+			
+		////////////////////////////
+		//standard HTTPs client subgraph building with TLS handshake logic
+		///////////////////////////   
+		int maxPartialResponses = 1;
+		NetGraphBuilder.buildHTTPClientGraph(gm, 
+				             maxPartialResponses, 
+				             clientResponsesPipes, clientRequestsPipes); 
+		
+		////////////////////////
+		//twitter specific logic
+		////////////////////////
+		
+		final int tweetsCount = 32;
+		final int bottom = 2;//bottom is 2 because multiple responses are wrapped in an array
+		int queryGroups = maxQRoute+1;
+		
+		Pipe<TwitterStreamControlSchema>[] controlPipes = new Pipe[queryGroups];
+		Pipe<TwitterEventSchema>[] eventPipes = new Pipe[queryGroups];
+		int k = queryGroups;
+		while (--k>=0) {
+			//we use a different JSON parser for each group of queries.			
+			eventPipes[k] = TwitterJSONToTwitterEventsStage.buildStage(gm, true, bottom, 
+											clientResponsesPipes[k], 
+											controlPipes[k] = TwitterStreamControlSchema.instance.newPipe(4, 0), 
+											tweetsCount);
+		}
+			
+		RequestTwitterQueryStreamStage.newInstance(gm, consumerKey, consumerSecret,
+											tweetsCount, queryRoutes, queryText,
+				                            bearerPipeIdx,
+				                            //the parser detected bad bearer or end of data, reconnect
+				                            //also sends the PostIds of every post decoded
+				                            controlPipes, 
+				                            clientResponsesPipes[bearerPipeIdx], //new bearer response
+				                            clientRequestsPipes[requesterIdx]); //requests bearers and queries
+
+		return eventPipes;		
+		
+	}
 	
 }
