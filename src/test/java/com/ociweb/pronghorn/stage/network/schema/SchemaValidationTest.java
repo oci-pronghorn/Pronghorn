@@ -15,6 +15,8 @@ import com.ociweb.pronghorn.network.schema.MQTTServerToClientSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.NetResponseSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
+import com.ociweb.pronghorn.network.schema.TwitterEventSchema;
+import com.ociweb.pronghorn.network.schema.TwitterStreamControlSchema;
 import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
 
 public class SchemaValidationTest {
@@ -76,4 +78,14 @@ public class SchemaValidationTest {
         assertTrue(FROMValidation.checkSchema("/MQTTClientResponse.xml", MQTTClientResponseSchema.class));
     }
     
+    
+    @Test
+    public void testEventsFROMMatchesXML() {
+        assertTrue(FROMValidation.checkSchema("/TwitterEvent.xml", TwitterEventSchema.class));
+    }
+
+    @Test
+    public void testTwitterUserStreamControlSchemaFROMMatchesXML() {
+        assertTrue(FROMValidation.checkSchema("/TwitterUserStreamControl.xml", TwitterStreamControlSchema.class));
+    }
 }
