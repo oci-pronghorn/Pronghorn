@@ -42,7 +42,7 @@ public class RingOutputStream extends OutputStream implements AutoCloseable {
 	@Override
 	public void close() {
 		long lastCheckedValue = tailPosition(pipe);
-		while (null==Pipe.slab(pipe) || lastCheckedValue < headPosition(pipe)-(1 + pipe.mask - Pipe.EOF_SIZE)) {
+		while (null==Pipe.slab(pipe) || lastCheckedValue < headPosition(pipe)-(1 + pipe.slabMask - Pipe.EOF_SIZE)) {
 			Pipe.spinWork(pipe);
 		    lastCheckedValue = Pipe.tailPosition(pipe);
 		}

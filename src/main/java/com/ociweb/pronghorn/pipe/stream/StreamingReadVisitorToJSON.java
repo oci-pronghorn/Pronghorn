@@ -72,7 +72,7 @@ public class StreamingReadVisitorToJSON<A extends Appendable> implements Streami
 		depth -= step;
 		writeTab();
 		try {
-			out.append("}");
+			out.append("}\n");
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}		

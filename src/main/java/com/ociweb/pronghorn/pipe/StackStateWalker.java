@@ -197,24 +197,24 @@ class StackStateWalker {
 	    if (newFragmentBegin>Pipe.headPosition(ringBuffer)) {
 	        FieldReferenceOffsetManager.debugFROM(Pipe.from(ringBuffer));
 	        log.error("new fragment to read is after head write position "+newFragmentBegin+"  "+ringBuffer);	        
-	        int start = Math.max(0, ringBuffer.mask&(int)newFragmentBegin-5);
-	        int stop  = Math.min(Pipe.primaryBuffer(ringBuffer).length, ringBuffer.mask&(int)newFragmentBegin+5);
+	        int start = Math.max(0, ringBuffer.slabMask&(int)newFragmentBegin-5);
+	        int stop  = Math.min(Pipe.primaryBuffer(ringBuffer).length, ringBuffer.slabMask&(int)newFragmentBegin+5);
 	        log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(Pipe.primaryBuffer(ringBuffer), start, stop)));
 	        return false;
 	    }
 	    if (newFragmentBegin>0) {
-	        int byteCount = Pipe.primaryBuffer(ringBuffer)[ringBuffer.mask & (int)(newFragmentBegin-1)];
+	        int byteCount = Pipe.primaryBuffer(ringBuffer)[ringBuffer.slabMask & (int)(newFragmentBegin-1)];
 	        if (byteCount<0) {
 	            log.error("if this is a new fragment then previous fragment is negative byte count, more likely this is NOT a valid fragment start.");
-	            int start = Math.max(0, ringBuffer.mask&(int)newFragmentBegin-5);
-	            int stop  = Math.min(Pipe.primaryBuffer(ringBuffer).length, ringBuffer.mask&(int)newFragmentBegin+5);
+	            int start = Math.max(0, ringBuffer.slabMask&(int)newFragmentBegin-5);
+	            int stop  = Math.min(Pipe.primaryBuffer(ringBuffer).length, ringBuffer.slabMask&(int)newFragmentBegin+5);
 	            log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(Pipe.primaryBuffer(ringBuffer), start, stop)));
 	            return false;
 	        }
             if (byteCount>ringBuffer.byteMask) {
                 log.error("if this is a new fragment then previous fragment byte count is larger than byte buffer, more likely this is NOT a valid fragment start. "+byteCount);
-                int start = Math.max(0, ringBuffer.mask&(int)newFragmentBegin-5);
-                int stop  = Math.min(Pipe.primaryBuffer(ringBuffer).length, ringBuffer.mask&(int)newFragmentBegin+5);
+                int start = Math.max(0, ringBuffer.slabMask&(int)newFragmentBegin-5);
+                int stop  = Math.min(Pipe.primaryBuffer(ringBuffer).length, ringBuffer.slabMask&(int)newFragmentBegin+5);
                 log.error("Buffer from {} is {}",start, Arrays.toString(Arrays.copyOfRange(Pipe.primaryBuffer(ringBuffer), start, stop)));
                 return false;
             }	        
@@ -244,7 +244,7 @@ class StackStateWalker {
     private static void openSequenceWhileInsideFragment(Pipe ringBuffer, final StackStateWalker ringBufferConsumer,
             long tmpNextWokingTail, int lastScriptPos) {
         //this is a groupLength Sequence that starts inside of a fragment 
-         int seqLength = Pipe.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask];
+         int seqLength = Pipe.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.slabMask];
          //now start new sequence
          ringBufferConsumer.seqStack[++ringBufferConsumer.seqStackHead] = seqLength;
          ringBufferConsumer.seqCursors[ringBufferConsumer.seqStackHead] = ringBufferConsumer.nextCursor;
@@ -335,7 +335,7 @@ class StackStateWalker {
 
 	private static int readMsgIdx(Pipe ringBuffer, StackStateWalker ringBufferConsumer, final long tmpNextWokingTail) {
 	    
-		int i = ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset);
+		int i = ringBuffer.slabMask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset);
         int idx = Pipe.slab(ringBuffer)[i];
         
 		
@@ -372,7 +372,7 @@ class StackStateWalker {
 		int lastScriptPos = (ringBufferConsumer.nextCursor = ringBufferConsumer.msgIdx + ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.msgIdx]) -1;
 		if (TypeMask.GroupLength == ((ringBufferConsumer.from.tokens[lastScriptPos] >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)) {
 			//Can not assume end of message any more.
-			int seqLength = Pipe.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.mask];
+			int seqLength = Pipe.primaryBuffer(ringBuffer)[(int)(ringBufferConsumer.from.fragDataSize[lastScriptPos] + tmpNextWokingTail)&ringBuffer.slabMask];
             final StackStateWalker ringBufferConsumer1 = ringBufferConsumer;
 			//now start new sequence
             ringBufferConsumer1.seqStack[++ringBufferConsumer1.seqStackHead] = seqLength;
@@ -389,7 +389,7 @@ class StackStateWalker {
 		    
 		    
 			//this is very large so it is probably bad data, catch it now and send back a meaningful error
-			int limit = (ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset))+1;
+			int limit = (ringBuffer.slabMask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset))+1;
 			throw new UnsupportedOperationException("Bad msgId:"+ringBufferConsumer.msgIdx+
 					" encountered at last absolute position:"+(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)+
 					" recent primary ring context:"+Arrays.toString( Arrays.copyOfRange(Pipe.slab(ringBuffer), Math.max(0, limit-10), limit ))+"\n"+ringBuffer);
@@ -474,7 +474,7 @@ class StackStateWalker {
 	}
 
 	static boolean copyFragment0(Pipe inputRing, Pipe outputRing, long start, long end) {
-		return copyFragment1(inputRing, outputRing, start, (int)(end-start), Pipe.slab(inputRing)[inputRing.mask&(((int)end)-1)]);
+		return copyFragment1(inputRing, outputRing, start, (int)(end-start), Pipe.slab(inputRing)[inputRing.slabMask&(((int)end)-1)]);
 	}
 
 
@@ -490,8 +490,8 @@ class StackStateWalker {
 
 	private static void copyFragment2(Pipe inputRing,	Pipe outputRing, int start, int spaceNeeded, int bytesToCopy) {
 		
-		Pipe.copyIntsFromToRing(Pipe.slab(inputRing), start, inputRing.mask, 
-		                        Pipe.slab(outputRing), (int)Pipe.workingHeadPosition(outputRing), outputRing.mask, 
+		Pipe.copyIntsFromToRing(Pipe.slab(inputRing), start, inputRing.slabMask, 
+		                        Pipe.slab(outputRing), (int)Pipe.workingHeadPosition(outputRing), outputRing.slabMask, 
 				                spaceNeeded);
 		Pipe.addAndGetWorkingHead(outputRing, spaceNeeded);
 		
@@ -571,8 +571,8 @@ class StackStateWalker {
     	
     	assert(Pipe.tailPosition(ring)+ring.sizeOfSlabRing>=Pipe.headPosition(ring)+Pipe.EOF_SIZE) : "Must block first to ensure we have 2 spots for the EOF marker";
     	Pipe.setBytesHead(ring, Pipe.getBlobWorkingHeadPosition(ring));
-    	Pipe.slab(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +  Pipe.from(ring).templateOffset)]    = -1;	
-    	Pipe.slab(ring)[ring.mask &((int)ring.ringWalker.nextWorkingHead +1 +  Pipe.from(ring).templateOffset)] = 0;
+    	Pipe.slab(ring)[ring.slabMask &((int)ring.ringWalker.nextWorkingHead +  Pipe.from(ring).templateOffset)]    = -1;	
+    	Pipe.slab(ring)[ring.slabMask &((int)ring.ringWalker.nextWorkingHead +1 +  Pipe.from(ring).templateOffset)] = 0;
     }
 
 

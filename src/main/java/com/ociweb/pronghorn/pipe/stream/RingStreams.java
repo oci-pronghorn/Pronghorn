@@ -192,7 +192,7 @@ public class RingStreams {
 	public static void readFromInputStream(InputStream inputStream, Pipe outputRing) throws IOException {
 		assert (Pipe.from(outputRing) == RawDataSchema.FROM);
 		int step = RawDataSchema.FROM.fragDataSize[0];
-		int fill =  1 + outputRing.mask - step;
+		int fill =  1 + outputRing.slabMask - step;
 		int maxBlockSize = outputRing.maxVarLen;
 		
 		long targetTailValue = headPosition(outputRing)-fill;
@@ -247,7 +247,7 @@ public class RingStreams {
 	public static void writeBytesToRing(byte[] data, int dataOffset, int dataLength,  Pipe output, int blockSize) {
 		assert (Pipe.from(output) == RawDataSchema.FROM);
 		
-	 	int fill = 1 + output.mask - RawDataSchema.FROM.fragDataSize[0];
+	 	int fill = 1 + output.slabMask - RawDataSchema.FROM.fragDataSize[0];
 		   
 		long tailPosCache = tailPosition(output);    
 		 
@@ -278,7 +278,7 @@ public class RingStreams {
 	@Deprecated
 	public static void writeEOF(Pipe ring) {//TODO:M propose a way to remove the need for this poison pill and the blocking use of this call on close()
 		long lastCheckedValue = tailPosition(ring);
-		while (null==Pipe.slab(ring) || lastCheckedValue < headPosition(ring)-(1 + ring.mask - Pipe.EOF_SIZE)) {
+		while (null==Pipe.slab(ring) || lastCheckedValue < headPosition(ring)-(1 + ring.slabMask - Pipe.EOF_SIZE)) {
 			Pipe.spinWork(ring);
 		    lastCheckedValue = Pipe.tailPosition(ring);
 		}

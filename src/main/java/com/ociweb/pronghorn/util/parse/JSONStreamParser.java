@@ -168,9 +168,20 @@ public class JSONStreamParser {
 				//StringBuilder builder = new StringBuilder();
 				//TrieParserReader.debugAsUTF8(reader, builder, 180);
 				
-				int id  = (int)TrieParserReader.parseNext(reader, customParser);
+				int pos = reader.sourcePos;
 				
-				//logger.info("log event {}  from {}",id,builder);
+				final int id  = (int)TrieParserReader.parseNext(reader, customParser);
+				
+				if (-1 == id) {
+					if (pos != reader.sourcePos) {
+						System.out.println("xxxx "+pos+" "+reader.sourcePos);
+						System.err.println("no return to position!!!");
+						System.exit(-1);
+						
+					}
+				}
+				
+				//logger.info("log event {}  ",id);
 				
 				
 				//customParser.toDOT(System.out);
@@ -227,10 +238,19 @@ public class JSONStreamParser {
 						visitor.literalTrue();
 						break;
 					case -1:						
-						//TrieParserReader.debugAsUTF8(reader, System.err);						
+						
+						if (reader.parseHasContentLength(reader)>0) {
+						
+							int id2  = (int)TrieParserReader.parseNext(reader, customParser);
+							System.err.println(id2+"  "+reader.parseHasContentLength(reader));
+							
+							System.err.println("UNKNOWN: "+reader.parseHasContentLength(reader));
+							TrieParserReader.debugAsUTF8(reader, System.err);						
+						}
+						
 						return;
 					default:
-						
+					
 						//the only values here are the ones matching the custom strings 	
 						visitor.customString(id>>8);	
 				}			
@@ -293,7 +313,7 @@ public class JSONStreamParser {
 						visitor.stringBegin();
 						TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());
 						break;
-		            case  CONTINUED_STRING: //continue string change mode
+		            case CONTINUED_STRING: //continue string change mode
 						//we have no string captured this is just a flag to change modes
 		            	state = TEXT_STATE;	            	
 						break;					

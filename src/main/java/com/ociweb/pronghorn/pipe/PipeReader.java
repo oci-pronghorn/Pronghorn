@@ -105,12 +105,12 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 
     public static int readDecimalExponent(Pipe pipe, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to read some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
-    	return Pipe.readInt(Pipe.slab(pipe),pipe.mask,pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc));
+    	return Pipe.readInt(Pipe.slab(pipe),pipe.slabMask,pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc));
     }
     
     public static long readDecimalMantissa(Pipe pipe, int loc) {
     	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to read some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
-        return Pipe.readLong(Pipe.slab(pipe), pipe.mask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc) + 1);//plus one to skip over exponent
+        return Pipe.readLong(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc) + 1);//plus one to skip over exponent
     }
     
 
@@ -233,7 +233,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         //char count is not comparable to byte count for UTF8 of length greater than zero.
         //must convert one to the other before comparison.
         
-        int pos = Pipe.slab(pipe)[pipe.mask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
+        int pos = Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))];
         if (pos < 0) {
             return eqUTF8Const(pipe,len,seq,POS_CONST_MASK & pos);
         } else {
@@ -246,11 +246,11 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 	
 		long idx = pipe.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
-        int len = Pipe.slab(pipe)[pipe.mask & (int)(idx + 1)];
+        int len = Pipe.slab(pipe)[pipe.slabMask & (int)(idx + 1)];
         if (len!=seq.length()) {
             return false;
         }
-		int pos = Pipe.slab(pipe)[pipe.mask & (int)idx];
+		int pos = Pipe.slab(pipe)[pipe.slabMask & (int)idx];
         if (pos < 0) {
             return eqASCIIConst(pipe,len,seq,POS_CONST_MASK & pos);
         } else {
@@ -484,8 +484,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         assert(LOCUtil.isLocOfAnyType(sourceLOC, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(sourceLOC);
         assert(LOCUtil.isLocOfAnyType(targetLOC, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional)): "Value found "+LOCUtil.typeAsString(targetLOC);
         
-		Pipe.primaryBuffer(targetRing)[targetRing.mask &((int)targetRing.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(targetLOC>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&targetLOC))] =
-		     Pipe.primaryBuffer(sourceRing)[sourceRing.mask & (int)(sourceRing.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(sourceLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&sourceLOC))];
+		Pipe.primaryBuffer(targetRing)[targetRing.slabMask &((int)targetRing.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(targetLOC>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&targetLOC))] =
+		     Pipe.primaryBuffer(sourceRing)[sourceRing.slabMask & (int)(sourceRing.ringWalker.activeReadFragmentStack[STACK_OFF_MASK&(sourceLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&sourceLOC))];
     }
     
     public static void copyLong(final Pipe sourcePipe, final Pipe targetPipe, int sourceLOC, int targetLOC) {
@@ -493,8 +493,8 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
     	assert((targetLOC&0x1C<<PipeWriter.OFF_BITS)==(0x4<<PipeWriter.OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((targetLOC>>PipeWriter.OFF_BITS)&TokenBuilder.MASK_TYPE);
 		long srcIdx = sourcePipe.ringWalker.activeReadFragmentStack[PipeReader.STACK_OFF_MASK&(sourceLOC>>PipeReader.STACK_OFF_SHIFT)] +(PipeReader.OFF_MASK&sourceLOC);   	
 		long targetIdx = (targetPipe.ringWalker.activeWriteFragmentStack[PipeWriter.STACK_OFF_MASK&(targetLOC>>PipeWriter.STACK_OFF_SHIFT)] + (PipeWriter.OFF_MASK&targetLOC));	
-		Pipe.slab(targetPipe)[targetPipe.mask & (int)targetIdx]     = Pipe.slab(sourcePipe)[sourcePipe.mask & (int)srcIdx];
-		Pipe.slab(targetPipe)[targetPipe.mask & (int)targetIdx+1] = Pipe.slab(sourcePipe)[sourcePipe.mask & (int)srcIdx+1];
+		Pipe.slab(targetPipe)[targetPipe.slabMask & (int)targetIdx]     = Pipe.slab(sourcePipe)[sourcePipe.slabMask & (int)srcIdx];
+		Pipe.slab(targetPipe)[targetPipe.slabMask & (int)targetIdx+1] = Pipe.slab(sourcePipe)[sourcePipe.slabMask & (int)srcIdx+1];
     }
     
     public static void copyDecimal(final Pipe sourceRing, final Pipe targetRing, int sourceLOC, int targetLOC) {
@@ -540,7 +540,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	    int byteWrkHdPos = Pipe.getWorkingBlobHeadPosition(targetPipe);
 	    
 		Pipe.validateVarLength(targetPipe, length);	
-		Pipe.setBytePosAndLen(Pipe.slab(targetPipe), targetPipe.mask, 
+		Pipe.setBytePosAndLen(Pipe.slab(targetPipe), targetPipe.slabMask, 
 				targetPipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(targetLOC>>STACK_OFF_SHIFT)]+(OFF_MASK&targetLOC), byteWrkHdPos, length, Pipe.bytesWriteBase(targetPipe)); 
 	
 		Pipe.addAndGetBytesWorkingHeadPosition(targetPipe, length);

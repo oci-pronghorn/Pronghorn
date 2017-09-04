@@ -344,8 +344,7 @@ public class Pipe<T extends MessageSchema<T>> {
     public final int id;
     public final int sizeOfSlabRing;
     public final int sizeOfBlobRing;
-    @Deprecated
-    public final int mask;
+
     public final int slabMask;
     @Deprecated
     public final int byteMask;
@@ -354,8 +353,6 @@ public class Pipe<T extends MessageSchema<T>> {
     public final byte bitsOfSlabRing;
     public final byte bitsOfBlogRing;
     
-    @Deprecated //old name
-    public final int maxAvgVarLen;
     public final int maxVarLen;//to be used when copying data in dense chunks.
     private final T schema;
     
@@ -546,7 +543,6 @@ public class Pipe<T extends MessageSchema<T>> {
         //single buffer size for every nested set of groups, must be set to support the largest need.
         this.sizeOfSlabRing = 1 << primaryBits;
         this.slabMask = Math.max(1, sizeOfSlabRing - 1);  //mask can no be any smaller than 1
-        this.mask = slabMask;
         //single text and byte buffers because this is where the variable-length data will go.
 
         this.sizeOfBlobRing =  1 << byteBits;
@@ -558,15 +554,14 @@ public class Pipe<T extends MessageSchema<T>> {
 
 
         if (0 == from.maxVarFieldPerUnit || 0==primaryBits) { //zero bits is for the dummy mock case
-            maxAvgVarLen = 0; //no fragments had any variable-length fields so we never allow any
+        	maxVarLen = 0; //no fragments had any variable-length fields so we never allow any
         } else {
             //given outer ring buffer this is the maximum number of var fields that can exist at the same time.
             int maxVarCount = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, sizeOfSlabRing);
             //to allow more almost 2x more flexibility in variable-length bytes we track pairs of writes and ensure the
             //two together are below the threshold rather than each alone
-            maxAvgVarLen = blobMask/maxVarCount;
+            maxVarLen = blobMask/maxVarCount;
         }
-        maxVarLen = maxAvgVarLen;
     }
  
     private AtomicBoolean isInBlobFieldWrite = new AtomicBoolean(false);
@@ -1539,14 +1534,14 @@ public class Pipe<T extends MessageSchema<T>> {
 
                             break;
                         case TypeMask.GroupLength:
-                            int len = readInt(slab(input), input.mask, pos+tailPosition(input));
+                            int len = readInt(slab(input), input.slabMask, pos+tailPosition(input));
                             value = Integer.toHexString(len)+"("+len+")";
                             break;
                         case TypeMask.IntegerSigned:
                         case TypeMask.IntegerUnsigned:
                         case TypeMask.IntegerSignedOptional:
                         case TypeMask.IntegerUnsignedOptional:
-                            int readInt = readInt(slab(input), input.mask, pos+tailPosition(input));
+                            int readInt = readInt(slab(input), input.slabMask, pos+tailPosition(input));
                             value = Integer.toHexString(readInt)+"("+readInt+")";
                             break;
                         case TypeMask.LongSigned:
@@ -2568,7 +2563,7 @@ public class Pipe<T extends MessageSchema<T>> {
     public static <S extends MessageSchema<S>> void setByteArrayWithMask(final Pipe<S> outputRing, int mask, int len, byte[] data, int offset, long slabPosition) {
 	        validateVarLength(outputRing, len);
 	        copyBytesFromToRing(data,offset,mask,outputRing.blobRing,PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos),outputRing.byteMask, len);
-            setBytePosAndLen(slab(outputRing), outputRing.mask, slabPosition, PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos), len, bytesWriteBase(outputRing));
+            setBytePosAndLen(slab(outputRing), outputRing.slabMask, slabPosition, PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos), len, bytesWriteBase(outputRing));
 	        PaddedInt.set(outputRing.blobRingHead.byteWorkingHeadPos, BYTES_WRAP_MASK&(PaddedInt.get(outputRing.blobRingHead.byteWorkingHeadPos) + len));
 	}
 
@@ -2769,7 +2764,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
     public static <S extends MessageSchema<S>> void addDecimal(int exponent, long mantissa, Pipe<S> pipe) {
-        pipe.slabRingHead.workingHeadPos.value = setValues(pipe.slabRing, pipe.mask, pipe.slabRingHead.workingHeadPos.value, exponent, mantissa);
+        pipe.slabRingHead.workingHeadPos.value = setValues(pipe.slabRing, pipe.slabMask, pipe.slabRingHead.workingHeadPos.value, exponent, mantissa);
     }
 
 
@@ -2803,7 +2798,7 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
 	public static <S extends MessageSchema<S>> int readRingByteLen(int idx, Pipe<S> pipe) {
-		return readRingByteLen(idx,pipe.slabRing, pipe.mask, pipe.slabRingTail.workingTailPos.value);
+		return readRingByteLen(idx,pipe.slabRing, pipe.slabMask, pipe.slabRingTail.workingTailPos.value);
 	}
 
 	public static <S extends MessageSchema<S>> int takeRingByteLen(Pipe<S> pipe) {
@@ -2882,7 +2877,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
 
     public static <S extends MessageSchema<S>> long readLong(int idx, Pipe<S> pipe) {
-    	return readLong(pipe.slabRing,pipe.mask,idx+pipe.slabRingTail.workingTailPos.value);
+    	return readLong(pipe.slabRing,pipe.slabMask,idx+pipe.slabRingTail.workingTailPos.value);
 
     }
 

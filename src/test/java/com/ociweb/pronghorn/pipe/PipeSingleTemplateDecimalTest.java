@@ -47,7 +47,7 @@ public class PipeSingleTemplateDecimalTest {
             	
         int messageSize = FROM.fragDataSize[FRAG_LOC];
         
-        int varDataMax = (ring.byteMask/(ring.mask>>1))/messageSize;        
+        int varDataMax = (ring.byteMask/(ring.slabMask>>1))/messageSize;        
         int testSize = ((1<<primaryRingSizeInBits)/messageSize)-1; //reduce by one so we have room for the ending EOM value
 
         writeTestValue(ring, varDataMax, testSize);
@@ -123,7 +123,7 @@ public class PipeSingleTemplateDecimalTest {
     	
         final int messageSize = FROM.fragDataSize[FRAG_LOC];
         
-        final int varDataMax = (ring.byteMask/(ring.mask>>1))/messageSize;        
+        final int varDataMax = (ring.byteMask/(ring.slabMask>>1))/messageSize;        
         final int testSize = (1<<primaryRingSizeInBits)/messageSize;
                 
     	Thread t = new Thread(new Runnable(){

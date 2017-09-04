@@ -145,7 +145,7 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter
     }
     
     public static <T extends MessageSchema<T>> void setIntBackData(DataOutputBlobWriter<T> writer, int value, int pos) {
-    	assert(pos>=0) : "Can not write beyond the end.";
+    	assert(pos>0) : "Can not write beyond the end.";
     	//logger.info("writing int {} to position {} to pipe {} ",value, (writer.lastPosition-(4*pos)), writer.getPipe().id);
     	write32(writer.byteBuffer, writer.byteMask, writer.lastPosition-(4*pos), value);       
     }

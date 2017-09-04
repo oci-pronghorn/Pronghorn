@@ -9,7 +9,9 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 
 	final A target;
 	int depth = 0;
-
+	boolean objectStart = true;
+    boolean simpleArray = false;
+	
 	final StringBuilder builder = new StringBuilder();
 	
 	final ByteConsumer con = new ByteConsumer() {
@@ -33,8 +35,9 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 	@Override
 	public void nameSeparator() {
 		try {
-
+			objectStart = false;
 			target.append(':');
+			simpleArray = false;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -43,10 +46,10 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 	@Override
 	public void endObject() {
 		try {
-			//for(int i = 0;i<depth;i++) {target.append(' ');};
 			
 			depth--;
 			target.append('}').append('\n');
+			objectStart = true;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -56,10 +59,10 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 	public void beginObject() {
 		try {
 			
-			//for(int i = 0;i<depth;i++) {target.append(' ');};
-			
 			depth++;
-			target.append('{');
+			target.append('{').append('\n');
+			objectStart=true;
+			simpleArray = false;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -68,8 +71,8 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 	@Override
 	public void beginArray() {
 		try {
-			//for(int i = 0;i<depth;i++) {target.append(' ');};
 			target.append('[');
+			simpleArray = true;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -78,7 +81,9 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 	@Override
 	public void endArray() {
 		try {
-			target.append(']').append('\n');
+			target.append(']');
+			simpleArray = false;
+			objectStart = true;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -87,7 +92,11 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 	@Override
 	public void valueSeparator() {
 		try {
-			target.append(',').append('\n');
+			target.append(',');
+			if (!simpleArray) {
+				target.append('\n');
+			}
+			objectStart = true;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -133,6 +142,9 @@ public class JSONStreamVisitorCapture<A extends Appendable> implements JSONStrea
 	@Override
 	public void stringBegin() {
 		try {
+			if (objectStart) {
+				for(int i = 0;i<depth;i++) {target.append("    ");}
+			}
 			target.append("\"");
 		} catch (IOException e) {
 			throw new RuntimeException(e);

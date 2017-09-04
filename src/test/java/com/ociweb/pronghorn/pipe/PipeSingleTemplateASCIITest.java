@@ -26,7 +26,7 @@ public class PipeSingleTemplateASCIITest {
     	
         int messageSize = RawDataSchema.FROM.fragDataSize[RawDataSchema.MSG_CHUNKEDSTREAM_1];
         
-        int varDataMax = (ring.byteMask/(ring.mask>>1))/messageSize;        
+        int varDataMax = (ring.byteMask/(ring.slabMask>>1))/messageSize;        
         int testSize = (1<<primaryRingSizeInBits)/messageSize;
 
         populateRingBufferWithASCII(ring, varDataMax, testSize);
@@ -116,7 +116,7 @@ public class PipeSingleTemplateASCIITest {
     	
         final int messageSize = RawDataSchema.FROM.fragDataSize[RawDataSchema.MSG_CHUNKEDSTREAM_1];
         
-        final int varDataMax = (ring.byteMask/(ring.mask>>1))/messageSize;        
+        final int varDataMax = (ring.byteMask/(ring.slabMask>>1))/messageSize;        
         final int testSize = (1<<primaryRingSizeInBits)/messageSize;
                 
     	Thread t = new Thread(new Runnable(){
