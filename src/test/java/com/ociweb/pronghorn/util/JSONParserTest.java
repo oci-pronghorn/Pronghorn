@@ -112,7 +112,10 @@ public class JSONParserTest {
 		JSONStreamParser parser = new JSONStreamParser();
 		parser.parse(reader, visitor);
 				
-		assertEquals("[{\"key\":\"value\"}\n,\n{\"key\":\"value\"}\n]\n",target.toString());
+		assertEquals( target.toString().replaceAll("\n", "\\n"),				
+				"[{\n    \"key\":\"value\"}\n,\n{\n    \"key\":\"value\"}\n]",target.toString());
+		
+		 
 		
 	}
 
