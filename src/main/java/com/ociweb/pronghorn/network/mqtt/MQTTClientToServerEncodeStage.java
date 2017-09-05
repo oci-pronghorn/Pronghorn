@@ -476,7 +476,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			if (null==clientConnection || (! clientConnection.isFinishConnect())) {
 				break;
 			}
-			
+									
+			assert(Pipe.isForSchema(toBroker[activeConnection.requestPipeLineIdx()], NetPayloadSchema.instance)) : "found unexpected "+Pipe.schemaName(toBroker[activeConnection.requestPipeLineIdx()]);
 			Pipe<NetPayloadSchema> server = toBroker[activeConnection.requestPipeLineIdx()];
 			if (writeToBroker(connectionId, server, msgIdx)) {
 				PipeReader.releaseReadLock(input);
@@ -752,6 +753,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	
 	private boolean writeToBroker(long connectionId, Pipe<NetPayloadSchema> server, int msgIdx) {
 
+		assert(FieldReferenceOffsetManager.isGroupTemplate(Pipe.from(server),NetPayloadSchema.MSG_PLAIN_210));
+	
 		long arrivalTime = 0;
 		
 		//logger.trace("write to broker after reading positions");
