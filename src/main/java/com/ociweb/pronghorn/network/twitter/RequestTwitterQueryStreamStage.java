@@ -149,7 +149,7 @@ public class RequestTwitterQueryStreamStage extends PronghornStage {
 		OAuth2BearerUtil.bearerRequest(httpRequest, consumerKey, consumerSecret, twitterBearerHost, twitterBearerPort, bearerRequestResponseId);				
 	}
 
-
+    private int lastPosition = 0;
 	
 	@Override
 	public void run() {
@@ -183,16 +183,23 @@ public class RequestTwitterQueryStreamStage extends PronghornStage {
 			//keeps all our queries balanced
 			///////////////////////////////////////////
 			int targetIdx = -1; 
+			
 			int k = queryLastId.length;
-			while (--k>=0) {
-				if (cyclesToWait[k]>0) {
-					cyclesToWait[k]--;
-				}				
-				if (-1==targetIdx || queryLastId[k]<queryLastId[targetIdx]) {					
-					if (cyclesToWait[k]<=0) {					
-						targetIdx = k;
-					}
+			while (--k >= 0) {
+			
+				if (--lastPosition < 0) {
+					lastPosition = queryLastId.length-1;
 				}
+							
+				if (cyclesToWait[lastPosition] > 0) {
+					cyclesToWait[lastPosition]--;
+				}			
+				
+				if (cyclesToWait[lastPosition] <= 0) {
+					targetIdx = lastPosition;
+					break;
+				}
+				
 			}
 			////////////////////////////////////////////
 						
