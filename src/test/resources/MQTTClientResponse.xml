@@ -14,4 +14,8 @@
      <String name="ErrorText" id="42" charset="unicode"/>   
    </template>
 
+    <template name="CoonectionMade" id="5">
+        <uInt32 name="sessionPresent" id="51"/>
+    </template>
+
 </templates>

@@ -312,8 +312,6 @@ public class MQTTClientStage extends PronghornStage {
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_TIME_37);
 					int sessionPresentFlag = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_FLAG_35);
 					
-					//TODO: what to do with session bit??
-					
 					int conAckReturnCode = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_RETURNCODE_24);
 					
 					if (0!=conAckReturnCode) {
@@ -345,15 +343,14 @@ public class MQTTClientStage extends PronghornStage {
 						PipeWriter.writeUTF8(clientResponse,MQTTClientResponseSchema.MSG_ERROR_4_FIELD_ERRORTEXT_42, fieldErrorText);
 						PipeWriter.publishWrites(clientResponse);
 					} else {
-					
-						
-						
+
 						//We are now connected.
 						brokerAcknowledgedConnection = true;
 						
 						PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_BROKERACKNOWLEDGEDCONNECTION_98);
-						PipeWriter.publishWrites(clientToServerAck);	
-												
+						PipeWriter.publishWrites(clientToServerAck);
+
+						MQTTClientResponseSchema.publishCoonectionMade(clientResponse, sessionPresentFlag);
 					}
 
 					break;
