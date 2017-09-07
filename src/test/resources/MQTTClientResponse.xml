@@ -9,13 +9,13 @@
      <byteVector name="Payload" id="25"/>     
    </template>
 
-   <template name="Error" id="4">
-     <uInt32 name="ErrorCode" id="41"/>
-     <String name="ErrorText" id="42" charset="unicode"/>   
-   </template>
+    <template name="SubscriptionResult" id="4">
+        <uInt32 name="MaxQoS" id="41"/>
+    </template>
 
-    <template name="CoonectionMade" id="5">
-        <uInt32 name="sessionPresent" id="51"/>
+    <template name="ConnectionAttempt" id="5">
+        <uInt32 name="ResultCode" id="51"/>
+        <uInt32 name="SessionPresent" id="52"/>
     </template>
 
 </templates>
