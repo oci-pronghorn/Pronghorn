@@ -80,6 +80,7 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 	private void streamingRequest(Pipe<ClientHTTPRequestSchema> pipe, String ck, String cs, String token, String secret, int httpRequestResponseId) {
 			
 		PipeWriter.tryWriteFragment(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100);
+		assert(httpRequestResponseId>=0);
 		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11, httpRequestResponseId);
 		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_SESSION_10, httpRequestResponseId);
 		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PORT_1, port);

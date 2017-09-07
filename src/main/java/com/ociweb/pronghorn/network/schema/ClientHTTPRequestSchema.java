@@ -201,6 +201,7 @@ public class ClientHTTPRequestSchema extends MessageSchema<ClientHTTPRequestSche
 
     public static void publishHTTPGet(Pipe<ClientHTTPRequestSchema> output, int fieldDestination, int fieldSession, int fieldPort, CharSequence fieldHost, CharSequence fieldPath, CharSequence fieldHeaders) {
             PipeWriter.presumeWriteFragment(output, MSG_HTTPGET_100);
+            assert(fieldDestination>=0);
             PipeWriter.writeInt(output,MSG_HTTPGET_100_FIELD_DESTINATION_11, fieldDestination);
             PipeWriter.writeInt(output,MSG_HTTPGET_100_FIELD_SESSION_10, fieldSession);
             PipeWriter.writeInt(output,MSG_HTTPGET_100_FIELD_PORT_1, fieldPort);

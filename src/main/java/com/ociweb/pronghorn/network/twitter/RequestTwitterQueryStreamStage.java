@@ -209,7 +209,7 @@ public class RequestTwitterQueryStreamStage extends PronghornStage {
 
 				//if we do not recieve a finished block, do not call again for this many cycles
 				inFlightTimeoutCounter = inFlightTimeoutCycles;
-				
+				assert(queryResponseIds[targetIdx]>=0);
 				PipeWriter.writeInt(httpRequest, 
 						            ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11,
 						            queryResponseIds[targetIdx]);				

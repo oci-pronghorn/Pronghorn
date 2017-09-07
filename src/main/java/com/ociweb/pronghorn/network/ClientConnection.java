@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
 import java.net.UnknownHostException;
+import java.nio.channels.NoConnectionPendingException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -269,6 +270,9 @@ public class ClientConnection extends SSLConnection {
 				return finishConnect;
 				
 			} catch (IOException io) {
+				return false;
+			} catch (NoConnectionPendingException ncpe) {
+				close();
 				return false;
 			}
 		}

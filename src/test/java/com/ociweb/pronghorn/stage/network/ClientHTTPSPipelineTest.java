@@ -138,7 +138,7 @@ public class ClientHTTPSPipelineTest {
 						
 			Pipe<ClientHTTPRequestSchema> pipe = input[0];
 			if (PipeWriter.tryWriteFragment(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100)) {
-
+				assert((requests%maxListeners)>=0);
 				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11, requests%maxListeners);
 				PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_PORT_1, 443);
 				PipeWriter.writeUTF8(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HOST_2, "encrypted.google.com");
