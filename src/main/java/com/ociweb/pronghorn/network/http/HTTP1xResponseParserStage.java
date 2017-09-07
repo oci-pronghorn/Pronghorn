@@ -1022,8 +1022,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 			payloadLengthData[i] = 0;//starting chunk size.			
 
 		} else {
-			positionMemoData[stateIdx]= state= 2;	
-			assert(payloadLengthData[i]>3) : "only support files of non zero length at this time, still testing. found value "+payloadLengthData[i];
+			positionMemoData[stateIdx]= state= 2;
 		}
 		return state;
 	}
