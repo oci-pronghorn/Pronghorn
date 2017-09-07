@@ -133,7 +133,7 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.17</version>
         <configuration>
-            <argLine>-Xmx1600m</argLine>
+            <argLine>-Xms700m</argLine>
         </configuration>
       </plugin>
 
