@@ -278,9 +278,6 @@ public class MQTTClientStage extends PronghornStage {
 		}
 	}
 
-	
-	
-	
 	public void processServerResponses() {
 	
 //		System.err.println("server response "+
@@ -311,47 +308,16 @@ public class MQTTClientStage extends PronghornStage {
 				
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_TIME_37);
 					int sessionPresentFlag = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_FLAG_35);
-					
-					int conAckReturnCode = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_RETURNCODE_24);
-					
-					if (0!=conAckReturnCode) {
-						PipeWriter.tryWriteFragment(clientResponse, MQTTClientResponseSchema.MSG_ERROR_4);
-	
-						int fieldErrorCode = CON_ACK_ERR_FLAG | conAckReturnCode;
-						CharSequence fieldErrorText = "";
-						switch(conAckReturnCode) {
-							case 1:
-								fieldErrorText = "The Server does not support the level of the MQTT protocol requested by the Client";
-								break;
-							case 2:
-								fieldErrorText = "The Client identifier is correct UTF-8 but not allowed by the Server";
-								break;
-							case 3:
-								fieldErrorText = "The Network Connection has been made but the MQTT service is unavailable";
-								break;
-							case 4:
-								fieldErrorText = "The data in the user name or password is malformed";
-								break;
-							case 5:
-								fieldErrorText = "The Client is not authorized to connect";
-								break;
-							default:
-								fieldErrorText = "Unknown connection error";
-						}
-						
-						PipeWriter.writeInt(clientResponse,MQTTClientResponseSchema.MSG_ERROR_4_FIELD_ERRORCODE_41, fieldErrorCode);
-						PipeWriter.writeUTF8(clientResponse,MQTTClientResponseSchema.MSG_ERROR_4_FIELD_ERRORTEXT_42, fieldErrorText);
-						PipeWriter.publishWrites(clientResponse);
-					} else {
+					int retCode = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_RETURNCODE_24);
 
+					if (0==retCode) {
 						//We are now connected.
 						brokerAcknowledgedConnection = true;
-						
+
 						PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_BROKERACKNOWLEDGEDCONNECTION_98);
 						PipeWriter.publishWrites(clientToServerAck);
-
-						MQTTClientResponseSchema.publishCoonectionMade(clientResponse, sessionPresentFlag);
 					}
+					MQTTClientResponseSchema.publishConnectionAttempt(clientResponse, retCode, sessionPresentFlag);
 
 					break;
 				case MQTTServerToClientSchema.MSG_PINGRESP_13:
@@ -454,48 +420,26 @@ public class MQTTClientStage extends PronghornStage {
 					
 					break;
 				case MQTTServerToClientSchema.MSG_SUBACK_9:
-					
-					
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_TIME_37);
 					int packetId9 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_PACKETID_20);
-					int returnCode = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_RETURNCODE_24);
-
-					if (0x80 == returnCode) {
-						int fieldErrorCode = SUB_ACK_ERR_FLAG | 0x80;
-						CharSequence fieldErrorText = "Unable to subscribe";
-						
-					    PipeWriter.presumeWriteFragment(clientResponse, MQTTClientResponseSchema.MSG_ERROR_4);
-					    PipeWriter.writeInt(clientResponse,MQTTClientResponseSchema.MSG_ERROR_4_FIELD_ERRORCODE_41, fieldErrorCode);
-					    PipeWriter.writeUTF8(clientResponse,MQTTClientResponseSchema.MSG_ERROR_4_FIELD_ERRORTEXT_42, fieldErrorText);
-					    PipeWriter.publishWrites(clientResponse);
-					} else {
-						
-						
-						//TODO: what do with return code?? 
-//					Allowed return codes:
-						
-//						0x00 - Success - Maximum QoS 0 
-//						0x01 - Success - Maximum QoS 1 
-//						0x02 - Success - Maximum QoS 2 
-//						0x80 - Failure 
-						
-					}
-					//logger.trace("sub stop for packet {}",packetId9);
-					//do we need to send the return code here?
-					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId9));					
-		
-			    	
+					int maxQoS = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_RETURNCODE_24);
+					/* The spec says we may have an array of this enumerated byte but currently we send only one sub at a time
+//						0x00 - Success - Maximum QoS 0
+//						0x01 - Success - Maximum QoS 1
+//						0x02 - Success - Maximum QoS 2
+//						0x80 - Failure
+					 */
+					MQTTClientResponseSchema.publishSubscriptionResult(clientResponse, maxQoS);
+					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId9));
 					break;
 				case MQTTServerToClientSchema.MSG_UNSUBACK_11:
-					
+
 					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_UNSUBACK_11_FIELD_TIME_37);
 					int packetId11 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_UNSUBACK_11_FIELD_PACKETID_20);
 					
-					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId11));					
+					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId11));
 				    
-				    
-					break;				
-					
+					break;
 			}
 			
 			PipeReader.releaseReadLock(serverToClient);
