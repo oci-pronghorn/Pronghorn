@@ -187,7 +187,9 @@ public class HTTP1xRouterStageConfig<T extends Enum<T> & HTTPContentType,
 	}
 
 	public IntHashTable headerToPositionTable(int routeId) {
-		return routeId<requestHeaderMask.length ? requestHeaderMask[routeId] : allHeadersTable;
+		assert(null!=allHeadersTable);
+		return routeId<requestHeaderMask.length && (null!=requestHeaderMask[routeId]) ? 
+				           requestHeaderMask[routeId] : allHeadersTable;
 	}
 
 	public TrieParser headerTrieParser(int routeId) {
