@@ -542,10 +542,11 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		while ( (PipeReader.peekMsg(inputAck, MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99) 				
 				|| (
 				   ((connectionId = connectionId())>=0)
-				   && hasRoomToPersist()
+				  
 				   && hasRoomToSocketWriteOrDropQoSZeros() 	)
 				)
-				&& PipeReader.tryReadFragment(inputAck)) {
+				&& PipeReader.tryReadFragment(inputAck)
+				&& (!isPersistantSession || hasRoomToPersist()) ) {
 
 			//NOTE: warning, if this gets disconnected it may pick a new pipe and the old data may be abandoned?
 			
@@ -555,14 +556,13 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				ackPublishedPos(PipeReader.readInt(inputAck, MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99_FIELD_PACKETID_20));//remaining flight up can only be changed later
 				PipeReader.releaseReadLock(inputAck);
 				continue;
-			}			
+			} else			
 			
 			if (MQTTClientToServerSchemaAck.MSG_BROKERACKNOWLEDGEDCONNECTION_98 == msgIdx) {
 				brokerAcknowledgedConnection = true;
 				PipeReader.releaseReadLock(inputAck);
 				continue;
-			}
-			
+			} else			
 						
 			if (writeAcksToBroker(connectionId, toBroker[activeConnection.requestPipeLineIdx()], msgIdx)) {
 				PipeReader.releaseReadLock(inputAck);
