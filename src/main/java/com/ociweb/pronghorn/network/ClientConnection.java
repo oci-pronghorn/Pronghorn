@@ -130,8 +130,8 @@ public class ClientConnection extends SSLConnection {
 		this.getSocketChannel().configureBlocking(false);  
 		this.getSocketChannel().setOption(StandardSocketOptions.SO_KEEPALIVE, true);
 	
-		//TCP_NODELAY is requried for HTTP/2 get used to to being on.
-		//this.getSocketChannel().setOption(StandardSocketOptions.TCP_NODELAY, true);
+		//TCP_NODELAY is required for HTTP/2 get used to to being on.
+		this.getSocketChannel().setOption(StandardSocketOptions.TCP_NODELAY, true);
 	
 		this.getSocketChannel().setOption(StandardSocketOptions.SO_RCVBUF, 1<<18); 
 		this.getSocketChannel().setOption(StandardSocketOptions.SO_SNDBUF, 1<<17); 
