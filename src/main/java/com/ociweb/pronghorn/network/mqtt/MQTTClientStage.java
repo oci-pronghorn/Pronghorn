@@ -317,7 +317,7 @@ public class MQTTClientStage extends PronghornStage {
 						PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_BROKERACKNOWLEDGEDCONNECTION_98);
 						PipeWriter.publishWrites(clientToServerAck);
 					}
-					MQTTClientResponseSchema.publishConnectionAttempt(clientResponse, retCode, sessionPresentFlag);
+					//MQTTClientResponseSchema.publishConnectionAttempt(clientResponse, retCode, sessionPresentFlag);
 
 					break;
 				case MQTTServerToClientSchema.MSG_PINGRESP_13:
@@ -429,7 +429,7 @@ public class MQTTClientStage extends PronghornStage {
 //						0x02 - Success - Maximum QoS 2
 //						0x80 - Failure
 					 */
-					MQTTClientResponseSchema.publishSubscriptionResult(clientResponse, maxQoS);
+					//MQTTClientResponseSchema.publishSubscriptionResult(clientResponse, maxQoS);
 					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId9));
 					break;
 				case MQTTServerToClientSchema.MSG_UNSUBACK_11:
