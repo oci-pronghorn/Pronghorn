@@ -45,7 +45,10 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	private int hostLen;
 	private int hostMask;
 	private int hostPort;
-	private int keepAliveMS;	
+	private int keepAliveMS;
+	
+	private final int quietRepublish = 20_000;//ms
+	private final int quiteDivisorBits = 5;
 	
 	private boolean isInReloadPersisted;
 	private boolean isInPersistWrite;
@@ -411,19 +414,24 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		return isInReloadPersisted || isInPersistWrite;
 	}
 
+	
 	private long processPingAndReplay() {
 		long connectionId = -1;
-		if ((connectionId = connectionId())>=0 && brokerAcknowledgedConnection ) {
+		if ((connectionId = connectionId())>=0 
+			&& brokerAcknowledgedConnection) { //TODO: must republish if we have some ....  
 			final long now = System.currentTimeMillis();
 			final long quiet = now-lastActvityTime;
-			if (quiet > (keepAliveMS>>3)) { //every 1/8 of the keep alive re-publish if needed.
+			if (quiet > (keepAliveMS>>quiteDivisorBits)) { //every 1/32 of the keep alive re-publish if needed.
 				
-				if (hasUnackPublished()) {
-					rePublish(toBroker[activeConnection.requestPipeLineIdx()]);					
+				if (hasUnackPublished()) {	
+					if (keepAliveMS>0 || quiet>quietRepublish) {
+						rePublish(toBroker[activeConnection.requestPipeLineIdx()]);
+					}
 					//if rePublish does something then lastActivityTime will have been set
 				} else {
 					//we have nothing to re-publish and half the keep alive has gone by so ping to be safe.
-					if (quiet > (keepAliveMS>>1)) {
+					//when keepAliveMS is zero do not ping
+					if ((keepAliveMS>0) && (quiet > (keepAliveMS>>1))) {
 						//logger.trace("note quiet {} trigger {} ",quiet, keepAliveMS);
 						//logger.info("request ping, must ensure open first??, if not close?");
 						
