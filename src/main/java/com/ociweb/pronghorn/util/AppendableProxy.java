@@ -6,6 +6,10 @@ public class AppendableProxy implements Appendable {
 
 	private final Appendable a;
 	
+	public static AppendableProxy wrap(Appendable a) {
+		return new AppendableProxy(a);
+	}
+	
 	public AppendableProxy(Appendable a) {
 		this.a = a;
 	}
