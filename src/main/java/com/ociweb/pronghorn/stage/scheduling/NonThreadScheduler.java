@@ -590,8 +590,9 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 	        		} 
 	         }
 	              
-	        if (null!=lastRunStage) {        	
-	        	logger.info("ERROR: this stage was called but never returned {}",lastRunStage.getClass().getSimpleName());        	
+	        PronghornStage temp = lastRunStage;
+	        if (null!=temp) {        	
+	        	logger.info("ERROR: this stage was called but never returned {}",temp);        	
 	        }     
     	}
     	
