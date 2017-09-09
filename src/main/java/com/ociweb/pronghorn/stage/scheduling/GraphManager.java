@@ -50,8 +50,11 @@ public class GraphManager {
 	public final static String MONITOR         = "MONITOR"; //this stage is not part of business logic but part of internal monitoring.
 	public final static String PRODUCER        = "PRODUCER";//explicit so it can be found even if it has feedback inputs.
 	public final static String STAGE_NAME      = "STAGE_NAME";
+	
 	public final static String DOT_RANK_NAME   = "DOT_RANK_NAME";	
+	public final static String DOT_BACKGROUND  = "DOT_BACKGROUND";	
 
+	
 	public final static String UNSCHEDULED   = "UNSCHEDULED";//new nota for stages that should never get a thread (experimental)
 	public final static String THREAD_GROUP  = "THREAD_GROUP";   //new nota for stages that do not give threads back (experimental)
 	
@@ -1485,6 +1488,18 @@ public class GraphManager {
                 		target.append(",color=blue");
                 	}
 	                
+	                /////////////////////////////////////
+	                //////fill the background of a node
+	                /////////////////////////////////////
+	            	Object background = getNota(m, stage.stageId, GraphManager.DOT_BACKGROUND, null);	            	
+	            	if (null!=background) {
+	            		target.append("style=filled,fillcolor=");
+	            		target.append(background.toString());
+	            	}    
+	                /////////////////////////////////////
+	            	
+	            	
+	            	
 	                target.append("]\n");
 	                	                
 	            }
