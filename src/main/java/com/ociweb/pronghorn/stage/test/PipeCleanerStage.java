@@ -21,6 +21,8 @@ public class PipeCleanerStage<T extends MessageSchema<T>> extends PronghornStage
     private long[] tail;
     private int[] byteTail;
     
+    public static final boolean showVolumeReport = false;
+    
     private int pos = 0;
     
     public static PipeCleanerStage newInstance(GraphManager gm, Pipe pipe) {
@@ -116,11 +118,13 @@ public class PipeCleanerStage<T extends MessageSchema<T>> extends PronghornStage
         //TODO: loop over all the pipes and confirm this inside an assert METHOD.
         //assert(Pipe.contentRemaining(input[pos])==0) : "expected pipe to be empty but found "+input;
         
-        //TODO: may want boolean to turn this off on construction?
-        try {
-            System.out.println(appendReport(new StringBuilder()));
-        } catch (IOException e) {
-           throw new RuntimeException(e);
+
+        if (showVolumeReport) {
+	        try {
+	            System.out.println(appendReport(new StringBuilder()));
+	        } catch (IOException e) {
+	           throw new RuntimeException(e);
+	        }
         }
     }
 
@@ -136,9 +140,10 @@ public class PipeCleanerStage<T extends MessageSchema<T>> extends PronghornStage
     	if (label.length()>0) {
     		target.append(' ');
     	}
-        Appendables.appendValue(target, "Duration :",duration,"ms  ");
+
+       Appendables.appendValue(target, "Duration :",duration,"ms  ");
        // Appendables.appendValue(target, "BlobOnlyCount :",totalBlobCount,"\n");        
-        Appendables.appendValue(target, "TotalBytes :",totalBytes(),"  ");
+       Appendables.appendValue(target, "TotalBytes :",totalBytes(),"  ");
         Appendables.appendValue(target, "BlobCount :",totalBlobCount,"  ");
                 
         if (0!=duration) {
