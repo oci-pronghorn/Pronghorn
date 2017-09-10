@@ -76,19 +76,18 @@ public class ClientSocketReaderStage extends PronghornStage {
 	int maxWarningCount = 10;
 	
 	@Override
-	public void requestShutdown() {
-		//logger.trace("requesting shutdown");
-		super.requestShutdown();
-	}
-	
-	@Override
 	public void run() {
 
-		    consumeRelease();
+		    ///////////////////////////
+		    //consumeRelease();
+		    //TESTING: we can wait and do this only when we discover it must be done
+		    //         delete this block at end of sep 17 if this did not cause any issues.
+		    //////////////////////////
+		    
 			boolean didWork;
 			
 			do {	
-				 didWork = false;
+				    didWork = false;
 					ClientConnection cc;
 					
 					int cpos = maxClients;
@@ -99,10 +98,8 @@ public class ClientSocketReaderStage extends PronghornStage {
 						cc = coordinator.getClientConnectionByPosition(cpos);
 
 						
-					    if (cc!=null /* && cc.isValid()*/) {
+					    if (cc!=null) {
 					    	
-					    	//System.err.println("reading socket connection "+cc.isValid());
-	  	
 					    	//process handshake before reserving one of the pipes
 					    	if (coordinator.isTLS) {
 					    		
@@ -226,11 +223,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 							    		//nothing to send so let go of byte buffer.
 							    		Pipe.unstoreBlobWorkingHeadPosition(target);
 							    	}
-							    	
-						    	} 
-						    	//else {
-						    	//	logger.warn("can not consume no room to write");
-						    	//}
+						    	}
 					    	} else {
 					    		//not an error, just try again later.
 					    		
@@ -238,11 +231,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 					    				logger.warn("odd we should not be here for this test.");
 					    			}
 					    	}
-					    } else {
-					    	//logger.info("connection was no longer valid so this value has been removed.");
-					    //	keyIterator.remove();
-					    }
-					    
+					    } 
 					}	
 
 			} while(didWork);

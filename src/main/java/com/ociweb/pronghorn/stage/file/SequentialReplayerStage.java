@@ -426,6 +426,9 @@ public class SequentialReplayerStage extends PronghornStage {
 								
 				PipeReader.tryReadFragment(storeRequests)) {
 			
+			//TODO: we want to create 2 pipes one for write and one for release.
+			//      if we already have the releases then do no do the write....
+			
 			didWork = true;
 		    int msgIdx = PipeReader.getMsgIdx(storeRequests);
 
