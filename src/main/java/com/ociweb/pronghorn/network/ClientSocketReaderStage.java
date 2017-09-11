@@ -78,11 +78,7 @@ public class ClientSocketReaderStage extends PronghornStage {
 	@Override
 	public void run() {
 
-		    ///////////////////////////
-		    //consumeRelease();
-		    //TESTING: we can wait and do this only when we discover it must be done
-		    //         delete this block at end of sep 17 if this did not cause any issues.
-		    //////////////////////////
+		    consumeRelease();
 		    
 			boolean didWork;
 			
