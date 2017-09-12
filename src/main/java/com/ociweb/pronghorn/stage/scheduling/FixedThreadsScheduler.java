@@ -530,7 +530,12 @@ public class FixedThreadsScheduler extends StageScheduler {
         	int count = threadCount;
 			@Override
 			public Thread newThread(Runnable r) {
-				return new Thread(r, ntsArray[--count].name());
+				if (--count>=0) {
+					return new Thread(r, ntsArray[count].name());
+				} else {
+					logger.info("Warning: fixed thread scheduler did not expect more threads to be created than {}", threadCount);
+					return new Thread(r,"Unknown");
+				}
 			}        	
         };
 		this.executorService = Executors.newFixedThreadPool(threadCount, threadFactory);
