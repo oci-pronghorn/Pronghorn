@@ -79,7 +79,11 @@ public class PipeConfig<T extends MessageSchema<T>> {
         
 		int biggestFragment = FieldReferenceOffsetManager.maxFragmentSize(from);        
         int primaryMinSize = minimumFragmentsOnRing*biggestFragment;  
-        this.slabBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1));        
+        this.slabBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1)); 
+        if (slabBits>12) {
+        	new Exception("why so many bits "+slabBits+" ? ").printStackTrace();
+        }
+        
         int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, 1<<slabBits);
         int totalBlobSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
       

@@ -14,6 +14,9 @@ public class PipeConfigManager {
 	public PipeConfigManager(int initialCount, int defaultMinimumFragmentsOnPipe, int defaultMaximumLenghOfVariableLengthFields) {		
 		this.configs = new PipeConfig[initialCount];
 		this.configCount = 0;
+		if (defaultMinimumFragmentsOnPipe>1024) {
+			throw new UnsupportedOperationException("Why is this value "+defaultMinimumFragmentsOnPipe+" soo large?");
+		}
 		this.defaultMinimumFragmentsOnPipe = defaultMinimumFragmentsOnPipe;
 		this.defaultMaximumLenghOfVariableLengthFields = defaultMaximumLenghOfVariableLengthFields;
 		
@@ -45,6 +48,25 @@ public class PipeConfigManager {
 		}
 		return newConfig;
 	}
+	
+
+	public <S extends MessageSchema<S>> void ensureSize(Class<S> clazz, int queueLength, int maxMessageSize) {
+		int idx = findIndex(clazz);
+		if (idx>=0) {
+			//we found it 
+			PipeConfig<S> oldConfig = (PipeConfig<S>)configs[idx];
+			
+			int oldQueueLen = oldConfig.minimumFragmentsOnPipe();
+			int oldMaxVarLenSize = oldConfig.maxVarLenSize();
+			
+			if (queueLength>oldQueueLen || maxMessageSize>oldMaxVarLenSize) {
+				addConfig(Math.max(oldQueueLen,queueLength), Math.max(oldMaxVarLenSize, maxMessageSize), clazz);
+			}
+		} else {
+			//add it was not found
+			addConfig(Math.max(queueLength,defaultMinimumFragmentsOnPipe),Math.max(maxMessageSize, defaultMaximumLenghOfVariableLengthFields),clazz);
+		}
+	}	
 	
     public <S extends MessageSchema<S>> PipeConfig<S> getConfig(Class<S> clazz) {
     	
@@ -79,5 +101,6 @@ public class PipeConfigManager {
 
 	public <S extends MessageSchema<S>> Pipe<S> newPipe(Class<S> clazz) {		
 		return new Pipe<S>(getConfig(clazz));
-	}	
+	}
+
 }
