@@ -75,10 +75,12 @@ public class PipeConfig<T extends MessageSchema<T>> {
 	}
     public PipeConfig(T messageSchema, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
         
-        int biggestFragment = FieldReferenceOffsetManager.maxFragmentSize(MessageSchema.from(messageSchema));
-        int primaryMinSize = minimumFragmentsOnRing*biggestFragment;        
+        FieldReferenceOffsetManager from = MessageSchema.from(messageSchema);
+        
+		int biggestFragment = FieldReferenceOffsetManager.maxFragmentSize(from);        
+        int primaryMinSize = minimumFragmentsOnRing*biggestFragment;  
         this.slabBits = (byte)(32 - Integer.numberOfLeadingZeros(primaryMinSize - 1));        
-        int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(MessageSchema.from(messageSchema), 1<<slabBits);
+        int maxVarFieldsInRingAtOnce = FieldReferenceOffsetManager.maxVarLenFieldsPerPrimaryRingSize(from, 1<<slabBits);
         int totalBlobSize = maxVarFieldsInRingAtOnce *  maximumLenghOfVariableLengthFields;
       
         this.blobBits = ((0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce))? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(totalBlobSize - 1));
@@ -86,17 +88,19 @@ public class PipeConfig<T extends MessageSchema<T>> {
         this.byteConst = null;
         this.schema = messageSchema;
         
-        validate(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields);
+        validate(messageSchema, minimumFragmentsOnRing, maximumLenghOfVariableLengthFields);
     }
     
-    private void validate(int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
+    private void validate(T messageSchema, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
         if (blobBits>30) {
             throw new UnsupportedOperationException("Unable to support blob data larger than 1GB Reduce either the data size or count of desired message msgs:"+
-                    minimumFragmentsOnRing+" varLen:"+maximumLenghOfVariableLengthFields);
+                    minimumFragmentsOnRing+" varLen:"+maximumLenghOfVariableLengthFields+" schema: "+messageSchema+
+                    " slabBits: "+slabBits+" maxFragSize: "+FieldReferenceOffsetManager.maxFragmentSize(MessageSchema.from(messageSchema)));
         }
         
         if (slabBits>30) {
-            throw new UnsupportedOperationException("Unable to support slab data larger than 1GB, Reduce the count of desired message");
+            throw new UnsupportedOperationException("Unable to support slab data larger than 1GB, Reduce the count of desired message msgs:"+
+                    minimumFragmentsOnRing+" varLen:"+maximumLenghOfVariableLengthFields+" schema: "+messageSchema);
         }
         
     }
