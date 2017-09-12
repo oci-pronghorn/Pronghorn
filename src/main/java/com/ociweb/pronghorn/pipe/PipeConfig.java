@@ -90,12 +90,12 @@ public class PipeConfig<T extends MessageSchema<T>> {
     }
     
     private void validate(int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
-        if (blobBits>31) {
+        if (blobBits>30) {
             throw new UnsupportedOperationException("Unable to support blob data larger than 1GB Reduce either the data size or count of desired message msgs:"+
                     minimumFragmentsOnRing+" varLen:"+maximumLenghOfVariableLengthFields);
         }
         
-        if (slabBits>31) {
+        if (slabBits>30) {
             throw new UnsupportedOperationException("Unable to support slab data larger than 1GB, Reduce the count of desired message");
         }
         

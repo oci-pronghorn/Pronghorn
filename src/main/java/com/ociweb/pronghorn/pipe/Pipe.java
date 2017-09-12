@@ -536,6 +536,9 @@ public class Pipe<T extends MessageSchema<T>> {
 
         this.bitsOfSlabRing = primaryBits;
         this.bitsOfBlogRing = byteBits;
+        assert(primaryBits<=30) : "Must be 1G or smaller, requested "+byteBits+" bits";
+        assert(byteBits<=30) : "Must be 1G or smaller, requested "+byteBits+" bits";
+        
 
         assert (primaryBits >= 0); //zero is a special case for a mock ring
 
