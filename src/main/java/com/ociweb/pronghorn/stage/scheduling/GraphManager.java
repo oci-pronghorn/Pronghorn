@@ -2004,8 +2004,26 @@ public class GraphManager {
         return true;
     }
 
+    
+    private static final int defaultDurationWhenZero = 1;
+    private static AtomicInteger totalZeroDurations = new AtomicInteger();
+    
 	public static void accumRunTimeNS(GraphManager graphManager, int stageId, long duration) {
-		graphManager.stageRunNS[stageId] += duration; 
+		if (0!=duration) {
+			graphManager.stageRunNS[stageId] += duration;			
+		} else {
+			
+			int x = totalZeroDurations.incrementAndGet();
+			
+			if (Integer.numberOfLeadingZeros(x-1)!=Integer.numberOfLeadingZeros(x)) {
+				logger.info("Warning: the OS has measured stages taking zero ms {} times. "
+						+ "Most recent case is for {}.", x, getStage(graphManager, stageId));
+			}
+			
+			graphManager.stageRunNS[stageId] += defaultDurationWhenZero;
+		}
+		
+		
 	}
 
 	public static void accumRunTimeAll(GraphManager graphManager, int stageId) {		

@@ -141,9 +141,9 @@ public class PipeCleanerStage<T extends MessageSchema<T>> extends PronghornStage
     		target.append(' ');
     	}
 
-       Appendables.appendValue(target, "Duration :",duration,"ms  ");
+        Appendables.appendValue(target, "Duration :",duration,"ms  ");
        // Appendables.appendValue(target, "BlobOnlyCount :",totalBlobCount,"\n");        
-       Appendables.appendValue(target, "TotalBytes :",totalBytes(),"  ");
+        Appendables.appendValue(target, "TotalBytes :",totalBytes(),"  ");
         Appendables.appendValue(target, "BlobCount :",totalBlobCount,"  ");
                 
         if (0!=duration) {
