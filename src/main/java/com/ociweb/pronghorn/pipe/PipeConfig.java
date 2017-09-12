@@ -117,7 +117,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
 
         this.byteConst = byteConst;
         this.schema = messageSchema;
-        validate(minimumFragmentsOnRing, maximumLenghOfVariableLengthFields );
+        validate(messageSchema, minimumFragmentsOnRing, maximumLenghOfVariableLengthFields );
      }
 	
 	public PipeConfig<T> grow2x(){
