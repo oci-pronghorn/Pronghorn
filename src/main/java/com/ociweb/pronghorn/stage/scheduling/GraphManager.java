@@ -2073,6 +2073,10 @@ public class GraphManager {
 
 	private static void visitDownstream(int stageId, GraphManager graphManager, long[] bitMap, int depth, GraphVisitor visitor) {
 		assert(stageId<=graphManager.stageCounter.get()) : "This stage id is out of range";
+		if (stageId<0) {
+			//nothing to visit
+			return;
+		}
 		
 		int mapIndex = stageId>>6;//divide by 64
 		int mapBit   = 1<<(stageId&0x3F);
