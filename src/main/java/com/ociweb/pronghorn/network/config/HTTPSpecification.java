@@ -1,7 +1,11 @@
 package com.ociweb.pronghorn.network.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.pipe.BlobReader;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
+import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -24,6 +28,8 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
     public final V[] verbs;
     public final R[] revisions;
     
+    private static final Logger logger = LoggerFactory.getLogger(HTTPSpecification.class);
+    
     private boolean trustAccurateStrings = true;
     private final TrieParser headerParser;
 	private TrieParser contentTypeTrie;
@@ -42,7 +48,9 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 	    	H header = headers[ordinal];
 			target.append(header.writingRoot());
 	    	header.writeValue(target, data);
-    	} catch (Exception e) {
+    	} catch (Throwable e) {
+    		
+    		logger.error("Bad header unable to parse {} ",headers[ordinal]);
     		throw new RuntimeException(e);
     	}
     	return target;
