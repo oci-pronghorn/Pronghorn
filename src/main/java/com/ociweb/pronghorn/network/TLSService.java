@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 
 public class TLSService {
 
-	private static final Logger log = LoggerFactory.getLogger(TLSService.class);
+	private static final Logger logger = LoggerFactory.getLogger(TLSService.class);
 			
 	private final SSLContext context;
 	private final KeyManager[] keyManagers;
@@ -27,8 +27,8 @@ public class TLSService {
 	private static final String PROTOCOL    = "TLSv1.2";
 	private static final String PROTOCOL1_3 = "TLSv1.3"; //check Java version and move up to this ASAP.
 	
-	private static final boolean TRUST_ALL = true;
-	public static final boolean LOG_CYPHERS = true;
+	public static final boolean TRUST_ALL = true;
+	public static final boolean LOG_CYPHERS = false;
 	
 	private String[] cipherSuits;
 	private String[] protocols = new String[]{PROTOCOL}; //[SSLv2Hello, TLSv1, TLSv1.1, TLSv1.2]
@@ -42,7 +42,7 @@ public class TLSService {
 			
 			if (TRUST_ALL) {
 				TrustManagerFactory trustFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-				log.warn("***** No trust manager in use, all connecions will be trusted. This is only appropriate for development and testing. *****");
+				logger.warn("***** No trust manager in use, all connecions will be trusted. This is only appropriate for development and testing. *****");
 				trustManagers = new TrustManager[] { 
 					    new X509TrustManager() {     
 					        public java.security.cert.X509Certificate[] getAcceptedIssuers() { 
@@ -117,7 +117,7 @@ public class TLSService {
 	    		if (containsPerfectForward(enabledCipherSuites, i)) {
 	    			if (doesNotContainWeakCipher(enabledCipherSuites, i)) {
 	    				if (LOG_CYPHERS) {
-	    					log.info("enable cipher suite: {}",enabledCipherSuites[i]);
+	    					logger.info("enable cipher suite: {}",enabledCipherSuites[i]);
 	    				}
 	    				temp[j++]=enabledCipherSuites[i];
 	    			}
@@ -131,7 +131,6 @@ public class TLSService {
 	private static boolean doesNotContainWeakCipher(String[] enabledCipherSuites, int i) {
 		return !enabledCipherSuites[i].contains("DES_") &&
 			   !enabledCipherSuites[i].contains("EXPORT") && 
-			   !enabledCipherSuites[i].contains("AES128") && 
 			   !enabledCipherSuites[i].contains("NULL");
 		
 	}
