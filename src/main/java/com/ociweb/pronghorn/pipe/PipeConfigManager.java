@@ -34,7 +34,7 @@ public class PipeConfigManager {
 	public <S extends MessageSchema<S>> PipeConfig<S> addConfig(PipeConfig<S> newConfig) {
 		int idx = findIndex(newConfig.schema);   
 		if (idx<0) {
-			
+
 			if (configCount >= configs.length) {
 				//grow, we are out of room
 				PipeConfig[] newConfigs = new PipeConfig[configs.length*2];
@@ -43,7 +43,7 @@ public class PipeConfigManager {
 			}			
 			configs[configCount++] = newConfig;
 			
-		} else {		
+		} else {
 			configs[idx] = newConfig;
 		}
 		return newConfig;
@@ -58,7 +58,6 @@ public class PipeConfigManager {
 			
 			int oldQueueLen = oldConfig.minimumFragmentsOnPipe();
 			int oldMaxVarLenSize = oldConfig.maxVarLenSize();
-			
 			if (queueLength>oldQueueLen || maxMessageSize>oldMaxVarLenSize) {
 				addConfig(Math.max(oldQueueLen,queueLength), Math.max(oldMaxVarLenSize, maxMessageSize), clazz);
 			}
@@ -75,7 +74,7 @@ public class PipeConfigManager {
     		return (PipeConfig<S>)configs[idx];
     	}
     	//when undefined build store and return the default
-    	return addConfig(defaultMinimumFragmentsOnPipe,defaultMaximumLenghOfVariableLengthFields,clazz);
+    	return addConfig(defaultMinimumFragmentsOnPipe, defaultMaximumLenghOfVariableLengthFields, clazz);
     	
     }
 
