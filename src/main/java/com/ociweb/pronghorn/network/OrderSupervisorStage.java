@@ -95,9 +95,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         this.supportsBatchedPublish = false;
         this.supportsBatchedRelease = false;
         
-        if (minVarLength(outgoingPipes) < maxVarLength(this.dataToSend)) {
+        if (minVarLength(outgoingPipes) < maxVarLength(inputPipes)) {
           	throw new UnsupportedOperationException(
-        			"All output pipes must support variable length fields equal to or larger than all input pipes");
+        			"All output pipes must support variable length fields equal to or larger"
+        			+ " than all input pipes. out "+minVarLength(outgoingPipes)+" in "+maxVarLength(inputPipes));
         }
         
         this.maxOuputSize = Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210) +
@@ -310,7 +311,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		//so do it already
 		////////////////////////////////////////////////////
 		//the EOF message has already been taken so no need to check 
-		//all remaning messages start with the connection id
+		//all remaining messages start with the connection id
 		{
 		    long value = channelId;
 		    final int activeMessageId = Pipe.takeMsgIdx(input);

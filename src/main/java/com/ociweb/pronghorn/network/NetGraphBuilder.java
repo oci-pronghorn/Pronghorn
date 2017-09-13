@@ -286,12 +286,13 @@ public class NetGraphBuilder {
         } else {
         	receivedFromNet = encryptedIncomingGroup;
         }
-
-        Pipe<NetPayloadSchema>[] sendingToNet = buildRemainderOfServerStages(graphManager, coordinator,
-									        		serverConfig, handshakeIncomingGroup, rate);
+		
+        Pipe<NetPayloadSchema>[] fromOrderedContent = buildRemainderOFServerStages(graphManager, coordinator, serverConfig, handshakeIncomingGroup, rate);
         
         factory.buildServer(graphManager, coordinator, 
-        		            releaseAfterParse, receivedFromNet, sendingToNet);
+        		            releaseAfterParse,
+        		            receivedFromNet, 
+        		            fromOrderedContent);
 
         return graphManager;
 	}
@@ -359,19 +360,16 @@ public class NetGraphBuilder {
 		return acks;
 	}
 
-	public static Pipe<NetPayloadSchema>[] buildRemainderOfServerStages(final GraphManager graphManager,
-			ServerCoordinator coordinator,
-			ServerPipesConfig serverConfig, 
+	public static Pipe<NetPayloadSchema>[] buildRemainderOFServerStages(final GraphManager graphManager,
+			ServerCoordinator coordinator, ServerPipesConfig serverConfig,
 			Pipe<NetPayloadSchema>[] handshakeIncomingGroup, long rate) {
 		
-		Pipe<NetPayloadSchema>[] fromOrderedContent;
-		
-		fromOrderedContent = new Pipe[serverConfig.serverResponseWrapUnits * serverConfig.serverPipesPerOutputEngine];
-        
-        Pipe<NetPayloadSchema>[] toWiterPipes = buildSSLWrapersAsNeeded(graphManager, coordinator, serverConfig.serverRequestUnwrapUnits, serverConfig.toWraperConfig,
-        												serverConfig.fromWraperConfig, handshakeIncomingGroup, 
-        												serverConfig.serverPipesPerOutputEngine, serverConfig.serverResponseWrapUnits,
-        												fromOrderedContent, rate);
+		PipeConfig<NetPayloadSchema> fromOrderedConfig = serverConfig.orderWrapConfig();
+		Pipe<NetPayloadSchema>[] fromOrderedContent = new Pipe[serverConfig.serverResponseWrapUnits * serverConfig.serverPipesPerOutputEngine];
+
+		Pipe<NetPayloadSchema>[] toWiterPipes = buildSSLWrapersAsNeeded(graphManager, coordinator, serverConfig, 
+				                                                       handshakeIncomingGroup, rate, 
+				                                                       fromOrderedContent, fromOrderedConfig);
                     
         buildSocketWriters(graphManager, coordinator, serverConfig.serverSocketWriters, toWiterPipes, 
         		           serverConfig.writeBufferMultiplier, rate);
@@ -388,15 +386,18 @@ public class NetGraphBuilder {
         	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, dump);
         }
         coordinator.processNota(graphManager, dump);
-		
 		return fromOrderedContent;
 	}
 
-	private static Pipe<NetPayloadSchema>[] buildSSLWrapersAsNeeded(GraphManager graphManager, ServerCoordinator coordinator,
-			int requestUnwrapUnits, PipeConfig<NetPayloadSchema> toWraperConfig, PipeConfig<NetPayloadSchema> fromWraperConfig,
-			Pipe<NetPayloadSchema>[] handshakeIncomingGroup, int y, int z,
-			Pipe<NetPayloadSchema>[] fromOrderedContent, long rate) {
+	private static Pipe<NetPayloadSchema>[] buildSSLWrapersAsNeeded(final GraphManager graphManager,
+			ServerCoordinator coordinator, ServerPipesConfig serverConfig,
+			Pipe<NetPayloadSchema>[] handshakeIncomingGroup, long rate,
+			Pipe<NetPayloadSchema>[] fromOrderedContent, PipeConfig<NetPayloadSchema> fromOrderedConfig) {
 		
+		
+		int requestUnwrapUnits = serverConfig.serverRequestUnwrapUnits;		
+		int y = serverConfig.serverPipesPerOutputEngine;
+		int z = serverConfig.serverResponseWrapUnits;
 		Pipe<NetPayloadSchema>[] toWiterPipes = null;
 		
 		if (coordinator.isTLS) {
@@ -421,13 +422,13 @@ public class NetGraphBuilder {
 		        Pipe<NetPayloadSchema>[] fromWrapperPipes = new Pipe[w];            
 		        
 		        while (--w>=0) {	
-		        	toWrapperPipes[w] = new Pipe<NetPayloadSchema>(toWraperConfig,false);
-		        	fromWrapperPipes[w] = new Pipe<NetPayloadSchema>(fromWraperConfig,false); 
+		        	toWrapperPipes[w] = new Pipe<NetPayloadSchema>(fromOrderedConfig,false);
+		        	fromWrapperPipes[w] = new Pipe<NetPayloadSchema>(fromOrderedConfig,false); 
 		        	toWiterPipes[toWriterPos++] = fromWrapperPipes[w];
 		        	fromOrderedContent[fromSuperPos++] = toWrapperPipes[w]; 
 		        }
 		        
-		        boolean isServer = false; //TODO: this should be true??
+		        boolean isServer = true;
 		        
 				SSLEngineWrapStage wrapStage = new SSLEngineWrapStage(graphManager, coordinator,
 		        		                                             isServer, toWrapperPipes, fromWrapperPipes);
@@ -445,10 +446,10 @@ public class NetGraphBuilder {
 		    
 		    
 		} else {
-
+		
 			int i = fromOrderedContent.length;
 			while (-- i>= 0) {
-				fromOrderedContent[i] = new Pipe<NetPayloadSchema>(fromWraperConfig,false);            		
+				fromOrderedContent[i] = new Pipe<NetPayloadSchema>(fromOrderedConfig,false);            		
 			}
 			toWiterPipes = fromOrderedContent;      	
 		
@@ -471,7 +472,10 @@ public class NetGraphBuilder {
 		Pipe<NetPayloadSchema>[][] orderedOutput = Pipe.splitPipes(routerCount, fromSupers);
 		int k = routerCount;
 		while (--k>=0) {
-			OrderSupervisorStage wrapSuper = new OrderSupervisorStage(graphManager, fromModule[k], orderedOutput[k], coordinator);//ensure order           
+						
+			OrderSupervisorStage wrapSuper = new OrderSupervisorStage(graphManager, 
+					                    fromModule[k], orderedOutput[k], coordinator);//ensure order   
+			
 			if (rate>0) {
 				GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, wrapSuper);
 			}
