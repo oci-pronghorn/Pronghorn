@@ -1,16 +1,7 @@
 package com.ociweb.pronghorn.stage.math;
 
-import java.io.IOException;
-import java.util.Arrays;
-
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
-import com.ociweb.pronghorn.pipe.PipeWriter;
-import com.ociweb.pronghorn.pipe.schema.generator.TemplateGenerator;
-import com.ociweb.pronghorn.pipe.schema.loader.TemplateHandler;
-import com.ociweb.pronghorn.pipe.token.OperatorMask;
-import com.ociweb.pronghorn.pipe.token.TokenBuilder;
 import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
