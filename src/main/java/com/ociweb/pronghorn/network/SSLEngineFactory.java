@@ -20,40 +20,32 @@ import org.slf4j.LoggerFactory;
 public class SSLEngineFactory {
 
 	private static final Logger log = LoggerFactory.getLogger(SSLEngineFactory.class);
+	private static KeyManagerFactory keyManagerFactory;
+	private static TrustManagerFactory trustManagerFactory;
+    private static TLSService privateService;
 
-	
-	private static final KeyManagerFactory keyManagerFactory;
-	private static final TrustManagerFactory trustManagerFactory;
-	
-	static {
-		
-		try {
-			InputStream keyInputStream = SSLEngineFactory.class.getResourceAsStream("/client.jks"); //new FileInputStream("./src/main/resources/client.jks")
-			InputStream trustInputStream = SSLEngineFactory.class.getResourceAsStream("/trustedCerts.jks"); //new FileInputStream("./src/main/resources/trustedCerts.jks")
-						
-			keyManagerFactory = createKeyManagers(keyInputStream, "storepass", "keypass");
-			trustManagerFactory = createTrustManagers(trustInputStream, "storepass");
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}		
-		
-	}
+    public static void init(TLSPolicy certSource) {
+        try {
+            // Server Identity
+            InputStream keyInputStream = certSource.keyInputStream();
+            // All the internet sites client trusts
+            InputStream trustInputStream = certSource.trustInputStream();
 
-	private static TLSService privateService;
+            String keyPassword = certSource.keyPassword();
+            String keyStorePassword = certSource.keyStorePassword();
+
+            keyManagerFactory = createKeyManagers(keyInputStream, keyStorePassword, keyPassword);
+            trustManagerFactory = createTrustManagers(trustInputStream, keyStorePassword);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 	
-	public static final TLSService getService() {
+	public static TLSService getService() {
 		if (privateService==null) {
 			privateService = new TLSService(keyManagerFactory, trustManagerFactory);
 		}
 		return privateService;
-	}
-
-	
-	public static void init() {
-		//NOTE: does not appear to do anything but this call ensure that the static values are all setup by the time this is called.
-		assert(null!=getService());
-		assert(null!=keyManagerFactory);
-		assert(null!=trustManagerFactory);		
 	}
 	
     /**
