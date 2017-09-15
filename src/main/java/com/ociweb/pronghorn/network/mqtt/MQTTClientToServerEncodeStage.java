@@ -125,6 +125,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		
 	}
 
+	private int countOfBlocksWaitingForPersistLoad = 0;
+	
 	@Override
 	public void run() {		
 		if (!processPersistLoad()) {
@@ -135,6 +137,10 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 									
 			processInput(connectionId);
 			
+		} else {
+			if (Integer.numberOfLeadingZeros(countOfBlocksWaitingForPersistLoad) != Integer.numberOfLeadingZeros(++countOfBlocksWaitingForPersistLoad)) {
+				logger.info("NOTE: too much volume, encoding has been blocked by waiting for persistance {} times",countOfBlocksWaitingForPersistLoad);
+			}
 		}
 	}
 	
@@ -497,6 +503,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		}
 	}
 
+	int countOfReplayBlocks = 0;
 	private boolean hasRoomForNewMessagePlusReplay() {
 		
 		Pipe<NetPayloadSchema> server = toBroker[activeConnection.requestPipeLineIdx()];
@@ -509,8 +516,13 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		}
 		final long slabPos = Pipe.getSlabHeadPosition(server); //where we will write..
 		long maxWrite = FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(server));
-		return !((-1!=replayFromPosition) && ((countUnackPublished()*maxWrite)+slabPos+maxWrite >= replayFromPosition));
-
+		boolean result =  !((-1!=replayFromPosition) && ((countUnackPublished()*maxWrite)+slabPos+maxWrite >= replayFromPosition));
+		if (!result) {
+			if (Integer.numberOfLeadingZeros(countOfReplayBlocks) != Integer.numberOfLeadingZeros(++countOfReplayBlocks)) {
+				logger.info("Warning: required replay messages have blocked new content {} times",countOfReplayBlocks);
+			}
+		}		
+		return result;
 	}
 
 	private boolean hasInFlightCapacity() {
@@ -525,7 +537,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			result = (PipeReader.peekInt(input, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_QOS_21)<=remainingInFlight);
 			
 			if (!result) {
-				logger.info("does not have in flight capacity, B remaining limit {} ",remainingInFlight);
+				logger.info("in flight capacity saturated, remaining limit {} ",remainingInFlight);
 			}
 			
 		} else if (PipeReader.peekMsg(input, MQTTClientToServerSchema.MSG_SUBSCRIBE_8, 
@@ -534,7 +546,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			result = 1<=remainingInFlight;
 			
 			if (!result) {
-				logger.info("does not have in flight capacity, A remaining limit {} ",remainingInFlight);
+				logger.info("does not have in flight capacity, remaining limit {} ",remainingInFlight);
 			}
 			
 		} else {
@@ -620,8 +632,14 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		return hasRoom;
 	}
 
+	int countOfPersistStoreBlocks = 0;
 	private boolean hasRoomToPersist() {
-		return PipeWriter.hasRoomForWrite(persistBlobStore);
+		boolean result = PipeWriter.hasRoomForWrite(persistBlobStore);
+		if (Integer.numberOfLeadingZeros(countOfPersistStoreBlocks) != Integer.numberOfLeadingZeros(++countOfPersistStoreBlocks)) {
+			logger.info("Warning: encoding blocked {} times waiting to persist store ",countOfPersistStoreBlocks);
+		}
+		
+		return result;
 	}
 
 	private boolean writeAcksToBroker(long connectionId, Pipe<NetPayloadSchema> server, int msgIdx) {

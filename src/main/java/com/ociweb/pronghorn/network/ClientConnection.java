@@ -185,6 +185,10 @@ public class ClientConnection extends SSLConnection {
 		return port;
 	}
 	
+	public String toString() {
+		return host+":"+port;
+	}
+	
 	@Deprecated
 	public int getUserId() {
 		return getSessionId();

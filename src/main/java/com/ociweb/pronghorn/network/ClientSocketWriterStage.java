@@ -99,14 +99,11 @@ public class ClientSocketWriterStage extends PronghornStage {
 			while (--i>=0) {
 								
 				if (connections[i]!=null) {
-
 					tryWrite(i);
-					if (connections[i]==null) {
-						didWork = true;
-						i++; //run me again to check for new content
-						continue;
-					}
-				} else {
+					//may clear connections and if so look for more work immediately
+				} 
+
+				if (connections[i]==null) {
 					Pipe<NetPayloadSchema> pipe = input[i];
 					assert(pipe.bytesReadBase(pipe)>=0);
 					
@@ -343,8 +340,6 @@ public class ClientSocketWriterStage extends PronghornStage {
 		
 	}
 
-	//int total = 0;
-	
 	private void tryWrite(int i) {
 		assert(buffers[i].hasRemaining()) : "please, do not call if there is nothing to write.";	
 		int value = -10;
@@ -402,14 +397,19 @@ public class ClientSocketWriterStage extends PronghornStage {
 			buffers[i].clear();
 			connections[i]=null;
 		}  else {
-			//not an error.
 			
-			//logger.info("unable to write all of {} ",i);
+			if (Integer.numberOfLeadingZeros(countOfUnableToFullyWrite) != 
+				Integer.numberOfLeadingZeros(countOfUnableToFullyWrite++)) {
+							
+				logger.info("Network overload issues on connection {} we still have {} bytes wating to write ",
+						i,buffers[i].remaining());
+				
+			}
 		}
 	}
+	private int countOfUnableToFullyWrite = 0;
 	
-	
-    int totalB;
+    private int totalB;
 	private void testValidContent(final int idx, ByteBuffer buf) {
 		
 		if (ClientCoordinator.TEST_RECORDS) {							
