@@ -139,7 +139,7 @@ public class MQTTClientGraphBuilder {
 		
 		Pipe<NetPayloadSchema>[] toBroker = Pipe.buildPipes(independentClients, 
 				                        NetPayloadSchema.instance.newPipeConfig(
-				                        		maxInFlight+8,//extra space 
+				                        		(2*maxInFlight+8),//extra space Now added extra for the replays!
 				                        		maximumLenghOfVariableLengthFields));
 		
 		//take input request and write the bytes to the broker socket
