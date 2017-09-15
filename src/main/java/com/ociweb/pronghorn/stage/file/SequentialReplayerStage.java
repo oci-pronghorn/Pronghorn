@@ -14,8 +14,8 @@ import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
-import com.ociweb.pronghorn.stage.file.schema.SequentialFileControlSchema;
-import com.ociweb.pronghorn.stage.file.schema.SequentialFileResponseSchema;
+import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
+import com.ociweb.pronghorn.stage.file.schema.SequentialRespSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class SequentialReplayerStage extends PronghornStage {
@@ -25,8 +25,8 @@ public class SequentialReplayerStage extends PronghornStage {
 	private final Pipe<PersistedBlobStoreSchema> storeRequests;
 	private final Pipe<PersistedBlobLoadSchema> loadResponses;
     
-	private final Pipe<SequentialFileControlSchema>[] fileControl;
-	private final Pipe<SequentialFileResponseSchema>[] fileResponse;
+	private final Pipe<SequentialCtlSchema>[] fileControl;
+	private final Pipe<SequentialRespSchema>[] fileResponse;
 	private final Pipe<RawDataSchema>[] fileOutput;
 	private final Pipe<RawDataSchema>[] fileInput;
 	
@@ -60,13 +60,15 @@ public class SequentialReplayerStage extends PronghornStage {
 	
 	private boolean shutdownInProgress = false;
 	
+	//TODO: reduce this to fewer pipes.
+	
 	protected SequentialReplayerStage(GraphManager graphManager, 
 			
 		            Pipe<PersistedBlobStoreSchema> storeRequests,  //load request
 		            Pipe<PersistedBlobLoadSchema> loadResponses,  //Write ack, load done?
 		            
-					Pipe<SequentialFileControlSchema>[] fileControl,//last file is the ack index file
-					Pipe<SequentialFileResponseSchema>[] fileResponse,
+					Pipe<SequentialCtlSchema>[] fileControl,//last file is the ack index file
+					Pipe<SequentialRespSchema>[] fileResponse,
 					Pipe<RawDataSchema>[] fileWriteData,
 					Pipe<RawDataSchema>[] fileReadData,
 		            
@@ -101,7 +103,7 @@ public class SequentialReplayerStage extends PronghornStage {
 		this.waitCount = i;
 		assert(waitCount==2) : "only 2 is supported";
 		while (--i>=0) {
-			SequentialFileControlSchema.publishMetaRequest(fileControl[i]);
+			SequentialCtlSchema.publishMetaRequest(fileControl[i]);
 		}
 		
 		//create space for full filter
@@ -231,7 +233,7 @@ public class SequentialReplayerStage extends PronghornStage {
 		int i = fileResponse.length-1; //skips the index file
 		while (--i>=0) {
 			
-			Pipe<SequentialFileResponseSchema> input = fileResponse[i];
+			Pipe<SequentialRespSchema> input = fileResponse[i];
 			
 			while (PipeReader.tryReadFragment(input)) {
 			    int msgIdx = PipeReader.getMsgIdx(input);
@@ -239,9 +241,9 @@ public class SequentialReplayerStage extends PronghornStage {
 			    
 			    didWork = true;
 			    switch(msgIdx) {
-			    	case SequentialFileResponseSchema.MSG_METARESPONSE_2:
-			    		long fieldSize = PipeReader.readLong(input,SequentialFileResponseSchema.MSG_METARESPONSE_2_FIELD_SIZE_11);
-			    		long fieldDate = PipeReader.readLong(input,SequentialFileResponseSchema.MSG_METARESPONSE_2_FIELD_DATE_11);
+			    	case SequentialRespSchema.MSG_METARESPONSE_2:
+			    		long fieldSize = PipeReader.readLong(input,SequentialRespSchema.MSG_METARESPONSE_2_FIELD_SIZE_11);
+			    		long fieldDate = PipeReader.readLong(input,SequentialRespSchema.MSG_METARESPONSE_2_FIELD_DATE_11);
 			    	
 			    		//logger.info("meta response for {} field size {}, fielddate {} ",i,fieldSize,fieldDate);
 			    		
@@ -284,24 +286,24 @@ public class SequentialReplayerStage extends PronghornStage {
 		int i = fileResponse.length;
 		while (--i>=0) {
 		
-			Pipe<SequentialFileResponseSchema> input = fileResponse[i];
+			Pipe<SequentialRespSchema> input = fileResponse[i];
 			
 			while (PipeReader.tryReadFragment(input)) {
 			    int msgIdx = PipeReader.getMsgIdx(input);
 			    switch(msgIdx) {
-			        case SequentialFileResponseSchema.MSG_CLEARACK_1:
+			        case SequentialRespSchema.MSG_CLEARACK_1:
 			        	clearInProgress--;
 			        	assert(clearInProgress>=0);
 					break;
-			        case SequentialFileResponseSchema.MSG_METARESPONSE_2:
+			        case SequentialRespSchema.MSG_METARESPONSE_2:
 						//long fieldSize = PipeReader.readLong(input,SequentialFileResponseSchema.MSG_METARESPONSE_2_FIELD_SIZE_11);
 						//long fieldDate = PipeReader.readLong(input,SequentialFileResponseSchema.MSG_METARESPONSE_2_FIELD_DATE_11);
 						logger.info("got back a meta response but at this point we are not expecting one");
 					break;
-			        case SequentialFileResponseSchema.MSG_WRITEACK_3:
+			        case SequentialRespSchema.MSG_WRITEACK_3:
 			        	
 			        	requestsInFlight--;
-			        	long ackId = PipeReader.readLong(input, SequentialFileResponseSchema.MSG_WRITEACK_3_FIELD_ID_12);
+			        	long ackId = PipeReader.readLong(input, SequentialRespSchema.MSG_WRITEACK_3_FIELD_ID_12);
 			           	if (0==i || 1==i) {
 			           		PersistedBlobLoadSchema.publishAckWrite(loadResponses, ackId);
 			           		
@@ -465,7 +467,7 @@ public class SequentialReplayerStage extends PronghornStage {
 		fileSizeWritten = 0;
 		while (--i>=0) {
 			//clear every file
-			SequentialFileControlSchema.publishClear(fileControl[i]);
+			SequentialCtlSchema.publishClear(fileControl[i]);
 		}
 	}
 
@@ -478,12 +480,12 @@ public class SequentialReplayerStage extends PronghornStage {
 			//switch to to read releases mode
 			mode = MODE_READ_RELEASES;
 			//request these two files to be played back to us
-			SequentialFileControlSchema.publishReplay(fileControl[fileControl.length-1]);
+			SequentialCtlSchema.publishReplay(fileControl[fileControl.length-1]);
 		} else {
 			mode = MODE_READ_DATA;
 		}
 		//both cases need this data
-		SequentialFileControlSchema.publishReplay(fileControl[activeIdx]);
+		SequentialCtlSchema.publishReplay(fileControl[activeIdx]);
 		//tell consumer to get ready we are about to send data
 		PersistedBlobLoadSchema.publishBeginReplay(loadResponses);
 	}
@@ -508,7 +510,7 @@ public class SequentialReplayerStage extends PronghornStage {
 		 Pipe.publishWrites(out);
 		 
 		 
-		 SequentialFileControlSchema.publishIdToSave(fileControl[fileControl.length-1], fieldBlockId);
+		 SequentialCtlSchema.publishIdToSave(fileControl[fileControl.length-1], fieldBlockId);
 		 requestsInFlight++;
 		  		 
 	}
@@ -521,7 +523,7 @@ public class SequentialReplayerStage extends PronghornStage {
 	}
 
 	private void writeBlock(long blockId, DataInputBlobReader<?> data,
-			                Pipe<RawDataSchema> pipe, Pipe<SequentialFileControlSchema> control) {
+			                Pipe<RawDataSchema> pipe, Pipe<SequentialCtlSchema> control) {
 		
 		
 		//logger.info("write output data for encrypt to pipe "+pipe.id);
@@ -546,7 +548,7 @@ public class SequentialReplayerStage extends PronghornStage {
 		Pipe.confirmLowLevelWrite(pipe, size);
 		Pipe.publishWrites(pipe);
 		
-		SequentialFileControlSchema.publishIdToSave(control, blockId);
+		SequentialCtlSchema.publishIdToSave(control, blockId);
 		requestsInFlight++;
 
 	}
@@ -557,7 +559,7 @@ public class SequentialReplayerStage extends PronghornStage {
 		        	
         	//ensure new file is clear
         	clearInProgress = 1;
-        	SequentialFileControlSchema.publishClear(fileControl[1&(activeIdx+1)]);
+        	SequentialCtlSchema.publishClear(fileControl[1&(activeIdx+1)]);
         	fileSizeWritten = 0;
 			if (isDirty) {
 				//clear known release so we can reload them from storage.
@@ -565,13 +567,13 @@ public class SequentialReplayerStage extends PronghornStage {
 				//switch to to read releases mode
 				mode = MODE_COMPACT_READ_RELEASES;
 				//request these two files to be played back to us
-				SequentialFileControlSchema.publishReplay(fileControl[fileControl.length-1]);
+				SequentialCtlSchema.publishReplay(fileControl[fileControl.length-1]);
 			    //when it is done it will change mode to MODE_COMPACT_READ_DATA
 			} else {
 				mode = MODE_COMPACT_READ_DATA;
 			}
 			//both cases need this data
-			SequentialFileControlSchema.publishReplay(fileControl[activeIdx]);
+			SequentialCtlSchema.publishReplay(fileControl[activeIdx]);
 		}
 	}
 

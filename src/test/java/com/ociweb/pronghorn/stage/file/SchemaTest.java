@@ -13,8 +13,8 @@ import com.ociweb.pronghorn.stage.file.schema.BlockStorageReceiveSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
-import com.ociweb.pronghorn.stage.file.schema.SequentialFileControlSchema;
-import com.ociweb.pronghorn.stage.file.schema.SequentialFileResponseSchema;
+import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
+import com.ociweb.pronghorn.stage.file.schema.SequentialRespSchema;
 
 public class SchemaTest {
 
@@ -43,12 +43,12 @@ public class SchemaTest {
 	
 	@Test
 	public void testSequentialFileControlSchema() {
-		assertTrue(FROMValidation.checkSchema(ROOT + "SequentialFileControl.xml", SequentialFileControlSchema.class));
+		assertTrue(FROMValidation.checkSchema(ROOT + "SequentialCtl.xml", SequentialCtlSchema.class));
 	}
 	
 	@Test
 	public void testSequentialFileResponseSchema() {
-		assertTrue(FROMValidation.checkSchema(ROOT + "SequentialFileResponse.xml", SequentialFileResponseSchema.class));
+		assertTrue(FROMValidation.checkSchema(ROOT + "SequentialResp.xml", SequentialRespSchema.class));
 	}
 	
 	@Test

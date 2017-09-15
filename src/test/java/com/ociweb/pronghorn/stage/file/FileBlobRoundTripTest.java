@@ -19,8 +19,8 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
-import com.ociweb.pronghorn.stage.file.schema.SequentialFileControlSchema;
-import com.ociweb.pronghorn.stage.file.schema.SequentialFileResponseSchema;
+import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
+import com.ociweb.pronghorn.stage.file.schema.SequentialRespSchema;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -95,11 +95,11 @@ public class FileBlobRoundTripTest {
     	 GraphManager gm = new GraphManager();
 	 
     	 
-    	 Pipe<SequentialFileControlSchema>[] control = new Pipe[]{SequentialFileControlSchema.instance.newPipe(10, 1000)};
+    	 Pipe<SequentialCtlSchema>[] control = new Pipe[]{SequentialCtlSchema.instance.newPipe(10, 1000)};
 		 Pipe<RawDataSchema>[] input = new Pipe[]{RawDataSchema.instance.newPipe(10, 1000)};
 		 
 		 Pipe<RawDataSchema>[] output = new Pipe[]{RawDataSchema.instance.newPipe(10, 1000)};
-		 Pipe<SequentialFileResponseSchema>[] response = new Pipe[]{SequentialFileResponseSchema.instance.newPipe(10, 1000)};
+		 Pipe<SequentialRespSchema>[] response = new Pipe[]{SequentialRespSchema.instance.newPipe(10, 1000)};
 		
 		 
 		 control[0].initBuffers();
@@ -111,11 +111,11 @@ public class FileBlobRoundTripTest {
 		 Pipe.confirmLowLevelWrite(input[0]);
 		 Pipe.publishWrites(input[0]);
 		 
-		 SequentialFileControlSchema.publishIdToSave(control[0], 123);
+		 SequentialCtlSchema.publishIdToSave(control[0], 123);
 		 
 		 //this replay command is expected to only happen after the data is written since pipe has data.
-		 SequentialFileControlSchema.publishReplay(control[0]);
-		 SequentialFileControlSchema.publishMetaRequest(control[0]);
+		 SequentialCtlSchema.publishReplay(control[0]);
+		 SequentialCtlSchema.publishMetaRequest(control[0]);
 		 
 		 PipeWriter.publishEOF(control[0]);
 		 

@@ -11,8 +11,8 @@ import com.ociweb.pronghorn.stage.file.schema.BlockStorageReceiveSchema;
 import com.ociweb.pronghorn.stage.file.schema.BlockStorageXmitSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
-import com.ociweb.pronghorn.stage.file.schema.SequentialFileControlSchema;
-import com.ociweb.pronghorn.stage.file.schema.SequentialFileResponseSchema;
+import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
+import com.ociweb.pronghorn.stage.file.schema.SequentialRespSchema;
 import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -30,22 +30,22 @@ public class FileGraphBuilder {
 			}
 		}
 		
-		PipeConfig<SequentialFileControlSchema> ctlConfig = SequentialFileControlSchema.instance.newPipeConfig(inFlightCount);
-		PipeConfig<SequentialFileResponseSchema> respConfig = SequentialFileResponseSchema.instance.newPipeConfig(inFlightCount);
+		PipeConfig<SequentialCtlSchema> ctlConfig = SequentialCtlSchema.instance.newPipeConfig(inFlightCount);
+		PipeConfig<SequentialRespSchema> respConfig = SequentialRespSchema.instance.newPipeConfig(inFlightCount);
 		PipeConfig<RawDataSchema> releaseConfig = RawDataSchema.instance.newPipeConfig(inFlightCount, 128);		
 		PipeConfig<RawDataSchema> dataConfig = RawDataSchema.instance.newPipeConfig(inFlightCount, largestBlock);
 					
 		Pipe<PersistedBlobLoadSchema> perLoad = PersistedBlobLoadSchema.instance.newPipe(inFlightCount, largestBlock);
 				
-		Pipe<SequentialFileControlSchema>[] control = new Pipe[]  {
-				             new Pipe<SequentialFileControlSchema>(ctlConfig),
-				             new Pipe<SequentialFileControlSchema>(ctlConfig),
-				             new Pipe<SequentialFileControlSchema>(ctlConfig)};
+		Pipe<SequentialCtlSchema>[] control = new Pipe[]  {
+				             new Pipe<SequentialCtlSchema>(ctlConfig),
+				             new Pipe<SequentialCtlSchema>(ctlConfig),
+				             new Pipe<SequentialCtlSchema>(ctlConfig)};
 		
-		Pipe<SequentialFileResponseSchema>[] response = new Pipe[] {
-				             new Pipe<SequentialFileResponseSchema>(respConfig),
-				             new Pipe<SequentialFileResponseSchema>(respConfig),
-				             new Pipe<SequentialFileResponseSchema>(respConfig)};
+		Pipe<SequentialRespSchema>[] response = new Pipe[] {
+				             new Pipe<SequentialRespSchema>(respConfig),
+				             new Pipe<SequentialRespSchema>(respConfig),
+				             new Pipe<SequentialRespSchema>(respConfig)};
 		
 		Pipe<RawDataSchema>[] fileDataToLoad = new Pipe[] {
 							 new Pipe<RawDataSchema>(dataConfig.grow2x()),

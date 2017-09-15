@@ -22,8 +22,8 @@ import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
-import com.ociweb.pronghorn.stage.file.schema.SequentialFileControlSchema;
-import com.ociweb.pronghorn.stage.file.schema.SequentialFileResponseSchema;
+import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
+import com.ociweb.pronghorn.stage.file.schema.SequentialRespSchema;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class SequentialFileReadWriteStage extends PronghornStage {
@@ -38,8 +38,8 @@ public class SequentialFileReadWriteStage extends PronghornStage {
     private final int READ_CTL_REQUIRED_SIZE = Pipe.sizeOf(RawDataSchema.instance, 2*RawDataSchema.MSG_CHUNKEDSTREAM_1);
     private final Pipe<RawDataSchema>[] output;
     private final Pipe<RawDataSchema>[] input;
-    private final Pipe<SequentialFileControlSchema>[] control;
-    private final Pipe<SequentialFileResponseSchema>[] response;
+    private final Pipe<SequentialCtlSchema>[] control;
+    private final Pipe<SequentialRespSchema>[] response;
     private final String[] paths;
     private Path[] path;
     private long[] idToWriteToFile;
@@ -58,8 +58,8 @@ public class SequentialFileReadWriteStage extends PronghornStage {
     private Set<OpenOption> options;
 
     public SequentialFileReadWriteStage(GraphManager graphManager,
-	    						 Pipe<SequentialFileControlSchema>[] control,
-	    						 Pipe<SequentialFileResponseSchema>[] response,
+	    						 Pipe<SequentialCtlSchema>[] control,
+	    						 Pipe<SequentialRespSchema>[] response,
 	    						 Pipe<RawDataSchema>[] input,
 	    		                 Pipe<RawDataSchema>[] output, 
 	    		                 String[] paths) {
@@ -183,7 +183,7 @@ public class SequentialFileReadWriteStage extends PronghornStage {
     }
 
 	private boolean readControl(int idx) {
-		Pipe<SequentialFileControlSchema> localControl = control[idx];
+		Pipe<SequentialCtlSchema> localControl = control[idx];
 		boolean continueWithIdx = true;
 		/////////
 		//do not use while, commands are rare and we should only do 1
@@ -198,7 +198,7 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 		    
 		    switch(msgIdx) {
 		    
-		        case SequentialFileControlSchema.MSG_REPLAY_1:
+		        case SequentialCtlSchema.MSG_REPLAY_1:
 		        	//switch to read mode if not already in read mode
 		        	//set position to beginning for reading
 		        	if (MODE_WRITE == mode[idx]) {
@@ -209,26 +209,26 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 		        		logger.info("requested switch to read/replay but already in that mode");
 		        	}	
 				break;
-		        case SequentialFileControlSchema.MSG_CLEAR_2:
+		        case SequentialCtlSchema.MSG_CLEAR_2:
 		        	//if in write mode set position to zero
 		        	
 		        	if (MODE_WRITE == mode[idx]) {
 		        		//due to the above logic clear is only called after the write pipe is empty.
 		        		positionToBeginning(idx);
 		        		//no more data should be written until this gets consumed
-		        		SequentialFileResponseSchema.publishClearAck(response[idx]);		        		
+		        		SequentialRespSchema.publishClearAck(response[idx]);		        		
 		        	} else {
 		        		logger.info("error, clear called while in read mode");
 		        	}
 		        	
 		        	
 				break;
-		        case SequentialFileControlSchema.MSG_METAREQUEST_3:
+		        case SequentialCtlSchema.MSG_METAREQUEST_3:
 
 					try {
 						BasicFileAttributes readAttributes = this.provider.readAttributes(path[idx], BasicFileAttributes.class);
 						
-						SequentialFileResponseSchema.publishMetaResponse(
+						SequentialRespSchema.publishMetaResponse(
 								response[idx], 
 								readAttributes.size(), 
 								readAttributes.lastModifiedTime().toMillis());
@@ -240,8 +240,8 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 					//send mete data but also break out of above since we took the message
 		        	continueWithIdx = false;
 				break;
-		        case SequentialFileControlSchema.MSG_IDTOSAVE_4:
-		        	idToWriteToFile[idx] = PipeReader.readLong(localControl,SequentialFileControlSchema.MSG_IDTOSAVE_4_FIELD_ID_10);
+		        case SequentialCtlSchema.MSG_IDTOSAVE_4:
+		        	idToWriteToFile[idx] = PipeReader.readLong(localControl,SequentialCtlSchema.MSG_IDTOSAVE_4_FIELD_ID_10);
 		        	//logger.info("new block to be saved {} ", idToWriteToFile[idx]);
 		        break;
 		        case -1:
@@ -417,7 +417,7 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 	private boolean ackFinishedWrite(int idx) {
 		if (-1 != idToWriteToFile[idx]) {
 			//logger.info("finished write of block {} ", idToWriteToFile[idx]);
-			SequentialFileResponseSchema.publishWriteAck(response[idx], idToWriteToFile[idx]);
+			SequentialRespSchema.publishWriteAck(response[idx], idToWriteToFile[idx]);
 			idToWriteToFile[idx] = -1;
 			return true;
 		}

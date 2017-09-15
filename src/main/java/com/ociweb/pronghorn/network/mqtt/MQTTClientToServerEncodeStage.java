@@ -635,7 +635,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	int countOfPersistStoreBlocks = 0;
 	private boolean hasRoomToPersist() {
 		boolean result = PipeWriter.hasRoomForWrite(persistBlobStore);
-		if (Integer.numberOfLeadingZeros(countOfPersistStoreBlocks) != Integer.numberOfLeadingZeros(++countOfPersistStoreBlocks)) {
+		if ((!result) &
+			(Integer.numberOfLeadingZeros(countOfPersistStoreBlocks) != Integer.numberOfLeadingZeros(++countOfPersistStoreBlocks))) {
 			logger.info("Warning: encoding blocked {} times waiting to persist store ",countOfPersistStoreBlocks);
 		}
 		
