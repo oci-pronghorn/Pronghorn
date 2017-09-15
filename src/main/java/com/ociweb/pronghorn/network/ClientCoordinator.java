@@ -112,7 +112,13 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		
 		this.isTLS = isTLS;
 		int maxUsers = 1<<connectionsInBits;
-		int trieSize = 1024+(24*maxUsers); //TODO: this is a hack 
+		int trieSize = 1024+(24*maxUsers); //TODO: this is a hack
+
+		if (isTLS) {
+			// TODO: move this up and share policy with server coordinator
+			TLSPolicy tls = TLSPolicy.defaultPolicy;
+			SSLEngineFactory.init(tls);
+		}
 				
 		
 		connections = new ServiceObjectHolder<ClientConnection>(connectionsInBits, ClientConnection.class, this, false);

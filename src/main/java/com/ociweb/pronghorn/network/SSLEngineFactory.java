@@ -25,6 +25,12 @@ public class SSLEngineFactory {
     private static TLSService privateService;
 
     public static void init(TLSPolicy certSource) {
+        // TODO: once server coordinator and client coordinator share the same policy
+        // this init can be moved up and called once.
+        // Then we should be smart about being server or client only
+        if (keyManagerFactory != null) {
+            return;
+        }
         try {
             // Server Identity
             InputStream keyInputStream = certSource.keyInputStream();
