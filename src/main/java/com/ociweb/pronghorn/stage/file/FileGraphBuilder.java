@@ -13,7 +13,6 @@ import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobStoreSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
 import com.ociweb.pronghorn.stage.file.schema.SequentialRespSchema;
-import com.ociweb.pronghorn.stage.route.ReplicatorStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
 public class FileGraphBuilder {
