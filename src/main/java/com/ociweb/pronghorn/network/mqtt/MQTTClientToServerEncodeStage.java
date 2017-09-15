@@ -503,6 +503,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		}
 	}
 
+	private long MAX_FRAG_SIZE_REPLAY = FieldReferenceOffsetManager.maxFragmentSize(NetPayloadSchema.FROM); //max we will write
+	
 	int countOfReplayBlocks = 0;
 	private boolean hasRoomForNewMessagePlusReplay() {
 		
@@ -513,10 +515,13 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			return true;
 		} else {
 			rePublish(server);
+			if (-1==replayFromPosition) {			
+				return true;
+			}
 		}
 		final long slabPos = Pipe.getSlabHeadPosition(server); //where we will write..
-		long maxWrite = FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(server));
-		boolean result =  !((-1!=replayFromPosition) && ((countUnackPublished()*maxWrite)+slabPos+maxWrite >= replayFromPosition));
+		long maxReplaySpaceNeeded = countUnackPublished()*MAX_FRAG_SIZE_REPLAY;
+		boolean result =  (maxReplaySpaceNeeded + slabPos + MAX_FRAG_SIZE_REPLAY) < replayFromPosition;				          
 		if (!result) {
 			if (Integer.numberOfLeadingZeros(countOfReplayBlocks) != Integer.numberOfLeadingZeros(++countOfReplayBlocks)) {
 				logger.info("Warning: required replay messages have blocked new content {} times",countOfReplayBlocks);
@@ -605,10 +610,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 			int qos = PipeReader.peekInt(input, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_QOS_21);
 			if (qos==0) {
 				if (reportDroppedMessages) {
-					int leadingA = Long.numberOfLeadingZeros(totalDroppedMessages);					
-					totalDroppedMessages++;
-					int leadingB = Long.numberOfLeadingZeros(totalDroppedMessages);
-					if (leadingA != leadingB) {
+					if (Long.numberOfLeadingZeros(totalDroppedMessages) != Long.numberOfLeadingZeros(++totalDroppedMessages)) {
 						
 						topicDropped.setLength(0);;
 						topicDropped.append("Most recently dropped topic: ");
