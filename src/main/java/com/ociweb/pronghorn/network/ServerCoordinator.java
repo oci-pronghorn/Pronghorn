@@ -103,8 +103,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	this.processorLookup = Pipe.splitGroups(processorsCount, maxPartialResponses);
     	
     	if (isTLS) {
-			// TODO: either expose these values to the business domian or
-			// make the defaultPolicy intelligent about build time config.
+			// TODO: move this up and share policy with client coordinator
 			TLSPolicy tls = TLSPolicy.defaultPolicy;
 			SSLEngineFactory.init(tls);
     	}
