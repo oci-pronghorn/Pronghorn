@@ -360,8 +360,7 @@ public class PipeWriter {
 		final int[] slab = pipe.slab(pipe);
 		final int idx = (int)historicSlabPosition & pipe.slabMask;		
 		final int msgIdx = slab[idx]; //false share as this is a dirty read
-		
-		
+				
 		//first part is to protect against dirty reading		
 		if ((msgIdx<Pipe.from(pipe).fragDataSize.length) 
 			 && Pipe.headPosition(pipe) == pipe.workingHeadPosition(pipe)	
