@@ -9,9 +9,8 @@ import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ReleaseSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.FragmentWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
-import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -46,139 +45,128 @@ public class MQTTClientResponseStage extends PronghornStage {
 
 	private void parseDataFromBroker(Pipe<NetPayloadSchema> server) {
 		
-//		System.err.println("ZZZZZZ  "+PipeWriter.hasRoomForWrite(ackReleaseForResponseParser)+
+//		logger.info(PipeWriter.hasRoomForWrite(ackReleaseForResponseParser)+
 //				           "  "+PipeWriter.hasRoomForWrite(out)+
 //				           "  "+PipeReader.hasContentToRead(server));
 		
-		while (PipeWriter.hasRoomForWrite(ackReleaseForResponseParser) && 
-			   PipeWriter.hasRoomForWrite(out) && 
-			   PipeReader.tryReadFragment(server)) {
+		while (Pipe.hasRoomForWrite(ackReleaseForResponseParser) && 
+			   Pipe.hasRoomForWrite(out) && 
+			   Pipe.hasContentToRead(server)) {
 			
-			final int idx = PipeReader.getMsgIdx(server);
+			final int idx = Pipe.takeMsgIdx(server);
 
 			if (NetPayloadSchema.MSG_PLAIN_210 == idx) {
 				
-				long connectionId = PipeReader.readLong(server, NetPayloadSchema.MSG_PLAIN_210_FIELD_CONNECTIONID_201);
-				long netPosition = PipeReader.readLong(server, NetPayloadSchema.MSG_PLAIN_210_FIELD_POSITION_206);
-				long arrivalTime = PipeReader.readLong(server, NetPayloadSchema.MSG_PLAIN_210_FIELD_ARRIVALTIME_210);
+				long connectionId = Pipe.takeLong(server);
+				long arrivalTime = Pipe.takeLong(server);
+				long netPosition = Pipe.takeLong(server);
 				
-				DataInputBlobReader<NetPayloadSchema> inputStream = PipeReader.inputStream(server, NetPayloadSchema.MSG_PLAIN_210_FIELD_PAYLOAD_204);
-				
+				DataInputBlobReader<NetPayloadSchema> inputStream = Pipe.openInputStream(server); 
+
 				byte commandByte = inputStream.readByte();
 	
+				//logger.trace("parse data from from broker {}",Integer.toHexString(commandByte));
+				
+				
 				switch (commandByte) {
 					case (byte)0xD0: //PingResp
 						
-						PipeWriter.tryWriteFragment(out, MQTTServerToClientSchema.MSG_PINGRESP_13);
-					  
-						PipeWriter.writeLong(out, MQTTServerToClientSchema.MSG_PINGRESP_13_FIELD_TIME_37, arrivalTime);
-											
-						PipeWriter.publishWrites(out);		
-						
+						Pipe.presumeRoomForWrite(out);					    
+					 	FragmentWriter.writeL(out, MQTTServerToClientSchema.MSG_PINGRESP_13, 
+					 			                   arrivalTime);
+		
 						break;
 					case (byte)0xB0: //UnSubAck
 						
-						PipeWriter.tryWriteFragment(out, MQTTServerToClientSchema.MSG_UNSUBACK_11);
-					
-					    PipeWriter.writeLong(out, MQTTServerToClientSchema.MSG_UNSUBACK_11_FIELD_TIME_37, arrivalTime);
-					
-					    int len = inputStream.readByte();
-					    assert(2==len);					    
-					    
-					    PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_UNSUBACK_11_FIELD_PACKETID_20, inputStream.readShort());
-					    					
-					    PipeWriter.publishWrites(out);
+						int len = inputStream.readByte();
+						assert(2==len);					    
+						
+						Pipe.presumeRoomForWrite(out);
+						FragmentWriter.writeLI(out, MQTTServerToClientSchema.MSG_UNSUBACK_11,
+								arrivalTime,
+								inputStream.readShort()
+								);
+				
 											
 						break;
 					case (byte)0x90: //SubAck
-					
-						PipeWriter.tryWriteFragment(out, MQTTServerToClientSchema.MSG_SUBACK_9);
-					
-				        PipeWriter.writeLong(out, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_TIME_37, arrivalTime);
-					
-					    int len9 = inputStream.readByte();
+						
+						int len9 = inputStream.readByte();
 					    assert(3==len9);					    
-					    
-					    PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_PACKETID_20, inputStream.readShort());
-					    PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_RETURNCODE_24, inputStream.readByte());
-					    					    
-					    PipeWriter.publishWrites(out);
-				    
+					
+						Pipe.presumeRoomForWrite(out);
+						
+						FragmentWriter.writeLII(out, MQTTServerToClientSchema.MSG_SUBACK_9,
+								arrivalTime,
+								inputStream.readShort(),
+								inputStream.readByte()
+								);
+							    
 						break;
 					case (byte)0x70: //PubComp
 						
-						PipeWriter.tryWriteFragment(out, MQTTServerToClientSchema.MSG_PUBCOMP_7);
-					
-				        PipeWriter.writeLong(out, MQTTServerToClientSchema.MSG_PUBCOMP_7_FIELD_TIME_37, arrivalTime);
-					
-					    int len7 = inputStream.readByte();
-					    assert(2==len7);					    
-					    
-					    PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_PUBCOMP_7_FIELD_PACKETID_20, inputStream.readShort());
-							    					    
-					    PipeWriter.publishWrites(out);
+						int len7 = inputStream.readByte();
+						assert(2==len7);					    
+						
+						Pipe.presumeRoomForWrite(out);
+						
+						FragmentWriter.writeLI(out, MQTTServerToClientSchema.MSG_PUBCOMP_7,
+								arrivalTime,
+								inputStream.readShort()
+								);
 												
 						break;
 					case (byte)0x40: //PubAck
-												
-						PipeWriter.tryWriteFragment(out, MQTTServerToClientSchema.MSG_PUBACK_4);
+											
+						int len4 = inputStream.readByte();
+						assert(2==len4);					    
 					
-				        PipeWriter.writeLong(out, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_TIME_37, arrivalTime);
-					
-					    int len4 = inputStream.readByte();
-					    assert(2==len4);					    
-					    
-					    short packetId40 = inputStream.readShort();
-					    PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_PACKETID_20, packetId40);
-							    					    
-					    PipeWriter.publishWrites(out);
-				    
+						short packetId40 = inputStream.readShort();
+						
+						Pipe.presumeRoomForWrite(out);
+						FragmentWriter.writeLI(out, MQTTServerToClientSchema.MSG_PUBACK_4, 
+								              arrivalTime, 
+								              packetId40);
+								
 						break;
 					case (byte)0x50: //PubRec
-												
-						PipeWriter.tryWriteFragment(out, MQTTServerToClientSchema.MSG_PUBREC_5);
-					
-				        PipeWriter.writeLong(out, MQTTServerToClientSchema.MSG_PUBREC_5_FIELD_TIME_37, arrivalTime);
-				    
-					    int len5 = inputStream.readByte();
-					    assert(true || 2==len5); //turned off until fuzz testing can build valid messages.					    
-					    
-					    PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_PUBREC_5_FIELD_PACKETID_20, inputStream.readShort());
-							    					    
-					    PipeWriter.publishWrites(out);
-					    
+						
+						int len5 = inputStream.readByte();
+						assert(true || 2==len5); //turned off until fuzz testing can build valid messages.					    
+															
+						Pipe.presumeRoomForWrite(out);
+						FragmentWriter.writeLI(out, MQTTServerToClientSchema.MSG_PUBREC_5,
+												arrivalTime, 
+												inputStream.readShort()
+												);
+											    
 						break;
 					case (byte)0x62: //PubRel
-												
-						PipeWriter.tryWriteFragment(out, MQTTServerToClientSchema.MSG_PUBREL_6);
 						
-				        PipeWriter.writeLong(out, MQTTServerToClientSchema.MSG_PUBREL_6_FIELD_TIME_37, arrivalTime);
-				     
 						int len6 = inputStream.readByte();
 						assert(2==len6);					    
-						
-						PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_PUBREL_6_FIELD_PACKETID_20, inputStream.readShort());
-							    					    
-						PipeWriter.publishWrites(out);
+											
+						Pipe.presumeRoomForWrite(out);
+						FragmentWriter.writeLI(out, MQTTServerToClientSchema.MSG_PUBREL_6,
+								arrivalTime, 
+								inputStream.readShort()
+								);
 						
 						break;
 					case (byte)0x20: //ConnAck
 						
-						PipeWriter.tryWriteFragment(out, MQTTServerToClientSchema.MSG_CONNACK_2);
-					
-				        PipeWriter.writeLong(out, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_TIME_37, arrivalTime);
-					
 						int len2 = inputStream.readByte();
-						assert(2==len2);					    
-						
-						int sessionPresentFlag = inputStream.readByte();						
-						int retCode = inputStream.readByte();
-						
-						PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_FLAG_35, sessionPresentFlag);
-						PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_RETURNCODE_24, retCode);
-							    					    
-						PipeWriter.publishWrites(out);
-						
+				 	    assert(2==len2);					    
+					
+				 	    int sessionPresentFlag = inputStream.readByte();						
+				 	    int retCode = inputStream.readByte();
+					
+						Pipe.presumeRoomForWrite(out);
+						FragmentWriter.writeLII(out, MQTTServerToClientSchema.MSG_CONNACK_2, 
+													arrivalTime,
+													sessionPresentFlag,
+													retCode);
+
 						break;
 					default:
                         //0x3?  These are all Publish
@@ -189,30 +177,32 @@ public class MQTTClientResponseStage extends PronghornStage {
 							int dup    = 1&(commandByte>>3);
 							int qos    = 3&(commandByte>>1);
 							int retain = 1&commandByte;
-													
-							PipeWriter.tryWriteFragment(out, MQTTServerToClientSchema.MSG_PUBLISH_3);
-							
-						    PipeWriter.writeLong(out, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_TIME_37, arrivalTime);
-							
-							PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_QOS_21, qos);
-							PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_RETAIN_22, retain);
-							PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_DUP_36, dup);
 										
 							//unpack the length						
-							int len3 = decodeLength(inputStream);
-							
+							int len3 = decodeLength(inputStream);							
 							int topicLength = inputStream.readShort();
 							assert(topicLength<out.maxVarLen) : "Outgoing pipe "+out+" is not large enough for topic of "+topicLength;
 							len3-=2;
-							
+
 							if (topicLength>out.maxVarLen>>1) { //TODO: this is a hack, for bad packets we must return an error message.
 								topicLength = out.maxVarLen>>1;
 							}
+							
+							
+							Pipe.presumeRoomForWrite(out);
+						
+							//  LIIIVIV
+							Pipe.addMsgIdx(out, MQTTServerToClientSchema.MSG_PUBLISH_3);
+							
+							Pipe.addLongValue(arrivalTime, out);
+							Pipe.addIntValue(qos, out);
+							Pipe.addIntValue(retain, out);
+							Pipe.addIntValue(dup, out);
+							
 							//MSG_PUBLISH_3_FIELD_TOPIC_23
-							DataOutputBlobWriter<MQTTServerToClientSchema> writer = PipeWriter.outputStream(out);
-							DataOutputBlobWriter.openField(writer);
+							DataOutputBlobWriter<MQTTServerToClientSchema> writer = Pipe.openOutputStream(out);
 							inputStream.readInto(writer, topicLength);
-							DataOutputBlobWriter.closeHighLevelField(writer, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_TOPIC_23);
+							DataOutputBlobWriter.closeLowLevelField(writer);
 							len3-=topicLength;
 							
 							int packetId = 0;
@@ -221,35 +211,31 @@ public class MQTTClientResponseStage extends PronghornStage {
 								len3-=2;
 							}
 							assert(len3<out.maxVarLen) : "Outgoing pipe "+out+" is not large enough for payload of "+len3;
-							
-							
-							PipeWriter.writeInt(out, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_PACKETID_20, packetId);
-							
+									
+							Pipe.addIntValue(packetId, out);
+														
 							//payload
-							writer = PipeWriter.outputStream(out);
-							DataOutputBlobWriter.openField(writer);
+							writer = Pipe.openOutputStream(out);
 		
 							if (len3>out.maxVarLen>>1) { //TODO: this is a hack, for bad packets we must return an error message.
 								len3 = out.maxVarLen>>1;
 							}
 							inputStream.readInto(writer, len3);
-							DataOutputBlobWriter.closeHighLevelField(writer, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25);
-							
-							PipeWriter.publishWrites(out);
-							
+							DataOutputBlobWriter.closeLowLevelField(writer);
+										
+							Pipe.confirmLowLevelWrite(out, Pipe.sizeOf(MQTTServerToClientSchema.instance, MQTTServerToClientSchema.MSG_PUBLISH_3));							
+							Pipe.publishWrites(out);
+														
 						} else {							
 							logger.trace("ignored unrecognized command of {} ",cmd);
 						}
 				}
 				
-				boolean ok = PipeWriter.tryWriteFragment(ackReleaseForResponseParser,ReleaseSchema.MSG_RELEASE_100);
-				assert(ok) : "already checked for space so this should not fail.";
-				
-				PipeWriter.writeLong(ackReleaseForResponseParser, ReleaseSchema.MSG_RELEASE_100_FIELD_CONNECTIONID_1, connectionId);
-
-				PipeWriter.writeLong(ackReleaseForResponseParser, ReleaseSchema.MSG_RELEASE_100_FIELD_POSITION_2, netPosition);
-				PipeWriter.publishWrites(ackReleaseForResponseParser);
-				
+				Pipe.presumeRoomForWrite(ackReleaseForResponseParser);
+				FragmentWriter.writeLL(ackReleaseForResponseParser, 
+						 ReleaseSchema.MSG_RELEASE_100, 
+						 connectionId,
+						 netPosition);
 				
 			} else {
 				if (-1==idx) {
@@ -259,9 +245,9 @@ public class MQTTClientResponseStage extends PronghornStage {
 								
 					if (idx==NetPayloadSchema.MSG_DISCONNECT_203) {
 						
-						PipeWriter.tryWriteFragment(out, MQTTServerToClientSchema.MSG_DISCONNECT_14);
-						PipeWriter.writeLong(out, MQTTServerToClientSchema.MSG_DISCONNECT_14_FIELD_TIME_37, System.currentTimeMillis());
-						PipeWriter.publishWrites(out);						
+						Pipe.presumeRoomForWrite(out);
+						FragmentWriter.writeL(out, MQTTServerToClientSchema.MSG_DISCONNECT_14, System.currentTimeMillis());
+	
 						
 					} else {
 						
@@ -271,7 +257,8 @@ public class MQTTClientResponseStage extends PronghornStage {
 				
 			}
 			
-			PipeReader.releaseReadLock(server);
+			Pipe.confirmLowLevelRead(server, Pipe.sizeOf(server, idx));			
+			Pipe.releaseReadLock(server);
 			
 		}
 	}

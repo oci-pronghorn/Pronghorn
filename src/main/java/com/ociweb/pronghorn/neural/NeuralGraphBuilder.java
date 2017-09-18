@@ -14,7 +14,7 @@ public class NeuralGraphBuilder {
 	
 	
 	public static <T extends MessageSchema<T>> Pipe<T>[][] buildPipeLayer(
-			 GraphManager gm, PipeConfig<T> config, Pipe<T>[] prev, int nodes2, stageFactory<T> factory) {
+			 GraphManager gm, PipeConfig<T> config, Pipe<T>[] prev, int nodes2, StageFactory<T> factory) {
 			
 		int nodes1 = prev.length;
 		
@@ -49,7 +49,7 @@ public class NeuralGraphBuilder {
 	}
 	
 	public static <T extends MessageSchema<T>> Pipe<T>[][] buildPipeLayer(
-			GraphManager gm, PipeConfig<T> config, Pipe<T>[][] prev, int nodes2, stageFactory<T> factory) {
+			GraphManager gm, PipeConfig<T> config, Pipe<T>[][] prev, int nodes2, StageFactory<T> factory) {
 		
 		int nodes1 = prev.length;
 		
@@ -86,7 +86,7 @@ public class NeuralGraphBuilder {
 	//NOTE: build inputs with  Pipe.buildPipes
 	
 	public static <T extends MessageSchema<T>> Pipe<T>[] lastPipeLayer(
-			           GraphManager gm, Pipe<T>[][] prev, stageFactory<T> factory) {
+			           GraphManager gm, Pipe<T>[][] prev, StageFactory<T> factory) {
 			
 		int p = prev.length;
 		Pipe<T>[] outputs = Pipe.buildPipes(p, prev[0][0].config());

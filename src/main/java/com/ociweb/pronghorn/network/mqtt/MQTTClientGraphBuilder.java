@@ -40,21 +40,13 @@ public class MQTTClientGraphBuilder {
 				
         //we are not defining he other side of the request and response....
 		
+		short maxPartialResponses = (short)1;
 		buildMQTTClientGraph(gm, isTLS, maxInFlight, maximumLenghOfVariableLengthFields, 
-							clientRequest, clientResponse, rate, (byte)2, (short)4);
+							clientRequest, clientResponse, rate, (byte)2, maxPartialResponses);
 				
 		return clientResponse;
 	}
 
-	public static void buildMQTTServerBraph(GraphManager gm) {
-		
-//		ServerCoordinator coordinator;
-//		boolean isLarge;
-//		boolean isTLS;
-//		ServerFactory factory;
-//		NetGraphBuilder.buildSimpleServerGraph(gm, coordinator, isLarge, isTLS, factory);
-		
-	}
 	
 	public static void buildMQTTClientGraph(GraphManager gm, final boolean isTLS, int maxInFlight,
 												int maximumLenghOfVariableLengthFields, 

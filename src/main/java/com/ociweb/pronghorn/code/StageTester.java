@@ -136,6 +136,9 @@ public class StageTester {
 				ByteArrayOutputStream errCapture = new ByteArrayOutputStream();
 				try {
 					ByteArrayOutputStream baos = new ByteArrayOutputStream();
+					
+					assert(0 == errCapture.toByteArray().length);
+					
 					System.setOut(new PrintStream(baos));
 					System.setErr(new PrintStream(errCapture));			
 					
@@ -159,6 +162,7 @@ public class StageTester {
 				}
 				
 				if (errCapture.size()>0) {
+					System.err.println("error data "+errCapture.size());
 					System.err.println(new String(errCapture.toByteArray()));
 					return false;
 				}

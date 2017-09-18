@@ -1,6 +1,9 @@
 package com.ociweb.pronghorn.network.mqtt;
 
-import static com.ociweb.pronghorn.pipe.Pipe.*;
+import static com.ociweb.pronghorn.pipe.Pipe.addMsgIdx;
+import static com.ociweb.pronghorn.pipe.Pipe.hasContentToRead;
+import static com.ociweb.pronghorn.pipe.Pipe.hasRoomForWrite;
+import static com.ociweb.pronghorn.pipe.Pipe.publishWrites;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.network.schema.MQTTIdRangeControllerSchema;
 import com.ociweb.pronghorn.network.schema.MQTTIdRangeSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -77,15 +79,16 @@ public class IdGenStage extends PronghornStage {
 	@Override
 	public void run() {
 		
-		while (PipeReader.tryReadFragment(control)) {
-		    int msgIdx = PipeReader.getMsgIdx(control);
+		while (Pipe.hasContentToRead(control)) {
+		    final int msgIdx = Pipe.takeMsgIdx(control);
 		    switch(msgIdx) {
 		        case MQTTIdRangeControllerSchema.MSG_CLEARALL_2:
 		        	isActive = false;
 		        	totalRanges = 0; //wipe out the consumed ranges.
+		        	 Pipe.confirmLowLevelRead(control, Pipe.sizeOf(MQTTIdRangeControllerSchema.instance, MQTTIdRangeControllerSchema.MSG_CLEARALL_2));
 				break;
 		        case MQTTIdRangeControllerSchema.MSG_IDRANGE_1:
-		        	int fieldRange = PipeReader.readInt(control,MQTTIdRangeControllerSchema.MSG_IDRANGE_1_FIELD_RANGE_100);
+		        	int fieldRange = Pipe.takeInt(control);
 		        	
 		        	if (totalRanges==0) {
 		        		//simple case
@@ -117,16 +120,19 @@ public class IdGenStage extends PronghornStage {
 		        			}
 		        		}
 		        	}
-		    
+		        	 Pipe.confirmLowLevelRead(control, Pipe.sizeOf(MQTTIdRangeControllerSchema.instance, MQTTIdRangeControllerSchema.MSG_IDRANGE_1));
 		        break;
 		        case MQTTIdRangeControllerSchema.MSG_READY_3:
+		        	 Pipe.confirmLowLevelRead(control, Pipe.sizeOf(MQTTIdRangeControllerSchema.instance, MQTTIdRangeControllerSchema.MSG_READY_3));
 		        	isActive = true;
 				break;
 		        case -1:
+		           Pipe.confirmLowLevelRead(control, Pipe.EOF_SIZE);
 		           requestShutdown();
 		        break;
 		    }
-		    PipeReader.releaseReadLock(control);
+		   
+		    Pipe.releaseReadLock(control);
 		}
 		
 		

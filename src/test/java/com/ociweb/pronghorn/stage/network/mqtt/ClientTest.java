@@ -20,30 +20,36 @@ import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 
 public class ClientTest {
 
-    
-    //@Test
-    @Ignore
+	@Test
     public void simpleClientTest() {
         
         GraphManager gm = new GraphManager();
        
 		final boolean isTLS = false;
 		
-		int maxInFlight = 10;
+		int maxInFlight = 40;
 		int maximumLenghOfVariableLengthFields = 4096;
+		long rate = 1_200;
+		
+		CharSequence fieldHost = "127.0.0.1";
+		int fieldPort = isTLS ? 8883 : 1883;
+
+		
 		
 		Pipe<MQTTClientRequestSchema> clientRequest = MQTTClientRequestSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
 		clientRequest.initBuffers();
 		
 		Pipe<MQTTClientResponseSchema> clientResponse = MQTTClientResponseSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
 		
-		long rate = 1_200;
-		MQTTClientGraphBuilder.buildMQTTClientGraph(gm, isTLS, maxInFlight, maximumLenghOfVariableLengthFields, clientRequest, clientResponse, rate,
-													(byte)2, (short)4);       
+		short responseConnections = (short)1;
+		MQTTClientGraphBuilder.buildMQTTClientGraph(gm, isTLS, 
+				                                maxInFlight, maximumLenghOfVariableLengthFields, 
+				                                clientRequest, clientResponse, rate,
+													(byte)3, responseConnections);       
        
         ConsoleJSONDumpStage.newInstance(gm, clientResponse);
        
-        MonitorConsoleStage.attach(gm);
+        gm.enableTelemetry(8098);
         
         NonThreadScheduler scheduler = new NonThreadScheduler(gm);
        
@@ -53,9 +59,6 @@ public class ClientTest {
        while (--j>=0) {
            scheduler.run();
        }
-       
-       CharSequence fieldHost = "127.0.0.1";
-       int fieldPort = isTLS ? 8883 : 1883;
        
        boolean okHost = PipeWriter.tryWriteFragment(clientRequest, MQTTClientRequestSchema.MSG_BROKERCONFIG_100);
        assertTrue(okHost);
@@ -83,59 +86,56 @@ public class ClientTest {
        //TELL THE SERVER NOT TO REMEMBER PREVIOUS DISCUSSIONS
        int fieldFlags = MQTTEncoder.CONNECT_FLAG_CLEAN_SESSION_1; 
        
-       CharSequence fieldClientId = "testClient";
-       CharSequence fieldWillTopic = "";
-       ByteBuffer fieldWillPayload = ByteBuffer.allocate(0);
-       CharSequence fieldUser = "";
-       CharSequence fieldPass = "";
-
-       
-        boolean okCon = PipeWriter.tryWriteFragment(clientRequest, MQTTClientRequestSchema.MSG_CONNECT_1);
-        assertTrue(okCon);
+       boolean okCon = PipeWriter.tryWriteFragment(clientRequest, MQTTClientRequestSchema.MSG_CONNECT_1);
+       assertTrue(okCon);
         
-	    PipeWriter.writeInt(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_KEEPALIVESEC_28, fieldKeepAliveSec);
-	    PipeWriter.writeInt(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_FLAGS_29, fieldFlags);
-	    PipeWriter.writeUTF8(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_CLIENTID_30, fieldClientId);
-	    PipeWriter.writeUTF8(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_WILLTOPIC_31, fieldWillTopic);
-	    PipeWriter.writeBytes(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_WILLPAYLOAD_32, fieldWillPayload);
-	    PipeWriter.writeUTF8(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_USER_33, fieldUser);
-	    PipeWriter.writeUTF8(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_PASS_34, fieldPass);
-	    PipeWriter.publishWrites(clientRequest);
+	   PipeWriter.writeInt(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_KEEPALIVESEC_28, fieldKeepAliveSec);
+	   PipeWriter.writeInt(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_FLAGS_29, fieldFlags);
+	   PipeWriter.writeUTF8(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_CLIENTID_30, "testClient");
+	   PipeWriter.writeUTF8(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_WILLTOPIC_31, "");
+	   PipeWriter.writeBytes(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_WILLPAYLOAD_32, ByteBuffer.allocate(0));
+	   PipeWriter.writeUTF8(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_USER_33, "");
+	   PipeWriter.writeUTF8(clientRequest,MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_PASS_34, "");
+	   PipeWriter.publishWrites(clientRequest);
 
               
               
        //need an instance of broker running somewhere?? mosquitto already running on my dev box.
-
        // watch at prompt mosquitto_sub -t /# -q 1
-       
-	    //TODO: check clear flag and what to do
-	    //TODO: check for ack back...
 
-	    int fieldQOS = 2;
-       
-       byte[] payload = ("hello "+fieldQOS).getBytes();
-       int payloadIdx = 0;
-       int payloadLength = payload.length;
-       int payloadMask = Integer.MAX_VALUE;
-       
-       
-       int fieldRetain = 0;
-       CharSequence fieldTopic = "/sensors/temprature";      
+	   ////////////////////////////////
+	   //a single QoS 1 causes issues.
+	   //////////////////////////////
+	   int fieldQOS = 1;
+       byte[] payload = ("hello world "+fieldQOS).getBytes();
        
        boolean okPub = PipeWriter.tryWriteFragment(clientRequest, MQTTClientRequestSchema.MSG_PUBLISH_3);
        assertTrue(okPub);
 	   PipeWriter.writeInt(clientRequest,MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_QOS_21, fieldQOS);
-	   PipeWriter.writeInt(clientRequest,MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_RETAIN_22, fieldRetain);
-	   PipeWriter.writeUTF8(clientRequest,MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, fieldTopic);
-	   PipeWriter.writeBytes(clientRequest,MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25, payload, payloadIdx, payloadLength);
+	   PipeWriter.writeInt(clientRequest,MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_RETAIN_22, 0);
+	   PipeWriter.writeUTF8(clientRequest,MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, "/sensors/temprature");
+	   PipeWriter.writeBytes(clientRequest,MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25, payload, 0, payload.length);
 	   PipeWriter.publishWrites(clientRequest);
 
-              
-	   long target = System.currentTimeMillis()+24_000;
+       PipeWriter.publishEOF(clientRequest);       
+	   
+	   
+       
+//       while (!NonThreadScheduler.isShutdownRequested(scheduler)) {
+//    	   scheduler.run();
+//       }
+//       scheduler.shutdown();
+       
+	   long target = System.currentTimeMillis()+2_000;
        
        while (System.currentTimeMillis()<target) {
+  //  	   System.err.println("run loop pass.......................");
            scheduler.run();
-           Thread.yield();
+           try {
+        	   Thread.sleep(1);
+			} catch (InterruptedException e) {
+				return;
+			}
        }
        
        scheduler.shutdown();

@@ -18,8 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
-import com.ociweb.pronghorn.pipe.PipeWriter;
+
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.file.schema.SequentialCtlSchema;
@@ -141,8 +140,7 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 	    			    Pipe.hasRoomForWrite(output[i], Pipe.EOF_SIZE) && 
 	    			    Pipe.hasRoomForWrite(response[i], Pipe.EOF_SIZE)) {
 	    				
-	    				PipeWriter.publishEOF(response[i]); //TODO: convert to all low level ....	
-
+	    				Pipe.publishEOF(response[i]);
 	    				Pipe.publishEOF(output[i]);
 	    				
 	    				try {
@@ -163,7 +161,7 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 	    		} else {
 	    		
 		    		//each of the possible activities will only require one response
-		    		if (PipeWriter.hasRoomForWrite(response[i])) {
+		    		if (Pipe.hasRoomForWrite(response[i])) {
 		    			if (readControl(i)) { //readControl may write to response for meta single msg
 			    	   
 		    				//only continue now if we did not consume the known available space on response
@@ -191,11 +189,11 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 		
 
 		if ((-1==idToWriteToFile[idx]) 
-				&& PipeReader.tryReadFragment(localControl)
+				&& Pipe.hasContentToRead(localControl)
 				&& Pipe.hasRoomForWrite(output[idx], READ_CTL_REQUIRED_SIZE)
 				) {
-		    int msgIdx = PipeReader.getMsgIdx(localControl);
-		    
+		    int msgIdx = Pipe.takeMsgIdx(localControl);
+		    		
 		    switch(msgIdx) {
 		    
 		        case SequentialCtlSchema.MSG_REPLAY_1:
@@ -241,7 +239,7 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 		        	continueWithIdx = false;
 				break;
 		        case SequentialCtlSchema.MSG_IDTOSAVE_4:
-		        	idToWriteToFile[idx] = PipeReader.readLong(localControl,SequentialCtlSchema.MSG_IDTOSAVE_4_FIELD_ID_10);
+		        	idToWriteToFile[idx] = Pipe.takeLong(localControl);
 		        	//logger.info("new block to be saved {} ", idToWriteToFile[idx]);
 		        break;
 		        case -1:
@@ -249,7 +247,9 @@ public class SequentialFileReadWriteStage extends PronghornStage {
 		        	shutdownInProgress[idx] |= 1;
 		        break;
 		    }
-		    PipeReader.releaseReadLock(localControl);
+		    
+		    Pipe.confirmLowLevelRead(localControl, Pipe.sizeOf(localControl, msgIdx));
+		    Pipe.releaseReadLock(localControl);
 		}
 		return continueWithIdx;
 	}
@@ -291,11 +291,11 @@ public class SequentialFileReadWriteStage extends PronghornStage {
                 //A when we go into replay mode we send a -1 to trigger decrypt to cleanup
                 //B we then send the data
                 //C finally we send another -1 
-                
+  
                 //We write the -1 len as a marker to those down stream that the end has been reached.
-                Pipe.addMsgIdx(localOutput, 0);
+                int size = Pipe.addMsgIdx(localOutput, RawDataSchema.MSG_CHUNKEDSTREAM_1);
                 Pipe.moveBlobPointerAndRecordPosAndLength(originalBlobPosition, (int)len, localOutput);  
-                Pipe.confirmLowLevelWrite(localOutput, SIZE);
+                Pipe.confirmLowLevelWrite(localOutput, size);
                 Pipe.publishWrites(localOutput);    
 
                // logger.info("reading {} bytes from file {} into pipe {}",len,idx,localOutput);

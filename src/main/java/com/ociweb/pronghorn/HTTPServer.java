@@ -15,6 +15,7 @@ import com.ociweb.pronghorn.stage.scheduling.FixedThreadsScheduler;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.stage.scheduling.StageScheduler;
 import com.ociweb.pronghorn.stage.scheduling.ThreadPerStageScheduler;
+import com.ociweb.pronghorn.util.MainArgs;
 
 public class HTTPServer {
 
@@ -96,30 +97,8 @@ public class HTTPServer {
 		return root;
 	}
 
-
-	public static String reportChoice(final String longName, final String shortName, final String value) {
-	    System.out.print(longName);
-	    System.out.print(" ");
-	    System.out.print(shortName);
-	    System.out.print(" ");
-	    System.out.println(value);
-	    return value;
-	}
-
-
 	public static String getOptArg(String longName, String shortName, String[] args, String defaultValue) {
-	    
-	    String prev = null;
-	    for (String token : args) {
-	        if (longName.equals(prev) || shortName.equals(prev)) {
-	            if (token == null || token.trim().length() == 0 || token.startsWith("-")) {
-	                return defaultValue;
-	            }
-	            return reportChoice(longName, shortName, token.trim());
-	        }
-	        prev = token;
-	    }
-	    return reportChoice(longName, shortName, defaultValue);
+	    return MainArgs.getOptArg(longName, shortName, args, defaultValue);
 	}
 
 

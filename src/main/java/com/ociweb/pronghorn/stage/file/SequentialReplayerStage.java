@@ -7,9 +7,8 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
+import com.ociweb.pronghorn.pipe.FragmentWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
-import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.pipe.RawDataSchema;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.file.schema.PersistedBlobLoadSchema;
@@ -103,7 +102,11 @@ public class SequentialReplayerStage extends PronghornStage {
 		this.waitCount = i;
 		assert(waitCount==2) : "only 2 is supported";
 		while (--i>=0) {
-			SequentialCtlSchema.publishMetaRequest(fileControl[i]);
+			Pipe<SequentialCtlSchema> output = fileControl[i];
+			Pipe.presumeRoomForWrite(output);
+			
+			FragmentWriter.write(output, SequentialCtlSchema.MSG_METAREQUEST_3);
+			
 		}
 		
 		//create space for full filter
@@ -120,17 +123,19 @@ public class SequentialReplayerStage extends PronghornStage {
 	@Override
 	public void run() {
 
+		
 		if (shutdownInProgress) {
+			
 			//only shutdown if we are not in the process of doing some non normal task.
 			if (MODE_WRITE == mode && requestsInFlight==0) {
 			
 				int i = fileControl.length;			
 				while (--i >= 0) {
-					if (!PipeWriter.hasRoomForWrite(fileControl[i])) {
+					if (!Pipe.hasRoomForWrite(fileControl[i])) {
 						return;//must wait until we have room.
 					}
 				}
-				if (!PipeWriter.hasRoomForWrite(loadResponses)) {
+				if (!Pipe.hasRoomForWrite(loadResponses)) {
 					return;
 				}
 				Pipe.publishEOF(fileControl);
@@ -172,17 +177,17 @@ public class SequentialReplayerStage extends PronghornStage {
 		Pipe<RawDataSchema> input = fileInput[fileInput.length-1];
 		
 	    while ( mode != nextMode && 
-	    		PipeReader.tryReadFragment(input)) {
+	    		Pipe.hasContentToRead(input)) {
 	    	
 	    	didWork = true;
-		    int msgIdx = PipeReader.getMsgIdx(input);
+		    int msgIdx = Pipe.takeMsgIdx(input);
 		    switch(msgIdx) {
 		        case RawDataSchema.MSG_CHUNKEDSTREAM_1:
-	
+			        	
 		        	DataInputBlobReader<RawDataSchema> fieldByteArray = Pipe.inputStream(input);
-		        	fieldByteArray.accumHighLevelAPIField(RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
-		        	
-	        		boolean endOfDataDetected = (PipeReader.readBytesLength(input, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2) < 0 );
+		        	int additionalLength = fieldByteArray.accumLowLevelAPIField();
+
+	        		boolean endOfDataDetected = (additionalLength < 0 );
 	        		while (   (fieldByteArray.available() >=10) 
 	        				|| (endOfDataDetected && (fieldByteArray.available()>0))) {
 	        			//only read packed long when we know it will succeed
@@ -195,16 +200,18 @@ public class SequentialReplayerStage extends PronghornStage {
 		        		//all the data  has been consumed go to next step.
 			        	mode = nextMode;
 		        	}
-		        	
+		        	Pipe.confirmLowLevelRead(input, Pipe.sizeOf(RawDataSchema.instance, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+				        	
 		        break;
 		        case -1:
 		        	logger.trace("finished read of all releases");
 		        	isDirty = false;
 		            //all the data  has been consumed go to next step.
 		        	mode = nextMode;
+		        	Pipe.confirmLowLevelRead(input, Pipe.EOF_SIZE);				    
 		        break;
 		    }
-		    PipeReader.releaseReadLock(input);
+		    Pipe.releaseReadLock(input);
 		}
 		return didWork;
 	}
@@ -235,15 +242,14 @@ public class SequentialReplayerStage extends PronghornStage {
 			
 			Pipe<SequentialRespSchema> input = fileResponse[i];
 			
-			while (PipeReader.tryReadFragment(input)) {
-			    int msgIdx = PipeReader.getMsgIdx(input);
-			
-			    
+			while (Pipe.hasContentToRead(input)) {
+			    int msgIdx = Pipe.takeMsgIdx(input);
+						    
 			    didWork = true;
 			    switch(msgIdx) {
 			    	case SequentialRespSchema.MSG_METARESPONSE_2:
-			    		long fieldSize = PipeReader.readLong(input,SequentialRespSchema.MSG_METARESPONSE_2_FIELD_SIZE_11);
-			    		long fieldDate = PipeReader.readLong(input,SequentialRespSchema.MSG_METARESPONSE_2_FIELD_DATE_11);
+			    		long fieldSize = Pipe.takeLong(input);
+			    		long fieldDate = Pipe.takeLong(input);
 			    	
 			    		//logger.info("meta response for {} field size {}, fielddate {} ",i,fieldSize,fieldDate);
 			    		
@@ -275,7 +281,8 @@ public class SequentialReplayerStage extends PronghornStage {
 			        	throw new RuntimeException("unexpected response message on startup");
 			        
 			    }
-			    PipeReader.releaseReadLock(input);
+			    Pipe.confirmLowLevelRead(input, Pipe.sizeOf(SequentialRespSchema.instance, msgIdx));
+			    Pipe.releaseReadLock(input);
 			}			
 		}
 		return didWork;
@@ -288,8 +295,8 @@ public class SequentialReplayerStage extends PronghornStage {
 		
 			Pipe<SequentialRespSchema> input = fileResponse[i];
 			
-			while (PipeReader.tryReadFragment(input)) {
-			    int msgIdx = PipeReader.getMsgIdx(input);
+			while (Pipe.hasContentToRead(input)) {
+			    int msgIdx = Pipe.takeMsgIdx(input);
 			    switch(msgIdx) {
 			        case SequentialRespSchema.MSG_CLEARACK_1:
 			        	clearInProgress--;
@@ -303,14 +310,13 @@ public class SequentialReplayerStage extends PronghornStage {
 			        case SequentialRespSchema.MSG_WRITEACK_3:
 			        	
 			        	requestsInFlight--;
-			        	long ackId = PipeReader.readLong(input, SequentialRespSchema.MSG_WRITEACK_3_FIELD_ID_12);
+			        	long ackId = Pipe.takeLong(input);
 			           	if (0==i || 1==i) {
-			           		PersistedBlobLoadSchema.publishAckWrite(loadResponses, ackId);
-			           		
-			           		//logger.info("ack of write block id "+ackId+" for file "+i);
-			           		
+			           		Pipe.presumeRoomForWrite(loadResponses);			           		
+							FragmentWriter.writeL(loadResponses, PersistedBlobLoadSchema.MSG_ACKWRITE_11, ackId);	
 			        	} else {
-			        		PersistedBlobLoadSchema.publishAckRelease(loadResponses, ackId);
+			        		Pipe.presumeRoomForWrite(loadResponses);
+			        		FragmentWriter.writeL(loadResponses, PersistedBlobLoadSchema.MSG_ACKRELEASE_10, ackId);
 			        	}
 			        break;
 			        case -1:
@@ -320,7 +326,10 @@ public class SequentialReplayerStage extends PronghornStage {
 			            }
 			        break;
 			    }
-			    PipeReader.releaseReadLock(input);
+			    
+			    Pipe.confirmLowLevelRead(input, Pipe.sizeOf(SequentialRespSchema.instance, msgIdx));			    			    
+			    Pipe.releaseReadLock(input);
+			    
 			}
 		}
 	}
@@ -330,32 +339,28 @@ public class SequentialReplayerStage extends PronghornStage {
 		boolean didWork = false;
 		Pipe<RawDataSchema> input = fileInput[activeFile];
 				
-		//logger.info("replay of file "+activeFile+" data "+input);
+		logger.trace("replay of file {} data {}",activeFile,input);
 		
 		while ( MODE_READ_DATA == mode &&
-				PipeWriter.hasRoomForWrite(loadResponses) &&
-				PipeReader.tryReadFragment(input)) {
+				Pipe.hasRoomForWrite(loadResponses) &&
+				Pipe.hasContentToRead(input)) {
 			
 		    didWork = true;
-			int msgIdx = PipeReader.getMsgIdx(input);
+			int msgIdx = Pipe.takeMsgIdx(input);
 			
-			//logger.info("replay data msgIdx: "+msgIdx);
+			logger.trace("replay data msgIdx: {}",msgIdx);
 			
 		    switch(msgIdx) {
 		        case RawDataSchema.MSG_CHUNKEDSTREAM_1:
 	
-		        	int payloadLen = PipeReader.readBytesLength(input, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
-		        	
-		        	//System.err.println("payload replay length "+payloadLen);
-		        	
-		        	//TODO: thre is an extra stop at the beginning why?
-		        	//      the stop is reqired to clear the decrypt logic
+		        	DataInputBlobReader<RawDataSchema> reader = Pipe.inputStream(input);
+		        	int payloadLen = Pipe.peekInt(input, 1); //length is after meta data
+		        	int temp = reader.openLowLevelAPIField();		        	
+		        	assert(payloadLen==temp || (payloadLen==-1 && temp==0));
 	
 		        	if (payloadLen>=0) {
-		        		
-		        		
-			        	DataInputBlobReader<RawDataSchema> reader = PipeReader.inputStream(input, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
-	
+		        			        		
+			        			
 			        	final long id = reader.readPackedLong();
 			        	final int length = reader.readPackedInt();
 			        	
@@ -366,16 +371,19 @@ public class SequentialReplayerStage extends PronghornStage {
 			        	
 					    	if (!isReleased(id)) {
 					    		//not released so this must be sent back to the caller
-					    	
-		                        PipeWriter.presumeWriteFragment(loadResponses, PersistedBlobLoadSchema.MSG_BLOCK_1);
-							    PipeWriter.writeLong(loadResponses,PersistedBlobLoadSchema.MSG_BLOCK_1_FIELD_BLOCKID_3, id);
-								
-							    DataOutputBlobWriter<PersistedBlobLoadSchema> outStr = PipeWriter.outputStream(loadResponses);
-							    DataOutputBlobWriter.openField(outStr);
-							    reader.readInto(outStr, length);		
-							    DataOutputBlobWriter.closeHighLevelField(outStr, PersistedBlobLoadSchema.MSG_BLOCK_1_FIELD_BYTEARRAY_2);
-	
-								PipeWriter.publishWrites(loadResponses);
+					    	    Pipe.presumeRoomForWrite(loadResponses);
+					    	    int size = Pipe.addMsgIdx(loadResponses, PersistedBlobLoadSchema.MSG_BLOCK_1);
+					    	    Pipe.addLongValue(id, loadResponses);
+
+					    	    DataOutputBlobWriter<PersistedBlobLoadSchema> outStr = Pipe.outputStream(loadResponses);
+					    	    DataOutputBlobWriter.openField(outStr);
+							
+					    	    reader.readInto(outStr, length);		
+					    	    DataOutputBlobWriter.closeLowLevelField(outStr);
+					    	    
+					    	    
+					    	    Pipe.confirmLowLevelWrite(loadResponses, size);
+					    	    Pipe.publishWrites(loadResponses);
 								//logger.info("reading block for replay");		        		
 				        	} else {
 				        		//released so do not repeat back to the caller
@@ -387,19 +395,34 @@ public class SequentialReplayerStage extends PronghornStage {
 		        		//logger.info("end of replay");
 			        	//when payloadlen == -1 then
 		        		//we publish end of replay...			        	
-		        		PersistedBlobLoadSchema.publishFinishReplay(loadResponses);
+		        		
+		        		Pipe.presumeRoomForWrite(loadResponses);
+		        		int size = Pipe.addMsgIdx(loadResponses, PersistedBlobLoadSchema.MSG_FINISHREPLAY_9);
+		        		Pipe.confirmLowLevelWrite(loadResponses, size);
+		        		Pipe.publishWrites(loadResponses);
+		        	
 		        		mode = MODE_WRITE;
 		        		requestsInFlight--;
 		        	}
+		        	Pipe.confirmLowLevelRead(input, Pipe.sizeOf(RawDataSchema.instance, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+		        	
 		        	break;
 		        case -1:
-		        	logger.info("end of replay and shutdown request");
-	        		PersistedBlobLoadSchema.publishFinishReplay(loadResponses);
+		        	logger.trace("end of replay and shutdown request");
+	        		
+		        	Pipe.presumeRoomForWrite(loadResponses);
+	        		int size = Pipe.addMsgIdx(loadResponses, PersistedBlobLoadSchema.MSG_FINISHREPLAY_9);
+	        		Pipe.confirmLowLevelWrite(loadResponses, size);
+	        		Pipe.publishWrites(loadResponses);
+	        		
 	        		mode = MODE_WRITE;
 	        		requestsInFlight--;
+		        	Pipe.confirmLowLevelRead(input, Pipe.EOF_SIZE);
+		        	
 	        		break;
 		    }
-		    PipeReader.releaseReadLock(input);
+		    
+		    Pipe.releaseReadLock(input);
 		   // System.err.println("after release lock "+input);
 		}
 		return didWork;
@@ -411,6 +434,7 @@ public class SequentialReplayerStage extends PronghornStage {
 
 	private boolean writePhase() {
 
+		
 		//consume next command
 	    boolean didWork = false;	
 		while ( (0 == clearInProgress) && 
@@ -423,24 +447,31 @@ public class SequentialReplayerStage extends PronghornStage {
 				Pipe.hasRoomForWrite(fileControl[2]) &&
 				
 				//write block & release do not need to wait but replay and clear must wait for in flight to settle down first
-				(PipeReader.peekMsg(storeRequests, PersistedBlobStoreSchema.MSG_BLOCK_1, PersistedBlobStoreSchema.MSG_RELEASE_7) ||
+				(Pipe.peekMsg(storeRequests, PersistedBlobStoreSchema.MSG_BLOCK_1, PersistedBlobStoreSchema.MSG_RELEASE_7) ||
 				 0==requestsInFlight) &&
 								
-				PipeReader.tryReadFragment(storeRequests)) {
+				Pipe.hasContentToRead(storeRequests)) {
+
 			
 			//TODO: we want to create 2 pipes one for write and one for release.
 			//      if we already have the releases then do no do the write....
 			
 			didWork = true;
-		    int msgIdx = PipeReader.getMsgIdx(storeRequests);
-
+		    int msgIdx = Pipe.takeMsgIdx(storeRequests);
+		    logger.trace("new store request commend {}",msgIdx);
+		    
 		    switch(msgIdx) {
 		        case PersistedBlobStoreSchema.MSG_BLOCK_1:
-				    storeNewBlock();		        	
+		    		//write this block to the active file.
+				    writeBlock(Pipe.takeLong(storeRequests), 
+				    		   Pipe.openInputStream(storeRequests), 
+				    		   fileOutput[activeIdx], 
+				    		   fileControl[activeIdx]);		        	
 		        	detectAndTriggerCompaction();
 				break;
 		        case PersistedBlobStoreSchema.MSG_RELEASE_7:
-		        	storeReleaseOfId();
+		    		//write this id to the release data file
+		        	storeReleaseOfId(Pipe.takeLong(storeRequests));
 				break;
 		        case PersistedBlobStoreSchema.MSG_REQUESTREPLAY_6:
 		        	requestReplayOfStoredBlocks();
@@ -449,12 +480,14 @@ public class SequentialReplayerStage extends PronghornStage {
 		        	clearAllStoredData();
 				break;
 		        case -1:
+		        	logger.trace("send shutdown to file control");
 		        	//inform dependent stages that we need to begin the shutdown process
 		        	Pipe.publishEOF(fileControl);
 		        break;
 		    }
-		    
-		    PipeReader.releaseReadLock(storeRequests);
+		    Pipe.confirmLowLevelRead(storeRequests, Pipe.sizeOf(PersistedBlobStoreSchema.instance, msgIdx));
+		    Pipe.releaseReadLock(storeRequests);
+	
 		}
 		return didWork;
 	}
@@ -467,7 +500,10 @@ public class SequentialReplayerStage extends PronghornStage {
 		fileSizeWritten = 0;
 		while (--i>=0) {
 			//clear every file
-			SequentialCtlSchema.publishClear(fileControl[i]);
+			Pipe<SequentialCtlSchema> output = fileControl[i];
+			Pipe.presumeRoomForWrite(output);
+			FragmentWriter.write(output, SequentialCtlSchema.MSG_CLEAR_2);
+
 		}
 	}
 
@@ -479,21 +515,26 @@ public class SequentialReplayerStage extends PronghornStage {
 			clearIdMap();
 			//switch to to read releases mode
 			mode = MODE_READ_RELEASES;
+			Pipe<SequentialCtlSchema> output1 = fileControl[fileControl.length-1];
 			//request these two files to be played back to us
-			SequentialCtlSchema.publishReplay(fileControl[fileControl.length-1]);
+			Pipe.presumeRoomForWrite(output1);
+			FragmentWriter.write(output1, SequentialCtlSchema.MSG_REPLAY_1);
+			
 		} else {
 			mode = MODE_READ_DATA;
 		}
+		Pipe<SequentialCtlSchema> output = fileControl[activeIdx];
 		//both cases need this data
-		SequentialCtlSchema.publishReplay(fileControl[activeIdx]);
+		Pipe.presumeRoomForWrite(output);
+		FragmentWriter.write(output, SequentialCtlSchema.MSG_REPLAY_1);
+
 		//tell consumer to get ready we are about to send data
-		PersistedBlobLoadSchema.publishBeginReplay(loadResponses);
+		Pipe.presumeRoomForWrite(loadResponses);
+		FragmentWriter.write(loadResponses, PersistedBlobLoadSchema.MSG_BEGINREPLAY_8);
 	}
 
-	private void storeReleaseOfId() {
-		//write this id to the release data file
-		 long fieldBlockId = PipeReader.readLong(storeRequests,PersistedBlobStoreSchema.MSG_RELEASE_7_FIELD_BLOCKID_3);
-	      
+	private void storeReleaseOfId(long fieldBlockId) {
+
 		 //keep in sync				     
 		 recordReleaseId(fieldBlockId);
 		 
@@ -508,19 +549,15 @@ public class SequentialReplayerStage extends PronghornStage {
 		 
 		 Pipe.confirmLowLevelWrite(out, chunkSize);
 		 Pipe.publishWrites(out);
+		 Pipe<SequentialCtlSchema> output = fileControl[fileControl.length-1];
 		 
-		 
-		 SequentialCtlSchema.publishIdToSave(fileControl[fileControl.length-1], fieldBlockId);
+		 Pipe.presumeRoomForWrite(output);
+		 FragmentWriter.writeL(output, SequentialCtlSchema.MSG_IDTOSAVE_4, fieldBlockId);
+	
 		 requestsInFlight++;
 		  		 
 	}
 
-	private void storeNewBlock() {
-		//write this block to the active file.
-		writeBlock(PipeReader.readLong(storeRequests,PersistedBlobStoreSchema.MSG_BLOCK_1_FIELD_BLOCKID_3),
-				   PipeReader.inputStream(storeRequests, PersistedBlobStoreSchema.MSG_BLOCK_1_FIELD_BYTEARRAY_2),
-				   fileOutput[activeIdx], fileControl[activeIdx]);
-	}
 
 	private void writeBlock(long blockId, DataInputBlobReader<?> data,
 			                Pipe<RawDataSchema> pipe, Pipe<SequentialCtlSchema> control) {
@@ -548,7 +585,9 @@ public class SequentialReplayerStage extends PronghornStage {
 		Pipe.confirmLowLevelWrite(pipe, size);
 		Pipe.publishWrites(pipe);
 		
-		SequentialCtlSchema.publishIdToSave(control, blockId);
+		Pipe.presumeRoomForWrite(control);
+		FragmentWriter.writeL(control, SequentialCtlSchema.MSG_IDTOSAVE_4, blockId);
+		
 		requestsInFlight++;
 
 	}
@@ -559,21 +598,30 @@ public class SequentialReplayerStage extends PronghornStage {
 		        	
         	//ensure new file is clear
         	clearInProgress = 1;
-        	SequentialCtlSchema.publishClear(fileControl[1&(activeIdx+1)]);
+			Pipe<SequentialCtlSchema> output2 = fileControl[1&(activeIdx+1)];
+			
+			Pipe.presumeRoomForWrite(output2);
+			FragmentWriter.write(output2, SequentialCtlSchema.MSG_CLEAR_2);
+			
         	fileSizeWritten = 0;
 			if (isDirty) {
 				//clear known release so we can reload them from storage.
 				clearIdMap();
 				//switch to to read releases mode
 				mode = MODE_COMPACT_READ_RELEASES;
+				Pipe<SequentialCtlSchema> output1 = fileControl[fileControl.length-1];
 				//request these two files to be played back to us
-				SequentialCtlSchema.publishReplay(fileControl[fileControl.length-1]);
+				Pipe.presumeRoomForWrite(output1);
+				FragmentWriter.write(output1, SequentialCtlSchema.MSG_REPLAY_1);
+	
 			    //when it is done it will change mode to MODE_COMPACT_READ_DATA
 			} else {
 				mode = MODE_COMPACT_READ_DATA;
 			}
+			Pipe<SequentialCtlSchema> output = fileControl[activeIdx];
 			//both cases need this data
-			SequentialCtlSchema.publishReplay(fileControl[activeIdx]);
+			Pipe.presumeRoomForWrite(output);
+			FragmentWriter.write(output, SequentialCtlSchema.MSG_REPLAY_1);
 		}
 	}
 
@@ -590,18 +638,20 @@ public class SequentialReplayerStage extends PronghornStage {
 		Pipe<RawDataSchema> input = fileInput[activeFile];
 		
 		while ( mode != MODE_WRITE &&
-				PipeWriter.hasRoomForWrite(fileOutput[newActiveIdx]) &&
-				PipeReader.tryReadFragment(input)) {
+				Pipe.hasRoomForWrite(fileOutput[newActiveIdx]) &&
+				Pipe.hasContentToRead(input)) {
 			
 		    didWork = true;
-			int msgIdx = PipeReader.getMsgIdx(input);
+			int msgIdx = Pipe.takeMsgIdx(input);
 		    switch(msgIdx) {
 		        case RawDataSchema.MSG_CHUNKEDSTREAM_1:
 	
-		        	int payloadLen = PipeReader.readBytesLength(input, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
+		        	DataInputBlobReader<RawDataSchema> reader = Pipe.inputStream(input);
+		        	int payloadLen = Pipe.peekInt(input, 1);
+		        	int len = reader.openLowLevelAPIField();
+		        	assert(payloadLen==len || (len==0 && payloadLen==-1));
+		        	
 		        	if (payloadLen>=0) {
-			        	DataInputBlobReader<RawDataSchema> reader = PipeReader.inputStream(input, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
-	
 			        	final long id = reader.readPackedLong();
 			        	final int length = reader.readPackedInt();
 			        	
@@ -613,7 +663,6 @@ public class SequentialReplayerStage extends PronghornStage {
 					    	if (!isReleased(id)) {
 					    		//not released so keep this and write to the new file
 					    					
-					    		logger.info("write to decrypt for active "+newActiveIdx);
 					    	    //store new block.
 					    		writeBlock(id, reader, fileOutput[newActiveIdx], fileControl[newActiveIdx]);
 		        		
@@ -624,19 +673,29 @@ public class SequentialReplayerStage extends PronghornStage {
 			        	}
 		        	} else {
 			        	//when payloadlen == -1 then
-		        		//we publish end of replay...			        	
-		        		PersistedBlobLoadSchema.publishFinishReplay(loadResponses);
+		        		//we publish end of replay...
+						Pipe.presumeRoomForWrite(loadResponses);
+						FragmentWriter.write(loadResponses, PersistedBlobLoadSchema.MSG_FINISHREPLAY_9);
+						
 		        		activeIdx = newActiveIdx;
 		        		mode = MODE_WRITE;
 		        	}
+		        	
+		        	Pipe.confirmLowLevelRead(input, Pipe.sizeOf(RawDataSchema.instance, RawDataSchema.MSG_CHUNKEDSTREAM_1));
+		        	
 		        	break;
 		        case -1:
-	        		PersistedBlobLoadSchema.publishFinishReplay(loadResponses);
+					Pipe.presumeRoomForWrite(loadResponses);
+					FragmentWriter.write(loadResponses, PersistedBlobLoadSchema.MSG_FINISHREPLAY_9);
+
 	        		activeIdx = newActiveIdx;
 	        		mode = MODE_WRITE;
+	        		
+		        	Pipe.confirmLowLevelRead(input, Pipe.EOF_SIZE);
+		        	        		
 	        		break;
 		    }
-		    PipeReader.releaseReadLock(input);
+		    Pipe.releaseReadLock(input);
 		}
 		return didWork;
 	}

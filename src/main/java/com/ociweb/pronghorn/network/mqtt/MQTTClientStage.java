@@ -5,16 +5,14 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.code.StageTester;
 import com.ociweb.pronghorn.network.schema.MQTTClientRequestSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientResponseSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchema;
 import com.ociweb.pronghorn.network.schema.MQTTClientToServerSchemaAck;
 import com.ociweb.pronghorn.network.schema.MQTTIdRangeSchema;
 import com.ociweb.pronghorn.network.schema.MQTTServerToClientSchema;
+import com.ociweb.pronghorn.pipe.FragmentWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
-import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -101,179 +99,124 @@ public class MQTTClientStage extends PronghornStage {
 
 	public void processClientRequests() {
 		while(  
-				(!PipeReader.hasContentToRead(serverToClient)) //server response is always more important.
+				(!Pipe.hasContentToRead(serverToClient)) //server response is always more important.
 				
 				&& (
-						PipeReader.peekMsg(clientRequest, 
+						Pipe.peekMsg(clientRequest, 
 								           MQTTClientRequestSchema.MSG_BROKERCONFIG_100, 
 								           MQTTClientRequestSchema.MSG_CONNECT_1)
 						|| 						
 						(brokerAcknowledgedConnection && //for these messages the connection must already be established.
 						 MQTTEncoder.hasPacketId(genCache, idGenNew)) //all other messsages require a packetId ready for use
 	            )
-				&& PipeWriter.hasRoomForWrite(clientToServer) //only process if we have room to write
-				&& PipeReader.tryReadFragment(clientRequest)  ) {
+				&& Pipe.hasRoomForWrite(clientToServer) //only process if we have room to write
+				&& Pipe.hasContentToRead(clientRequest)  ) {
 			
 			
 			
-			int msgIdx = PipeReader.getMsgIdx(clientRequest);
+			final int msgIdx = Pipe.takeMsgIdx(clientRequest);
 
 			switch(msgIdx) {
 						
 				case MQTTClientRequestSchema.MSG_BROKERCONFIG_100:			
-					
-					brokerAcknowledgedConnection = false;
-					
-					boolean ok = PipeWriter.tryWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_BROKERHOST_100);
-					assert(ok);
-					
-					PipeReader.copyBytes(clientRequest, clientToServer, 
-				             MQTTClientRequestSchema.MSG_BROKERCONFIG_100_FIELD_HOST_26, 
-				             MQTTClientToServerSchema.MSG_BROKERHOST_100_FIELD_HOST_26);
-			
-					PipeReader.copyInt(clientRequest, clientToServer, 
-							  MQTTClientRequestSchema.MSG_BROKERCONFIG_100_FIELD_PORT_27, MQTTClientToServerSchema.MSG_BROKERHOST_100_FIELD_PORT_27);
-					
-			        PipeWriter.publishWrites(clientToServer); 
-			        
+					{
+						brokerAcknowledgedConnection = false;
+						
+						Pipe.presumeRoomForWrite(clientToServer);
+						int size = Pipe.addMsgIdx(clientToServer, MQTTClientToServerSchema.MSG_BROKERHOST_100);
+						
+						Pipe.addByteArray(clientRequest, clientToServer); //Host
+						Pipe.addIntValue(Pipe.takeInt(clientRequest), clientToServer); //Port
+				
+						Pipe.confirmLowLevelWrite(clientToServer, size);
+						Pipe.publishWrites(clientToServer); 
+					}   
 					break;
 				case MQTTClientRequestSchema.MSG_CONNECT_1:
-							
-					brokerAcknowledgedConnection = false;
-					
-					boolean ok1 = PipeWriter.tryWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_CONNECT_1);
-					assert(ok1);
-										
-					PipeReader.copyInt(clientRequest, clientToServer, 
-							  MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_KEEPALIVESEC_28,
-							  MQTTClientToServerSchema.MSG_CONNECT_1_FIELD_KEEPALIVESEC_28);
-					
-					PipeReader.copyInt(clientRequest, clientToServer, 
-							  MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_FLAGS_29,
-							  MQTTClientToServerSchema.MSG_CONNECT_1_FIELD_FLAGS_29);
-					
-					PipeWriter.writeLong(clientToServer, 
-							  MQTTClientToServerSchema.MSG_CONNECT_1_FIELD_TIME_37, 
-							  System.currentTimeMillis());
-
-					PipeReader.copyBytes(clientRequest, clientToServer, 
-				             MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_CLIENTID_30, 
-				             MQTTClientToServerSchema.MSG_CONNECT_1_FIELD_CLIENTID_30);
-									
-										
-					PipeReader.copyBytes(clientRequest, clientToServer, 
-				             MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_WILLTOPIC_31, 
-				             MQTTClientToServerSchema.MSG_CONNECT_1_FIELD_WILLTOPIC_31);
-					
-					PipeReader.copyBytes(clientRequest, clientToServer, 
-				             MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_WILLPAYLOAD_32, 
-				             MQTTClientToServerSchema.MSG_CONNECT_1_FIELD_WILLPAYLOAD_32);
-					
-					PipeReader.copyBytes(clientRequest, clientToServer, 
-				             MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_USER_33, 
-				             MQTTClientToServerSchema.MSG_CONNECT_1_FIELD_USER_33);			
-					
-					PipeReader.copyBytes(clientRequest, clientToServer, 
-				             MQTTClientRequestSchema.MSG_CONNECT_1_FIELD_PASS_34, 
-				             MQTTClientToServerSchema.MSG_CONNECT_1_FIELD_PASS_34);	
-					
-					 PipeWriter.publishWrites(clientToServer); 
+					{
+						brokerAcknowledgedConnection = false;
+						
+						Pipe.presumeRoomForWrite(clientToServer);
+						int size = Pipe.addMsgIdx(clientToServer, MQTTClientToServerSchema.MSG_CONNECT_1);
 				
+						Pipe.addLongValue(System.currentTimeMillis(), clientToServer); //TIME
+						Pipe.addIntValue(Pipe.takeInt(clientRequest), clientToServer); //KEEPALIVESEC
+						Pipe.addIntValue(Pipe.takeInt(clientRequest), clientToServer); //FLAGS
+										
+						Pipe.addByteArray(clientRequest, clientToServer); //CLIENTID
+						Pipe.addByteArray(clientRequest, clientToServer); //WILLTOPIC
+						Pipe.addByteArray(clientRequest, clientToServer); //WILLPAYLOAD
+						Pipe.addByteArray(clientRequest, clientToServer); //USER
+						Pipe.addByteArray(clientRequest, clientToServer); //PASS
+						
+						Pipe.confirmLowLevelWrite(clientToServer, size);
+						Pipe.publishWrites(clientToServer); 
+						 
+					}
 					break;			
 				case MQTTClientRequestSchema.MSG_PUBLISH_3:
-					
-					PipeWriter.presumeWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_PUBLISH_3);
-					int valueQoS = PipeReader.readInt(clientRequest, MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_QOS_21);
-								
-					
-					PipeWriter.writeInt(clientToServer, 
-							MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_QOS_21, 
-							valueQoS);
-										
-					PipeWriter.writeLong(clientToServer, 
-							  MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_TIME_37, 
-							  System.currentTimeMillis());				
-					
-					PipeReader.copyBytes(clientRequest, clientToServer, 
-							MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, 
-							MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_TOPIC_23);
-					
-					PipeReader.copyBytes(clientRequest, clientToServer, 
-							MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25, 
-							MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25);
-									    
-					PipeReader.copyInt(clientRequest, clientToServer, 
-							  MQTTClientRequestSchema.MSG_PUBLISH_3_FIELD_RETAIN_22,
-							  MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_RETAIN_22);
-				    					
-					int packetId = -1;
-					if (valueQoS != 0) {						
-						//only consume a packetId for QoS 1 or 2.
-						packetId = IdGenCache.nextPacketId(genCache);
-
+					{
+						int valueQoS = Pipe.takeInt(clientRequest);
+						
+						Pipe.presumeRoomForWrite(clientToServer);
+						int size = Pipe.addMsgIdx(clientToServer, MQTTClientToServerSchema.MSG_PUBLISH_3);					
+						Pipe.addLongValue(System.currentTimeMillis(), clientToServer);				
+						
+						int packetId = -1;
+						if (valueQoS != 0) {						
+							//only consume a packetId for QoS 1 or 2.
+							packetId = IdGenCache.nextPacketId(genCache);
+						}
+						Pipe.addIntValue(packetId, clientToServer);
+						Pipe.addIntValue(valueQoS, clientToServer);
+						Pipe.addIntValue(Pipe.takeInt(clientRequest), clientToServer);  //retain
+									
+						Pipe.addByteArray(clientRequest, clientToServer); //topic
+						Pipe.addByteArray(clientRequest, clientToServer); //payload
+												
+						Pipe.confirmLowLevelWrite(clientToServer, size);
+						Pipe.publishWrites(clientToServer); 					
 					}
-
-					PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_PUBLISH_3_FIELD_PACKETID_20, packetId);
-			
-					
-					PipeWriter.publishWrites(clientToServer);					
-		
 					break;				
 				case MQTTClientRequestSchema.MSG_SUBSCRIBE_8:
-										
-					PipeWriter.tryWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_SUBSCRIBE_8);
-					
-					PipeWriter.writeLong(clientToServer, 
-							  MQTTClientToServerSchema.MSG_SUBSCRIBE_8_FIELD_TIME_37, 
-							  System.currentTimeMillis());
-					
-				    int nextPacketId = IdGenCache.nextPacketId(genCache);
-				    PipeWriter.writeInt(clientToServer, 
-							MQTTClientToServerSchema.MSG_SUBSCRIBE_8_FIELD_PACKETID_20, 
-							nextPacketId);	
-											
-				    PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_SUBSCRIBE_8_FIELD_QOS_21, PipeReader.readInt(clientRequest, MQTTClientRequestSchema.MSG_SUBSCRIBE_8_FIELD_QOS_21));
-										
-////////////
-//WARNING: if the server does not give us an ack back then we have lost one of the ID values 
-//         mosquitto is not returning the ack after subscription
-////////////
-//				    StringBuilder target = new StringBuilder();
-//				    Appendables.appendValue(target, nextPacketId).append(":");		
-//				    PipeReader.readUTF8(clientRequest, MQTTClientRequestSchema.MSG_SUBSCRIBE_8_FIELD_TOPIC_23, target);
-//				    target.append("\n");
-//				    System.err.println("subscription request sent with packet "+target);
-				    
-				    
-					PipeReader.copyBytes(clientRequest, clientToServer, 
-				             				MQTTClientRequestSchema.MSG_SUBSCRIBE_8_FIELD_TOPIC_23, 
-				             				MQTTClientToServerSchema.MSG_SUBSCRIBE_8_FIELD_TOPIC_23);
-					
-					PipeWriter.publishWrites(clientToServer);
-					
+					{			
+						Pipe.presumeRoomForWrite(clientToServer);
+						int size = Pipe.addMsgIdx(clientToServer, MQTTClientToServerSchema.MSG_SUBSCRIBE_8);	
+			
+						Pipe.addLongValue(System.currentTimeMillis(), clientToServer); //time
+						int nextPacketId = IdGenCache.nextPacketId(genCache);
+						Pipe.addIntValue(nextPacketId, clientToServer);
+							
+						Pipe.addIntValue(Pipe.takeInt(clientRequest), clientToServer); // QoS
+						Pipe.addByteArray(clientRequest, clientToServer); // Topic
+						
+						Pipe.confirmLowLevelWrite(clientToServer, size);
+						Pipe.publishWrites(clientToServer); 
+					}
 					break;				
 				case MQTTClientRequestSchema.MSG_UNSUBSCRIBE_10:
-					
-					PipeWriter.tryWriteFragment(clientToServer, MQTTClientToServerSchema.MSG_UNSUBSCRIBE_10);
-					
-					PipeWriter.writeLong(clientToServer, 
-							  MQTTClientToServerSchema.MSG_UNSUBSCRIBE_10_FIELD_TIME_37, 
-							  System.currentTimeMillis());
-					
-					PipeWriter.writeInt(clientToServer, MQTTClientToServerSchema.MSG_UNSUBSCRIBE_10_FIELD_PACKETID_20, 
-							IdGenCache.nextPacketId(genCache));
-										
-					PipeReader.copyBytes(clientRequest, clientToServer, 
-				             MQTTClientRequestSchema.MSG_UNSUBSCRIBE_10_FIELD_TOPIC_23, 
-				             MQTTClientToServerSchema.MSG_UNSUBSCRIBE_10_FIELD_TOPIC_23);
-					PipeWriter.publishWrites(clientToServer);
-					
+					{
+						Pipe.presumeRoomForWrite(clientToServer);
+						int size = Pipe.addMsgIdx(clientToServer, MQTTClientToServerSchema.MSG_UNSUBSCRIBE_10);
+						
+						Pipe.addLongValue(System.currentTimeMillis(), clientToServer); //time
+						Pipe.addIntValue(IdGenCache.nextPacketId(genCache), clientToServer);  //packetID
+						
+						Pipe.addByteArray(clientRequest, clientToServer); // Topic
+						
+						Pipe.confirmLowLevelWrite(clientToServer, size);
+						Pipe.publishWrites(clientToServer); 
+			     	}
 					break;
 				case -1:
-					requestShutdown();
+					//TODO: requesting shutdown is too soon if we are still waiting for input..
+					// instead use this to relay the shutdown down stream.
+					
+					//Do not call this here: requestShutdown(); 
 					break;
 			}
-			PipeReader.releaseReadLock(clientRequest);
+			Pipe.confirmLowLevelRead(clientRequest, Pipe.sizeOf(clientRequest, msgIdx));
+			Pipe.releaseReadLock(clientRequest);
 			
 		}
 	}
@@ -285,59 +228,65 @@ public class MQTTClientStage extends PronghornStage {
 //		     PipeWriter.hasRoomForWrite(clientToServer) + " " +
 //		     PipeWriter.hasRoomForWrite(clientToServerAck) + " " +
 //		     PipeWriter.hasRoomForWrite(clientResponse) + " "+
-//		     PipeReader.hasContentToRead(serverToClient)
+//		     PipeReader.hasContentToRead(serverToClient) + " "+serverToClient
 //				);
-//		
+		
 	
-		while(   PipeWriter.hasRoomForWrite(idGenOld) 
-			  && PipeWriter.hasRoomForWrite(clientToServer)
-			  && PipeWriter.hasRoomForWrite(clientToServerAck)
-			  && PipeWriter.hasRoomForWrite(clientResponse)
-			  && PipeReader.tryReadFragment(serverToClient)) {		
+		while(   Pipe.hasRoomForWrite(idGenOld) 
+			  && Pipe.hasRoomForWrite(clientToServer)
+			  && Pipe.hasRoomForWrite(clientToServerAck)
+			  && Pipe.hasRoomForWrite(clientResponse)
+			  && Pipe.hasContentToRead(serverToClient)) {		
 
-			int msgIdx = PipeReader.getMsgIdx(serverToClient);
-
+			final int msgIdx = Pipe.takeMsgIdx(serverToClient);
 
 			switch(msgIdx) {
 				case MQTTServerToClientSchema.MSG_DISCONNECT_14:
 					brokerAcknowledgedConnection = false;	
-		
+					mostRecentTime = Pipe.takeLong(serverToClient);
 					//NOTE: do not need do anything now, the connection will be re-attached.
 				break;
 				case MQTTServerToClientSchema.MSG_CONNACK_2:
 				
-					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_TIME_37);
-					int sessionPresentFlag = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_FLAG_35);
-					int retCode = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_CONNACK_2_FIELD_RETURNCODE_24);
+					mostRecentTime = Pipe.takeLong(serverToClient);
+					int sessionPresentFlag = Pipe.takeInt(serverToClient);
+					int retCode = Pipe.takeInt(serverToClient);
 
 					if (0==retCode) {
 						//We are now connected.
 						brokerAcknowledgedConnection = true;
 
-						PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_BROKERACKNOWLEDGEDCONNECTION_98);
-						PipeWriter.publishWrites(clientToServerAck);
-					}
-					MQTTClientResponseSchema.publishConnectionAttempt(clientResponse, retCode, sessionPresentFlag);
+						Pipe.presumeRoomForWrite(clientToServerAck);
+						FragmentWriter.write(clientToServerAck, MQTTClientToServerSchemaAck.MSG_BROKERACKNOWLEDGEDCONNECTION_98);
 
+					}
+					//System.err.println("connected with id "+retCode);
+					
+					Pipe.presumeRoomForWrite(clientResponse);
+					FragmentWriter.writeII(clientResponse,
+							   MQTTClientResponseSchema.MSG_CONNECTIONATTEMPT_5, 
+							   retCode,
+							   sessionPresentFlag);
+					
 					break;
 				case MQTTServerToClientSchema.MSG_PINGRESP_13:
 					
-					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_PINGRESP_13_FIELD_TIME_37);
+					mostRecentTime = Pipe.takeLong(serverToClient);
 															
 					break;
 				case MQTTServerToClientSchema.MSG_PUBACK_4:
 					
 					//clear the QoS 1 publishes so we stop re-sending these messages
-					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_TIME_37);
-					int packetId4 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBACK_4_FIELD_PACKETID_20);
-
+					mostRecentTime = Pipe.takeLong(serverToClient);
+					int packetId4 = Pipe.takeInt(serverToClient);
+					
 					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId4));					
 								    
 					break;
 				case MQTTServerToClientSchema.MSG_PUBCOMP_7:
 					//last stop of QoS 2
-					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_PUBCOMP_7_FIELD_TIME_37);
-					int packetId7 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBCOMP_7_FIELD_PACKETID_20);
+					mostRecentTime = Pipe.takeLong(serverToClient);
+					int packetId7 = Pipe.takeInt(serverToClient);
 							
 					//logger.trace("QOS2 stop for packet {}",packetId7);
 					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId7)); 
@@ -345,135 +294,122 @@ public class MQTTClientStage extends PronghornStage {
 				    
 					break;
 				case MQTTServerToClientSchema.MSG_PUBLISH_3:
-					//data from our subscriptions.
+					{
+						//data from our subscriptions.
+						
+						mostRecentTime = Pipe.takeLong(serverToClient); //TIME
+						int qos3 = Pipe.takeInt(serverToClient); //QOS
+						
+					    Pipe.presumeRoomForWrite(clientResponse);
+						int size = Pipe.addMsgIdx(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3);
+						Pipe.addIntValue(qos3, clientResponse);
+						Pipe.addIntValue(Pipe.takeInt(serverToClient), clientResponse); //RETAIN
+						Pipe.addIntValue(Pipe.takeInt(serverToClient), clientResponse); //DUP
+						
+						Pipe.addByteArray(serverToClient, clientResponse); //topic
+			
+						int serverSidePacketId = IdGenStage.IS_REMOTE_BIT 
+								                 | Pipe.takeInt(serverToClient);
+						
 					
-					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_TIME_37);
-					
-					int serverSidePacketId = IdGenStage.IS_REMOTE_BIT 
-							                 | PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_PACKETID_20);
-					
-					int retain3 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_RETAIN_22);					
-					int dup3 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_DUP_36);
-					int qos3 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_QOS_21);
-				
-					if(2==qos3) {
-						//TODO: finish implementation of exactly once
-						
-						//if serverSidePacketId is not found then 
-						//store serverSidePacketId
-						//must save to disk in case of restart and xmits.
-						
-						//keep local bit map
-						//clear bit map value upon rel...
-						
-						//only send if not already sent...
-						
-					}
-					
-				    sendMessageToApplication(retain3, dup3, qos3);
-										
-					if (0!=qos3) {
-						
-						if (1==qos3) {		//send pubAck for 1
+						if(2==qos3) {
+							//TODO: finish implementation of exactly once
 							
-							PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBACK_4);
-							PipeWriter.writeInt(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBACK_4_FIELD_PACKETID_20, serverSidePacketId);
-							PipeWriter.writeLong(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBACK_4_FIELD_TIME_37, mostRecentTime);
-							PipeWriter.publishWrites(clientToServerAck);
+							//if serverSidePacketId is not found then 
+							//store serverSidePacketId
+							//must save to disk in case of restart and xmits.
 							
-						} else if (2==qos3) {
+							//keep local bit map
+							//clear bit map value upon rel...
 							
-							PipeWriter.presumeWriteFragment(serverToClient, MQTTClientToServerSchema.MSG_PUBREC_5);
-							PipeWriter.writeInt(serverToClient, MQTTClientToServerSchema.MSG_PUBREC_5_FIELD_PACKETID_20, serverSidePacketId);
-							PipeWriter.writeLong(serverToClient, MQTTClientToServerSchema.MSG_PUBREC_5_FIELD_TIME_37, mostRecentTime);
-							PipeWriter.publishWrites(serverToClient);							
+							//only send if not already sent...
+							
+						}
+
+						Pipe.addByteArray(serverToClient, clientResponse); //payload
+
+						Pipe.confirmLowLevelWrite(clientResponse, size);
+						Pipe.publishWrites(clientResponse);
+											
+						if (0!=qos3) {
+							
+							if (1==qos3) {		//send pubAck for 1
+								Pipe.presumeRoomForWrite(clientToServerAck);
+								FragmentWriter.writeLI(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBACK_4, mostRecentTime, serverSidePacketId);
+								
+							} else if (2==qos3) {
+								Pipe.presumeRoomForWrite(serverToClient);
+								FragmentWriter.writeLI(serverToClient, MQTTClientToServerSchema.MSG_PUBREC_5, mostRecentTime, serverSidePacketId);
+								
+							}
 						}
 					}
 					break;
 				case MQTTServerToClientSchema.MSG_PUBREC_5:
 					//for QoS 2 publish, now release the message
 					
-					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_PUBREC_5_FIELD_TIME_37);
-					int packetId5 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBREC_5_FIELD_PACKETID_20);
+					mostRecentTime = Pipe.takeLong(serverToClient);
+					int packetId5 = Pipe.takeInt(serverToClient);
 
 					//////////////////////
 					//send pubrel and stop re-sending the message
 					//////////////////////
-					PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBREL_6);
-					
-					PipeWriter.writeLong(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBREL_6_FIELD_TIME_37, mostRecentTime);
-					PipeWriter.writeInt(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBREL_6_FIELD_PACKETID_20, packetId5);
-					PipeWriter.publishWrites(clientToServerAck);
+					Pipe.presumeRoomForWrite(clientToServerAck);
+					FragmentWriter.writeLI(clientToServerAck, 
+							MQTTClientToServerSchemaAck.MSG_PUBREL_6,
+							mostRecentTime, 
+							packetId5
+							);
 					
 					break;
 				case MQTTServerToClientSchema.MSG_PUBREL_6:
 						
-					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_PUBREL_6_FIELD_TIME_37);
+					mostRecentTime = Pipe.takeLong(serverToClient);
 					int serverSidePacketId6 = IdGenStage.IS_REMOTE_BIT 
-											  | PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_PUBREL_6_FIELD_PACKETID_20);
-										
-					PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBCOMP_7);
-					
-					PipeWriter.writeLong(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBCOMP_7_FIELD_TIME_37, mostRecentTime);
-					PipeWriter.writeInt(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBCOMP_7_FIELD_PACKETID_20, serverSidePacketId6);
-					PipeWriter.publishWrites(clientToServerAck);
-					
+											  | Pipe.takeInt(serverToClient);//packetId 
+											  
+					Pipe.presumeRoomForWrite(clientToServerAck);
+					FragmentWriter.writeLI(clientToServerAck, 
+							 MQTTClientToServerSchemaAck.MSG_PUBCOMP_7, 
+							 mostRecentTime, 
+							 serverSidePacketId6);
+				
 					break;
 				case MQTTServerToClientSchema.MSG_SUBACK_9:
-					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_TIME_37);
-					int packetId9 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_PACKETID_20);
-					int maxQoS = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_SUBACK_9_FIELD_RETURNCODE_24);
+					mostRecentTime = Pipe.takeLong(serverToClient);
+					int packetId9 = Pipe.takeInt(serverToClient);
+					int maxQoS = Pipe.takeInt(serverToClient);
 					/* The spec says we may have an array of this enumerated byte but currently we send only one sub at a time
 //						0x00 - Success - Maximum QoS 0
 //						0x01 - Success - Maximum QoS 1
 //						0x02 - Success - Maximum QoS 2
 //						0x80 - Failure
 					 */
-					MQTTClientResponseSchema.publishSubscriptionResult(clientResponse, maxQoS);
+										
+					Pipe.presumeRoomForWrite(clientResponse);
+					FragmentWriter.writeI(clientResponse, 
+							        MQTTClientResponseSchema.MSG_SUBSCRIPTIONRESULT_4,
+							        maxQoS); 
+
 					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId9));
 
 					break;
 				case MQTTServerToClientSchema.MSG_UNSUBACK_11:
 
-					mostRecentTime = PipeReader.readLong(serverToClient, MQTTServerToClientSchema.MSG_UNSUBACK_11_FIELD_TIME_37);
-					int packetId11 = PipeReader.readInt(serverToClient, MQTTServerToClientSchema.MSG_UNSUBACK_11_FIELD_PACKETID_20);
+					mostRecentTime = Pipe.takeLong(serverToClient);
+					int packetId11 = Pipe.takeInt(serverToClient);
 					
 					releaseIdForReuse(stopReSendingMessage(clientToServer, packetId11));
 				    
 					break;
 			}
 			
-			PipeReader.releaseReadLock(serverToClient);
+			Pipe.confirmLowLevelRead(serverToClient, Pipe.sizeOf(serverToClient, msgIdx));
+			Pipe.releaseReadLock(serverToClient);
 			
 		}
 	}
 
-
-	private void sendMessageToApplication(int retain3, int dup3, int qos3) {
-	
-		PipeWriter.presumeWriteFragment(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3);
-		
-		PipeWriter.writeInt(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_QOS_21, qos3);
-		PipeWriter.writeInt(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_DUP_36, dup3);
-		PipeWriter.writeInt(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_RETAIN_22, retain3);
-		
-		int lenTopic = PipeReader.copyBytes(serverToClient, clientResponse,
-				MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, 
-				MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_TOPIC_23);
-		
-		int lenPayload = PipeReader.copyBytes(serverToClient, clientResponse,
-				MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25, 
-				MQTTClientResponseSchema.MSG_MESSAGE_3_FIELD_PAYLOAD_25);
-		
-//				//// debug	
-//				StringBuilder b = new StringBuilder("MQTTClient:");				
-//			    PipeReader.readUTF8(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_TOPIC_23, b).append(" ");
-//  		    PipeReader.readUTF8(serverToClient, MQTTServerToClientSchema.MSG_PUBLISH_3_FIELD_PAYLOAD_25, b);
-//				System.err.println(b);					
-		
-		PipeWriter.publishWrites(clientResponse);
-
-	}
 
 
 	private int relVal = 0;
@@ -490,11 +426,10 @@ public class MQTTClientStage extends PronghornStage {
 			} else if (id == relLim) {
 				relLim = id+1;
 			} else {
-				//must flush what we have				
-				PipeWriter.presumeWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);
-				PipeWriter.writeInt(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1_FIELD_RANGE_100, IdGenStage.buildRange(relVal, relLim));
-				PipeWriter.publishWrites(idGenOld);
-	
+				//must flush what we have	
+				Pipe.presumeRoomForWrite(idGenOld);
+				FragmentWriter.writeI(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1, IdGenStage.buildRange(relVal, relLim));
+				
 				relVal = id;
 				relLim = id+1;
 				
@@ -505,10 +440,9 @@ public class MQTTClientStage extends PronghornStage {
 		//after holding a lot of ids force a release of them all
 		//this batching reduces the load on the IdGenStage
 		if (relLim-relVal > 10_000) {
-			PipeWriter.presumeWriteFragment(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1);
-			PipeWriter.writeInt(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1_FIELD_RANGE_100, IdGenStage.buildRange(relVal, relLim));
-			PipeWriter.publishWrites(idGenOld);
-
+			Pipe.presumeRoomForWrite(idGenOld);
+			FragmentWriter.writeI(idGenOld, MQTTIdRangeSchema.MSG_IDRANGE_1, IdGenStage.buildRange(relVal, relLim));
+			
 			relVal = 0;
 			relLim = 0;
 		}
@@ -522,9 +456,9 @@ public class MQTTClientStage extends PronghornStage {
 		////////////////////////
 		///stop re-sending the message
 		///////////////////////
-		PipeWriter.presumeWriteFragment(clientToServerAck, MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99);
-		PipeWriter.writeInt(clientToServerAck, MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99_FIELD_PACKETID_20, packetId);
-		PipeWriter.publishWrites(clientToServerAck);
+		Pipe.presumeRoomForWrite(clientToServerAck);
+		FragmentWriter.writeI(clientToServerAck, MQTTClientToServerSchemaAck.MSG_STOPREPUBLISH_99, packetId);
+		
 		return packetId;
 	}
 

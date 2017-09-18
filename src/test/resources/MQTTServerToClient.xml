@@ -24,11 +24,11 @@
   
    <template name="Publish" id="3"><!-- IDs are MQTT Control Packet types -->
      <uInt64 name="Time" id="37"/>
-     <uInt32 name="PacketId" id="20"/>
      <uInt32 name="QOS" id="21"/>
      <uInt32 name="Retain" id="22"/>
      <uInt32 name="Dup" id="36"/>     
      <String name="Topic" id="23" charset="unicode"/>
+     <uInt32 name="PacketId" id="20"/>     
      <byteVector name="Payload" id="25"/>     
    </template>
       

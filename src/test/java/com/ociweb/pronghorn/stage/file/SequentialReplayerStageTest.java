@@ -120,7 +120,8 @@ public class SequentialReplayerStageTest {
 		
 		perStore.initBuffers();
 		
-		PersistedBlobStoreSchema.publishRequestReplay(perStore);
+		PipeWriter.presumeWriteFragment(perStore, PersistedBlobStoreSchema.MSG_REQUESTREPLAY_6);
+		PipeWriter.publishWrites(perStore);
 					
 		PipeWriter.publishEOF(perStore);
 				
@@ -174,7 +175,7 @@ public class SequentialReplayerStageTest {
 		
 		
 		GraphManager gm = new GraphManager();
-
+		
 		//gm.enableTelemetry(8089);
 		
 		byte multi = 3;
@@ -200,23 +201,12 @@ public class SequentialReplayerStageTest {
 		/////////////////////////////////////////
 		
 		NonThreadScheduler scheduler = new NonThreadScheduler(gm);
-		
 		scheduler.startup();
 		
-		int iter = 0;
-		while (!GraphManager.isStageTerminated(gm, watch.stageId)) {
+		while (!GraphManager.isStageTerminated(gm, watch.stageId) ) {
 			scheduler.run();
-			
-			try {
-				Thread.sleep(40);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			//System.err.println("iteration: "+iter++);
-			
+			Thread.yield();
 		}
-		
 		scheduler.shutdown();
 		
 		

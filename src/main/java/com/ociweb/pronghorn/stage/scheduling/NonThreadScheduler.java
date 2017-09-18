@@ -526,6 +526,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 		                    		
 		long nsDelay = (that.lastRun[s]+rate) - now;
 		if (nsDelay<=0) {
+			//logger.info("running stage {}",stage);
 			run(that.graphManager, stage, that);
 			that.lastRun[s] = now;
 			
@@ -535,7 +536,8 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 				GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration);
 			}
 			
-		} else {                    			
+		} else {    
+			//logger.info("skipped stage {}",stage);
 			nearestNextRun = Math.min(nearestNextRun, nsDelay+now);
 		}
 		return nearestNextRun;

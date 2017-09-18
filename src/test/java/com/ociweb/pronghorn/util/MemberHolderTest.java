@@ -81,6 +81,8 @@ public class MemberHolderTest {
         
     }
     
+    private final int maxCount = 100000;
+    
     @Test
     public void testRemoveMembers() {
                
@@ -97,7 +99,7 @@ public class MemberHolderTest {
         
          
         int j = 0;
-        if (++j<100000) {
+		if (++j<maxCount) {
             int value = removedR.nextInt(j);            
             if (0==(value&1)) {
                 while (holder.containsCount(listId, value)>0) {
@@ -117,7 +119,7 @@ public class MemberHolderTest {
     
         final Random expectedR = new Random(seed);
         int c = 0;
-        if (++c<100000) {
+        if (++c<maxCount) {
             int value = expectedR.nextInt(c);
             if (0==(value&1)) {
                 assertTrue(holder.containsCount(listId, value)==0);
@@ -141,7 +143,7 @@ public class MemberHolderTest {
         int i = 0;
         int limit =iterations;
         while (++i<=limit) {        
-            if (i<100000) { //force testing of small values
+            if (i<maxCount) { //force testing of small values
                 holder.addMember(listId, r.nextInt(i));
             } else {
                 long lng = r.nextLong() & 0x7FFFFFFFFFFFFFFFl;
