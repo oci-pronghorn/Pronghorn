@@ -1993,7 +1993,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		copyBytesFromToRingMasked(source, sourceloc, (sourceloc + length), target, targetloc & targetMask, (targetloc + length) & targetMask,	length);
 	}
 	
-	public static <S extends MessageSchema<S>, T extends MessageSchema<T>> void addBytesArray(Pipe<S> source, Pipe<T> target) {
+	public static <S extends MessageSchema<S>, T extends MessageSchema<T>> void addByteArray(Pipe<S> source, Pipe<T> target) {
 				
 		int sourceMeta = Pipe.takeRingByteMetaData(source);
 		int sourceLen  = Pipe.takeRingByteLen(source);

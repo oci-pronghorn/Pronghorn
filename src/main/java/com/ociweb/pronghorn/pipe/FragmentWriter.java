@@ -56,6 +56,17 @@ public class FragmentWriter {
     	Pipe.publishWrites(pipe);        
     }
     
+    public static <S extends MessageSchema<S>> void writeII(Pipe<S> pipe, int msgIdx, int field1, int field2) {
+    	assert(FieldReferenceOffsetManager.isValidMsgIdx(Pipe.from(pipe), msgIdx));
+    	assert(5==Pipe.from(pipe).fragDataSize[msgIdx]) : "This constant does not this fragment size";
+
+    	int size = Pipe.addMsgIdx(pipe, msgIdx);
+    	Pipe.addIntValue(field1, pipe);
+    	Pipe.addIntValue(field2, pipe);
+    	Pipe.confirmLowLevelWrite(pipe, size);
+    	Pipe.publishWrites(pipe);        
+    }
+    
     public static <S extends MessageSchema<S>> void writeLII(Pipe<S> pipe, int msgIdx, long field1, int field2, int field3) {
     	assert(FieldReferenceOffsetManager.isValidMsgIdx(Pipe.from(pipe), msgIdx));
     	assert(6==Pipe.from(pipe).fragDataSize[msgIdx]) : "This constant does not this fragment size";
