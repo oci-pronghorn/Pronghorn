@@ -241,16 +241,14 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 
 		replayFromPosition = -1; //get next lowest value.
 		int stop = ringMask&ringHead;
-		
-		System.err.println("republish walk from "+(ringTail&ringMask)+" to "+stop);
-		
+
 		for(int i = (ringTail&ringMask); (i&ringMask)!=stop; i++ ) {
 
 			//skip bad value already acknowledged
 			int idx = ringMask&i;
 			if (packetIdRing[idx] != Integer.MAX_VALUE) {	
 				
-				logger.info("republish to broker packet {} ",packetIdRing[idx]);
+				//logger.info("republish to broker packet {} ",packetIdRing[idx]);
 				
 	    		final long slabPos = Pipe.getSlabHeadPosition(pipe); 
 	    		final int blobPos = Pipe.getBlobHeadPosition(pipe);
