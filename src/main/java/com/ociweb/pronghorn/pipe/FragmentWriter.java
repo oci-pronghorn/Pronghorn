@@ -83,7 +83,7 @@ public class FragmentWriter {
     	assert(FieldReferenceOffsetManager.isValidMsgIdx(Pipe.from(pipe), msgIdx));
     	
     	int messageSize = Pipe.from(pipe).fragDataSize[msgIdx];
-    	System.out.println("E turn this into an assert we got value "+messageSize);
+    	assert(3==Pipe.from(pipe).fragDataSize[msgIdx]) : "This constant does not this fragment size";
     	
     	int size = Pipe.addMsgIdx(pipe, msgIdx);
     	Pipe.addIntValue(field1, pipe);
