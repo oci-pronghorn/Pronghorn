@@ -28,7 +28,7 @@ public class TrieParser implements Serializable {
 
     static final byte TYPE_RUN                 = 0x00; //followed by length
     static final byte TYPE_BRANCH_VALUE        = 0x01; //followed by mask & short jump  
-    static final byte TYPE_ALT_BRANCH          = 0X02; //followed by 2 short jump, try first upon falure use second.
+    static final byte TYPE_ALT_BRANCH          = 0X02; //followed by 2 short jump, try first upon falure use second.  
     
     static final byte TYPE_VALUE_NUMERIC       = 0x04; //followed by type, parse right kind of number
     static final byte TYPE_VALUE_BYTES         = 0x05; //followed by stop byte, take all until stop byte encountered (AKA Wild Card)
@@ -312,6 +312,8 @@ public class TrieParser implements Serializable {
     	try{    	
     		//builder.append("# dot -Tsvg -otemp.svg temp.dot\n");
 	    	builder.append("digraph {\n");    	
+	    	
+	    	
 	    	
 	        int i = 0;
 	        while (i<limit) {

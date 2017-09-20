@@ -121,6 +121,10 @@ public class TrieParserReader {
 	 */
 
 	public void visit(TrieParser that, ByteSquenceVisitor visitor, byte[] source, int localSourcePos, int sourceLength, int sourceMask) {
+		
+			//System.out.print(new String(source)); // take this out eventually.
+			//System.out.println();
+		
 		visit(that, 0, visitor, source, localSourcePos, sourceLength, sourceMask, -1);
 	}
 
@@ -141,7 +145,7 @@ public class TrieParserReader {
 		switch (type) {
 		case TrieParser.TYPE_RUN:
 
-			visitorRun(that, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult, run, data);
+			visitorRun(that, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult, data);
 
 			break;
 
@@ -195,7 +199,7 @@ public class TrieParserReader {
 			int sourceLength, int sourceMask, final long unfoundResult) {
 		recordSafePointEnd(this, localSourcePos, pos, that);  
 		pos += that.SIZE_OF_RESULT;
-		if (sourceLength == this.runLength) {
+		if (sourceLength == localSourcePos) {
 			this.result = useSafePointNow(this);
 
 			//add to result set
@@ -253,15 +257,19 @@ public class TrieParserReader {
 		//recurse into visit()
 		visit(that, idx+run, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);
 	}
-
+	
+	
+	
+	
+//***** find index positions for both these . make sure its the 
 	private void visitorAltBranch(TrieParser that, final int i, ByteSquenceVisitor visitor, byte[] source,
 			int localSourcePos, int sourceLength, int sourceMask, final long unfoundResult, short[] data) {
 		int localJump = i + TrieParser.SIZE_OF_ALT_BRANCH;
 		//int farJump   = i + ((((int)that.data[i+2])<<15) | (0x7FFF&that.data[i+3])); 
 		int jump = (((int)data[pos++])<<15) | (0x7FFF&data[pos++]); 
 
-		visit(that, localJump, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);
-		visit(that, localJump+jump, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);
+		visit(that, localJump, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);// near byte
+		visit(that, localJump+jump, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult);// 2nd call with branch
 	}
 
 	private void visitorBranch(TrieParser that, ByteSquenceVisitor visitor, byte[] source, int localSourcePos,
@@ -281,15 +289,19 @@ public class TrieParserReader {
 	}
 
 	private void visitorRun(TrieParser that, ByteSquenceVisitor visitor, byte[] source, int localSourcePos,
-			int sourceLength, int sourceMask, final long unfoundResult, int run, short[] data) {
+			int sourceLength, int sourceMask, final long unfoundResult, short[] data) {
 		int idx;
 		final int sourceMask1 = sourceMask;
 		short[] localData = data;
 		byte caseMask = that.caseRuleMask;
-		int r1 = run;
-		int t1 = pos;
-		int t2 = localSourcePos;
-		while ((--r1 >= 0) && ((caseMask&localData[t1++]) == (caseMask&source[sourceMask1 & t2++])) ) {
+		int r1 = localData[pos]; 
+		
+		
+		int t1 = pos +1;  
+		int t2 = localSourcePos; 
+		while ((--r1 >= 0) && ((caseMask&localData[t1++]) == (caseMask&source[sourceMask1 & t2++])) ) { //getting slash somewhere should not equal eachother. 
+			//matching characters while decrementing run length.
+	
 		}
 		pos = t1;
 		localSourcePos = t2;
@@ -298,9 +310,18 @@ public class TrieParserReader {
 		if (r >= 0) {
 			return;	
 		} else {        
-			run = that.data[pos];
+			int run = that.data[pos + 2];
+			
+			assert(run >0);
+			
+			
 			idx = pos + TrieParser.SIZE_OF_RUN-1;
-			visit(that, idx+run, visitor, source, localSourcePos+run, sourceLength, sourceMask, unfoundResult);
+			
+			//visit(that, idx+run, visitor, source, localSourcePos+run, sourceLength, sourceMask, unfoundResult);
+			//visit(that, pos, visitor, source, localSourcePos+run, sourceLength, sourceMask, unfoundResult);
+			visit(that, pos, visitor, source, localSourcePos, sourceLength, sourceMask, unfoundResult); //** took run off localsourcePos.
+			
+			
 		}
 	}
 
