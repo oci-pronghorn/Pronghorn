@@ -14,6 +14,9 @@ public class PipeConfigManager {
 	public PipeConfigManager(int initialCount, int defaultMinimumFragmentsOnPipe, int defaultMaximumLenghOfVariableLengthFields) {		
 		this.configs = new PipeConfig[initialCount];
 		this.configCount = 0;
+		if (defaultMinimumFragmentsOnPipe>1024) {
+			throw new UnsupportedOperationException("Why is this value "+defaultMinimumFragmentsOnPipe+" soo large?");
+		}
 		this.defaultMinimumFragmentsOnPipe = defaultMinimumFragmentsOnPipe;
 		this.defaultMaximumLenghOfVariableLengthFields = defaultMaximumLenghOfVariableLengthFields;
 		
@@ -31,7 +34,7 @@ public class PipeConfigManager {
 	public <S extends MessageSchema<S>> PipeConfig<S> addConfig(PipeConfig<S> newConfig) {
 		int idx = findIndex(newConfig.schema);   
 		if (idx<0) {
-			
+
 			if (configCount >= configs.length) {
 				//grow, we are out of room
 				PipeConfig[] newConfigs = new PipeConfig[configs.length*2];
@@ -40,11 +43,29 @@ public class PipeConfigManager {
 			}			
 			configs[configCount++] = newConfig;
 			
-		} else {		
+		} else {
 			configs[idx] = newConfig;
 		}
 		return newConfig;
 	}
+	
+
+	public <S extends MessageSchema<S>> void ensureSize(Class<S> clazz, int queueLength, int maxMessageSize) {
+		int idx = findIndex(clazz);
+		if (idx>=0) {
+			//we found it 
+			PipeConfig<S> oldConfig = (PipeConfig<S>)configs[idx];
+			
+			int oldQueueLen = oldConfig.minimumFragmentsOnPipe();
+			int oldMaxVarLenSize = oldConfig.maxVarLenSize();
+			if (queueLength>oldQueueLen || maxMessageSize>oldMaxVarLenSize) {
+				addConfig(Math.max(oldQueueLen,queueLength), Math.max(oldMaxVarLenSize, maxMessageSize), clazz);
+			}
+		} else {
+			//add it was not found
+			addConfig(Math.max(queueLength,defaultMinimumFragmentsOnPipe),Math.max(maxMessageSize, defaultMaximumLenghOfVariableLengthFields),clazz);
+		}
+	}	
 	
     public <S extends MessageSchema<S>> PipeConfig<S> getConfig(Class<S> clazz) {
     	
@@ -53,7 +74,7 @@ public class PipeConfigManager {
     		return (PipeConfig<S>)configs[idx];
     	}
     	//when undefined build store and return the default
-    	return addConfig(defaultMinimumFragmentsOnPipe,defaultMaximumLenghOfVariableLengthFields,clazz);
+    	return addConfig(defaultMinimumFragmentsOnPipe, defaultMaximumLenghOfVariableLengthFields, clazz);
     	
     }
 
@@ -79,5 +100,6 @@ public class PipeConfigManager {
 
 	public <S extends MessageSchema<S>> Pipe<S> newPipe(Class<S> clazz) {		
 		return new Pipe<S>(getConfig(clazz));
-	}	
+	}
+
 }

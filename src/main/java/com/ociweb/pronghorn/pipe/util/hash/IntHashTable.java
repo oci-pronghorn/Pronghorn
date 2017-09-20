@@ -71,8 +71,8 @@ public class IntHashTable {
 		}
 				
 		long block = value;
-		block = (block<<32) | (0xFFFFFFFF&key);
-		
+		block = (block<<32) | (0xFFFFFFFFL&key);
+
 		int mask = ht.mask;
 		int hash = MurmurHash.hash32finalizer(key);
 		int temp = (int)ht.data[hash&mask];//just the lower int.
@@ -98,7 +98,8 @@ public class IntHashTable {
 	 * @param key
 	 */
 	public static int getItem(IntHashTable ht, int key) {
-		return (int)(scanForItem(key, ht.mask, MurmurHash.hash32finalizer(key), ht.data, ht.data[MurmurHash.hash32finalizer(key) & ht.mask]) >> 32);
+		int hash = MurmurHash.hash32finalizer(key);
+		return (int)(scanForItem(key, ht.mask, hash, ht.data, ht.data[hash & ht.mask]) >> 32);
 	}
 
 	private static long scanForItem(int key, int mask, int hash, long[] data2, long block) {

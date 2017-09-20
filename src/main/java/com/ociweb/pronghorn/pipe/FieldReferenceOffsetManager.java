@@ -949,5 +949,15 @@ public class FieldReferenceOffsetManager {
     public static String buildName(FieldReferenceOffsetManager encodedFrom, int expectedMsgIdx) {
         return encodedFrom.fieldNameScript[expectedMsgIdx].replace('/', '_').replace(' ','_');
     }
+
+	public static boolean isValidMsgIdx(FieldReferenceOffsetManager from, int msgIdx) {
+		int x = from.messageStarts.length;
+		while (--x>=0) {
+			if (from.messageStarts[x] == msgIdx) {
+				return true;//this is the start of a fragment;
+			}
+		}
+		return false;
+	}
      
 }

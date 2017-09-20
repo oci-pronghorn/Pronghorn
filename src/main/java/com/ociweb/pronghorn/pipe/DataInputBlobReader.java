@@ -124,7 +124,20 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     
     public int accumLowLevelAPIField() {
         if (0==this.length) {
-            return openLowLevelAPIField();
+            int meta = Pipe.takeRingByteMetaData(this.pipe);
+			int localLen = Pipe.takeRingByteLen(this.pipe);
+			
+			this.length    = Math.max(0, localLen);
+			this.bytesLowBound = this.position = Pipe.bytePosition(meta, this.pipe, this.length);
+			this.backing   = Pipe.byteBackingArray(meta, this.pipe); 
+			assert(this.backing!=null) : 
+				"The pipe "+(1==(meta>>31)?" constant array ": " blob ")+"must be defined before use.\n "+this.pipe;
+				
+			this.bytesHighBound = this.pipe.blobMask & (this.position + this.length);
+			
+			assert(Pipe.validatePipeBlobHasDataToRead(this.pipe, this.position, this.length));
+			
+			return localLen;
         } else {        
         
             Pipe.takeRingByteMetaData(pipe);
@@ -140,7 +153,17 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     
     public int accumHighLevelAPIField(int loc) {
         if (0>=this.length) {
-            return openHighLevelAPIField(loc);
+        	
+            int localLen = PipeReader.readBytesLength(pipe, loc);
+			this.length         = Math.max(0, localLen);
+			this.bytesLowBound  = this.position       = PipeReader.readBytesPosition(pipe, loc);
+			this.backing        = PipeReader.readBytesBackingArray(pipe, loc); 
+			assert(this.backing!=null) : "The pipe must be init before use.";
+			this.bytesHighBound = pipe.blobMask & (position + length);
+			
+			assert(Pipe.validatePipeBlobHasDataToRead(pipe, position, length));
+			
+			return localLen;
         } else {        
         
         	int len = PipeReader.readBytesLength(pipe, loc);

@@ -536,6 +536,9 @@ public class Pipe<T extends MessageSchema<T>> {
 
         this.bitsOfSlabRing = primaryBits;
         this.bitsOfBlogRing = byteBits;
+        assert(primaryBits<=30) : "Must be 1G or smaller, requested "+byteBits+" bits";
+        assert(byteBits<=30) : "Must be 1G or smaller, requested "+byteBits+" bits";
+        
 
         assert (primaryBits >= 0); //zero is a special case for a mock ring
 
@@ -1630,6 +1633,10 @@ public class Pipe<T extends MessageSchema<T>> {
 	    }
 	}
 
+    public static <S extends MessageSchema<S>> DataOutputBlobWriter<?> readBytes(Pipe<S> pipe, DataOutputBlobWriter<?> target) {
+    	return Pipe.readBytes(pipe, target, Pipe.takeRingByteMetaData(pipe), Pipe.takeRingByteLen(pipe));
+ 	}    
+    
     public static <S extends MessageSchema<S>> void readBytes(Pipe<S> pipe, byte[] target, int targetIdx, int targetMask, int meta, int len) {
 		if (meta >= 0) {
 			copyBytesFromToRing(pipe.blobRing,restorePosition(pipe,meta),pipe.blobMask,target,targetIdx,targetMask,len);
@@ -1985,7 +1992,27 @@ public class Pipe<T extends MessageSchema<T>> {
 	public static void copyBytesFromArrayToRing(byte[] source, int sourceloc, byte[] target, int targetloc, int targetMask, int length) {
 		copyBytesFromToRingMasked(source, sourceloc, (sourceloc + length), target, targetloc & targetMask, (targetloc + length) & targetMask,	length);
 	}
-
+	
+	public static <S extends MessageSchema<S>, T extends MessageSchema<T>> void addByteArray(Pipe<S> source, Pipe<T> target) {
+				
+		int sourceMeta = Pipe.takeRingByteMetaData(source);
+		int sourceLen  = Pipe.takeRingByteLen(source);
+		
+		Pipe.validateVarLength(target, sourceLen);
+		
+		Pipe.copyBytesFromToRing(Pipe.byteBackingArray(sourceMeta, source),
+				                 Pipe.bytePosition(sourceMeta, source, sourceLen), 
+				                 Pipe.blobMask(source), 
+				                 target.blobRing, 
+				                 target.blobRingHead.byteWorkingHeadPos.value, 
+				                 target.blobMask, 
+				                 sourceLen);
+		
+		Pipe.addBytePosAndLen(target, target.blobRingHead.byteWorkingHeadPos.value, sourceLen);
+		target.blobRingHead.byteWorkingHeadPos.value = Pipe.BYTES_WRAP_MASK&(target.blobRingHead.byteWorkingHeadPos.value + sourceLen);
+		
+	}
+	
 	private static void copyBytesFromToRingMasked(byte[] source,
 			final int rStart, final int rStop, byte[] target, final int tStart,
 			final int tStop, int length) {
@@ -2910,6 +2937,10 @@ public class Pipe<T extends MessageSchema<T>> {
         return Pipe.hasContentToRead(pipe) && (peekInt(pipe)==expected1 || peekInt(pipe)==expected2);
     }
     
+    public static <S extends MessageSchema<S>> boolean peekMsg(Pipe<S> pipe, int expected1, int expected2, int expected3) {
+        return Pipe.hasContentToRead(pipe) && (peekInt(pipe)==expected1 || peekInt(pipe)==expected2 || peekInt(pipe)==expected3);
+    }
+    
     public static <S extends MessageSchema<S>> int peekInt(Pipe<S> pipe) {
     	assert(Pipe.hasContentToRead(pipe)) : "results would not be repeatable";
         return readValue(pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value);
@@ -2925,7 +2956,11 @@ public class Pipe<T extends MessageSchema<T>> {
         return readLong(pipe.slabRing,pipe.slabMask,pipe.slabRingTail.workingTailPos.value+offset);
     }
     
-    
+    public static <S extends MessageSchema<S>, A extends Appendable> A peekUTF8(Pipe<S> pipe, int offset, A target) {
+    	assert(Pipe.hasContentToRead(pipe)) : "results would not be repeatable";
+    	return readUTF8(pipe, target, peekInt(pipe,offset),peekInt(pipe,offset+1));
+    }
+
     public static <S extends MessageSchema<S>> int contentRemaining(Pipe<S> pipe) {
         int result = (int)(pipe.slabRingHead.headPos.get() - pipe.slabRingTail.tailPos.get()); //must not go past add count because it is not release yet.
         assert(result>=0) : "content remaining must never be negative";
@@ -3218,6 +3253,58 @@ public class Pipe<T extends MessageSchema<T>> {
     }
 
 
+    public static <S extends MessageSchema<S>> boolean tryReplication(Pipe<S> pipe, 
+            final long historicSlabPosition, 
+            final int historicBlobPosition) {
+
+		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
+				
+		final int[] slab = Pipe.slab(pipe);
+		final byte[] blob = Pipe.blob(pipe);
+		final int idx = (int)historicSlabPosition & pipe.slabMask;		
+		final int msgIdx = slab[idx]; //false share as this is a dirty read
+		final int slabMsgSize = Pipe.sizeOf(pipe,msgIdx);
+		
+		assert(Pipe.from(pipe).isValidMsgIdx(Pipe.from(pipe), msgIdx)) : "bad value "+msgIdx+" for "+pipe.schema;
+		
+		//first part is to protect against dirty reading		
+		if ((msgIdx<Pipe.from(pipe).fragDataSize.length) 
+			&& Pipe.headPosition(pipe) == Pipe.workingHeadPosition(pipe)	
+			&& Pipe.hasRoomForWrite(pipe, slabMsgSize)) {
+			
+			//get the sizes of ints and bytes
+			int blobMsgSize = slab[(int)(historicSlabPosition+slabMsgSize-1) & pipe.slabMask];
+			
+			//copy all the bytes
+			int blobPos = Pipe.getWorkingBlobHeadPosition(pipe);
+			Pipe.copyBytesFromToRing(blob, historicBlobPosition, Pipe.blobMask(pipe), blob, blobPos, Pipe.blobMask(pipe), blobMsgSize);			
+			Pipe.addAndGetBytesWorkingHeadPosition(pipe, blobMsgSize);
+			
+			//copy all the ints
+			long slabPos = Pipe.headPosition(pipe);
+			Pipe.copyIntsFromToRing(slab, idx, Pipe.slabMask(pipe), slab, (int)slabPos, Pipe.slabMask(pipe), slabMsgSize);	
+			Pipe.addAndGetWorkingHead(pipe, slabMsgSize-1);//one less because trailing length is not part of the data fields.
+			
+			Pipe.confirmLowLevelWrite(pipe, slabMsgSize);
+			Pipe.publishWrites(pipe);
+			
+			
+			
+			//Appendables.appendHexArray(System.out.append("replicate slab: "), '[', slab, historicSlabPosition, pipe.slabMask, ']', slabMsgSize).append('\n');
+			
+			
+			//logger.info("replicate data from old:{} {} new:{} {} ",
+			//historicBlobPosition, historicSlabPosition,
+			//(blobPos&Pipe.blobMask(pipe)), (slabPos&Pipe.slabMask(pipe)));
+			
+			
+			return true;
+		} else {
+			return false;
+		}
+	}
+    
+    
 	/**
 	 * This method is only for build transfer stages that require direct manipulation of the position.
 	 * Only call this if you really know what you are doing.
@@ -3304,7 +3391,16 @@ public class Pipe<T extends MessageSchema<T>> {
 		return pipe.blobWriter;
 	}
 
+	public static <S extends MessageSchema<S>> DataOutputBlobWriter<S> openOutputStream(Pipe<S> pipe) {
+		return DataOutputBlobWriter.openField(pipe.blobWriter);
+	}
+	
 	public static <S extends MessageSchema<S>> DataInputBlobReader<S> inputStream(Pipe<S> pipe) {
+		return pipe.blobReader;
+	}
+	
+	public static <S extends MessageSchema<S>> DataInputBlobReader<S> openInputStream(Pipe<S> pipe) {
+		pipe.blobReader.openLowLevelAPIField();
 		return pipe.blobReader;
 	}
 	
@@ -3338,6 +3434,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
     public static <S extends MessageSchema<S>> boolean hasRoomForWrite(Pipe<S> pipe) {
         assert(null != pipe.slabRing) : "Pipe must be init before use";
+        assert(null != pipe.llRead) : "Expected pipe to be setup for low level use.";
         assert(Pipe.singleThreadPerPipeWrite(pipe.id));
         return roomToLowLevelWrite(pipe, pipe.llRead.llwConfirmedPosition+FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe)));
     }    

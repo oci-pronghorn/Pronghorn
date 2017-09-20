@@ -10,7 +10,7 @@ import org.junit.Test;
 
 public class DataInputOutputTest {
 
-    private static final int testSpace = 100000000;
+    private static final int testSpace = 1000000;
     
     private static final PipeConfig<RawDataSchema> config = new PipeConfig<RawDataSchema>(RawDataSchema.instance, 5, testSpace);
         

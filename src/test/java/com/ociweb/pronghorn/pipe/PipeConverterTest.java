@@ -1,24 +1,23 @@
 package com.ociweb.pronghorn.pipe;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
 
 import org.junit.Test;
 
-import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeConfig;
-
 public class PipeConverterTest {
+
+	private final byte primaryRingSizeInBits = 5; //this ring is 2^5 eg 32
+	private final byte byteRingSizeInBits = 10;
+	private final PipeConfig config = new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance);
     
     @Test
     public void longToASCIITest() {
     
-        byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
-        byte byteRingSizeInBits = 16;
         
-        Pipe<RawDataSchema> pipe = new Pipe<RawDataSchema>(new PipeConfig(RawDataSchema.instance, primaryRingSizeInBits, byteRingSizeInBits));
+        Pipe<RawDataSchema> pipe = new Pipe<RawDataSchema>(config);
         pipe.initBuffers();
                 
         Pipe.validateVarLength(pipe, 10);
@@ -42,10 +41,7 @@ public class PipeConverterTest {
     @Test
     public void intToASCIITest() {
     
-        byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
-        byte byteRingSizeInBits = 16;
-        
-        Pipe<RawDataSchema> pipe = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
+		Pipe<RawDataSchema> pipe = new Pipe<RawDataSchema>(config);
         pipe.initBuffers();
         pipe.reset(0,0);
         
@@ -70,10 +66,7 @@ public class PipeConverterTest {
     @Test
     public void decimalToASCIITest() {
     
-        byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
-        byte byteRingSizeInBits = 16;
-        
-        Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
+        Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(config);
         ring.initBuffers();
         
         Pipe.validateVarLength(ring, 7);
@@ -131,11 +124,8 @@ public class PipeConverterTest {
     
     @Test
     public void addByteBufferTest() {
-    
-        byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
-        byte byteRingSizeInBits = 16;
-        
-        Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
+
+        Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(config);
         ring.initBuffers();
         ring.reset(0,0);
         
