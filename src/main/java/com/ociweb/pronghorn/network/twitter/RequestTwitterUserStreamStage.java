@@ -34,7 +34,9 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 	private static final String path = path2+"?"+rawQuery;
 	
 	public RequestTwitterUserStreamStage(GraphManager graphManager, 
-											String ck, String cs, String token, String secret, int httpRequestResponseId,
+											String ck, String cs, 
+											String token, String secret, 
+											int httpRequestResponseId,
 											Pipe<TwitterStreamControlSchema> control,
 			                                Pipe<ClientHTTPRequestSchema> output) {
 		
@@ -52,7 +54,7 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 	@Override
 	public void startup() {
 		myAuth = new OAuth1HeaderBuilder(ck, cs, token, secret);
-		streamingRequest(output, ck, cs, token, secret, httpRequestResponseId);		
+		streamingRequest(output, httpRequestResponseId);		
 	}
 	
 	@Override
@@ -67,7 +69,7 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 					requestShutdown();
 					return;				
 				default:
-					streamingRequest(output, ck, cs, token, secret, id);
+					streamingRequest(output, id);
 			}			
 			PipeReader.releaseReadLock(control);			
 		}
@@ -77,7 +79,7 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 	public void shutdown() {
 	}
 
-	private void streamingRequest(Pipe<ClientHTTPRequestSchema> pipe, String ck, String cs, String token, String secret, int httpRequestResponseId) {
+	private void streamingRequest(Pipe<ClientHTTPRequestSchema> pipe, int httpRequestResponseId) {
 			
 		PipeWriter.tryWriteFragment(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100);
 		assert(httpRequestResponseId>=0);
@@ -102,6 +104,7 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 		List<CharSequence[]> javaParams = new ArrayList<CharSequence[]>(2);		
 		javaParams.add(new CharSequence[]{"stall_warnings","true"}); //NOTE: must be URLEncoder.encode(
 		javaParams.add(new CharSequence[]{"with","followings"}); //NOTE: must be URL encoded
+		
 		myAuth.addHeaders(stream, javaParams, port, "https", "GET", host, path2);
 		stream.append("\r\n");
 	}
