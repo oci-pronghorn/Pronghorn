@@ -25,13 +25,13 @@ public class ReleaseSchema extends MessageSchema<ReleaseSchema> {
     
     public static final ReleaseSchema instance = new ReleaseSchema();
     
-    public static final int MSG_RELEASE_100 = 0x00000000;
-    public static final int MSG_RELEASE_100_FIELD_CONNECTIONID_1 = 0x00800001;
-    public static final int MSG_RELEASE_100_FIELD_POSITION_2 = 0x00800003;
-    public static final int MSG_RELEASEWITHSEQ_101 = 0x00000004;
-    public static final int MSG_RELEASEWITHSEQ_101_FIELD_CONNECTIONID_1 = 0x00800001;
-    public static final int MSG_RELEASEWITHSEQ_101_FIELD_POSITION_2 = 0x00800003;
-    public static final int MSG_RELEASEWITHSEQ_101_FIELD_SEQUENCENO_3 = 0x00400005;
+    public static final int MSG_RELEASE_100 = 0x00000000; //Group/OpenTempl/3
+    public static final int MSG_RELEASE_100_FIELD_CONNECTIONID_1 = 0x00800001; //LongUnsigned/None/0
+    public static final int MSG_RELEASE_100_FIELD_POSITION_2 = 0x00800003; //LongUnsigned/None/1
+    public static final int MSG_RELEASEWITHSEQ_101 = 0x00000004; //Group/OpenTempl/4
+    public static final int MSG_RELEASEWITHSEQ_101_FIELD_CONNECTIONID_1 = 0x00800001; //LongUnsigned/None/0
+    public static final int MSG_RELEASEWITHSEQ_101_FIELD_POSITION_2 = 0x00800003; //LongUnsigned/None/1
+    public static final int MSG_RELEASEWITHSEQ_101_FIELD_SEQUENCENO_3 = 0x00400005; //IntegerSigned/None/0
 
 
     public static void consume(Pipe<ReleaseSchema> input) {
@@ -62,27 +62,18 @@ public class ReleaseSchema extends MessageSchema<ReleaseSchema> {
         int fieldSequenceNo = PipeReader.readInt(input,MSG_RELEASEWITHSEQ_101_FIELD_SEQUENCENO_3);
     }
 
-    public static boolean publishRelease(Pipe<ReleaseSchema> output, long fieldConnectionID, long fieldPosition) {
-        boolean result = false;
-        if (PipeWriter.tryWriteFragment(output, MSG_RELEASE_100)) {
+    public static void publishRelease(Pipe<ReleaseSchema> output, long fieldConnectionID, long fieldPosition) {
+            PipeWriter.presumeWriteFragment(output, MSG_RELEASE_100);
             PipeWriter.writeLong(output,MSG_RELEASE_100_FIELD_CONNECTIONID_1, fieldConnectionID);
             PipeWriter.writeLong(output,MSG_RELEASE_100_FIELD_POSITION_2, fieldPosition);
             PipeWriter.publishWrites(output);
-            result = true;
-        }
-        return result;
     }
-    public static boolean publishReleaseWithSeq(Pipe<ReleaseSchema> output, long fieldConnectionID, long fieldPosition, int fieldSequenceNo) {
-        boolean result = false;
-        if (PipeWriter.tryWriteFragment(output, MSG_RELEASEWITHSEQ_101)) {
+    public static void publishReleaseWithSeq(Pipe<ReleaseSchema> output, long fieldConnectionID, long fieldPosition, int fieldSequenceNo) {
+            PipeWriter.presumeWriteFragment(output, MSG_RELEASEWITHSEQ_101);
             PipeWriter.writeLong(output,MSG_RELEASEWITHSEQ_101_FIELD_CONNECTIONID_1, fieldConnectionID);
             PipeWriter.writeLong(output,MSG_RELEASEWITHSEQ_101_FIELD_POSITION_2, fieldPosition);
             PipeWriter.writeInt(output,MSG_RELEASEWITHSEQ_101_FIELD_SEQUENCENO_3, fieldSequenceNo);
             PipeWriter.publishWrites(output);
-            result = true;
-        }
-        return result;
     }
-
         
 }
