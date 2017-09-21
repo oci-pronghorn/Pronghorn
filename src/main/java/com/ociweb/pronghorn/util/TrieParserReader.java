@@ -310,11 +310,8 @@ public class TrieParserReader {
 		if (r >= 0) {
 			return;	
 		} else {        
-			int run = that.data[pos + 2];
-			
-			assert(run >0);
-			
-			
+			//int run = that.data[pos + 2];
+		
 			idx = pos + TrieParser.SIZE_OF_RUN-1;
 			
 			//visit(that, idx+run, visitor, source, localSourcePos+run, sourceLength, sourceMask, unfoundResult);

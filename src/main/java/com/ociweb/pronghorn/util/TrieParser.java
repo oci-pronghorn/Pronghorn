@@ -1480,7 +1480,7 @@ public class TrieParser implements Serializable {
     }
  
     private int writeRuns(int pos, byte[] source, int sourcePos, int sourceLength, int sourceMask) {
-       if (0 == sourceLength) {
+       if (sourceLength<=0) {
            return pos;
        }
        
