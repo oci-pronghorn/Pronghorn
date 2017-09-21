@@ -14,7 +14,7 @@ public class JPGRaster {
 
 	public static void main(String[] args) {
 		
-		String inputFilePath = MainArgs.getOptArg("fileName", "-f", args, "./image.jpg");
+		String inputFilePath = MainArgs.getOptArg("fileName", "-f", args, "./nathan.jpg");
 
 		GraphManager gm = new GraphManager();
 		
