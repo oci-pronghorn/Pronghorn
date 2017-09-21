@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.ServerCoordinator;
+import com.ociweb.pronghorn.network.config.HTTPRevision;
+import com.ociweb.pronghorn.network.config.HTTPRevisionDefaults;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
@@ -20,26 +22,25 @@ public class HTTPUtil {
     
 	static final TrieParser chunkMap = buildChunkMap();
     
-	public static void publishError(int sequence, int status,
-	            Pipe<ServerResponseSchema> localOutput, long channelId, 
-	            HTTPSpecification<?,?,?,?> httpSpec, 
-	            int revision) {
-		publishError(sequence,status,localOutput,channelId,httpSpec,revision,-1);
-	}
-    
-	public static void publishError(int sequence, int status,
-            Pipe<ServerResponseSchema> localOutput, long channelId, 
-            HTTPSpecification<?,?,?,?> httpSpec, 
-            int revision, int contentType) {
-				
+	public static void publishStatus(long channelId, int sequence,
+	            					int status,
+	            					Pipe<ServerResponseSchema> localOutput) {
+
 		int channelIdHigh = (int)(channelId>>32); 
-        int channelIdLow = (int)channelId;
-        
-        //this method will close the connection as soon as the response is sent.
-		publishError(ServerCoordinator.END_RESPONSE_MASK | ServerCoordinator.CLOSE_CONNECTION_MASK,
-				      sequence, status, localOutput, 
-					  channelIdHigh,channelIdLow,httpSpec,revision,contentType);
+		int channelIdLow = (int)channelId;		
 		
+		publishStatus(sequence, status, channelIdHigh, channelIdLow, localOutput);
+	}
+
+	public static void publishStatus(int sequence, int status, int channelIdHigh, int channelIdLow,
+			Pipe<ServerResponseSchema> localOutput) {
+		int contentLength = 0;
+		byte[] contentBacking = null;
+		int contentPosition = 0;
+		int contentMask = Integer.MAX_VALUE;
+		
+		simplePublish(ServerCoordinator.END_RESPONSE_MASK | ServerCoordinator.CLOSE_CONNECTION_MASK, sequence, status, localOutput, channelIdHigh, channelIdLow, null,
+				      contentLength, contentBacking, contentPosition, contentMask);
 	}
     
 	private static TrieParser buildChunkMap() {
@@ -49,12 +50,17 @@ public class HTTPUtil {
 	      return chunkMap;
 	}
 
-	public static void publishError(int requestContext, int sequence, int status,
-	                            Pipe<ServerResponseSchema> localOutput, int channelIdHigh, 
-	                            int channelIdLow, HTTPSpecification<?,?,?,?> httpSpec, 
-	                            int revision, int contentType) {
-	    
-	    int headerSize = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
+	public static void simplePublish(int requestContext, int sequence, int status,
+			Pipe<ServerResponseSchema> localOutput, int channelIdHigh, int channelIdLow, byte[] typeBytes,
+			int contentLength, byte[] contentBacking, int contentPosition, int contentMask) {
+		assert(contentLength>=0) : "This method does not support chunking";
+		
+		byte [] contentLocationBacking = null;
+		int contentLocationBytesPos = 0;
+		int contentLocationBytesLen = 0;
+		int contentLocationBytesMask = 0;
+		
+		int headerSize = Pipe.addMsgIdx(localOutput, ServerResponseSchema.MSG_TOCHANNEL_100); //channel, sequence, context, payload 
 	
 	    Pipe.addIntValue(channelIdHigh, localOutput);
 	    Pipe.addIntValue(channelIdLow, localOutput);
@@ -62,12 +68,20 @@ public class HTTPUtil {
 	    
 	    DataOutputBlobWriter<ServerResponseSchema> writer = Pipe.outputStream(localOutput);        
 	    writer.openField();
-	    byte[] revBytes = httpSpec.revisions[revision].getBytes();
-		AbstractRestStage.writeHeader( revBytes, status, requestContext, null, 
-				                        contentType<0 ? null :httpSpec.contentTypes[contentType].getBytes(), 
-						    		    0, false, false, null, 0,0,0,
+		boolean chunked = false;
+		boolean server = false;
+		
+		AbstractRestStage.writeHeader(  HTTPRevisionDefaults.HTTP_1_1.getBytes(),
+				                        status, requestContext, null, 
+				                        typeBytes, 
+				                        contentLength, 
+						    		    chunked, server,
+						    		    contentLocationBacking, contentLocationBytesPos,contentLocationBytesLen,contentLocationBytesMask,
 						    		    writer, 1&(requestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
-	    writer.closeLowLevelField();          
+	    if (contentLength>0) {
+			writer.write(contentBacking, contentPosition, contentLength, contentMask);
+	    }
+		writer.closeLowLevelField();          
 	
 	    Pipe.addIntValue(requestContext , localOutput); //empty request context, set the full value last.                        
 	    

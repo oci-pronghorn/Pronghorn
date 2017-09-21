@@ -145,8 +145,8 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		        	
 		        	if (!sendResponse(output, fieldRevision, paramStream, (HTTPVerbDefaults)httpSpec.verbs[fieldVerb])) {
 
-		        		HTTPUtil.publishError(activeSequenceNo, 404, output, 
-		        			activeChannelId, httpSpec, fieldRevision); 
+		        		HTTPUtil.publishStatus(activeChannelId, activeSequenceNo, 404, 
+		        			output); 
 		        	}
 		        	
 		        	

@@ -756,7 +756,7 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
             }     
             
         } catch (Exception e) {
-            publishErrorHeader(httpRevision, requestContext, pathId, sequence, e, input, output);
+            publishErrorHeader(httpRevision, requestContext, sequence, e, input, output);
         }        
     }
 
@@ -764,25 +764,23 @@ public class FileReadModuleStage<       T extends Enum<T> & HTTPContentType,
 		return PipeHashTable.getLowerBounds(outputHash)+output.blobMask;
 	}
 
-    private void publishErrorHeader(int httpRevision, int requestContext, int pathId, int sequence, Exception e, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) {
+    private void publishErrorHeader(int httpRevision, int requestContext, int sequence, Exception e, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) {
         if (null != e) {
             logger.error("Unable to read file for sending.",e);
         }
         //Informational 1XX, Successful 2XX, Redirection 3XX, Client Error 4XX and Server Error 5XX.
         int errorStatus = null==e? 400:500;
         
-        HTTPUtil.publishError(requestContext, sequence, errorStatus, output, activeChannelHigh, activeChannelLow, httpSpec,
-                httpRevision, data.getType()[pathId]);
+        HTTPUtil.publishStatus(sequence, errorStatus, activeChannelHigh, activeChannelLow, output);
         
         Pipe.confirmLowLevelRead(input, activeReadMessageSize);
         Pipe.releaseReadLock(input);
     }
 
     private void publishErrorHeader(int httpRevision, int requestContext, int sequence, int code, Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output) {
-        //logger.trace("published error {}",code);
-        HTTPUtil.publishError(requestContext, sequence, code, output, activeChannelHigh, activeChannelLow, httpSpec,
-        		                httpRevision, -1);
         
+     	HTTPUtil.publishStatus(sequence, code, activeChannelHigh, activeChannelLow, output);
+         
         Pipe.confirmLowLevelRead(input, activeReadMessageSize);
         Pipe.releaseReadLock(input);
     }

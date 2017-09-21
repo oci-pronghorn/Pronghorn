@@ -723,15 +723,9 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
 private boolean sendError(final long channel, final int idx, int errorCode) {
 	boolean sent = false;
 	if (Pipe.hasRoomForWrite(errorResponsePipe)) {
-		
-		int defaultRev = HTTPRevisionDefaults.HTTP_1_1.ordinal();	//TODO: need a better way to look this up.			
-		int defaultContent = HTTPContentTypeDefaults.UNKNOWN.ordinal(); //TODO: need a better way to look this up.
-						
 		//will close connection as soon as error is returned.
-		HTTPUtil.publishError(sequences[idx], errorCode, 
-				              errorResponsePipe, channel, 
-				              config.httpSpec, defaultRev, defaultContent);
-		
+		HTTPUtil.publishStatus(channel, sequences[idx], 
+				              errorCode, errorResponsePipe);		
 		sent = true;				
 	}
 	return sent;
