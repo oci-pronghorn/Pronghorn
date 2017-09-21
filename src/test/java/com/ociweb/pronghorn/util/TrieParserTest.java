@@ -383,7 +383,7 @@ assertEquals(str.toString().trim(),"abcd");
 		
 	}
 	
-	@Test
+	@Ignore
 	public void testwriteCapturedUTF8ToPipe() throws IOException{
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16);
