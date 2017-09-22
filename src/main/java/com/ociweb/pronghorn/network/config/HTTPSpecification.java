@@ -142,6 +142,13 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 		return (int)reader.query(reader, headerParser(), h, 0, h.length, Integer.MAX_VALUE);
 	}
 
+	public HTTPHeader getHeader(int headerId) {
+    	assert(this.headers!=null) : "No headers have been set in this specification.";
+    	assert(headerId >= 0 && headerId < this.headers.length) : "There is no header with the provided ID";
+
+    	return this.headers[headerId];
+	}
+
 	public TrieParser contentTypeTrieBuilder() {
 		return contentTypeTrie;
 	}
