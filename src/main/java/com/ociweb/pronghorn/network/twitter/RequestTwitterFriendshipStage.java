@@ -114,6 +114,9 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 		contentBacking = new byte[4];
 		
 		myAuth = new OAuth1HeaderBuilder(ck, cs, token, secret);
+		if (path==followPath) {
+			myAuth.addParam("follow","true");
+		}
 		hostAndPath = myAuth.buildFormalPath(port, "https", host, path);
 	}
 	
@@ -236,26 +239,12 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 		Pipe.addUTF8(path, pipe);
 				
 		DataOutputBlobWriter<ClientHTTPRequestSchema> stream = Pipe.openOutputStream(pipe);
-		writeHeaders(stream);
+		myAuth.addHeaders(stream, "GET", hostAndPath).append("\r\n");
 		DataOutputBlobWriter.closeLowLevelField(stream);
 
 		Pipe.confirmLowLevelWrite(pipe, size);
 		Pipe.publishWrites(pipe);
 		
-	}
-
-	private void writeHeaders(DataOutputBlobWriter<ClientHTTPRequestSchema> stream) {
-		
-		//TODO: we have a lot here to improve and eliminate GC.
-		
-		List<CharSequence[]> javaParams = new ArrayList<CharSequence[]>(2);		
-		
-		if (path==followPath) {
-			javaParams.add(new CharSequence[]{"follow","true"});
-		}
-		
-		myAuth.addHeaders(stream, javaParams, "GET", hostAndPath);
-		stream.append("\r\n");
 	}
 
 }

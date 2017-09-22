@@ -56,7 +56,7 @@ public class OAuth2BearerUtil {
 		//Authorization: Basic UW5KTlFsWnlkemRXVDNSV2RrWTVaSFo2TWs1Tk5EbEZZanBvTW5VNU5UQlpOVUZFZVdOa1JqSlNXV1p1V0daNE5sUkJaRVpaTlZZeE4xZDVSazFsTVVSS2JrSlBSMVZqZVVNM1lRPT0=
 
 		stream.append("Authorization: Basic ");
-		Appendables.appendBase64(stream, btc, 0, btc.length, Integer.MAX_VALUE);
+		Appendables.appendBase64Encoded(stream, btc, 0, btc.length, Integer.MAX_VALUE);
 		stream.append("\r\nContent-Type: application/x-www-form-urlencoded;charset=UTF-8\r\n");
 	}
 

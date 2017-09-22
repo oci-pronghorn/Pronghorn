@@ -1,8 +1,5 @@
 package com.ociweb.pronghorn.network.twitter;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.ociweb.pronghorn.network.OAuth1HeaderBuilder;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.TwitterStreamControlSchema;
@@ -55,6 +52,9 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 	@Override
 	public void startup() {
 		myAuth = new OAuth1HeaderBuilder(ck, cs, token, secret);
+		myAuth.addParam("stall_warnings","true");
+		myAuth.addParam("with","followings");		
+		
 		hostAndPath = myAuth.buildFormalPath(port, "https", host, pathRoot);
 		streamingRequest(output, httpRequestResponseId);		
 	}
@@ -93,22 +93,10 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 				
 		DataOutputBlobWriter<ClientHTTPRequestSchema> stream = PipeWriter.outputStream(pipe);
 		DataOutputBlobWriter.openField(stream);
-		writeHeaders(stream);
+		myAuth.addHeaders(stream, "GET", hostAndPath).append("\r\n");
 		DataOutputBlobWriter.closeHighLevelField(stream, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HEADERS_7);
 
 		PipeWriter.publishWrites(pipe);
-	}
-
-	private void writeHeaders(DataOutputBlobWriter<ClientHTTPRequestSchema> stream) {
-		
-		//TODO: we have a lot here to improve and eliminate GC.
-		
-		List<CharSequence[]> javaParams = new ArrayList<CharSequence[]>(2);		
-		javaParams.add(new CharSequence[]{"stall_warnings","true"}); //NOTE: must be URLEncoder.encode(
-		javaParams.add(new CharSequence[]{"with","followings"}); //NOTE: must be URL encoded
-		
-		myAuth.addHeaders(stream, javaParams, "GET", hostAndPath);
-		stream.append("\r\n");
 	}
 
 }
