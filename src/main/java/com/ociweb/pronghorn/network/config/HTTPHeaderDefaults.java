@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.network.config;
 
 import java.io.IOException;
 
-import com.ociweb.pronghorn.pipe.BlobReader;
+import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.util.Appendables;
 
 public enum HTTPHeaderDefaults implements HTTPHeader {
@@ -14,12 +14,12 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     CONNECTION("Connection: %b"),
     USER_AGENT("User-Agent: %b"),//chromium
     TRANSFER_ENCODING("Transfer-Encoding: chunked") {    
-	    public <A extends Appendable> A writeValue(A target, BlobReader reader) {
+	    public <A extends Appendable> A writeValue(A target, ChannelReader reader) {
 	    	return target;
 	    }
 	}, //Transfer-Encoding: chunked
     CONTENT_LENGTH("Content-Length: %u") {    
-	    public <A extends Appendable> A writeValue(A target, BlobReader reader) {
+	    public <A extends Appendable> A writeValue(A target, ChannelReader reader) {
 	    	Appendables.appendValue(target, reader.readPackedLong());
 	    	return target;
 	    }
@@ -58,7 +58,7 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     PRAGMA("Pragma: %b"), //Not matching?
     SERVER("Server: %b"), //Not matching?
     STATUS("Status: %i %b"){    
-	    public <A extends Appendable> A writeValue(A target, BlobReader reader) {
+	    public <A extends Appendable> A writeValue(A target, ChannelReader reader) {
 	    	try {
 	    		Appendables.appendValue(target, reader.readPackedLong());				
 	    		target.append(' ');
@@ -135,7 +135,7 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
         return writingRoot;
     }
     
-    public <A extends Appendable> A writeValue(A target, BlobReader reader) {
+    public <A extends Appendable> A writeValue(A target, ChannelReader reader) {
     	reader.readUTF(target);
     	return target;
     }

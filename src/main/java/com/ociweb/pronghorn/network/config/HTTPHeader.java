@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.network.config;
 
-import com.ociweb.pronghorn.pipe.BlobReader;
+import com.ociweb.pronghorn.pipe.ChannelReader;
 
 public interface HTTPHeader {
 
@@ -11,7 +11,7 @@ public interface HTTPHeader {
     CharSequence readingTemplate();
     
     CharSequence writingRoot();
-    <A extends Appendable> A writeValue(A target, BlobReader reader);
+    <A extends Appendable> A writeValue(A target, ChannelReader reader);
     
     byte[] rootBytes();
     

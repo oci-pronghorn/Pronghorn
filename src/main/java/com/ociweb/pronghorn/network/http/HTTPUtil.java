@@ -39,7 +39,7 @@ public class HTTPUtil {
 		int contentPosition = 0;
 		int contentMask = Integer.MAX_VALUE;
 		
-		simplePublish(ServerCoordinator.END_RESPONSE_MASK | ServerCoordinator.CLOSE_CONNECTION_MASK, sequence, status, localOutput, channelIdHigh, channelIdLow, null,
+		simplePublish(ServerCoordinator.END_RESPONSE_MASK, sequence, status, localOutput, channelIdHigh, channelIdLow, null,
 				      contentLength, contentBacking, contentPosition, contentMask);
 	}
     

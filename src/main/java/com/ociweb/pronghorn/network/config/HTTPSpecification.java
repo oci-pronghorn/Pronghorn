@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.network.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.pipe.BlobReader;
+import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
@@ -43,7 +43,7 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
         return defaultSpec;
     }
 
-    public <A extends Appendable> A writeHeader(A target, int ordinal, BlobReader data) {
+    public <A extends Appendable> A writeHeader(A target, int ordinal, ChannelReader data) {
     	try {
 	    	H header = headers[ordinal];
 			target.append(header.writingRoot());
