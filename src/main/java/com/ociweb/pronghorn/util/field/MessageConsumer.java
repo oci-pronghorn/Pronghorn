@@ -3,7 +3,7 @@ package com.ociweb.pronghorn.util.field;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.ociweb.pronghorn.pipe.BlobReader;
+import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.token.TokenBuilder;
@@ -42,13 +42,13 @@ public class MessageConsumer {
     	
     }
 
-    public boolean process(BlobReader reader) {
+    public boolean process(ChannelReader reader) {
     	storeFields(reader);
     	return consumeFields();
     }
     
     
-	private void storeFields(BlobReader reader) {
+	private void storeFields(ChannelReader reader) {
 		
 		//These asserts are required to ensure no one refactors the TypeMask to modify 
 		//the order value of these constants.
@@ -104,7 +104,7 @@ public class MessageConsumer {
 		return true;
 	}
 
-	private void storeValue(BlobReader reader, int type, FieldConsumer consumer) {
+	private void storeValue(ChannelReader reader, int type, FieldConsumer consumer) {
 		
 		//NB: must not use more than 3 conditionals to find any specific value.
 		//NB: the order of these are from most common to least common
@@ -146,7 +146,7 @@ public class MessageConsumer {
 		}
 	}
 	
-	private void skipValue(BlobReader reader, int type) {
+	private void skipValue(ChannelReader reader, int type) {
 		
 		//NB: must not use more than 3 conditionals to find any specific value.
 		//NB: the order of these are from most common to least common

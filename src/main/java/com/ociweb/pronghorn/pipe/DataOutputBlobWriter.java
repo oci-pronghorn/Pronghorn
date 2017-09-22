@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
-public class DataOutputBlobWriter<S extends MessageSchema<S>> extends BlobWriter {
+public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWriter {
 
     protected final Pipe<S> backingPipe;
     private final byte[] byteBuffer;

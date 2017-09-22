@@ -13,7 +13,7 @@ import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 import com.ociweb.pronghorn.util.math.Decimal;
 
-public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader {
+public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelReader {
 
     private final StringBuilder workspace;
     private final Pipe<S> pipe;
@@ -532,7 +532,7 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends BlobReader 
     }
        
     @Override
-    public void readInto(BlobWriter writer, int length) {
+    public void readInto(ChannelWriter writer, int length) {
     	
     	DataOutputBlobWriter.write((DataOutputBlobWriter)writer, backing, position, length, byteMask);
     	position += length;
