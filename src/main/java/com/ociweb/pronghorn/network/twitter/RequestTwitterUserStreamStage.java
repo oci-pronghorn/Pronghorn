@@ -51,11 +51,10 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 	
 	@Override
 	public void startup() {
-		myAuth = new OAuth1HeaderBuilder(ck, cs, token, secret);
+		myAuth = new OAuth1HeaderBuilder(ck, cs, token, secret, port, "https", host, pathRoot);
 		myAuth.addParam("stall_warnings","true");
 		myAuth.addParam("with","followings");		
 		
-		hostAndPath = myAuth.buildFormalPath(port, "https", host, pathRoot);
 		streamingRequest(output, httpRequestResponseId);		
 	}
 	
@@ -93,7 +92,7 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 				
 		DataOutputBlobWriter<ClientHTTPRequestSchema> stream = PipeWriter.outputStream(pipe);
 		DataOutputBlobWriter.openField(stream);
-		myAuth.addHeaders(stream, "GET", hostAndPath).append("\r\n");
+		myAuth.addHeaders(stream, "GET").append("\r\n");
 		DataOutputBlobWriter.closeHighLevelField(stream, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_HEADERS_7);
 
 		PipeWriter.publishWrites(pipe);

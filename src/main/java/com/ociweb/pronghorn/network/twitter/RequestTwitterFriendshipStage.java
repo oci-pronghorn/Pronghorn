@@ -1,10 +1,11 @@
 package com.ociweb.pronghorn.network.twitter;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.OAuth1HeaderBuilder;
 import com.ociweb.pronghorn.network.ServerCoordinator;
+import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
@@ -15,9 +16,13 @@ import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class RequestTwitterFriendshipStage extends PronghornStage {
 
+	//TODO: should be easy to make send tweet stage after this.
+	private static final Logger logger = LoggerFactory.getLogger(RequestTwitterFriendshipStage.class);
+	
 	private final String ck;
 	private final String cs;
 	private final String token;
@@ -27,7 +32,6 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 	private static final int port = 443;
 	private static final String host = "api.twitter.com";
 	
-	//TODO: should be easy to make send tweet stage after this.
 	
 	private static final String followPath   = "/1.1/friendships/create.json";
 	private static final String unfollowPath = "/1.1/friendships/destroy.json";
@@ -42,12 +46,17 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 	private final Pipe<ClientHTTPRequestSchema>[] toTwitter;
 	private final Pipe<NetResponseSchema>[] fromTwitter;
 	
+	
+	private final String prefix = "user_id=";
+	private final String postfix = "&follow=true";
+	
 	private long nextTriggerTime = -1;
-	private String hostAndPath;
 	
 	private final int contentPosition = 0;
 	private final int contentMask = Integer.MAX_VALUE;
 	private byte[] contentBacking;
+	
+	private final StringBuilder dynamicLength;
 	
 	/////////////
 	//POST https://api.twitter.com/1.1/friendships/create.json?user_id=1401881&follow=true
@@ -106,18 +115,17 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 		
 		this.msBetweenCalls = (24*60*60*1000)/1000;  //(15*60*1000)/15; 15 min limit
 		assert(86_400 == msBetweenCalls);  //24 hour limit of 1000
-				
+		this.dynamicLength = new StringBuilder();
+		
 	}
 	
 	@Override
 	public void startup() {
 		contentBacking = new byte[4];
 		
-		myAuth = new OAuth1HeaderBuilder(ck, cs, token, secret);
-		if (path==followPath) {
-			myAuth.addParam("follow","true");
-		}
-		hostAndPath = myAuth.buildFormalPath(port, "https", host, path);
+		myAuth = new OAuth1HeaderBuilder(ck, cs, token, secret, port, "https", host, path);
+		myAuth.addParam(HTTPHeaderDefaults.CONTENT_LENGTH.writingRoot(), dynamicLength);
+		
 	}
 	
 	@Override
@@ -130,6 +138,9 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 
 	}
 
+	private long activeConnectionId=-1;
+	private int  activeSequenceId=-1;
+	
 	private void run(int idx, 
 			         Pipe<HTTPRequestSchema> input,
 			         Pipe<ServerResponseSchema> output,
@@ -140,81 +151,118 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 		while (Pipe.hasContentToRead(fromTwitter) 
 			   && Pipe.hasRoomForWrite(output)) {
 			
-			long connectionId = -1;
-			int sequenceID = -1;
-									
-			
-			int msgIdx = Pipe.takeMsgIdx(fromTwitter);
-			if (NetResponseSchema.MSG_RESPONSE_101==msgIdx) {
-				long connId = Pipe.takeLong(fromTwitter);
-				int flags = Pipe.takeInt(fromTwitter);
-				DataInputBlobReader<NetResponseSchema> payload = Pipe.openInputStream(fromTwitter);
-				
-				final short statusId = payload.readShort();
-				
-				int contentLength;
-				if (200==statusId) {
-					contentLength = 0;
-				} else {
-					contentLength = 1;
-					contentBacking[0] = (byte)127;
-				}
-				
-				int channelIdHigh = (int)(connectionId>>32); 
-				int channelIdLow = (int)connectionId;
-				
-				HTTPUtil.simplePublish(ServerCoordinator.END_RESPONSE_MASK | ServerCoordinator.CLOSE_CONNECTION_MASK, 
-						      sequenceID, statusId, output, channelIdHigh, channelIdLow, null,
-						      contentLength, contentBacking, contentPosition, contentMask);
-            	 
-				
-				
+			if (activeSequenceId==-1) {
+				logger.info("WARNING: got unrequested response, data skipped");
+				Pipe.skipNextFragment(fromTwitter);
 			} else {
-				
-				Pipe.skipNextFragment(fromTwitter, msgIdx);
-				
-				
+			
+				int msgIdx = Pipe.takeMsgIdx(fromTwitter);
+				if (NetResponseSchema.MSG_RESPONSE_101==msgIdx) {
+					long connId = Pipe.takeLong(fromTwitter);
+					int flags = Pipe.takeInt(fromTwitter);
+					DataInputBlobReader<NetResponseSchema> payload = Pipe.openInputStream(fromTwitter);
+					
+					final short statusId = payload.readShort();
+					
+					int contentLength;
+					if (200==statusId) {
+						contentLength = 0;
+					} else {
+						contentLength = 1;
+						contentBacking[0] = (byte)127;
+					}
+					
+					int channelIdHigh = (int)(activeConnectionId>>32); 
+					int channelIdLow = (int)activeConnectionId;
+					
+					HTTPUtil.simplePublish(ServerCoordinator.END_RESPONSE_MASK | ServerCoordinator.CLOSE_CONNECTION_MASK, 
+							      activeSequenceId, statusId, output, channelIdHigh, channelIdLow, null,
+							      contentLength, contentBacking, contentPosition, contentMask);          	 
+					
+				} else {
+					Pipe.skipNextFragment(fromTwitter, msgIdx);
+					HTTPUtil.publishStatus(activeConnectionId, activeSequenceId, 200, output);
+					
+				}
 			}
-			
-			
-			
-			HTTPUtil.publishStatus(connectionId, sequenceID, 200, output);
-			
+			//clear so the next call will not be blocked
+			activeConnectionId = -1;
+			activeSequenceId = -1;
+						
 		}
 		
 		
+		
 		while (Pipe.hasContentToRead(input) 
+				&& activeSequenceId == -1 //only when we have no pending..
 				&& Pipe.hasRoomForWrite(output)
 				&& Pipe.hasRoomForWrite(toTwitter)) {
+						
+			    int msgIdx = Pipe.takeMsgIdx(input);
+			    switch(msgIdx) {
+			        case HTTPRequestSchema.MSG_RESTREQUEST_300:
+					
+				        long fieldChannelId = Pipe.takeLong(input);
+				        int fieldSequence = Pipe.takeInt(input);
+				        
+				        //store these until we respond
+				        activeConnectionId = fieldChannelId;
+				        activeSequenceId = fieldSequence;
+				        //////////////////
+				        				        
+				        int fieldVerb = Pipe.takeInt(input);
+				        
+				        DataInputBlobReader<HTTPRequestSchema> stream = Pipe.openInputStream(input);
+				        //read the user id				        
+				        long friendUserId = stream.readPackedLong();
+						
+						int fieldRevision = Pipe.takeInt(input);
+						int fieldRequestContext = Pipe.takeInt(input);
+												
+						processRequest(idx, output, toTwitter, 
+								       friendUserId, 
+								       fieldChannelId, 
+								       fieldSequence);			
+				        
+					break;
+			        case -1:
+			           //requestShutdown();
+			        break;
+			    }
+			    Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, msgIdx));
+			    Pipe.releaseReadLock(input);
 			
-			long now = System.currentTimeMillis();
+		}
+	}
+
+	private void processRequest(int idx, Pipe<ServerResponseSchema> output, Pipe<ClientHTTPRequestSchema> toTwitter,
+			long friendUserId, long connectionId, int sequenceID) {
+		long now = System.currentTimeMillis();
+		
+		if (isThisTheTime(now)) {
 			
-			if (isThisTheTime(now)) {
-				//do it now, toTwitter then take response and relay it back
-				publishRequest(toTwitter, idx);
-				
-			} else {
-				//too quickly, send back 420
-				long connectionId = -1;
-				int sequenceID = -1;
-								
-				
-				int contentLength = 1;
-				long seconds = ( (nextTriggerTime-now)+1000 )/1000;
-				if (seconds>127) { //cap out at 127 seconds
-					seconds = 127;
-				}
-				contentBacking[0] = (byte)seconds;
-				
-				
-				int channelIdHigh = (int)(connectionId>>32); 
-				int channelIdLow = (int)connectionId;
-				
-				HTTPUtil.simplePublish(ServerCoordinator.END_RESPONSE_MASK | ServerCoordinator.CLOSE_CONNECTION_MASK, 
-						      sequenceID, 420, output, channelIdHigh, channelIdLow, null,
-						      contentLength, contentBacking, contentPosition, contentMask);
-	
-			}			
+			//do it now, toTwitter then take response and relay it back
+			publishRequest(toTwitter, idx, friendUserId);
+			
+		} else {
+			//too quickly, send back 420
+			int contentLength = 1;
+			long seconds = ( (nextTriggerTime-now)+1000 )/1000;
+			if (seconds>127) { //cap out at 127 seconds
+				seconds = 127;
+			}
+			contentBacking[0] = (byte)seconds;
+			
+			int channelIdHigh = (int)(connectionId>>32); 
+			int channelIdLow = (int)connectionId;
+			
+			HTTPUtil.simplePublish(ServerCoordinator.END_RESPONSE_MASK | ServerCoordinator.CLOSE_CONNECTION_MASK, 
+					      sequenceID, 420, output, channelIdHigh, channelIdLow, null,
+					      contentLength, contentBacking, contentPosition, contentMask);
+
+			//clear so the next call will not be blocked
+	        activeConnectionId = -1;
+	        activeSequenceId = -1;
 		}
 	}
 
@@ -226,20 +274,42 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 			return false;
 		}
 	}
+
 	
-	private void publishRequest(Pipe<ClientHTTPRequestSchema> pipe, int httpRequestResponseId) {
+	private void publishRequest(Pipe<ClientHTTPRequestSchema> pipe, int httpRequestResponseId, long friendUserId) {
+		int sessionId = httpRequestResponseId;
 		
 		int size = Pipe.addMsgIdx(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100);
 		assert(httpRequestResponseId>=0);
 		
 		Pipe.addIntValue(httpRequestResponseId, pipe);//destination
-		Pipe.addIntValue(httpRequestResponseId, pipe);//session
+		Pipe.addIntValue(sessionId, pipe);//session  
 		Pipe.addIntValue(port, pipe);                 //port
 		Pipe.addUTF8(host, pipe);
 		Pipe.addUTF8(path, pipe);
 				
 		DataOutputBlobWriter<ClientHTTPRequestSchema> stream = Pipe.openOutputStream(pipe);
-		myAuth.addHeaders(stream, "GET", hostAndPath).append("\r\n");
+		
+		int bodyLength = prefix.length() + Appendables.appendedLength(friendUserId);
+		final boolean isFollow = (path==followPath);
+		if (isFollow) {
+			bodyLength += postfix.length();
+		}
+		
+		//set the length in the header for the post
+		dynamicLength.setLength(0);
+		Appendables.appendValue(dynamicLength, bodyLength);
+				
+		myAuth.addHeaders(stream, "POST").append("\r\n");
+	
+		stream.append(prefix);
+		Appendables.appendValue(stream, friendUserId);
+		
+		if (isFollow) {
+			//user_id=1401881&follow=true
+			stream.append(postfix);
+		}
+		
 		DataOutputBlobWriter.closeLowLevelField(stream);
 
 		Pipe.confirmLowLevelWrite(pipe, size);
