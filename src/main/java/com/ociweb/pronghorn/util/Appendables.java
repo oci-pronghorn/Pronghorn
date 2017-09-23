@@ -448,6 +448,17 @@ public class Appendables {
 		}
     }
     
+    public static int appendedLength(long value) {
+    	int result = value<0?3:0;
+    	value = Math.abs(value);
+    	
+    	while (value > 0) {
+    		result++;
+    		value = value/10;
+    	}
+    	
+    	return result;
+    }
     
     public static <A extends Appendable> A appendValue(A target, long value) {
     	try {
@@ -677,9 +688,7 @@ public class Appendables {
     
     // + IS %2B
     // / IS %2F
-    // = IS %3D
-    private final static byte[] EQUALS = "%3D".getBytes();
-    
+    // = IS %3D    
     
     
     //TODO: add unit tests for each of the cases listed here https://en.wikipedia.org/wiki/Base64
