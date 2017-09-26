@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.network.module;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -25,10 +26,12 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 									V extends Enum<V> & HTTPVerb,
 									H extends Enum<H> & HTTPHeader> extends AbstractAppendablePayloadResponseStage<T,R,V,H> {
 
-	private final String resource;
+	private String resource;
 	private final byte[] type;
 	private static final Logger logger = LoggerFactory.getLogger(ResourceModuleStage.class);
-		
+	private static ClassLoader loader = ResourceModuleStage.class.getClassLoader().getSystemClassLoader();
+	private final URL resourceURL;
+	
     public static ResourceModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, 
     		Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
     		HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceName, HTTPContentType type) {
@@ -49,42 +52,59 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 			                   Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, 
 			                   HTTPSpecification httpSpec, String resourceName, HTTPContentType type) {
 		
-		super(graphManager, inputs, outputs, httpSpec);
-		
-		try {
+		super(graphManager, inputs, outputs, httpSpec);		
+		resourceURL = loader.getResource(resourceName);
 			
-			ClassLoader loader = getClass().getClassLoader().getSystemClassLoader();
-			
-			
-			InputStream stream = loader.getResourceAsStream(resourceName);
-			
-			if (null == stream) {
-				logger.info("unable to find resource: "+resourceName);
-			}
-			
-			int x = stream.available();
-			
-			//logger.info("file size {}",x);
-			
-			byte[] bytes = new byte[x];
-		
-			for(int i = 0; i<x; i++) {
-				int r = stream.read();
-				assert(r != -1);
-				bytes[i] = (byte)r; 
-			}
-			
-			resource = new String(bytes);
-			
-			
-		} catch (IOException e) {
-			throw new RuntimeException(e);
+		logger.info("loading resource {} ",resourceName);
+
+		if (null == resourceURL) {
+			logger.info("unable to find resource: {} ",resourceName);
+			throw new RuntimeException("unable to find resource: "+resourceName);
+		} else {
+			logger.info("found the resource: {}",resourceName);
 		}
 				
 		this.type = type.getBytes();
 		
 	}
 
+	@Override
+	public void startup() {
+		super.startup();
+		
+		try {
+
+			InputStream stream = resourceURL.openStream();
+			
+			int x = stream.available();
+			//logger.info("file size {}",x);
+			
+			byte[] bytes = new byte[x];
+		
+			long startTime = System.currentTimeMillis();
+			long timeout = startTime = 10_000;
+			int i = 0;
+			while(i<x) {
+				
+				int count = stream.read(bytes, i, x-i);
+				assert(count>=0) : "since we know the length should not reach EOF";
+		
+				i += count;	
+				
+				if (0 == count) {
+					if (System.currentTimeMillis()>timeout) {
+						throw new RuntimeException("IO slow reading files from inside the jar.");
+					}
+				}
+
+			}
+			
+			resource = new String(bytes);
+		
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
 	@Override
 	protected byte[] buildPayload(Appendable payload, GraphManager gm, 
