@@ -1,6 +1,5 @@
 package com.ociweb.pronghorn.network.module;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -9,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.config.HTTPContentType;
-import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
 import com.ociweb.pronghorn.network.config.HTTPRevision;
 import com.ociweb.pronghorn.network.config.HTTPSpecification;
@@ -29,7 +27,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 	private String resource;
 	private final byte[] type;
 	private static final Logger logger = LoggerFactory.getLogger(ResourceModuleStage.class);
-	private static ClassLoader loader = ResourceModuleStage.class.getClassLoader().getSystemClassLoader();
+
 	private final URL resourceURL;
 	
     public static ResourceModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, 
@@ -55,6 +53,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		super(graphManager, inputs, outputs, httpSpec);		
 			
 		logger.info("loading resource {} ",resourceName);
+		ClassLoader loader = ResourceModuleStage.class.getClassLoader().getSystemClassLoader();
 		resourceURL = loader.getResource(resourceName);
 		logger.info("found url {}", resourceURL);
 		

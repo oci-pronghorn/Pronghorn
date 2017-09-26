@@ -114,13 +114,14 @@ public abstract class PronghornStage {
 	protected PronghornStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs) {
 	    assert(null!=inputs) : "Use NONE";
 	    assert(null!=outputs) : "Use NONE";
-
+	    logger.info("register new pronghorn stage started");
 	    this.stageId = GraphManager.newStageId(graphManager);
 	    this.boxedStageId = this.stageId;
 	    this.hash = PronghornStage.class.hashCode() ^ stageId;
 		this.graphManager = graphManager;
 		GraphManager.register(graphManager, this, inputs, outputs);
 		GraphManager.addNota(graphManager, GraphManager.THREAD_GROUP, null, this); //This provides room for assignment later
+		logger.info("register new pronghorn stage done");
 	}
 	
 	protected PronghornStage(GraphManager graphManager, Pipe input, Pipe[] outputs) {

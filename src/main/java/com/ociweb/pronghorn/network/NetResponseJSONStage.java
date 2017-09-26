@@ -100,10 +100,13 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 						int status = stream.readShort();
 						//System.err.println("got response with status "+status);
 						
+						logger.info("old reader value should be zero was "+reader.sourceLen);
+						
 						//skip over all the headers, no need to read them at this time
 						stream.setPositionBytesFromStart(stream.readFromEndLastInt(PAYLOAD_INDEX_OFFSET));
-					
 						DataInputBlobReader.setupParser(stream, reader);	
+					
+						logger.info("new reader now has "+reader.sourceLen+" vs "+stream.available());
 						
 	
 					}	
@@ -119,19 +122,38 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 		            	 
 						if (reader.sourceLen==0) {
 							
-							DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
-							stream.openLowLevelAPIField();
-							DataInputBlobReader.setupParser(stream, reader);
-							
+							DataInputBlobReader<NetResponseSchema> stream = Pipe.openInputStream(input);
+					   	    DataInputBlobReader.setupParser(stream, reader);
+							logger.info("reading new data of length "+reader.sourceLen+" "+stream.available());
 						} else {
-							
-							Pipe.takeRingByteMetaData(input);
+							logger.info("adding more data current total is "+reader.sourceLen);
+							int meta = Pipe.takeRingByteMetaData(input);
 							int len = Pipe.takeRingByteLen(input);
+							int pos = Pipe.bytePosition(meta, input, len);//must call for side effect
+							
+							/////////////////////////
+							//double check the data
+							int z = pos;
+							int x = len;
+							while (--x>=0) {
+								if (Pipe.blob(input)[z&input.blobMask]==0) {
+									throw new RuntimeException("zero must not be found in twitter data");
+								}
+								z++;
+							}
+							logger.info("validated that "+len+" did not contain any zeros");
+							/////////////////
+							
 							if (len>0) {
 								reader.sourceLen += len;
 								assert(reader.sourceLen <= input.sizeOfBlobRing) : "added "+len+" and total "+reader.sourceLen+" is larger than "+input.sizeOfBlobRing;
 							}
+							
+							logger.info("adding "+len+" new bytes total is now "+reader.sourceLen);
 						}
+						
+						
+						
 						
 					}
 					
