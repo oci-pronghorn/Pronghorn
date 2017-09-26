@@ -14,17 +14,28 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     CONNECTION("Connection: %b"),
     USER_AGENT("User-Agent: %b"),//chromium
     TRANSFER_ENCODING("Transfer-Encoding: chunked") {    
-	    public <A extends Appendable> A writeValue(A target, ChannelReader reader) {
+	    public <A extends Appendable> A writeValue(A target, HTTPSpecification httpSpec, ChannelReader reader) {
 	    	return target;
 	    }
 	}, //Transfer-Encoding: chunked
     CONTENT_LENGTH("Content-Length: %u") {    
-	    public <A extends Appendable> A writeValue(A target, ChannelReader reader) {
+	    public <A extends Appendable> A writeValue(A target, HTTPSpecification httpSpec, ChannelReader reader) {
 	    	Appendables.appendValue(target, reader.readPackedLong());
 	    	return target;
 	    }
 	}, //note this captures an integer not a string
-    CONTENT_TYPE("Content-Type: %b"),
+    CONTENT_TYPE("Content-Type: %b") {
+	    public <A extends Appendable> A writeValue(A target, HTTPSpecification httpSpec, ChannelReader reader) {
+            HTTPContentType contentType = httpSpec.getContentType(reader.readShort());
+            try {
+                target.append(contentType.contentType());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            return target;
+        }
+    },
     CONTENT_LOCATION("Content-Location: %b"),
     LOCATION("Location: %b"),
     ACCEPT("Accept: %b"),//chromium
@@ -58,7 +69,7 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
     PRAGMA("Pragma: %b"), //Not matching?
     SERVER("Server: %b"), //Not matching?
     STATUS("Status: %i %b"){    
-	    public <A extends Appendable> A writeValue(A target, ChannelReader reader) {
+	    public <A extends Appendable> A writeValue(A target, HTTPSpecification httpSpec, ChannelReader reader) {
 	    	try {
 	    		Appendables.appendValue(target, reader.readPackedLong());				
 	    		target.append(' ');
@@ -135,7 +146,7 @@ public enum HTTPHeaderDefaults implements HTTPHeader {
         return writingRoot;
     }
     
-    public <A extends Appendable> A writeValue(A target, ChannelReader reader) {
+    public <A extends Appendable> A writeValue(A target, HTTPSpecification httpSpec, ChannelReader reader) {
     	reader.readUTF(target);
     	return target;
     }
