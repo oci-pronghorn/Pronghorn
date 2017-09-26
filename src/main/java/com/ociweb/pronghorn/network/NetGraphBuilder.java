@@ -301,7 +301,7 @@ public class NetGraphBuilder {
 			ServerPipesConfig serverConfig, Pipe<ReleaseSchema>[] releaseAfterParse,
 			Pipe<NetPayloadSchema>[] receivedFromNet, Pipe<NetPayloadSchema>[] sendingToNet, long rate) {
 
-		//logger.info("build http stages 1");
+		logger.info("build http stages");
 		HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> httpSpec = HTTPSpecification.defaultSpec();
 		
 		if (modules.moduleCount()==0) {
@@ -310,7 +310,7 @@ public class NetGraphBuilder {
 		
 		int routerCount = coordinator.processorCount();
 
-		//logger.info("build http stages 2");
+		logger.info("build modules");
         Pipe<ServerResponseSchema>[][] fromModule = new Pipe[routerCount][];       
         Pipe<HTTPRequestSchema>[][] toModules = new Pipe[routerCount][];
         
@@ -324,11 +324,10 @@ public class NetGraphBuilder {
         buildRouters(graphManager, routerCount, receivedFromNet, 
         		     releaseAfterParse, toModules, errorResponsePipes, routerConfig, coordinator, rate, captureAll);
 		        
-        //logger.info("build http stages 4");
+        logger.info("build http ordering supervisors");
         buildOrderingSupers(graphManager, coordinator, routerCount, 
         		            fromModule, sendingToNet, rate);
         
-        //logger.info("build http stages 5");
 	}
 
 	private static Pipe<ServerResponseSchema>[] buildErrorResponsePipes(final int routerCount,
@@ -375,6 +374,7 @@ public class NetGraphBuilder {
         buildSocketWriters(graphManager, coordinator, serverConfig.serverSocketWriters, toWiterPipes, 
         		           serverConfig.writeBufferMultiplier, rate);
 
+        logger.info("process nota values");
               
         Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(serverConfig.newConnectionsConfig,false);        
         ServerNewConnectionStage newConStage = new ServerNewConnectionStage(graphManager, coordinator, newConnectionsPipe); 
@@ -466,7 +466,7 @@ public class NetGraphBuilder {
 		//we always have a super to ensure order regardless of TLS
 		//a single supervisor will group all the modules responses together.
 		///////////////////
-
+		logger.info("build ordering supervisors");
 		assert(fromSupers.length >= routerCount) : "reduce router count since we only have "+fromSupers.length+" pipes";
 		assert(routerCount>0);
 		
@@ -766,7 +766,7 @@ public class NetGraphBuilder {
 				
 				int i = instances;
 				while (--i>=0) {
-					
+					logger.info("building module #{} for route {}", i, getPathRoute(i));
 					switch (a) {
 						case 0:
 						ResourceModuleStage<?, ?, ?, ?> newInstanceA = ResourceModuleStage.newInstance(graphManager, 
