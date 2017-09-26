@@ -53,9 +53,10 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 			                   HTTPSpecification httpSpec, String resourceName, HTTPContentType type) {
 		
 		super(graphManager, inputs, outputs, httpSpec);		
-		resourceURL = loader.getResource(resourceName);
 			
 		logger.info("loading resource {} ",resourceName);
+		resourceURL = loader.getResource(resourceName);
+		logger.info("found url {}", resourceURL);
 
 		if (null == resourceURL) {
 			logger.info("unable to find resource: {} ",resourceName);
