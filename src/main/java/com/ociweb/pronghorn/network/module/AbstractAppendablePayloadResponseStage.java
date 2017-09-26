@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.network.module;
 
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -45,25 +43,14 @@ public abstract class AbstractAppendablePayloadResponseStage <
 	private int workingPosition = 0;
 	private Pipe<ServerResponseSchema> activeOutput = null;
 	
-	private static SecureRandom random;
-	static {
-		try {
-			random = SecureRandom.getInstanceStrong();
-		} catch (NoSuchAlgorithmException e) {
-			throw new RuntimeException(e);
-		}
-	}
-	
 	private static AtomicInteger eTagCounter = new AtomicInteger();  
 	private final int eTagInt;
-	private final int eTagRoot = random.nextInt();
 	
 	public AbstractAppendablePayloadResponseStage(GraphManager graphManager, 
             Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
 			 HTTPSpecification<T, R, V, H> httpSpec) {
 			super(graphManager, inputs, outputs, httpSpec);
 			
-			logger.info("inc the eTagInt");
 			this.inputs = inputs;
 			this.outputs = outputs;		
 			this.graphManager = graphManager;

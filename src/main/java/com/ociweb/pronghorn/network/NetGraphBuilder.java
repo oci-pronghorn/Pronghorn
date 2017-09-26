@@ -769,7 +769,6 @@ public class NetGraphBuilder {
 					logger.info("building module #{} for route {}", i, getPathRoute(i));
 					switch (a) {
 						case 0:
-							logger.info("create ResourceModuleStage for index");
 						ResourceModuleStage<?, ?, ?, ?> newInstanceA = ResourceModuleStage.newInstance(graphManager, 
 								inputPipes[i], 
 								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
