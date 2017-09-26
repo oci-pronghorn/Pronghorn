@@ -694,6 +694,44 @@ public class NetGraphBuilder {
 		final long rate = 20_000_000; //fastest rate in NS
 		
 		boolean isLarge = false;
+		ModuleConfig config = buildTelemetryModuleConfig(rate);
+		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 1);
+				 
+		 //This must be large enough for both partials and new handshakes.
+		
+		ServerCoordinator serverCoord = new ServerCoordinator(isTLS, bindHost, port, 
+				                                              serverConfig.maxConnectionBitsOnServer, 
+				                                              serverConfig.maxPartialResponsesServer, 
+				                                              serverConfig.processorCount,
+				                                              "Telemetry Server","");
+		
+		serverCoord.setStageNotaProcessor(new PronghornStageProcessor() {
+			//force all these to be hidden as part of the monitoring system
+			@Override
+			public void process(GraphManager gm, PronghornStage stage) {
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
+				//TODO: also use this to set the RATE and elminate the extra argument passed down....
+				GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, stage);
+			}
+		});
+				
+		final ModuleConfig modules = config;
+		final ServerFactory factory = new ServerFactory() {
+
+			@Override
+			public void buildServer(GraphManager gm, ServerCoordinator coordinator,
+					Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<NetPayloadSchema>[] receivedFromNet,
+					Pipe<NetPayloadSchema>[] sendingToNet) {
+				NetGraphBuilder.buildHTTPStages(gm, coordinator, modules, serverConfig, releaseAfterParse, receivedFromNet, sendingToNet, rate);
+			}			
+		};
+		
+		NetGraphBuilder.buildServerGraph(gm, serverCoord, serverConfig, rate, factory);
+		
+		logger.info("finish telemetry definition"); 
+	}
+
+	private static ModuleConfig buildTelemetryModuleConfig(final long rate) {
 		ModuleConfig config = new ModuleConfig(){
 
 			private final int moduleCount = 3;
@@ -767,44 +805,9 @@ public class NetGraphBuilder {
 									             ); //no headers
 
 				return staticFileOutputs;			
-			}  
-			
-		
-		};
-		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 1);
-				 
-		 //This must be large enough for both partials and new handshakes.
-		
-		ServerCoordinator serverCoord = new ServerCoordinator(isTLS, bindHost, port, 
-				                                              serverConfig.maxConnectionBitsOnServer, 
-				                                              serverConfig.maxPartialResponsesServer, 
-				                                              serverConfig.processorCount,
-				                                              "Telemetry Server","");
-		
-		serverCoord.setStageNotaProcessor(new PronghornStageProcessor() {
-			//force all these to be hidden as part of the monitoring system
-			@Override
-			public void process(GraphManager gm, PronghornStage stage) {
-				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
-				//TODO: also use this to set the RATE and elminate the extra argument passed down....
-				GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, stage);
 			}
-		});
-				
-		final ModuleConfig modules = config;
-		final ServerFactory factory = new ServerFactory() {
-
-			@Override
-			public void buildServer(GraphManager gm, ServerCoordinator coordinator,
-					Pipe<ReleaseSchema>[] releaseAfterParse, Pipe<NetPayloadSchema>[] receivedFromNet,
-					Pipe<NetPayloadSchema>[] sendingToNet) {
-				NetGraphBuilder.buildHTTPStages(gm, coordinator, modules, serverConfig, releaseAfterParse, receivedFromNet, sendingToNet, rate);
-			}			
 		};
-		
-		NetGraphBuilder.buildServerGraph(gm, serverCoord, serverConfig, rate, factory);
-		
-		logger.info("finish telemetry definition"); 
+		return config;
 	}
 
 	/**

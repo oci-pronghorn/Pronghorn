@@ -32,7 +32,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     public final int                                  channelBitsMask;
 
     private final int                                  port;
-    private final InetSocketAddress                    address;
+    private final String                               bindHost;
 
     public final static int BEGIN_RESPONSE_SHIFT         = 27;
     public final static int INCOMPLETE_RESPONSE_SHIFT    = 28;
@@ -92,7 +92,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
         this.channelBits       = maxConnectionsBits;
         this.channelBitsSize   = 1<<channelBits;
         this.channelBitsMask   = channelBitsSize-1;
-        this.address           = new InetSocketAddress(bindHost,port);
+        this.bindHost          = bindHost;
+
         this.serviceName       = serviceName;
         this.defaultPath       = defaultPath.startsWith("/") ? defaultPath.substring(1) : defaultPath;
     	this.responsePipeLinePool = new PoolIdx(maxPartialResponses); 
@@ -176,11 +177,15 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public SSLConnection connectionForSessionId(long id) {
 		return socketHolder.get(id);		
 	}
-    
-    public InetSocketAddress getAddress() {
-        return address;
-    }
 
+    public int port() {
+    	return port;
+    }
+    
+    public String host() {
+    	return bindHost;
+    }
+    
     
     public static ServiceObjectHolder<ServerConnection> newSocketChannelHolder(ServerCoordinator that) {
         that.connectionContext = new ConnectionContext[that.channelBitsSize];

@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.network;
 
 import java.io.IOException;
 import java.net.BindException;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.StandardSocketOptions;
@@ -71,10 +72,9 @@ public class ServerNewConnectionStage extends PronghornStage{
     		
     		//to ensure that this port can be re-used quickly for testing and other reasons
     		server.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);
-    		endPoint = coordinator.getAddress();
-            
-    		logger.info("bind to {} ",endPoint);
-            bindAddressPort(endPoint);
+    		
+    
+    		endPoint = bindAddressPort(coordinator.host(), coordinator.port());
             
             ServerSocketChannel channel = (ServerSocketChannel)server.configureBlocking(false);
 
@@ -128,12 +128,19 @@ public class ServerNewConnectionStage extends PronghornStage{
         
     }
 
-	private void bindAddressPort(SocketAddress endPoint) throws IOException, BindException {
+	private SocketAddress bindAddressPort(String host, int port) throws IOException, BindException {
+		
+		InetSocketAddress endPoint = null;
+		
 		long timeout = System.currentTimeMillis()+CONNECTION_TIMEOUT;
 		boolean notConnected = true;
 		int printWarningCountdown = 20;
 		do {
 		    try{
+		    	if (null == endPoint) {
+		    		endPoint = new InetSocketAddress(host, port);		
+		    		logger.info("bind to {} ",endPoint);
+		    	}
 		    	server.socket().bind(endPoint);
 		    	notConnected = false;
 		    } catch (BindException se) {
@@ -155,6 +162,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 		    	}
 		    }
 		} while (notConnected);
+		return endPoint;
 	}
 
     @Override

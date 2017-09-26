@@ -273,7 +273,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 								
 					if (null==cc || (!cc.isValid())) {
 						
-						logger.warn("closed connection detected");
+						logger.trace("closed connection detected");
 						if (null != cc) {
 							//publish closed to notify those down stream
 							targetPipe = output[(int)cc.readDestinationRouteId()];
