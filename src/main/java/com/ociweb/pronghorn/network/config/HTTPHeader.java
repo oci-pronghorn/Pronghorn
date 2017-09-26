@@ -11,7 +11,7 @@ public interface HTTPHeader {
     CharSequence readingTemplate();
     
     CharSequence writingRoot();
-    <A extends Appendable> A writeValue(A target, ChannelReader reader);
+    <A extends Appendable> A writeValue(A target, HTTPSpecification httpSpec, ChannelReader reader);
     
     byte[] rootBytes();
     
