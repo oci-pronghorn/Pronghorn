@@ -3403,6 +3403,12 @@ public class Pipe<T extends MessageSchema<T>> {
 		return pipe.blobReader;
 	}
 	
+	public static <S extends MessageSchema<S>> DataInputBlobReader<S> peekInputStream(Pipe<S> pipe, int offset) {
+		pipe.blobReader.peekLowLevelAPIField(offset);
+		return pipe.blobReader;
+	}
+	
+	
 	/////////////
 	//low level API
 	////////////

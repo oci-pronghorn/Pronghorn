@@ -115,6 +115,22 @@ public class DataInputBlobReader<S extends MessageSchema<S>> extends ChannelRead
 		return this.length;
     }
     
+    public int peekLowLevelAPIField(int offset) {
+    	int meta = Pipe.peekInt(this.pipe, offset);        
+		this.length    = Math.max(0, Pipe.peekInt(this.pipe, offset+1));
+		this.bytesLowBound = this.position = Pipe.convertToPosition(meta, this.pipe);
+		this.backing   = Pipe.byteBackingArray(meta, this.pipe); 
+		assert(this.backing!=null) : 
+			"The pipe "+(1==(meta>>31)?" constant array ": " blob ")+"must be defined before use.\n "+this.pipe;
+			
+		this.bytesHighBound = this.pipe.blobMask & (this.position + this.length);
+		
+		assert(Pipe.validatePipeBlobHasDataToRead(this.pipe, this.position, this.length));
+		
+		return this.length;
+    }
+    
+    
     @Deprecated
     public static <S extends MessageSchema<S>> int openLowLevelAPIField(DataInputBlobReader<S> that) {
         return that.openLowLevelAPIField();
