@@ -769,14 +769,14 @@ public class NetGraphBuilder {
 					logger.info("building module #{} for route {}", i, getPathRoute(i));
 					switch (a) {
 						case 0:
+							logger.info("create ResourceModuleStage for index");
 						ResourceModuleStage<?, ?, ?, ?> newInstanceA = ResourceModuleStage.newInstance(graphManager, 
 								inputPipes[i], 
 								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
 								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 								"telemetry/index.html", HTTPContentTypeDefaults.HTML);
 						GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceA);
-					    GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceA);
-						
+					    GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceA);						
 						break;
 						case 1:
 						ResourceModuleStage<?, ?, ?, ?> newInstanceB = ResourceModuleStage.newInstance(graphManager, 

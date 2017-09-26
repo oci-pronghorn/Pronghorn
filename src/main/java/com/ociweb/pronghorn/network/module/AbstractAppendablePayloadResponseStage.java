@@ -63,6 +63,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			 HTTPSpecification<T, R, V, H> httpSpec) {
 			super(graphManager, inputs, outputs, httpSpec);
 			
+			logger.info("inc the eTagInt");
 			this.inputs = inputs;
 			this.outputs = outputs;		
 			this.graphManager = graphManager;

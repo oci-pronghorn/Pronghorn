@@ -43,7 +43,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
     public static ResourceModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, 
     		Pipe<HTTPRequestSchema> input, Pipe<ServerResponseSchema> output, 
     		HTTPSpecification<?, ?, ?, ?> httpSpec, String resourceName, HTTPContentType type) {
-    	
+    	logger.info("create new instance of ResourceModuleStage");
         return new ResourceModuleStage(graphManager, new Pipe[]{input}, new Pipe[]{output}, httpSpec, resourceName, type);
         
     }
@@ -57,6 +57,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		logger.info("loading resource {} ",resourceName);
 		resourceURL = loader.getResource(resourceName);
 		logger.info("found url {}", resourceURL);
+		
 
 		if (null == resourceURL) {
 			logger.info("unable to find resource: {} ",resourceName);

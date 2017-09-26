@@ -118,7 +118,7 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 						int flags2 = Pipe.takeInt(input);
 		            	 
 						if (reader.sourceLen==0) {
-						
+							
 							DataInputBlobReader<NetResponseSchema> stream = Pipe.inputStream(input);
 							stream.openLowLevelAPIField();
 							DataInputBlobReader.setupParser(stream, reader);
@@ -127,8 +127,10 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 							
 							Pipe.takeRingByteMetaData(input);
 							int len = Pipe.takeRingByteLen(input);
-							reader.sourceLen += len;
-							
+							if (len>0) {
+								reader.sourceLen += len;
+								assert(reader.sourceLen <= input.sizeOfBlobRing) : "added "+len+" and total "+reader.sourceLen+" is larger than "+input.sizeOfBlobRing;
+							}
 						}
 						
 					}
