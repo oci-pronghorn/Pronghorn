@@ -689,7 +689,7 @@ public class NetGraphBuilder {
 	
 	public static void telemetryServerSetup(boolean isTLS, String bindHost, int port, GraphManager gm) {
 	
-		//logger.info("begin telemetry setup");
+		logger.info("begin telemetry definition");
 		
 		final long rate = 20_000_000; //fastest rate in NS
 		
@@ -755,7 +755,7 @@ public class NetGraphBuilder {
 								((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 						GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceC);
 						GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceC);
-							break;
+						break;
 						default:
 							throw new RuntimeException("unknonw idx "+a);
 					}
@@ -803,7 +803,8 @@ public class NetGraphBuilder {
 		};
 		
 		NetGraphBuilder.buildServerGraph(gm, serverCoord, serverConfig, rate, factory);
-			 
+		
+		logger.info("finish telemetry definition"); 
 	}
 
 	/**

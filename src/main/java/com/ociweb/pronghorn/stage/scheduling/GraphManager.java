@@ -402,13 +402,13 @@ public class GraphManager {
 		if (m.enableMutation) {
 			//logger.info("disable mutation");
 			if (m.telemetryPort > 0) {
-				//logger.info("enable telemetry");
+				logger.trace("enable telemetry");
 				//NB: this is done very last to ensure all the pipes get monitors added.
 				NetGraphBuilder.telemetryServerSetup(false, m.telemetryHost, m.telemetryPort, m);
 				logger.info("total count of stages {} ",m.stageCounter.get());
-			} //else {
-				//logger.info("normal startup");
-			//}
+			} else {
+				logger.trace("normal startup without telemetry");
+			}
 			m.enableMutation = false;
 			m.stageDOTNames = new String[GraphManager.countStages(m)];
 			m.pipeDOTNames = new String[Pipe.totalPipes()];

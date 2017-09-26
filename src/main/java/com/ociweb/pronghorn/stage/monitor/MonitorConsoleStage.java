@@ -1,11 +1,6 @@
 package com.ociweb.pronghorn.stage.monitor;
 
 import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_BUFFERSIZE_5;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_HEAD_2;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_MS_1;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_TAIL_3;
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4;
 
 import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
@@ -14,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
-import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.Appendables;
@@ -22,6 +16,7 @@ import com.ociweb.pronghorn.util.Appendables;
 
 public class MonitorConsoleStage extends PronghornStage {
 
+	private static final int SIZE_OF = Pipe.sizeOf(PipeMonitorSchema.instance, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100);
 	private final Pipe[] inputs;
 	private GraphManager graphManager;
 	private int[] percentileValues; 
@@ -64,48 +59,43 @@ public class MonitorConsoleStage extends PronghornStage {
 		percentileValues = new int[Pipe.totalPipes()+1];
 		trafficValues = new int[Pipe.totalPipes()+1];
 		
-		int p = Thread.currentThread().getPriority();
-		Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
 		int i = inputs.length;
 		hists = new Histogram[i];
 		while (--i>=0) {
 			hists[i] = new Histogram(100,2); 
 		}
-		Thread.currentThread().setPriority(p);
-		
-		
+				
 	}
 		
 	
 	@Override
 	public void run() {
-		//System.err.println("begin run "+System.currentTimeMillis()+"  "+System.identityHashCode(this));
 
 		int i = inputs.length;
 		while (--i>=0) {
 			
 			Pipe ring = inputs[i];
-			while (PipeReader.tryReadFragment(ring)) {
-
-				
-				assert(MSG_RINGSTATSAMPLE_100 == PipeReader.getMsgIdx(ring)) : "Only supporting the single monitor message type";
-				
-
-				long time = PipeReader.readLong(ring, MSG_RINGSTATSAMPLE_100_FIELD_MS_1);
-		
-				long head = PipeReader.readLong(ring, MSG_RINGSTATSAMPLE_100_FIELD_HEAD_2);
-				long tail = PipeReader.readLong(ring, MSG_RINGSTATSAMPLE_100_FIELD_TAIL_3);
-				
-				int lastMsgIdx = PipeReader.readInt(ring, MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4);
-				int ringSize = PipeReader.readInt(ring, MSG_RINGSTATSAMPLE_100_FIELD_BUFFERSIZE_5);
-				
-				long pctFull = (100*(head-tail))/ringSize;
-				//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
+			while (Pipe.peekMsg(ring, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100)) {
+				int mgdIdx = Pipe.takeMsgIdx(ring);
+								
+				assert(MSG_RINGSTATSAMPLE_100 == mgdIdx) : "Only supporting the single monitor message type";
+			
+				long time = Pipe.takeLong(ring);
+				long head = Pipe.takeLong(ring);
+				long tail = Pipe.takeLong(ring); 				
+				int lastMsgIdx = Pipe.takeInt(ring);
+				int ringSize = Pipe.takeInt(ring);			
 				
 				if (recorderOn) {
+					int pctFull = (int)((100*(head-tail))/ringSize);
+					//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
+					
 					hists[i].recordValue(pctFull>=0 ? (pctFull<=100 ? pctFull : 99) : 0);
 				}
-				PipeReader.releaseReadLock(ring);
+				Pipe.confirmLowLevelRead(ring, SIZE_OF);
+				
+				Pipe.releaseReadLock(ring);
+				
 			}
 		}
 	}
@@ -203,10 +193,10 @@ public class MonitorConsoleStage extends PronghornStage {
 	}
 
 	private static final Long defaultMonitorRate = Long.valueOf(50_000_000); //50 ms
-	private static final PipeConfig defaultMonitorRingConfig = new PipeConfig(PipeMonitorSchema.instance, 30, 0);
+	private static final PipeConfig defaultMonitorRingConfig = new PipeConfig(PipeMonitorSchema.instance, 15, 0);
 	
 	public static MonitorConsoleStage attach(GraphManager gm) {
-		return attach(gm,defaultMonitorRate,defaultMonitorRingConfig); //TODO:graphiz can hang must replace with js version...
+		return attach(gm,defaultMonitorRate,defaultMonitorRingConfig);
 	}
 	
 	public static MonitorConsoleStage attach(GraphManager gm, long rate) {

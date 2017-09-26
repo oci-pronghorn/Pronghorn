@@ -33,7 +33,7 @@ import com.ociweb.pronghorn.util.ServiceObjectHolder;
  */
 public class ServerNewConnectionStage extends PronghornStage{
         
-    private static final int CONNECTION_TIMEOUT = 20_000;
+    private static final int CONNECTION_TIMEOUT = 7_000; 
 
 	private static Logger logger = LoggerFactory.getLogger(ServerNewConnectionStage.class);
     
@@ -64,7 +64,7 @@ public class ServerNewConnectionStage extends PronghornStage{
     	SocketAddress endPoint = null;
 
     	try {
-            
+            logger.info("startup of new server");
     		//channel is not used until connected
     		//once channel is closed it can not be opened and a new one must be created.
     		server = ServerSocketChannel.open();
@@ -73,6 +73,7 @@ public class ServerNewConnectionStage extends PronghornStage{
     		server.setOption(StandardSocketOptions.SO_REUSEADDR, Boolean.TRUE);
     		endPoint = coordinator.getAddress();
             
+    		logger.info("bind to {} ",endPoint);
             bindAddressPort(endPoint);
             
             ServerSocketChannel channel = (ServerSocketChannel)server.configureBlocking(false);
@@ -136,7 +137,7 @@ public class ServerNewConnectionStage extends PronghornStage{
 		    	server.socket().bind(endPoint);
 		    	notConnected = false;
 		    } catch (BindException se) {
-		    	if (System.currentTimeMillis()>timeout) {
+		    	if (System.currentTimeMillis() > timeout) {
 		    		logger.warn("Timeout attempting to open open {}",endPoint,se.getMessage());
 		    		coordinator.shutdown();
 		    		throw se;
