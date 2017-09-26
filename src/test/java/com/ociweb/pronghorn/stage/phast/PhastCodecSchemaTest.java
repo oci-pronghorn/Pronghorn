@@ -292,7 +292,7 @@ public class PhastCodecSchemaTest {
         
        //GraphManager.enableBatching(gm); //due to internal batching nature of stages this does not help 
         
-        MonitorConsoleStage monitor = MonitorConsoleStage.attach(gm,20000000);//TODO: only gets triggered on shutdown call, TODO: need to fix this.
+        MonitorConsoleStage monitor = MonitorConsoleStage.attach(gm);//TODO: only gets triggered on shutdown call, TODO: need to fix this.
         final ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
         scheduler.playNice = false; //this may or may not help
 
@@ -365,7 +365,7 @@ public class PhastCodecSchemaTest {
 	        
 	  //      GraphManager.enableBatching(gm); //due to internal batching nature of stages this does not help 
 	        
-	        MonitorConsoleStage monitor = MonitorConsoleStage.attach(gm,20000000);//TODO: only gets triggered on shutdown call, TODO: need to fix this.
+	        MonitorConsoleStage monitor = MonitorConsoleStage.attach(gm);//TODO: only gets triggered on shutdown call, TODO: need to fix this.
 	        final ThreadPerStageScheduler scheduler = new ThreadPerStageScheduler(gm);
 	        scheduler.playNice = false; //this may or may not help
 

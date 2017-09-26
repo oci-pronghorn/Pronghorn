@@ -3,8 +3,6 @@ package com.ociweb.pronghorn.stage.monitor;
 import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.*;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
-import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -37,22 +35,24 @@ public class RingBufferMonitorStage extends PronghornStage {
 	
 	@Override
 	public void startup() {
-	    PipeWriter.setPublishBatchSize(notifyRingBuffer, 0);//can not be done earlier 	    
+		Pipe.setPublishBatchSize(notifyRingBuffer, 0);//can not be done earlier 	    
 	}
 	
 	@Override
 	public void run() {
 		//if we can't write then do it again on the next cycle, and skip this data point.
-		if (PipeWriter.tryWriteFragment(notifyRingBuffer, MSG_RINGSTATSAMPLE_100)) {
-			//TODO: convert to low level for more cycles...
-			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_MS_1, System.currentTimeMillis());
-			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_HEAD_2, Pipe.headPosition(observedPipe));
-			PipeWriter.writeLong(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_TAIL_3, Pipe.tailPosition(observedPipe));
-			PipeWriter.writeInt(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_TEMPLATEID_4, observedPipe.lastMsgIdx);	
-			PipeWriter.writeInt(notifyRingBuffer, MSG_RINGSTATSAMPLE_100_FIELD_BUFFERSIZE_5, observedPipe.sizeOfSlabRing);
+		if (Pipe.hasRoomForWrite(notifyRingBuffer)) {
 			
-			PipeWriter.publishWrites(notifyRingBuffer);
-			assert(Pipe.headPosition(notifyRingBuffer)==Pipe.workingHeadPosition(notifyRingBuffer)) : "publish did not clean up, is the publish batching? it should not.";
+			int size = Pipe.addMsgIdx(notifyRingBuffer, MSG_RINGSTATSAMPLE_100);
+			
+			Pipe.addLongValue(System.currentTimeMillis(), notifyRingBuffer);
+			Pipe.addLongValue(Pipe.headPosition(observedPipe), notifyRingBuffer);
+			Pipe.addLongValue(Pipe.tailPosition(observedPipe), notifyRingBuffer);
+			Pipe.addIntValue(observedPipe.lastMsgIdx, notifyRingBuffer);
+			Pipe.addIntValue(observedPipe.sizeOfSlabRing, notifyRingBuffer);
+		
+			Pipe.confirmLowLevelWrite(notifyRingBuffer, size);
+			Pipe.publishWrites(notifyRingBuffer);
 			
 		} else {
 			//if unable to write then the values are dropped.

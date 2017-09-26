@@ -74,7 +74,7 @@ public class MonitorConsoleStage extends PronghornStage {
 		int i = inputs.length;
 		while (--i>=0) {
 			
-			Pipe ring = inputs[i];
+			Pipe<?> ring = inputs[i];
 			while (Pipe.peekMsg(ring, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100)) {
 				int mgdIdx = Pipe.takeMsgIdx(ring);
 								
@@ -192,7 +192,7 @@ public class MonitorConsoleStage extends PronghornStage {
 		
 	}
 
-	private static final Long defaultMonitorRate = Long.valueOf(50_000_000); //50 ms
+	private static final Long defaultMonitorRate = Long.valueOf(80_000_000); //80 ms, 12.5 fps
 	private static final PipeConfig defaultMonitorRingConfig = new PipeConfig(PipeMonitorSchema.instance, 15, 0);
 	
 	public static MonitorConsoleStage attach(GraphManager gm) {
@@ -213,9 +213,6 @@ public class MonitorConsoleStage extends PronghornStage {
 		MonitorConsoleStage stage = new MonitorConsoleStage(gm, GraphManager.attachMonitorsToGraph(gm, monitorRate, ringBufferMonitorConfig));
         GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
 		GraphManager.addNota(gm, GraphManager.MONITOR, "dummy", stage);
-		
-		Object rate = GraphManager.getNota(gm, stage.stageId, GraphManager.SCHEDULE_RATE, null);
-
 		return stage;
 	}
 
