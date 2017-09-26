@@ -270,7 +270,7 @@ public class NetGraphBuilder {
 													final ServerPipesConfig serverConfig, 
 													final long rate, 
 													ServerFactory factory) {
-		
+		logger.info("building server graph");
 		final Pipe<NetPayloadSchema>[] encryptedIncomingGroup = Pipe.buildPipes(serverConfig.maxPartialResponsesServer, serverConfig.incomingDataConfig);           
            
         Pipe<ReleaseSchema>[] releaseAfterParse = buildSocketReaderStage(graphManager, coordinator, coordinator.processorCount(),
@@ -364,6 +364,7 @@ public class NetGraphBuilder {
 			ServerCoordinator coordinator, ServerPipesConfig serverConfig,
 			Pipe<NetPayloadSchema>[] handshakeIncomingGroup, long rate) {
 		
+		logger.info("build remainder of server");
 		PipeConfig<NetPayloadSchema> fromOrderedConfig = serverConfig.orderWrapConfig();
 		Pipe<NetPayloadSchema>[] fromOrderedContent = new Pipe[serverConfig.serverResponseWrapUnits * serverConfig.serverPipesPerOutputEngine];
 
