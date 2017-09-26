@@ -416,7 +416,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		        case PersistedBlobLoadSchema.MSG_ACKWRITE_11:
 		        	
 		        	Pipe<NetPayloadSchema> pipe = toBroker[activeConnection.requestPipeLineIdx()];
-					Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(MQTTClientToServerSchemaAck.instance, NetPayloadSchema.MSG_PLAIN_210));
+					Pipe.confirmLowLevelWrite(pipe, Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210));
 					Pipe.publishWrites(pipe);
 							        	
 					assert(inPersistSize>=0);
@@ -733,7 +733,8 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					output.closeLowLevelField();
 
 					
-					Pipe.confirmLowLevelWrite(server, Pipe.sizeOf(MQTTClientToServerSchemaAck.instance, NetPayloadSchema.MSG_PLAIN_210));
+					Pipe.confirmLowLevelWrite(server,
+							Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210));
 					Pipe.publishWrites(server);
 										
 				break;					
@@ -766,7 +767,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					output.writeShort(0xFFFF & serverPacketId);
 					output.closeLowLevelField();
 
-					Pipe.confirmLowLevelWrite(server, Pipe.sizeOf(MQTTClientToServerSchemaAck.instance, NetPayloadSchema.MSG_PLAIN_210));
+					Pipe.confirmLowLevelWrite(server, Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210));
 					Pipe.publishWrites(server);					
 					///////////////
 					//release the pubrec
@@ -819,7 +820,7 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 						storePublishedPosPersisted(blobPos, consumedBytes6, Pipe.blob(server), packetId6);	
 						return false;
 					} else {
-						Pipe.confirmLowLevelWrite(server, Pipe.sizeOf(MQTTClientToServerSchemaAck.instance, NetPayloadSchema.MSG_PLAIN_210));
+						Pipe.confirmLowLevelWrite(server, Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210));
 						Pipe.publishWrites(server);
 					}
 				break;
