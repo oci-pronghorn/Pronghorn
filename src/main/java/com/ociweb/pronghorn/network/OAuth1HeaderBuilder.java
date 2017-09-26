@@ -42,7 +42,10 @@ public class OAuth1HeaderBuilder {
     
   private final String formalPath;
   
-  public OAuth1HeaderBuilder(String consumerKey, String consumerSecret, String token, String tokenSecret,
+  public OAuth1HeaderBuilder(String consumerKey,    //oauth_consumer_key - Not a secret (user)
+		                     String consumerSecret, 
+		                     String token,          //oauth_token    - Not a secret (app) 
+		                     String tokenSecret,
 		  					 int port, String scheme, String host, String path) {
     this.consumerKey = consumerKey;    
     this.token = token;
@@ -52,8 +55,10 @@ public class OAuth1HeaderBuilder {
     assert(token!=null);
     assert(tokenSecret!=null);
     
+    //oauth_verifier is the pin
+    
     this.secureRandom = new SecureRandom(); 
-	this.secretKeySpec = new SecretKeySpec((consumerSecret + "&" + tokenSecret).getBytes(Charset.forName("UTF-8")), "HmacSHA1");
+	this.secretKeySpec = new SecretKeySpec((consumerSecret + "&" + tokenSecret).getBytes(), "HmacSHA1");
 	
 	this.nonceBuilder = new StringBuilder();
 	this.timeBuilder = new StringBuilder();
@@ -76,7 +81,6 @@ public class OAuth1HeaderBuilder {
   public void addParam(CharSequence key, CharSequence dynamicValue) {
 	  
 	  try {
-		  assert(URLEncoder.encode(key.toString(),"UTF-8").equals(key)) : "key must not need encoding";
 		  params.add(new CharSequence[]{
 				  key,
 				  dynamicValue
@@ -142,18 +146,21 @@ public class OAuth1HeaderBuilder {
 	timeBuilder.setLength(0);
 	Appendables.appendValue(timeBuilder, now / 1000);
 	
+	///////////////////////////////////////
+	//https://oauth.net/core/1.0/#anchor9
+	//////////////////////
+	//This call is part G
+	//////////////////////////////////////
+	
 	try {
 	    builder.append("Authorization: ");
 	    
 	    builder.append("OAuth ");
 	    builder.append("oauth_consumer_key=\"").append(consumerKey).append("\", ");
 	    builder.append("oauth_token=\"").append(token).append("\", ");
-	    
 	    appendSignature(builder, upperVerb);
-	    		
 	    builder.append("oauth_signature_method=\"").append("HMAC-SHA1").append("\", ");
 	    builder.append("oauth_timestamp=\"").append(timeBuilder).append("\", ");
-	    
 	    builder.append("oauth_nonce=\"").append(nonceBuilder).append("\", ");
 	    builder.append("oauth_version=\"").append("1.0").append("\"");
 	} catch (Exception e) {

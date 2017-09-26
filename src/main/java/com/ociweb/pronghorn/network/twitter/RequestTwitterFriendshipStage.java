@@ -41,10 +41,10 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 	private final byte[][] postItems;
 	private final int msBetweenCalls;
 	
-	private final Pipe<HTTPRequestSchema>[] inputs;
-	private final Pipe<ServerResponseSchema>[] outputs;	
-	private final Pipe<ClientHTTPRequestSchema>[] toTwitter;
-	private final Pipe<NetResponseSchema>[] fromTwitter;
+	private final Pipe<HTTPRequestSchema> inputs;
+	private final Pipe<ServerResponseSchema> outputs;	
+	private final Pipe<ClientHTTPRequestSchema> toTwitter;
+	private final Pipe<NetResponseSchema> fromTwitter;
 	
 	
 	private final String prefix = "user_id=";
@@ -57,6 +57,7 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 	private byte[] contentBacking;
 	
 	private final StringBuilder dynamicLength;
+	private final int httpRequestResponseId;
 	
 	/////////////
 	//POST https://api.twitter.com/1.1/friendships/create.json?user_id=1401881&follow=true
@@ -66,34 +67,37 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 	public static RequestTwitterFriendshipStage newFollowInstance(GraphManager graphManager,
 			String ck, String cs, 
 			String token, String secret, 
-			Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
-			Pipe<ClientHTTPRequestSchema>[] toTwitter, Pipe<NetResponseSchema>[] fromTwitter) {
+			Pipe<HTTPRequestSchema> inputs, Pipe<ServerResponseSchema> outputs,
+			int httpRequestResponseId,
+			Pipe<ClientHTTPRequestSchema> toTwitter, Pipe<NetResponseSchema> fromTwitter) {
 		return new RequestTwitterFriendshipStage(graphManager, ck, cs, token, secret, 
-				inputs, outputs, toTwitter, fromTwitter, followPath, "follow=true".getBytes());			 
+				inputs, outputs, httpRequestResponseId, toTwitter, fromTwitter, followPath, "follow=true".getBytes());			 
 	}
 	
 	public static RequestTwitterFriendshipStage newUnFollowInstance(GraphManager graphManager,
 			String ck, String cs, 
 			String token, String secret, 
-			Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
-			Pipe<ClientHTTPRequestSchema>[] toTwitter, Pipe<NetResponseSchema>[] fromTwitter) {
+			Pipe<HTTPRequestSchema> inputs, Pipe<ServerResponseSchema> outputs,
+			int httpRequestResponseId,
+			Pipe<ClientHTTPRequestSchema> toTwitter, Pipe<NetResponseSchema> fromTwitter) {
 		return new RequestTwitterFriendshipStage(graphManager, ck, cs, token, secret, 
-				inputs, outputs, toTwitter, fromTwitter, unfollowPath);			 
+				inputs, outputs, httpRequestResponseId, toTwitter, fromTwitter, unfollowPath);			 
 	}
 	
 	private RequestTwitterFriendshipStage(
 			GraphManager graphManager,
 			String ck, String cs, 
 			String token, String secret, 
-			Pipe<HTTPRequestSchema>[] inputs, 
-			Pipe<ServerResponseSchema>[] outputs,
-			Pipe<ClientHTTPRequestSchema>[] toTwitter, 
-			Pipe<NetResponseSchema>[] fromTwitter,
+			Pipe<HTTPRequestSchema> inputs, 
+			Pipe<ServerResponseSchema> outputs,
+			int httpRequestResponseId,
+			Pipe<ClientHTTPRequestSchema> toTwitter, 
+			Pipe<NetResponseSchema> fromTwitter,
 			String path,
 			byte[] ... postItems
 			) {
 		
-		super(graphManager, inputs, join(outputs, toTwitter));
+		super(graphManager, join(inputs, fromTwitter), join(outputs, toTwitter));
 		
 		this.inputs = inputs;
 		this.outputs = outputs;
@@ -107,11 +111,8 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 			
 		this.path = path;
 		this.pathBytes = path.getBytes();
-		this.postItems = postItems;
-		
-		assert(inputs.length == outputs.length);
-		assert(outputs.length == toTwitter.length);
-		assert(toTwitter.length == fromTwitter.length);		
+		this.postItems = postItems;	
+		this.httpRequestResponseId = httpRequestResponseId;
 		
 		this.msBetweenCalls = (24*60*60*1000)/1000;  //(15*60*1000)/15; 15 min limit
 		assert(86_400 == msBetweenCalls);  //24 hour limit of 1000
@@ -130,18 +131,13 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 	
 	@Override
 	public void run() {
-		
-		int i = inputs.length;
-		while (--i>=0) {
-			run(i, inputs[i], outputs[i], toTwitter[i], fromTwitter[i]);
-		}
-
+		run(inputs,outputs,toTwitter,fromTwitter);
 	}
 
 	private long activeConnectionId=-1;
 	private int  activeSequenceId=-1;
 	
-	private void run(int idx, 
+	private void run( 
 			         Pipe<HTTPRequestSchema> input,
 			         Pipe<ServerResponseSchema> output,
 			         Pipe<ClientHTTPRequestSchema> toTwitter,
@@ -219,7 +215,7 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 						int fieldRevision = Pipe.takeInt(input);
 						int fieldRequestContext = Pipe.takeInt(input);
 												
-						processRequest(idx, output, toTwitter, 
+						processRequest(httpRequestResponseId, output, toTwitter, 
 								       friendUserId, 
 								       fieldChannelId, 
 								       fieldSequence);			
@@ -235,14 +231,14 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 		}
 	}
 
-	private void processRequest(int idx, Pipe<ServerResponseSchema> output, Pipe<ClientHTTPRequestSchema> toTwitter,
+	private void processRequest(int httpRequestResponseId, Pipe<ServerResponseSchema> output, Pipe<ClientHTTPRequestSchema> toTwitter,
 			long friendUserId, long connectionId, int sequenceID) {
 		long now = System.currentTimeMillis();
 		
 		if (isThisTheTime(now)) {
 			
 			//do it now, toTwitter then take response and relay it back
-			publishRequest(toTwitter, idx, friendUserId);
+			publishRequest(toTwitter, httpRequestResponseId, friendUserId);
 			
 		} else {
 			//too quickly, send back 420
