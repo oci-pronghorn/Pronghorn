@@ -2,9 +2,7 @@ package com.ociweb.pronghorn.util;
 
 import java.io.DataOutput;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.sql.Blob;
-import java.util.Arrays;
+import java.io.PrintStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -399,6 +397,14 @@ public class TrieParserReader {
 	public static int debugAsUTF8(TrieParserReader that, Appendable target, int maxLen) {
 		return debugAsUTF8(that, target, maxLen, true);
 	}
+	
+
+	public static void debugAsArray(TrieParserReader reader, PrintStream err, int len) {
+		
+		Appendables.appendArray(System.err, reader.sourceBacking, reader.sourcePos, reader.sourceMask, Math.min(len, reader.sourceLen));
+
+	}
+	
 	public static int debugAsUTF8(TrieParserReader that, Appendable target, int maxLen, boolean mayHaveLeading) {
 		int pos = that.sourcePos;
 		try {
@@ -1719,6 +1725,7 @@ public class TrieParserReader {
 		}
 		return totalBytes;
 	}
+
 
 
 
