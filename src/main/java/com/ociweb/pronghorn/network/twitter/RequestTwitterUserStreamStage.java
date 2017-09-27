@@ -63,7 +63,8 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 		
 		//TODO: (a short easy task) twitter wants a growing back-off here, we must record the last time we connected and DO NOT read until sufficient time has passed.
 		
-		while (PipeReader.tryReadFragment(control)) {			
+		while (PipeWriter.hasRoomForWrite(output) &&
+				PipeReader.tryReadFragment(control)) {			
 			int id = PipeReader.getMsgIdx(control);
 			switch (id) {
 				case -1:
@@ -82,7 +83,7 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 
 	private void streamingRequest(Pipe<ClientHTTPRequestSchema> pipe, int httpRequestResponseId) {
 			
-		PipeWriter.tryWriteFragment(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100);
+		PipeWriter.presumeWriteFragment(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100);
 		assert(httpRequestResponseId>=0);
 		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_DESTINATION_11, httpRequestResponseId);
 		PipeWriter.writeInt(pipe, ClientHTTPRequestSchema.MSG_HTTPGET_100_FIELD_SESSION_10, httpRequestResponseId);

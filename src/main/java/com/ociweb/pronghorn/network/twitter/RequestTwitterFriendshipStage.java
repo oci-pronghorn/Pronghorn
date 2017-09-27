@@ -187,6 +187,10 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 						
 		}
 		
+		//BillGates		
+		//50393960
+		//https://127.0.0.1:9443/friendshipCreate?user=1234&friend=5039360
+		
 		
 		
 		while (Pipe.hasContentToRead(input) 

@@ -695,7 +695,8 @@ public class NetGraphBuilder {
 		final long rate = 20_000_000; //fastest rate in NS
 		
 		boolean isLarge = false;
-		ModuleConfig config = buildTelemetryModuleConfig(rate);
+		
+		final ModuleConfig modules = buildTelemetryModuleConfig(rate);
 		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 1);
 				 
 		 //This must be large enough for both partials and new handshakes.
@@ -715,8 +716,7 @@ public class NetGraphBuilder {
 				GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, stage);
 			}
 		});
-				
-		final ModuleConfig modules = config;
+
 		final ServerFactory factory = new ServerFactory() {
 
 			@Override
@@ -911,7 +911,7 @@ public class NetGraphBuilder {
 		////////////////////////
 		int tweetsCount = 32;
 		
-		Pipe<TwitterStreamControlSchema> streamControlPipe = TwitterStreamControlSchema.instance.newPipe(4, 0);
+		Pipe<TwitterStreamControlSchema> streamControlPipe = TwitterStreamControlSchema.instance.newPipe(8, 0);
 		final int HTTP_REQUEST_RESPONSE_USER_ID = 0;
 		
 		////////////////////
@@ -982,7 +982,7 @@ public class NetGraphBuilder {
 			//we use a different JSON parser for each group of queries.			
 			eventPipes[k] = TwitterJSONToTwitterEventsStage.buildStage(gm, true, bottom, 
 											clientResponsesPipes[k], 
-											controlPipes[k] = TwitterStreamControlSchema.instance.newPipe(4, 0), 
+											controlPipes[k] = TwitterStreamControlSchema.instance.newPipe(8, 0), 
 											tweetsCount);
 		}
 			

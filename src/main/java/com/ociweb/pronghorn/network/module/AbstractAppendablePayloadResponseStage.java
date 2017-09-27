@@ -155,11 +155,11 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		payloadWorkspace.setLength(0);
 		byte[] contentType = buildPayload(payloadWorkspace, graphManager, params, verb); //should return error and take args?
 		if (null==contentType) {
+			//System.err.println("we have no type or data, write nothing, TODO: must 404??");
 			return false; //Can not write anything. This is the error case.
 		}
 		
 		int length = payloadWorkspace.length();
-		
 		
 		byte[] revision = httpSpec.revisions[fieldRevision].getBytes();
 		int status=200;
@@ -227,6 +227,10 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		if (workingPosition==payloadWorkspace.length()) {
 		
 			activeFieldRequestContext |=  OrderSupervisorStage.END_RESPONSE_MASK;
+			
+			//NOTE: we MUST close this or the telemetry data feed will hang on the browser side
+			//      TODO: we may want a way to define this in construction.
+			activeFieldRequestContext |=  OrderSupervisorStage.CLOSE_CONNECTION_MASK;
 			
 			//mark all done.
 			payloadWorkspace.setLength(0);

@@ -44,10 +44,8 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 		
 		if (verb != HTTPVerbDefaults.GET) {
 			return null;
-		}
-		
-		monitor.writeAsDot(gm, payload);
-		
+		}		
+		monitor.writeAsDot(gm, payload);		
 		return HTTPContentTypeDefaults.DOT.getBytes();
 	}
 

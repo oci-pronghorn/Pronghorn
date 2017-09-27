@@ -58,7 +58,11 @@ public class TwitterJSONToTwitterEventsStage extends NetResponseJSONStage<Twitte
 	private long maxId = 0;
 	
 	protected void finishedBlock() {
-		TwitterStreamControlSchema.publishFinishedBlock(control, maxId);
+		if (sendPostIds) {
+			PipeWriter.presumeWriteFragment(control, TwitterStreamControlSchema.MSG_FINISHEDBLOCK_101);
+			PipeWriter.writeLong(control,TwitterStreamControlSchema.MSG_FINISHEDBLOCK_101_FIELD_MAXPOSTID_31, maxId);
+			PipeWriter.publishWrites(control);
+		}
 	}
 
 	@Override
@@ -81,7 +85,7 @@ public class TwitterJSONToTwitterEventsStage extends NetResponseJSONStage<Twitte
 
 	private void publishReconnect() {
 		//send request to re-connect the stream again.
-		PipeWriter.tryWriteFragment(control, TwitterStreamControlSchema.MSG_RECONNECT_100);
+		PipeWriter.presumeWriteFragment(control, TwitterStreamControlSchema.MSG_RECONNECT_100);
 		PipeWriter.publishWrites(control);
 	}
 	

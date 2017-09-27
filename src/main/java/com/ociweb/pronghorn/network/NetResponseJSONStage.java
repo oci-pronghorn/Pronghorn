@@ -80,6 +80,13 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 	@Override
 	public void run() {
 
+		if (0==reader.sourceLen) {
+			//now that reader is empty this is when we can release all the released reads
+			while (Pipe.releasePendingCount(input)>0) {
+				Pipe.releasePendingReadLock(input);//release 1
+			}
+		}
+		
 		boolean gotResponse = false;
 		while(Pipe.hasContentToRead(input)) {
 			gotResponse = true;
@@ -100,13 +107,13 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 						int status = stream.readShort();
 						//System.err.println("got response with status "+status);
 						
-						logger.info("old reader value should be zero was "+reader.sourceLen);
+						//logger.info("old reader value should be zero was "+reader.sourceLen);
 						
 						//skip over all the headers, no need to read them at this time
 						stream.setPositionBytesFromStart(stream.readFromEndLastInt(PAYLOAD_INDEX_OFFSET));
 						DataInputBlobReader.setupParser(stream, reader);	
 					
-						logger.info("new reader now has "+reader.sourceLen+" vs "+stream.available());
+						//logger.info("new reader now has "+reader.sourceLen+" vs "+stream.available());
 						
 	
 					}	
@@ -120,48 +127,44 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 						long connection = Pipe.takeLong(input);
 						int flags2 = Pipe.takeInt(input);
 		            	 
+						//TODO: header payload has extra space at the end we must not assume is good!
+						
 						if (reader.sourceLen==0) {
-							
+														
 							DataInputBlobReader<NetResponseSchema> stream = Pipe.openInputStream(input);
 					   	    DataInputBlobReader.setupParser(stream, reader);
-							logger.info("reading new data of length "+reader.sourceLen+" "+stream.available());
+							//logger.info("reading new data of length "+reader.sourceLen+" "+stream.available());
 						} else {
-							logger.info("adding more data current total is "+reader.sourceLen);
+							//logger.info("adding more data current total is "+reader.sourceLen);
 							int meta = Pipe.takeRingByteMetaData(input);
 							int len = Pipe.takeRingByteLen(input);
 							int pos = Pipe.bytePosition(meta, input, len);//must call for side effect
 							
-							/////////////////////////
-							//double check the data
-							int z = pos;
-							int x = len;
-							while (--x>=0) {
-								if (Pipe.blob(input)[z&input.blobMask]==0) {
-									throw new RuntimeException("zero must not be found in twitter data");
-								}
-								z++;
-							}
-							logger.info("validated that "+len+" did not contain any zeros");
-							/////////////////
+							//copy up the remaining data to make it a single block.
+							//due to this copy we must down below ensure that we keep both reads unreleased
+							final int targetPos =  reader.sourceMask & (input.sizeOfBlobRing+(pos-reader.sourceLen));
+							Pipe.copyBytesFromToRing(Pipe.blob(input), reader.sourcePos, reader.sourceMask, 
+									                 Pipe.blob(input), targetPos, reader.sourceMask, 
+									                 reader.sourceLen);
+							//////////////////////////////
 							
 							if (len>0) {
 								reader.sourceLen += len;
 								assert(reader.sourceLen <= input.sizeOfBlobRing) : "added "+len+" and total "+reader.sourceLen+" is larger than "+input.sizeOfBlobRing;
 							}
 							
-							logger.info("adding "+len+" new bytes total is now "+reader.sourceLen);
+							reader.sourcePos = targetPos;
+							
+							//NOTE: we are still using the last part of the previous record so it must
+							//      not be written over until this is consumed
+														
+							//logger.info("adding "+len+" new bytes total is now "+reader.sourceLen);
 						}
-						
-						
-						
-						
 					}
 					
 					break;
 					
 				case NetResponseSchema.MSG_CLOSED_10:
-					
-					logger.info("reading closed");
 					
 					int meta = Pipe.takeRingByteMetaData(input); //host
 					int len  = Pipe.takeRingByteLen(input); //host
@@ -176,7 +179,7 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 					
 					break;
 				case -1:
-					logger.info("shutdown detected ");
+				
 					Pipe.confirmLowLevelRead(input, Pipe.EOF_SIZE);
 					Pipe.releaseReadLock(input);
 					requestShutdown();
@@ -184,7 +187,14 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 			}
 			
 			Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, id));
-			Pipe.releaseReadLock(input);
+			Pipe.readNextWithoutReleasingReadLock(input);
+			
+			assert(input.config().minimumFragmentsOnPipe()>2) : "input pipe must be large enought to hold 2 reads open while new writes continue";
+			
+			while (Pipe.releasePendingCount(input)>2) {//must always hold open 2 for the rollover.
+				Pipe.releasePendingReadLock(input); //release 1
+			}
+			
 		}
 		
 		//only call when we got a response to send down stream (response can be empty)

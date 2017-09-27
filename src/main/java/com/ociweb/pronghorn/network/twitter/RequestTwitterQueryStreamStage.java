@@ -270,7 +270,8 @@ public class RequestTwitterQueryStreamStage extends PronghornStage {
 			        				        	
 			        	long postId = PipeReader.readLong(localPipe,TwitterStreamControlSchema.MSG_FINISHEDBLOCK_101_FIELD_MAXPOSTID_31 );
 			        	long prevId = queryLastId[i];
-			        	//System.err.println("finish block new: "+postId+" old "+prevId);
+			        	
+			        	//System.err.println("consume finish block new: "+postId+" old "+prevId);
 			        	
 			        	if (postId>prevId) {
 			        		queryLastId[i] = postId;
