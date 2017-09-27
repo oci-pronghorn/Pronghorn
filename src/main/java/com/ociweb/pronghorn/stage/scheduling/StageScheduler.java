@@ -10,7 +10,7 @@ import com.ociweb.pronghorn.pipe.ThreadBasedCallerLookup;
 
 public abstract class StageScheduler {
 
-	static final Logger log = LoggerFactory.getLogger(StageScheduler.class);
+	static final Logger logger = LoggerFactory.getLogger(StageScheduler.class);
 	protected GraphManager graphManager;
 	
 	private ThreadLocal<Integer> callerId = new ThreadLocal<Integer>();
@@ -72,17 +72,22 @@ public abstract class StageScheduler {
 		final boolean threadLimitHard = true;//must make this a hard limit or we can saturate the system easily.
 		final int scale = 2;
 		
-		int threadLimit = idealThreadCount();
+		int ideal = idealThreadCount();
+		int threadLimit = ideal; 
 		assert(threadLimit>0);
 		final int countStages = GraphManager.countStages(gm);
-		if (threadLimit<=0 && countStages > scale*threadLimit) {
+		if ((threadLimit<=0) || (countStages > scale*ideal)) {
 			//do not allow the ThreadPerStageScheduler to be used, we must group
-			threadLimit = idealThreadCount()*scale;//this must be large so give them a few more
+			threadLimit = scale*ideal;//this must be large so give them a few more
 		}
 		
-		return (threadLimit>=countStages) ?
-				                           new ThreadPerStageScheduler(gm): 
- 			                               new FixedThreadsScheduler(gm, threadLimit, threadLimitHard);
+		if (threadLimit>=countStages) { 
+				  logger.info("Threads in use {}, one per stage.", countStages);
+		          return new ThreadPerStageScheduler(gm);
+		} else {
+				  logger.info("Threads in use {}, fixed limit.", threadLimit);
+ 		          return new FixedThreadsScheduler(gm, threadLimit, threadLimitHard);
+		}
 	}
 	
 	

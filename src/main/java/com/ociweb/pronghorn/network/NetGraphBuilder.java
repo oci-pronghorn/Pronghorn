@@ -301,7 +301,7 @@ public class NetGraphBuilder {
 			ServerPipesConfig serverConfig, Pipe<ReleaseSchema>[] releaseAfterParse,
 			Pipe<NetPayloadSchema>[] receivedFromNet, Pipe<NetPayloadSchema>[] sendingToNet, long rate) {
 
-		logger.info("build http stages");
+		//logger.info("build http stages");
 		HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> httpSpec = HTTPSpecification.defaultSpec();
 		
 		if (modules.moduleCount()==0) {
@@ -310,7 +310,7 @@ public class NetGraphBuilder {
 		
 		int routerCount = coordinator.processorCount();
 
-		logger.info("build modules");
+		//logger.info("build modules");
         Pipe<ServerResponseSchema>[][] fromModule = new Pipe[routerCount][];       
         Pipe<HTTPRequestSchema>[][] toModules = new Pipe[routerCount][];
         
@@ -324,7 +324,7 @@ public class NetGraphBuilder {
         buildRouters(graphManager, routerCount, receivedFromNet, 
         		     releaseAfterParse, toModules, errorResponsePipes, routerConfig, coordinator, rate, captureAll);
 		        
-        logger.info("build http ordering supervisors");
+        //logger.info("build http ordering supervisors");
         buildOrderingSupers(graphManager, coordinator, routerCount, 
         		            fromModule, sendingToNet, rate);
         

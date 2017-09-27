@@ -52,17 +52,17 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		
 		super(graphManager, inputs, outputs, httpSpec);		
 			
-		logger.info("loading resource {} ",resourceName);
+		//logger.info("loading resource {} ",resourceName);
 		ClassLoader loader = ResourceModuleStage.class.getClassLoader().getSystemClassLoader();
 		resourceURL = loader.getResource(resourceName);
-		logger.trace("found url {}", resourceURL);
+		//logger.trace("found url {}", resourceURL);
 		
 
 		if (null == resourceURL) {
-			logger.info("unable to find resource: {} ",resourceName);
+			//logger.info("unable to find resource: {} ",resourceName);
 			throw new RuntimeException("unable to find resource: "+resourceName);
 		} else {
-			logger.info("found the resource: {}",resourceName);
+			//logger.info("found the resource: {}",resourceName);
 		}
 				
 		this.type = type.getBytes();

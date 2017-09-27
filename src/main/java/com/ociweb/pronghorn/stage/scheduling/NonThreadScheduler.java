@@ -658,6 +658,6 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
             }
         }            
         
-        GraphManager.reportError(that.graphManager, stage, t, log);
+        GraphManager.reportError(that.graphManager, stage, t, logger);
     }
 }

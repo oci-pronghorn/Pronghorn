@@ -262,7 +262,7 @@ public class GraphManager {
 		if  (j>0) {
 			result = false;
 			while (--j>=0) {
-				StageScheduler.log.error("{} never completed startup",neverStarted[j]);
+				StageScheduler.logger.error("{} never completed startup",neverStarted[j]);
 			}
 		}		
 		
@@ -271,7 +271,7 @@ public class GraphManager {
 		if  (j>0) {
 			result = false;
 			while (--j>=0) {
-				StageScheduler.log.error("{} never started shutdown",neverShutdown[j]);
+				StageScheduler.logger.error("{} never started shutdown",neverShutdown[j]);
 			}
 		}
 		
@@ -280,7 +280,7 @@ public class GraphManager {
 		if  (j>0) {
 			result = false;
 			while (--j>=0) {
-				StageScheduler.log.error("{} never finished shutdown",neverTerminated[j]);
+				StageScheduler.logger.error("{} never finished shutdown",neverTerminated[j]);
 			}
 		}		
 		
@@ -292,11 +292,11 @@ public class GraphManager {
 				    //if all the inputs are empty this is not where the stall will be found
 				    if (!isInputsEmpty(m,stage)) {
 				    
-    					StageScheduler.log.error("-------------------");//divide the log for better clarity
-    					logInputs(StageScheduler.log, m, stage);
-    					StageScheduler.log.error("  Expected stage {} to be stopped but it appears to be running. terminated:{}", stage, isStageTerminated(m, i));
-    					logOutputs(StageScheduler.log, m, stage);
-    					StageScheduler.log.error("-------------------");//divide the log for better clarity
+    					StageScheduler.logger.error("-------------------");//divide the log for better clarity
+    					logInputs(StageScheduler.logger, m, stage);
+    					StageScheduler.logger.error("  Expected stage {} to be stopped but it appears to be running. terminated:{}", stage, isStageTerminated(m, i));
+    					logOutputs(StageScheduler.logger, m, stage);
+    					StageScheduler.logger.error("-------------------");//divide the log for better clarity
     					
     					result = false;
     					
@@ -307,7 +307,7 @@ public class GraphManager {
 			}
 		}		
 		if (!result) {
-			StageScheduler.log.error("unclean shutdown");				
+			StageScheduler.logger.error("unclean shutdown");				
 		}
 		return result;
 	}

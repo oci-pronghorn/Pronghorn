@@ -59,13 +59,13 @@ public class ServerPipesConfig {
 		if (cores<4) {
 			cores = 4;
 		}
-		if (1==processors){
+		if (1==processors && !isLarge && !isTLS){
 			cores = 1;
 		}
 		
 		processorCount = processors > 0? processors : (isLarge ? (isTLS?4:8) : 2);
 		
-		logger.info("cores in use {}", cores);
+		//logger.info("cores in use {}", cores);
 		
 		if (isLarge) {
 						
