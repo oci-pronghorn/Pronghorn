@@ -696,10 +696,12 @@ public class NetGraphBuilder {
 		
 		boolean isLarge = false;
 		
+
 		
 		final ModuleConfig modules = buildTelemetryModuleConfig(rate);
 		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 2);
 				 
+		serverConfig.ensureServerCanWrite(1<<21);//2MB
 		 //This must be large enough for both partials and new handshakes.
 		
 		ServerCoordinator serverCoord = new ServerCoordinator(isTLS, bindHost, port, 
@@ -767,8 +769,8 @@ public class NetGraphBuilder {
 				//the file server is stateless therefore we can build 1 instance for every input pipe
 				int instances = inputPipes.length;
 				int outputPipeLength = 4;
-				int outputPipeChunkMax = 1<<21; //2MB
-				int outputPipeChunkMin = 1<<16; //64K
+				final int outputPipeChunkMax = 1<<21; //2MB
+				final int outputPipeChunkMin = 1<<16; //64K
 				
 				Pipe<ServerResponseSchema>[] staticFileOutputs = new Pipe[instances];
 				

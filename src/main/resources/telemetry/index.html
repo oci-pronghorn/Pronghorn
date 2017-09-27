@@ -34,20 +34,17 @@
 
     if (window.Worker) {
         w = new Worker('webworker.js');
-        //message sent to webworker
-
     }
 
     function paintAll () {
         if (w) {
             //returned message from the webworker
             w.onmessage = function (e) {
-                console.log("PaintAll has run");
                 document.getElementById("demo").innerHTML = e.data.result;
             };
+            //message sent to webworker
             w.postMessage("");
         }
-
     }
 
     //to get the number of stage and edge IDs
@@ -59,24 +56,25 @@
     var enewline = new RegExp(/([^\n]+)/g);
 
     function paintParts() {
+        var date1 = new Date(); //date
         var dot = httpGet("graph.dot");
+        var date2 = new Date();
+        console.log(date2 - date1);
 
         var numberOfEdges  = dot.match(edgeid).length;
         var numberOfTotalIds = dot.match(totalids).length;
 
-        var numstage = numberOfTotalIds-numberOfEdges; //number of stage ids
-
-        //start of html update
+        var numberOfNodeIds = numberOfTotalIds-numberOfEdges; //number of stage(node) ids
 
         var whole = dot.match(node);
         var ss = 1; // node id number in html (node ids start at 1)
         var ee = 1; //edge id number in html (node ids start at 1)
 
         //updates the nodes
-        for (var s = 1; s<=numstage; s++) {   // is the number of nodes
+        for (var s = 0; s <numberOfNodeIds; s++) {   // is the number of nodes
             var iteration = whole[s].match(newline).map(function(item) {
                 return item.replace(/"|=/g, '');
-            }); //grab the label section
+            });
 
             $('#node' + ss).children('text').each(function(itemIdx, item) {
                 item = $(item);
@@ -89,11 +87,11 @@
             ss++;
         }
 
-        //updates edge
-        for (var e = (numstage+1); e<(totalids+1); e++) {   // is the number of nodes
+        //updates the edges
+        for (var e = (numberOfNodeIds+1); e<(totalids+1); e++) {   // is the number of nodes
             var eiteration = whole[e].match(enewline).map(function(item) {
                 return item.replace(/"|=/g, '');
-            }); //grab the label section
+            });
 
             $('#edge' + ee).children('text').each(function(itemIdx, item) {
                 item = $(item);
@@ -109,8 +107,8 @@
 
     document.getElementById("demo").innerHTML = Viz(httpGet("graph.dot"), {format: "svg", engine: "dot"});
 
-    setInterval(paintAll,60000);
-    setInterval(paintParts,250);
+    setInterval(paintAll,10000);
+    setInterval(paintParts,160);
 
 </script>
 
