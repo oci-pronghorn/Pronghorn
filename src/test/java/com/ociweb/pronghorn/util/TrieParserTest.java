@@ -2,7 +2,10 @@ package com.ociweb.pronghorn.util;
 
 import static org.junit.Assert.*;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutput;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 
@@ -12,12 +15,15 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.text.WrappedPlainView;
 
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.ociweb.pronghorn.pipe.BlobWriter;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -303,7 +309,7 @@ assertEquals(val1,12);
 	}
 	
 	
-	//************** figure out what byteConsumer does.
+
 	@Test
 	public void testcapturedFieldBytes(){
 		TrieParserReader reader = new TrieParserReader(3);
@@ -338,11 +344,323 @@ assertEquals(val1,12);
 		int x = TrieParserReader.capturedFieldBytes(reader,0,byteconsumer);//Null point excep
 		
 		int capturedbytelength = TrieParserReader.capturedFieldBytesLength(reader, 0);
-		System.out.println("str:" + str.toString());
+		
 		assertEquals(capturedbytelength,4);
 		assertEquals(x,4);
+		assertEquals(str.toString(),"abcd");
 	}
 	
+	@Test
+	public void testwriteCapturedShort(){
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+		
+		map.setUTF8Value("12%iabcd", 33);
+	
+		
+		
+		CharSequence test = "128abcd";
+		reader.query(map, test); //query holds most recent thing 
+		Pipe<RawDataSchema> pipe = RawDataSchema.instance.newPipe(2, 64);
+		pipe.initBuffers();
+		
+		int size = Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+		DataOutputBlobWriter x =Pipe.outputStream(pipe);
+		DataOutputBlobWriter.openField(x);
+		
+		
+		 TrieParserReader.writeCapturedShort(reader, 0, x);
+		
+		 
+		 x.closeLowLevelField();
+			Pipe.confirmLowLevelWrite(pipe, size);
+			Pipe.publishWrites(pipe);
+			///////////
+			int msg = Pipe.takeMsgIdx(pipe);
+			assertEquals(RawDataSchema.MSG_CHUNKEDSTREAM_1, msg);
+		
+			DataInputBlobReader y = Pipe.inputStream(pipe);
+	y.openLowLevelAPIField();
+	StringBuilder str = new StringBuilder();
+	//System.out.println(y.readLine());
+	//2nd value has length of captured field.
+	byte[] vals = new byte[2];
+	y.read(vals);
+	
+	
+	
+	assertEquals(vals[1],8);
+	}
+	
+	
+	@Test
+	public void testDebug(){
+		//should I be testing debugging methods? the sys.err? ask tom.
+		
+		//in here we will test debug() and debugAsUTF8.
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+		
+		map.setUTF8Value("12%b12", 33);
+	
+		
+		
+		CharSequence test = "12abcd12";
+		long val = reader.query(map, test);
+	TrieParserReader.parseSetup(reader, "12abcd12".getBytes(),0,8,7);
+//get output from system.err console and save as string
+		ByteArrayOutputStream bytestream = new ByteArrayOutputStream();
+		PrintStream PS = new PrintStream(bytestream);
+		PrintStream old = System.out;
+
+		System.setErr(PS);
+		reader.debug();
+		//System.out.println( bytestream.toString());
+
+		String result = bytestream.toString();
+		//regex to parse the int values from debugger to check that they are correct. could prob be simpler.
+		Pattern p = Pattern.compile("-?\\d+");
+		Matcher m = p.matcher(result);
+		
+		String result_string = "";
+		while (m.find()) {
+		// n[i] = Integer.parseInt(m.group(i++));
+			result_string += m.group();
+		}
+		System.out.println(result_string);
+		
+		assertEquals(result_string.charAt(0),'0'); //compare 'pos'
+		assertEquals(result_string.charAt(1),'0'); //mask
+		assertEquals(result_string.charAt(3),'7'); //
+		assertEquals(result_string.charAt(4),'8');
+	
+	}
+	
+	
+	
+	
+	@Test public void testdebugAsUTF8(){
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+		
+		map.setUTF8Value("12%b12", 33);
+	
+		
+		
+		CharSequence test = "12abcd12";
+		TrieParserReader.parseSetup(reader, "12abcd12".getBytes(),0,8,7);
+		long val = reader.query(map, test);
+		StringBuilder str = new StringBuilder();
+
+		int result = reader.debugAsUTF8(reader, str);
+	
+		System.out.println(result);
+		assertEquals(result,8);
+		
+	}
+	
+	
+	@Test
+	public void testparseGather(){
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+		
+		map.setUTF8Value("12%b12", 33);
+	
+		
+		
+		CharSequence test = "12abcd12";
+		TrieParserReader.parseSetup(reader, "12abcd12".getBytes(),0,8,7);
+		long val = reader.query(map, test);
+		Pipe<RawDataSchema> pipe = RawDataSchema.instance.newPipe(2, 64);
+		pipe.initBuffers();
+		
+		int size = Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+		DataOutputBlobWriter x =Pipe.outputStream(pipe);
+		DataOutputBlobWriter.openField(x);
+		
+	
+		reader.parseGather(reader, x,(byte) 'd'); // so will give 5. 5 bytes until d is hit. if i put 'c' will return length of 4.
+	System.out.println(reader.sourcePos);
+		
+		x.closeLowLevelField();
+		Pipe.confirmLowLevelWrite(pipe, size);
+		Pipe.publishWrites(pipe);
+		///////////
+		int msg = Pipe.takeMsgIdx(pipe);
+		assertEquals(RawDataSchema.MSG_CHUNKEDSTREAM_1, msg);
+	
+		DataInputBlobReader y = Pipe.inputStream(pipe);
+y.openLowLevelAPIField();
+StringBuilder str = new StringBuilder();
+y.readUTFOfLength(y.available(), str);
+
+
+//dont understand what this parseGather() is supposed to do.
+reader.parseGather( reader, (byte) 'd');
+//just changes sourcePos? but this shouldne be 22 if my sixe of source array is only like 8
+System.out.println(reader.sourcePos);
+assertEquals(str.length(),5);
+assertEquals(str.toString(),"12abc");
+assertEquals(22,reader.sourcePos);
+	
+		
+
+	}
+	
+	
+	
+	@Test
+	public void testparseSkip(){
+		//will test all parse skip(and parseskipone) methods.
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+		
+		map.setUTF8Value("12%b123", 33);
+	
+		
+		
+		CharSequence test = "12abcd123";
+		// TrieParserReader that, byte[] source, int offset, int length, int mask
+		TrieParserReader.parseSetup(reader,"12abcd123".getBytes(),0,9,8);
+		assertEquals(9,reader.sourceLen); 
+		int x = reader.parseSkipOne();
+		int len = reader.parseSkip(2);
+		
+		long val = reader.query(map, test);
+		
+	
+		assertEquals(x,49); //ascii for 1.
+		assertEquals(val,33);
+		assertEquals(len,2); //length of skip(same as parameter essentially.
+		
+reader = new TrieParserReader(3); 
+TrieParserReader.parseSetup(reader,"12abcd123".getBytes(),0,9,8);
+boolean b = TrieParserReader.parseSkipUntil(reader, 51); //51 is ascii for 3. will match 3 and return true.
+
+ val = reader.query(map, test);
+assertTrue(b);
+	}
+
+	
+	@Test
+	public void testparseCopy(){
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+		
+		map.setUTF8Value("12%b12", 33);
+	
+		
+		
+		CharSequence test = "12abcd12";
+		// TrieParserReader that, byte[] source, int offset, int length, int mask
+		TrieParserReader.parseSetup(reader,"12%b12".getBytes(),0,6,7);
+		assertEquals(6,reader.sourceLen); 
+		
+		
+		Pipe<RawDataSchema> pipe = RawDataSchema.instance.newPipe(2, 64);
+		pipe.initBuffers();
+		
+		int size = Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+		DataOutputBlobWriter x =Pipe.outputStream(pipe);
+		DataOutputBlobWriter.openField(x);
+		
+		
+		int val = TrieParserReader.parseCopy( reader, 6, x); //will copy the value in mapping to dataoutputblobwriter
+
+		x.closeLowLevelField();
+		Pipe.confirmLowLevelWrite(pipe, size);
+		Pipe.publishWrites(pipe);
+		///////////
+		int msg = Pipe.takeMsgIdx(pipe);
+		assertEquals(RawDataSchema.MSG_CHUNKEDSTREAM_1, msg);
+	
+		DataInputBlobReader y = Pipe.inputStream(pipe);
+y.openLowLevelAPIField();
+StringBuilder str = new StringBuilder();
+y.readUTFOfLength(y.available(), str);
+
+		
+assertEquals(str.toString(),"12%b12");
+assertEquals(val,6); //asserting length returned by parseCopy is length given. would not be the case if sourcelength was greater.
+	}
+	
+	
+	//**********
+	// figure out what this does
+	@Test
+	public void testsaveloadPositionMemo(){
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+		
+		map.setUTF8Value("12%b", 33);
+	
+		
+		
+		CharSequence test = "12abcd";
+		// TrieParserReader that, byte[] source, int offset, int length, int mask
+		TrieParserReader.parseSetup(reader,"12%b".getBytes(),0,4,7);
+		long val = TrieParserReader.query(reader, map, test);
+		TrieParserReader.parseSetup(reader,"12%b".getBytes(),0,4,7);
+		int[] target = {49,50,61,62,63,64};//holds all vals of char sequence?
+		int value = TrieParserReader.savePositionMemo(reader, target, 0);
+	
+//target will be [61,62,63,64] -> saved captured vals.
+		
+		System.out.println("val " + val);
+		System.out.println("value: " + value);
+		assertEquals(val,33); //just standard query test, make sure parsetSetup is correct.
+		assertEquals(value,4); // length of captured target array from savePositionMemo();
+	}
+	
+	@Test 
+	public void testblobQuery() throws IOException{
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+		
+		map.setUTF8Value("12%b12", 33);
+	//TrieParserReader reader, TrieParser trie, 
+       // byte[] source, int sourcePos, long sourceLength, int sourceMask, 
+        //final long unfoundResult) {
+	long no_val = TrieParserReader.query(reader,map, "NoMatchonlong".getBytes(),0,"No Match on long test.".length(),15,-1);	
+		System.out.println("NOVAL " + no_val);
+		CharSequence test = "12abcd12";
+		
+		long val = reader.query(map, test);
+		System.out.println(val);
+		
+		//below is testing cs.length()> reader.workingPipe.maxVarLen in Query() mthod
+		StringBuilder maxlengthtest = new StringBuilder();
+		
+		for(int i = 0; i<2000;i++){
+			maxlengthtest.append(i);
+		}
+		
+		long val1 = reader.query(map, maxlengthtest.toString());
+		
+//		Pipe<RawDataSchema> pipe = RawDataSchema.instance.newPipe(2, 64);
+//		pipe.initBuffers();
+//		
+//		int size = Pipe.addMsgIdx(pipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
+//		DataOutputBlobWriter x =Pipe.outputStream(pipe);
+//		DataOutputBlobWriter.openField(x);
+//		
+	
+		//reader.parseGather(reader, x,(byte) 'd'); // so will give 5. 5 bytes until d is hit. if i put 'c' will return length of 4.
+
+		
+		BlobWriter x = reader.blobQueryPrep(reader);
+		x.append(test); 
+	long yy = reader.blobQuery(reader, map);
+	
+	System.out.println(x.length());
+
+		System.out.println(yy);
+		x.close();
+
+assertEquals(yy,33); //blobquery will return the mapping of the charsequence in the map
+		
+	}
 	@Test
 	public void testwriteCapturedUTF8(){
 		TrieParserReader reader = new TrieParserReader(3);
@@ -378,6 +696,7 @@ y.openLowLevelAPIField();
 StringBuilder str = new StringBuilder();
 y.readUTFOfLength(y.available(), str);
 
+
  //value of blobwriter sent to stringbuilder to sompare with other string
 assertEquals(str.toString().trim(),"abcd");
 		
@@ -400,7 +719,7 @@ assertEquals(str.toString().trim(),"abcd");
 		DataOutputBlobWriter.openField(x);
 		
 //just like in test above, will return the number of captured bytes 4 in this case(abcd).
-		int num = TrieParserReader.writeCapturedUTF8ToPipe(reader, pipe, 0, 0);
+		int num = TrieParserReader.writeCapturedUTF8ToPipe(reader, pipe, 0, RawDataSchema.MSG_CHUNKEDSTREAM_1_FIELD_BYTEARRAY_2);
 
 
 		x.closeLowLevelField();
@@ -1692,7 +2011,7 @@ y.readUTFOfLength(y.available(), str);
 
 		byte[] source = "& http://google.com/stuff $https://another.com/g➕g❤️%s #Hello ".getBytes(); //space is required to mark end of text.
 
-		TrieParserReader.parseSetup(reader, source, 0, source.length, Integer.MAX_VALUE);
+		TrieParserReader.parseSetup(reader, source, 0, source.length, 1023); 
 
 		assertEquals(1,TrieParserReader.parseNext(reader, trie));
 		assertEquals(1,TrieParserReader.parseNext(reader, trie));
