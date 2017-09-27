@@ -3430,7 +3430,7 @@ public class Pipe<T extends MessageSchema<T>> {
     
     public static <S extends MessageSchema<S>> void presumeRoomForWrite(Pipe<S> pipe) {
     	if (!hasRoomForWrite(pipe)) {
-    		log.warn("Assumed available space but not found, make pipe larger or write less {}",pipe);    		
+    		log.warn("Assumed available space but not found, make pipe larger or write less {}",pipe, new Exception());    		
     		while (!hasRoomForWrite(pipe)) {
     			spinWork(pipe);
     		}
