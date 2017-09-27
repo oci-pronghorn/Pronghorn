@@ -3487,7 +3487,10 @@ public class Pipe<T extends MessageSchema<T>> {
 	private static <S extends MessageSchema<S>> boolean verifySize(Pipe<S> output, int size) {
 		try {
 			assert(Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition]) == size) : 
-				"Did not write the same size fragment as expected, double check message. expected:"+Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition])+" but got "+size;
+				"Did not write the same size fragment as expected, double check message. expected:"
+					+Pipe.sizeOf(output, output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition])
+					+" but was passed "+size+" for schema "+Pipe.schemaName(output)
+					+" and assumed MsgId of "+output.slabRing[output.slabMask&(int)output.llRead.llwConfirmedPosition];
 		} catch (ArrayIndexOutOfBoundsException aiex) {
 			//ignore, caused by some poor unit tests which need to be re-written.
 		}
