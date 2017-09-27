@@ -347,6 +347,7 @@ assertEquals(val1,12);
 		
 		assertEquals(capturedbytelength,4);
 		assertEquals(x,4);
+		assertEquals(str.toString(),"abcd");
 	}
 	
 	@Test
