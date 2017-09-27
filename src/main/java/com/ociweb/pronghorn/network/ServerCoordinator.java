@@ -104,7 +104,7 @@ public class ServerCoordinator extends SSLConnectionHolder {
     	this.processorLookup = Pipe.splitGroups(processorsCount, maxPartialResponses);
     	
     	if (isTLS) {
-    		logger.info("init TLS");
+    		//logger.info("init TLS");
 			// TODO: move this up and share policy with client coordinator
 			TLSPolicy tls = TLSPolicy.defaultPolicy;
 			SSLEngineFactory.init(tls);

@@ -363,7 +363,7 @@ public class NetGraphBuilder {
 			ServerCoordinator coordinator, ServerPipesConfig serverConfig,
 			Pipe<NetPayloadSchema>[] handshakeIncomingGroup, long rate) {
 		
-		logger.info("build remainder of server");
+	//	logger.info("build remainder of server");
 		PipeConfig<NetPayloadSchema> fromOrderedConfig = serverConfig.orderWrapConfig();
 		Pipe<NetPayloadSchema>[] fromOrderedContent = new Pipe[serverConfig.serverResponseWrapUnits * serverConfig.serverPipesPerOutputEngine];
 
@@ -374,7 +374,7 @@ public class NetGraphBuilder {
         buildSocketWriters(graphManager, coordinator, serverConfig.serverSocketWriters, toWiterPipes, 
         		           serverConfig.writeBufferMultiplier, rate);
 
-        logger.info("process nota values");
+        //logger.info("process nota values");
               
         Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(serverConfig.newConnectionsConfig,false);        
         ServerNewConnectionStage newConStage = new ServerNewConnectionStage(graphManager, coordinator, newConnectionsPipe); 
@@ -766,7 +766,7 @@ public class NetGraphBuilder {
 				
 				int i = instances;
 				while (--i>=0) {
-					logger.info("building module #{} for route {}", i, getPathRoute(i));
+					
 					switch (a) {
 						case 0:
 						ResourceModuleStage<?, ?, ?, ?> newInstanceA = ResourceModuleStage.newInstance(graphManager, 

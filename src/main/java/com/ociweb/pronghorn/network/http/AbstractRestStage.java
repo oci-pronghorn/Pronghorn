@@ -75,7 +75,7 @@ public abstract class AbstractRestStage< T extends Enum<T> & HTTPContentType,
     
     protected AbstractRestStage(GraphManager graphManager, Pipe[] inputs, Pipe[] outputs, HTTPSpecification<T,R,V,H> httpSpec) {
         super(graphManager,inputs,outputs);
-        logger.info("abstract rest stage");
+        
         this.httpSpec = httpSpec;
     }
     
