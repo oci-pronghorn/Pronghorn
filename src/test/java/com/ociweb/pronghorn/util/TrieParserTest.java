@@ -341,6 +341,7 @@ assertEquals(val1,12);
 		System.out.println("str:" + str.toString());
 		assertEquals(capturedbytelength,4);
 		assertEquals(x,4);
+		assertEquals(str.toString(),"abcd");
 	}
 	
 	@Test
