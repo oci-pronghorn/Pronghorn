@@ -696,8 +696,9 @@ public class NetGraphBuilder {
 		
 		boolean isLarge = false;
 		
+		
 		final ModuleConfig modules = buildTelemetryModuleConfig(rate);
-		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 1);
+		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 2);
 				 
 		 //This must be large enough for both partials and new handshakes.
 		
