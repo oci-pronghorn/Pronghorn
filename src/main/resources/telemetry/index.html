@@ -47,38 +47,36 @@
         }
     }
 
-    //to get the number of stage and edge IDs
+ //   to get the number of stage and edge IDs
     var edgeid = new RegExp(/" -> "/g); //edge ids
     var totalids = new RegExp (/label/g); //total ids
 
-    var node = new RegExp(/\=(.*)"([^"]+)"/g);
+    var node = new RegExp(/\="([^"]+)"/g);
     var newline = new RegExp(/([^\n]+)/g);
-    var enewline = new RegExp(/([^\n]+)/g);
 
     function paintParts() {
         var date1 = new Date(); //date
         var dot = httpGet("graph.dot");
         var date2 = new Date();
-        console.log(date2 - date1);
+        //console.log(date2 - date1);
 
-        var numberOfEdges  = dot.match(edgeid).length;
+        var numberOfEdgeIds  = dot.match(edgeid).length;
         var numberOfTotalIds = dot.match(totalids).length;
 
-        var numberOfNodeIds = numberOfTotalIds-numberOfEdges; //number of stage(node) ids
+        var numberOfNodeIds = numberOfTotalIds-numberOfEdgeIds;
 
         var whole = dot.match(node);
         var ss = 1; // node id number in html (node ids start at 1)
         var ee = 1; //edge id number in html (node ids start at 1)
 
         //updates the nodes
-        for (var s = 0; s <numberOfNodeIds; s++) {   // is the number of nodes
+        for (var s = 0; s < numberOfNodeIds; s++) {   // is the number of nodes
             var iteration = whole[s].match(newline).map(function(item) {
                 return item.replace(/"|=/g, '');
             });
 
             $('#node' + ss).children('text').each(function(itemIdx, item) {
                 item = $(item);
-
                 if(item.text() !== iteration[itemIdx]) {
                     item.text(iteration[itemIdx]);
                 }
@@ -88,8 +86,8 @@
         }
 
         //updates the edges
-        for (var e = (numberOfNodeIds+1); e<(totalids+1); e++) {   // is the number of nodes
-            var eiteration = whole[e].match(enewline).map(function(item) {
+        for (var e = numberOfNodeIds; e<numberOfTotalIds; e++) {   // is the number of nodes
+            var eiteration = whole[e].match(newline).map(function(item) {  //27
                 return item.replace(/"|=/g, '');
             });
 
@@ -99,7 +97,6 @@
                     item.text(eiteration[itemIdx]);
                 }
             });
-
             ee++;
         }
         return 0;
@@ -112,7 +109,7 @@
     var duration = (stopDate - startDate);
     
     setInterval(paintAll,60000+duration);
-    setInterval(paintParts, 500+duration);
+    setInterval(paintParts, 400+duration);
 
 </script>
 
