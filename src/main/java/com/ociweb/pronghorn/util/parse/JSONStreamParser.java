@@ -3,6 +3,7 @@ package com.ociweb.pronghorn.util.parse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieKeyable;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
@@ -172,13 +173,10 @@ public class JSONStreamParser {
 				
 				final int id  = (int)TrieParserReader.parseNext(reader, customParser);
 				
+				//logger.info("position is now {} vs ring buffer size {}", reader.sourcePos, reader.sourceMask);
+				
 				if (-1 == id) {
-					if (pos != reader.sourcePos) {
-						System.out.println("xxxx "+pos+" "+reader.sourcePos);
-						System.err.println("no return to position!!!");
-						System.exit(-1);
-						
-					}
+					assert(pos == reader.sourcePos) : "did not return to start position";
 				}
 				
 				//logger.info("log event {}  ",id);
@@ -192,7 +190,7 @@ public class JSONStreamParser {
 						visitor.stringBegin();
 						TrieParserReader.capturedFieldBytes(reader, 0, visitor.stringAccumulator());
 						break;
-		            case  CONTINUED_STRING: //continue string change mode
+		            case CONTINUED_STRING: //continue string change mode
 						//we have no string captured this is just a flag to change modes
 		            	state = TEXT_STATE;	            	
 						break;					
@@ -237,15 +235,22 @@ public class JSONStreamParser {
 					case TRUE_ID:
 						visitor.literalTrue();
 						break;
-					case -1:						
-						
-						if (reader.parseHasContentLength(reader)>0) {
-						
-							int id2  = (int)TrieParserReader.parseNext(reader, customParser);
-							System.err.println(id2+"  "+reader.parseHasContentLength(reader));
+					case -1:
+						//if less than longest known this is not an error we just need more data...
+						//TODO:confirm grows.
+						if (reader.parseHasContentLength(reader) > customParser.longestKnown()) {
 							
-							System.err.println("UNKNOWN: "+reader.parseHasContentLength(reader));
-							TrieParserReader.debugAsUTF8(reader, System.err);						
+							System.err.print("Unable to parse: '");
+							TrieParserReader.debugAsUTF8(reader, System.err,100,false);
+							System.err.println("'");
+							
+							TrieParserReader.debugAsArray(reader, System.err, 80);
+							System.err.println();
+							if (reader.sourceLen>80) {
+								System.err.println("warning we have "+reader.sourceLen+" total.");
+							}
+							
+							throw new RuntimeException("check that JSON tags are expected.");
 						}
 						
 						return;
