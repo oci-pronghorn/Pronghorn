@@ -543,6 +543,22 @@ boolean b = TrieParserReader.parseSkipUntil(reader, 51); //51 is ascii for 3. wi
 assertTrue(b);
 	}
 
+	@Test
+	public void testParseSetUpGrow(){
+		TrieParserReader reader = new TrieParserReader(3);
+		TrieParser map = new TrieParser(16);
+		
+		map.setUTF8Value("12%b123", 33);
+	CharSequence test = "12abcd123";
+		long val = reader.query(map, test);
+		TrieParserReader.parseSetup(reader,"12abcd123".getBytes(),0,9,1023);
+		 
+		assertEquals(reader.sourceLen,9); //length of parseReader is 9(size of array
+		TrieParserReader.parseSetupGrow(reader, 2); //growing sourceLen by 2
+		
+		
+		assertEquals(reader.sourceLen,11);
+	}
 	
 	@Test
 	public void testparseCopy(){
@@ -608,10 +624,30 @@ assertEquals(val,6); //asserting length returned by parseCopy is length given. w
 	
 //target will be [61,62,63,64] -> saved captured vals.
 		
-		System.out.println("val " + val);
-		System.out.println("value: " + value);
+		
 		assertEquals(val,33); //just standard query test, make sure parsetSetup is correct.
 		assertEquals(value,4); // length of captured target array from savePositionMemo();
+		
+		//load position memo
+	
+		CharSequence x = "12abcde";
+		reader.query(map,x); //will change position
+	
+		System.out.println();
+		//to check that sourcePos is not already 0(for test below).
+		assertEquals(reader.sourcePos,14);
+		//will move  sourcePos by 1.
+		reader.moveBack(1);
+		assertEquals(reader.sourcePos,13);
+
+		
+		TrieParserReader.loadPositionMemo(reader, target, 0) ;
+		
+		//assert here will check to see if sourcePos "loaded" back to zero.
+		assertEquals(reader.sourcePos,0);
+		
+		
+		
 	}
 	
 	@Test 
@@ -703,7 +739,7 @@ assertEquals(str.toString().trim(),"abcd");
 		
 	}
 	
-@Ignore
+@Test
 	public void testwriteCapturedUTF8ToPipe() throws IOException{
 		TrieParserReader reader = new TrieParserReader(3);
 		TrieParser map = new TrieParser(16);

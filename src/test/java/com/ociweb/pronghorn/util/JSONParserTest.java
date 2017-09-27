@@ -20,7 +20,7 @@ import com.ociweb.pronghorn.util.parse.JSONVisitorCapture;
 
 public class JSONParserTest {
 
-	@Ignore
+	@Test
 	public void simpleTest() {
 				
 		String json = " { \"key\" : \"value\" }  ";
@@ -39,7 +39,7 @@ public class JSONParserTest {
 		assertEquals("{key:value}",target.toString());
 	}
 
-	@Ignore
+	@Test
 	public void complexTest() {
 				
 		String json = " { \"key\" : \"value\" \n, \"key2\" : \"value2\"}  ";
@@ -58,7 +58,7 @@ public class JSONParserTest {
 	}
 	
 	
-	@Ignore
+	@Test
 	public void arrayTest() {
 				
 		String json = " [ { \"key\" : \"value\" } , \n { \"key\" : \"value\" }     ] ";
