@@ -50,7 +50,7 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 		if (verb != HTTPVerbDefaults.GET) {
 			return null;
 		}		
-		//logger.info("begin requested dot");
+		//logger.info("begin building requested graph");
 		monitor.writeAsDot(gm, payload);		
 		//logger.info("finished requested dot");
 		return HTTPContentTypeDefaults.DOT.getBytes();

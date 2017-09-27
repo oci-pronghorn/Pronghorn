@@ -692,7 +692,7 @@ public class NetGraphBuilder {
 	
 		logger.info("begin telemetry definition");
 		
-		final long rate = 20_000_000; //fastest rate in NS
+		final long rate = 40_000_000; //fastest rate in NS
 		
 		boolean isLarge = false;
 		
@@ -767,7 +767,9 @@ public class NetGraphBuilder {
 				//the file server is stateless therefore we can build 1 instance for every input pipe
 				int instances = inputPipes.length;
 				int outputPipeLength = 4;
-				int outputPipeChunkMax = 1<<15;
+				int outputPipeChunkMax = 1<<21; //2MB
+				int outputPipeChunkMin = 1<<16; //64K
+				
 				Pipe<ServerResponseSchema>[] staticFileOutputs = new Pipe[instances];
 				
 				int i = instances;
@@ -777,7 +779,7 @@ public class NetGraphBuilder {
 						case 0:
 						activeStage = ResourceModuleStage.newInstance(graphManager, 
 								inputPipes[i], 
-								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMax), 
+								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMin), 
 								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 								"telemetry/index.html", HTTPContentTypeDefaults.HTML);						
 						break;
@@ -804,10 +806,11 @@ public class NetGraphBuilder {
 						case 4:
 							activeStage = ResourceModuleStage.newInstance(graphManager, 
 							          inputPipes[i], 
-							          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMax), 
+							          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMin), 
 							          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 							          "telemetry/webworker.js", HTTPContentTypeDefaults.JS);
 						break;
+						//TODO: add version...
 						default:
 							throw new RuntimeException("unknonw idx "+a);
 					}
