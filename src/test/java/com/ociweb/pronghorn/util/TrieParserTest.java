@@ -23,7 +23,7 @@ import javax.swing.text.WrappedPlainView;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.ociweb.pronghorn.pipe.BlobWriter;
+import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
@@ -649,7 +649,7 @@ assertEquals(val,6); //asserting length returned by parseCopy is length given. w
 		//reader.parseGather(reader, x,(byte) 'd'); // so will give 5. 5 bytes until d is hit. if i put 'c' will return length of 4.
 
 		
-		BlobWriter x = reader.blobQueryPrep(reader);
+		ChannelWriter x = reader.blobQueryPrep(reader);
 		x.append(test); 
 	long yy = reader.blobQuery(reader, map);
 	
