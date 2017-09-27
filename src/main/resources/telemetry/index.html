@@ -1,51 +1,119 @@
 <!doctype html>
 <html>
 <head>
-  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
-  <meta content="utf-8" http-equiv="encoding">
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <meta content="utf-8" http-equiv="encoding">
 
-  <script src="/viz-lite.js"></script>
-  
+    <script src="/viz-lite.js"></script>
+    <script src="./jquery-3.2.1.min.js"></script>
 </head>
-
 <body>
+<!--<div style="opacity: 0.9; width: 200px; background-color: #ccccb3; z-index: 10; position: fixed; right: 20px; bottom: 20px; height: 83px; border-radius: 10px;">-->
+<!--<p style="text-align:center">Click to Download an SVG<p>-->
+<!--<a href="http://localhost:8080/" download>-->
+<!--<button style="opacity: 0.9; background-color: white; border-radius: 2px; position: fixed; right:80px; bottom:30px; cursor:pointer" border="0" width="104" height="142"><b>Download</b></button>-->
+<!--</a>-->
+<!--</div>-->
+<!--<div style="opacity: 0.9; width: 200px; background-color: #ccccb3; z-index: 10; position: fixed; left: 10px; top: 10px; height: 120px; border-radius: 5px;">-->
+<!--<p style="text-align:center">Magnifier<p>-->
+<!--</div>-->
+<div id="demo"></div>
+<script>
 
-<script src="./viz-lite.js"></script>
-    <script>
-    
     function httpGet(theUrl) {
-      var xmlHttp = null;
+        var xmlHttp = null;
 
-      xmlHttp = new XMLHttpRequest();
-      xmlHttp.open( "GET", theUrl, false );
-      xmlHttp.send( null );
-      
-      return xmlHttp.responseText;
-    }
-    
-    function paint() {
-    	var date1 = new Date();
-    	var dot = httpGet("graph.dot");	
-    	if (dot) {//contintional keeps graph up in browser after app stops..
-    		document.body.innerHTML = Viz(dot, { format: "svg", engine: "dot"});
-    	    var date2 = new Date();
-    	    return date2 - date1;
-    	}
-    	return 0;
-    }
-    
-    //run once to get the duration
-    var duration = paint();
-    if (0 == duration) {
-    	duration = 10000;//every 10 seconds since first fall failed.
+        xmlHttp = new XMLHttpRequest();
+        xmlHttp.open( "GET", theUrl, false );
+        xmlHttp.send( null );
+
+        return xmlHttp.responseText;
     }
 
-    setInterval(paint,duration+80); //40 is the absolute fastest the server supports 
-    //80 gives 12.5x per second, render render may take significant browser resources
-   
-    
-    </script>
+    var w;
 
-  
+    if (window.Worker) {
+        w = new Worker('webworker.js');
+        //message sent to webworker
+
+    }
+
+    function paintAll () {
+        if (w) {
+            //returned message from the webworker
+            w.onmessage = function (e) {
+                console.log("PaintAll has run");
+                document.getElementById("demo").innerHTML = e.data.result;
+            };
+            w.postMessage("");
+        }
+
+    }
+
+    //to get the number of stage and edge IDs
+    var edgeid = new RegExp(/" -> "/g); //edge ids
+    var totalids = new RegExp (/label/g); //total ids
+
+    var node = new RegExp(/\=(.*)"([^"]+)"/g);
+    var newline = new RegExp(/([^\n]+)/g);
+    var enewline = new RegExp(/([^\n]+)/g);
+
+    function paintParts() {
+        var dot = httpGet("graph.dot");
+
+        var numberOfEdges  = dot.match(edgeid).length;
+        var numberOfTotalIds = dot.match(totalids).length;
+
+        var numstage = numberOfTotalIds-numberOfEdges; //number of stage ids
+
+        //start of html update
+
+        var whole = dot.match(node);
+        var ss = 1; // node id number in html (node ids start at 1)
+        var ee = 1; //edge id number in html (node ids start at 1)
+
+        //updates the nodes
+        for (var s = 1; s<=numstage; s++) {   // is the number of nodes
+            var iteration = whole[s].match(newline).map(function(item) {
+                return item.replace(/"|=/g, '');
+            }); //grab the label section
+
+            $('#node' + ss).children('text').each(function(itemIdx, item) {
+                item = $(item);
+
+                if(item.text() !== iteration[itemIdx]) {
+                    item.text(iteration[itemIdx]);
+                }
+            });
+
+            ss++;
+        }
+
+        //updates edge
+        for (var e = (numstage+1); e<(totalids+1); e++) {   // is the number of nodes
+            var eiteration = whole[e].match(enewline).map(function(item) {
+                return item.replace(/"|=/g, '');
+            }); //grab the label section
+
+            $('#edge' + ee).children('text').each(function(itemIdx, item) {
+                item = $(item);
+                if(item.text() !== eiteration[itemIdx]) {
+                    item.text(eiteration[itemIdx]);
+                }
+            });
+
+            ee++;
+        }
+        return 0;
+    }
+
+    document.getElementById("demo").innerHTML = Viz(httpGet("graph.dot"), {format: "svg", engine: "dot"});
+
+    setInterval(paintAll,10000);
+    setInterval(paintParts,160);
+
+</script>
+
 </body>
 </html>
+

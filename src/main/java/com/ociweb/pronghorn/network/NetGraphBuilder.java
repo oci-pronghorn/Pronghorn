@@ -735,7 +735,7 @@ public class NetGraphBuilder {
 	private static ModuleConfig buildTelemetryModuleConfig(final long rate) {
 		ModuleConfig config = new ModuleConfig(){
 
-			private final int moduleCount = 3;
+			private final int moduleCount = 5;
 			
 			public CharSequence getPathRoute(int a) {
 				switch(a) {
@@ -745,6 +745,10 @@ public class NetGraphBuilder {
 						return "/viz-lite.js";
 					case 2:
 						return "/graph.dot";
+					case 3:
+						return "/jquery-3.2.1.min.js";
+					case 4:
+						return "/webworker.js";
 					default:
 						throw new RuntimeException("unknown value "+a);
 				}
@@ -761,41 +765,55 @@ public class NetGraphBuilder {
 				
 				//the file server is stateless therefore we can build 1 instance for every input pipe
 				int instances = inputPipes.length;
-				
+				int outputPipeLength = 4;
+				int outputPipeChunkMax = 1<<15;
 				Pipe<ServerResponseSchema>[] staticFileOutputs = new Pipe[instances];
 				
 				int i = instances;
 				while (--i>=0) {
-					
+					PronghornStage activeStage = null;
 					switch (a) {
 						case 0:
-						ResourceModuleStage<?, ?, ?, ?> newInstanceA = ResourceModuleStage.newInstance(graphManager, 
+						activeStage = ResourceModuleStage.newInstance(graphManager, 
 								inputPipes[i], 
-								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
+								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMax), 
 								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
-								"telemetry/index.html", HTTPContentTypeDefaults.HTML);
-						GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceA);
-					    GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceA);						
+								"telemetry/index.html", HTTPContentTypeDefaults.HTML);						
 						break;
 						case 1:
-						ResourceModuleStage<?, ?, ?, ?> newInstanceB = ResourceModuleStage.newInstance(graphManager, 
+						activeStage = ResourceModuleStage.newInstance(graphManager, 
 						          inputPipes[i], 
-						          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
+						          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMax), 
 						          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 						          "telemetry/viz-lite.js", HTTPContentTypeDefaults.JS);
-						GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceB);
-						GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceB);
 						break;
 						case 2:
-						DotModuleStage<?, ?, ?, ?> newInstanceC = DotModuleStage.newInstance(graphManager, 
+						activeStage = DotModuleStage.newInstance(graphManager, 
 								inputPipes[i], 
-								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(4, 1<<15), 
+								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMax), 
 								((HTTP1xRouterStageConfig)routerConfig).httpSpec);
-						GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newInstanceC);
-						GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, newInstanceC);
+						break;
+						case 3:
+							activeStage = ResourceModuleStage.newInstance(graphManager, 
+							          inputPipes[i], 
+							          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMax), 
+							          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
+							          "telemetry/jquery-3.2.1.min.js", HTTPContentTypeDefaults.JS);
+						break;
+						case 4:
+							activeStage = ResourceModuleStage.newInstance(graphManager, 
+							          inputPipes[i], 
+							          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMax), 
+							          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
+							          "telemetry/webworker.js", HTTPContentTypeDefaults.JS);
 						break;
 						default:
 							throw new RuntimeException("unknonw idx "+a);
+					}
+					
+					if (null!=activeStage) {
+						GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, activeStage);
+				    	GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, activeStage);						
 					}
 					
 				}
