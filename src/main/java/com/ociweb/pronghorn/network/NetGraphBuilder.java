@@ -701,7 +701,7 @@ public class NetGraphBuilder {
 		final ModuleConfig modules = buildTelemetryModuleConfig(rate);
 		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 2);
 				 
-		serverConfig.ensureServerCanWrite(1<<21);//2MB
+		serverConfig.ensureServerCanWrite(1<<19);//512K
 		 //This must be large enough for both partials and new handshakes.
 		
 		ServerCoordinator serverCoord = new ServerCoordinator(isTLS, bindHost, port, 
@@ -768,9 +768,8 @@ public class NetGraphBuilder {
 				
 				//the file server is stateless therefore we can build 1 instance for every input pipe
 				int instances = inputPipes.length;
-				int outputPipeLength = 4;
-				final int outputPipeChunkMax = 1<<21; //2MB
-				final int outputPipeChunkMin = 1<<16; //64K
+				final int outputPipeChunkMax = 1<<19; //512K
+				final int outputPipeChunkMin = 1<<14; //16K
 				
 				Pipe<ServerResponseSchema>[] staticFileOutputs = new Pipe[instances];
 				
@@ -781,34 +780,34 @@ public class NetGraphBuilder {
 						case 0:
 						activeStage = ResourceModuleStage.newInstance(graphManager, 
 								inputPipes[i], 
-								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMin), 
+								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(2, outputPipeChunkMin), 
 								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 								"telemetry/index.html", HTTPContentTypeDefaults.HTML);						
 						break;
 						case 1:
 						activeStage = ResourceModuleStage.newInstance(graphManager, 
 						          inputPipes[i], 
-						          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMax), 
+						          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(2, outputPipeChunkMax), 
 						          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 						          "telemetry/viz-lite.js", HTTPContentTypeDefaults.JS);
 						break;
 						case 2:
 						activeStage = DotModuleStage.newInstance(graphManager, 
 								inputPipes[i], 
-								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMax), 
+								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(2, outputPipeChunkMax), 
 								((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 						break;
 						case 3:
 							activeStage = ResourceModuleStage.newInstance(graphManager, 
 							          inputPipes[i], 
-							          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMax), 
+							          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(2, outputPipeChunkMax), 
 							          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 							          "telemetry/jquery-3.2.1.min.js", HTTPContentTypeDefaults.JS);
 						break;
 						case 4:
 							activeStage = ResourceModuleStage.newInstance(graphManager, 
 							          inputPipes[i], 
-							          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(outputPipeLength, outputPipeChunkMin), 
+							          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(2, outputPipeChunkMin), 
 							          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 							          "telemetry/webworker.js", HTTPContentTypeDefaults.JS);
 						break;
