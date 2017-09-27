@@ -312,7 +312,7 @@ public class TrieParserReader {
 		} else {        
 			int run = that.data[pos + 2];
 			
-			assert(run >0);
+			
 			
 			
 			idx = pos + TrieParser.SIZE_OF_RUN-1;
@@ -350,10 +350,10 @@ public class TrieParserReader {
 		assert(that.sourcePos>=0) : "Negative source position offsets are not supported.";
 		that.sourceLen     = length;
 		that.sourceMask    = mask;   
-		assert(that.sourceLen <= that.sourceMask) : "ERROR the source length is larger than the backing array";
+		assert(that.sourceLen <= that.sourceMask + 1) : "ERROR the source length is larger than the backing array";
 
 	}
-
+@Deprecated
 	public static void parseSetup(TrieParserReader that, byte[] source, int mask) {
 		that.sourceBacking = source;
 		that.sourceMask    = mask;   
@@ -379,6 +379,7 @@ public class TrieParserReader {
 
 		target[offset] = that.sourcePos & that.sourceMask;
 		return target[offset+1] = that.sourceLen;
+		
 	}
 
 
@@ -466,14 +467,6 @@ public class TrieParserReader {
 
 	}
 
-	private static void reportError(TrieParserReader reader, int debugPos, int debugLen) {
-		String input = "";
-
-		input = debugContent(reader, debugPos, debugLen);
-
-		System.out.println("pos:"+debugPos+" len:"+debugLen+" unable to parse:\n'"+input+"'");
-	}
-
 	private static String debugContent(TrieParserReader reader, int debugPos, int debugLen) {
 		return Appendables.appendUTF8(new StringBuilder(), 
 				reader.sourceBacking, 
@@ -482,17 +475,7 @@ public class TrieParserReader {
 				reader.sourceMask).toString();
 	}
 
-	public static void logNextTextToParse(TrieParserReader reader) {
-		StringBuilder builder = new StringBuilder();
-		int c = Math.min(500, (int)reader.sourceLen);
-		int p = reader.sourcePos;
-		logger.warn("parse pos:{} len:{}",p,reader.sourceLen);
-		while (--c>=0) {
-			builder.append((char)reader.sourceBacking[reader.sourceMask & p++]);
-		}
-		String toParse = builder.toString();
-		logger.warn("to parse next:\n{}",toParse);
-	}
+
 
 	public int parseSkip(int count) {
 		return parseSkip(this, count);
@@ -611,7 +594,11 @@ public class TrieParserReader {
 		if (reader.normalExit) {
 			return exitUponParse(reader, trie);        	       	 
 		} else {
-			return exitWithNoParse(reader, trie);
+			assert(reader.sourceLen <= trie.longestKnown()) : "Check the parse tree, this text was not parsable. "+debugContent(reader, reader.sourcePos, reader.sourceLen);
+			
+			
+			
+			return reader.result;
 		}
 	}
 
@@ -651,7 +638,7 @@ public class TrieParserReader {
     	 return writer;
     }
     
-    public static long blobQuery(TrieParserReader reader, TrieParser trie, CharSequence cs) {
+    public static long blobQuery(TrieParserReader reader, TrieParser trie) {
     	
         Pipe.outputStream(reader.workingPipe).closeLowLevelField();
     	Pipe.publishWrites(reader.workingPipe);
@@ -672,18 +659,6 @@ public class TrieParserReader {
 		reader.sourceLen -= (reader.localSourcePos-reader.sourcePos);
 		reader.sourcePos = reader.localSourcePos;        	        	
 		return TrieParser.readEndValue(trie.data,reader.pos, trie.SIZE_OF_RESULT);
-	}
-
-	private static long exitWithNoParse(TrieParserReader reader, TrieParser trie) {
-		//unable to parse this case
-		//determine if we have an error or need more data        	
-		//assert(reader.sourceLen <= trie.longestKnown()) : "Check the parse tree, this text was not parsable. "+debugContent(reader, reader.sourcePos, reader.sourceLen);
-		boolean debug = false;
-		if (debug && (reader.sourceLen > trie.longestKnown())) {
-			logger.info("WARNING: input data can not be parsed and the pipeline has stopped at this point. {}",debugContent(reader, reader.sourcePos, reader.sourceLen) ,new Exception());
-		} //else we just need more data.
-
-		return reader.result;
 	}
 
 	private static void processEachType(TrieParserReader reader, TrieParser trie, byte[] source, long sourceLength,
@@ -1310,10 +1285,14 @@ public class TrieParserReader {
 	}
 
 	public static void writeCapturedShort(TrieParserReader reader, int idx, DataOutput target) {
+		
+		
 		int pos = idx*4;
 
+		
 		int sign = reader.capturedValues[pos++];
 		assert(sign!=0);
+		
 		pos++;//skip high since we are writing a short
 		try {
 			target.writeShort((short)reader.capturedValues[pos++]);
