@@ -347,14 +347,7 @@ public class TrieParserReader {
 		assert(that.sourceLen <= that.sourceMask + 1) : "ERROR the source length is larger than the backing array";
 
 	}
-@Deprecated
-	public static void parseSetup(TrieParserReader that, byte[] source, int mask) {
-		that.sourceBacking = source;
-		that.sourceMask    = mask;   
-		
-		assert(that.sourceLen <= that.sourceMask) : "ERROR the source length is larger than the backing array";
 
-	}
 
 
 	public static void parseSetupGrow(TrieParserReader that, int additionalLength) {
