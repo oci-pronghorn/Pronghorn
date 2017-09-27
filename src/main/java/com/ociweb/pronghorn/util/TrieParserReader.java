@@ -589,10 +589,6 @@ public class TrieParserReader {
 		if (reader.normalExit) {
 			return exitUponParse(reader, trie);        	       	 
 		} else {
-			assert(reader.sourceLen <= trie.longestKnown()) : "Check the parse tree, this text was not parsable. "+debugContent(reader, reader.sourcePos, reader.sourceLen);
-			
-			
-			
 			return reader.result;
 		}
 	}
