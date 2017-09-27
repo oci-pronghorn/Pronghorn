@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.network.module;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.pronghorn.network.config.HTTPContentType;
 import com.ociweb.pronghorn.network.config.HTTPContentTypeDefaults;
 import com.ociweb.pronghorn.network.config.HTTPHeader;
@@ -19,6 +22,8 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 								V extends Enum<V> & HTTPVerb,
 								H extends Enum<H> & HTTPHeader> extends AbstractAppendablePayloadResponseStage<T,R,V,H> {
 
+	Logger logger = LoggerFactory.getLogger(DotModuleStage.class);
+	
     public static DotModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs, HTTPSpecification<?, ?, ?, ?> httpSpec) {
     	MonitorConsoleStage monitor = MonitorConsoleStage.attach(graphManager);	
     	return new DotModuleStage(graphManager, inputs, outputs, httpSpec, monitor);
@@ -45,7 +50,9 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 		if (verb != HTTPVerbDefaults.GET) {
 			return null;
 		}		
+		//logger.info("begin requested dot");
 		monitor.writeAsDot(gm, payload);		
+		//logger.info("finished requested dot");
 		return HTTPContentTypeDefaults.DOT.getBytes();
 	}
 

@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.network.schema;
 
-import java.nio.ByteBuffer;
-
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;

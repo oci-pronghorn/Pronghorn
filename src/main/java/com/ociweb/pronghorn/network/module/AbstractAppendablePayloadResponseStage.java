@@ -20,7 +20,6 @@ import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
-import com.ociweb.pronghorn.pipe.PipeReader;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -57,6 +56,10 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			this.eTagInt = eTagCounter.incrementAndGet();
 			
 			assert(inputs.length == inputs.length);
+			
+			this.supportsBatchedPublish = false;
+			this.supportsBatchedRelease = false;
+			
 	}
 	
 	public AbstractAppendablePayloadResponseStage(GraphManager graphManager, 
@@ -82,8 +85,6 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		
 		while ((activeChannelId != -1) && (null!=activeOutput) && PipeWriter.hasRoomForWrite(activeOutput)   ) {
 			
-			//System.err.println(Pipe.hasRoomForWrite(activeOutput)+" "+activeOutput);
-			
 			PipeWriter.presumeWriteFragment(activeOutput, ServerResponseSchema.MSG_TOCHANNEL_100);
 		    PipeWriter.writeLong(activeOutput,ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_CHANNELID_21, activeChannelId);
 		    PipeWriter.writeInt(activeOutput,ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_SEQUENCENO_23, activeSequenceNo);
@@ -95,9 +96,12 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			
 		}		
 		
-		int i = this.inputs.length;
-		while ((--i >= 0) && (activeChannelId == -1)) {			
-			process(inputs[i], outputs[i]);			
+		//only do when previous is complete.
+		if (null == activeOutput) {
+			int i = this.inputs.length;
+			while ((--i >= 0) && (activeChannelId == -1)) {			
+				process(inputs[i], outputs[i]);			
+			}
 		}
 		
 	}
@@ -108,33 +112,34 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			             Pipe<ServerResponseSchema> output) {
 		
 		
-		while ( PipeWriter.hasRoomForWrite(output) &&
-				PipeReader.tryReadFragment(input)) {
+		while ( Pipe.hasRoomForWrite(output) &&
+				Pipe.hasContentToRead(input)) {
 			
 			//logger.trace("has room and has data to write out from "+input);
 		    
-			int msgIdx = PipeReader.getMsgIdx(input);
+			int msgIdx = Pipe.takeMsgIdx(input);
 		    switch(msgIdx) {
 		        case HTTPRequestSchema.MSG_RESTREQUEST_300:
 
-		        	activeChannelId = PipeReader.readLong(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_CHANNELID_21);
-		        	activeSequenceNo = PipeReader.readInt(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_SEQUENCE_26);   			        	
-		        	int temp = PipeReader.readInt(input, HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_VERB_23);
+		        	activeChannelId = Pipe.takeLong(input);
+		        	activeSequenceNo = Pipe.takeInt(input);
+		        	
+		        	int temp = Pipe.takeInt(input);//verb
     	    	    int routeId = temp>>>HTTPVerb.BITS;
 	    	        int fieldVerb = HTTPVerb.MASK & temp;
+		        			        	
+		        	DataInputBlobReader<HTTPRequestSchema> paramStream = Pipe.openInputStream(input);//param
 		        	
-		        	activeFieldRequestContext = PipeReader.readInt(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_REQUESTCONTEXT_25);
-		        	
-		        	int parallelRevision = PipeReader.readInt(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_REVISION_24);
+		        	int parallelRevision = Pipe.takeInt(input);
 		        	int parallelId = parallelRevision >>> HTTPRevision.BITS;
 		        	int fieldRevision = parallelRevision & HTTPRevision.MASK;
+
+		        	activeFieldRequestContext = Pipe.takeInt(input);//context
 		        			        	
-		        	DataInputBlobReader<HTTPRequestSchema> paramStream = PipeReader.inputStream(input, HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_PARAMS_32);
-		        	
+		        	//must read context before calling this
 		        	if (!sendResponse(output, fieldRevision, paramStream, (HTTPVerbDefaults)httpSpec.verbs[fieldVerb])) {
 
-		        		HTTPUtil.publishStatus(activeChannelId, activeSequenceNo, 404, 
-		        			output); 
+		        		HTTPUtil.publishStatus(activeChannelId, activeSequenceNo, 404, output); 
 		        	}
 		        	
 		        	
@@ -143,7 +148,8 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		           //requestShutdown();
 		        break;
 		    }
-		    PipeReader.releaseReadLock(input);
+		    Pipe.confirmLowLevelRead(input, Pipe.sizeOf(input, msgIdx));
+		    Pipe.releaseReadLock(input);
 		    
 		}
 		

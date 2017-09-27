@@ -7,14 +7,12 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
-import com.ociweb.pronghorn.util.Appendables;
 
 
 //consumes the sequence number in order and hold a pool entry for this connection
@@ -399,10 +397,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 int temp = Pipe.bytesReadBase(input);
 		 Pipe.confirmLowLevelRead(input, SIZE_OF_TO_CHNL);	 
 		 Pipe.releaseReadLock(input);
-		 
-		 assert(Pipe.bytesReadBase(input)!=temp) : "old base "+temp+" new base "+Pipe.bytesReadBase(input);
-		 
-
+	
 		 int y = 0;
 		 //If a response was sent as muliple parts all part of the same sequence number then we roll them up as a single write when possible.
 		 while ( Pipe.peekMsg(input, ServerResponseSchema.MSG_TOCHANNEL_100) 

@@ -466,7 +466,7 @@ public class NetGraphBuilder {
 		//we always have a super to ensure order regardless of TLS
 		//a single supervisor will group all the modules responses together.
 		///////////////////
-		logger.info("build ordering supervisors");
+		//logger.info("build ordering supervisors");
 		assert(fromSupers.length >= routerCount) : "reduce router count since we only have "+fromSupers.length+" pipes";
 		assert(routerCount>0);
 		
