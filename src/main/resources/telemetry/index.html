@@ -105,10 +105,14 @@
         return 0;
     }
 
+    var startDate = new Date(); //date
     document.getElementById("demo").innerHTML = Viz(httpGet("graph.dot"), {format: "svg", engine: "dot"});
+    var stopDate = new Date();
 
-    setInterval(paintAll,60000);
-    setInterval(paintParts,250);
+    var duration = (stopDate - startDate);
+    
+    setInterval(paintAll,60000+duration);
+    setInterval(paintParts, 500+duration);
 
 </script>
 
