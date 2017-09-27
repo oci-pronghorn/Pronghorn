@@ -448,6 +448,17 @@ public class Appendables {
 		}
     }
     
+    public static int appendedLength(long value) {
+    	int result = value<0?3:0;
+    	value = Math.abs(value);
+    	
+    	while (value > 0) {
+    		result++;
+    		value = value/10;
+    	}
+    	
+    	return result;
+    }
     
     public static <A extends Appendable> A appendValue(A target, long value) {
     	try {
@@ -675,7 +686,87 @@ public class Appendables {
     		                                        'g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v',
     		                                        'w','x','y','z','0','1','2','3','4','5','6','7','8','9','+','/'};
     
+    // + IS %2B
+    // / IS %2F
+    // = IS %3D    
+    
+    
     //TODO: add unit tests for each of the cases listed here https://en.wikipedia.org/wiki/Base64
+    
+    /**
+     * Writes URL encoded base64 encoded value of range found in backing array.
+     * 
+     */
+    public static <A extends Appendable> A appendBase64Encoded(A target, byte[] backing, int pos, int len, int mask) {
+        //  https://en.wikipedia.org/wiki/Base64
+    	try {
+	    	int accumulator = 0;
+	    	int i = 0;
+	    	int shift = -6;
+	    	int count = 0;
+	    	while (i < len) {
+	    		
+	    		shift+=8; // 2 4 (we now have 10)
+	    		accumulator = (accumulator<<8) | (0xFF&backing[mask & pos++]);
+	    		i++;
+	    
+				while (shift >= 0) {
+					int index = 0x3F&(accumulator>>shift);
+					
+					if (index<62) {
+						target.append(base64[index]);
+					} else {
+						if (index==62) {
+							assert(base64[index]=='+');
+							target.append("%2B");
+						} else {
+							assert(base64[index]=='/');
+							target.append("%2F");
+						}
+					}
+		
+					shift -= 6; //took top 6 now shift is at -4, 
+					count++;
+				}   		
+	    	}
+	    	
+	    	if (shift<0) {//last letter.
+	    		
+	    		shift+=8; 
+	    		accumulator = (accumulator<<8) | (0xFF&0);
+	    		i++;
+	    		
+	    		while (shift > 0) {    			
+	    			int index = 0x3F&(accumulator>>shift);
+					
+					if (index<62) {
+						target.append(base64[index]);
+					} else {
+						if (index==62) {
+							assert(base64[index]=='+');
+							target.append("%2B");
+						} else {
+							assert(base64[index]=='/');
+							target.append("%2F");
+						}
+					}
+	    			shift -= 6; //took top 6 now shift is at -4,
+	    			count++;
+	    		} 
+	    		
+	    	}
+	    	//NOTE: could and should be optimized.
+	        while ((count & 0x03) != 0) {
+	        	target.append("%3D");
+	        	count++;
+	        }
+	    
+	    	return target;
+    	} catch (IOException ioex) {
+    		throw new RuntimeException(ioex);
+    	}
+    }
+    
     public static <A extends Appendable> A appendBase64(A target, byte[] backing, int pos, int len, int mask) {
         //  https://en.wikipedia.org/wiki/Base64
     	try {

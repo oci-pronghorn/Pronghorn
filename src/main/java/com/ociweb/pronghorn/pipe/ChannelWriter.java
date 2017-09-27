@@ -10,7 +10,7 @@ import com.ociweb.pronghorn.pipe.token.TypeMask;
 import com.ociweb.pronghorn.util.ByteConsumer;
 import com.ociweb.pronghorn.util.field.StructuredBlobWriter;
 
-public abstract class BlobWriter extends OutputStream implements ObjectOutput, Appendable, ByteConsumer, StructuredBlobWriter {
+public abstract class ChannelWriter extends OutputStream implements ObjectOutput, Appendable, ByteConsumer, StructuredBlobWriter {
 
 	 abstract public void writeUTF(String s);
 	 

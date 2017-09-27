@@ -7,7 +7,7 @@ import java.io.ObjectInput;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
-public abstract class BlobReader extends InputStream implements ObjectInput {
+public abstract class ChannelReader extends InputStream implements ObjectInput {
 
 	public abstract int available();
 	
@@ -33,7 +33,7 @@ public abstract class BlobReader extends InputStream implements ObjectInput {
 	
 	public abstract void readInto(Externalizable target);
 	
-	public abstract void readInto(BlobWriter writer, int length);
+	public abstract void readInto(ChannelWriter writer, int length);
 	
 	public abstract Object readObject();
 	

@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.util.math;
 
-import java.util.Arrays;
-
 /*
  * @Author Nathan Tippy
  */

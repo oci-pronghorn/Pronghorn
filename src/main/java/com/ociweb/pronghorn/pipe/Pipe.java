@@ -2741,7 +2741,6 @@ public class Pipe<T extends MessageSchema<T>> {
 	   	//negative position is written as is because the internal array does not have any offset (but it could some day)
     	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
     	if (dataBlobPos>=0) {
-    		assert((dataBlobPos-baseBytePos)>=0);
     		buffer[bufferMask & (int)bufferPos] = (int)(dataBlobPos-baseBytePos) & Pipe.BYTES_WRAP_MASK; //mask is needed for the negative case, does no harm in positive case
     	} else {
     		buffer[bufferMask & (int)bufferPos] = dataBlobPos;
@@ -3403,6 +3402,12 @@ public class Pipe<T extends MessageSchema<T>> {
 		pipe.blobReader.openLowLevelAPIField();
 		return pipe.blobReader;
 	}
+	
+	public static <S extends MessageSchema<S>> DataInputBlobReader<S> peekInputStream(Pipe<S> pipe, int offset) {
+		pipe.blobReader.peekLowLevelAPIField(offset);
+		return pipe.blobReader;
+	}
+	
 	
 	/////////////
 	//low level API

@@ -189,8 +189,13 @@ public class PipeWriter {
 	    assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
 	    Pipe.validateVarLength(pipe,length);
-		Pipe.setBytePosAndLen(Pipe.slab(pipe), pipe.slabMask, pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), bytePos, length, Pipe.bytesWriteBase(pipe));
-		Pipe.addAndGetBytesWorkingHeadPosition(pipe, length);        
+		Pipe.setBytePosAndLen(Pipe.slab(pipe), 
+				     pipe.slabMask, 
+				     pipe.ringWalker.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), 
+				     bytePos, 
+				     length, 
+				     Pipe.bytesWriteBase(pipe));
+		Pipe.addAndGetBytesWorkingHeadPosition(pipe, length>=0?length:0);        
 	}
     
     public static void writeUTF8(Pipe pipe, int loc, CharSequence source) {

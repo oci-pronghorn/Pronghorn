@@ -2,15 +2,13 @@ package com.ociweb.pronghorn.util;
 
 import java.io.DataOutput;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.sql.Blob;
-import java.util.Arrays;
+import java.io.PrintStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.ociweb.pronghorn.pipe.BlobReader;
-import com.ociweb.pronghorn.pipe.BlobWriter;
+import com.ociweb.pronghorn.pipe.ChannelReader;
+import com.ociweb.pronghorn.pipe.ChannelWriter;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.MessageSchema;
@@ -310,11 +308,7 @@ public class TrieParserReader {
 		if (r >= 0) {
 			return;	
 		} else {        
-			int run = that.data[pos + 2];
-			
-			
-			
-			
+
 			idx = pos + TrieParser.SIZE_OF_RUN-1;
 			
 			//visit(that, idx+run, visitor, source, localSourcePos+run, sourceLength, sourceMask, unfoundResult);
@@ -403,6 +397,14 @@ public class TrieParserReader {
 	public static int debugAsUTF8(TrieParserReader that, Appendable target, int maxLen) {
 		return debugAsUTF8(that, target, maxLen, true);
 	}
+	
+
+	public static void debugAsArray(TrieParserReader reader, PrintStream err, int len) {
+		
+		Appendables.appendArray(System.err, reader.sourceBacking, reader.sourcePos, reader.sourceMask, Math.min(len, reader.sourceLen));
+
+	}
+	
 	public static int debugAsUTF8(TrieParserReader that, Appendable target, int maxLen, boolean mayHaveLeading) {
 		int pos = that.sourcePos;
 		try {
@@ -631,7 +633,7 @@ public class TrieParserReader {
         return result;
     }
 
-    public static BlobWriter blobQueryPrep(TrieParserReader reader) {
+    public static ChannelWriter blobQueryPrep(TrieParserReader reader) {
      	 Pipe.addMsgIdx(reader.workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
     	 DataOutputBlobWriter<RawDataSchema> writer = Pipe.outputStream(reader.workingPipe);
     	 DataOutputBlobWriter.openField(writer);
@@ -1301,7 +1303,7 @@ public class TrieParserReader {
 		}        
 	}
 
-	public static int writeCapturedUTF8(TrieParserReader reader, int idx, BlobWriter target) {
+	public static int writeCapturedUTF8(TrieParserReader reader, int idx, ChannelWriter target) {
 		int pos = idx*4;
 
 		int type = reader.capturedValues[pos++];
@@ -1324,11 +1326,11 @@ public class TrieParserReader {
 				PipeReader.readBytesMask(input, loc));
 	}
 
-	public <T extends BlobReader> void parseSetup(T reader) {
+	public <T extends ChannelReader> void parseSetup(T reader) {
 		parseSetup(this, (DataInputBlobReader<?>)reader);
 	}
 
-	public <T extends BlobReader> void parseSetup(T reader, int length) {
+	public <T extends ChannelReader> void parseSetup(T reader, int length) {
 		parseSetup(this, (DataInputBlobReader<?>)reader, length);
 	}
 
@@ -1701,6 +1703,7 @@ public class TrieParserReader {
 		}
 		return totalBytes;
 	}
+
 
 
 
