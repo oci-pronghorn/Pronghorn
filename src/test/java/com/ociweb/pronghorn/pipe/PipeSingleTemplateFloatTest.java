@@ -37,7 +37,7 @@ public class PipeSingleTemplateFloatTest {
     	byte primaryRingSizeInBits = 9; 
     	byte byteRingSizeInBits = 18;
     	
-		Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
+		Pipe ring = new Pipe(new PipeConfig(new MessageSchemaDynamic(FROM), 1<<primaryRingSizeInBits, 1<<byteRingSizeInBits));
     	ring.initBuffers();
     	
         int messageSize = FROM.fragDataSize[FRAG_LOC];
@@ -109,7 +109,7 @@ public class PipeSingleTemplateFloatTest {
     
     	final byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
     	final byte byteRingSizeInBits = 16;
-    	final Pipe ring = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
+    	final Pipe ring = new Pipe(new PipeConfig(new MessageSchemaDynamic(FROM), 1<<primaryRingSizeInBits, 1<<byteRingSizeInBits));
     	ring.initBuffers();
     	
         final int messageSize = FROM.fragDataSize[FRAG_LOC];

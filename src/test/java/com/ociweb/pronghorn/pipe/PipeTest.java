@@ -35,7 +35,7 @@ public class PipeTest {
     	byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
     	byte byteRingSizeInBits = 16;
     	
-        Pipe pipe = new Pipe(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
+        Pipe pipe = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<primaryRingSizeInBits, 1<<byteRingSizeInBits));
         pipe.initBuffers();
         
         byte[] testArray = new byte[]{(byte)1,(byte)2,(byte)3,(byte)4,(byte)5};
@@ -141,7 +141,7 @@ public class PipeTest {
         	 
             long start = System.nanoTime();
             
-            final Pipe ring = new Pipe(new PipeConfig(primaryBits, charBits, null,  RawDataSchema.instance));
+            final Pipe ring = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<primaryBits, 1<<charBits));
             //creating an anonymous inner class that implements runnable so we can hand this
             //off to the execution service to be run on another thread while this thread does the writing.
             Runnable reader = new Runnable() {
@@ -298,7 +298,7 @@ public class PipeTest {
 
             long start = System.nanoTime();
             
-            final Pipe pipe = new Pipe(new PipeConfig(primaryBits, charBits, null,  RawDataSchema.instance));
+            final Pipe pipe = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<primaryBits, 1<<charBits));
             //creating an anonymous inner class that implements runnable so we can hand this
             //off to the execution service to be run on another thread while this thread does the writing.
             Runnable reader = new Runnable() {

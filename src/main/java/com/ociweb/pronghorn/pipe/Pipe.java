@@ -2909,6 +2909,10 @@ public class Pipe<T extends MessageSchema<T>> {
 
     public static <S extends MessageSchema<S>> int takeMsgIdx(Pipe<S> pipe) {
         
+    	assert(PipeMonitor.monitor(pipe,
+    			      pipe.slabRingTail.workingTailPos.value,
+    			      Pipe.bytesReadBase(pipe)
+    			));
         /**
          * TODO: mask the result int to only the bits which contain the msgId.
          *       The other bits can bet retrieved by the getMessagePackedBits
@@ -3258,10 +3262,8 @@ public class Pipe<T extends MessageSchema<T>> {
 
 		assert(Pipe.singleThreadPerPipeWrite(pipe.id));
 				
-		final int[] slab = Pipe.slab(pipe);
-		final byte[] blob = Pipe.blob(pipe);
 		final int idx = (int)historicSlabPosition & pipe.slabMask;		
-		final int msgIdx = slab[idx]; //false share as this is a dirty read
+		final int msgIdx = Pipe.slab(pipe)[idx]; //false share as this is a dirty read
 		final int slabMsgSize = Pipe.sizeOf(pipe,msgIdx);
 		
 		assert(Pipe.from(pipe).isValidMsgIdx(Pipe.from(pipe), msgIdx)) : "bad value "+msgIdx+" for "+pipe.schema;
@@ -3272,20 +3274,13 @@ public class Pipe<T extends MessageSchema<T>> {
 			&& Pipe.hasRoomForWrite(pipe, slabMsgSize)) {
 			
 			//get the sizes of ints and bytes
-			int blobMsgSize = slab[(int)(historicSlabPosition+slabMsgSize-1) & pipe.slabMask];
+			int blobMsgSize = Pipe.slab(pipe)[(int)(historicSlabPosition+slabMsgSize-1) & pipe.slabMask];
 			
-			//copy all the bytes
-			int blobPos = Pipe.getWorkingBlobHeadPosition(pipe);
-			Pipe.copyBytesFromToRing(blob, historicBlobPosition, Pipe.blobMask(pipe), blob, blobPos, Pipe.blobMask(pipe), blobMsgSize);			
-			Pipe.addAndGetBytesWorkingHeadPosition(pipe, blobMsgSize);
-			
-			//copy all the ints
-			long slabPos = Pipe.headPosition(pipe);
-			Pipe.copyIntsFromToRing(slab, idx, Pipe.slabMask(pipe), slab, (int)slabPos, Pipe.slabMask(pipe), slabMsgSize);	
-			Pipe.addAndGetWorkingHead(pipe, slabMsgSize-1);//one less because trailing length is not part of the data fields.
-			
-			Pipe.confirmLowLevelWrite(pipe, slabMsgSize);
-			Pipe.publishWrites(pipe);
+			copyFragment(pipe, 
+					slabMsgSize, blobMsgSize, 
+					Pipe.blob(pipe), Pipe.slab(pipe), 
+					Pipe.blobMask(pipe), Pipe.slabMask(pipe),
+					historicBlobPosition, idx);
 			
 			
 			
@@ -3301,6 +3296,29 @@ public class Pipe<T extends MessageSchema<T>> {
 		} else {
 			return false;
 		}
+	}
+
+	static <S extends MessageSchema<S>> void copyFragment(Pipe<S> pipe, 
+			final int slabMsgSize, int blobMsgSize,
+			byte[] sourceBlob, int[] sourceSlab, 
+			int sourceBlobMask, int sourceSlabMask, 
+			int sourceBlobPos,	int sourceSlabPos) {
+		
+		//copy all the bytes
+		Pipe.copyBytesFromToRing(sourceBlob, sourceBlobPos, sourceBlobMask, 
+				                 Pipe.blob(pipe), Pipe.getWorkingBlobHeadPosition(pipe), Pipe.blobMask(pipe), 
+				                 blobMsgSize);			
+		Pipe.addAndGetBytesWorkingHeadPosition(pipe, blobMsgSize);
+		
+		//copy all the ints
+		Pipe.copyIntsFromToRing(sourceSlab, sourceSlabPos, sourceSlabMask, 
+				                Pipe.slab(pipe), (int)Pipe.headPosition(pipe), Pipe.slabMask(pipe), 
+				                slabMsgSize);	
+		Pipe.addAndGetWorkingHead(pipe, slabMsgSize-1);//one less because trailing length is not part of the data fields.
+		
+		Pipe.confirmLowLevelWrite(pipe, slabMsgSize);
+		Pipe.publishWrites(pipe);
+		
 	}
     
     

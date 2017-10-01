@@ -21,7 +21,7 @@ public class PipeSingleTemplateASCIITest {
     	byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
     	byte byteRingSizeInBits = 16;
     	
-		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
+		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(RawDataSchema.instance, 1<<primaryRingSizeInBits, 1<<byteRingSizeInBits));
     	ring.initBuffers();
     	
         int messageSize = RawDataSchema.FROM.fragDataSize[RawDataSchema.MSG_CHUNKEDSTREAM_1];
@@ -111,7 +111,7 @@ public class PipeSingleTemplateASCIITest {
     
     	final byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
     	final byte byteRingSizeInBits = 16;
-    	final Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance));
+    	final Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(RawDataSchema.instance, 1<<primaryRingSizeInBits, 1<<byteRingSizeInBits));
     	ring.initBuffers();
     	
         final int messageSize = RawDataSchema.FROM.fragDataSize[RawDataSchema.MSG_CHUNKEDSTREAM_1];

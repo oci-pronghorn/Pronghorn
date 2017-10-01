@@ -574,6 +574,13 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	 * @param pipeOut
 	 */
 	public static boolean tryMoveSingleMessage(Pipe pipeIn, Pipe pipeOut) {
+		
+		assert( (!PipeReader.hasContentToRead(pipeIn)) 
+				|| (!PipeWriter.hasRoomForWrite(pipeOut))
+				|| PipeMonitor.monitor(pipeIn,
+						pipeIn.ringWalker.nextWorkingTail,
+						Pipe.bytesReadBase(pipeIn)
+						) );
 		assert(Pipe.from(pipeIn) == Pipe.from(pipeOut));
 		assert(Pipe.singleThreadPerPipeRead(pipeIn.id));
 		//NOTE: all the reading makes use of the high-level API to manage the fragment state, this call assumes tryRead was called once already.
@@ -705,7 +712,13 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	}
     
 	//this impl only works for simple case where every message is one fragment. 
-	public static boolean tryReadFragment(Pipe pipe) {
+	public static <S extends MessageSchema<S>> boolean tryReadFragment(Pipe<S> pipe) {
+        
+    	assert( (!PipeReader.hasContentToRead(pipe)) || PipeMonitor.monitor(pipe, 
+			    			pipe.ringWalker.nextWorkingTail,
+			    			Pipe.bytesReadBase(pipe)
+			    			) );
+    	   
 		assert(pipe.usingHighLevelAPI);
 		assert(Pipe.singleThreadPerPipeRead(pipe.id));
 		assert(null!=pipe.ringWalker) : "NullPointer, double check that pipe was passed into super constructor of stage.";

@@ -11,7 +11,7 @@ public class PipeConverterTest {
 
 	private final byte primaryRingSizeInBits = 5; //this ring is 2^5 eg 32
 	private final byte byteRingSizeInBits = 10;
-	private final PipeConfig config = new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null,  RawDataSchema.instance);
+	private final PipeConfig config = new PipeConfig(RawDataSchema.instance, 1<<primaryRingSizeInBits, 1<<byteRingSizeInBits);
     
     @Test
     public void longToASCIITest() {

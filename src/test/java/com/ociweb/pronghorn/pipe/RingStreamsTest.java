@@ -25,7 +25,7 @@ public class RingStreamsTest {
     @Ignore
 	public void testWriteToOutputStream() {
 		
-		Pipe testRing = new Pipe(new PipeConfig((byte)4, (byte)13, null,   RawDataSchema.instance));
+		Pipe testRing = new Pipe(new PipeConfig( RawDataSchema.instance, 1<<4, 1<<13 ));
 		testRing.initBuffers();
 		
 		StringBuilder builder = new StringBuilder();
@@ -66,7 +66,7 @@ public class RingStreamsTest {
 		
 		int lenMask = (1<<(testBits-2))-1;
 		
-		Pipe testRing = new Pipe(new PipeConfig((byte)6, (byte)17, null,   RawDataSchema.instance));
+		Pipe testRing = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<6, 1<<17 ));
 		testRing.initBuffers();
 		
 		byte[] testData = new byte[testSize];
@@ -115,11 +115,11 @@ public class RingStreamsTest {
     @Ignore
 	public void testRingToRingOutputStream() {
 		
-		Pipe testRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  RawDataSchema.instance));
+		Pipe testRing = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<5, 1<<13 ));
 		testRing.initBuffers();
 		int blockSize = testRing.maxVarLen;
 		
-		Pipe targetRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  RawDataSchema.instance));
+		Pipe targetRing = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<5, 1<<13 ));
 		targetRing.initBuffers();
 		RingOutputStream ringOutputStream = new RingOutputStream(targetRing);
 		
@@ -178,7 +178,7 @@ public class RingStreamsTest {
 	public void testRingToRingOutputStreamByte() {
 		
 		
-		Pipe targetRing = new Pipe(new PipeConfig((byte)10, (byte)15, null,  RawDataSchema.instance));
+		Pipe targetRing = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<10, 1<<15 ));
 		targetRing.initBuffers();
 		
 		targetRing.reset((1<<10)-3, 1<<14);			
@@ -237,13 +237,13 @@ public class RingStreamsTest {
     @Ignore
 	public void testRingToRingInputStream() {
 		
-		Pipe testRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  RawDataSchema.instance));
+		Pipe testRing = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<5, 1<<13 ));
 		testRing.initBuffers();
 		
 		int blockSize = testRing.maxVarLen;
 		RingInputStream ringInputStream = new RingInputStream(testRing);
 		
-		Pipe targetRing = new Pipe(new PipeConfig((byte)5, (byte)13, null,  RawDataSchema.instance));
+		Pipe targetRing = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<5, 1<<13 ));
 		targetRing.initBuffers();
 		
 		int testSize = 3000;
@@ -294,7 +294,7 @@ public class RingStreamsTest {
     @Ignore
 	public void testRingToRingInputStreamBytes() {
 		
-		Pipe testRing = new Pipe(new PipeConfig((byte)4, (byte)12, null,  RawDataSchema.instance));
+		Pipe testRing = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<4, 1<<12 ));
 		testRing.initBuffers();
 		
 		int blockSize = testRing.maxVarLen;
@@ -345,7 +345,7 @@ public class RingStreamsTest {
     @Ignore
 	public void testRingToRingInputStreamToggleMethods() {
 		
-		Pipe testRing = new Pipe(new PipeConfig((byte)4, (byte)12, null,  RawDataSchema.instance));
+		Pipe testRing = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<4, 1<<12));
 		testRing.initBuffers();
 		
 		int blockSize = testRing.maxVarLen;

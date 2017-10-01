@@ -105,7 +105,7 @@ public class PipeMultiTemplateTest {
     	
     	boolean testReplayFeature = true;
     	
-		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
+		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(new MessageSchemaDynamic(FROM), 1<<primaryRingSizeInBits, 1<<byteRingSizeInBits));
 		ring.initBuffers();
 		//Setup the test data sizes derived from the templates used
 		byte[] target = new byte[ring.maxVarLen];
@@ -197,7 +197,7 @@ public class PipeMultiTemplateTest {
     	
     	boolean testReplayFeature = true;
     	
-		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
+		Pipe<RawDataSchema> ring = new Pipe<RawDataSchema>(new PipeConfig(new MessageSchemaDynamic(FROM), 1<<primaryRingSizeInBits, 1<<byteRingSizeInBits));
 		ring.initBuffers();
 		//Setup the test data sizes derived from the templates used
 		byte[] target = new byte[ring.maxVarLen];
@@ -470,7 +470,7 @@ public class PipeMultiTemplateTest {
     	byte byteRingSizeInBits = 16;
     
     	
-		Pipe<MessageSchemaDynamic> ring = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(primaryRingSizeInBits, byteRingSizeInBits, null, new MessageSchemaDynamic(FROM)));
+		Pipe<MessageSchemaDynamic> ring = new Pipe<MessageSchemaDynamic>(new PipeConfig<MessageSchemaDynamic>(new MessageSchemaDynamic(FROM), 1<<primaryRingSizeInBits, 1<<byteRingSizeInBits));
 		ring.initBuffers();
 		int testSize = 5;
 		

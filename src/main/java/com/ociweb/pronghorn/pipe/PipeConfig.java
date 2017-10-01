@@ -14,12 +14,15 @@ public class PipeConfig<T extends MessageSchema<T>> {
 		
    /**
      * This is NOT the constructor you are looking for.
+     * 
      */
-    public PipeConfig(byte primaryBits, byte byteBits, byte[] byteConst, T messageSchema) {
-        this.slabBits = primaryBits;
-        this.blobBits = byteBits;
-        this.byteConst = byteConst;
-        this.schema = messageSchema;
+     PipeConfig(byte primaryBits, byte byteBits, byte[] byteConst, T messageSchema) {
+    	 
+    	 this.schema = messageSchema;
+    	 this.slabBits = primaryBits;
+    	 this.blobBits = byteBits;
+    	 this.byteConst = byteConst;
+
      }
     
      public PipeConfig(T messageSchema) {
@@ -69,11 +72,16 @@ public class PipeConfig<T extends MessageSchema<T>> {
 	 * is multiplied by the provided maximumLenghOfVariableLengthFields to get the minimum size of the byte ring. This value is
 	 * then rounded up to the next power of 2.
 	 */
-	
 	public PipeConfig(T messageSchema, int minimumFragmentsOnRing) {
-	    this(messageSchema, minimumFragmentsOnRing, 0);
+	    this(messageSchema, null, minimumFragmentsOnRing, 0);
 	}
     public PipeConfig(T messageSchema, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
+    	this(messageSchema, null, minimumFragmentsOnRing, maximumLenghOfVariableLengthFields);
+    }
+	public PipeConfig(T messageSchema, int minimumFragmentsOnRing, byte[] byteConst) {
+	    this(messageSchema, minimumFragmentsOnRing, 0, byteConst);
+	}
+    public PipeConfig(T messageSchema, byte[] byteConst, int minimumFragmentsOnRing, int maximumLenghOfVariableLengthFields) {
         
         FieldReferenceOffsetManager from = MessageSchema.from(messageSchema);
         
@@ -86,7 +94,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
       
         this.blobBits = ((0==maximumLenghOfVariableLengthFields) | (0==maxVarFieldsInRingAtOnce))? (byte)0 : (byte)(32 - Integer.numberOfLeadingZeros(totalBlobSize - 1));
       
-        this.byteConst = null;
+        this.byteConst = byteConst;
         this.schema = messageSchema;
         
         validate(messageSchema, minimumFragmentsOnRing, maximumLenghOfVariableLengthFields);
@@ -122,7 +130,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
      }
 	
 	public PipeConfig<T> grow2x(){
-		return new PipeConfig<T>((byte)(1+slabBits), (byte)(1+blobBits), byteConst, schema);
+		return new PipeConfig<T>((byte)(1+slabBits), (byte)(0==blobBits ? 0 : 1+blobBits), byteConst, schema);
 	}
 	
 	public PipeConfig<T> blobGrow2x(){
