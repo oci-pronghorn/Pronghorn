@@ -30,7 +30,7 @@ public class RingBufferMonitorStage extends PronghornStage {
 			throw new UnsupportedOperationException("Can only write to ring buffer that is expecting montior records.");
 		}
 		GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, this);
-		this.pipeName = GraphManager.getRingName(gm, observedPipe).intern();
+		this.pipeName = GraphManager.getPipeName(gm, observedPipe).intern();
 	}
 	
 	@Override

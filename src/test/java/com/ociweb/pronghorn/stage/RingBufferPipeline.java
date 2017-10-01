@@ -394,7 +394,7 @@ public class RingBufferPipeline {
 		
 	private final boolean deepTest = false;//can be much faster if we change the threading model
 		 
-	private final byte primaryBits   = 6; 
+	private final byte primaryBits   = 4; 
 	private final byte secondaryBits = 15;
     
 	private final int msgSize = RawDataSchema.FROM.fragDataSize[0];
@@ -493,14 +493,14 @@ public class RingBufferPipeline {
 			 
 			 if (stages-2==j) {
 				 //need to make this ring bigger when the splitter is used
-				 rings[j] = new Pipe(new PipeConfig((byte)(primaryBits+ex), (byte)(secondaryBits+ex), null,  RawDataSchema.instance));
+				 rings[j] = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<(primaryBits+ex), 1<<(secondaryBits+ex)));
+					 
 			 }  else {
-				 rings[j] = new Pipe(new PipeConfig(primaryBits, secondaryBits, null, RawDataSchema.instance));
+				 rings[j] = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<primaryBits, 1<<secondaryBits ));
+				 
 			 } 
 	  		 
 		 }
-		 		 
-
 		 
 		 //add all the stages start running
 		 j = 0;
@@ -515,16 +515,16 @@ public class RingBufferPipeline {
 				 
 				 Pipe[] splitsBuffers = new Pipe[splits];
 				 splitsBuffers[0] = rings[j+1];//must jump ahead because we are setting this early
-				 assert(splitsBuffers[0].bitsOfSlabRing == ex+primaryBits);
+
 				 if (splits>1) {
 					 int k = splits;
 					 while (--k>0) {
-						 splitsBuffers[k] = new Pipe(new PipeConfig((byte)(primaryBits+ex), (byte)(secondaryBits+ex), null, RawDataSchema.instance));
+						 splitsBuffers[k] = new Pipe(new PipeConfig(RawDataSchema.instance, 1<<(primaryBits+ex), 1<<( 0==secondaryBits ? 0 :  secondaryBits+ex) ));
 						Pipe inputRing = splitsBuffers[k];
 						boolean useRoute = useTap&useRouter;
 						 ///
 						 GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, Integer.valueOf(0), highLevelAPI ? 
-						 //new DumpStageStreamingConsumer(gm, inputRing, useRoute):
+				
 						 new DumpStageHighLevel(gm, inputRing, useRoute) :
 						 new DumpStageLowLevel(gm, inputRing, useRoute));
 					 }

@@ -85,8 +85,8 @@ public class GraphManagerTest {
 		assertTrue(b == GraphManager.getStage(gm,b.stageId));
 		assertTrue(c == GraphManager.getStage(gm,c.stageId));
 		
-		assertTrue(rb1 == GraphManager.getRing(gm,rb1.id));
-		assertTrue(rb2 == GraphManager.getRing(gm,rb2.id));
+		assertTrue(rb1 == GraphManager.getPipe(gm,rb1.id));
+		assertTrue(rb2 == GraphManager.getPipe(gm,rb2.id));
 		
 		assertTrue(a == GraphManager.getRingProducer(gm,rb1.id));
 		assertTrue(b == GraphManager.getRingConsumer(gm,rb1.id));

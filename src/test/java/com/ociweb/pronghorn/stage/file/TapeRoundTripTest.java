@@ -221,7 +221,8 @@ public class TapeRoundTripTest {
         int i = maxVarLength;
         try {
             while (i>limit) {
-                PipeConfig<RawDataSchema> config = new PipeConfig<RawDataSchema>(RawDataSchema.instance, pipeLength, maxVarLength);
+                PipeConfig<RawDataSchema> config = new PipeConfig<RawDataSchema>(
+                		RawDataSchema.instance, pipeLength, maxVarLength);
             
                 ///////////////////////// 
                 //create test file with known random data

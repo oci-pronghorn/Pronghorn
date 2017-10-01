@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.stage.scheduling;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -17,9 +19,11 @@ import com.ociweb.pronghorn.pipe.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.pipe.MessageSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.PipeMonitor;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
 import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
+import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
@@ -980,7 +984,7 @@ public class GraphManager {
 		return m.stageIdToStage[stageId];
 	}
 	
-	public static Pipe getRing(GraphManager gm, int ringId) {
+	public static Pipe getPipe(GraphManager gm, int ringId) {
 		return gm.pipeIdToPipe[ringId];
 	}
 	
@@ -1703,7 +1707,7 @@ public class GraphManager {
 		    try {
     		    //double check that this was not built wrong, there must be a consumer of this ring or it was explicitly initialized
 		        int consumerId = getRingConsumerId(m, pipeId);
-		        if (consumerId < 0 && !Pipe.isInit(getRing(m, pipeId))) {
+		        if (consumerId < 0 && !Pipe.isInit(getPipe(m, pipeId))) {
 		            
 		            String schemaName = Pipe.schemaName(m.pipeIdToPipe[pipeId]);
 		            
@@ -1837,9 +1841,9 @@ public class GraphManager {
 		}
 	}
 
-	public static String getRingName(GraphManager gm, Pipe ringBuffer) {
+	public static String getPipeName(GraphManager gm, Pipe pipe) {
 		
-	    final int ringId = ringBuffer.id;
+	    final int ringId = pipe.id;
 	    String consumerName = "UnknownConsumer";
 	    {
             int stageId = getRingConsumerId(gm, ringId);
@@ -1858,7 +1862,7 @@ public class GraphManager {
 	    }
 	    StringBuilder builder = new StringBuilder();
 	    builder.append(producerName).append('-');
-	    Appendables.appendValue(builder, ringBuffer.id);
+	    Appendables.appendValue(builder, pipe.id);
 	    builder.append('-').append(consumerName);
 	    return builder.toString();
 	}
@@ -2131,6 +2135,29 @@ public class GraphManager {
     		Pipe<?> out = GraphManager.getOutputPipe(gm, stage.stageId, c);    		
     		assert(Pipe.outputStream(out).reportObjectSizes(System.out));
     	}
+    }
+    
+    public static void monitorPipe(GraphManager gm, int pipeId, Appendable target) {
+    	    	    	
+    	ConsoleJSONDumpStage.newInstance(gm, PipeMonitor.addMonitor(getPipe(gm, pipeId)), target);
+    	
+    }
+    
+    public static void monitorPipe(GraphManager gm, int pipeId, File targetFile) {
+    	
+		try {
+			final PrintWriter target = new PrintWriter(targetFile);
+			new ConsoleJSONDumpStage(gm, PipeMonitor.addMonitor(getPipe(gm, pipeId)), target) {
+				@Override
+				public void shutdown() {
+					super.shutdown();
+					target.close();
+				}
+			};
+		} catch (FileNotFoundException e) {
+			throw new RuntimeException(e);
+		}
+		
     }
 	
 

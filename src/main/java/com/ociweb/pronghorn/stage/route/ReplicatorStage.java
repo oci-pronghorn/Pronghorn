@@ -81,17 +81,19 @@ public class ReplicatorStage<T extends MessageSchema<T>> extends PronghornStage 
 						           ". To avoid blocking hang behavior the target rings must always be 2x larger than the source ring.");
 			}
 			
-			reqTargetSize = source.bitsOfBlogRing+1;
-			if (targets[i].bitsOfBlogRing < reqTargetSize) {
-				throw new UnsupportedOperationException("The target pipe "+i+" byte bit size must be at least "+reqTargetSize+" but it was "+targets[i].bitsOfBlogRing+
-									". To avoid blocking hang behavior the target rings must always be 2x larger than the source ring.");
+			if (source.bitsOfBlogRing>0) {
+				reqTargetSize = source.bitsOfBlogRing+1;
+				if (targets[i].bitsOfBlogRing < reqTargetSize) {
+					throw new UnsupportedOperationException("The target pipe "+i+" byte bit size must be at least "+reqTargetSize+" but it was "+targets[i].bitsOfBlogRing+
+										". To avoid blocking hang behavior the target rings must always be 2x larger than the source ring.");
+				}
+				int minDif = source.bitsOfBlogRing     -    source.bitsOfSlabRing;
+				int targDif = targets[i].bitsOfBlogRing - targets[i].bitsOfSlabRing;
+				if (targDif<minDif) {
+					throw new UnsupportedOperationException("The target ring "+i+" bit dif must be at least "+minDif+" but it was "+targDif);
+				}
 			}
 			
-			int minDif = source.bitsOfBlogRing     -    source.bitsOfSlabRing;
-			int targDif = targets[i].bitsOfBlogRing - targets[i].bitsOfSlabRing;
-			if (targDif<minDif) {
-				throw new UnsupportedOperationException("The target ring "+i+" bit dif must be at least "+minDif+" but it was "+targDif);
-			}
 		}
 	}
 	

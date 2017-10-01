@@ -152,7 +152,7 @@ public class SmallCSVParseTest {
 		
 	}
 	
-	@Ignore //TODO: fix, this test gets stuck in infinite loop, 
+	@Test
 	public void testLineReaderRollover() {
 		//Tests many different primary ring sizes to force rollover at different points.
 		//Checks that every run produces the same results as the previous run.
@@ -170,7 +170,7 @@ public class SmallCSVParseTest {
 			data.position(0);
 			data.limit(dataSize);
 			
-			PipeConfig linesRingConfigLocal = new PipeConfig((byte)t,(byte)20,null, RawDataSchema.instance);	
+			PipeConfig linesRingConfigLocal = new PipeConfig(RawDataSchema.instance, 1<<t, 1<<20);	
 			
 			final Pipe linesRing = new Pipe(linesRingConfigLocal);		
 			GraphManager gm = new GraphManager();

@@ -38,10 +38,12 @@ import com.ociweb.pronghorn.network.twitter.RequestTwitterUserStreamStage;
 import com.ociweb.pronghorn.network.twitter.TwitterJSONToTwitterEventsStage;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.PipeMonitor;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import com.ociweb.pronghorn.stage.test.PipeCleanerStage;
 
 public class NetGraphBuilder {
@@ -696,11 +698,13 @@ public class NetGraphBuilder {
 		
 		boolean isLarge = false;
 		
+		int countOfMonitoredPipes = 0;
 
 		
 		final ModuleConfig modules = buildTelemetryModuleConfig(rate);
 		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 2);
 				 
+		serverConfig.ensureServerParallelResponses(countOfMonitoredPipes);		
 		serverConfig.ensureServerCanWrite(1<<19);//512K
 		 //This must be large enough for both partials and new handshakes.
 		
@@ -812,7 +816,18 @@ public class NetGraphBuilder {
 							          "telemetry/webworker.js", HTTPContentTypeDefaults.JS);
 						break;
 						//TODO: add version...
+					
+						
 						default:
+							
+							//One module for each file??
+							//TODO: add monitor to this stream
+							//this will be a permanent output stream...
+							//PipeMonitor.addMonitor(getPipe(graphManager, pipeId));
+							
+							
+							
+							
 							throw new RuntimeException("unknonw idx "+a);
 					}
 					

@@ -10,23 +10,23 @@ import com.ociweb.pronghorn.pipe.PipeConfig;
 
 public class ServerPipesConfig {
 	
-	public final int maxPartialResponsesServer;
+	
 	public final int maxConnectionBitsOnServer; 	
 	public final int serverRequestUnwrapUnits;
 	public final int serverResponseWrapUnits;
 	public final int serverPipesPerOutputEngine;
 	public final int serverSocketWriters;
 	
-	public final int serverInputBlobs; 
-	private int serverBlobToWrite; //may need to grow if requested upon startup.
-	
-	public final int serverInputMsg;
-	
+	public final int serverInputBlobs;	
+	public final int serverInputMsg;	
 	public final int serverOutputMsg;
 	
 	public final int fromProcessorCount;
 	public final int fromProcessorBlob;
 	public final int releaseMsg;
+	
+	public int maxPartialResponsesServer; //will grow based on simultaneous repose count 
+	private int serverBlobToWrite; //may need to grow based on largest payload required
 
 	private static final Logger logger = LoggerFactory.getLogger(ServerPipesConfig.class);
 	
@@ -124,6 +124,10 @@ public class ServerPipesConfig {
 	
 	public void ensureServerCanWrite(int length) {
 		serverBlobToWrite =  Math.max(serverBlobToWrite, length);
+	}
+	
+	public void ensureServerParallelResponses(int count) {
+		maxPartialResponsesServer = Math.max(maxPartialResponsesServer, count);
 	}
 	
 	public PipeConfig<NetPayloadSchema> orderWrapConfig() {

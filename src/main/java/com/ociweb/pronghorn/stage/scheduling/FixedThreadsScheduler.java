@@ -257,7 +257,7 @@ public class FixedThreadsScheduler extends StageScheduler {
 	//rules because some stages should not be combined
 	private boolean isValidToCombine(int ringId, int consumerId, int producerId, GraphManager graphManager) {
 				
-		Pipe p = GraphManager.getRing(graphManager, ringId);
+		Pipe p = GraphManager.getPipe(graphManager, ringId);
 		
 		if (Pipe.isForSchema(p, PipeMonitorSchema.instance)) {
 			return true;//all monitors can be combined freely as needed.

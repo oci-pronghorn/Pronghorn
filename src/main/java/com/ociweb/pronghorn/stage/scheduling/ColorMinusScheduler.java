@@ -302,7 +302,7 @@ public class ColorMinusScheduler extends StageScheduler {
         int totalWork = 0; 
 
         while((index > 0) && (rings[index] >= 0)) {
-            Pipe ring = GraphManager.getRing(graphManager, rings[index]);
+            Pipe ring = GraphManager.getPipe(graphManager, rings[index]);
             totalWork += Pipe.contentRemaining(ring);
 
             --index;
