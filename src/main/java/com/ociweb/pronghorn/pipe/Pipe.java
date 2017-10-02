@@ -1002,6 +1002,38 @@ public class Pipe<T extends MessageSchema<T>> {
         StackStateWalker.reset(ringWalker, structuredPos);
     }
 
+    public static <S extends MessageSchema<S>> void copyFragment(
+    		Pipe<S> source, 
+    		Pipe<S> target) {
+    	
+    	copyFragment(source, 
+    			Pipe.tailPosition(source),
+    			Pipe.getBlobTailPosition(source),
+    			target);
+    	
+    }
+    		
+    
+	static <S extends MessageSchema<S>> void copyFragment(
+			Pipe<S> sourcePipe, long sourceSlabPos, int sourceBlobPos,
+			Pipe<S> localTarget) {
+		
+		int mask = Pipe.slabMask(sourcePipe);
+		int[] slab = Pipe.slab(sourcePipe);
+		
+		int msgIdx = slab[mask&(int)sourceSlabPos];
+					
+		//look up the data size to copy...
+		int slabMsgSize = Pipe.from(sourcePipe).fragDataSize[msgIdx];
+		int blobMsgSize = slab[mask&((int)(sourceSlabPos+slabMsgSize-1))]; //min one for byte count
+			
+		Pipe.copyFragment(localTarget,
+				slabMsgSize, blobMsgSize, 
+				Pipe.blob(sourcePipe), Pipe.slab(sourcePipe), 
+				Pipe.blobMask(sourcePipe), Pipe.slabMask(sourcePipe), 
+				sourceBlobPos, (int)sourceSlabPos);
+	}
+
 	public static Pipe[] buildPipes(PipeConfig[] configs) {
 		int i = configs.length;
 		Pipe[] result = new Pipe[i];
@@ -1886,7 +1918,7 @@ public class Pipe<T extends MessageSchema<T>> {
 			  long limit = ((long)ringPos+bytesLen)<<32;
 
 			  while (charAndPos<limit) {
-			      charAndPos = decodeUTF8Fast(pipe.blobRing, charAndPos, pipe.byteMask);
+			      charAndPos = decodeUTF8Fast(pipe.blobRing, charAndPos, pipe.blobMask);
 			      target.append((char)charAndPos);
 			  }
 		  } catch (IOException e) {
@@ -2436,7 +2468,7 @@ public class Pipe<T extends MessageSchema<T>> {
         }
     }
 
-	private static int copyUTF8ToByte(CharSequence source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {
+	public static int copyUTF8ToByte(CharSequence source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {
 	    int pos = targetIdx;
 	    int c = 0;
 	    while (c < charCount) {

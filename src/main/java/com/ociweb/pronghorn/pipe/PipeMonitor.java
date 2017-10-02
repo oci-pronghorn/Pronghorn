@@ -37,25 +37,14 @@ public class PipeMonitor {
 			//but it also blocks to ensure nothing is ever lost
 			Pipe.presumeRoomForWrite(localTarget);			
 			
-			int mask = Pipe.slabMask(sourcePipe);
-			int[] slab = Pipe.slab(sourcePipe);
-			
-			int msgIdx = slab[mask&(int)sourceSlabPos];
-						
-			//look up the data size to copy...
-			int slabMsgSize = Pipe.from(sourcePipe).fragDataSize[msgIdx];
-			int blobMsgSize = slab[mask&((int)(sourceSlabPos+slabMsgSize-1))]; //min one for byte count
-				
-			Pipe.copyFragment(localTarget,
-					slabMsgSize, blobMsgSize, 
-					Pipe.blob(sourcePipe), Pipe.slab(sourcePipe), 
-					Pipe.blobMask(sourcePipe), Pipe.slabMask(sourcePipe), 
-					sourceBlobPos, (int)sourceSlabPos);
+			Pipe.copyFragment(sourcePipe, sourceSlabPos, sourceBlobPos, localTarget);
 						
 		}
 		
 		return true;
 	}
+
+
 
 	public static <S extends MessageSchema<S>> boolean isMonitored(Pipe<S> p) {
 		return isMonitored(p.id);

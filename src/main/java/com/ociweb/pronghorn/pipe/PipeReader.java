@@ -696,6 +696,12 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         return Pipe.restorePosition(pipe,Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc))]);
     }
     
+    public static int peekDataMeta(Pipe pipe, int loc) {
+    	assert(PipeReader.hasContentToRead(pipe)) : "results would not be repeatable, before peek hasContentToRead must be called.";
+        assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
+        return Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.nextWorkingTail+(OFF_MASK&loc))];
+    }
+    
     public static byte[] peekDataBackingArray(Pipe pipe, int loc) {
         assert(LOCUtil.isLocOfAnyType(loc, TypeMask.TextASCII, TypeMask.TextASCIIOptional, TypeMask.TextUTF8, TypeMask.TextUTF8Optional, TypeMask.ByteVector, TypeMask.ByteVectorOptional)): "Value found "+LOCUtil.typeAsString(loc);
 
