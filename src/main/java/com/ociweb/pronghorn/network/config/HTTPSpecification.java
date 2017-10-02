@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.pipe.ChannelReader;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
-import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.TrieParser;
 import com.ociweb.pronghorn.util.TrieParserReader;
 
@@ -44,17 +43,20 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
     }
 
     public <A extends Appendable> A writeHeader(A target, int ordinal, ChannelReader data) {
-    	try {
-	    	H header = headers[ordinal];
-			target.append(header.writingRoot());
-	    	header.writeValue(target, data);
-    	} catch (Throwable e) {
-    		
-    		logger.error("Bad header unable to parse {} ",headers[ordinal]);
-    		throw new RuntimeException(e);
-    	}
-    	return target;
+    	return writeHeader(target, getHeader(ordinal), data);
     }
+
+    public <A extends Appendable> A writeHeader(A target, H header, ChannelReader data) {
+		try {
+			target.append(header.writingRoot());
+			header.writeValue(target, this, data);
+		} catch (Throwable e) {
+			logger.error("Bad header unable to parse {} ",header);
+			throw new RuntimeException(e);
+		}
+
+		return target;
+	}
     
     
 	public final IntHashTable headerTable(TrieParserReader localReader) {
@@ -142,11 +144,18 @@ public class HTTPSpecification  <   T extends Enum<T> & HTTPContentType,
 		return (int)reader.query(reader, headerParser(), h, 0, h.length, Integer.MAX_VALUE);
 	}
 
-	public HTTPHeader getHeader(int headerId) {
+	public H getHeader(int headerId) {
     	assert(this.headers!=null) : "No headers have been set in this specification.";
     	assert(headerId >= 0 && headerId < this.headers.length) : "There is no header with the provided ID";
 
     	return this.headers[headerId];
+	}
+
+	public HTTPContentType getContentType(int contentTypeId) {
+    	assert(this.contentTypes!=null) : "No content types have been set in this specification.";
+    	assert(contentTypeId >=0 && contentTypeId < this.contentTypes.length) : "There is no content type with the provided ID";
+
+    	return this.contentTypes[contentTypeId];
 	}
 
 	public TrieParser contentTypeTrieBuilder() {
