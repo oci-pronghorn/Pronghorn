@@ -233,7 +233,7 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				/////////////////////////////////////////////////////////////
 				TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
 				
-				TrieParserReader.parseSetup(trieReader,Pipe.blob(localInputPipe),Pipe.blobMask(localInputPipe));							
+				TrieParserReader.parseSetup(trieReader,Pipe.blob(localInputPipe), 0, 0, Pipe.blobMask(localInputPipe));
 				
 				ClientConnection cc = null;
 					
