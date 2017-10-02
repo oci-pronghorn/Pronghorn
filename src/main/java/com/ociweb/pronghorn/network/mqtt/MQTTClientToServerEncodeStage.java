@@ -39,11 +39,11 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	private boolean brokerAcknowledgedConnection;
 	
 	private ClientConnection activeConnection;
-	private byte[] hostBack;
-	private int hostPos;
-	private int hostLen;
-	private int hostMask;
+	private StringBuilder host;
+	
 	private int hostPort;
+	
+	
 	private int keepAliveMS;
 	
 	private final int quietRepublish = 20_000;//ms
@@ -286,12 +286,12 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 	
 	@Override
 	public void startup() {
-		hostBack = new byte[input.maxVarLen];
+		host = new StringBuilder();
 	}
 	
 	public long connectionId() {
 		
-		if (hostLen==0) {
+		if (host.length()==0) {
 			return -1;
 		}
 		
@@ -309,11 +309,10 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		//logger.info("opening connection to broker {}:{} ",
 		//		     Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask), hostPort);
 
-		activeConnection = ClientCoordinator.openConnection(ccm, 
-				                         hostBack, hostPos, hostLen, hostMask, hostPort, 
+		activeConnection = ClientCoordinator.openConnection(ccm, host, hostPort, 
 				                         uniqueConnectionId, 
 				                         toBroker,
-				                         ccm.lookup(hostBack,hostPos,hostLen,hostMask, hostPort, uniqueConnectionId)); 
+				                         ccm.lookup(host, hostPort, uniqueConnectionId)); 
 
 		if (null!=activeConnection) {		
 			//When a Client reconnects with CleanSession set to 0, both the Client and Server MUST re-send any 
@@ -493,13 +492,12 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					assert(msgIdx == MQTTClientToServerSchema.MSG_BROKERHOST_100);
 					//logger.info("open new broker socket connection");
 					
+					this.host.setLength(0);
+										
 					int hostMeta = Pipe.takeRingByteMetaData(input);					
-					this.hostLen = Pipe.takeRingByteLen(input);
-					this.hostPos = 0;
-					this.hostMask = Integer.MAX_VALUE;
-					
-					Pipe.readBytes(input, hostBack, hostPos, Integer.MAX_VALUE, hostMeta, hostLen);
-	
+					int hostLen = Pipe.takeRingByteLen(input);
+					Pipe.readUTF8(input, this.host, hostMeta, hostLen);
+														
 					this.hostPort = Pipe.takeInt(input);
 					//must establish new connection
 					ccm.releaseResponsePipeLineIdx(connectionId);

@@ -10,6 +10,7 @@ import com.ociweb.pronghorn.network.ClientCoordinator;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.NetPayloadSchema;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.PipeUTF8MutableCharSquence;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
@@ -210,6 +211,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 
 
 	private ClientConnection activeConnection =  null;
+	private PipeUTF8MutableCharSquence mCharSequence = new PipeUTF8MutableCharSquence();
 	
 	//has side effect of storing the active connection as a member so it need not be looked up again later.
 	private boolean isConnectionReadyForUse(Pipe<ClientHTTPRequestSchema> requestPipe) {
@@ -246,7 +248,7 @@ public class HTTPClientRequestStage extends PronghornStage {
  	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
  	 		hostMask = Pipe.blobMask(requestPipe);
  			
-     		connectionId = ccm.lookup(hostBack,hostPos,hostLen,hostMask, port, userId);
+     		connectionId = ccm.lookup(mCharSequence.setToField(requestPipe, hostMeta, hostLen), port, userId);
 			//System.err.println("first lookup connection "+connectionId);
  		}
 		
@@ -263,9 +265,9 @@ public class HTTPClientRequestStage extends PronghornStage {
  	 	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
  	 	 		hostMask = Pipe.blobMask(requestPipe);
  			}
- 			 			
+ 			 	
  			activeConnection = ClientCoordinator.openConnection(
- 					 ccm, hostBack, hostPos, hostLen, hostMask, port, userId, output, connectionId);
+ 					 ccm, mCharSequence.setToField(requestPipe, hostMeta, hostLen), port, userId, output, connectionId);
  		}
  		
 		if (null != activeConnection) {

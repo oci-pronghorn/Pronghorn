@@ -98,11 +98,10 @@ public class ClientConnection extends SSLConnection {
 		return lastUsedTime;
 	}
 	
-	public ClientConnection(String host, byte[] hostBacking, int hostPos, int hostLen, int hostMask, 
-			                 int port, int sessionId, int pipeIdx,
+	public ClientConnection(CharSequence host, int port, int sessionId, int pipeIdx,
 			                 long conId, boolean isTLS, int inFlightBits) throws IOException {
 		
-		super(isTLS?SSLEngineFactory.createSSLEngine(host, port):null,
+		super(isTLS?SSLEngineFactory.createSSLEngine(host instanceof String ? (String)host : host.toString(), port):null,
 			  SocketChannel.open(), 
 			  conId);
 		
@@ -121,10 +120,10 @@ public class ClientConnection extends SSLConnection {
 		assert(port<=65535);		
 		// RFC 1035 the length of a FQDN is limited to 255 characters
 		this.connectionGUID = new byte[(2*host.length())+6];
-		this.connectionGUIDLength = buildGUID(connectionGUID, hostBacking, hostPos, hostLen, hostMask, port, sessionId);
+		this.connectionGUIDLength = buildGUID(connectionGUID, host, port, sessionId);
 		this.pipeIdx = pipeIdx;
 		this.sessionId = sessionId;
-		this.host = host;
+		this.host = host instanceof String ? (String)host : host.toString();
 		this.port = port;
 					
 		this.getSocketChannel().configureBlocking(false);  
@@ -139,7 +138,7 @@ public class ClientConnection extends SSLConnection {
 		//logger.info("client recv buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF)); //default 43690
 		//logger.info("client send buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_SNDBUF)); //default  8192
 		
-		resolveAddressAndConnect(host, port);
+		resolveAddressAndConnect(this.host, port);
 	}
 
 
@@ -233,14 +232,30 @@ public class ClientConnection extends SSLConnection {
 		return pipeIdx;
 	}
 
+	public static int buildGUID(byte[] target, CharSequence host, int port, int userId) {
+		//TODO: if we find a better hash for host port user we can avoid this trie lookup. TODO: performance improvement.
+        //      RABIN hash may be just the right thing.
+		
+		int pos = Pipe.copyUTF8ToByte(host, 0, target, Integer.MAX_VALUE, 0, host.length());
+				
+		return finishBuildGUID(target, port, userId, pos);
+	}
+	
 	public static int buildGUID(byte[] target, byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int userId) {
 		//TODO: if we find a better hash for host port user we can avoid this trie lookup. TODO: performance improvement.
         //      RABIN hash may be just the right thing.
 		
-		int pos = 0;
-			
-		Pipe.copyBytesFromToRing(hostBack, hostPos, hostMask, target, pos, Integer.MAX_VALUE, hostLen);
-		pos+=hostLen;
+		Pipe.copyBytesFromToRing(hostBack, hostPos, hostMask, 
+				                 target, 0, Integer.MAX_VALUE, 
+				                 hostLen);
+
+		int pos = hostLen;
+				
+		return finishBuildGUID(target, port, userId, pos);
+	
+	}
+
+	private static int finishBuildGUID(byte[] target, int port, int userId, int pos) {
 		
     	target[pos++] = (byte)(port>>8);
     	target[pos++] = (byte)(port);

@@ -747,8 +747,8 @@ private void sendRelease(long channel, final int idx) {
 	Pipe.presumeRoomForWrite(releasePipe);
 	
 	int s = Pipe.addMsgIdx(releasePipe, ReleaseSchema.MSG_RELEASEWITHSEQ_101);
-	Pipe.addLongValue(channel,releasePipe);
-	Pipe.addLongValue(inputSlabPos[idx],releasePipe);
+	Pipe.addLongValue(channel, releasePipe);
+	Pipe.addLongValue(inputSlabPos[idx], releasePipe);
 	Pipe.addIntValue(sequences[idx], releasePipe); //send current sequence number so others can continue at this count.
 	sequencesSent[idx] = sequences[idx];
 	

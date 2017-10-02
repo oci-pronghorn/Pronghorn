@@ -181,14 +181,14 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	 * 
 	 * @return -1 if the host port and userId are not found
 	 */
-	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int sessionId) {	
-		return lookup(hostBack,hostPos,hostLen,hostMask,port, sessionId, guidWorkspace, hostTrieReader);
+	public long lookup(CharSequence host, int port, int sessionId) {	
+		return lookup(host, port, sessionId, guidWorkspace, hostTrieReader);
 	}
 	
-	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int sessionId, byte[] workspace, TrieParserReader reader) {
+	public long lookup(CharSequence host, int port, int sessionId, byte[] workspace, TrieParserReader reader) {
 		
 		//TODO: lookup by userID then by port then by host, may be a better approach instead of guid 
-		int len = ClientConnection.buildGUID(workspace, hostBack, hostPos, hostLen, hostMask, port, sessionId);	
+		int len = ClientConnection.buildGUID(workspace, host, port, sessionId);	
 		
 		hostTrieLock.readLock().lock();
 		try {
@@ -200,6 +200,24 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 	}
 	
+	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int sessionId) {
+		return lookup(hostBack, hostPos, hostLen, hostMask, port, sessionId, guidWorkspace, hostTrieReader);
+	}
+
+	public long lookup(byte[] hostBack, int hostPos, int hostLen, int hostMask, int port, int sessionId, byte[] workspace, TrieParserReader reader) {
+		//TODO: lookup by userID then by port then by host, may be a better approach instead of guid 
+		int len = ClientConnection.buildGUID(workspace, 
+				hostBack, hostPos, hostLen, hostMask, port, sessionId);	
+		
+		hostTrieLock.readLock().lock();
+		try {
+			long result = TrieParserReader.query(reader, hostTrie, workspace, 0, len, Integer.MAX_VALUE);
+			assert(0!=result) : "connection ids must be postive or negative if not found";
+			return result;
+		} finally {
+			hostTrieLock.readLock().unlock();
+		}
+	}
 	
 	public long lookupInsertPosition() {
 		return connections.lookupInsertPosition();
@@ -275,6 +293,24 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		return selector;
 	}
 
+	public final ClientConnection connectionId(CharSequence host, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs, ClientConnection oldConnection) {
+		
+		if (host.length()==0) {
+			return null;
+		}
+		
+		if (null==oldConnection || ((!oldConnection.isValid()) && oldConnection.isFinishConnect() ) ) {
+			//only do reOpen if the previous one is finished connecting and its now invalid.
+			oldConnection = ClientCoordinator.openConnection(this, host, port, 
+					sessionId, outputs,
+	                lookup(host, port, sessionId));
+		}
+		
+		return oldConnection;
+		
+	}
+
+
 	private static int findAPipeWithRoom(Pipe<NetPayloadSchema>[] output, int activeOutIdx) {
 		int result = -1;
 		//if we go around once and find nothing then stop looking
@@ -294,15 +330,15 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 	}
 	
 	
-	public static ClientConnection openConnection(ClientCoordinator ccm, byte[] hostBack, int hostPos, int hostLen,
-			int hostMask, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs,
+	public static ClientConnection openConnection(ClientCoordinator ccm, CharSequence host, int port, int sessionId, Pipe<NetPayloadSchema>[] outputs,
 			long connectionId) {
 								
 		        ClientConnection cc = null;
 
 				if (-1 == connectionId || 
-					null == (cc = (ClientConnection) ccm.connections.get(connectionId))) { //NOTE: using direct lookup get since un finished connections may not be valid.
-					//	logger.warn("Unable to lookup connection");					
+					null == (cc = (ClientConnection) ccm.connections.get(connectionId))) { 
+					//NOTE: using direct lookup get since un finished connections may not be valid.
+										
 					connectionId = ccm.lookupInsertPosition();
 					
 					int pipeIdx = findAPipeWithRoom(outputs, (int)Math.abs(connectionId%outputs.length));
@@ -312,14 +348,11 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 						//do not open instead we should attempt to close this one to provide room.
 						return null;
 					}
-					
-				
-					String host = Appendables.appendUTF8(new StringBuilder(), hostBack, hostPos, hostLen, hostMask).toString(); //TODO: not GC free
+						
 					try {
 						
 				    	//create new connection because one was not found or the old one was closed
-						cc = new ClientConnection(host, hostBack, hostPos, hostLen, hostMask, 
-								                  port, sessionId, pipeIdx, connectionId, ccm.isTLS, inFlightBits);
+						cc = new ClientConnection(host, port, sessionId, pipeIdx, connectionId, ccm.isTLS, inFlightBits);
 						ccm.connections.setValue(connectionId, cc);						
 						ccm.hostTrieLock.writeLock().lock();
 						
@@ -365,6 +398,7 @@ public class ClientCoordinator extends SSLConnectionHolder implements ServiceObj
 		}
 		return cc;
 	}
+
 
 	
 }
