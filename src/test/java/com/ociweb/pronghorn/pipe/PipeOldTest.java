@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Ignore;
 import org.junit.Test;
 
-public class PipeTest {
+public class PipeOldTest {
 
    //only here outside the scope of the method to prevent escape analysis from detecting that
    //the timing loop is doing no work and then optimizing it away.
