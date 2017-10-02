@@ -1,8 +1,7 @@
 package com.ociweb.pronghorn.pipe;
 
-import static org.junit.Assert.*;
-
-import java.io.IOException;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -21,5 +20,18 @@ public class SchemaValidation {
         assertEquals(expected, computedCountOfChunks);
 
     }
+    
+    
+    @Test
+    public void rawDataTest() {
+        assertTrue(FROMValidation.checkSchema("/rawDataSchema.xml", RawDataSchema.class));
+    }
+    
+    
+    @Test
+    public void testDataTest() {
+        assertTrue(FROMValidation.checkSchema("/testDataSchema.xml", TestDataSchema.class));
+    }
+    
     
 }
