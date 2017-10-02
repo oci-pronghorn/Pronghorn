@@ -137,6 +137,8 @@ public class Appendables {
 		}
     }
     
+    
+
     public static <A extends Appendable> A appendArray(A target, char left, int[] b, long offset, int mask, char right, int bLength) {
 	      try {
 	    	if (b != null) {        
@@ -162,7 +164,7 @@ public class Appendables {
 			throw new RuntimeException(ex); 
 		}
    }
-    
+   
     public static <A extends Appendable> A appendHexArray(A target, char left, int[] b, long offset, int mask, char right, int bLength) {
 	      try {
 	    	if (b != null) {        
