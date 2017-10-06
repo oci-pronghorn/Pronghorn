@@ -232,18 +232,16 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 				//ensure we have the right backing array, and mask (no position change)
 				/////////////////////////////////////////////////////////////
 				TrieParserReader.loadPositionMemo(trieReader, positionMemoData, memoIdx);
-				
-<<<<<<< HEAD
+
 				TrieParserReader.parseSetup(
 						     trieReader,
 						     Pipe.blob(localInputPipe),
 						     trieReader.sourcePos,
 						     trieReader.sourceLen,
 						     Pipe.blobMask(localInputPipe));							
-=======
+
 				TrieParserReader.parseSetup(trieReader,Pipe.blob(localInputPipe), 0, 0, Pipe.blobMask(localInputPipe));
->>>>>>> branch 'master' of https://github.com/oci-pronghorn/Pronghorn.git
-				
+			
 				ClientConnection cc = null;
 					
 				int len1 = positionMemoData[lenIdx];
