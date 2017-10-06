@@ -2048,6 +2048,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	private static void copyBytesFromToRingMasked(byte[] source,
 			final int rStart, final int rStop, byte[] target, final int tStart,
 			final int tStop, int length) {
+		assert(length>=0);
 		if (tStop > tStart) {
 			//do not accept the equals case because this can not work with data the same length as as the buffer
 			doubleMaskTargetDoesNotWrap(source, rStart, rStop, target, tStart, length);
@@ -3225,6 +3226,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		pipe.lastPublishedSlabRingHead = pipe.slabRingHead.workingHeadPos.value;
 	}
 
+	@Deprecated
     public static <S extends MessageSchema<S>> void abandonWrites(Pipe<S> pipe) {
         //ignore the fact that any of this was written to the ring buffer
     	pipe.slabRingHead.workingHeadPos.value = pipe.slabRingHead.headPos.longValue();

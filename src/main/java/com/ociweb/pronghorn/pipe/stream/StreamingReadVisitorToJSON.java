@@ -1,14 +1,9 @@
 package com.ociweb.pronghorn.pipe.stream;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.util.Appendables;
-import com.ociweb.pronghorn.util.TrieParserReader;
-import com.ociweb.pronghorn.util.parse.JSONParser;
-import com.ociweb.pronghorn.util.parse.JSONVisitor;
-import com.ociweb.pronghorn.util.parse.JSONVisitorNull;
 
 public class StreamingReadVisitorToJSON<A extends Appendable> implements StreamingReadVisitor {
 
@@ -21,11 +16,11 @@ public class StreamingReadVisitorToJSON<A extends Appendable> implements Streami
 	private final boolean showBytesAsUTF;
 	
 	public StreamingReadVisitorToJSON(A out) {
-		this(out,4096, 256, false);
+		this(out, 4096, 256, false);
 	}
 	
 	public StreamingReadVisitorToJSON(A out, boolean showBytesAsUTF) {
-		this(out,4096, 256, showBytesAsUTF);
+		this(out, 4096, 256, showBytesAsUTF);
 	}
 	
 	public StreamingReadVisitorToJSON(A out, int maxBytesSize, int maxStringSize) {
@@ -175,7 +170,9 @@ public class StreamingReadVisitorToJSON<A extends Appendable> implements Streami
 	public void visitDecimal(String name, long id, int exp, long mant) {
 		writeTab();
 		try {
-			out.append("{\""+name+"\":["+Integer.valueOf(exp)+","+Long.valueOf(mant)+"]}");
+			out.append("{\"").append(name).append("\":[");
+			Appendables.appendValue(out, exp).append(",");
+			Appendables.appendValue(out, mant).append("]}");		
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}		
@@ -191,7 +188,10 @@ public class StreamingReadVisitorToJSON<A extends Appendable> implements Streami
 	public void visitASCII(String name, long id, CharSequence value) {
 		writeTab();
 		try {
-			out.append("{\""+name+"\":\""+value+"\"}");
+			out.append("{\"").append(name)
+			   .append("\":\"")
+			   .append(value)
+			   .append("\"}");
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}	
