@@ -39,7 +39,7 @@ public class MQTTClientStage extends PronghornStage {
 			          Pipe<MQTTIdRangeSchema> idGenNew,
 			          Pipe<MQTTServerToClientSchema> serverToClient, 
 			          
-			          Pipe<MQTTClientResponseSchema> clientResponse,
+			          Pipe<MQTTClientResponseSchema> clientResponse, //TODO: may ad ack for publish...
 			          Pipe<MQTTIdRangeSchema> idGenOld, 
 			          Pipe<MQTTClientToServerSchema> clientToServer,
 			          Pipe<MQTTClientToServerSchemaAck> clientToServerAck
@@ -58,9 +58,7 @@ public class MQTTClientStage extends PronghornStage {
 		this.clientToServerAck = clientToServerAck;
 				
 		Pipe.setPublishBatchSize(clientToServer, 0);
-		
-		//TODO: add feature,  one more pipe back for ack.? Need custom schema.
-		
+
 	}
 	
 	ByteBuffer[] inFlight;//re-send until cleared.
@@ -209,10 +207,11 @@ public class MQTTClientStage extends PronghornStage {
 			     	}
 					break;
 				case -1:
-					//TODO: requesting shutdown is too soon if we are still waiting for input..
-					// instead use this to relay the shutdown down stream.
-					
-					//Do not call this here: requestShutdown(); 
+					{
+						Pipe.publishEOF(clientToServer);
+						//Do not call this here: requestShutdown();
+						//this is called elsewhere since we may be waiting for returning input
+					}
 					break;
 			}
 			Pipe.confirmLowLevelRead(clientRequest, Pipe.sizeOf(clientRequest, msgIdx));
@@ -221,6 +220,8 @@ public class MQTTClientStage extends PronghornStage {
 		}
 	}
 
+	private long[] QoS2Seen = new long[1<<16];
+	
 	public void processServerResponses() {
 	
 //		System.err.println("server response "+
@@ -299,37 +300,41 @@ public class MQTTClientStage extends PronghornStage {
 						
 						mostRecentTime = Pipe.takeLong(serverToClient); //TIME
 						int qos3 = Pipe.takeInt(serverToClient); //QOS
-						
+												
+						Pipe.markHead(clientResponse);
 					    Pipe.presumeRoomForWrite(clientResponse);
 						int size = Pipe.addMsgIdx(clientResponse, MQTTClientResponseSchema.MSG_MESSAGE_3);
 						Pipe.addIntValue(qos3, clientResponse);
 						Pipe.addIntValue(Pipe.takeInt(serverToClient), clientResponse); //RETAIN
-						Pipe.addIntValue(Pipe.takeInt(serverToClient), clientResponse); //DUP
-						
+						Pipe.addIntValue(Pipe.takeInt(serverToClient), clientResponse); //DUP						
 						Pipe.addByteArray(serverToClient, clientResponse); //topic
 			
-						int serverSidePacketId = IdGenStage.IS_REMOTE_BIT 
-								                 | Pipe.takeInt(serverToClient);
-						
-					
-						if(2==qos3) {
-							//TODO: finish implementation of exactly once
-							
-							//if serverSidePacketId is not found then 
-							//store serverSidePacketId
-							//must save to disk in case of restart and xmits.
-							
-							//keep local bit map
-							//clear bit map value upon rel...
-							
-							//only send if not already sent...
-							
-						}
+						int serverSidePacketId = IdGenStage.IS_REMOTE_BIT | Pipe.takeInt(serverToClient);
 
 						Pipe.addByteArray(serverToClient, clientResponse); //payload
-
-						Pipe.confirmLowLevelWrite(clientResponse, size);
-						Pipe.publishWrites(clientResponse);
+						
+						
+						boolean publishWrite = true;
+						if(2==qos3) {							
+							if (0!=QoS2Seen[serverSidePacketId]) {
+								publishWrite = false;//already sent
+							}						
+						}
+						
+						if (publishWrite) {						
+							Pipe.confirmLowLevelWrite(clientResponse, size);
+							Pipe.publishWrites(clientResponse);
+							
+							if (2==qos3) {
+								//do not send gain, send pubrec after tail clears this position
+								QoS2Seen[serverSidePacketId] = Pipe.headPosition(clientResponse);
+							}
+							
+						} else {
+							//abandon what was written
+							Pipe.resetHead(clientResponse);
+						}
+						
 											
 						if (0!=qos3) {
 							
@@ -338,6 +343,20 @@ public class MQTTClientStage extends PronghornStage {
 								FragmentWriter.writeLI(clientToServerAck, MQTTClientToServerSchemaAck.MSG_PUBACK_4, mostRecentTime, serverSidePacketId);
 								
 							} else if (2==qos3) {
+								
+								//
+								//TODO: only send rec after consumed, eg tail >= QoS2Seen[serverSidePacketId]
+								//      until done we may ack back and never consume it (eg could be dropped)
+								//      this only happens on power failure while the field is consumed.
+								
+								//Use this to get pipes outside and pass them in 
+								//FileGraphBuilder.buildSequentialReplayer
+								//will ensure we use same code over and that data is encrypted.
+								
+								//TODO: also store to disk as sent
+								//      if not written to disk then same value could be sent upon power failure after						
+								
+								
 								Pipe.presumeRoomForWrite(serverToClient);
 								FragmentWriter.writeLI(serverToClient, MQTTClientToServerSchema.MSG_PUBREC_5, mostRecentTime, serverSidePacketId);
 								
@@ -364,10 +383,19 @@ public class MQTTClientStage extends PronghornStage {
 					break;
 				case MQTTServerToClientSchema.MSG_PUBREL_6:
 						
+					
 					mostRecentTime = Pipe.takeLong(serverToClient);
 					int serverSidePacketId6 = IdGenStage.IS_REMOTE_BIT 
 											  | Pipe.takeInt(serverToClient);//packetId 
 											  
+					/////////////////
+					assert(QoS2Seen[serverSidePacketId6]==1) : "book keeping error in QoS 2";
+					QoS2Seen[serverSidePacketId6] = 0;
+					
+					//TODO: clear from disk QoS 2 value, know its saved becaause we did not pubrec until saved
+					
+					/////////////////		
+					
 					Pipe.presumeRoomForWrite(clientToServerAck);
 					FragmentWriter.writeLI(clientToServerAck, 
 							 MQTTClientToServerSchemaAck.MSG_PUBCOMP_7, 

@@ -263,6 +263,9 @@ public class AESCBSRoundTripEncryptionTest {
 		results.setLength(0);
 		results.append("individual messages: ");
 		{
+			
+		//	gm.enableTelemetry(8089);
+			
 			NonThreadScheduler s = new NonThreadScheduler(gm);		
 			
 			s.startup();
@@ -293,12 +296,21 @@ public class AESCBSRoundTripEncryptionTest {
 		ConsoleJSONDumpStage lastStage2 = buildGraph2(blockFilePath, tempFile, results, gm2);
 	
 		{
+			boolean telemetry = false;
+			if (telemetry) {
+				gm2.enableTelemetry(8099);
+			}
+			
 			NonThreadScheduler s = new NonThreadScheduler(gm2);		
 			
 			s.startup();
 			long timeout = System.currentTimeMillis()+10_000;
 			while (!GraphManager.isStageTerminated(gm2, lastStage2.stageId) && System.currentTimeMillis()<timeout) {
 					s.run();
+			}
+			
+			while (telemetry) {
+				s.run();
 			}
 			
 			s.shutdown();		

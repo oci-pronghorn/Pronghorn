@@ -140,6 +140,15 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 
 	}
 
+	public String toString() {
+		String parent = super.toString();
+		if (encrypt) {
+			return parent+" encrypt";
+		} else {
+			return parent+" decrypt";
+		}		
+	}
+	
 	//TODO: needs test to confirm that zero lenght block writes continues to work
 	
 	//TODO: needs to add recovery mode for loading corrupt files
@@ -249,7 +258,11 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 			        			//do not process any more input until this decrypt has its final block
 			        	    	isFinalRequested = true;
 								//reqeust the stored final blocks so we can find which is needed.
-							    BlockStorageXmitSchema.publishRead(finalOutput, 0, guidBlockSize);			        	    	
+							    assert(guidBlockSize>0) : "must have some length";
+								PipeWriter.presumeWriteFragment(finalOutput, BlockStorageXmitSchema.MSG_READ_2);
+								PipeWriter.writeLong(finalOutput,BlockStorageXmitSchema.MSG_READ_2_FIELD_POSITION_12, (long) 0);
+								PipeWriter.writeInt(finalOutput,BlockStorageXmitSchema.MSG_READ_2_FIELD_READLENGTH_10, guidBlockSize);
+								PipeWriter.publishWrites(finalOutput);			        	    	
 		        	    		//file position for decrypt is cleared after we get the final blocks
 							    
 							    							    
@@ -336,8 +349,11 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 		        	assert(0 == fieldPosition1);
 		        	assert(guidBlockSize  == fieldPayload.available());
 
+		        	int avail = fieldPayload.available();
+		        	
 		        	int offset = (int)((fileOutputPosition-safeOffset) & rollingHashMask);		        	
-			        Pipe.xorBytesToBytes(rollingHash, offset, rollingHashMask, blockBack, blockPos, blockMask, finalBlockSize);
+			        Pipe.xorBytesToBytes(rollingHash, offset, rollingHashMask,
+			        		             blockBack, blockPos, blockMask, finalBlockSize);
 		
 					//Appendables.appendArray(Appendables.appendValue(System.out, offset), 
 					//		rollingHash, offset, rollingHashMask, 64 ).append(" decrypt\n ");
@@ -345,6 +361,9 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 		        	//this data is needed for decrypt when we reach the end
 		        	finalPos = fieldPayload.readLong();
 		        	finalLen = fieldPayload.readInt();
+
+		    		final int headerBytesToIgnore = (int)(guidBlockSize-fileOutputPosition);
+		    		
 		        	
 		        	if (fileOutputPosition == finalPos 
 		        		&& finalLen>=0
@@ -379,40 +398,53 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 			        		activeShuntPosition = 0; //replace the first slot first since we use second
 			        		
 			        	} else {
-			        		//neither position matched, we may not be that far into the data yet
+			        			        		
+			        		if (headerBytesToIgnore>0) {
+			        			//this data is not valid for now...
+
+			        			logger.info("not yet started must skip {} ", headerBytesToIgnore);
+			        			
+			        		} else {
+			        						        		
+			        			//neither position matched,  corrupt data discovered, should return -2 length
 			        		
-			        		//TODO: corrupt data discovered, should return -2 length
-			        		
-			        		logger.info("Warning: looking for data at position {} found no match in {} length {} ", fileOutputPosition, finalPos, finalLen);
-			        		
-			        		finalPos = -1;
+				        		logger.info("Warning: looking for data at position {} found no match in {} length {} ", 
+				        				fileOutputPosition, finalPos, finalLen);
+				        		
+				        		finalPos = -1;			        		
+			        		}
 			        		
 			        	}
 		        	}    	    	
-        	    	
-        	    	assert(finalPos!=-1) : "must have matching position by this point in time";
-    	    		final int targetPos = Pipe.getWorkingBlobHeadPosition(output);
-    	    		    	    
-    	    		int headerBytesToIgnore = (int)(guidBlockSize-fileOutputPosition);
-    	    		
+    
+        	    	assert(finalPos != -1) : "must have matching position by this point in time encrypt:"+encrypt;
+        	    	assert(finalLen <= finalData.length) : "length is too long. encrypt: "+encrypt;
+
+        	    	final int targetPos = Pipe.getWorkingBlobHeadPosition(output);
     	    		int blockLen = processBlock(finalLen, 0, finalData, targetPos, targetBuffer, targetMask);
-    	    	    	    		
+    	    						
     	    		int finalLen2 = doFinalIntoRing(targetBuffer, targetPos+blockLen, targetMask);
+    	    		    	    		
     	    		//must add the hash for final??
     	    		hashInputData(targetBuffer, targetPos+blockLen, targetMask, finalLen2);
     	       		int targetLen = blockLen + finalLen2;
+		        
     	       		//////////
     	       		//must remove the header if we read part of it since it is not part of our data
     	    	    if (headerBytesToIgnore>0) {
     	    	    	targetLen -= headerBytesToIgnore;
-    	    	    	Pipe.copyBytesFromToRing(targetBuffer, targetPos+headerBytesToIgnore, targetMask, 
-    	    	    							 targetBuffer, targetPos, targetMask, 
-    	    	    							 targetLen);
-
+    	    	    	
+    	    	    	if (targetLen>=0) {
+    	    	    		Pipe.copyBytesFromToRing(targetBuffer, targetPos+headerBytesToIgnore, targetMask, 
+    	    	    								 targetBuffer, targetPos, targetMask, 
+    	    	    								 targetLen);
+    	    	    	}
     	    	    }
     	    		
+    	    		if (targetLen>0) {
+    	    			publishBockOut(targetPos, targetLen);
+    	    		}
     	    		
-    	    		publishBockOut(targetPos, targetLen);
     	    		isFinalRequested = false;
 		        	resetToBeginning();
 		        	
@@ -446,7 +478,10 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 					//////////////////////////////////////////////////
 					//this call will grow filePosition and decrypt the first block
 					final int targetPos = Pipe.getWorkingBlobHeadPosition(output);
-					int len = processBlock(avail, 
+					
+					//System.out.println("in "+avail+" vs blob "+input.sizeOfBlobRing);
+					
+					int len = processBlock(avail,
 							     		   inputStream.absolutePosition() & sourceMask,
 							     		   sourceBuffer,
 							     		   targetPos, targetBuffer, targetMask);
@@ -598,9 +633,11 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 	
 	private int blockModCount = 0;
 
-	private int processBlock(int avail, int availPos, byte[] availBacking, 
+	private int processBlock(final int avail, int availPos, byte[] availBacking, 
 			                 int targetPos, byte[] targetBacking, int targetMask) {
 		assert(targetBacking.length>32);
+		assert(avail>=0) : "avail out of range "+avail+" encrypt: "+encrypt;
+		assert(avail<=availBacking.length);
 		
 		if (avail>0){
 			
@@ -615,9 +652,9 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 				
 				    int requiredOutputRoom = c.getOutputSize(avail);
 				    
-				    int roomBeforeWrap = targetBacking.length-targetPos;
+				    int roomBeforeWrap = targetBacking.length - targetPos;
 				    
-				    int result;
+				    int result = 0;
 				    if (requiredOutputRoom <= roomBeforeWrap) {
 						result = c.update(
 												availBacking, 
@@ -627,7 +664,9 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 												targetPos);
 						
 				    } else {
+				    	System.out.println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 				    	System.out.println("tested when no room, if this worked remove this comment.");
+				    	
 				    	////////////////////////////////////////
 				    	//this conditional is only needed because we may not have all the room
 				    	//before the wrap and because c.update does not have the right signature to suppor this.
@@ -635,16 +674,23 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 				    	if (requiredOutputRoom > tempWrapSpace.length) {
 				    		tempWrapSpace = new byte[requiredOutputRoom*2];
 				    	}
-						result = c.update(
+				    	
+				    	System.out.println("avail "+avail+" pos "+availPos
+				    			          +" target size "+tempWrapSpace.length
+				    			          +"  req "+requiredOutputRoom);
+				    	
+				    	if (avail<100000) {
+							result = c.update(
 												availBacking, 
 												availPos, 
 												avail, 
 												tempWrapSpace, 
 												0);
-																
-						Pipe.copyBytesFromToRing(tempWrapSpace, 0, Integer.MAX_VALUE, 
-								targetBacking, targetPos, targetMask,
-								result);
+																	
+							Pipe.copyBytesFromToRing(tempWrapSpace, 0, Integer.MAX_VALUE, 
+									targetBacking, targetPos, targetMask,
+									result);
+				    	}
 				    	
 				    }
 					
@@ -733,6 +779,7 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 	
 		long lookupPosition = fileOutputPosition - passSize;
 			
+		//logger.trace("wrote lookup position of {} ",lookupPosition);
 		DataOutputBlobWriter.write64(blob, finalOutput.blobMask, origPos, lookupPosition);//everything encoded so far.
 		int lenPos = origPos+8;					
 		
@@ -741,6 +788,8 @@ public class RawDataCryptAESCBCPKCS5Stage extends PronghornStage {
 		
 		int finalLength = doFinalIntoRing(blob, finalOffset, finalMask);
 		hashInputData(targetBuffer, finalOffset, targetMask, finalLength);
+		
+		//logger.trace("wrote final length of {} ",finalLength);
 		DataOutputBlobWriter.write32(blob, finalOutput.blobMask, lenPos, finalLength);
 				
 		//we write full block to ensure file is filled up to that size.

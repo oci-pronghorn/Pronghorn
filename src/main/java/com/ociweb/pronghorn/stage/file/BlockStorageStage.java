@@ -54,7 +54,14 @@ public class BlockStorageStage extends PronghornStage {
 		this.filePath = filePath;
 		this.input = input;
 		this.output = output;
+		assert(null!=filePath && filePath.trim().length()>0);
 	}
+	
+	public String toString() {
+		String parent = super.toString();
+		return parent+" "+filePath;		
+	}
+	
 
 	@Override
 	public void startup() {
@@ -63,7 +70,8 @@ public class BlockStorageStage extends PronghornStage {
 			raf = new RandomAccessFile(filePath, "rws");
 			fileChannel = raf.getChannel();
 		} catch (FileNotFoundException e) {
-			new RuntimeException(e);
+			logger.info("unable to open file {} for writing", filePath);
+			throw new RuntimeException(e);
 		}
 	}
 	

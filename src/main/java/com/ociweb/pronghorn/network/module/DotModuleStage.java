@@ -36,8 +36,10 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 	
     private final MonitorConsoleStage monitor;
     
-	private DotModuleStage(GraphManager graphManager, Pipe<HTTPRequestSchema>[] inputs, 
-			Pipe<ServerResponseSchema>[] outputs, HTTPSpecification httpSpec, MonitorConsoleStage monitor) {
+	private DotModuleStage(GraphManager graphManager, 
+			Pipe<HTTPRequestSchema>[] inputs, 
+			Pipe<ServerResponseSchema>[] outputs, 
+			HTTPSpecification httpSpec, MonitorConsoleStage monitor) {
 		super(graphManager, inputs, outputs, httpSpec);
 		this.monitor = monitor;
 		

@@ -38,6 +38,7 @@ import com.ociweb.pronghorn.network.twitter.RequestTwitterUserStreamStage;
 import com.ociweb.pronghorn.network.twitter.TwitterJSONToTwitterEventsStage;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeConfig;
+import com.ociweb.pronghorn.pipe.PipeMonitor;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.PronghornStageProcessor;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
@@ -820,7 +821,10 @@ public class NetGraphBuilder {
 							//One module for each file??
 							//TODO: add monitor to this stream
 							//this will be a permanent output stream...
-							//PipeMonitor.addMonitor(getPipe(graphManager, pipeId));
+							//Pipe<?> results = PipeMonitor.addMonitor(getPipe(graphManager, pipeId));
+							//some stage much stream out this pipe?
+							//must convert to JSON and stream.
+							//how large is the JSON blocks must ensure output is that large.
 							
 							
 							

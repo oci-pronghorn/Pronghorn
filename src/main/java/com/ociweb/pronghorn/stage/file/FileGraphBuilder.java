@@ -19,9 +19,13 @@ public class FileGraphBuilder {
 
 	public static Pipe<PersistedBlobLoadSchema> buildSequentialReplayer(GraphManager gm,
 			Pipe<PersistedBlobStoreSchema> toStore, 
-			byte multi, byte bits, short inFlightCount, int largestBlock,
+			byte multiplierForCompaction, 
+			byte maxIdValueBits, 
+			short inFlightCount, 
+			int largestBlock,
 			File targetDirectory, 
-			byte[] cypherBlock, long rate) {
+			byte[] cypherBlock, 
+			long rate) {
 		
 		if (cypherBlock != null) {
 			if (cypherBlock.length!=16) {
@@ -58,14 +62,18 @@ public class FileGraphBuilder {
 		
 		String[] paths = null;
 		try {
-			paths = new String[]{	File.createTempFile("seqRep", "dat0", targetDirectory).getAbsolutePath(),
-					File.createTempFile("seqRep", "dat1", targetDirectory).getAbsolutePath(),
-					File.createTempFile("seqRep", "idx", targetDirectory).getAbsolutePath()};
+			paths = new String[]{	
+					File.createTempFile("seqRep", ".dat0", targetDirectory).getAbsolutePath(),
+					File.createTempFile("seqRep", ".dat1", targetDirectory).getAbsolutePath(),
+					File.createTempFile("seqRep", ".idx",  targetDirectory).getAbsolutePath()};
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		
-		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, new SequentialFileReadWriteStage(gm, control, response, fileDataToSave, fileDataToLoad, paths));
+		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, 
+				new SequentialFileReadWriteStage(gm, control, response, 
+											     fileDataToSave, fileDataToLoad, 
+											     paths));
 		
 		if (null != cypherBlock) {
 			
@@ -81,7 +89,6 @@ public class FileGraphBuilder {
 			
 			int i = 3;
 			while (--i>=0) {
-				String filePath = "";
 				
 				Pipe<BlockStorageReceiveSchema> doFinalReceive1 = BlockStorageReceiveSchema.instance.newPipe(10, 1000);
 				Pipe<BlockStorageXmitSchema> doFinalXmit1 = BlockStorageXmitSchema.instance.newPipe(10, 1000);
@@ -89,20 +96,24 @@ public class FileGraphBuilder {
 				Pipe<BlockStorageReceiveSchema> doFinalReceive2 = BlockStorageReceiveSchema.instance.newPipe(10, 1000);
 				Pipe<BlockStorageXmitSchema> doFinalXmit2 = BlockStorageXmitSchema.instance.newPipe(10, 1000);
 				
-				BlockStorageStage.newInstance(gm, filePath, 
+				BlockStorageStage.newInstance(gm, paths[i]+".tail", 
 						              new Pipe[] {doFinalXmit1, doFinalXmit2},
-						              new Pipe[] {doFinalReceive1, doFinalXmit2});
+						              new Pipe[] {doFinalReceive1, doFinalReceive2});
 				
-				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, true, cypherDataToSave[i], fileDataToSave[i],
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate,
+						new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, true, cypherDataToSave[i], fileDataToSave[i],
 						                         doFinalReceive1, doFinalXmit1));
 				
-				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, false, fileDataToLoad[i], cypherDataToLoad[i],
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, 
+						new RawDataCryptAESCBCPKCS5Stage(gm, cypherBlock, false, fileDataToLoad[i], cypherDataToLoad[i],
 						                         doFinalReceive2, doFinalXmit2));
 			}			
 			
-			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, new SequentialReplayerStage(gm, toStore, perLoad, control, response, cypherDataToSave, cypherDataToLoad, multi, bits));
+			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate,
+					new SequentialReplayerStage(gm, toStore, perLoad, control, response, cypherDataToSave, cypherDataToLoad, multiplierForCompaction, maxIdValueBits));
 		} else {
-			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, new SequentialReplayerStage(gm, toStore, perLoad, control, response, fileDataToSave, fileDataToLoad, multi, bits));
+			GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, 
+					new SequentialReplayerStage(gm, toStore, perLoad, control, response, fileDataToSave, fileDataToLoad, multiplierForCompaction, maxIdValueBits));
 		}
 		return perLoad;
 	}

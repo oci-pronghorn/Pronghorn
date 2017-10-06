@@ -39,27 +39,23 @@ public class SequentialReplayerStageTest {
 	public void writeReleaseAndReadTest() {
 		writeReleaseAndReadImpl(false);
 	}
-	
-	
-	@Ignore
+		
+	@Test
 	public void encryptedWriteWithAckTest() {
 		writeWithAckImpl(true);
 	}
 
-	@Ignore
+	@Test
 	public void encryptedEmptyReplayTest() {
 		emptyReplayImpl(true);
 	}
 
-	//TODO: urgent fix. this breaks due to incryption not matching, not sure why.
-	@Ignore
+	@Test
 	public void encryptedWriteAndReadTest() {
 		writeAndReadImpl(true);	
 	}
 	
-	
-	//TODO: urgent fix. this breaks due to incryption not matching, not sure why.
-	@Ignore
+	@Test
 	public void encyptedWriteReleaseAndReadTest() {
 		writeReleaseAndReadImpl(true);
 	}
@@ -102,7 +98,8 @@ public class SequentialReplayerStageTest {
 		PipeWriter.writeBytes(perStore,PersistedBlobStoreSchema.MSG_BLOCK_1_FIELD_BYTEARRAY_2, fieldByteArrayBacking, 0, fieldByteArrayLength);
 		PipeWriter.publishWrites(perStore);
 		
-		PersistedBlobStoreSchema.publishRequestReplay(perStore);
+		PipeWriter.presumeWriteFragment(perStore, PersistedBlobStoreSchema.MSG_REQUESTREPLAY_6);
+		PipeWriter.publishWrites(perStore);
 		
 		PipeWriter.publishEOF(perStore); //ensure that the parts do not shut down before we are done
 				
@@ -135,7 +132,6 @@ public class SequentialReplayerStageTest {
 
 	private void writeReleaseAndReadImpl(boolean encryption) {
 		Pipe<PersistedBlobStoreSchema> perStore = PersistedBlobStoreSchema.instance.newPipe(10, 1000);
-		
 		perStore.initBuffers();
 		
 		byte[] fieldByteArrayBacking = "hello".getBytes();
@@ -146,9 +142,12 @@ public class SequentialReplayerStageTest {
 		PipeWriter.writeBytes(perStore,PersistedBlobStoreSchema.MSG_BLOCK_1_FIELD_BYTEARRAY_2, fieldByteArrayBacking, 0, fieldByteArrayLength);
 		PipeWriter.publishWrites(perStore);
 		
-		PersistedBlobStoreSchema.publishRelease(perStore, 10);
+		PipeWriter.presumeWriteFragment(perStore, PersistedBlobStoreSchema.MSG_RELEASE_7);
+		PipeWriter.writeLong(perStore,PersistedBlobStoreSchema.MSG_RELEASE_7_FIELD_BLOCKID_3, (long) 10);
+		PipeWriter.publishWrites(perStore);
 				
-		PersistedBlobStoreSchema.publishRequestReplay(perStore);
+		PipeWriter.presumeWriteFragment(perStore, PersistedBlobStoreSchema.MSG_REQUESTREPLAY_6);
+		PipeWriter.publishWrites(perStore);
 						
 		PipeWriter.publishEOF(perStore);
 				
@@ -161,22 +160,16 @@ public class SequentialReplayerStageTest {
 		assertTrue(result, result.indexOf("FinishReplay")>0);
 	}
 	
-	//TODO: need unit test for compaction of the data
-	
-	
-	//TODO: check QoS2 only sends once , restrict dup code.
-	//TODO: check user/password
-	//TODO: check TLS
-    //TODO: need pictures of FogLight code for twitter...
-	
-	
 	private String runGraph(Pipe<PersistedBlobStoreSchema> perStore, boolean encryption) {
 		///////////////////////////////
 		
 		
 		GraphManager gm = new GraphManager();
 		
-		//gm.enableTelemetry(8089);
+		boolean telemetry = false;
+		if (telemetry) {
+			gm.enableTelemetry(8089);
+		}
 		
 		byte multi = 3;
 		byte bits = 16;
@@ -207,6 +200,11 @@ public class SequentialReplayerStageTest {
 			scheduler.run();
 			Thread.yield();
 		}
+		
+		while (telemetry) {
+			scheduler.run();
+		}
+		
 		scheduler.shutdown();
 		
 		

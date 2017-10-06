@@ -59,8 +59,6 @@ public class SequentialReplayerStage extends PronghornStage {
 	
 	private boolean shutdownInProgress = false;
 	
-	//TODO: reduce this to fewer pipes.
-	
 	protected SequentialReplayerStage(GraphManager graphManager, 
 			
 		            Pipe<PersistedBlobStoreSchema> storeRequests,  //load request
@@ -467,7 +465,22 @@ public class SequentialReplayerStage extends PronghornStage {
 				    		   Pipe.openInputStream(storeRequests), 
 				    		   fileOutput[activeIdx], 
 				    		   fileControl[activeIdx]);		        	
-		        	detectAndTriggerCompaction();
+		        	
+//					int size = Pipe.addMsgIdx(fileOutput[activeIdx], RawDataSchema.MSG_CHUNKEDSTREAM_1);
+//					Pipe.addNullByteArray(fileOutput[activeIdx]);
+//					Pipe.confirmLowLevelWrite(fileOutput[activeIdx], size);
+//					Pipe.publishWrites(fileOutput[activeIdx]);
+//					
+//					//TODO: test to ensure that the index is written as well.
+//					size = Pipe.addMsgIdx(fileOutput[fileOutput.length-1], RawDataSchema.MSG_CHUNKEDSTREAM_1);
+//					Pipe.addNullByteArray(fileOutput[fileOutput.length-1]);
+//					Pipe.confirmLowLevelWrite(fileOutput[fileOutput.length-1], size);
+//					Pipe.publishWrites(fileOutput[fileOutput.length-1]);
+				    
+				    detectAndTriggerCompaction();
+		        	
+		        	
+		        	
 				break;
 		        case PersistedBlobStoreSchema.MSG_RELEASE_7:
 		    		//write this id to the release data file
@@ -509,6 +522,24 @@ public class SequentialReplayerStage extends PronghornStage {
 
 	private void requestReplayOfStoredBlocks() {
 
+		//////////
+		//before replay signal encryption to wrap up
+		/////////
+		
+		int size = Pipe.addMsgIdx(fileOutput[activeIdx], RawDataSchema.MSG_CHUNKEDSTREAM_1);
+		Pipe.addNullByteArray(fileOutput[activeIdx]);
+		Pipe.confirmLowLevelWrite(fileOutput[activeIdx], size);
+		Pipe.publishWrites(fileOutput[activeIdx]);
+		
+		//TODO: test to ensure that the index is written as well.
+		size = Pipe.addMsgIdx(fileOutput[fileOutput.length-1], RawDataSchema.MSG_CHUNKEDSTREAM_1);
+		Pipe.addNullByteArray(fileOutput[fileOutput.length-1]);
+		Pipe.confirmLowLevelWrite(fileOutput[fileOutput.length-1], size);
+		Pipe.publishWrites(fileOutput[fileOutput.length-1]);
+		
+		
+		//////////
+		
 		requestsInFlight++;//will be cleared at the end of the replay
 		if (isDirty) {
 			//clear known release so we can reload them from storage.
@@ -570,12 +601,16 @@ public class SequentialReplayerStage extends PronghornStage {
 		DataOutputBlobWriter<RawDataSchema> str = Pipe.outputStream(pipe);
 		DataOutputBlobWriter.openField(str);
 		
+		//logger.trace("wrote blockId from sequential replayer {} ", blockId);		
 		str.writePackedLong(blockId);/////packed LONG for the ID
+		//str.writeLong(blockId);
 		int length = data.available();
 		
 		assert(length+15<pipe.maxVarLen) : "Outgoing pipe to filesystem is too small";
 		
-		str.writePackedInt(length);        /////packed INT for the data length     
+		//logger.trace("wrote length from sequential replayer {} ", length);		
+		str.writePackedInt(length);        /////packed INT for the data length  
+		//str.writeInt(length);
 		data.readInto(str, length);        /////then the data   
 		
 		DataOutputBlobWriter.closeLowLevelField(str);
