@@ -34,7 +34,8 @@ public class ClientTest {
 		CharSequence fieldHost = "127.0.0.1";
 		int fieldPort = isTLS ? 8883 : 1883;
 
-		
+		String user = "user";
+		String pass = "pass";
 		
 		Pipe<MQTTClientRequestSchema> clientRequest = MQTTClientRequestSchema.instance.newPipe(maxInFlight, maximumLenghOfVariableLengthFields);
 		clientRequest.initBuffers();
@@ -43,13 +44,14 @@ public class ClientTest {
 		
 		short responseConnections = (short)1;
 		MQTTClientGraphBuilder.buildMQTTClientGraph(gm, isTLS, 
-				                                maxInFlight, maximumLenghOfVariableLengthFields, 
-				                                clientRequest, clientResponse, rate,
-													(byte)3, responseConnections);       
+				                                    maxInFlight, maximumLenghOfVariableLengthFields, 
+				                                    clientRequest, clientResponse, rate,
+													(byte)3, responseConnections,
+													user, pass);       
        
         ConsoleJSONDumpStage.newInstance(gm, clientResponse);
        
-        gm.enableTelemetry(8098);
+       // gm.enableTelemetry(8098);
         
         NonThreadScheduler scheduler = new NonThreadScheduler(gm);
        

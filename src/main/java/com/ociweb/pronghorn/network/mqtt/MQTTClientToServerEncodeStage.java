@@ -696,16 +696,15 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		final int blobPos = Pipe.getBlobHeadPosition(server);
 		
 		Pipe.presumeRoomForWrite(server);
-		Pipe.addMsgIdx(server, NetPayloadSchema.MSG_PLAIN_210);
-
-		DataOutputBlobWriter<NetPayloadSchema> output = Pipe.openOutputStream(server);
-		
+				
 		lastActvityTime = System.currentTimeMillis();
 		
 		switch (msgIdx) {
 					
 				case MQTTClientToServerSchemaAck.MSG_PUBACK_4: //Pub from broker to client, QoS1 response to broker
-					
+				{
+					Pipe.addMsgIdx(server, NetPayloadSchema.MSG_PLAIN_210);
+					DataOutputBlobWriter<NetPayloadSchema> output = Pipe.openOutputStream(server);
 					//  From broker to client
 					//  broker will keep sending publish to client until we send pub ack
 					//
@@ -734,10 +733,12 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					Pipe.confirmLowLevelWrite(server,
 							Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210));
 					Pipe.publishWrites(server);
-										
+				}			
 				break;					
 				case MQTTClientToServerSchemaAck.MSG_PUBCOMP_7: 
-					
+				{
+					Pipe.addMsgIdx(server, NetPayloadSchema.MSG_PLAIN_210);
+					DataOutputBlobWriter<NetPayloadSchema> output = Pipe.openOutputStream(server);
 					//  From broker to client
 					//  broker will keep sending PubRel to client until we send pub comp back
 					//  client has been repeating PubRec but now must stop and clear it.
@@ -772,10 +773,13 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					//note this packetId is from the server side.
 					//////////////					
 					ackPublishedPos(serverPacketId);	
-				
+				}
 				break;									
 				
 				case MQTTClientToServerSchemaAck.MSG_PUBREL_6: //requires ack room
+				{
+					Pipe.addMsgIdx(server, NetPayloadSchema.MSG_PLAIN_210);
+					DataOutputBlobWriter<NetPayloadSchema> output = Pipe.openOutputStream(server);
 					//NOTE: upon the client doing QoS2 publish we have already
 					//      subtracted 2 from the in-flight counts to ensure this works
 					//
@@ -821,6 +825,11 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 						Pipe.confirmLowLevelWrite(server, Pipe.sizeOf(NetPayloadSchema.instance, NetPayloadSchema.MSG_PLAIN_210));
 						Pipe.publishWrites(server);
 					}
+				}
+				break;
+				case -1:
+					//TODO: need to pass along the shutdown message
+					
 				break;
 				default:
 					logger.info("oops, unknown message type {} ",msgIdx);
@@ -845,15 +854,16 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 		//logger.info("write plain message at position {} ",Pipe.workingHeadPosition(server));
 		//////
 		Pipe.presumeRoomForWrite(server);
-		int plainSize = Pipe.addMsgIdx(server, NetPayloadSchema.MSG_PLAIN_210);
-	
-		DataOutputBlobWriter<NetPayloadSchema> output = Pipe.openOutputStream(server);
 
 		lastActvityTime = System.currentTimeMillis();
 
 		switch (msgIdx) {
 				case MQTTClientToServerSchema.MSG_CONNECT_1:
 					{
+						
+						int plainSize = Pipe.addMsgIdx(server, NetPayloadSchema.MSG_PLAIN_210);
+						DataOutputBlobWriter<NetPayloadSchema> output = Pipe.openOutputStream(server);
+						
 						//block ping until this is complete.
 						brokerAcknowledgedConnection = false;
 	
@@ -936,6 +946,10 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					}
 				break;
 				case MQTTClientToServerSchema.MSG_DISCONNECT_14:
+				{
+					
+					int plainSize = Pipe.addMsgIdx(server, NetPayloadSchema.MSG_PLAIN_210);
+					DataOutputBlobWriter<NetPayloadSchema> output = Pipe.openOutputStream(server);
 					
 					arrivalTime = Pipe.takeLong(input);
 					
@@ -950,8 +964,12 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					Pipe.confirmLowLevelWrite(server, plainSize);
 					Pipe.publishWrites(server);
 					//logger.info("wrote block of {}",len2);
+				}
 				break;
 				case MQTTClientToServerSchema.MSG_PUBLISH_3:
+				{
+					int plainSize = Pipe.addMsgIdx(server, NetPayloadSchema.MSG_PLAIN_210);
+					DataOutputBlobWriter<NetPayloadSchema> output = Pipe.openOutputStream(server);
 					
 					arrivalTime  = Pipe.takeLong(input);
 					int packetId = Pipe.takeInt(input);
@@ -981,10 +999,13 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 					Pipe.confirmLowLevelWrite(server, plainSize);
 					Pipe.publishWrites(server);
 					//logger.info("full length of publish write {} Pipe {} {} {}",len3, server, server.slabMask, server.blobMask);
-					
+				}
 				break;
 				case MQTTClientToServerSchema.MSG_PUBREC_5: //requires ack room
 					{
+						int plainSize = Pipe.addMsgIdx(server, NetPayloadSchema.MSG_PLAIN_210);
+						DataOutputBlobWriter<NetPayloadSchema> output = Pipe.openOutputStream(server);
+						
 						remainingInFlight -= 1; 
 						//System.err.println("consume 1");
 						//  From broker to client (Qos2) Needs 1
@@ -1028,6 +1049,9 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				break;
 				case MQTTClientToServerSchema.MSG_SUBSCRIBE_8:
 					{
+						int plainSize = Pipe.addMsgIdx(server, NetPayloadSchema.MSG_PLAIN_210);
+						DataOutputBlobWriter<NetPayloadSchema> output = Pipe.openOutputStream(server);
+						
 						remainingInFlight -= 1;
 	
 						arrivalTime = Pipe.takeLong(input); 
@@ -1075,6 +1099,9 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 				break;
 				case MQTTClientToServerSchema.MSG_UNSUBSCRIBE_10:
 					{
+						int plainSize = Pipe.addMsgIdx(server, NetPayloadSchema.MSG_PLAIN_210);
+						DataOutputBlobWriter<NetPayloadSchema> output = Pipe.openOutputStream(server);
+						
 						remainingInFlight -= 1;
 						//System.err.println("consume 1");
 						
@@ -1114,6 +1141,10 @@ public class MQTTClientToServerEncodeStage extends PronghornStage {
 						}
 					}
 				break;
+				case -1:
+					//TODO: need to pass along the shutdown message
+					
+				break;	
 				default:
 					logger.info("oops, unknown message type {} ",msgIdx);
 		}	

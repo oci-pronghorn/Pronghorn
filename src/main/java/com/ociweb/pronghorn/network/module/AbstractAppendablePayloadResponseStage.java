@@ -137,7 +137,8 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		        	activeFieldRequestContext = Pipe.takeInt(input);//context
 		        			        	
 		        	//must read context before calling this
-		        	if (!sendResponse(output, fieldRevision, paramStream, (HTTPVerbDefaults)httpSpec.verbs[fieldVerb])) {
+		        	if (!sendResponse(output, fieldRevision, paramStream, 
+		        			          (HTTPVerbDefaults)httpSpec.verbs[fieldVerb])) {
 
 		        		HTTPUtil.publishStatus(activeChannelId, activeSequenceNo, 404, output); 
 		        	}
@@ -155,7 +156,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		
 	}
 
-	protected boolean sendResponse(Pipe<ServerResponseSchema> output, int fieldRevision, 
+	private final boolean sendResponse(Pipe<ServerResponseSchema> output, int fieldRevision, 
 			                       DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb) {
 		
 		payloadWorkspace.setLength(0);
@@ -203,6 +204,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		 		    outputStream, 
 		 		    1&(activeFieldRequestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
 		
+		assert(outputStream.length()<=output.maxVarLen): "Header is too large or pipe max var size of "+output.maxVarLen+" is too small";
 		//logger.trace("built new header response of length "+length);
 		
 		appendRemainingPayload(output);
@@ -246,10 +248,12 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			activeOutput = null;
 		} 
 		
+		assert(outputStream.length()<=output.maxVarLen): "Header is too large or pipe max var size of "+output.maxVarLen+" is too small";
+
 		DataOutputBlobWriter.closeHighLevelField(outputStream, ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_PAYLOAD_25);
- 
-		
-		PipeWriter.writeInt(output,ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_REQUESTCONTEXT_24, 
+ 		
+		PipeWriter.writeInt(output,
+				            ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_REQUESTCONTEXT_24, 
 							activeFieldRequestContext);
 				
 		PipeWriter.publishWrites(output);
