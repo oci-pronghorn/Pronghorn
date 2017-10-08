@@ -1564,52 +1564,56 @@ public class GraphManager {
 	                    	pipeName = Pipe.schemaName(pipe).replace("Schema", "");
 	                    	m.pipeDOTNames[pipe.id] = pipeName;
 	                    }
-		                target.append("\"[label=\"").append(pipeName);
+		                target.append("\"[");
 		                
-		                
-		                if (null!=percentileValues) {		                	
-		                	int pctFull = percentileValues[pipe.id];
-		                	Appendables.appendValue(target.append(" \nFull:"), pctFull).append("% ");
-		                	if (pctFull!=0) {
-		                		Appendables.appendValue(target,"@", (pctFull*(long)pipe.sizeOfSlabRing/100L)).append(" ");
-		                	}
-		                } else {
-		                	target.append(" \n");		                	
+		                target.append("label=\"");
+		                if (pipe.config().showLabels()) {
+			                target.append(pipeName);
+			                		                
+			                if (null!=percentileValues) {		                	
+			                	int pctFull = percentileValues[pipe.id];
+			                	Appendables.appendValue(target.append(" \nFull:"), pctFull).append("% ");
+			                	if (pctFull!=0) {
+			                		Appendables.appendValue(target,"@", (pctFull*(long)pipe.sizeOfSlabRing/100L)).append(" ");
+			                	}
+			                } else {
+			                	target.append(" \n");		                	
+			                }
+			     
+			                if (null!=traffic) {
+			                	int trafficCount = traffic[pipe.id];
+			                	Appendables.appendValue(target.append(" Vol:"), trafficCount).append(" ");
+			                	target.append(" \n");			                	
+			                } 
+			                
+			                
+			                if (minMessagesOnPipe==maxMessagesOnPipe) {
+			                    Appendables.appendValue(target," [",minMessagesOnPipe,"msg]");
+			                } else {
+			                    Appendables.appendValue( Appendables.appendValue(target," [",minMessagesOnPipe) ,"-",maxMessagesOnPipe,"msgs]");
+			                }
+			                
+			                //System.err.println("bytes allocated "+bytesAllocated);
+			                if (bytesAllocated > (1L<<31)) {
+			                	Appendables.appendValue(target, bytesAllocated>>>30).append('g');
+			                } else if (bytesAllocated > (1L<<21)) {
+			                	Appendables.appendValue(target, bytesAllocated>>>20).append('m');
+			                } else if (bytesAllocated > (1L<<11)) {
+			                	Appendables.appendValue(target, bytesAllocated>>>10).append('k');
+			                } else {
+			                	Appendables.appendValue(target, bytesAllocated).append('b');
+			                }
 		                }
-		                
-		                int lineWidth = 1; //default
-		                
-		                if (null!=traffic) {
-		                	int trafficCount = traffic[pipe.id];
-		                	Appendables.appendValue(target.append(" Vol:"), trafficCount).append(" ");	
-		                	
-		                	//compute the line width.
-		                	int bitsUsed = 32-Integer.numberOfLeadingZeros(trafficCount);		                	
-		                	lineWidth = (0==bitsUsed)? 1 : 2 +(bitsUsed>>3);
-		                	target.append(" \n");			                	
-		                } 
-		                
-		                
-		                if (minMessagesOnPipe==maxMessagesOnPipe) {
-		                    Appendables.appendValue(target," [",minMessagesOnPipe,"msg]");
-		                } else {
-		                    Appendables.appendValue( Appendables.appendValue(target," [",minMessagesOnPipe) ,"-",maxMessagesOnPipe,"msgs]");
-		                }
-		                
-		                //System.err.println("bytes allocated "+bytesAllocated);
-		                if (bytesAllocated > (1L<<31)) {
-		                	Appendables.appendValue(target, bytesAllocated>>>30).append('g');
-		                } else if (bytesAllocated > (1L<<21)) {
-		                	Appendables.appendValue(target, bytesAllocated>>>20).append('m');
-		                } else if (bytesAllocated > (1L<<11)) {
-		                	Appendables.appendValue(target, bytesAllocated>>>10).append('k');
-		                } else {
-		                	Appendables.appendValue(target, bytesAllocated).append('b');
-		                }
-		                
-		                
 		                target.append("\"");
 		                
+		                
+		                int lineWidth = 1; //default
+		                if (null!=traffic) {
+		                	int trafficCount = traffic[pipe.id];
+		                	//compute the line width.
+		                	int bitsUsed = 32-Integer.numberOfLeadingZeros(trafficCount);		                	
+		                	lineWidth = (0==bitsUsed)? 1 : 2 +(bitsUsed>>3);			                	
+		                }
 		                Appendables.appendValue(target.append(",penwidth="),lineWidth);
 		                
 		                if (null!=percentileValues) {		                	

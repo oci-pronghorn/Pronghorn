@@ -14,36 +14,37 @@ public class NeuralGraphBuilder {
 	
 	
 	public static <T extends MessageSchema<T>> Pipe<T>[][] buildPipeLayer(
-			 GraphManager gm, PipeConfig<T> config, Pipe<T>[] prev, int nodes2, StageFactory<T> factory) {
+			 GraphManager gm, PipeConfig<T> config,
+			 Pipe<T>[] prevPipes, int nextNodesCount, StageFactory<T> factory) {
 			
-		int nodes1 = prev.length;
+		final int thisNodesCount = prevPipes.length;
 		
-		Pipe<T>[][] inputs = (Pipe<T>[][])new Pipe[nodes1][nodes2];
-		int m = nodes1;
+		Pipe<T>[][] fromStages = (Pipe<T>[][])new Pipe[thisNodesCount][nextNodesCount];
+		int m = thisNodesCount;
 		while (--m>=0) {
-			inputs[m] = new Pipe[nodes2];
+			fromStages[m] = new Pipe[nextNodesCount];
 		}
 		
-		Pipe<T>[][] outputs = (Pipe<T>[][])new Pipe[nodes2][nodes1];
-		int n = nodes2;
+		Pipe<T>[][] fromStageGroupedByNext = (Pipe<T>[][])new Pipe[nextNodesCount][thisNodesCount];
+		int n = nextNodesCount;
 		while (--n>=0) {
-			outputs[n] = Pipe.buildPipes(nodes1, config);
-			int p = nodes1;
+			fromStageGroupedByNext[n] = Pipe.buildPipes(thisNodesCount, config);
+			int p = thisNodesCount;
 			while (--p>=0) {
-				inputs[p][n] = inputs[n][p];
+				fromStages[p][n] = fromStageGroupedByNext[n][p];
 			}
 		}
 		
 		//inputs are grouped by node1
 		
 		//create stages that write to inputs and take previous as argument to method
-		int p = prev.length;
+		int p = prevPipes.length;
 		while (--p>=0) {			
-			factory.newStage(gm, prev[p], inputs[p]); //make this a lambda
+			factory.newStage(gm, prevPipes[p], fromStages[p]);
 			
 		}
 		
-		return outputs; //grouped by nodes2
+		return fromStageGroupedByNext; //grouped by nodes2
 		
 		//return Pipe.buildPipes(inputs, pipeConfig);				
 	}
@@ -65,7 +66,7 @@ public class NeuralGraphBuilder {
 			outputs[n] = Pipe.buildPipes(nodes1, config);
 			int p = nodes1;
 			while (--p>=0) {
-				inputs[p][n] = inputs[n][p];
+				inputs[p][n] = outputs[n][p];
 			}
 		}
 		
@@ -74,7 +75,7 @@ public class NeuralGraphBuilder {
 		//create stages that write to inputs and take previous as argument to method
 		int p = prev.length;
 		while (--p>=0) {			
-			factory.newStage(gm, prev[p], inputs[p]); //make this a lambda
+			factory.newStage(gm, prev[p], inputs[p]);
 			
 		}
 		
@@ -91,7 +92,7 @@ public class NeuralGraphBuilder {
 		int p = prev.length;
 		Pipe<T>[] outputs = Pipe.buildPipes(p, prev[0][0].config());
 		while (--p>=0) {			
-			factory.newStage(gm, prev[p], outputs[p]); //make this a lambda
+			factory.newStage(gm, prev[p], outputs[p]);
 		}
 		return outputs;
 	}
