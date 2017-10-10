@@ -14,8 +14,10 @@ public class RowsToColumnRouteStage<M extends MatrixSchema<M>> extends Pronghorn
 	private int remainingRows;
 	private boolean shutdownInProgress;
 	
-	protected RowsToColumnRouteStage(GraphManager graphManager, M matrixSchema, Pipe<RowSchema<M>> rowPipeInput, Pipe<ColumnSchema<M>>[] columnPipeOutput) {
+	protected RowsToColumnRouteStage(GraphManager graphManager, Pipe<RowSchema<M>> rowPipeInput, Pipe<ColumnSchema<M>>[] columnPipeOutput) {
 		super(graphManager, rowPipeInput, columnPipeOutput);
+		
+		M matrixSchema = (M) rowPipeInput.config().schema().rootSchema();
 		this.rowPipeInput = rowPipeInput;
 		this.columnPipeOutput = columnPipeOutput;
 		this.matrixSchema = matrixSchema;

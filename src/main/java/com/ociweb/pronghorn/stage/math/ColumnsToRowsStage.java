@@ -19,8 +19,11 @@ public class ColumnsToRowsStage<M extends MatrixSchema<M>> extends PronghornStag
 	private final int colSizeOf;
 	private final int matrixSize;
 	
-	public ColumnsToRowsStage(GraphManager graphManager, M matrixSchema, Pipe<ColumnSchema<M>>[] columnPipeInput, Pipe<RowSchema<M>> matrixPipeOutput) {
+	public ColumnsToRowsStage(GraphManager graphManager, Pipe<ColumnSchema<M>>[] columnPipeInput, Pipe<RowSchema<M>> matrixPipeOutput) {
 		super(graphManager, columnPipeInput, matrixPipeOutput);
+		
+		M matrixSchema = (M) matrixPipeOutput.config().schema().rootSchema();
+		
 		this.columnPipeInput = columnPipeInput;
 		this.matrixPipeOutput = matrixPipeOutput;	
 		this.matrixSchema = matrixSchema;

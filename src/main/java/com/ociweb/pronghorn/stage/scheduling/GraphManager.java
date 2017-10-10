@@ -1551,11 +1551,17 @@ public class GraphManager {
 		                	Appendables.appendValue(target, "\"Undefined", undefIdx++);
 		                }
 		               
+		                /////////////////////////////////////////
 		                //compute the min and max count of messages that can be on this pipe at any time
-	                    int minFrag = FieldReferenceOffsetManager.minFragmentSize(Pipe.from(pipe));
-	                    int maxFrag = FieldReferenceOffsetManager.maxFragmentSize(Pipe.from(pipe));                    
-	                    int maxMessagesOnPipe = pipe.sizeOfSlabRing/minFrag;
-	                    int minMessagesOnPipe = pipe.sizeOfSlabRing/maxFrag;           
+	                    FieldReferenceOffsetManager from = Pipe.from(pipe);
+	                    int maxMessagesOnPipe = -1;
+	                    int minMessagesOnPipe = -1;
+	                    if (null != from) {
+	                    	maxMessagesOnPipe = pipe.sizeOfSlabRing/FieldReferenceOffsetManager.minFragmentSize(from);
+	                    	minMessagesOnPipe = pipe.sizeOfSlabRing/FieldReferenceOffsetManager.maxFragmentSize(from);           
+	                    }
+	                    ///////////////////////////////
+	                    ///////////////////////////////
 	                    long bytesAllocated = Pipe.estBytesAllocated(pipe);
 	                    
 	                    
@@ -1586,12 +1592,14 @@ public class GraphManager {
 			                	target.append(" \n");			                	
 			                } 
 			                
-			                
-			                if (minMessagesOnPipe==maxMessagesOnPipe) {
-			                    Appendables.appendValue(target," [",minMessagesOnPipe,"msg]");
-			                } else {
-			                    Appendables.appendValue( Appendables.appendValue(target," [",minMessagesOnPipe) ,"-",maxMessagesOnPipe,"msgs]");
+			                if (minMessagesOnPipe>=0) {
+				                if (minMessagesOnPipe==maxMessagesOnPipe) {
+				                    Appendables.appendValue(target," [",minMessagesOnPipe,"msg]");
+				                } else {
+				                    Appendables.appendValue( Appendables.appendValue(target," [",minMessagesOnPipe) ,"-",maxMessagesOnPipe,"msgs]");
+				                }
 			                }
+			                
 			                
 			                //System.err.println("bytes allocated "+bytesAllocated);
 			                if (bytesAllocated > (1L<<31)) {

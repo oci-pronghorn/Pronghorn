@@ -358,26 +358,42 @@ public class BuildMatrixCompute {
 		assert(leftSchema.type == rightSchema.type);
 		return buildSchema(leftSchema.getRows(), rightSchema.getColumns(), leftSchema.type);
 	}
+
+	private static <M extends MatrixSchema<M>> MatrixSchema resultSchema(Pipe<RowSchema<M>> left,
+			Pipe<RowSchema<M>> right) {
+		MatrixSchema<M> leftSchema1 = left.config().schema().rootSchema();
+		MatrixSchema<M> rightSchema1 = right.config().schema().rootSchema();
+		MatrixSchema resultSchema = BuildMatrixCompute.buildResultSchema(leftSchema1, rightSchema1);
+		return resultSchema;
+	}
+
 	
-	
-	public static <M extends MatrixSchema<M>, L extends MatrixSchema<L>, R extends MatrixSchema<R>>
-	            Pipe<ColumnSchema<M>>[] buildGraph(GraphManager gm, MatrixSchema<M> resultSchema,  MatrixSchema<L> leftSchema, MatrixSchema<R> rightSchema, Pipe<RowSchema<L>> leftInput, Pipe<RowSchema<R>> rightInput, int parallelism) {
+	public static <M extends MatrixSchema<M>> Pipe<ColumnSchema<M>>[] buildProductGraphRC(GraphManager gm, 
+	            		Pipe<RowSchema<M>> leftInput, 
+	            		Pipe<RowSchema<M>> rightInput, 
+	            		int parallelism) {
+
+		MatrixSchema<M> resultSchema = resultSchema(leftInput, rightInput);
+
 		
-		int i = resultSchema.getColumns();
-		Pipe<ColumnSchema<R>>[] intputAsColumns = new Pipe[i];
+		MatrixSchema<M> rightSchema = rightInput.config().schema().rootSchema();
+						
+		int i = rightSchema.getColumns();
+
+		Pipe<ColumnSchema<M>>[] intputAsColumns = new Pipe[i];
 		Pipe<ColumnSchema<M>>[] resultColumnPipes = new Pipe[i];
 
-		ColumnSchema<R> columnsInputSchema = new ColumnSchema<R>(rightSchema);		
+		ColumnSchema<M> columnsInputSchema = new ColumnSchema<M>(rightSchema);		
 		assert(rightSchema.rows == columnsInputSchema.rows);
 
 		ColumnSchema<M> columnsOutoutSchema = new ColumnSchema<M>(resultSchema);
 
-		PipeConfig<ColumnSchema<R>> rightColumnConfig = new PipeConfig<ColumnSchema<R>>(columnsInputSchema,4); //just big enough to support batching of one consumer and one producer
+		PipeConfig<ColumnSchema<M>> rightColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsInputSchema,4); //just big enough to support batching of one consumer and one producer
 		
 		//TODO: build second compute that will use rows rather than keep this column open.
 		PipeConfig<ColumnSchema<M>> resultColumnConfig = new PipeConfig<ColumnSchema<M>>(columnsOutoutSchema,4);
 	
-		int parts = Math.min(parallelism,i);
+		int parts = Math.min(parallelism, i);
 		int partsSize = i/parts;
 		
 		//TODO: divide group and spread the remainder evenly so we have groups of 2 sizes and most.
@@ -387,43 +403,56 @@ public class BuildMatrixCompute {
 		
 						
 		int splitterPipesCount = parts;
-		Pipe<RowSchema<L>>[] splitterPipes = new Pipe[splitterPipesCount];
+		Pipe<RowSchema<M>>[] splitterPipes = new Pipe[splitterPipesCount];
 		
 		int start = i;
 		while (--i>=0) {
-			intputAsColumns[i] = new Pipe<ColumnSchema<R>>(rightColumnConfig);			
+			intputAsColumns[i] = new Pipe<ColumnSchema<M>>(rightColumnConfig);			
 			resultColumnPipes[i] =  new Pipe<ColumnSchema<M>>(resultColumnConfig);	
 		
 			//build each parallel compute stage that will deal with multiple columns, 
 			//note how the last one takes the remainder of the pipes. TODO: may want to revist for better spread of the remainder.
 			int len = start-i;			
 			if ((splitterPipesCount>1 && len==partsSize) || i==0) {
-				
-				splitterPipesCount = buildComputeStage(gm, resultSchema, leftSchema, rightSchema, leftInput, i,
-						                               intputAsColumns, resultColumnPipes, splitterPipesCount, splitterPipes, start, len);
+			
+				splitterPipesCount = buildComputeStage(gm, resultSchema, rightSchema, leftInput, i, intputAsColumns,
+						                               resultColumnPipes, splitterPipesCount, splitterPipes, start, len);
 				start = i;
 			}
 					
 		}
 
 		//split the left matrix into N column pipes.
-		new RowsToColumnRouteStage(gm, rightSchema, rightInput, intputAsColumns);
-		new ReplicatorStage<RowSchema<L>>(gm, leftInput, splitterPipes); //duplicate the matrix once for each column.		
+		new RowsToColumnRouteStage(gm, rightInput, intputAsColumns);
+		new ReplicatorStage<RowSchema<M>>(gm, leftInput, splitterPipes); //duplicate the matrix once for each column.		
 		return resultColumnPipes;
 	}
 
 
-	private static <L extends MatrixSchema<L>, R extends MatrixSchema<R>, M extends MatrixSchema<M>> int buildComputeStage(
-			GraphManager gm, MatrixSchema<M> resultSchema, MatrixSchema<L> leftSchema, MatrixSchema<R> rightSchema, Pipe<RowSchema<L>> leftInput, int i,
-			Pipe<ColumnSchema<R>>[] intputAsColumns, Pipe<ColumnSchema<M>>[] resultInColumns, int splitterPipesCount,
-			Pipe<RowSchema<L>>[] splitterPipes, int start, int len) {
+	private static <M extends MatrixSchema<M>> int buildComputeStage(
+			GraphManager gm, 
+			
+			MatrixSchema<M> resultSchema, 
+			MatrixSchema<M> rightSchema, 
+			
+			Pipe<RowSchema<M>> leftInput, 
+		
+			int i, 
+			Pipe<ColumnSchema<M>>[] inputAsColumns,
+			Pipe<ColumnSchema<M>>[] resultInColumns, 
+			int splitterPipesCount, 
+			Pipe<RowSchema<M>>[] splitterPipes,
+			int start, 
+			int len) {
+		
+		MatrixSchema<M> leftSchema = leftInput.config().schema().rootSchema(); 
 		
 		int idx = start;
-		Pipe<ColumnSchema<R>>[] inputs = new Pipe[len];
+		Pipe<ColumnSchema<M>>[] inputs = new Pipe[len];
 		Pipe<ColumnSchema<M>>[] outputs = new Pipe[len];
 		int c = 0;
 		while (--idx >= i) {
-			inputs[c]=intputAsColumns[idx];
+			inputs[c]=inputAsColumns[idx];
 			outputs[c]=resultInColumns[idx];
 			c++;
 		}
@@ -432,10 +461,28 @@ public class BuildMatrixCompute {
 		
 		new ColumnComputeStage( gm, 
 				                inputs, 
-				                splitterPipes[--splitterPipesCount] = new Pipe<RowSchema<L>>(leftInput.config().grow2x()),
+				                splitterPipes[--splitterPipesCount] = new Pipe<RowSchema<M>>(leftInput.config().grow2x()),
 				                outputs, 
 				                resultSchema, leftSchema, rightSchema.getRows(), rightSchema.getColumns(), rightSchema.type);
 		return splitterPipesCount;
+	}
+
+
+	public static <M extends MatrixSchema<M>> Pipe<RowSchema<M>> buildProductGraphRR(GraphManager gm,
+			int targetThreadCount, Pipe<RowSchema<M>> left, Pipe<RowSchema<M>> right) {
+		Pipe<ColumnSchema<M>>[] colResults = buildProductGraphRC(gm,
+																			left, right,
+																			targetThreadCount);
+				
+		//////////////////
+		//////////////////
+		
+		MatrixSchema resultSchema2 = colResults[0].config().schema().rootSchema();
+		Pipe<RowSchema<M>> rowResults = new Pipe<RowSchema<M>>(new PipeConfig<RowSchema<M>>(new RowSchema<M>(resultSchema2), resultSchema2.getRows()));
+		ColumnsToRowsStage<M> ctr = new ColumnsToRowsStage( gm,
+															colResults,
+															rowResults);
+		return rowResults;
 	}
 
 
