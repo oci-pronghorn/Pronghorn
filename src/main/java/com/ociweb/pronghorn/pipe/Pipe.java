@@ -1542,9 +1542,14 @@ public class Pipe<T extends MessageSchema<T>> {
             String msgName = from.fieldNameScript[cursor];
             long msgId = from.fieldIdScript[cursor];
 
-            target.append(" cursor:"+cursor+
-                           " fields: "+fields+" "+String.valueOf(msgName)+
-                           " id: "+msgId).append("\n");
+            target.append(" cursor:");
+            Appendables.appendValue(target, cursor);
+            target.append(" fields: ");
+            Appendables.appendValue(target, fields);
+            target.append(" ");
+            target.append(msgName);
+            target.append(" id: ");
+            Appendables.appendValue(target, msgId).append("\n");
 
             if (0==fields && cursor==from.tokensLen-1) { //this is an odd case and should not happen
                 //TODO: AA length is too long and we need to detect cursor out of bounds!
@@ -2672,15 +2677,15 @@ public class Pipe<T extends MessageSchema<T>> {
 
     }
 
-    public static <S extends MessageSchema<S>> void addNullByteArray(Pipe<S> rbRingBuffer) {
-        addBytePosAndLen(rbRingBuffer, rbRingBuffer.blobRingHead.byteWorkingHeadPos.value, -1);
+    public static <S extends MessageSchema<S>> void addNullByteArray(Pipe<S> pipe) {
+        addBytePosAndLen(pipe, pipe.blobRingHead.byteWorkingHeadPos.value, -1);
     }
 
 
-    public static <S extends MessageSchema<S>> void addIntValue(int value, Pipe<S> rb) {
-         assert(rb.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(rb)+rb.sizeOfSlabRing);
+    public static <S extends MessageSchema<S>> void addIntValue(int value, Pipe<S> pipe) {
+         assert(pipe.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(pipe)+pipe.sizeOfSlabRing);
          //TODO: not always working in deep structures, check offsets:  assert(isValidFieldTypePosition(rb, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.Decimal));
-		 setValue(rb.slabRing,rb.slabMask,rb.slabRingHead.workingHeadPos.value++,value);
+		 setValue(pipe.slabRing,pipe.slabMask,pipe.slabRingHead.workingHeadPos.value++,value);
 	}
 
 	private static <S extends MessageSchema<S>> boolean isValidFieldTypePosition(Pipe<S> rb, int ... expected) {

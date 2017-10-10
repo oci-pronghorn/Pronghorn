@@ -177,6 +177,10 @@ public class PipeConfig<T extends MessageSchema<T>> {
         return false;
         
     }
+    
+    public T schema() {
+    	return this.schema;
+    }
 
     public void hideLabels() {
     	showLabels = false;

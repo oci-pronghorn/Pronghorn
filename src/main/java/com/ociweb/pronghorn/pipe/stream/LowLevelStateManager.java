@@ -9,9 +9,9 @@ public class LowLevelStateManager {
     private final int[] fragScriptSize;
 
     public LowLevelStateManager(FieldReferenceOffsetManager from) {
-        this.cursorStack = new int[from.maximumFragmentStackDepth];
-        this.sequenceCounters = new int[from.maximumFragmentStackDepth];        
-        this.fragScriptSize = from.fragScriptSize;
+        this.cursorStack = null==from?null:new int[from.maximumFragmentStackDepth];
+        this.sequenceCounters = null==from?null:new int[from.maximumFragmentStackDepth];        
+        this.fragScriptSize = null==from?null:from.fragScriptSize;
         
         //publish only happens on fragment boundary therefore we can assume that if 
         //we can read 1 then we can read the full fragment
