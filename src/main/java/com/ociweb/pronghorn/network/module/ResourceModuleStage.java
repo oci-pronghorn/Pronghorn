@@ -24,13 +24,13 @@ import com.ociweb.pronghorn.util.Appendables;
 public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 									R extends Enum<R> & HTTPRevision,
 									V extends Enum<V> & HTTPVerb,
-									H extends Enum<H> & HTTPHeader> extends AbstractAppendablePayloadResponseStage<T,R,V,H> {
+									H extends Enum<H> & HTTPHeader> extends ByteArrayPayloadResponseStage<T,R,V,H> {
 
-	private String resource;
 	private byte[] eTag;
 	private final byte[] type;
 	private static final Logger logger = LoggerFactory.getLogger(ResourceModuleStage.class);
-
+	private byte[] resource;
+	
 	private final URL resourceURL;
 	
     public static ResourceModuleStage<?, ?, ?, ?> newInstance(GraphManager graphManager, 
@@ -83,14 +83,14 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 			int x = stream.available();
 			//logger.info("file size {}",x);
 			
-			byte[] bytes = new byte[x];
+			resource = new byte[x];
 		
 			long startTime = System.currentTimeMillis();
 			long timeout = startTime = 10_000;
 			int i = 0;
 			while(i<x) {
 				
-				int count = stream.read(bytes, i, x-i);
+				int count = stream.read(resource, i, x-i);
 				assert(count>=0) : "since we know the length should not reach EOF";
 		
 				i += count;	
@@ -103,10 +103,9 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 
 			}
 			
-			resource = new String(bytes);
 			
 			StringBuilder temp = new StringBuilder();
-			int jenny = MurmurHash.hash32(resource, 0, resource.length(), 8675309);
+			int jenny = MurmurHash.hash32(resource, 0, resource.length, 8675309);
 			Appendables.appendHexDigits(temp.append("R-"), jenny).append("-00");
 			eTag = temp.toString().getBytes();
 		
@@ -116,19 +115,15 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 	}
 
 	@Override
-	protected byte[] payload(Appendable payload, GraphManager gm, 
-			                      DataInputBlobReader<HTTPRequestSchema> params,
-			                      HTTPVerbDefaults verb) {
+	protected byte[] payload(GraphManager gm, 
+			                 DataInputBlobReader<HTTPRequestSchema> params,
+			                 HTTPVerbDefaults verb) {
 		
 		if (verb != HTTPVerbDefaults.GET) {
 			return null;
 		}
 		
-		try {
-			payload.append(resource);
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+		definePayload(resource, 0, resource.length, Integer.MAX_VALUE);
 		
 		return eTag;
 	}

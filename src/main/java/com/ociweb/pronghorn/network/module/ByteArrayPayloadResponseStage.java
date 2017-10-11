@@ -22,7 +22,7 @@ import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 import com.ociweb.pronghorn.util.AppendableBuilder;
 
-public abstract class AbstractAppendablePayloadResponseStage <   
+public abstract class ByteArrayPayloadResponseStage <   
                                 T extends Enum<T> & HTTPContentType,
 								R extends Enum<R> & HTTPRevision,
 								V extends Enum<V> & HTTPVerb,
@@ -31,7 +31,6 @@ public abstract class AbstractAppendablePayloadResponseStage <
 	private final Pipe<HTTPRequestSchema>[] inputs;
 	private final Pipe<ServerResponseSchema>[] outputs;
 	private final GraphManager graphManager;
-	private AppendableBuilder payloadWorkspace;
 		
 	private static final Logger logger = LoggerFactory.getLogger(AbstractAppendablePayloadResponseStage.class);
 	
@@ -43,7 +42,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 	
 	private int maximumAllocation = 1<<27; //128M largest file, should expose this
 	
-	public AbstractAppendablePayloadResponseStage(GraphManager graphManager, 
+	public ByteArrayPayloadResponseStage(GraphManager graphManager, 
             Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
 			 HTTPSpecification<T, R, V, H> httpSpec) {
 			super(graphManager, inputs, outputs, httpSpec);
@@ -59,7 +58,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			
 	}
 	
-	public AbstractAppendablePayloadResponseStage(GraphManager graphManager, 
+	public ByteArrayPayloadResponseStage(GraphManager graphManager, 
 			                 Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
 							 HTTPSpecification<T, R, V, H> httpSpec, Pipe[] otherInputs) {
 		super(graphManager, join(inputs,otherInputs), outputs, httpSpec);
@@ -73,7 +72,6 @@ public abstract class AbstractAppendablePayloadResponseStage <
 
 	@Override
 	public void startup() {
-		payloadWorkspace = new AppendableBuilder(maximumAllocation);
 	}
 	
 	@Override
@@ -151,6 +149,19 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		}
 		
 	}
+	
+	private byte[] payloadBacking;
+	private int payloadPos;
+	private int payloadLength;
+	private int payloadMask;
+	
+	protected void definePayload(byte[] backing, int pos, int len, int mask) {
+		this.payloadBacking=backing;
+		this.payloadPos = pos;
+		this.payloadLength = len;
+		this.payloadMask = mask;
+	}
+	
 
 	private final boolean sendResponse(Pipe<ServerResponseSchema> output, int fieldRevision, 
 			                       DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb) {
@@ -164,9 +175,10 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		DataOutputBlobWriter<ServerResponseSchema> outputStream = PipeWriter.outputStream(output);
 		DataOutputBlobWriter.openField(outputStream);
 		
-		payloadWorkspace.clear();
-		byte[] etagBytes = payload(payloadWorkspace, graphManager, params, verb); //should return error and take args?
-        
+		payloadBacking = null;
+		byte[] etagBytes = payload(graphManager, params, verb); //should return error and take args?
+        assert(null!=payloadBacking) : "definePayload must be called by payload";
+				
         activeOutput = output;
 		workingPosition = 0;
 	
@@ -183,7 +195,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		 		    200, activeFieldRequestContext, 
 		 		    etagBytes,  
 		 		    contentType(), 
-		 		    payloadWorkspace.byteLength(), 
+		 		    payloadLength, 
 		 		    isChunked, isServer,
 		 		   contentLocationBacking, contLocBytesPos, contLocBytesLen,  contLocBytesMask,
 		 		    outputStream, 
@@ -196,7 +208,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		return true;
 	}
 	
-	protected abstract byte[] payload(Appendable payload, GraphManager gm, DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb);
+	protected abstract byte[] payload(GraphManager gm, DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb);
 
 	protected abstract byte[] contentType();
 	
@@ -207,17 +219,18 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		int sendLength;
 
 		// div by 6 to ensure bytes room. //NOTE: could be faster if needed in the future.
-		if ((sendLength = Math.min((payloadWorkspace.byteLength() - workingPosition),
+		if ((sendLength = Math.min((payloadLength - workingPosition),
 				                       (outputStream.remaining()/6) )) >= 1) {
 			
-			//System.err.print(payloadWorkspace.substring(workingPosition, workingPosition+sendLength));
-			//logger.info("send length {} vs {} ", sendLength, payloadWorkspace.length());
+			outputStream.write( outputStream, 
+								payloadBacking,
+								payloadPos,
+								sendLength,
+								payloadMask);
 			
-			workingPosition += payloadWorkspace.copyTo(sendLength, outputStream);
-
 		}
 		
-		if (workingPosition==payloadWorkspace.byteLength()) {
+		if (workingPosition == payloadLength) {
 		
 			//System.err.println();
 			//logger.info("done with sending \n{}",payloadWorkspace);
@@ -230,7 +243,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			activeFieldRequestContext |=  OrderSupervisorStage.CLOSE_CONNECTION_MASK;
 			
 			//mark all done.
-			payloadWorkspace.clear();
+			payloadBacking = null;
 			activeChannelId = -1;
 			activeSequenceNo = -1;
 			workingPosition = 0;
