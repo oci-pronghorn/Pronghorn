@@ -17,7 +17,9 @@ import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.ServerResponseSchema;
 import com.ociweb.pronghorn.pipe.DataInputBlobReader;
 import com.ociweb.pronghorn.pipe.Pipe;
+import com.ociweb.pronghorn.pipe.util.hash.MurmurHash;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 
 public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 									R extends Enum<R> & HTTPRevision,
@@ -25,6 +27,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 									H extends Enum<H> & HTTPHeader> extends AbstractAppendablePayloadResponseStage<T,R,V,H> {
 
 	private String resource;
+	private byte[] eTag;
 	private final byte[] type;
 	private static final Logger logger = LoggerFactory.getLogger(ResourceModuleStage.class);
 
@@ -101,6 +104,11 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 			}
 			
 			resource = new String(bytes);
+			
+			StringBuilder temp = new StringBuilder();
+			int jenny = MurmurHash.hash32(resource, 0, resource.length(), 8675309);
+			Appendables.appendHexDigits(temp.append("R-"), jenny).append("-00");
+			eTag = temp.toString().getBytes();
 		
 		} catch (IOException e) {
 			throw new RuntimeException(e);
@@ -108,7 +116,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 	}
 
 	@Override
-	protected byte[] buildPayload(Appendable payload, GraphManager gm, 
+	protected byte[] payload(Appendable payload, GraphManager gm, 
 			                      DataInputBlobReader<HTTPRequestSchema> params,
 			                      HTTPVerbDefaults verb) {
 		
@@ -122,6 +130,11 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 			throw new RuntimeException(e);
 		}
 		
+		return eTag;
+	}
+	
+	@Override
+	protected byte[] contentType() {
 		return type;
 	}
 

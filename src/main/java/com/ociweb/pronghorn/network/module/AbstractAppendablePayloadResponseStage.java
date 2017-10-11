@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.network.module;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +20,7 @@ import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.PipeWriter;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.AppendableBuilder;
 
 public abstract class AbstractAppendablePayloadResponseStage <   
                                 T extends Enum<T> & HTTPContentType,
@@ -32,7 +31,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 	private final Pipe<HTTPRequestSchema>[] inputs;
 	private final Pipe<ServerResponseSchema>[] outputs;
 	private final GraphManager graphManager;
-	private StringBuilder payloadWorkspace;
+	private AppendableBuilder payloadWorkspace;
 		
 	private static final Logger logger = LoggerFactory.getLogger(AbstractAppendablePayloadResponseStage.class);
 	
@@ -42,8 +41,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 	private int workingPosition = 0;
 	private Pipe<ServerResponseSchema> activeOutput = null;
 	
-	private static AtomicInteger eTagCounter = new AtomicInteger();  
-	private final int eTagInt;
+	private int maximumAllocation = 1<<27; //128M largest file, should expose this
 	
 	public AbstractAppendablePayloadResponseStage(GraphManager graphManager, 
             Pipe<HTTPRequestSchema>[] inputs, Pipe<ServerResponseSchema>[] outputs,
@@ -53,7 +51,6 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			this.inputs = inputs;
 			this.outputs = outputs;		
 			this.graphManager = graphManager;
-			this.eTagInt = eTagCounter.incrementAndGet();
 			
 			assert(inputs.length == inputs.length);
 			
@@ -70,14 +67,13 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		this.inputs = inputs;
 		this.outputs = outputs;		
 		this.graphManager = graphManager;
-		this.eTagInt = eTagCounter.incrementAndGet();
 		
 		assert(inputs.length == inputs.length);
 	}
 
 	@Override
 	public void startup() {
-		payloadWorkspace = new StringBuilder(2048);
+		payloadWorkspace = new AppendableBuilder(maximumAllocation);
 	}
 	
 	@Override
@@ -159,48 +155,37 @@ public abstract class AbstractAppendablePayloadResponseStage <
 	private final boolean sendResponse(Pipe<ServerResponseSchema> output, int fieldRevision, 
 			                       DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb) {
 		
-		payloadWorkspace.setLength(0);
-		byte[] contentType = buildPayload(payloadWorkspace, graphManager, params, verb); //should return error and take args?
-		if (null==contentType) {
-			//System.err.println("we have no type or data, write nothing, TODO: must 404??");
-			return false; //Can not write anything. This is the error case.
-		}
-		
-		int length = payloadWorkspace.length();
-		
-		byte[] revision = httpSpec.revisions[fieldRevision].getBytes();
-		int status=200;
-		 
-
-		///////////
-		//not needed because we do the same thing for every request
-		///////////
-		//int fieldVerb = PipeReader.readInt(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_VERB_23);
-		//ByteBuffer fieldParams = PipeReader.readBytes(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_PARAMS_32,ByteBuffer.allocate(PipeReader.readBytesLength(input,HTTPRequestSchema.MSG_RESTREQUEST_300_FIELD_PARAMS_32)));
-		///////////		        	
-		
+		//logger.info("sending:\n{}",payloadWorkspace);
+        			
 		PipeWriter.presumeWriteFragment(output, ServerResponseSchema.MSG_TOCHANNEL_100);
 		PipeWriter.writeLong(output,ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_CHANNELID_21, activeChannelId);
 		PipeWriter.writeInt(output,ServerResponseSchema.MSG_TOCHANNEL_100_FIELD_SEQUENCENO_23, activeSequenceNo);
 						    
 		DataOutputBlobWriter<ServerResponseSchema> outputStream = PipeWriter.outputStream(output);
-		
 		DataOutputBlobWriter.openField(outputStream);
-						    
-
-		activeOutput = output;
-							
+		
+		payloadWorkspace.clear();
+		byte[] etagBytes = payload(payloadWorkspace, graphManager, params, verb); //should return error and take args?
+        
+        activeOutput = output;
 		workingPosition = 0;
+	
+		final boolean isChunked = false;
+		final boolean isServer = true;
 		
-		///long eTag = (((long)eTagRoot)<<32) + ((long)eTagInt);					
-		byte[] etagBytes = null;//Appendables.appendHexDigits(new StringBuilder(), eTag).toString().getBytes(); 
-        boolean isChunked = false;
+		//NOTE: we can force redirects to this content location if desired.
+		byte[] contentLocationBacking = null;		
+		int contLocBytesPos = 0;
+		int contLocBytesLen = 0;
+		int contLocBytesMask = 0;
 		
-		writeHeader(revision, 
-		 		    status, activeFieldRequestContext, 
+		writeHeader(httpSpec.revisions[fieldRevision].getBytes(), 
+		 		    200, activeFieldRequestContext, 
 		 		    etagBytes,  
-		 		    contentType, length, isChunked, true,
-		 		    null, 0, 0,  0,
+		 		    contentType(), 
+		 		    payloadWorkspace.byteLength(), 
+		 		    isChunked, isServer,
+		 		   contentLocationBacking, contLocBytesPos, contLocBytesLen,  contLocBytesMask,
 		 		    outputStream, 
 		 		    1&(activeFieldRequestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
 		
@@ -211,9 +196,10 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		return true;
 	}
 	
-	protected abstract byte[] buildPayload(Appendable payload, GraphManager gm, DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb);
+	protected abstract byte[] payload(Appendable payload, GraphManager gm, DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb);
 
-
+	protected abstract byte[] contentType();
+	
 	private void appendRemainingPayload(Pipe<ServerResponseSchema> output) {
 		
 		DataOutputBlobWriter<ServerResponseSchema> outputStream = PipeWriter.outputStream(output);
@@ -221,19 +207,22 @@ public abstract class AbstractAppendablePayloadResponseStage <
 		int sendLength;
 
 		// div by 6 to ensure bytes room. //NOTE: could be faster if needed in the future.
-		while ((sendLength = Math.min((payloadWorkspace.length()-workingPosition),
+		while ((sendLength = Math.min((payloadWorkspace.byteLength() - workingPosition),
 				                       (outputStream.remaining()/6) )) >= 1) {
-
-			//TODO: if we can get to the raw bytes we can skip the encoding...
-			outputStream.append(payloadWorkspace, 
-					            workingPosition, 
-					            workingPosition+sendLength);			    
 			
-			workingPosition+=sendLength;
+			//System.err.print(payloadWorkspace.substring(workingPosition, workingPosition+sendLength));
+			//logger.info("send length {} vs {} ", sendLength, payloadWorkspace.length());
+			
+			workingPosition += payloadWorkspace.copyTo(sendLength, outputStream);
+
 		}
 		
-		if (workingPosition==payloadWorkspace.length()) {
+		if (workingPosition==payloadWorkspace.byteLength()) {
 		
+			//System.err.println();
+			//logger.info("done with sending \n{}",payloadWorkspace);
+			
+			
 			activeFieldRequestContext |=  OrderSupervisorStage.END_RESPONSE_MASK;
 			
 			//NOTE: we MUST close this or the telemetry data feed will hang on the browser side
@@ -241,7 +230,7 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			activeFieldRequestContext |=  OrderSupervisorStage.CLOSE_CONNECTION_MASK;
 			
 			//mark all done.
-			payloadWorkspace.setLength(0);
+			payloadWorkspace.clear();
 			activeChannelId = -1;
 			activeSequenceNo = -1;
 			workingPosition = 0;

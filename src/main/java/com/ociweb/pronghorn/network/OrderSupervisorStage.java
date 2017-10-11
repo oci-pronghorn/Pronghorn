@@ -13,6 +13,7 @@ import com.ociweb.pronghorn.pipe.DataOutputBlobWriter;
 import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
+import com.ociweb.pronghorn.util.Appendables;
 
 
 //consumes the sequence number in order and hold a pool entry for this connection
@@ -385,8 +386,10 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 
 		 //view in the console what we just wrote out to the next stage.
 		 //System.out.println("id "+myPipeIdx);
-		 //Appendables.appendUTF8(System.out, blob, bytePosition, len, blobMask);
-		 
+		 boolean debug = false;
+		 if (debug){
+			 Appendables.appendUTF8(System.err, blob, bytePosition, len, blobMask);
+		 }
 //		 if (ServerCoordinator.TEST_RECORDS) {
 //			 //check 
 //			 testValidContent(myPipeIdx, input, meta, len);
