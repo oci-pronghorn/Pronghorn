@@ -32,7 +32,7 @@ public abstract class ByteArrayPayloadResponseStage <
 	private final Pipe<ServerResponseSchema>[] outputs;
 	private final GraphManager graphManager;
 		
-	private static final Logger logger = LoggerFactory.getLogger(AbstractAppendablePayloadResponseStage.class);
+	private static final Logger logger = LoggerFactory.getLogger(ByteArrayPayloadResponseStage.class);
 	
 	private long activeChannelId = -1;
 	private int activeSequenceNo = -1;
@@ -105,8 +105,8 @@ public abstract class ByteArrayPayloadResponseStage <
 	private void process(Pipe<HTTPRequestSchema> input, 
 			             Pipe<ServerResponseSchema> output) {
 		
-		
-		while ( Pipe.hasRoomForWrite(output) &&
+		//output is using the high level and input is the low level
+		while ( PipeWriter.hasRoomForWrite(output) &&
 				Pipe.hasContentToRead(input)) {
 			
 			//logger.trace("has room and has data to write out from "+input);
@@ -220,14 +220,16 @@ public abstract class ByteArrayPayloadResponseStage <
 
 		// div by 6 to ensure bytes room. //NOTE: could be faster if needed in the future.
 		if ((sendLength = Math.min((payloadLength - workingPosition),
-				                       (outputStream.remaining()/6) )) >= 1) {
-			
+				                    outputStream.remaining() )) >= 1) {
+			assert(sendLength>0);
+
 			outputStream.write( outputStream, 
 								payloadBacking,
 								payloadPos+workingPosition,
 								sendLength,
 								payloadMask);
 			
+			workingPosition += sendLength;
 		}
 		
 		if (workingPosition == payloadLength) {

@@ -24,7 +24,9 @@ import com.ociweb.pronghorn.util.Appendables;
 public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 									R extends Enum<R> & HTTPRevision,
 									V extends Enum<V> & HTTPVerb,
-									H extends Enum<H> & HTTPHeader> extends AbstractAppendablePayloadResponseStage<T,R,V,H> {
+									H extends Enum<H> & HTTPHeader> extends
+ByteArrayPayloadResponseStage<T,R,V,H> {
+//AbstractAppendablePayloadResponseStage<T,R,V,H> {
 
 	private byte[] eTag;
 	private final byte[] type;
@@ -116,8 +118,29 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 		}
 	}
 
+//	@Override
+//	protected byte[] payload(Appendable target, GraphManager gm, 
+//			                 DataInputBlobReader<HTTPRequestSchema> params,
+//			                 HTTPVerbDefaults verb) {
+//		
+//		if (verb != HTTPVerbDefaults.GET) {
+//			return null;
+//		}
+//		
+//		//TODO: this must extend the ByteArrayPayloadResponseStage but does not work....
+//		
+//		try {
+//			target.append(resourceStr);
+//		} catch (IOException e) {
+//			throw new RuntimeException(e);
+//		}
+//		//definePayload(resource, 0, resource.length, Integer.MAX_VALUE);
+//		
+//		return eTag;
+//	}
+	
 	@Override
-	protected byte[] payload(Appendable target, GraphManager gm, 
+	protected byte[] payload(GraphManager gm, 
 			                 DataInputBlobReader<HTTPRequestSchema> params,
 			                 HTTPVerbDefaults verb) {
 		
@@ -125,14 +148,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 			return null;
 		}
 		
-		//TODO: this must extend the ByteArrayPayloadResponseStage but does not work....
-		
-		try {
-			target.append(resourceStr);
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
-		//definePayload(resource, 0, resource.length, Integer.MAX_VALUE);
+		definePayload(resource, 0, resource.length, Integer.MAX_VALUE);
 		
 		return eTag;
 	}
@@ -141,5 +157,4 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 	protected byte[] contentType() {
 		return type;
 	}
-
 }
