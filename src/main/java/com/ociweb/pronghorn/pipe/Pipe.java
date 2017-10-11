@@ -64,6 +64,7 @@ import com.ociweb.pronghorn.util.Appendables;
  * @since 0.1
  *
  */
+
 public class Pipe<T extends MessageSchema<T>> {
 
     private static final AtomicInteger pipeCounter = new AtomicInteger(0);
