@@ -3243,7 +3243,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		pipe.lastPublishedSlabRingHead = pipe.slabRingHead.workingHeadPos.value;
 	}
 
-	@Deprecated
+
     public static <S extends MessageSchema<S>> void abandonWrites(Pipe<S> pipe) {
         //ignore the fact that any of this was written to the ring buffer
     	pipe.slabRingHead.workingHeadPos.value = pipe.slabRingHead.headPos.longValue();

@@ -94,9 +94,6 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
     @Override
     public int remaining() {
     	int result = (lastPosition - activePosition);
-    	//int consumed = activePosition - startPosition;
-    	//System.err.println(result+" + "+consumed+" = "+(result+consumed)+" should be "+this.getPipe().maxVarLen);
-    			
     	assert(result <= this.getPipe().maxVarLen);
     	return result;
     }
@@ -166,6 +163,9 @@ public class DataOutputBlobWriter<S extends MessageSchema<S>> extends ChannelWri
         //this method will also validate the length was in bound and throw unsupported operation if the pipe was not large enough
         //instead of fail fast as soon as one field goes over we wait to the end and only check once.
         int len = length(writer);
+        
+        //Appendables.appendUTF8(System.err, writer.byteBuffer, writer.startPosition, len, writer.byteMask);
+                
         PipeWriter.writeSpecialBytesPosAndLen(writer.backingPipe, targetFieldLoc, len, writer.startPosition);
         writer.backingPipe.closeBlobFieldWrite();
         
