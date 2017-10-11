@@ -13,7 +13,7 @@ public class StreamingVisitorReader {
     private static final Logger log = LoggerFactory.getLogger(StreamingVisitorReader.class);
 
 	private final StreamingReadVisitor visitor;
-	private final Pipe inputRing;
+	private final Pipe<?> inputRing;
 	final FieldReferenceOffsetManager from;
 
 	private final LowLevelStateManager navState;
@@ -22,7 +22,7 @@ public class StreamingVisitorReader {
 
     //TODO: B, this does not work with preamble of any size. is preamble a feature we really want to continue supporting in all case?
 
-	public StreamingVisitorReader(Pipe inputRing, StreamingReadVisitor visitor, boolean processUTF8) {
+	public StreamingVisitorReader(Pipe<?> inputRing, StreamingReadVisitor visitor, boolean processUTF8) {
 		this.inputRing = inputRing;
         this.visitor = visitor;
         this.processUTF8 = processUTF8;

@@ -11,6 +11,7 @@ public class PipeConfig<T extends MessageSchema<T>> {
 	final byte[] byteConst;
 	final T schema; 
 	int debugFlags = 0;
+	boolean showLabels = true;
 		
    /**
      * This is NOT the constructor you are looking for.
@@ -25,6 +26,16 @@ public class PipeConfig<T extends MessageSchema<T>> {
 
      }
     
+     protected PipeConfig(int slabSize, T messageSchema) {
+    	 
+    	 this.schema = messageSchema;
+    	 this.slabBits = (byte)(32 - Integer.numberOfLeadingZeros(slabSize - 1));
+    	 this.blobBits = 0;
+    	 this.byteConst = null;
+
+     }
+     
+     
      public PipeConfig(T messageSchema) {
         //default size which is smaller than half of 64K because this is the L1 cache size on intel haswell.
         this.slabBits = 6;
@@ -130,16 +141,21 @@ public class PipeConfig<T extends MessageSchema<T>> {
      }
 	
 	public PipeConfig<T> grow2x(){
-		return new PipeConfig<T>((byte)(1+slabBits), (byte)(0==blobBits ? 0 : 1+blobBits), byteConst, schema);
+		PipeConfig<T> result = new PipeConfig<T>((byte)(1+slabBits), (byte)(0==blobBits ? 0 : 1+blobBits), byteConst, schema);
+		result.showLabels = showLabels;
+		return result;
 	}
 	
 	public PipeConfig<T> blobGrow2x(){
-		return new PipeConfig<T>((byte)(slabBits), (byte)(1+blobBits), byteConst, schema);
+		PipeConfig<T> result = new PipeConfig<T>((byte)(slabBits), (byte)(1+blobBits), byteConst, schema);
+		result.showLabels = showLabels;
+		return result;
 	}
 	
 	
 	public PipeConfig<T> debug(int debugFlags){
 		PipeConfig<T> result = new PipeConfig<T>((byte)(slabBits), (byte)(blobBits), byteConst, schema);
+		result.showLabels = this.showLabels;
 		result.debugFlags = debugFlags;
 		return result;
 	}
@@ -161,5 +177,18 @@ public class PipeConfig<T extends MessageSchema<T>> {
         return false;
         
     }
+    
+    public T schema() {
+    	return this.schema;
+    }
+
+    public void hideLabels() {
+    	showLabels = false;
+    }
+    
+	public boolean showLabels() {
+		//return false;
+		return showLabels;
+	}
 	
 }

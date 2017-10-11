@@ -358,7 +358,7 @@ public class Pipe<T extends MessageSchema<T>> {
     private final T schema;
     
     final boolean usingHighLevelAPI;
-    
+    private final PipeConfig<T> config;
 
     //TODO: B, need to add constant for gap always kept after head and before tail, this is for debug mode to store old state upon error. NEW FEATURE.
     //            the time slices of the graph will need to be kept for all rings to reconstruct history later.
@@ -522,6 +522,7 @@ public class Pipe<T extends MessageSchema<T>> {
     	
     public Pipe(PipeConfig<T> config, boolean usingHighLevelAPI) {
 
+    	this.config = config;
     	this.usingHighLevelAPI = usingHighLevelAPI;
         byte primaryBits = config.slabBits;
         byte byteBits = config.blobBits;
@@ -557,7 +558,7 @@ public class Pipe<T extends MessageSchema<T>> {
         this.blobConstBuffer = byteConstants;
 
 
-        if (0 == from.maxVarFieldPerUnit || 0==primaryBits) { //zero bits is for the dummy mock case
+        if (null==from || 0 == from.maxVarFieldPerUnit || 0==primaryBits) { //zero bits is for the dummy mock case
         	maxVarLen = 0; //no fragments had any variable-length fields so we never allow any
         } else {
             //given outer ring buffer this is the maximum number of var fields that can exist at the same time.
@@ -817,11 +818,8 @@ public class Pipe<T extends MessageSchema<T>> {
      * Return the configuration used for this ring buffer, Helpful when we need to make clones of the ring which will hold same message types.
      */
     public PipeConfig<T> config() {
-        //TODO:M, this creates garbage and we should just hold the config object instead of copying the values out.  Then return the same instance here.
-        return new PipeConfig<T>(bitsOfSlabRing, bitsOfBlogRing, blobConstBuffer, schema);
+    	return config;
     }
-
-
 
     public static <S extends MessageSchema> int totalPipes() {
         return pipeCounter.get();
@@ -856,11 +854,15 @@ public class Pipe<T extends MessageSchema<T>> {
     
 	private void buildBuffers() {
 
-	    this.pendingReleases = new PendingReleaseData(sizeOfSlabRing/FieldReferenceOffsetManager.minFragmentSize(MessageSchema.from(schema)));
+	    this.pendingReleases = 
+	    		((null == schema.from) ?	null : //pending releases only supported with real FROM schemas
+	    		new PendingReleaseData(
+	    				sizeOfSlabRing / FieldReferenceOffsetManager.minFragmentSize(MessageSchema.from(schema))	
+	    		));
 	    
 	    
 	    //NOTE: this is only needed for high level API, if only low level is in use it would be nice to not create this 
-	    if (usingHighLevelAPI) {
+	    if (usingHighLevelAPI && null!=schema.from) {
 	    	this.ringWalker = new StackStateWalker(MessageSchema.from(schema), sizeOfSlabRing);
 	    }
 	    
@@ -1003,7 +1005,12 @@ public class Pipe<T extends MessageSchema<T>> {
         StackStateWalker.reset(ringWalker, structuredPos);
     }
 
-    public static <S extends MessageSchema<S>> void copyFragment(
+    public static void releaseReadsBatched(Pipe<MessageSchemaDynamic> p) {
+		Pipe.batchedReleasePublish(p, Pipe.getWorkingBlobRingTailPosition(p),
+	    		                      Pipe.getWorkingTailPosition(p));
+	}
+
+	public static <S extends MessageSchema<S>> void copyFragment(
     		Pipe<S> source, 
     		Pipe<S> target) {
     	
@@ -1536,9 +1543,14 @@ public class Pipe<T extends MessageSchema<T>> {
             String msgName = from.fieldNameScript[cursor];
             long msgId = from.fieldIdScript[cursor];
 
-            target.append(" cursor:"+cursor+
-                           " fields: "+fields+" "+String.valueOf(msgName)+
-                           " id: "+msgId).append("\n");
+            target.append(" cursor:");
+            Appendables.appendValue(target, cursor);
+            target.append(" fields: ");
+            Appendables.appendValue(target, fields);
+            target.append(" ");
+            target.append(msgName);
+            target.append(" id: ");
+            Appendables.appendValue(target, msgId).append("\n");
 
             if (0==fields && cursor==from.tokensLen-1) { //this is an odd case and should not happen
                 //TODO: AA length is too long and we need to detect cursor out of bounds!
@@ -1962,14 +1974,16 @@ public class Pipe<T extends MessageSchema<T>> {
      * @param ringBuffer
      */
 	public static <S extends MessageSchema<S>> int bytesOfContent(Pipe<S> ringBuffer) {
-		int dif = (ringBuffer.byteMask&ringBuffer.blobRingHead.byteWorkingHeadPos.value) - (ringBuffer.byteMask&PaddedInt.get(ringBuffer.blobRingTail.bytesTailPos));
+		int dif = (ringBuffer.blobMask&ringBuffer.blobRingHead.byteWorkingHeadPos.value) - (ringBuffer.byteMask&PaddedInt.get(ringBuffer.blobRingTail.bytesTailPos));
 		return ((dif>>31)<<ringBuffer.bitsOfBlogRing)+dif;
 	}
 
 	public static <S extends MessageSchema<S>> void validateBatchSize(Pipe<S> pipe, int size) {
-		int maxBatch = computeMaxBatchSize(pipe);
-		if (size>maxBatch) {
-			throw new UnsupportedOperationException("For the configured pipe buffer the batch size can be no larger than "+maxBatch);
+		if (null != Pipe.from(pipe)) {
+			int maxBatch = computeMaxBatchSize(pipe);
+			if (size>maxBatch) {
+				throw new UnsupportedOperationException("For the configured pipe buffer the batch size can be no larger than "+maxBatch);
+			}
 		}
 	}
 
@@ -2049,6 +2063,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	private static void copyBytesFromToRingMasked(byte[] source,
 			final int rStart, final int rStop, byte[] target, final int tStart,
 			final int tStop, int length) {
+		assert(length>=0);
 		if (tStop > tStart) {
 			//do not accept the equals case because this can not work with data the same length as as the buffer
 			doubleMaskTargetDoesNotWrap(source, rStart, rStop, target, tStart, length);
@@ -2663,15 +2678,15 @@ public class Pipe<T extends MessageSchema<T>> {
 
     }
 
-    public static <S extends MessageSchema<S>> void addNullByteArray(Pipe<S> rbRingBuffer) {
-        addBytePosAndLen(rbRingBuffer, rbRingBuffer.blobRingHead.byteWorkingHeadPos.value, -1);
+    public static <S extends MessageSchema<S>> void addNullByteArray(Pipe<S> pipe) {
+        addBytePosAndLen(pipe, pipe.blobRingHead.byteWorkingHeadPos.value, -1);
     }
 
 
-    public static <S extends MessageSchema<S>> void addIntValue(int value, Pipe<S> rb) {
-         assert(rb.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(rb)+rb.sizeOfSlabRing);
+    public static <S extends MessageSchema<S>> void addIntValue(int value, Pipe<S> pipe) {
+         assert(pipe.slabRingHead.workingHeadPos.value <= Pipe.tailPosition(pipe)+pipe.sizeOfSlabRing);
          //TODO: not always working in deep structures, check offsets:  assert(isValidFieldTypePosition(rb, TypeMask.IntegerSigned, TypeMask.IntegerSignedOptional, TypeMask.IntegerUnsigned, TypeMask.IntegerUnsignedOptional, TypeMask.Decimal));
-		 setValue(rb.slabRing,rb.slabMask,rb.slabRingHead.workingHeadPos.value++,value);
+		 setValue(pipe.slabRing,pipe.slabMask,pipe.slabRingHead.workingHeadPos.value++,value);
 	}
 
 	private static <S extends MessageSchema<S>> boolean isValidFieldTypePosition(Pipe<S> rb, int ... expected) {
@@ -3160,7 +3175,10 @@ public class Pipe<T extends MessageSchema<T>> {
 
 
     private static <S extends MessageSchema<S>> boolean validateFieldCount(Pipe<S> pipe) {
-        long lastHead = Math.max(pipe.lastPublishedSlabRingHead,  Pipe.headPosition(pipe));    	
+        if (null==Pipe.from(pipe)) {
+        	return true;//skip check for this schemaless use
+        }
+    	long lastHead = Math.max(pipe.lastPublishedSlabRingHead,  Pipe.headPosition(pipe));    	
     	int len = (int)(Pipe.workingHeadPosition(pipe)-lastHead);    	
     	int[] fragDataSize = Pipe.from(pipe).fragDataSize;
         int i = fragDataSize.length;
@@ -3225,6 +3243,7 @@ public class Pipe<T extends MessageSchema<T>> {
 		pipe.lastPublishedBlobRingHead = pipe.blobRingHead.byteWorkingHeadPos.value;
 		pipe.lastPublishedSlabRingHead = pipe.slabRingHead.workingHeadPos.value;
 	}
+
 
     public static <S extends MessageSchema<S>> void abandonWrites(Pipe<S> pipe) {
         //ignore the fact that any of this was written to the ring buffer
@@ -3391,8 +3410,7 @@ public class Pipe<T extends MessageSchema<T>> {
 	}
 
 	public static <S extends MessageSchema<S>> FieldReferenceOffsetManager from(Pipe<S> pipe) {
-		assert(pipe.schema!=null);
-		assert(pipe.schema.from!=null);		
+		assert(pipe.schema!=null);	
 		return pipe.schema.from;
 	}
 

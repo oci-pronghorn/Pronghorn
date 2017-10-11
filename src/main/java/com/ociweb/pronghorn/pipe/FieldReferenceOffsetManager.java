@@ -798,7 +798,61 @@ public class FieldReferenceOffsetManager {
     }
     
     
-    public static <A extends Appendable>void buildFROMInterfaces(A target, String schemaName, FieldReferenceOffsetManager from) throws IOException {
+    public static FieldReferenceOffsetManager buildSingleNumberBlockFrom(
+			final int fieldCount, 
+			final int typeMask,
+			final String name) {
+		int fields = 1;
+		int size = TypeMask.ringBufferFieldSize[typeMask];
+		if (typeMask==TypeMask.Decimal) {
+			size = 3;
+			fields = 2;
+		}		
+		
+		
+		int matLen = (fields*fieldCount)+1+1;
+		int[]    matrixTokens=new int[matLen];
+		String[] matrixNames=new String[matLen];
+		long[]   matrixIds=new long[matLen];
+		matrixIds[0] = 10000;
+		matrixNames[0] = name;
+		
+		int dataSize = (size*fieldCount)+1;
+		
+		if (dataSize>TokenBuilder.MAX_INSTANCE) {
+			logger.info("Data size {} is too large.  Element size is {}, total count of values {} ",dataSize,size,fieldCount);
+		}
+		
+		matrixTokens[0] = TokenBuilder.buildToken(TypeMask.Group, 0, dataSize); 
+		if (typeMask==TypeMask.Decimal) {
+			int m = 1;
+			for (int i=1;i<=fieldCount;i++) {
+				matrixIds[m] = i;
+				matrixNames[m] = Integer.toString(i);
+				matrixTokens[m] = TokenBuilder.buildToken(TypeMask.Decimal, 0, i); 
+				m++;
+				matrixIds[m] = i;
+				matrixNames[m] = Integer.toString(i);
+				matrixTokens[m] = TokenBuilder.buildToken(TypeMask.LongSigned, 0, i);
+				m++;
+			}
+		} else {
+			for (int i=1;i<=fieldCount;i++) {
+				matrixIds[i] = i;
+				matrixNames[i] = Integer.toString(i);
+				matrixTokens[i] = TokenBuilder.buildToken(typeMask, 0, i);
+				
+			}
+		}
+		matrixTokens[matrixTokens.length-1] = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Close, dataSize);
+		//last position is left as null and zero
+		assert(matrixIds[matrixIds.length-1]==0);
+		assert(matrixNames[matrixNames.length-1]==null);
+		FieldReferenceOffsetManager matFrom = new FieldReferenceOffsetManager(matrixTokens, /*pramble*/ (short)0, matrixNames, matrixIds);
+		return matFrom;
+	}
+
+	public static <A extends Appendable>void buildFROMInterfaces(A target, String schemaName, FieldReferenceOffsetManager from) throws IOException {
         
       for(int j = 0; j<from.messageStarts.length; j++)  {
           buildFROMInterfacesSingleMessage(from.messageStarts[j], target, schemaName, from);

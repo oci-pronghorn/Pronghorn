@@ -7,7 +7,7 @@ import com.ociweb.pronghorn.pipe.util.build.FROMValidation;
 
 public abstract class MessageSchema<T extends MessageSchema<T>> {
 
-    protected final FieldReferenceOffsetManager from;
+    protected final FieldReferenceOffsetManager from; //will be null for schema-less
 
     protected MessageSchema(FieldReferenceOffsetManager from) {
         this.from = from;
