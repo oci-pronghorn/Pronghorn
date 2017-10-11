@@ -224,7 +224,7 @@ public abstract class ByteArrayPayloadResponseStage <
 			
 			outputStream.write( outputStream, 
 								payloadBacking,
-								payloadPos,
+								payloadPos+workingPosition,
 								sendLength,
 								payloadMask);
 			

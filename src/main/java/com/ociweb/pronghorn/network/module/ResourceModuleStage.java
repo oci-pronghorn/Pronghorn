@@ -24,12 +24,13 @@ import com.ociweb.pronghorn.util.Appendables;
 public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 									R extends Enum<R> & HTTPRevision,
 									V extends Enum<V> & HTTPVerb,
-									H extends Enum<H> & HTTPHeader> extends ByteArrayPayloadResponseStage<T,R,V,H> {
+									H extends Enum<H> & HTTPHeader> extends AbstractAppendablePayloadResponseStage<T,R,V,H> {
 
 	private byte[] eTag;
 	private final byte[] type;
 	private static final Logger logger = LoggerFactory.getLogger(ResourceModuleStage.class);
 	private byte[] resource;
+	private String resourceStr;
 	
 	private final URL resourceURL;
 	
@@ -103,6 +104,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 
 			}
 			
+			resourceStr = new String(resource);
 			
 			StringBuilder temp = new StringBuilder();
 			int jenny = MurmurHash.hash32(resource, 0, resource.length, 8675309);
@@ -115,7 +117,7 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 	}
 
 	@Override
-	protected byte[] payload(GraphManager gm, 
+	protected byte[] payload(Appendable target, GraphManager gm, 
 			                 DataInputBlobReader<HTTPRequestSchema> params,
 			                 HTTPVerbDefaults verb) {
 		
@@ -123,7 +125,14 @@ public class ResourceModuleStage<   T extends Enum<T> & HTTPContentType,
 			return null;
 		}
 		
-		definePayload(resource, 0, resource.length, Integer.MAX_VALUE);
+		//TODO: this must extend the ByteArrayPayloadResponseStage but does not work....
+		
+		try {
+			target.append(resourceStr);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		//definePayload(resource, 0, resource.length, Integer.MAX_VALUE);
 		
 		return eTag;
 	}

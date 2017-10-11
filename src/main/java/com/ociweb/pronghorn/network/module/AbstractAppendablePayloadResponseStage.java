@@ -107,8 +107,8 @@ public abstract class AbstractAppendablePayloadResponseStage <
 	private void process(Pipe<HTTPRequestSchema> input, 
 			             Pipe<ServerResponseSchema> output) {
 		
-		
-		while ( Pipe.hasRoomForWrite(output) &&
+		//NOTE: the output writer is the high level while input is the low level.
+		while ( PipeWriter.hasRoomForWrite(output) &&
 				Pipe.hasContentToRead(input)) {
 			
 			//logger.trace("has room and has data to write out from "+input);
