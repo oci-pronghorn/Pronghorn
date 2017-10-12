@@ -176,8 +176,9 @@ public abstract class ByteArrayPayloadResponseStage <
 		DataOutputBlobWriter.openField(outputStream);
 		
 		payloadBacking = null;
+		payloadLength = -1;
 		byte[] etagBytes = payload(graphManager, params, verb); //should return error and take args?
-        assert(null!=payloadBacking) : "definePayload must be called by payload";
+        assert(payloadLength>=0) : "definePayload must be called by payload";
 				
         activeOutput = output;
 		workingPosition = 0;
@@ -195,17 +196,33 @@ public abstract class ByteArrayPayloadResponseStage <
 		 		    200, activeFieldRequestContext, 
 		 		    etagBytes,  
 		 		    contentType(), 
-		 		    payloadLength, 
+		 		    prefixCount()+payloadLength+suffixCount(), 
 		 		    isChunked, isServer,
-		 		   contentLocationBacking, contLocBytesPos, contLocBytesLen,  contLocBytesMask,
+		 		    contentLocationBacking, contLocBytesPos, contLocBytesLen,  contLocBytesMask,
 		 		    outputStream, 
 		 		    1&(activeFieldRequestContext>>ServerCoordinator.CLOSE_CONNECTION_SHIFT));
 		
 		assert(outputStream.length()<=output.maxVarLen): "Header is too large or pipe max var size of "+output.maxVarLen+" is too small";
 		//logger.trace("built new header response of length "+length);
 		
+		appendPrefix(PipeWriter.outputStream(output));
+		
 		appendRemainingPayload(output);
 		return true;
+	}
+	
+	protected void appendPrefix(DataOutputBlobWriter<ServerResponseSchema> outputStream) {
+	}
+
+	protected void appendSuffix(DataOutputBlobWriter<ServerResponseSchema> outputStream) {	
+	}
+	
+	protected int prefixCount() {
+		return 0;
+	}
+	
+	protected int suffixCount() {
+		return 0;
 	}
 	
 	protected abstract byte[] payload(GraphManager gm, DataInputBlobReader<HTTPRequestSchema> params, HTTPVerbDefaults verb);
@@ -220,20 +237,24 @@ public abstract class ByteArrayPayloadResponseStage <
 
 		// div by 6 to ensure bytes room. //NOTE: could be faster if needed in the future.
 		if ((sendLength = Math.min((payloadLength - workingPosition),
-				                    outputStream.remaining() )) >= 1) {
-			assert(sendLength>0);
+				                   (outputStream.remaining()-suffixCount()) )) >= 1) {
+			if (sendLength>0) {
 
-			outputStream.write( outputStream, 
-								payloadBacking,
-								payloadPos+workingPosition,
-								sendLength,
-								payloadMask);
+				outputStream.write( outputStream, 
+									payloadBacking,
+									payloadPos+workingPosition,
+									sendLength,
+									payloadMask);
 			
+			}
 			workingPosition += sendLength;
 		}
 		
 		if (workingPosition == payloadLength) {
 		
+			
+			appendSuffix(outputStream);
+			
 			//System.err.println();
 			//logger.info("done with sending \n{}",payloadWorkspace);
 			
@@ -263,5 +284,6 @@ public abstract class ByteArrayPayloadResponseStage <
 		PipeWriter.publishWrites(output);
 	
 	}
+
 
 }
