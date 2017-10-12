@@ -13,7 +13,7 @@ public class TelemtryTestTool {
 	
 			GraphManager gm = new GraphManager();
 			GraphManager.addDefaultNota(gm, GraphManager.SCHEDULE_RATE, 200_000);
-			
+
 			Pipe<RawDataSchema> output = RawDataSchema.instance.newPipe(10, 300);
 			new ExampleProducerStage(gm, output);
 			
@@ -21,10 +21,20 @@ public class TelemtryTestTool {
 			Pipe[] targets = new Pipe[i];
 			while (--i>=0) {
 				targets[i] = new Pipe(output.config().grow2x());
-		        new PipeCleanerStage<>(gm, targets[i]);
+				Pipe temp = null;
+				Pipe prev = targets[i];
+				
+				int j = 4;
+				while (--j>=0) {
+					temp = new Pipe(prev.config().grow2x());
+					new ReplicatorStage<>(gm, prev, temp);
+					prev = temp;
+				}
+				
+		        new PipeCleanerStage<>(gm, temp);
 			}
 			new ReplicatorStage<>(gm, output, targets);
-			
+		
 			
 			gm.enableTelemetry(8092);
 			StageScheduler.defaultScheduler(gm).startup();

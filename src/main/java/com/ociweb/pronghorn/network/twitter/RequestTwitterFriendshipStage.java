@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 
 import com.ociweb.pronghorn.network.OAuth1HeaderBuilder;
 import com.ociweb.pronghorn.network.ServerCoordinator;
-import com.ociweb.pronghorn.network.config.HTTPHeaderDefaults;
 import com.ociweb.pronghorn.network.http.HTTPUtil;
 import com.ociweb.pronghorn.network.schema.ClientHTTPRequestSchema;
 import com.ociweb.pronghorn.network.schema.HTTPRequestSchema;
@@ -125,7 +124,7 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 		contentBacking = new byte[4];
 		
 		myAuth = new OAuth1HeaderBuilder(ck, cs, token, secret, port, "https", host, path);
-		myAuth.addParam("Content-Length", dynamicLength);
+		myAuth.addMACParam("Content-Length", dynamicLength);
 		
 	}
 	

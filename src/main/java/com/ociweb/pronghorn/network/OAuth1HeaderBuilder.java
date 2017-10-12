@@ -27,49 +27,90 @@ import com.ociweb.pronghorn.util.Appendables;
 
 public class OAuth1HeaderBuilder {
 
+  ////////////////////////////
+  //The notes about A E and G are more clear  
+  //if you have this page open https://oauth.net/core/1.0/#anchor9
+  ////////////////////////////
+	
+  private static final String OAUTH_VERIFIER = "oauth_verifier";
+  private static final String OAUTH_CALLBACK = "oauth_callback";
+  private static final String OAUTH_SIGNATURE = "oauth_signature";
+  private static final String OAUTH_VERSION = "oauth_version";
+  private static final String OAUTH_TOKEN = "oauth_token";
+  private static final String OAUTH_TIMESTAMP = "oauth_timestamp";
+  private static final String OAUTH_SIGNATURE_METHOD = "oauth_signature_method";
+  private static final String OAUTH_NONCE = "oauth_nonce";
+  private static final String OAUTH_CONSUMER_KEY = "oauth_consumer_key";
+
+  private final Mac mac;
+  
   private final String consumerKey;
-  private final String token;
+  
+  //used by E and G
+  private CharSequence token;    //when null OAUTH_TOKEN field is not used
+  
+  //used by E
+  private CharSequence verifier; //when null OAUTH_VERIFIER field is not used
+  
+  //used by A
+  private CharSequence callback; //when null OAUTH_CALLBACK field is not used
   
   private final SecureRandom secureRandom;
-  private final SecretKeySpec secretKeySpec;
+  
+  private final SecretKeySpec secretKeySpec; //need 3 of these TODO: fix...
   
   private final StringBuilder nonceBuilder;
   private final StringBuilder timeBuilder;
 	
-  private final List<CharSequence[]> params;
+  private final List<CharSequence[]> macParams;
   
   private final Pipe<RawDataSchema> workingPipe;
     
   private final String formalPath;
   
   public OAuth1HeaderBuilder(String consumerKey,    //oauth_consumer_key - Not a secret (user)
-		                     String consumerSecret, 
-		                     String token,          //oauth_token    - Not a secret (app) 
-		                     String tokenSecret,
+		  
+		                     String consumerSecret,  //?? where from? is F secret?
+		                     
+		                     String token,      //from A and F   //oauth_token    - Not a secret (app) 
+		                     String tokenSecret, //from A and F
 		  					 int port, String scheme, String host, String path) {
+	  
     this.consumerKey = consumerKey;    
     this.token = token;
 
+    
     assert(consumerKey!=null);
     assert(consumerSecret!=null);
     assert(token!=null);
     assert(tokenSecret!=null);
+    this.secretKeySpec = new SecretKeySpec((consumerSecret + "&" + tokenSecret).getBytes(), "HmacSHA1");
+    
+    
+    try {
+		mac = Mac.getInstance("HmacSHA1");
+	} catch (NoSuchAlgorithmException e) {
+		throw new RuntimeException(e);
+	}
     
     //oauth_verifier is the pin
+    //what are the signaature rules for A E and G??
     
-    this.secureRandom = new SecureRandom(); 
-	this.secretKeySpec = new SecretKeySpec((consumerSecret + "&" + tokenSecret).getBytes(), "HmacSHA1");
-	
+    this.secureRandom = new SecureRandom();
 	this.nonceBuilder = new StringBuilder();
 	this.timeBuilder = new StringBuilder();
-	this.params = new ArrayList<CharSequence[]>(); //in alpha order...
+	this.macParams = new ArrayList<CharSequence[]>(); //in alpha order...
 	
-	this.addParam("oauth_consumer_key",consumerKey); 
-	this.addParam("oauth_nonce",nonceBuilder);
-	this.addParam("oauth_signature_method","HMAC-SHA1");
-	this.addParam("oauth_timestamp",timeBuilder);
-	this.addParam("oauth_token",token);
-	this.addParam("oauth_version","1.0");
+	//oauth_signature //required for all calls but not here in params since params is what it signs
+	this.addMACParam(OAUTH_CONSUMER_KEY,consumerKey); //required for all calls
+	this.addMACParam(OAUTH_NONCE,nonceBuilder); //required for all calls
+	this.addMACParam(OAUTH_SIGNATURE_METHOD,"HMAC-SHA1"); //required for all calls
+	this.addMACParam(OAUTH_TIMESTAMP,timeBuilder);//required for all calls	
+	this.addMACParam(OAUTH_VERSION,"1.0"); //optional for all calls
+
+	this.addMACParam(OAUTH_TOKEN, token); //only for E and G, null eliminates usage	
+	this.addMACParam(OAUTH_CALLBACK, null);  //only for A, null eliminates usage	
+	this.addMACParam(OAUTH_VERIFIER, null);  //only for E, null eliminates usage	
 	
 	this.workingPipe = RawDataSchema.instance.newPipe(2, 1000);
 	this.workingPipe.initBuffers();
@@ -78,10 +119,10 @@ public class OAuth1HeaderBuilder {
 
   }
   
-  public void addParam(CharSequence key, CharSequence dynamicValue) {
+  public void addMACParam(CharSequence key, CharSequence dynamicValue) {
 	  
 	  try {
-		  params.add(new CharSequence[]{
+		  macParams.add(new CharSequence[]{
 				  key,
 				  dynamicValue
 				  });
@@ -89,13 +130,13 @@ public class OAuth1HeaderBuilder {
 		  throw new RuntimeException(e);
 	  }
 	  
-	  Collections.sort(params, charComparitor);
+	  Collections.sort(macParams, charComparitor);
   }
 
-  public void addParam(String key, String value) {
+  public void addMACParam(String key, String value) {
 	  
 	  try {
-		  params.add(new CharSequence[]{
+		  macParams.add(new CharSequence[]{
 				  URLEncoder.encode(key,"UTF-8"),
 				  URLEncoder.encode(value,"UTF-8")
 				  });
@@ -103,7 +144,7 @@ public class OAuth1HeaderBuilder {
 		  throw new RuntimeException(e);
 	  }
 	  
-	  Collections.sort(params, charComparitor);
+	  Collections.sort(macParams, charComparitor);
   }
   
   private final int charCompare(CharSequence thisCS, CharSequence thatCS) {
@@ -139,10 +180,14 @@ public class OAuth1HeaderBuilder {
 
 	final long now = System.currentTimeMillis();
 	
+	///////////////////////////////
+	////////get fresh NONCE
+	/////////////////////////////
 	nonceBuilder.setLength(0);
 	Appendables.appendValue(nonceBuilder, Math.abs(secureRandom.nextLong()));
 	Appendables.appendValue(nonceBuilder, now);
-
+///////////////////////////////////////////
+	
 	timeBuilder.setLength(0);
 	Appendables.appendValue(timeBuilder, now / 1000);
 	
@@ -156,30 +201,38 @@ public class OAuth1HeaderBuilder {
 	    builder.append("Authorization: ");
 	    
 	    builder.append("OAuth ");
-	    builder.append("oauth_consumer_key=\"").append(consumerKey).append("\", ");
-	    builder.append("oauth_token=\"").append(token).append("\", ");
-	    appendSignature(builder, upperVerb);
-	    builder.append("oauth_signature_method=\"").append("HMAC-SHA1").append("\", ");
-	    builder.append("oauth_timestamp=\"").append(timeBuilder).append("\", ");
-	    builder.append("oauth_nonce=\"").append(nonceBuilder).append("\", ");
-	    builder.append("oauth_version=\"").append("1.0").append("\"");
+	    
+	    builder.append(OAUTH_CONSUMER_KEY);// //required for all calls
+	    builder.append("=\"").append(consumerKey).append("\", ");
+	    
+	    builder.append(OAUTH_TOKEN); //only for E and G
+	    builder.append("=\"").append(token).append("\", ");
+	    	    
+	    mac.init(secretKeySpec); //choose right secret for A E or G
+	    
+	    
+		doFinalHMAC(builder.append(OAUTH_SIGNATURE)// //required for all calls
+				.append("=\""), upperVerb, formalPath, mac).append("\", ");
+	   
+	    builder.append(OAUTH_SIGNATURE_METHOD);// //required for all calls
+	    builder.append("=\"").append("HMAC-SHA1").append("\", ");
+	    
+	    builder.append(OAUTH_TIMESTAMP);// //required for all calls
+	    builder.append("=\"").append(timeBuilder).append("\", ");
+	    
+	    builder.append(OAUTH_NONCE);// //required for all calls
+	    builder.append("=\"").append(nonceBuilder).append("\", ");
+	    
+	    builder.append(OAUTH_VERSION);// //optional for all calls
+	    builder.append("=\"").append("1.0").append("\"");
+	
 	} catch (Exception e) {
 		throw new RuntimeException(e);
 	}
 	return builder;
   }
 
-	private <A extends Appendable> void appendSignature(A builder, String upperVerb)
-			throws NoSuchAlgorithmException, InvalidKeyException, IOException {
-		
-		Mac mac = Mac.getInstance("HmacSHA1");
-		mac.init(secretKeySpec);	    	    
-		doFinalHMAC(builder.append("oauth_signature=\""), upperVerb, formalPath, mac);
-		builder.append("\", ");
-		
-	}
-
-  private <A extends Appendable> void doFinalHMAC(A builder, String upperVerb, String hostAndPath, Mac mac) {
+	private <A extends Appendable> A doFinalHMAC(A builder, String upperVerb, String hostAndPath, Mac mac) {
 	  int size = Pipe.addMsgIdx(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
 	  DataOutputBlobWriter<RawDataSchema> normalizedBuilder = Pipe.openOutputStream(workingPipe);
 	  	  
@@ -189,16 +242,21 @@ public class OAuth1HeaderBuilder {
 	  normalizedBuilder.append('&');
 	
 	  //NOTE: the params are already URL encoded.
-	  if (!params.isEmpty()) {
+	  if (!macParams.isEmpty()) {
 		  
-	    for (int i=0; i<params.size(); i++) {
-	      CharSequence[] pair = params.get(i);
-	      if (i>0) {
-	    	  normalizedBuilder.append("%26");  
+	    for (int i=0; i<macParams.size(); i++) {
+	      CharSequence[] pair = macParams.get(i);
+	      //NOTE: if value is null or zero length we do not use it because
+	      //      those fields do not apply to this particular communication trip
+	      CharSequence value = pair[1];
+		  if (null != value && value.length()>0) {
+		      if (i>0) {
+		    	  normalizedBuilder.append("%26");  
+		      }
+		      normalizedBuilder.append(pair[0]);
+		      normalizedBuilder.append("%3D");
+		      normalizedBuilder.append(value);  
 	      }
-	      normalizedBuilder.append(pair[0]);
-	      normalizedBuilder.append("%3D");
-	      normalizedBuilder.append(pair[1]);  
 	    }
 	    
 	  }
@@ -244,7 +302,7 @@ public class OAuth1HeaderBuilder {
 		} catch (IllegalStateException e) {
 			throw new RuntimeException(e);
 		}
-	
+	return builder;
   }
   
   //temp mutable structure for building the mac upon request.

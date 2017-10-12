@@ -692,12 +692,12 @@ public class NetGraphBuilder {
 	
 		logger.info("begin telemetry definition");
 		
-		final long rate = 40_000_000; //fastest rate in NS
 		
 		boolean isLarge = false;
 		
 		int countOfMonitoredPipes = 0;
-
+		
+		final int rate = 2_000_000; //web server speed greatly impacts latency.
 		
 		final ModuleConfig modules = buildTelemetryModuleConfig(rate);
 		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 2);
@@ -716,7 +716,8 @@ public class NetGraphBuilder {
 			//force all these to be hidden as part of the monitoring system
 			@Override
 			public void process(GraphManager gm, PronghornStage stage) {
-				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, stage);
+				//server must be very responsive
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 10_000, stage);
 				//TODO: also use this to set the RATE and elminate the extra argument passed down....
 				GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, stage);
 			}
@@ -834,7 +835,7 @@ public class NetGraphBuilder {
 					
 					if (null!=activeStage) {
 						GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, activeStage);
-				    	GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, activeStage);						
+						GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, activeStage);						
 					}
 					
 				}
