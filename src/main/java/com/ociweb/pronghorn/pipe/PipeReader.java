@@ -753,9 +753,15 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
         return Pipe.slab(pipe)[pipe.slabMask & (int)(pipe.ringWalker.nextWorkingTail-1)];
     }
 
-	public static void releaseReadLock(Pipe pipe) {
+    /**
+     * Release the record which has been most recently read. 
+     * The act of releasing a record/message allows it to now be written over.
+     * @param pipe The pipe where this message is found.
+     * @return The total number of variable length field bytes consumed by this now released message.
+     */
+	public static int releaseReadLock(Pipe pipe) {
 		assert(Pipe.singleThreadPerPipeRead(pipe.id));
-        collectConsumedCountOfBytes(pipe); 
+        int consumed = collectConsumedCountOfBytes(pipe); 
 	    
 	    //ensure we only call for new templates.
 	    if (FieldReferenceOffsetManager.isTemplateStart(Pipe.from(pipe), pipe.ringWalker.nextCursor)) {
@@ -768,6 +774,7 @@ public class PipeReader {//TODO: B, build another static reader that does auto c
 	    //ensure that the working value does not fall behind the new published tail position.
 	    //this allows peek by direct offset to be supported when needed
 	    Pipe.setWorkingTailPosition(pipe, Pipe.tailPosition(pipe));
+	    return consumed;
 	}
 
 	public static void releaseAllPendingReadLock(Pipe pipe) {
