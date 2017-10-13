@@ -32,22 +32,24 @@ public class OAuth1HeaderBuilder {
   //if you have this page open https://oauth.net/core/1.0/#anchor9
   ////////////////////////////
 	
-  private static final String OAUTH_VERIFIER = "oauth_verifier";
-  private static final String OAUTH_CALLBACK = "oauth_callback";
-  private static final String OAUTH_SIGNATURE = "oauth_signature";
-  private static final String OAUTH_VERSION = "oauth_version";
-  private static final String OAUTH_TOKEN = "oauth_token";
-  private static final String OAUTH_TIMESTAMP = "oauth_timestamp";
+  private static final String OAUTH_VERIFIER         = "oauth_verifier";
+  private static final String OAUTH_CALLBACK         = "oauth_callback";
+  private static final String OAUTH_SIGNATURE        = "oauth_signature";
+  private static final String OAUTH_VERSION          = "oauth_version";
+  private static final String OAUTH_TOKEN            = "oauth_token";
+  private static final String OAUTH_TIMESTAMP        = "oauth_timestamp";
   private static final String OAUTH_SIGNATURE_METHOD = "oauth_signature_method";
-  private static final String OAUTH_NONCE = "oauth_nonce";
-  private static final String OAUTH_CONSUMER_KEY = "oauth_consumer_key";
+  private static final String OAUTH_NONCE            = "oauth_nonce";
+  private static final String OAUTH_CONSUMER_KEY     = "oauth_consumer_key";
 
-  private final Mac mac;
-  
+  private final Mac mac;  
   private final String consumerKey;
   
   //used by E and G
   private CharSequence token;    //when null OAUTH_TOKEN field is not used
+  private CharSequence consumerSecret;
+  private CharSequence tokenSecret;
+  
   
   //used by E
   private CharSequence verifier; //when null OAUTH_VERIFIER field is not used
@@ -65,20 +67,30 @@ public class OAuth1HeaderBuilder {
   private final List<CharSequence[]> macParams;
   
   private final Pipe<RawDataSchema> workingPipe;
-    
   private final String formalPath;
+
+  
+
+    
   
   public OAuth1HeaderBuilder(String consumerKey,    //oauth_consumer_key - Not a secret (user)
-		  
-		                     String consumerSecret,  //?? where from? is F secret?
+		  		  
+		                     String consumerSecret,  //?? where from? is F secret?		                     
+		                     String token,           //from A and F   //oauth_token    - Not a secret (app) 
+		                     String tokenSecret,     //from A and F               
 		                     
-		                     String token,      //from A and F   //oauth_token    - Not a secret (app) 
-		                     String tokenSecret, //from A and F
-		  					 int port, String scheme, String host, String path) {
+		  					 int port, String scheme,
+		  					 String host, 
+		  					 String path) {
 	  
-    this.consumerKey = consumerKey;    
-    this.token = token;
+	  this.macParams = new ArrayList<CharSequence[]>(); //in alpha order...
+	  
+      this.consumerKey = consumerKey;
+    
+      this.token = token;
 
+    
+    
     
     assert(consumerKey!=null);
     assert(consumerSecret!=null);
@@ -99,7 +111,6 @@ public class OAuth1HeaderBuilder {
     this.secureRandom = new SecureRandom();
 	this.nonceBuilder = new StringBuilder();
 	this.timeBuilder = new StringBuilder();
-	this.macParams = new ArrayList<CharSequence[]>(); //in alpha order...
 	
 	//oauth_signature //required for all calls but not here in params since params is what it signs
 	this.addMACParam(OAUTH_CONSUMER_KEY,consumerKey); //required for all calls
