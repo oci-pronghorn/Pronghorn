@@ -321,7 +321,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 	        	        
 	        //only write if this connection is still valid
 	        if (null != serverConnection) {        
-				
+					        	
 	        	writeToChannel[idx] = serverConnection.getSocketChannel(); //ChannelId or SubscriptionId      
 	        	writeToChannelId[idx] = channelId;
 	        	writeToChannelMsg[idx] = msgIdx;
@@ -550,6 +550,7 @@ public class ServerSocketWriterStage extends PronghornStage {
     		
     		if (!debugWithSlowWrites) {
 		        try {
+		        	
 		        	int bytesWritten = writeToChannel[idx].write(workingBuffers[idx]);	  
 		        	
 		        	//short blocks of bytes written may be slowdown!!
@@ -562,6 +563,10 @@ public class ServerSocketWriterStage extends PronghornStage {
 		        	}
 		        	if (!workingBuffers[idx].hasRemaining()) {
 		        		markDoneAndRelease(idx);
+		        		
+		    //    		int x = ServerCoordinator.inServerCount.decrementAndGet();
+		     //   		System.err.println("in server count "+x+"  "+(System.nanoTime()-ServerCoordinator.start));
+		        	
 		        	} 
 		        
 		        } catch (IOException e) {
@@ -587,7 +592,7 @@ public class ServerSocketWriterStage extends PronghornStage {
 				
 				buf.flip();
 				int expected = buf.limit();
-				
+								
 				while (buf.hasRemaining()) {
 					try {
 						int len = writeToChannel[idx].write(buf);
@@ -604,12 +609,14 @@ public class ServerSocketWriterStage extends PronghornStage {
 			            return;
 					}
 				}
+
 				if (expected!=0) {
 					throw new UnsupportedOperationException();
 				}
 							
 	        	if (!workingBuffers[idx].hasRemaining()) {
 	        		markDoneAndRelease(idx);
+
 	        	}
     			
     		}	        

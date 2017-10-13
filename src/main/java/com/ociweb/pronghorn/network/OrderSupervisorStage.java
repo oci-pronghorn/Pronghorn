@@ -440,7 +440,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 }
 		 assert(Pipe.bytesReadBase(input)>=0);
 		 
-		 final long time = 0;//field not used by server...
+		 final long time = 0;//System.nanoTime();//field not used by server...
 	
 		 writeToNextStage(output, channelId, len, requestContext, blobMask, blob, bytePosition, time); 
 		 

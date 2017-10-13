@@ -301,6 +301,7 @@ public class NetGraphBuilder {
 			ServerPipesConfig serverConfig, Pipe<ReleaseSchema>[] releaseAfterParse,
 			Pipe<NetPayloadSchema>[] receivedFromNet, Pipe<NetPayloadSchema>[] sendingToNet, long rate) {
 
+//		logger.info("buildHTTPStages");
 		//logger.info("build http stages");
 		HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults> httpSpec = HTTPSpecification.defaultSpec();
 		
@@ -316,6 +317,7 @@ public class NetGraphBuilder {
         
         PipeConfig<HTTPRequestSchema> routerToModuleConfig = new PipeConfig<HTTPRequestSchema>(HTTPRequestSchema.instance, serverConfig.fromProcessorCount, serverConfig.fromProcessorBlob);///if payload is smaller than average file size will be slower
         final HTTP1xRouterStageConfig routerConfig = buildModules(graphManager, modules, routerCount, httpSpec, routerToModuleConfig, fromModule, toModules);
+        
         
         //logger.info("build http stages 3");
         PipeConfig<ServerResponseSchema> config = ServerResponseSchema.instance.newPipeConfig(4, 512);
@@ -567,7 +569,8 @@ public class NetGraphBuilder {
 				
 			}
 			//each module can unify of split across routers
-			Pipe<ServerResponseSchema>[] outputPipes = modules.registerModule(moduleInstance, graphManager, routerConfig, routesTemp);
+			Pipe<ServerResponseSchema>[] outputPipes = modules.registerModule(
+					                moduleInstance, graphManager, routerConfig, routesTemp);
 			
 			assert(validateNoNulls(outputPipes));
 		    
@@ -690,15 +693,14 @@ public class NetGraphBuilder {
 	
 	public static void telemetryServerSetup(boolean isTLS, String bindHost, int port, GraphManager gm) {
 	
-		logger.info("begin telemetry definition");
-		
-		
+		//logger.trace("begin telemetry definition");
+				
 		boolean isLarge = false;
 		
 		int countOfMonitoredPipes = 0;
 		
-		final int rate = 2_000_000; //web server speed greatly impacts latency.
-		
+		final int rate = 100_000; 
+
 		final ModuleConfig modules = buildTelemetryModuleConfig(rate);
 		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 2);
 				 
@@ -716,8 +718,8 @@ public class NetGraphBuilder {
 			//force all these to be hidden as part of the monitoring system
 			@Override
 			public void process(GraphManager gm, PronghornStage stage) {
-				//server must be very responsive
-				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 10_000, stage);
+				//server must be very responsive so it has its own low rate.
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 2_400, stage);
 				//TODO: also use this to set the RATE and elminate the extra argument passed down....
 				GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, stage);
 			}
@@ -776,41 +778,44 @@ public class NetGraphBuilder {
 				
 				Pipe<ServerResponseSchema>[] staticFileOutputs = new Pipe[instances];
 				
-				int i = instances;
-				while (--i>=0) {
 					PronghornStage activeStage = null;
 					switch (a) {
 						case 0:
 						activeStage = ResourceModuleStage.newInstance(graphManager, 
-								inputPipes[i], 
-								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(2, outputPipeChunkMin), 
+								inputPipes, 
+								staticFileOutputs = Pipe.buildPipes(instances, 
+										 ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMin)), 
 								(HTTPSpecification<HTTPContentTypeDefaults, HTTPRevisionDefaults, HTTPVerbDefaults, HTTPHeaderDefaults>) ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 								"telemetry/index.html", HTTPContentTypeDefaults.HTML);						
 						break;
 						case 1:
 						activeStage = ResourceModuleStage.newInstance(graphManager, 
-						          inputPipes[i], 
-						          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(2, outputPipeChunkMax), 
+						          inputPipes, 
+						          staticFileOutputs = Pipe.buildPipes(instances, 
+						        		  	ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
 						          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 						          "telemetry/viz-lite.js", HTTPContentTypeDefaults.JS);
 						break;
 						case 2:
 						activeStage = DotModuleStage.newInstance(graphManager, 
-								inputPipes[i], 
-								staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(2, outputPipeChunkMax), 
+								inputPipes, 
+								staticFileOutputs = Pipe.buildPipes(instances, 
+										           ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
 								((HTTP1xRouterStageConfig)routerConfig).httpSpec);
 						break;
 						case 3:
 							activeStage = ResourceModuleStage.newInstance(graphManager, 
-							          inputPipes[i], 
-							          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(2, outputPipeChunkMax), 
+							          inputPipes, 
+							          staticFileOutputs = Pipe.buildPipes(instances,
+							        		    	ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMax)), 
 							          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 							          "telemetry/jquery-3.2.1.min.js", HTTPContentTypeDefaults.JS);
 						break;
 						case 4:
 							activeStage = ResourceModuleStage.newInstance(graphManager, 
-							          inputPipes[i], 
-							          staticFileOutputs[i] = ServerResponseSchema.instance.newPipe(2, outputPipeChunkMin), 
+							          inputPipes, 
+							          staticFileOutputs = Pipe.buildPipes(instances, 
+							        		  ServerResponseSchema.instance.newPipeConfig(2, outputPipeChunkMin)), 
 							          ((HTTP1xRouterStageConfig)routerConfig).httpSpec,
 							          "telemetry/webworker.js", HTTPContentTypeDefaults.JS);
 						break;
@@ -838,7 +843,7 @@ public class NetGraphBuilder {
 						GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, activeStage);						
 					}
 					
-				}
+				
 				
 				routerConfig.registerRoute(
 									             getPathRoute(a)

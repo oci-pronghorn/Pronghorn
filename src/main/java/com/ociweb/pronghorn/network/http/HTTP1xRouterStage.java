@@ -531,7 +531,7 @@ private int parseHTTP(TrieParserReader trieReader, final long channel, final int
     			trieReader.sourceLen = tempLen;
     			trieReader.sourcePos = tempPos;
     			
-    			boolean debug = true; 
+    			boolean debug = false;
     			if(debug) {
     				StringBuilder builder = new StringBuilder();    			    			
     				TrieParserReader.debugAsUTF8(trieReader, builder, config.verbMap.longestKnown()*2);    			
@@ -869,7 +869,10 @@ private int accumulateRunningBytes(final int idx, Pipe<NetPayloadSchema> selecte
         		
         		assert(hasNoActiveChannel(idx)) : "Can not begin a new connection if one is already in progress.";        		
         		assert(0==Pipe.releasePendingByteCount(selectedInput));
-        		
+        			     
+  	     //  	  ServerCoordinator.inServerCount.incrementAndGet();
+         // 	  ServerCoordinator.start = System.nanoTime();
+        	  
         		//logger.info("accumulate begin");
         		//keep this as the base for our counting of sequence
         		int newSeq = Pipe.takeInt(selectedInput);

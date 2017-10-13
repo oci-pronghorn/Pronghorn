@@ -44,7 +44,7 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 		this.monitor = monitor;
 		
 	}
-
+	
 	@Override
 	protected byte[] payload(Appendable payload, GraphManager gm, DataInputBlobReader<HTTPRequestSchema> params,
 			HTTPVerbDefaults verb) {
@@ -52,8 +52,10 @@ public class DotModuleStage<   T extends Enum<T> & HTTPContentType,
 		if (verb != HTTPVerbDefaults.GET) {
 			return null;
 		}		
+				
 		//logger.info("begin building requested graph");
-		monitor.writeAsDot(gm, payload);		
+		monitor.writeAsDot(gm, payload);
+		
 		//logger.info("finished requested dot");
 		return null; //never cache this so we return null.
 	}

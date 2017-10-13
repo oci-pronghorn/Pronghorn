@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.network;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.Selector;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -251,7 +252,8 @@ public class ServerCoordinator extends SSLConnectionHolder {
         
     }
 
-
+//	public static AtomicInteger inServerCount = new AtomicInteger(0);
+//    public static long start;
     
     public static int[] getUpgradedPipeLookupArray(ServerCoordinator that) {
         return that.upgradePipeLookup;

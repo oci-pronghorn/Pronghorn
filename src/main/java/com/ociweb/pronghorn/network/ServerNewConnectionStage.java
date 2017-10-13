@@ -181,6 +181,9 @@ public class ServerNewConnectionStage extends PronghornStage{
                                     
                   if (0 != (SelectionKey.OP_ACCEPT & readyOps)) {
                       
+//                	  ServerCoordinator.inServerCount.incrementAndGet();
+//                	  ServerCoordinator.start = System.nanoTime();
+                	  
                       if (!Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
                           return;
                       }
@@ -196,8 +199,8 @@ public class ServerNewConnectionStage extends PronghornStage{
                       try {                          
                           channel.configureBlocking(false);
                           
-                          //TCP_NODELAY is requried for HTTP/2 get used to to being on.
-                          //channel.setOption(StandardSocketOptions.TCP_NODELAY, true);  
+                          //TCP_NODELAY is requried for HTTP/2 get used to it being on now.
+                          channel.setOption(StandardSocketOptions.TCP_NODELAY, true);  
                           
                           
                           //channel.setOption(StandardSocketOptions.SO_RCVBUF, 1<<19);

@@ -1,7 +1,5 @@
 package com.ociweb.pronghorn.stage.monitor;
 
-import static com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema.MSG_RINGSTATSAMPLE_100;
-
 import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,13 +22,17 @@ public class MonitorConsoleStage extends PronghornStage {
 	private static final Logger logger = LoggerFactory.getLogger(MonitorConsoleStage.class);
 		
 	private Histogram[] hists; 
-
+    private int position;
+    private final int batchSize;
+	
 	private boolean recorderOn=true;
 	
 	private MonitorConsoleStage(GraphManager graphManager, Pipe ... inputs) {
 		super(graphManager, inputs, NONE);
 		this.inputs = inputs;
 		this.graphManager = graphManager;
+		
+		this.batchSize = inputs.length>=64?64:inputs.length;
 		
 		validateSchema(inputs);
 		GraphManager.addNota(graphManager, GraphManager.MONITOR, GraphManager.MONITOR, this);
@@ -65,35 +67,36 @@ public class MonitorConsoleStage extends PronghornStage {
 			hists[i] = new Histogram(100,2); 
 		}
 				
+		position = inputs.length;
 	}
 		
 	
 	@Override
 	public void run() {
 
-		int i = inputs.length;
-		while (--i>=0) {
+		int j = batchSize; //max to check before returning thread.
+		while (--j>=0) {
+			if (--position<0) {
+				position = inputs.length-1;
+			}			
+			Pipe<?> ring = inputs[position];
 			
-			Pipe<?> ring = inputs[i];
 			while (Pipe.peekMsg(ring, PipeMonitorSchema.MSG_RINGSTATSAMPLE_100)) {
-				int mgdIdx = Pipe.takeMsgIdx(ring);
-								
-				assert(MSG_RINGSTATSAMPLE_100 == mgdIdx) : "Only supporting the single monitor message type";
-			
+				int mgdIdx = Pipe.takeMsgIdx(ring);			
 				long time = Pipe.takeLong(ring);
 				long head = Pipe.takeLong(ring);
 				long tail = Pipe.takeLong(ring); 				
 				int lastMsgIdx = Pipe.takeInt(ring);
 				int ringSize = Pipe.takeInt(ring);			
-				
-				if (recorderOn) {
+
+				if (recorderOn && head>=0 && tail>=0) {
 					int pctFull = (int)((100*(head-tail))/ringSize);
 					//bounds enforcement because both head and tail are snapshots and are not synchronized to one another.				
 					
-					hists[i].recordValue(pctFull>=0 ? (pctFull<=100 ? pctFull : 99) : 0);
+					hists[position].recordValue(pctFull>=0 ? (pctFull<=100 ? pctFull : 99) : 0);
 				}
-				Pipe.confirmLowLevelRead(ring, SIZE_OF);
 				
+				Pipe.confirmLowLevelRead(ring, SIZE_OF);
 				Pipe.releaseReadLock(ring);
 				
 			}
@@ -120,7 +123,7 @@ public class MonitorConsoleStage extends PronghornStage {
 		int i = hists.length;
 		while (--i>=0) {
 			if (null==hists[i]) {
-				return;
+				break;
 			}
 			long pctile = hists[i].getValueAtPercentile(96); //do not change: this is the 80-20 rule applied twice
 			
@@ -139,15 +142,15 @@ public class MonitorConsoleStage extends PronghornStage {
             String ringName = "Unknown";
             long published = 0;
             long allocated = 0;
-            if (producer instanceof RingBufferMonitorStage) {
+            if (producer instanceof PipeMonitorStage) {
             	
-            	published = ((RingBufferMonitorStage)producer).getObservedPipePublishedCount();
-            	allocated = ((RingBufferMonitorStage)producer).getObservedPipeBytesAllocated();
-            	trafficValues[ ((RingBufferMonitorStage)producer).getObservedPipeId() ] = (int)published;
-            	ringName = ((RingBufferMonitorStage)producer).getObservedPipeName();
+            	published = ((PipeMonitorStage)producer).getObservedPipePublishedCount();
+            	allocated = ((PipeMonitorStage)producer).getObservedPipeBytesAllocated();
+            	trafficValues[ ((PipeMonitorStage)producer).getObservedPipeId() ] = (int)published;
+            	ringName = ((PipeMonitorStage)producer).getObservedPipeName();
             	
 	            if (inBounds && (sampleCount>=1)) {
-					percentileValues[ ((RingBufferMonitorStage)producer).getObservedPipeId() ] = (int)pctile;
+					percentileValues[ ((PipeMonitorStage)producer).getObservedPipeId() ] = (int)pctile;
 					
 	            }
             }

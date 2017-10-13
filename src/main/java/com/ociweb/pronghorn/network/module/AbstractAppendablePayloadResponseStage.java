@@ -113,6 +113,9 @@ public abstract class AbstractAppendablePayloadResponseStage <
 			
 			//logger.trace("has room and has data to write out from "+input);
 		    
+	//      ServerCoordinator.inServerCount.incrementAndGet();
+    //  	  ServerCoordinator.start = System.nanoTime();
+			
 			int msgIdx = Pipe.takeMsgIdx(input);
 		    switch(msgIdx) {
 		        case HTTPRequestSchema.MSG_RESTREQUEST_300:

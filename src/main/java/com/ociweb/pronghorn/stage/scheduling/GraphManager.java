@@ -22,7 +22,7 @@ import com.ociweb.pronghorn.pipe.PipeConfig;
 import com.ociweb.pronghorn.pipe.PipeMonitor;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.MonitorConsoleStage;
-import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
 import com.ociweb.pronghorn.stage.test.ConsoleJSONDumpStage;
 import com.ociweb.pronghorn.util.Appendables;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
@@ -94,6 +94,10 @@ public class GraphManager {
 	
     private String[] stageDOTNames;
     private String[] pipeDOTNames;
+    private String[] stageDOTRate;
+    private String[] stageIds;
+    
+    
   
 	//This object is shared with all clones
 	private final GraphManagerStageStateData stageStateData;
@@ -415,7 +419,9 @@ public class GraphManager {
 			}
 			m.enableMutation = false;
 			m.stageDOTNames = new String[GraphManager.countStages(m)];
+			m.stageDOTRate = new String[GraphManager.countStages(m)]; 
 			m.pipeDOTNames = new String[Pipe.totalPipes()];
+			m.stageIds = new String[GraphManager.countStages(m)]; 
 		}
 	}
 	
@@ -1381,8 +1387,7 @@ public class GraphManager {
 	    try {
 	    
 	        target.append("digraph {\n");
-	        
-	        
+	        	        
 	        int stages = GraphManager.countStages(m);
 	        
 	        Map<Object, StringBuilder> ranks = null; //TODO: not GC free
@@ -1402,11 +1407,42 @@ public class GraphManager {
 	        	            
 	            if (null!=stage 
 	            		&& !(stage instanceof MonitorConsoleStage) 
-	            		&& !(stage instanceof RingBufferMonitorStage)
+	            		&& !(stage instanceof PipeMonitorStage)
 	            		&& !stageForMonitorData(m,stage) 
 	            		) {       
+          	
 
-	            		
+	            	////////////////////
+	            	//cache stage names since these are needed frequently
+	            	///////////////////
+	            	String stageDisplayName = m.stageDOTNames[stage.stageId];
+	            	if (null==stageDisplayName) {
+	            		Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
+	            		stageDisplayName = stage.toString().replace("Stage","").replace(" ", "\n");
+	            	    if (null!=group) {
+	            	    	stageDisplayName+=(" grp:"+group.toString());
+	 	                }
+	            		m.stageDOTNames[stage.stageId] = stageDisplayName;
+	            	}
+	            	
+	            	String stageRate = m.stageDOTRate[stage.stageId];
+	            	if (null==stageRate) {
+	            		Object rate = getNota(m, stage.stageId, GraphManager.SCHEDULE_RATE,null);
+	            		if (null!=rate) {
+	            			stageRate = "\n Rate:"+Long.toString(((Number)rate).longValue());
+	            			m.stageDOTRate[stage.stageId] = stageRate;
+	            		}
+	            	}
+	            	
+	            	String stageId = m.stageIds[stage.stageId];
+	            	if (null == stageId) {
+	            		stageId = "Stage"+stage.stageId;
+	            		m.stageIds[stage.stageId] = stageId;
+	            	}
+	            	
+	            	//////////////////
+	            	
+            		
 	            	if (ranks!=null) {
 		            	Object rankKey = getNota(m, stage.stageId, GraphManager.DOT_RANK_NAME, null);
 		            	if (rankKey!=null) {
@@ -1418,34 +1454,13 @@ public class GraphManager {
 		            			ranks.put(rankKey, b);
 		            		}
 		            		
-		            		b.append(" \"");
-		            		Appendables.appendValue(b, "Stage", i);
-		            		b.append("\",");
+		            		b.append(" \"").append(stageId).append("\",");
 		            		
 		            	}
 	            	}
 
-	            	Object rate = getNota(m, stage.stageId, GraphManager.SCHEDULE_RATE,null);
-	            	
-	            	Object group = GraphManager.getNota(m, stage.stageId, GraphManager.THREAD_GROUP, null);
-
-	            	////////////////////
-	            	//cache stage names since these are needed frequently
-	            	///////////////////
-	            	String stageDisplayName = m.stageDOTNames[stage.stageId];
-	            	if (null==stageDisplayName) {
-	            		stageDisplayName = stage.toString().replace("Stage","").replace(" ", "\n");
-	            		m.stageDOTNames[stage.stageId] = stageDisplayName;
-	            	}
-	            	//////////////////
-	            	
-	                target.append("\"");
-	                Appendables.appendValue(target, "Stage", i);
-					target.append("\"[");
-					target.append("label=\"").append(stageDisplayName);
-	                if (null!=group) {
-	                	target.append(" grp:").append(group.toString());
-	                }
+	                target.append("\"").append(stageId).append("\"[label=\"").append(stageDisplayName);
+	           	                
 	                //if supported give PCT used
 	                long runNs = m.stageRunNS[stage.stageId];
 	                int pct = 0;
@@ -1478,8 +1493,8 @@ public class GraphManager {
             	            			
 	                }
 	                
-	                if (null!=rate) {
-	                	Appendables.appendValue(target, "\n Rate:", ((Number)rate).longValue());
+	                if (null!=stageRate) {
+	                	target.append(stageRate);	                
 	                }
 	                
 	                target.append("\"");
@@ -1570,9 +1585,7 @@ public class GraphManager {
 	                    	pipeName = Pipe.schemaName(pipe).replace("Schema", "");
 	                    	m.pipeDOTNames[pipe.id] = pipeName;
 	                    }
-		                target.append("\"[");
-		                
-		                target.append("label=\"");
+		                target.append("\"[label=\"");
 		                if (pipe.config().showLabels()) {
 			                target.append(pipeName);
 			                		                
@@ -1808,7 +1821,7 @@ public class GraphManager {
 			if (null!=ringBuffer && !ringHoldsMonitorData(gm, ringBuffer) ) {
 
 				monBuffers[monBufIdx] = new Pipe(ringBufferMonitorConfig);
-				RingBufferMonitorStage stage = new RingBufferMonitorStage(gm, ringBuffer,  monBuffers[monBufIdx]);
+				PipeMonitorStage stage = new PipeMonitorStage(gm, ringBuffer,  monBuffers[monBufIdx]);
 				GraphManager.addNota(gm, GraphManager.MONITOR, "dummy", stage);
 				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, monitorRate, stage);
 				

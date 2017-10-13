@@ -17,7 +17,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.pipe.util.hash.IntHashTable;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.monitor.PipeMonitorSchema;
-import com.ociweb.pronghorn.stage.monitor.RingBufferMonitorStage;
+import com.ociweb.pronghorn.stage.monitor.PipeMonitorStage;
 import com.ociweb.pronghorn.util.ma.RunningStdDev;
 
 public class FixedThreadsScheduler extends StageScheduler {
@@ -152,10 +152,10 @@ public class FixedThreadsScheduler extends StageScheduler {
 		///////////////////////////////////////////////////
 		//NOTE May test removing this later
 		
-		PronghornStage[] monitors = GraphManager.allStagesByType(graphManager, RingBufferMonitorStage.class);
+		PronghornStage[] monitors = GraphManager.allStagesByType(graphManager, PipeMonitorStage.class);
 		int m = monitors.length;
 		while (--m >= 0) {
-			RingBufferMonitorStage rbms = (RingBufferMonitorStage)monitors[m];
+			PipeMonitorStage rbms = (PipeMonitorStage)monitors[m];
 			
 			int outId = GraphManager.getOutputPipe(graphManager, rbms.stageId).id;
 		//	int outId = rbms.getObservedPipeId();//this idea did not work out.
@@ -576,17 +576,13 @@ public class FixedThreadsScheduler extends StageScheduler {
 			        } catch (BrokenBarrierException e) {
 			        }
 				
-				while (!NonThreadScheduler.isShutdownRequested(nts)) {
+				//TODO: fixed thread scheduler must also group by common frequencies
+				//      if we have a list with the same rate they can be on a simple loop
+				//      this saves the constant checking of which one is to run next...
+				
+				while (!NonThreadScheduler.isShutdownRequested(nts)) {					
 					nts.run();
-					long sleep = (long)RunningStdDev.mean(nts.stdDevRate());
-					
-					try {
-						Thread.sleep(sleep/1_000_000, ((int)sleep)%1_000_000);
-					} catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						break;
-					}
-					
+				
 				}
 			}	
 			

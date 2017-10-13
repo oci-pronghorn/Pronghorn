@@ -6,7 +6,7 @@ import com.ociweb.pronghorn.pipe.Pipe;
 import com.ociweb.pronghorn.stage.PronghornStage;
 import com.ociweb.pronghorn.stage.scheduling.GraphManager;
 
-public class RingBufferMonitorStage extends PronghornStage {
+public class PipeMonitorStage extends PronghornStage {
 
 	private final Pipe observedPipe;
 	private final Pipe notifyRingBuffer;
@@ -19,7 +19,7 @@ public class RingBufferMonitorStage extends PronghornStage {
 	 * @param observedRingBuffer
 	 * @param notifyRingBuffer
 	 */
-	public RingBufferMonitorStage(GraphManager gm, Pipe observedRingBuffer, Pipe<PipeMonitorSchema> notifyRingBuffer) {
+	public PipeMonitorStage(GraphManager gm, Pipe observedRingBuffer, Pipe<PipeMonitorSchema> notifyRingBuffer) {
 		//the observed ring buffer is NOT an input
 		super(gm, NONE, notifyRingBuffer); 
 		this.observedPipe = observedRingBuffer;
@@ -40,19 +40,21 @@ public class RingBufferMonitorStage extends PronghornStage {
 	
 	@Override
 	public void run() {
+		Pipe output = notifyRingBuffer;
+		Pipe input = observedPipe;
 		//if we can't write then do it again on the next cycle, and skip this data point.
-		if (Pipe.hasRoomForWrite(notifyRingBuffer)) {
+		if (Pipe.hasRoomForWrite(output)) {
 			
-			int size = Pipe.addMsgIdx(notifyRingBuffer, MSG_RINGSTATSAMPLE_100);
+			int size = Pipe.addMsgIdx(output, MSG_RINGSTATSAMPLE_100);
 			
-			Pipe.addLongValue(System.currentTimeMillis(), notifyRingBuffer);
-			Pipe.addLongValue(Pipe.headPosition(observedPipe), notifyRingBuffer);
-			Pipe.addLongValue(Pipe.tailPosition(observedPipe), notifyRingBuffer);
-			Pipe.addIntValue(observedPipe.lastMsgIdx, notifyRingBuffer);
-			Pipe.addIntValue(observedPipe.sizeOfSlabRing, notifyRingBuffer);
+			Pipe.addLongValue(System.currentTimeMillis(), output);
+			Pipe.addLongValue(Pipe.headPosition(input), output);
+			Pipe.addLongValue(Pipe.tailPosition(input), output);
+			Pipe.addIntValue(input.lastMsgIdx, output);
+			Pipe.addIntValue(input.sizeOfSlabRing, output);
 		
-			Pipe.confirmLowLevelWrite(notifyRingBuffer, size);
-			Pipe.publishWrites(notifyRingBuffer);
+			Pipe.confirmLowLevelWrite(output, size);
+			Pipe.publishWrites(output);
 			
 		} else {
 			//if unable to write then the values are dropped.

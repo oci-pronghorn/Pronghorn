@@ -210,6 +210,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 				final boolean newBeginning = (responsePipeLineIdx<0);
 						
 				if (newBeginning) {
+	
 					//this release is required in case we are swapping pipe lines, we ensure that the latest sequence no is stored.
 					releasePipesForUse();
 					responsePipeLineIdx = coordinator.responsePipeLineIdx(channelId);
@@ -223,6 +224,8 @@ public class ServerSocketReaderStage extends PronghornStage {
 						cc.setPoolReservation(responsePipeLineIdx);
 					}
 					//logger.info("new beginning {}",responsePipeLineIdx);
+				
+					
 				} else {
 					//logger.info("use existing return with {} is valid {} ",responsePipeLineIdx, cc.isValid);
 				}
@@ -375,37 +378,21 @@ public class ServerSocketReaderStage extends PronghornStage {
     public int pumpByteChannelIntoPipe(SocketChannel sourceChannel, long channelId, Pipe<NetPayloadSchema> targetPipe, boolean newBeginning, SSLConnection cc, SelectionKey selection) {
     	
         //keep appending messages until the channel is empty or the pipe is full
+    	long len = 0;//if data is read then we build a record around it
+    	ByteBuffer[] b = null;
+    	long temp = 0;
         if (Pipe.hasRoomForWrite(targetPipe)) {          
         	//logger.info("pump block for {} ",channelId);
             try {                
                 
-                long len=0;//if data is read then we build a record around it
                 //NOTE: the byte buffer is no longer than the valid maximum length but may be shorter based on end of wrap arround
-                ByteBuffer[] b = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(targetPipe), targetPipe);
+                b = Pipe.wrappedWritingBuffers(Pipe.storeBlobWorkingHeadPosition(targetPipe), targetPipe);
                        
                 int r1 = b[0].remaining();
                 int r2 = b[1].remaining();
                 
-                final long temp = sourceChannel.read(b);
+                temp = sourceChannel.read(b);
                 
-               // sourceChannel.rea
-                
-                
-//            	tempBuf.clear();
-//            	final long temp = sourceChannel.read(tempBuf);
-//            	tempBuf.flip(); 	
-//            	int space = b[0].remaining();
-//            	if (temp<=space) {
-//            		b[0].put(tempBuf);
-//            	} else {
-//            		int limit = tempBuf.limit();                	
-//            		tempBuf.limit(tempBuf.position()+space);
-//            		b[0].put(tempBuf);
-//            		tempBuf.limit(limit);
-//            		b[1].put(tempBuf);
-//            		
-//            	}
-            	
             	
             	if (temp>0){
             		len+=temp;
@@ -425,13 +412,14 @@ public class ServerSocketReaderStage extends PronghornStage {
                 return publishOrAbandon(channelId, targetPipe, len, b, temp>=0, newBeginning, cc);
 
             } catch (IOException e) {
-            		logger.info("error must close ",e);
-            		
-            		this.coordinator.releaseResponsePipeLineIdx(channelId);
             	
-                    recordErrorAndClose(sourceChannel, channelId, e);
-                        
-                    return -1;
+            	    logger.trace("client closed connection ",e.getMessage());
+            	
+	             	selection.cancel();                	
+	            	coordinator.releaseResponsePipeLineIdx(cc.id);    
+					cc.clearPoolReservation();
+            	
+					return publishOrAbandon(channelId, targetPipe, len, b, temp>=0, newBeginning, cc);
             }
         } else {
         	//logger.info("try again later, unable to launch do to lack of room in {} ",targetPipe);
