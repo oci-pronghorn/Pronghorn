@@ -37,8 +37,7 @@ public class MQTTClientGraphBuilder {
 			Pipe<MQTTClientRequestSchema> clientRequest,
 			String user, String pass) {
 		
-		final boolean isTLS = true;
-		
+		final boolean isTLS = true;		
 		int maxInFlight = 10;
 		int maximumLenghOfVariableLengthFields = 4096;
 		int rate = 1_200;
@@ -93,7 +92,7 @@ public class MQTTClientGraphBuilder {
 		Pipe<MQTTIdRangeControllerSchema> idRangeControl = MQTTIdRangeControllerSchema.instance.newPipe(maxInFlight+2, 0);
 		
 		IdGenStage idGenStage = new IdGenStage(gm, idGenOld, idRangeControl, idGenNew);		
-		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate, idGenStage);
+		GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, rate*10, idGenStage);
 		
 		ClientCoordinator ccm = new ClientCoordinator(connectionsInBits, maxPartialResponses, isTLS);
 		
@@ -148,7 +147,7 @@ public class MQTTClientGraphBuilder {
 		Pipe<PersistedBlobLoadSchema> persistanceLoadPipe = 
 				FileGraphBuilder.buildSequentialReplayer(
 				gm, persistancePipe, multiplierBeforeCompact, maxValueBits, inFlightCount,
-				maximumLenghOfVariableLengthFields, rootFolder, cypherBlock, rate);
+				maximumLenghOfVariableLengthFields, rootFolder, cypherBlock, rate*10);
 		
 		
 		int independentClients = 1; 

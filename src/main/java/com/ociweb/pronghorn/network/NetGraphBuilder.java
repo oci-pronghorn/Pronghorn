@@ -691,15 +691,14 @@ public class NetGraphBuilder {
 		return serverCoord;
 	}
 	
-	public static void telemetryServerSetup(boolean isTLS, String bindHost, int port, GraphManager gm) {
-	
-		//logger.trace("begin telemetry definition");
-				
+	public static void telemetryServerSetup(boolean isTLS, String bindHost, int port, 
+			                                GraphManager gm, int baseRate) {
+		
+		final int serverRate = Math.max(4800, baseRate);
+		final int rate = serverRate*20; // actual modules do not need to run nearly as fast
+		
 		boolean isLarge = false;
-		
-		int countOfMonitoredPipes = 0;
-		
-		final int rate = 100_000; 
+		int countOfMonitoredPipes = 0;		
 
 		final ModuleConfig modules = buildTelemetryModuleConfig(rate);
 		final ServerPipesConfig serverConfig = new ServerPipesConfig(isLarge, isTLS, 2);
@@ -719,7 +718,7 @@ public class NetGraphBuilder {
 			@Override
 			public void process(GraphManager gm, PronghornStage stage) {
 				//server must be very responsive so it has its own low rate.
-				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, 2_400, stage);
+				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, serverRate, stage);
 				//TODO: also use this to set the RATE and elminate the extra argument passed down....
 				GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, stage);
 			}
@@ -736,8 +735,6 @@ public class NetGraphBuilder {
 		};
 		
 		NetGraphBuilder.buildServerGraph(gm, serverCoord, serverConfig, rate, factory);
-		
-		logger.info("finish telemetry definition"); 
 	}
 
 	private static ModuleConfig buildTelemetryModuleConfig(final long rate) {

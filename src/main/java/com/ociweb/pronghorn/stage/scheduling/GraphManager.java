@@ -36,6 +36,10 @@ public class GraphManager {
 	
 	private final static Logger logger = LoggerFactory.getLogger(GraphManager.class);
 
+	//must be set before graph starts and impacts the latency of the graph.dot calls
+	//this does NOT impact the data poll rate which is fixed at 80ms
+	public static int TELEMTRY_SERVER_RATE = 4_800;
+	
     private class GraphManagerStageStateData {
     	
 		private Object lock = new Object();	
@@ -401,7 +405,7 @@ public class GraphManager {
 		
 		endStageRegister(clone, stage);
 	}
-
+	
     /**
      * This graph is now complete and we are ready to add monitoring and begin thread scheduling.
      * @param m
@@ -412,7 +416,7 @@ public class GraphManager {
 			if (m.telemetryPort > 0) {
 				logger.trace("enable telemetry");
 				//NB: this is done very last to ensure all the pipes get monitors added.
-				NetGraphBuilder.telemetryServerSetup(false, m.telemetryHost, m.telemetryPort, m);
+				NetGraphBuilder.telemetryServerSetup(false, m.telemetryHost, m.telemetryPort, m, TELEMTRY_SERVER_RATE);
 				logger.info("total count of stages {} ",m.stageCounter.get());
 			} else {
 				logger.trace("normal startup without telemetry");
