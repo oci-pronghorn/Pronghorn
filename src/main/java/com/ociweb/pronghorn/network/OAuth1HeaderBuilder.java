@@ -149,7 +149,7 @@ public class OAuth1HeaderBuilder {
 	  try {
 		  macParams.add(new CharSequence[]{
 				  URLEncoder.encode(key,"UTF-8"),
-				  URLEncoder.encode(value,"UTF-8")
+				  null==value?null:URLEncoder.encode(value,"UTF-8")
 				  });
 	  } catch (Exception e) {
 		  throw new RuntimeException(e);
