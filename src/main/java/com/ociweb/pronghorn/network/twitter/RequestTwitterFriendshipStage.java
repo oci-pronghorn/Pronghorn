@@ -123,8 +123,10 @@ public class RequestTwitterFriendshipStage extends PronghornStage {
 	public void startup() {
 		contentBacking = new byte[4];
 		
-		myAuth = new OAuth1HeaderBuilder(ck, cs, token, secret, port, "https", host, path);
-		myAuth.addMACParam("Content-Length", dynamicLength);
+		myAuth = new OAuth1HeaderBuilder(ck,cs, token, secret, port, "https", host, path);
+		//myAuth.setSecrets3(cs, token, secret);
+		
+		myAuth.addParam("Content-Length", dynamicLength);
 		
 	}
 	

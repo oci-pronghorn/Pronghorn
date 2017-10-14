@@ -47,6 +47,8 @@ public class TwitterJSONToTwitterEventsStage extends NetResponseJSONStage<Twitte
 	@Override
 	protected void processCloseEvent(byte[] hostBacking, int hostPos, int hostLen, int hostMask, int port) {
 		
+		logger.info("connection was closed now attempting reconnect");
+		
 		while (!PipeWriter.hasRoomForWrite(control)) {
 			logger.info("error this pipe should be empty since it only contains reset comands. Make pipe longer");
 		}
@@ -58,12 +60,14 @@ public class TwitterJSONToTwitterEventsStage extends NetResponseJSONStage<Twitte
 	private long maxId = 0;
 	
 	protected void finishedBlock() {
+		logger.info("finished block");
 		if (sendPostIds) {
 			PipeWriter.presumeWriteFragment(control, TwitterStreamControlSchema.MSG_FINISHEDBLOCK_101);
 			PipeWriter.writeLong(control,TwitterStreamControlSchema.MSG_FINISHEDBLOCK_101_FIELD_MAXPOSTID_31, maxId);
 			PipeWriter.publishWrites(control);
 		}
 	}
+
 
 	@Override
 	protected JSONStreamVisitorToPipe buildVisitor() {
@@ -84,6 +88,7 @@ public class TwitterJSONToTwitterEventsStage extends NetResponseJSONStage<Twitte
 	
 
 	private void publishReconnect() {
+		logger.info("reconnect request");
 		//send request to re-connect the stream again.
 		PipeWriter.presumeWriteFragment(control, TwitterStreamControlSchema.MSG_RECONNECT_100);
 		PipeWriter.publishWrites(control);
