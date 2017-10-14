@@ -581,11 +581,10 @@ public class FixedThreadsScheduler extends StageScheduler {
 				//      this saves the constant checking of which one is to run next...
 				
 				while (!NonThreadScheduler.isShutdownRequested(nts)) {					
+					
 					nts.run();
-					if (Thread.currentThread().isInterrupted()) {
-						Thread.currentThread().interrupt();
-						break;
-					}
+					
+					Thread.yield();
 				}
 			}	
 			

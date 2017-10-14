@@ -391,11 +391,12 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 	    				logger.info("return early since delay is long and we are testing");
 	    				return;//too long to wait so return
 	    			}
-			    	//System.out.println("delay "+nanoDelay);
+			    	
 		    		try {
 						Thread.sleep(nanoDelay/1_000_000,(int) (nanoDelay%1_000_000));
 					} catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
+						shutdown();
 						return;
 				    }
 		    		
@@ -418,7 +419,7 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
         int s = stages.length;
         boolean continueRun = false;
         while (--s>=0 && !shutdownRequested.get() && rates!=null) {
-            	
+
                     nearestNextRun = runStage(graphManager, 
                     		                  someAreRateLimited, 
                     		                  nearestNextRun, 
