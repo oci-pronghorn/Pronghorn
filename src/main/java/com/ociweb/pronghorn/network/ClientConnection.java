@@ -137,12 +137,14 @@ public class ClientConnection extends SSLConnection {
 						
 		//logger.info("client recv buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_RCVBUF)); //default 43690
 		//logger.info("client send buffer size {} ",  getSocketChannel().getOption(StandardSocketOptions.SO_SNDBUF)); //default  8192
-		
-		resolveAddressAndConnect(this.host, port);
+	
+		resolveAddressAndConnect(port);		
 	}
 
 
-	public void resolveAddressAndConnect(String host, int port) throws IOException {
+	private void resolveAddressAndConnect(int port) throws IOException {
+
+				
 		InetAddress[] ipAddresses = null;
 		boolean failureDetected = false;
 		long resolveTimeout = System.currentTimeMillis()+resolveWithDNSTimeoutMS;
@@ -160,12 +162,20 @@ public class ClientConnection extends SSLConnection {
 					} //2 ms					
 				}
 				
+				long s = System.nanoTime();
 				ipAddresses = InetAddress.getAllByName(host);
-			
+				long d = System.nanoTime()-s;
+				
+				if (d>1_000_000_000) {
+					logger.info("warning slow DNS took {} sec to resolve {} to {} ",d/1_000_000_000,host,ipAddresses);
+				}
 			} catch (UnknownHostException unknwnHostEx) {
 				failureDetected = true;
 			}
 		} while (null == ipAddresses && System.currentTimeMillis()<resolveTimeout);
+		
+		
+		
 		
 		if (null==ipAddresses || ipAddresses.length==0) {
 			//unresolved
@@ -174,7 +184,9 @@ public class ClientConnection extends SSLConnection {
 		} else {
 			this.getSocketChannel().connect(new InetSocketAddress(ipAddresses[0], port));
 		}
+
 		this.getSocketChannel().finishConnect(); //call again later to confirm its done.
+
 	}
 
 	public String getHost() {
