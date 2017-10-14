@@ -27,6 +27,15 @@ import com.ociweb.pronghorn.util.Appendables;
 
 public class OAuth1HeaderBuilder {
 
+  private static final String OAUTH_VERSION          = "oauth_version";
+  private static final String OAUTH_NONCE            = "oauth_nonce";
+  private static final String OAUTH_TIMESTAMP        = "oauth_timestamp";
+  private static final String OAUTH_SIGNATURE_METHOD = "oauth_signature_method";
+  private static final String OAUTH_SIGNATURE        = "oauth_signature";
+  private static final String OAUTH_TOKEN            = "oauth_token";
+  private static final String OAUTH_CONSUMER_KEY     = "oauth_consumer_key";
+
+
   private final String consumerKey;
   private final String token;
   
@@ -42,8 +51,7 @@ public class OAuth1HeaderBuilder {
     
   private final String formalPath;
   
-
-  Mac mac;
+  private final Mac mac;
 	
   public OAuth1HeaderBuilder(String consumerKey,    //oauth_consumer_key - Not a secret (user)
 		                     String consumerSecret, 
@@ -56,8 +64,7 @@ public class OAuth1HeaderBuilder {
     try {
 		this.mac = Mac.getInstance("HmacSHA1");
 	} catch (NoSuchAlgorithmException e) {
-		// TODO Auto-generated catch block
-		e.printStackTrace();
+		throw new RuntimeException(e);
 	}
     
     assert(consumerKey!=null);
@@ -74,13 +81,14 @@ public class OAuth1HeaderBuilder {
 	this.timeBuilder = new StringBuilder();
 	this.params = new ArrayList<CharSequence[]>(); //in alpha order...
 	
-	this.addParam("oauth_consumer_key",consumerKey); 
-	this.addParam("oauth_nonce",nonceBuilder);
-	this.addParam("oauth_signature_method","HMAC-SHA1");
-	this.addParam("oauth_timestamp",timeBuilder);
-	this.addParam("oauth_token",token);
-	this.addParam("oauth_version","1.0");
+	this.addParam(OAUTH_CONSUMER_KEY,consumerKey); 
+	this.addParam(OAUTH_NONCE,nonceBuilder);
+	this.addParam(OAUTH_SIGNATURE_METHOD,"HMAC-SHA1");
+	this.addParam(OAUTH_TIMESTAMP,timeBuilder);
+	this.addParam(OAUTH_VERSION,"1.0");
 	
+	this.addParam(OAUTH_TOKEN,token);
+
 	this.workingPipe = RawDataSchema.instance.newPipe(2, 1000);
 	this.workingPipe.initBuffers();
 	
@@ -166,29 +174,26 @@ public class OAuth1HeaderBuilder {
 	    builder.append("Authorization: ");
 	    
 	    builder.append("OAuth ");
-	    builder.append("oauth_consumer_key=\"").append(consumerKey).append("\", ");
-	    builder.append("oauth_token=\"").append(token).append("\", ");
-	    appendSignature(builder, upperVerb);
-	    builder.append("oauth_signature_method=\"").append("HMAC-SHA1").append("\", ");
-	    builder.append("oauth_timestamp=\"").append(timeBuilder).append("\", ");
-	    builder.append("oauth_nonce=\"").append(nonceBuilder).append("\", ");
-	    builder.append("oauth_version=\"").append("1.0").append("\"");
+	    builder.append(OAUTH_CONSUMER_KEY).append("=\"").append(consumerKey).append("\", ");
+	    
+	    if (null!=token) {
+	    	builder.append(OAUTH_TOKEN).append("=\"").append(token).append("\", ");
+	    }
+	    
+	    mac.init(secretKeySpec);	    	    
+		doFinalHMAC(builder.append(OAUTH_SIGNATURE).append("=\""), upperVerb, formalPath, mac);
+		builder.append("\", ");
+	    builder.append(OAUTH_SIGNATURE_METHOD).append("=\"").append("HMAC-SHA1").append("\", ");
+	    builder.append(OAUTH_TIMESTAMP).append("=\"").append(timeBuilder).append("\", ");
+	    builder.append(OAUTH_NONCE).append("=\"").append(nonceBuilder).append("\", ");
+	    builder.append(OAUTH_VERSION).append("=\"").append("1.0").append("\"");
 	} catch (Exception e) {
 		throw new RuntimeException(e);
 	}
 	return builder;
   }
 
-    private <A extends Appendable> void appendSignature(A builder, String upperVerb)
-			throws NoSuchAlgorithmException, InvalidKeyException, IOException {
-		
-		mac.init(secretKeySpec);	    	    
-		doFinalHMAC(builder.append("oauth_signature=\""), upperVerb, formalPath, mac);
-		builder.append("\", ");
-		
-	}
-
-  private <A extends Appendable> void doFinalHMAC(A builder, String upperVerb, String hostAndPath, Mac mac) {
+    private <A extends Appendable> void doFinalHMAC(A builder, String upperVerb, String hostAndPath, Mac mac) {
 	  int size = Pipe.addMsgIdx(workingPipe, RawDataSchema.MSG_CHUNKEDSTREAM_1);
 	  DataOutputBlobWriter<RawDataSchema> normalizedBuilder = Pipe.openOutputStream(workingPipe);
 	  	  
@@ -200,14 +205,22 @@ public class OAuth1HeaderBuilder {
 	  //NOTE: the params are already URL encoded.
 	  if (!params.isEmpty()) {
 		  
+		boolean isFirst = true;  
 	    for (int i=0; i<params.size(); i++) {
 	      CharSequence[] pair = params.get(i);
-	      if (i>0) {
-	    	  normalizedBuilder.append("%26");  
+	      CharSequence key = pair[0];
+	      CharSequence value = pair[1];
+	      
+	      if (null!=value) {
+		      if (!isFirst) {
+		    	  normalizedBuilder.append("%26");  
+		      }
+		      normalizedBuilder.append(key);
+		      normalizedBuilder.append("%3D");
+		      normalizedBuilder.append(value);  
+		      isFirst = false;
 	      }
-	      normalizedBuilder.append(pair[0]);
-	      normalizedBuilder.append("%3D");
-	      normalizedBuilder.append(pair[1]);  
+	      
 	    }
 	    
 	  }

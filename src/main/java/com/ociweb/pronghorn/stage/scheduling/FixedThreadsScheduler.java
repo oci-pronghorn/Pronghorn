@@ -582,7 +582,10 @@ public class FixedThreadsScheduler extends StageScheduler {
 				
 				while (!NonThreadScheduler.isShutdownRequested(nts)) {					
 					nts.run();
-				
+					if (Thread.currentThread().isInterrupted()) {
+						Thread.currentThread().interrupt();
+						break;
+					}
 				}
 			}	
 			
