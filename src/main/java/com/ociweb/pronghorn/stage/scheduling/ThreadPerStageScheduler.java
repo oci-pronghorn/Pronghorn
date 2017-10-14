@@ -453,11 +453,11 @@ public class ThreadPerStageScheduler extends StageScheduler {
 				    }
 				   
 				    long start = System.nanoTime();
-					stage.run();					
-					long duration = System.nanoTime()-start;
-					if (duration>0) {
-						GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration);
-					}
+					stage.run();
+					
+					long now = System.nanoTime();
+					GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
+					
 				} while (continueRunning(this, stage));
 				clearCallerId();
 	    		
@@ -487,11 +487,10 @@ public class ThreadPerStageScheduler extends StageScheduler {
 		    }
 		    
 		    long start = System.nanoTime();
-			stage.run();			
-			long duration = System.nanoTime()-start;
-			if (duration>0) {
-				GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration);
-			} 
+			stage.run();
+			long now = System.nanoTime();
+			GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
+			 
 			
 		} while (continueRunning(this, stage));
 		clearCallerId();
@@ -547,11 +546,9 @@ public class ThreadPerStageScheduler extends StageScheduler {
 			}
 			long start = System.nanoTime();
 			stage.run();
-			long duration = System.nanoTime()-start;
-			if (duration>0) {
-				GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration);
-			}
-			
+			long now = System.nanoTime();
+			GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
+					
 			//because continueRunning can be expensive we will only check it once every 4 passes.
 		} while (((++iterCount & 0x3)!=0) || continueRunning(this, stage));
 		clearCallerId();

@@ -465,15 +465,13 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 				if (0==rate) {
 					
 					nearestNextRun = 0;
-					long now = System.nanoTime();
+					long start = System.nanoTime();
 					
 					run(that.graphManager, stage, that);   
 					
-					long duration = System.nanoTime()-now;
+					long now = System.nanoTime();
+					GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
 					
-					if (duration>0) {
-						GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration);
-					}
 				}
 			}
 		} else {
@@ -484,22 +482,19 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 
 	private static long runStageWithRate(GraphManager graphManager, long nearestNextRun, int s, long rate, PronghornStage stage, NonThreadScheduler that) {
 		//check time and only run if valid
-		long now = System.nanoTime();
+		long start = System.nanoTime();
 		                    		
 		long nextRun = that.lastRun[s]+rate;
-		long nsDelay = nextRun - now;
+		long nsDelay = nextRun - start;
 		if (nsDelay<=0) {
 			//logger.info("running stage {}",stage);
 			run(that.graphManager, stage, that);
-			that.lastRun[s] = now;
+			that.lastRun[s] = start;
 			
-			long duration = System.nanoTime()-now;
-
-			if (duration>0) {
-				GraphManager.accumRunTimeNS(graphManager, stage.stageId, duration);
-			}
-			
-			nearestNextRun = Math.min(nearestNextRun, now+rate);
+			long now = System.nanoTime();
+			GraphManager.accumRunTimeNS(graphManager, stage.stageId, now-start, now);
+						
+			nearestNextRun = Math.min(nearestNextRun, start+rate);
 		} else {    
 			//logger.info("skipped stage {}",stage);
 			nearestNextRun = Math.min(nearestNextRun, nextRun);
@@ -517,7 +512,13 @@ public class NonThreadScheduler extends StageScheduler implements Runnable {
 					logger.info("begin run {}",stage);///for debug of hang
 				}
 				that.setCallerId(stage.boxedStageId);
+				//long start = System.nanoTime();
 				stage.run();
+				//long duration = System.nanoTime()-start;
+				//if (duration>1_000_000_000) {
+				//	new Exception("too long "+stage).printStackTrace();
+				//}
+				
 				that.clearCallerId();
 				
 				if (debugNonReturningStages) {

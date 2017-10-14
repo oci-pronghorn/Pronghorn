@@ -695,7 +695,7 @@ public class NetGraphBuilder {
 			                                GraphManager gm, int baseRate) {
 		
 		final int serverRate = Math.max(4800, baseRate);
-		final int rate = serverRate*20; // actual modules do not need to run nearly as fast
+		final int rate = serverRate*40; // actual modules do not need to run nearly as fast
 		
 		boolean isLarge = false;
 		int countOfMonitoredPipes = 0;		
@@ -717,8 +717,10 @@ public class NetGraphBuilder {
 			//force all these to be hidden as part of the monitoring system
 			@Override
 			public void process(GraphManager gm, PronghornStage stage) {
-				//server must be very responsive so it has its own low rate.
+				
+			    //server must be very responsive so it has its own low rate.
 				GraphManager.addNota(gm, GraphManager.SCHEDULE_RATE, serverRate, stage);
+
 				//TODO: also use this to set the RATE and elminate the extra argument passed down....
 				GraphManager.addNota(gm, GraphManager.MONITOR, GraphManager.MONITOR, stage);
 			}

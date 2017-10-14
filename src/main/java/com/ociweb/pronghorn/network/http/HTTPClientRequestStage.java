@@ -75,26 +75,25 @@ public class HTTPClientRequestStage extends PronghornStage {
 	
 	@Override
 	public void run() {
-		
-		
-	   	 if(shutdownInProgress) {
-	    	 int i = output.length;
-	         while (--i >= 0) {
-	         	if (null!=output[i] && Pipe.isInit(output[i])) {
-	         		if (!Pipe.hasRoomForWrite(output[i], Pipe.EOF_SIZE)){ 
-	         			return;
-	         		}  
-	         	}
-	         }
-	         requestShutdown();
-	         return;
-		 }
-		
-		boolean hasWork;
-		
-				
-		final long now = System.currentTimeMillis();
 
+
+		   	 if(shutdownInProgress) {
+		    	 int i = output.length;
+		         while (--i >= 0) {
+		         	if (null!=output[i] && Pipe.isInit(output[i])) {
+		         		if (!Pipe.hasRoomForWrite(output[i], Pipe.EOF_SIZE)){ 
+		         			return;
+		         		}  
+		         	}
+		         }
+		         requestShutdown();
+		         return;
+			 }
+			
+			boolean hasWork;
+			
+			final long now = System.currentTimeMillis();
+	
 			do {
 				hasWork = false;
 				int i = input.length;
@@ -110,7 +109,7 @@ public class HTTPClientRequestStage extends PronghornStage {
 				}
 		
 			} while (hasWork);
-
+			
 	}
 
 
@@ -149,17 +148,18 @@ public class HTTPClientRequestStage extends PronghornStage {
 		    		    
 	///	    logger.info("send for active pipe {} has content to read {} ",activePipe,Pipe.hasContentToRead(requestPipe));
 		    
+		    
 	        if (Pipe.hasContentToRead(requestPipe)) {
 
-	        	    //This check is required when TLS is in use.
-	        	    if (isConnectionReadyForUse(requestPipe) ){
-		        		didWork = true;	        
-		        			  	    	        	
-		        	// logger.info("send for active pipe {}",activePipe);
+	        	//This check is required when TLS is in use.
+	        	if (isConnectionReadyForUse(requestPipe) ){
+		        	didWork = true;	        
 		        	
-		        	//Need peek to know if this will block.
+		               	//Need peek to know if this will block.
 		 	        		        	
 		            final int msgIdx = Pipe.takeMsgIdx(requestPipe);
+		            
+		            //logger.info("send for active pipe {} with msg {}",activePipe,msgIdx);
 		            
 		            if (ClientHTTPRequestSchema.MSG_FASTHTTPGET_200 == msgIdx) {
 		            	activeConnection.setLastUsedTime(now);
@@ -181,9 +181,12 @@ public class HTTPClientRequestStage extends PronghornStage {
 					Pipe.confirmLowLevelRead(requestPipe, Pipe.sizeOf(ClientHTTPRequestSchema.instance, msgIdx));
 					Pipe.releaseReadLock(requestPipe);	
 	
-	
-		        }	            
+	      
+		        }	
+	        	
 	        }
+	        
+	        
 		return didWork;
 	}
 
@@ -265,9 +268,12 @@ public class HTTPClientRequestStage extends PronghornStage {
  	 	 		hostBack = Pipe.byteBackingArray(hostMeta, requestPipe);
  	 	 		hostMask = Pipe.blobMask(requestPipe);
  			}
- 			 	
+ 		
  			activeConnection = ClientCoordinator.openConnection(
- 					 ccm, mCharSequence.setToField(requestPipe, hostMeta, hostLen), port, userId, output, connectionId);
+ 					 ccm, 
+ 					 mCharSequence.setToField(requestPipe, hostMeta, hostLen), 
+ 					 port, userId, output, connectionId);
+ 	
  		}
  		
 		if (null != activeConnection) {

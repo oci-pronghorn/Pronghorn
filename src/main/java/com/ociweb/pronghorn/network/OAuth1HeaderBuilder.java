@@ -37,7 +37,6 @@ public class OAuth1HeaderBuilder {
 
 
   private final String consumerKey;
-  private final String token;
   
   private final SecureRandom secureRandom;
   private final SecretKeySpec secretKeySpec;
@@ -45,19 +44,25 @@ public class OAuth1HeaderBuilder {
   private final StringBuilder nonceBuilder;
   private final StringBuilder timeBuilder;
 	
-  private final List<CharSequence[]> params;
-  
-  private final Pipe<RawDataSchema> workingPipe;
-    
-  private final String formalPath;
-  
+  private final List<CharSequence[]> macParams;  
+  private final Pipe<RawDataSchema> workingPipe;    
+  private final String formalPath;  
   private final Mac mac;
 	
+  //custom values
+  private String token;
+  private String consumerSecret;
+  private String tokenSecret;
+  
+  
+  
   public OAuth1HeaderBuilder(String consumerKey,    //oauth_consumer_key - Not a secret (user)
+		  
 		                     String consumerSecret, 
 		                     String token,          //oauth_token    - Not a secret (app) 
 		                     String tokenSecret,
-		  					 int port, String scheme, String host, String path) {
+		  
+		                     int port, String scheme, String host, String path) {
     this.consumerKey = consumerKey;    
     this.token = token;
 
@@ -79,15 +84,15 @@ public class OAuth1HeaderBuilder {
 	
 	this.nonceBuilder = new StringBuilder();
 	this.timeBuilder = new StringBuilder();
-	this.params = new ArrayList<CharSequence[]>(); //in alpha order...
+	this.macParams = new ArrayList<CharSequence[]>(); //in alpha order...
 	
-	this.addParam(OAUTH_CONSUMER_KEY,consumerKey); 
-	this.addParam(OAUTH_NONCE,nonceBuilder);
-	this.addParam(OAUTH_SIGNATURE_METHOD,"HMAC-SHA1");
-	this.addParam(OAUTH_TIMESTAMP,timeBuilder);
-	this.addParam(OAUTH_VERSION,"1.0");
+	this.addMACParam(OAUTH_CONSUMER_KEY,consumerKey); 
+	this.addMACParam(OAUTH_NONCE,nonceBuilder);
+	this.addMACParam(OAUTH_SIGNATURE_METHOD,"HMAC-SHA1");
+	this.addMACParam(OAUTH_TIMESTAMP,timeBuilder);
+	this.addMACParam(OAUTH_VERSION,"1.0");
 	
-	this.addParam(OAUTH_TOKEN,token);
+	this.addMACParam(OAUTH_TOKEN,token);
 
 	this.workingPipe = RawDataSchema.instance.newPipe(2, 1000);
 	this.workingPipe.initBuffers();
@@ -96,10 +101,10 @@ public class OAuth1HeaderBuilder {
 
   }
   
-  public void addParam(CharSequence key, CharSequence dynamicValue) {
+  public void addMACParam(CharSequence key, CharSequence dynamicValue) {
 	  
 	  try {
-		  params.add(new CharSequence[]{
+		  macParams.add(new CharSequence[]{
 				  key,
 				  dynamicValue
 				  });
@@ -107,21 +112,21 @@ public class OAuth1HeaderBuilder {
 		  throw new RuntimeException(e);
 	  }
 	  
-	  Collections.sort(params, charComparitor);
+	  Collections.sort(macParams, charComparitor);
   }
 
-  public void addParam(String key, String value) {
+  public void addMACParam(String key, String value) {
 	  
 	  try {
-		  params.add(new CharSequence[]{
+		  macParams.add(new CharSequence[]{
 				  URLEncoder.encode(key,"UTF-8"),
-				  URLEncoder.encode(value,"UTF-8")
+				  null==value?null:URLEncoder.encode(value,"UTF-8")
 				  });
 	  } catch (Exception e) {
 		  throw new RuntimeException(e);
 	  }
 	  
-	  Collections.sort(params, charComparitor);
+	  Collections.sort(macParams, charComparitor);
   }
   
   private final int charCompare(CharSequence thisCS, CharSequence thatCS) {
@@ -203,11 +208,11 @@ public class OAuth1HeaderBuilder {
 	  normalizedBuilder.append('&');
 	
 	  //NOTE: the params are already URL encoded.
-	  if (!params.isEmpty()) {
+	  if (!macParams.isEmpty()) {
 		  
 		boolean isFirst = true;  
-	    for (int i=0; i<params.size(); i++) {
-	      CharSequence[] pair = params.get(i);
+	    for (int i=0; i<macParams.size(); i++) {
+	      CharSequence[] pair = macParams.get(i);
 	      CharSequence key = pair[0];
 	      CharSequence value = pair[1];
 	      

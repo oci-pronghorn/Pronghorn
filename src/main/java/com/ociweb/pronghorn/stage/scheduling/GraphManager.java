@@ -38,7 +38,7 @@ public class GraphManager {
 
 	//must be set before graph starts and impacts the latency of the graph.dot calls
 	//this does NOT impact the data poll rate which is fixed at 80ms
-	public static int TELEMTRY_SERVER_RATE = 4_800;
+	public static int TELEMTRY_SERVER_RATE = 4800;
 	
     private class GraphManagerStageStateData {
     	
@@ -94,13 +94,46 @@ public class GraphManager {
 	private PronghornStage[]  stageIdToStage = new PronghornStage[INIT_STAGES];
 	private long[] stageStartTimeNs = new long[INIT_STAGES];
 	private long[] stageShutdownTimeNs = new long[INIT_STAGES];
-	private long[] stageRunNS = new long[INIT_STAGES]; 
+	private long[] stageRunNS = new long[INIT_STAGES];
+	private int[]  stageCPUPct = new int[INIT_STAGES];
+	private long[] stageLastTimeNs = new long[INIT_STAGES];
 	
-    private String[] stageDOTNames;
+	
+	private Map<Object, StringBuilder> cachedRanks;
+    
+	private String[] stageDOTNames;
+    private String[] pipeDOTSchemaNames;
     private String[] pipeDOTNames;
     private String[] stageDOTRate;
     private String[] stageIds;
+    private String[] pipeDOTConst;
     
+    private static String[] cpuValues;
+	private static String[] pipeFullValues;
+
+	static {
+		////////////////////////////
+		//build all the CPU % usage labels once
+		//////////////////////////// 
+		int j = 100_01;
+		cpuValues = new String[j];
+		StringBuilder builder = new StringBuilder();
+		while (--j>=0) {
+			builder.setLength(0);
+			Appendables.appendValue(builder," CPU ",j/100,".");
+			Appendables.appendFixedDecimalDigits(builder,j%100,10).append("%");
+			cpuValues[j]= builder.toString();
+		}
+		
+		int k = 101;
+		pipeFullValues = new String[k];
+		while (--k>=0) {
+			builder.setLength(0);
+			Appendables.appendFixedDecimalDigits(builder.append(" \nFull:"), k, 100).append("% ");
+			pipeFullValues[k] = builder.toString();
+		}
+		
+	}
     
   
 	//This object is shared with all clones
@@ -424,8 +457,14 @@ public class GraphManager {
 			m.enableMutation = false;
 			m.stageDOTNames = new String[GraphManager.countStages(m)];
 			m.stageDOTRate = new String[GraphManager.countStages(m)]; 
+			m.pipeDOTSchemaNames = new String[Pipe.totalPipes()];
+			m.pipeDOTConst = new String[Pipe.totalPipes()];
 			m.pipeDOTNames = new String[Pipe.totalPipes()];
+			
 			m.stageIds = new String[GraphManager.countStages(m)]; 
+			
+
+			
 		}
 	}
 	
@@ -461,6 +500,17 @@ public class GraphManager {
 			Arrays.fill(result, target.length, limit, (byte)-1);
 		}
 		
+		result[idx] = value;
+		return result;
+	}
+		
+	private static int[] setValue(int[] target, int idx, final int value) {
+		int[] result = target;
+		if (idx>=target.length) {
+			int limit = (1+idx)*2;
+			result = Arrays.copyOf(target, limit); //double the array
+			Arrays.fill(result, target.length, limit, (byte)-1);
+		}		
 		result[idx] = value;
 		return result;
 	}
@@ -683,6 +733,10 @@ public class GraphManager {
 		gm.stageRunNS = setValue(gm.stageRunNS, stageId, 0);
 		gm.stageShutdownTimeNs = setValue(gm.stageShutdownTimeNs, stageId, 0);
 		gm.stageStartTimeNs = setValue(gm.stageStartTimeNs, stageId, 0);
+		
+		gm.stageLastTimeNs = setValue(gm.stageLastTimeNs, stageId, 0);
+		gm.stageCPUPct = setValue(gm.stageCPUPct, stageId, 0);
+		
 		
 		//add defaults if a value is not already present
 		int d = gm.defaultsCount;
@@ -1389,20 +1443,20 @@ public class GraphManager {
     
 	public static void writeAsDOT(GraphManager m, Appendable target, boolean isVertical, int[] percentileValues, int[] traffic) {
 	    try {
-	    
-	        target.append("digraph {\n");
-	        	        
+	            
 	        int stages = GraphManager.countStages(m);
-	        
-	        Map<Object, StringBuilder> ranks = null; //TODO: not GC free
+	        	        
+	        Map<Object, StringBuilder> ranks = m.cachedRanks; 
 	        if (stages<500) {
 	            //no need if the picture is very large
 		        if (isVertical) {
-		        	target.append("rankdir = TD\n"); 
+		        	target.append("digraph {\nrankdir = TD\n"); 
 		        } else {
-		        	target.append("rankdir = LR\n"); 
+		        	target.append("digraph {\nrankdir = LR\n"); 
 		        }
-		        ranks = new HashMap<Object, StringBuilder>();
+		        if (null==ranks) {
+		        	ranks = new HashMap<Object, StringBuilder>();
+		        }
 	        }
 	        
 	        int i = -1;
@@ -1447,7 +1501,8 @@ public class GraphManager {
 	            	//////////////////
 	            	
             		
-	            	if (ranks!=null) {
+	            	if (ranks!=null && m.cachedRanks==null) {
+	            		//thes rank keys are cached
 		            	Object rankKey = getNota(m, stage.stageId, GraphManager.DOT_RANK_NAME, null);
 		            	if (rankKey!=null) {
 		            		
@@ -1479,10 +1534,15 @@ public class GraphManager {
 	                			shutdownTime = System.nanoTime();
 	                		}
 	                		
-	                		pct = (int)((10_000L*runNs)/ (shutdownTime - m.stageStartTimeNs[stage.stageId] ));
+	                		//TODO: this must be rolling..
+	                		
+	                		pct = m.stageCPUPct[stage.stageId];//moving average of CPU
+	                			                		
+	                		int lifePct = (int)((10_000L*runNs)/ (shutdownTime - m.stageStartTimeNs[stage.stageId] ));             		
+	                		
+	                		
 	                		if (pct>=0) {
-	                			Appendables.appendValue(target," CPU ",pct/100,".");
-	                			Appendables.appendFixedDecimalDigits(target,pct%100,10).append("%");	            			
+	                			target.append(cpuValues[pct]);	                			
 	                		} else {
 	                			target.append(" CPU N/A%");
 	                			
@@ -1521,8 +1581,6 @@ public class GraphManager {
 	            	}    
 	                /////////////////////////////////////
 	            	
-	            	
-	            	
 	                target.append("]\n");
 	                	                
 	            }
@@ -1531,8 +1589,11 @@ public class GraphManager {
 	        //DOT_RANK_NAME
 	        /////
 	        if (null!=ranks) {
-		        for (StringBuilder value: ranks.values()) {
-		        	target.append(value.subSequence(0, value.length()-1)).append(" }\n");	        	
+	        	
+	        	m.cachedRanks = ranks;//keep to use this again
+	        	
+		        for (StringBuilder value: ranks.values()) { //removes comma on end
+		        	target.append(value, 0, value.length()-1).append(" }\n");	        	
 		        }
 	        }
 	        
@@ -1555,79 +1616,57 @@ public class GraphManager {
 	                		&& (!(stageForMonitorData(m,GraphManager.getStage(m, consumer))))) 
 	                		) {
 		                
+	                	
+	                	String pipeId = m.pipeDOTNames[pipe.id];
+	                	if (null==pipeId) {
+	                	
+		                	pipeId ="";
+	                	
+			                if (producer>=0) {
+			                	pipeId += ("\"Stage"+producer);
+			                } else {
+			                	pipeId += ("\"Undefined"+undefIdx++);                    
+			                }
+			                pipeId += ("\" -> ");
+			                
+			                if (consumer>=0) {
+			                	pipeId += ("\"Stage"+consumer);
+			                } else {
+			                	pipeId += ("\"Undefined"+undefIdx++);
+			                }			                
+			                
+			                m.pipeDOTNames[pipe.id] = pipeId;
+	                	}
+		                target.append(pipeId);
 		                
-		                if (producer>=0) {
-		                	Appendables.appendValue(target, "\"Stage", producer);
-		                } else {
-		                	Appendables.appendValue(target, "\"Undefined", undefIdx++);                    
-		                }
-		                
-		                target.append("\" -> ");
-		                
-		                if (consumer>=0) {
-		                	Appendables.appendValue(target, "\"Stage", consumer);
-		                } else {
-		                	Appendables.appendValue(target, "\"Undefined", undefIdx++);
-		                }
-		               
-		                /////////////////////////////////////////
-		                //compute the min and max count of messages that can be on this pipe at any time
-	                    FieldReferenceOffsetManager from = Pipe.from(pipe);
-	                    int maxMessagesOnPipe = -1;
-	                    int minMessagesOnPipe = -1;
-	                    if (null != from) {
-	                    	maxMessagesOnPipe = pipe.sizeOfSlabRing/FieldReferenceOffsetManager.minFragmentSize(from);
-	                    	minMessagesOnPipe = pipe.sizeOfSlabRing/FieldReferenceOffsetManager.maxFragmentSize(from);           
-	                    }
-	                    ///////////////////////////////
-	                    ///////////////////////////////
-	                    long bytesAllocated = Pipe.estBytesAllocated(pipe);
 	                    
-	                    
-	                    String pipeName = m.pipeDOTNames[pipe.id];
+	                    String pipeName = m.pipeDOTSchemaNames[pipe.id];
 	                    if (null==pipeName) {//keep so this is not built again upon every call
 	                    	pipeName = Pipe.schemaName(pipe).replace("Schema", "");
-	                    	m.pipeDOTNames[pipe.id] = pipeName;
+	                    	m.pipeDOTSchemaNames[pipe.id] = pipeName;
 	                    }
 		                target.append("\"[label=\"");
 		                if (pipe.config().showLabels()) {
 			                target.append(pipeName);
 			                		                
-			                if (null!=percentileValues) {		                	
-			                	int pctFull = percentileValues[pipe.id];
-			                	Appendables.appendValue(target.append(" \nFull:"), pctFull).append("% ");
-			                	if (pctFull!=0) {
-			                		Appendables.appendValue(target,"@", (pctFull*(long)pipe.sizeOfSlabRing/100L)).append(" ");
-			                	}
+			                if (null!=percentileValues) {
+			                	target.append(pipeFullValues[percentileValues[pipe.id]]);
 			                } else {
 			                	target.append(" \n");		                	
 			                }
 			     
 			                if (null!=traffic) {
-			                	int trafficCount = traffic[pipe.id];
-			                	Appendables.appendValue(target.append(" Vol:"), trafficCount).append(" ");
-			                	target.append(" \n");			                	
+			                	Appendables.appendValue(target.append(" Vol:"), traffic[pipe.id]).append("  \n");			                	
 			                } 
-			                
-			                if (minMessagesOnPipe>=0) {
-				                if (minMessagesOnPipe==maxMessagesOnPipe) {
-				                    Appendables.appendValue(target," [",minMessagesOnPipe,"msg]");
-				                } else {
-				                    Appendables.appendValue( Appendables.appendValue(target," [",minMessagesOnPipe) ,"-",maxMessagesOnPipe,"msgs]");
-				                }
-			                }
-			                
-			                
-			                //System.err.println("bytes allocated "+bytesAllocated);
-			                if (bytesAllocated > (1L<<31)) {
-			                	Appendables.appendValue(target, bytesAllocated>>>30).append('g');
-			                } else if (bytesAllocated > (1L<<21)) {
-			                	Appendables.appendValue(target, bytesAllocated>>>20).append('m');
-			                } else if (bytesAllocated > (1L<<11)) {
-			                	Appendables.appendValue(target, bytesAllocated>>>10).append('k');
-			                } else {
-			                	Appendables.appendValue(target, bytesAllocated).append('b');
-			                }
+			                	                    
+		                    
+		                    String pipeMemory = m.pipeDOTConst[pipe.id];
+		                    if (null==pipeMemory) {
+		                    	pipeMemory = buildPipeConstantText(pipe);
+		                    	m.pipeDOTConst[pipe.id] = pipeMemory;
+		                    }
+		                    target.append(pipeMemory);
+			                			                
 		                }
 		                target.append("\"");
 		                
@@ -1661,6 +1700,48 @@ public class GraphManager {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+	}
+
+	private static String buildPipeConstantText(Pipe pipe) {
+		String pipeMemory;
+		pipeMemory = "";
+		
+		/////////////////////////////////////////
+		//compute the min and max count of messages that can be on this pipe at any time
+		FieldReferenceOffsetManager from = Pipe.from(pipe);
+		
+		int maxMessagesOnPipe = -1;
+		int minMessagesOnPipe = -1;
+		if (null != from) {
+			maxMessagesOnPipe = pipe.sizeOfSlabRing/FieldReferenceOffsetManager.minFragmentSize(from);
+			minMessagesOnPipe = pipe.sizeOfSlabRing/FieldReferenceOffsetManager.maxFragmentSize(from);           
+		}
+		///////////////////////////////
+		///////////////////////////////
+		
+		if (minMessagesOnPipe>=0) {
+			
+			if (minMessagesOnPipe==maxMessagesOnPipe) {
+				pipeMemory += (" ["+minMessagesOnPipe+"msg]");
+			} else {
+				pipeMemory += (" ["+minMessagesOnPipe+"-"+maxMessagesOnPipe+"msgs]");
+			}  
+
+		}
+		
+		
+		
+		long bytesAllocated = Pipe.estBytesAllocated(pipe);
+		if (bytesAllocated > (1L<<31)) {
+			pipeMemory += Long.toString(bytesAllocated>>>30)+"g";
+		} else if (bytesAllocated > (1L<<21)) {
+			pipeMemory += Long.toString(bytesAllocated>>>20)+"m";
+		} else if (bytesAllocated > (1L<<11)) {
+			pipeMemory += Long.toString(bytesAllocated>>>10)+"k";
+		} else {
+			pipeMemory += Long.toString(bytesAllocated)+"b";
+		}
+		return pipeMemory;
 	}
 
     private static float computeWeightBetweenStages(GraphManager m, int consumerStage, int producerStage) {
@@ -2041,8 +2122,23 @@ public class GraphManager {
     private static final int defaultDurationWhenZero = 1;
     private static AtomicInteger totalZeroDurations = new AtomicInteger();
     
-	public static void accumRunTimeNS(GraphManager graphManager, int stageId, long duration) {
-		if (0!=duration) {
+	public static void accumRunTimeNS(GraphManager graphManager, int stageId, long duration, long now) {
+		if (duration>0) {
+			
+			long last = graphManager.stageLastTimeNs[stageId];
+			
+			if (last>0 && last<now) {
+				long cycleDuration = now-last;
+				
+				int newPct = (int)((100_00L*duration)/cycleDuration);
+				int oldPct = graphManager.stageCPUPct[stageId];
+				int combined = newPct+(99*oldPct);//exponential moving avg
+				graphManager.stageCPUPct[stageId] = combined/100; 
+				
+			}
+			
+			//we have the running pct since startup but we need a recent rolling value.
+			graphManager.stageLastTimeNs[stageId] = now;
 			graphManager.stageRunNS[stageId] += duration;			
 		} else {
 			
