@@ -34,26 +34,24 @@ public class OAuth1HeaderBuilder {
   private static final String OAUTH_SIGNATURE        = "oauth_signature";
   private static final String OAUTH_TOKEN            = "oauth_token";
   private static final String OAUTH_CONSUMER_KEY     = "oauth_consumer_key";
-
+  private static final String OAUTH_VERIFIER         = "oauth_verifier";  // the pin
 
   private final String consumerKey;
   
-  private final SecureRandom secureRandom;
-  private final SecretKeySpec secretKeySpec;
+  private final SecureRandom secureRandom = new SecureRandom(); 
   
-  private final StringBuilder nonceBuilder;
-  private final StringBuilder timeBuilder;
+  private final StringBuilder nonceBuilder = new StringBuilder();
+  private final StringBuilder timeBuilder = new StringBuilder();
+  private final StringBuilder tokenBuilder = new StringBuilder();
 	
-  private final List<CharSequence[]> macParams;  
+  private final List<CharSequence[]> macParams = new ArrayList<CharSequence[]>(); //in alpha order...  
   private final Pipe<RawDataSchema> workingPipe;    
   private final String formalPath;  
   private final Mac mac;
 	
   //custom values
   private String token;
-  private String consumerSecret;
-  private String tokenSecret;
-  
+  private SecretKeySpec secretKeySpec;
   
   
   public OAuth1HeaderBuilder(String consumerKey,    //oauth_consumer_key - Not a secret (user)
@@ -63,42 +61,40 @@ public class OAuth1HeaderBuilder {
 		                     String tokenSecret,
 		  
 		                     int port, String scheme, String host, String path) {
-    this.consumerKey = consumerKey;    
-    this.token = token;
 
+    this.consumerKey = consumerKey;    
     try {
 		this.mac = Mac.getInstance("HmacSHA1");
 	} catch (NoSuchAlgorithmException e) {
 		throw new RuntimeException(e);
 	}
-    
-    assert(consumerKey!=null);
-    assert(consumerSecret!=null);
-    assert(token!=null);
-    assert(tokenSecret!=null);
-    
-    //oauth_verifier is the pin
-    
-    this.secureRandom = new SecureRandom(); 
-	this.secretKeySpec = new SecretKeySpec((consumerSecret + "&" + tokenSecret).getBytes(), "HmacSHA1");
-	
-	this.nonceBuilder = new StringBuilder();
-	this.timeBuilder = new StringBuilder();
-	this.macParams = new ArrayList<CharSequence[]>(); //in alpha order...
-	
+   	
 	this.addMACParam(OAUTH_CONSUMER_KEY,consumerKey); 
 	this.addMACParam(OAUTH_NONCE,nonceBuilder);
 	this.addMACParam(OAUTH_SIGNATURE_METHOD,"HMAC-SHA1");
 	this.addMACParam(OAUTH_TIMESTAMP,timeBuilder);
 	this.addMACParam(OAUTH_VERSION,"1.0");
-	
-	this.addMACParam(OAUTH_TOKEN,token);
+		
+	tokenBuilder.setLength(0);
+	this.addMACParam(OAUTH_TOKEN,tokenBuilder);
+
 
 	this.workingPipe = RawDataSchema.instance.newPipe(2, 1000);
 	this.workingPipe.initBuffers();
 	
 	this.formalPath = buildFormalPath(port, scheme, host, path);
 
+	//
+	setSecret(consumerSecret, token, tokenSecret);
+  }
+  
+  public void setSecret( String consumerSecret, String token, String tokenSecret ) {
+	  
+	  this.token = token;
+	  this.tokenBuilder.setLength(0);
+	  this.tokenBuilder.append(token);		
+	  this.secretKeySpec = new SecretKeySpec((consumerSecret + "&" + tokenSecret).getBytes(), "HmacSHA1");
+	  
   }
   
   public void addMACParam(CharSequence key, CharSequence dynamicValue) {

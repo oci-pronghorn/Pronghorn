@@ -45,7 +45,8 @@ public class ServerNewConnectionStage extends PronghornStage{
     static final int connectMessageSize = ServerConnectionSchema.FROM.fragScriptSize[ServerConnectionSchema.MSG_SERVERCONNECTION_100];
     private ServerCoordinator coordinator;
     private Pipe<ServerConnectionSchema> newClientConnections;
-
+    private final String label;
+    
 	public static ServerNewConnectionStage newIntance(GraphManager graphManager, ServerCoordinator coordinator, Pipe<ServerConnectionSchema> newClientConnections, boolean isTLS) {
 		return new ServerNewConnectionStage(graphManager,coordinator,newClientConnections);
 	}
@@ -53,11 +54,30 @@ public class ServerNewConnectionStage extends PronghornStage{
     public ServerNewConnectionStage(GraphManager graphManager, ServerCoordinator coordinator, Pipe<ServerConnectionSchema> newClientConnections) {
         super(graphManager, NONE, newClientConnections);
         this.coordinator = coordinator;
+        
+        this.label = coordinator.host()+":"+coordinator.port();
+        
         this.newClientConnections = newClientConnections;
     }
     
-
+	public static ServerNewConnectionStage newIntance(GraphManager graphManager, ServerCoordinator coordinator, boolean isTLS) {
+		return new ServerNewConnectionStage(graphManager,coordinator);
+	}
+	
+    public ServerNewConnectionStage(GraphManager graphManager, ServerCoordinator coordinator) {
+        super(graphManager, NONE, NONE);
+        this.coordinator = coordinator;
+        
+        this.label = coordinator.host()+":"+coordinator.port();
+        
+        this.newClientConnections = null;
+    }
     
+    @Override
+    public String toString() {
+    	String root = super.toString();
+    	return root+"\n"+label+"\n";
+    }
     
     @Override
     public void startup() {
@@ -180,20 +200,23 @@ public class ServerNewConnectionStage extends PronghornStage{
                   int readyOps = key.readyOps();
                                     
                   if (0 != (SelectionKey.OP_ACCEPT & readyOps)) {
-                      
+                     
 //                	  ServerCoordinator.inServerCount.incrementAndGet();
 //                	  ServerCoordinator.start = System.nanoTime();
                 	  
-                      if (!Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
+                      if (null!=newClientConnections && !Pipe.hasRoomForWrite(newClientConnections, ServerNewConnectionStage.connectMessageSize)) {
                           return;
                       }
 
-                      if (!ServerCoordinator.scanForOptimalPipe(coordinator)) {                    	  
+                      ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
+                                            
+                      final long channelId = holder.lookupInsertPosition();
+                      if (channelId<0) {
                     	  return;//try again later if the client is still waiting.
                       }
+                      
                       int targetPipeIdx = 0;//NOTE: this will be needed for rolling out new sites and features atomicly
-                      
-                      
+                                            
                       SocketChannel channel = server.accept();
                       
                       try {                          
@@ -209,16 +232,8 @@ public class ServerNewConnectionStage extends PronghornStage{
                           //	logger.info("server recv buffer size {} ",  channel.getOption(StandardSocketOptions.SO_RCVBUF)); //default  531000
                           //	logger.info("server send buffer size {} ",  channel.getOption(StandardSocketOptions.SO_SNDBUF)); //default 1313280
                           //    logger.info("send buffer size {} ",  channel.getOption(StandardSocketOptions.SO_SNDBUF));
-                          
-                          ServiceObjectHolder<ServerConnection> holder = ServerCoordinator.getSocketChannelHolder(coordinator);
-                          
-                          final long channelId = holder.lookupInsertPosition();
-                          if (channelId<0) {
-                              //error this should have been detected in the scanForOptimalPipe method
-                        	  logger.info("no channel, dropping data");
-                              return;
-                          }
-						  
+      
+                          						  
                           SSLEngine sslEngine = null;
                           if (coordinator.isTLS) {
 							  sslEngine = SSLEngineFactory.createSSLEngine();//// not needed for server? host, port);
@@ -237,17 +252,11 @@ public class ServerNewConnectionStage extends PronghornStage{
                          // logger.info("register new data to selector for pipe {}",targetPipeIdx);
                           Selector selector2 = ServerCoordinator.getSelector(coordinator);
 						  channel.register(selector2, SelectionKey.OP_READ, ServerCoordinator.selectorKeyContext(coordinator, channelId));
-    						 
-                          //the pipe selected has already been checked to ensure room for the connect message                      
-                          Pipe<ServerConnectionSchema> targetPipe = newClientConnections;
-                          
-                          int msgSize = Pipe.addMsgIdx(targetPipe, ServerConnectionSchema.MSG_SERVERCONNECTION_100);
-                          
-                          Pipe.addLongValue(targetPipeIdx,targetPipe);
-                          Pipe.addLongValue(channelId, targetPipe);
-                          
-                          Pipe.confirmLowLevelWrite(targetPipe, msgSize);
-                          Pipe.publishWrites(targetPipe);
+    						
+						  if (null!=newClientConnections) {
+	                          publishNotificationOFNewConnection(targetPipeIdx, channelId);
+						  }
+						  
                           
                       } catch (IOException e) {
                     	  logger.trace("Unable to accept connection",e);
@@ -265,6 +274,19 @@ public class ServerNewConnectionStage extends PronghornStage{
         	logger.trace("Unable to open new incoming connection",e);
         }
     }
+
+	private void publishNotificationOFNewConnection(int targetPipeIdx, final long channelId) {
+		//the pipe selected has already been checked to ensure room for the connect message                      
+		  Pipe<ServerConnectionSchema> targetPipe = newClientConnections;
+		  
+		  int msgSize = Pipe.addMsgIdx(targetPipe, ServerConnectionSchema.MSG_SERVERCONNECTION_100);
+		  
+		  Pipe.addLongValue(targetPipeIdx,targetPipe);
+		  Pipe.addLongValue(channelId, targetPipe);
+		  
+		  Pipe.confirmLowLevelWrite(targetPipe, msgSize);
+		  Pipe.publishWrites(targetPipe);
+	}
 
 
 

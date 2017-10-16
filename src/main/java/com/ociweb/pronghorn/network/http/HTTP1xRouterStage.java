@@ -267,7 +267,7 @@ public class HTTP1xRouterStage<T extends Enum<T> & HTTPContentType,
         	if (Pipe.hasRoomForWrite(outputs[waitForOutputOn])) {
         		waitForOutputOn=-1;
         	} else {
-        		//logger.trace("wait for output on {}",waitForOutputOn);
+        		logger.info("wait for output on {}",waitForOutputOn);
         		return;//output is backed up so go do something else.
         	}
         }

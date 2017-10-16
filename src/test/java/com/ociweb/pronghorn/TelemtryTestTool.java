@@ -18,14 +18,14 @@ public class TelemtryTestTool {
 			Pipe<RawDataSchema> output = RawDataSchema.instance.newPipe(2, 8);
 			new ExampleProducerStage(gm, output);
 			
-			int i = 100;
+			int i = 4;//100;
 			Pipe[] targets = new Pipe[i];
 			while (--i>=0) {
 				targets[i] = new Pipe(output.config().grow2x());
 				Pipe temp = null;
 				Pipe prev = targets[i];
 				
-				int j = 9;
+				int j = 2;//9;
 				while (--j>=0) {
 					temp = new Pipe(prev.config().grow2x());
 					new ReplicatorStage<>(gm, prev, temp);
@@ -37,7 +37,6 @@ public class TelemtryTestTool {
 			new ReplicatorStage<>(gm, output, targets);
 					
 			gm.enableTelemetry(8092);
-					
 			
 			StageScheduler.defaultScheduler(gm).startup();
 	

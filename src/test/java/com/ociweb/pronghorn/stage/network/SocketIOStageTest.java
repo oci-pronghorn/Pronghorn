@@ -69,9 +69,7 @@ public class SocketIOStageTest {
 		///
 		///server new connections e-poll
 		///
-        Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(newConnectionsConfig);
-        ServerNewConnectionStage.newIntance(gm, serverCoordinator, newConnectionsPipe, false); //no actual encryption so false.
-        PipeCleanerStage.newInstance(gm, newConnectionsPipe);
+        ServerNewConnectionStage.newIntance(gm, serverCoordinator, false); //no actual encryption so false.
         
         ////
         ////client to write data to socket
@@ -151,9 +149,7 @@ public class SocketIOStageTest {
 		///
 		///server new connections e-poll
 		///
-        Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(newConnectionsConfig);
-        ServerNewConnectionStage.newIntance(gm, serverCoordinator, newConnectionsPipe,false); //no actual encryption so false.
-        PipeCleanerStage.newInstance(gm, newConnectionsPipe);
+        ServerNewConnectionStage.newIntance(gm, serverCoordinator, false); //no actual encryption so false.
         
         ////
         ////server to consume data from socket

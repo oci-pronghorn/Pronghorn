@@ -46,7 +46,7 @@ public class SSLConnection {
 	
     //should only be closed by the socket writer logic or TLS handshake may be disrupted causing client to be untrusted.
 	public boolean close() {
-	
+		
 		if (isValid) {
 			isValid = false;
 			try {

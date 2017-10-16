@@ -90,7 +90,6 @@ public class ServiceObjectHolder<T> {
     private final ServiceObjectValidator<T> validator;
     
     private long sequenceCounter;//goes up on every add
-    private long removalCounter;//goes up on every remove
     
     //for support of forever loop around the valid Objects
     private int loopPos = -1;
@@ -163,7 +162,7 @@ public class ServiceObjectHolder<T> {
             
             index = ++localSequenceCount;
             modIdx = data.mask & (int)index;
-        
+                    
             if (index==hardStop) {
                
                 //three choices - build 3 different add methods
@@ -182,8 +181,6 @@ public class ServiceObjectHolder<T> {
                     break;
                 }
             }
-              
-            
             
             //keep going if we have looped around and hit a bucket which is already occupied with something valid.
         } while (null != data.serviceObjectValues[modIdx] && validator.isValid(data.serviceObjectValues[modIdx]));
@@ -211,9 +208,9 @@ public class ServiceObjectHolder<T> {
         
         long minCount = Long.MAX_VALUE;
         long  minCountIndex = -1;
-        
-        int x = 0;
+
         do {
+        	
             //if we end up passing over all the members find which is the least used.
             if (-1 != index) {
                 long lookupCounts = data.serviceObjectLookupCounts[modIdx];
@@ -226,19 +223,7 @@ public class ServiceObjectHolder<T> {
             index = ++localSequenceCount;
             modIdx = data.mask & (int)index;
         
-            x++;
             if (index==hardStop) {
-            	
-//            	//dump the service objects and determine if we have the same entry twice?
-//            	int s = data.size;
-//            	while (--s>=0) {
-//            		System.err.println("   "+s+" "+data.serviceObjectLookupCounts[s]+" valid: "+validator.isValid(data.serviceObjectValues[s]));
-//            		
-//            	}
-//            	
-//            	new Exception("Error, we hit the hard stop after looking all around mask "+data.mask+" checked "+x+" min indxx "+(data.mask&minCountIndex)+"  "+validator.isValid(data.serviceObjectValues[(int)(data.mask&minCountIndex)])).printStackTrace();;
-//            
-            	
             	//do not grow instead return the negative value of the least used object
             	return -minCountIndex;
                
@@ -246,9 +231,10 @@ public class ServiceObjectHolder<T> {
             
             //keep going if we have looped around and hit a bucket which is already occupied with something valid.
         } while (null != data.serviceObjectValues[modIdx] && validator.isValid(data.serviceObjectValues[modIdx]));
+    
         
         sequenceCounter = localSequenceCount;//where we left off
-        
+
         data.serviceObjectKeys[modIdx] = index;
         data.serviceObjectValues[modIdx] = null; //To be set by set value later
         //Never resets the usage count, that field is use case specific and should not always be cleared.
@@ -308,6 +294,21 @@ public class ServiceObjectHolder<T> {
         return (key != localData.serviceObjectKeys[modIdx] ? null : localData.serviceObjectValues[modIdx]);
     }
     
+    public T remove(final long key) {  
+        //must ensure we use the same instance for the work
+        ServiceObjectData<T> localData = data;
+        
+        int modIdx = localData.mask & (int)key;
+        
+        if (key == localData.serviceObjectKeys[modIdx]) {
+        	T result = localData.serviceObjectValues[modIdx];
+        	localData.serviceObjectValues[modIdx] = null; //wipe out old value
+        	return result;
+        } else {
+        	return null;
+        }
+    }
+    
     public int size() {
     	return data.size;
     }
@@ -347,10 +348,6 @@ public class ServiceObjectHolder<T> {
     public static long getSequenceCount(ServiceObjectHolder sho) {
         return sho.sequenceCounter; 
     }
-    
-    public static long getRemovalCount(ServiceObjectHolder sho) {
-        return sho.removalCounter; //TODO: must update this value if we delete something from collection!
-    }
-    
+
     
 }

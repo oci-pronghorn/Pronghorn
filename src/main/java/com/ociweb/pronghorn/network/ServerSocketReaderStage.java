@@ -43,7 +43,7 @@ public class ServerSocketReaderStage extends PronghornStage {
     
     private StringBuilder[] accumulators;
     private boolean shutdownInProgress;
- 
+    private final String label;
     private ArrayList<SelectionKey> doneSelectors = new ArrayList<SelectionKey>(100);
 
     
@@ -55,6 +55,8 @@ public class ServerSocketReaderStage extends PronghornStage {
         super(graphManager, ack, output);
         this.coordinator = coordinator;
 
+        this.label = coordinator.host()+":"+coordinator.port();
+        
         this.output = output;
         this.releasePipes = ack;
 
@@ -63,6 +65,12 @@ public class ServerSocketReaderStage extends PronghornStage {
         
         GraphManager.addNota(graphManager, GraphManager.PRODUCER, GraphManager.PRODUCER, this);
         
+    }
+        
+    @Override
+    public String toString() {
+    	String root = super.toString();
+    	return root+"\n"+label+"\n";
     }
 
     @Override
@@ -223,6 +231,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 					if (responsePipeLineIdx >= 0) {
 						cc.setPoolReservation(responsePipeLineIdx);
 					}
+					
 					//logger.info("new beginning {}",responsePipeLineIdx);
 				
 					
@@ -241,7 +250,7 @@ public class ServerSocketReaderStage extends PronghornStage {
 		            } else {		            	
 		            	//logger.info("can not remove this selection for channelId {} pump state {}",channelId,pumpState);
 		            }
-		            //logger.info("pushed data out");
+		           // logger.info("pushed data out");
 		            if ((++rMask&0x3F) == 0) {
 		             releasePipesForUse(); //must run but not on every pass
 		            }
@@ -407,7 +416,7 @@ public class ServerSocketReaderStage extends PronghornStage {
                 	selection.cancel();                	
                 	coordinator.releaseResponsePipeLineIdx(cc.id);    
     				cc.clearPoolReservation();
-                	
+
                 }
                 return publishOrAbandon(channelId, targetPipe, len, b, temp>=0, newBeginning, cc);
 

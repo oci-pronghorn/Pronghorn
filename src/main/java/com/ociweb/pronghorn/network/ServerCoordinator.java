@@ -1,8 +1,6 @@
 package com.ociweb.pronghorn.network;
 
-import java.net.InetSocketAddress;
 import java.nio.channels.Selector;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -238,14 +236,20 @@ public class ServerCoordinator extends SSLConnectionHolder {
 	public static class SocketValidator implements ServiceObjectValidator<ServerConnection> {
 
         @Override
-        public boolean isValid(ServerConnection serviceObject) {            
+        public boolean isValid(ServerConnection serviceObject) { 
+        	
+        	new Exception("a").printStackTrace();
+        	
             return serviceObject.socketChannel.isConnectionPending() || 
                    serviceObject.socketChannel.isConnected();
         }
 
         @Override
         public void dispose(ServerConnection t) {
-                if (t.socketChannel.isOpen()) {
+
+        	new Exception("b").printStackTrace();
+        	
+        		if (t.socketChannel.isOpen()) {
                     t.close();
                 }
         }
@@ -269,15 +273,6 @@ public class ServerCoordinator extends SSLConnectionHolder {
         return context;
     }
 
-    static boolean scanForOptimalPipe(ServerCoordinator that) {
-             
-        	ServiceObjectHolder<ServerConnection> holder = that.socketHolder;    
-             if (null!=holder) {
-	             return ((int)(ServiceObjectHolder.getSequenceCount(holder) - ServiceObjectHolder.getRemovalCount(holder))) < holder.size(); 
-             }
-     
-          return false;
-    }
 
     public void registerSelector(Selector selector) {
     	assert(null==selectors) : "Should not already have a value";

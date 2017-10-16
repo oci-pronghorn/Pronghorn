@@ -32,8 +32,10 @@ public class GraphManager {
 	private static final String CHECK_GRAPH_CONSTRUCTION = "Check graph construction";
 	
 	private final static int INIT_RINGS = 32;
-	private final static int INIT_STAGES = 32;
+	private final static int INIT_STAGES = 32;	
 	
+	public static boolean monitorAll = false;
+
 	private final static Logger logger = LoggerFactory.getLogger(GraphManager.class);
 
 	//must be set before graph starts and impacts the latency of the graph.dot calls
@@ -115,13 +117,13 @@ public class GraphManager {
 		////////////////////////////
 		//build all the CPU % usage labels once
 		//////////////////////////// 
-		int j = 100_01;
+		int j = 100_001;
 		cpuValues = new String[j];
 		StringBuilder builder = new StringBuilder();
 		while (--j>=0) {
 			builder.setLength(0);
-			Appendables.appendValue(builder," CPU ",j/100,".");
-			Appendables.appendFixedDecimalDigits(builder,j%100,10).append("%");
+			Appendables.appendValue(builder," CPU ",j/1000,".");
+			Appendables.appendFixedDecimalDigits(builder,j%1000,100).append("%");
 			cpuValues[j]= builder.toString();
 		}
 		
@@ -454,16 +456,15 @@ public class GraphManager {
 			} else {
 				logger.trace("normal startup without telemetry");
 			}
+			
 			m.enableMutation = false;
-			m.stageDOTNames = new String[GraphManager.countStages(m)];
-			m.stageDOTRate = new String[GraphManager.countStages(m)]; 
+			final int totalStages = GraphManager.countStages(m)+1;
+			m.stageDOTNames = new String[totalStages];
+			m.stageDOTRate = new String[totalStages]; 
+			m.stageIds = new String[totalStages];
 			m.pipeDOTSchemaNames = new String[Pipe.totalPipes()];
 			m.pipeDOTConst = new String[Pipe.totalPipes()];
 			m.pipeDOTNames = new String[Pipe.totalPipes()];
-			
-			m.stageIds = new String[GraphManager.countStages(m)]; 
-			
-
 			
 		}
 	}
@@ -1534,11 +1535,9 @@ public class GraphManager {
 	                			shutdownTime = System.nanoTime();
 	                		}
 	                		
-	                		//TODO: this must be rolling..
-	                		
 	                		pct = m.stageCPUPct[stage.stageId];//moving average of CPU
 	                			                		
-	                		int lifePct = (int)((10_000L*runNs)/ (shutdownTime - m.stageStartTimeNs[stage.stageId] ));             		
+	                		int lifePct = (int)((100_000L*runNs)/ (shutdownTime - m.stageStartTimeNs[stage.stageId] ));             		
 	                		
 	                		
 	                		if (pct>=0) {
@@ -1882,20 +1881,23 @@ public class GraphManager {
                   GraphManager.shutdownNeighborRings(graphManager, stage);
               }
           }
-      }  
-	
+    }  
+
 	public static Pipe[] attachMonitorsToGraph(GraphManager gm, Long monitorRate, PipeConfig ringBufferMonitorConfig) {
 
 		int j = gm.pipeIdToPipe.length;
 		int count = 0;
 		while (--j>=0) {
-			if (null!=gm.pipeIdToPipe[j] && !ringHoldsMonitorData(gm, gm.pipeIdToPipe[j])) {
+			if (null!=gm.pipeIdToPipe[j] &&
+					((!ringHoldsMonitorData(gm, gm.pipeIdToPipe[j])))
+							) {
 				count++;
 			}
 		}
 		if (0==count) {
 			throw new UnsupportedOperationException("Nothing to monitor, move this call down to after graph is constructed.");
 		}
+		
 		Pipe[] monBuffers = new Pipe[count];
 		int monBufIdx = 0;
 		j = gm.pipeIdToPipe.length;
@@ -1903,7 +1905,9 @@ public class GraphManager {
 			
 			Pipe ringBuffer = gm.pipeIdToPipe[j];
 			//Do not monitor those rings that are part of other monitoring networks.
-			if (null!=ringBuffer && !ringHoldsMonitorData(gm, ringBuffer) ) {
+			if (null!=ringBuffer && 
+					((!ringHoldsMonitorData(gm, ringBuffer)))				
+				) {
 
 				monBuffers[monBufIdx] = new Pipe(ringBufferMonitorConfig);
 				PipeMonitorStage stage = new PipeMonitorStage(gm, ringBuffer,  monBuffers[monBufIdx]);
@@ -1918,11 +1922,19 @@ public class GraphManager {
 	}
 
 	private static boolean ringHoldsMonitorData(GraphManager gm, Pipe ringBuffer) {
-		return null != GraphManager.getNota(gm, GraphManager.getRingProducerStageId(gm, ringBuffer.id), GraphManager.MONITOR, null);
+		if (!monitorAll) {
+			return null != GraphManager.getNota(gm, GraphManager.getRingProducerStageId(gm, ringBuffer.id), GraphManager.MONITOR, null);
+		}
+		return false;
+		
 	}
 	
     private static boolean stageForMonitorData(GraphManager gm, PronghornStage stage) {
-        return null != GraphManager.getNota(gm, stage, GraphManager.MONITOR, null);
+    	if (!monitorAll) {
+    		return null != GraphManager.getNota(gm, stage, GraphManager.MONITOR, null);
+		}
+    	return false;
+    	
     }
 
 	public static void enableBatching(GraphManager gm) {
@@ -2130,10 +2142,10 @@ public class GraphManager {
 			if (last>0 && last<now) {
 				long cycleDuration = now-last;
 				
-				int newPct = (int)((100_00L*duration)/cycleDuration);
+				int newPct = (int)((100_000L*duration)/cycleDuration);
 				int oldPct = graphManager.stageCPUPct[stageId];
-				int combined = newPct+(99*oldPct);//exponential moving avg
-				graphManager.stageCPUPct[stageId] = combined/100; 
+				int combined = newPct+(999*oldPct);//exponential moving avg
+				graphManager.stageCPUPct[stageId] = combined/1000; 
 				
 			}
 			

@@ -376,19 +376,12 @@ public class NetGraphBuilder {
         buildSocketWriters(graphManager, coordinator, serverConfig.serverSocketWriters, toWiterPipes, 
         		           serverConfig.writeBufferMultiplier, rate);
 
-        //logger.info("process nota values");
-              
-        Pipe<ServerConnectionSchema> newConnectionsPipe = new Pipe<ServerConnectionSchema>(serverConfig.newConnectionsConfig,false);        
-        ServerNewConnectionStage newConStage = new ServerNewConnectionStage(graphManager, coordinator, newConnectionsPipe); 
+        ServerNewConnectionStage newConStage = new ServerNewConnectionStage(graphManager, coordinator); 
         if (rate>0) {
         	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, newConStage);
         }
         coordinator.processNota(graphManager, newConStage);
-        PipeCleanerStage<ServerConnectionSchema> dump = new PipeCleanerStage<>(graphManager, newConnectionsPipe); //IS this important data?
-        if (rate>0) {
-        	GraphManager.addNota(graphManager, GraphManager.SCHEDULE_RATE, rate, dump);
-        }
-        coordinator.processNota(graphManager, dump);
+
 		return fromOrderedContent;
 	}
 

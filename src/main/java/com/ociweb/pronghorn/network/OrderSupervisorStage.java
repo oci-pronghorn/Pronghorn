@@ -32,6 +32,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
         
     private int[]            expectedSquenceNos;
     private short[]          expectedSquenceNosPipeIdx;
+    private long[]           expectedSquenceNosChannelId;
 
     private final ServerCoordinator coordinator;
     
@@ -111,7 +112,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		int totalChannels = coordinator.channelBitsSize; //WARNING: this can be large eg 4 million
         expectedSquenceNos = new int[totalChannels];//room for 1 per active channel connection
         expectedSquenceNosPipeIdx = new short[totalChannels];
+        expectedSquenceNosChannelId = new long[totalChannels];
         Arrays.fill(expectedSquenceNosPipeIdx, (short)-1);
+        
+        //TODO: if we keep the long ChannelID we will know when the expectedSquenceNos should be zero again.
+        //      these arrays are keeping one entry for each active connection.
+        
         
         if (ServerCoordinator.TEST_RECORDS) {
 			int i = outgoingPipes.length;
@@ -214,7 +220,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        ///////////////////////////////
 		    	if (!Pipe.hasRoomForWrite(myPipe, maxOuputSize)) {	
 		    		assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		    		//logger.trace("no room to write out");
+		    		logger.info("no room to write out");
 		    		break;
 		    	}		    	
 		    	
@@ -224,10 +230,26 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        //every number is used even if there is an exception upon write.
 		      
 		        int idx = (int)(channelId & coordinator.channelBitsMask);
+		        
+		        /////////////////////
+		        //clear when we discover a new connection
+		        ///////////////////
+		        if (expectedSquenceNosChannelId[idx] != channelId) {
+		        	expectedSquenceNos[idx] = 0;
+		        	expectedSquenceNosChannelId[idx] = channelId;
+		        }
+		        
+		        
 				int expected = expectedSquenceNos[idx];     
-		        if (sequenceNo<expected) {
+		        if (sequenceNo < expected) {
 		        	//drop the data
-		        	logger.trace("skipped older response A");
+		        	
+		        	//TODO: when to clear expectedSquenceNos ??? when we loop around
+		        	//this is 1 becauase we have been here before!!
+		        	logger.info("skipped older response A");
+		        	
+		        //	new Exception("expected "+expected+" but found "+sequenceNo).printStackTrace();
+		        	
 		        	Pipe.skipNextFragment(sourcePipe);
 		        	continue;
 		        } else if (expected==sequenceNo) {
@@ -237,7 +259,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        	} else {
 		        		if (expectedSquenceNosPipeIdx[idx] !=(short)pipeIdx) {
 		        			//drop the data
-		        			logger.trace("skipped older response B Pipe:{} vs Pipe:{} ",expectedSquenceNosPipeIdx[idx],pipeIdx);
+		        			logger.info("skipped older response B Pipe:{} vs Pipe:{} ",expectedSquenceNosPipeIdx[idx],pipeIdx);
 		        			Pipe.skipNextFragment(sourcePipe);
 				        	continue;
 		        		}
@@ -246,7 +268,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        
 		        	assert(sequenceNo>expected) : "found smaller than expected sequenceNo, they should never roll back";
 		        	assert(Pipe.bytesReadBase(sourcePipe)>=0);
-		        	logger.trace("not ready for sequence number yet, looking for {}  but found {}",expected,sequenceNo);
+		        	logger.info("not ready for sequence number yet, looking for {}  but found {}",expected,sequenceNo);
 		        	
 		        	//for not found 404 we will get these values, TODO: need a better approach 
 		        	expectedSquenceNos[idx] = sequenceNo;
@@ -301,8 +323,12 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 
 
 	private void copyDataBlock(final Pipe<ServerResponseSchema> input, int peekMsgId,
-							   final Pipe<NetPayloadSchema> output, int myPipeIdx, int sequenceNo, long channelId) {
+							   final Pipe<NetPayloadSchema> output, int myPipeIdx,
+							   int sequenceNo, long channelId) {
 		 
+
+    	//System.err.println("ttttttttttttt copy data block ");
+    	
 		assert(Pipe.bytesReadBase(input)>=0);
 		 
 		////////////////////////////////////////////////////
@@ -329,7 +355,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			
 		    //most common case by far so we put it first
 		    if (ServerResponseSchema.MSG_TOCHANNEL_100 == activeMessageId ) {
-		    	                	             	  
+		    	            
+		    	
 		    	 publishDataBlock(input, output, myPipeIdx, sequenceNo, channelId2);
 		    	
 		    } else {
@@ -356,7 +383,8 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 	}
 
 
-	private void publishDataBlock(final Pipe<ServerResponseSchema> input, Pipe<NetPayloadSchema> output, int myPipeIdx, int sequenceNo, long channelId) {
+	private void publishDataBlock(final Pipe<ServerResponseSchema> input, Pipe<NetPayloadSchema> output, 
+			                      int myPipeIdx, int sequenceNo, long channelId) {
 		
 
 		 //////////////////////////
@@ -589,6 +617,9 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 //if needed write out the upgrade message
 		 ////////////
 				 
+		//logger.info("requestContext "+Integer.toBinaryString(requestContext));
+		
+		
 		 if (0 != (UPGRADE_MASK & requestContext)) { //NOTE: must NOT use var length field, we are accumulating for plain writes
 			 
 			 //the next response should be routed to this new location
@@ -620,7 +651,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		 Pipe.publishWrites(output);
 		 
 		 if (0 != (END_RESPONSE_MASK & requestContext)) {
-			//logger.trace("detected end and incremented sequence number");
+			//logger.info("detected end and incremented sequence number");
 		    //we have finished all the chunks for this request so the sequence number will now go up by one	
 		 	int idx = (int)(channelId & coordinator.channelBitsMask);
 			expectedSquenceNos[idx]++;
@@ -640,7 +671,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 			 Pipe.addLongValue(channelId, output);
 			 Pipe.confirmLowLevelWrite(output, disSize);
 			 Pipe.publishWrites(output);
-			 
+			
 		 }
 	}
     
