@@ -52,8 +52,8 @@ public class RequestTwitterUserStreamStage extends PronghornStage {
 	@Override
 	public void startup() {
 		
-		myAuth = new OAuth1HeaderBuilder(ck,cs, token, secret, port, "https", host, pathRoot);
-	   // myAuth.setSecret(cs, token, secret);
+		myAuth = new OAuth1HeaderBuilder(ck, port, "https", host, pathRoot);
+	    myAuth.setupStep3(cs, token, secret);
 		
 		myAuth.addMACParam("stall_warnings","true");
 		myAuth.addMACParam("with","followings");		

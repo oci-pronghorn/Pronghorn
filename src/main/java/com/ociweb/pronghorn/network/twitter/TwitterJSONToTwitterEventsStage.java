@@ -60,7 +60,7 @@ public class TwitterJSONToTwitterEventsStage extends NetResponseJSONStage<Twitte
 	private long maxId = 0;
 	
 	protected void finishedBlock() {
-		logger.info("finished block");
+		//logger.info("finished block");
 		if (sendPostIds) {
 			PipeWriter.presumeWriteFragment(control, TwitterStreamControlSchema.MSG_FINISHEDBLOCK_101);
 			PipeWriter.writeLong(control,TwitterStreamControlSchema.MSG_FINISHEDBLOCK_101_FIELD_MAXPOSTID_31, maxId);

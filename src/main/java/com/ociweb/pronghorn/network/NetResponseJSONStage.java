@@ -122,7 +122,7 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 				case NetResponseSchema.MSG_CONTINUATION_102:
 					{
 						
-						logger.info("reading continuation");
+						//logger.info("reading continuation");
 						
 						long connection = Pipe.takeLong(input);
 						int flags2 = Pipe.takeInt(input);
@@ -165,9 +165,7 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 					break;
 					
 				case NetResponseSchema.MSG_CLOSED_10:
-					
-					//TODO: shutdown no longer works either...
-					
+				
 					logger.info("connection closed");
 					
 					int meta = Pipe.takeRingByteMetaData(input); //host
@@ -208,7 +206,7 @@ public class NetResponseJSONStage<M extends MessageSchema<M>, T extends Enum<T>&
 		//only call when we got a response to send down stream (response can be empty)
 		if (gotResponse) {
 			if (TrieParserReader.parseHasContent(reader)) {
-				logger.info("parse response");
+				//logger.info("parse response");
 				if (null!=customParser) {
 					parserJSON.parse(reader, customParser, visitor);			
 				} else {

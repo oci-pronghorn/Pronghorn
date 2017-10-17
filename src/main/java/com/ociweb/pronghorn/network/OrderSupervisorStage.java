@@ -243,12 +243,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 				int expected = expectedSquenceNos[idx];     
 		        if (sequenceNo < expected) {
 		        	//drop the data
-		        	
-		        	//TODO: when to clear expectedSquenceNos ??? when we loop around
-		        	//this is 1 becauase we have been here before!!
-		        	logger.info("skipped older response A");
-		        	
-		        //	new Exception("expected "+expected+" but found "+sequenceNo).printStackTrace();
+		        	logger.info("skipped older response {} expected {}",sequenceNo, expected);
 		        	
 		        	Pipe.skipNextFragment(sourcePipe);
 		        	continue;

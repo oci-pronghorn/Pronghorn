@@ -27,15 +27,19 @@ import com.ociweb.pronghorn.util.Appendables;
 
 public class OAuth1HeaderBuilder {
 
-  private static final String OAUTH_VERSION          = "oauth_version";
-  private static final String OAUTH_NONCE            = "oauth_nonce";
-  private static final String OAUTH_TIMESTAMP        = "oauth_timestamp";
-  private static final String OAUTH_SIGNATURE_METHOD = "oauth_signature_method";
-  private static final String OAUTH_SIGNATURE        = "oauth_signature";
-  private static final String OAUTH_TOKEN            = "oauth_token";
-  private static final String OAUTH_CONSUMER_KEY     = "oauth_consumer_key";
-  private static final String OAUTH_VERIFIER         = "oauth_verifier";  // the pin
-
+  private static final String OAUTH_VERSION          = "oauth_version"; //optional for all calls
+  
+  private static final String OAUTH_NONCE            = "oauth_nonce"; //required for all calls
+  private static final String OAUTH_TIMESTAMP        = "oauth_timestamp"; //required for all calls
+  private static final String OAUTH_SIGNATURE_METHOD = "oauth_signature_method"; //required for all calls
+  private static final String OAUTH_SIGNATURE        = "oauth_signature"; //required for all calls
+  private static final String OAUTH_CONSUMER_KEY     = "oauth_consumer_key"; //required for all calls
+  
+  private static final String OAUTH_TOKEN            = "oauth_token"; //only for E and G
+  private static final String OAUTH_VERIFIER         = "oauth_verifier";  // the pin only for E
+  private static final String OAUTH_CALLBACK         = "oauth_callback"; //only for A
+  
+  
   private final String consumerKey;
   
   private final SecureRandom secureRandom = new SecureRandom(); 
@@ -50,16 +54,15 @@ public class OAuth1HeaderBuilder {
   private final Mac mac;
 	
   //custom values
-  private String token;
   private SecretKeySpec secretKeySpec;
+  
+  ///////////////////////
+  //For a better understanding of A, E and G read the following
+  //https://oauth.net/core/1.0/#anchor9
+  ///////////////////////
   
   
   public OAuth1HeaderBuilder(String consumerKey,    //oauth_consumer_key - Not a secret (user)
-		  
-		                     String consumerSecret, 
-		                     String token,          //oauth_token    - Not a secret (app) 
-		                     String tokenSecret,
-		  
 		                     int port, String scheme, String host, String path) {
 
     this.consumerKey = consumerKey;    
@@ -84,13 +87,74 @@ public class OAuth1HeaderBuilder {
 	
 	this.formalPath = buildFormalPath(port, scheme, host, path);
 
-	//
-	setSecret(consumerSecret, token, tokenSecret);
+  }
+
+  public void setupStep1() {
+	  // A
+	  this.tokenBuilder.setLength(0);
+	  this.secretKeySpec = new SecretKeySpec("anonymous&".getBytes(), "HmacSHA1");
+  
+	  
+//	  oauth_consumer_key:
+//		  The Consumer Key.
+//		  oauth_signature_method:
+//		 	 The signature method the Consumer used to sign the request.
+//		  oauth_signature:
+//		  	The signature as defined in Signing Requests.
+//		  oauth_timestamp:
+//		 	 As defined in Nonce and Timestamp.
+//		  oauth_nonce:
+//		  	As defined in Nonce and Timestamp.
+//		  oauth_version:
+//		  	OPTIONAL. If present, value MUST be 1.0 . Service Providers MUST assume the protocol version to be 1.0 if this parameter is not present. Service Providers’ response to non-1.0 value is left undefined.
+//		  Additional parameters:
+//		 	 Any additional parameters, as defined by the Service Provider.
+	  
+	  ////////////
+	  //responds with
+	  ////////////
+	  
+//	  oauth_token:
+//		  The Request Token.
+//		  oauth_token_secret:
+//		  		The Token Secret.
+//		  Additional parameters:
+//		  		Any additional parameters, as defined by the Service Provider.
   }
   
-  public void setSecret( String consumerSecret, String token, String tokenSecret ) {
+  public void setupStep2( String consumerSecret, String token, String tokenSecret ) {
+	  // E
+	  this.tokenBuilder.setLength(0);
+	  this.tokenBuilder.append(token);		
+	  this.secretKeySpec = new SecretKeySpec((consumerSecret + "&").getBytes(), "HmacSHA1");
+	 
+//	  oauth_consumer_key:
+//		  The Consumer Key.
+//		  oauth_token:
+//		  		The Request Token obtained previously.
+//		  oauth_signature_method:
+//		  		The signature method the Consumer used to sign the request.
+//		  oauth_signature:
+//		  		The signature as defined in Signing Requests.
+//		  oauth_timestamp:
+//		  		As defined in Nonce and Timestamp.
+//		  oauth_nonce:
+//		  		As defined in Nonce and Timestamp.
+//		  oauth_version:
+//		  		OPTIONAL. If present, value MUST be 1.0 . Service Providers MUST assume the protocol version to be 1.0 if this parameter is not present. Service Providers’ response to non-1.0 value is left undefined.
+//	  
 	  
-	  this.token = token;
+	  
+//	  oauth_token:
+//		  The Access Token.
+//		  oauth_token_secret:
+//		  		The Token Secret.
+//		  Additional parameters:
+//		 		 Any additional parameters, as defined by the Service Provider.
+  }
+  
+  public void setupStep3( String consumerSecret, String token, String tokenSecret ) {
+	  
 	  this.tokenBuilder.setLength(0);
 	  this.tokenBuilder.append(token);		
 	  this.secretKeySpec = new SecretKeySpec((consumerSecret + "&" + tokenSecret).getBytes(), "HmacSHA1");
@@ -177,13 +241,14 @@ public class OAuth1HeaderBuilder {
 	    builder.append("OAuth ");
 	    builder.append(OAUTH_CONSUMER_KEY).append("=\"").append(consumerKey).append("\", ");
 	    
-	    if (null!=token) {
-	    	builder.append(OAUTH_TOKEN).append("=\"").append(token).append("\", ");
+	    if (tokenBuilder.length()>0) {
+	    	builder.append(OAUTH_TOKEN).append("=\"").append(tokenBuilder).append("\", ");
 	    }
 	    
 	    mac.init(secretKeySpec);	    	    
 		doFinalHMAC(builder.append(OAUTH_SIGNATURE).append("=\""), upperVerb, formalPath, mac);
 		builder.append("\", ");
+		
 	    builder.append(OAUTH_SIGNATURE_METHOD).append("=\"").append("HMAC-SHA1").append("\", ");
 	    builder.append(OAUTH_TIMESTAMP).append("=\"").append(timeBuilder).append("\", ");
 	    builder.append(OAUTH_NONCE).append("=\"").append(nonceBuilder).append("\", ");

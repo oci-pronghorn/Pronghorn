@@ -278,7 +278,13 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 					ccIdData[i] = ccId;
 					cc = (ClientConnection)ccm.connectionForSessionId(ccId, true);
 								
-					if (null==cc || (!cc.isValid())) {
+					if (null==cc || (!cc.isValid())) {				
+						
+						int meta = Pipe.takeRingByteMetaData(localInputPipe);
+						int len  = Pipe.takeRingByteLen(localInputPipe);
+						int mask = blobMask(localInputPipe);	
+						int pos = bytePosition(meta, localInputPipe, len)&mask;     		
+						byte[] backing = byteBackingArray(meta, localInputPipe);
 						
 						logger.trace("closed connection detected");
 						if (null != cc) {
@@ -292,17 +298,15 @@ public class HTTP1xResponseParserStage extends PronghornStage {
 							Pipe.confirmLowLevelWrite(targetPipe, size);
 							Pipe.publishWrites(targetPipe);
 							
+							//data from the closed message...
+							//TODO: need to refactor and push this message down stream to callers..
+							StringBuilder closedMessage = new StringBuilder();
+							Appendables.appendUTF8(closedMessage, backing, pos, len, mask);
+							logger.error("closed response:\n{}",closedMessage);
+							
 						}
-												
-						//abandon this record and continue
-						int meta = Pipe.takeRingByteMetaData(localInputPipe);
-						int len  = Pipe.takeRingByteLen(localInputPipe);
-						
 
 						if (showTossedData) {
-							int mask = blobMask(localInputPipe);	
-							int pos = bytePosition(meta, localInputPipe, len)&mask;     		
-							byte[] backing = byteBackingArray(meta, localInputPipe);
 							
 							StringBuilder builder = new StringBuilder();
 							Appendables.appendUTF8(builder, backing, pos, len, mask);
