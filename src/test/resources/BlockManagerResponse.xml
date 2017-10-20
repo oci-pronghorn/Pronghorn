@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+
+     <template name="SubAllocated" id="1">
+         <Int64 name="Id" id="11"/>
+         <byteVector name="Route" id="14"/>
+     </template>
+     <template name="SubAllocatedFailure" id="21">
+         <Int32 name="Status" id="12"/>
+     </template>
+     
+     <template name="SubReleased" id="2">
+     	 <Int32 name="Status" id="12"/> <!-- zero is OK -->
+     </template>
+     
+     <template name="SubWritten" id="3">
+         <Int32 name="Status" id="12"/> <!-- zero is OK -->
+     </template>
+
+     <template name="SubRead" id="4">
+     	<byteVector name="Payload" id="13"/>
+     </template>
+     
+     <template name="ReadHeader" id="8">
+        <Int64 name="Id" id="11"/>
+     	<byteVector name="Payload" id="13"/>
+     </template>       
+
+
+
+     <template name="BlockMounted" id="5">
+     	 <Int32 name="Status" id="12"/> <!-- zero is OK -->
+     </template>
+
+     <template name="BlockAllocated" id="6">
+     	<byteVector name="Route" id="14"/>
+     </template>
+     <template name="BlockAllocatedFailure" id="26">
+         <Int32 name="Status" id="12"/>
+     </template>
+
+     <template name="BlockReleased" id="7">
+     	<Int32 name="Status" id="12"/> <!-- zero is OK -->
+     </template>
+
+
+</templates>

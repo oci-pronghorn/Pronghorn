@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+
+   <template name="Release" id="100">   
+     <uInt64 name="ConnectionID" id="1"/>
+     <uInt64 name="Position" id="2"/>
+   </template>
+     
+   <template name="ReleaseWithSeq" id="101">   
+     <uInt64 name="ConnectionID" id="1"/>
+     <uInt64 name="Position" id="2"/>
+     <int32 name="SequenceNo" id="3"/>     
+   </template>
+       
+</templates>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+
+   <template name="SimpleRequest" id="100">
+     <uInt64 name="ConnectionId" id="101"/>
+     <string name="Payload" id="103" charset="unicode"/>
+   </template>  
+ 
+   <template name="SimpleDisconnect" id="101">
+     <uInt64 name="ConnectionId" id="101"/>
+   </template> 
+ 
+   <template name="EncryptedRequest" id="110">
+     <uInt64 name="ConnectionId" id="101"/>
+     <byteVector name="Encrypted" id="104"/>
+   </template>  
+      
+      
+      
+</templates>

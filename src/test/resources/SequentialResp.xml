@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+    
+   <template name="ClearAck" id="1">
+   </template>
+
+   <template name="MetaResponse" id="2">
+   		<uInt64 name="Size" id="11"/>
+   		<uInt64 name="Date" id="11"/>
+   		<!--  could add other data as needed -->
+   </template>
+
+   <template name="WriteAck" id="3">
+  	 	<uInt64 name="Id" id="12"/>
+   </template>
+
+</templates>

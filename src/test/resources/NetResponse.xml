@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates>
+   
+   <template name="Response" id="101">
+     <uInt64 name="ConnectionId" id="1"/>
+     <uInt32 name="ContextFlags" id="5"/>
+     <byteVector name="Payload" id="3"/>
+   </template> 
+   
+   <template name="Continuation" id="102">
+     <uInt64 name="ConnectionId" id="1"/>
+     <uInt32 name="ContextFlags" id="5"/>
+     <byteVector name="Payload" id="3"/>
+   </template> 
+      
+   <template name="Closed" id="10">
+     <string name="Host" id="4" charset="unicode"/>
+     <uInt32 name="Port" id="5"/>
+   </template> 
+                  
+</templates>

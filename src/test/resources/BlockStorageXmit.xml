@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+    
+   <template name="Write" id="1">
+        <uInt64 name="Position" id="12"/>
+    	<byteVector name="Payload" id="11"/>  
+   </template>
+
+   <template name="Read" id="2">
+    	<uInt64 name="Position" id="12"/>
+    	<uInt32 name="ReadLength" id="10"/>    	
+   </template>
+
+</templates>

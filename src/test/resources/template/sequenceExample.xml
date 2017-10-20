@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
+
+   <template name="DaySummary" id="1">
+ 
+	     <uInt32 name="Year" id="101">
+	         <copy value="1"/>
+	     </uInt32>
+	     <uInt32 name="Month" id="102">
+	         <copy value="1"/>
+	     </uInt32>
+	     <uInt32 name="Date" id="103">
+	         <copy value="1"/>
+	     </uInt32>
+ 	     <sequence name="Samples">
+            <length name="SampleCount" id="202"/>
+	       
+	        <uInt32 name="Id" id="203">
+	        	<inc value="10"/>
+	        </uInt32>
+	        
+	        <uInt64 name="Time" id="204">
+	        	<delta/>
+	        </uInt64>	        	        
+	        <uInt32 name="Measurement" id="205">
+	        	<copy value="1"/>
+	        </uInt32>
+	        <uInt32 name="Action" id="206">
+	        	<default value="10"/>
+	        </uInt32>
+	      </sequence>   
+   </template>
+   
+</templates>
