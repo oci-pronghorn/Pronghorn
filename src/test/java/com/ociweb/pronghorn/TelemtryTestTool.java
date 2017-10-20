@@ -25,7 +25,7 @@ public class TelemtryTestTool {
 				Pipe temp = null;
 				Pipe prev = targets[i];
 				
-				int j = 3;//9;
+				int j = 4;
 				while (--j>=0) {
 					temp = new Pipe(prev.config().grow2x());
 					new ReplicatorStage<>(gm, prev, temp);

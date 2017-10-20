@@ -4,7 +4,7 @@
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
     <meta content="utf-8" http-equiv="encoding">
     <script src="viz-lite.js"></script>
-    <script src="./jquery-3.2.1.min.js"></script>
+    <script src="jquery-3.2.1.min.js"></script>
 </head>
 <body>
 <div id="demo">Loading...</div>
@@ -41,17 +41,30 @@
     if (window.Worker) {
         w = new Worker('webworker.js');
     }
-
+    
     function handleError(error) {
         console.log('Error: ' + error);
         doingUpdate = false;
     }
 
+    var isFirst = true;
+    
+    
     function paintAll () {
         if (w) {
             //returned message from the webworker
             w.onmessage = function (e) {
-                document.getElementById("demo").innerHTML = e.data.result;
+                if (doingUpdate) {        	
+                 	   paintAll();
+                } else {
+            	       document.getElementById("demo").innerHTML = e.data.result;        
+		            	if (isFirst) {
+		           		    setInterval(paintAll,20000);
+		           		    setInterval(doUpdate,160);
+			            	isFirst=false;         		
+		            	}
+                }
+            	
             };
             //message sent to webworker
             w.postMessage("");
@@ -114,9 +127,7 @@
     }
 
     paintAll(); //runs first initially
-    setInterval(paintAll,20000);
-    setInterval(doUpdate,160);
-
+   
 </script>
 
 </body>
