@@ -245,12 +245,13 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		        
 				int expected = expectedSquenceNos[idx];     
 		        if (sequenceNo < expected) {
-		        	//drop the data
-		        	logger.info("skipped older response {} expected {}",sequenceNo, expected);
-		        	
-		        	Pipe.skipNextFragment(sourcePipe);
-		        	continue;
-		        } else if (expected==sequenceNo) {
+		        	logger.info("WARNING: older response {} expected {}",sequenceNo, expected);
+		        	//moved up sequence number and continue
+		        	//rare case but we do not want to fail when it happens
+		        	expectedSquenceNos[idx] =  expected = sequenceNo;		        	
+		        } 
+		        
+		        if (expected==sequenceNo) {
 		        	logger.trace("found expected sequence {}",sequenceNo);
 		        	if (-1 == expectedSquenceNosPipeIdx[idx]) {
 		        		expectedSquenceNosPipeIdx[idx]=(short)pipeIdx;
@@ -653,6 +654,7 @@ public class OrderSupervisorStage extends PronghornStage { //AKA re-ordering sta
 		    //we have finished all the chunks for this request so the sequence number will now go up by one	
 		 	int idx = (int)(channelId & coordinator.channelBitsMask);
 			expectedSquenceNos[idx]++;
+	//		expectedSquenceNosChannelId[idx] = channelId;
 		 	expectedSquenceNosPipeIdx[idx] = (short)-1;//clear the assumed pipe
 		 	
 		 	//logger.info("increment expected for chnl {}  to value {} len {}",channelId, expectedSquenceNos[(int)(channelId & coordinator.channelBitsMask)], len);

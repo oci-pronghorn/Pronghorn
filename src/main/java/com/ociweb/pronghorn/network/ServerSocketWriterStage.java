@@ -665,7 +665,6 @@ public class ServerSocketWriterStage extends PronghornStage {
     private void closeChannel(SocketChannel channel) {
         try {
         	if (channel.isOpen()) {
-        		System.err.println("yyyyyyyyyyyyyyyyyyyy close ");
         		channel.close();
         	}
         } catch (IOException e1) {
